@@ -38,7 +38,7 @@ interface BalanceForecastUnavailableProps {
  * pair behind it, and the fix.
  *
  * Same shape as the cash-flow forecast's own unavailable panel
- * (`components/bills/CashFlowForecastChart.tsx`): an amber `role="alert"` block
+ * (`components/bills/CashFlowForecastPlot.tsx`): an amber `role="alert"` block
  * where the chart would be.
  */
 export function BalanceForecastUnavailable({

@@ -35,7 +35,7 @@ import { FX_MAX_RATE_AGE_DAYS } from "../common/time-series/fx-rate-resolver";
  * Windows *fetched* in one request.
  *
  * Each is one outbound provider call (two, when the direct symbol answers
- * nothing and the reverse is tried), so the cap is what keeps a press of a
+ * nothing or a sparse series and the reverse is tried), so the cap is what keeps a press of a
  * button bounded. What it leaves out is reported rather than dropped: the plan
  * is recomputed from what is stored, so pressing again continues where this
  * one stopped.
@@ -275,4 +275,39 @@ export function planRateGapWindows(
     unresolvableDays: totalDays(unresolvable),
     sparseDays: totalDays(sparse),
   };
+}
+
+/**
+ * Whether a series one provider symbol returned for `[start, end]` leaves a
+ * stretch longer than `MAX_OBSERVATION_GAP_DAYS` with no observation -- at the
+ * window's opening, between two bars, or before its close.
+ *
+ * The same density bound the planner fetches on, applied to one answer: a
+ * symbol that returned one bar for a month answered, and is still not a daily
+ * series. Yahoo carries some pairs fully under one orientation and only
+ * sporadically under the other (`VNDSGD=X` against `SGDVND=X`), so a fill that
+ * stopped at "the direct symbol returned something" stored a month-end-only
+ * history the reverse symbol could have made daily. An empty series is sparse.
+ *
+ * The opening edge is measured from `start` itself rather than treated as a
+ * hole the way `planRateGapWindows` treats it: a window opening on a Saturday
+ * has its first bar on the Monday, and that is a dense answer.
+ */
+export function isSparseRateSeries(
+  dates: readonly string[],
+  start: string,
+  end: string,
+  densityDays: number = MAX_OBSERVATION_GAP_DAYS,
+): boolean {
+  if (start > end) return false;
+  const inWindow = [
+    ...new Set(dates.filter((date) => date >= start && date <= end)),
+  ].sort((a, b) => a.localeCompare(b));
+  if (inWindow.length === 0) return true;
+
+  const marks = [start, ...inWindow, end];
+  for (let i = 1; i < marks.length; i++) {
+    if (daysBetween(marks[i - 1], marks[i]) > densityDays) return true;
+  }
+  return false;
 }

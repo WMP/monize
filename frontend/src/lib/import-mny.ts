@@ -1,5 +1,5 @@
 import apiClient from './api';
-import { invalidateBalanceCaches } from './apiCache';
+import { clearAllCache } from './apiCache';
 import { AccountType } from '@/types/account';
 
 /**
@@ -233,6 +233,12 @@ export interface MnyImportResult {
   transfersLinked: number;
   securitiesCreated: number;
   investmentTransactionsCreated: number;
+  /**
+   * Imported share acquisitions of a bond-program security stored without a
+   * series (the file names none and none was on sale on the date): the bond
+   * lots report such a row until its series is chosen. Absent when zero.
+   */
+  bondRowsWithoutSeries?: number;
   pricesImported: number;
   exchangeRatesImported: number;
   billsCreated: number;
@@ -262,6 +268,12 @@ export interface MnyImportJob {
   result: MnyImportResult | null;
   errorKey: string | null;
   retryable: boolean;
+  /**
+   * True once the import's rows reached the ledger, so a failure after it is
+   * not "nothing saved" and the file must not be imported again. Absent on an
+   * older backend: no information, so read it as `=== true`.
+   */
+  dataCommitted?: boolean;
   startedAt: string | null;
   completedAt: string | null;
 }
@@ -325,9 +337,11 @@ export const mnyImportApi = {
     );
     // The import runs server-side after `start` returns, so the write lands
     // here rather than at a mutation call. A failed job can still have written
-    // rows before it stopped, so both terminal states invalidate.
+    // rows before it stopped, so both terminal states invalidate. An MNY import
+    // writes accounts, categories, payees, tags, securities and schedules, and a
+    // wipe deletes them, so no prefix is narrow enough.
     if (response.data.status === 'completed' || response.data.status === 'failed') {
-      invalidateBalanceCaches();
+      clearAllCache();
     }
     return response.data;
   },

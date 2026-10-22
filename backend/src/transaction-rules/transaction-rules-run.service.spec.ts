@@ -13,7 +13,10 @@ import { TransactionRuleApplication } from "./transaction-rule-application.entit
 import { TransactionRule } from "./transaction-rule.entity";
 import { toRuleResponses } from "./transaction-rule-view";
 import { TransactionRulesApplierService } from "./transaction-rules-applier.service";
-import { TransactionRulesRunService } from "./transaction-rules-run.service";
+import {
+  TransactionRulesRunService,
+  runSkipReason,
+} from "./transaction-rules-run.service";
 import { TransactionRulesService } from "./transaction-rules.service";
 import { thrown } from "./transaction-rules.test-helpers";
 
@@ -119,17 +122,23 @@ function setup(
     applierDeps as never,
     { enqueue } as never,
     payees as never,
+    {} as never,
+    {} as never,
   );
   const loadTagIds = jest
     .spyOn(applier, "loadTagIds")
     .mockResolvedValue(new Map<string, string[]>());
   jest.spyOn(applier, "chainsFor").mockResolvedValue(new Map());
   jest.spyOn(applier, "labelsFor").mockResolvedValue({
+    accounts: {},
     categories: { [CAT]: "Groceries" },
     payees: { [PAYEE]: "Shop payee" },
     tags: {},
     rules: {},
   });
+  const openReviews = jest
+    .spyOn(applier, "openAiReviewTransactionIds")
+    .mockResolvedValue(new Set<string>());
   const writeEffects = jest
     .spyOn(applier, "writeEffects")
     .mockImplementation(async (_m, _u, _id, effects) => effects);
@@ -157,6 +166,7 @@ function setup(
     rulesService as unknown as TransactionRulesService,
     applier,
     { record } as unknown as ActionHistoryService,
+    { triggerDebouncedRecalc: jest.fn() } as never,
   );
   return {
     service,
@@ -164,6 +174,7 @@ function setup(
     dataSource,
     rulesService,
     writeEffects,
+    openReviews,
     enqueue,
     record,
     loadTagIds,
@@ -297,6 +308,7 @@ describe("TransactionRulesRunService", () => {
       // The condition matched t1, t2 and the split t4; LIDL (t3) did not.
       expect(preview.conditionMatchedCount).toBe(3);
       expect(preview.truncated).toBe(false);
+      expect(preview.scannedThrough).toBe(split.transactionDate);
       expect(preview.matched).toEqual([
         {
           transactionId: "t1",
@@ -328,7 +340,7 @@ describe("TransactionRulesRunService", () => {
         expect.anything(),
         USER,
         expect.objectContaining({ limit: 50 }),
-        { lock: false },
+        { lock: false, direction: "DESC" },
       );
     });
 
@@ -418,7 +430,11 @@ describe("TransactionRulesRunService", () => {
           startDate: "2026-04-01",
           endDate: "2026-04-01",
         }),
-      ).resolves.toMatchObject({ scanned: 0, matched: [] });
+      ).resolves.toMatchObject({
+        scanned: 0,
+        matched: [],
+        scannedThrough: null,
+      });
     });
 
     it("an empty plan still has a fingerprint", async () => {
@@ -496,7 +512,7 @@ describe("TransactionRulesRunService", () => {
         expect.anything(),
         USER,
         expect.objectContaining({ accountIds: ["acc-1"], limit: 10 }),
-        { lock: false },
+        { lock: false, direction: "DESC" },
       );
       expect(writeEffects).not.toHaveBeenCalled();
       expect(record).not.toHaveBeenCalled();
@@ -651,12 +667,18 @@ describe("TransactionRulesRunService", () => {
         fingerprint,
       });
 
-      expect(result).toEqual({ changed: 2, skipped: [], historyId: "hist-1" });
+      expect(result).toEqual({
+        changed: 2,
+        skipped: [],
+        historyId: "hist-1",
+        aiReviewsQueued: 0,
+        aiReviewsAlreadyQueued: 0,
+      });
       expect(loadCandidateUnits).toHaveBeenLastCalledWith(
         expect.anything(),
         USER,
         expect.anything(),
-        { lock: true },
+        { lock: true, direction: "DESC" },
       );
       expect(s.rulesService.getOwnedRule).toHaveBeenLastCalledWith(
         expect.anything(),
@@ -673,6 +695,8 @@ describe("TransactionRulesRunService", () => {
           changes: expect.objectContaining({ categoryId: CAT }),
         }),
         "manual",
+        expect.any(Set),
+        expect.any(Set),
       );
       expect(s.record).toHaveBeenCalledTimes(1);
       const entry = s.record.mock.calls[0][1];
@@ -786,11 +810,86 @@ describe("TransactionRulesRunService", () => {
       });
 
       expect(result.changed).toBe(0);
+      expect(result.aiReviewsQueued).toBe(1);
+      expect(result.aiReviewsAlreadyQueued).toBe(0);
       expect(s.writeEffects).not.toHaveBeenCalled();
+      expect(s.record).not.toHaveBeenCalled();
       expect(s.enqueue).toHaveBeenCalledTimes(1);
       expect(s.enqueue).toHaveBeenCalledWith(s.manager, USER, [
         { transactionId: "t1", ruleId: RULE_ID, instruction: "split it" },
       ]);
+    });
+
+    it("reports a row whose review was already open apart from the rows it queued", async () => {
+      const asking = storedRule({
+        actions: [{ type: "request_ai_review", instruction: "split it" }],
+      });
+      const s = setup(
+        [plainUnit(row("t1")), plainUnit(row("t2"))],
+        false,
+        asking,
+      );
+      s.enqueue.mockResolvedValue({
+        queued: [{ transactionId: "t1", ruleId: RULE_ID }],
+        alreadyQueued: [{ transactionId: "t2", ruleId: RULE_ID }],
+      });
+      s.openReviews.mockResolvedValue(new Set(["t2"]));
+      const preview = await s.service.previewRun(USER, RULE_ID, filters);
+      // Only the row without an open request would get a new one.
+      expect(preview.aiReviewRequests).toBe(1);
+
+      const result = await s.service.run(USER, RULE_ID, {
+        ...filters,
+        fingerprint: preview.fingerprint,
+      });
+
+      expect(result.aiReviewsQueued).toBe(1);
+      expect(result.aiReviewsAlreadyQueued).toBe(1);
+    });
+
+    it("previews no review request when every matching row already holds an open one", async () => {
+      const asking = storedRule({
+        actions: [{ type: "request_ai_review", instruction: "split it" }],
+      });
+      const s = setup(
+        [plainUnit(row("t1")), plainUnit(row("t2"))],
+        false,
+        asking,
+      );
+      s.openReviews.mockResolvedValue(new Set(["t1", "t2"]));
+
+      const preview = await s.service.previewRun(USER, RULE_ID, filters);
+
+      expect(preview.aiReviewRequests).toBe(0);
+      expect(preview.matched).toEqual([]);
+      expect(preview.conditionMatchedCount).toBe(2);
+      expect(s.openReviews).toHaveBeenCalledWith(s.manager, USER, RULE_ID, [
+        "t1",
+        "t2",
+      ]);
+    });
+
+    it("refuses with 409 when the rows to review differ from the preview's, though no field changes", async () => {
+      const asking = storedRule({
+        actions: [{ type: "request_ai_review", instruction: "split it" }],
+      });
+      const s = setup([plainUnit(row("t1"))], false, asking);
+      const preview = await s.service.previewRun(USER, RULE_ID, filters);
+      // A second row matched meanwhile: the commit would queue one the reader did not see.
+      (loadCandidateUnits as jest.Mock).mockResolvedValue({
+        units: [plainUnit(row("t1")), plainUnit(row("t2"))],
+        truncated: false,
+      });
+
+      const error = await thrown(
+        s.service.run(USER, RULE_ID, {
+          ...filters,
+          fingerprint: preview.fingerprint,
+        }),
+      );
+
+      expect(error.getStatus()).toBe(409);
+      expect(s.enqueue).not.toHaveBeenCalled();
     });
 
     it("does not queue when the fingerprint is stale", async () => {
@@ -918,7 +1017,13 @@ describe("TransactionRulesRunService", () => {
         ...filters,
         fingerprint,
       });
-      expect(result).toEqual({ changed: 0, skipped: [], historyId: null });
+      expect(result).toEqual({
+        changed: 0,
+        skipped: [],
+        historyId: null,
+        aiReviewsQueued: 0,
+        aiReviewsAlreadyQueued: 0,
+      });
       expect(s.writeEffects).not.toHaveBeenCalled();
       expect(s.record).not.toHaveBeenCalled();
     });
@@ -1099,6 +1204,8 @@ describe("TransactionRulesRunService", () => {
           }),
         }),
         "manual",
+        expect.any(Set),
+        expect.any(Set),
       );
       const entry = s.record.mock.calls[0][1];
       expect(entry.beforeData.transactions).toEqual([
@@ -1170,5 +1277,49 @@ describe("TransactionRulesRunService", () => {
       expect(s.writeEffects).not.toHaveBeenCalled();
       expect(s.payees.findOrCreate).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("runSkipReason: settle_loan_installment", () => {
+  const settle = (reason: string) =>
+    runSkipReason({ type: "settle_loan_installment", reason });
+
+  it.each([
+    "row_is_transfer_leg",
+    "row_has_splits",
+    "row_is_void",
+    "zero_amount",
+    "transfer_same_account",
+    "transfer_account_unavailable",
+    "transfer_currency_mismatch",
+    "row_from_scheduled_posting",
+    "row_is_income",
+    "loan_account_unavailable",
+    "loan_interest_booked_separately",
+    "loan_not_configured",
+    "no_installment_in_window",
+    "occurrence_already_posted",
+    "loan_debt_retired",
+    "installment_amount_excess",
+    "installment_amount_shortfall",
+  ])("names %s in the preview as the planner names it", (reason) => {
+    expect(settle(reason)).toBe(reason);
+  });
+
+  it("lists nothing for a lookup the plan was still waiting on", () => {
+    expect(settle("loan_facts_unresolved")).toBeUndefined();
+    expect(settle("payee_unresolved")).toBeUndefined();
+  });
+
+  it("gives the settlement's reasons only to a structural action, and leaves the others' unchanged", () => {
+    expect(
+      runSkipReason({ type: "set_category", reason: "loan_not_configured" }),
+    ).toBeUndefined();
+    expect(
+      runSkipReason({
+        type: "convert_to_transfer",
+        reason: "transfer_direction_mismatch",
+      }),
+    ).toBe("transfer_direction_mismatch");
   });
 });

@@ -316,6 +316,7 @@
     "totalInflows": "Total de Entradas",
     "totalOutflows": "Total de Saídas",
     "netCashFlow": "Fluxo de Caixa Líquido",
+    "notAvailable": "N/D",
     "monthlyCashFlow": "Fluxo de Caixa Mensal",
     "inflowsByCategory": "Entradas por Categoria",
     "outflowsByCategory": "Saídas por Categoria",
@@ -764,6 +765,7 @@
     "totalValue": "Valor Total",
     "costBasis": "Custo de Aquisição",
     "totalGainLoss": "Ganho/Perda Total",
+    "gainPartialCaption": "Apenas sobre posições com preço",
     "return": "Rentabilidade",
     "viewHoldings": "Posições",
     "viewAllocation": "Alocação",
@@ -821,6 +823,7 @@
     "actionCapitalGainShort": "Rendimento de capital de curto prazo",
     "actionCapitalGainLong": "Rendimento de capital de longo prazo",
     "actionRedeem": "Resgate de CD/obrigação",
+    "actionReturnOfCapital": "Devolução de capital",
     "colCommission": "Comissão",
     "colPriceCurrency": "Moeda do Preço",
     "colAmountCurrency": "Moeda do Montante",
@@ -1146,6 +1149,11 @@
     "vsMonth": "vs {month}",
     "inMonth": "{amount} em {month}",
     "netWorthTotal": "Total: {amount}",
+    "netWorthSummaryPartial": "O seu valor líquido em {currentMonth} foi <strong>{netWorth}</strong>. Não é possível calcular a variação em relação a {previousMonth} porque não há taxa de câmbio para {pairs}; adicione uma na página Moedas.",
+    "pdfPartialSuffix": "{amount} (parcial)",
+    "pdfNote": "Nota",
+    "pdfNotAvailable": "N/D",
+    "pdfPartialNote": "Total parcial: sem taxa de câmbio para {pairs}.",
     "netWorthSummary": "O seu valor líquido em {currentMonth} foi <strong>{netWorth}</strong>, o que representou <delta>{changeAmount}</delta> em relação a {previousMonth}.",
     "pdfTitle": "Comparação Mensal",
     "pdfSubtitle": "{current} vs {previous}",
@@ -1190,7 +1198,15 @@
     "colMonth": "Mês",
     "colAssets": "Ativos",
     "colLiabilities": "Passivos",
-    "colNetWorth": "Valor Líquido"
+    "colNetWorth": "Valor Líquido",
+    "barStyle": "Estilo das barras",
+    "barStyleNetWorth": "Valor líquido",
+    "barStyleAccountType": "Por tipo de conta",
+    "notAvailable": "N/D",
+    "colNote": "Nota",
+    "partialMonthNote": "Parcial: sem taxa de câmbio para {pairs}",
+    "pdfPartialNote": "Total parcial: sem taxa de câmbio para {pairs}. Adicione uma na página Moedas.",
+    "partialMonth": "Não mostrado: alguns montantes deste mês não puderam ser convertidos, por isso o valor líquido é desconhecido."
   },
   "portfolioValue": {
     "highestValue": "Valor Mais Alto",
@@ -1198,10 +1214,10 @@
     "valueChange": "Variação de Valor",
     "investedValueChangeTooltip": "O valor dos títulos no fim do período, menos o valor que tinham no início: o último ponto do gráfico menos o primeiro. O dinheiro não investido fica de fora.",
     "netInvested": "Investimento Líquido",
-    "netInvestedTooltip": "O que foi aplicado nos títulos durante o período, menos o que saiu deles através de vendas e transferências de ações. O dinheiro depositado ou levantado não é contado.",
+    "netInvestedTooltip": "O que foi aplicado nos títulos durante o período, menos o que saiu deles através de vendas e transferências de ações. As distribuições reinvestidas em ações contam como aplicadas. O dinheiro depositado ou levantado não é contado.",
     "investmentIncome": "Dividendos e Juros",
     "investmentIncomeLine": "Dividendos e juros {amount}",
-    "investmentIncomeTooltip": "Dividendos, juros e distribuições de mais-valias pagos pelos títulos durante o período. A Variação de Valor, menos o Investimento Líquido, mais estes montantes, é o Resultado do Investimento.",
+    "investmentIncomeTooltip": "Dividendos, juros e distribuições de mais-valias pagos pelos títulos durante o período. As distribuições reinvestidas em ações contam tal como as pagas em dinheiro. A Variação de Valor, menos o Investimento Líquido, mais estes montantes, é o Resultado do Investimento.",
     "investmentResult": "Resultado do Investimento",
     "investmentReturn": "Rentabilidade do Investimento",
     "investmentResultTooltip": "O que os seus investimentos renderam: a variação do valor dos títulos, excluindo compras, vendas, depósitos, levantamentos e numerário não investido, e incluindo dividendos e juros.",
@@ -1276,6 +1292,7 @@
     "colDate": "Data",
     "colShares": "Ações",
     "colPrice": "Preço",
+    "returnOfCapitalRow": "Devolução de capital acima do custo de aquisição",
     "pdfTitle": "Relatório de Ganhos Realizados",
     "pdfSubtitle": "{count} títulos | Ganho líquido: {gain}",
     "csvColSecurity": "Título",
@@ -1848,6 +1865,13 @@
   "foreignCurrencyFees": {
     "noEligibleAccounts": "Nenhuma conta tem uma comissão de transação estrangeira configurada. Defina uma percentagem de comissão numa conta para acompanhar aqui as suas comissões em moeda estrangeira."
   },
+  "partialData": {
+    "notice": "Alguns valores são parciais: {count, plural, one {# montante não pôde ser convertido para {displayCurrency} e foi excluído} other {# montantes não puderam ser convertidos para {displayCurrency} e foram excluídos}}. Não há taxa para {currencies}; adicione uma na página Moedas.",
+    "noticeExcluded": "Alguns valores são parciais: {count, plural, one {# montante não pôde ser calculado e foi excluído} other {# montantes não puderam ser calculados e foram excluídos}}.",
+    "pdfNote": "Total parcial: sem taxa de câmbio para {currencies}",
+    "pdfNoteExcluded": "Total parcial: {count, plural, one {# montante excluído} other {# montantes excluídos}}",
+    "pdfSuffix": "(parcial)"
+  },
   "sankey": {
     "help": "O dinheiro que entrou flui pelo centro para aquilo em que foi gasto, o que foi poupado ou investido e o que pagou dívidas. Por predefinição, o relatório abrange as suas contas à ordem, de poupança, de numerário, de cartão de crédito e de linha de crédito abertas, e uma transferência entre duas delas não é mostrada. Retire uma conta de poupança do filtro de contas para ver o que transferiu para ela. Um pagamento de cartão de crédito nunca é um pagamento de dívida: as compras que liquida já são contadas como despesas.",
     "depthLabel": "Detalhe",
@@ -1894,5 +1918,8 @@
       "residualDeficit": "Retirado dos saldos",
       "unlinkedAccount": "(conta não ligada)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Gerado: {timestamp}"
   }
 }

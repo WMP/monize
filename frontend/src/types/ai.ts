@@ -1,6 +1,7 @@
 import type { ContactLookupSource } from './payee';
 import type { InvestmentAction } from './investment';
 import type { RuleAction, RuleConditionNode, RuleTrigger } from './transaction-rule';
+import type { RuleStructurePlan } from './transaction-rule-run';
 import type {
   RuleRunFilters,
   RuleRunMatchedRow,
@@ -293,6 +294,8 @@ export interface PendingActionSplit {
   categoryName?: string | null;
   amount: number;
   memo?: string | null;
+  /** `"ai"` when the AI chose this line's category (email-receipt proposals). */
+  categorySource?: 'ai';
 }
 
 /** One chat file a create/update card will save on the transaction on approval. */
@@ -322,9 +325,17 @@ export interface PendingActionPreview {
    */
   contactLookupSource?: ContactLookupSource | null;
   categoryName?: string | null;
+  /** `"ai"` when the AI chose `categoryName`. */
+  categorySource?: 'ai';
   newCategoryName?: string | null;
   currentCategoryName?: string | null;
   description?: string | null;
+  /** update_transaction: tag names the approval adds (the transaction keeps its own). */
+  tagNames?: string[];
+  /** The subset of `tagNames` the approval creates because the user has no such tag yet. */
+  newTagNames?: string[];
+  /** update_transaction: the reference number ("Ref #") the approval sets; absent when it is left as it is. */
+  referenceNumber?: string;
   name?: string | null;
   /** Payee website, as the commit would store it. */
   website?: string | null;
@@ -360,6 +371,16 @@ export interface PendingActionPreview {
   cashAccountName?: string | null;
   cashCurrency?: string | null;
   cashAmount?: number | null;
+  /** REDEEM: the accrued interest riding on the cash movement. */
+  accruedInterest?: number;
+  /** The bond series a program-linked security's row acts on (e.g. EDO1036). */
+  bondSeriesCode?: string | null;
+  /** create_investment_transaction: the scheduled bill or deposit that approving this marks paid. */
+  scheduledName?: string | null;
+  /** create_investment_transaction: the due day (YYYY-MM-DD) of the occurrence of `scheduledName` it marks paid. */
+  scheduledDueDate?: string | null;
+  /** REDEEM of a bond-linked security: what the redemption pays, split. */
+  bondRedemptionSplit?: PendingActionRedemptionSplit | null;
   // create_security display fields (symbol/securityName/securityCurrency above
   // are reused for the ticker, full name, and currency).
   securityType?: string | null;
@@ -382,6 +403,8 @@ export interface PendingActionPreview {
 
 /** Names for the ids a rule's effects mention; a missing id is a deleted item. */
 export interface PendingActionRuleEffectsLabels {
+  /** The accounts a transfer or a split part names; absent in a card built before they were sent. */
+  accounts?: Record<string, string>;
   categories: Record<string, string>;
   payees: Record<string, string>;
   tags: Record<string, string>;
@@ -401,6 +424,8 @@ export interface PendingActionRuleEffects {
     description?: string | null;
     addTagIds: string[];
     removeTagIds: string[];
+    /** A structural action's plan: the row becomes a transfer leg or a split. */
+    structure?: RuleStructurePlan;
   };
   aiReviewRequests: Array<{ ruleId: string; instruction: string }>;
   labels: PendingActionRuleEffectsLabels;
@@ -422,6 +447,9 @@ export interface PendingActionRuleState {
   condition: RuleConditionNode;
   actions: RuleAction[];
   stopProcessing: boolean;
+  /** The active window, `YYYY-MM-DD`; null or absent is open on that side. */
+  activeFrom?: string | null;
+  activeTo?: string | null;
 }
 
 /** What running a rule on existing transactions would do (`AiActionRuleTestPreview`). */
@@ -487,6 +515,11 @@ export interface PendingActionPreviewRow {
   }>;
   /** True when this bulk update/delete row targets a reconciled transaction. */
   isReconciled?: boolean;
+  /**
+   * What the user's rules will also do to this created row on approval, with a
+   * transfer or split they add (display-only; the single card's shape).
+   */
+  ruleEffects?: PendingActionRuleEffects;
   investmentAction?: InvestmentAction;
   symbol?: string | null;
   securityName?: string | null;
@@ -498,6 +531,23 @@ export interface PendingActionPreviewRow {
   cashAccountName?: string | null;
   cashCurrency?: string | null;
   cashAmount?: number | null;
+  accruedInterest?: number;
+  bondSeriesCode?: string | null;
+  bondRedemptionSplit?: PendingActionRedemptionSplit | null;
+}
+
+/**
+ * A bond redemption's payout split into returned principal and interest, in the
+ * security's currency. `outcome`: `filled` (the server set price and accrued
+ * interest from it), `matches`, or `differs` (the figures the card shows differ
+ * from it by more than rounding).
+ */
+export interface PendingActionRedemptionSplit {
+  principal: number;
+  interest: number;
+  deduction: number;
+  payout: number;
+  outcome: 'filled' | 'matches' | 'differs';
 }
 
 /**

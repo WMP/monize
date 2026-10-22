@@ -60,4 +60,18 @@ describe('SpendingByPayeeWidget', () => {
     await renderWidget();
     expect(screen.getByText('No spending in this period.')).toBeInTheDocument();
   });
+
+  it('marks the total a subtotal when a payee row was left out', async () => {
+    getSpendingByPayee.mockResolvedValue({
+      data: [{ payeeId: 'p1', payeeName: 'Grocer', total: 50 }],
+      totalSpending: null,
+      knownSpending: 50,
+      currency: 'CAD',
+      missingCurrencies: ['JPY'],
+      excludedCount: 1,
+    });
+    await renderWidget();
+    expect(screen.getByTestId('partial-total')).toHaveTextContent('$50');
+    expect(screen.queryByText('$0')).not.toBeInTheDocument();
+  });
 });

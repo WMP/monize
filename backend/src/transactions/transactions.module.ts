@@ -14,6 +14,7 @@ import { TransactionAnalyticsService } from "./transaction-analytics.service";
 import { TransactionBulkUpdateService } from "./transaction-bulk-update.service";
 import { TransactionToolPrepService } from "./transaction-tool-prep.service";
 import { JointRegisterService } from "./joint-register.service";
+import { TransactionBulkCreateService } from "./transaction-bulk-create.service";
 import { TransactionsController } from "./transactions.controller";
 import { AccountsModule } from "../accounts/accounts.module";
 import { PayeesModule } from "../payees/payees.module";
@@ -41,7 +42,8 @@ import { CurrenciesModule } from "../currencies/currencies.module";
     // PayeesModule reaches DelegationModule (the payee detail page's delegate
     // scope), which reaches back here -- see `src/module-graph.spec.ts`.
     forwardRef(() => PayeesModule),
-    TagsModule,
+    // forwardRef: TagsModule reaches back here through DelegationModule.
+    forwardRef(() => TagsModule),
     // The rules step of create() and previewCreate().
     // forwardRef: the rules module reaches TransactionsModule back through the
     // assistant's rule tools (AccountsModule, PayeesModule).
@@ -63,10 +65,12 @@ import { CurrenciesModule } from "../currencies/currencies.module";
     TransactionBulkUpdateService,
     TransactionToolPrepService,
     JointRegisterService,
+    TransactionBulkCreateService,
   ],
   controllers: [TransactionsController],
   exports: [
     TransactionsService,
+    TransactionSplitService,
     TransactionAnalyticsService,
     TransactionTransferService,
     TransactionToolPrepService,

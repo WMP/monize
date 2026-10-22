@@ -9,6 +9,7 @@ import {
 } from '@/components/accounts/shared/SummaryCardGrid';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
 import type { Account } from '@/types/account';
+import type { BalanceForecastOverdue } from '@/types/banking-detail';
 
 interface BankingSummaryCardsProps {
   account: Account;
@@ -18,6 +19,12 @@ interface BankingSummaryCardsProps {
    * that equals today's is a measurement the reader did not get.
    */
   projectedBalance: number | null;
+  /**
+   * The overdue occurrences the projection applied (discussion #1784), named under
+   * the projected figure they move, since nothing on the schedule ahead
+   * explains that part of it.
+   */
+  overdue?: BalanceForecastOverdue | null;
   moneyIn: number;
   moneyOut: number;
   interestEarnedYtd: number;
@@ -35,6 +42,7 @@ function signClass(value: number): string {
 export function BankingSummaryCards({
   account,
   projectedBalance,
+  overdue = null,
   moneyIn,
   moneyOut,
   interestEarnedYtd,
@@ -44,6 +52,7 @@ export function BankingSummaryCards({
   onInterestClick,
 }: BankingSummaryCardsProps) {
   const t = useTranslations('accountDetail-banking');
+  const tc = useTranslations('common');
   const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
   const currency = account.currencyCode;
   const currentBalance = Number(account.currentBalance) || 0;
@@ -63,7 +72,17 @@ export function BankingSummaryCards({
           formatCurrency(projectedBalance, currency)
         ),
       valueClass: projectedBalance === null ? undefined : signClass(projectedBalance),
-      note: t('summary.projectedNote'),
+      note:
+        projectedBalance !== null && overdue !== null ? (
+          <>
+            {t('summary.projectedNote')}
+            <span className="block">
+              {tc('scheduledOverdue.included', { count: overdue.count })}
+            </span>
+          </>
+        ) : (
+          t('summary.projectedNote')
+        ),
     },
     {
       label: t('summary.moneyIn'),

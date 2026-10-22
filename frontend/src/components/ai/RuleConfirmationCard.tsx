@@ -7,12 +7,13 @@ import { ConfirmationCardShell } from '@/components/ai/ConfirmationCardShell';
 import { RuleTestResult } from '@/components/ai/RuleTestResult';
 import {
   RuleActionsInWords,
+  RuleActiveWindowInWords,
   RuleConditionInWords,
   RuleInWords,
   RuleTriggersInWords,
   type RuleWordsLabels,
 } from '@/components/rules/RuleInWords';
-import { RuleRunSkippedList } from '@/components/rules/RuleRunPreviewTable';
+import { RuleRunAiReviewOutcome, RuleRunSkippedList } from '@/components/rules/RuleRunPreviewTable';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { changedRuleParts, type RulePart } from '@/lib/rule-diff';
@@ -49,6 +50,8 @@ function PartValue({ part, rule, labels }: { part: RulePart; rule: PendingAction
           {rule.stopProcessing ? t('value.yes') : t('value.no')}
         </p>
       );
+    case 'activeWindow':
+      return <RuleActiveWindowInWords activeFrom={rule.activeFrom} activeTo={rule.activeTo} />;
     case 'triggers':
       return <RuleTriggersInWords triggers={rule.triggers} labels={labels} />;
     case 'condition':
@@ -70,6 +73,7 @@ function RuleDiff({ rule, current }: { rule: PendingActionRule; current: Pending
     condition: t('sections.if'),
     actions: t('sections.then'),
     stopProcessing: t('when.stopProcessing'),
+    activeWindow: t('when.window.title'),
   };
 
   if (parts.length === 0) {
@@ -147,12 +151,16 @@ export function RuleConfirmationCard({ action, onConfirm, onCancel }: RuleConfir
       {type === 'run_transaction_rule' && ran ? (
         <>
           <p className="text-green-700 dark:text-green-400 font-medium">{tr('done.summary', { count: ran.changed })}</p>
+          <RuleRunAiReviewOutcome result={ran} />
           <RuleRunSkippedList skipped={ran.skipped} />
         </>
       ) : (
         <p className="text-green-700 dark:text-green-400 font-medium">{successes[type] ?? t('unknownDone')}</p>
       )}
-      {type === 'run_transaction_rule' && <p className="text-gray-600 dark:text-gray-300">{tr('done.undo')}</p>}
+      {/* A run that only queued reviews wrote no undo entry. */}
+      {type === 'run_transaction_rule' && (!ran || ran.changed > 0) && (
+        <p className="text-gray-600 dark:text-gray-300">{tr('done.undo')}</p>
+      )}
       <Link href="/rules" className="text-blue-600 dark:text-blue-400 hover:underline">
         {t('viewRules')}
       </Link>
@@ -192,7 +200,8 @@ export function RuleConfirmationCard({ action, onConfirm, onCancel }: RuleConfir
               title={type === 'run_transaction_rule' ? t('rule.runPreviewTitle') : t('rule.testTitle')}
             />
           )}
-          {type === 'run_transaction_rule' && (
+          {/* A run that would only queue reviews writes no undo entry. */}
+          {type === 'run_transaction_rule' && (!rule.test || rule.test.matchedCount > 0) && (
             <p className="text-xs text-gray-500 dark:text-gray-400">{tr('done.undo')}</p>
           )}
         </>

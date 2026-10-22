@@ -135,6 +135,7 @@
       "toggleTitle": "日期中不显示年份，为收款人留出更多空间"
     },
     "attachmentsCount": "{count, plural, other {# 个附件}}",
+    "warrantiesCount": "{count, plural, other {# 项保修}}",
     "today": "今天",
     "export": {
       "button": "导出",
@@ -198,7 +199,9 @@
       "duplicateTitle": "复制交易",
       "copy": "复制",
       "duplicate": "复制",
-      "scheduleRecurring": "设为定期计划"
+      "scheduleRecurring": "设为定期计划",
+      "addWarranty": "添加保修",
+      "viewWarranties": "查看保修"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "编辑",
     "duplicate": "复制",
     "scheduleRecurring": "设为定期计划",
+    "addWarranty": "添加保修",
+    "viewWarranties": "查看保修",
     "delete": "删除"
   },
   "filter": {
@@ -219,7 +224,7 @@
       "title": "筛选",
       "clear": "清除",
       "hide": "隐藏",
-      "show": "显示"
+      "show": "显示筛选"
     },
     "accounts": {
       "label": "显示账户：",
@@ -258,7 +263,7 @@
       "statuses": "所有状态",
       "amountMin": "最小",
       "amountMax": "最大",
-      "search": "搜索收款人、分类、金额、标签、描述、参考编号...",
+      "search": "搜索，或试试 #10 或 payee:costco",
       "tagKeyValue": "例如 usa"
     },
     "tagKeyNone": "任意（无键筛选）",
@@ -431,6 +436,7 @@
       "destinationRequired": "请选择目标账户",
       "sameAccount": "来源账户和目标账户必须不同",
       "negativeTransfer": "转账金额不能为负数",
+      "convertToTransferUnsupported": "无法在此处将现有交易转换为转账。请删除该交易，然后改为创建转账。",
       "payeeCreated": "收款人\"{name}\"已创建",
       "payeeCreateFailed": "创建收款人失败",
       "payeeReactivated": "收款人\"{name}\"已重新激活",
@@ -465,7 +471,14 @@
       },
       "feeCaption": "包含 {percent}% 境外交易手续费（{fee}）。"
     },
-    "jointSplitDisabled": "共享账户中的拆分交易只能由所有者管理"
+    "jointSplitDisabled": "共享账户中的拆分交易只能由所有者管理",
+    "warranties": {
+      "title": "保修",
+      "add": "添加保修",
+      "expires": "{date} 到期",
+      "loading": "正在加载保修",
+      "loadError": "无法加载此交易的保修。"
+    }
   },
   "splitEditor": {
     "header": "拆分详情",
@@ -582,6 +595,11 @@
       "log": "对数",
       "autoTitle": "自动（{scale}）",
       "scaleTitle": "{label}刻度"
+    },
+    "collapse": {
+      "hide": "隐藏图表",
+      "show": "显示图表",
+      "hidden": "图表已隐藏"
     }
   },
   "toasts": {
@@ -604,5 +622,71 @@
     "title": "按 {key} 的支出",
     "other": "其他",
     "noData": "没有可按此键细分的已标记支出。"
+  },
+  "searchSyntax": {
+    "open": "搜索语法",
+    "title": "搜索语法",
+    "fields": "字段：payee, memo, cat, tag, account, ref, amount, date, status, is, has。选择一个示例即可放入搜索框。",
+    "examples": {
+      "allWords": "每个词都在某处匹配",
+      "phrase": "完全匹配此短语",
+      "exclude": "排除所有匹配 refund 的项",
+      "fieldContains": "收款人包含 costco",
+      "fieldExact": "收款人恰好是 Costco",
+      "reference": "支票号或参考号恰好为 10",
+      "wildcard": "参考号以 10 开头",
+      "amountOver": "金额大于 100",
+      "amountRange": "金额 50 至 100",
+      "datePeriod": "2026 年 3 月的任意一天",
+      "isSplit": "拆分交易",
+      "hasAttachment": "有附件",
+      "hasWarranty": "有保修"
+    }
+  },
+  "searchInterpretation": {
+    "label": "搜索条件：",
+    "negated": "非 {phrase}",
+    "malformed": "{raw}（无法识别，已按文本搜索）",
+    "empty": "{raw}（为空，已忽略）",
+    "status": "状态为 {value}",
+    "any": "任意字段包含“{value}”",
+    "fields": {
+      "payee": "收款人",
+      "memo": "备注",
+      "cat": "类别",
+      "tag": "标签",
+      "account": "账户",
+      "ref": "参考号",
+      "amount": "金额",
+      "date": "日期",
+      "status": "状态",
+      "is": "类型",
+      "has": "有"
+    },
+    "ops": {
+      "contains": "{field}包含“{value}”",
+      "exact": "{field}为“{value}”",
+      "glob": "{field}匹配“{value}”",
+      "eq": "{field}为 {value}",
+      "gt": "{field}大于 {value}",
+      "gte": "{field}不低于 {value}",
+      "lt": "{field}小于 {value}",
+      "lte": "{field}不高于 {value}",
+      "between": "{field} {value} 至 {valueTo}"
+    },
+    "enum": {
+      "is": {
+        "transfer": "转账",
+        "split": "拆分交易",
+        "uncategorized": "未分类"
+      },
+      "has": {
+        "attachment": "有附件",
+        "warranty": "有保修",
+        "ref": "有参考号",
+        "memo": "有备注",
+        "tag": "有标签"
+      }
+    }
   }
 }

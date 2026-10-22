@@ -11,7 +11,7 @@ import { MultiSelect } from '@/components/ui/MultiSelect';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
-import { Tag } from '@/types/tag';
+import { Tag, TagUsageMap } from '@/types/tag';
 import { CreateSplitData, InvestmentSplitDetails } from '@/types/transaction';
 import { buildCategoryTree } from '@/lib/categoryUtils';
 import { roundToCents, roundToDecimals, getCurrencySymbol, getDecimalPlacesForCurrency } from '@/lib/format';
@@ -19,8 +19,10 @@ import { useLocalizedAmount } from '@/hooks/useLocalizedAmount';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { useAccountOptionLabel } from '@/hooks/useMainAccountName';
 import { InvestmentSplitFields } from './InvestmentSplitFields';
+import { RemoveSplitLineButton } from './SplitLineButtons';
 import { TRANSACTION_NOTE_MAX_LENGTH } from '@/lib/transaction-note';
 import { isUuid } from '@/lib/uuid';
+import { buildTagOptions } from '@/lib/tag-options';
 
 export type SplitType = 'category' | 'transfer' | 'investment';
 
@@ -40,6 +42,8 @@ interface SplitEditorProps {
   onChange: (splits: SplitRow[]) => void;
   categories: Category[];
   tags?: Tag[];
+  /** Orders the tag picker recent-first (`buildTagOptions`); absent means A-Z. */
+  tagUsage?: TagUsageMap;
   accounts?: Account[];
   sourceAccountId?: string;
   /** When the parent account is INVESTMENT_CASH, the investment split kind is enabled. */
@@ -73,13 +77,22 @@ interface SplitEditorProps {
    * matches nothing is discarded, which is what every split line used to do.
    */
   onCreateCategory?: (name: string) => Promise<Category | null | undefined>;
+  /**
+   * The parent transaction's date (`YYYY-MM-DD`). An investment line prefills its
+   * FX rate from the rate for this day (INV-FX-001), never the latest.
+   */
+  transactionDate?: string;
 }
+
+// A stable default, so an absent prop does not rebuild the tag options every render.
+const NO_TAG_USAGE: TagUsageMap = {};
 
 export function SplitEditor({
   splits,
   onChange,
   categories,
   tags = [],
+  tagUsage = NO_TAG_USAGE,
   accounts = [],
   sourceAccountId = '',
   parentAccountSubType,
@@ -91,6 +104,7 @@ export function SplitEditor({
   displayCurrencyCode,
   displayRate,
   onCreateCategory,
+  transactionDate,
 }: SplitEditorProps) {
   const t = useTranslations('transactions');
   // Read-only amounts, grouped in the user's number locale (en-US unchanged).
@@ -145,12 +159,7 @@ export function SplitEditor({
   }), [categories]);
 
   // Memoize tag options for multiselect
-  const tagOptions = useMemo(() =>
-    [...tags]
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
-      .map(tag => ({ value: tag.id, label: tag.name })),
-    [tags]
-  );
+  const tagOptions = useMemo(() => buildTagOptions(tags, tagUsage), [tags, tagUsage]);
 
   // Memoize account options (excluding source account, asset accounts, investment accounts, and closed accounts)
   const accountOptions = useMemo(() => {
@@ -168,10 +177,13 @@ export function SplitEditor({
     );
   }, [accounts, sourceAccountId, supportsTransfers, splits, accountOptionLabel]);
 
-  // Sync with parent when splits prop changes
-  useEffect(() => {
+  // Sync with parent when splits prop changes (the "info from previous render"
+  // pattern rather than a setState in an effect)
+  const [syncedSplits, setSyncedSplits] = useState(splits);
+  if (syncedSplits !== splits) {
+    setSyncedSplits(splits);
     setLocalSplits(splits);
-  }, [splits]);
+  }
 
   // A category created from a split line is applied before the parent's own
   // state update has re-rendered this component, so the new row is not in
@@ -258,7 +270,8 @@ export function SplitEditor({
     // If changing category, adjust the amount sign based on income/expense
     if (field === 'categoryId' && value) {
       const category = findCategory(value);
-      if (category) {
+      // A category with automatic sign turned off keeps whatever sign was typed.
+      if (category && category.effectiveAutoSign !== false) {
         const currentAmount = Number(newSplits[index].amount) || 0;
         if (currentAmount !== 0) {
           const absAmount = Math.abs(currentAmount);
@@ -302,7 +315,7 @@ export function SplitEditor({
             const currentAmount = Number(newSplits[index].amount) || 0;
             const isJustSignChange = Math.abs(currentAmount) === Math.abs(newAmount) && Math.abs(currentAmount) !== 0;
 
-            if (!isJustSignChange) {
+            if (!isJustSignChange && category.effectiveAutoSign !== false) {
               const absAmount = Math.abs(newAmount);
               value = category.isIncome ? absAmount : -absAmount;
             }
@@ -561,17 +574,11 @@ export function SplitEditor({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
                     </button>
-                    <button
-                      type="button"
+                    <RemoveSplitLineButton
                       onClick={() => removeSplit(index)}
                       disabled={disabled || !canRemoveRow(index)}
-                      className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
                       title={!canRemoveRow(index) ? t('splitEditor.removeMinimum') : localSplits.length <= 2 ? t('splitEditor.removeAndConvert') : t('splitEditor.removeSplit')}
-                    >
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    />
                   </div>
                 </div>
                 {supportsTransfers && (
@@ -597,6 +604,8 @@ export function SplitEditor({
                     }
                     disabled={disabled}
                     currencyCode={currencyCode}
+                    transactionDate={transactionDate}
+                    rateEdited={split.exchangeRateEdited}
                   />
                 ) : split.splitType === 'category' || !supportsTransfers ? (
                   // Same picker as the non-split form's Category field: an id-backed
@@ -772,6 +781,8 @@ export function SplitEditor({
                       }
                       disabled={disabled}
                       currencyCode={currencyCode}
+                      transactionDate={transactionDate}
+                      rateEdited={split.exchangeRateEdited}
                     />
                   ) : split.splitType === 'category' || !supportsTransfers ? (
                     // Same picker as the non-split form's Category field: an id-backed
@@ -861,22 +872,11 @@ export function SplitEditor({
                         />
                       </svg>
                     </button>
-                    <button
-                      type="button"
+                    <RemoveSplitLineButton
                       onClick={() => removeSplit(index)}
                       disabled={disabled || !canRemoveRow(index)}
-                      className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
                       title={!canRemoveRow(index) ? t('splitEditor.removeMinimum') : localSplits.length <= 2 ? t('splitEditor.removeAndConvert') : t('splitEditor.removeSplit')}
-                    >
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
+                    />
                   </div>
                 </td>
               </tr>

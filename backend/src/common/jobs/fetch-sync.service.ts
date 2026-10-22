@@ -23,9 +23,51 @@ export const FetchSyncJob = {
   SecurityPrices: "security-prices",
   MarketIndexes: "market-indexes",
   AttachmentRelocation: "attachment-relocation",
+  BondBenchmarks: "bond-benchmarks",
+  BondPrices: "bond-prices",
+  BondSeries: "bond-series",
 } as const;
 
-export type FetchSyncJob = (typeof FetchSyncJob)[keyof typeof FetchSyncJob];
+/**
+ * The lease of one bond program's refresh (`BondSeriesService.fetchProgramOffer`),
+ * one row per program: a person's Refresh, not a cron, so the job is the
+ * program, and the key is built here so a typo stays a compile error.
+ */
+export function bondProgramRefreshJob(
+  programKey: string,
+): `bond-program-refresh:${string}` {
+  return `bond-program-refresh:${programKey}`;
+}
+
+/**
+ * The lease of one attempt to fetch one bond series in a bounded history pass,
+ * one row per series: held for a day, it is the negative cache every replica
+ * reads, so a series the source refused is not asked for again by the next
+ * Refresh.
+ */
+export function bondSeriesAttemptJob(
+  countryCode: string,
+  seriesCode: string,
+): `bond-series-attempt:${string}` {
+  return `bond-series-attempt:${countryCode.toUpperCase()}|${seriesCode.toUpperCase()}`;
+}
+
+/** What a long job reports in `fetch_sync.progress`. */
+export interface FetchProgress {
+  /** ISO timestamp the run began. */
+  readonly startedAt: string;
+  readonly phase: "offer" | "series" | "done";
+  readonly done: number;
+  readonly total: number;
+  readonly seriesCode: string | null;
+  /** ISO timestamp the run ended; null while it runs. */
+  readonly finishedAt: string | null;
+}
+
+export type FetchSyncJob =
+  | (typeof FetchSyncJob)[keyof typeof FetchSyncJob]
+  | ReturnType<typeof bondProgramRefreshJob>
+  | ReturnType<typeof bondSeriesAttemptJob>;
 
 /**
  * One replica per tick does the work.
@@ -150,6 +192,38 @@ export class FetchSyncService {
         [job, leaseToken, error.slice(0, 2000)],
       ),
     );
+  }
+
+  /**
+   * What the holder of `job`'s lease reports while it works (`fetch_sync.progress`),
+   * for a person polling a long run.
+   *
+   * Conditional on the token, like `release`: a holder that lost its lease
+   * writes nothing. One statement outside any other transaction, and the lease
+   * is untouched.
+   */
+  async reportProgress(
+    job: FetchSyncJob,
+    leaseToken: string,
+    progress: FetchProgress,
+  ): Promise<void> {
+    await withScopedDb(this.dataSource, (manager) =>
+      manager.query(
+        `UPDATE fetch_sync
+            SET progress = $3::jsonb
+          WHERE job = $1 AND lease_token = $2::uuid`,
+        [job, leaseToken, JSON.stringify(progress)],
+      ),
+    );
+  }
+
+  /** The progress last reported for `job`, or `null` when none was. */
+  async readProgress(job: FetchSyncJob): Promise<FetchProgress | null> {
+    const rows = await withScopedDb(this.dataSource, (manager) =>
+      manager.query(`SELECT progress FROM fetch_sync WHERE job = $1`, [job]),
+    );
+    const [row] = returnedRows<{ progress: FetchProgress | null }>(rows);
+    return row?.progress ?? null;
   }
 
   /**

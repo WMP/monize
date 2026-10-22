@@ -16,13 +16,7 @@
  */
 
 export type InvestmentColumnType =
-  | "text"
-  | "shares"
-  | "currency"
-  | "percent"
-  | "integer"
-  | "number"
-  | "date";
+  "text" | "shares" | "currency" | "percent" | "integer" | "number" | "date";
 
 export interface InvestmentColumnDef {
   /** Stable identifier persisted in the report definition. */
@@ -214,7 +208,7 @@ export const INVESTMENT_REPORT_COLUMNS: readonly InvestmentColumnDef[] = [
     label: "Income",
     type: "currency",
     description:
-      "Interest, dividends and capital gains distributions you have received for an investment.",
+      "Interest, dividends and capital gains distributions you have received for an investment, whether paid in cash or reinvested.",
     native: true,
   },
   {
@@ -244,7 +238,8 @@ export const INVESTMENT_REPORT_COLUMNS: readonly InvestmentColumnDef[] = [
     key: "reinvestments",
     label: "Reinvestments",
     type: "currency",
-    description: "The total reinvested income for this investment.",
+    description:
+      "The total reinvested income for this investment: the cost of the shares each reinvestment added. Also counted in Income.",
     native: true,
   },
   {

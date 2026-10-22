@@ -18,7 +18,7 @@ jest.mock("../../common/db/scoped-db", () =>
 
 /**
  * The hourly re-attempt of off-machine copies that failed (WP6 of
- * `docs/future-plans/backup-off-machine.md`).
+ * `docs/specs/backup-off-machine.md`).
  *
  * What this suite can prove and what it cannot is worth stating, because the
  * difference is the reason there is an integration spec beside it. It proves the

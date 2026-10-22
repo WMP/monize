@@ -27,6 +27,7 @@ import {
   MortgageType,
   PAYMENT_FREQUENCIES,
   PaymentFrequency,
+  PaymentMatching,
 } from '@/types/account';
 import {
   PREPAYMENT_MODES,
@@ -72,6 +73,10 @@ const optionalNumberWithRange = (min: number, max: number) =>
     (val: unknown) => (val === '' || val === undefined || (typeof val === 'number' && isNaN(val)) ? undefined : val),
     z.number().min(min).max(max).optional()
   );
+
+// Mirrors the backend's MAX_PAYMENT_MATCHING_PATTERN_LENGTH
+// (backend/src/accounts/dto/payment-matching.dto.ts).
+const MAX_PAYMENT_MATCHING_PATTERN_LENGTH = 200;
 
 // From @/types/account, not a local copy: `optionalEnum` below maps an unlisted
 // value to `undefined`, so a list missing a frequency the backend can store
@@ -166,6 +171,15 @@ const buildAccountSchema = (
   termMonths: optionalNumber,
   amortizationMonths: optionalNumber,
   mortgagePaymentFrequency: optionalEnum(mortgagePaymentFrequencies),
+  // The amount originally borrowed, apart from the opening balance; shown on
+  // both create and edit (`MortgageFields`).
+  originalPrincipal: optionalNumber.nullable(),
+  // Payment matching (create only): the rule that settles the bank's own
+  // debit against each installment. `excess`/`shortfall` are never collected
+  // here -- the server defaults them and they are editable in Tools > Rules.
+  paymentMatchingEnabled: z.boolean().optional(),
+  paymentMatchingPayeePattern: z.string().max(MAX_PAYMENT_MATCHING_PATTERN_LENGTH).optional(),
+  paymentMatchingDescriptionPattern: z.string().max(MAX_PAYMENT_MATCHING_PATTERN_LENGTH).optional(),
 }).superRefine((data, ctx) => {
   // Loan and mortgage payment setup is only collected when creating the account
   // (the payment fields are hidden while editing), so only enforce these on
@@ -212,6 +226,7 @@ const buildAccountSchema = (
     requireField(!data.paymentStartDate, 'paymentStartDate', 'validation.paymentStartDateRequired');
     requireField(!data.sourceAccountId, 'sourceAccountId', 'validation.paymentAccountRequired');
     requireField(!data.amortizationMonths, 'amortizationMonths', 'validation.amortizationRequired');
+    requireField(!data.interestCategoryId, 'interestCategoryId', 'validation.interestCategoryRequired');
   } else if (data.accountType === 'LOAN') {
     requireField(!data.institutionId, 'institutionId', 'validation.institutionRequired');
     requireField(data.interestRate === undefined, 'interestRate', 'validation.interestRateRequired');
@@ -219,21 +234,99 @@ const buildAccountSchema = (
     requireField(!data.paymentFrequency, 'paymentFrequency', 'validation.paymentFrequencyRequired');
     requireField(!data.paymentStartDate, 'paymentStartDate', 'validation.paymentStartDateRequired');
     requireField(!data.sourceAccountId, 'sourceAccountId', 'validation.paymentAccountRequired');
+    requireField(!data.interestCategoryId, 'interestCategoryId', 'validation.interestCategoryRequired');
+  }
+
+  if (data.accountType === 'MORTGAGE' && data.paymentMatchingEnabled) {
+    const payeePattern = data.paymentMatchingPayeePattern?.trim();
+    if (!payeePattern) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['paymentMatchingPayeePattern'],
+        message: t('validation.paymentMatchingPayeePatternRequired'),
+      });
+    } else if (!payeePattern.includes('*')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['paymentMatchingPayeePattern'],
+        message: t('validation.paymentMatchingPayeePatternWildcard'),
+      });
+    }
+    const descriptionPattern = data.paymentMatchingDescriptionPattern?.trim();
+    if (descriptionPattern && !descriptionPattern.includes('*')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['paymentMatchingDescriptionPattern'],
+        message: t('validation.paymentMatchingDescriptionPatternWildcard'),
+      });
+    }
   }
 });
 
 type AccountFormData = z.infer<ReturnType<typeof buildAccountSchema>>;
 
 /**
- * What the form submits: its fields, with a LINEAR mortgage's prepayment mode
- * or the null every other type stores.
+ * What a surface that creates an account on someone's behalf (a bank account
+ * being linked) can start the create form with. Read once, when the form opens,
+ * and only when creating: an edit always starts from the account itself.
  */
-type AccountSubmitData = Omit<AccountFormData, 'prepaymentMode'> & {
+export interface AccountFormInitialValues {
+  name?: string;
+  accountType?: AccountFormData['accountType'];
+  currencyCode?: string;
+  accountNumber?: string;
+  /**
+   * A number starts the field there; `null` leaves it empty for the person to
+   * enter; absent keeps the form's usual 0.
+   */
+  openingBalance?: number | null;
+}
+
+/**
+ * What the form submits: its fields, with a LINEAR mortgage's prepayment mode
+ * or the null every other type stores, and the payment-matching rule a new
+ * mortgage asks for.
+ */
+type AccountSubmitData = Omit<
+  AccountFormData,
+  'prepaymentMode' | 'paymentMatchingEnabled' | 'paymentMatchingPayeePattern' | 'paymentMatchingDescriptionPattern'
+> & {
   prepaymentMode?: PrepaymentMode | null;
+  paymentMatching?: PaymentMatching;
 };
+
+/** The cash ledger's own fields as the form loads them from the stored row. */
+function cashFieldsFromRow(cash: Account) {
+  return {
+    cashOpeningBalance:
+      cash.openingBalance !== undefined
+        ? Math.round(Number(cash.openingBalance) * 100) / 100
+        : undefined,
+    cashDescription: cash.description || undefined,
+    cashAccountNumber: cash.accountNumber || undefined,
+  };
+}
+
+/**
+ * Whether the submitted cash ledger fields differ from the stored row. A value
+ * difference, not react-hook-form's `dirtyFields`: that diffs against the
+ * form's mount-time defaults, and the pair loader fills these fields in after
+ * mount, so any later edit marks them all dirty.
+ */
+function cashLedgerChanged(data: AccountFormData, cash: Account | null): boolean {
+  if (!cash) return false;
+  const loaded = cashFieldsFromRow(cash);
+  return (
+    data.cashOpeningBalance !== loaded.cashOpeningBalance ||
+    (data.cashDescription || undefined) !== loaded.cashDescription ||
+    (data.cashAccountNumber || undefined) !== loaded.cashAccountNumber
+  );
+}
 
 interface AccountFormProps {
   account?: Account;
+  /** Prefill for a new account; ignored when `account` is given. */
+  initialValues?: AccountFormInitialValues;
   onSubmit: (data: AccountSubmitData) => Promise<void>;
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
@@ -248,6 +341,7 @@ interface AccountFormProps {
 
 export function AccountForm({
   account,
+  initialValues,
   onSubmit,
   onCancel,
   onDirtyChange,
@@ -275,10 +369,6 @@ export function AccountForm({
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [_defaultLoanCategories, setDefaultLoanCategories] = useState<{
-    principalId: string | null;
-    interestId: string | null;
-  }>({ principalId: null, interestId: null });
   const [selectedAssetCategoryId, setSelectedAssetCategoryId] = useState<string>(account?.assetCategoryId || '');
   const [assetCategoryName, setAssetCategoryName] = useState<string>('');
   const [selectedInterestCategoryId, setSelectedInterestCategoryId] = useState<string>(account?.interestCategoryId || '');
@@ -331,7 +421,7 @@ export function AccountForm({
             account.highBalanceThreshold != null
               ? Number(account.highBalanceThreshold)
               : undefined,
-          interestRate: account.interestRate || undefined,
+          interestRate: account.interestRate != null ? Number(account.interestRate) : undefined,
           description: account.description || undefined,
           accountNumber: account.accountNumber || undefined,
           institutionId: account.institutionId || undefined,
@@ -358,16 +448,26 @@ export function AccountForm({
           termMonths: account.termMonths || undefined,
           amortizationMonths: account.amortizationMonths || undefined,
           mortgagePaymentFrequency: (account as any).mortgagePaymentFrequency || undefined,
+          originalPrincipal: account.originalPrincipal != null
+            ? Math.round(Number(account.originalPrincipal) * 100) / 100
+            : undefined,
         }
       : {
-          currencyCode: defaultCurrency,
-          openingBalance: 0,
+          currencyCode: initialValues?.currencyCode ?? defaultCurrency,
+          ...(initialValues?.name ? { name: initialValues.name } : {}),
+          ...(initialValues?.accountType ? { accountType: initialValues.accountType } : {}),
+          ...(initialValues?.accountNumber ? { accountNumber: initialValues.accountNumber } : {}),
+          openingBalance:
+            initialValues?.openingBalance === null
+              ? undefined
+              : (initialValues?.openingBalance ?? 0),
           isFavourite: false,
           excludeFromNetWorth: false,
           paymentFrequency: 'MONTHLY' as PaymentFrequency,
           createInvestmentPair: true,
           mortgageType: 'ANNUITY',
           prepaymentMode: 'SHORTEN_TERM',
+          paymentMatchingEnabled: false,
         },
   });
 
@@ -394,18 +494,20 @@ export function AccountForm({
   // an untouched section must not be resent, or an edit of the account's name
   // would rewrite the cash half's balance and description with whatever the
   // form happened to load.
-  const cashSectionDirty =
-    !!dirtyFields.cashOpeningBalance ||
-    !!dirtyFields.cashDescription ||
-    !!dirtyFields.cashAccountNumber;
-
   const handleValidatedSubmit = useCallback(
     (data: AccountFormData) => {
       // A mortgage sends its type; any other account type sends none. The
       // prepayment mode belongs to a LINEAR mortgage alone: every other type
       // sends null, which is what the server stores for it whatever it is
       // sent.
-      const { mortgageType, prepaymentMode, ...withoutMortgageType } = data;
+      const {
+        mortgageType,
+        prepaymentMode,
+        paymentMatchingEnabled,
+        paymentMatchingPayeePattern,
+        paymentMatchingDescriptionPattern,
+        ...withoutMortgageType
+      } = data;
       let payload: AccountSubmitData =
         data.accountType === 'MORTGAGE' && mortgageType
           ? {
@@ -415,6 +517,20 @@ export function AccountForm({
                 mortgageType === 'LINEAR' ? (prepaymentMode ?? 'SHORTEN_TERM') : null,
             }
           : withoutMortgageType;
+      // Payment matching is create-only, and the UI collects it only for a
+      // mortgage: the trimmed pattern is what the rule is built from, so a
+      // blank or whitespace-only pattern never reaches the server as one.
+      if (
+        !account &&
+        data.accountType === 'MORTGAGE' &&
+        paymentMatchingEnabled &&
+        paymentMatchingPayeePattern?.trim()
+      ) {
+        payload.paymentMatching = {
+          payeePattern: paymentMatchingPayeePattern.trim(),
+          descriptionPattern: paymentMatchingDescriptionPattern?.trim() || undefined,
+        };
+      }
       // Editing: an emptied threshold means "clear it", so send null rather than
       // omitting the field (which would leave the stored value untouched). Only
       // on edit -- CreateAccountDto does not carry these fields.
@@ -424,8 +540,15 @@ export function AccountForm({
           lowBalanceThreshold: payload.lowBalanceThreshold ?? null,
           highBalanceThreshold: payload.highBalanceThreshold ?? null,
         };
+        // Original Principal is shown for a mortgage edit; an emptied field
+        // means "fall back to the opening balance", sent as an explicit null
+        // (the update DTO's own meaning for it) rather than omitted, which
+        // would leave a previously-saved value stuck on the account forever.
+        if (data.accountType === 'MORTGAGE') {
+          payload.originalPrincipal = payload.originalPrincipal ?? null;
+        }
       }
-      if (!cashSectionDirty) {
+      if (!cashLedgerChanged(data, cashHalf)) {
         const {
           cashAccountId: _id,
           cashOpeningBalance: _balance,
@@ -441,7 +564,7 @@ export function AccountForm({
       }
       return onSubmit(payload);
     },
-    [account, cashSectionDirty, dirtyFields.institutionId, onSubmit],
+    [account, cashHalf, dirtyFields.institutionId, onSubmit],
   );
 
   useFormSubmitRef(submitRef, handleSubmit, handleValidatedSubmit);
@@ -486,6 +609,11 @@ export function AccountForm({
   const watchedTermMonths = useWatch({ control, name: 'termMonths' });
   const watchedAmortizationMonths = useWatch({ control, name: 'amortizationMonths' });
   const watchedMortgagePaymentFrequency = useWatch({ control, name: 'mortgagePaymentFrequency' });
+  const watchedSourceAccountId = useWatch({ control, name: 'sourceAccountId' });
+  const watchedOriginalPrincipal = useWatch({ control, name: 'originalPrincipal' });
+  const watchedPaymentMatchingEnabled = useWatch({ control, name: 'paymentMatchingEnabled' });
+  const watchedPaymentMatchingPayeePattern = useWatch({ control, name: 'paymentMatchingPayeePattern' });
+  const watchedPaymentMatchingDescriptionPattern = useWatch({ control, name: 'paymentMatchingDescriptionPattern' });
 
   // Resolve the linked pair when editing an investment account. A standalone
   // or orphaned account 400s here and simply keeps the single-account form.
@@ -503,14 +631,10 @@ export function AccountForm({
         // suffixes, so the field edits the base. The server re-suffixes both.
         setValue('name', stripAccountName(pair.brokerageAccount.name));
         setValue('cashAccountId', pair.cashAccount.id);
-        setValue(
-          'cashOpeningBalance',
-          pair.cashAccount.openingBalance !== undefined
-            ? Math.round(Number(pair.cashAccount.openingBalance) * 100) / 100
-            : undefined,
-        );
-        setValue('cashDescription', pair.cashAccount.description || undefined);
-        setValue('cashAccountNumber', pair.cashAccount.accountNumber || undefined);
+        const loaded = cashFieldsFromRow(pair.cashAccount);
+        setValue('cashOpeningBalance', loaded.cashOpeningBalance);
+        setValue('cashDescription', loaded.cashDescription);
+        setValue('cashAccountNumber', loaded.cashAccountNumber);
       })
       .catch(() => {
         // Not part of a pair.
@@ -540,6 +664,13 @@ export function AccountForm({
     if (!accountInstitutionId) return '';
     return institutions.find((i) => i.id === accountInstitutionId)?.name || '';
   }, [accountInstitutionId, institutions]);
+
+  // The currently selected institution's name, to prefill the payment-matching
+  // payee pattern (`*<institution>*`) once the switch is turned on.
+  const selectedInstitutionName = useMemo(
+    () => institutions.find((i) => i.id === selectedInstitutionId)?.name ?? '',
+    [institutions, selectedInstitutionId],
+  );
 
   const handleInstitutionChange = (value: string) => {
     setSelectedInstitutionId(value);
@@ -640,47 +771,25 @@ export function AccountForm({
           // Filter out loan and mortgage accounts from source account options
           setAccounts(accountsData.filter(a => a.accountType !== 'LOAN' && a.accountType !== 'MORTGAGE'));
         }
-
-          if (isLoanAccount && !account) {
-            // Find default loan interest category
-            const loanParent = categoriesData.find(c => c.name === 'Loan' && !c.parentId);
-            if (loanParent) {
-              const interestCat = categoriesData.find(
-                c => c.name === 'Loan Interest' && c.parentId === loanParent.id
-              );
-              setDefaultLoanCategories({
-                principalId: null,
-                interestId: interestCat?.id || null,
-              });
-              // Set default interest category if not already set
-              if (interestCat && !getValues('interestCategoryId')) {
-                setValue('interestCategoryId', interestCat.id);
-                setSelectedInterestCategoryId(interestCat.id);
-              }
-            }
-          }
-
-          if (isMortgageAccount && !account) {
-            // Find default mortgage interest category (fallback to loan interest)
-            const mortgageParent = categoriesData.find(c => c.name === 'Mortgage' && !c.parentId);
-            const loanParent = categoriesData.find(c => c.name === 'Loan' && !c.parentId);
-            const parent = mortgageParent || loanParent;
-            if (parent) {
-              const interestCat = categoriesData.find(
-                c => (c.name === 'Mortgage Interest' || c.name === 'Loan Interest') && c.parentId === parent.id
-              );
-              if (interestCat && !getValues('interestCategoryId')) {
-                setValue('interestCategoryId', interestCat.id);
-                setSelectedInterestCategoryId(interestCat.id);
-              }
-            }
-          }
+        // No default interest category: a name lookup cannot find the user's
+        // own (translated or mortgage-specific) category, so the form requires
+        // a choice instead (INV-LOAN-010).
       } catch (error) {
         logger.error('Failed to load accounts/categories:', error);
       }
     };
     loadData();
-  }, [isLoanAccount, isMortgageAccount, isLineOfCreditAccount, isAssetAccount, account, setValue, getValues]);
+  }, [isLoanAccount, isMortgageAccount, isLineOfCreditAccount, isAssetAccount]);
+
+  // The payment-source select is uncontrolled and mounts before its options
+  // load, so the browser drops the saved account and shows the placeholder.
+  // Re-apply the form value once the options have rendered.
+  useEffect(() => {
+    const sourceAccountId = getValues('sourceAccountId');
+    if (accounts.length > 0 && sourceAccountId) {
+      setValue('sourceAccountId', sourceAccountId);
+    }
+  }, [accounts, getValues, setValue]);
 
   const toggleFavourite = () => {
     setValue('isFavourite', !watchedIsFavourite, { shouldDirty: true });
@@ -865,20 +974,24 @@ export function AccountForm({
         />
       </div>
 
-      {/* Credit Limit and Interest Rate - hide for loans, mortgages, and assets */}
-      {!isAssetAccount && (
-        <div className="grid grid-cols-2 gap-4">
-          {!isLoanAccount && !isMortgageAccount && (
-            <CurrencyInput
-              label={t('form.creditLimit')}
-              prefix={currencySymbol}
-              value={watchedCreditLimit}
-              onChange={(value) => setValue('creditLimit', value, { shouldValidate: true })}
-              error={errors.creditLimit?.message}
-              allowNegative={false}
-            />
-          )}
+      {/* Credit Limit (not loans/mortgages/assets), Interest Rate (not assets)
+          and the Foreign Currency Conversion Fee: the bank's FX fee (a
+          percentage), folded into the converted amount on foreign-entered
+          transactions. The fee renders for every type (the release tour
+          anchors on it). */}
+      <div className="grid grid-cols-2 gap-4">
+        {!isAssetAccount && !isLoanAccount && !isMortgageAccount && (
+          <CurrencyInput
+            label={t('form.creditLimit')}
+            prefix={currencySymbol}
+            value={watchedCreditLimit}
+            onChange={(value) => setValue('creditLimit', value, { shouldValidate: true })}
+            error={errors.creditLimit?.message}
+            allowNegative={false}
+          />
+        )}
 
+        {!isAssetAccount && (
           <Controller
             name="interestRate"
             control={control}
@@ -898,10 +1011,30 @@ export function AccountForm({
               />
             )}
           />
+        )}
 
-          {(isLoanAccount || isMortgageAccount) && <div />} {/* Spacer for grid alignment */}
+        <div {...tourAnchor(TOUR_ANCHORS.accountFxFeePercent)}>
+          <Controller
+            name="fxFeePercent"
+            control={control}
+            render={({ field }) => (
+              <NumericInput
+                label={t('form.fxFeeTitle')}
+                decimalPlaces={2}
+                min={0}
+                max={100}
+                suffix="%"
+                error={errors.fxFeePercent?.message}
+                value={field.value}
+                onChange={field.onChange}
+                name={field.name}
+                onBlur={field.onBlur}
+                ref={field.ref}
+              />
+            )}
+          />
         </div>
-      )}
+      </div>
 
       {/* Balance-threshold alerts (edit only; docs/specs/balance-threshold-notifications.md) */}
       {account && (
@@ -997,35 +1130,6 @@ export function AccountForm({
         </div>
       )}
 
-      {/* Foreign Currency Conversion Fee: the bank's FX fee (a percentage),
-          folded into the converted amount on foreign-entered transactions. */}
-      <div className="space-y-3" {...tourAnchor(TOUR_ANCHORS.accountFxFeePercent)}>
-        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {t('form.fxFeeTitle')}
-        </h3>
-        <div className="grid grid-cols-2 gap-4">
-          <Controller
-            name="fxFeePercent"
-            control={control}
-            render={({ field }) => (
-              <NumericInput
-                label={`${t('form.fxFeePercent')} (%)`}
-                decimalPlaces={2}
-                min={0}
-                max={100}
-                placeholder={t('form.fxFeePercentPlaceholder')}
-                error={errors.fxFeePercent?.message}
-                value={field.value}
-                onChange={field.onChange}
-                name={field.name}
-                onBlur={field.onBlur}
-                ref={field.ref}
-              />
-            )}
-          />
-        </div>
-      </div>
-
       {isLoanAccount && !account && (
         <LoanFields
           currencySymbol={currencySymbol}
@@ -1070,6 +1174,12 @@ export function AccountForm({
           categories={categories}
           formatCurrency={formatCurrency}
           isEditing={!!account}
+          sourceAccountId={watchedSourceAccountId}
+          originalPrincipal={watchedOriginalPrincipal ?? undefined}
+          paymentMatchingEnabled={watchedPaymentMatchingEnabled}
+          paymentMatchingPayeePattern={watchedPaymentMatchingPayeePattern}
+          paymentMatchingDescriptionPattern={watchedPaymentMatchingDescriptionPattern}
+          institutionName={selectedInstitutionName}
           selectedInterestCategoryId={selectedInterestCategoryId}
           handleInterestCategoryChange={handleInterestCategoryChange}
           interestBookingMode={interestBookingMode}

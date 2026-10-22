@@ -1,23 +1,24 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { createLogger } from '@/lib/logger';
-import { SHARE_PAGE_PATH, SHARE_TARGET_PATH } from '@/lib/share-target';
-import { isPublicPath } from '@/lib/public-paths';
-import { LOCALE_COOKIE, LOCALE_HEADER } from '@/i18n/config';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { createLogger } from "@/lib/logger";
+import { SHARE_PAGE_PATH, SHARE_TARGET_PATH } from "@/lib/share-target";
+import { isPublicPath } from "@/lib/public-paths";
+import { LOCALE_COOKIE, LOCALE_HEADER } from "@/i18n/config";
+import { PATHNAME_HEADER } from "@/i18n/client-messages";
 import {
   backendBaseUrl,
   backendRequestHeaders,
   payloadTooLarge,
   resolveRequestLocale,
   responseFromBackend,
-} from '@/lib/backend-forward';
+} from "@/lib/backend-forward";
 import {
   DEFAULT_PROXY_BODY_LIMIT_BYTES,
   declaresBodyOver,
   readBoundedBody,
-} from '@/lib/proxy-body-limit';
+} from "@/lib/proxy-body-limit";
 
-const logger = createLogger('Proxy');
+const logger = createLogger("Proxy");
 let backendConnected = false;
 
 // Security headers that mirror next.config.js. Next's `headers()` config is
@@ -27,26 +28,26 @@ let backendConnected = false;
 // site root sees a redirect with no HSTS. Applying the same set here keeps every
 // middleware-generated response consistent with the framework-rendered ones.
 const STATIC_SECURITY_HEADERS: Record<string, string> = {
-  'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
-  'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-  'Cross-Origin-Resource-Policy': 'same-origin',
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  "Cross-Origin-Resource-Policy": "same-origin",
 };
 
 // HTTPS-only headers, gated by DISABLE_HTTPS_HEADERS for plain-HTTP deployments
 // (mirrors next.config.js and the backend Helmet config).
 const HTTPS_SECURITY_HEADERS: Record<string, string> = {
-  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
-  'Cross-Origin-Opener-Policy': 'same-origin',
-  'Cross-Origin-Embedder-Policy': 'require-corp',
+  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Cross-Origin-Embedder-Policy": "require-corp",
 };
 
 function applySecurityHeaders(response: NextResponse): NextResponse {
   for (const [key, value] of Object.entries(STATIC_SECURITY_HEADERS)) {
     response.headers.set(key, value);
   }
-  if (process.env.DISABLE_HTTPS_HEADERS !== 'true') {
+  if (process.env.DISABLE_HTTPS_HEADERS !== "true") {
     for (const [key, value] of Object.entries(HTTPS_SECURITY_HEADERS)) {
       response.headers.set(key, value);
     }
@@ -55,7 +56,7 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 }
 
 function buildCspHeader(nonce: string): string {
-  const isDev = process.env.NODE_ENV !== 'production';
+  const isDev = process.env.NODE_ENV !== "production";
   return [
     "default-src 'self'",
     // 'wasm-unsafe-eval' is what lets WebAssembly.instantiate run at all under
@@ -63,7 +64,7 @@ function buildCspHeader(nonce: string): string {
     // no visible error. It permits WASM compilation only -- it does NOT bring
     // back eval() for JavaScript, which is why it is separate from the dev-only
     // 'unsafe-eval' beside it.
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${isDev ? " 'unsafe-eval'" : ''}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
@@ -72,31 +73,39 @@ function buildCspHeader(nonce: string): string {
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-  ].join('; ');
+  ].join("; ");
 }
 
 function nextWithCsp(request: NextRequest): NextResponse {
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const csp = buildCspHeader(nonce);
 
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-nonce', nonce);
-  if (process.env.DISABLE_HTTPS_HEADERS !== 'true') {
-    requestHeaders.set('x-https-headers-active', 'true');
+  requestHeaders.set("x-nonce", nonce);
+  // Overwritten unconditionally so a client cannot choose the root layout's
+  // message scope (src/i18n/client-messages.ts).
+  requestHeaders.set(PATHNAME_HEADER, request.nextUrl.pathname);
+  if (process.env.DISABLE_HTTPS_HEADERS !== "true") {
+    requestHeaders.set("x-https-headers-active", "true");
   }
 
   const { locale, fromCookie } = resolveRequestLocale(request);
   requestHeaders.set(LOCALE_HEADER, locale);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  response.headers.set('Content-Security-Policy', csp);
+  response.headers.set("Content-Security-Policy", csp);
   if (!fromCookie) {
     // Persist the detected locale so subsequent requests are deterministic
-    // and the backend (nestjs-i18n CookieResolver) sees the same value.
+    // and the backend (nestjs-i18n CookieResolver) sees the same value. Not
+    // HttpOnly: the language pickers rewrite it from the client. Secure on the
+    // same condition as the backend's auth cookies.
     response.cookies.set(LOCALE_COOKIE, locale, {
-      path: '/',
-      sameSite: 'lax',
+      path: "/",
+      sameSite: "lax",
       maxAge: 60 * 60 * 24 * 365,
+      secure:
+        process.env.NODE_ENV === "production" &&
+        process.env.DISABLE_HTTPS_HEADERS !== "true",
     });
   }
   return response;
@@ -120,16 +129,16 @@ function nextWithCsp(request: NextRequest): NextResponse {
 // Mcp-Method / Mcp-Name are the routing headers the 2026-07-28 revision requires
 // on every Streamable HTTP POST.
 function isRootMcpRequest(request: NextRequest, pathname: string): boolean {
-  if (pathname !== '/') return false;
-  const accept = request.headers.get('accept') ?? '';
-  const authorization = request.headers.get('authorization') ?? '';
+  if (pathname !== "/") return false;
+  const accept = request.headers.get("accept") ?? "";
+  const authorization = request.headers.get("authorization") ?? "";
   return (
-    accept.includes('text/event-stream') ||
-    authorization.toLowerCase().startsWith('bearer ') ||
-    request.headers.has('mcp-session-id') ||
-    request.headers.has('mcp-protocol-version') ||
-    request.headers.has('mcp-method') ||
-    request.headers.has('mcp-name')
+    accept.includes("text/event-stream") ||
+    authorization.toLowerCase().startsWith("bearer ") ||
+    request.headers.has("mcp-session-id") ||
+    request.headers.has("mcp-protocol-version") ||
+    request.headers.has("mcp-method") ||
+    request.headers.has("mcp-name")
   );
 }
 
@@ -139,13 +148,13 @@ function isRootMcpRequest(request: NextRequest, pathname: string): boolean {
 // (Claude Desktop, mcp-remote, etc.) probe them at exact, well-known URLs.
 function isOAuthPath(pathname: string): boolean {
   return (
-    pathname === '/oauth' ||
-    pathname.startsWith('/oauth/') ||
-    pathname.startsWith('/oauth-consent/') ||
-    pathname === '/.well-known/oauth-protected-resource' ||
-    pathname === '/.well-known/oauth-authorization-server' ||
-    pathname.startsWith('/.well-known/oauth-authorization-server/') ||
-    pathname === '/.well-known/openid-configuration'
+    pathname === "/oauth" ||
+    pathname.startsWith("/oauth/") ||
+    pathname.startsWith("/oauth-consent/") ||
+    pathname === "/.well-known/oauth-protected-resource" ||
+    pathname === "/.well-known/oauth-authorization-server" ||
+    pathname.startsWith("/.well-known/oauth-authorization-server/") ||
+    pathname === "/.well-known/openid-configuration"
   );
 }
 
@@ -153,7 +162,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Let Next.js API routes handle health checks directly (no proxy)
-  if (pathname.startsWith('/api/v1/health/')) {
+  if (pathname.startsWith("/api/v1/health/")) {
     return NextResponse.next();
   }
 
@@ -163,7 +172,7 @@ export async function proxy(request: NextRequest) {
   // this path, and a multipart POST must not be allowed to fall through to the
   // unauthenticated /login redirect, which would replay it. 303 turns it into a
   // GET so the user lands on an ordinary page that explains what happened.
-  if (request.method === 'POST' && pathname === SHARE_TARGET_PATH) {
+  if (request.method === "POST" && pathname === SHARE_TARGET_PATH) {
     return applySecurityHeaders(
       NextResponse.redirect(
         new URL(`${SHARE_PAGE_PATH}?missed=1`, request.url),
@@ -174,9 +183,9 @@ export async function proxy(request: NextRequest) {
 
   // Handle API proxying to backend
   const rootMcp = isRootMcpRequest(request, pathname);
-  if (pathname.startsWith('/api/') || isOAuthPath(pathname) || rootMcp) {
+  if (pathname.startsWith("/api/") || isOAuthPath(pathname) || rootMcp) {
     const apiUrl = backendBaseUrl();
-    const backendPath = rootMcp ? '/api/v1/mcp' : pathname;
+    const backendPath = rootMcp ? "/api/v1/mcp" : pathname;
     const url = new URL(backendPath + request.nextUrl.search, apiUrl);
     logger.debug(`${request.method} ${pathname} -> ${apiUrl}`);
 
@@ -191,8 +200,11 @@ export async function proxy(request: NextRequest) {
     // default limit; the routes that need more are not matched by this proxy
     // at all (`LARGE_UPLOAD_ROUTES`). Refused before it is read when the
     // length is declared, and cut off while reading when it is not.
-    const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
-    if (hasBody && declaresBodyOver(request.headers, DEFAULT_PROXY_BODY_LIMIT_BYTES)) {
+    const hasBody = request.method !== "GET" && request.method !== "HEAD";
+    if (
+      hasBody &&
+      declaresBodyOver(request.headers, DEFAULT_PROXY_BODY_LIMIT_BYTES)
+    ) {
       return applySecurityHeaders(payloadTooLarge());
     }
 
@@ -212,7 +224,7 @@ export async function proxy(request: NextRequest) {
         method: request.method,
         headers,
         body,
-        redirect: 'manual',
+        redirect: "manual",
       });
 
       if (!backendConnected) {
@@ -222,9 +234,9 @@ export async function proxy(request: NextRequest) {
 
       return responseFromBackend(response);
     } catch (error) {
-      logger.error('API proxy error:', error);
+      logger.error("API proxy error:", error);
       return applySecurityHeaders(
-        NextResponse.json({ error: 'Backend unavailable' }, { status: 502 }),
+        NextResponse.json({ error: "Backend unavailable" }, { status: 502 }),
       );
     }
   }
@@ -232,7 +244,9 @@ export async function proxy(request: NextRequest) {
   // Handle auth redirects for non-API routes
   // Check for either access token or refresh token (access token expires in 15m,
   // but refresh token lasts 7 days — if present, the frontend will refresh transparently)
-  const token = request.cookies.get('auth_token')?.value || request.cookies.get('refresh_token')?.value;
+  const token =
+    request.cookies.get("auth_token")?.value ||
+    request.cookies.get("refresh_token")?.value;
 
   // Allow public paths - don't redirect auth pages to dashboard based on cookie alone,
   // as the cookie may reference a deleted/inactive user. Let the client handle redirects.
@@ -242,7 +256,7 @@ export async function proxy(request: NextRequest) {
 
   // Protect all other routes
   if (!token) {
-    const loginUrl = new URL('/login', request.url);
+    const loginUrl = new URL("/login", request.url);
     // A share can arrive while signed out -- the OS does not know or care. The
     // files are already stashed on the device, so the sign-in carries the way
     // back to them rather than dropping the user on the dashboard with an inbox
@@ -250,7 +264,7 @@ export async function proxy(request: NextRequest) {
     // changes here. `safeReturnTo` on the login page re-validates this.
     if (pathname === SHARE_PAGE_PATH) {
       loginUrl.searchParams.set(
-        'returnTo',
+        "returnTo",
         `${pathname}${request.nextUrl.search}`,
       );
     }
@@ -268,18 +282,18 @@ export const config = {
     // in this list is a path whose body the frontend buffers. Must stay in
     // step with LARGE_UPLOAD_ROUTES (`src/lib/proxy-body-limit.ts`); the
     // catch-all below repeats the exclusion. `proxy-matcher.test.ts` checks both.
-    '/api/((?!v1/(?:import/mny/parse|backup/restore|ai/query(?:/stream)?|transactions/[^/]+/attachments)/?$).*)',
+    "/api/((?!v1/(?:import/mny/parse|backup/restore|ai/query(?:/stream)?|transactions/[^/]+/attachments|email-receipts/mailbox/import)/?$).*)",
     // Match OAuth endpoints for proxying. These have to be enumerated
     // explicitly because the catch-all matcher below excludes any path
     // containing a dot (intended for static files), which would otherwise
     // skip the well-known metadata routes.
-    '/oauth/:path*',
-    '/oauth-consent/:path*',
-    '/.well-known/oauth-protected-resource',
-    '/.well-known/oauth-authorization-server',
-    '/.well-known/oauth-authorization-server/:path*',
-    '/.well-known/openid-configuration',
+    "/oauth/:path*",
+    "/oauth-consent/:path*",
+    "/.well-known/oauth-protected-resource",
+    "/.well-known/oauth-authorization-server",
+    "/.well-known/oauth-authorization-server/:path*",
+    "/.well-known/openid-configuration",
     // Match all other paths except static files
-    '/((?!_next/static|_next/image|favicon.ico|.*\\..*|public|api/v1/(?:import/mny/parse|backup/restore|ai/query(?:/stream)?|transactions/[^/]+/attachments)/?$).*)',
+    "/((?!_next/static|_next/image|favicon.ico|.*\\..*|public|api/v1/(?:import/mny/parse|backup/restore|ai/query(?:/stream)?|transactions/[^/]+/attachments|email-receipts/mailbox/import)/?$).*)",
   ],
 };

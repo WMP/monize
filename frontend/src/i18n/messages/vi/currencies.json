@@ -13,6 +13,14 @@
     "modalTitleNew": "Tiền tệ mới",
     "loading": "Đang tải tiền tệ...",
     "count": "{count, plural, one {# tiền tệ} other {# tiền tệ}}",
+    "providers": {
+      "line": "Tỷ giá từ {providers}",
+      "separator": ", sau đó ",
+      "names": {
+        "frankfurter": "Frankfurter (tỷ giá tham chiếu ECB)",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "Không thể tải tiền tệ",
       "updated": "Cập nhật tiền tệ thành công",
@@ -24,6 +32,7 @@
       "statusFailed": "Không thể cập nhật trạng thái tiền tệ",
       "ratesRefreshed": "Đã làm mới tỷ giá hối đoái: cập nhật {updated} cặp",
       "ratesRefreshedWithFailed": "Đã làm mới tỷ giá hối đoái: cập nhật {updated}, thất bại {failed}",
+      "ratesAllFailed": "Không thể lấy được tỷ giá nào; nhà cung cấp không phản hồi",
       "ratesFailed": "Không thể làm mới tỷ giá hối đoái"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter (ECB)",
         "mnyImport": "Nhập từ Money",
         "unknown": "Không rõ"
       }

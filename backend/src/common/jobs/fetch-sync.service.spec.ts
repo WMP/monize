@@ -102,6 +102,52 @@ describe("FetchSyncService", () => {
     });
   });
 
+  describe("progress", () => {
+    const progress = {
+      startedAt: "2026-10-11T10:00:00.000Z",
+      phase: "series" as const,
+      done: 2,
+      total: 8,
+      seriesCode: "EDO0124",
+      finishedAt: null,
+    };
+
+    it("reportProgress writes only under the holder's token and leaves the lease alone", async () => {
+      manager.query.mockResolvedValue([[], 0]);
+
+      await service.reportProgress(
+        "bond-program-refresh:PL|EDO",
+        "tok",
+        progress,
+      );
+
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(sql).toContain("SET progress = $3::jsonb");
+      expect(sql).toContain("WHERE job = $1 AND lease_token = $2::uuid");
+      expect(sql).not.toContain("lease_until");
+      expect(params).toEqual([
+        "bond-program-refresh:PL|EDO",
+        "tok",
+        JSON.stringify(progress),
+      ]);
+    });
+
+    it("readProgress returns the stored progress, or null without a row or a report", async () => {
+      manager.query.mockResolvedValueOnce([{ progress }]);
+      await expect(
+        service.readProgress("bond-program-refresh:PL|EDO"),
+      ).resolves.toEqual(progress);
+      manager.query.mockResolvedValueOnce([]);
+      await expect(
+        service.readProgress("bond-program-refresh:PL|EDO"),
+      ).resolves.toBeNull();
+      manager.query.mockResolvedValueOnce([{ progress: null }]);
+      await expect(
+        service.readProgress("bond-program-refresh:PL|EDO"),
+      ).resolves.toBeNull();
+    });
+  });
+
   describe("withLease", () => {
     it("runs the body and records the success", async () => {
       manager.query.mockResolvedValue([{ lease_token: "tok" }]);

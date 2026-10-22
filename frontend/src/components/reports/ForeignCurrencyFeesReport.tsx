@@ -147,15 +147,20 @@ export function ForeignCurrencyFeesReport() {
     [displayCurrency, convertToDefault, defaultCurrency],
   );
 
+  // Nothing to fetch (no account in scope, or the account list has not
+  // arrived): the fee rows are empty and settled for this key. Adjusted during
+  // render rather than from the loading effect below.
+  const feeRequestEmpty = !accountsLoaded || effectiveAccountIds.length === 0;
+  if (feeRequestEmpty && (feeLoadedKey !== accountKey || feeResults.length > 0)) {
+    setFeeResults([]);
+    setFeeLoadedKey(accountKey);
+  }
+
   const isFeeLoading = accountKey.length > 0 && feeLoadedKey !== accountKey;
 
   // Per-account monthly fee rows, tagged with each account's own currency.
   useEffect(() => {
-    if (!accountsLoaded || effectiveAccountIds.length === 0) {
-      setFeeResults([]);
-      setFeeLoadedKey(accountKey);
-      return;
-    }
+    if (!accountsLoaded || effectiveAccountIds.length === 0) return;
     let cancelled = false;
     (async () => {
       const results = await Promise.all(

@@ -135,6 +135,7 @@
       "toggleTitle": "날짜에서 연도를 빼서 수취인 이름이 더 많이 보이도록 합니다"
     },
     "attachmentsCount": "{count, plural, other {# 개의 첨부 파일}}",
+    "warrantiesCount": "{count, plural, other {보증 #건}}",
     "today": "오늘",
     "export": {
       "button": "내보내기",
@@ -198,7 +199,9 @@
       "duplicateTitle": "거래 복사",
       "copy": "복사",
       "duplicate": "복사본 만들기",
-      "scheduleRecurring": "반복 거래로 예약"
+      "scheduleRecurring": "반복 거래로 예약",
+      "addWarranty": "보증 추가",
+      "viewWarranties": "보증 보기"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "편집",
     "duplicate": "복사본 만들기",
     "scheduleRecurring": "반복 거래로 예약",
+    "addWarranty": "보증 추가",
+    "viewWarranties": "보증 보기",
     "delete": "삭제"
   },
   "filter": {
@@ -219,7 +224,7 @@
       "title": "필터",
       "clear": "초기화",
       "hide": "숨기기",
-      "show": "표시"
+      "show": "필터 표시"
     },
     "accounts": {
       "label": "계정 표시:",
@@ -258,7 +263,7 @@
       "statuses": "모든 상태",
       "amountMin": "최소",
       "amountMax": "최대",
-      "search": "수취인, 카테고리, 금액, 태그, 설명, 참조 번호 검색...",
+      "search": "검색하거나 #10 또는 payee:costco를 입력해 보세요",
       "tagKeyValue": "예: usa"
     },
     "tagKeyNone": "모두(키 필터 없음)",
@@ -431,6 +436,7 @@
       "destinationRequired": "목적 계정을 선택해 주세요",
       "sameAccount": "출금 계정과 입금 계정은 달라야 합니다",
       "negativeTransfer": "이체 금액은 음수일 수 없습니다",
+      "convertToTransferUnsupported": "기존 거래는 여기에서 이체로 바꿀 수 없습니다. 거래를 삭제한 후 이체를 새로 만드세요.",
       "payeeCreated": "수취인 \"{name}\"이(가) 생성되었습니다",
       "payeeCreateFailed": "수취인 생성에 실패했습니다",
       "payeeReactivated": "수취인 \"{name}\"이(가) 다시 활성화되었습니다",
@@ -465,7 +471,14 @@
       },
       "feeCaption": "{percent}% 해외 거래 수수료({fee})가 포함됩니다."
     },
-    "jointSplitDisabled": "공유 계좌의 분할 거래는 소유자만 관리할 수 있습니다"
+    "jointSplitDisabled": "공유 계좌의 분할 거래는 소유자만 관리할 수 있습니다",
+    "warranties": {
+      "title": "보증",
+      "add": "보증 추가",
+      "expires": "{date} 만료",
+      "loading": "보증을 불러오는 중",
+      "loadError": "이 거래의 보증을 불러올 수 없습니다."
+    }
   },
   "splitEditor": {
     "header": "분할 세부 정보",
@@ -582,6 +595,11 @@
       "log": "로그",
       "autoTitle": "자동 ({scale})",
       "scaleTitle": "{label} 눈금"
+    },
+    "collapse": {
+      "hide": "차트 숨기기",
+      "show": "차트 표시",
+      "hidden": "차트 숨김"
     }
   },
   "toasts": {
@@ -604,5 +622,71 @@
     "title": "{key}별 지출",
     "other": "기타",
     "noData": "이 키로 분석할 태그된 지출이 없습니다."
+  },
+  "searchSyntax": {
+    "open": "검색 구문",
+    "title": "검색 구문",
+    "fields": "필드: payee, memo, cat, tag, account, ref, amount, date, status, is, has. 예시를 선택하면 검색창에 입력됩니다.",
+    "examples": {
+      "allWords": "모든 단어가 어딘가에 일치",
+      "phrase": "정확히 이 구문",
+      "exclude": "refund와 일치하는 항목 제외",
+      "fieldContains": "수취인에 costco 포함",
+      "fieldExact": "수취인이 정확히 Costco",
+      "reference": "수표 또는 참조 번호가 정확히 10",
+      "wildcard": "참조 번호가 10으로 시작",
+      "amountOver": "금액이 100 초과",
+      "amountRange": "금액 50~100",
+      "datePeriod": "2026년 3월의 모든 날",
+      "isSplit": "분할 거래",
+      "hasAttachment": "첨부 파일 있음",
+      "hasWarranty": "보증 있음"
+    }
+  },
+  "searchInterpretation": {
+    "label": "검색 조건:",
+    "negated": "{phrase} 아님",
+    "malformed": "{raw} (이해할 수 없어 텍스트로 검색함)",
+    "empty": "{raw} (비어 있어 무시함)",
+    "status": "상태가 {value}",
+    "any": "모든 항목에서 “{value}”",
+    "fields": {
+      "payee": "수취인",
+      "memo": "메모",
+      "cat": "카테고리",
+      "tag": "태그",
+      "account": "계좌",
+      "ref": "참조 번호",
+      "amount": "금액",
+      "date": "날짜",
+      "status": "상태",
+      "is": "유형",
+      "has": "포함"
+    },
+    "ops": {
+      "contains": "{field}에 “{value}” 포함",
+      "exact": "{field}이(가) “{value}”",
+      "glob": "{field}이(가) “{value}”와 일치",
+      "eq": "{field}이(가) {value}",
+      "gt": "{field} {value} 초과",
+      "gte": "{field} {value} 이상",
+      "lt": "{field} {value} 미만",
+      "lte": "{field} {value} 이하",
+      "between": "{field} {value}~{valueTo}"
+    },
+    "enum": {
+      "is": {
+        "transfer": "이체",
+        "split": "분할 거래",
+        "uncategorized": "미분류"
+      },
+      "has": {
+        "attachment": "첨부 파일 있음",
+        "warranty": "보증 있음",
+        "ref": "참조 번호 있음",
+        "memo": "메모 있음",
+        "tag": "태그 있음"
+      }
+    }
   }
 }

@@ -90,7 +90,7 @@ Status      enforced (once this feature ships)
 
 **Amended (Cash Flow Sankey).** The named-flow model is shared: a "named flow"
 is a tag-key bucket's tagged inflows/outflows **or** a Cash Flow Sankey
-destination class (`docs/future-plans/sankey-cash-flow.md` section 5). The
+destination class (`docs/specs/sankey-cash-flow.md` section 5). The
 statement that a transfer never enters income, expenses or net is unchanged.
 The catalog entry is `docs/system-invariants.md` INV-REPORT-003.
 

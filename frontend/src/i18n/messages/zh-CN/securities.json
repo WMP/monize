@@ -119,6 +119,8 @@
     "currencyLabel": "货币",
     "currencyNotConfigured": "{code} — 不在你的货币列表中",
     "quoteProviderLabel": "行情提供商",
+    "skipPriceUpdatesLabel": "停用自动价格更新",
+    "skipPriceUpdatesHelp": "Monize 将不会为此证券获取价格。适用于没有提供商能够报价的证券；您自行输入的价格仍然有效。选择其他报价提供商或 MSN 金融工具 ID 会重新启用更新。",
     "msnIdLabel": "MSN 工具 ID（高级）",
     "lookupProviderAriaLabel": "查询提供商",
     "lookupButton": "查询",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "债券引擎"
     },
     "types": {
       "select": "选择类型...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "删除",
       "deleteSuccess": "已删除资产类别“{name}”",
       "deleteFailed": "无法删除资产类别“{name}”"
-    }
+    },
+    "bondFetchAction": "从官方来源获取 {code}",
+    "bondFetching": "正在从发行方获取 {code} 及其参考利率。这最多可能需要一分钟。",
+    "bondFetchFailed": "无法获取该系列。",
+    "bondCurrencyLocked": "此证券已关联到 {linkedCurrency} 的债券种类。请将币种改回 {linkedCurrency},或先取消关联该债券种类(取消关联会删除其计算价格)。",
+    "bondProgramLabel": "债券种类",
+    "bondProgramNone": "未关联",
+    "bondProgramCurrent": "已关联的债券种类",
+    "bondProgramLoading": "正在加载债券种类...",
+    "bondProgramLoadFailed": "无法加载债券种类,因此暂时不能关联债券种类。",
+    "bondProgramRetry": "重试",
+    "bondNoPrograms": "债券目录中还没有任何债券种类。",
+    "bondAutoFetchLabel": "自动获取此债券种类的新系列",
+    "bondAutoFetchHelp": "开启后,Monize 每天都会从官方来源读取此债券种类的新系列,这样您无需先获取系列即可记录买入。",
+    "bondCountryLabel": "国家",
+    "bondCountryOther": "其他",
+    "bondCountryOtherInfo": "如需支持其他国家的债券，可在项目的 <link>GitHub</link> 上提出请求。"
   },
   "priceForm": {
     "dateLabel": "日期",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "长期资本收益再投资",
       "CAPITAL_GAIN_SHORT": "短期资本收益",
       "CAPITAL_GAIN_LONG": "长期资本收益",
-      "REDEEM": "赎回存单/债券"
+      "REDEEM": "赎回存单/债券",
+      "RETURN_OF_CAPITAL": "资本返还"
     },
     "toasts": {
       "loadHistoryFailed": "加载历史失败",
@@ -340,6 +360,7 @@
     "nameRequired": "名称为必填项",
     "nameMax": "名称不能超过 255 个字符",
     "currencyRequired": "货币为必填项",
+    "bondProgramRequired": "债券种类为必填项",
     "descriptionMax": "描述不能超过5000个字符"
   },
   "priceValidation": {

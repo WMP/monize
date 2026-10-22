@@ -1,9 +1,11 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import {
   IsString,
   IsOptional,
   IsNumber,
   IsUUID,
+  ValidateIf,
   IsDateString,
   Min,
   MaxLength,
@@ -49,4 +51,23 @@ export class TransferSecurityDto {
   @MaxLength(TRANSACTION_NOTE_MAX_LENGTH)
   @SanitizeHtml()
   description?: string;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    format: "uuid",
+    description:
+      "The bond series (bond instrument id) a security transfer moves (both legs carry it). " +
+      "An acquisition without one takes the program's series on sale on the transaction date; " +
+      "a removal without one leaves first-in first-out across the account's series. " +
+      "Refused for a security that is not linked to a bond program.",
+  })
+  // One canonical spelling (lower case) before anything compares or stores it.
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.toLowerCase() : value,
+  )
+  @IsOptional()
+  @ValidateIf((_o, value) => value !== null && value !== undefined)
+  @IsUUID()
+  bondInstrumentId?: string | null;
 }

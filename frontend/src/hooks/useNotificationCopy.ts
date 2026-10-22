@@ -1,8 +1,10 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { isoToDatetimeLocal, resolveTimezone } from '@/lib/utils';
+import { benchmarkLabel } from '@/components/securities/detail/bond-labels';
 
 /** Shared display copy for bell rows and reminder templates, including legacy fallback. */
 type Notification = {
@@ -70,10 +72,44 @@ function daysUntil(dueDate: string): number {
   return Math.round((due.getTime() - today.getTime()) / 86_400_000);
 }
 
+/**
+ * The days-left marks a consent reminder is written at. Mirrors the backend's
+ * `CONSENT_REMINDER_THRESHOLDS` (`bank-sync-notifications.ts`), held equal by
+ * `bank-sync-notifications.contract.test.ts`.
+ */
+export const BANK_SYNC_REMINDER_MARKS: readonly number[] = [30, 14, 7, 3, 2, 1, 0];
+
+/**
+ * The `failures` a bank sync failure row carries, or null when absent, empty or
+ * malformed (the row then shows its stored English whole).
+ */
+function bankSyncFailures(value: unknown): { label: string | null; code: string }[] | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const failures: { label: string | null; code: string }[] = [];
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null) return null;
+    const { label, code } = item as Record<string, unknown>;
+    if (typeof code !== 'string' || code === '') return null;
+    if (label !== null && label !== undefined && typeof label !== 'string') return null;
+    failures.push({ label: typeof label === 'string' && label !== '' ? label : null, code });
+  }
+  return failures;
+}
+
+/** A list as the reader's language joins it ("A, B and C"); no separator is written here. */
+function joinList(items: string[], locale: string): string {
+  try {
+    return new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(items);
+  } catch {
+    return new Intl.ListFormat(undefined, { style: 'long', type: 'conjunction' }).format(items);
+  }
+}
+
 export function useNotificationCopy() {
   const t = useTranslations('notifications');
-  const { formatCurrency, formatNumber } = useNumberFormat();
-  const { formatDate } = useDateFormat();
+  const locale = useLocale();
+  const { formatCurrency, formatNumber, formatPercent } = useNumberFormat();
+  const { formatDate, timezone } = useDateFormat();
   /**
    * A bill-due notification's headline, in the reader's language. `null` for anything
    * else -- and for an older row whose data predates these fields -- so the
@@ -375,11 +411,372 @@ export function useNotificationCopy() {
         });
   };
 
+  /**
+   * A bank sync row (consent reminder, expiry notice, failed or successful daily
+   * sync), composed from the producer's `data` facts
+   * (`docs/specs/bank-sync-notifications.md`). Nothing here counts days from
+   * "now": a reminder says what the stored mark and end date say, so the copy is
+   * the same on the day it is read as on the day it was written. A row whose
+   * facts are missing or malformed returns null and shows its stored English.
+   */
+  const bankSyncCopy = (notification: Notification, part: 'title' | 'message'): string | null => {
+    const data = notification.data ?? {};
+    const institution = typeof data.institutionName === 'string' ? data.institutionName : '';
+    if (institution === '') return null;
+    switch (notification.type) {
+      case 'BANK_SYNC_CONSENT_EXPIRING': {
+        const { threshold, validUntil } = data;
+        if (
+          typeof threshold !== 'number' ||
+          !BANK_SYNC_REMINDER_MARKS.includes(threshold) ||
+          typeof validUntil !== 'string' ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(validUntil)
+        ) {
+          return null;
+        }
+        if (part === 'message') {
+          return t('bankSync.expiringMessage', { institution, date: formatDate(validUntil) });
+        }
+        return t(
+          threshold === 0
+            ? 'bankSync.expiringTitleToday'
+            : threshold === 1
+              ? 'bankSync.expiringTitleOneDay'
+              : 'bankSync.expiringTitleDays',
+          { institution, days: formatNumber(threshold, 0) },
+        );
+      }
+      case 'BANK_SYNC_CONSENT_EXPIRED':
+        return t(part === 'title' ? 'bankSync.expiredTitle' : 'bankSync.expiredMessage', {
+          institution,
+        });
+      case 'BANK_SYNC_FAILED': {
+        const failures = bankSyncFailures(data.failures);
+        if (failures === null) return null;
+        if (part === 'title') return t('bankSync.failedTitle', { institution });
+        // One repair for the reader when every account failed on the credentials.
+        if (failures.every((failure) => failure.code === 'credentials')) {
+          return t('bankSync.failedCredentialsMessage', { institution });
+        }
+        return t('bankSync.failedMessage', {
+          institution,
+          accounts: joinList(
+            failures.map((failure) => failure.label ?? t('bankSync.unnamedAccount')),
+            locale,
+          ),
+        });
+      }
+      case 'BANK_SYNC_IMPORTED': {
+        const imported = data.imported;
+        if (typeof imported !== 'number' || !Number.isInteger(imported) || imported < 0) {
+          return null;
+        }
+        if (imported === 0) {
+          return t(
+            part === 'title' ? 'bankSync.importedNoneTitle' : 'bankSync.importedNoneMessage',
+            { institution },
+          );
+        }
+        return t(part === 'title' ? 'bankSync.importedTitle' : 'bankSync.importedMessage', {
+          institution,
+          imported: formatNumber(imported, 0),
+        });
+      }
+      default:
+        return null;
+    }
+  };
+
   const priceCopy = (notification: Notification, part: 'title' | 'message'): string | null => {
     const data = notification.data;
     if (notification.type !== 'SECURITY_PRICE_MOVEMENT' || typeof data?.symbol !== 'string' ||
         typeof data.changePercent !== 'number' || !Number.isFinite(data.changePercent)) return null;
     return t(`priceMovement.${part}`, { symbol: data.symbol, percent: formatNumber(data.changePercent, 2) });
+  };
+
+  /**
+   * The receipts-inbox attention row, composed from the producer's counts. A row
+   * without both counts falls back to the stored English.
+   */
+  const emailReceiptsAttentionData = (
+    notification: Notification,
+  ): { noParser: number; parseFailed: number } | null => {
+    if (notification.type !== 'EMAIL_RECEIPTS_ATTENTION') return null;
+    const data = notification.data;
+    if (typeof data?.noParser !== 'number' || typeof data.parseFailed !== 'number') return null;
+    return { noParser: data.noParser, parseFailed: data.parseFailed };
+  };
+
+  const emailReceiptsAttentionTitle = (notification: Notification): string | null =>
+    emailReceiptsAttentionData(notification) ? t('emailReceiptsAttention.title') : null;
+
+  const emailReceiptsAttentionMessage = (notification: Notification): string | null => {
+    const data = emailReceiptsAttentionData(notification);
+    return data
+      ? t('emailReceiptsAttention.message', {
+          noParser: formatNumber(data.noParser, 0),
+          parseFailed: formatNumber(data.parseFailed, 0),
+        })
+      : null;
+  };
+
+  /**
+   * The six bond rows (`docs/specs/bond-notifications.md`), composed from `data`
+   * alone. Amounts arrive as decimal strings and rates as fractions; a null
+   * amount says it is not known yet and why, never a zero. A row missing the
+   * facts its copy needs returns null and shows its stored English.
+   */
+  const bondCopy = (notification: Notification, part: 'title' | 'message'): string | null => {
+    if (!notification.type.startsWith('BOND_')) return null;
+    const data = notification.data ?? {};
+    const text = (value: unknown): string | null =>
+      typeof value === 'string' && value !== '' ? value : null;
+    const decimal = (value: unknown): number | null => {
+      const raw = text(value);
+      if (raw === null) return null;
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const whole = (value: unknown): number | null =>
+      typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
+    const day = (value: unknown): string | null => {
+      const raw = text(value);
+      return raw !== null && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? formatDate(raw) : null;
+    };
+    const observation = (value: string): string => {
+      const match = /^(\d{4})-(\d{2})$/.exec(value);
+      if (!match) return /^\d{4}-\d{2}-\d{2}$/.test(value) ? formatDate(value) : value;
+      return new Intl.DateTimeFormat(locale, {
+        year: 'numeric',
+        month: 'long',
+        timeZone: 'UTC',
+      }).format(new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1)));
+    };
+    const rate = (fraction: unknown): string | null => {
+      const value = decimal(fraction);
+      return value === null ? null : formatPercent(value * 100, 2);
+    };
+    const series = text(data.seriesCode);
+    const currency = text(data.currency);
+    const quantity = whole(data.quantity);
+
+    const payoutSentence = (): string | null => {
+      if (!currency) return null;
+      const payout = decimal(data.payout);
+      if (data.payout !== null && payout === null) return null;
+      if (payout !== null) {
+        return t('bond.payoutKnown', { payout: formatCurrency(payout, currency) });
+      }
+      const code = typeof data.missing === 'string' ? data.missing : '';
+      const known = ['RATE_UNKNOWN', 'TERMS_INCOMPLETE', 'PURCHASE_OUTSIDE_SALE_WINDOW'];
+      return t('bond.payoutUnknown', {
+        reason: t(known.includes(code) ? `bond.reason.${code}` : 'bond.reason.other'),
+      });
+    };
+
+    const causeLine = (cause: unknown): string | null => {
+      if (typeof cause !== 'object' || cause === null) return null;
+      const c = cause as Record<string, unknown>;
+      switch (c.code) {
+        case 'OBSERVATION_MISSING': {
+          const benchmark = text(c.benchmarkId);
+          const label = text(c.observation);
+          if (!benchmark || !label) return null;
+          const publisher = text(c.publisher);
+          return publisher
+            ? t('bond.cause.observation', {
+                observation: observation(label),
+                benchmark: benchmarkLabel(t, benchmark),
+                publisher,
+              })
+            : t('bond.cause.observationNoPublisher', {
+                observation: observation(label),
+                benchmark: benchmarkLabel(t, benchmark),
+              });
+        }
+        case 'TERMS_INCOMPLETE': {
+          const code = text(c.seriesCode);
+          return code ? t('bond.cause.terms', { series: code }) : null;
+        }
+        case 'PURCHASE_OUTSIDE_SALE_WINDOW': {
+          const code = text(c.seriesCode);
+          const date = day(c.purchaseDate);
+          const from = day(c.from);
+          const to = day(c.to);
+          return code && date && from && to
+            ? t('bond.cause.purchase', { series: code, date, from, to })
+            : null;
+        }
+        case 'LOTS_UNDERIVABLE': {
+          const code = text(c.refusalCode);
+          if (!code) return null;
+          const rowAction = text(c.action);
+          const rowDate = day(c.date);
+          // A row raised before the cause named its transaction keeps the older line.
+          if (!rowAction || !rowDate) return t('bond.cause.lots', { code });
+          // The bell's own labels (`bond.action.*`): the `investments` namespace
+          // is not in the public client catalog the bell loads.
+          const args = {
+            action: t(t.has(`bond.action.${rowAction}`) ? `bond.action.${rowAction}` : 'bond.action.other'),
+            date: rowDate,
+            code,
+          };
+          if (code === 'SERIES_NOT_DETERMINED' || code === 'SERIES_REQUIRED') {
+            return t('bond.cause.lotsRowSeries', args);
+          }
+          return t(
+            code === 'REMOVAL_EXCEEDS_SERIES' ? 'bond.cause.lotsRowRemoval' : 'bond.cause.lotsRow',
+            args,
+          );
+        }
+        default:
+          return null;
+      }
+    };
+
+    switch (notification.type) {
+      case 'BOND_MATURITY_SOON':
+      case 'BOND_REDEMPTION_UNBOOKED': {
+        const date = day(data.maturityDate);
+        const payout = payoutSentence();
+        if (!series || quantity === null || !date || payout === null) return null;
+        const args = { series, date, quantity: formatNumber(quantity, 0), payout };
+        const key =
+          notification.type === 'BOND_MATURITY_SOON' ? 'bond.maturitySoon' : 'bond.unbooked';
+        return t(`${key}${part === 'title' ? 'Title' : 'Message'}`, args);
+      }
+      case 'BOND_INTEREST_PAYMENT': {
+        const date = day(data.paymentDate);
+        if (!series || !currency || quantity === null || !date) return null;
+        // A null amount is a valid producer state (a rate not published yet); a
+        // missing key is an older row and proves nothing.
+        if (!('amount' in data)) return null;
+        const amount = decimal(data.amount);
+        if (data.amount !== null && amount === null) return null;
+        const args = { series, date, quantity: formatNumber(quantity, 0) };
+        if (part === 'title') return t('bond.interestTitle', args);
+        return amount === null
+          ? t('bond.interestMessageUnknown', args)
+          : t('bond.interestMessage', { ...args, amount: formatCurrency(amount, currency) });
+      }
+      case 'BOND_RATE_RESET': {
+        const date = day(data.periodStart);
+        const annual = rate(data.annualRate);
+        const period = whole(data.periodIndex);
+        if (!series || !date || annual === null || period === null) return null;
+        if (part === 'title') return t('bond.rateResetTitle', { series });
+        return t('bond.rateResetMessage', {
+          series,
+          date,
+          period: formatNumber(period, 0),
+          rate: annual,
+        });
+      }
+      case 'BOND_BENCHMARK_PUBLISHED': {
+        const benchmark = text(data.benchmarkId);
+        const publisher = text(data.publisher);
+        const label = text(data.observation);
+        const value = text(data.value);
+        const more = whole(data.affectedMore);
+        if (!benchmark || !publisher || !label || !value || more === null) return null;
+        if (!Array.isArray(data.affected)) return null;
+        const lines: string[] = [];
+        for (const entry of data.affected as unknown[]) {
+          if (typeof entry !== 'object' || entry === null) return null;
+          const e = entry as Record<string, unknown>;
+          const code = text(e.seriesCode);
+          const date = day(e.periodStart);
+          if (!code || !date) return null;
+          const annual = e.annualRate === null ? null : rate(e.annualRate);
+          if (e.annualRate !== null && annual === null) return null;
+          // A projected rate is an assumption, never shown as a known one.
+          const line =
+            annual === null
+              ? 'bond.benchmarkSeriesUnknown'
+              : e.rateSource === 'PROJECTED'
+                ? 'bond.benchmarkSeriesProjected'
+                : 'bond.benchmarkSeries';
+          lines.push(t(line, { series: code, date, rate: annual ?? '' }));
+        }
+        if (lines.length === 0) return null;
+        const figure = decimal(value);
+        if (figure === null) return null;
+        const args = {
+          benchmark: benchmarkLabel(t, benchmark),
+          publisher,
+          observation: observation(label),
+          // A rate series stores a fraction; any other unit is shown as a plain number.
+          value: data.unit === 'RATE_FRACTION' ? formatPercent(figure * 100, 2) : formatNumber(figure, 4),
+        };
+        if (part === 'title') return t('bond.benchmarkTitle', args);
+        const tail = more > 0 ? [t('bond.benchmarkMore', { more: formatNumber(more, 0) })] : [];
+        return [t('bond.benchmarkIntro', args), ...lines, ...tail].join(' ');
+      }
+      case 'BOND_DATA_MISSING': {
+        if (!Array.isArray(data.causes) || data.causes.length === 0) return null;
+        if (part === 'title') return t('bond.missingTitle');
+        const lines = (data.causes as unknown[]).map(causeLine);
+        if (lines.some((line) => line === null)) return null;
+        return t('bond.missingMessage', { causes: lines.join(' ') });
+      }
+      default:
+        return null;
+    }
+  };
+
+  /**
+   * The AI review rows, composed from the producer's counts. The expiry date is an
+   * instant: it is shown as a calendar date in the reader's own timezone. A row
+   * without valid facts falls back to the stored English.
+   */
+  const aiReviewCopy = (notification: Notification, part: 'title' | 'message'): string | null => {
+    const data = notification.data ?? {};
+    const count = data.count;
+    if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) return null;
+    if (notification.type === 'AI_REVIEW_PROPOSALS_READY') {
+      const added = data.added;
+      if (typeof added !== 'number' || !Number.isInteger(added) || added < 1) return null;
+      return part === 'title' ? t('aiReview.readyTitle') : t('aiReview.readyMessage', { count, added });
+    }
+    if (notification.type === 'AI_REVIEW_PROPOSALS_EXPIRING') {
+      const expiresAt = data.earliestExpiresAt;
+      if (typeof expiresAt !== 'string') return null;
+      let day: string;
+      try {
+        day = isoToDatetimeLocal(expiresAt, resolveTimezone(timezone)).slice(0, 10);
+      } catch {
+        return null;
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+      return part === 'title'
+        ? t('aiReview.expiringTitle')
+        : t('aiReview.expiringMessage', { count, date: formatDate(day) });
+    }
+    return null;
+  };
+
+  /**
+   * The warranty reminder rows, composed from the producer's facts (name, expiry
+   * date, threshold). The title names the mark the reminder fired at, not a count
+   * from "now", so it reads the same on the day it is opened as on the day it was
+   * written. A row without valid facts falls back to the stored English.
+   */
+  const warrantyCopy = (notification: Notification, part: 'title' | 'message'): string | null => {
+    if (notification.type !== 'WARRANTY_EXPIRING' && notification.type !== 'WARRANTY_EXPIRES_TODAY') {
+      return null;
+    }
+    const data = notification.data ?? {};
+    const { name, expiresOn, threshold } = data;
+    if (typeof name !== 'string' || name === '') return null;
+    if (typeof expiresOn !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(expiresOn)) return null;
+    const date = formatDate(expiresOn);
+    if (notification.type === 'WARRANTY_EXPIRES_TODAY') {
+      return t(part === 'title' ? 'warranty.todayTitle' : 'warranty.todayMessage', { name, date });
+    }
+    if (typeof threshold !== 'number' || !Number.isInteger(threshold) || threshold < 1) return null;
+    return part === 'title'
+      ? t('warranty.expiringTitle', { name, days: threshold })
+      : t('warranty.expiringMessage', { name, date });
   };
 
   return (notification: Notification) => ({
@@ -390,6 +787,11 @@ export function useNotificationCopy() {
       gemSignalTitle(notification) ??
       portfolioMovementTitle(notification) ??
       balanceThresholdTitle(notification) ??
+      bankSyncCopy(notification, 'title') ??
+      emailReceiptsAttentionTitle(notification) ??
+      aiReviewCopy(notification, 'title') ??
+      warrantyCopy(notification, 'title') ??
+      bondCopy(notification, 'title') ??
       notification.title,
     message:
       priceCopy(notification, 'message') ??
@@ -398,6 +800,11 @@ export function useNotificationCopy() {
       gemSignalMessage(notification) ??
       portfolioMovementMessage(notification) ??
       balanceThresholdMessage(notification) ??
+      bankSyncCopy(notification, 'message') ??
+      emailReceiptsAttentionMessage(notification) ??
+      aiReviewCopy(notification, 'message') ??
+      warrantyCopy(notification, 'message') ??
+      bondCopy(notification, 'message') ??
       notification.message,
   });
 }

@@ -26,7 +26,9 @@ import {
   defaultOpenPriceGroups,
   priceDecimals,
 } from '@/lib/security-detail';
+import { GroupToggleButton } from '@/components/ui/GroupToggleButton';
 import { SecurityPriceForm } from './SecurityPriceForm';
+import { formatPriceSource } from './SecurityListParts';
 
 interface SecurityPriceHistoryProps {
   security: Security;
@@ -41,9 +43,10 @@ interface SecurityPriceHistoryProps {
   onPricesChanged?: () => void | Promise<void>;
 }
 
-function getSourceLabel(source: string | null): string {
+function getSourceLabel(source: string | null, t: Parameters<typeof formatPriceSource>[1]): string {
   if (!source) return 'Unknown';
   switch (source) {
+    case 'bond_engine': return formatPriceSource(source, t);
     case 'yahoo_finance': return 'Yahoo';
     case 'msn_finance': return 'MSN';
     case 'manual': return 'Manual';
@@ -113,27 +116,46 @@ export function SecurityPriceHistory({
   // until it is asked for.
   const [openGroups, setOpenGroups] = useState<ReadonlySet<string>>(new Set());
 
-  const loadPrices = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await investmentsApi.getSecurityPrices(security.id, {
-        limit: SECURITY_PRICE_HISTORY_LIMIT,
-      });
-      setPrices(data);
-      // Open the newest year and month so recent prices need no click.
-      setOpenGroups(
-        new Set(defaultOpenPriceGroups(groupPricesByPeriod(data))),
-      );
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('priceHistory.toasts.loadFailed')));
-    } finally {
-      setIsLoading(false);
-    }
+  const fetchPrices = useCallback(() => {
+    // The writes live in the inner function so they run after the request,
+    // not during the effect that starts it.
+    const run = async () => {
+      try {
+        const data = await investmentsApi.getSecurityPrices(security.id, {
+          limit: SECURITY_PRICE_HISTORY_LIMIT,
+        });
+        setPrices(data);
+        // Open the newest year and month so recent prices need no click.
+        setOpenGroups(
+          new Set(defaultOpenPriceGroups(groupPricesByPeriod(data))),
+        );
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('priceHistory.toasts.loadFailed')));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [security.id, t]);
 
+  // Every reload after a change shows the spinner again.
+  const loadPrices = useCallback(() => {
+    setIsLoading(true);
+    return fetchPrices();
+  }, [fetchPrices]);
+
+  // A different security is a new request: it shows as loading from the
+  // render that asks for it (the "info from previous render" pattern). The
+  // first load needs nothing here, `isLoading` starts true.
+  const [loadingFor, setLoadingFor] = useState(security.id);
+  if (loadingFor !== security.id) {
+    setLoadingFor(security.id);
+    setIsLoading(true);
+  }
+
   useEffect(() => {
-    loadPrices();
-  }, [loadPrices]);
+    fetchPrices();
+  }, [fetchPrices]);
 
   const handleAdd = useCallback(async (data: CreateSecurityPriceData) => {
     try {
@@ -412,23 +434,12 @@ export function SecurityPriceHistory({
                 key={year.key}
                 className="rounded-lg border border-gray-200 dark:border-gray-700"
               >
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(year.key)}
-                  aria-expanded={yearOpen}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-gray-700/50"
-                >
-                  <ChevronRightIcon
-                    className={`h-4 w-4 flex-shrink-0 text-gray-400 transition-transform ${yearOpen ? 'rotate-90' : ''}`}
-                    aria-hidden="true"
-                  />
-                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {year.key}
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {t('priceHistory.groupCount', { count: year.count })}
-                  </span>
-                </button>
+                <GroupToggleButton
+                  open={yearOpen}
+                  onToggle={() => toggleGroup(year.key)}
+                  label={year.key}
+                  detail={t('priceHistory.groupCount', { count: year.count })}
+                />
 
                 {yearOpen && (
                   <div className="space-y-1 border-t border-gray-200 px-2 pb-2 pt-1 dark:border-gray-700">
@@ -512,7 +523,7 @@ export function SecurityPriceHistory({
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getSourceColor(price.source)}`}>
-                              {getSourceLabel(price.source)}
+                              {getSourceLabel(price.source, t)}
                               </span>
                               </td>
                               <td className="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell">

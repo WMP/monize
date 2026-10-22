@@ -18,6 +18,8 @@ Paths beginning with `src/`, `test/` or `scripts/`, and layer configuration file
 
 **`verifyAuthentication` is the one refusal deliberately not first.** An OIDC restore is authorized by a single-use `OidcReauthService` artifact, and the round trip that mints one loses the user's file selection -- so the restore validates everything free (decrypt, decompress, envelope) *before* spending it. It still precedes every write. Do not reorder it forward, and do not reorder it backward past a `DELETE FROM`; section 5 of the contract has the reasoning, and `backup.service.spec.ts` pins both edges.
 
+**A restore may fetch the bond series its own file references, and nothing else.** `bond_instruments` is catalog data a backup does not carry and a fresh deployment holds none (INV-BOND-008), so the export writes the identity of each referenced series in a `bondCatalog` member (never terms, INV-BOND-006) and `BackupBondSeriesRecoveryService` fetches the missing ones through `BondSeriesService.fetchSeries` after re-authentication and **before** the restore transaction -- an external effect, so before the commit like attachment staging, sequential, capped at `MAX_BOND_SERIES_FETCHES_PER_RESTORE`. A refused fetch is recorded in the result's `unrecoveredBondSeries` and never fatal. Do not add a second fetching path or call the recovery from inside the transaction; section 3a of the contract has the order and what a failure leaves. What a severed catalog link costs the row is declared beside `CATALOG_REFERENCE_COLUMNS` (`CATALOG_ON_SEVERED`), not branched on inside the generic loop.
+
 **A value encrypted with server configuration cannot travel in a document.** `ai_provider_configs.api_key_enc` is ciphertext under `ENCRYPTION_KEY`, which is not in the backup and must not be. Exported verbatim it restored onto any other instance *populated and unreadable* -- every "is a key configured?" check said yes and only the AI calls failed. The key is decrypted on the way out and re-encrypted on the way in (`ai-provider-key-transport.ts`), both directions in one file because the field name and fallbacks are one contract. The cost -- the artifact holds the credential in plaintext -- is stated in `docs/backup-restore-contract.md` §1, logged by the export, and why the support backup drops the table. Anything else stored under server-side configuration gets the same treatment, or is excluded.
 
 ## `BackupService` is a facade; put new code in the component that owns it
@@ -70,7 +72,7 @@ Every storage touch in the automatic backup path goes through
 selected by `BACKUP_STORAGE_PROVIDER` and registered the way
 `ATTACHMENT_STORAGE_PROVIDER` is. `AutoBackupService` holds no path, no
 `BACKUP_ALLOWED_ROOTS` and no `fs` import: the containment model, the atomic
-write and the legacy flat-folder sweep are `LocalBackupStorageTarget`'s, which is
+write and the legacy flat-folder listing are `LocalBackupStorageTarget`'s, which is
 the default and is what ran before the seam existed. The download route and the
 off-machine reader take a stream from `open(location, filename)` rather than a
 path, because an object store has none. There is no `write` (only `publish`,

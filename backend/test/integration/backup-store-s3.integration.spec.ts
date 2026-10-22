@@ -21,9 +21,10 @@ import { BackupStoreLocation } from "@/backup/storage/backup-storage.interface";
  * **This suite is gated on `BACKUP_STORE_S3_TEST_ENDPOINT`.** It runs wherever a
  * MinIO (or other S3-compatible) endpoint is reachable, and the
  * `backend-integration-tests` CI job is where it is meant to run -- that job has
- * only `postgres` today, and adding the service is the last step of task S2 in
- * `docs/future-plans/horizontal-scaling-tasks.md`, which records the exact
- * service block and why it is not in this commit. The gate is deliberately one
+ * only `postgres` today, and adding the service is the last step of task S2 of
+ * the horizontal-scaling plan (`docs/specs/horizontal-scaling.md`, WP7); the
+ * retired task record held the exact service block and why it was not in this
+ * commit. The gate is deliberately one
  * variable and deliberately loud in this comment rather than a bare `describe.skip`:
  * a suite that quietly discovers nothing is a suite nobody notices is not running.
  */

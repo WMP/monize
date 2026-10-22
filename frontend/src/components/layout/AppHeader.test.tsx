@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/test/render';
 import { AppHeader } from './AppHeader';
 import toast from 'react-hot-toast';
+import { endSignOut, isSigningOut } from '@/lib/logout-state';
 
 // Mock next/image
 vi.mock('next/image', () => ({
@@ -30,6 +31,20 @@ vi.mock('@/lib/auth', () => ({
   authApi: {
     logout: (...args: any[]) => mockApiLogout(...args),
   },
+}));
+
+// The sign-out's push step, recorded in the same sequence as the session end.
+const signOutOrder: string[] = [];
+const mockHoldPush = vi.fn(async () => {
+  signOutOrder.push('holdPush');
+});
+const mockReleasePush = vi.fn(async () => {
+  signOutOrder.push('releasePush');
+});
+vi.mock('@/lib/push', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/push')>()),
+  holdPushForSignOut: () => mockHoldPush(),
+  releasePushForSignOut: () => mockReleasePush(),
 }));
 
 // Mock logger
@@ -136,6 +151,21 @@ describe('AppHeader', () => {
     });
   });
 
+  // Holding the row needs the session that is ending, so it runs first; and a
+  // sign-out holds, while only account deletion releases in full.
+  it('holds push before ending the session, and does not release it', async () => {
+    signOutOrder.length = 0;
+    mockApiLogout.mockImplementationOnce(async () => {
+      signOutOrder.push('authLogout');
+    });
+    render(<AppHeader />);
+    fireEvent.click(screen.getByRole('button', { name: /logout/i }));
+
+    await waitFor(() => expect(mockLogout).toHaveBeenCalled());
+    expect(signOutOrder).toEqual(['holdPush', 'authLogout']);
+    expect(mockReleasePush).not.toHaveBeenCalled();
+  });
+
   it('clears the incomplete-logout flag on a confirmed logout', async () => {
     window.sessionStorage.setItem('monize:logout-incomplete', '1');
     render(<AppHeader />);
@@ -147,6 +177,25 @@ describe('AppHeader', () => {
     expect(window.sessionStorage.getItem('monize:logout-incomplete')).toBeNull();
     expect(toast.success).toHaveBeenCalled();
     expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  // The page still mounted here keeps polling after the session is revoked.
+  // Without the flag those 401s drive the interceptor's own hard redirect to
+  // /login, which aborts this router.push mid-flight.
+  it('marks the sign-out before revoking the session', async () => {
+    endSignOut();
+    let signingOutAtRevoke: boolean | undefined;
+    mockApiLogout.mockImplementationOnce(async () => {
+      signingOutAtRevoke = isSigningOut();
+    });
+    render(<AppHeader />);
+    fireEvent.click(screen.getByRole('button', { name: /logout/i }));
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/login');
+    });
+    expect(signingOutAtRevoke).toBe(true);
+    endSignOut();
   });
 
   // Only the server can clear the HttpOnly refresh cookie, so a failed request

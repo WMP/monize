@@ -78,12 +78,11 @@ export function usePriceRefresh({ onRefreshComplete }: UsePriceRefreshOptions = 
         // unless the caller has narrowed the scope (e.g. the Investments
         // page passes the IDs of the holdings currently visible).
         //
-        // Eligibility rule mirrors the backend's isRefreshEligible(): a
-        // security is eligible when skipPriceUpdates is false OR the user has
-        // explicitly opted in by setting a quoteProvider override or an MSN
-        // Instrument ID. The latter rescues QIF-imported securities (which are
-        // flagged skipPriceUpdates=true by default) once the user has pointed
-        // them at a provider.
+        // Eligibility mirrors the backend's isRefreshEligible(): only a
+        // security without skipPriceUpdates is fetched. The flag is the user's
+        // "disable price updates" switch, and a provider override or MSN
+        // Instrument ID saved beside it does not turn it back on (picking a new
+        // one clears the flag server-side when the security is saved).
         const securities = await investmentsApi.getSecurities(false);
         const scopeSet = scopeSecurityIds
           ? new Set(scopeSecurityIds)
@@ -92,7 +91,7 @@ export function usePriceRefresh({ onRefreshComplete }: UsePriceRefreshOptions = 
           .filter(
             (s) =>
               s.isActive &&
-              (!s.skipPriceUpdates || !!s.quoteProvider || !!s.msnInstrumentId) &&
+              !s.skipPriceUpdates &&
               (scopeSet === null || scopeSet.has(s.id)),
           )
           .map((s) => s.id);

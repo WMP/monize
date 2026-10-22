@@ -42,7 +42,7 @@ services:
       DATABASE_USER: ${POSTGRES_USER}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       # Row-Level Security (defense-in-depth; off by default). See
-      # docs/future-plans/row-level-security.md and the runbook before enabling.
+      # docs/specs/row-level-security.md and the runbook before enabling.
       # Empty-safe so an existing .env without these keys upgrades unchanged.
       RLS_MODE: ${RLS_MODE:-off}
       DATABASE_APP_USER: ${DATABASE_APP_USER:-monize_app}

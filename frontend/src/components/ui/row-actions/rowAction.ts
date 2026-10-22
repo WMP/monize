@@ -31,7 +31,8 @@ export type ActionIconKey =
   | 'transactions'
   | 'filter'
   | 'moveUp'
-  | 'moveDown';
+  | 'moveDown'
+  | 'hide';
 
 /**
  * A single per-row action. Callers build these from already-translated labels and

@@ -42,7 +42,7 @@ services:
       DATABASE_USER: ${POSTGRES_USER:-monize_user}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-monize_password}
       # Row-Level Security (defense-in-depth; off by default). See
-      # docs/future-plans/row-level-security.md. Empty-safe so an untouched
+      # docs/specs/row-level-security.md. Empty-safe so an untouched
       # .env boots unchanged.
       RLS_MODE: ${RLS_MODE:-off}
       DATABASE_APP_USER: ${DATABASE_APP_USER:-monize_app}

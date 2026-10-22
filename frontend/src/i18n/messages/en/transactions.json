@@ -135,6 +135,7 @@
       "toggleTitle": "Drop the year from dates so more of the payee fits"
     },
     "attachmentsCount": "{count, plural, one {# attachment} other {# attachments}}",
+    "warrantiesCount": "{count, plural, one {# warranty} other {# warranties}}",
     "today": "Today",
     "export": {
       "button": "Export",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Duplicate transaction",
       "copy": "Copy",
       "duplicate": "Duplicate",
-      "scheduleRecurring": "Schedule as Recurring"
+      "scheduleRecurring": "Schedule as Recurring",
+      "addWarranty": "Add warranty",
+      "viewWarranties": "View warranties"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Edit",
     "duplicate": "Duplicate",
     "scheduleRecurring": "Schedule as Recurring",
+    "addWarranty": "Add warranty",
+    "viewWarranties": "View warranties",
     "delete": "Delete"
   },
   "filter": {
@@ -219,7 +224,7 @@
       "title": "Filters",
       "clear": "Clear",
       "hide": "Hide",
-      "show": "Show"
+      "show": "Show filters"
     },
     "accounts": {
       "label": "Show accounts:",
@@ -258,7 +263,7 @@
       "statuses": "All statuses",
       "amountMin": "Min",
       "amountMax": "Max",
-      "search": "Search payee, category, amount, tag, description, reference #...",
+      "search": "Search, or try #10 or payee:costco",
       "tagKeyValue": "e.g. usa"
     },
     "tagKeyNone": "Any (no key filter)",
@@ -431,6 +436,7 @@
       "destinationRequired": "Please select a destination account",
       "sameAccount": "Source and destination accounts must be different",
       "negativeTransfer": "Transfer amount must not be negative",
+      "convertToTransferUnsupported": "An existing transaction can't be turned into a transfer here. Delete it and create the transfer instead.",
       "payeeCreated": "Payee \"{name}\" created",
       "payeeCreateFailed": "Failed to create payee",
       "payeeReactivated": "Payee \"{name}\" reactivated",
@@ -465,7 +471,14 @@
       },
       "feeCaption": "Includes a {percent}% foreign transaction fee ({fee})."
     },
-    "jointSplitDisabled": "Split transactions in a shared account can only be managed by the owner"
+    "jointSplitDisabled": "Split transactions in a shared account can only be managed by the owner",
+    "warranties": {
+      "title": "Warranties",
+      "add": "Add warranty",
+      "expires": "Expires {date}",
+      "loading": "Loading warranties",
+      "loadError": "The warranties for this transaction could not be loaded."
+    }
   },
   "splitEditor": {
     "header": "Split Details",
@@ -582,6 +595,11 @@
       "log": "Log",
       "autoTitle": "Auto ({scale})",
       "scaleTitle": "{label} scale"
+    },
+    "collapse": {
+      "hide": "Hide chart",
+      "show": "Show chart",
+      "hidden": "Chart hidden"
     }
   },
   "toasts": {
@@ -604,5 +622,71 @@
     "title": "Spending by {key}",
     "other": "Other",
     "noData": "No tagged spending to break down for this key."
+  },
+  "searchSyntax": {
+    "open": "Search syntax",
+    "title": "Search syntax",
+    "fields": "Fields: payee, memo, cat, tag, account, ref, amount, date, status, is and has. Choose an example to put it in the search box.",
+    "examples": {
+      "allWords": "Every word matches somewhere",
+      "phrase": "This exact phrase",
+      "exclude": "Leave out anything matching refund",
+      "fieldContains": "Payee contains costco",
+      "fieldExact": "Payee is exactly Costco",
+      "reference": "Cheque or reference number 10 exactly",
+      "wildcard": "Reference starts with 10",
+      "amountOver": "Amount over 100",
+      "amountRange": "Amount from 50 to 100",
+      "datePeriod": "Any day in March 2026",
+      "isSplit": "Split transactions",
+      "hasAttachment": "Has an attachment",
+      "hasWarranty": "Has a warranty"
+    }
+  },
+  "searchInterpretation": {
+    "label": "Searching:",
+    "negated": "not {phrase}",
+    "malformed": "{raw} (not understood, searched as text)",
+    "empty": "{raw} (empty, ignored)",
+    "status": "Status is {value}",
+    "any": "“{value}” anywhere",
+    "fields": {
+      "payee": "Payee",
+      "memo": "Memo",
+      "cat": "Category",
+      "tag": "Tag",
+      "account": "Account",
+      "ref": "Reference",
+      "amount": "Amount",
+      "date": "Date",
+      "status": "Status",
+      "is": "Type",
+      "has": "Has"
+    },
+    "ops": {
+      "contains": "{field} contains “{value}”",
+      "exact": "{field} is “{value}”",
+      "glob": "{field} matches “{value}”",
+      "eq": "{field} is {value}",
+      "gt": "{field} over {value}",
+      "gte": "{field} {value} or more",
+      "lt": "{field} under {value}",
+      "lte": "{field} {value} or less",
+      "between": "{field} from {value} to {valueTo}"
+    },
+    "enum": {
+      "is": {
+        "transfer": "Transfers",
+        "split": "Split transactions",
+        "uncategorized": "Uncategorized"
+      },
+      "has": {
+        "attachment": "Has an attachment",
+        "warranty": "Has a warranty",
+        "ref": "Has a reference number",
+        "memo": "Has a memo",
+        "tag": "Has a tag"
+      }
+    }
   }
 }

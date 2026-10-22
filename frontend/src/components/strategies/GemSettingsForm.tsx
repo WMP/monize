@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState, type MutableRefObject } from "react";
+import { useLayoutEffect, useMemo, useState, type MutableRefObject } from "react";
 import { useFormDirtyNotify } from "@/hooks/useFormDirtyNotify";
 import { flushSync } from "react-dom";
 import { useTranslations } from "next-intl";
-import { useForm, Resolver } from "react-hook-form";
+import { useForm, useWatch, Resolver } from "react-hook-form";
 import "@/lib/zodConfig";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -189,7 +189,7 @@ export function GemSettingsForm({
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     reset,
     formState: { errors, isDirty },
   } = useForm<ConfigFormValues>({
@@ -227,12 +227,14 @@ export function GemSettingsForm({
 
   // MultiSelect and the numeric inputs are controlled, so their values are read
   // back through the form state rather than from a DOM value.
-  const selectedAccountIds = watch("accountIds");
-  const watchedLookback = watch("lookbackMonths");
+  const selectedAccountIds = useWatch({ control, name: "accountIds" });
+  const watchedLookback = useWatch({ control, name: "lookbackMonths" });
+  const watchedTaxRatePercent = useWatch({ control, name: "taxRatePercent" });
+  const watchedCommissionAmount = useWatch({ control, name: "commissionAmount" });
 
   // Watching the role selects keeps the "fill the missing roles" prompt in step
   // with what is still unassigned, including roles just filled in.
-  const roleValues = watch([...GEM_ROLE_ORDER]);
+  const roleValues = useWatch({ control, name: GEM_ROLE_ORDER });
   const assignedRoles = new Map(
     GEM_ROLE_ORDER.map((role, index) => [role, roleValues[index]]),
   );
@@ -467,6 +469,27 @@ export function GemSettingsForm({
     }
   };
 
+  /**
+   * The submit the dialog's "Save" runs, and the branch it takes when the
+   * form refuses.
+   *
+   * `handleSubmit(onSubmit)` with no second argument silently does nothing on
+   * an invalid form -- correct for a form, wrong for a caller that has staged
+   * an action behind the save and is waiting to be told which way it went.
+   * The errors stay on screen either way; what changes is that the parent now
+   * hears about it and can disarm.
+   */
+  const submitOrReport = handleSubmit(onSubmit, () => onInvalidSubmit?.());
+
+  // Handed to the parent so the unsaved-changes dialog's "save" runs this
+  // form, rather than the parent reaching into react-hook-form itself. Kept
+  // pointing at this render's submit after commit, never written during render,
+  // and only once the form itself is on screen.
+  const formShown = !isLoading && !lookupError && !!lookups;
+  useLayoutEffect(() => {
+    if (submitRef && formShown) submitRef.current = submitOrReport;
+  });
+
   if (isLoading) {
     return (
       <div className="grid gap-4 lg:grid-cols-2">
@@ -493,22 +516,6 @@ export function GemSettingsForm({
       />
     );
   }
-
-  /**
-   * The submit the dialog's "Save" runs, and the branch it takes when the
-   * form refuses.
-   *
-   * `handleSubmit(onSubmit)` with no second argument silently does nothing on
-   * an invalid form -- correct for a form, wrong for a caller that has staged
-   * an action behind the save and is waiting to be told which way it went.
-   * The errors stay on screen either way; what changes is that the parent now
-   * hears about it and can disarm.
-   */
-  const submitOrReport = handleSubmit(onSubmit, () => onInvalidSubmit?.());
-
-  // Handed to the parent so the unsaved-changes dialog's "save" runs this
-  // form, rather than the parent reaching into react-hook-form itself.
-  if (submitRef) submitRef.current = submitOrReport;
 
   return (
     <>
@@ -574,7 +581,7 @@ export function GemSettingsForm({
                   <NumericInput
                     label={t("gem.settingsForm.taxRatePercent")}
                     suffix="%"
-                    value={watch("taxRatePercent")}
+                    value={watchedTaxRatePercent}
                     onChange={(value) =>
                       setValue("taxRatePercent", value, {
                         shouldDirty: true,
@@ -588,7 +595,7 @@ export function GemSettingsForm({
                   />
                   <CurrencyInput
                     label={t("gem.settingsForm.commissionAmount")}
-                    value={watch("commissionAmount")}
+                    value={watchedCommissionAmount}
                     onChange={(value) =>
                       setValue("commissionAmount", value, {
                         shouldDirty: true,

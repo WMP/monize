@@ -132,7 +132,8 @@
       "datesNumbers": "日期与数字",
       "investments": "投资",
       "transactions": "交易",
-      "application": "应用"
+      "application": "应用",
+      "defaultViews": "默认视图"
     },
     "themeLabel": "主题",
     "defaultCurrencyLabel": "默认货币",
@@ -218,7 +219,30 @@
       "highcontrast": "高对比度",
       "colorblind": "色盲友好"
     },
-    "timezoneBrowserOption": "使用浏览器时区（自动检测为 {tz}）"
+    "timezoneBrowserOption": "使用浏览器时区（自动检测为 {tz}）",
+    "defaultViews": {
+      "intro": "适用于任何没有自身设置的浏览器，例如新设备或隐私窗口。您在页面上所做的更改会被该浏览器记住，并优先生效。",
+      "rowsLabel": "行密度",
+      "hideRegisterYearLabel": "在登记簿日期中隐藏年份",
+      "chartCollapsedLabel": "交易页面的图表默认折叠",
+      "widgetsCollapsedLabel": "账户、收款人和类别信息默认折叠",
+      "accountOpenTargetLabel": "打开账户时",
+      "accountOpenTargetOptions": {
+        "register": "显示其交易",
+        "dashboard": "显示其仪表板"
+      },
+      "accountOpenTargetHelp": "在“账户”页面或仪表板的“收藏账户”中点击账户时适用。",
+      "columnsLabel": "显示的列",
+      "columnsHelp": "取消勾选即可默认隐藏该列。表格的“列”菜单只会在该浏览器中更改此设置。",
+      "columnTables": {
+        "transactions": "交易",
+        "investmentHoldings": "投资持仓",
+        "investmentRegister": "投资交易"
+      },
+      "applyHere": "在此浏览器中使用这些默认设置",
+      "applyHereHelp": "清除此浏览器已保存的视图设置，使上述默认设置在此处也生效。",
+      "appliedHere": "此浏览器现在使用您的默认视图"
+    }
   },
   "notifications": {
     "heading": "通知",
@@ -279,9 +303,11 @@
       "sendingTestButton": "正在发送...",
       "removeButton": "移除",
       "thisDevice": "此设备",
+      "held": "已在此设备上退出登录。在此重新登录后，推送通知将恢复。",
       "unifiedpushBadge": "UnifiedPush",
       "unnamedDevice": "未命名设备",
       "noLiveDevices": "尚未注册任何设备。请在此设备上启用推送后再发送测试。",
+      "noDeliverableDevices": "所有设备均已退出登录，因此测试无处可送。在某台设备上重新登录后，该设备的推送通知将恢复。",
       "notConfigured": "此 Monize 实例不提供浏览器推送。管理员可以在 Admin 区域启用。",
       "disabledByAdmin": "管理员已为此 Monize 实例关闭浏览器推送。",
       "keyUnreadable": "Monize 无法读取此实例的推送密钥对，因此无法投递任何通知。管理员可在 Admin 区域轮换密钥对以恢复。",
@@ -355,11 +381,22 @@
         "SYSTEM": "系统警报",
         "BALANCES": "账户余额",
         "INVESTMENTS": "投资价值",
-        "STRATEGIES": "策略信号"
+        "STRATEGIES": "策略信号",
+        "BANK_SYNC": "银行连接",
+        "BANK_SYNC_ACTIVITY": "银行同步结果",
+        "EMAIL_RECEIPTS": "电子邮件收据",
+        "BONDS": "债券",
+        "AI_REVIEW": "AI 审核提案",
+        "WARRANTIES": "保修提醒"
       },
       "channelNotApplicable": "不适用于此通知类型",
       "emailToggleLabel": "{category} 的报告邮件",
+      "emailNotificationToggleLabel": "{category} 的提醒邮件",
+      "pushToggleLabel": "{category} 的推送",
+      "unifiedpushToggleLabel": "{category} 的 UnifiedPush",
       "saveFailed": "无法保存该设置",
+      "emailUnavailable": "在上方开启邮件通知，即可通过邮件发送。",
+      "pushUnavailable": "没有设备注册推送，因此此通道无法投递。",
       "throttle": {
         "label": "间隔",
         "ariaLabel": "{category} 的冷却时间",
@@ -374,11 +411,6 @@
           "1440": "24 小时"
         }
       },
-      "emailNotificationToggleLabel": "{category} 的提醒邮件",
-      "pushToggleLabel": "{category} 的推送",
-      "unifiedpushToggleLabel": "{category} 的 UnifiedPush",
-      "emailUnavailable": "在上方开启邮件通知，即可通过邮件发送。",
-      "pushUnavailable": "没有设备注册推送，因此此通道无法投递。",
       "pushEnableHint": "此浏览器尚未注册推送通知。"
     }
   },
@@ -753,8 +785,8 @@
       },
       "toasts": {
         "success": "备份已成功下载",
-        "incomplete": "备份已下载，但内容不完整：{total} 个附件中有 {unusable} 个未能完整保存（{missing} 个缺失，{inconsistent} 个未通过完整性校验）。请勿将此文件视为完整备份——修复附件存储后重新导出。",
-        "failed": "创建备份失败"
+        "failed": "创建备份失败",
+        "incomplete": "备份已下载，但内容不完整：{total} 个附件中有 {unusable} 个未能完整保存（{missing} 个缺失，{inconsistent} 个未通过完整性校验）。请勿将此文件视为完整备份——修复附件存储后重新导出。"
       }
     },
     "restore": {
@@ -776,6 +808,7 @@
         "pleaseEnterPassword": "请输入您的密码以确认",
         "encryptedNeedsPassword": "此备份已加密。请在\"备份密码\"字段中输入创建时使用的密码，然后重试。",
         "failed": "恢复备份失败",
+        "interrupted": "恢复在服务器响应之前被中断。恢复要么全部生效，要么完全不生效，因此您的数据要么已完全恢复，要么保持不变。请先重新加载页面确认，再重试。",
         "reauthRedirect": "正在跳转到身份提供商以确认你的身份。返回后请重新选择备份文件。"
       },
       "selectedFile": "已选择：{filename}"
@@ -784,9 +817,26 @@
       "title": "恢复完成",
       "description": "您的数据已成功恢复。以下是恢复内容摘要：",
       "totalRecords": "总记录数",
-      "doneButton": "完成",
       "skippedAttachments": "{count, plural, other {# 个附件未被恢复}}：备份中没有可用的字节——导出时它们缺失或未通过校验和，或该文件早于自包含备份。请在附件存储恢复正常后重新导出备份。",
-      "unusableAiProviderKeys": "{count, plural, other {# 个 AI 提供商在恢复后没有可用的 API 密钥}}：该备份创建于提供商密钥随备份一同保存之前，因此存储的密钥属于生成该文件的服务器，或者本服务器没有配置用于保存密钥的加密密钥。请打开“设置 → AI 提供商”并重新输入 API 密钥。"
+      "unusableAiProviderKeys": "{count, plural, other {# 个 AI 提供商在恢复后没有可用的 API 密钥}}：该备份创建于提供商密钥随备份一同保存之前，因此存储的密钥属于生成该文件的服务器，或者本服务器没有配置用于保存密钥的加密密钥。请打开“设置 → AI 提供商”并重新输入 API 密钥。",
+      "unlinkedBondSecurities": "{count, plural, other {# 个债券证券在恢复后未关联其债券品种}}：此服务器的债券目录不包含该系列（或其币种不同），因此债券引擎不再为它们定价，其计算得出的价格也未被恢复。请打开每个证券，重新将其关联到债券品种。",
+      "unlinkedBondSeries": "{count, plural, other {# 笔债券交易丢失了系列}}，因为无法从官方来源获取该系列。这些交易已在没有系列的情况下恢复，在你获取系列之前将保持无系列。",
+      "unrecoveredBondSeries": "备份中提到但无法获取的债券系列：{count} 个。",
+      "unrecoveredBondSeriesItem": "{series}（{country}）：{reason}",
+      "unrecoveredBondSeriesMore": "另有 {count} 个",
+      "unrecoveredBondSeriesAction": "要恢复它们，请打开债券证券，在其页面获取该系列（刷新），然后在缺少系列的交易中选择系列。",
+      "unrecoveredBondSeriesReason": {
+        "not-published": "发行方尚未公布该系列",
+        "source-unavailable": "官方来源未响应；请稍后重试",
+        "no-adapter": "此服务器没有该发行方所在国家的来源",
+        "refused": "官方来源的响应未被接受",
+        "rate-limited": "官方来源要求放慢请求；请稍后重试",
+        "not-attempted": "一次恢复中的系列过多；未尝试",
+        "other": "原因未知"
+      },
+      "doneButton": "完成",
+      "unlinkedBondSecuritiesList": "受影响的证券:{symbols}。",
+      "unlinkedBondSecuritiesMore": "以及另外 {count} 个"
     },
     "storedBackups": {
       "heading": "自动备份",
@@ -935,7 +985,11 @@
     },
     "sections": {
       "description": "授予对整个应用功能区域的只读访问权限。账户范围的数据还需要逐账户访问权限。",
-      "aiRequiresFullAccess": "AI 助手会读取所有账户和功能区域，因此只有当该委托人能够读取您的所有账户和其他所有功能区域时，它才会为其回答。"
+      "aiRequiresFullAccess": "AI 助手会读取所有账户和功能区域，因此只有当该委托人能够读取您的所有账户和其他所有功能区域时，它才会为其回答。",
+      "warranties": {
+        "label": "保修",
+        "description": "保修及其文档和保修申请。关联的购买记录仅在其所在账户可供被授权人读取时显示。"
+      }
     },
     "accounts": {
       "noAccounts": "无账户可授权。",
@@ -962,11 +1016,13 @@
     "emergencyAccess": "紧急访问",
     "apiAccess": "API 访问",
     "aiSettings": "AI 设置",
+    "emailReceipts": "邮件收据",
     "backupRestore": "备份与恢复",
     "help": "帮助与支持",
     "dangerZone": "危险区域",
     "about": "关于",
-    "payeeLookup": "收款方查询"
+    "payeeLookup": "收款方查询",
+    "bankSync": "银行同步"
   },
   "page": {
     "title": "设置",
@@ -989,6 +1045,14 @@
     "aiSettingsCard": {
       "title": "AI 设置",
       "description": "配置 AI 提供商、管理 API 密钥并查看使用统计。"
+    },
+    "emailReceiptsCard": {
+      "title": "邮件收据",
+      "description": "连接用于接收订单确认邮件的邮箱，并管理读取这些邮件的配置文件。"
+    },
+    "bankSyncCard": {
+      "title": "银行同步",
+      "description": "通过 Open Banking 连接您的银行，并将其已入账的交易导入您的账户。"
     },
     "delegateSecurityError": "无法加载您的安全设置。",
     "toasts": {
@@ -1357,6 +1421,372 @@
       "aiProviderAny": "任意提供商，按优先级顺序",
       "moveUp": "上移",
       "moveDown": "下移"
+    }
+  },
+  "bankSync": {
+    "backLink": "返回设置",
+    "title": "银行同步",
+    "subtitle": "通过 Open Banking 导入您银行账户中已入账的交易",
+    "demoRestricted": {
+      "heading": "演示模式受限",
+      "body": "演示模式下已禁用银行同步。"
+    },
+    "loadFailed": {
+      "title": "无法加载银行同步",
+      "retry": "重试"
+    },
+    "credentials": {
+      "title": "Enable Banking 应用",
+      "subtitle": "Monize 通过您自己的 Enable Banking 应用读取您的银行账户。请在 Enable Banking 控制面板中注册一个应用，然后在此输入其应用 ID 和私钥。",
+      "notConfigured": "尚未设置应用。",
+      "applicationId": "应用 ID",
+      "keyStored": "已保存私钥。",
+      "keyMissing": "未保存私钥。",
+      "configure": "设置凭据",
+      "edit": "编辑凭据",
+      "remove": "移除凭据",
+      "test": "测试连接",
+      "testing": "正在测试...",
+      "encryptionUnavailable": "本服务器未配置加密密钥，因此无法保存凭据。",
+      "redirectUrlLabel": "重定向 URL",
+      "redirectUrlHelp": "请将此 URL 原样注册为 Enable Banking 控制面板中的重定向 URL。您授权访问后，银行会将您送回此 URL。",
+      "redirectUrlNotPublic": "重定向 URL 不需要能从互联网访问。只有您的浏览器会打开它。",
+      "redirectUrlHttpWarning": "“Production”应用只接受 https 重定向 URL。此 URL 使用 http，因此只能用于“Sandbox”应用。请将 PUBLIC_APP_URL 设置为 Monize 的 https 地址。",
+      "copy": "复制",
+      "copied": "已复制",
+      "copyFailed": "无法复制",
+      "testSuccess": "应用可以正常使用：{name}",
+      "testSuccessNoName": "应用可以正常使用。",
+      "testRedirectMissing": "应用可以正常使用，但上方的重定向 URL 尚未为其注册。请在 Enable Banking 控制面板中添加。",
+      "testFailed": "提供商未接受这些凭据。",
+      "testError": "无法测试凭据",
+      "saved": "凭据已保存。请使用“测试连接”进行检查。",
+      "saveFailed": "无法保存凭据",
+      "removed": "凭据已移除",
+      "removeFailed": "无法移除凭据",
+      "removeConfirm": {
+        "title": "移除凭据",
+        "message": "已保存的应用 ID 和私钥将从 Monize 中删除。在连接银行或同步之前，您需要重新输入它们。",
+        "confirm": "移除"
+      },
+      "help": {
+        "show": "显示设置帮助",
+        "hide": "隐藏设置帮助",
+        "whatIsTitle": "什么是 Enable Banking？",
+        "whatIsBody": "Enable Banking 是一家根据 PSD2 在欧盟获得账户信息服务提供商 (AISP) 许可的公司。它代您连接银行，并让 Monize 以只读方式访问您的账户、余额和交易。您在自己的银行登录。Monize 和 Enable Banking 不会看到您的银行密码。Enable Banking 支持欧洲经济区的银行。",
+        "dataFlow": "连接银行后，Enable Banking 可以读取您的银行数据：您的账户数据在传送到 Monize 的途中会经过其服务。Enable Banking 声明不会存储这些数据。其条款适用：<terms>Enable Banking API 条款</terms>。",
+        "whatIsFree": "个人使用时，处于受限生产模式的免费应用就够了。它只读取您在控制面板中关联到它的账户。",
+        "setupTitle": "设置方法",
+        "step1": "在 <link>Enable Banking</link> 创建账户（选择“Get Started”并等待确认邮件）。然后登录控制面板并打开“API applications”。",
+        "step2": "选择“Production”。Monize 只能通过 Production 应用读取您真实的银行账户。仅当您想先试用连接时才选择“Sandbox”：它只显示测试银行的演示数据。",
+        "step3": "私钥保持选择“Generate in the browser”。",
+        "step4": "在表单中输入下方的值。对于“Production”，每个字段都是必填项。",
+        "registrationValuesTitle": "要粘贴到表单中的值",
+        "registrationValuesNote": "由于控制面板是英文的，标签和值保持英文。",
+        "registrationTemplatesNote": "这两个 URL 指向 Monize 的模板。在受限模式下，Enable Banking 不会检查它们。如果其他人也使用您的 Monize 实例，请改为发布带有您姓名的自有页面。",
+        "emailPlaceholder": "您的电子邮件地址",
+        "copyField": "复制 {field}",
+        "step5": "选择“Register”。浏览器会保存私钥文件 (.pem)。请妥善保密此文件。",
+        "step6": "对于“Production”，新建的应用显示“Inactive”。选择“Activate by linking accounts”，再选择国家、您的银行和使用类型（个人账户选“personal”，公司账户选“business”），然后选择“Link”。接着登录您的银行并授权您的账户。不要选择“Request activation”：它申请的是正式全面开放，个人使用并不需要。如果没有关联账户，银行不会返回任何账户。之后在 Monize 中连接银行时，请选择相同的使用类型。",
+        "step7": "输入应用列表中的应用 ID，并在此加载私钥文件。",
+        "sandboxNote": "Sandbox 应用中的交易是演示数据。请仅将 Sandbox 银行账户关联到 Monize 中的测试账户，不要关联到包含您真实交易的账户。",
+        "networkTitle": "网络访问",
+        "networkBody": "银行将您送回时，您的浏览器会打开重定向 URL。Enable Banking 的服务器不会连接到 Monize。因此 Monize 不需要能从互联网或 Enable Banking 的 IP 地址访问。重定向 URL 必须能在您用于授权访问的浏览器中打开。",
+        "networkOutbound": "Monize 服务器必须能通过 HTTPS (端口 443) 连接到 api.enablebanking.com。"
+      },
+      "modalSource": "请从 <link>Enable Banking 控制面板</link>获取应用 ID 和私钥。"
+    },
+    "credentialsModal": {
+      "title": "Enable Banking 凭据",
+      "subtitle": "加密保存在本服务器上。私钥不会再次显示。",
+      "applicationIdLabel": "应用 ID",
+      "applicationIdPlaceholder": "您的 Enable Banking 应用的 ID",
+      "applicationIdRequired": "请输入应用 ID",
+      "applicationIdTooLong": "应用 ID 过长",
+      "privateKeyLabel": "私钥 (PEM)",
+      "privateKeyPlaceholder": "粘贴您应用的 PEM 私钥",
+      "privateKeyStoredPlaceholder": "已保存一个密钥。留空即可保留，或粘贴新密钥进行替换。",
+      "privateKeyHelp": "请粘贴注册应用时下载的整个 PEM 文件。",
+      "privateKeyRequired": "请输入私钥",
+      "privateKeyInvalid": "这看起来不是 PEM 私钥。它应该是以 BEGIN 开头、以 PRIVATE KEY 结尾的一段内容。",
+      "privateKeyTooLong": "私钥过长",
+      "loadKeyFile": "加载私钥文件",
+      "keyFileTooLarge": "文件大于 16 KB。请选择 Enable Banking 保存的 .pem 文件。",
+      "keyFileReadFailed": "无法读取文件。",
+      "cancel": "取消",
+      "save": "保存",
+      "saving": "正在保存..."
+    },
+    "connections": {
+      "title": "已连接的银行",
+      "subtitle": "每个银行账户关联到一个 Monize 账户，其已入账的交易会导入该账户。",
+      "connect": "连接银行",
+      "credentialsFirst": "连接银行之前，请先在上方设置您的 Enable Banking 凭据。",
+      "loadFailed": "无法加载您的银行连接。",
+      "empty": {
+        "title": "尚未连接银行",
+        "description": "连接银行，将其已入账的交易导入您的 Monize 账户。"
+      }
+    },
+    "connect": {
+      "title": "连接银行",
+      "subtitle": "您将被转到银行页面，授权只读访问。",
+      "whySecondAuthorization": "即使您已在 Enable Banking 控制面板中关联了相同的账户，这里仍需在银行再次授权。控制面板只列出应用可以读取哪些账户，其授权当天即结束。此步骤让 Monize 获得自己的授权，可读取余额和交易，最长 180 天。授权即将结束时，连接卡片会显示“续期授权”。",
+      "countryLabel": "国家或地区",
+      "countryPlaceholder": "选择国家或地区",
+      "institutionLabel": "银行",
+      "institutionPlaceholder": "搜索您的银行",
+      "institutionsLoading": "正在加载银行...",
+      "institutionsFailed": "无法加载银行列表。",
+      "retry": "重试",
+      "noInstitutions": "提供商未列出该国家或地区的银行。",
+      "psuTypeLabel": "账户持有人",
+      "psuPersonal": "个人",
+      "psuBusiness": "企业",
+      "consentDays": "{days, plural, other {该银行允许的访问期限最长为 # 天，之后您必须续期。}}",
+      "continue": "继续前往银行",
+      "continuing": "正在连接...",
+      "cancel": "取消",
+      "unsafeUrl": "服务器返回的银行地址不是安全的 https 地址，因此 Monize 未打开它。",
+      "failed": "无法开始连接"
+    },
+    "connection": {
+      "status": {
+        "pending": "待处理",
+        "active": "有效",
+        "expired": "已过期",
+        "revoked": "已撤销",
+        "failed": "失败"
+      },
+      "validUntil": "访问有效期至 {date}",
+      "expiresSoon": "即将过期",
+      "autoSync": "每天自动同步一次",
+      "autoSyncOn": "已开启自动同步",
+      "autoSyncOff": "已关闭自动同步",
+      "autoSyncFailed": "无法更改自动同步",
+      "renew": "续期授权",
+      "renewFailed": "无法开始续期",
+      "syncAll": "全部同步",
+      "syncingAll": "正在同步...",
+      "syncAllFailed": "无法同步此银行",
+      "disconnect": "断开连接",
+      "disconnected": "银行已断开连接",
+      "disconnectFailed": "无法断开银行连接",
+      "disconnectConfirm": {
+        "title": "断开 {bank}",
+        "message": "Monize 将停止同步此银行，并请求银行终止访问。已导入的交易会保留，重新连接该银行也不会再次导入它们。",
+        "confirm": "断开连接"
+      },
+      "pendingHint": "银行端的授权未完成。请续期授权以重试；已关联的账户会保留。",
+      "noAccounts": "银行尚未报告此连接下的任何账户。",
+      "accountsHeading": "银行账户",
+      "matchAccounts": "按账号匹配",
+      "matching": "正在匹配...",
+      "matchLinked": "{count, plural, other {已将 # 个银行账户关联到账号相同的账户}}",
+      "matchSuggested": "{count, plural, other {# 个银行账户与您的多个账户相匹配：请自行选择账户}}",
+      "matchBoth": "{linked}。{suggested}",
+      "matchNone": "没有关联任何银行账户：没有账号与您的账户相匹配。",
+      "matchFailed": "无法匹配银行账户",
+      "syncAllNeedsPreview": "在每个新关联账户的首次导入得到确认之前，无法使用“全部同步”。请在该账户上使用“立即同步”打开预览。",
+      "notifySuccess": "每日同步后通知",
+      "notifySuccessOptions": {
+        "always": "每次同步后",
+        "when_imported": "仅在导入了交易时",
+        "never": "从不"
+      },
+      "notifySuccessSaved": "已保存通知设置",
+      "notifySuccessFailed": "无法更改通知设置",
+      "tagOperationType": "用银行的操作类型为交易添加标签",
+      "tagOperationTypeHelp": "每笔导入的交易都会获得一个以银行操作类型命名的标签，例如“刷卡消费”或“转入”，方便规则和报表使用。",
+      "tagOperationTypeOn": "已开启操作类型标签",
+      "tagOperationTypeOff": "已关闭操作类型标签",
+      "tagOperationTypeFailed": "无法更改操作类型标签"
+    },
+    "profileNotes": {
+      "title": "此银行的 API 如何工作",
+      "show": "显示此银行的 API 如何工作",
+      "hide": "隐藏此银行的 API 如何工作",
+      "severity": {
+        "warning": "警告：",
+        "info": "说明："
+      }
+    },
+    "account": {
+      "unnamed": "未命名的银行账户",
+      "linkLabel": "Monize 账户",
+      "notLinked": "未关联",
+      "noEligibleAccounts": "没有可供关联的、使用此货币的未关闭 Monize 账户。",
+      "linkFailed": "无法关联账户",
+      "unlinked": "已取消关联账户",
+      "unlinkFailed": "无法取消关联账户",
+      "syncFrom": "从 {date} 开始导入",
+      "changeCutoff": "更改开始日期",
+      "syncNow": "立即同步",
+      "syncing": "正在同步...",
+      "syncFailed": "无法同步此账户",
+      "neverSynced": "尚未同步",
+      "lastSynced": "上次同步：{time}",
+      "lastSyncOk": "成功",
+      "lastSyncFailed": "失败",
+      "bankBalance": "银行余额",
+      "bankBalanceAsOf": "截至 {date} 为 {amount}",
+      "balanceNotReported": "银行未报告",
+      "balanceNotSynced": "尚未同步",
+      "monizeBalance": "Monize 余额",
+      "difference": "差额",
+      "differenceHelp": "银行余额是银行在所示日期报告的余额。它可能包含银行尚未入账的交易，或在该日期之后入账的交易，因此两次同步之间出现小额差额是正常的。",
+      "differenceHidden": "银行余额的货币为 {bankCurrency}，而 Monize 账户的货币为 {monizeCurrency}，因此不显示差额。",
+      "deletedNote": "您在 Monize 中删除的交易不会在之后的同步中再次导入，因此已删除的行会保持删除状态。",
+      "createNew": "新建账户",
+      "suggestedName": "{type} {number}",
+      "createdLinked": "账户已创建并关联",
+      "createdLinkFailed": "账户已创建，但无法关联",
+      "preview": "预览",
+      "firstSyncPreview": "首次导入需通过交易预览来确认。"
+    },
+    "link": {
+      "title": "关联到 {account}",
+      "editTitle": "{account} 的开始日期",
+      "syncFromLabel": "导入交易的起始日期",
+      "syncFromHelp": "已填入 Monize 默认选择的日期。清空该字段，Monize 会为您选择。",
+      "beforeCutoff": "银行在此日期之前入账的交易永远不会被导入。",
+      "duplicateWarning": "早于账户中最新交易的日期，可能会与您已录入的交易产生重复。",
+      "save": "关联账户",
+      "saveEdit": "保存",
+      "saving": "正在保存...",
+      "cancel": "取消",
+      "saved": "账户已关联",
+      "editSaved": "开始日期已保存",
+      "saveFailed": "无法保存关联",
+      "loadingDefaults": "正在读取账户...",
+      "defaultsFailed": "无法读取此账户中最新的一笔交易，因此 Monize 无法判断此开始日期是否会产生重复。",
+      "newestTransaction": "此账户中最新的交易：{date}",
+      "emptyAccount": "{days, plural, other {账户为空：导入涵盖最近 # 天}}"
+    },
+    "sync": {
+      "summary": "{imported, plural, =0 {未导入任何交易} other {已导入 # 笔交易}}，{skipped, plural, =0 {无跳过} other {# 笔因已导入而跳过}}，{refused, plural, =0 {无拒绝} other {# 笔被拒绝}}",
+      "summaryWithReasons": "{summary}。拒绝原因：{reasons}",
+      "outcomeUnknown": "同步结果尚不明确。请重新加载页面，查看已导入的内容。",
+      "failedAccountItem": "{account}（{message}）",
+      "allFailed": "以下账户无法同步：{accounts}",
+      "partialFailure": "{summary}。以下账户无法同步：{accounts}",
+      "reason": {
+        "missing_date": "{count, plural, other {# 笔没有日期}}",
+        "future_date": "{count, plural, other {# 笔日期在未来}}",
+        "invalid_amount": "{count, plural, other {# 笔金额无效}}",
+        "unknown_direction": "{count, plural, other {# 笔方向未知}}",
+        "currency_mismatch": "{count, plural, other {# 笔使用其他货币}}",
+        "other": "{count, plural, other {# 笔因其他原因}}"
+      },
+      "needsPreview": "请打开 {accounts} 的预览并确认首次导入",
+      "withNeedsPreview": "{message}。{needsPreview}"
+    },
+    "callback": {
+      "title": "正在连接您的银行",
+      "subtitle": "请稍候，Monize 正在完成连接",
+      "success": "银行已连接",
+      "successNamed": "已连接到 {bank}",
+      "bankError": "您的银行未授予访问权限：{message}",
+      "missingState": "银行未返回有效的响应。请重新开始连接。",
+      "notActive": "无法完成连接",
+      "failed": "无法完成连接",
+      "autoLinked": "{count, plural, other {已将 # 个银行账户关联到账号相同的账户。请在首次导入前检查。}}",
+      "autoSuggested": "{count, plural, other {# 个银行账户与您的多个账户相匹配：请在列表中选择账户。}}"
+    },
+    "accountType": {
+      "CACC": "活期账户",
+      "CARD": "银行卡",
+      "SVGS": "储蓄账户",
+      "LOAN": "贷款",
+      "other": "账户类型 {code}"
+    },
+    "mismatch": {
+      "bankCard": "银行将此账户报告为银行卡，但 {account} 的类型是{type}，不是{creditCard}。银行卡的交易会被导入到类型不符的账户中。",
+      "monizeCard": "{account} 的类型是{creditCard}，但银行将此账户报告为：{bankType}。请确认这是正确的银行账户。",
+      "confirm": "我已了解，仍然关联这些账户"
+    },
+    "preview": {
+      "title": "导入到 {account} 的预览",
+      "description": "在您确认之前不会导入任何内容。这里是银行报告的内容，以及 Monize 将对每笔交易执行的操作。",
+      "loading": "正在读取银行...",
+      "loadFailed": "无法预览此账户",
+      "retry": "重试",
+      "close": "关闭",
+      "import": "{count, plural, =0 {确认：没有需要导入的新交易} other {导入 # 笔交易}}",
+      "importing": "正在导入...",
+      "importFailed": "无法导入交易",
+      "planChanged": "自此预览以来银行的数据已更改，因此没有导入任何内容。预览已重新读取：请检查后再次导入。",
+      "monizeBalance": "Monize 当前余额",
+      "balanceAfter": "导入后的 Monize 余额",
+      "bankBalance": "银行余额",
+      "bankBalanceAsOf": "截至 {date} 为 {amount}",
+      "bankBalanceNotReported": "银行未报告",
+      "difference": "导入后的差额",
+      "differenceHelp": "银行余额减去导入后的 Monize 余额。零表示两者一致。银行余额可能包含银行尚未入账的交易，因此小额差异是正常的。",
+      "differenceHidden": "银行余额以 {bankCurrency} 计，而 Monize 账户以 {monizeCurrency} 计，因此不显示差额。",
+      "filterLabel": "显示交易",
+      "filter": {
+        "all": "全部",
+        "new": "新增",
+        "duplicate": "已导入",
+        "refused": "已拒绝",
+        "pending": "待处理",
+        "before_cutoff": "早于开始日期",
+        "withCount": "{label} ({count})",
+        "excluded": "例外"
+      },
+      "outcome": {
+        "new": "新增",
+        "duplicate": "已导入",
+        "refused": "已拒绝",
+        "pending": "待处理",
+        "before_cutoff": "早于开始日期",
+        "excluded": "例外"
+      },
+      "refusal": {
+        "missing_date": "无日期",
+        "future_date": "日期在未来",
+        "invalid_amount": "金额无效",
+        "unknown_direction": "方向未知",
+        "currency_mismatch": "其他货币",
+        "other": "已拒绝"
+      },
+      "columns": {
+        "date": "日期",
+        "payee": "收款人",
+        "category": "分类",
+        "status": "状态",
+        "amount": "金额",
+        "select": "选择与详情"
+      },
+      "noPayee": "无收款人",
+      "dateUnknown": "无日期",
+      "amountUnknown": "未知",
+      "empty": {
+        "all": "银行未返回此期间的交易。",
+        "filtered": "此列表中没有交易。"
+      },
+      "selectAllNew": "选择此列表中的所有新交易",
+      "selectAllExceptions": "选择此列表中的所有例外",
+      "selectRow": "导入 {payee}",
+      "selectException": "将 {payee} 从例外中移除",
+      "summary": "导入 {import} 笔，跳过 {skip} 笔，添加到例外 {except} 笔",
+      "importNothing": "不导入，直接确认",
+      "exceptions": {
+        "intro": "例外中的交易永远不会被导入。将某笔交易从例外中移除，即可让它重新显示为新交易。",
+        "remove": "{count, plural, =0 {从例外中移除} other {将 # 笔从例外中移除}}",
+        "removing": "正在移除...",
+        "removed": "{count, plural, other {已将 # 笔交易从例外中移除}}",
+        "removedNone": "没有从例外中移除任何内容",
+        "removeFailed": "无法移除例外"
+      },
+      "details": {
+        "operation": {
+          "heading": "操作类型",
+          "none": "这笔交易没有操作类型标签。",
+          "tag": "来自银行操作类型的标签：{tag}"
+        }
+      }
     }
   }
 }

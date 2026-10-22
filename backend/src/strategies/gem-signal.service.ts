@@ -135,8 +135,11 @@ function windowStartFor(evaluatedOn: string, lookbackMonths: number): string {
  * History:
  *   1 -- original dual-momentum evaluation.
  *   2 -- boundary closes must be within `BOUNDARY_LAG_DAYS` of the boundary.
+ *   3 -- the roles are priced at one session: a role whose exit close trails
+ *        the other roles' by more than `BOUNDARY_HOLIDAY_DAYS` is unpriced
+ *        (a feed gap at the boundary, A26-M27).
  */
-export const GEM_SIGNAL_ALGORITHM_VERSION = 2;
+export const GEM_SIGNAL_ALGORITHM_VERSION = 3;
 
 /**
  * A hash of everything about a strategy that decides what its signals say.

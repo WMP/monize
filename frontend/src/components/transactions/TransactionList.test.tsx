@@ -6,6 +6,7 @@ import { useDensityStore } from '@/store/densityStore';
 import { useDateDisplayStore } from '@/store/dateDisplayStore';
 import { REGISTER_PAYEE_CELL_FLOOR } from './register-columns';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { useHiddenColumnsStore } from '@/store/hiddenColumnsStore';
 import toast from 'react-hot-toast';
 
 vi.mock('@/lib/transactions', () => ({
@@ -49,6 +50,15 @@ vi.mock('@/lib/logger', () => ({
     info: vi.fn(),
     debug: vi.fn(),
   }),
+}));
+
+// The account preference write. Toggling a column saves to this browser only
+// (`useHiddenColumnsStore`), so the hidden-column tests assert it is never called.
+const mockUpdatePreferences = vi.fn();
+vi.mock('@/lib/user-settings', () => ({
+  userSettingsApi: {
+    updatePreferences: (...args: unknown[]) => mockUpdatePreferences(...args),
+  },
 }));
 
 function createTransaction(overrides: Partial<Transaction> = {}): Transaction {
@@ -3152,94 +3162,6 @@ describe('TransactionList', () => {
       }
     });
   });
-
-  describe('stale reconciliation highlighting', () => {
-    const staleContext = {
-      lastReconciledByAccount: new Map([['acc-1', '2026-06-30']]),
-      overdueBefore: '2026-07-04',
-    };
-
-    it('marks a row the last reconciled statement left out', async () => {
-      const missed = createTransaction({
-        transactionDate: '2026-06-15',
-        status: TransactionStatus.CLEARED,
-      });
-
-      render(<TransactionList transactions={[missed]} staleContext={staleContext} />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('stale-reconciliation-chip')).toHaveAttribute(
-          'data-stale',
-          'missed',
-        );
-      });
-    });
-
-    // "Overdue" says nobody has reconciled the *account* recently, which is
-    // true of every row in it at once -- so the register marked page after page
-    // of ordinary transactions for a condition about none of them. The
-    // reconcile screen still shows it, and the header badge still counts it.
-    it('leaves a row older than the overdue boundary unmarked', async () => {
-      const overdue = createTransaction({
-        transactionDate: '2026-07-02',
-        status: TransactionStatus.UNRECONCILED,
-      });
-
-      render(<TransactionList transactions={[overdue]} staleContext={staleContext} />);
-
-      await waitFor(() => {
-        expect(screen.getByText('Grocery Store')).toBeInTheDocument();
-      });
-      expect(screen.queryByTestId('stale-reconciliation-chip')).not.toBeInTheDocument();
-    });
-
-    it('marks nothing without the context, which is how a failed lookup reads', async () => {
-      // The register must not silently start claiming everything is fine, nor
-      // start claiming everything is overdue, because a request did not answer.
-      const old = createTransaction({ transactionDate: '2020-01-01' });
-
-      render(<TransactionList transactions={[old]} />);
-
-      await waitFor(() => {
-        expect(screen.getByText('Grocery Store')).toBeInTheDocument();
-      });
-      expect(screen.queryByTestId('stale-reconciliation-chip')).not.toBeInTheDocument();
-    });
-
-    it('marks nothing in an account the user does not reconcile', async () => {
-      const other = createTransaction({
-        accountId: 'acc-99',
-        transactionDate: '2020-01-01',
-      });
-
-      render(<TransactionList transactions={[other]} staleContext={staleContext} />);
-
-      await waitFor(() => {
-        expect(screen.getByText('Grocery Store')).toBeInTheDocument();
-      });
-      expect(screen.queryByTestId('stale-reconciliation-chip')).not.toBeInTheDocument();
-    });
-
-    it('marks nothing on a reconciled or void row', async () => {
-      const done = createTransaction({
-        id: 'aaaaaaaa-e89b-12d3-a456-426614174000',
-        transactionDate: '2026-01-01',
-        status: TransactionStatus.RECONCILED,
-      });
-      const voided = createTransaction({
-        id: 'bbbbbbbb-e89b-12d3-a456-426614174000',
-        transactionDate: '2026-01-01',
-        status: TransactionStatus.VOID,
-      });
-
-      render(<TransactionList transactions={[done, voided]} staleContext={staleContext} />);
-
-      await waitFor(() => {
-        expect(screen.getAllByText('Grocery Store').length).toBe(2);
-      });
-      expect(screen.queryByTestId('stale-reconciliation-chip')).not.toBeInTheDocument();
-    });
-  });
 });
 
 describe('TransactionList compact mobile dates', () => {
@@ -3699,5 +3621,231 @@ describe('TransactionList today divider', () => {
       expect(screen.getByRole('columnheader', { name: /payee/i })).toBeInTheDocument();
     });
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
+  });
+});
+
+describe('TransactionList hidden columns', () => {
+  // The stored `hiddenTableColumns.transactions` set (one per table kind, read
+  // everywhere the register is mounted) removes a hideable column from the
+  // DOM at every width: no header, no cell, and the today divider spans one
+  // column less. Restoring is the toolbar's Columns menu alone.
+  const past = createTransaction({ id: 'past', transactionDate: '2020-01-01' });
+  const future = createTransaction({ id: 'future', transactionDate: '2099-01-01' });
+
+  const seed = (transactions: string[] | undefined) =>
+    usePreferencesStore.setState({
+      preferences: (transactions
+        ? { hiddenTableColumns: { transactions } }
+        : { hiddenTableColumns: {} }) as any,
+    });
+
+  const renderRegister = () =>
+    render(
+      <TransactionList
+        transactions={[future, past]}
+        onEdit={vi.fn()}
+        onRefresh={vi.fn()}
+        onExport={vi.fn()}
+        sort={{ field: 'date', direction: 'desc' }}
+        onSortChange={vi.fn()}
+      />,
+    );
+
+  const dividerSpan = () => Number(screen.getByText('Today').closest('td')!.getAttribute('colspan'));
+
+  beforeEach(() => {
+    mockUpdatePreferences.mockReset();
+    mockUpdatePreferences.mockImplementation(async (patch: Record<string, unknown>) => patch);
+  });
+
+  afterEach(() => {
+    cleanup();
+    usePreferencesStore.setState({ preferences: null });
+  });
+
+  it('renders every column with the default empty set, as before', async () => {
+    seed(undefined);
+    renderRegister();
+    await waitFor(() => {
+      expect(screen.getByRole('columnheader', { name: /status/i })).toBeInTheDocument();
+    });
+    expect(screen.getAllByTitle('Click to cycle status')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Columns' })).toBeInTheDocument();
+    // Ten unconditional columns plus Account on a multi-account register.
+    expect(dividerSpan()).toBe(11);
+  });
+
+  it('removes a hidden column from the header, the rows and the divider span', async () => {
+    seed(['status']);
+    renderRegister();
+    await waitFor(() => {
+      expect(screen.getByRole('columnheader', { name: /payee/i })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('columnheader', { name: /status/i })).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Click to cycle status')).not.toBeInTheDocument();
+    expect(dividerSpan()).toBe(10);
+    // The menu's trigger says where the column went.
+    expect(screen.getByRole('button', { name: 'Columns, 1 hidden' })).toBeInTheDocument();
+    // The structural columns and the other hideable ones are untouched.
+    for (const name of [/date/i, /payee/i, /category/i, /description/i, /ref #/i, /amount/i]) {
+      expect(screen.getByRole('columnheader', { name })).toBeInTheDocument();
+    }
+  });
+
+  it('hides every hideable column at once and keeps what a register is', async () => {
+    seed(['description', 'refNumber', 'tags', 'attachments', 'status']);
+    renderRegister();
+    await waitFor(() => {
+      expect(screen.getByRole('columnheader', { name: /payee/i })).toBeInTheDocument();
+    });
+    // The sort icon's glyph trails each sortable label; the labels are the point.
+    const headers = screen
+      .getAllByRole('columnheader')
+      .map((th) => th.textContent?.replace(/[^A-Za-z #]/g, '').trim());
+    expect(headers).toEqual(['Date', 'Account', 'Payee', 'Category', 'Amount', 'Actions']);
+    expect(dividerSpan()).toBe(6);
+    expect(screen.getByRole('button', { name: 'Columns, 5 hidden' })).toBeInTheDocument();
+  });
+
+  it('hides a column from the toolbar menu and shows it again from there', async () => {
+    seed(undefined);
+    renderRegister();
+    await waitFor(() => {
+      expect(screen.getByRole('columnheader', { name: /status/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Columns' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Status' }));
+    });
+    await waitFor(() => {
+      expect(useHiddenColumnsStore.getState().columns).toEqual({ transactions: ['status'] });
+    });
+    expect(screen.queryByRole('columnheader', { name: /status/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Status' })).toHaveAttribute('aria-checked', 'false');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Status' }));
+    });
+    await waitFor(() => {
+      expect(useHiddenColumnsStore.getState().columns).toEqual({ transactions: [] });
+    });
+    expect(mockUpdatePreferences).not.toHaveBeenCalled();
+    expect(screen.getByRole('columnheader', { name: /status/i })).toBeInTheDocument();
+  });
+
+  it('hides a column from its header by right-click, through the sheet', async () => {
+    seed(undefined);
+    renderRegister();
+    await waitFor(() => {
+      expect(screen.getByRole('columnheader', { name: /status/i })).toBeInTheDocument();
+    });
+
+    fireEvent.contextMenu(screen.getByRole('columnheader', { name: /status/i }));
+    const hide = await screen.findByRole('button', { name: /hide column/i });
+    await act(async () => {
+      fireEvent.click(hide);
+    });
+    await waitFor(() => {
+      expect(useHiddenColumnsStore.getState().columns).toEqual({ transactions: ['status'] });
+    });
+    expect(screen.queryByRole('columnheader', { name: /status/i })).not.toBeInTheDocument();
+  });
+
+  it('still sorts from a plain click on a hideable header', async () => {
+    seed(undefined);
+    const onSortChange = vi.fn();
+    render(
+      <TransactionList
+        transactions={[past]}
+        onEdit={vi.fn()}
+        onRefresh={vi.fn()}
+        sort={{ field: 'date', direction: 'desc' }}
+        onSortChange={onSortChange}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('columnheader', { name: /status/i })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('columnheader', { name: /status/i }));
+    expect(onSortChange).toHaveBeenCalledWith('status');
+    // Tags and Attachments sort nowhere, so their click sorts nothing.
+    fireEvent.click(screen.getByRole('columnheader', { name: /tags/i }));
+    expect(onSortChange).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('TransactionList warranties', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('threads Add warranty to the Copy menu and the action sheet', async () => {
+    const onAddWarranty = vi.fn();
+    const transaction = createTransaction({ warrantyCount: 0 });
+    render(
+      <TransactionList
+        transactions={[transaction]}
+        onEdit={vi.fn()}
+        onDuplicate={vi.fn()}
+        onAddWarranty={onAddWarranty}
+        onViewWarranties={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText('Copy'));
+    fireEvent.click(screen.getByText('Add warranty'));
+    expect(onAddWarranty).toHaveBeenCalledWith(transaction);
+
+    fireEvent.contextMenu(screen.getByText('Grocery Store').closest('tr')!);
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Add warranty'));
+    expect(onAddWarranty).toHaveBeenCalledTimes(2);
+  });
+
+  it('threads View warranties on a row that has some', async () => {
+    const onViewWarranties = vi.fn();
+    const transaction = createTransaction({ warrantyCount: 2 });
+    render(
+      <TransactionList
+        transactions={[transaction]}
+        onEdit={vi.fn()}
+        onAddWarranty={vi.fn()}
+        onViewWarranties={onViewWarranties}
+      />,
+    );
+    expect(screen.getByRole('img', { name: '2 warranties' })).toBeInTheDocument();
+    fireEvent.contextMenu(screen.getByText('Grocery Store').closest('tr')!);
+    await waitFor(() => expect(screen.getByText('View warranties')).toBeInTheDocument());
+    expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('View warranties'));
+    expect(onViewWarranties).toHaveBeenCalledWith(transaction);
+  });
+
+  it('offers no warranty action on a joint row', async () => {
+    const transaction = createTransaction({ warrantyCount: 0 });
+    render(
+      <TransactionList
+        transactions={[transaction]}
+        onEdit={vi.fn()}
+        onDuplicate={vi.fn()}
+        onAddWarranty={vi.fn()}
+        onViewWarranties={vi.fn()}
+        jointPermissionsByAccount={new Map([['acc-1', { canCreate: true, canEdit: true, canDelete: true }]])}
+      />,
+    );
+    // Duplicate alone is the single button again, not a menu.
+    expect(screen.getByTitle('Duplicate transaction')).toBeInTheDocument();
+    fireEvent.contextMenu(screen.getByText('Grocery Store').closest('tr')!);
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
+    expect(screen.queryByText('View warranties')).not.toBeInTheDocument();
+  });
+
+  it('renders no warranty action for a consumer that passes neither prop', async () => {
+    render(<TransactionList transactions={[createTransaction({ warrantyCount: 1 })]} onEdit={vi.fn()} />);
+    fireEvent.contextMenu(screen.getByText('Grocery Store').closest('tr')!);
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
+    expect(screen.queryByText('View warranties')).not.toBeInTheDocument();
   });
 });

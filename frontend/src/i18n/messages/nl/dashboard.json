@@ -49,6 +49,11 @@
     "nextMonth": "Volgende maand",
     "emptyAll": "Geen actieve rekeningen, stortingen of overboekingen gepland."
   },
+  "cashFlowForecast": {
+    "title": "Kasstroomprognose",
+    "period": "Prognoseperiode",
+    "loadFailed": "De transacties die al na vandaag gedateerd zijn konden niet worden geladen, dus de prognose kan niet worden getoond. Laad het dashboard opnieuw om het nogmaals te proberen."
+  },
   "gettingStarted": {
     "title": "Aan de slag",
     "subtitle": "Stel je account in een paar stappen in",
@@ -88,6 +93,11 @@
     "viewAll": "Alle inzichten bekijken",
     "activeCount": "{count} actief"
   },
+  "warrantiesExpiring": {
+    "title": "Garanties die binnenkort verlopen",
+    "empty": "Er verloopt niets in de komende 30 dagen",
+    "loadFailed": "Je aflopende garanties konden niet worden geladen. Laad het dashboard opnieuw om het nog eens te proberen."
+  },
   "topMovers": {
     "title": "Grootste verschuivingen",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "Nettowaarde",
     "empty": "Nog geen nettowaardegegevens beschikbaar.",
-    "past12Months": "Afgelopen 12 maanden",
-    "viewReport": "Volledig rapport bekijken"
+    "barStyle": "Staafstijl",
+    "barStyleNetWorth": "Nettowaarde",
+    "barStyleAccountType": "Per rekeningtype",
+    "loadFailed": "De geschiedenis van je nettowaarde kon niet worden geladen. Laad het dashboard opnieuw om het nogmaals te proberen."
   },
   "assetsVsLiabilities": {
     "title": "Activa versus passiva",
@@ -135,7 +147,10 @@
     "current": "Huidig",
     "netWorthLabel": "Nettowaarde",
     "assets": "Activa",
-    "liabilities": "Passiva"
+    "liabilities": "Passiva",
+    "partialName": "{name} (gedeeltelijk)",
+    "viewCallouts": "Labels",
+    "viewLegend": "Legenda"
   },
   "expensesPieChart": {
     "title": "Uitgaven per categorie",
@@ -145,7 +160,9 @@
     "other": "Overig",
     "insideOther": "{count, plural, one {# categorie in Overig} other {# categorieën in Overig}}",
     "topLevelOnly": "Hoofdcategorieën",
-    "topLevelOnlyHint": "Subcategorieën bij hun hoofdcategorie tellen"
+    "topLevelOnlyHint": "Subcategorieën bij hun hoofdcategorie tellen",
+    "viewCallouts": "Labels",
+    "viewLegend": "Legenda"
   },
   "incomeExpenses": {
     "title": "Inkomsten versus uitgaven",
@@ -183,6 +200,7 @@
     "accounts": "Rekeningen",
     "chartType": "Grafiektype",
     "view": "Weergave",
+    "viewCalloutsHint": "Labels hebben een breder scherm nodig. Waar ze niet passen, wordt de legenda getoond.",
     "displayName": "Weergavenaam",
     "description": "Beschrijving",
     "descriptionPlaceholder": "Voeg een optionele beschrijving toe",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "Alle",
       "1w": "1W",
@@ -204,7 +223,7 @@
     "empty": "Nog geen beleggingsgeschiedenis om te tonen.",
     "refresh": "Huidige waarde vernieuwen",
     "investmentResult": "Beleggingsresultaat",
-    "periodBreakdownInvestedTooltip": "De waarde van de effecten veranderde in deze periode met {valueChange}. Daarvan werd {netInvested} ingelegd, na aftrek van verkopen, en ze keerden {income} uit aan dividenden en rente. Het bedrag hierboven is wat de beleggingen zelf hebben opgebracht, zonder niet-belegd geld.",
+    "periodBreakdownInvestedTooltip": "De waarde van de effecten veranderde in deze periode met {valueChange}. Daarvan werd {netInvested} ingelegd, na aftrek van verkopen, en ze keerden {income} uit aan dividenden en rente. Een uitkering die in aandelen is herbelegd, telt in beide mee. Het bedrag hierboven is wat de beleggingen zelf hebben opgebracht, zonder niet-belegd geld.",
     "notAvailable": "N/A"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "Minimaal aantal keer",
     "minOccurrencesOption": "{count} of meer",
     "occurrences": "{count} keer",
-    "monthlyEstimate": "Maandelijkse schatting"
+    "monthlyEstimate": "Maandelijkse schatting",
+    "viewCallouts": "Labels",
+    "viewLegend": "Legenda"
   },
   "weekendVsWeekday": {
     "title": "Weekend- vs. weekdaguitgaven",

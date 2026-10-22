@@ -491,6 +491,39 @@ describe("HoldingsService", () => {
       expect(result.averageCost).toBe(100);
     });
 
+    it("takes a return of capital off the basis without moving shares (#1800)", async () => {
+      investmentTransactionsRepository.find.mockResolvedValue([
+        {
+          id: "tx-buy",
+          action: InvestmentAction.BUY,
+          quantity: 10,
+          price: 100,
+          transactionDate: "2025-01-01",
+          createdAt: new Date("2025-01-01"),
+        },
+        {
+          id: "tx-roc",
+          action: InvestmentAction.RETURN_OF_CAPITAL,
+          quantity: null,
+          price: null,
+          totalAmount: 150,
+          transactionDate: "2025-02-01",
+          createdAt: new Date("2025-02-01"),
+        },
+      ]);
+
+      const result = await service.getHoldingAt(
+        "11111111-1111-1111-1111-111111111111",
+        "acc-1",
+        "sec-1",
+        "2025-03-01",
+      );
+
+      // 1,000 of basis less 150 returned, over the same 10 shares.
+      expect(result.quantity).toBe(10);
+      expect(result.averageCost).toBe(85);
+    });
+
     it("requires the user to own the account", async () => {
       accountsService.findOne.mockRejectedValue(
         new NotFoundException("Account not found"),
@@ -622,6 +655,83 @@ describe("HoldingsService", () => {
       expect(stored.quantity).toBeCloseTo(150, 8);
       expect(stored.averageCost).toBeCloseTo(2500 / 150, 6);
       expect(stored.averageCost).not.toBeCloseTo(15, 4);
+    });
+
+    /**
+     * A26-M23 (A26-S12-06), INV-HOLDING-001/002: the fold snapped every
+     * intermediate position under 0.0001 shares to zero, so ten daily buys of
+     * 0.00009 BTC never formed a holding (each started from the snapped 0).
+     * Only a residue at the stored scale (8 dp) is a ghost; both sides of the
+     * old 0.0001 line are pinned.
+     */
+    const microBuys = (count: number, quantity: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        id: `micro-${i}`,
+        accountId: "acc-1",
+        securityId: "sec-1",
+        action: InvestmentAction.BUY,
+        transactionDate: `2026-01-${String(10 + i).padStart(2, "0")}`,
+        quantity,
+        price: 60000,
+        commission: 0,
+        createdAt: sameInstant,
+      }));
+
+    it("keeps a position built from purchases under 0.0001 shares", async () => {
+      stubLedger(microBuys(10, 0.00009));
+      holdingsRepository.find.mockResolvedValue([]);
+
+      await service.rebuildScopesFromTransactions(
+        USER,
+        [{ accountId: "acc-1", securityId: "sec-1" }],
+        mockQueryRunner.manager as never,
+      );
+
+      expect(holdingsRepository.save).toHaveBeenCalledTimes(1);
+      const stored = holdingsRepository.save.mock.calls[0][0];
+      expect(stored.quantity).toBeCloseTo(0.0009, 8);
+      expect(stored.averageCost).toBeCloseTo(60000, 6);
+    });
+
+    it.each([
+      ["just under the old line", 0.00009999],
+      ["exactly on it", 0.0001],
+      ["just over it", 0.00010001],
+    ])("stores a single purchase %s", async (_label, quantity) => {
+      stubLedger(microBuys(1, quantity));
+      holdingsRepository.find.mockResolvedValue([]);
+
+      await service.rebuildScopesFromTransactions(
+        USER,
+        [{ accountId: "acc-1", securityId: "sec-1" }],
+        mockQueryRunner.manager as never,
+      );
+
+      const stored = holdingsRepository.save.mock.calls[0][0];
+      expect(stored.quantity).toBeCloseTo(quantity, 8);
+    });
+
+    it("still drops a residue at the stored scale", async () => {
+      // BUY 1, SELL 0.999999995: 5e-9 left, below the 8-decimal column.
+      const rows = [
+        ...microBuys(1, 1),
+        {
+          ...microBuys(1, 0.999999995)[0],
+          id: "sell",
+          action: InvestmentAction.SELL,
+          transactionDate: "2026-01-20",
+        },
+      ];
+      stubLedger(rows);
+      holdingsRepository.find.mockResolvedValue([]);
+
+      await service.rebuildScopesFromTransactions(
+        USER,
+        [{ accountId: "acc-1", securityId: "sec-1" }],
+        mockQueryRunner.manager as never,
+      );
+
+      expect(holdingsRepository.save).not.toHaveBeenCalled();
     });
 
     it("re-converges after the back-dated row is deleted", async () => {
@@ -1287,6 +1397,72 @@ describe("HoldingsService", () => {
       expect(result.holdingsCreated).toBe(1);
     });
 
+    it("reduces the basis by a return of capital, never below zero (#1800)", async () => {
+      accountsRepository.find.mockResolvedValue([mockAccount]);
+
+      investmentTransactionsRepository.find.mockResolvedValue([
+        {
+          accountId: "acc-1",
+          securityId: "sec-1",
+          action: InvestmentAction.BUY,
+          quantity: 100,
+          price: 10,
+          transactionDate: "2025-01-01",
+          createdAt: new Date("2025-01-01"),
+        },
+        {
+          accountId: "acc-1",
+          securityId: "sec-1",
+          action: InvestmentAction.RETURN_OF_CAPITAL,
+          quantity: null,
+          price: null,
+          totalAmount: 200,
+          transactionDate: "2025-02-01",
+          createdAt: new Date("2025-02-01"),
+        },
+        {
+          accountId: "acc-1",
+          securityId: "sec-2",
+          action: InvestmentAction.BUY,
+          quantity: 10,
+          price: 5,
+          transactionDate: "2025-01-01",
+          createdAt: new Date("2025-01-01"),
+        },
+        {
+          // More than the 50 the position cost: the basis stops at zero.
+          accountId: "acc-1",
+          securityId: "sec-2",
+          action: InvestmentAction.RETURN_OF_CAPITAL,
+          quantity: null,
+          price: null,
+          totalAmount: 80,
+          transactionDate: "2025-02-01",
+          createdAt: new Date("2025-02-01"),
+        },
+      ]);
+
+      await service.rebuildFromTransactions(
+        "11111111-1111-1111-1111-111111111111",
+      );
+
+      // 1,000 - 200 = 800 over the same 100 shares.
+      expect(mockQrRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          securityId: "sec-1",
+          quantity: 100,
+          averageCost: 8,
+        }),
+      );
+      expect(mockQrRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          securityId: "sec-2",
+          quantity: 10,
+          averageCost: 0,
+        }),
+      );
+    });
+
     it("handles REINVEST and TRANSFER_IN as positive quantity changes", async () => {
       accountsRepository.find.mockResolvedValue([mockAccount]);
 
@@ -1325,6 +1501,191 @@ describe("HoldingsService", () => {
         }),
       );
       expect(result.holdingsCreated).toBe(1);
+    });
+
+    describe("a transferred-in lot carries its paired OUT leg's basis (A26-M22)", () => {
+      const instant = new Date("2025-02-10T12:00:00Z");
+      const leg = (over: Record<string, unknown>): Record<string, unknown> => ({
+        securityId: "sec-1",
+        commission: 0,
+        transactionDate: "2025-02-10",
+        createdAt: instant,
+        ...over,
+      });
+      const buy = (
+        id: string,
+        transactionDate: string,
+        quantity: number,
+        price: number,
+      ) =>
+        leg({
+          id,
+          accountId: "acc-1",
+          action: InvestmentAction.BUY,
+          quantity,
+          price,
+          transactionDate,
+          createdAt: new Date(transactionDate),
+        });
+      const outLeg = (quantity: number, price: number) =>
+        leg({
+          id: "out-1",
+          accountId: "acc-1",
+          action: InvestmentAction.TRANSFER_OUT,
+          linkedTransactionId: "in-1",
+          quantity,
+          price,
+        });
+      const inLeg = (quantity: number, price: number) =>
+        leg({
+          id: "in-1",
+          accountId: "acc-2",
+          action: InvestmentAction.TRANSFER_IN,
+          linkedTransactionId: "out-1",
+          quantity,
+          price,
+        });
+      const rebuiltAverage = (accountId: string) =>
+        mockQrRepo.create.mock.calls
+          .map(([data]: any[]) => data)
+          .find((data: any) => data.accountId === accountId)?.averageCost;
+
+      beforeEach(() => {
+        accountsRepository.find.mockResolvedValue([mockAccount, mockAccount2]);
+      });
+
+      it("moves the basis the source released, not the IN leg's own price, whichever leg the database returns first", async () => {
+        // The legs share `created_at` (one transaction), so the IN leg may
+        // come back first; the fold must still read the OUT leg's release.
+        // The IN leg's own price (150) is today's average -- the stale figure.
+        investmentTransactionsRepository.find.mockResolvedValue([
+          buy("b1", "2025-01-10", 10, 100),
+          inLeg(10, 150),
+          outLeg(10, 150),
+          buy("b2", "2025-03-10", 10, 200),
+        ]);
+
+        await service.rebuildFromTransactions("user-1");
+
+        expect(rebuiltAverage("acc-2")).toBeCloseTo(100, 8);
+        expect(rebuiltAverage("acc-1")).toBeCloseTo(200, 8);
+      });
+
+      it("falls back to the IN leg's own price when the OUT leg is not in the rows", async () => {
+        investmentTransactionsRepository.find.mockResolvedValue([
+          inLeg(10, 60),
+        ]);
+
+        await service.rebuildFromTransactions("user-1");
+
+        expect(rebuiltAverage("acc-2")).toBeCloseTo(60, 8);
+      });
+
+      it("falls back when the source held fewer units than the OUT leg moved", async () => {
+        // 5 held, 10 moved: the release is a basis for 5 units, not for the 10
+        // the destination received.
+        investmentTransactionsRepository.find.mockResolvedValue([
+          buy("b1", "2025-01-10", 5, 100),
+          outLeg(10, 100),
+          inLeg(10, 70),
+        ]);
+
+        await service.rebuildFromTransactions("user-1");
+
+        expect(rebuiltAverage("acc-2")).toBeCloseTo(70, 8);
+      });
+    });
+
+    describe("releasedBasisPerShare", () => {
+      const ledger = (extra: Record<string, unknown>[]) => [
+        {
+          id: "b1",
+          accountId: "acc-1",
+          securityId: "sec-1",
+          action: InvestmentAction.BUY,
+          quantity: 10,
+          price: 100,
+          commission: 0,
+          transactionDate: "2025-01-10",
+          createdAt: new Date("2025-01-10"),
+        },
+        {
+          id: "b2",
+          accountId: "acc-1",
+          securityId: "sec-1",
+          action: InvestmentAction.BUY,
+          quantity: 10,
+          price: 200,
+          commission: 0,
+          transactionDate: "2025-03-10",
+          createdAt: new Date("2025-03-10"),
+        },
+        ...extra,
+      ];
+      const outRow = {
+        id: "out-1",
+        accountId: "acc-1",
+        securityId: "sec-1",
+        action: InvestmentAction.TRANSFER_OUT,
+        quantity: 10,
+        price: 999,
+        commission: 0,
+        transactionDate: "2025-02-10",
+        createdAt: new Date("2025-02-10"),
+      };
+
+      it("returns the per-share basis the source held at the leg's own date", async () => {
+        mockQueryRunner.manager.find.mockResolvedValue(ledger([outRow]));
+
+        const perShare = await service.releasedBasisPerShare(
+          "user-1",
+          "sec-1",
+          "out-1",
+          mockQueryRunner.manager as never,
+        );
+
+        // 100, not today's 150 average and not the leg's own stored 999.
+        expect(perShare).toBeCloseTo(100, 8);
+        expect(mockQueryRunner.manager.find).toHaveBeenCalledWith(
+          InvestmentTransaction,
+          expect.objectContaining({
+            where: expect.objectContaining({
+              userId: "user-1",
+              securityId: "sec-1",
+              status: NON_VOID_INVESTMENT_STATUS,
+            }),
+            order: INVESTMENT_REPLAY_ORDER,
+          }),
+        );
+      });
+
+      it("returns null when the source does not hold the units on that date", async () => {
+        mockQueryRunner.manager.find.mockResolvedValue(
+          ledger([{ ...outRow, quantity: 15 }]),
+        );
+
+        await expect(
+          service.releasedBasisPerShare(
+            "user-1",
+            "sec-1",
+            "out-1",
+            mockQueryRunner.manager as never,
+          ),
+        ).resolves.toBeNull();
+      });
+
+      it("returns null for a leg that is not in the ledger", async () => {
+        mockQueryRunner.manager.find.mockResolvedValue(ledger([]));
+
+        await expect(
+          service.releasedBasisPerShare(
+            "user-1",
+            "sec-1",
+            "out-1",
+            mockQueryRunner.manager as never,
+          ),
+        ).resolves.toBeNull();
+      });
     });
 
     it("includes the acquisition commission in averageCost (P5-006)", async () => {

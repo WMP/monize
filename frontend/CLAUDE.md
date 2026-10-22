@@ -12,6 +12,7 @@ npm run build              # Production build (standalone output for Docker)
 npm run lint               # ESLint
 npm run type-check         # tsc --noEmit
 npm run test               # Vitest (single run)
+npm run test:changed       # Tests related to changes since origin/main plus every guard; prints failures only; no coverage
 npm run test:watch         # Vitest (watch mode)
 npm run test:cov           # Coverage report (91% lines, 90% stmts, 87% funcs, 85% branches)
 npm run i18n:pseudo        # Regenerate the xx pseudo-locale from en
@@ -48,10 +49,12 @@ npm run i18n:check         # Verify the pseudo-locale is up to date (CI gate)
 | Category colour and icon | `CategoryGlyph`, `CategoryPill`, `buildCategoryIconMap` / `buildCategoryColorMap` | reading `category.icon` or interpolating it into text |
 | Brand favicon | `InstitutionLogo` / `PayeeLogo` over `BrandLogo` | a third-party favicon URL |
 | Row density | `useDensityPreference(view)` and `DensityToggle` | a local density `useState` or a second store |
+| The account default behind a browser-local view setting | `useViewDefault(key)`, applied after the browser's own choice | reading `preferences.viewDefaults` directly, or a store that cannot tell "never chosen" from the built-in value |
+| Hiding a table column | `useHiddenColumns(table)` in the list (the row takes `hidden` as a prop) and `ColumnChooserMenu` in the toolbar; the cell wrapped in `isVisible('<id>') &&` | a visibility class, a local state, or a second read in the row |
 | Scheduled occurrence amount, date, account | `nextOccurrenceEffectiveAmount`, `nextOccurrenceDueDate`, `occurrenceSettlementAccountId` (`lib/scheduled-effective-amount.ts`) | `nextOverride?.amount ?? amount`, `nextDueDate`, `st.accountId` |
 | Reporting currency fallback | `preferredCurrency` (`lib/default-currency.ts`) | `pref?.defaultCurrency \|\| 'USD'` |
 | A portfolio chart's window and opening point | `usePortfolioRangeWindow` (`start` for the series, `periodStart` for the period) and `openingSessionDate` for the first label | `resolveRangePreset`, a lookback of your own, a first point dated by a day the market was shut |
-| An investment row's money | the row's own `amountCurrencyCode` / `priceCurrencyCode` / `commissionCurrencyCode` | the account's currency, the reader's, or a client-side sum across rows |
+| An investment row's money | the row's own `amountCurrencyCode` / `priceCurrencyCode` / `commissionCurrencyCode`, converted with `convertRowAmount`; a VOID row dropped with `investmentRowHasEffect` | the account's currency, the reader's, or a client-side sum across rows |
 | CSV | `exportToCsv` / `exportCsvSections` (`lib/csv-export.ts`) | a second `text/csv` Blob |
 | Random id | `crypto.randomUUID()` | `Math.random()` |
 | Chart colour | `chartColors` tokens (`lib/chart-colors.ts`) | a hex literal in a `fill`, `stroke` or `stopColor` |
@@ -65,15 +68,20 @@ npm run i18n:check         # Verify the pseudo-locale is up to date (CI gate)
 | A dashboard card filling its grid row | the grid's own `stretch` plus the card's min-height | `h-full` on a widget's outermost element |
 | Toolbar row on a phone | `flex-wrap`, `w-full sm:w-auto`, `sm:ml-auto`, a button's height from `items-stretch` + `LabelSpacer` | an unwrapped row, a bare `ml-auto`, a hand-matched padding |
 | A register's running balance | `walkRunningBalances` (`lib/running-balance.ts`) over the response's `startingBalance` | a second walk in a component, or a balance drawn under a sort other than date |
+| A picker that applies tags to a transaction | `useTagPickerOptions` (`hooks/useTagPickerOptions.ts`), recent-first | a local A-Z sort of `tags`, or the usage fetch inside the form's `Promise.all` |
 | Category filter pseudo-ids (`uncategorized`, `transfer`, `income`, `expense`) | `SPECIAL_CATEGORY_FILTER_IDS`, `canonicalizeCategoryFilter`, `useCategoryFilterLabels` (`lib/categoryUtils.ts`) | a literal pseudo-id check, or a type sent as its enumerated ids |
 
 **A write that moves money calls `invalidateBalanceCaches()`** (or `clearAllCache()` where the write can touch anything). `src/lib/balance-cache.guard.test.ts` scans for the omission.
+
+**So does a write that recategorises rows or changes a valuation input** (a price, a security, a rate), and a cached read goes through `dedupe`, never `getCached`/`setCache` (`docs/frontend/api-and-cache.md`).
 
 **Asynchronous data belongs to the request that produced it.** Keep the payload with its request key, adopt a mutation's response only when its origin still matches the current selection, and never render a failed lookup as an empty result (`accounts = []`, `interest = []`, a total of zero). `docs/frontend/api-and-cache.md` has the rule and the regression matrix.
 
 **An unknown value is `null` and renders as unknown; a known zero renders as a number.** Never `?? 0`, `|| 0` or `?? 1` on an API value, never `connectNulls` by default, and never `> 0` or truthiness where `0` is a legitimate value. Decide which of the two states a branch is in before writing it.
 
 **Every user-facing string is translated.** `useTranslations('namespace')`; catalogs in `src/i18n/messages/{locale}/{namespace}.json`, new namespaces registered in `src/i18n/messages.ts`. Develop English-first and run `npm run i18n:pseudo`; translate every other locale as the final commit on the PR (`src/i18n/messages.parity.test.ts`). Compose punctuation in the catalog, not in JSX, and never write `--` in copy. Full flow: `src/i18n/messages/README.md`.
+
+**A form round-trips the row it opened.** Each field loads from the leg it represents (a transfer's Transfer Amount from its FROM leg) and at its stored four decimals, an unedited save sends back what was loaded, and an edit offers no mode that cannot save the row itself (no Transfer on an existing income, expense or split); `docs/frontend/forms-and-formatting.md`, "Form Patterns".
 
 **Components:** interactive components are `'use client'`; server components are the default for pages and layouts. No `setState` in `useEffect` (`react-hooks/set-state-in-effect`); reset child state from a prop with the "info from previous render" pattern. Nothing interactive goes inside a `<button>` or an `<a>`. Focus rings are `focus-visible:`; transitions carry `motion-reduce:transition-none`.
 

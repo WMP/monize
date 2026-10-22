@@ -281,6 +281,59 @@ describe("invested capital flow loader (integration)", () => {
       capitalIn: 8000,
       capitalOut: 0,
       income: 110,
+      reinvestedIncome: 0,
+      complete: true,
+      missingPairs: [],
+      unpricedSecurityIds: [],
+    });
+  });
+
+  it("keeps each reinvestment its own row, valued at its own price", async () => {
+    // Two reinvestments of one security on one day, as the app writes them:
+    // quantity and price, no total. Grouped together, MAX(price) would value
+    // both at the dearer price; the statement keeps them apart.
+    await addInvestmentRow({
+      securityId: usdSecurityId,
+      action: InvestmentAction.REINVEST,
+      date: "2026-02-02",
+      quantity: 2,
+      price: 50,
+      totalAmount: 0,
+    });
+    await addInvestmentRow({
+      securityId: usdSecurityId,
+      action: InvestmentAction.REINVEST,
+      date: "2026-02-02",
+      quantity: 1,
+      price: 40,
+      totalAmount: 0,
+    });
+    await addInvestmentRow({
+      securityId: usdSecurityId,
+      action: InvestmentAction.REINVEST_INTEREST,
+      date: "2026-02-02",
+      quantity: 1,
+      price: 10,
+      totalAmount: 0,
+    });
+
+    const rows = await load();
+    expect(rows).toHaveLength(3);
+
+    const { byDay } = foldInvestedFlows(
+      rows,
+      "USD",
+      new Map(),
+      { warn: () => undefined },
+      // A reinvestment is valued from its own price, never from a close.
+      () => null,
+    );
+
+    expect(byDay.get("2026-02-02")).toEqual({
+      capitalIn: 0,
+      capitalOut: 0,
+      income: 0,
+      reinvestedIncome: 150,
       complete: true,
       missingPairs: [],
       unpricedSecurityIds: [],

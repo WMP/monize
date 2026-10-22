@@ -1,8 +1,17 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { NotFoundException, BadRequestException } from "@nestjs/common";
-import { Brackets, DataSource } from "typeorm";
+import {
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from "@nestjs/common";
+import { Brackets, DataSource, QueryFailedError } from "typeorm";
 import { TransactionsService } from "./transactions.service";
 import { primaryAttachmentSql } from "../attachments/primary-attachment.util";
+import {
+  attachmentReachableFromTransactionSql,
+  reachedTransactionIdSql,
+  reachingWarrantyJoinSql,
+} from "../attachments/attachment-parent";
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
 import { TransactionSplit } from "./entities/transaction-split.entity";
 import { Category } from "../categories/entities/category.entity";
@@ -19,7 +28,9 @@ import { TransactionReconciliationService } from "./transaction-reconciliation.s
 import { TransactionAnalyticsService } from "./transaction-analytics.service";
 import { TransactionBulkUpdateService } from "./transaction-bulk-update.service";
 import { TagsService } from "../tags/tags.service";
+import { TransactionTag } from "../tags/entities/transaction-tag.entity";
 import { TransactionRulesApplierService } from "../transaction-rules/transaction-rules-applier.service";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import {
   PlannableRule,
   planRuleEffects,
@@ -29,9 +40,16 @@ import {
   RuleFactsInput,
 } from "../transaction-rules/rule-facts";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { EXTERNAL_ID_INDEX } from "./transaction-external-id";
+import { getActiveScopedManager } from "../common/db/scoped-db";
 import { isTransactionInFuture } from "../common/date-utils";
-import { buildTransactionSearchClause } from "./transaction-search.util";
+import { buildTransactionSearchWhere } from "./transaction-search.util";
+import {
+  parseTransactionSearch,
+  SearchFormats,
+} from "./transaction-search-query.util";
 import { TransactionAttachment } from "../attachments/entities/transaction-attachment.entity";
+import { Warranty } from "../warranties/entities/warranty.entity";
 import { lockTransactionRow, lockTransactionRows } from "../common/db/locks";
 import { lockedTransactionRow } from "../test-helpers/locks-testing";
 import {
@@ -39,9 +57,29 @@ import {
   DataSourceMock,
 } from "../test-helpers/scoped-db-testing";
 
+/**
+ * The condition and parameters the search helper adds for `raw`, at the
+ * split grain every call site uses (advanced-search plan, question 5).
+ */
+function expectedSearch(
+  raw: string,
+  aliases: { transaction: string; splits: string; paramPrefix?: string },
+  formats: SearchFormats = {},
+): [string, Record<string, unknown>] {
+  const clause = buildTransactionSearchWhere(
+    parseTransactionSearch(raw, formats).terms,
+    { paramPrefix: "srch", ...aliases, grain: "split" },
+  );
+  if (!clause) throw new Error(`no search clause for ${raw}`);
+  return [clause.sql, clause.params];
+}
+
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
+jest.mock("../loan-installments/reprice-template", () => ({
+  repriceSettledLoanTemplates: jest.fn().mockResolvedValue(undefined),
+}));
 
 // `update` and `remove` read the values a balance delta reverses under a row
 // lock inside the write transaction, not from the snapshot `findOne` returned
@@ -70,10 +108,12 @@ describe("TransactionsService", () => {
   let investmentTxRepository: Record<string, jest.Mock>;
   let userPreferenceRepository: Record<string, jest.Mock>;
   let attachmentsRepository: Record<string, jest.Mock>;
+  let warrantiesRepository: Record<string, jest.Mock>;
   let accountsService: Record<string, jest.Mock>;
   let payeesService: Record<string, jest.Mock>;
   let netWorthService: Record<string, jest.Mock>;
   let tagsService: Record<string, jest.Mock>;
+  let transactionTagsRepository: Record<string, jest.Mock>;
   let rulesApplier: Record<string, jest.Mock>;
   // The withScopedDb EntityManager, under the legacy `mockQueryRunner.manager`
   // shape so the pre-RLS manager assertions still read naturally.
@@ -144,11 +184,25 @@ describe("TransactionsService", () => {
     // it to no rows so every existing findAll test yields attachmentCount 0.
     attachmentsRepository = {
       createQueryBuilder: jest.fn().mockReturnValue({
+        leftJoin: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         // The count is restricted to primaries -- a scan pair is one
         // attachment, so its hidden original must not reach the paperclip.
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      }),
+    };
+
+    // The warranty-count enrichment is the same grouped shape; no rows by
+    // default, so every existing findAll test yields warrantyCount 0.
+    warrantiesRepository = {
+      createQueryBuilder: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -175,7 +229,9 @@ describe("TransactionsService", () => {
     };
 
     const payeesRepository = { findOne: jest.fn().mockResolvedValue(null) };
+    transactionTagsRepository = { find: jest.fn().mockResolvedValue([]) };
     const tenantMocks = createScopedDbMocks([
+      [TransactionTag, transactionTagsRepository],
       [TransactionSplit, splitsRepository],
       [Category, categoriesRepository],
       [InvestmentTransaction, investmentTxRepository],
@@ -183,6 +239,7 @@ describe("TransactionsService", () => {
       [Payee, payeesRepository],
       // findAll reads attachment counts through the transaction manager.
       [TransactionAttachment, attachmentsRepository],
+      [Warranty, warrantiesRepository],
     ]);
     mockDataSource = tenantMocks.dataSource;
 
@@ -379,6 +436,8 @@ describe("TransactionsService", () => {
             setTransactionTags: jest.fn().mockResolvedValue(undefined),
             addTransactionTags: jest.fn().mockResolvedValue(undefined),
             setSplitTags: jest.fn().mockResolvedValue(undefined),
+            findByNames: jest.fn().mockResolvedValue([]),
+            findOrCreateByNames: jest.fn().mockResolvedValue([]),
           },
         },
         { provide: NetWorthService, useValue: netWorthService },
@@ -576,6 +635,120 @@ describe("TransactionsService", () => {
       expect(options.payeeTextById.get("tx-1")).toBe("Biedronka 123");
     });
 
+    it("recalculates the accounts a structural rule moved, after the commit and not twice", async () => {
+      transactionsRepository.findOne.mockResolvedValue(rowInDb);
+      rulesApplier.applyToNew.mockResolvedValue([
+        {
+          transactionId: "tx-1",
+          effects: {},
+          affectedAccountIds: ["loan-account", "account-1"],
+          settledScheduleIds: [],
+        },
+      ]);
+      const order: string[] = [];
+      accountsService.updateBalance.mockImplementation(async () => {
+        order.push("balance");
+      });
+      netWorthService.triggerDebouncedRecalc.mockImplementation(
+        (accountId: string) => {
+          order.push(`recalc:${accountId}`);
+        },
+      );
+
+      await service.create("user-1", {
+        accountId: "account-1",
+        transactionDate: "2026-01-15",
+        amount: -50,
+        currencyCode: "USD",
+        payeeName: "Loan",
+      } as any);
+
+      expect(netWorthService.triggerDebouncedRecalc).toHaveBeenCalledWith(
+        "loan-account",
+        "user-1",
+      );
+      const forAccount1 =
+        netWorthService.triggerDebouncedRecalc.mock.calls.filter(
+          (call: string[]) => call[0] === "account-1",
+        );
+      expect(forAccount1).toHaveLength(1);
+      // Inside the transaction the balance is written; the recompute is
+      // dispatched only after it, once per account.
+      expect(order).toEqual([
+        "balance",
+        "recalc:account-1",
+        "recalc:loan-account",
+      ]);
+    });
+
+    it("reprices the schedule a settlement rule claimed on, after the commit and the net-worth dispatch", async () => {
+      transactionsRepository.findOne.mockResolvedValue(rowInDb);
+      rulesApplier.applyToNew.mockResolvedValue([
+        {
+          transactionId: "tx-1",
+          effects: {},
+          affectedAccountIds: ["loan-account"],
+          settledScheduleIds: ["st-loan"],
+        },
+      ]);
+      const order: string[] = [];
+      accountsService.updateBalance.mockImplementation(async () => {
+        order.push("balance");
+      });
+      netWorthService.triggerDebouncedRecalc.mockImplementation(() => {
+        order.push("recalc");
+      });
+      (repriceSettledLoanTemplates as jest.Mock).mockImplementation(
+        async () => {
+          order.push("reprice");
+        },
+      );
+
+      await service.create("user-1", {
+        accountId: "account-1",
+        transactionDate: "2026-01-15",
+        amount: -1333.33,
+        currencyCode: "USD",
+        payeeName: "ING HYPOTHEKEN",
+      } as any);
+
+      expect(repriceSettledLoanTemplates).toHaveBeenCalledWith(
+        mockDataSource,
+        new Set(["st-loan"]),
+      );
+      expect(order).toEqual(["balance", "recalc", "recalc", "reprice"]);
+    });
+
+    it("forwards the posting flag to the rules, server-set, never from the request", async () => {
+      transactionsRepository.findOne.mockResolvedValue(rowInDb);
+      await service.create(
+        "user-1",
+        {
+          accountId: "account-1",
+          transactionDate: "2026-01-15",
+          amount: -50,
+          currencyCode: "USD",
+          fromScheduledPosting: true,
+        } as any,
+        { fromScheduledPosting: true },
+      );
+      expect(rulesApplier.applyToNew.mock.calls[0][4]).toMatchObject({
+        fromScheduledPosting: true,
+      });
+
+      await service.create("user-1", {
+        accountId: "account-1",
+        transactionDate: "2026-01-15",
+        amount: -50,
+        currencyCode: "USD",
+        fromScheduledPosting: true,
+      } as any);
+      // The request's own field says nothing.
+      expect(rulesApplier.applyToNew.mock.calls[1][4]).toMatchObject({
+        fromScheduledPosting: false,
+      });
+    });
+
     it("hands a rule the payee's own name as payeeText when only an id was given", async () => {
       transactionsRepository.findOne.mockResolvedValue(rowInDb);
       payeesService.findOne.mockResolvedValue({
@@ -594,6 +767,32 @@ describe("TransactionsService", () => {
 
       const options = rulesApplier.applyToNew.mock.calls[0][4];
       expect(options.payeeTextById.get("tx-1")).toBe("Biedronka");
+    });
+
+    it("allows structural rule actions for an owner's create and forbids them when a joint member is the actor", async () => {
+      transactionsRepository.findOne.mockResolvedValue(rowInDb);
+      const dto = {
+        accountId: "account-1",
+        transactionDate: "2026-01-15",
+        amount: -50,
+        currencyCode: "USD",
+      } as any;
+
+      await service.create("user-1", dto);
+      expect(
+        rulesApplier.applyToNew.mock.calls[0][4].structuralNotAllowed,
+      ).toBe(false);
+
+      // The option is the joint register's, set from the grant; a request field
+      // of the same name is not read.
+      await service.create(
+        "user-1",
+        { ...dto, actorIsNotOwner: false } as any,
+        { actorIsNotOwner: true },
+      );
+      expect(
+        rulesApplier.applyToNew.mock.calls[1][4].structuralNotAllowed,
+      ).toBe(true);
     });
 
     it("does not run the applier when the request is rejected before the write", async () => {
@@ -1418,6 +1617,58 @@ describe("TransactionsService", () => {
     });
   });
 
+  describe("findOneForDisplay", () => {
+    it("adds the register's per-row facts to the row read by id", async () => {
+      const mockTx = {
+        id: "tx-1",
+        userId: "user-1",
+        accountId: "account-1",
+        amount: -50,
+        splits: [],
+      };
+      transactionsRepository.findOne.mockResolvedValue(mockTx);
+      investmentTxRepository.find.mockResolvedValue([
+        { id: "inv-1", transactionId: "tx-1" },
+      ]);
+      const warrantyQb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ transactionId: "tx-1", count: "2" }]),
+      };
+      warrantiesRepository.createQueryBuilder.mockReturnValue(warrantyQb);
+
+      const result = await service.findOneForDisplay("user-1", "tx-1");
+
+      // A form opened on this row by id lists its warranties (the count is
+      // what the warranties line waits on) and sends an investment's cash
+      // leg to Investments, exactly as from the register.
+      expect(result).toMatchObject({
+        id: "tx-1",
+        warrantyCount: 2,
+        attachmentCount: 0,
+        linkedInvestmentTransactionId: "inv-1",
+      });
+      expect(warrantyQb.where).toHaveBeenCalledWith(
+        "w.transactionId IN (:...transactionIds)",
+        { transactionIds: ["tx-1"] },
+      );
+    });
+
+    it("refuses a row the caller cannot read, as findOne does", async () => {
+      transactionsRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.findOneForDisplay("user-1", "tx-1")).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(warrantiesRepository.createQueryBuilder).not.toHaveBeenCalled();
+    });
+  });
+
   describe("findOne", () => {
     it("returns transaction when found and belongs to user", async () => {
       const mockTx = {
@@ -1558,6 +1809,45 @@ describe("TransactionsService", () => {
       splits: [],
     };
 
+    it("refuses an amount change on a transfer leg before writing (A26-M10)", async () => {
+      transactionsRepository.findOne.mockResolvedValue({
+        ...mockTx,
+        amount: 100,
+        isTransfer: true,
+        linkedTransactionId: "tx-2",
+      });
+      lockedRow = { ...mockTx, amount: 100, linkedTransactionId: "tx-2" };
+
+      await expect(
+        service.update("user-1", "tx-1", { amount: 150 } as any),
+      ).rejects.toThrow(/Transfers can't be edited here/);
+
+      expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+
+    it("accepts a transfer leg edit that re-sends its unchanged amount", async () => {
+      const leg = {
+        ...mockTx,
+        amount: 100,
+        isTransfer: true,
+        linkedTransactionId: "tx-2",
+      };
+      transactionsRepository.findOne.mockResolvedValue(leg);
+      lockedRow = { ...mockTx, amount: 100, linkedTransactionId: "tx-2" };
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({
+        ...leg,
+        description: "Rent float",
+      });
+
+      await service.update("user-1", "tx-1", {
+        amount: 100,
+        description: "Rent float",
+      } as any);
+
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+
     it("derives the balance delta from the locked row, not the caller's snapshot", async () => {
       // The regression guard for P4-003. Opening balance 100.00 and one -10.00
       // row: request A changes it to -20.00 and commits (delta -10.00), then
@@ -1604,6 +1894,84 @@ describe("TransactionsService", () => {
 
       expect(beforeWrite).toHaveBeenCalledTimes(1);
       expect(order).toEqual(["hook", "write"]);
+    });
+
+    describe("addTagNames (a proposal's tags are added, never replacing the tags a transaction has)", () => {
+      const update = async (
+        options: object,
+        dto: object = { description: "x" },
+      ) => {
+        transactionsRepository.findOne.mockResolvedValue({ ...mockTx });
+        lockedRow = { ...mockTx };
+        mockQueryRunner.manager.findOne.mockResolvedValueOnce({ ...mockTx });
+        return service.update("user-1", "tx-1", dto as any, options);
+      };
+
+      it("finds or creates the tags and links them additively, in the write's own transaction", async () => {
+        tagsService.findOrCreateByNames.mockResolvedValue([
+          { id: "tag-a", name: "Allegro" },
+          { id: "tag-b", name: "Gifts" },
+        ]);
+
+        await update({ addTagNames: ["Allegro", "Gifts"] });
+
+        expect(tagsService.findOrCreateByNames).toHaveBeenCalledWith(
+          mockQueryRunner.manager,
+          "user-1",
+          ["Allegro", "Gifts"],
+        );
+        expect(tagsService.addTransactionTags).toHaveBeenCalledWith(
+          mockQueryRunner.manager,
+          "user-1",
+          ["tx-1"],
+          ["tag-a", "tag-b"],
+        );
+        // Never the replacing call: the transaction keeps the tags it has.
+        expect(tagsService.setTransactionTags).not.toHaveBeenCalled();
+      });
+
+      it("does nothing about tags when none are asked for", async () => {
+        await update({});
+        await update({ addTagNames: [] });
+        expect(tagsService.findOrCreateByNames).not.toHaveBeenCalled();
+        expect(tagsService.addTransactionTags).not.toHaveBeenCalled();
+      });
+
+      it("is independent of tagIds, which still replaces the whole set", async () => {
+        tagsService.findOrCreateByNames.mockResolvedValue([
+          { id: "tag-a", name: "A" },
+        ]);
+        await update(
+          { addTagNames: ["A"] },
+          { description: "x", tagIds: ["tag-z"] },
+        );
+        expect(tagsService.setTransactionTags).toHaveBeenCalledWith(
+          "tx-1",
+          ["tag-z"],
+          "user-1",
+        );
+        expect(tagsService.addTransactionTags).toHaveBeenCalledWith(
+          mockQueryRunner.manager,
+          "user-1",
+          ["tx-1"],
+          ["tag-a"],
+        );
+      });
+
+      it("adds the tags after the hook that marks the request applied, so a refusal creates no tag", async () => {
+        const order: string[] = [];
+        tagsService.findOrCreateByNames.mockImplementation(async () => {
+          order.push("tags");
+          return [];
+        });
+        await update({
+          addTagNames: ["Allegro"],
+          beforeWrite: async () => {
+            order.push("hook");
+          },
+        });
+        expect(order).toEqual(["hook", "tags"]);
+      });
     });
 
     it("writes nothing when beforeWrite refuses", async () => {
@@ -2731,6 +3099,70 @@ describe("TransactionsService", () => {
       );
     });
 
+    it("filters by externalId on the listing and on the rows its balance is summed over", async () => {
+      const mockQb = createMockQueryBuilder();
+      mockQb.getManyAndCount.mockResolvedValue([
+        [
+          {
+            id: "tx-1",
+            userId: "user-1",
+            accountId: "account-1",
+            amount: -50,
+            status: TransactionStatus.UNRECONCILED,
+            splits: [],
+          },
+        ],
+        1,
+      ]);
+      const idsQb = createMockQueryBuilder();
+      const totalSumQb = createMockQueryBuilder({
+        setParameters: jest.fn().mockReturnThis(),
+      });
+      totalSumQb.getRawOne.mockResolvedValue({ totalSum: -50 });
+      transactionsRepository.createQueryBuilder
+        .mockReturnValueOnce(mockQb)
+        .mockReturnValueOnce(idsQb)
+        .mockReturnValueOnce(totalSumQb);
+      investmentTxRepository.find.mockResolvedValue([]);
+
+      const result = await service.findAll(
+        "user-1",
+        ["account-1"],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        1,
+        50,
+        false,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        "date",
+        "DESC",
+        undefined,
+        undefined,
+        undefined,
+        [],
+        "bank-row-1",
+      );
+
+      expect(mockQb.andWhere).toHaveBeenCalledWith(
+        "transaction.externalId = :externalId",
+        { externalId: "bank-row-1" },
+      );
+      // A content filter: the balance is summed over the matched rows only,
+      // so the subquery naming them must carry the same predicate.
+      expect(idsQb.andWhere).toHaveBeenCalledWith(
+        "bf.externalId = :bfExternalId",
+        { bfExternalId: "bank-row-1" },
+      );
+      expect(result.startingBalance).toBe(-50);
+    });
+
     const findAllWith = (
       overrides: Partial<{ hasAttachments: boolean }>,
       mockQb: Record<string, jest.Mock>,
@@ -2775,6 +3207,24 @@ describe("TransactionsService", () => {
         expect.stringContaining("NOT EXISTS"),
       );
     });
+
+    // A receipt on the row's warranty is one of the row's attachments (the
+    // maintainer's ruling, attachment-parent.ts), so the filter reaches it
+    // through the shared fragment rather than the row's own column alone.
+    it.each([true, false])(
+      "reaches the linked warranties' documents when hasAttachments is %s",
+      async (hasAttachments) => {
+        const mockQb = createMockQueryBuilder();
+        mockQb.getManyAndCount.mockResolvedValue([[], 0]);
+        await findAllWith({ hasAttachments }, mockQb);
+
+        expect(mockQb.andWhere).toHaveBeenCalledWith(
+          expect.stringContaining(
+            attachmentReachableFromTransactionSql("ta", "transaction.id"),
+          ),
+        );
+      },
+    );
 
     it("filters to transactions without attachments (NOT EXISTS)", async () => {
       const mockQb = createMockQueryBuilder();
@@ -2828,17 +3278,18 @@ describe("TransactionsService", () => {
       ]);
       transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
       investmentTxRepository.find.mockResolvedValue([]);
-      const attachmentCountAndWhere = jest.fn().mockReturnThis();
-      attachmentsRepository.createQueryBuilder.mockReturnValue({
+      const countQb = {
+        leftJoin: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
-        andWhere: attachmentCountAndWhere,
+        andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
         getRawMany: jest
           .fn()
           .mockResolvedValue([{ transactionId: "tx-1", count: "3" }]),
-      });
+      };
+      attachmentsRepository.createQueryBuilder.mockReturnValue(countQb);
 
       const result = await service.findAll("user-1");
 
@@ -2847,9 +3298,89 @@ describe("TransactionsService", () => {
       // The paperclip counts what the attachments list shows, and that list
       // hides a scan pair's original -- so the count is restricted to primaries
       // through the shared predicate.
-      expect(attachmentCountAndWhere).toHaveBeenCalledWith(
-        primaryAttachmentSql("ta"),
+      expect(countQb.andWhere).toHaveBeenCalledWith(primaryAttachmentSql("ta"));
+      // ... and that list carries the documents of every warranty linked to
+      // the row (the maintainer's ruling), so each attachment is keyed by the
+      // transaction it is reached from, own or through its warranty, in one
+      // grouped query over the page's ids.
+      const reachedFrom = reachedTransactionIdSql("ta", "w");
+      expect(countQb.leftJoin).toHaveBeenCalledWith(
+        Warranty,
+        "w",
+        reachingWarrantyJoinSql("ta", "w"),
       );
+      expect(countQb.select).toHaveBeenCalledWith(reachedFrom, "transactionId");
+      expect(countQb.where).toHaveBeenCalledWith(
+        `${reachedFrom} IN (:...transactionIds)`,
+        { transactionIds: ["tx-1", "tx-2"] },
+      );
+      expect(countQb.groupBy).toHaveBeenCalledWith(reachedFrom);
+      expect(attachmentsRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
+    });
+
+    it("annotates each transaction with its unarchived warranty count", async () => {
+      const mockQb = createMockQueryBuilder();
+      mockQb.getManyAndCount.mockResolvedValue([
+        [
+          { id: "tx-1", isCleared: false, isReconciled: false, isVoid: false },
+          { id: "tx-2", isCleared: false, isReconciled: false, isVoid: false },
+        ],
+        2,
+      ]);
+      transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
+      investmentTxRepository.find.mockResolvedValue([]);
+      const warrantyQb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ transactionId: "tx-2", count: "2" }]),
+      };
+      warrantiesRepository.createQueryBuilder.mockReturnValue(warrantyQb);
+
+      const result = await service.findAll("user-1");
+
+      expect(result.data[0].warrantyCount).toBe(0);
+      expect(result.data[1].warrantyCount).toBe(2);
+      // One grouped count over the page's ids, never one query per row, and
+      // an archived warranty is not on the badge.
+      expect(warrantiesRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
+      expect(warrantyQb.where).toHaveBeenCalledWith(
+        "w.transactionId IN (:...transactionIds)",
+        { transactionIds: ["tx-1", "tx-2"] },
+      );
+      expect(warrantyQb.andWhere).toHaveBeenCalledWith("w.archivedAt IS NULL");
+      expect(warrantyQb.groupBy).toHaveBeenCalledWith("w.transactionId");
+      // The warranty count never borrows the attachment count's rows.
+      expect(result.data[1].attachmentCount).toBe(0);
+    });
+
+    it("reports warrantyCount 0 on every row of a page without warranties", async () => {
+      const mockQb = createMockQueryBuilder();
+      mockQb.getManyAndCount.mockResolvedValue([
+        [{ id: "tx-1", isCleared: false, isReconciled: false, isVoid: false }],
+        1,
+      ]);
+      transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
+      investmentTxRepository.find.mockResolvedValue([]);
+
+      const result = await service.findAll("user-1");
+
+      expect(result.data[0].warrantyCount).toBe(0);
+    });
+
+    it("reads no warranty counts for an empty page", async () => {
+      const mockQb = createMockQueryBuilder();
+      mockQb.getManyAndCount.mockResolvedValue([[], 0]);
+      transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
+
+      await service.findAll("user-1");
+
+      // `IN ()` is a syntax error; the enrichment skips the query instead.
+      expect(warrantiesRepository.createQueryBuilder).not.toHaveBeenCalled();
     });
 
     it("applies pagination with page and limit", async () => {
@@ -3109,11 +3640,10 @@ describe("TransactionsService", () => {
       );
 
       expect(mockQb.andWhere).toHaveBeenCalledWith(
-        buildTransactionSearchClause({
+        ...expectedSearch("groceries", {
           transaction: "transaction",
           splits: "splits",
         }),
-        { search: "%groceries%", searchAmount: null, searchDate: null },
       );
     });
 
@@ -3142,15 +3672,11 @@ describe("TransactionsService", () => {
       );
 
       expect(mockQb.andWhere).toHaveBeenCalledWith(
-        buildTransactionSearchClause({
-          transaction: "transaction",
-          splits: "splits",
-        }),
-        {
-          search: "%1.234,56%",
-          searchAmount: 1234.56,
-          searchDate: null,
-        },
+        ...expectedSearch(
+          "1.234,56",
+          { transaction: "transaction", splits: "splits" },
+          { numberFormat: "de-DE", dateFormat: "DD.MM.YYYY" },
+        ),
       );
     });
 
@@ -3178,16 +3704,52 @@ describe("TransactionsService", () => {
       );
 
       expect(mockQb.andWhere).toHaveBeenCalledWith(
-        buildTransactionSearchClause({
-          transaction: "transaction",
-          splits: "splits",
-        }),
-        {
-          search: "%02.07.2026%",
-          searchAmount: null,
-          searchDate: "2026-07-02",
-        },
+        ...expectedSearch(
+          "02.07.2026",
+          { transaction: "transaction", splits: "splits" },
+          { numberFormat: "de-DE", dateFormat: "DD.MM.YYYY" },
+        ),
       );
+    });
+
+    it("echoes how the search was read beside the rows", async () => {
+      const mockQb = createMockQueryBuilder();
+      mockQb.getManyAndCount.mockResolvedValue([[], 0]);
+      transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
+      investmentTxRepository.find.mockResolvedValue([]);
+
+      const result = await service.findAll(
+        "user-1",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        1,
+        50,
+        false,
+        "#10 status:pending",
+      );
+
+      expect(result.searchInterpretation).toEqual({
+        terms: [
+          {
+            field: "ref",
+            op: "exact",
+            value: "10",
+            negated: false,
+            raw: "#10",
+          },
+          {
+            field: "any",
+            op: "contains",
+            value: "status:pending",
+            negated: false,
+            raw: "status:pending",
+            ignored: "malformed",
+          },
+        ],
+      });
     });
 
     it("ignores empty/whitespace-only search", async () => {
@@ -3196,7 +3758,7 @@ describe("TransactionsService", () => {
       transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
       investmentTxRepository.find.mockResolvedValue([]);
 
-      await service.findAll(
+      const result = await service.findAll(
         "user-1",
         undefined,
         undefined,
@@ -3208,6 +3770,9 @@ describe("TransactionsService", () => {
         false,
         "   ",
       );
+
+      // No search was sent, so there is nothing to echo.
+      expect(result).not.toHaveProperty("searchInterpretation");
 
       // search ILIKE should not be called for whitespace-only
       const searchCalls = mockQb.andWhere.mock.calls.filter(
@@ -4187,16 +4752,11 @@ describe("TransactionsService", () => {
         // Should join splits for search
         expect(idsQb.leftJoin).toHaveBeenCalledWith("bf.splits", "bfSplits");
         expect(idsQb.andWhere).toHaveBeenCalledWith(
-          buildTransactionSearchClause({
+          ...expectedSearch("grocery", {
             transaction: "bf",
             splits: "bfSplits",
-            paramName: "bfSearch",
+            paramPrefix: "bfSrch",
           }),
-          {
-            bfSearch: "%grocery%",
-            bfSearchAmount: null,
-            bfSearchDate: null,
-          },
         );
       });
 
@@ -4978,6 +5538,64 @@ describe("TransactionsService", () => {
         expect(result.startingBalance).toBe(2500);
       });
     });
+
+    describe("findRegisterRowsByIds", () => {
+      it("reads nothing for no ids", async () => {
+        await expect(
+          service.findRegisterRowsByIds("user-1", []),
+        ).resolves.toEqual([]);
+        expect(
+          transactionsRepository.createQueryBuilder,
+        ).not.toHaveBeenCalled();
+      });
+
+      it("loads the ids with the register's joins, scoped to the caller, in the order given", async () => {
+        const mockQb = createMockQueryBuilder();
+        mockQb.getMany.mockResolvedValue([{ id: "tx-2" }, { id: "tx-1" }]);
+        transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
+        investmentTxRepository.find.mockResolvedValue([
+          { id: "inv-1", transactionId: "tx-1" },
+        ]);
+
+        const rows = await service.findRegisterRowsByIds("user-1", [
+          "tx-1",
+          "tx-2",
+        ]);
+
+        expect(mockQb.where).toHaveBeenCalledWith(
+          "transaction.userId = :userId",
+          { userId: "user-1" },
+        );
+        expect(mockQb.andWhere).toHaveBeenCalledWith(
+          "transaction.id IN (:...ids)",
+          { ids: ["tx-1", "tx-2"] },
+        );
+        expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith(
+          "transaction.linkedTransaction",
+          "linkedTransaction",
+        );
+        // The caller's order, not the query's: the ids arrive in register order.
+        expect(mockQb.orderBy).not.toHaveBeenCalled();
+        expect(rows.map((r) => r.id)).toEqual(["tx-1", "tx-2"]);
+        expect(rows[0].linkedInvestmentTransactionId).toBe("inv-1");
+        expect(rows[1].attachmentCount).toBe(0);
+        expect(rows[1].warrantyCount).toBe(0);
+      });
+
+      it("joins exactly what findAll joins, so a row is drawn the same on both", async () => {
+        const listQb = createMockQueryBuilder();
+        transactionsRepository.createQueryBuilder.mockReturnValue(listQb);
+        investmentTxRepository.find.mockResolvedValue([]);
+        await service.findAll("user-1");
+        const idsQb = createMockQueryBuilder();
+        transactionsRepository.createQueryBuilder.mockReturnValue(idsQb);
+        await service.findRegisterRowsByIds("user-1", ["tx-1"]);
+
+        expect(idsQb.leftJoinAndSelect.mock.calls).toEqual(
+          listQb.leftJoinAndSelect.mock.calls,
+        );
+      });
+    });
   });
 
   describe("getReconciliationData", () => {
@@ -5462,11 +6080,10 @@ describe("TransactionsService", () => {
         "splits",
       );
       expect(mockQb.andWhere).toHaveBeenCalledWith(
-        buildTransactionSearchClause({
+        ...expectedSearch("test search", {
           transaction: "transaction",
           splits: "splits",
         }),
-        { search: "%test search%", searchAmount: null, searchDate: null },
       );
     });
 
@@ -6194,9 +6811,116 @@ describe("TransactionsService", () => {
         // the locked row) and the touched-accounts set for the post-commit
         // net-worth fan-out. Neither is what this test pins down, but the status
         // is another committed-parent field so it is asserted precisely.
-        { parentStatus: TransactionStatus.UNRECONCILED },
+        {
+          parentStatus: TransactionStatus.UNRECONCILED,
+          carriedSeries: [],
+          touchedSecurityIds: expect.any(Set),
+        },
         expect.any(Set),
       );
+    });
+
+    describe("the bond price recompute after a split parent write (INV-BOND-005, INV-CACHE-001)", () => {
+      const markTouched =
+        (id: string) => async (_t: string, _u: string, bond?: any) => {
+          bond?.touchedSecurityIds?.add(id);
+          return new Set<string>();
+        };
+
+      it("a replacement of the splits runs under one guard (verified after the successors are written) and dispatches the recompute after the commit", async () => {
+        transactionsRepository.findOne.mockResolvedValue(mockTx);
+        lockedRow = { ...mockTx };
+        splitsRepository.find.mockResolvedValue([]);
+        const deleteSideEffects = jest
+          .spyOn(splitService, "deleteSplitSideEffects")
+          .mockImplementation(markTouched("sec-old") as never);
+        const recompute = jest
+          .spyOn(splitService, "recomputeBondPricesAfterWrite")
+          .mockResolvedValue(undefined);
+
+        await service.update("user-1", "tx-1", {
+          splits: [
+            { amount: -60, categoryId: "cat-1" },
+            { amount: -40, categoryId: "cat-2" },
+          ],
+        } as any);
+
+        const bond = deleteSideEffects.mock.calls[0][2] as any;
+        expect(bond.bondGuard).toEqual(
+          expect.objectContaining({
+            track: expect.any(Function),
+            verify: expect.any(Function),
+          }),
+        );
+        expect([...bond.touchedSecurityIds]).toEqual(["sec-old"]);
+        expect(recompute).toHaveBeenCalledWith(
+          "user-1",
+          bond.touchedSecurityIds,
+        );
+        // After the transaction: the dispatch follows the last in-transaction
+        // write of the parent, never precedes it.
+        const lastWrite = Math.max(
+          ...(mockQueryRunner.manager.update.mock
+            .invocationCallOrder as number[]),
+        );
+        expect(recompute.mock.invocationCallOrder[0]).toBeGreaterThan(
+          lastWrite,
+        );
+      });
+
+      it("a void edit of a split parent hands the collector to the status pass and dispatches the recompute", async () => {
+        transactionsRepository.findOne.mockResolvedValue({
+          ...mockTx,
+          isSplit: true,
+          status: TransactionStatus.UNRECONCILED,
+        });
+        lockedRow = {
+          ...mockTx,
+          isSplit: true,
+          status: TransactionStatus.UNRECONCILED,
+        };
+        splitsRepository.find.mockResolvedValue([]);
+        const apply = jest
+          .spyOn(splitService, "applyParentStatusToTransferCounterparts")
+          .mockImplementation((async (
+            _m: unknown,
+            _id: string,
+            _u: string,
+            _s: unknown,
+            touched?: Set<string>,
+          ) => {
+            touched?.add("sec-void");
+            return new Set<string>();
+          }) as never);
+        const recompute = jest
+          .spyOn(splitService, "recomputeBondPricesAfterWrite")
+          .mockResolvedValue(undefined);
+        // The row after the write reads as VOID.
+        mockQueryRunner.manager.findOne.mockResolvedValue({
+          ...mockTx,
+          isSplit: true,
+          status: TransactionStatus.VOID,
+        });
+
+        await service.update("user-1", "tx-1", {
+          status: TransactionStatus.VOID,
+        } as any);
+
+        expect(apply).toHaveBeenCalledWith(
+          expect.anything(),
+          "tx-1",
+          "user-1",
+          TransactionStatus.VOID,
+          expect.any(Set),
+        );
+        expect(recompute).toHaveBeenCalledWith(
+          "user-1",
+          expect.objectContaining({}),
+        );
+        expect([...(recompute.mock.calls[0][1] as Set<string>)]).toEqual([
+          "sec-void",
+        ]);
+      });
     });
 
     /**
@@ -6933,6 +7657,43 @@ describe("TransactionsService", () => {
   });
 
   describe("remove with split transaction", () => {
+    it("dispatches the bond price recompute of the removed embedded rows' securities after the commit (INV-BOND-005)", async () => {
+      transactionsRepository.findOne.mockResolvedValueOnce({
+        id: "tx-1",
+        userId: "user-1",
+        accountId: "account-1",
+        amount: -100,
+        status: TransactionStatus.UNRECONCILED,
+        isSplit: true,
+        splits: [],
+      });
+      splitsRepository.findOne.mockResolvedValue(null);
+      const deleteSideEffects = jest
+        .spyOn(splitService, "deleteSplitSideEffects")
+        .mockImplementation((async (
+          _t: string,
+          _u: string,
+          bond?: { touchedSecurityIds?: Set<string> },
+        ) => {
+          bond?.touchedSecurityIds?.add("sec-removed");
+          return new Set<string>();
+        }) as never);
+      const recompute = jest
+        .spyOn(splitService, "recomputeBondPricesAfterWrite")
+        .mockResolvedValue(undefined);
+
+      await service.remove("user-1", "tx-1");
+
+      expect(deleteSideEffects).toHaveBeenCalledWith(
+        "tx-1",
+        "user-1",
+        expect.objectContaining({ touchedSecurityIds: expect.any(Set) }),
+      );
+      expect([...(recompute.mock.calls[0][1] as Set<string>)]).toEqual([
+        "sec-removed",
+      ]);
+    });
+
     it("cleans up linked transfer split transactions when removing split parent", async () => {
       const mockTx = {
         id: "tx-1",
@@ -7720,6 +8481,332 @@ describe("TransactionsService", () => {
       ).rejects.toThrow("DB save error");
 
       expect(mockDataSource.transaction).toHaveBeenCalled();
+    });
+  });
+
+  describe("externalId (idempotent create, issue #1713)", () => {
+    const dto = {
+      accountId: "account-1",
+      transactionDate: "2026-01-15",
+      amount: -50,
+      currencyCode: "USD",
+      externalId: "bank-row-1",
+    };
+    const existingRow = {
+      id: "tx-existing",
+      userId: "user-1",
+      accountId: "account-1",
+      amount: -50,
+      externalId: "bank-row-1",
+      status: TransactionStatus.UNRECONCILED,
+      splits: [],
+    };
+    const uniqueViolation = (constraint: string) =>
+      new QueryFailedError(
+        "INSERT INTO transactions",
+        [],
+        Object.assign(new Error("duplicate key value"), {
+          code: "23505",
+          constraint,
+        }),
+      );
+    /** Answer the key lookup with `byKey`, and a read by id with that row. */
+    const answerLookups = (
+      byKey: () => Record<string, unknown> | null,
+      byId: Record<string, Record<string, unknown>>,
+    ) =>
+      transactionsRepository.findOne.mockImplementation(
+        async (options: { where: unknown }) => {
+          const where = options.where as Record<string, unknown>;
+          if (!Array.isArray(where) && where.externalId !== undefined) {
+            return byKey();
+          }
+          const [first] = where as unknown as Array<{ id: string }>;
+          return byId[first.id] ?? null;
+        },
+      );
+
+    it("returns the row already holding the key without writing anything", async () => {
+      answerLookups(() => ({ id: "tx-existing" }), {
+        "tx-existing": existingRow,
+      });
+
+      const outcome = await service.createWithOutcome("user-1", dto as any);
+
+      expect(outcome).toEqual({ transaction: existingRow, created: false });
+      expect(transactionsRepository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            userId: "user-1",
+            accountId: "account-1",
+            externalId: "bank-row-1",
+          },
+        }),
+      );
+      expect(transactionsRepository.save).not.toHaveBeenCalled();
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      expect(rulesApplier.applyToNew).not.toHaveBeenCalled();
+      expect(netWorthService.triggerDebouncedRecalc).not.toHaveBeenCalled();
+    });
+
+    it("create() answers a repeated key with the existing row too", async () => {
+      answerLookups(() => ({ id: "tx-existing" }), {
+        "tx-existing": existingRow,
+      });
+
+      await expect(service.create("user-1", dto as any)).resolves.toBe(
+        existingRow,
+      );
+      expect(transactionsRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("stores the key on a new row and reports it created", async () => {
+      answerLookups(() => null, { "tx-1": { ...existingRow, id: "tx-1" } });
+
+      const outcome = await service.createWithOutcome("user-1", dto as any);
+
+      expect(outcome.created).toBe(true);
+      expect(outcome.transaction.id).toBe("tx-1");
+      expect(transactionsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ externalId: "bank-row-1" }),
+      );
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        "account-1",
+        -50,
+      );
+    });
+
+    it("refuses an account the caller does not own before looking up the key", async () => {
+      accountsService.findOne.mockRejectedValueOnce(
+        new NotFoundException("Account not found"),
+      );
+
+      await expect(
+        service.createWithOutcome("user-1", dto as any),
+      ).rejects.toThrow(NotFoundException);
+      expect(transactionsRepository.findOne).not.toHaveBeenCalled();
+    });
+
+    it("makes no key lookup for a create without one", async () => {
+      answerLookups(
+        () => {
+          throw new Error("looked up a key the request did not carry");
+        },
+        { "tx-1": { ...existingRow, id: "tx-1", externalId: null } },
+      );
+      const { externalId: _omitted, ...withoutKey } = dto;
+
+      const outcome = await service.createWithOutcome(
+        "user-1",
+        withoutKey as any,
+      );
+
+      expect(outcome.created).toBe(true);
+    });
+
+    it("answers with the winner when a concurrent create took the key first", async () => {
+      // Both attempts missed the advisory lookup; the index refused this one.
+      let lookups = 0;
+      answerLookups(() => (lookups++ === 0 ? null : { id: "tx-existing" }), {
+        "tx-existing": existingRow,
+      });
+      transactionsRepository.save.mockRejectedValueOnce(
+        uniqueViolation(EXTERNAL_ID_INDEX),
+      );
+
+      const outcome = await service.createWithOutcome("user-1", dto as any);
+
+      expect(outcome).toEqual({ transaction: existingRow, created: false });
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      expect(netWorthService.triggerDebouncedRecalc).not.toHaveBeenCalled();
+    });
+
+    it("rethrows a unique violation of any other constraint", async () => {
+      answerLookups(() => null, {});
+      const other = uniqueViolation("some_other_unique_index");
+      transactionsRepository.save.mockRejectedValueOnce(other);
+
+      await expect(
+        service.createWithOutcome("user-1", dto as any),
+      ).rejects.toBe(other);
+    });
+
+    it("rethrows the violation inside a caller's transaction, which it aborted", async () => {
+      answerLookups(() => null, {});
+      const violation = uniqueViolation(EXTERNAL_ID_INDEX);
+      transactionsRepository.save.mockRejectedValueOnce(violation);
+      (getActiveScopedManager as jest.Mock).mockReturnValueOnce({});
+
+      await expect(
+        service.createWithOutcome("user-1", dto as any),
+      ).rejects.toBe(violation);
+    });
+
+    describe("on a transfer", () => {
+      const toAccount = { ...mockAccount, id: "account-2", name: "Savings" };
+      const transferDto = {
+        fromAccountId: "account-1",
+        toAccountId: "account-2",
+        transactionDate: "2026-01-15",
+        amount: 200,
+        externalId: "bank-xfer-1",
+      };
+      const fromLeg = {
+        id: "tx-from",
+        userId: "user-1",
+        accountId: "account-1",
+        amount: -200,
+        isTransfer: true,
+        splits: [],
+      };
+      const toLeg = {
+        id: "tx-to",
+        userId: "user-1",
+        accountId: "account-2",
+        amount: 200,
+        isTransfer: true,
+        splits: [],
+      };
+
+      beforeEach(() => {
+        accountsService.findOne.mockImplementation(
+          async (_userId: string, id: string) =>
+            id === "account-2" ? toAccount : mockAccount,
+        );
+      });
+
+      it("returns the existing pair without writing, recording or recalculating", async () => {
+        answerLookups(
+          () => ({
+            ...fromLeg,
+            linkedTransaction: toLeg,
+          }),
+          { "tx-from": fromLeg, "tx-to": toLeg },
+        );
+
+        const outcome = await service.createTransferWithOutcome(
+          "user-1",
+          transferDto as any,
+        );
+
+        expect(outcome).toEqual({
+          transfer: { fromTransaction: fromLeg, toTransaction: toLeg },
+          created: false,
+        });
+        // Answered from the caller's own rows before the transfer is
+        // prepared: no account read, no rate resolution, no write.
+        expect(transactionsRepository.findOne).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: {
+              accountId: "account-1",
+              externalId: "bank-xfer-1",
+              userId: "user-1",
+            },
+          }),
+        );
+        expect(accountsService.findOne).not.toHaveBeenCalled();
+        expect(transactionsRepository.save).not.toHaveBeenCalled();
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+        expect(netWorthService.triggerDebouncedRecalc).not.toHaveBeenCalled();
+      });
+
+      it("stores the key on the source leg only", async () => {
+        transactionsRepository.save
+          .mockResolvedValueOnce({ id: "tx-from" })
+          .mockResolvedValueOnce({ id: "tx-to" });
+        answerLookups(() => null, { "tx-from": fromLeg, "tx-to": toLeg });
+
+        const outcome = await service.createTransferWithOutcome(
+          "user-1",
+          transferDto as any,
+        );
+
+        expect(outcome.created).toBe(true);
+        const [fromCreate, toCreate] = transactionsRepository.create.mock.calls;
+        expect(fromCreate[0]).toEqual(
+          expect.objectContaining({
+            accountId: "account-1",
+            externalId: "bank-xfer-1",
+          }),
+        );
+        expect(toCreate[0]).toEqual(
+          expect.objectContaining({ accountId: "account-2" }),
+        );
+        expect(toCreate[0].externalId).toBeUndefined();
+      });
+
+      it("refuses a key held by a row that is not a transfer to the same destination", async () => {
+        answerLookups(
+          () => ({
+            ...fromLeg,
+            linkedTransaction: { ...toLeg, accountId: "account-3" },
+          }),
+          {},
+        );
+
+        await expect(
+          service.createTransferWithOutcome("user-1", transferDto as any),
+        ).rejects.toThrow(ConflictException);
+        expect(transactionsRepository.save).not.toHaveBeenCalled();
+      });
+
+      it("refuses a key held by an ordinary transaction", async () => {
+        answerLookups(
+          () => ({
+            ...existingRow,
+            isTransfer: false,
+            linkedTransaction: null,
+          }),
+          {},
+        );
+
+        await expect(
+          service.createTransferWithOutcome("user-1", transferDto as any),
+        ).rejects.toThrow(ConflictException);
+      });
+
+      it("finds the key inside the write when the early lookup missed it", async () => {
+        // A key on a source leg the caller does not own (a cross-owner
+        // transfer) is invisible to the early lookup; the in-write lookup,
+        // after authorization, answers it.
+        let lookups = 0;
+        answerLookups(
+          () =>
+            lookups++ === 0 ? null : { ...fromLeg, linkedTransaction: toLeg },
+          { "tx-from": fromLeg, "tx-to": toLeg },
+        );
+
+        const outcome = await service.createTransferWithOutcome(
+          "user-1",
+          transferDto as any,
+        );
+
+        expect(outcome.created).toBe(false);
+        expect(accountsService.findOne).toHaveBeenCalled();
+        expect(transactionsRepository.save).not.toHaveBeenCalled();
+      });
+
+      it("answers with the winner when a concurrent transfer took the key first", async () => {
+        // Both lookups (before the prepare, and inside the write) missed it.
+        let lookups = 0;
+        answerLookups(
+          () =>
+            lookups++ < 2 ? null : { ...fromLeg, linkedTransaction: toLeg },
+          { "tx-from": fromLeg, "tx-to": toLeg },
+        );
+        transactionsRepository.save.mockRejectedValueOnce(
+          uniqueViolation(EXTERNAL_ID_INDEX),
+        );
+
+        const outcome = await service.createTransferWithOutcome(
+          "user-1",
+          transferDto as any,
+        );
+
+        expect(outcome.created).toBe(false);
+        expect(outcome.transfer.fromTransaction).toBe(fromLeg);
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      });
     });
   });
 
@@ -8520,6 +9607,121 @@ describe("TransactionsService", () => {
       expect(transactionsRepository.save).not.toHaveBeenCalled();
     });
 
+    describe("reference number (an email receipt's order number)", () => {
+      it("previews a reference number the transaction does not hold, as a change on its own", async () => {
+        transactionsRepository.findOne.mockResolvedValueOnce({
+          ...baseTx,
+          referenceNumber: null,
+        });
+        const preview = await service.previewUpdate("user-1", "tx-1", {
+          referenceNumber: " EX-1 ",
+        });
+        expect(preview.referenceNumber).toBe("EX-1");
+      });
+
+      it("leaves out the reference number the transaction already holds: that is not a change", async () => {
+        transactionsRepository.findOne.mockResolvedValue({
+          ...baseTx,
+          referenceNumber: "EX-1",
+        });
+        const preview = await service.previewUpdate("user-1", "tx-1", {
+          description: "x",
+          referenceNumber: "EX-1",
+        });
+        expect(preview).not.toHaveProperty("referenceNumber");
+        await expect(
+          service.previewUpdate("user-1", "tx-1", { referenceNumber: "EX-1" }),
+        ).rejects.toThrow(/at least one field/);
+      });
+    });
+
+    describe("tag names (a proposal's tag is an addition)", () => {
+      it("previews a name the user has no tag for as a new tag", async () => {
+        transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+        tagsService.findByNames.mockResolvedValue([]);
+
+        const preview = await service.previewUpdate("user-1", "tx-1", {
+          description: "x",
+          tagNames: ["Allegro"],
+        });
+
+        expect(preview.tagNames).toEqual(["Allegro"]);
+        expect(preview.newTagNames).toEqual(["Allegro"]);
+      });
+
+      it("previews an existing tag in the user's own spelling, not as new", async () => {
+        transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+        tagsService.findByNames.mockResolvedValue([
+          { id: "t1", name: "Allegro" },
+        ]);
+
+        const preview = await service.previewUpdate("user-1", "tx-1", {
+          description: "x",
+          tagNames: ["ALLEGRO"],
+        });
+
+        expect(preview.tagNames).toEqual(["Allegro"]);
+        expect(preview.newTagNames).toBeUndefined();
+      });
+
+      it("leaves out a tag the transaction already carries: that is not a change", async () => {
+        transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+        tagsService.findByNames.mockResolvedValue([
+          { id: "t1", name: "Allegro" },
+        ]);
+        transactionTagsRepository.find.mockResolvedValue([
+          { transactionId: "tx-1", tagId: "t1" },
+        ]);
+
+        const preview = await service.previewUpdate("user-1", "tx-1", {
+          description: "x",
+          tagNames: ["Allegro", "Gifts"],
+        });
+
+        expect(preview.tagNames).toEqual(["Gifts"]);
+        expect(preview.newTagNames).toEqual(["Gifts"]);
+      });
+
+      it("counts a tag to add as a change on its own, and not one already carried", async () => {
+        transactionsRepository.findOne.mockResolvedValue({ ...baseTx });
+        tagsService.findByNames.mockResolvedValue([]);
+        const added = await service.previewUpdate("user-1", "tx-1", {
+          tagNames: ["Allegro"],
+        });
+        expect(added.tagNames).toEqual(["Allegro"]);
+
+        tagsService.findByNames.mockResolvedValue([
+          { id: "t1", name: "Allegro" },
+        ]);
+        transactionTagsRepository.find.mockResolvedValue([
+          { transactionId: "tx-1", tagId: "t1" },
+        ]);
+        await expect(
+          service.previewUpdate("user-1", "tx-1", { tagNames: ["Allegro"] }),
+        ).rejects.toThrow(/at least one field/);
+      });
+
+      it("shows no tags when none were asked for, and reads none", async () => {
+        transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+        const preview = await service.previewUpdate("user-1", "tx-1", {
+          description: "x",
+        });
+        expect(preview).not.toHaveProperty("tagNames");
+        expect(tagsService.findByNames).not.toHaveBeenCalled();
+      });
+
+      it("counts a name once however it is spelled, and writes nothing", async () => {
+        transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+        const preview = await service.previewUpdate("user-1", "tx-1", {
+          description: "x",
+          tagNames: ["Allegro", " allegro ", ""],
+        });
+        expect(preview.tagNames).toEqual(["Allegro"]);
+        expect(tagsService.findOrCreateByNames).not.toHaveBeenCalled();
+        expect(tagsService.addTransactionTags).not.toHaveBeenCalled();
+      });
+    });
+
     it("surfaces the reconciled status of the target transaction", async () => {
       transactionsRepository.findOne.mockResolvedValueOnce({
         ...baseTx,
@@ -8615,7 +9817,7 @@ describe("TransactionsService", () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    // Truth table B (docs/future-plans/split-bulk-update.md): a split parent's
+    // Truth table B (docs/specs/split-bulk-update.md): a split parent's
     // categories live on its lines and its amount must equal their sum, so a
     // category or amount change is refused unless a complete replacement
     // splits array accompanies the edit; parent fields change freely.

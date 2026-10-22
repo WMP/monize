@@ -331,6 +331,8 @@ export class MonthlyComparisonService {
       assets: number;
       liabilities: number;
       netWorth: number;
+      fxComplete: boolean;
+      missingRatePairs: string[];
     }[],
     currentMonth: string,
     previousMonth: string,
@@ -338,6 +340,8 @@ export class MonthlyComparisonService {
     const monthlyHistory = history.map((h) => ({
       month: h.month,
       netWorth: h.netWorth,
+      fxComplete: h.fxComplete,
+      missingRatePairs: h.missingRatePairs,
     }));
 
     const current = history.find(
@@ -347,18 +351,39 @@ export class MonthlyComparisonService {
       (h) => h.month.substring(0, 7) === previousMonth,
     );
 
-    const currentNetWorth = current?.netWorth ?? 0;
-    const previousNetWorth = previous?.netWorth ?? 0;
+    // A month with no snapshot row holds no balance history: a known zero, the
+    // way the series treats an empty month, not an unknown one.
+    const resolve = (
+      month: typeof current,
+    ): { known: number; complete: boolean; pairs: string[] } =>
+      month
+        ? {
+            known: month.netWorth,
+            complete: month.fxComplete,
+            pairs: month.missingRatePairs,
+          }
+        : { known: 0, complete: true, pairs: [] };
+    const cur = resolve(current);
+    const prev = resolve(previous);
+
+    // A subtotal is not a total: a month short of a rate has no net worth, and
+    // a change between two months needs both.
+    const currentNetWorth = cur.complete ? cur.known : null;
+    const previousNetWorth = prev.complete ? prev.known : null;
+    const bothComplete = cur.complete && prev.complete;
 
     return {
       monthlyHistory,
       currentNetWorth,
       previousNetWorth,
-      netWorthChange: currentNetWorth - previousNetWorth,
-      netWorthChangePercent: this.percentChange(
-        previousNetWorth,
-        currentNetWorth,
-      ),
+      knownCurrentNetWorth: cur.known,
+      knownPreviousNetWorth: prev.known,
+      netWorthChange: bothComplete ? cur.known - prev.known : null,
+      netWorthChangePercent: bothComplete
+        ? this.percentChange(prev.known, cur.known)
+        : null,
+      fxComplete: bothComplete,
+      missingRatePairs: [...new Set([...cur.pairs, ...prev.pairs])].sort(),
     };
   }
 

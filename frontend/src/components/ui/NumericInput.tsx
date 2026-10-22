@@ -97,13 +97,11 @@ export const NumericInput = forwardRef<HTMLInputElement, NumericInputProps>(
 
     // Sync from parent when value changes externally (e.g., form reset), and
     // reformat if the number locale changes (formatValue is keyed on it).
-    /* eslint-disable react-hooks/set-state-in-effect -- syncing display from prop changes */
     useEffect(() => {
       if (!isFocused) {
         setDisplayValue(formatValue(value, decimalPlaces));
       }
     }, [value, isFocused, decimalPlaces, formatValue]);
-    /* eslint-enable react-hooks/set-state-in-effect */
 
     const inputId = id || `input-${label?.toLowerCase().replace(/\s+/g, '-')}`;
 

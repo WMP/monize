@@ -22,7 +22,7 @@ import { applyRlsPolicies } from "../helpers/rls-setup";
  * A scanned document is stored as two rows -- the enhanced image the user sees
  * and the original photo it came from -- and the claim the feature rests on is
  * that the pair behaves as ONE attachment
- * (`docs/future-plans/document-scanner.md`, INV-ATTACHMENT-002).
+ * (`docs/specs/document-scanner.md`, INV-ATTACHMENT-002).
  *
  * Four of the five things that make that true are properties of the database,
  * not of the service: the `ON DELETE CASCADE` that takes the original with its
@@ -65,7 +65,12 @@ describe("a scanned attachment and the original it came from", () => {
     original?: UploadedAttachmentFile,
   ) =>
     withUserContext(userId, () =>
-      service.create(userId, transactionId, file, original),
+      service.create(
+        userId,
+        { kind: "transaction", id: transactionId },
+        file,
+        original,
+      ),
     );
 
   const rows = (): Promise<
@@ -178,7 +183,7 @@ describe("a scanned attachment and the original it came from", () => {
     await create(upload("plain.png", PNG));
 
     const listed = await withUserContext(userId, () =>
-      service.findAllForTransaction(userId, transactionId),
+      service.findAllFor(userId, { kind: "transaction", id: transactionId }),
     );
 
     expect(listed).toHaveLength(2);

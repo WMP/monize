@@ -82,6 +82,7 @@
     "newCategory": "새 카테고리",
     "currentCategory": "현재 카테고리",
     "description": "설명",
+    "referenceNumber": "참조 번호",
     "name": "이름",
     "website": "웹사이트",
     "address": "주소",
@@ -111,6 +112,13 @@
     "commission": "수수료",
     "total": "합계",
     "cashImpact": "현금 영향",
+    "bondSeries": "시리즈",
+    "marksPaid": "지불 완료로 표시",
+    "accruedInterest": "경과 이자",
+    "redemptionSplit": "상환 내역",
+    "redemptionSplitValue": "원금 {principal} + 이자 {interest} = 지급액 {payout}",
+    "redemptionDeduction": "조기 상환 수수료 차감됨",
+    "redemptionSplitDiffers": "가격과 경과 이자가 이 상환의 지급액과 다릅니다(내역 참조). 승인하기 전에 확인하세요.",
     "createTransactionsTitle": "이 거래들을 생성하시겠습니까?",
     "createInvestmentTransactionsTitle": "이 투자 거래들을 생성하시겠습니까?",
     "approveAll": "모두 승인",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "장기 자본이득 재투자",
       "CAPITAL_GAIN_SHORT": "단기 자본이득",
       "CAPITAL_GAIN_LONG": "장기 자본이득",
-      "REDEEM": "CD/채권 상환"
+      "REDEEM": "CD/채권 상환",
+      "RETURN_OF_CAPITAL": "자본 환급"
     },
     "createSecurityTitle": "이 증권을 생성하시겠습니까?",
     "createdSecurity": "증권이 생성되었습니다",
@@ -224,7 +233,11 @@
       "category": "카테고리를 {name}(으)로 지정",
       "payee": "수취인을 {name}(으)로 지정",
       "aiReview": "{count, plural, other {AI 검토 요청 #건을 대기열에 추가}}"
-    }
+    },
+    "aiCategory": "AI 제안",
+    "tags": "태그",
+    "newTag": "(새 태그)",
+    "marksPaidDue": "{name} (만기 {date})"
   },
   "table": {
     "downloadTitle": "CSV로 표 다운로드",

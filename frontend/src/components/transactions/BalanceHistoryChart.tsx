@@ -21,6 +21,7 @@ import { computeBalanceGradient, computeBalanceSummary } from '@/lib/balance-his
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import { ChartDownloadButton } from '@/components/ui/ChartDownloadButton';
+import { ChartCollapseButton } from '@/components/transactions/ChartCollapseControls';
 import {
   ChartFlagShadowFilter,
   computeMinMaxFlagIndices,
@@ -136,6 +137,8 @@ interface BalanceHistoryChartProps {
    * and the footer already states the first, latest and lowest figures.
    */
   hideExtremeFlags?: boolean;
+  /** Offer the header button that folds the chart away (the Transactions page). */
+  onCollapse?: () => void;
 }
 
 interface ChartPoint {
@@ -250,6 +253,7 @@ export function BalanceHistoryChart({
   plotHeight = 'default',
   markerSnap = 'earlier',
   hideExtremeFlags = false,
+  onCollapse,
 }: BalanceHistoryChartProps) {
   const t = useTranslations('transactions');
   const tc = useTranslations('common');
@@ -468,10 +472,17 @@ export function BalanceHistoryChart({
   if (isLoading) {
     return (
       <div className={`bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 mb-6 ${cardMinHeight}`}>
-        {!hideTitle && (
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            {chartTitle}
-          </h3>
+        {(!hideTitle || onCollapse) && (
+          <div className="flex items-start justify-between mb-4 gap-2">
+            {!hideTitle ? (
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {chartTitle}
+              </h3>
+            ) : (
+              <span />
+            )}
+            {onCollapse && <ChartCollapseButton onCollapse={onCollapse} />}
+          </div>
         )}
         <div className={`${plotClass} flex items-center justify-center`}>
           <Skeleton className="w-full h-full" />
@@ -483,10 +494,17 @@ export function BalanceHistoryChart({
   if (chartData.length === 0) {
     return (
       <div className={`bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 mb-6 ${cardMinHeight}`}>
-        {!hideTitle && (
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            {chartTitle}
-          </h3>
+        {(!hideTitle || onCollapse) && (
+          <div className="flex items-start justify-between mb-4 gap-2">
+            {!hideTitle ? (
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {chartTitle}
+              </h3>
+            ) : (
+              <span />
+            )}
+            {onCollapse && <ChartCollapseButton onCollapse={onCollapse} />}
+          </div>
         )}
         <div className={`${plotClass} flex items-center justify-center text-gray-500 dark:text-gray-400`}>
           <p>{t('charts.balanceHistory.noData')}</p>
@@ -517,7 +535,10 @@ export function BalanceHistoryChart({
             </p>
           )}
         </div>
-        <ChartDownloadButton chartRef={chartRef} filename={downloadFilename} />
+        <div className="flex items-center gap-2">
+          <ChartDownloadButton chartRef={chartRef} filename={downloadFilename} />
+          {onCollapse && <ChartCollapseButton onCollapse={onCollapse} />}
+        </div>
       </div>
 
       {/* overflow-hidden: while the account-widget column animates the card's

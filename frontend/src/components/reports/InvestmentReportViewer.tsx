@@ -57,6 +57,9 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
+  // The last run failed. `result` keeps the run before it, which is not this
+  // selection's answer, so it is not exportable.
+  const [runFailed, setRunFailed] = useState(false);
   const [asOfOverride, setAsOfOverride] = useState('');
   // View-time account override. Seeded from the report's saved config (below,
   // once the report loads) but freely changeable without persisting.
@@ -96,21 +99,52 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
     }
   }, [reportId, t]);
 
-  const executeReport = useCallback(async () => {
-    setIsExecuting(true);
-    try {
-      const data = await investmentReportsApi.execute(reportId, {
-        ...(asOfOverride ? { asOfDate: asOfOverride } : {}),
-        accountIds: selectedAccountIds,
-      });
-      setResult(data);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('investmentReportViewer.toasts.runFailed')));
-      logger.error(error);
-    } finally {
-      setIsExecuting(false);
-    }
+  // The inputs the report last ran for. When they change, the "becomes
+  // executing" transition happens here, during render, rather than from inside
+  // the effect that sends the request.
+  const [executeInputs, setExecuteInputs] = useState({
+    reportId,
+    report,
+    asOfOverride,
+    selectedAccountIds,
+  });
+  if (
+    executeInputs.reportId !== reportId ||
+    executeInputs.report !== report ||
+    executeInputs.asOfOverride !== asOfOverride ||
+    executeInputs.selectedAccountIds !== selectedAccountIds
+  ) {
+    setExecuteInputs({ reportId, report, asOfOverride, selectedAccountIds });
+    if (report) setIsExecuting(true);
+  }
+
+  const runReport = useCallback(() => {
+    // The state writes live in this inner function so they run once the
+    // request settles, never synchronously inside the effect that calls this.
+    const run = async () => {
+      try {
+        const data = await investmentReportsApi.execute(reportId, {
+          ...(asOfOverride ? { asOfDate: asOfOverride } : {}),
+          accountIds: selectedAccountIds,
+        });
+        setResult(data);
+        setRunFailed(false);
+      } catch (error) {
+        setRunFailed(true);
+        toast.error(getErrorMessage(error, t('investmentReportViewer.toasts.runFailed')));
+        logger.error(error);
+      } finally {
+        setIsExecuting(false);
+      }
+    };
+    return run();
   }, [reportId, asOfOverride, selectedAccountIds, t]);
+
+  // Every run other than the automatic one shows the spinner itself.
+  const executeReport = useCallback(() => {
+    setIsExecuting(true);
+    return runReport();
+  }, [runReport]);
 
   useEffect(() => {
     const init = async () => {
@@ -138,8 +172,8 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
 
   useEffect(() => {
     if (!report) return;
-    executeReport();
-  }, [report, executeReport]);
+    runReport();
+  }, [report, runReport]);
 
   const formatCell = (
     value: InvestmentCellValue,
@@ -339,7 +373,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
           <ReportToolbarActions
             onRefreshComplete={executeReport}
             onExportCsv={handleExportCsv}
-            disabled={!result || result.rowCount === 0}
+            disabled={isExecuting || runFailed || !result || result.rowCount === 0}
             className="sm:self-auto"
           />
         </div>

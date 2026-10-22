@@ -201,4 +201,71 @@ describe('TransactionActionSheet', () => {
     render(<TransactionActionSheet {...baseProps} transaction={null} />);
     expect(screen.getByText('Transaction')).toBeInTheDocument();
   });
+  describe('warranties', () => {
+    it('offers Add warranty on a row with none, after Schedule as Recurring', () => {
+      const onAddWarranty = vi.fn();
+      const onViewWarranties = vi.fn();
+      const onClose = vi.fn();
+      render(
+        <TransactionActionSheet
+          {...baseProps}
+          onClose={onClose}
+          onScheduleRecurring={vi.fn()}
+          onAddWarranty={onAddWarranty}
+          onViewWarranties={onViewWarranties}
+          transaction={{ ...tx, warrantyCount: 0 }}
+        />,
+      );
+      expect(screen.queryByText('View warranties')).not.toBeInTheDocument();
+      const labels = screen.getAllByRole('button').map((b) => b.textContent);
+      const at = labels.indexOf('Add warranty');
+      expect(at).toBe(labels.indexOf('Schedule as Recurring') + 1);
+      fireEvent.click(screen.getByText('Add warranty'));
+      expect(onClose).toHaveBeenCalled();
+      expect(onAddWarranty).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }));
+      expect(onViewWarranties).not.toHaveBeenCalled();
+    });
+
+    it('reads an absent count as none', () => {
+      render(<TransactionActionSheet {...baseProps} onAddWarranty={vi.fn()} onViewWarranties={vi.fn()} />);
+      expect(screen.getByText('Add warranty')).toBeInTheDocument();
+      expect(screen.queryByText('View warranties')).not.toBeInTheDocument();
+    });
+
+    it('offers View warranties on a row with some', () => {
+      const onAddWarranty = vi.fn();
+      const onViewWarranties = vi.fn();
+      render(
+        <TransactionActionSheet
+          {...baseProps}
+          onAddWarranty={onAddWarranty}
+          onViewWarranties={onViewWarranties}
+          transaction={{ ...tx, warrantyCount: 2 }}
+        />,
+      );
+      expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByText('View warranties'));
+      expect(onViewWarranties).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }));
+      expect(onAddWarranty).not.toHaveBeenCalled();
+    });
+
+    it('hides both on a linked investment row', () => {
+      render(
+        <TransactionActionSheet
+          {...baseProps}
+          onAddWarranty={vi.fn()}
+          onViewWarranties={vi.fn()}
+          transaction={{ ...tx, linkedInvestmentTransactionId: 'inv-1', warrantyCount: 1 }}
+        />,
+      );
+      expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
+      expect(screen.queryByText('View warranties')).not.toBeInTheDocument();
+    });
+
+    it('offers nothing when the caller passes no warranty handler', () => {
+      render(<TransactionActionSheet {...baseProps} transaction={{ ...tx, warrantyCount: 3 }} />);
+      expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
+      expect(screen.queryByText('View warranties')).not.toBeInTheDocument();
+    });
+  });
 });

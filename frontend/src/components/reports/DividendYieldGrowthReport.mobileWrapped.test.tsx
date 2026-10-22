@@ -65,6 +65,7 @@ vi.mock('@/hooks/useExchangeRates', () => ({
     // every amount converts to itself and both single- and multi-account paths
     // produce the same figures.
     convertToDefault: (value: number) => value,
+    convert: (value: number) => value,
   }),
 }));
 
@@ -105,11 +106,11 @@ const HOLDINGS: HoldingWithMarketValue[] = [
 const DIVIDENDS: InvestmentTransaction[] = [
   {
     id: 'd-1', accountId: 'a-1', securityId: 's-1', action: 'DIVIDEND',
-    transactionDate: '2026-03-15', totalAmount: 2500,
+    transactionDate: '2026-03-15', totalAmount: 2500, amountCurrencyCode: 'USD',
   } as InvestmentTransaction,
   {
     id: 'd-2', accountId: 'a-1', securityId: 's-2', action: 'DIVIDEND',
-    transactionDate: '2026-06-15', totalAmount: 1000,
+    transactionDate: '2026-06-15', totalAmount: 1000, amountCurrencyCode: 'USD',
   } as InvestmentTransaction,
 ];
 

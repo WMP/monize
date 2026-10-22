@@ -82,6 +82,7 @@
     "newCategory": "Yeni kategori",
     "currentCategory": "Mevcut kategori",
     "description": "Açıklama",
+    "referenceNumber": "Ref #",
     "name": "Ad",
     "website": "Web sitesi",
     "address": "Adres",
@@ -111,6 +112,13 @@
     "commission": "Komisyon",
     "total": "Toplam",
     "cashImpact": "Nakit etkisi",
+    "bondSeries": "Seri",
+    "marksPaid": "Ödendi olarak işaretler",
+    "accruedInterest": "Birikmiş faiz",
+    "redemptionSplit": "İtfa dağılımı",
+    "redemptionSplitValue": "Anapara {principal} + faiz {interest} = ödeme {payout}",
+    "redemptionDeduction": "Erken itfa ücreti düşüldü",
+    "redemptionSplitDiffers": "Fiyat ve birikmiş faiz, bu itfanın ödediği tutardan farklı (dağılıma bakın). Onaylamadan önce kontrol edin.",
     "createTransactionsTitle": "Bu işlemler oluşturulsun mu?",
     "createInvestmentTransactionsTitle": "Bu yatırım işlemleri oluşturulsun mu?",
     "approveAll": "Tümünü onayla",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Uzun Vadeli Kazancı Yeniden Yatır",
       "CAPITAL_GAIN_SHORT": "Kısa Vadeli Sermaye Kazancı",
       "CAPITAL_GAIN_LONG": "Uzun Vadeli Sermaye Kazancı",
-      "REDEEM": "CD/Tahvil İtfası"
+      "REDEEM": "CD/Tahvil İtfası",
+      "RETURN_OF_CAPITAL": "Sermaye iadesi"
     },
     "createSecurityTitle": "Bu menkul kıymet oluşturulsun mu?",
     "createdSecurity": "Menkul kıymet oluşturuldu",
@@ -224,7 +233,11 @@
       "category": "Kategoriyi {name} olarak ayarla",
       "payee": "Alıcıyı {name} olarak ayarla",
       "aiReview": "{count, plural, one {# yapay zekâ inceleme isteğini kuyruğa al} other {# yapay zekâ inceleme isteğini kuyruğa al}}"
-    }
+    },
+    "aiCategory": "yapay zekâ önerisi",
+    "tags": "Etiketler",
+    "newTag": "(yeni etiket)",
+    "marksPaidDue": "{name} (vadesi {date})"
   },
   "table": {
     "downloadTitle": "Tabloyu CSV olarak indir",

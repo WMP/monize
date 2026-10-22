@@ -1970,6 +1970,39 @@ describe("AuthController", () => {
       expect(res.json).toHaveBeenCalledWith({ message: "Token refreshed" });
     });
 
+    it("keeps the refresh cookie when the refresh was answered inside the rotation grace", async () => {
+      // A second tab presented the predecessor: the server answers with an
+      // access token only, and the refresh cookie the first tab's response set
+      // is the live one (A26-M03).
+      authService.refreshTokens.mockResolvedValue({
+        accessToken: "new-access",
+        refreshToken: null,
+        userId: "user-1",
+      });
+      const res = mockRes();
+      const expressReq = { cookies: { refresh_token: "predecessor" } } as any;
+
+      await controller.refresh(expressReq, res as any);
+
+      expect(res.cookie).toHaveBeenCalledWith(
+        "auth_token",
+        "new-access",
+        expect.any(Object),
+      );
+      expect(res.cookie).not.toHaveBeenCalledWith(
+        "refresh_token",
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(res.cookie).toHaveBeenCalledWith(
+        "csrf_token",
+        expect.any(String),
+        expect.any(Object),
+      );
+      expect(res.clearCookie).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ message: "Token refreshed" });
+    });
+
     it("clears all auth cookies and re-throws when refreshTokens fails", async () => {
       const error = new UnauthorizedException("Token revoked");
       authService.refreshTokens.mockRejectedValue(error);

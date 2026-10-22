@@ -48,11 +48,24 @@ export const PG_LISTENER = Symbol("PG_LISTENER");
  * One `LISTEN` for the life of the process, with the recipient named inside
  * each payload, rather than one channel per subscriber: a subscribe happens on
  * every SSE open and every agent long-poll, and `LISTEN`/`UNLISTEN` churn on a
- * single session would put that traffic on the hot path. Task R6's bus does the
- * routing; the boot check below issues this same `LISTEN`, so proving the
- * connection works and arming it are one step.
+ * single session would put that traffic on the hot path. `PostgresEventBus`
+ * issues this `LISTEN` on construction and parses every payload delivered on
+ * it as a wake-up envelope -- which is why the boot probe below uses
+ * `PG_WAKEUP_PROBE_CHANNEL` instead of this one.
  */
 export const PG_WAKEUP_CHANNEL = "monize_wakeups";
+
+/**
+ * The channel the boot probe self-tests delivery on.
+ *
+ * Deliberately not `PG_WAKEUP_CHANNEL`: `PostgresEventBus` is already
+ * constructed and subscribed by the time `main.ts` runs its boot checks, so a
+ * probe token published on `PG_WAKEUP_CHANNEL` would reach it and fail its
+ * `JSON.parse`, logging a spurious "Unparsable wake-up dropped" warning on
+ * every boot. `LISTEN`/`NOTIFY` delivery does not depend on the channel's
+ * name, so a dedicated channel proves the same thing without that side effect.
+ */
+export const PG_WAKEUP_PROBE_CHANNEL = "monize_wakeups_probe";
 
 /** How long the first connect and its `LISTEN` may take before the boot fails. */
 export const PG_LISTENER_CONNECT_TIMEOUT_MS = 5_000;
@@ -234,6 +247,20 @@ export class PgListener {
    */
   private opening: Promise<void> | null = null;
 
+  /**
+   * The last statement queued on each session, so the next one waits for it.
+   *
+   * `pg` queues a statement issued while the client is busy, but that queue is
+   * deprecated and goes away in pg@9 ("Calling client.query() when the client
+   * is already executing a query"). This connection is shared by every caller in
+   * the process, and the callers do not wait for each other: one price refresh
+   * of several securities invalidates the portfolio memo once per security, and
+   * each invalidation is a fire-and-forget `NOTIFY` here. So the statements on a
+   * session are chained in issue order instead. Per client, so a statement left
+   * hanging on a lost session cannot hold up the one that replaced it.
+   */
+  private readonly statementTails = new WeakMap<Client, Promise<unknown>>();
+
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempt = 0;
   private closed = false;
@@ -309,7 +336,7 @@ export class PgListener {
       // returns. The caller's slow poll covers the gap.
       return;
     }
-    await client.query(`LISTEN ${channel}`);
+    await this.runOnSession(client, () => client.query(`LISTEN ${channel}`));
   }
 
   /**
@@ -329,7 +356,27 @@ export class PgListener {
           "sent notification as a delivered one.",
       );
     }
-    await client.query("SELECT pg_notify($1, $2)", [channel, payload]);
+    await this.runOnSession(client, () =>
+      client.query("SELECT pg_notify($1, $2)", [channel, payload]),
+    );
+  }
+
+  /**
+   * Run `statement` on `client` once every statement issued on it before has
+   * settled, whatever that statement's outcome: one failed `NOTIFY` must not
+   * reject the next caller's.
+   */
+  private runOnSession<T>(
+    client: Client,
+    statement: () => Promise<T>,
+  ): Promise<T> {
+    const tail = this.statementTails.get(client) ?? Promise.resolve();
+    const result = tail.then(statement);
+    this.statementTails.set(
+      client,
+      result.catch(() => undefined),
+    );
+    return result;
   }
 
   /**

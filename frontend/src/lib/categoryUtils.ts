@@ -326,3 +326,23 @@ export function resolveSelectedCategories(
     })
     .filter((c): c is Category => c !== undefined);
 }
+
+/**
+ * Signs a typed amount by the category's income/expense type, unless the
+ * category has turned the automatic sign off (`effectiveAutoSign === false`)
+ * or the edit is only a sign flip of the same absolute value the caller
+ * already had (a manual override is respected). With no category the value
+ * is returned as-is. An absent `effectiveAutoSign` (a stale shape) reads as
+ * on, matching the behaviour before the per-category toggle existed.
+ */
+export function signAmountByCategory(
+  value: number,
+  reference: number | undefined,
+  category: Pick<Category, 'isIncome' | 'effectiveAutoSign'> | undefined,
+): number {
+  const referenceAbs = reference !== undefined ? Math.abs(reference) : 0;
+  const isJustSignChange = referenceAbs === Math.abs(value) && referenceAbs !== 0;
+  if (isJustSignChange || !category) return value;
+  if (category.effectiveAutoSign === false) return value;
+  return category.isIncome ? Math.abs(value) : -Math.abs(value);
+}

@@ -121,7 +121,12 @@ describe("built-in reports and investment cash accounts (integration)", () => {
     breakdown = new MonthlyCategoryBreakdownService(dataSource, currency);
     // `execute` uses neither the budgets service (only the BUDGET_VARIANCE
     // metric does) nor action history (only the writes do).
-    customReports = new ReportsService(dataSource, {} as never, {} as never);
+    customReports = new ReportsService(
+      dataSource,
+      {} as never,
+      {} as never,
+      currency,
+    );
     analytics = new TransactionAnalyticsService(dataSource);
   });
 
@@ -1409,6 +1414,43 @@ describe("built-in reports and investment cash accounts (integration)", () => {
           averageAmount: 60,
         }),
       ]);
+    });
+
+    it("widens the recurring window with the range, and leaves all unbounded", async () => {
+      for (const months of [8, 9, 10]) {
+        await createEmbeddedInvestmentParent({
+          date: monthsBeforeToday(months),
+          ordinaryAmount: -60,
+          investmentAmount: -500,
+          payeeName: "Annual-ish",
+        });
+      }
+
+      const [sixMonths, oneYear, allTime] = [
+        await withUserContext(userId, () =>
+          taxRecurring.getRecurringExpenses(userId, 3),
+        ),
+        await withUserContext(userId, () =>
+          taxRecurring.getRecurringExpenses(userId, 3, "1y"),
+        ),
+        await withUserContext(userId, () =>
+          taxRecurring.getRecurringExpenses(userId, 3, "all"),
+        ),
+      ];
+
+      expect(sixMonths.data).toEqual([]);
+      expect(oneYear.data).toEqual([
+        expect.objectContaining({ payeeName: "Annual-ish", occurrences: 3 }),
+      ]);
+      expect(allTime.data).toEqual([
+        expect.objectContaining({ payeeName: "Annual-ish", occurrences: 3 }),
+      ]);
+      // The user's spending history began ten months back, so neither the
+      // year nor all time spreads the 180 over more months than that.
+      expect(allTime.summary.monthCount).toBe(10);
+      expect(allTime.summary.monthlyEstimate).toBe(18);
+      expect(oneYear.summary.monthCount).toBe(10);
+      expect(oneYear.summary.monthlyEstimate).toBe(18);
     });
 
     /**

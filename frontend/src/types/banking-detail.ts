@@ -22,6 +22,17 @@ export interface BalanceForecastGap {
   toCurrency: string | null;
 }
 
+/**
+ * The overdue occurrences a projection applied on its first day, tomorrow
+ * (discussion #1784): due before today, neither posted nor skipped.
+ */
+export interface BalanceForecastOverdue {
+  date: string;
+  count: number;
+  /** Their signed net effect on the account. */
+  amount: number;
+}
+
 /** A projected balance series from GET /accounts/:id/balance-forecast. */
 export interface BalanceForecast {
   accountId: string;
@@ -37,4 +48,9 @@ export interface BalanceForecast {
   complete: boolean;
   /** The schedules behind an incomplete forecast, so the UI can say which. */
   gaps: BalanceForecastGap[];
+  /**
+   * `null` when nothing was overdue or the projection was withheld; absent from
+   * a backend that predates the field, which carried nothing overdue.
+   */
+  overdue?: BalanceForecastOverdue | null;
 }

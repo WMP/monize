@@ -11,6 +11,7 @@ import { ProviderList } from '@/components/settings/ai/ProviderList';
 import { UsageDashboard } from '@/components/settings/ai/UsageDashboard';
 import { AiBubbleToggle } from '@/components/settings/ai/AiBubbleToggle';
 import { aiApi } from '@/lib/ai';
+import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { getErrorMessage } from '@/lib/errors';
 import type { AiProviderConfig, AiUsageSummary, AiStatus } from '@/types/ai';
 import Link from 'next/link';
@@ -33,21 +34,25 @@ function AiSettingsContent() {
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [usageDays, setUsageDays] = useState<number | undefined>(30);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [configsData, usageData, statusData] = await Promise.all([
-        aiApi.getConfigs(),
-        aiApi.getUsage(usageDays),
-        aiApi.getStatus(),
-      ]);
-      setConfigs(configsData);
-      setUsage(usageData);
-      setStatus(statusData);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('toasts.loadFailed')));
-    } finally {
-      setIsLoading(false);
-    }
+  const loadData = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const [configsData, usageData, statusData] = await Promise.all([
+          aiApi.getConfigs(),
+          aiApi.getUsage(usageDays),
+          aiApi.getStatus(),
+        ]);
+        setConfigs(configsData);
+        setUsage(usageData);
+        setStatus(statusData);
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('toasts.loadFailed')));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [usageDays, t]);
 
   useEffect(() => {
@@ -109,15 +114,17 @@ function AiSettingsContent() {
           aiConfigured={status?.configured ?? false}
         />
 
-        <ProviderList
-          configs={configs}
-          encryptionAvailable={status?.encryptionAvailable ?? false}
-          onConfigsChanged={loadData}
-          hasSystemDefault={status?.hasSystemDefault}
-          systemDefaultProvider={status?.systemDefaultProvider}
-          systemDefaultModel={status?.systemDefaultModel}
-          disabled={isDemoMode}
-        />
+        <div {...tourAnchor(TOUR_ANCHORS.aiProviderList)}>
+          <ProviderList
+            configs={configs}
+            encryptionAvailable={status?.encryptionAvailable ?? false}
+            onConfigsChanged={loadData}
+            hasSystemDefault={status?.hasSystemDefault}
+            systemDefaultProvider={status?.systemDefaultProvider}
+            systemDefaultModel={status?.systemDefaultModel}
+            disabled={isDemoMode}
+          />
+        </div>
 
         {usage && (
           <UsageDashboard

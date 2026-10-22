@@ -49,6 +49,11 @@
     "nextMonth": "다음 달",
     "emptyAll": "예약된 활성 청구, 입금 또는 이체가 없습니다."
   },
+  "cashFlowForecast": {
+    "title": "현금 흐름 예측",
+    "period": "예측 기간",
+    "loadFailed": "오늘 이후 날짜의 거래를 불러오지 못해 예측을 표시할 수 없습니다. 대시보드를 새로 고쳐 다시 시도해 주세요."
+  },
   "gettingStarted": {
     "title": "시작하기",
     "subtitle": "몇 가지 빠른 단계로 계정을 설정하세요",
@@ -88,6 +93,11 @@
     "viewAll": "모든 인사이트 보기",
     "activeCount": "{count}개 활성"
   },
+  "warrantiesExpiring": {
+    "title": "곧 만료되는 보증",
+    "empty": "앞으로 30일 안에 만료되는 항목이 없습니다",
+    "loadFailed": "곧 만료되는 보증을 불러올 수 없습니다. 대시보드를 새로고침하여 다시 시도하세요."
+  },
   "topMovers": {
     "title": "주요 등락 종목",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "순자산가액",
     "empty": "아직 순자산가액 데이터가 없습니다.",
-    "past12Months": "지난 12개월",
-    "viewReport": "전체 보고서 보기"
+    "barStyle": "막대 스타일",
+    "barStyleNetWorth": "순자산",
+    "barStyleAccountType": "계좌 유형별",
+    "loadFailed": "순자산 내역을 불러오지 못했습니다. 대시보드를 새로 고쳐 다시 시도해 주세요."
   },
   "assetsVsLiabilities": {
     "title": "자산 대 부채",
@@ -135,7 +147,10 @@
     "current": "현재",
     "netWorthLabel": "순자산가액",
     "assets": "자산",
-    "liabilities": "부채"
+    "liabilities": "부채",
+    "partialName": "{name} (부분)",
+    "viewCallouts": "레이블",
+    "viewLegend": "범례"
   },
   "expensesPieChart": {
     "title": "카테고리별 지출",
@@ -145,7 +160,9 @@
     "other": "기타",
     "insideOther": "{count, plural, other {기타에 # 카테고리}}",
     "topLevelOnly": "최상위 카테고리",
-    "topLevelOnlyHint": "하위 카테고리를 상위 카테고리에 합산합니다"
+    "topLevelOnlyHint": "하위 카테고리를 상위 카테고리에 합산합니다",
+    "viewCallouts": "레이블",
+    "viewLegend": "범례"
   },
   "incomeExpenses": {
     "title": "수입 대 지출",
@@ -183,6 +200,7 @@
     "accounts": "계정",
     "chartType": "차트 유형",
     "view": "보기",
+    "viewCalloutsHint": "레이블은 더 넓은 화면이 필요합니다. 공간이 부족하면 범례가 표시됩니다.",
     "displayName": "표시 이름",
     "description": "설명",
     "descriptionPlaceholder": "선택적인 설명을 추가하세요",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "전체",
       "1w": "1주",
@@ -204,7 +223,7 @@
     "empty": "아직 표시할 투자 내역이 없습니다.",
     "refresh": "현재 가치 새로고침",
     "investmentResult": "투자 결과",
-    "periodBreakdownInvestedTooltip": "이 기간 동안 증권의 가치가 {valueChange} 변동했습니다. 그중 {netInvested}은(는) 매도를 뺀 투입액이며, 배당과 이자로 {income}을(를) 지급했습니다. 위의 수치는 투자되지 않은 현금을 제외한, 투자 자체가 거둔 성과입니다.",
+    "periodBreakdownInvestedTooltip": "이 기간 동안 증권의 가치가 {valueChange} 변동했습니다. 그중 {netInvested}은(는) 매도를 뺀 투입액이며, 배당과 이자로 {income}을(를) 지급했습니다. 주식으로 재투자된 분배금은 두 금액 모두에 포함됩니다. 위의 수치는 투자되지 않은 현금을 제외한, 투자 자체가 거둔 성과입니다.",
     "notAvailable": "해당 없음"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "최소 발생 횟수",
     "minOccurrencesOption": "{count}회 이상",
     "occurrences": "{count}회 발생",
-    "monthlyEstimate": "월 예상액"
+    "monthlyEstimate": "월 예상액",
+    "viewCallouts": "레이블",
+    "viewLegend": "범례"
   },
   "weekendVsWeekday": {
     "title": "주말 대 평일 지출",

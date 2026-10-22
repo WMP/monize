@@ -42,7 +42,7 @@ export interface ThrottleRecord {
  * request into a 500 raised before the handler decides anything, and readiness
  * already removes a replica that has lost its database.
  *
- * `docs/future-plans/horizontal-scaling.md` (WP2) has the design; the table's
+ * `docs/specs/horizontal-scaling.md` (WP2) has the design; the table's
  * `UNLOGGED` rationale is in its migration.
  */
 @Injectable()

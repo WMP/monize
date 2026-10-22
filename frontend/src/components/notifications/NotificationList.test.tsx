@@ -984,6 +984,162 @@ describe('NotificationList', () => {
     });
   });
 
+  describe('bank sync notifications', () => {
+    // The producer (`docs/specs/bank-sync-notifications.md`) writes facts, never
+    // "in 3 days": the stored mark and date are rendered, so a row read weeks
+    // after it was written says what it said on the day.
+    const bankSyncRow = (
+      type: Notification['type'],
+      data: Record<string, unknown>,
+      over: Partial<Notification> = {},
+    ): Notification =>
+      makeNotification({
+        id: 'bank-sync-1',
+        budgetId: null,
+        budgetCategoryId: null,
+        type,
+        severity: 'warning',
+        title: 'STORED ENGLISH TITLE',
+        message: 'STORED ENGLISH MESSAGE',
+        target: '/settings/bank-sync',
+        data,
+        ...over,
+      });
+
+    const renderRow = (row: Notification) =>
+      render(<NotificationList {...defaultProps} notifications={[row]} />);
+
+    it.each([
+      [30, 'Alpha Bank: bank access ends within 30 days'],
+      [7, 'Alpha Bank: bank access ends within 7 days'],
+      [2, 'Alpha Bank: bank access ends within 2 days'],
+      [1, 'Alpha Bank: bank access ends within 1 day'],
+      [0, 'Alpha Bank: bank access ends today'],
+    ])('words the %s-day consent reminder from the stored mark', (threshold, title) => {
+      renderRow(
+        bankSyncRow('BANK_SYNC_CONSENT_EXPIRING', {
+          connectionId: 'c1',
+          institutionName: 'Alpha Bank',
+          validUntil: '2027-03-30',
+          threshold,
+        }),
+      );
+
+      expect(screen.getByText(title)).toBeInTheDocument();
+      // The end is a stored date in the reader's date format, not the raw ISO.
+      expect(
+        screen.getByText(/ends on 30\.03\.2027\. Renew the connection/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('STORED ENGLISH TITLE')).not.toBeInTheDocument();
+    });
+
+    it('says the same on any day it is read: nothing is counted from the clock', () => {
+      renderRow(
+        bankSyncRow(
+          'BANK_SYNC_CONSENT_EXPIRING',
+          {
+            institutionName: 'Alpha Bank',
+            validUntil: '2020-01-31',
+            threshold: 14,
+          },
+          { createdAt: '2019-12-31T06:23:00.000Z' },
+        ),
+      );
+      // A row whose end is long past still reads as it was written.
+      expect(
+        screen.getByText('Alpha Bank: bank access ends within 14 days'),
+      ).toBeInTheDocument();
+    });
+
+    it('opens the bank sync settings when the row is clicked', () => {
+      renderRow(
+        bankSyncRow('BANK_SYNC_CONSENT_EXPIRED', {
+          institutionName: 'Alpha Bank',
+          validUntil: '2027-03-30',
+        }),
+      );
+      fireEvent.click(screen.getByTestId('notification-item-bank-sync-1'));
+      expect(mockPush).toHaveBeenCalledWith('/settings/bank-sync');
+    });
+
+    it('says the consent has ended', () => {
+      renderRow(
+        bankSyncRow('BANK_SYNC_CONSENT_EXPIRED', {
+          institutionName: 'Alpha Bank',
+          validUntil: null,
+        }),
+      );
+      expect(screen.getByText('Alpha Bank: bank access has ended')).toBeInTheDocument();
+      expect(screen.getByText(/has ended\. Renew the connection in Monize to resume syncing/)).toBeInTheDocument();
+    });
+
+    it('lists the failed accounts by label, in the reader\'s language', () => {
+      renderRow(
+        bankSyncRow('BANK_SYNC_FAILED', {
+          institutionName: 'Alpha Bank',
+          failures: [
+            { bankAccountId: 'b1', label: 'Main account', code: 'rate_limited' },
+            { bankAccountId: 'b2', label: 'Savings', code: 'unavailable' },
+            { bankAccountId: 'b3', label: null, code: 'unavailable' },
+          ],
+        }),
+      );
+      expect(screen.getByText('Alpha Bank: sync failed')).toBeInTheDocument();
+      expect(
+        screen.getByText(/failed for: Main account, Savings, and an account\./),
+      ).toBeInTheDocument();
+    });
+
+    it('says one thing when every account failed on the credentials', () => {
+      renderRow(
+        bankSyncRow('BANK_SYNC_FAILED', {
+          institutionName: 'Alpha Bank',
+          failures: [{ bankAccountId: 'b1', label: 'Main', code: 'credentials' }],
+        }),
+      );
+      expect(screen.getByText(/credentials are missing or were rejected/)).toBeInTheDocument();
+      expect(screen.queryByText(/Main/)).not.toBeInTheDocument();
+    });
+
+    it('formats the imported count in the reader\'s number format', () => {
+      renderRow(
+        bankSyncRow(
+          'BANK_SYNC_IMPORTED',
+          { institutionName: 'Alpha Bank', imported: 1234, skipped: 0, accounts: 2 },
+          { severity: 'success' },
+        ),
+      );
+      expect(screen.getByText('Alpha Bank: new transactions imported')).toBeInTheDocument();
+      expect(screen.getByText(/imported from Alpha Bank by the daily sync: 1,234\./)).toBeInTheDocument();
+    });
+
+    it('reports a sync that found nothing as such', () => {
+      renderRow(
+        bankSyncRow(
+          'BANK_SYNC_IMPORTED',
+          { institutionName: 'Alpha Bank', imported: 0, skipped: 3, accounts: 1 },
+          { severity: 'success' },
+        ),
+      );
+      expect(screen.getByText('Alpha Bank: no new transactions')).toBeInTheDocument();
+      expect(screen.getByText(/found no new transactions/)).toBeInTheDocument();
+    });
+
+    it.each([
+      ['an unknown mark', 'BANK_SYNC_CONSENT_EXPIRING', { institutionName: 'A', validUntil: '2027-03-30', threshold: 5 }],
+      ['no date', 'BANK_SYNC_CONSENT_EXPIRING', { institutionName: 'A', threshold: 7 }],
+      ['no institution', 'BANK_SYNC_CONSENT_EXPIRED', {}],
+      ['an empty failure list', 'BANK_SYNC_FAILED', { institutionName: 'A', failures: [] }],
+      ['a malformed failure', 'BANK_SYNC_FAILED', { institutionName: 'A', failures: [{ label: 'x' }] }],
+      ['a fractional count', 'BANK_SYNC_IMPORTED', { institutionName: 'A', imported: 1.5 }],
+      ['a negative count', 'BANK_SYNC_IMPORTED', { institutionName: 'A', imported: -1 }],
+    ] as const)('falls back to the stored English for %s', (_label, type, data) => {
+      renderRow(bankSyncRow(type, { ...data }));
+      expect(screen.getByText('STORED ENGLISH TITLE')).toBeInTheDocument();
+      expect(screen.getByText('STORED ENGLISH MESSAGE')).toBeInTheDocument();
+    });
+  });
+
   describe('filters', () => {
     it('renders one chip per severity and per category', () => {
       render(<NotificationList {...defaultProps} />);
@@ -1154,6 +1310,126 @@ describe('NotificationList', () => {
       fireEvent.click(close);
 
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+  describe('email receipts attention', () => {
+    const attention = (overrides: Partial<Notification> = {}) =>
+      makeNotification({
+        id: 'receipts-1',
+        budgetId: null,
+        budgetCategoryId: null,
+        type: 'EMAIL_RECEIPTS_ATTENTION',
+        category: 'EMAIL_RECEIPTS',
+        severity: 'info',
+        title: 'stored title',
+        message: 'stored message',
+        data: { noParser: 3, parseFailed: 2 },
+        target: '/email-receipts?tab=emails',
+        ...overrides,
+      });
+
+    it('composes the copy from both counts and opens the receipts hub', () => {
+      mockPush.mockClear();
+      render(<NotificationList {...defaultProps} notifications={[attention()]} />);
+      expect(screen.getByText('Email receipts need attention')).toBeInTheDocument();
+      expect(
+        screen.getByText(/holds 3 without a profile and 2 that their profile did not recognize/),
+      ).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('notification-item-receipts-1'));
+      expect(mockPush).toHaveBeenCalledWith('/email-receipts?tab=emails');
+    });
+
+    it('falls back to the stored English when the counts are missing, and to the hub route without a target', () => {
+      mockPush.mockClear();
+      render(
+        <NotificationList
+          {...defaultProps}
+          notifications={[attention({ data: {}, target: null })]}
+        />,
+      );
+      expect(screen.getByText('stored title')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('notification-item-receipts-1'));
+      expect(mockPush).toHaveBeenCalledWith('/email-receipts?tab=emails');
+    });
+  });
+
+  describe('AI review proposals', () => {
+    const aiReview = (overrides: Partial<Notification> = {}) =>
+      makeNotification({
+        id: 'air-1',
+        budgetId: null,
+        budgetCategoryId: null,
+        type: 'AI_REVIEW_PROPOSALS_READY',
+        category: 'AI_REVIEW',
+        severity: 'info',
+        title: 'stored title',
+        message: 'stored message',
+        data: { count: 3, added: 2 },
+        target: '/ai-reviews',
+        ...overrides,
+      });
+
+    it('composes the ready copy from the counts and opens the review inbox', () => {
+      mockPush.mockClear();
+      render(<NotificationList {...defaultProps} notifications={[aiReview()]} />);
+      expect(screen.getByText('AI proposals wait for your approval')).toBeInTheDocument();
+      expect(screen.getByText(/3 AI proposals wait for your approval \(2 new\)/)).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('notification-item-air-1'));
+      expect(mockPush).toHaveBeenCalledWith('/ai-reviews');
+    });
+
+    it.each(['AI_REVIEW_PROPOSALS_READY', 'AI_REVIEW_PROPOSALS_EXPIRING'] as const)(
+      'opens the review inbox for %s without a stored target',
+      (type) => {
+        mockPush.mockClear();
+        render(<NotificationList {...defaultProps} notifications={[aiReview({ type, target: null, data: {} })]} />);
+        expect(screen.getByText('stored title')).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('notification-item-air-1'));
+        expect(mockPush).toHaveBeenCalledWith('/ai-reviews');
+      },
+    );
+  });
+
+  describe('warranty reminders', () => {
+    const warranty = (overrides: Partial<Notification> = {}) =>
+      makeNotification({
+        id: 'wty-1',
+        budgetId: null,
+        budgetCategoryId: null,
+        type: 'WARRANTY_EXPIRING',
+        category: 'WARRANTIES',
+        severity: 'info',
+        title: 'stored title',
+        message: 'stored message',
+        data: { warrantyId: 'w-9', name: 'Dishwasher', expiresOn: '2026-11-20', threshold: 30, daysLeft: 30 },
+        target: '/warranties/w-9',
+        ...overrides,
+      });
+
+    it('composes the copy from the facts and opens the warranty', () => {
+      mockPush.mockClear();
+      render(<NotificationList {...defaultProps} notifications={[warranty()]} />);
+      expect(screen.getByText('Dishwasher: warranty expires within 30 days')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('notification-item-wty-1'));
+      expect(mockPush).toHaveBeenCalledWith('/warranties/w-9');
+    });
+
+    it.each(['WARRANTY_EXPIRING', 'WARRANTY_EXPIRES_TODAY'] as const)(
+      'opens the warranty for %s without a stored target, using data.warrantyId',
+      (type) => {
+        mockPush.mockClear();
+        render(<NotificationList {...defaultProps} notifications={[warranty({ type, target: null })]} />);
+        fireEvent.click(screen.getByTestId('notification-item-wty-1'));
+        expect(mockPush).toHaveBeenCalledWith('/warranties/w-9');
+      },
+    );
+
+    it('opens the warranties list when there is neither a target nor a warrantyId', () => {
+      mockPush.mockClear();
+      render(<NotificationList {...defaultProps} notifications={[warranty({ target: null, data: {} })]} />);
+      expect(screen.getByText('stored title')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('notification-item-wty-1'));
+      expect(mockPush).toHaveBeenCalledWith('/warranties');
     });
   });
 });

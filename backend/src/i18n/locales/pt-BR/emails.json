@@ -308,6 +308,87 @@
     "priceMovement": {
       "title": "Alerta de variação do preço: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}: {{ percent }}% em relação à sessão anterior disponível."
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}: o acesso bancário termina hoje",
+      "expiringTitleOneDay": "{{ institution }}: o acesso bancário termina em até 1 dia",
+      "expiringTitleDays": "{{ institution }}: o acesso bancário termina em até {{ days }} dias",
+      "expiringMessage": "Seu consentimento para o Monize ler {{ institution }} termina em {{ date }}. Renove a conexão no Monize para continuar sincronizando.",
+      "expiredTitle": "{{ institution }}: o acesso bancário terminou",
+      "expiredMessage": "Seu consentimento para o Monize ler {{ institution }} terminou. Renove a conexão no Monize para retomar a sincronização.",
+      "failedTitle": "{{ institution }}: falha na sincronização",
+      "failedMessage": "A sincronização diária de {{ institution }} falhou para: {{ accounts }}. Abra as configurações da sincronização bancária para ver o motivo.",
+      "failedCredentialsMessage": "A sincronização diária de {{ institution }} não pôde começar porque as credenciais da sincronização bancária estão ausentes ou foram rejeitadas. Verifique-as nas configurações da sincronização bancária.",
+      "unnamedAccount": "uma conta",
+      "importedTitle": "{{ institution }}: novas transações importadas",
+      "importedMessage": "Transações importadas de {{ institution }} pela sincronização diária: {{ imported }}.",
+      "importedNoneTitle": "{{ institution }}: nenhuma transação nova",
+      "importedNoneMessage": "A sincronização diária de {{ institution }} não encontrou transações novas."
+    },
+    "bond": {
+      "maturitySoonTitle": "{{ series }} vence em {{ date }}",
+      "maturitySoonMessage": "{{ quantity }} × {{ series }} vencem em {{ date }}. {{ payout }}",
+      "interestTitle": "{{ series }}: pagamento de juros em {{ date }}",
+      "interestMessage": "{{ quantity }} × {{ series }} pagam {{ amount }} de juros em {{ date }}. Registre na página do título se ainda não estiver na sua conta.",
+      "interestMessageUnknown": "{{ quantity }} × {{ series }} pagam juros em {{ date }}. O valor ainda não é conhecido: uma taxa da qual ele depende não foi publicada.",
+      "rateResetTitle": "{{ series }}: novo período de juros",
+      "rateResetMessage": "{{ series }} entrou no período {{ period }} em {{ date }} com taxa de {{ rate }} ao ano.",
+      "unbookedTitle": "{{ series }}: vencida, resgate não registrado",
+      "unbookedMessage": "{{ quantity }} × {{ series }} venceram em {{ date }} e nenhum resgate está registrado. {{ payout }} Registre o resgate na página do título.",
+      "payoutKnown": "O valor a receber é {{ payout }}.",
+      "payoutUnknown": "O valor a receber ainda não é conhecido: {{ reason }}.",
+      "reason": {
+        "RATE_UNKNOWN": "uma taxa da qual ele depende ainda não foi publicada",
+        "TERMS_INCOMPLETE": "as condições da série estão incompletas",
+        "PURCHASE_OUTSIDE_SALE_WINDOW": "uma data de compra está fora do período de venda da série",
+        "other": "não é possível calculá-lo com os dados armazenados"
+      },
+      "benchmarkTitle": "{{ benchmark }}: nova observação {{ observation }}",
+      "benchmarkMessage": "{{ publisher }} publicou {{ benchmark }} para {{ observation }}: {{ value }}. É usado por {{ series }}.",
+      "benchmarkMessageMore": "{{ publisher }} publicou {{ benchmark }} para {{ observation }}: {{ value }}. É usado por {{ series }} e mais {{ more }}.",
+      "missingTitle": "Valores das obrigações ainda não conhecidos",
+      "missingMessage": "Alguns valores das obrigações não podem ser calculados: {{ causes }}.",
+      "benchmarks": {
+        "PL_CPI_GUS_YOY": "IPCA, 12 meses (GUS)",
+        "PL_NBP_REFERENCE": "Taxa de referência do NBP"
+      },
+      "cause": {
+        "observation": "a observação {{ observation }} de {{ benchmark }} ({{ publisher }}) não está armazenada: ainda não foi publicada ou o feed não foi obtido desde então; atualize na página da obrigação",
+        "observationNoPublisher": "a observação {{ observation }} de {{ benchmark }} não está armazenada: ainda não foi publicada ou o feed não foi obtido desde então; atualize na página da obrigação",
+        "terms": "as condições de {{ series }} estão incompletas; atualize a série na página da obrigação",
+        "purchase": "uma compra de {{ series }} em {{ date }} está fora do período de venda ({{ from }} a {{ to }}); corrija a data da compra",
+        "lots": "não é possível derivar os lotes do livro-razão ({{ code }}); corrija o livro-razão",
+        "lotsRow": "{{ action }} de {{ date }}: não é possível derivar os lotes ({{ code }}); corrija a transação",
+        "lotsRowSeries": "{{ action }} de {{ date }}: sem série atribuída ({{ code }}); escolha a série nessa transação",
+        "lotsRowRemoval": "{{ action }} de {{ date }}: retira mais do que a conta possui dessa série ({{ code }}); corrija a transação"
+      },
+      "action": {
+        "BUY": "compra",
+        "SELL": "venda",
+        "REINVEST": "reinvestimento",
+        "ADD_SHARES": "adição de cotas",
+        "REMOVE_SHARES": "remoção de cotas",
+        "SPLIT": "split",
+        "TRANSFER_IN": "transferência de entrada",
+        "TRANSFER_OUT": "transferência de saída",
+        "other": "transação"
+      }
+    },
+    "emailReceiptsAttention": {
+      "title": "Recibos de e-mail precisam de atenção",
+      "message": "Sua caixa de entrada de recibos contém {{ noParser }} sem perfil e {{ parseFailed }} que seu perfil não reconheceu. Abra para revisar."
+    },
+    "aiReview": {
+      "readyTitle": "Propostas de revisão de IA aguardam você",
+      "readyMessage": "Propostas aguardando sua decisão: {{ count }}. Novas desde o último aviso: {{ added }}. Abra para revisar.",
+      "expiringTitle": "Propostas de revisão de IA expiram em breve",
+      "expiringMessage": "Propostas que expiram em 3 dias: {{ count }}. A primeira expira em {{ date }}. Abra para revisar."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: a garantia expira em breve",
+      "expiringMessage": "A garantia de {{ name }} expira em {{ date }}. Abra a garantia para revisar os documentos ou registrar uma reclamação.",
+      "todayTitle": "{{ name }}: a garantia expira hoje",
+      "todayMessage": "A garantia de {{ name }} expira hoje, {{ date }}. Abra a garantia para revisar os documentos ou registrar uma reclamação."
     }
   },
   "backupOffsite": {

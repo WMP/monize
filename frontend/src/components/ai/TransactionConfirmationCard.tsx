@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { PendingAction } from '@/types/ai';
 import { formatPhoneForDisplay } from '@/lib/phone-number';
@@ -36,7 +37,9 @@ export function TransactionConfirmationCard({
   const t = useTranslations('ai');
   const { formatCurrency, formatCurrencyPrecise, formatQuantity, formatBytes } =
     useNumberFormat();
+  const { formatDate } = useDateFormat();
   const { preview, type, status } = action;
+  const redemptionSplit = preview.bondRedemptionSplit ?? null;
 
   // Create, update, and delete share the same field layout per domain (cash vs
   // investment); only the title and success copy differ.
@@ -103,7 +106,10 @@ export function TransactionConfirmationCard({
       preview.splits.forEach((split, i) => {
         const label =
           i === 0 ? t('confirmAction.splits') : '';
-        const category = split.categoryName || none;
+        // A category the AI chose is said beside it, so it is read as a suggestion.
+        const category =
+          (split.categoryName || none) +
+          (split.categorySource === 'ai' ? ` (${t('confirmAction.aiCategory')})` : '');
         rows.push({
           label,
           value: split.memo
@@ -114,13 +120,31 @@ export function TransactionConfirmationCard({
     } else {
       rows.push({
         label: t('confirmAction.category'),
-        value: preview.categoryName || none,
+        value:
+          (preview.categoryName || none) +
+          (preview.categoryName && preview.categorySource === 'ai' ? ` (${t('confirmAction.aiCategory')})` : ''),
       });
     }
     if (preview.description)
       rows.push({
         label: t('confirmAction.description'),
         value: preview.description,
+      });
+    // The reference number the approval sets (an email receipt's order number).
+    if (preview.referenceNumber)
+      rows.push({
+        label: t('confirmAction.referenceNumber'),
+        value: preview.referenceNumber,
+      });
+    // Tags the approval adds (the transaction keeps its own); a name the user has no tag for yet is marked new.
+    if (preview.tagNames && preview.tagNames.length > 0)
+      rows.push({
+        label: t('confirmAction.tags'),
+        value: preview.tagNames
+          .map((name) =>
+            preview.newTagNames?.includes(name) ? `${name} ${t('confirmAction.newTag')}` : name,
+          )
+          .join(', '),
       });
     // Files the approval will save as transaction attachments.
     if (preview.attachments && preview.attachments.length > 0) {
@@ -170,6 +194,23 @@ export function TransactionConfirmationCard({
           ? `${preview.symbol} (${preview.securityName})`
           : preview.symbol,
       });
+    if (preview.bondSeriesCode)
+      rows.push({
+        label: t('confirmAction.bondSeries'),
+        value: preview.bondSeriesCode,
+      });
+    // The occurrence approving marks paid, named with its due day so a
+    // schedule with several open occurrences says which one.
+    if (preview.scheduledName)
+      rows.push({
+        label: t('confirmAction.marksPaid'),
+        value: preview.scheduledDueDate
+          ? t('confirmAction.marksPaidDue', {
+              name: preview.scheduledName,
+              date: formatDate(preview.scheduledDueDate),
+            })
+          : preview.scheduledName,
+      });
     if (preview.quantity !== undefined && preview.quantity !== null)
       rows.push({
         label: t('confirmAction.shares'),
@@ -184,6 +225,14 @@ export function TransactionConfirmationCard({
       rows.push({
         label: t('confirmAction.commission'),
         value: formatCurrency(preview.commission, preview.securityCurrency ?? undefined),
+      });
+    if (preview.accruedInterest)
+      rows.push({
+        label: t('confirmAction.accruedInterest'),
+        value: formatCurrency(
+          preview.accruedInterest,
+          preview.securityCurrency ?? undefined,
+        ),
       });
     // Share-only actions (transfers, splits, share adjustments) carry no cash
     // total, so only surface it when there is one.
@@ -201,6 +250,24 @@ export function TransactionConfirmationCard({
         label: t('confirmAction.cashImpact'),
         value: `${formatCurrency(preview.cashAmount, preview.cashCurrency ?? undefined)} (${preview.cashAccountName})`,
       });
+    // A bond redemption: what it pays, as returned principal and interest (a
+    // fee taken out of the interest is named when there is one).
+    if (redemptionSplit) {
+      const currency = preview.securityCurrency ?? undefined;
+      rows.push({
+        label: t('confirmAction.redemptionSplit'),
+        value: t('confirmAction.redemptionSplitValue', {
+          principal: formatCurrency(redemptionSplit.principal, currency),
+          interest: formatCurrency(redemptionSplit.interest, currency),
+          payout: formatCurrency(redemptionSplit.payout, currency),
+        }),
+      });
+      if (redemptionSplit.deduction > 0)
+        rows.push({
+          label: t('confirmAction.redemptionDeduction'),
+          value: formatCurrency(redemptionSplit.deduction, currency),
+        });
+    }
     if (preview.description)
       rows.push({
         label: t('confirmAction.description'),
@@ -416,7 +483,12 @@ export function TransactionConfirmationCard({
               {t('confirmAction.reconciledWarning')}
             </p>
           )}
-        <RuleEffectsLines effects={preview.ruleEffects} />
+        {redemptionSplit?.outcome === 'differs' && isInvestmentTxType && (
+          <p className="text-xs text-amber-700 dark:text-amber-400 pt-1">
+            {t('confirmAction.redemptionSplitDiffers')}
+          </p>
+        )}
+        <RuleEffectsLines effects={preview.ruleEffects} currencyCode={preview.currencyCode} />
       </div>
       <div className="px-3 py-2 border-t border-blue-200 dark:border-blue-900/60">
         {status === 'pending' && (

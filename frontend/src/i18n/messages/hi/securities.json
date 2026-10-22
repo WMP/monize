@@ -119,6 +119,8 @@
     "currencyLabel": "मुद्रा",
     "currencyNotConfigured": "{code} — आपकी मुद्राओं में नहीं",
     "quoteProviderLabel": "उद्धरण प्रदाता",
+    "skipPriceUpdatesLabel": "स्वचालित मूल्य अपडेट बंद करें",
+    "skipPriceUpdatesHelp": "Monize इस सिक्योरिटी के लिए मूल्य प्राप्त नहीं करेगा। इसका उपयोग उस सिक्योरिटी के लिए करें जिसका मूल्य कोई प्रदाता नहीं दे सकता; आपके द्वारा स्वयं दर्ज किए गए मूल्य फिर भी गिने जाते हैं। कोई अलग कोट प्रदाता या MSN इंस्ट्रूमेंट ID चुनने से अपडेट फिर से चालू हो जाते हैं।",
     "msnIdLabel": "MSN इंस्ट्रूमेंट ID (उन्नत)",
     "lookupProviderAriaLabel": "प्रदाता खोजें",
     "lookupButton": "खोजें",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "बॉन्ड इंजन"
     },
     "types": {
       "select": "प्रकार चुनें...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "हटाएँ",
       "deleteSuccess": "एसेट क्लास \"{name}\" हटाई गई",
       "deleteFailed": "एसेट क्लास \"{name}\" हटाई नहीं जा सकी"
-    }
+    },
+    "bondFetchAction": "आधिकारिक स्रोत से {code} प्राप्त करें",
+    "bondFetching": "जारीकर्ता से {code} और उसकी संदर्भ दरें प्राप्त की जा रही हैं। इसमें एक मिनट तक लग सकता है।",
+    "bondFetchFailed": "सीरीज़ प्राप्त नहीं की जा सकी।",
+    "bondCurrencyLocked": "यह प्रतिभूति {linkedCurrency} में एक बॉन्ड प्रकार से जुड़ी है। मुद्रा को वापस {linkedCurrency} करें, या पहले बॉन्ड प्रकार का लिंक हटाएँ (लिंक हटाने पर उसकी गणना की गई कीमतें हट जाती हैं)।",
+    "bondProgramLabel": "बॉन्ड प्रकार",
+    "bondProgramNone": "लिंक नहीं है",
+    "bondProgramCurrent": "लिंक किया गया बॉन्ड प्रकार",
+    "bondProgramLoading": "बॉन्ड प्रकार लोड हो रहे हैं...",
+    "bondProgramLoadFailed": "बॉन्ड प्रकार लोड नहीं हो सके, इसलिए अभी कोई बॉन्ड प्रकार लिंक नहीं किया जा सकता।",
+    "bondProgramRetry": "पुनः प्रयास करें",
+    "bondNoPrograms": "बॉन्ड कैटलॉग में अभी कोई बॉन्ड प्रकार नहीं है।",
+    "bondAutoFetchLabel": "इस बॉन्ड प्रकार की नई सीरीज़ अपने-आप प्राप्त करें",
+    "bondAutoFetchHelp": "चालू होने पर Monize हर दिन आधिकारिक स्रोत से इस बॉन्ड प्रकार की नई सीरीज़ पढ़ता है, ताकि आप सीरीज़ पहले प्राप्त किए बिना खरीद दर्ज कर सकें।",
+    "bondCountryLabel": "देश",
+    "bondCountryOther": "अन्य",
+    "bondCountryOtherInfo": "अन्य देशों के बॉन्ड के लिए सहायता का अनुरोध प्रोजेक्ट के <link>GitHub</link> पर किया जा सकता है।"
   },
   "priceForm": {
     "dateLabel": "तिथि",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "दीर्घकालिक पूंजी लाभ का पुनर्निवेश",
       "CAPITAL_GAIN_SHORT": "अल्पकालिक पूंजी लाभ",
       "CAPITAL_GAIN_LONG": "दीर्घकालिक पूंजी लाभ",
-      "REDEEM": "सीडी/बॉन्ड रिडीम करें"
+      "REDEEM": "सीडी/बॉन्ड रिडीम करें",
+      "RETURN_OF_CAPITAL": "पूंजी की वापसी"
     },
     "toasts": {
       "loadHistoryFailed": "इतिहास लोड करने में विफल",
@@ -340,6 +360,7 @@
     "nameRequired": "नाम आवश्यक है",
     "nameMax": "नाम 255 अक्षरों या उससे कम होना चाहिए",
     "currencyRequired": "मुद्रा आवश्यक है",
+    "bondProgramRequired": "बॉन्ड प्रकार आवश्यक है",
     "descriptionMax": "विवरण 5000 अक्षरों से अधिक नहीं होना चाहिए"
   },
   "priceValidation": {

@@ -1,3 +1,5 @@
+import { addDaysYMD } from "../common/date-utils";
+
 /**
  * Why an occurrence's amount could not be worked out, as a closed set so the
  * client can render actionable copy instead of parsing prose (issue #1247).
@@ -10,8 +12,7 @@
  *    so adding the source figure would be a foreign number on this balance.
  */
 export type BalanceForecastGapReason =
-  | "unresolvedSettlementRate"
-  | "crossCurrencyTransfer";
+  "unresolvedSettlementRate" | "crossCurrencyTransfer";
 
 /** One schedule the projection could not price, and why. */
 export interface BalanceForecastGap {
@@ -41,8 +42,17 @@ export interface ForecastOccurrenceInput {
    */
   accountId: string;
   transferAccountId: string | null;
-  /** The date the occurrence falls on (an override's date when one moved it). */
+  /**
+   * The date the occurrence is applied on: the date it falls on (an override's
+   * date when one moved it), or the first projected day for one already due
+   * (`forecastLanding`).
+   */
   dueDate: string;
+  /**
+   * The occurrence fell due before today and was neither posted nor skipped, so
+   * it is applied on the first projected day instead (discussion #1784).
+   */
+  overdue?: boolean;
   /**
    * What this occurrence would post today, or `null` when that cannot be
    * determined. `null` is never the persisted snapshot: an occurrence nobody can
@@ -59,6 +69,40 @@ export interface ForecastOccurrenceInput {
 export interface ForecastPoint {
   date: string;
   balance: number;
+}
+
+/**
+ * The overdue occurrences a projection applied on its first day, so the client
+ * can say why that day drops (discussion #1784).
+ */
+export interface BalanceForecastOverdue {
+  /** The day they were applied on: the first projected day, tomorrow. */
+  date: string;
+  /** How many occurrences, each counted once. */
+  count: number;
+  /** Their signed net effect on this account. */
+  amount: number;
+}
+
+/**
+ * Where an occurrence lands on a projection anchored at `today`, and whether it
+ * is overdue (discussion #1784).
+ *
+ * The anchor is today's balance, a fact, so nothing is applied on it and the
+ * first projected day is tomorrow. An occurrence the expansion returns on or
+ * before today was neither posted nor skipped -- both advance `next_due_date`
+ * past it, and the expansion walks from there -- so it is still owed: it lands
+ * on that first day instead of being dropped. Only one due BEFORE today is
+ * overdue; a bill due today is not late yet. The cash-flow forecast
+ * (`frontend/src/lib/forecast.ts`) applies the same rule on its own first day,
+ * which is today.
+ */
+export function forecastLanding(
+  dueDate: string,
+  today: string,
+): { date: string; overdue: boolean } {
+  if (dueDate > today) return { date: dueDate, overdue: false };
+  return { date: addDaysYMD(today, 1), overdue: dueDate < today };
 }
 
 function roundCents(value: number): number {
@@ -97,14 +141,22 @@ function deltaFor(
  * occurrences all fall outside the window never reaches this function, so "is
  * this forecast complete" is answered from the occurrences that actually landed
  * (issue #1247). The caller withholds the series when `gaps` is non-empty.
+ *
+ * `overdue` counts the occurrences flagged `overdue` that touch this account
+ * and nets the deltas of the ones that are priced.
  */
 export function accumulateForecastDeltas(
   occurrences: ForecastOccurrenceInput[],
   accountId: string,
   actualByDate: Map<string, number> = new Map(),
-): { byDate: Map<string, number>; gaps: BalanceForecastGap[] } {
+): {
+  byDate: Map<string, number>;
+  gaps: BalanceForecastGap[];
+  overdue: { count: number; amount: number };
+} {
   const byDate = new Map(actualByDate);
   const gaps: BalanceForecastGap[] = [];
+  const overdue = { count: 0, amount: 0 };
   const addGap = (o: ForecastOccurrenceInput) => {
     if (gaps.some((g) => g.scheduledTransactionId === o.scheduledTransactionId))
       return;
@@ -119,11 +171,13 @@ export function accumulateForecastDeltas(
 
   for (const occurrence of occurrences) {
     if (!touchesAccount(occurrence, accountId)) continue;
+    if (occurrence.overdue) overdue.count += 1;
     if (occurrence.amount === null) {
       addGap(occurrence);
       continue;
     }
     const delta = deltaFor(occurrence, accountId, occurrence.amount);
+    if (occurrence.overdue) overdue.amount = roundCents(overdue.amount + delta);
     // A zero delta contributes nothing, and emitting it would add a flat point
     // to the series for a day on which nothing happens.
     if (delta !== 0) {
@@ -133,7 +187,7 @@ export function accumulateForecastDeltas(
       );
     }
   }
-  return { byDate, gaps };
+  return { byDate, gaps, overdue };
 }
 
 /**

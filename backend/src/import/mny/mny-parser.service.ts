@@ -20,6 +20,7 @@ import {
 import { mapTransactions } from "./map/map-transactions";
 import { mapSecurities, tradedSecurityHandles } from "./map/map-securities";
 import { mapInvestments } from "./map/map-investments";
+import { resolveExchangeRates } from "./writers/write-prices";
 import {
   applyInvestmentCashSources,
   investmentWritesOwnCashRow,
@@ -99,7 +100,7 @@ export interface MnyParsedFile {
   readonly baseCurrency: string;
   /**
    * Every ISO code the import touches -- accounts, securities and exchange-rate
-   * history -- so `ensureSystemCurrency` runs once per code before any row that
+   * history -- so `ensureCurrencyForUser` runs once per code before any row that
    * references it is written.
    */
   readonly currencyCodes: readonly string[];
@@ -400,6 +401,10 @@ export class MnyParserService {
       accounts,
       securities,
       bills: tables.bills.bills,
+      exchangeRates: resolveExchangeRates(
+        tables.reference.exchangeRates,
+        currencyByHandle,
+      ),
     });
     const transactions = mapTransactions({
       transactions: tables.transactions,

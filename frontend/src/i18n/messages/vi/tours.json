@@ -427,5 +427,42 @@
         }
       }
     }
+  },
+  "emailReceipts": {
+    "basics": {
+      "title": "Hóa đơn từ email",
+      "steps": {
+        "welcome": {
+          "title": "Vì sao đọc hóa đơn từ email",
+          "body": "Một giao dịch ngân hàng cho bạn biết bạn đã trả bao nhiêu và khi nào. Nó không cho biết bạn đã mua gì. Email xác nhận đơn hàng thì có. Monize đọc các email này, tìm giao dịch mà mỗi email đã thanh toán và đề xuất mô tả, người nhận thanh toán và cách tách theo từng mục, kèm một danh mục cho mỗi dòng. Bạn phê duyệt từng đề xuất trước khi nó thay đổi một giao dịch."
+        },
+        "aiRequired": {
+          "title": "Trên thực tế, bạn cần một nhà cung cấp AI",
+          "body": "Monize đọc email bằng một **hồ sơ**: một bộ mẫu cho một tên miền người gửi, ví dụ một cửa hàng. Bạn có thể viết hồ sơ bằng tay, nhưng mỗi mẫu phải khớp đúng các dòng trong email của cửa hàng đó, nên trên thực tế AI sẽ viết nó. AI viết hồ sơ một lần, từ vài email mẫu. Sau khi bạn phê duyệt, hồ sơ đọc mọi email mới của cửa hàng đó mà không cần AI."
+        },
+        "aiProviders": {
+          "title": "Hãy thiết lập nhà cung cấp AI trước",
+          "body": "Thêm một nhà cung cấp tại đây và kiểm tra kết nối. Nếu không có nhà cung cấp, trình hướng dẫn hồ sơ không thể viết hồ sơ, và email của cửa hàng chưa có hồ sơ vẫn chưa được đọc."
+        },
+        "tabs": {
+          "title": "Bốn thẻ, theo thứ tự sử dụng",
+          "body": "**Tổng quan** cho thấy những gì Monize đã đọc. Trong **Hộp thư**, hãy kết nối một hộp thư chỉ chứa các xác nhận đơn hàng. Monize chỉ đọc hộp thư: nó không bao giờ di chuyển, gắn cờ hay xóa thư. **Hồ sơ** chứa một hồ sơ cho mỗi cửa hàng. **Email** liệt kê từng email và trạng thái của nó."
+        },
+        "uncovered": {
+          "title": "Cửa hàng chưa có hồ sơ",
+          "body": "Khung này liệt kê các tên miền người gửi mà chưa hồ sơ nào đọc được. Chọn một tên miền để bắt đầu trình hướng dẫn. Chọn tối đa năm email của nó và ghép mỗi email với giao dịch ngân hàng mà nó đã thanh toán. AI viết một hồ sơ và kiểm thử trên các cặp này. Sau đó bạn xem bản xem trước cho tất cả email của cửa hàng đó, rồi chấp nhận hồ sơ hoặc yêu cầu thay đổi bằng một ghi chú ngắn.",
+          "fallbackBody": "Bạn chưa có email nào từ cửa hàng chưa có hồ sơ. Sau khi bạn kết nối hộp thư, mỗi tên miền người gửi xuất hiện ở đây dưới dạng một thẻ, ví dụ **shop.example (12)**: tên miền và số email của nó. Chọn thẻ để bắt đầu trình hướng dẫn. Chọn tối đa năm email của nó và ghép mỗi email với giao dịch ngân hàng mà nó đã thanh toán. AI viết một hồ sơ và kiểm thử trên các cặp này. Sau đó bạn xem bản xem trước cho tất cả email của cửa hàng đó, rồi chấp nhận hồ sơ hoặc yêu cầu thay đổi bằng một ghi chú ngắn."
+        },
+        "profiles": {
+          "title": "Hồ sơ của bạn",
+          "body": "Mỗi dòng là một hồ sơ, đã duyệt hoặc bản nháp. **Tạo hồ sơ mới thủ công** mở trình chỉnh sửa cho hồ sơ viết bằng tay. Hãy dùng nó để sửa một chi tiết nhỏ trong bản nháp của AI. Khi bạn phê duyệt một hồ sơ, Monize đọc ngay các email từ tên miền của nó.",
+          "fallbackBody": "Bạn chưa có hồ sơ nào. Mỗi hồ sơ bạn chấp nhận xuất hiện ở đây dưới dạng một dòng, ví dụ **Shop Example**, tên miền **shop.example**, trạng thái **Đã duyệt**. **Tạo hồ sơ mới thủ công** mở trình chỉnh sửa cho hồ sơ viết bằng tay. Chỉ dùng nó để sửa một chi tiết nhỏ trong bản nháp của AI. Khi bạn phê duyệt một hồ sơ, Monize đọc ngay các email từ tên miền của nó."
+        },
+        "reviews": {
+          "title": "Phê duyệt các đề xuất",
+          "body": "Mỗi email khớp với một giao dịch trở thành một đề xuất trong **Hộp thư xem xét của AI**, trong menu **AI**. Một đề xuất cho thấy, ví dụ, các dòng của một đơn hàng kèm một danh mục cho mỗi dòng. Không có gì thay đổi trong giao dịch của bạn cho đến khi bạn phê duyệt đề xuất tại đó."
+        }
+      }
+    }
   }
 }

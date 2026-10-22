@@ -14,6 +14,7 @@ import {
 } from "../accounts/entities/account.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import { requestContextStorage } from "../common/request-context";
 import { PortfolioPeriodResultService } from "../net-worth/portfolio-period-result.service";
 import {
   NetWorthService,
@@ -36,6 +37,7 @@ jest.mock("../common/db/scoped-db", () =>
 
 describe("PortfolioService", () => {
   let service: PortfolioService;
+  let bondValuation: { valueByAccount: jest.Mock };
   let holdingsRepository: Record<string, jest.Mock>;
   let securityPriceRepository: Record<string, jest.Mock>;
   let securityRepository: Record<string, jest.Mock>;
@@ -336,9 +338,11 @@ describe("PortfolioService", () => {
         : accountsRepository.query(sql, params),
     );
 
+    bondValuation = { valueByAccount: jest.fn() };
     const calculationService = new PortfolioCalculationService(
       dataSource as never,
       exchangeRateService as never,
+      bondValuation as never,
     );
     // Default: a portfolio with no investment transaction at all, which is the
     // empty decision rather than a zero return.
@@ -1637,6 +1641,74 @@ describe("PortfolioService", () => {
       expect(result.valuationComplete).toBe(true);
     });
 
+    it("takes the gain over the priced holdings and reports the excluded cost apart (A26-M38)", async () => {
+      // AAPL priced: value 2362.5 CAD, cost 2025 CAD. VFV unpriced: cost 4000.
+      // Value less EVERY holding's cost read -3662.5 with no marker; the gain is
+      // over the holdings that have a value.
+      prefRepository.findOne.mockResolvedValue(mockPref);
+      accountsRepository.find.mockResolvedValue([
+        mockBrokerageAccount,
+        mockCashAccount,
+      ]);
+      holdingsRepository.find.mockResolvedValue([
+        mockHoldingAAPL,
+        mockHoldingVFV,
+      ]);
+      securityPriceRepository.query.mockResolvedValue([
+        { security_id: "sec-1", close_price: "175", price_date: "2026-02-07" },
+      ]);
+      exchangeRateService.getLatestRate.mockImplementation(
+        (from: string, to: string) =>
+          Promise.resolve(from === "USD" && to === "CAD" ? 1.35 : null),
+      );
+
+      const result = await service.getPortfolioSummary(userId);
+
+      expect(result.totalGainLoss).toBeCloseTo(337.5, 4);
+      expect(result.totalGainLossPercent).toBeCloseTo(16.6667, 3);
+      expect(result.gainCostBasis).toBe(2025);
+      expect(result.unpricedCostBasis).toBe(4000);
+      expect(result.totalCostBasis).toBe(6025);
+      expect(result.valuationComplete).toBe(false);
+
+      const acct = result.holdingsByAccount[0];
+      expect(acct.totalGainLoss).toBeCloseTo(337.5, 4);
+      expect(acct.totalGainLossPercent).toBeCloseTo(16.6667, 3);
+      expect(acct.gainCostBasis).toBe(2025);
+      expect(acct.unpricedCostBasis).toBe(4000);
+      expect(acct.totalCostBasis).toBe(6025);
+      expect(acct.valuationComplete).toBe(false);
+    });
+
+    it("leaves the gain of a complete portfolio as value less cost (A26-M38)", async () => {
+      prefRepository.findOne.mockResolvedValue(mockPref);
+      accountsRepository.find.mockResolvedValue([
+        mockBrokerageAccount,
+        mockCashAccount,
+      ]);
+      holdingsRepository.find.mockResolvedValue([
+        mockHoldingAAPL,
+        mockHoldingVFV,
+      ]);
+      securityPriceRepository.query.mockResolvedValue([
+        { security_id: "sec-1", close_price: "175", price_date: "2026-02-07" },
+        { security_id: "sec-2", close_price: "95", price_date: "2026-02-07" },
+      ]);
+      exchangeRateService.getLatestRate.mockImplementation(
+        (from: string, to: string) =>
+          Promise.resolve(from === "USD" && to === "CAD" ? 1.35 : null),
+      );
+
+      const result = await service.getPortfolioSummary(userId);
+
+      expect(result.totalGainLoss).toBeCloseTo(
+        result.totalHoldingsValue - result.totalCostBasis,
+        4,
+      );
+      expect(result.gainCostBasis).toBe(result.totalCostBasis);
+      expect(result.unpricedCostBasis).toBe(0);
+    });
+
     it("reports a per-account gap the global flag cannot see (RR3-005)", async () => {
       // The two conversions are different paths: the top-level total converts the
       // security straight into the user's default currency, the account total
@@ -1709,6 +1781,8 @@ describe("PortfolioService", () => {
         totalPortfolioValue: 1000,
         totalGainLoss: 100,
         totalGainLossPercent: 11.11,
+        gainCostBasis: 900,
+        unpricedCostBasis: 0,
         fxComplete: true,
         missingRatePairs: [],
         pricesComplete: true,
@@ -1758,6 +1832,8 @@ describe("PortfolioService", () => {
           totalPortfolioValue: 10000.6913,
           totalGainLoss: 900.5544,
           totalGainLossPercent: 10.123456,
+          gainCostBasis: 9000.1234,
+          unpricedCostBasis: 0,
           fxComplete: true,
           missingRatePairs: [],
           pricesComplete: true,
@@ -1850,6 +1926,8 @@ describe("PortfolioService", () => {
         totalPortfolioValue: 0,
         totalGainLoss: 0,
         totalGainLossPercent: 0,
+        gainCostBasis: 0,
+        unpricedCostBasis: 0,
         fxComplete: true,
         missingRatePairs: [],
         pricesComplete: true,
@@ -1886,6 +1964,8 @@ describe("PortfolioService", () => {
         totalPortfolioValue: 100,
         totalGainLoss: 0,
         totalGainLossPercent: 0,
+        gainCostBasis: 0,
+        unpricedCostBasis: 0,
         fxComplete: false,
         missingRatePairs: ["EUR->USD"],
         pricesComplete: true,
@@ -1918,6 +1998,8 @@ describe("PortfolioService", () => {
         totalPortfolioValue: 100,
         totalGainLoss: 0,
         totalGainLossPercent: 0,
+        gainCostBasis: 0,
+        unpricedCostBasis: 0,
         fxComplete: true,
         missingRatePairs: [],
         pricesComplete: true,
@@ -1971,6 +2053,8 @@ describe("PortfolioService", () => {
         totalPortfolioValue: 1800,
         totalGainLoss: 300,
         totalGainLossPercent: 20,
+        gainCostBasis: 1500,
+        unpricedCostBasis: 0,
         fxComplete: true,
         missingRatePairs: [],
         pricesComplete: true,
@@ -2017,6 +2101,8 @@ describe("PortfolioService", () => {
             unpricedHoldingsCount: 0,
             totalGainLoss: 300.4444,
             totalGainLossPercent: 20.123456,
+            gainCostBasis: 1500.1234,
+            unpricedCostBasis: 0,
             netInvested: 1500,
             // The real producer always sets these; a fixture without them is a row
             // the service could not have built.
@@ -2273,6 +2359,63 @@ describe("PortfolioService", () => {
 
         expect(result).toHaveLength(1);
         expect(result[0].symbol).toBe("VFV.TO");
+      });
+    });
+
+    describe("a bond linked to the engine is not a market mover (R13)", () => {
+      it("is left off the board, so its daily accrual row does not push every equity off the newest session", async () => {
+        accountsRepository.find.mockResolvedValue([
+          mockBrokerageAccount,
+          mockCashAccount,
+        ]);
+        const bondHolding = {
+          ...mockHoldingVFV,
+          securityId: "sec-bond",
+          security: {
+            ...mockSecurityVFV,
+            id: "sec-bond",
+            symbol: "EDO1036",
+            bondProgramId: "11111111-1111-5111-8111-111111111111",
+          },
+        };
+        holdingsRepository.find.mockResolvedValue([
+          mockHoldingAAPL,
+          bondHolding,
+        ]);
+        securityPriceRepository.query.mockResolvedValue([
+          // AAPL's newest close is Friday's session; the engine wrote Monday.
+          {
+            security_id: "sec-1",
+            close_price: "180",
+            price_date: "2026-02-06",
+            rn: "1",
+          },
+          {
+            security_id: "sec-1",
+            close_price: "175",
+            price_date: "2026-02-05",
+            rn: "2",
+          },
+          {
+            security_id: "sec-bond",
+            close_price: "100.05",
+            price_date: "2026-02-09",
+            rn: "1",
+          },
+          {
+            security_id: "sec-bond",
+            close_price: "100.04",
+            price_date: "2026-02-08",
+            rn: "2",
+          },
+        ]);
+
+        const board = await service.getTopMovers(userId);
+
+        expect(board.map((m) => m.symbol)).not.toContain("EDO1036");
+        // The bond's rows are not even asked for.
+        const asked = securityPriceRepository.query.mock.calls[0][1][0];
+        expect(asked).toEqual(["sec-1"]);
       });
     });
 
@@ -3655,7 +3798,16 @@ describe("PortfolioService", () => {
       ]);
 
       const result = await service.getAccountMarketValues(userId);
-      expect(result.get("acct-brokerage-1")).toBe(1000);
+      expect(result.get("acct-brokerage-1")).toEqual({
+        marketValue: 1000,
+        knownMarketValueSubtotal: 1000,
+        pricesComplete: true,
+        unpricedSecurityIds: [],
+        unpricedSymbols: [],
+        fxComplete: true,
+        missingRatePairs: [],
+        valuationComplete: true,
+      });
     });
 
     it("skips holdings with effectively zero quantity", async () => {
@@ -3675,7 +3827,7 @@ describe("PortfolioService", () => {
       expect(result.size).toBe(0);
     });
 
-    it("skips holdings without a current price", async () => {
+    it("records a holding without a current price as unknown, not as absent", async () => {
       accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
       holdingsRepository.find.mockResolvedValue([
         { ...mockHoldingVFV, quantity: "5" } as any,
@@ -3684,7 +3836,60 @@ describe("PortfolioService", () => {
       securityPriceRepository.query.mockResolvedValue([]);
 
       const result = await service.getAccountMarketValues(userId);
-      expect(result.size).toBe(0);
+      const row = result.get("acct-brokerage-1")!;
+      expect(row.marketValue).toBeNull();
+      expect(row.knownMarketValueSubtotal).toBe(0);
+      expect(row.pricesComplete).toBe(false);
+      expect(row.unpricedSecurityIds).toEqual(["sec-2"]);
+      expect(row.valuationComplete).toBe(false);
+    });
+
+    it("withholds the market value when one holding is priced and another is not", async () => {
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+      holdingsRepository.find.mockResolvedValue([
+        { ...mockHoldingVFV, quantity: "10" } as any, // 10 * 100 = 1000
+        {
+          ...mockHoldingVFV,
+          id: "hold-other",
+          securityId: "sec-3",
+          security: mockSecurityXIC,
+          quantity: "20",
+        } as any, // no price
+      ]);
+      securityPriceRepository.query.mockResolvedValue([
+        { security_id: "sec-2", close_price: "100", price_date: "2026-02-01" },
+      ]);
+
+      const row = (await service.getAccountMarketValues(userId)).get(
+        "acct-brokerage-1",
+      )!;
+      expect(row.marketValue).toBeNull();
+      expect(row.knownMarketValueSubtotal).toBe(1000);
+      expect(row.pricesComplete).toBe(false);
+      expect(row.unpricedSecurityIds).toEqual(["sec-3"]);
+      expect(row.unpricedSymbols).toEqual([mockSecurityXIC.symbol]);
+      expect(row.valuationComplete).toBe(false);
+    });
+
+    it("names the pair when the security's currency has no rate into the account's", async () => {
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]); // CAD
+      holdingsRepository.find.mockResolvedValue([
+        { ...mockHoldingAAPL, quantity: "10" } as any, // USD
+      ]);
+      securityPriceRepository.query.mockResolvedValue([
+        { security_id: "sec-1", close_price: "100", price_date: "2026-02-01" },
+      ]);
+      exchangeRateService.getLatestRate.mockResolvedValue(null);
+
+      const row = (await service.getAccountMarketValues(userId)).get(
+        "acct-brokerage-1",
+      )!;
+      expect(row.marketValue).toBeNull();
+      expect(row.knownMarketValueSubtotal).toBe(0);
+      expect(row.fxComplete).toBe(false);
+      expect(row.missingRatePairs).toEqual(["USD->CAD"]);
+      expect(row.pricesComplete).toBe(true);
+      expect(row.valuationComplete).toBe(false);
     });
 
     it("aggregates multiple holdings in the same account", async () => {
@@ -3705,7 +3910,78 @@ describe("PortfolioService", () => {
       ]);
 
       const result = await service.getAccountMarketValues(userId);
-      expect(result.get("acct-brokerage-1")).toBe(2000);
+      expect(result.get("acct-brokerage-1")?.marketValue).toBe(2000);
+    });
+
+    describe("a bond-linked holding", () => {
+      const bondSecurity = {
+        ...mockSecurityXIC,
+        id: "sec-bond",
+        securityType: "BOND",
+        bondProgramId: "prog-1",
+      };
+      const heldIn = (accountId: string) =>
+        ({
+          ...mockHoldingVFV,
+          id: `hold-${accountId}`,
+          accountId,
+          securityId: "sec-bond",
+          security: bondSecurity,
+          quantity: "10",
+        }) as any;
+
+      beforeEach(() => {
+        accountsRepository.find.mockResolvedValue([
+          mockBrokerageAccount,
+          { ...mockBrokerageAccount, id: "acct-brokerage-2" },
+        ]);
+        holdingsRepository.find.mockResolvedValue([
+          heldIn("acct-brokerage-1"),
+          heldIn("acct-brokerage-2"),
+        ]);
+        // The blend (117.74) a quantity x price reading would use.
+        securityPriceRepository.query.mockResolvedValue([
+          {
+            security_id: "sec-bond",
+            close_price: "117.74",
+            price_date: "2026-02-01",
+          },
+        ]);
+      });
+
+      it("values each account by its own lots, not quantity x the blend", async () => {
+        bondValuation.valueByAccount.mockResolvedValue({
+          asOf: "2026-02-01",
+          accounts: new Map([
+            ["acct-brokerage-1", { quantity: 10, grossValue: "1354.00" }],
+            ["acct-brokerage-2", { quantity: 10, grossValue: "1000.80" }],
+          ]),
+        });
+
+        const result = await service.getAccountMarketValues(userId);
+
+        expect(result.get("acct-brokerage-1")?.marketValue).toBe(1354);
+        expect(result.get("acct-brokerage-2")?.marketValue).toBe(1000.8);
+        expect(bondValuation.valueByAccount).toHaveBeenCalledTimes(1);
+      });
+
+      it("marks an account whose lots have an unknown value as unpriced", async () => {
+        bondValuation.valueByAccount.mockResolvedValue({
+          asOf: "2026-02-01",
+          accounts: new Map([
+            ["acct-brokerage-1", { quantity: 10, grossValue: null }],
+            ["acct-brokerage-2", { quantity: 10, grossValue: "1000.80" }],
+          ]),
+        });
+
+        const result = await service.getAccountMarketValues(userId);
+
+        const unknown = result.get("acct-brokerage-1")!;
+        expect(unknown.marketValue).toBeNull();
+        expect(unknown.pricesComplete).toBe(false);
+        expect(unknown.unpricedSecurityIds).toEqual(["sec-bond"]);
+        expect(result.get("acct-brokerage-2")?.marketValue).toBe(1000.8);
+      });
     });
   });
 
@@ -3883,6 +4159,34 @@ describe("PortfolioService", () => {
       // ts1: AAPL at open=99 (first bar), VFV backfilled at its own open=79.
       // = 10 * 99 * 1.4 + 50 * 79 + 5000 = 1386 + 3950 + 5000 = 10336
       expect(result.points[0].value).toBeCloseTo(10336, 4);
+    });
+
+    it("never asks a quote provider for a bond-linked holding's intraday bars (INV-BOND-005)", async () => {
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+      holdingsRepository.find.mockResolvedValue([
+        mockHoldingAAPL,
+        {
+          ...mockHoldingVFV,
+          security: {
+            ...mockSecurityVFV,
+            bondProgramId: "11111111-1111-5111-8111-111111111111",
+          } as any,
+        },
+      ]);
+      yahooFinanceService.fetchIntradaySeries.mockResolvedValue([
+        { timestamp: new Date("2026-05-06T13:30:00.000Z"), close: 100 },
+      ]);
+      exchangeRateService.getLatestRate.mockResolvedValue(1.4);
+
+      await service.getIntradayValueSeries(userId, { range: "1d" });
+
+      const asked = yahooFinanceService.fetchIntradaySeries.mock.calls.map(
+        ([symbol]: [string]) => symbol,
+      );
+      expect(asked).toEqual([mockSecurityAAPL.symbol]);
+      // This is the legacy (holdings-table) branch, reached because the default
+      // ledger mock is empty; production values a linked holding on the ledger
+      // path, which the next test pins (its stored close, per day).
     });
 
     it("caches results for 60 seconds keyed by user/range/accounts/currency", async () => {
@@ -4260,6 +4564,100 @@ describe("PortfolioService", () => {
       expect(result.points[0].value).toBeCloseTo(5400, 4);
     });
 
+    describe("completeness flags", () => {
+      const ts1 = new Date("2026-05-06T13:30:00.000Z");
+      const ts2 = new Date("2026-05-06T13:31:00.000Z");
+
+      it("reports every flag true for a series that valued every holding", async () => {
+        accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+        holdingsRepository.find.mockResolvedValue([mockHoldingAAPL]);
+        yahooFinanceService.fetchIntradaySeries.mockResolvedValue([
+          { timestamp: ts1, close: 100 },
+          { timestamp: ts2, close: 110 },
+        ]);
+        exchangeRateService.getLatestRate.mockResolvedValue(1.4);
+
+        const result = await service.getIntradayValueSeries(userId, {
+          range: "1d",
+        });
+
+        expect(result.points).toHaveLength(2);
+        for (const p of result.points) {
+          expect(p.fxComplete).toBe(true);
+          expect(p.pricesComplete).toBe(true);
+          expect(p.cashComplete).toBe(true);
+        }
+        expect(result.fxComplete).toBe(true);
+        expect(result.pricesComplete).toBe(true);
+        expect(result.valuationComplete).toBe(true);
+        expect(result.missingRatePairs).toEqual([]);
+        expect(result.unpricedSecurityIds).toEqual([]);
+      });
+
+      it("reports true and empty lists when there are no points", async () => {
+        accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+        holdingsRepository.find.mockResolvedValue([]);
+
+        const result = await service.getIntradayValueSeries(userId, {
+          range: "1d",
+        });
+
+        expect(result.points).toEqual([]);
+        expect(result.fxComplete).toBe(true);
+        expect(result.pricesComplete).toBe(true);
+        expect(result.valuationComplete).toBe(true);
+        expect(result.missingRatePairs).toEqual([]);
+        expect(result.unpricedSecurityIds).toEqual([]);
+      });
+
+      it("marks a bar fxComplete false and names the pair when a currency has no rate", async () => {
+        accountsRepository.find.mockResolvedValue([mockBrokerageAccount]); // CAD
+        holdingsRepository.find.mockResolvedValue([mockHoldingAAPL]); // USD
+        yahooFinanceService.fetchIntradaySeries.mockResolvedValue([
+          { timestamp: ts1, close: 100 },
+        ]);
+        exchangeRateService.getLatestRate.mockResolvedValue(null);
+
+        const result = await service.getIntradayValueSeries(userId, {
+          range: "1d",
+        });
+
+        expect(result.points).toHaveLength(1);
+        expect(result.points[0].fxComplete).toBe(false);
+        expect(result.points[0].pricesComplete).toBe(true);
+        expect(result.fxComplete).toBe(false);
+        expect(result.valuationComplete).toBe(false);
+        expect(result.missingRatePairs).toEqual(["USD->CAD"]);
+      });
+
+      it("marks a bar pricesComplete false and lists the holding whose fetch failed and has no stored close", async () => {
+        accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+        holdingsRepository.find.mockResolvedValue([
+          mockHoldingAAPL,
+          mockHoldingVFV,
+        ]);
+        yahooFinanceService.fetchIntradaySeries.mockImplementation(
+          async (symbol: string) => {
+            if (symbol === "AAPL") return [{ timestamp: ts1, close: 100 }];
+            throw new Error("yahoo 500");
+          },
+        );
+        // No stored close for VFV (sec-2): the position cannot be valued.
+        securityPriceRepository.query.mockResolvedValue([]);
+        exchangeRateService.getLatestRate.mockResolvedValue(1.4);
+
+        const result = await service.getIntradayValueSeries(userId, {
+          range: "1d",
+        });
+
+        expect(result.points[0].pricesComplete).toBe(false);
+        expect(result.points[0].fxComplete).toBe(true);
+        expect(result.pricesComplete).toBe(false);
+        expect(result.valuationComplete).toBe(false);
+        expect(result.unpricedSecurityIds).toEqual(["sec-2"]);
+      });
+    });
+
     it("falls back only when EVERY intraday fetch fails", async () => {
       accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
       holdingsRepository.find.mockResolvedValue([
@@ -4527,6 +4925,8 @@ describe("PortfolioService", () => {
         totalPortfolioValue: 200,
         totalGainLoss: 0,
         totalGainLossPercent: 0,
+        gainCostBasis: 0,
+        unpricedCostBasis: 0,
         fxComplete: true,
         missingRatePairs: [],
         pricesComplete: true,
@@ -5055,6 +5455,119 @@ describe("PortfolioService", () => {
       expect(result.points[1].value).toBe(111396.8957);
     });
 
+    it("marks a live bar pricesComplete false when a close-valued holding has no close", async () => {
+      netWorthService.getDailyInvestmentPositions.mockResolvedValue(
+        ledgerOf(
+          [
+            {
+              date: "2026-09-02",
+              quantities: { [xgro.id]: 10, [fund.id]: 5 },
+              closes: { [xgro.id]: 100, [fund.id]: null },
+              closeValues: { [xgro.id]: 1000, [fund.id]: null },
+              value: 1000,
+              securitiesValue: 1000,
+              pricesComplete: false,
+            },
+          ],
+          [xgro, fund],
+        ),
+      );
+      seriesBySymbol({
+        "XGRO.TO": [
+          bar("2026-09-02T19:30:00.000Z", 100),
+          bar("2026-09-02T19:45:00.000Z", 101),
+        ],
+      });
+
+      const result = await service.getIntradayValueSeries(userId, {
+        range: "1m",
+      });
+
+      const live = result.points.find(
+        (p) => p.timestamp === "2026-09-02T19:45:00.000Z",
+      )!;
+      expect(live.pricesComplete).toBe(false);
+      expect(live.fxComplete).toBe(true);
+      expect(live.cashComplete).toBe(true);
+      expect(result.pricesComplete).toBe(false);
+      expect(result.valuationComplete).toBe(false);
+      expect(result.unpricedSecurityIds).toEqual([fund.id]);
+
+      const breakdown = await service.getIntradayBreakdown(userId, {
+        range: "1m",
+      });
+      const liveBand = breakdown.points.find(
+        (p) => p.timestamp === "2026-09-02T19:45:00.000Z",
+      )!;
+      expect(liveBand.pricesComplete).toBe(false);
+      expect(breakdown.pricesComplete).toBe(false);
+      expect(breakdown.unpricedSecurityIds).toEqual([fund.id]);
+    });
+
+    it("values a bond-linked holding at its stored close on the ledger path and never asks a provider for it (INV-BOND-005)", async () => {
+      const bond = {
+        id: "sec-bond",
+        symbol: "TOS1029",
+        name: "TOS1029",
+        securityType: "BOND",
+        exchange: null,
+        currencyCode: "CAD",
+        isActive: true,
+        bondProgramId: "11111111-1111-5111-8111-111111111111",
+      } as unknown as Security;
+      netWorthService.getDailyInvestmentPositions.mockResolvedValue(
+        ledgerOf(
+          [
+            {
+              date: "2026-09-01",
+              quantities: { [xgro.id]: 10, [bond.id]: 100 },
+              closes: { [xgro.id]: 100, [bond.id]: 100 },
+              // The bond's close is the engine's stored price, per day.
+              closeValues: { [xgro.id]: 1000, [bond.id]: 10000 },
+              value: 11000,
+              securitiesValue: 11000,
+            },
+            {
+              date: "2026-09-02",
+              quantities: { [xgro.id]: 10, [bond.id]: 100 },
+              closes: { [xgro.id]: 101, [bond.id]: 100.1 },
+              closeValues: { [xgro.id]: 1010, [bond.id]: 10010 },
+              value: 11020,
+              securitiesValue: 11020,
+            },
+          ],
+          [xgro, bond],
+        ),
+      );
+      seriesBySymbol({
+        "XGRO.TO": [
+          bar("2026-09-01T19:45:00.000Z", 100),
+          bar("2026-09-02T19:45:00.000Z", 102),
+        ],
+      });
+
+      const result = await service.getIntradayValueSeries(userId, {
+        range: "1m",
+      });
+
+      const asked = yahooFinanceService.fetchIntradaySeries.mock.calls.map(
+        ([symbol]: [string]) => symbol,
+      );
+      expect(asked).not.toContain("TOS1029");
+      // Mid-session the bond contributes its stored close beside the live bar:
+      // 10 x 102 + 10010. Dropping a holding that is not fetched would leave 1020.
+      const midSession = result.points.find(
+        (p) => p.timestamp === "2026-09-02T19:45:00.000Z",
+      )!;
+      expect(midSession.value).toBeCloseTo(1020 + 10010, 4);
+      // The session's last point is the daily series' figure, bond included.
+      const close = result.points.find(
+        (p) => p.timestamp === "2026-09-02T20:00:00.000Z",
+      )!;
+      expect(close.value).toBe(11020);
+      expect(close.securitiesValue).toBe(11020);
+    });
+
     it("values each day at that day's share count and cash, not today's (a deposit, then a buy)", async () => {
       // Pinned so the fixture's Aug 28 stays inside the 1M range's rolling
       // 30-day cutoff regardless of the real date the suite runs on.
@@ -5391,6 +5904,9 @@ describe("PortfolioService", () => {
           timestamp: "2026-09-18T20:00:00.000Z",
           value: 381,
           securitiesValue: 381,
+          fxComplete: true,
+          pricesComplete: true,
+          cashComplete: true,
           sessionClose: true,
         });
         expect(result.points[1].sessionClose).toBeUndefined();
@@ -5408,6 +5924,54 @@ describe("PortfolioService", () => {
           expect.objectContaining({
             startDate: "2026-09-20",
             endDate: "2026-09-28",
+          }),
+        );
+      });
+
+      it("dates the window by the user's calendar, not UTC's, in the evening west of Greenwich", async () => {
+        // 22:30 on Wednesday 21 October in Toronto is already the 22nd in UTC.
+        // The caption reads the user's day, so 1W opens on the 14th and is
+        // measured from Tuesday the 13th's close. A UTC "today" measured it
+        // from the 14th and cut the 14th's bars out of the window.
+        jest.setSystemTime(new Date("2026-10-22T02:30:00.000Z"));
+        netWorthService.getDailyInvestmentPositions.mockResolvedValue(
+          ledgerOf([day("2026-10-13", 400), day("2026-10-14", 410)], [xgro]),
+        );
+        netWorthService.getLastPricedDays.mockResolvedValue(
+          new Map([["2026-10-13", "2026-10-13"]]),
+        );
+        seriesBySymbol({
+          "XGRO.TO": [
+            bar("2026-10-13T19:55:00.000Z", 40),
+            bar("2026-10-14T13:30:00.000Z", 40.5),
+            bar("2026-10-14T19:55:00.000Z", 41),
+          ],
+        });
+
+        const result = await requestContextStorage.run(
+          { timezone: "America/Toronto" },
+          () => service.getIntradayValueSeries(userId, { range: "1w" }),
+        );
+
+        expect(result.points.map((p) => p.timestamp)).toEqual([
+          "2026-10-13T20:00:00.000Z",
+          "2026-10-14T13:30:00.000Z",
+          "2026-10-14T19:55:00.000Z",
+          "2026-10-14T20:00:00.000Z",
+        ]);
+        expect(result.points[0].value).toBe(400);
+        expect(netWorthService.getLastPricedDays).toHaveBeenCalledWith(
+          userId,
+          ["2026-10-13"],
+          undefined,
+        );
+        expect(
+          netWorthService.getDailyInvestmentPositions,
+        ).toHaveBeenCalledWith(
+          userId,
+          expect.objectContaining({
+            startDate: "2026-10-13",
+            endDate: "2026-10-21",
           }),
         );
       });
@@ -5571,6 +6135,9 @@ describe("PortfolioService", () => {
           timestamp: "2026-09-30T20:00:00.000Z",
           value: 1000,
           securitiesValue: 1000,
+          fxComplete: true,
+          pricesComplete: true,
+          cashComplete: true,
           sessionClose: true,
         });
         expect(
@@ -5750,6 +6317,54 @@ describe("PortfolioService", () => {
         expect(opening.total).toBe(1230);
         expect(result.points[1].sessionClose).toBeUndefined();
       });
+    });
+  });
+
+  // A currency with neither an intraday FX series nor a spot rate has no rate
+  // (INV-FX-001). The lookup answers `null`, the contribution leaves the holding
+  // out and records the currency for the warning, and nothing values it at 1.
+  describe("the intraday FX lookup for a currency with no series and no spot rate", () => {
+    type FxAt = (currency: string, ts: number) => number | null;
+    const privates = () =>
+      service as unknown as {
+        makeIntradayFxAt: (loaded: unknown) => FxAt;
+        makeIntradayContribution: (
+          fxAt: FxAt,
+          unrated: Set<string>,
+        ) => (amount: number, currency: string, ts: number) => number;
+      };
+    const loadedWith = (spot: Array<[string, number]>) => ({
+      currency: "CAD",
+      fxByCurrency: new Map(),
+      spotRate: new Map(spot),
+      dailyRateIndex: new Map(),
+    });
+    const ts = Date.parse("2026-05-06T13:30:00.000Z");
+
+    it("answers null, not 1, so the holding is not valued at its face number", () => {
+      const fxAt = privates().makeIntradayFxAt(loadedWith([]));
+
+      expect(fxAt("JPY", ts)).toBeNull();
+      // Rate 1 is only ever the display currency itself.
+      expect(fxAt("CAD", ts)).toBe(1);
+    });
+
+    it("uses the spot rate when there is one", () => {
+      const fxAt = privates().makeIntradayFxAt(loadedWith([["USD->CAD", 1.4]]));
+
+      expect(fxAt("USD", ts)).toBe(1.4);
+      expect(fxAt("JPY", ts)).toBeNull();
+    });
+
+    it("leaves the holding out of the point and records the currency for the warning", () => {
+      const unrated = new Set<string>();
+      const fxAt = privates().makeIntradayFxAt(loadedWith([["USD->CAD", 1.4]]));
+      const contribution = privates().makeIntradayContribution(fxAt, unrated);
+
+      // 100,000 JPY with no rate contributes nothing; it is not 100,000 CAD.
+      expect(contribution(100000, "JPY", ts)).toBe(0);
+      expect(contribution(100, "USD", ts)).toBe(1400000);
+      expect([...unrated]).toEqual(["JPY"]);
     });
   });
 });

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   forwardRef,
   Inject,
@@ -16,6 +17,7 @@ import {
 } from "../../attachments/attachments.service";
 import { RelayAttachmentStore } from "../relay/relay-attachment.store";
 import { PayeesService, CreatePayeeOptions } from "../../payees/payees.service";
+import { ScheduledTransactionsService } from "../../scheduled-transactions/scheduled-transactions.service";
 import { InvestmentTransactionsService } from "../../securities/investment-transactions.service";
 import { SecuritiesService } from "../../securities/securities.service";
 import { CreateTransactionDto } from "../../transactions/dto/create-transaction.dto";
@@ -33,6 +35,7 @@ import { TransactionRulesService } from "../../transaction-rules/transaction-rul
 import { TransactionRulesRunService } from "../../transaction-rules/transaction-rules-run.service";
 import { UpdateSecurityDto } from "../../securities/dto/update-security.dto";
 import { tr } from "../../i18n/translate";
+import { isPostCommitFailure } from "../../common/post-commit-failure";
 import { AiActionSigningService } from "./ai-action-signing.service";
 import { AiWriteLimiter } from "./ai-write-limiter";
 import {
@@ -82,6 +85,16 @@ import { BulkCreateSkip } from "../../common/bulk-create.types";
 import { ConfirmAiActionDto } from "./dto/confirm-ai-action.dto";
 import { SingleUseTokenService } from "../../auth/single-use-token.service";
 import { AiReviewRequestsService } from "../../ai-review/ai-review-requests.service";
+import { EMAIL_RECEIPTS_CLAIM_KEY } from "../../ai-review/ai-review-work.types";
+import {
+  findTradeInLedger,
+  recordTradeBooking,
+} from "../../ai-review/trade-ledger";
+import {
+  tradeActionOf,
+  tradeMatchesOnQuantity,
+} from "../../ai-review/trade-action";
+import type { EntityManager } from "typeorm";
 
 export interface ConfirmActionResult {
   type: AiActionDescriptor["type"];
@@ -124,6 +137,8 @@ export class AiActionsService {
     private readonly transactionRulesService: TransactionRulesService,
     private readonly transactionRulesRunService: TransactionRulesRunService,
     private readonly aiReviewRequests: AiReviewRequestsService,
+    @Inject(forwardRef(() => ScheduledTransactionsService))
+    private readonly scheduledTransactionsService: ScheduledTransactionsService,
   ) {}
 
   async confirm(
@@ -175,8 +190,16 @@ export class AiActionsService {
     const writeCount = this.proposedWriteCount(
       descriptor as AiActionDescriptor,
     );
+    // A profile's proposal is left out of the count when the user turned that on
+    // (email-receipts design 7.1). Decided here, on the server, from the stored
+    // request and the stored switch, never from anything the client sent but the
+    // signed request id.
+    const exempt = await this.exemptFromWriteLimit(
+      userId,
+      descriptor as AiActionDescriptor,
+    );
     const limit = await this.writeLimiter.checkLimit(userId);
-    if (limit.currentCount + writeCount > limit.limit) {
+    if (!exempt && limit.currentCount + writeCount > limit.limit) {
       throw new BadRequestException(
         tr(
           "errors.ai.actionWriteLimit",
@@ -193,8 +216,8 @@ export class AiActionsService {
     // for the guard to be right.
     //
     // Reserved before executing, so concurrent double-submits cannot both pass,
-    // and released when the write throws, so a transient failure leaves the
-    // descriptor confirmable. It is not taken inside the write's transaction:
+    // and released when the write throws before it commits, so a transient
+    // failure leaves the descriptor confirmable. It is not taken inside the write's transaction:
     // `execute` fans out to services that each open their own, dispatch cache
     // invalidation after their commit (INV-CACHE-001) and record action history
     // outside it, and one enclosing transaction would silently move all of that
@@ -221,13 +244,25 @@ export class AiActionsService {
       // best-effort, so this may be fewer than the proposed count). `record`
       // never rejects, so a counter failure cannot reach the `catch` below and
       // release the claim on a write that has already committed.
-      await this.writeLimiter.record(
-        userId,
-        descriptor.type,
-        result.count ?? 1,
-      );
+      if (!exempt) {
+        await this.writeLimiter.record(
+          userId,
+          descriptor.type,
+          result.count ?? 1,
+        );
+      }
       return result;
     } catch (err) {
+      // A step after a committed write failed (A26-S17-02): the write is done,
+      // so the claim stays spent and a retry cannot write it twice.
+      if (isPostCommitFailure(err)) {
+        this.logger.warn(
+          `AI action ${descriptor.actionId} failed after its write ` +
+            "committed; the claim stays spent: " +
+            err.message,
+        );
+        throw err;
+      }
       // Best-effort, and it must never replace the error it is cleaning up
       // after. The `Map` this claim replaced could not fail; a row can, and the
       // most likely reason `execute` threw -- an unreachable database, an
@@ -254,6 +289,29 @@ export class AiActionsService {
       }
       throw err;
     }
+  }
+
+  /**
+   * Whether this confirm is a profile's proposal the user chose not to count
+   * toward the daily AI write limit: an `update_transaction` that answers a
+   * request (`aiReviewRequestId`, signed) whose proposal the deterministic profile
+   * submitted, on a mailbox whose switch is off. Every other descriptor counts.
+   */
+  private async exemptFromWriteLimit(
+    userId: string,
+    descriptor: AiActionDescriptor,
+  ): Promise<boolean> {
+    if (
+      descriptor.type !== "update_transaction" ||
+      typeof descriptor.aiReviewRequestId !== "string"
+    ) {
+      return false;
+    }
+    return this.aiReviewRequests.isExemptFromWriteLimit(
+      userId,
+      descriptor.aiReviewRequestId,
+      EMAIL_RECEIPTS_CLAIM_KEY,
+    );
   }
 
   /**
@@ -354,6 +412,8 @@ export class AiActionsService {
       condition: descriptor.rule.condition,
       actions: descriptor.rule.actions,
       stopProcessing: descriptor.rule.stopProcessing,
+      activeFrom: descriptor.rule.activeFrom,
+      activeTo: descriptor.rule.activeTo,
     });
     const rule = await this.transactionRulesService.create(userId, dto);
     return { type: "create_transaction_rule", id: rule.id };
@@ -370,6 +430,8 @@ export class AiActionsService {
       condition: descriptor.rule.condition,
       actions: descriptor.rule.actions,
       stopProcessing: descriptor.rule.stopProcessing,
+      activeFrom: descriptor.rule.activeFrom,
+      activeTo: descriptor.rule.activeTo,
       revision: descriptor.expectedRevision,
     });
     const rule = await this.transactionRulesService.update(
@@ -608,6 +670,7 @@ export class AiActionsService {
           accruedInterest: r.accruedInterest,
           exchangeRate: r.exchangeRate,
           description: r.description ?? undefined,
+          bondInstrumentId: r.bondInstrumentId ?? undefined,
         });
         const transaction = await this.investmentTransactionsService.update(
           userId,
@@ -719,6 +782,10 @@ export class AiActionsService {
         ? undefined
         : (descriptor.categoryId ?? undefined),
       description: descriptor.description ?? undefined,
+      // Only when the card sets one: a key present but undefined would clear it.
+      ...(descriptor.referenceNumber === undefined
+        ? {}
+        : { referenceNumber: descriptor.referenceNumber }),
       // Splits ride inside the same DTO so update() rebuilds the set in the
       // same transaction, under the same row lock, as the scalar fields
       // (invariant I1) -- never as a separate follow-up write.
@@ -735,6 +802,9 @@ export class AiActionsService {
       dto,
       {
         createPayeeIfMissing: descriptor.createPayee === true,
+        ...(descriptor.tagNames?.length
+          ? { addTagNames: descriptor.tagNames }
+          : {}),
         ...(typeof reviewRequestId === "string"
           ? {
               beforeWrite: (m) =>
@@ -774,8 +844,10 @@ export class AiActionsService {
       quantity: descriptor.quantity ?? undefined,
       price: descriptor.price ?? undefined,
       commission: descriptor.commission,
+      accruedInterest: descriptor.accruedInterest,
       exchangeRate: descriptor.exchangeRate,
       description: descriptor.description ?? undefined,
+      bondInstrumentId: descriptor.bondInstrumentId ?? undefined,
     });
     const transaction = await this.investmentTransactionsService.update(
       userId,
@@ -852,7 +924,11 @@ export class AiActionsService {
     refIds: string[],
   ): Promise<void> {
     for (const file of files) {
-      await this.attachmentsService.create(userId, transactionId, file);
+      await this.attachmentsService.create(
+        userId,
+        { kind: "transaction", id: transactionId },
+        file,
+      );
     }
     await this.relayAttachmentStore.releaseForPrompt(userId, refIds);
   }
@@ -1009,13 +1085,123 @@ export class AiActionsService {
       fundingAccountId: descriptor.fundingAccountId ?? undefined,
       quantity: descriptor.quantity ?? undefined,
       price: descriptor.price ?? undefined,
+      // A trade email's card signs the executed total, so it is stored as the
+      // email gave it, not re-derived from the price (INV-TRADE-001).
+      totalAmount: descriptor.totalAmount ?? undefined,
       commission: descriptor.commission,
+      accruedInterest: descriptor.accruedInterest,
       exchangeRate: descriptor.exchangeRate,
       description: descriptor.description ?? undefined,
+      bondInstrumentId: descriptor.bondInstrumentId ?? undefined,
     });
+    const reviewRequestId = descriptor.aiReviewRequestId;
+    if (typeof reviewRequestId !== "string") {
+      const transaction = await this.investmentTransactionsService.create(
+        userId,
+        dto,
+      );
+      return { type: "create_investment_transaction", id: transaction.id };
+    }
+
+    // A creation that answers an `email_trade` request marks it applied in the
+    // write's own transaction, under the holdings lock and before anything is
+    // written: a request dismissed or expired since the card was built refuses
+    // the creation (409) with nothing changed, and so does a trade the ledger
+    // has gained since (the schedule auto-posted it, the person entered it):
+    // checked here, under the same lock, not only when the card was built. The
+    // row is then recorded on the email, so the two commit or roll back together.
+    const beforeWrite = async (m: EntityManager): Promise<void> => {
+      const { emailReceiptId } = await this.aiReviewRequests.markTradeApplied(
+        m,
+        userId,
+        reviewRequestId,
+      );
+      const tradeAction = tradeActionOf(descriptor.action);
+      const comparable =
+        tradeAction !== null &&
+        (tradeMatchesOnQuantity(tradeAction)
+          ? descriptor.quantity !== null
+          : descriptor.totalAmount !== undefined);
+      if (descriptor.securityId && tradeAction !== null && comparable) {
+        const ledger = await findTradeInLedger(
+          m,
+          userId,
+          {
+            accountId: descriptor.accountId,
+            action: tradeAction,
+            securityId: descriptor.securityId,
+            quantity: descriptor.quantity,
+            totalAmount: descriptor.totalAmount ?? 0,
+            date: descriptor.transactionDate,
+          },
+          emailReceiptId,
+        );
+        if (ledger.unclaimedId !== null) {
+          throw new ConflictException(
+            tr(
+              "errors.aiReview.tradeAlreadyBooked",
+              "Your ledger already has this trade. Link the email to it instead of booking it again.",
+            ),
+          );
+        }
+      }
+    };
+    const afterWrite = (m: EntityManager, id: string): Promise<void> =>
+      recordTradeBooking(m, userId, reviewRequestId, id);
+
+    // A trade that pays a scheduled bill or deposit posts THAT occurrence with
+    // the figures the card showed (the schedule's own post creates the row, marks
+    // the occurrence paid and advances the schedule), so no second row is made.
+    // The due date is signed: a schedule that has moved on since the card was
+    // built refuses with a conflict and nothing is written.
+    if (
+      typeof descriptor.scheduledTransactionId === "string" &&
+      typeof descriptor.scheduledDueDate === "string"
+    ) {
+      let createdId: string | null = null;
+      await this.scheduledTransactionsService.post(
+        userId,
+        descriptor.scheduledTransactionId,
+        {
+          transactionDate: descriptor.transactionDate,
+          investmentQuantity: descriptor.quantity ?? undefined,
+          // A card with no shares (a cash dividend that states only its
+          // amount) has no price per share either: its price is the whole
+          // amount. Beside the schedule's own shares it would store a row of
+          // shares times the amount, so the schedule's price stands and the
+          // total below is the fact.
+          investmentPrice:
+            descriptor.quantity === null
+              ? undefined
+              : (descriptor.price ?? undefined),
+          description: descriptor.description ?? undefined,
+        },
+        {
+          expectedDueDate: descriptor.scheduledDueDate,
+          beforeWrite,
+          ...(typeof descriptor.totalAmount === "number"
+            ? {
+                investmentFigures: {
+                  totalAmount: descriptor.totalAmount,
+                  exchangeRate: descriptor.exchangeRate,
+                },
+              }
+            : {}),
+          afterInvestmentWrite: async (m, id) => {
+            createdId = id;
+            await afterWrite(m, id);
+          },
+        },
+      );
+      return {
+        type: "create_investment_transaction",
+        id: createdId ?? descriptor.scheduledTransactionId,
+      };
+    }
     const transaction = await this.investmentTransactionsService.create(
       userId,
       dto,
+      { beforeWrite, afterWrite },
     );
     return { type: "create_investment_transaction", id: transaction.id };
   }
@@ -1093,8 +1279,10 @@ export class AiActionsService {
           quantity: row.quantity ?? undefined,
           price: row.price ?? undefined,
           commission: row.commission,
+          accruedInterest: row.accruedInterest,
           exchangeRate: row.exchangeRate,
           description: row.description ?? undefined,
+          bondInstrumentId: row.bondInstrumentId ?? undefined,
         },
       );
       if (validated) {

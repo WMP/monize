@@ -51,11 +51,20 @@ import {
   CsvHeadersResponseDto,
   ColumnMappingResponseDto,
 } from "./dto/import.dto";
-import { ImportContext, updateAccountBalance } from "./import-context";
+import {
+  ImportContext,
+  recordSkippedRow,
+  restoreRowCounters,
+  snapshotRowCounters,
+  updateAccountBalance,
+} from "./import-context";
+import { loadHeldExternalIds } from "./ofx-external-id";
+import { isExternalIdConflict } from "../transactions/transaction-external-id";
 import { ImportEntityCreatorService } from "./import-entity-creator.service";
 import { ImportPostProcessingService } from "./import-post-processing.service";
 import { ImportInvestmentProcessorService } from "./import-investment-processor.service";
 import { ImportRegularProcessorService } from "./import-regular-processor.service";
+import { orderByDateStable } from "../common/date-order.util";
 import { Security } from "../securities/entities/security.entity";
 import { HoldingsService } from "../securities/holdings.service";
 import { Tag } from "../tags/entities/tag.entity";
@@ -67,6 +76,7 @@ import { deletionBalanceEffect } from "../common/deletion-balance.util";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { tr } from "../i18n/translate";
 import { TransactionRulesApplierService } from "../transaction-rules/transaction-rules-applier.service";
+import { insertCategoryIfAbsent } from "./insert-category-if-absent";
 
 @Injectable()
 export class ImportService {
@@ -257,12 +267,14 @@ export class ImportService {
     }
 
     const affectedAccountIds = new Set<string>();
+    const settledScheduleIds = new Set<string>();
     const importStartTime = new Date();
     let hasInvestment = false;
 
     const importResult: ImportResultDto = {
       imported: 0,
       skipped: 0,
+      skippedRows: [],
       errors: 0,
       errorMessages: [],
       categoriesCreated: 0,
@@ -442,8 +454,11 @@ export class ImportService {
             importStartTime,
             dateCounters: new Map(),
             affectedAccountIds,
+            settledScheduleIds,
             importResult,
             transferDupCounts: new Map(),
+            // A QIF file carries no bank ids.
+            heldExternalIds: new Map(),
             importRules,
           };
 
@@ -457,13 +472,18 @@ export class ImportService {
             );
           }
 
-          // Process transactions
-          let txIndex = 0;
-          for (const qifTx of block.transactions) {
-            txIndex++;
+          // Process transactions oldest first, and within a date in file
+          // order, so a rule that settles loan installments folds forward
+          // through time (INV-RULE-005). `txIndex` stays the row's place in
+          // the file, which the messages name.
+          for (const { row: qifTx, position: txIndex } of orderByDateStable(
+            block.transactions,
+            (row) => row.date,
+          )) {
             try {
               const savepointName = `tx_import_${txIndex}`;
               await manager.query(`SAVEPOINT ${savepointName}`);
+              const counters = snapshotRowCounters(importResult);
               try {
                 if (isInvestment) {
                   await this.investmentProcessor.processTransaction(ctx, qifTx);
@@ -473,6 +493,7 @@ export class ImportService {
                 await manager.query(`RELEASE SAVEPOINT ${savepointName}`);
               } catch (error) {
                 await manager.query(`ROLLBACK TO SAVEPOINT ${savepointName}`);
+                restoreRowCounters(importResult, counters);
                 importResult.errors++;
                 importResult.errorMessages.push(
                   `Error importing transaction ${txIndex}/${block.transactions.length} in "${block.accountName}" on ${qifTx.date}: ${error.message}`,
@@ -491,6 +512,11 @@ export class ImportService {
               );
             }
           }
+
+          // An investment file after which a removal of a bond-program security
+          // is not covered by the lots is refused as a whole (INV-BOND-007); the
+          // rows are not in date order, so it is checked once, here.
+          await ctx.bond?.guard.verify();
         }
 
         await this.rebuildImportedHoldings(manager, userId, affectedAccountIds);
@@ -520,7 +546,12 @@ export class ImportService {
     }
 
     // Post-import processing
-    await this.postImportProcessing(userId, hasInvestment, affectedAccountIds);
+    await this.postImportProcessing(
+      userId,
+      hasInvestment,
+      affectedAccountIds,
+      settledScheduleIds,
+    );
 
     // Detect loan/mortgage accounts needing payment setup
     importResult.loanAccountsNeedingSetup =
@@ -641,16 +672,19 @@ export class ImportService {
       return existing.id;
     }
 
-    const newCategory = manager.create(Category, {
+    // Adopts a row another transaction created since the lookup above rather
+    // than aborting the whole import on its unique violation (INV-IMPORT-003).
+    const saved = await insertCategoryIfAbsent(manager, {
       userId,
       name,
       parentId,
       isIncome,
     });
-    const saved = await manager.save(newCategory);
     processedCategories.set(cacheKey, saved.id);
     categoryMap.set(name, saved.id);
-    importResult.categoriesCreated++;
+    if (saved.inserted) {
+      importResult.categoriesCreated++;
+    }
     return saved.id;
   }
 
@@ -1277,11 +1311,13 @@ export class ImportService {
 
     const affectedAccountIds = new Set<string>();
     affectedAccountIds.add(accountId);
+    const settledScheduleIds = new Set<string>();
     const importStartTime = new Date();
 
     const importResult: ImportResultDto = {
       imported: 0,
       skipped: 0,
+      skippedRows: [],
       errors: 0,
       errorMessages: [],
       categoriesCreated: 0,
@@ -1317,8 +1353,17 @@ export class ImportService {
           importStartTime,
           dateCounters: new Map<string, number>(),
           affectedAccountIds,
+          settledScheduleIds,
           importResult,
           transferDupCounts: new Map<string, number>(),
+          // One lookup for every bank id the file carries, not one per row.
+          heldExternalIds: isInvestment
+            ? new Map()
+            : await loadHeldExternalIds(
+                manager,
+                accountId,
+                result.transactions,
+              ),
           // The user's import-trigger rules, once for the whole file (design
           // 6.3). An investment file has no regular rows to evaluate.
           importRules: isInvestment
@@ -1372,14 +1417,19 @@ export class ImportService {
           );
         }
 
-        // Import transactions
-        let txIndex = 0;
+        // Import transactions oldest first, and within a date in file order,
+        // so a rule that settles loan installments folds forward through time
+        // (INV-RULE-005). `txIndex` stays the row's place in the file, which
+        // the messages name.
         const totalTransactions = result.transactions.length;
-        for (const qifTx of result.transactions) {
-          txIndex++;
+        for (const { row: qifTx, position: txIndex } of orderByDateStable(
+          result.transactions,
+          (row) => row.date,
+        )) {
           try {
             const savepointName = `tx_import_${txIndex}`;
             await manager.query(`SAVEPOINT ${savepointName}`);
+            const counters = snapshotRowCounters(importResult);
             try {
               if (isInvestment) {
                 await this.investmentProcessor.processTransaction(ctx, qifTx);
@@ -1389,13 +1439,28 @@ export class ImportService {
               await manager.query(`RELEASE SAVEPOINT ${savepointName}`);
             } catch (error) {
               await manager.query(`ROLLBACK TO SAVEPOINT ${savepointName}`);
-              importResult.errors++;
-              importResult.errorMessages.push(
-                `Error importing transaction ${txIndex}/${totalTransactions} on ${qifTx.date}: ${error.message}`,
-              );
-              this.logger.warn(
-                `Error importing transaction ${txIndex}/${totalTransactions}: ${error.message}`,
-              );
+              // The payee the row created and the rule change it counted were
+              // rolled back with it, so their counters go back too.
+              restoreRowCounters(importResult, counters);
+              if (isExternalIdConflict(error)) {
+                // Another writer committed a row holding this row's bank id
+                // after the processor's lookup missed it; the unique index
+                // refused this insert, so the row is already in the account.
+                recordSkippedRow(
+                  importResult,
+                  qifTx,
+                  "alreadyImported",
+                  account.currencyCode,
+                );
+              } else {
+                importResult.errors++;
+                importResult.errorMessages.push(
+                  `Error importing transaction ${txIndex}/${totalTransactions} on ${qifTx.date}: ${error.message}`,
+                );
+                this.logger.warn(
+                  `Error importing transaction ${txIndex}/${totalTransactions}: ${error.message}`,
+                );
+              }
             }
           } catch (savepointError) {
             importResult.errors++;
@@ -1407,6 +1472,9 @@ export class ImportService {
             );
           }
         }
+
+        // See the multi-account import: checked once, after the whole file.
+        await ctx.bond?.guard.verify();
 
         await this.rebuildImportedHoldings(manager, userId, affectedAccountIds);
       });
@@ -1425,7 +1493,12 @@ export class ImportService {
     }
 
     // Post-import processing
-    await this.postImportProcessing(userId, isInvestment, affectedAccountIds);
+    await this.postImportProcessing(
+      userId,
+      isInvestment,
+      affectedAccountIds,
+      settledScheduleIds,
+    );
 
     // Detect loan/mortgage accounts needing payment setup
     importResult.loanAccountsNeedingSetup =
@@ -1800,8 +1873,14 @@ export class ImportService {
     userId: string,
     isInvestment: boolean,
     affectedAccountIds: Set<string>,
+    settledScheduleIds: ReadonlySet<string>,
   ): Promise<void> {
-    await this.postProcessing.run(userId, isInvestment, affectedAccountIds);
+    await this.postProcessing.run(
+      userId,
+      isInvestment,
+      affectedAccountIds,
+      settledScheduleIds,
+    );
   }
 
   /**

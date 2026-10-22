@@ -25,6 +25,7 @@ import {
 import { mapTransactions } from "./map/map-transactions";
 import { mapSecurities, tradedSecurityHandles } from "./map/map-securities";
 import { mapInvestments } from "./map/map-investments";
+import { resolveExchangeRates } from "./writers/write-prices";
 import {
   applyInvestmentCashSources,
   reconcileEmbeddedAccruedInterest,
@@ -195,6 +196,10 @@ export function mappingSummary(tables: MnyTables): string[] {
     accounts,
     securities,
     bills: tables.bills.bills,
+    exchangeRates: resolveExchangeRates(
+      tables.reference.exchangeRates,
+      currencyCodesByHandle(tables.reference),
+    ),
   });
   const transactions = mapTransactions({
     transactions: tables.transactions,

@@ -41,6 +41,9 @@
     "instructions": "インポートするファイルを 1 つ以上選択してください。対応形式: QIF、OFX/QFX、CSV、Microsoft Money (.mny)。\n一括インポートのために同じ種類の複数ファイルを選択できます。Microsoft Money ファイルは 1 つずつインポートしてください。.mny ファイルにはプロファイル全体が含まれます。",
     "importingTo": "インポート先:",
     "clickToSelect": "クリックしてファイルを選択",
+    "orDragAndDrop": "またはここにドラッグ＆ドロップ",
+    "dropToImport": "ドロップしてインポート",
+    "unsupportedDrop": "次のファイルはインポートできません: {names}。QIF、OFX、QFX、CSV、または Microsoft Money (.mny) ファイルを使用してください。",
     "processing": "処理中...",
     "acceptedFormats": "QIF、OFX、QFX、CSV、または Microsoft Money (.mny)",
     "mnyFailedHeading": "この Microsoft Money ファイルを開けませんでした",
@@ -287,7 +290,7 @@
     "totalImported": "インポート合計:",
     "totalImportedSuffix": "件の取引",
     "totalSkipped": "スキップ合計:",
-    "totalSkippedSuffix": "件の重複振替",
+    "totalSkippedSuffix": "件の取引",
     "totalErrors": "エラー合計:",
     "categoriesCreated": "作成したカテゴリ:",
     "accountsCreated": "作成した勘定科目:",
@@ -299,17 +302,24 @@
     "imported": "インポート済み:",
     "importedSuffix": "件の取引",
     "skipped": "スキップ:",
-    "skippedSuffix": "件の重複振替",
+    "skippedSuffix": "件の取引",
     "errors": "エラー:",
     "errorsLabel": "エラー:",
     "andMoreErrors": "...さらに {count} 件のエラー",
+    "skippedRowsHeading": "スキップした行:",
+    "skippedRow": "{date}: {amount}、{payee}（{reason}）",
+    "skippedRowNoPayee": "{date}: {amount}（{reason}）",
+    "skipReasonAlreadyImported": "インポート済み",
+    "skipReasonDuplicateTransfer": "振替は記録済み",
+    "andMoreSkipped": "...さらに {count} 行をスキップ",
     "loanSetupHeading": "定期支払いの設定",
     "loanSetupDescription": "以下のローン/住宅ローン勘定科目は定期支払いなしでインポートされました。ローンの進捗状況を引き続き追跡するために定期支払いを設定してください。",
     "setUpPayments": "支払いを設定",
     "scheduledPaymentsConfigured": "{count} 件の勘定科目{plural}に定期支払いを設定しました。",
     "viewInvestments": "投資を表示",
     "viewTransactions": "取引を表示",
-    "importMoreFiles": "さらにファイルをインポート"
+    "importMoreFiles": "さらにファイルをインポート",
+    "bondRowsWithoutSeries": "{count, plural, other {#件の債券購入がシリーズなしでインポートされました。銘柄の債券ロットでシリーズを選択してください。}}"
   },
   "multiAccountReview": {
     "heading": "複数勘定科目 QIF インポート",
@@ -492,7 +502,8 @@
     },
     "warningsHeading": "このインポートに関する注意",
     "downloadReport": "レポートをダウンロード",
-    "done": "完了"
+    "done": "完了",
+    "bondRowsWithoutSeries": "{count, plural, other {#件の債券購入がシリーズなしでインポートされました。銘柄の債券ロットでシリーズを選択してください。}}"
   },
   "mnyWarnings": {
     "missingTable": "この Money バージョンには、インポートが使用するテーブルが {count, plural, other {# 個}} ありません。",
@@ -521,6 +532,8 @@
     "unusableBill": "{count, plural, other {# 件の予定された支払い}} に口座、利用可能な日付、または認識できる繰り返し設定がなく、スキップしました。",
     "billFrequencyApproximated": "{count, plural, other {# 件の予定された支払い}} は Monize が正確に表現できない繰り返し間隔を使用しているため、最も近い短い間隔を使用しました。",
     "loanInterestCategoryUnclear": "{count, plural, other {# 件のローン返済}}に元本以外の複数のカテゴリが含まれていたため、ローンの利息カテゴリは未設定のままになりました。支払いにエスクロー（escrow）が含まれるか確認し、インポート後に利息カテゴリを設定してください。",
+    "transferAmountMismatch": "{count, plural, other {# 件の投資口座への振替}}で、投資側に銀行側と異なる金額が記録されていました。投資側は記録どおりにインポートされました。",
+    "crossCurrencyTradeUnconverted": "{count, plural, other {# 件の他通貨建て証券の取引}}は、ファイルに取引日付近のその通貨ペアの為替レートがないため、口座の通貨で保存されました。為替レートを追加してから、各取引の価格を修正してください。",
     "showTransactions": "{count, plural, other {# 件の取引}}を表示",
     "hideTransactions": "取引を隠す",
     "reviewInMoney": "Microsoft Money でこれらを開いて確認または修正し、あらためてエクスポートしてインポートしてください。",
@@ -539,6 +552,8 @@
     "mnyImportFailed": "インポート中に問題が発生しました。何も保存されていないため、やり直せます。",
     "mnyJobStalled": "インポートが応答しなくなりました。サーバーが再起動した可能性が高いです。アップロードしたファイルは残っているため、再試行しても安全です。",
     "mnyJobStalledAfterCommit": "インポートはデータを保存した後に応答しなくなりました。サーバーが再起動した可能性が高いです。取り込まれたレコードはアカウントに保存されているため、同じファイルをもう一度インポートすると重複します。ほかのファイルをインポートする前に口座をご確認ください。",
+    "mnyImportFailedAfterCommit": "インポートはデータを保存しましたが、その後の手順が失敗しました。取り込まれたレコードはアカウントに保存されているため、同じファイルをもう一度インポートすると重複します。ほかのファイルをインポートする前に口座をご確認ください。",
+    "mnyAlreadyImported": "このファイルはすでにアカウントにインポートされています。もう一度インポートするとレコードが重複します。置き換えるには、最初からやり直して既存のデータを置き換える設定を選んでください。",
     "mnyStagedFileMissing": "アップロードした Money ファイルは既に利用できません。もう一度アップロードしてください。",
     "mnyFileTruncated": "この Money ファイルは不完全なようです。アップロードが中断された可能性があります。",
     "mnyNotAMoneyFile": "このファイルは Microsoft Money (.mny) ファイルではありません。",
@@ -546,5 +561,80 @@
     "mnyPasswordRequired": "この Money ファイルはパスワードで保護されています。",
     "mnyPasswordIncorrect": "そのパスワードでは Money ファイルを開けません。",
     "mnyUnreadableDatabase": "この Money ファイルは復号できましたが、内容を読み取れませんでした。破損している可能性があります。"
+  },
+  "preview": {
+    "choice": {
+      "legend": "{payee} をインポートしない場合の扱い",
+      "skip": "今回はスキップ",
+      "except": "例外に追加"
+    },
+    "payeeTip": {
+      "name": "銀行から: {original}。対応先: {name}",
+      "alias": "銀行から: {original}。対応先: {name}（エイリアス「{pattern}」）",
+      "aliasNoPattern": "銀行から: {original}。対応先: {name}（エイリアス）",
+      "new": "銀行から: {original}。対応先: {name}（新しい支払先）",
+      "rule": "銀行から: {original}。対応先: {name}（ルールで設定）",
+      "ruleNone": "銀行から: {original}。対応先: 支払先なし（ルールで設定）"
+    },
+    "expand": {
+      "show": "{payee} の詳細を表示",
+      "hide": "{payee} の詳細を非表示"
+    },
+    "rules": {
+      "heading": "インポートルール",
+      "none": "この取引に一致するインポートルールはありません。",
+      "skipped": "{action}: スキップしました（{reason}）",
+      "stopped": "これ以降のルールを停止します。",
+      "applied": "適用: {actions}",
+      "openNewTab": "ルール {name} を新しいタブで開く"
+    },
+    "ruleTest": {
+      "loading": "ルールのテスト結果を読み込んでいます",
+      "error": "ルールのテスト結果を読み込めませんでした。",
+      "retry": "再試行",
+      "noRules": "インポートルールがないため、テストするものがありませんでした。",
+      "showNotMatched": "一致しなかったルールを表示（{count}）",
+      "hideNotMatched": "一致しなかったルールを非表示（{count}）",
+      "noChanges": "一致しましたが、この取引は何も変わりません。",
+      "badge": {
+        "matched": "一致",
+        "notMatched": "不一致",
+        "notEvaluated": "未評価"
+      },
+      "notEvaluated": {
+        "afterStop": "未評価：前のルールがそれ以降のルールを停止しました。",
+        "disabled": "未評価：ルールがオフになっています。",
+        "invalid": "未評価：ルールが無効です。開いて修正してください。",
+        "outside_active_window": "未評価：行の日付がルールの有効期間外です。"
+      },
+      "condition": {
+        "met": "条件を満たしています",
+        "notMet": "条件を満たしていません",
+        "actual": "この取引での値：{value}",
+        "noValue": "なし",
+        "noTags": "タグなし",
+        "capture": "{name} = {value}",
+        "omitted": "条件のこの部分の詳細は表示されません。"
+      },
+      "skipReasons": {
+        "already_set": "すでに値があり、ルールは空のものだけを埋めるため",
+        "no_change": "すでにルールが設定する内容になっているため",
+        "payee_unresolved": "ルールが作る支払先を検索できなかったため"
+      }
+    },
+    "payee": {
+      "heading": "支払先",
+      "unknown": "この取引の支払先情報はありません。",
+      "original": "銀行のテキスト: {original}",
+      "name": "既存の支払先 {name} と一致します。",
+      "alias": "エイリアス「{pattern}」により {name} に対応します。",
+      "aliasNoPattern": "エイリアスにより {name} に対応します。",
+      "new": "この名前の支払先はまだないため、{name} が作成されます。",
+      "rule": "インポートルールが支払先を設定します: {name}。",
+      "ruleNone": "インポートルールが支払先を削除します。",
+      "none": "銀行から取引相手が示されなかったため、この取引には支払先がありません。",
+      "openAliases": "支払先のエイリアスを開く",
+      "openAliasesNewTab": "支払先のエイリアスを新しいタブで開く"
+    }
   }
 }

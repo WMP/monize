@@ -24,6 +24,9 @@ import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
+import { reportTotal } from '@/lib/currency-total';
 
 const logger = createLogger('CustomReportViewer');
 
@@ -35,7 +38,7 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
   const t = useTranslations('reports');
   const tc = useTranslations('common');
   const router = useRouter();
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, defaultCurrency } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const [report, setReport] = useState<CustomReport | null>(null);
   const [result, setResult] = useState<ReportResult | null>(null);
@@ -55,32 +58,64 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
     }
   }, [reportId, t]);
 
-  const executeReport = useCallback(async () => {
-    if (!report) return;
+  // Whether the auto-execute effect below will run the report for the current
+  // inputs: never before the report has loaded, nor for a custom range whose
+  // dates are incomplete.
+  const willExecute =
+    !!report &&
+    !(overrideTimeframe === TimeframeType.CUSTOM && (!customStartDate || !customEndDate));
 
-    setIsExecuting(true);
-    try {
-      let params: { timeframeType?: TimeframeType; startDate?: string; endDate?: string } = {};
+  // The inputs the report last ran for. When they change, the "becomes
+  // executing" transition happens here, during render, rather than from inside
+  // the effect that sends the request.
+  const [executeInputs, setExecuteInputs] = useState({
+    reportId,
+    report,
+    overrideTimeframe,
+    customStartDate,
+    customEndDate,
+  });
+  if (
+    executeInputs.reportId !== reportId ||
+    executeInputs.report !== report ||
+    executeInputs.overrideTimeframe !== overrideTimeframe ||
+    executeInputs.customStartDate !== customStartDate ||
+    executeInputs.customEndDate !== customEndDate
+  ) {
+    setExecuteInputs({ reportId, report, overrideTimeframe, customStartDate, customEndDate });
+    if (willExecute) setIsExecuting(true);
+  }
 
-      // Use override timeframe if selected
-      if (overrideTimeframe) {
-        params.timeframeType = overrideTimeframe;
+  const executeReport = useCallback(() => {
+    if (!report) return Promise.resolve();
 
-        // Include custom dates if custom timeframe is selected
-        if (overrideTimeframe === TimeframeType.CUSTOM && customStartDate && customEndDate) {
-          params.startDate = customStartDate;
-          params.endDate = customEndDate;
+    // The state writes live in this inner function so they run once the
+    // request settles, never synchronously inside the effect that calls this.
+    const run = async () => {
+      try {
+        let params: { timeframeType?: TimeframeType; startDate?: string; endDate?: string } = {};
+
+        // Use override timeframe if selected
+        if (overrideTimeframe) {
+          params.timeframeType = overrideTimeframe;
+
+          // Include custom dates if custom timeframe is selected
+          if (overrideTimeframe === TimeframeType.CUSTOM && customStartDate && customEndDate) {
+            params.startDate = customStartDate;
+            params.endDate = customEndDate;
+          }
         }
-      }
 
-      const resultData = await customReportsApi.execute(reportId, params);
-      setResult(resultData);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('customReportViewer.toasts.executeFailed')));
-      logger.error(error);
-    } finally {
-      setIsExecuting(false);
-    }
+        const resultData = await customReportsApi.execute(reportId, params);
+        setResult(resultData);
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('customReportViewer.toasts.executeFailed')));
+        logger.error(error);
+      } finally {
+        setIsExecuting(false);
+      }
+    };
+    return run();
   }, [reportId, report, overrideTimeframe, customStartDate, customEndDate, t]);
 
   useEffect(() => {
@@ -241,12 +276,29 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {formatCurrency(result.summary.total)}
+                {/* A null total is withheld, not zero: show the part that converted
+                    and mark it. The count metric's total is never null. */}
+                <PartialTotal
+                  total={reportTotal(
+                    result.summary.total ?? result.summary.knownTotal ?? 0,
+                    result.summary.total === null ? result : null,
+                  )}
+                  displayCurrency={result.currency ?? defaultCurrency}
+                >
+                  {formatCurrency(result.summary.total ?? result.summary.knownTotal ?? 0)}
+                </PartialTotal>
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 {t('customReportViewer.transactionCount', { count: result.summary.count })}
               </div>
             </div>
+          </div>
+          <div className="mb-4">
+            <PartialDataNotice
+              missingCurrencies={result.missingCurrencies ?? []}
+              excludedCount={result.excludedCount ?? 0}
+              displayCurrency={result.currency ?? defaultCurrency}
+            />
           </div>
 
           {/* Chart */}

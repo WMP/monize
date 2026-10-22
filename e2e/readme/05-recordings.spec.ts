@@ -106,7 +106,7 @@ test('rules: build a rule and test it on existing transactions', async ({ browse
   await pause(page, 300);
 
   await scrollToTarget(page, page.getByRole('heading', { name: 'Test', exact: true }), 90, 10);
-  await glideClick(page, page.getByRole('button', { name: 'Test rule' }), 200);
+  await glideClick(page, page.getByRole('button', { name: 'Test rule', exact: true }), 200);
   await expect(page.getByText(/transactions? would change/)).toBeVisible();
   await waitForReady(page);
   await pause(page, 600);

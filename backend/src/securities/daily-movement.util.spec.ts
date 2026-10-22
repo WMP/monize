@@ -15,7 +15,7 @@ const base: DailyMovementInput = {
 
 describe("decideDailyMovement", () => {
   /**
-   * Truth table B of `docs/future-plans/calendar-view.md`, row by row. The
+   * Truth table B of `docs/specs/calendar-view.md`, row by row. The
    * client renders from `complete` and `reasons` and re-derives none of this, so
    * this table is the whole policy.
    */

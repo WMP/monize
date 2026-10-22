@@ -49,6 +49,11 @@
     "nextMonth": "Następny miesiąc",
     "emptyAll": "Brak zaplanowanych aktywnych rachunków, wpłat lub przelewów."
   },
+  "cashFlowForecast": {
+    "title": "Prognoza przepływów pieniężnych",
+    "period": "Okres prognozy",
+    "loadFailed": "Nie udało się wczytać transakcji z datą późniejszą niż dzisiejsza, więc prognozy nie można wyświetlić. Odśwież pulpit, aby spróbować ponownie."
+  },
   "gettingStarted": {
     "title": "Pierwsze kroki",
     "subtitle": "Skonfiguruj swoje konto w kilku prostych krokach",
@@ -88,6 +93,11 @@
     "viewAll": "Zobacz wszystkie analizy",
     "activeCount": "aktywne: {count}"
   },
+  "warrantiesExpiring": {
+    "title": "Gwarancje wkrótce wygasające",
+    "empty": "W ciągu najbliższych 30 dni nic nie wygasa",
+    "loadFailed": "Nie udało się wczytać wygasających gwarancji. Odśwież pulpit, aby spróbować ponownie."
+  },
   "topMovers": {
     "title": "Największe zmiany",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "Wartość netto",
     "empty": "Brak danych o wartości netto.",
-    "past12Months": "Ostatnie 12 miesięcy",
-    "viewReport": "Zobacz pełny raport"
+    "barStyle": "Styl słupków",
+    "barStyleNetWorth": "Wartość netto",
+    "barStyleAccountType": "Według typu konta",
+    "loadFailed": "Nie udało się wczytać historii wartości netto. Odśwież pulpit, aby spróbować ponownie."
   },
   "assetsVsLiabilities": {
     "title": "Aktywa a zobowiązania",
@@ -135,7 +147,10 @@
     "current": "Bieżące",
     "netWorthLabel": "Wartość netto",
     "assets": "Aktywa",
-    "liabilities": "Zobowiązania"
+    "liabilities": "Zobowiązania",
+    "partialName": "{name} (częściowe)",
+    "viewCallouts": "Etykiety",
+    "viewLegend": "Legenda"
   },
   "expensesPieChart": {
     "title": "Wydatki według kategorii",
@@ -145,7 +160,9 @@
     "other": "Inne",
     "insideOther": "{count, plural, one {# kategoria w Inne} few {# kategorie w Inne} many {# kategorii w Inne} other {# kategorii w Inne}}",
     "topLevelOnly": "Kategorie nadrzędne",
-    "topLevelOnlyHint": "Licz podkategorie w kategorii nadrzędnej"
+    "topLevelOnlyHint": "Licz podkategorie w kategorii nadrzędnej",
+    "viewCallouts": "Etykiety",
+    "viewLegend": "Legenda"
   },
   "incomeExpenses": {
     "title": "Przychody a wydatki",
@@ -183,6 +200,7 @@
     "accounts": "Konta",
     "chartType": "Typ wykresu",
     "view": "Widok",
+    "viewCalloutsHint": "Etykiety wymagają szerszego ekranu. Gdy się nie mieszczą, wyświetlana jest legenda.",
     "displayName": "Nazwa wyświetlana",
     "description": "Opis",
     "descriptionPlaceholder": "Dodaj opcjonalny opis",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "Wszystkie",
       "1w": "1T",
@@ -204,7 +223,7 @@
     "empty": "Brak historii inwestycji do wyświetlenia.",
     "refresh": "Odśwież bieżącą wartość",
     "investmentResult": "Wynik inwestycyjny",
-    "periodBreakdownInvestedTooltip": "Wartość papierów wartościowych zmieniła się w tym okresie o {valueChange}. Z tego {netInvested} to kwota wpłacona, po odjęciu sprzedaży, a papiery wypłaciły {income} w dywidendach i odsetkach. Powyższa kwota to zysk samych inwestycji, bez niezainwestowanej gotówki.",
+    "periodBreakdownInvestedTooltip": "Wartość papierów wartościowych zmieniła się w tym okresie o {valueChange}. Z tego {netInvested} to kwota wpłacona, po odjęciu sprzedaży, a papiery wypłaciły {income} w dywidendach i odsetkach. Wypłata reinwestowana w udziały liczy się w obu kwotach. Powyższa kwota to zysk samych inwestycji, bez niezainwestowanej gotówki.",
     "notAvailable": "Brak"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "Minimalna liczba wystąpień",
     "minOccurrencesOption": "{count} lub więcej",
     "occurrences": "{count} wystąpień",
-    "monthlyEstimate": "Szacunek miesięczny"
+    "monthlyEstimate": "Szacunek miesięczny",
+    "viewCallouts": "Etykiety",
+    "viewLegend": "Legenda"
   },
   "weekendVsWeekday": {
     "title": "Wydatki w weekend a w dni robocze",

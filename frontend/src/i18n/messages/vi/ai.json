@@ -82,6 +82,7 @@
     "newCategory": "Danh mục mới",
     "currentCategory": "Danh mục hiện tại",
     "description": "Mô tả",
+    "referenceNumber": "Số tham chiếu",
     "name": "Tên",
     "website": "Trang web",
     "address": "Địa chỉ",
@@ -111,6 +112,13 @@
     "commission": "Hoa hồng",
     "total": "Tổng",
     "cashImpact": "Tác động tiền mặt",
+    "bondSeries": "Series",
+    "marksPaid": "Đánh dấu là đã thanh toán",
+    "accruedInterest": "Lãi tích lũy",
+    "redemptionSplit": "Phần tách hoàn trả",
+    "redemptionSplitValue": "Gốc {principal} + lãi {interest} = thanh toán {payout}",
+    "redemptionDeduction": "Đã trừ phí hoàn trả sớm",
+    "redemptionSplitDiffers": "Giá và lãi tích lũy khác với số tiền lần hoàn trả này chi trả (xem phần tách). Hãy kiểm tra trước khi phê duyệt.",
     "createTransactionsTitle": "Tạo các giao dịch này?",
     "createInvestmentTransactionsTitle": "Tạo các giao dịch đầu tư này?",
     "approveAll": "Phê duyệt tất cả",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Tái đầu tư lãi vốn dài hạn",
       "CAPITAL_GAIN_SHORT": "Lãi vốn ngắn hạn",
       "CAPITAL_GAIN_LONG": "Lãi vốn dài hạn",
-      "REDEEM": "Đáo hạn CD/trái phiếu"
+      "REDEEM": "Đáo hạn CD/trái phiếu",
+      "RETURN_OF_CAPITAL": "Hoàn vốn"
     },
     "createSecurityTitle": "Tạo chứng khoán này?",
     "createdSecurity": "Đã tạo chứng khoán",
@@ -224,7 +233,11 @@
       "category": "Đặt danh mục thành {name}",
       "payee": "Đặt người nhận thành {name}",
       "aiReview": "{count, plural, other {Đưa # yêu cầu AI xem xét vào hàng đợi}}"
-    }
+    },
+    "aiCategory": "AI đề xuất",
+    "tags": "Thẻ",
+    "newTag": "(thẻ mới)",
+    "marksPaidDue": "{name} (đến hạn {date})"
   },
   "table": {
     "downloadTitle": "Tải bảng dưới dạng CSV",

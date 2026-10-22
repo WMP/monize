@@ -112,6 +112,15 @@ constraint name, and returning the same `409` the advisory pre-check would have
 returned. The pre-check is kept for a good error message and is documented as
 advisory only -- it "answers the question a moment before the answer can change."
 
+The API create's `externalId` is the same shape one level up:
+`idx_transactions_account_external_id` holds one row per account and key, the
+lookup before the insert is advisory, and the create whose insert loses the race
+matches the violation by the index's name (`isExternalIdConflict`) and answers
+with the winner's row rather than a 409, because a repeated create is a retry,
+not a conflict (INV-API-001). An OFX import writes the same key from the bank's
+`FITID`; the row whose insert loses there rolls back to its savepoint and is
+counted as skipped, since the winner already holds that line of the file.
+
 ### 3 -- conditional update as the claim
 
 ```typescript
@@ -234,6 +243,50 @@ A comment claiming atomicity, a lock, or single-use consumption must name the
 mechanism. Two comments in this codebase claimed a guarantee the code beside
 them did not implement, and both were believed for as long as they existed. If
 the mechanism cannot be named, the comment is wrong, not merely vague.
+
+CONC-008
+An entity read before a SQL statement that writes the same row is not saved
+back whole. TypeORM's save diffs the snapshot against the row and writes every
+column that differs, so it reverts what the statement wrote. Write only the
+columns the path owns (repo.update({ id }, { lastLogin })), and keep the
+in-memory entity in step with the statement for the readers after it. The login
+success path wrote failed_login_attempts = 4 back over its own reset to 0
+(A26-M01; AuthService.recordLastLogin,
+test/integration/credential-writes-atomic.integration.spec.ts).
+
+CONC-009
+Ending a set of rows that a concurrent writer can extend is a converging
+protocol under that writer's lock, not one UPDATE. Blocked on a row a refresh
+rotation holds, UPDATE ... WHERE user_id = ? AND is_revoked = false resumes with
+its old snapshot and misses the successor the rotation inserted. A path that
+ends a user's sessions calls TokenService.revokeAllUserRefreshTokens, or
+revokeRefreshSessionsAfterCommit (auth/credential-revocation.ts) where
+TokenService cannot be injected, after its own commit; an in-transaction
+blanket UPDATE is a first pass only (A26-M02).
+
+CONC-010
+An attempt budget reserves before it checks. Count the attempt with the
+counter's single statement (AuthAttemptCounterService.increment, INSERT ... ON
+CONFLICT ... RETURNING), refuse when the committed count is over the cap, then
+check the code or password; a success resets the counter. A peek followed by an
+increment after a failed check lets K concurrent guesses read the same count
+before any of them is recorded, so all K reach the verifier (A26-L08:
+StepUpAuthService.reserveAttempt, TwoFactorService.reserveUserTotpAttempt;
+test/integration/two-factor-step-up-budget.integration.spec.ts). A peek may stay
+in front as an advisory early refusal.
+
+CONC-011
+A delete or update that must spare a row another table is about to reference
+locks its candidates first (`SELECT ... FOR UPDATE`, `SKIP LOCKED` where waiting
+buys nothing) and decides in a later statement. A single
+`DELETE ... WHERE NOT EXISTS (referencing row)` under READ COMMITTED evaluates
+the sub-select on the snapshot it started with: it waits on the referencing
+INSERT's key-share lock and then deletes without looking again, so the reference
+committed while it waited is not seen. The worked example is
+`MnyStagingService.deleteUnlessNeeded` and `remove` (audit A26-L14): a staged
+file a job INSERT was committing against was swept or discarded, and the job ran
+without its bytes. A referencing INSERT that arrives after the lock waits for
+the deleter and then fails its foreign key; report that as the row being gone.
 ```
 
 ## 4. Retry semantics
@@ -395,6 +448,21 @@ itself*, and not against a concurrent delta -- which is CONC-003, and is why
 the account-balance cron appears in the gap register below despite being
 correctly documented as idempotent with respect to re-running.
 
+**A lease outlasts the work it guards, and its holder's writes are fenced by
+its token** (A26-L13). A lease TTL chosen apart from the work let an AI insight
+generation (15-minute lease) and a receipt poll (10-minute lease) run on past
+expiry inside a 20-minute Ollama call, while a second holder started the same
+work and both saved. So a lease around a provider call is sized from
+`PROVIDER_CALL_BUDGET_MS` (`ai/providers/provider-call-budget.ts`, the largest
+provider abort) plus a margin, is renewed while the work runs
+(`JobClaimService.whileLeaseHeld`, every third of the TTL, through
+`renewLease`, which declares the token for the migration-143 trigger), and the
+holder's own write checks `JobClaimService.holdsLease` -- the row `FOR UPDATE`
+with this attempt's token, inside the write's transaction -- before writing, so
+a holder whose lease was retaken writes nothing. A step whose selection is a
+plain read (the receipt poll's parser draft) takes its own claim per key
+(`email_receipt_parser_draft`, per sender domain). `provider-lease-overrun.integration.spec.ts`.
+
 ## 8. Mechanism inventory and gap register
 
 This is the part of the document that goes stale fastest, and the part most
@@ -409,11 +477,16 @@ worth keeping: CONC-003 can only be checked against a list of all writers.
 | `accounts/accounts.service.ts` `update` | `Account` row | Concurrent balance modification |
 | `accounts/accounts.service.ts` `close` | `Account` row | Race between the balance check and the close |
 | `strategies/gem-signal.service.ts` | advisory, per `strategyId` | Materialization interleaving with a settings save |
-| `securities/investment-transactions.service.ts` `create`, `update`, `remove`, `transferSecurity`, `createEmbeddedForSplit` | advisory, per account (`lockHoldingScope`), first statement of the transaction | A ledger write and a rebuild racing on one position, and the lock order that keeps it deadlock-free |
+| `securities/investment-transactions.service.ts` `create`, `update`, `remove`, `transferSecurity`, the transfer edit (`updateLinkedTransfer`), `createEmbeddedForSplit` | advisory, per account (`lockHoldingScope`), first statement of the transaction; `update`, `remove` and the transfer edit then row-lock the rows they read (`lockUnchangedInvestmentRow`) | A ledger write and a rebuild racing on one position, and the lock order that keeps it deadlock-free |
 | `transactions/transaction-reconciliation.service.ts`, `transactions/transaction-bulk-update.service.ts`, `transactions/transactions.service.ts` `update`, `transactions/transaction-split.service.ts` `updateSplits` (split-parent writes) | advisory, per brokerage account (`lockEmbeddedInvestmentScopes`), first statement of the transaction | The embedded rows' rebuild takes the same lock, and an investment write row-locks the same parent after taking it |
 | `import/import.service.ts` | advisory, per investment account (`lockHoldingScope`), first statement of the import transaction | The import's balance writes row-lock `accounts` before `rebuildImportedHoldings` |
 | `transaction-rules/transaction-rules.service.ts` `create`, `update`, `setEnabled`, `remove`, `reorder` | advisory, per user (`lockTransactionRuleList`), first statement of the transaction | Create's `max + 1` position, the per-user cap, delete's compaction and reorder each read the whole rule list before writing it; the deferred unique `(user_id, position)` is the backstop |
-| `transaction-rules/transaction-rules-run.service.ts` `run` | `transaction_rules` row `FOR SHARE`, then the candidate `transactions` rows (`lockTransactionRows`, ascending id) | A rule edit waits for a run on it, and the rows are re-read and re-planned under the lock before the fingerprint is compared; the run takes no advisory lock and no account lock |
+| `bank-sync/bank-sync-writer.service.ts` `write` | `bank_sync_accounts` row `FOR UPDATE`, then the Monize account (`lockAccountsForBalanceWrite`) | Two syncs of one bank account serialize, and a re-link or a new cut-off date committed during the fetch is seen before any row is written |
+| `transaction-rules/transaction-rules-run.service.ts` `run` | `transaction_rules` row `FOR SHARE`, then the candidate `transactions` rows (`lockTransactionRows`, ascending id), then, for a structural action, every target `accounts` row of the plan in one statement (`lockAccountsForBalanceWrite`, ascending id) before the first write | A rule edit waits for a run on it, and the rows are re-read and re-planned under the lock before the fingerprint is compared. The account locks come after the transaction locks, the order the other transaction writers use and not the "accounts before transactions" of section 5 rule 1, and are taken together in id order so two runs converting in opposite directions cannot take two accounts in opposite orders; the run takes no advisory lock. The create path (`TransactionsService.create`) locks a conversion's target account only as its balance delta runs, and a manual undo of a structural run takes no account lock beyond its atomic balance deltas (no two-connection test exists for either) |
+| `ai-review/ai-review-requests.service.ts` `enqueueParserDraft` | advisory, per user and sender domain (`LockScope.AiParserDraftRequests`), first statement of the transaction | Closing the open parser-draft request for the sender and inserting the new one; the partial unique index `uq_ai_review_requests_parser_draft_open (user_id, parser_domain)` is the backstop |
+| `bonds/bond-price.service.ts` `recomputeSecurity` and `clearEnginePrices`, reached by the daily cron, `POST /bonds/securities/:id/recompute`, the recompute after a link change or an investment-transaction write, the unlink in `securities/securities.service.ts` `update` and the undo or redo of a security edit in `action-history/action-history.service.ts` | advisory, per security (`LockScope.BondPriceRecompute`, 7), first statement of the transaction; `update` and the undo then lock the `securities` row `FOR UPDATE` (the advisory lock before the row lock, re-entrant for `clearEnginePrices`) and decide whether the link changed from that locked row | Recomputes of one security run one after the other, and a recompute started during an unlink reads the link after the lock and refuses (404) instead of writing engine rows the unlink just deleted; a link committed by a concurrent request is the baseline of the write that follows, not overwritten by its stale read. The upsert's `WHERE source <> 'manual'` and `IS DISTINCT FROM` make a replayed recompute write nothing, so the lock bounds cost and ordering, not correctness; no two-connection test exists for the recompute-versus-unlink ordering |
+| `bonds/bond-series.service.ts` `store`, reached by `POST /bonds/instruments/fetch`, `POST /bonds/instruments/manual`, the `fetch_bond_series` and `enter_bond_series_manually` tools and the daily current-offer cron | advisory, per instrument (`LockScope.BondSeriesFetch`, 8, keyed by the deterministic instrument id), first statement of the transaction; the instrument and its version 1 are read inside the lock | Two requests for one new series queue behind each other; the second finds the committed version and returns `created: false` (same content hash) or refuses `SERIES_TERMS_CONFLICT` (different hash), writing nothing. The network read happens before the lock and never inside it. The primary key `(bond_instrument_id, version)` and `ON CONFLICT DO NOTHING` are the backstop, and the immutability trigger refuses an overwrite (INV-BOND-001) |
+| `loan-installments/loan-settlement-facts.ts`, reached by `settle_loan_installment`'s planner on a create, an import, a bank sync and a manual run alike | the schedule row (`FOR UPDATE`), then `lockAccountsForBalanceWrite(source, loan)` (ascending id), before the facts (claims, `datedLoanDebts`, rates) are read | the same order `post()` takes, so a bill posted by hand and a settlement of the same slot serialize on the schedule row rather than racing on the debt; taken after the run's own transaction-row locks, since a rule holds at most one structural action and so reaches one schedule and one loan (`docs/specs/loan-installment-settlement.md` section 13) |
 
 ### Conditional claims that exist
 
@@ -429,7 +502,15 @@ claim (`payee-lookup-quota.service.ts`, INV-PAYEE-002), whose conditional
 limit, so no caller ever reads a count it then writes back. Its compensating
 `release` is deliberately NOT conditional: it is a `GREATEST(x - 1, 0)` applied
 after an answered refusal, and the floor is what keeps a release that crossed a
-month boundary from minting quota rather than returning it. There is no `@VersionColumn`
+month boundary from minting quota rather than returning it. The bank sync consent callback
+(`bank-sync-connections.service.ts` `completeCallback`) claims its connection
+with one `UPDATE bank_sync_connections SET auth_state_hash = NULL ... WHERE
+user_id = $1 AND auth_state_hash = $2 AND auth_started_at > now() - ttl
+RETURNING`, so a replayed or concurrent callback gets zero rows and is refused
+having written nothing; the bank sync ledger insert
+(`bank-sync-writer.service.ts`, INV-BANKSYNC-001) is mechanism 2, an
+`ON CONFLICT DO NOTHING RETURNING` on the unique `(account_id, external_key)`
+run before the transaction row it guards. There is no `@VersionColumn`
 anywhere in the codebase -- conditional `WHERE` is the whole of its optimistic
 concurrency control.
 
@@ -452,7 +533,16 @@ inside the transaction that writes the money, so the unique key from migration
 counted as a skip, not an error (INV-OCCURRENCE-001). The cron passes the
 occurrence it selected as `expectedDueDate`, because the claim key is only as
 good as the date it is built from: a replica that re-read the schedule after the
-winner advanced it keyed the claim on the next occurrence and posted that. The demo reset
+winner advanced it keyed the claim on the next occurrence and posted that. A
+`settle_loan_installment` rule claims the same row, under the same unique key,
+through `claimLoanOccurrence` (`backend/src/loan-installments/claim-loan-occurrence.ts`):
+the same `INSERT ... ON CONFLICT DO NOTHING RETURNING id`, on the same
+`EntityManager` as the split it books and before the cursor advance, makes
+the index the arbiter between `post()` and a settlement racing the same
+occurrence, whichever wrote first (INV-LOAN-008); the loser's planner refuses
+`occurrence_already_posted` (a skipped action, never a thrown error) when it
+read the claim first, and `ConflictException` is the throwing backstop when
+it did not. The demo reset
 (`backend/src/database/demo-reset.service.ts`) takes
 `claimOnce(JobClaimType.DemoReset, demoUserId, "reset:<UTC day>")` before the
 wipe-and-reseed. The claim is permanent, so it records "reset today" as well as
@@ -480,6 +570,20 @@ changed for the report is that a loser no longer reaches `closePeriod` at all,
 and the residual case -- two processes on one replica during a rollout -- raises
 a named `NoOpenPeriodError` the cron counts as a skip rather than as a failure.
 
+The bond Refresh (`bonds/bond-series.service.ts` `fetchProgramOffer`, reached by
+a linked security's Refresh) claims `fetch_sync` rows through
+`FetchSyncService.claim` as a rate limit, never as the record that anything
+happened: `bond-program-refresh:<country>|<program>` for
+`PROGRAM_REFRESH_INTERVAL_MS` (90 s) and, for each history series it asks for,
+`bond-series-attempt:<country>|<code>` for `BACKFILL_ATTEMPT_INTERVAL_MS`
+(24 h). Neither lease is handed back: its expiry is the interval, so one
+program is refreshed at most once per interval and a series the source refused
+is asked for at most once a day, on any replica. A lost claim answers an empty
+run, never an error. The writes underneath are idempotent (the series store
+above), so the claim bounds cost to the issuer's site and is not what keeps the
+catalog correct; its progress (`fetch_sync.progress`) is written only under the
+lease token (`FetchSyncService.reportProgress`).
+
 ### Gaps
 
 Each row is a place where the rules above are not currently met. A row leaves
@@ -493,11 +597,14 @@ this table when a mechanism lands, not when someone judges the window small.
 | Logout vs rotation | Logout's family revoke is an unlocked bulk `UPDATE`. It happens to be safe because `isRevoked = true` is idempotent and the end state is order-independent -- but this is a property of the value, not a protocol, and it stops holding the moment logout writes anything else. | CONC-003 (tolerated; document, do not copy) |
 | MNY import retry after a committed write | `writeAll`'s transaction commits before post-processing, verification, staged-file deletion and the terminal status update. A failure in that window leaves committed rows behind a retryable job, and a retry re-parses with fresh UUIDs. No checkpoint, run id, or per-record key. See INV-IMPORT-002. | CONC-006, CONC-007 |
 
-Refresh-token rotation is worth reading as a positive finding rather than a gap:
-it is correct and subtle -- the loser blocks on the lock, then sees the winner's
-committed `isRevoked`, and takes the reuse-detection branch that revokes the whole
-family, so a concurrent double-rotation ends in revocation rather than two live
-successors.
+Refresh-token rotation is worth reading as a positive finding rather than a gap,
+with two corrections the 2026-10 audit forced. The loser blocks on the family
+lock, then sees the winner's committed `isRevoked`; inside the rotation grace it
+is answered with an access token only (two tabs of one browser), and outside it
+it is reuse and the family is revoked. A concurrent double-rotation therefore
+ends in exactly one live successor, never two. The reuse revocation commits
+before the 401 is raised: it used to be thrown inside the transaction, which
+rolled back the revocation it reported (A26-H01, INV-AUTH-001).
 
 The MNY import job deserves a more careful verdict than either column allows. It
 has the most complete protocol in the codebase for the races it was built to

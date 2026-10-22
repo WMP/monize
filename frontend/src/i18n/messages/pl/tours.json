@@ -427,5 +427,42 @@
         }
       }
     }
+  },
+  "emailReceipts": {
+    "basics": {
+      "title": "Paragony z e-maili",
+      "steps": {
+        "welcome": {
+          "title": "Po co czytać paragony z e-maili",
+          "body": "Transakcja bankowa pokazuje, ile zapłacono i kiedy. Nie pokazuje, co kupiono. Pokazuje to e-mail z potwierdzeniem zamówienia. Monize czyta te e-maile, znajduje transakcję, którą opłacono, i proponuje opis, odbiorcę oraz podział na pozycje z kategorią dla każdej pozycji. Każdą propozycję zatwierdzasz, zanim zmieni ona transakcję."
+        },
+        "aiRequired": {
+          "title": "W praktyce potrzebny jest dostawca AI",
+          "body": "Monize czyta e-mail za pomocą **profilu**. Profil to zestaw wzorców dla jednej domeny nadawcy, na przykład jednego sklepu. Profil można napisać ręcznie, ale każdy wzorzec musi pasować do dokładnych wierszy e-maili tego sklepu. Dlatego w praktyce profil pisze AI. AI pisze profil jeden raz, na podstawie kilku przykładowych e-maili. Po zatwierdzeniu profil czyta każdy nowy e-mail z tego sklepu bez udziału AI."
+        },
+        "aiProviders": {
+          "title": "Najpierw skonfiguruj dostawcę AI",
+          "body": "Dodaj tutaj dostawcę i sprawdź połączenie. Bez dostawcy kreator nie napisze profilu, a e-maile ze sklepu bez profilu pozostaną nieodczytane."
+        },
+        "tabs": {
+          "title": "Cztery karty w kolejności użycia",
+          "body": "**Przegląd** pokazuje, co Monize odczytało. W karcie **Skrzynka pocztowa** podłącz skrzynkę, w której są tylko potwierdzenia zamówień. Monize tylko czyta tę skrzynkę: nigdy nie przenosi, nie oznacza i nie usuwa wiadomości. **Profile** zawierają jeden profil dla każdego sklepu. **Wiadomości** pokazują każdy e-mail i jego stan."
+        },
+        "uncovered": {
+          "title": "Sklepy bez profilu",
+          "body": "Ta ramka pokazuje domeny nadawców, których e-maili żaden profil jeszcze nie czyta. Wybierz domenę, aby uruchomić kreator. Zaznacz do pięciu e-maili i do każdego przypisz transakcję bankową, którą opłacono. AI pisze profil i testuje go na tych parach. Potem widzisz podgląd dla wszystkich e-maili z tego sklepu. Akceptujesz profil albo prosisz o zmianę krótką notatką.",
+          "fallbackBody": "Nie masz jeszcze e-maili ze sklepu bez profilu. Po podłączeniu skrzynki każda domena nadawcy pojawi się tutaj jako etykieta, na przykład **sklep.example (12)**: domena i liczba jej e-maili. Wybierz etykietę, aby uruchomić kreator. Zaznacz do pięciu e-maili i do każdego przypisz transakcję bankową, którą opłacono. AI pisze profil i testuje go na tych parach. Potem widzisz podgląd dla wszystkich e-maili z tego sklepu. Akceptujesz profil albo prosisz o zmianę krótką notatką."
+        },
+        "profiles": {
+          "title": "Twoje profile",
+          "body": "Każdy wiersz to jeden profil, zatwierdzony lub roboczy. **Utwórz nowy profil ręcznie** otwiera edytor profilu pisanego ręcznie. Użyj go, aby poprawić drobny szczegół w wersji roboczej od AI. Po zatwierdzeniu profilu Monize od razu czyta e-maile z jego domeny.",
+          "fallbackBody": "Nie masz jeszcze profili. Każdy zaakceptowany profil pojawi się tutaj jako jeden wiersz, na przykład **Sklep Example**, domena **sklep.example**, stan **Zatwierdzony**. **Utwórz nowy profil ręcznie** otwiera edytor profilu pisanego ręcznie. Używaj go tylko do poprawienia drobnego szczegółu w wersji roboczej od AI. Po zatwierdzeniu profilu Monize od razu czyta e-maile z jego domeny."
+        },
+        "reviews": {
+          "title": "Zatwierdź propozycje",
+          "body": "Każdy e-mail, który pasuje do transakcji, staje się propozycją w **Skrzynce przeglądów AI** w menu **AI**. Propozycja pokazuje na przykład pozycje zamówienia z kategorią dla każdej pozycji. Nic nie zmienia się w transakcjach, dopóki tam nie zatwierdzisz propozycji."
+        }
+      }
+    }
   }
 }

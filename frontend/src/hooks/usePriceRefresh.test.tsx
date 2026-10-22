@@ -162,11 +162,11 @@ describe('usePriceRefresh', () => {
     expect(investmentsApi.refreshSelectedPrices).toHaveBeenCalledWith(['s-1']);
   });
 
-  it('includes QIF-imported securities once the user assigns a provider override', async () => {
-    // QIF/OFX import flags new securities with skipPriceUpdates=true. After
-    // the user picks an MSN provider override or supplies an Instrument ID,
-    // refresh must include them despite the flag.
+  it('excludes a flagged security even with a provider override', async () => {
+    // The flag is the user's "disable price updates" switch, and the backend's
+    // isRefreshEligible() honours it alone; an override must not bypass it here.
     vi.mocked(investmentsApi.getSecurities).mockResolvedValue([
+      sec('s-1'),
       sec('s-msn-override', {
         skipPriceUpdates: true,
         quoteProvider: 'msn',
@@ -175,20 +175,16 @@ describe('usePriceRefresh', () => {
         skipPriceUpdates: true,
         msnInstrumentId: 'F18068004373',
       }),
-      sec('s-skip-no-provider', { skipPriceUpdates: true }),
     ] as any);
     vi.mocked(investmentsApi.refreshSelectedPrices).mockResolvedValue({
-      updated: 2, failed: 0, totalSecurities: 2, skipped: 0, results: [], lastUpdated: '',
+      updated: 1, failed: 0, totalSecurities: 1, skipped: 0, results: [], lastUpdated: '',
     });
 
     const { result } = renderHook(() => usePriceRefresh());
     await act(async () => {
       await result.current.triggerManualRefresh();
     });
-    expect(investmentsApi.refreshSelectedPrices).toHaveBeenCalledWith([
-      's-msn-override',
-      's-msn-id',
-    ]);
+    expect(investmentsApi.refreshSelectedPrices).toHaveBeenCalledWith(['s-1']);
   });
 
   it('shows error toast on failure', async () => {

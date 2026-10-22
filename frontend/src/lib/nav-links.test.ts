@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import navigation from '@/i18n/messages/en/navigation.json';
+import { ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { NAV_LINKS, TOOLS_LINKS, AI_LINKS, NAV_ICONS } from './nav-links';
 
 describe('nav-links', () => {
@@ -32,8 +33,22 @@ describe('nav-links', () => {
     expect(AI_LINKS).toContainEqual({ href: '/ai-reviews', labelKey: 'aiReviews', ownerOnly: true });
     expect(NAV_ICONS['/ai-reviews']).toBeTruthy();
     expect([...NAV_LINKS, ...TOOLS_LINKS, ...AI_LINKS].filter((l) => l.ownerOnly).map((l) => l.href)).toEqual([
+      '/email-receipts',
       '/ai-reviews',
     ]);
+  });
+
+  it('puts the email receipts page in the Tools menu, owner-only, with an icon', () => {
+    expect(TOOLS_LINKS).toContainEqual({ href: '/email-receipts', labelKey: 'emailReceipts', ownerOnly: true });
+    expect(NAV_ICONS['/email-receipts']).toBeTruthy();
+  });
+
+  it('puts Warranties in the Tools menu between Rules and Email receipts, with its icon', () => {
+    const hrefs = TOOLS_LINKS.map((l) => l.href);
+    expect(TOOLS_LINKS).toContainEqual({ href: '/warranties', labelKey: 'warranties' });
+    expect(hrefs.indexOf('/warranties')).toBe(hrefs.indexOf('/rules') + 1);
+    expect(hrefs.indexOf('/email-receipts')).toBe(hrefs.indexOf('/warranties') + 1);
+    expect(NAV_ICONS['/warranties']).toBe(ShieldCheckIcon);
   });
 
   it('has a navigation label for every link', () => {

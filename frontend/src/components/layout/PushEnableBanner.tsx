@@ -14,6 +14,7 @@ import {
   pushApi,
   pushPromptDismissed,
   pushPromptState,
+  readRegisteredEndpoint,
   rememberPushPromptDismissal,
   PushPermissionError,
   PushServiceError,
@@ -25,6 +26,7 @@ import {
 } from '@/lib/push';
 import { createLogger } from '@/lib/logger';
 import { useRereadOnVisible } from '@/hooks/useRereadOnVisible';
+import { subscribePushDevices } from '@/lib/pushDevicesSignal';
 
 const logger = createLogger('PushEnableBanner');
 
@@ -70,6 +72,9 @@ export function PushEnableBanner() {
   // Bumped by `appinstalled`, so installing the app re-asks the question
   // immediately instead of on the next navigation.
   const [installEpoch, setInstallEpoch] = useState(0);
+  // Bumped when a registration changes anywhere on the page, which is how a
+  // resume after sign-in (`usePushResumeOnSignIn`) reaches this banner.
+  const [devicesEpoch, setDevicesEpoch] = useState(0);
 
   // Settings already offers all of this, in more words. Two asks on one screen
   // is one too many.
@@ -100,6 +105,14 @@ export function PushEnableBanner() {
           currentDeviceFingerprint().catch(() => null),
         ]);
         if (cancelled) return;
+        // This browser kept the reader's subscription across their own
+        // sign-out and the resume has not settled yet: not known, rather than
+        // a flash of "Enable" over a device about to resume on its own.
+        const marker = readRegisteredEndpoint();
+        if (marker !== null && marker.held && marker.userId === userId) {
+          setRegisteredHere(null);
+          return;
+        }
         setRegisteredHere(
           fingerprint !== null &&
             devices.some(
@@ -118,7 +131,12 @@ export function PushEnableBanner() {
     return () => {
       cancelled = true;
     };
-  }, [active, installEpoch]);
+  }, [active, installEpoch, devicesEpoch, userId]);
+
+  useEffect(
+    () => subscribePushDevices(() => setDevicesEpoch((epoch) => epoch + 1)),
+    [],
+  );
 
   // Installing the app is exactly the moment to ask, and it is the closest the
   // platform gets to "install with notifications". iOS fires no such event, so

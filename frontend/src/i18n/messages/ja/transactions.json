@@ -135,6 +135,7 @@
       "toggleTitle": "日付から年を省いて支払先の表示幅を広げます"
     },
     "attachmentsCount": "{count, plural, other {# 件の添付ファイル}}",
+    "warrantiesCount": "{count, plural, other {# 件の保証}}",
     "today": "今日",
     "export": {
       "button": "エクスポート",
@@ -198,7 +199,9 @@
       "duplicateTitle": "取引を複製",
       "copy": "コピー",
       "duplicate": "複製",
-      "scheduleRecurring": "定期取引としてスケジュール"
+      "scheduleRecurring": "定期取引としてスケジュール",
+      "addWarranty": "保証を追加",
+      "viewWarranties": "保証を表示"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "編集",
     "duplicate": "複製",
     "scheduleRecurring": "定期取引としてスケジュール",
+    "addWarranty": "保証を追加",
+    "viewWarranties": "保証を表示",
     "delete": "削除"
   },
   "filter": {
@@ -219,7 +224,7 @@
       "title": "フィルター",
       "clear": "クリア",
       "hide": "非表示",
-      "show": "表示"
+      "show": "フィルターを表示"
     },
     "accounts": {
       "label": "口座を表示:",
@@ -258,7 +263,7 @@
       "statuses": "すべての状態",
       "amountMin": "最小",
       "amountMax": "最大",
-      "search": "支払先、カテゴリ、金額、タグ、説明、参照番号で検索...",
+      "search": "検索、または #10 や payee:costco を試す",
       "tagKeyValue": "例: usa"
     },
     "tagKeyNone": "すべて（キーフィルターなし）",
@@ -431,6 +436,7 @@
       "destinationRequired": "振替先口座を選択してください",
       "sameAccount": "振替元と振替先の口座は異なる必要があります",
       "negativeTransfer": "振替金額はマイナスにできません",
+      "convertToTransferUnsupported": "既存の取引はここで振替に変更できません。取引を削除して、代わりに振替を作成してください。",
       "payeeCreated": "支払先「{name}」を作成しました",
       "payeeCreateFailed": "支払先の作成に失敗しました",
       "payeeReactivated": "支払先「{name}」を再有効化しました",
@@ -465,7 +471,14 @@
       },
       "feeCaption": "{percent}% の外貨取引手数料（{fee}）が含まれます。"
     },
-    "jointSplitDisabled": "共有口座の分割取引を管理できるのは所有者のみです"
+    "jointSplitDisabled": "共有口座の分割取引を管理できるのは所有者のみです",
+    "warranties": {
+      "title": "保証",
+      "add": "保証を追加",
+      "expires": "{date} に期限切れ",
+      "loading": "保証を読み込み中",
+      "loadError": "この取引の保証を読み込めませんでした。"
+    }
   },
   "splitEditor": {
     "header": "分割の詳細",
@@ -582,6 +595,11 @@
       "log": "対数",
       "autoTitle": "自動（{scale}）",
       "scaleTitle": "{label}スケール"
+    },
+    "collapse": {
+      "hide": "グラフを非表示",
+      "show": "グラフを表示",
+      "hidden": "グラフは非表示です"
     }
   },
   "toasts": {
@@ -604,5 +622,71 @@
     "title": "{key}別の支出",
     "other": "その他",
     "noData": "このキーで内訳を表示できるタグ付き支出がありません。"
+  },
+  "searchSyntax": {
+    "open": "検索構文",
+    "title": "検索構文",
+    "fields": "フィールド: payee, memo, cat, tag, account, ref, amount, date, status, is, has。例を選ぶと検索ボックスに入力されます。",
+    "examples": {
+      "allWords": "すべての語がどこかに一致",
+      "phrase": "この語句に完全一致",
+      "exclude": "refund に一致するものを除外",
+      "fieldContains": "支払先に costco を含む",
+      "fieldExact": "支払先が Costco と完全一致",
+      "reference": "小切手番号または参照番号がちょうど 10",
+      "wildcard": "参照番号が 10 で始まる",
+      "amountOver": "金額が 100 を超える",
+      "amountRange": "金額が 50〜100",
+      "datePeriod": "2026年3月のいずれかの日",
+      "isSplit": "分割取引",
+      "hasAttachment": "添付ファイルあり",
+      "hasWarranty": "保証あり"
+    }
+  },
+  "searchInterpretation": {
+    "label": "検索条件:",
+    "negated": "{phrase} ではない",
+    "malformed": "{raw}(解釈できないためテキストとして検索)",
+    "empty": "{raw}(空のため無視)",
+    "status": "ステータスが {value}",
+    "any": "いずれかの項目に「{value}」",
+    "fields": {
+      "payee": "支払先",
+      "memo": "メモ",
+      "cat": "カテゴリ",
+      "tag": "タグ",
+      "account": "口座",
+      "ref": "参照番号",
+      "amount": "金額",
+      "date": "日付",
+      "status": "ステータス",
+      "is": "種類",
+      "has": "あり"
+    },
+    "ops": {
+      "contains": "{field}に「{value}」を含む",
+      "exact": "{field}が「{value}」",
+      "glob": "{field}が「{value}」に一致",
+      "eq": "{field}が {value}",
+      "gt": "{field}が {value} を超える",
+      "gte": "{field}が {value} 以上",
+      "lt": "{field}が {value} 未満",
+      "lte": "{field}が {value} 以下",
+      "between": "{field}が {value}〜{valueTo}"
+    },
+    "enum": {
+      "is": {
+        "transfer": "振替",
+        "split": "分割取引",
+        "uncategorized": "未分類"
+      },
+      "has": {
+        "attachment": "添付ファイルあり",
+        "warranty": "保証あり",
+        "ref": "参照番号あり",
+        "memo": "メモあり",
+        "tag": "タグあり"
+      }
+    }
   }
 }

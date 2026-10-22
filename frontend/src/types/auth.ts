@@ -1,5 +1,7 @@
 import type { ColorTheme } from '@/lib/color-themes';
 import type { MapProvider } from '@/lib/contact-links';
+import type { HiddenTableColumns } from '@/lib/hidden-columns';
+import type { ViewDefaults } from '@/lib/view-defaults';
 
 /**
  * The acting-context profile (`GET /auth/profile`, `GET /users/me`). While a
@@ -171,6 +173,10 @@ export interface UserPreferences {
   favouriteReportIds: string[];
   dashboardWidgets: string[]; // ordered visible widget ids; empty = default layout
   dashboardWidgetConfig: Record<string, Record<string, unknown>>; // per-widget settings keyed by widget id
+  hiddenTableColumns: HiddenTableColumns; // hidden column ids keyed by table kind
+  // Account-level fallbacks for the browser-local view settings. Optional: a
+  // preferences copy cached before the field existed has none.
+  viewDefaults?: ViewDefaults;
   showCreatedAt: boolean;
   timeFormat: '24h' | '12h';
   preferredExchanges: string[];
@@ -318,6 +324,8 @@ export interface UpdatePreferencesData {
   favouriteReportIds?: string[];
   dashboardWidgets?: string[];
   dashboardWidgetConfig?: Record<string, Record<string, unknown>>;
+  hiddenTableColumns?: HiddenTableColumns;
+  viewDefaults?: ViewDefaults;
   showCreatedAt?: boolean;
   timeFormat?: '24h' | '12h';
   preferredExchanges?: string[];

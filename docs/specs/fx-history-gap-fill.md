@@ -103,6 +103,11 @@ readers report in different currencies has them overwrite each other.
 `exchange_rate_coverage` holds one row per pair, in the canonical orientation
 only (`from_currency < to_currency`), held by a CHECK constraint rather than by
 a convention in the writer -- a rate window answers a pair, not a direction.
+The row is also scoped to the provider chain that wrote it: `providers` holds
+the ordered source slugs, a row under any other value (or `NULL`) reads as all
+three dates unestablished, and the next write replaces them rather than
+applying `GREATEST`/`LEAST`, because a floor one set of providers established
+says nothing about another.
 
 ## 3. Invariants
 

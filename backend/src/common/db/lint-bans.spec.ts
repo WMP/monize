@@ -129,7 +129,7 @@ describe("RLS lint bans are documented where contributors read", () => {
   });
 
   it("does not claim a counting ratchet that no longer exists", () => {
-    // `docs/future-plans/mny-import.md` described a CI script counting
+    // `docs/specs/mny-import.md` described a CI script counting
     // `@InjectRepository`/`createQueryRunner` sites and failing on any increase.
     // The script is gone -- the ratchet reached zero and became an outright ban
     // -- so a reader was being pointed at a gate that could not fail.
@@ -154,10 +154,7 @@ describe("RLS lint bans are documented where contributors read", () => {
     );
 
     const claimsRatchet = fs
-      .readFileSync(
-        path.join(REPO_ROOT, "docs/future-plans/mny-import.md"),
-        "utf8",
-      )
+      .readFileSync(path.join(REPO_ROOT, "docs/specs/mny-import.md"), "utf8")
       .match(/the CI script counts/);
 
     expect(Boolean(claimsRatchet)).toBe(ratchetExists);

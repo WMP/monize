@@ -759,6 +759,103 @@ describe('PortfolioSummaryCard', () => {
     });
   });
 
+  describe('gain over the priced holdings (A26-M38)', () => {
+    // Priced A: value 100,000, cost 80,000. Unpriced B: cost 50,000. The server's
+    // gain is +20,000 / +25% over A; value less every cost read -30,000.
+    const partialSummary = (overrides?: Record<string, any>) =>
+      makeSummary({
+        totalPortfolioValue: 100000,
+        totalHoldingsValue: 100000,
+        totalCashValue: 0,
+        totalCostBasis: 130000,
+        gainCostBasis: 80000,
+        unpricedCostBasis: 50000,
+        totalGainLoss: 20000,
+        totalGainLossPercent: 25,
+        pricesComplete: false,
+        unpricedSecurityIds: ['sec-u'],
+        valuationComplete: false,
+        holdings: [{ securityId: 'sec-u', symbol: 'UNPRICED' }],
+        holdingsByAccount: [
+          {
+            accountId: 'a1',
+            currencyCode: 'CAD',
+            totalMarketValue: 100000,
+            totalCostBasis: 130000,
+            gainCostBasis: 80000,
+            unpricedCostBasis: 50000,
+            cashBalance: 0,
+            totalGainLoss: 20000,
+            totalGainLossPercent: 25,
+            netInvested: 100000,
+            holdings: [],
+            fxComplete: true,
+            missingRatePairs: [],
+            pricesComplete: false,
+            unpricedSecurityIds: ['sec-u'],
+            valuationComplete: false,
+          },
+        ],
+        ...overrides,
+      });
+
+    it('marks the gain and the simple return as partial and prints the server figure', () => {
+      render(<PortfolioSummaryCard summary={partialSummary()} isLoading={false} />);
+
+      expect(screen.queryByText('$-30000.00')).not.toBeInTheDocument();
+      expect(screen.queryByText('-$30000.00')).not.toBeInTheDocument();
+      const gain = screen.getByText('$20000.00');
+      expect(gain.closest('[data-testid="partial-total"]')).not.toBeNull();
+      const simpleReturn = screen.getByText('+25.00%');
+      expect(simpleReturn.closest('[data-testid="partial-total"]')).not.toBeNull();
+    });
+
+    it('reads the per-account gain, not value less cost, in the single foreign-account view', () => {
+      mockDefaultCurrency = 'CAD';
+      const summary = partialSummary({
+        holdingsByAccount: [
+          {
+            accountId: 'a1',
+            currencyCode: 'USD',
+            totalMarketValue: 100000,
+            totalCostBasis: 130000,
+            gainCostBasis: 80000,
+            unpricedCostBasis: 50000,
+            cashBalance: 0,
+            totalGainLoss: 20000,
+            totalGainLossPercent: 25,
+            netInvested: 100000,
+            holdings: [],
+            fxComplete: true,
+            missingRatePairs: [],
+            pricesComplete: false,
+            unpricedSecurityIds: ['sec-u'],
+            valuationComplete: false,
+          },
+        ],
+      });
+
+      render(
+        <PortfolioSummaryCard
+          summary={summary}
+          isLoading={false}
+          singleAccountCurrency="USD"
+        />,
+      );
+
+      expect(screen.queryByText('$-30000.00 USD')).not.toBeInTheDocument();
+      expect(screen.queryByText('-$30000.00 USD')).not.toBeInTheDocument();
+      expect(screen.getByText('$20000.00 USD')).toBeInTheDocument();
+      expect(screen.getByText('+25.00%')).toBeInTheDocument();
+    });
+
+    it('leaves a complete portfolio unmarked', () => {
+      render(<PortfolioSummaryCard summary={makeSummary()} isLoading={false} />);
+
+      expect(screen.queryByTestId('partial-total')).not.toBeInTheDocument();
+    });
+  });
+
   describe('valuation completeness (recheck RR4-002)', () => {
     it('labels the value as partial and names the unpriced security', () => {
       // The server said the total was a subtotal and this card rendered the number

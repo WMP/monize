@@ -38,6 +38,14 @@
     "scheduleRecurring": "Tornar recorrente",
     "more": "Mais ações"
   },
+  "columns": {
+    "button": "Colunas",
+    "buttonWithHidden": "Colunas, ocultas: {count}",
+    "menuLabel": "Mostrar ou ocultar colunas",
+    "showAll": "Mostrar todas",
+    "hideColumn": "Ocultar coluna",
+    "sheetSubtitle": "Volte a mostrá-la a partir do menu Colunas."
+  },
   "loading": "A carregar...",
   "pagination": {
     "showing": "A mostrar",
@@ -262,5 +270,8 @@
     "normal": "Normal",
     "compact": "Compacto",
     "dense": "Denso"
+  },
+  "scheduledOverdue": {
+    "included": "Inclui {count, plural, one {# transação agendada em atraso} other {# transações agendadas em atraso}}"
   }
 }

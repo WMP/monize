@@ -187,7 +187,8 @@ export function LoanAmortizationReport() {
 
   // One derivation, shared by the schedule and the terms shown above it. It was
   // computed twice per render, which is both wasted work over the whole ledger
-  // and two chances for the two to disagree.
+  // and two chances for the two to disagree. `todayYmd` keeps VOID and
+  // future-dated rows out of it (A26-M28).
   const history = useMemo(
     () =>
       selectedAccount
@@ -196,9 +197,10 @@ export function LoanAmortizationReport() {
             transactions,
             rateChanges,
             interestTransactions,
+            todayYmd,
           )
         : null,
-    [selectedAccount, transactions, rateChanges, interestTransactions],
+    [selectedAccount, transactions, rateChanges, interestTransactions, todayYmd],
   );
 
   // Build payment history from actual transactions + projected future payments.
@@ -285,14 +287,16 @@ export function LoanAmortizationReport() {
   const hasProjection = useMemo(() => paymentHistory.some((r) => r.isProjected), [paymentHistory]);
 
   const summary = useMemo(() => {
-    if (paymentHistory.length === 0 || !selectedAccount) return null;
+    if (paymentHistory.length === 0 || !selectedAccount || !history) return null;
 
     const totalInterest = paymentHistory.reduce((sum, row) => sum + row.interest, 0);
     const totalPrincipal = paymentHistory.reduce((sum, row) => sum + row.principal, 0);
     const totalPaymentAmount = paymentHistory.reduce((sum, row) => sum + row.payment, 0);
     const lastRow = paymentHistory[paymentHistory.length - 1];
-    const currentBalance = Math.abs(selectedAccount.currentBalance);
-    const originalBalance = Math.abs(selectedAccount.openingBalance) || (totalPrincipal + currentBalance);
+    // The history's own figure, not `totalPrincipal + currentBalance`: that sum
+    // includes the PROJECTED principal and counts the balance twice (A26-L25).
+    const originalBalance =
+      Math.abs(selectedAccount.openingBalance) || history.startingBalance;
 
     return {
       totalPayments: totalPaymentAmount,
@@ -309,7 +313,7 @@ export function LoanAmortizationReport() {
        *  interest over a projection that never reached payoff. */
       hasLifetimeTotal: !hasProjection || projectionPaidOff,
     };
-  }, [paymentHistory, selectedAccount, historicalCount, hasProjection, projectionPaidOff]);
+  }, [paymentHistory, selectedAccount, history, historicalCount, hasProjection, projectionPaidOff]);
 
   // See DebtPayoffTimelineReport: the caption names what the figure is, and an
   // interest total over a projection that never paid off is not a lifetime one.
@@ -497,6 +501,11 @@ export function LoanAmortizationReport() {
             <ReportToolbarActions
               onExportCsv={handleExportCsv}
               onExportPdf={handleExportPdf}
+              // The schedule is drawn from the history, so an export while it is
+              // loading or failed would write an empty one (A26-S15-08); a failed
+              // load also keeps the previous loan's rows in the hook, figures that
+              // are not this loan's.
+              disabled={historyLoading || historyError != null}
               className="sm:flex-1"
             />
           </div>

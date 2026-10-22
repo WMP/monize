@@ -267,8 +267,7 @@ export class BackupController {
       "x-restore-password",
     );
     const oidcIdToken = req.headers["x-restore-oidc-token"] as
-      | string
-      | undefined;
+      string | undefined;
     const backupPassword = decodePasswordHeader(
       req.headers["x-backup-password"] as string | undefined,
       "x-backup-password",

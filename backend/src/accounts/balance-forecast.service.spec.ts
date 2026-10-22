@@ -7,6 +7,7 @@ import { ScheduledTransaction } from "../scheduled-transactions/entities/schedul
 import { ScheduledTransactionOverride } from "../scheduled-transactions/entities/scheduled-transaction-override.entity";
 import { ScheduledEffectiveAmountService } from "../scheduled-transactions/scheduled-effective-amount.service";
 import { ScheduledOccurrenceService } from "../scheduled-transactions/scheduled-occurrence.service";
+import { ScheduledTransactionLoanService } from "../scheduled-transactions/scheduled-transaction-loan.service";
 import { InvestmentTransactionsService } from "../securities/investment-transactions.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import {
@@ -64,6 +65,14 @@ describe("BalanceForecastService", () => {
         // the amounts and the account each occurrence is charged to ARE their
         // output, so a double would test nothing (issue #1247).
         ScheduledOccurrenceService,
+        // No loan bill here: the per-occurrence loan pricing is
+        // `scheduled-occurrence.service.spec.ts`'s.
+        {
+          provide: ScheduledTransactionLoanService,
+          useValue: {
+            projectLoanOccurrencesMany: jest.fn().mockResolvedValue(new Map()),
+          },
+        },
         ScheduledEffectiveAmountService,
         {
           provide: InvestmentTransactionsService,
@@ -516,6 +525,235 @@ describe("BalanceForecastService", () => {
       expect(result.gaps).toHaveLength(1);
       // Neither the base -200 nor the override's stale -350 reaches the series.
       expect(result.points).toEqual([{ date: "2024-07-08", balance: 1000 }]);
+    });
+  });
+
+  // ---- Overdue occurrences (discussion #1784) ----
+
+  describe("occurrences already due and still unposted", () => {
+    const rent = (
+      overrides: Record<string, unknown> = {},
+    ): Record<string, unknown> => ({
+      id: "st-1",
+      name: "Rent",
+      accountId: "acc-1",
+      transferAccountId: null,
+      amount: -200,
+      currencyCode: "CAD",
+      frequency: "MONTHLY",
+      nextDueDate: "2024-06-20",
+      endDate: null,
+      occurrencesRemaining: null,
+      isActive: true,
+      isInvestment: false,
+      isSplit: false,
+      splits: [],
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      accountsRepo.findOne.mockResolvedValue(chequing);
+      stubBalances("1000");
+    });
+
+    it("applies an overdue occurrence on the first projected day and reports it", async () => {
+      scheduledRepo.find.mockResolvedValue([rent()]);
+
+      const result = await service.getBalanceForecast("user-1", "acc-1", 60);
+
+      expect(result.complete).toBe(true);
+      // Today's anchor is the fact it was; the June bill lands tomorrow.
+      expect(result.points).toEqual([
+        { date: "2024-07-08", balance: 1000 },
+        { date: "2024-07-09", balance: 800 },
+        { date: "2024-07-20", balance: 600 },
+        { date: "2024-08-20", balance: 400 },
+      ]);
+      expect(result.overdue).toEqual({
+        date: "2024-07-09",
+        count: 1,
+        amount: -200,
+      });
+    });
+
+    it("counts an auto-post schedule the cron has not posted yet", async () => {
+      scheduledRepo.find.mockResolvedValue([rent({ autoPost: true })]);
+
+      const result = await service.getBalanceForecast("user-1", "acc-1", 60);
+
+      expect(result.overdue).toEqual({
+        date: "2024-07-09",
+        count: 1,
+        amount: -200,
+      });
+    });
+
+    it("moves a bill due today onto tomorrow without calling it overdue", async () => {
+      scheduledRepo.find.mockResolvedValue([
+        rent({ nextDueDate: "2024-07-08" }),
+      ]);
+
+      const result = await service.getBalanceForecast("user-1", "acc-1", 30);
+
+      expect(result.points).toEqual([
+        { date: "2024-07-08", balance: 1000 },
+        { date: "2024-07-09", balance: 800 },
+      ]);
+      expect(result.overdue).toBeNull();
+    });
+
+    it("applies an overdue slot an override moved into the window on its new date", async () => {
+      scheduledRepo.find.mockResolvedValue([
+        rent({ nextDueDate: "2024-07-01" }),
+      ]);
+      overridesRepo.find.mockResolvedValue([
+        {
+          id: "ovr-1",
+          scheduledTransactionId: "st-1",
+          originalDate: "2024-07-01",
+          overrideDate: "2024-07-15",
+          amount: -350,
+        },
+      ]);
+
+      const result = await service.getBalanceForecast("user-1", "acc-1", 30);
+
+      expect(result.points).toEqual([
+        { date: "2024-07-08", balance: 1000 },
+        { date: "2024-07-15", balance: 650 },
+        // The next slot is the base schedule's, on its own date.
+        { date: "2024-08-01", balance: 450 },
+      ]);
+      expect(result.overdue).toBeNull();
+    });
+
+    it("credits an overdue transfer into this account", async () => {
+      scheduledRepo.find.mockResolvedValue([
+        rent({
+          id: "st-xfer",
+          name: "From savings",
+          accountId: "savings",
+          transferAccountId: "acc-1",
+          amount: -500,
+          isTransfer: true,
+          frequency: "ONCE",
+        }),
+      ]);
+
+      const result = await service.getBalanceForecast("user-1", "acc-1", 30);
+
+      expect(result.points).toContainEqual({
+        date: "2024-07-09",
+        balance: 1500,
+      });
+      expect(result.overdue).toEqual({
+        date: "2024-07-09",
+        count: 1,
+        amount: 500,
+      });
+    });
+
+    it("stops at the schedule's endDate, overdue slots included", async () => {
+      scheduledRepo.find.mockResolvedValue([
+        rent({ frequency: "WEEKLY", endDate: "2024-06-30" }),
+      ]);
+
+      const result = await service.getBalanceForecast("user-1", "acc-1", 60);
+
+      expect(result.points).toEqual([
+        { date: "2024-07-08", balance: 1000 },
+        { date: "2024-07-09", balance: 600 },
+      ]);
+      expect(result.overdue).toEqual({
+        date: "2024-07-09",
+        count: 2,
+        amount: -400,
+      });
+    });
+
+    // Today is 2024-07-08, so the window opens on 2024-06-07: May 20 is read as
+    // forgotten and only June 20 is still owed.
+    it("carries only the occurrences of the last OVERDUE_CARRY_DAYS", async () => {
+      scheduledRepo.find.mockResolvedValue([
+        rent({ nextDueDate: "2024-05-20" }),
+      ]);
+
+      const result = await service.getBalanceForecast("user-1", "acc-1", 30);
+
+      expect(result.points).toEqual([
+        { date: "2024-07-08", balance: 1000 },
+        { date: "2024-07-09", balance: 800 },
+        { date: "2024-07-20", balance: 600 },
+      ]);
+      expect(result.overdue).toEqual({
+        date: "2024-07-09",
+        count: 1,
+        amount: -200,
+      });
+    });
+
+    it("carries an occurrence on the first day of the window, not the day before", async () => {
+      scheduledRepo.find.mockResolvedValue([
+        rent({ frequency: "ONCE", nextDueDate: "2024-06-07" }),
+        rent({ id: "st-2", frequency: "ONCE", nextDueDate: "2024-06-06" }),
+      ]);
+
+      const result = await service.getBalanceForecast("user-1", "acc-1", 30);
+
+      expect(result.overdue).toEqual({
+        date: "2024-07-09",
+        count: 1,
+        amount: -200,
+      });
+    });
+
+    it("spends occurrencesRemaining on the overdue slots first", async () => {
+      scheduledRepo.find.mockResolvedValue([rent({ occurrencesRemaining: 2 })]);
+
+      const result = await service.getBalanceForecast("user-1", "acc-1", 60);
+
+      // June (overdue) and July: two, and no August.
+      expect(result.points).toEqual([
+        { date: "2024-07-08", balance: 1000 },
+        { date: "2024-07-09", balance: 800 },
+        { date: "2024-07-20", balance: 600 },
+      ]);
+      expect(result.overdue?.count).toBe(1);
+    });
+
+    it("carries nothing for an inactive schedule", async () => {
+      // The candidate query asks for active schedules only; this pins that the
+      // service relies on it rather than on the expansion.
+      scheduledRepo.find.mockResolvedValue([]);
+
+      const result = await service.getBalanceForecast("user-1", "acc-1", 60);
+
+      expect(scheduledRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.arrayContaining([
+            expect.objectContaining({ isActive: true }),
+          ]),
+        }),
+      );
+      expect(result.overdue).toBeNull();
+    });
+
+    it("withholds the series, overdue summary included, when an overdue occurrence cannot be priced", async () => {
+      scheduledRepo.find.mockResolvedValue([
+        investmentSchedule({ nextDueDate: "2024-06-20", frequency: "ONCE" }),
+      ]);
+      investmentTransactionsService.resolveSettlementCurrencyPair.mockResolvedValue(
+        { from: "USD", to: "CAD" },
+      );
+      investmentTransactionsService.resolveCashExchangeRateOrNull.mockResolvedValue(
+        null,
+      );
+
+      const result = await service.getBalanceForecast("user-1", "acc-1", 60);
+
+      expect(result.complete).toBe(false);
+      expect(result.points).toEqual([{ date: "2024-07-08", balance: 1000 }]);
+      expect(result.overdue).toBeNull();
     });
   });
 });

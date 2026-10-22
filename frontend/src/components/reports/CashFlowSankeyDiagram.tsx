@@ -13,6 +13,7 @@ import {
   type SankeyDrawLink,
   type SankeyDrawNode,
 } from '@/components/reports/sankey-layout';
+import { fitSankeyLabel } from '@/components/reports/sankey-label';
 import type { Category } from '@/types/category';
 import type { CashFlowSankeyNode, CashFlowSankeyResponse } from '@/types/built-in-reports';
 
@@ -165,11 +166,19 @@ interface NodeShapeProps {
   canSelect: (node: SankeyDrawNode) => boolean;
   unknownLabel: string;
   fontSize?: number;
+  /** Widest a label may be: the gutter it is drawn in. Unbounded when omitted. */
+  maxLabelWidth?: number;
 }
+
+/** Space kept between a node and its label. */
+const LABEL_GAP = 6;
 
 /**
  * One node: a bar in its colour (hollow when its figure is unknown) and its
- * label beside it, on the side that faces away from the hub.
+ * label beside it, on the side that faces away from the hub, cut to
+ * `maxLabelWidth` so it cannot run past the chart's edge. The hub carries no
+ * label: it is where every flow meets, not a category, and a name drawn across
+ * the bands beside it read as one more line of income.
  */
 export function SankeyNodeShape({
   x = 0,
@@ -182,11 +191,20 @@ export function SankeyNodeShape({
   canSelect,
   unknownLabel,
   fontSize = 12,
+  maxLabelWidth,
 }: NodeShapeProps) {
   if (!payload) return null;
   const color = colorFor(payload);
   const selectable = canSelect(payload);
   const labelLeft = payload.column === 'source';
+  const fullLabel =
+    payload.unknown && payload.node?.kind === 'residual' ? `${payload.name} (${unknownLabel})` : payload.name;
+  const label =
+    payload.column === 'hub'
+      ? ''
+      : maxLabelWidth === undefined
+        ? fullLabel
+        : fitSankeyLabel(fullLabel, maxLabelWidth, fontSize);
   return (
     // A pointer target only. The diagram is one `role="img"` whose children
     // are presentational, so a focusable link here would be a tab stop no
@@ -207,16 +225,18 @@ export function SankeyNodeShape({
         stroke={color}
         strokeDasharray={payload.unknown ? '3 2' : undefined}
       />
-      <text
-        x={labelLeft ? x - 6 : x + width + 6}
-        y={y + height / 2}
-        textAnchor={labelLeft ? 'end' : 'start'}
-        dominantBaseline="middle"
-        fontSize={fontSize}
-        fill={chartColors.axis}
-      >
-        {payload.unknown && payload.node?.kind === 'residual' ? `${payload.name} (${unknownLabel})` : payload.name}
-      </text>
+      {label && (
+        <text
+          x={labelLeft ? x - LABEL_GAP : x + width + LABEL_GAP}
+          y={y + height / 2}
+          textAnchor={labelLeft ? 'end' : 'start'}
+          dominantBaseline="middle"
+          fontSize={fontSize}
+          fill={chartColors.axis}
+        >
+          {label}
+        </text>
+      )}
     </g>
   );
 }
@@ -323,7 +343,7 @@ interface CashFlowSankeyDiagramProps {
   ariaLabel: string;
   onOpen: (node: CashFlowSankeyNode) => void;
   heightClass: string;
-  /** Room either side for the node labels. */
+  /** Room either side for the node labels; a longer label is cut to fit it. */
   labelMargin: number;
   fontSize?: number;
 }
@@ -404,6 +424,9 @@ export function CashFlowSankeyDiagram({
               canSelect={(drawn) => !!drawn.node && sankeyNodeHref(drawn.node, data) !== null}
               unknownLabel={t('sankey.unknown')}
               fontSize={fontSize}
+              // The outer columns' labels sit in the side margins; the
+              // middle ones get the same width so no label is cut differently.
+              maxLabelWidth={labelMargin - LABEL_GAP - 2}
             />
           )}
           link={(props: object) => (

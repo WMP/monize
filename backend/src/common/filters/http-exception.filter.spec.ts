@@ -96,6 +96,30 @@ describe("GlobalExceptionFilter", () => {
     expect(jsonCall).not.toHaveProperty("errorCode");
   });
 
+  it("forwards a numeric currentCount from an object response", () => {
+    filter.catch(
+      new ConflictException({ message: "Changed", currentCount: 12 }),
+      mockHost,
+    );
+
+    expect(mockResponse.json.mock.calls[0][0]).toMatchObject({
+      statusCode: 409,
+      message: "Changed",
+      currentCount: 12,
+    });
+  });
+
+  it("omits currentCount when it is absent or not a number", () => {
+    filter.catch(
+      new ConflictException({ message: "Changed", currentCount: "12" }),
+      mockHost,
+    );
+
+    expect(mockResponse.json.mock.calls[0][0]).not.toHaveProperty(
+      "currentCount",
+    );
+  });
+
   it("returns structured response for NotFoundException", () => {
     const exception = new NotFoundException("Resource not found");
 

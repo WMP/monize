@@ -82,6 +82,7 @@
     "newCategory": "नई श्रेणी",
     "currentCategory": "वर्तमान श्रेणी",
     "description": "विवरण",
+    "referenceNumber": "संदर्भ #",
     "name": "नाम",
     "website": "वेबसाइट",
     "address": "पता",
@@ -111,6 +112,13 @@
     "commission": "कमीशन",
     "total": "कुल",
     "cashImpact": "नकद प्रभाव",
+    "bondSeries": "सीरीज़",
+    "marksPaid": "भुगतान किया हुआ चिह्नित करता है",
+    "accruedInterest": "उपार्जित ब्याज",
+    "redemptionSplit": "मोचन विभाजन",
+    "redemptionSplitValue": "मूलधन {principal} + ब्याज {interest} = भुगतान {payout}",
+    "redemptionDeduction": "समय-पूर्व मोचन शुल्क घटाया गया",
+    "redemptionSplitDiffers": "कीमत और उपार्जित ब्याज इस मोचन के भुगतान से अलग हैं (विभाजन देखें)। मंज़ूरी से पहले उन्हें जाँच लें।",
     "createTransactionsTitle": "ये लेन-देन बनाएं?",
     "createInvestmentTransactionsTitle": "ये निवेश लेनदेन बनाएं?",
     "approveAll": "सभी स्वीकृत करें",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "दीर्घकालिक पूंजी लाभ का पुनर्निवेश",
       "CAPITAL_GAIN_SHORT": "अल्पकालिक पूंजी लाभ",
       "CAPITAL_GAIN_LONG": "दीर्घकालिक पूंजी लाभ",
-      "REDEEM": "सीडी/बॉन्ड रिडीम करें"
+      "REDEEM": "सीडी/बॉन्ड रिडीम करें",
+      "RETURN_OF_CAPITAL": "पूंजी की वापसी"
     },
     "createSecurityTitle": "यह प्रतिभूति बनाएँ?",
     "createdSecurity": "प्रतिभूति बनाई गई",
@@ -224,7 +233,11 @@
       "category": "श्रेणी को {name} पर सेट करें",
       "payee": "प्राप्तकर्ता को {name} पर सेट करें",
       "aiReview": "{count, plural, one {# AI समीक्षा अनुरोध कतार में जोड़ें} other {# AI समीक्षा अनुरोध कतार में जोड़ें}}"
-    }
+    },
+    "aiCategory": "AI द्वारा सुझाई गई",
+    "tags": "टैग",
+    "newTag": "(नया टैग)",
+    "marksPaidDue": "{name} (देय {date})"
   },
   "table": {
     "downloadTitle": "तालिका CSV के रूप में डाउनलोड करें",

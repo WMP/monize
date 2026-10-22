@@ -308,6 +308,87 @@
     "priceMovement": {
       "title": "價格變動提醒: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}：相對於上一個有資料的交易日變動 {{ percent }}%。"
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}：銀行存取權限今天到期",
+      "expiringTitleOneDay": "{{ institution }}：銀行存取權限將在 1 天內到期",
+      "expiringTitleDays": "{{ institution }}：銀行存取權限將在 {{ days }} 天內到期",
+      "expiringMessage": "您授權 Monize 讀取 {{ institution }} 的有效期至 {{ date }} 結束。請在 Monize 中續期連線以繼續同步。",
+      "expiredTitle": "{{ institution }}：銀行存取權限已到期",
+      "expiredMessage": "您授權 Monize 讀取 {{ institution }} 的有效期已結束。請在 Monize 中續期連線以恢復同步。",
+      "failedTitle": "{{ institution }}：同步失敗",
+      "failedMessage": "{{ institution }} 的每日同步在以下科目失敗：{{ accounts }}。請開啟銀行同步設定查看原因。",
+      "failedCredentialsMessage": "由於銀行同步憑證遺失或被拒絕，{{ institution }} 的每日同步無法啟動。請在銀行同步設定中檢查憑證。",
+      "unnamedAccount": "一個科目",
+      "importedTitle": "{{ institution }}：已匯入新交易",
+      "importedMessage": "每日同步從 {{ institution }} 匯入的交易：{{ imported }} 筆。",
+      "importedNoneTitle": "{{ institution }}：沒有新交易",
+      "importedNoneMessage": "{{ institution }} 的每日同步沒有發現新交易。"
+    },
+    "bond": {
+      "maturitySoonTitle": "{{ series }} 將於 {{ date }} 到期",
+      "maturitySoonMessage": "{{ quantity }} × {{ series }} 將於 {{ date }} 到期。{{ payout }}",
+      "interestTitle": "{{ series }}：{{ date }} 支付利息",
+      "interestMessage": "{{ quantity }} × {{ series }} 將於 {{ date }} 支付利息 {{ amount }}。若帳戶中尚未入帳，請在證券頁面記錄。",
+      "interestMessageUnknown": "{{ quantity }} × {{ series }} 將於 {{ date }} 付息。金額尚未確定：所依據的利率尚未公布。",
+      "rateResetTitle": "{{ series }}：新的計息期",
+      "rateResetMessage": "{{ series }} 已於 {{ date }} 進入第 {{ period }} 期，年利率 {{ rate }}。",
+      "unbookedTitle": "{{ series }}：已到期，兌付未記錄",
+      "unbookedMessage": "{{ quantity }} × {{ series }} 已於 {{ date }} 到期，但尚未記錄兌付。{{ payout }}請在證券頁面記錄兌付。",
+      "payoutKnown": "兌付金額為 {{ payout }}。",
+      "payoutUnknown": "兌付金額尚未確定：{{ reason }}。",
+      "reason": {
+        "RATE_UNKNOWN": "所依據的利率尚未公布",
+        "TERMS_INCOMPLETE": "該系列的條款不完整",
+        "PURCHASE_OUTSIDE_SALE_WINDOW": "購買日期不在該系列的發售期內",
+        "other": "無法根據已儲存的資料計算"
+      },
+      "benchmarkTitle": "{{ benchmark }}：新數據 {{ observation }}",
+      "benchmarkMessage": "{{ publisher }} 已公布 {{ observation }} 的 {{ benchmark }}：{{ value }}。使用此指標的系列：{{ series }}。",
+      "benchmarkMessageMore": "{{ publisher }} 已公布 {{ observation }} 的 {{ benchmark }}：{{ value }}。使用此指標的系列：{{ series }}，以及另外 {{ more }} 個。",
+      "missingTitle": "債券數據尚未確定",
+      "missingMessage": "部分債券數據無法計算：{{ causes }}。",
+      "benchmarks": {
+        "PL_CPI_GUS_YOY": "消費者物價指數，12 個月 (GUS)",
+        "PL_NBP_REFERENCE": "NBP 基準利率"
+      },
+      "cause": {
+        "observation": "{{ benchmark }}（{{ publisher }}）{{ observation }} 的數據未儲存：尚未公布，或此後未擷取資料來源；請在債券頁面重新整理",
+        "observationNoPublisher": "{{ benchmark }} {{ observation }} 的數據未儲存：尚未公布，或此後未擷取資料來源；請在債券頁面重新整理",
+        "terms": "{{ series }} 的條款不完整；請在債券頁面重新整理該系列",
+        "purchase": "{{ series }} 於 {{ date }} 的購買不在其發售期（{{ from }} 至 {{ to }}）內；請更正購買日期",
+        "lots": "無法從帳本推導出持有批次（{{ code }}）；請更正帳本",
+        "lotsRow": "{{ date }} 的{{ action }}：無法推導出持有批次（{{ code }}）；請更正該交易",
+        "lotsRowSeries": "{{ date }} 的{{ action }}：未歸入任何系列（{{ code }}）；請在該交易中選擇系列",
+        "lotsRowRemoval": "{{ date }} 的{{ action }}：減少的數量超過帳戶持有的該系列數量（{{ code }}）；請更正該交易"
+      },
+      "action": {
+        "BUY": "買入",
+        "SELL": "賣出",
+        "REINVEST": "再投資",
+        "ADD_SHARES": "增加份額",
+        "REMOVE_SHARES": "減少份額",
+        "SPLIT": "分割",
+        "TRANSFER_IN": "轉入",
+        "TRANSFER_OUT": "轉出",
+        "other": "交易"
+      }
+    },
+    "emailReceiptsAttention": {
+      "title": "電子郵件收據需要關注",
+      "message": "您的收據收件箱包含 {{ noParser }} 個沒有個人檔案的郵件和 {{ parseFailed }} 個其個人檔案未識別的郵件。打開以查閱。"
+    },
+    "aiReview": {
+      "readyTitle": "AI 審核提案正在等待您",
+      "readyMessage": "等待您決定的提案：{{ count }} 項。自上次通知以來新增：{{ added }} 項。開啟以審核。",
+      "expiringTitle": "AI 審核提案即將到期",
+      "expiringMessage": "3 天內到期的提案：{{ count }} 項。最早的一項於 {{ date }} 到期。開啟以審核。"
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}：保固即將到期",
+      "expiringMessage": "{{ name }} 的保固將於 {{ date }} 到期。開啟即可檢視其文件或記錄保固申請。",
+      "todayTitle": "{{ name }}：保固今天到期",
+      "todayMessage": "{{ name }} 的保固於今天（{{ date }}）到期。開啟即可檢視其文件或記錄保固申請。"
     }
   },
   "backupOffsite": {

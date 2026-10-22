@@ -35,7 +35,8 @@ function NotificationBellContent({ canManage }: { canManage: boolean }) {
   const t = useTranslations('notifications');
   const [notifications, setAlerts] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  // The feed is read on mount, so it starts out loading.
+  const [isLoading, setIsLoading] = useState(true);
   const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
   const [collapsingIds, setCollapsingIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<NotificationFilters>(NO_NOTIFICATION_FILTERS);
@@ -70,16 +71,19 @@ function NotificationBellContent({ canManage }: { canManage: boolean }) {
   const unreadCount = notifications.filter((a) => !a.isRead && !dismissingIds.has(a.id)).length;
   const visibleNotifications = notifications.filter((a) => matchesNotificationFilters(a, filters));
 
-  const fetchAlerts = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await notificationsApi.list();
-      setAlerts(data);
-    } catch {
-      // Silently fail on notification fetch
-    } finally {
-      setIsLoading(false);
-    }
+  // The writes live in the inner `run`, so they happen after the request, not during the effect.
+  const fetchAlerts = useCallback(() => {
+    const run = async () => {
+      try {
+        const data = await notificationsApi.list();
+        setAlerts(data);
+      } catch {
+        // Silently fail on notification fetch
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, []);
 
   useEffect(() => {

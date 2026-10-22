@@ -5,7 +5,9 @@ import {
   positiveIntSchema,
   numberArg,
   booleanArg,
+  bondSeriesCodeSchema,
 } from "../../common/tool-schemas";
+import { isCalendarDate } from "../../common/validators/is-calendar-date.validator";
 import { MAX_BULK_ACTION_ROWS } from "../actions/ai-action.types";
 import { MAX_ATTACHMENTS as MAX_CHAT_ATTACHMENTS } from "./dto/ai-query.dto";
 import {
@@ -17,9 +19,18 @@ import {
   AI_REVIEW_OPERATIONS,
   MAX_AI_REVIEW_TOOL_LIST_LIMIT,
 } from "../../ai-review/ai-review-work.types";
+import {
+  EMAIL_RECEIPT_PARSER_OPERATIONS,
+  EMAIL_RECEIPT_PARSER_TOOL_MAX_DRAFTS,
+  EMAIL_RECEIPT_PARSER_TOOL_MAX_RECEIPTS,
+} from "../../email-receipts/parsers/parser-tool.guide";
 import { TRANSACTION_SORT_FIELDS } from "../../transactions/register-order";
 import { RULE_ACTIONS_HELP, RULE_CONDITION_HELP } from "./rule-language";
 import { RULE_TRIGGERS } from "../../transaction-rules/rule-trigger.types";
+import {
+  LLM_WARRANTY_DEFAULT_LIMIT,
+  LLM_WARRANTY_MAX_LIMIT,
+} from "../../warranties/warranty-llm-shape";
 import { MAX_RULE_ACTIONS } from "../../transaction-rules/rule-validation";
 import {
   MAX_RULE_RUN_ACCOUNTS,
@@ -124,6 +135,7 @@ export const INVESTMENT_ACTIONS = [
   "CAPITAL_GAIN_SHORT",
   "CAPITAL_GAIN_LONG",
   "REDEEM",
+  "RETURN_OF_CAPITAL",
 ] as const;
 
 const investmentActionSchema = z.preprocess(
@@ -209,6 +221,22 @@ const ruleActionsJson = z.preprocess((value) => {
   return Array.isArray(parsed) ? parsed.map(parseJsonArgument) : parsed;
 }, z.array(ruleJson).min(1).max(MAX_RULE_ACTIONS));
 
+/**
+ * A rule's active-window side: a real calendar day, or "" (null is read the
+ * same) to clear it. The published JSON schema stays a plain string to keep
+ * the tool small (`tools-list-budget.spec.ts`); the prep service reads "" as
+ * null.
+ */
+const ruleWindowDate = z.preprocess(
+  (value) => (value === null ? "" : value),
+  z
+    .string()
+    .refine(
+      (value) => value === "" || isCalendarDate(value),
+      "Expected a real calendar date as YYYY-MM-DD, or an empty string to clear",
+    ),
+);
+
 /** The object half of `manage_transaction_rules`, exported so a second surface reuses the fields. */
 export const manageTransactionRulesFields = z.object({
   operation: z.enum(["create", "update", "delete", "run", "test"]),
@@ -221,6 +249,8 @@ export const manageTransactionRulesFields = z.object({
     .max(RULE_TRIGGERS.length)
     .optional(),
   stopProcessing: booleanArg().optional(),
+  activeFrom: ruleWindowDate.optional(),
+  activeTo: ruleWindowDate.optional(),
   condition: ruleJson.describe(RULE_CONDITION_HELP).optional(),
   actions: ruleActionsJson.describe(RULE_ACTIONS_HELP).optional(),
   // run and test only
@@ -256,12 +286,14 @@ export const manageTransactionRulesSchema =
           value.enabled === undefined &&
           value.triggers === undefined &&
           value.stopProcessing === undefined &&
+          value.activeFrom === undefined &&
+          value.activeTo === undefined &&
           value.condition === undefined &&
           value.actions === undefined
         ) {
           need(
             "ruleId",
-            "Provide at least one field to change (name, enabled, triggers, stopProcessing, condition, or actions).",
+            "Provide at least one field to change (name, enabled, triggers, stopProcessing, activeFrom, activeTo, condition, or actions).",
           );
         }
         break;
@@ -428,7 +460,9 @@ export const lookupSecuritiesSchema = z.object({
 });
 
 export const manageSecuritiesSchema = z.object({
-  operation: z.enum(["create", "update", "delete"]),
+  operation: z.enum(["list", "create", "update", "delete"]),
+  // list only: the account whose held securities to list.
+  accountName: z.string().max(100).optional(),
   items: z
     .array(
       z.object({
@@ -468,8 +502,8 @@ export const manageSecuritiesSchema = z.object({
           .optional(),
       }),
     )
-    .min(1)
-    .max(MAX_BULK_ACTION_ROWS),
+    .max(MAX_BULK_ACTION_ROWS)
+    .optional(),
   approvalMode: z.enum(["bulk", "individual"]).optional(),
 });
 
@@ -514,6 +548,7 @@ const manageInvestmentItemSchema = z
     exchangeRate: nonNegativeAmountSchema.optional(),
     description: z.string().max(TRANSACTION_NOTE_MAX_LENGTH).optional(),
     transactionId: z.string().uuid().optional(),
+    bondSeriesCode: bondSeriesCodeSchema.optional(),
   })
   .passthrough();
 
@@ -564,13 +599,14 @@ export const manageInvestmentTransactionsSchema = z
           item.price !== undefined ||
           item.commission !== undefined ||
           item.accruedInterest !== undefined ||
+          item.bondSeriesCode !== undefined ||
           item.description !== undefined;
         if (!hasChange) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: path("transactionId"),
             message:
-              "Provide at least one field to change (action, date, security, quantity, price, commission, accrued interest, or description).",
+              "Provide at least one field to change (action, date, security, quantity, price, commission, accrued interest, bond series, or description).",
           });
         }
       } else {
@@ -849,15 +885,19 @@ const reviewSplitLineSchema = manageTransactionSplitSchema.extend({
 
 export const aiReviewRequestsFields = z.object({
   operation: z.enum(AI_REVIEW_OPERATIONS),
-  requestId: z.string().uuid().optional(),
+  requestId: z
+    .string()
+    .uuid()
+    .optional()
+    .describe(
+      "claim: this one, not the oldest. submit/reject: the claimed one.",
+    ),
   splits: z
     .array(reviewSplitLineSchema)
     .min(2)
     .max(MAX_SPLIT_LINES)
     .optional()
-    .describe(
-      "submit: two or more category lines with signed amounts that add up to the transaction amount, replacing its category.",
-    ),
+    .describe("submit: 2+ signed category lines adding up to the amount."),
   categoryName: z
     .string()
     .max(100)
@@ -869,6 +909,10 @@ export const aiReviewRequestsFields = z.object({
     .max(TRANSACTION_NOTE_MAX_LENGTH)
     .optional()
     .describe("submit: the description or memo."),
+  trade: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe("submit: the answer to an email_trade request."),
   reason: z
     .string()
     .max(500)
@@ -876,9 +920,7 @@ export const aiReviewRequestsFields = z.object({
     .describe("reject: why, for the next reader."),
   cannotBeDone: booleanArg()
     .optional()
-    .describe(
-      "reject: true closes the request; default false returns it to the queue.",
-    ),
+    .describe("reject: true closes it; default returns it to the queue."),
   limit: numberArg(z.number().int().min(1).max(MAX_AI_REVIEW_TOOL_LIST_LIMIT))
     .optional()
     .describe("list: default 20."),
@@ -897,11 +939,12 @@ export const aiReviewRequestsSchema = aiReviewRequestsFields.superRefine(
         value.splits === undefined &&
         value.categoryName === undefined &&
         value.payeeName === undefined &&
-        value.description === undefined
+        value.description === undefined &&
+        value.trade === undefined
       ) {
         need(
           "splits",
-          "Provide at least one change: splits, categoryName, payeeName or description.",
+          "Provide at least one change: splits, categoryName, payeeName, description or trade.",
         );
       }
       if (value.splits !== undefined && value.categoryName !== undefined) {
@@ -916,6 +959,151 @@ export const aiReviewRequestsSchema = aiReviewRequestsFields.superRefine(
     }
   },
 );
+
+/**
+ * The object half of `email_receipt_parsers`, exported so the MCP tool reuses
+ * the fields. The parser language is taught once, in the tool's description
+ * (`parser-tool.guide.ts`); the fields are described only by what they hold.
+ * The definition is checked by the one parser validator when it is used, which
+ * reports every problem as a path and a code, so its shape is not repeated here.
+ */
+export const emailReceiptParsersFields = z.object({
+  operation: z.enum(EMAIL_RECEIPT_PARSER_OPERATIONS),
+  definition: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe("test, save_draft: the parser."),
+  receiptIds: z
+    .array(z.string().uuid())
+    .min(1)
+    .max(EMAIL_RECEIPT_PARSER_TOOL_MAX_RECEIPTS)
+    .optional()
+    .describe("test: stored emails."),
+  requestId: z
+    .string()
+    .uuid()
+    .optional()
+    .describe("save_draft: the claimed request."),
+  name: z.string().max(100).optional(),
+  fromDomains: z
+    .array(z.string().max(253))
+    .min(1)
+    .max(10)
+    .optional()
+    .describe("save_draft: sender domains."),
+  subjectContains: z
+    .array(z.string().max(100))
+    .max(10)
+    .optional()
+    .describe("save_draft: the subject must contain one."),
+  payeeName: z.string().max(100).optional(),
+  componentDrafts: z
+    .array(
+      z.object({
+        definition: z.record(z.string(), z.unknown()),
+        fromDomains: z.array(z.string()).max(10),
+      }),
+    )
+    .max(EMAIL_RECEIPT_PARSER_TOOL_MAX_DRAFTS)
+    .optional(),
+});
+
+/**
+ * The assistant's form of the tool: the shared fields plus the profile wizard's
+ * `samples` (each email with the transaction it paid for), and `parserId` with
+ * `expectedRevision` (update a draft in place). They are not in the MCP tool's
+ * schema: its `tools/list` entry is held to a byte budget that has no room for
+ * them (`mcp/tools-list-budget.spec.ts`).
+ */
+export const emailReceiptParsersAssistantFields =
+  emailReceiptParsersFields.extend({
+    samples: z
+      .array(
+        z.object({
+          receiptId: z.string().uuid(),
+          transactionId: z.string().uuid().optional(),
+        }),
+      )
+      .min(1)
+      .max(EMAIL_RECEIPT_PARSER_TOOL_MAX_RECEIPTS)
+      .optional(),
+    parserId: z.string().uuid().optional(),
+    expectedRevision: z.number().int().min(1).optional(),
+  });
+
+export const emailReceiptParsersSchema =
+  emailReceiptParsersAssistantFields.superRefine((value, ctx) => {
+    const need = (field: string, message: string): void => {
+      ctx.addIssue({ code: "custom", path: [field], message });
+    };
+    if (value.operation === "test") {
+      if (value.definition === undefined) {
+        need("definition", "definition is required.");
+      }
+      if (value.receiptIds === undefined && value.samples === undefined) {
+        need(
+          "receiptIds",
+          `receiptIds is required: name 1 to ${EMAIL_RECEIPT_PARSER_TOOL_MAX_RECEIPTS} emails.`,
+        );
+      }
+    }
+    if (value.operation === "save_draft") {
+      if (value.definition === undefined) {
+        need("definition", "definition is required.");
+      }
+      if (!value.name?.trim()) need("name", "name is required.");
+      if (value.fromDomains === undefined) {
+        need("fromDomains", "fromDomains is required.");
+      }
+      if (
+        value.parserId !== undefined &&
+        value.expectedRevision === undefined
+      ) {
+        need(
+          "expectedRevision",
+          "expectedRevision is required with parserId: the draft's current revision.",
+        );
+      }
+    }
+  });
+
+/**
+ * `fetch_bond_series`: only a country and a series code. The terms come from the
+ * issuer's official source, never from the model (INV-BOND-006). Shared with the
+ * MCP tool, which is the same two fields.
+ */
+export const fetchBondSeriesSchema = z.object({
+  countryCode: z
+    .string()
+    .regex(/^[A-Za-z]{2}$/)
+    .describe("Issuer country, 2 letters."),
+  seriesCode: z
+    .string()
+    .regex(/^[A-Za-z0-9]{1,16}$/)
+    .describe("Series code."),
+});
+
+/**
+ * `list_warranties`, one definition for both surfaces: the MCP tool registers
+ * this schema and the description below as they are, and the assistant's
+ * definition in `tool-definitions.ts` states the same fields.
+ */
+export const LIST_WARRANTIES_DESCRIPTION =
+  "Current (unarchived) warranties, soonest expiry first. `status` and " +
+  "`daysLeft` are as of `today`: quote them, never compute from dates. " +
+  "`linkedTransactionId` is the purchase, null if unlinked; `total` counts " +
+  "all matches.";
+
+export const listWarrantiesSchema = z.object({
+  status: z
+    .enum(["all", "lifetime", "active", "expiring", "expired"])
+    .optional()
+    .describe("expiring: within windowDays. Default all."),
+  q: z.string().max(100).optional().describe("Name, vendor, model or serial."),
+  limit: numberArg(z.number().int().min(1).max(LLM_WARRANTY_MAX_LIMIT))
+    .optional()
+    .describe(`Default ${LLM_WARRANTY_DEFAULT_LIMIT}.`),
+});
 
 export const toolInputSchemas: Record<string, z.ZodSchema> = {
   list_transactions: listTransactionsSchema,
@@ -939,6 +1127,9 @@ export const toolInputSchemas: Record<string, z.ZodSchema> = {
   list_transaction_rules: listTransactionRulesSchema,
   manage_transaction_rules: manageTransactionRulesSchema,
   ai_review_requests: aiReviewRequestsSchema,
+  email_receipt_parsers: emailReceiptParsersSchema,
+  fetch_bond_series: fetchBondSeriesSchema,
+  list_warranties: listWarrantiesSchema,
 };
 
 /**

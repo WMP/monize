@@ -135,6 +135,7 @@
       "toggleTitle": "Het jaar uit de datums weglaten zodat er meer van de begunstigde past"
     },
     "attachmentsCount": "{count, plural, one {# bijlage} other {# bijlagen}}",
+    "warrantiesCount": "{count, plural, one {# garantie} other {# garanties}}",
     "today": "Vandaag",
     "export": {
       "button": "Exporteren",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Transactie dupliceren",
       "copy": "Kopiëren",
       "duplicate": "Dupliceren",
-      "scheduleRecurring": "Plannen als terugkerend"
+      "scheduleRecurring": "Plannen als terugkerend",
+      "addWarranty": "Garantie toevoegen",
+      "viewWarranties": "Garanties bekijken"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Bewerken",
     "duplicate": "Dupliceren",
     "scheduleRecurring": "Plannen als terugkerend",
+    "addWarranty": "Garantie toevoegen",
+    "viewWarranties": "Garanties bekijken",
     "delete": "Verwijderen"
   },
   "filter": {
@@ -219,7 +224,7 @@
       "title": "Filters",
       "clear": "Wissen",
       "hide": "Verbergen",
-      "show": "Tonen"
+      "show": "Filters tonen"
     },
     "accounts": {
       "label": "Rekeningen tonen:",
@@ -258,7 +263,7 @@
       "statuses": "Alle statussen",
       "amountMin": "Min",
       "amountMax": "Max",
-      "search": "Zoek op begunstigde, categorie, bedrag, label, omschrijving, referentie #...",
+      "search": "Zoeken, of probeer #10 of payee:costco",
       "tagKeyValue": "bijv. usa"
     },
     "tagKeyNone": "Alle (geen sleutelfilter)",
@@ -431,6 +436,7 @@
       "destinationRequired": "Selecteer een doelrekening",
       "sameAccount": "Bron- en doelrekening moeten verschillend zijn",
       "negativeTransfer": "Overboekingsbedrag mag niet negatief zijn",
+      "convertToTransferUnsupported": "Een bestaande transactie kan hier niet in een overboeking worden omgezet. Verwijder de transactie en maak in plaats daarvan de overboeking aan.",
       "payeeCreated": "Begunstigde \"{name}\" aangemaakt",
       "payeeCreateFailed": "Aanmaken van begunstigde mislukt",
       "payeeReactivated": "Begunstigde \"{name}\" opnieuw geactiveerd",
@@ -465,7 +471,14 @@
       },
       "feeCaption": "Inclusief {percent}% kosten voor buitenlandse transactie ({fee})."
     },
-    "jointSplitDisabled": "Gesplitste transacties in een gedeelde rekening kunnen alleen door de eigenaar worden beheerd"
+    "jointSplitDisabled": "Gesplitste transacties in een gedeelde rekening kunnen alleen door de eigenaar worden beheerd",
+    "warranties": {
+      "title": "Garanties",
+      "add": "Garantie toevoegen",
+      "expires": "Verloopt op {date}",
+      "loading": "Garanties laden",
+      "loadError": "De garanties bij deze transactie konden niet worden geladen."
+    }
   },
   "splitEditor": {
     "header": "Splitsingsdetails",
@@ -582,6 +595,11 @@
       "log": "Log",
       "autoTitle": "Auto ({scale})",
       "scaleTitle": "{label} schaal"
+    },
+    "collapse": {
+      "hide": "Grafiek verbergen",
+      "show": "Grafiek tonen",
+      "hidden": "Grafiek verborgen"
     }
   },
   "toasts": {
@@ -604,5 +622,71 @@
     "title": "Uitgaven per {key}",
     "other": "Overige",
     "noData": "Geen getagde uitgaven om te verdelen voor deze sleutel."
+  },
+  "searchSyntax": {
+    "open": "Zoeksyntaxis",
+    "title": "Zoeksyntaxis",
+    "fields": "Velden: payee, memo, cat, tag, account, ref, amount, date, status, is, has. Kies een voorbeeld om het in het zoekvak te zetten.",
+    "examples": {
+      "allWords": "Elk woord komt ergens voor",
+      "phrase": "Precies deze woordgroep",
+      "exclude": "Alles uitsluiten wat overeenkomt met refund",
+      "fieldContains": "Begunstigde bevat costco",
+      "fieldExact": "Begunstigde is precies Costco",
+      "reference": "Cheque- of referentienummer precies 10",
+      "wildcard": "Referentie begint met 10",
+      "amountOver": "Bedrag boven 100",
+      "amountRange": "Bedrag van 50 tot 100",
+      "datePeriod": "Elke dag in maart 2026",
+      "isSplit": "Gesplitste transacties",
+      "hasAttachment": "Heeft een bijlage",
+      "hasWarranty": "Heeft een garantie"
+    }
+  },
+  "searchInterpretation": {
+    "label": "Zoeken op:",
+    "negated": "niet {phrase}",
+    "malformed": "{raw} (niet begrepen, als tekst gezocht)",
+    "empty": "{raw} (leeg, genegeerd)",
+    "status": "Status is {value}",
+    "any": "‘{value}’ overal",
+    "fields": {
+      "payee": "Begunstigde",
+      "memo": "Notitie",
+      "cat": "Categorie",
+      "tag": "Tag",
+      "account": "Rekening",
+      "ref": "Referentie",
+      "amount": "Bedrag",
+      "date": "Datum",
+      "status": "Status",
+      "is": "Soort",
+      "has": "Heeft"
+    },
+    "ops": {
+      "contains": "{field} bevat ‘{value}’",
+      "exact": "{field} is ‘{value}’",
+      "glob": "{field} komt overeen met ‘{value}’",
+      "eq": "{field} is {value}",
+      "gt": "{field} boven {value}",
+      "gte": "{field} {value} of meer",
+      "lt": "{field} onder {value}",
+      "lte": "{field} {value} of minder",
+      "between": "{field} van {value} tot {valueTo}"
+    },
+    "enum": {
+      "is": {
+        "transfer": "Overboekingen",
+        "split": "Gesplitste transacties",
+        "uncategorized": "Zonder categorie"
+      },
+      "has": {
+        "attachment": "Heeft een bijlage",
+        "warranty": "Heeft een garantie",
+        "ref": "Heeft een referentienummer",
+        "memo": "Heeft een notitie",
+        "tag": "Heeft een tag"
+      }
+    }
   }
 }

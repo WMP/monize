@@ -84,10 +84,15 @@ vi.mock("@/lib/logger", () => ({
   }),
 }));
 
+const mockExportToPdf = vi.fn();
+vi.mock("@/lib/pdf-export", () => ({
+  exportToPdf: (...args: any[]) => mockExportToPdf(...args),
+}));
+
 vi.mock("@/components/ui/ExportDropdown", () => ({
-  ExportDropdown: ({ onExportPdf }: any) => (
+  ExportDropdown: ({ onExportPdf, disabled }: any) => (
     <div data-testid="export-dropdown">
-      <button data-testid="export-pdf" onClick={onExportPdf}>PDF</button>
+      <button data-testid="export-pdf" onClick={onExportPdf} disabled={disabled}>PDF</button>
     </div>
   ),
 }));
@@ -476,6 +481,102 @@ describe("CashFlowReport", () => {
       await screen.findByRole("combobox", { name: "Break down by tag key" });
 
       expect((await screen.findAllByTestId("partial-total")).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("an unknown total is not a measured zero", () => {
+    const partialResponse = () => ({
+      data: [{ period: "2024-07", periodStart: "2024-07-01", periodEnd: "2024-07-31", income: 5000, expenses: 3000, net: 2000 }],
+      totals: { income: null, expenses: 3000, net: null, knownIncome: 5000, knownExpenses: 3000, knownNet: 2000 },
+      currency: "CAD",
+      missingCurrencies: ["EUR"],
+      excludedCount: 1,
+    });
+    const arrange = () => {
+      mockGetCashFlow.mockResolvedValue(partialResponse());
+      mockGetIncomeBySource.mockResolvedValue({ data: [], totalIncome: null });
+      mockGetSpendingByCategory.mockResolvedValue({ data: [], totalSpending: 3000 });
+    };
+
+    it("shows the known income as a marked subtotal, never $0", async () => {
+      arrange();
+      await act(async () => {
+        render(<CashFlowReport />);
+      });
+      await screen.findByText("Total Inflows");
+      expect(screen.queryByText("$0")).toBeNull();
+      const inflows = screen.getByText("Total Inflows").parentElement!;
+      expect(inflows).toHaveTextContent("$5000");
+      expect(inflows.querySelector('[data-testid="partial-total"]')).not.toBeNull();
+      // Net is withheld too, so it carries the marker rather than "+$0".
+      const net = screen.getByText("Net Cash Flow").parentElement!;
+      expect(net.querySelector('[data-testid="partial-total"]')).not.toBeNull();
+      // Expenses converted completely and stay bare.
+      const outflows = screen.getByText("Total Outflows").parentElement!;
+      expect(outflows.querySelector('[data-testid="partial-total"]')).toBeNull();
+    });
+
+    it("hands the PDF the partial note on each withheld card", async () => {
+      arrange();
+      mockExportToPdf.mockResolvedValue(undefined);
+      await act(async () => {
+        render(<CashFlowReport />);
+      });
+      await screen.findByText("Total Inflows");
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("export-pdf"));
+      });
+      const cards = mockExportToPdf.mock.calls[0][0].summaryCards as Array<{ label: string; value: string; note?: string }>;
+      expect(cards.find((c) => c.label === "Total Inflows")?.note).toEqual(expect.stringContaining("EUR"));
+      expect(cards.find((c) => c.label === "Net Cash Flow")?.note).toEqual(expect.stringContaining("EUR"));
+      expect(cards.find((c) => c.label === "Total Outflows")?.note).toBeUndefined();
+      expect(cards.find((c) => c.label === "Total Inflows")?.value).not.toBe("$0");
+    });
+
+    it("leaves complete totals unmarked and the PDF cards without a note", async () => {
+      mockGetCashFlow.mockResolvedValue({
+        data: [],
+        totals: { income: 5000, expenses: 3000, net: 2000, knownIncome: 5000, knownExpenses: 3000, knownNet: 2000 },
+        currency: "CAD",
+        missingCurrencies: [],
+        excludedCount: 0,
+      });
+      mockGetIncomeBySource.mockResolvedValue({ data: [], totalIncome: 5000 });
+      mockGetSpendingByCategory.mockResolvedValue({ data: [], totalSpending: 3000 });
+      mockExportToPdf.mockResolvedValue(undefined);
+      await act(async () => {
+        render(<CashFlowReport />);
+      });
+      await screen.findByText("Total Inflows");
+      expect(screen.queryByTestId("partial-total")).toBeNull();
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("export-pdf"));
+      });
+      const cards = mockExportToPdf.mock.calls[0][0].summaryCards as Array<{ note?: string }>;
+      expect(cards.every((c) => c.note === undefined)).toBe(true);
+    });
+
+    it("disables the export while the data is loading", async () => {
+      mockGetCashFlow.mockReturnValue(new Promise(() => {}));
+      mockGetIncomeBySource.mockReturnValue(new Promise(() => {}));
+      mockGetSpendingByCategory.mockReturnValue(new Promise(() => {}));
+      await act(async () => {
+        render(<CashFlowReport />);
+      });
+      expect(screen.getByTestId("export-pdf")).toBeDisabled();
+    });
+
+    it("leaves the export disabled when the load failed, and writes no zero cards", async () => {
+      mockGetCashFlow.mockRejectedValue(new Error("Network error"));
+      mockGetIncomeBySource.mockRejectedValue(new Error("Network error"));
+      mockGetSpendingByCategory.mockRejectedValue(new Error("Network error"));
+      await act(async () => {
+        render(<CashFlowReport />);
+      });
+      await screen.findByText(/failed to load report data/i);
+      expect(screen.getByTestId("export-pdf")).toBeDisabled();
+      fireEvent.click(screen.getByTestId("export-pdf"));
+      expect(mockExportToPdf).not.toHaveBeenCalled();
     });
   });
 });

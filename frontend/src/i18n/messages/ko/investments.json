@@ -51,6 +51,7 @@
     "costBasisTooltip": "현재 보유 종목의 취득 비용을 거래 내역에서 재구성한 값입니다. 매수 가격에 각 매수의 수수료를 더하고, 각각을 해당 거래를 결제한 시점의 환율로 환산했습니다. 표시 통화로 보여지며 손익 계산에 사용됩니다.",
     "gainLoss": "이익/손실",
     "gainLossTooltip": "현재 보유 종목의 미실현 손익: 오늘 가격 기준 시장 가치에서 위의 취득원가를 뺀 값입니다. 과거 매도로 실현된 이익이나 수령한 배당·이자는 포함하지 않습니다.",
+    "gainPartialCaption": "가격이 있는 보유 종목만",
     "returns": "수익률",
     "simpleReturn": "단순 수익률",
     "simpleReturnTooltip": "지불한 금액 대비 손익: (시장 가치 − 취득원가) ÷ 취득원가. 돈이 언제 들어왔는지는 고려하지 않으므로 매수할 때마다 값이 튑니다. 1,000인 포지션이 20% 상승하면 +20%로 표시되지만, 1,000을 추가로 매수하면 아무것도 잃지 않았는데도 +10%(200 ÷ 2,000)로 표시됩니다. TWR과 MWR에는 이런 튐이 없습니다.",
@@ -88,6 +89,14 @@
       "assetClass": "자산군별"
     }
   },
+  "assetClasses": {
+    "equity": "주식",
+    "fixedIncome": "채권",
+    "cash": "현금",
+    "preferred": "우선주",
+    "convertible": "전환사채",
+    "crypto": "암호화폐"
+  },
   "holdingsList": {
     "title": "보유 자산",
     "noHoldings": "이 포트폴리오에 보유 자산이 없습니다.",
@@ -102,6 +111,7 @@
     "title": "계정별 보유 자산",
     "noHoldings": "포트폴리오에 보유 자산이 없습니다.",
     "accountIncomplete": "일부: 이 계좌의 합계에는 {currency}로 평가할 수 없었던 보유 종목이 빠져 있습니다.",
+    "gainPartialCaption": "가격이 있는 보유 종목만",
     "accountSummary": "{positions}개 포지션{positionsPlural}을 보유한 {accounts}개 계정{accountsPlural}",
     "positionsWithCash": "{count}개 포지션{plural} + 현금",
     "positions": "{count}개 포지션{plural}",
@@ -129,6 +139,7 @@
     "intradayUnavailableDescription": "하나 이상의 보유 자산이 당일 데이터를 제공하지 않는 시세 제공자(MSN Money)를 사용합니다. 일별 스냅샷을 보려면 더 긴 범위로 전환하세요.",
     "noDataForPeriod": "이 기간에 대한 투자 데이터가 없습니다.",
     "highestValue": "최고 가치",
+    "incompleteTooltip": "이 기간의 일부 지점에 가격 또는 환율이 없어 최고값과 최저값을 표시하지 않습니다.",
     "lowestValue": "최저 가치",
     "valueChange": "가치 변동",
     "valueChangeTooltip": "기간 말 증권의 가치에서 기간 초의 가치를 뺀 값, 즉 차트의 마지막 점에서 첫 점을 뺀 값입니다. 투자되지 않은 현금은 제외됩니다.",
@@ -190,6 +201,7 @@
     "actionCapitalGainShort": "단기 자본이득",
     "actionCapitalGainLong": "장기 자본이득",
     "actionRedeem": "CD/채권 상환",
+    "actionReturnOfCapital": "자본 환급",
     "allActions": "모든 작업"
   },
   "transactionForm": {
@@ -210,6 +222,7 @@
     "actionCapitalGainShort": "단기 자본이득",
     "actionCapitalGainLong": "장기 자본이득",
     "actionRedeem": "CD/채권 상환",
+    "actionReturnOfCapital": "자본 환급",
     "actionTransfer": "이체",
     "brokerageAccount": "증권사 계정",
     "fromAccount": "출금 계정",
@@ -253,7 +266,8 @@
     "sourceHolds": "출처 보유",
     "sharesAt": "주 @",
     "avgCostSuffix": "평균 취득원가.",
-    "transferCostNote": "주당 취득원가(출처 계정에서 미리 채워짐)가 목적지로 이전되어 이익 및 수익 보고서가 올바르게 유지됩니다. 주식만 이동하며 현금 변동은 없습니다.",
+    "transferCostNote": "주당 비용은 이체일에 원본 계좌에서 해당 주식의 취득 비용입니다. 저장할 때 계산되어 대상 계좌로 이월되므로 손익 보고서가 정확하게 유지됩니다. 주식만 이동하며 현금은 오가지 않습니다.",
+    "returnOfCapitalNote": "자본 환급은 수익이 아닙니다. 주식 매입 비용의 일부를 돌려주는 것이므로 보유 종목의 취득원가를 이 금액만큼 줄입니다. 남은 취득원가를 초과하는 금액은 실현 자본이득으로 보고됩니다.",
     "totalAmount": "총 금액 ({currency})",
     "sharesAtPrice": "{shares}주 @ {symbol}{price}",
     "commissionSuffix": "수수료",
@@ -288,7 +302,30 @@
     "toastSaveFailed": "거래 저장에 실패했습니다",
     "exchangeRateUnresolved": "{from}→{to} 환율이 없습니다. 저장하기 전에 환율 또는 환산된 합계를 입력하세요.",
     "toastExchangeRateRequired": "통화 간 거래를 저장하기 전에 환율을 입력하세요.",
-    "notAvailable": "사용 불가"
+    "notAvailable": "사용 불가",
+    "bondSeries": {
+      "label": "채권 시리즈",
+      "fromDate": "날짜로 결정",
+      "oldestFirst": "오래된 것부터",
+      "loading": "시리즈를 불러오는 중...",
+      "loadFailed": "시리즈를 불러오지 못했습니다.",
+      "retry": "다시 시도",
+      "fromDateCode": "날짜 기준: {code}",
+      "noneOnSale": "이 날짜에 판매 중인 시리즈가 없습니다",
+      "choose": "시리즈 선택",
+      "required": "이 주식의 시리즈를 선택하세요.",
+      "heldOption": "{code} (보유 {quantity})",
+      "noLongerHeld": "{code} (이 날짜에는 더 이상 보유하지 않음)",
+      "noLongerHeldUnknown": "저장된 시리즈 (이 날짜에는 더 이상 보유하지 않음)",
+      "storedSeries": "저장된 시리즈",
+      "seriesOnSaleMonth": "{code} — {month} 판매",
+      "seriesOnSaleRange": "{code} — {from}부터 {to}까지 판매"
+    },
+    "bondRedemption": {
+      "summary": "이자 {interest}, 조기 상환 공제 {deduction}, 지급액 {payout}",
+      "outsideSaleWindow": "이 시리즈의 로트가 판매 기간 밖에 매수되어 상환을 분할할 수 없습니다.",
+      "failed": "상환 내역을 계산할 수 없습니다."
+    }
   },
   "newTransactionButton": {
     "label": "+ 새 거래",

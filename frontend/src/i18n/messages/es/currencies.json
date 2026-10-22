@@ -13,6 +13,14 @@
     "modalTitleNew": "Nueva divisa",
     "loading": "Cargando divisas...",
     "count": "{count, plural, one {# divisa} other {# divisas}}",
+    "providers": {
+      "line": "Tipos de cambio de {providers}",
+      "separator": ", luego ",
+      "names": {
+        "frankfurter": "Frankfurter (tipos de referencia del BCE)",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "Error al cargar las divisas",
       "updated": "Divisa actualizada correctamente",
@@ -24,6 +32,7 @@
       "statusFailed": "Error al actualizar el estado de la divisa",
       "ratesRefreshed": "Tipos de cambio actualizados: {updated} pares actualizados",
       "ratesRefreshedWithFailed": "Tipos de cambio actualizados: {updated} actualizados, {failed} con error",
+      "ratesAllFailed": "No se pudo obtener ningún tipo de cambio; el proveedor no respondió",
       "ratesFailed": "Error al actualizar los tipos de cambio"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter (BCE)",
         "mnyImport": "Importación de Money",
         "unknown": "Desconocido"
       }

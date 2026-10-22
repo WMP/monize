@@ -296,6 +296,29 @@ export interface InvestmentBreakdown {
   missingRatePairs: string[];
 }
 
+/**
+ * Account recomputes still running. Most callers start `recalculateAccount`
+ * without awaiting it (the post-import pass, account edits, the debounce
+ * timer), so a test teardown that truncates `transactions` can meet one
+ * mid-read: the TRUNCATE's exclusive lock and the recompute's share locks are
+ * taken in opposite orders, and Postgres reports a deadlock against whichever
+ * spec runs next. Same arrangement as `pendingHistoryWrites` in
+ * action-history.service.ts: nothing in `src/` waits on this set.
+ */
+const pendingAccountRecalcs = new Set<Promise<unknown>>();
+
+/**
+ * Resolves once every account recompute started so far has finished. Call it
+ * before truncating the tables a recompute reads. Settled, not successful: a
+ * failed recompute has also stopped touching the database.
+ */
+export async function settlePendingAccountRecalcs(): Promise<void> {
+  // Snapshotted because a settling promise removes itself from the set.
+  while (pendingAccountRecalcs.size > 0) {
+    await Promise.allSettled([...pendingAccountRecalcs]);
+  }
+}
+
 @Injectable()
 export class NetWorthService {
   private readonly logger = new Logger(NetWorthService.name);
@@ -441,7 +464,21 @@ export class NetWorthService {
     );
   }
 
-  async recalculateAccount(userId: string, accountId: string): Promise<void> {
+  /**
+   * Registered in `pendingAccountRecalcs` before it is handed back, so a
+   * teardown can tell a recompute nobody awaited is still running.
+   */
+  recalculateAccount(userId: string, accountId: string): Promise<void> {
+    const work = this.recalculateAccountNow(userId, accountId);
+    pendingAccountRecalcs.add(work);
+    // `finally` keeps the returned promise's own settlement untouched.
+    return work.finally(() => pendingAccountRecalcs.delete(work));
+  }
+
+  private async recalculateAccountNow(
+    userId: string,
+    accountId: string,
+  ): Promise<void> {
     // The same invalidation as the debounced seam, for the callers that
     // recompute an account directly instead of going through it.
     invalidatePortfolioSummary(userId);
@@ -813,7 +850,7 @@ export class NetWorthService {
     // model gets what the database holds, with the same completeness flags and
     // the same named pairs it would get for any other gap, and no HTTP request
     // to a provider is made on an LLM's behalf.
-    return this.getMonthlyNetWorth(
+    const months = await this.getMonthlyNetWorth(
       userId,
       resolvedStart,
       resolvedEnd,
@@ -821,6 +858,17 @@ export class NetWorthService {
       {
         fetchMissing: false,
       },
+    );
+    // The per-account-type split is drawing data for the chart, and the
+    // per-side completeness flags are for the dashboard's own readers; the
+    // tools' shape stays the three figures and their completeness.
+    return months.map(
+      ({
+        byAccountType: _byAccountType,
+        assetsFxComplete: _assetsFxComplete,
+        liabilitiesFxComplete: _liabilitiesFxComplete,
+        ...month
+      }) => month,
     );
   }
 
@@ -845,6 +893,20 @@ export class NetWorthService {
       fxComplete: boolean;
       /** `"JPY->USD"` for each pair with no available rate. */
       missingRatePairs: string[];
+      /**
+       * Which side of the month is short of a rate: `assets` and `liabilities`
+       * above are each a total only while their own flag is true, and a reader
+       * of one must not be told the other side's gap makes it a subtotal.
+       */
+      assetsFxComplete: boolean;
+      liabilitiesFxComplete: boolean;
+      /**
+       * What each account type contributes to `netWorth`: an asset type's
+       * value, a liability type's owed amount negated, so the entries sum to
+       * `netWorth` (to rounding). Only the types the month holds appear.
+       * Subtotals of what converted under the same `fxComplete` as the rest.
+       */
+      byAccountType: Partial<Record<AccountType, number>>;
     }[]
   > {
     await this.ensurePopulated(userId);
@@ -918,13 +980,21 @@ export class NetWorthService {
     netWorth: number;
     fxComplete: boolean;
     missingRatePairs: string[];
+    assetsFxComplete: boolean;
+    liabilitiesFxComplete: boolean;
+    byAccountType: Partial<Record<AccountType, number>>;
   }[] {
     // Aggregate by month. Assets and liabilities each accumulate through an
     // FxAggregate so a month containing a component with no available rate
     // reports an unknown total instead of a plausible wrong one (P5-009).
+    // Each account type's signed contribution accumulates the same way.
     const monthMap = new Map<
       string,
-      { assets: FxAggregate; liabilities: FxAggregate }
+      {
+        assets: FxAggregate;
+        liabilities: FxAggregate;
+        byAccountType: Map<AccountType, FxAggregate>;
+      }
     >();
 
     for (const s of snapshots) {
@@ -934,6 +1004,7 @@ export class NetWorthService {
         monthMap.set(monthKey, {
           assets: new FxAggregate(),
           liabilities: new FxAggregate(),
+          byAccountType: new Map(),
         });
       }
       const entry = monthMap.get(monthKey)!;
@@ -968,14 +1039,21 @@ export class NetWorthService {
       );
 
       const accountType = s.account_type as AccountType;
+      if (!entry.byAccountType.has(accountType)) {
+        entry.byAccountType.set(accountType, new FxAggregate());
+      }
+      const typeTotal = entry.byAccountType.get(accountType)!;
       if (LIABILITY_TYPES.includes(accountType)) {
-        entry.liabilities.add(
-          converted === null ? null : Math.abs(converted),
+        const owed = converted === null ? null : Math.abs(converted);
+        entry.liabilities.add(owed, s.currency_code, defaultCurrency);
+        typeTotal.add(
+          owed === null ? null : -owed,
           s.currency_code,
           defaultCurrency,
         );
       } else {
         entry.assets.add(converted, s.currency_code, defaultCurrency);
+        typeTotal.add(converted, s.currency_code, defaultCurrency);
       }
     }
 
@@ -1006,6 +1084,14 @@ export class NetWorthService {
           // missing rate silently became 1:1.
           fxComplete: missingRatePairs.length === 0,
           missingRatePairs,
+          assetsFxComplete: data.assets.missingPairs.length === 0,
+          liabilitiesFxComplete: data.liabilities.missingPairs.length === 0,
+          byAccountType: Object.fromEntries(
+            [...data.byAccountType].map(([type, total]) => [
+              type,
+              Math.round(total.knownSubtotal),
+            ]),
+          ),
         };
       });
   }
@@ -1017,11 +1103,29 @@ export class NetWorthService {
    * query and rate index to a single month avoids replaying the entire
    * monthly_account_balances history just to read the last element. Returns
    * null when the user has no populated snapshots.
+   *
+   * `assets`, `liabilities` and `netWorth` are SUBTOTALS of what converted into
+   * the reporting currency, exactly as in `getMonthlyNetWorth`: the flags beside
+   * them say whether they are totals. A caller that presents one as a total
+   * reads `fxComplete` (everything converted), `assetsFxComplete` and
+   * `liabilitiesFxComplete` (which side is short), and names
+   * `missingRatePairs`. The snapshot stores one figure per account and month, so
+   * a gap between a security's currency and its account's, or a position with no
+   * price, is invisible here; `AccountsService` unions those in from
+   * `PortfolioService.getAccountMarketValues`.
    */
   async getLatestNetWorth(
     userId: string,
     jointScope?: JointNetWorthScope,
-  ): Promise<{ assets: number; liabilities: number; netWorth: number } | null> {
+  ): Promise<{
+    assets: number;
+    liabilities: number;
+    netWorth: number;
+    fxComplete: boolean;
+    missingRatePairs: string[];
+    assetsFxComplete: boolean;
+    liabilitiesFxComplete: boolean;
+  } | null> {
     await this.ensurePopulated(userId);
 
     const jointIds = jointScope?.accounts.map((a) => a.accountId) ?? [];
@@ -1046,6 +1150,10 @@ export class NetWorthService {
       assets: latest.assets,
       liabilities: latest.liabilities,
       netWorth: latest.netWorth,
+      fxComplete: latest.fxComplete,
+      missingRatePairs: latest.missingRatePairs,
+      assetsFxComplete: latest.assetsFxComplete,
+      liabilitiesFxComplete: latest.liabilitiesFxComplete,
     };
   }
 
@@ -1076,7 +1184,7 @@ export class NetWorthService {
     const start = startDate || "1990-01-01";
     const end = endDate || new Date().toISOString().slice(0, 10);
 
-    let accountFilter = "";
+    let accountFilter: string;
     const params: unknown[] = [userId, start, end];
 
     if (accountIds && accountIds.length > 0) {
@@ -1611,7 +1719,7 @@ export class NetWorthService {
     // `todayYMD()` reads the request timezone where one is set.
     const end = endDate || todayYMD();
 
-    let accountFilter = "";
+    let accountFilter: string;
     const acctParams: unknown[] = [userId];
 
     if (accountIds && accountIds.length > 0) {
@@ -2334,7 +2442,7 @@ export class NetWorthService {
     userId: string,
     accountIds?: string[],
   ): Promise<ScopedInvestmentAccountRow[]> {
-    let accountFilter = "";
+    let accountFilter: string;
     const acctParams: unknown[] = [userId];
 
     if (accountIds && accountIds.length > 0) {
@@ -3122,10 +3230,10 @@ export class NetWorthService {
     stored: Map<string, PricePoint[]>;
     txFallback: Map<string, PricePoint[]>;
   }> {
-    const [stored, txFallback] = await Promise.all([
-      this.loadStoredPriceSeries(securityIds, start, end),
-      this.loadTxPriceSeries(securityIds, start, end),
-    ]);
+    // In turn, not together: on the recalculation path both loads join the
+    // caller's transaction, and so its one connection.
+    const stored = await this.loadStoredPriceSeries(securityIds, start, end);
+    const txFallback = await this.loadTxPriceSeries(securityIds, start, end);
     return { stored, txFallback };
   }
 

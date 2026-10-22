@@ -66,7 +66,7 @@ interface DueUpload {
 
 /**
  * Re-attempts off-machine copies that failed, under the same claim and the same
- * key (WP6 of `docs/future-plans/backup-off-machine.md`; INV-BACKUP-005's retry
+ * key (WP6 of `docs/specs/backup-off-machine.md`; INV-BACKUP-005's retry
  * half).
  *
  * **Why a reaper at all.** A transient S3 outage or a refused SMTP connection

@@ -38,7 +38,31 @@ export type NotificationType =
   | 'BALANCE_ABOVE_THRESHOLD'
   | 'PORTFOLIO_MOVEMENT'
   | 'SECURITY_PRICE_MOVEMENT'
-  | 'GEM_SIGNAL_CHANGED';
+  | 'GEM_SIGNAL_CHANGED'
+  // Bank sync: consent reminders and the daily sync's outcomes. All financial.
+  | 'BANK_SYNC_CONSENT_EXPIRING'
+  | 'BANK_SYNC_CONSENT_EXPIRED'
+  | 'BANK_SYNC_FAILED'
+  | 'BANK_SYNC_IMPORTED'
+  // Receipts inbox emails with no profile or that their profile did not recognize
+  // (EMAIL_RECEIPTS). Financial, not system.
+  | 'EMAIL_RECEIPTS_ATTENTION'
+  // Engine-priced bonds (BONDS): what is about to happen to the money in them,
+  // what still needs booking, and which data the figures wait for.
+  | 'BOND_MATURITY_SOON'
+  | 'BOND_INTEREST_PAYMENT'
+  | 'BOND_RATE_RESET'
+  | 'BOND_REDEMPTION_UNBOOKED'
+  | 'BOND_BENCHMARK_PUBLISHED'
+  | 'BOND_DATA_MISSING'
+  // AI review proposals waiting for approval (AI_REVIEW): counts and a date only,
+  // never the person's instruction.
+  | 'AI_REVIEW_PROPOSALS_READY'
+  | 'AI_REVIEW_PROPOSALS_EXPIRING'
+  // Warranty reminders (WARRANTIES): 30 and 7 days before expiry, and the day
+  // itself. The data carries the warranty's name and its expiry date.
+  | 'WARRANTY_EXPIRING'
+  | 'WARRANTY_EXPIRES_TODAY';
 
 /** How urgent, and how it is drawn. */
 export type NotificationSeverity = 'info' | 'warning' | 'critical' | 'success';
@@ -76,7 +100,13 @@ export type NotificationCategory =
   | 'SYSTEM'
   | 'BALANCES'
   | 'INVESTMENTS'
-  | 'STRATEGIES';
+  | 'STRATEGIES'
+  | 'BANK_SYNC'
+  | 'BANK_SYNC_ACTIVITY'
+  | 'EMAIL_RECEIPTS'
+  | 'BONDS'
+  | 'AI_REVIEW'
+  | 'WARRANTIES';
 
 export interface Notification {
   id: string;

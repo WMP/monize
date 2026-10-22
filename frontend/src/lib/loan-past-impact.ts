@@ -1,6 +1,6 @@
 import { Account } from '@/types/account';
 import { parseLocalDate } from '@/lib/utils';
-import { LoanHistoryResult } from '@/lib/loan-history';
+import { LoanHistoryResult, observedInstallment } from '@/lib/loan-history';
 import {
   LoanScheduleInput,
   LoanScheduleResult,
@@ -18,6 +18,7 @@ import { amortizationMethodFor, mortgageTypeOf } from '@/lib/mortgage-type';
 import { methodScheduleTerms } from '@/lib/mortgage-installment';
 import type { MortgageType } from '@/types/account';
 import { roundToCents } from '@/lib/format';
+import { isDebtOutstanding } from '@/lib/loan-frequency';
 
 /**
  * "How much have my overpayments already helped?" — compares the original
@@ -48,7 +49,9 @@ export interface PastImpactResult {
    * contractual schedule, or `null` when either schedule stopped at its
    * projection horizon instead of paying off. Both sides are lifetime figures,
    * so a horizon subtotal on either side makes the difference unknown rather
-   * than small.
+   * than small. Also `null` for a loan whose repayments recorded no interest
+   * while its rate is not 0%: the interest was paid outside the app, so counting
+   * it as zero would credit the borrower with all of it as saved.
    */
   interestAlreadySaved: number | null;
   /**
@@ -177,7 +180,7 @@ export function computePastImpact(
   if (!originalSchedule) return null;
 
   // --- Current payoff, from the caller's forward projection ---
-  const isPaidOff = history.currentBalance <= 0.01;
+  const isPaidOff = !isDebtOutstanding(history.currentBalance);
   const lastActualPaymentDate =
     history.events.length > 0 ? history.events[history.events.length - 1].date : null;
   const currentPayoffDate = isPaidOff
@@ -200,8 +203,18 @@ export function computePastImpact(
     : currentProjection?.paidOff
       ? currentProjection.totalInterest
       : null;
+  // A loan that books its interest outside the app (principal-only repayments,
+  // nothing recorded) has paid interest the history cannot see, so counting it
+  // as zero would credit the borrower with the whole of it as "saved". The
+  // observed installment says whether interest is KNOWN: recorded, or known zero
+  // because the loan's rate is 0% (A26-L34).
+  const interestUnrecorded =
+    history.cumulativeInterest <= 0 &&
+    observedInstallment(history)?.complete === false;
   const interestAlreadySaved =
-    originalSchedule.paidOff && projectedRemainingInterest !== null
+    originalSchedule.paidOff &&
+    projectedRemainingInterest !== null &&
+    !interestUnrecorded
       ? Math.max(
           0,
           roundToCents(

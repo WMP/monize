@@ -560,6 +560,14 @@ describe('SecurityList', () => {
     expect(yahooBadge.title).toMatch(/default/i);
   });
 
+  it('names the bond engine, not the inherited provider, for a bond-linked security', () => {
+    const securities = [makeSecurity({ quoteProvider: null, bondProgramId: 'p-edo' })];
+    useDensityStore.setState({ densities: { securities: 'normal' } });
+    render(<SecurityList securities={securities} onEdit={onEdit} onToggleActive={onToggleActive} onOpen={onOpen} />);
+    expect(screen.getByText('Bond engine')).toBeInTheDocument();
+    expect(screen.queryByText('Yahoo')).not.toBeInTheDocument();
+  });
+
   it('hides exchange and currency headers in compact density', () => {
     const securities = [makeSecurity()];
 
@@ -896,6 +904,14 @@ describe('SecurityList', () => {
       // Yahoo appears as Provider badge (from quoteProvider=null→default yahoo) AND as lastPriceSource badge
       const yahooEls = screen.getAllByText('Yahoo');
       expect(yahooEls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('renders a translated label, not the raw id, for the bond engine source', () => {
+      const securities = [makeSecurity({ lastPriceSource: 'bond_engine', quoteProvider: 'yahoo' })];
+      useDensityStore.setState({ densities: { securities: 'normal' } });
+      render(<SecurityList securities={securities} onEdit={onEdit} onToggleActive={onToggleActive} onOpen={onOpen} />);
+      expect(screen.getByText('Bond engine')).toBeInTheDocument();
+      expect(screen.queryByText('bond_engine')).not.toBeInTheDocument();
     });
 
     it('renders MSN price source badge', () => {

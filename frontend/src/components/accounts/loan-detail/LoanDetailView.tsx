@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -13,6 +14,10 @@ import { AmortizationScheduleTable } from '@/components/accounts/loan-detail/Amo
 import { OverpaymentSimulator } from '@/components/accounts/loan-detail/OverpaymentSimulator';
 import { PayoffComparisonChart } from '@/components/accounts/loan-detail/PayoffComparisonChart';
 import { RateHistorySidebar } from '@/components/accounts/loan-detail/RateHistorySidebar';
+import {
+  PaymentMatchingPanel,
+  type LoanSettlementsState,
+} from '@/components/accounts/loan-detail/PaymentMatchingPanel';
 import { ComparisonSummaryCards } from '@/components/accounts/loan-detail/ComparisonSummaryCards';
 import { SavedScenariosPanel } from '@/components/accounts/loan-detail/SavedScenariosPanel';
 import {
@@ -86,6 +91,15 @@ interface LoanDetailViewProps {
    * without an edit form leaves it out, and the action is not offered.
    */
   onUseMortgageType?: (type: MortgageType) => void;
+  /**
+   * The Payment matching panel's data and reload, from a container that
+   * loads the loan's settled installments with its history (the account
+   * page). Absent, the panel is not rendered.
+   */
+  paymentMatching?: {
+    settlements: LoanSettlementsState;
+    onChanged: () => void | Promise<void>;
+  };
 }
 
 /**
@@ -107,6 +121,7 @@ export function LoanDetailView({
   onRateChangesChanged,
   exportPdfRef,
   onUseMortgageType,
+  paymentMatching,
 }: LoanDetailViewProps) {
   const t = useTranslations('accounts');
   const { formatCurrency, formatPercentTrimmed } = useNumberFormat();
@@ -124,6 +139,13 @@ export function LoanDetailView({
     setLoadedPlanVersion((version) => version + 1);
   }, []);
 
+  // The user's calendar day -- what decides whether the anchor is still ahead
+  // of them. The backend prices the same installment against its own
+  // request-timezone `todayYMD()`, so reading UTC here would put the schedule
+  // table and the bill on two different calendars. It also bounds the history:
+  // a VOID or future-dated row has moved no balance yet (A26-M28).
+  const todayYmd = useFinancialToday();
+
   // Overpayment recognition settings (category / memo / payee) now live in the
   // account edit form, so the `account` prop always carries the saved values.
   const history = useMemo(
@@ -133,15 +155,10 @@ export function LoanDetailView({
         transactions,
         rateChanges,
         interestTransactions,
+        todayYmd,
       ),
-    [account, transactions, rateChanges, interestTransactions],
+    [account, transactions, rateChanges, interestTransactions, todayYmd],
   );
-
-  // The user's calendar day -- what decides whether the anchor is still ahead
-  // of them. The backend prices the same installment against its own
-  // request-timezone `todayYMD()`, so reading UTC here would put the schedule
-  // table and the bill on two different calendars.
-  const todayYmd = useFinancialToday();
 
   // The borrower's real current installment (principal + interest) from the
   // payment history, shown on the summary card and used to seed the projection.
@@ -367,10 +384,22 @@ export function LoanDetailView({
   };
 
   // Published to the container so it can render the export button in its own
-  // control row. Assigned during render (not in an effect) so the latest
-  // closure -- with the current scenarios/schedule -- is always what fires on
-  // click.
-  exportPdfRef.current = handleExportPdf;
+  // control row. Reassigned after every commit so the latest closure -- with
+  // the current scenarios/schedule -- is always what fires on click.
+  useLayoutEffect(() => {
+    exportPdfRef.current = handleExportPdf;
+  });
+
+  // Beside the Rate History panel, wherever that sits. Keyed by the loan, so
+  // a Process history result never outlives the loan it ran on.
+  const paymentMatchingPanel = paymentMatching ? (
+    <PaymentMatchingPanel
+      key={account.id}
+      account={account}
+      settlements={paymentMatching.settlements}
+      onChanged={paymentMatching.onChanged}
+    />
+  ) : null;
 
   return (
     <div className="space-y-6" ref={viewRef}>
@@ -408,6 +437,7 @@ export function LoanDetailView({
             editing={rateEditing}
             onUseMortgageType={onUseMortgageType}
           />
+          {paymentMatchingPanel}
           <div className="w-full">
             <OverpaymentSimulator
               accountId={account.id}
@@ -488,12 +518,15 @@ export function LoanDetailView({
       {/* Finished loan (no simulator): the Rate History panel goes full-width
           below the schedule. */}
       {!projectionInput && (
-        <RateHistorySidebar
-          account={account}
-          rateChanges={rateChanges}
-          editing={rateEditing}
-          onUseMortgageType={onUseMortgageType}
-        />
+        <>
+          <RateHistorySidebar
+            account={account}
+            rateChanges={rateChanges}
+            editing={rateEditing}
+            onUseMortgageType={onUseMortgageType}
+          />
+          {paymentMatchingPanel}
+        </>
       )}
     </div>
   );

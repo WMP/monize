@@ -12,7 +12,7 @@ import { Account, isLiabilityAccountType, type AccountBalancesAsOfResponse } fro
 import { Institution } from '@/types/institution';
 import { buildLogicalAccounts, type LogicalAccount } from '@/lib/logical-accounts';
 import { useMainAccountName } from '@/hooks/useMainAccountName';
-import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useNumberFormat, type NumberFormatters } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { sumConverted, combineTotals } from '@/lib/currency-total';
 import { PartialTotal } from '@/components/ui/PartialTotal';
@@ -58,6 +58,40 @@ interface ReportPayload {
   accounts: Account[];
   institutions: Institution[];
   balances: AccountBalancesAsOfResponse;
+}
+
+interface AccountBalancesTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: { name: string; value: number; signedValue?: number } }>;
+  chartTotal: number;
+  displayCurrency: string;
+  formatCurrency: NumberFormatters['formatCurrency'];
+  formatPercent: NumberFormatters['formatPercent'];
+}
+
+function AccountBalancesTooltip({
+  active,
+  payload,
+  chartTotal,
+  displayCurrency,
+  formatCurrency,
+  formatPercent,
+}: AccountBalancesTooltipProps) {
+  if (active && payload?.length) {
+    const data = payload[0].payload;
+    const pct = chartTotal > 0 ? (data.value / chartTotal) * 100 : 0;
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+        <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
+        <p className="text-gray-600 dark:text-gray-400">
+          {/* The signed amount: a liability slice is money owed, and the
+              minus sign is what says so in text. */}
+          {formatCurrency(data.signedValue ?? data.value, displayCurrency)} ({formatPercent(pct, 1)})
+        </p>
+      </div>
+    );
+  }
+  return null;
 }
 
 export function AccountBalancesReport() {
@@ -504,30 +538,6 @@ export function AccountBalancesReport() {
     [visibleAccounts, signedDisplayValue],
   );
 
-  const CustomTooltip = ({
-    active,
-    payload,
-  }: {
-    active?: boolean;
-    payload?: Array<{ payload: { name: string; value: number; signedValue?: number } }>;
-  }) => {
-    if (active && payload?.length) {
-      const data = payload[0].payload;
-      const pct = chartTotal > 0 ? (data.value / chartTotal) * 100 : 0;
-      return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
-          <p className="text-gray-600 dark:text-gray-400">
-            {/* The signed amount: a liability slice is money owed, and the
-                minus sign is what says so in text. */}
-            {formatCurrency(data.signedValue ?? data.value, displayCurrency)} ({formatPercent(pct, 1)})
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
   const exportRows = useCallback(
     () =>
       groups.flatMap((group) =>
@@ -737,7 +747,16 @@ export function AccountBalancesReport() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip
+                      content={
+                        <AccountBalancesTooltip
+                          chartTotal={chartTotal}
+                          displayCurrency={displayCurrency}
+                          formatCurrency={formatCurrency}
+                          formatPercent={formatPercent}
+                        />
+                      }
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>

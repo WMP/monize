@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@/test/render';
 import { useInvestmentData } from './useInvestmentData';
+import { transactionsApi } from '@/lib/transactions';
 
 // --- API mocks ---
 const mockDeleteTransaction = vi.fn();
@@ -41,10 +42,13 @@ vi.mock('@/lib/payees', () => ({
 }));
 
 // --- Hook mocks ---
+// What localStorage already holds for the selection when the page mounts.
+let mockStoredSelection: string[] | undefined;
+
 vi.mock('@/hooks/useLocalStorage', () => ({
   useLocalStorage: (_key: string, initialValue: unknown) => {
     const { useState } = require('react');
-    return useState(initialValue);
+    return useState(mockStoredSelection ?? initialValue);
   },
 }));
 
@@ -789,5 +793,148 @@ describe('useInvestmentData – delete error toast', () => {
       await result.current.handleDeleteTransaction('t1');
     });
     expect(result.current.pagination?.total).toBe(0);
+  });
+});
+
+describe('useInvestmentData – out-of-order responses', () => {
+  const makeBroker = (id: string, cashId: string) => ({
+    id, name: `Broker ${id}`, accountType: 'INVESTMENT', accountSubType: 'INVESTMENT_BROKERAGE',
+    linkedAccountId: cashId, currencyCode: 'CAD', currentBalance: 0,
+  });
+
+  type Deferred<T> = { promise: Promise<T>; resolve: (v: T) => void; reject: (e: unknown) => void };
+  const deferred = <T,>(): Deferred<T> => {
+    let resolve!: (v: T) => void;
+    let reject!: (e: unknown) => void;
+    const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+    return { promise, resolve, reject };
+  };
+
+  const summaryA = { totalValue: 9000, totalCost: 8000, totalGain: 1000, marker: 'A' };
+  const summaryB = { totalValue: 0, totalCost: 0, totalGain: 0, marker: 'B' };
+
+  let summaryByKey: Record<string, Deferred<unknown>>;
+  let txByKey: Record<string, Deferred<unknown>>;
+  const keyOf = (ids: unknown) => (Array.isArray(ids) ? ids.join(',') : String(ids));
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // The remembered selection is A; the URL asks for B once accounts load.
+    mockStoredSelection = ['A'];
+    mockSearchParamsGet = (key) => (key === 'accountId' ? 'B' : null);
+    mockGetInvestmentAccounts.mockResolvedValue([makeBroker('A', 'cA'), makeBroker('B', 'cB')]);
+    mockGetAllAccounts.mockResolvedValue([]);
+    summaryByKey = { A: deferred(), B: deferred() };
+    txByKey = { A: deferred(), B: deferred() };
+    mockGetPortfolioSummary.mockImplementation((ids: unknown) => summaryByKey[keyOf(ids)].promise);
+    mockGetTransactions.mockImplementation(
+      (params: { accountIds?: string }) => txByKey[params.accountIds ?? ''].promise,
+    );
+  });
+
+  afterEach(() => {
+    mockStoredSelection = undefined;
+    localStorage.clear();
+  });
+
+  const settle = () => act(async () => { await new Promise(res => setTimeout(res, 0)); });
+
+  it('keeps the new selection summary when the remembered selection answers later', async () => {
+    const { result } = renderHook(() => useInvestmentData());
+    await settle();
+    expect(result.current.selectedAccountIds).toEqual(['B']);
+
+    await act(async () => { summaryByKey.B.resolve(summaryB); });
+    await act(async () => { summaryByKey.A.resolve(summaryA); });
+
+    expect(result.current.portfolioSummary).toEqual(summaryB);
+  });
+
+  it('keeps the new selection transactions when the remembered selection answers later', async () => {
+    const { result } = renderHook(() => useInvestmentData());
+    await settle();
+
+    const pagination = { page: 1, limit: 25, total: 1, totalPages: 1, hasMore: false };
+    await act(async () => { txByKey.B.resolve({ data: [makeTx('tB')], pagination }); });
+    await act(async () => { txByKey.A.resolve({ data: [makeTx('tA')], pagination }); });
+
+    expect(result.current.transactions.map(tx => tx.id)).toEqual(['tB']);
+    expect(result.current.pagination).toEqual(pagination);
+  });
+
+  it('does not null the current summary when a superseded request fails late', async () => {
+    const { result } = renderHook(() => useInvestmentData());
+    await settle();
+
+    await act(async () => { summaryByKey.B.resolve(summaryB); });
+    await act(async () => { summaryByKey.A.reject(new Error('slow and broken')); });
+
+    expect(result.current.portfolioSummary).toEqual(summaryB);
+  });
+
+  it('ignores a superseded loadAllPortfolioData answer', async () => {
+    mockStoredSelection = undefined;
+    mockSearchParamsGet = () => null;
+    mockGetPortfolioSummary.mockReset();
+    mockGetTransactions.mockReset();
+    const pending: Array<{ summary: Deferred<unknown>; tx: Deferred<unknown> }> = [];
+    mockGetPortfolioSummary.mockImplementation(() => {
+      const entry = { summary: deferred<unknown>(), tx: deferred<unknown>() };
+      pending.push(entry);
+      return entry.summary.promise;
+    });
+    mockGetTransactions.mockImplementation(() => pending[pending.length - 1].tx.promise);
+
+    const { result } = renderHook(() => useInvestmentData());
+    await settle();
+    // Two mount-time effects fetched the summary; settle them with the newest last.
+    const firstLoad = pending.length;
+    let older!: Promise<void>;
+    let newer!: Promise<void>;
+    await act(async () => {
+      older = result.current.loadAllPortfolioData(['A'], 1, {});
+      newer = result.current.loadAllPortfolioData(['B'], 1, {});
+    });
+    expect(pending.length).toBe(firstLoad + 2);
+    const [olderEntry, newerEntry] = pending.slice(-2);
+    const pagination = { page: 1, limit: 25, total: 1, totalPages: 1, hasMore: false };
+
+    await act(async () => {
+      newerEntry.summary.resolve(summaryB);
+      newerEntry.tx.resolve({ data: [makeTx('tB')], pagination });
+      await newer;
+    });
+    await act(async () => {
+      olderEntry.summary.resolve(summaryA);
+      olderEntry.tx.resolve({ data: [makeTx('tA')], pagination });
+      await older;
+    });
+
+    expect(result.current.portfolioSummary).toEqual(summaryB);
+    expect(result.current.transactions.map(tx => tx.id)).toEqual(['tB']);
+  });
+
+  it('keeps the newer cash register page when an older cash request answers later', async () => {
+    const getAll = vi.mocked(transactionsApi.getAll);
+    const first = deferred<unknown>();
+    const second = deferred<unknown>();
+    getAll.mockReset();
+    getAll.mockImplementationOnce(() => first.promise as never);
+    getAll.mockImplementationOnce(() => second.promise as never);
+
+    const { result } = renderHook(() => useInvestmentData());
+    await settle();
+    await act(async () => { result.current.loadCashTransactionsIfNeeded('cash'); });
+    await act(async () => { result.current.loadCashTransactionsIfNeeded('cash'); });
+    expect(getAll).toHaveBeenCalledTimes(2);
+
+    const page = (id: string) => ({
+      data: [{ id }], startingBalance: 1, pagination: { page: 1, totalPages: 1, total: 1 },
+    });
+    await act(async () => { second.resolve(page('newer')); });
+    expect(result.current.cashTransactionsLoading).toBe(false);
+    await act(async () => { first.resolve(page('older')); });
+
+    expect(result.current.cashTransactions.map(tx => tx.id)).toEqual(['newer']);
   });
 });

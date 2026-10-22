@@ -1,5 +1,11 @@
 import { EntityManager } from "typeorm";
-import { updateAccountBalance } from "./import-context";
+import {
+  recordSkippedRow,
+  restoreRowCounters,
+  snapshotRowCounters,
+  updateAccountBalance,
+} from "./import-context";
+import { ImportResultDto, SKIPPED_ROWS_LIMIT } from "./dto/import.dto";
 
 type MockManager = { query: jest.Mock; findOne: jest.Mock; update: jest.Mock };
 
@@ -124,5 +130,74 @@ describe("updateAccountBalance", () => {
       updateAccountBalance(asManager(manager), "non-existent", 100),
     ).resolves.toBeUndefined();
     expect(manager.query).toHaveBeenCalledTimes(1);
+  });
+});
+
+const makeImportResult = (): ImportResultDto => ({
+  imported: 0,
+  skipped: 0,
+  skippedRows: [],
+  errors: 0,
+  errorMessages: [],
+  categoriesCreated: 0,
+  accountsCreated: 0,
+  payeesCreated: 0,
+  securitiesCreated: 0,
+});
+
+describe("recordSkippedRow", () => {
+  const row = { date: "2026-01-15", amount: -10, payee: "Grocer" };
+
+  it("counts every skipped row but names only the first SKIPPED_ROWS_LIMIT", () => {
+    const result = makeImportResult();
+
+    for (let i = 0; i < SKIPPED_ROWS_LIMIT + 5; i++) {
+      recordSkippedRow(result, row, "duplicateTransfer", "CAD");
+    }
+
+    expect(result.skipped).toBe(SKIPPED_ROWS_LIMIT + 5);
+    expect(result.skippedRows).toHaveLength(SKIPPED_ROWS_LIMIT);
+  });
+
+  it("names a row with its currency and an empty payee when it has none", () => {
+    const result = makeImportResult();
+
+    recordSkippedRow(
+      result,
+      { date: "2026-01-15", amount: -10 },
+      "alreadyImported",
+      "CAD",
+    );
+
+    expect(result.skippedRows).toEqual([
+      {
+        date: "2026-01-15",
+        amount: -10,
+        currencyCode: "CAD",
+        payee: "",
+        reason: "alreadyImported",
+      },
+    ]);
+  });
+});
+
+describe("restoreRowCounters", () => {
+  it("puts back what a rolled-back row raised and leaves the other fields alone", () => {
+    const result = { ...makeImportResult(), payeesCreated: 2, imported: 3 };
+    const snapshot = snapshotRowCounters(result);
+
+    result.payeesCreated = 3;
+    result.categoriesCreated = 1;
+    result.transactionsChangedByRules = 1;
+    result.bondRowsWithoutSeries = 1;
+    result.imported = 4;
+    restoreRowCounters(result, snapshot);
+
+    expect(result.payeesCreated).toBe(2);
+    expect(result.categoriesCreated).toBe(0);
+    expect(result.imported).toBe(4);
+    // The optional counters stay absent, as the result has them when zero.
+    expect(result).not.toHaveProperty("transactionsChangedByRules");
+    expect(result).not.toHaveProperty("bondRowsWithoutSeries");
   });
 });

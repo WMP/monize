@@ -493,7 +493,7 @@ export function RealizedGainsReport() {
             onRefreshComplete={reload}
             onExportCsv={handleExportCsv}
             onExportPdf={handleExportPdf}
-            disabled={entries.length === 0}
+            disabled={isLoading || !!error || entries.length === 0}
           />
         </div>
       </div>
@@ -676,7 +676,11 @@ export function RealizedGainsReport() {
                 </tr>
               </thead>
               <tbody role="rowgroup" className="block divide-y divide-gray-200 dark:divide-gray-700 sm:table-row-group">
-                {sortedEntries.map((entry) => (
+                {sortedEntries.map((entry) => {
+                  // A return of capital realizes what it paid beyond the
+                  // basis with no shares sold: no share count or price to show.
+                  const isReturnOfCapital = entry.action === 'RETURN_OF_CAPITAL';
+                  return (
                   <tr
                     key={entry.transactionId}
                     role="row"
@@ -690,10 +694,15 @@ export function RealizedGainsReport() {
                       <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
                         {entry.symbol || 'N/A'}
                       </div>
+                      {isReturnOfCapital && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {t('realizedGains.returnOfCapitalRow')}
+                        </div>
+                      )}
                     </td>
                     <td role="cell" className={`col-start-1 row-start-2 text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{sellTransactionColumns.quantity.label}</CellLabel>
-                      {formatShareQuantity(entry.quantity)}
+                      {isReturnOfCapital ? '-' : formatShareQuantity(entry.quantity)}
                     </td>
                     <td role="cell" className={`col-start-2 row-start-2 text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{sellTransactionColumns.price.label}</CellLabel>
@@ -702,7 +711,7 @@ export function RealizedGainsReport() {
                           server). Formatting it through `fmtValue` printed a
                           EUR price with the reader's symbol -- the same
                           mislabel as the transaction history's, issue #1394. */}
-                      {fmtSecurityMoney(entry.price, entry.securityCurrencyCode)}
+                      {isReturnOfCapital ? '-' : fmtSecurityMoney(entry.price, entry.securityCurrencyCode)}
                     </td>
                     <td role="cell" className={`col-start-1 col-span-2 row-start-3 font-medium text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{sellTransactionColumns.proceeds.label}</CellLabel>
@@ -714,7 +723,8 @@ export function RealizedGainsReport() {
                       })()}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

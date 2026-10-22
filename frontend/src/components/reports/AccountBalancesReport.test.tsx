@@ -99,8 +99,8 @@ vi.mock("recharts", () => ({
       try {
         return (
           <div>
-            <C active={true} payload={[{ payload: { name: "Cat", value: 100 } }]} />
-            <C active={false} payload={[]} />
+            <C {...content.props} active={true} payload={[{ payload: { name: "Cat", value: 100 } }]} />
+            <C {...content.props} active={false} payload={[]} />
           </div>
         );
       } catch {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@/test/render';
 import { ScheduledTransactionForm } from './ScheduledTransactionForm';
 import toast from 'react-hot-toast';
@@ -108,10 +108,13 @@ vi.mock('@/lib/payees', () => ({
 }));
 
 const mockTagsCreate = vi.fn().mockResolvedValue({ id: 'new-tag', name: 'New Tag' });
+const mockTagsGetAll = vi.fn().mockResolvedValue([]);
+const mockTagsGetUsage = vi.fn().mockResolvedValue({});
 
 vi.mock('@/lib/tags', () => ({
   tagsApi: {
-    getAll: vi.fn().mockResolvedValue([]),
+    getAll: (...args: any[]) => mockTagsGetAll(...args),
+    getUsage: (...args: any[]) => mockTagsGetUsage(...args),
     create: (...args: any[]) => mockTagsCreate(...args),
   },
 }));
@@ -141,8 +144,13 @@ vi.mock('@/lib/categoryUtils', () => ({
   buildCategoryTree: (cats: any[]) => (cats || []).map((c: any) => ({ category: c })),
 }));
 
+const mockSplitEditorProps = vi.fn();
+
 vi.mock('@/components/transactions/SplitEditor', () => ({
-  SplitEditor: () => <div data-testid="split-editor">SplitEditor</div>,
+  SplitEditor: (props: Record<string, unknown>) => {
+    mockSplitEditorProps(props);
+    return <div data-testid="split-editor">SplitEditor</div>;
+  },
   createEmptySplits: (amount: number) => [
     { id: '1', categoryId: '', amount: amount / 2, memo: '', splitType: 'category' },
     { id: '2', categoryId: '', amount: amount / 2, memo: '', splitType: 'category' },
@@ -3133,6 +3141,51 @@ describe('ScheduledTransactionForm - extra coverage', () => {
     await act(async () => { fireEvent.click(screen.getByText('Split')); });
     expect(screen.getByTestId('split-editor')).toBeInTheDocument();
     expect(screen.getByText('Cancel Split')).toBeInTheDocument();
+  });
+
+  describe('tag picker order', () => {
+    const tagFixture = (id: string, name: string) =>
+      ({ id, name, userId: 'user-1', color: null, icon: null, createdAt: '', updatedAt: '' });
+
+    afterEach(() => {
+      mockTagsGetAll.mockResolvedValue([]);
+      mockTagsGetUsage.mockResolvedValue({});
+    });
+
+    const precedes = (first: string, second: string) =>
+      Boolean(
+        screen.getByText(first).compareDocumentPosition(screen.getByText(second)) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+
+    const openPicker = async () => {
+      await renderForm();
+      await waitFor(() => expect(mockTagsGetUsage).toHaveBeenCalled());
+      fireEvent.click(screen.getByText('Select tags...'));
+      await waitFor(() => expect(screen.getByText('Holiday 2026')).toBeInTheDocument());
+    };
+
+    it('lists a recently used tag first and gives the split editor the same usage', async () => {
+      const usage = { 't-h26': { lastUsed: '2026-10-01', count: 2 } };
+      mockTagsGetAll.mockResolvedValue([tagFixture('t-art', 'Art'), tagFixture('t-h26', 'Holiday 2026')]);
+      mockTagsGetUsage.mockResolvedValue(usage);
+
+      await openPicker();
+      expect(precedes('Holiday 2026', 'Art')).toBe(true);
+
+      await act(async () => { fireEvent.click(screen.getByText('Split')); });
+      expect(mockSplitEditorProps).toHaveBeenLastCalledWith(expect.objectContaining({ tagUsage: usage }));
+    });
+
+    it('stays A-Z when the usage lookup fails', async () => {
+      mockTagsGetAll.mockResolvedValue([tagFixture('t-art', 'Art'), tagFixture('t-h26', 'Holiday 2026')]);
+      mockTagsGetUsage.mockRejectedValue(new Error('network'));
+
+      await openPicker();
+
+      expect(precedes('Art', 'Holiday 2026')).toBe(true);
+      expect(toast.error).not.toHaveBeenCalled();
+    });
   });
 
   it('cancels the split and returns to the transaction tab', async () => {

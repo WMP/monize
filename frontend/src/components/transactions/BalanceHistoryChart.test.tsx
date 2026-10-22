@@ -109,6 +109,26 @@ describe('BalanceHistoryChart', () => {
     expect(screen.getByText('No balance data available')).toBeInTheDocument();
   });
 
+  it('offers the fold button in every state, only where the page asks for it', () => {
+    const onCollapse = vi.fn();
+    const data = [
+      { date: '2025-01-01', balance: 1000 },
+      { date: '2025-01-02', balance: 750 },
+    ];
+    const { rerender } = render(<BalanceHistoryChart data={data} isLoading={false} />);
+    expect(screen.queryByRole('button', { name: 'Hide chart' })).not.toBeInTheDocument();
+
+    for (const props of [
+      { data: [], isLoading: true },
+      { data: [], isLoading: false },
+      { data, isLoading: false },
+    ]) {
+      rerender(<BalanceHistoryChart {...props} onCollapse={onCollapse} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Hide chart' }));
+    }
+    expect(onCollapse).toHaveBeenCalledTimes(3);
+  });
+
   it('renders chart with data and summary footer', () => {
     render(
       <BalanceHistoryChart

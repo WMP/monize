@@ -82,6 +82,7 @@ const mockGetCurrencyUsage = vi.fn().mockResolvedValue({
 });
 
 const mockRefreshRates = vi.fn().mockResolvedValue({ updated: 5, failed: 0 });
+const mockGetRateStatus = vi.fn();
 const mockDeactivateCurrency = vi.fn();
 const mockActivateCurrency = vi.fn();
 
@@ -90,6 +91,7 @@ vi.mock('@/lib/exchange-rates', () => ({
     getCurrencies: (...args: any[]) => mockGetCurrencies(...args),
     getCurrencyUsage: (...args: any[]) => mockGetCurrencyUsage(...args),
     refreshRates: (...args: any[]) => mockRefreshRates(...args),
+    getRateStatus: (...args: any[]) => mockGetRateStatus(...args),
     getLatestRates: vi.fn().mockResolvedValue([]),
     createCurrency: vi.fn(),
     updateCurrency: vi.fn(),
@@ -98,6 +100,7 @@ vi.mock('@/lib/exchange-rates', () => ({
     deleteCurrency: vi.fn(),
     lookupCurrency: vi.fn(),
   },
+  isFxProviderName: (name: string) => ['frankfurter', 'yahoo'].includes(name),
 }));
 
 // Mock useExchangeRates
@@ -221,6 +224,10 @@ describe('CurrenciesPage', () => {
       CAD: { accounts: 2, securities: 1 },
       USD: { accounts: 1, securities: 3 },
       EUR: { accounts: 0, securities: 0 },
+    });
+    mockGetRateStatus.mockResolvedValue({
+      lastUpdated: '2026-10-12T00:00:00.000Z',
+      providers: [{ name: 'yahoo', source: 'yahoo_finance' }],
     });
   });
 
@@ -423,6 +430,63 @@ describe('CurrenciesPage', () => {
     fireEvent.click(screen.getByText('Refresh Rates'));
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('Exchange rates refreshed: 3 updated, 2 failed');
+    });
+  });
+
+  it('shows an error toast, not a success, when every pair failed', async () => {
+    mockRefreshRates.mockResolvedValueOnce({ updated: 0, failed: 4 });
+    render(<CurrenciesPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Refresh Rates')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Refresh Rates'));
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        'No exchange rates could be fetched; the provider did not answer',
+      );
+    });
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  describe('the provider line', () => {
+    it('names the configured providers in the order they are asked', async () => {
+      mockGetRateStatus.mockResolvedValue({
+        lastUpdated: null,
+        providers: [
+          { name: 'frankfurter', source: 'frankfurter' },
+          { name: 'yahoo', source: 'yahoo_finance' },
+        ],
+      });
+      render(<CurrenciesPage />);
+      expect(await screen.findByTestId('fx-provider-line')).toHaveTextContent(
+        'Rates from Frankfurter (ECB reference rates), then Yahoo Finance',
+      );
+    });
+
+    it('names a Yahoo-only deployment as Yahoo Finance', async () => {
+      render(<CurrenciesPage />);
+      expect(await screen.findByTestId('fx-provider-line')).toHaveTextContent(
+        'Rates from Yahoo Finance',
+      );
+    });
+
+    it('shows a provider it has no label for by its name', async () => {
+      mockGetRateStatus.mockResolvedValue({
+        lastUpdated: null,
+        providers: [{ name: 'newprovider', source: 'new_provider' }],
+      });
+      render(<CurrenciesPage />);
+      expect(await screen.findByTestId('fx-provider-line')).toHaveTextContent(
+        'Rates from newprovider',
+      );
+    });
+
+    it('omits the line when the status cannot be read', async () => {
+      mockGetRateStatus.mockRejectedValue(new Error('down'));
+      render(<CurrenciesPage />);
+      await waitFor(() => expect(mockGetRateStatus).toHaveBeenCalled());
+      await waitFor(() => expect(screen.getByTestId('currency-row-CAD')).toBeInTheDocument());
+      expect(screen.queryByTestId('fx-provider-line')).not.toBeInTheDocument();
     });
   });
 

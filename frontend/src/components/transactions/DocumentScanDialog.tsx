@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/Button';
@@ -139,6 +139,25 @@ export function DocumentScanDialog({
   );
   const [busy, setBusy] = useState(false);
 
+  // A newly opened file starts from the remembered finish, unrotated and with
+  // no corners of its own. The "info from previous render" pattern rather than
+  // a setState in the effect below.
+  const openFile = isOpen ? file : null;
+  const [openedFor, setOpenedFor] = useState<File | null>(null);
+  if (openedFor !== openFile) {
+    setOpenedFor(openFile);
+    if (openFile) {
+      // Read the remembered values once, at open, without subscribing: a change
+      // the user makes to the finish mid-session must not re-open and re-scan.
+      const remembered = useScanSettingsStore.getState();
+      setMode('enhanced');
+      setRotation(0);
+      setQuad(null);
+      setStyle(remembered.style);
+      setAdjustments(remembered.adjustments);
+    }
+  }
+
   // Scan whatever file the parent hands over, and forget the previous result
   // when the dialog closes so a reopen never shows the last document.
   useEffect(() => {
@@ -146,15 +165,7 @@ export function DocumentScanDialog({
       reset();
       return;
     }
-    // Read the remembered values once, at open, without subscribing: a change
-    // the user makes to the finish mid-session must not re-open and re-scan.
-    const remembered = useScanSettingsStore.getState();
-    setMode('enhanced');
-    setRotation(0);
-    setQuad(null);
-    setStyle(remembered.style);
-    setAdjustments(remembered.adjustments);
-    void scan(file, remembered.style);
+    void scan(file, useScanSettingsStore.getState().style);
   }, [isOpen, file, scan, reset]);
 
   // Adopt the detected corners once, so dragging starts from the detection
@@ -192,19 +203,27 @@ export function DocumentScanDialog({
     [shown],
   );
 
-  const zoom = useImageZoom(display.width, display.height);
+  // Taken apart here so the JSX reads plain values: the container ref is the
+  // only ref among them, and only the frame's `ref` prop receives it.
+  const {
+    containerRef: zoomContainerRef,
+    containerProps: zoomContainerProps,
+    contentStyle: zoomContentStyle,
+    zoomed,
+    reset: resetZoom,
+  } = useImageZoom(display.width, display.height);
   // Reset magnification whenever the shown image changes for a reason other than
   // a brightness or finish tweak: a new photo, the Original/Enhanced toggle, or
   // a rotation. Tracked across renders rather than in an effect (the codebase's
   // set-state-in-effect rule), and guarded so it runs only on an actual change.
-  const zoomDepsRef = useRef({ source, mode, rotation });
+  const [zoomDeps, setZoomDeps] = useState({ source, mode, rotation });
   if (
-    zoomDepsRef.current.source !== source ||
-    zoomDepsRef.current.mode !== mode ||
-    zoomDepsRef.current.rotation !== rotation
+    zoomDeps.source !== source ||
+    zoomDeps.mode !== mode ||
+    zoomDeps.rotation !== rotation
   ) {
-    zoomDepsRef.current = { source, mode, rotation };
-    zoom.reset();
+    setZoomDeps({ source, mode, rotation });
+    resetZoom();
   }
 
   const originalTooLarge = !!file && file.size > MAX_ATTACHMENT_BYTES;
@@ -390,21 +409,21 @@ export function DocumentScanDialog({
 
             <div className="flex justify-center">
               <div
-                ref={zoom.containerRef}
+                ref={zoomContainerRef}
                 className="relative rounded-md"
                 style={{
                   width: display.width,
                   height: display.height,
-                  ...zoom.containerProps.style,
+                  ...zoomContainerProps.style,
                 }}
-                onPointerDown={zoom.containerProps.onPointerDown}
-                onPointerMove={zoom.containerProps.onPointerMove}
-                onPointerUp={zoom.containerProps.onPointerUp}
-                onPointerCancel={zoom.containerProps.onPointerCancel}
+                onPointerDown={zoomContainerProps.onPointerDown}
+                onPointerMove={zoomContainerProps.onPointerMove}
+                onPointerUp={zoomContainerProps.onPointerUp}
+                onPointerCancel={zoomContainerProps.onPointerCancel}
               >
                 {/* The canvas and its overlay are magnified together, so the
                     corners keep tracking the paper when the image is zoomed. */}
-                <div className="absolute inset-0" style={zoom.contentStyle}>
+                <div className="absolute inset-0" style={zoomContentStyle}>
                   <canvas
                     ref={paint}
                     className="h-full w-full rounded-md bg-gray-100 object-contain dark:bg-gray-800"
@@ -428,7 +447,7 @@ export function DocumentScanDialog({
                       displayHeight={display.height}
                       onChange={setQuad}
                       onCommit={handleCornerCommit}
-                      disabled={zoom.zoomed}
+                      disabled={zoomed}
                     />
                   )}
                 </div>

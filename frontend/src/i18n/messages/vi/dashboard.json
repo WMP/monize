@@ -49,6 +49,11 @@
     "nextMonth": "Tháng sau",
     "emptyAll": "Không có hóa đơn, khoản nạp hoặc chuyển khoản đang hoạt động nào được lên lịch."
   },
+  "cashFlowForecast": {
+    "title": "Dự báo dòng tiền",
+    "period": "Kỳ dự báo",
+    "loadFailed": "Không thể tải các giao tác đã ghi ngày sau hôm nay, vì vậy không thể hiển thị dự báo. Hãy tải lại bảng điều khiển để thử lại."
+  },
   "gettingStarted": {
     "title": "Bắt đầu",
     "subtitle": "Thiết lập tài khoản của bạn qua vài bước nhanh",
@@ -88,6 +93,11 @@
     "viewAll": "Xem tất cả thông tin",
     "activeCount": "{count} đang hoạt động"
   },
+  "warrantiesExpiring": {
+    "title": "Bảo hành sắp hết hạn",
+    "empty": "Không có gì hết hạn trong 30 ngày tới",
+    "loadFailed": "Không thể tải các bảo hành sắp hết hạn của bạn. Hãy tải lại bảng điều khiển để thử lại."
+  },
   "topMovers": {
     "title": "Biến động hàng đầu",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "Tài sản ròng",
     "empty": "Chưa có dữ liệu tài sản ròng.",
-    "past12Months": "12 tháng qua",
-    "viewReport": "Xem báo cáo đầy đủ"
+    "barStyle": "Kiểu cột",
+    "barStyleNetWorth": "Tài sản ròng",
+    "barStyleAccountType": "Theo loại tài khoản",
+    "loadFailed": "Không thể tải lịch sử tài sản ròng của bạn. Hãy tải lại bảng điều khiển để thử lại."
   },
   "assetsVsLiabilities": {
     "title": "Tài sản và nợ phải trả",
@@ -135,7 +147,10 @@
     "current": "Hiện tại",
     "netWorthLabel": "Tài sản ròng",
     "assets": "Tài sản",
-    "liabilities": "Nợ phải trả"
+    "liabilities": "Nợ phải trả",
+    "partialName": "{name} (chưa đầy đủ)",
+    "viewCallouts": "Nhãn",
+    "viewLegend": "Chú giải"
   },
   "expensesPieChart": {
     "title": "Chi tiêu theo danh mục",
@@ -145,7 +160,9 @@
     "other": "Khác",
     "insideOther": "{count, plural, other {# danh mục trong Khác}}",
     "topLevelOnly": "Danh mục cấp cao nhất",
-    "topLevelOnlyHint": "Tính danh mục con vào danh mục cha"
+    "topLevelOnlyHint": "Tính danh mục con vào danh mục cha",
+    "viewCallouts": "Nhãn",
+    "viewLegend": "Chú giải"
   },
   "incomeExpenses": {
     "title": "Thu nhập và Chi tiêu",
@@ -183,6 +200,7 @@
     "accounts": "Tài khoản",
     "chartType": "Loại biểu đồ",
     "view": "Chế độ xem",
+    "viewCalloutsHint": "Nhãn cần màn hình rộng hơn. Khi không đủ chỗ, chú giải sẽ được hiển thị.",
     "displayName": "Tên hiển thị",
     "description": "Mô tả",
     "descriptionPlaceholder": "Thêm mô tả tùy chọn",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "Tất cả",
       "1w": "1T",
@@ -204,7 +223,7 @@
     "empty": "Chưa có lịch sử đầu tư để hiển thị.",
     "refresh": "Làm mới giá trị hiện tại",
     "investmentResult": "Kết quả đầu tư",
-    "periodBreakdownInvestedTooltip": "Giá trị chứng khoán đã thay đổi {valueChange} trong kỳ này. Trong đó, {netInvested} là tiền đưa vào sau khi trừ các khoản bán, và chứng khoán đã trả {income} tiền cổ tức và lãi. Con số ở trên là khoản mà bản thân các khoản đầu tư kiếm được, không tính tiền mặt chưa đầu tư.",
+    "periodBreakdownInvestedTooltip": "Giá trị chứng khoán đã thay đổi {valueChange} trong kỳ này. Trong đó, {netInvested} là tiền đưa vào sau khi trừ các khoản bán, và chứng khoán đã trả {income} tiền cổ tức và lãi. Khoản phân phối được tái đầu tư vào cổ phần được tính ở cả hai. Con số ở trên là khoản mà bản thân các khoản đầu tư kiếm được, không tính tiền mặt chưa đầu tư.",
     "notAvailable": "N/A"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "Số lần xuất hiện tối thiểu",
     "minOccurrencesOption": "{count} trở lên",
     "occurrences": "{count} lần xuất hiện",
-    "monthlyEstimate": "Ước tính hàng tháng"
+    "monthlyEstimate": "Ước tính hàng tháng",
+    "viewCallouts": "Nhãn",
+    "viewLegend": "Chú giải"
   },
   "weekendVsWeekday": {
     "title": "Chi tiêu cuối tuần so với ngày thường",

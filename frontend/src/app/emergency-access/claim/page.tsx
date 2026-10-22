@@ -50,10 +50,9 @@ function EmergencyClaimForm() {
   } = useForm<FormData>({ resolver: zodResolver(buildSchema(t, tc)) });
 
   useEffect(() => {
-    if (!token) {
-      setLoadingPreview(false);
-      return;
-    }
+    // Without a token the missing-token message renders before the loading
+    // flag is read, so there is nothing to clear.
+    if (!token) return;
     let cancelled = false;
     emergencyAccessApi
       .previewClaim(token)

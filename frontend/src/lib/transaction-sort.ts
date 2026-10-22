@@ -61,6 +61,14 @@ export function nextTransactionSort(
  * request and this header row only -- storage is left alone, so widening the
  * filter to several accounts brings the account sort back.
  *
+ * A column the reader has hidden (`useHiddenColumns('transactions')`, the
+ * cross-device preference) is the same shape: its header is absent from the
+ * DOM at every width, the phone strip omits its chip, and a register ordered
+ * by it would also withhold the running balance with nothing on screen to
+ * sort by date again. So a remembered sort on a hidden field falls back the
+ * same way, storage untouched -- showing the column again restores the
+ * remembered sort on the next render.
+ *
  * A remembered value the server would refuse falls back the same way. Browser
  * storage outlives the code that wrote it: a field this build dropped, a
  * hand-edited entry or one from a future build all come back verbatim, and
@@ -70,6 +78,7 @@ export function nextTransactionSort(
 export function resolveRegisterSort(
   sort: TransactionSort,
   isSingleAccountView: boolean,
+  hiddenColumns: ReadonlySet<string>,
 ): TransactionSort {
   const usable =
     !!sort &&
@@ -79,6 +88,9 @@ export function resolveRegisterSort(
     return DEFAULT_TRANSACTION_SORT;
   }
   if (sort.field === 'account' && isSingleAccountView) {
+    return DEFAULT_TRANSACTION_SORT;
+  }
+  if (hiddenColumns.has(sort.field)) {
     return DEFAULT_TRANSACTION_SORT;
   }
   return sort;

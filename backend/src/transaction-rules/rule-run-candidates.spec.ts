@@ -55,6 +55,12 @@ describe("effectiveRunLimit", () => {
     expect(effectiveRunLimit(2500)).toBe(1000);
     expect(effectiveRunLimit(7.9)).toBe(7);
   });
+
+  it("takes a caller's own ceiling in place of the run's", () => {
+    expect(effectiveRunLimit(5000, 5000)).toBe(5000);
+    expect(effectiveRunLimit(9000, 5000)).toBe(5000);
+    expect(effectiveRunLimit(undefined, 5000)).toBe(200);
+  });
 });
 
 describe("loadCandidateUnits", () => {
@@ -83,6 +89,31 @@ describe("loadCandidateUnits", () => {
     );
     expect(qb.take).toHaveBeenCalledWith(6);
     expect(lockTransactionRows).not.toHaveBeenCalled();
+  });
+
+  it("scans oldest first when asked, every leg of the register order reversed", async () => {
+    const { qb, em } = harness([tx()]);
+
+    await loadCandidateUnits(
+      em,
+      USER,
+      { limit: 5 },
+      { lock: false, direction: "ASC" },
+    );
+
+    expect(qb.orderBy).toHaveBeenCalledWith(
+      "transaction.transactionDate",
+      "ASC",
+      undefined,
+    );
+    // The register order's own legs, reversed with it (credits still before
+    // debits within a moment, as `applyRegisterOrder` keeps them).
+    expect(qb.addOrderBy.mock.calls.map((c) => [c[0], c[1]])).toEqual([
+      ["transaction.createdAt", "ASC"],
+      ["transaction.amount", "DESC"],
+      ["transaction.id", "ASC"],
+    ]);
+    expect(qb.take).toHaveBeenCalledWith(6);
   });
 
   it("applies the account and date filters as bound parameters", async () => {

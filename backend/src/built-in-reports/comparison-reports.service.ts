@@ -2,7 +2,11 @@ import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { Category } from "../categories/entities/category.entity";
-import { ReportCurrencyService } from "./report-currency.service";
+import {
+  ConversionGaps,
+  ReportCurrencyService,
+} from "./report-currency.service";
+import { FxAggregate } from "../common/fx-aggregate";
 import { roundMoney, sumMoney, toMoneyNumber } from "../common/round.util";
 import {
   YearOverYearResponse,
@@ -80,6 +84,13 @@ export class ComparisonReportsService {
     );
 
     const yearMap = new Map<number, YearData>();
+    // Per year: what converted, and whether anything of THAT year did not. A
+    // year's total is withheld on its own gap only; another year's JPY row does
+    // not blank it.
+    const yearAggregates = new Map<
+      number,
+      { income: FxAggregate; expenses: FxAggregate; complete: boolean }
+    >();
     for (let year = oldestYear; year <= currentYear; year++) {
       yearMap.set(year, {
         year,
@@ -89,44 +100,80 @@ export class ComparisonReportsService {
           expenses: 0,
           savings: 0,
         })),
-        totals: { income: 0, expenses: 0, savings: 0 },
+        totals: {
+          income: 0,
+          expenses: 0,
+          savings: 0,
+          knownIncome: 0,
+          knownExpenses: 0,
+          knownSavings: 0,
+        },
+      });
+      yearAggregates.set(year, {
+        income: new FxAggregate(),
+        expenses: new FxAggregate(),
+        complete: true,
       });
     }
 
+    // A row with no rate into the reporting currency is unknown, never its
+    // unconverted figure (INV-FX-001): it is in no month and no year total, and
+    // its currency is named.
+    const gaps = new ConversionGaps();
+
     rawResults.forEach((row) => {
       const yearData = yearMap.get(row.year);
-      if (yearData) {
+      const aggregate = yearAggregates.get(row.year);
+      if (yearData && aggregate) {
         const monthData = yearData.months[row.month - 1];
-        const income = this.currencyService.convertAmount(
+        const income = this.currencyService.tryConvertAmount(
           toMoneyNumber(row.income),
           row.currency_code,
           defaultCurrency,
           rateMap,
         );
-        const expenses = this.currencyService.convertAmount(
+        const expenses = this.currencyService.tryConvertAmount(
           toMoneyNumber(row.expenses),
           row.currency_code,
           defaultCurrency,
           rateMap,
         );
+        if (income === null || expenses === null) {
+          gaps.record(row.currency_code);
+          aggregate.complete = false;
+          return;
+        }
         monthData.income = roundMoney(monthData.income + income);
         monthData.expenses = roundMoney(monthData.expenses + expenses);
         monthData.savings = roundMoney(monthData.income - monthData.expenses);
 
-        yearData.totals.income += income;
-        yearData.totals.expenses += expenses;
-        yearData.totals.savings += income - expenses;
+        aggregate.income.addConverted(income);
+        aggregate.expenses.addConverted(expenses);
       }
     });
 
-    yearMap.forEach((yearData) => {
-      yearData.totals.income = roundMoney(yearData.totals.income);
-      yearData.totals.expenses = roundMoney(yearData.totals.expenses);
-      yearData.totals.savings = roundMoney(yearData.totals.savings);
+    yearMap.forEach((yearData, year) => {
+      const aggregate = yearAggregates.get(year)!;
+      const knownIncome = roundMoney(aggregate.income.knownSubtotal);
+      const knownExpenses = roundMoney(aggregate.expenses.knownSubtotal);
+      const knownSavings = roundMoney(
+        aggregate.income.knownSubtotal - aggregate.expenses.knownSubtotal,
+      );
+      yearData.totals = {
+        income: aggregate.complete ? knownIncome : null,
+        expenses: aggregate.complete ? knownExpenses : null,
+        savings: aggregate.complete ? knownSavings : null,
+        knownIncome,
+        knownExpenses,
+        knownSavings,
+      };
     });
 
     return {
       data: Array.from(yearMap.values()).sort((a, b) => a.year - b.year),
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
     };
   }
 
@@ -200,13 +247,22 @@ export class ComparisonReportsService {
       { name: string; total: number }
     >();
 
+    // A row with no rate into the reporting currency is unknown, never its
+    // unconverted figure (INV-FX-001): it is in no day, no category, no count and
+    // no total, and its currency is named.
+    const gaps = new ConversionGaps();
+
     rawResults.forEach((row) => {
-      const total = this.currencyService.convertAmount(
+      const total = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.total),
         row.currency_code,
         defaultCurrency,
         rateMap,
       );
+      if (total === null) {
+        gaps.record(row.currency_code);
+        return;
+      }
       const count = row.tx_count;
       const isWeekend = row.day_of_week === 0 || row.day_of_week === 6;
 
@@ -236,8 +292,8 @@ export class ComparisonReportsService {
       }
     });
 
-    const weekendTotal = sumMoney([dayTotals[0], dayTotals[6]]);
-    const weekdayTotal = sumMoney([
+    const knownWeekendTotal = sumMoney([dayTotals[0], dayTotals[6]]);
+    const knownWeekdayTotal = sumMoney([
       dayTotals[1],
       dayTotals[2],
       dayTotals[3],
@@ -277,13 +333,18 @@ export class ComparisonReportsService {
 
     return {
       summary: {
-        weekendTotal,
-        weekdayTotal,
+        weekendTotal: gaps.headline(knownWeekendTotal),
+        weekdayTotal: gaps.headline(knownWeekdayTotal),
+        knownWeekendTotal,
+        knownWeekdayTotal,
         weekendCount,
         weekdayCount,
       },
       byDay,
       byCategory,
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
     };
   }
 }

@@ -1,3 +1,5 @@
+import { createBondWriteGuard } from "../bonds/bond-write-guard";
+import { readEmbeddedSeriesCarry } from "../bonds/embedded-series-carry";
 import {
   Injectable,
   NotFoundException,
@@ -11,26 +13,35 @@ import {
   EntityManager,
   In,
   DataSource,
+  SelectQueryBuilder,
   WhereExpressionBuilder,
 } from "typeorm";
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
 import { TransactionSplit } from "./entities/transaction-split.entity";
 import { Category } from "../categories/entities/category.entity";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
-import { UserPreference } from "../users/entities/user-preference.entity";
 import { TransactionAttachment } from "../attachments/entities/transaction-attachment.entity";
 import { primaryAttachmentSql } from "../attachments/primary-attachment.util";
+import {
+  attachmentReachableFromTransactionSql,
+  reachedTransactionIdSql,
+  reachingWarrantyJoinSql,
+} from "../attachments/attachment-parent";
+import { Warranty } from "../warranties/entities/warranty.entity";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 import { UpdateTransactionDto } from "./dto/update-transaction.dto";
 import { CreateTransactionSplitDto } from "./dto/create-transaction-split.dto";
 import { CreateTransferDto } from "./dto/create-transfer.dto";
 import { UpdateTransferDto } from "./dto/update-transfer.dto";
 import { TagsService } from "../tags/tags.service";
+import { TransactionTag } from "../tags/entities/transaction-tag.entity";
 import {
   RuleEffectsPreview,
   TransactionRulesApplierService,
 } from "../transaction-rules/transaction-rules-applier.service";
 import { AccountsService } from "../accounts/accounts.service";
+import { Account } from "../accounts/entities/account.entity";
 import { PayeesService } from "../payees/payees.service";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { TransactionSplitService } from "./transaction-split.service";
@@ -58,6 +69,7 @@ import {
   TransactionTransferService,
   TransferActor,
   TransferResult,
+  WrittenTransfer,
 } from "./transaction-transfer.service";
 import { CrossOwnerAccessService } from "../delegation/cross-owner-access.service";
 import {
@@ -83,13 +95,13 @@ import {
   PaginatedResult,
 } from "../common/dto/pagination-query.dto";
 import {
-  buildTransactionSearchClause,
-  escapeLikePattern,
-} from "./transaction-search.util";
-import {
-  parseSearchTerm,
-  ParsedSearchTerm,
-} from "./transaction-search-parse.util";
+  applyParsedSearch,
+  resolveTransactionSearch,
+  SearchInterpretation,
+  searchInterpretation,
+  searchNarrows,
+} from "./apply-transaction-search";
+import { ParsedSearch } from "./transaction-search-query.util";
 import { buildTagKeyFilterClause, TagKeyFilter } from "./tag-key-filter.util";
 import { onlyBalanceAffecting } from "./balance-affecting.util";
 import { tr } from "../i18n/translate";
@@ -100,20 +112,61 @@ import {
   bulkSkipReason,
 } from "../common/bulk-create.types";
 import { deletionBalanceEffect } from "../common/deletion-balance.util";
-import { withScopedDb } from "../common/db/scoped-db";
-import { lockTransactionRow, lockTransactionRows } from "../common/db/locks";
+import { getActiveScopedManager, withScopedDb } from "../common/db/scoped-db";
+import { isExternalIdConflict } from "./transaction-external-id";
+import {
+  lockTransactionRow,
+  lockTransactionRows,
+  type LockedTransactionRow,
+} from "../common/db/locks";
 import { assertReconciledRowsMutable } from "./reconciled-lock.util";
 import { roundMoney } from "../common/round.util";
 import {
   assertTransactionCurrencyMatchesAccount,
   normalizeFxEntry,
+  roundFxRate,
   type FxEntry,
   type FxEntryInput,
 } from "../common/fx-entry.util";
 
+export interface CreateTransactionOptions {
+  createPayeeIfMissing?: boolean;
+  /**
+   * Set when the authenticated actor is not the row's owner (a joint
+   * grantee, or a delegate acting as the owner): the owner's structural
+   * rule actions (convert to transfer, split) are then skipped, since they
+   * would write, and move balances in, accounts the actor holds no grant
+   * on. Derived from the server-side identity, never read from a request.
+   */
+  actorIsNotOwner?: boolean;
+  /**
+   * Set by `ScheduledTransactionsService.post()` only, never read from a
+   * request: the row pays the occurrence `post()` just claimed, so a
+   * `settle_loan_installment` rule refuses it (`row_from_scheduled_posting`).
+   */
+  fromScheduledPosting?: boolean;
+  /**
+   * Runs inside the write's own transaction before anything is written. A
+   * throw refuses the create with nothing written. The joint register
+   * re-asserts the grantee's grant here (A26-M04).
+   */
+  beforeWrite?: (m: EntityManager) => Promise<void>;
+}
+
+/**
+ * What a create did: `created` is false when the request's `externalId`
+ * already named a row in the account, which is then the `transaction`.
+ */
+export interface CreateTransactionOutcome {
+  transaction: Transaction;
+  created: boolean;
+}
+
 export interface TransactionWithInvestmentLink extends Transaction {
   linkedInvestmentTransactionId?: string | null;
   attachmentCount?: number;
+  /** Unarchived warranties linked to the row. */
+  warrantyCount?: number;
 }
 
 /**
@@ -137,15 +190,16 @@ export interface RegisterRowFilters {
   categoryIds: string[] | undefined;
   payeeIds: string[] | undefined;
   tagIds: string[] | undefined;
-  search: string | undefined;
-  searchAmount: number | null | undefined;
-  searchDate: string | null | undefined;
+  /** Parsed once by `findAll`, so every query reads the string identically. */
+  search: ParsedSearch | undefined;
   amountFrom: number | undefined;
   amountTo: number | undefined;
   statuses: TransactionStatus[] | undefined;
   originalCurrencyCodes: string[] | undefined;
   hasAttachments: boolean | undefined;
   tagKeyFilter: TagKeyFilter | undefined;
+  /** The API caller's key for one row (`transaction-external-id.ts`). */
+  externalId: string | undefined;
   /** False -- the register's default -- hides investment brokerage accounts. */
   includeInvestmentBrokerage: boolean;
 }
@@ -172,14 +226,15 @@ function hasRegisterContentFilters(
     (filters?.categoryIds && filters.categoryIds.length > 0) ||
     (filters?.payeeIds && filters.payeeIds.length > 0) ||
     (filters?.tagIds && filters.tagIds.length > 0) ||
-    filters?.search?.trim() ||
+    searchNarrows(filters?.search) ||
     filters?.amountFrom !== undefined ||
     filters?.amountTo !== undefined ||
     (filters?.statuses && filters.statuses.length > 0) ||
     (filters?.originalCurrencyCodes &&
       filters.originalCurrencyCodes.length > 0) ||
     filters?.hasAttachments !== undefined ||
-    filters?.tagKeyFilter
+    filters?.tagKeyFilter ||
+    filters?.externalId !== undefined
   );
 }
 
@@ -193,6 +248,11 @@ export interface PaginatedTransactions extends PaginatedResult<TransactionWithIn
    * balance to withhold.
    */
   startingBalanceWithheld?: "sort";
+  /**
+   * How the search string was read, term by term (advanced-search plan,
+   * section 6). Present exactly when a non-blank search was sent.
+   */
+  searchInterpretation?: SearchInterpretation;
 }
 
 export interface LlmTransactionRow {
@@ -294,6 +354,19 @@ export interface UpdateTransactionPreview {
    * completed reconciliation, so the confirmation surfaces flag this.
    */
   isReconciled: boolean;
+  /**
+   * Tag names the edit ADDS (the transaction keeps its own tags): the ones the
+   * caller asked for that it does not carry yet, spelled as the user's existing
+   * tag when there is one. Absent when none were asked for or all are already
+   * on the transaction.
+   */
+  tagNames?: string[];
+  /** The subset of `tagNames` the user has no tag for yet: confirm creates them. */
+  newTagNames?: string[];
+  /** The reference number ("Ref #") the edit sets; absent when it leaves it as it is. */
+  referenceNumber?: string;
+  /** `"ai"` when the AI chose `categoryName` (display only; set by the review queue, never by this service). */
+  categorySource?: "ai";
 }
 
 /** Resolved preview of a proposed transaction deletion (display-only). */
@@ -334,30 +407,11 @@ export class TransactionsService {
     private dataSource: DataSource,
     private actionHistoryService: ActionHistoryService,
     private crossOwnerAccess: CrossOwnerAccessService,
+    // forwardRef: the applier now writes through the split and accounts services,
+    // so it reaches this file back through its imports.
+    @Inject(forwardRef(() => TransactionRulesApplierService))
     private rulesApplier: TransactionRulesApplierService,
   ) {}
-
-  /**
-   * Interprets the search box term as an exact amount and/or date using the
-   * user's number/date-format preferences, so a value typed in the user's own
-   * locale format (e.g. "1 234,56" or "02.07.2026") also matches. Returns
-   * `{ amount: null, date: null }` for a blank/non-parseable term.
-   */
-  private async resolveSearchTerm(
-    userId: string,
-    term?: string,
-  ): Promise<ParsedSearchTerm> {
-    if (!term || !term.trim()) return { amount: null, date: null };
-    const prefs = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(UserPreference).findOne({
-        where: { userId },
-      }),
-    );
-    return parseSearchTerm(term, {
-      numberFormat: prefs?.numberFormat,
-      dateFormat: prefs?.dateFormat,
-    });
-  }
 
   /**
    * Validate and normalize the foreign-currency entry fields against the
@@ -375,13 +429,72 @@ export class TransactionsService {
   async create(
     userId: string,
     createTransactionDto: CreateTransactionDto,
-    options?: { createPayeeIfMissing?: boolean },
+    options?: CreateTransactionOptions,
   ): Promise<Transaction> {
+    const outcome = await this.createWithOutcome(
+      userId,
+      createTransactionDto,
+      options,
+    );
+    return outcome.transaction;
+  }
+
+  /**
+   * `create`, saying whether the row was written by this call or already
+   * existed under the request's `externalId` (`transaction-external-id.ts`).
+   * An existing row is returned as it stands: the key names the row, so a
+   * retry carrying a different body does not edit it, and nothing else this
+   * create would do (rules, balance, history) runs a second time.
+   */
+  async createWithOutcome(
+    userId: string,
+    createTransactionDto: CreateTransactionDto,
+    options?: CreateTransactionOptions,
+  ): Promise<CreateTransactionOutcome> {
     const account = await this.accountsService.findOne(
       userId,
       createTransactionDto.accountId,
     );
 
+    // Advisory: the common retry answers here. The unique index is what holds
+    // the rule when two attempts race past this lookup (caught below).
+    const externalId = createTransactionDto.externalId;
+    if (externalId) {
+      const existing = await this.findByExternalId(
+        userId,
+        createTransactionDto.accountId,
+        externalId,
+      );
+      if (existing) return { transaction: existing, created: false };
+    }
+
+    return this.createNew(userId, createTransactionDto, account, options);
+  }
+
+  /**
+   * The row in `accountId` holding `externalId`, read back as `findOne` reads
+   * it, or null.
+   */
+  private async findByExternalId(
+    userId: string,
+    accountId: string,
+    externalId: string,
+  ): Promise<Transaction | null> {
+    const row = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(Transaction).findOne({
+        where: { userId, accountId, externalId },
+        select: { id: true },
+      }),
+    );
+    return row ? this.findOne(userId, row.id) : null;
+  }
+
+  private async createNew(
+    userId: string,
+    createTransactionDto: CreateTransactionDto,
+    account: Account,
+    options?: CreateTransactionOptions,
+  ): Promise<CreateTransactionOutcome> {
     const { splits, tagIds, ...transactionData } = createTransactionDto;
     const hasSplits = splits && splits.length > 0;
 
@@ -473,13 +586,19 @@ export class TransactionsService {
 
     // Accounts a transfer/investment split touched, invalidated after commit.
     const splitAffectedAccountIds = new Set<string>();
+    // Securities of embedded investment rows, repriced by the bond engine after
+    // the commit (INV-BOND-005, INV-CACHE-001).
+    const touchedSecurityIds = new Set<string>();
+    // Schedules a settlement rule claimed an occurrence of, repriced after commit.
+    const settledScheduleIds = new Set<string>();
 
     // One transaction: the row, its splits/tags, and the balance update
     // commit or roll back together. Nested service calls (split service, tags,
     // account balances) run their own withScopedDb and join this one.
-    const savedTransactionId = await withScopedDb(
-      this.dataSource,
-      async (m) => {
+    let savedTransactionId: string;
+    try {
+      savedTransactionId = await withScopedDb(this.dataSource, async (m) => {
+        if (options?.beforeWrite) await options.beforeWrite(m);
         const transaction = m.create(Transaction, {
           ...transactionData,
           // Derived from the account, not taken from the request: `amount` is in
@@ -509,7 +628,7 @@ export class TransactionsService {
             resolvedPayeeId,
             // A VOID parent's transfer counterpart must be VOID too and move no
             // balance; without this a void split still credited the target.
-            { parentStatus: savedTransaction.status },
+            { parentStatus: savedTransaction.status, touchedSecurityIds },
             // Transfer-target and brokerage accounts this split touched, so their
             // net-worth state is invalidated after commit -- not only the parent
             // account (recheck RR5-002).
@@ -534,14 +653,31 @@ export class TransactionsService {
         // Transaction rules (design 6.3, 6.4): after the row, its splits, its
         // explicit tags and the payee default category, before the balance
         // and the commit, on this manager, so a rollback drops the rule
-        // effects with the insert. They change category, payee and tags only.
-        await this.rulesApplier.applyToNew(
+        // effects with the insert. They change category, payee and tags, and a
+        // structural action adds a transfer counterpart or split lines.
+        const ruleRows = await this.rulesApplier.applyToNew(
           m,
           userId,
           [savedTransaction.id],
           "create",
-          { payeeTextById: new Map([[savedTransaction.id, payeeText]]) },
+          {
+            payeeTextById: new Map([[savedTransaction.id, payeeText]]),
+            structuralNotAllowed: options?.actorIsNotOwner === true,
+            fromScheduledPosting: options?.fromScheduledPosting === true,
+          },
         );
+        // A structural action (convert to transfer, split) credits another
+        // account; invalidated after the commit with the split targets
+        // (INV-CACHE-001). A settlement also claimed a scheduled occurrence;
+        // its schedule's template is repriced after the commit.
+        for (const rule of ruleRows) {
+          for (const accountId of rule.affectedAccountIds) {
+            splitAffectedAccountIds.add(accountId);
+          }
+          for (const scheduleId of rule.settledScheduleIds) {
+            settledScheduleIds.add(scheduleId);
+          }
+        }
 
         if (savedTransaction.status !== TransactionStatus.VOID) {
           if (isTransactionInFuture(createTransactionDto.transactionDate)) {
@@ -558,8 +694,27 @@ export class TransactionsService {
         }
 
         return savedTransaction.id;
-      },
-    );
+      });
+    } catch (error) {
+      // Another create holding the same key committed between the lookup and
+      // this insert: the index refused this one, and its row is the answer.
+      // Not inside a caller's transaction, which the violation has aborted.
+      const externalId = createTransactionDto.externalId;
+      if (
+        !externalId ||
+        !isExternalIdConflict(error) ||
+        getActiveScopedManager()
+      ) {
+        throw error;
+      }
+      const winner = await this.findByExternalId(
+        userId,
+        createTransactionDto.accountId,
+        externalId,
+      );
+      if (!winner) throw error;
+      return { transaction: winner, created: false };
+    }
 
     this.netWorthService.triggerDebouncedRecalc(
       createTransactionDto.accountId,
@@ -570,10 +725,18 @@ export class TransactionsService {
         this.netWorthService.triggerDebouncedRecalc(affected, userId);
       }
     }
+    // The next installment of a schedule a rule settled an occurrence of is
+    // priced on the ledger this create left, in its own transaction after the
+    // commit (INV-CACHE-001; docs/specs/loan-installment-settlement.md 12.8).
+    await repriceSettledLoanTemplates(this.dataSource, settledScheduleIds);
+    await this.splitService.recomputeBondPricesAfterWrite(
+      userId,
+      touchedSecurityIds,
+    );
 
     const result = await this.findOne(userId, savedTransactionId);
     this.recordTransactionAction(userId, result, "create");
-    return result;
+    return { transaction: result, created: true };
   }
 
   /**
@@ -772,7 +935,7 @@ export class TransactionsService {
    *
    * Transfers are still rejected here: their linked legs need the dedicated
    * edit flow. Split transactions are editable per Truth table B in
-   * docs/future-plans/split-bulk-update.md: parent fields (payee, date,
+   * docs/specs/split-bulk-update.md: parent fields (payee, date,
    * description) change freely, and a category or amount change is allowed
    * only when a complete replacement splits array accompanies the edit
    * (`splitsAccompany`), because a split parent's categories live on its lines
@@ -796,6 +959,14 @@ export class TransactionsService {
        * an existing split and counts as a change on its own.
        */
       splitsAccompany?: boolean;
+      /**
+       * Tag names to add to the transaction (created at confirm when the user
+       * has none by that name). A name the transaction already carries is not a
+       * change.
+       */
+      tagNames?: readonly string[];
+      /** The reference number to set; the value the transaction holds already is not a change. */
+      referenceNumber?: string;
     },
   ): Promise<UpdateTransactionPreview> {
     const existing = await this.findOne(userId, transactionId);
@@ -827,12 +998,26 @@ export class TransactionsService {
       }
     }
 
+    const tagChange = await this.previewAddedTags(
+      userId,
+      transactionId,
+      input.tagNames ?? [],
+    );
+    const referenceNumber =
+      input.referenceNumber === undefined
+        ? undefined
+        : stripHtml(input.referenceNumber)?.trim() || undefined;
+    const referenceChanges =
+      referenceNumber !== undefined &&
+      referenceNumber !== (existing.referenceNumber ?? null);
     const hasChange =
       input.amount !== undefined ||
       input.transactionDate !== undefined ||
       input.payeeName !== undefined ||
       input.categoryId !== undefined ||
       input.description !== undefined ||
+      tagChange.tagNames.length > 0 ||
+      referenceChanges ||
       // A splits-only replacement changes the transaction even though no
       // scalar field does.
       input.splitsAccompany === true;
@@ -914,7 +1099,57 @@ export class TransactionsService {
       description,
       currencyCode: existing.currencyCode,
       isReconciled: existing.isReconciled,
+      ...(referenceChanges ? { referenceNumber } : {}),
+      ...(tagChange.tagNames.length > 0
+        ? {
+            tagNames: tagChange.tagNames,
+            ...(tagChange.newTagNames.length > 0
+              ? { newTagNames: tagChange.newTagNames }
+              : {}),
+          }
+        : {}),
     };
+  }
+
+  /**
+   * Which of the requested tag names an edit would add: the ones the
+   * transaction does not carry yet. A name the user has a tag for is spelled as
+   * that tag; one it has none for is new (confirm creates it). Reads only.
+   */
+  private async previewAddedTags(
+    userId: string,
+    transactionId: string,
+    names: readonly string[],
+  ): Promise<{ tagNames: string[]; newTagNames: string[] }> {
+    const wanted = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+    if (wanted.length === 0) return { tagNames: [], newTagNames: [] };
+    return withScopedDb(this.dataSource, async (m) => {
+      const known = await this.tagsService.findByNames(m, userId, wanted);
+      const byKey = new Map(known.map((t) => [t.name.toLowerCase(), t]));
+      const carried = new Set(
+        (
+          await m.getRepository(TransactionTag).find({
+            where: { transactionId },
+          })
+        ).map((link) => link.tagId),
+      );
+      const tagNames: string[] = [];
+      const newTagNames: string[] = [];
+      const seen = new Set<string>();
+      for (const name of wanted) {
+        const key = name.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const tag = byKey.get(key);
+        if (!tag) {
+          tagNames.push(name);
+          newTagNames.push(name);
+        } else if (!carried.has(tag.id)) {
+          tagNames.push(tag.name);
+        }
+      }
+      return { tagNames, newTagNames };
+    });
   }
 
   /**
@@ -1049,6 +1284,7 @@ export class TransactionsService {
     originalCurrencyCodes?: string[],
     hasAttachments?: boolean,
     jointAccountIds: string[] = [],
+    externalId?: string,
   ): Promise<PaginatedTransactions> {
     // A page number for one row is counted by comparing that row against the
     // register's order, and only the date order has a comparison to make here
@@ -1068,10 +1304,12 @@ export class TransactionsService {
     const safeLimit = clamped.limit;
     let safePage = clamped.page;
 
-    // Interpret the search term once (amount/date in the user's locale format)
-    // and thread it through the query, the target-page count, and the running
-    // balance so all three match the same rows.
-    const parsedSearch = await this.resolveSearchTerm(userId, search);
+    // Parse the search string once, in the user's number and date formats,
+    // and thread the terms through the query, the target-page count and the
+    // running balance so all three match the same rows.
+    const parsedSearch = await withScopedDb(this.dataSource, (m) =>
+      resolveTransactionSearch(m, userId, search),
+    );
 
     // What the register is showing, in one object, so neither the page a deep
     // link lands on nor any of the three balance regimes can be handed a
@@ -1082,15 +1320,14 @@ export class TransactionsService {
       categoryIds,
       payeeIds,
       tagIds,
-      search,
-      searchAmount: parsedSearch.amount,
-      searchDate: parsedSearch.date,
+      search: parsedSearch,
       amountFrom,
       amountTo,
       statuses,
       originalCurrencyCodes,
       hasAttachments,
       tagKeyFilter,
+      externalId,
       includeInvestmentBrokerage,
     };
 
@@ -1098,31 +1335,9 @@ export class TransactionsService {
     // math, and investment/attachment enrichment -- is one read block on a
     // single withScopedDb manager.
     return withScopedDb(this.dataSource, async (m) => {
-      const queryBuilder = m
-        .getRepository(Transaction)
-        .createQueryBuilder("transaction")
-        .leftJoinAndSelect("transaction.account", "account")
-        .leftJoinAndSelect("transaction.payee", "payee")
-        .leftJoinAndSelect("transaction.category", "category")
-        .leftJoinAndSelect("transaction.tags", "tags")
-        .leftJoinAndSelect("transaction.splits", "splits")
-        .leftJoinAndSelect("splits.category", "splitCategory")
-        .leftJoinAndSelect("splits.transferAccount", "splitTransferAccount")
-        .leftJoinAndSelect("splits.tags", "splitTags")
-        .leftJoinAndSelect("splits.investmentTransaction", "splitInvestmentTx")
-        .leftJoinAndSelect(
-          "splitInvestmentTx.security",
-          "splitInvestmentSecurity",
-        )
-        .leftJoinAndSelect("transaction.linkedTransaction", "linkedTransaction")
-        .leftJoinAndSelect("linkedTransaction.account", "linkedAccount")
-        .leftJoinAndSelect("linkedTransaction.splits", "linkedSplits")
-        .leftJoinAndSelect("linkedSplits.category", "linkedSplitCategory")
-        .leftJoinAndSelect(
-          "linkedSplits.transferAccount",
-          "linkedSplitTransferAccount",
-        )
-        .where(this.registerScope("transaction", userId, jointAccountIds));
+      const queryBuilder = this.registerRowsQuery(m).where(
+        this.registerScope("transaction", userId, jointAccountIds),
+      );
       // The joined aliases are handed over so a sort by account or category
       // orders by the name the reader sees. Only this query joins them; the
       // three that sum the rows newer than a page pass none, which is what
@@ -1164,20 +1379,15 @@ export class TransactionsService {
         });
       }
 
-      if (search && search.trim()) {
-        const searchPattern = `%${escapeLikePattern(search.trim())}%`;
-        queryBuilder.andWhere(
-          buildTransactionSearchClause({
-            transaction: "transaction",
-            splits: "splits",
-          }),
-          {
-            search: searchPattern,
-            searchAmount: parsedSearch.amount,
-            searchDate: parsedSearch.date,
-          },
-        );
-      }
+      // Split grain on the hydrated `splits` alias: a split transaction is
+      // drawn with only its matching lines and a filtered total, as the
+      // category filter draws it (advanced-search plan, question 5).
+      applyParsedSearch(queryBuilder, parsedSearch, {
+        transaction: "transaction",
+        splits: "splits",
+        grain: "split",
+        paramPrefix: "srch",
+      });
 
       if (amountFrom !== undefined) {
         queryBuilder.andWhere("transaction.amount >= :amountFrom", {
@@ -1224,15 +1434,24 @@ export class TransactionsService {
         );
       }
 
+      if (externalId !== undefined) {
+        queryBuilder.andWhere("transaction.externalId = :externalId", {
+          externalId,
+        });
+      }
+
       // Attachment presence filter. An EXISTS subquery against the separate
       // transaction_attachments table keeps this out of the heavily-joined main
       // query, so it never multiplies rows or corrupts pagination.
       if (hasAttachments !== undefined) {
         // Primaries only: a scan pair's hidden original is not an attachment
         // the user has, so "no attachments" must not be false because one is
-        // stored behind the row they deleted the visible half of.
+        // stored behind the row they deleted the visible half of. The row's
+        // own attachments and its linked warranties' documents alike
+        // (attachment-parent.ts).
         const existsSubquery =
-          `SELECT 1 FROM transaction_attachments ta WHERE ta.transaction_id = transaction.id ` +
+          `SELECT 1 FROM transaction_attachments ta WHERE ` +
+          `${attachmentReachableFromTransactionSql("ta", "transaction.id")} ` +
           `AND ${primaryAttachmentSql("ta")}`;
         queryBuilder.andWhere(
           hasAttachments
@@ -1340,8 +1559,66 @@ export class TransactionsService {
         pagination: buildPaginationMeta(safePage, safeLimit, total),
         startingBalance,
         startingBalanceWithheld,
+        ...(parsedSearch && {
+          searchInterpretation: searchInterpretation(parsedSearch),
+        }),
       };
     });
+  }
+
+  /**
+   * Rows chosen by id, in the register's shape: the same joins and the same
+   * investment-link and attachment enrichment as `findAll`. For a surface that
+   * picks the rows itself (the rule editor's Test match) and draws them with
+   * the register's list. The rows come back in the order of `ids`, which the
+   * caller already chose in register order; ordering them again here would be
+   * a second copy of the register's order. Only the caller's own rows are
+   * read; an id that is not one is left out.
+   */
+  async findRegisterRowsByIds(
+    userId: string,
+    ids: readonly string[],
+  ): Promise<TransactionWithInvestmentLink[]> {
+    if (ids.length === 0) return [];
+    return withScopedDb(this.dataSource, async (m) => {
+      const rows = await this.registerRowsQuery(m)
+        .where("transaction.userId = :userId", { userId })
+        .andWhere("transaction.id IN (:...ids)", { ids: [...ids] })
+        .getMany();
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      const ordered = ids
+        .map((id) => byId.get(id))
+        .filter((row): row is Transaction => row !== undefined);
+      return this.enrichWithInvestmentLinks(m, ordered);
+    });
+  }
+
+  /** The register's row query: every relation a listed row is drawn with. */
+  private registerRowsQuery(m: EntityManager): SelectQueryBuilder<Transaction> {
+    return m
+      .getRepository(Transaction)
+      .createQueryBuilder("transaction")
+      .leftJoinAndSelect("transaction.account", "account")
+      .leftJoinAndSelect("transaction.payee", "payee")
+      .leftJoinAndSelect("transaction.category", "category")
+      .leftJoinAndSelect("transaction.tags", "tags")
+      .leftJoinAndSelect("transaction.splits", "splits")
+      .leftJoinAndSelect("splits.category", "splitCategory")
+      .leftJoinAndSelect("splits.transferAccount", "splitTransferAccount")
+      .leftJoinAndSelect("splits.tags", "splitTags")
+      .leftJoinAndSelect("splits.investmentTransaction", "splitInvestmentTx")
+      .leftJoinAndSelect(
+        "splitInvestmentTx.security",
+        "splitInvestmentSecurity",
+      )
+      .leftJoinAndSelect("transaction.linkedTransaction", "linkedTransaction")
+      .leftJoinAndSelect("linkedTransaction.account", "linkedAccount")
+      .leftJoinAndSelect("linkedTransaction.splits", "linkedSplits")
+      .leftJoinAndSelect("linkedSplits.category", "linkedSplitCategory")
+      .leftJoinAndSelect(
+        "linkedSplits.transferAccount",
+        "linkedSplitTransferAccount",
+      );
   }
 
   private async applyCategoryFilters(
@@ -2040,11 +2317,19 @@ export class TransactionsService {
       });
     }
 
+    if (filters.externalId !== undefined) {
+      qb.andWhere("bf.externalId = :bfExternalId", {
+        bfExternalId: filters.externalId,
+      });
+    }
+
     if (filters.hasAttachments !== undefined) {
       // Primaries only, as the listing counts them: a scan pair's hidden
-      // original is not an attachment the user has.
+      // original is not an attachment the user has. The same reach as the
+      // listing, own rows and linked warranties' documents.
       const attachmentExists =
-        `SELECT 1 FROM transaction_attachments bfTa WHERE bfTa.transaction_id = bf.id ` +
+        `SELECT 1 FROM transaction_attachments bfTa WHERE ` +
+        `${attachmentReachableFromTransactionSql("bfTa", "bf.id")} ` +
         `AND ${primaryAttachmentSql("bfTa")}`;
       qb.andWhere(
         filters.hasAttachments
@@ -2069,7 +2354,7 @@ export class TransactionsService {
     // and the uncategorised pseudo-category, whose listing arm asks about a
     // split parent's children).
     const needsSplitsJoin = !!(
-      filters.search ||
+      searchNarrows(filters.search) ||
       (filters.categoryIds &&
         filters.categoryIds.some((id) => id !== "transfer")) ||
       (filters.tagIds && filters.tagIds.length > 0)
@@ -2079,21 +2364,14 @@ export class TransactionsService {
       qb.leftJoin("bf.splits", "bfSplits");
     }
 
-    if (filters.search) {
-      const searchPattern = `%${escapeLikePattern(filters.search.trim())}%`;
-      qb.andWhere(
-        buildTransactionSearchClause({
-          transaction: "bf",
-          splits: "bfSplits",
-          paramName: "bfSearch",
-        }),
-        {
-          bfSearch: searchPattern,
-          bfSearchAmount: filters.searchAmount ?? null,
-          bfSearchDate: filters.searchDate ?? null,
-        },
-      );
-    }
+    // The same terms and grain as the listing, under this subquery's own
+    // parameter prefix (its parameters are copied onto the embedding query).
+    applyParsedSearch(qb, filters.search, {
+      transaction: "bf",
+      splits: "bfSplits",
+      grain: "split",
+      paramPrefix: "bfSrch",
+    });
 
     if (filters.categoryIds && filters.categoryIds.length > 0) {
       const hasUncategorized = filters.categoryIds.includes("uncategorized");
@@ -2185,6 +2463,7 @@ export class TransactionsService {
     const transactionIds = data.map((tx) => tx.id);
     const investmentLinkMap = new Map<string, string>();
     const attachmentCountMap = new Map<string, number>();
+    const warrantyCountMap = new Map<string, number>();
 
     if (transactionIds.length > 0) {
       // includes VOID rows: records read -- the register links a VOID cash
@@ -2202,23 +2481,48 @@ export class TransactionsService {
         }
       }
 
-      // One grouped count over the current page's ids (index-backed by
-      // idx on transaction_id); avoids an N+1 and keeps the blob-free
-      // attachments table off the main query.
+      // One grouped count over the current page's ids; avoids an N+1 and
+      // keeps the blob-free attachments table off the main query. A row's
+      // attachments are its own plus the documents of every warranty linked
+      // to it, archived or not (attachment-parent.ts), so each attachment is
+      // keyed by the transaction it is reached from.
       const attachmentCounts = await m
         .getRepository(TransactionAttachment)
         .createQueryBuilder("ta")
-        .select("ta.transactionId", "transactionId")
+        .leftJoin(Warranty, "w", reachingWarrantyJoinSql("ta", "w"))
+        .select(reachedTransactionIdSql("ta", "w"), "transactionId")
         .addSelect("COUNT(*)", "count")
-        .where("ta.transactionId IN (:...transactionIds)", { transactionIds })
+        .where(
+          `${reachedTransactionIdSql("ta", "w")} IN (:...transactionIds)`,
+          {
+            transactionIds,
+          },
+        )
         // A scan pair counts once: the register's paperclip is a count of what
         // the attachments list shows, and that list hides originals.
         .andWhere(primaryAttachmentSql("ta"))
-        .groupBy("ta.transactionId")
+        .groupBy(reachedTransactionIdSql("ta", "w"))
         .getRawMany<{ transactionId: string; count: string }>();
 
       for (const row of attachmentCounts) {
         attachmentCountMap.set(row.transactionId, Number(row.count));
+      }
+
+      // The same shape for warranties (idx_warranties_transaction): an
+      // archived warranty is put away, so the register's badge does not
+      // count it.
+      const warrantyCounts = await m
+        .getRepository(Warranty)
+        .createQueryBuilder("w")
+        .select("w.transactionId", "transactionId")
+        .addSelect("COUNT(*)", "count")
+        .where("w.transactionId IN (:...transactionIds)", { transactionIds })
+        .andWhere("w.archivedAt IS NULL")
+        .groupBy("w.transactionId")
+        .getRawMany<{ transactionId: string; count: string }>();
+
+      for (const row of warrantyCounts) {
+        warrantyCountMap.set(row.transactionId, Number(row.count));
       }
     }
 
@@ -2229,6 +2533,7 @@ export class TransactionsService {
       isVoid: tx.isVoid,
       linkedInvestmentTransactionId: investmentLinkMap.get(tx.id) || null,
       attachmentCount: attachmentCountMap.get(tx.id) ?? 0,
+      warrantyCount: warrantyCountMap.get(tx.id) ?? 0,
     }));
   }
 
@@ -2278,6 +2583,68 @@ export class TransactionsService {
     return transaction;
   }
 
+  /**
+   * A transfer leg's amount, account, date and rate belong to the pair, so the
+   * generic row update refuses a change to any of them on one leg; the
+   * transfer routes write both legs together (A26-M10, MON-H11). Judged on the
+   * row the caller has locked: a row converted to a transfer since the caller
+   * looked carries its link by now (`convertToTransfer` sets it with the
+   * flag), and the stored rate is read under that lock. A change is a value
+   * difference: a form re-sending the figures the row already holds is not one.
+   */
+  private async assertNoStructuralTransferLegEdit(
+    m: EntityManager,
+    userId: string,
+    locked: LockedTransactionRow,
+    snapshotIsTransfer: boolean,
+    updateData: Omit<UpdateTransactionDto, "splits" | "tagIds" | "createdAt">,
+  ): Promise<void> {
+    if (!locked.linkedTransactionId && !snapshotIsTransfer) return;
+    let structural =
+      (updateData.amount !== undefined &&
+        roundMoney(Number(updateData.amount)) !==
+          roundMoney(Number(locked.amount))) ||
+      (updateData.accountId !== undefined &&
+        updateData.accountId !== locked.accountId) ||
+      (updateData.transactionDate !== undefined &&
+        updateData.transactionDate !== locked.transactionDate);
+    if (!structural && updateData.exchangeRate !== undefined) {
+      const row = await m.getRepository(Transaction).findOne({
+        where: { id: locked.id, userId },
+      });
+      structural =
+        roundFxRate(Number(updateData.exchangeRate)) !==
+        roundFxRate(Number(row?.exchangeRate));
+    }
+    if (structural) {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.cannotEditTransfer",
+          "Transfers can't be edited here. Edit the transfer from the Transactions screen.",
+        ),
+      );
+    }
+  }
+
+  /**
+   * One transaction as the register shows it: the row plus the facts the list
+   * adds to every row (`linkedInvestmentTransactionId`, `attachmentCount`,
+   * `warrantyCount`), from the same enrichment. A form opened on a row read
+   * by id, from any page, then knows what the register would: whether the
+   * row has warranties to list, and whether an investment owns it.
+   */
+  async findOneForDisplay(
+    userId: string,
+    id: string,
+    jointAccountIds: string[] = [],
+  ): Promise<TransactionWithInvestmentLink> {
+    const transaction = await this.findOne(userId, id, jointAccountIds);
+    const [enriched] = await withScopedDb(this.dataSource, (m) =>
+      this.enrichWithInvestmentLinks(m, [transaction]),
+    );
+    return enriched;
+  }
+
   async update(
     userId: string,
     id: string,
@@ -2291,6 +2658,13 @@ export class TransactionsService {
        * (an AI review request marked applied) commits or rolls back with it.
        */
       beforeWrite?: (m: EntityManager) => Promise<void>;
+      /**
+       * Tag names to ADD to the transaction, inside the write's transaction:
+       * the user's tag of that name (case-insensitively) or a new one, linked
+       * without touching the tags the transaction already carries. Independent of
+       * `tagIds`, which replaces the whole set.
+       */
+      addTagNames?: readonly string[];
     },
   ): Promise<Transaction> {
     const transaction = await this.findOne(userId, id);
@@ -2301,6 +2675,10 @@ export class TransactionsService {
     // old amount/date/status are read from the locked row inside the transaction
     // below (audit P4-003), not from this pre-lock snapshot.
     const counterpartAccountIds = new Set<string>();
+    // Securities of the embedded investment rows this edit tore down, recreated
+    // or crossed the VOID boundary with, repriced by the bond engine after the
+    // commit (INV-BOND-005, INV-CACHE-001).
+    const touchedSecurityIds = new Set<string>();
 
     const { splits, tagIds, createdAt, ...updateData } = updateTransactionDto;
 
@@ -2412,6 +2790,13 @@ export class TransactionsService {
       // Strict reconciled lock, against the LOCKED row and before any write:
       // an edit refused here must not already have happened.
       await assertReconciledRowsMutable(m, userId, [locked]);
+      await this.assertNoStructuralTransferLegEdit(
+        m,
+        userId,
+        locked,
+        transaction.isTransfer,
+        updateData,
+      );
       if (options?.beforeWrite) await options.beforeWrite(m);
 
       const oldAmount = locked.amount;
@@ -2433,12 +2818,21 @@ export class TransactionsService {
             updateData.amount ?? locked.amount,
           );
 
+          // Read before the embedded rows are torn down: the recreated rows keep
+          // the bond series of the rows they replace (INV-BOND-007).
+          const carriedSeries = await readEmbeddedSeriesCarry(m, userId, id);
+
           // Both the delete of the old counterparts and the create of the new
           // ones touch accounts the parent never named; route them into the
           // set this method already invalidates after commit (recheck RR5-002).
+          // One guard for the replacement: verified after the successors are
+          // written, so a replacement that leaves the lots as they were is not
+          // refused half way (INV-BOND-007).
+          const replacementGuard = createBondWriteGuard(m, userId);
           for (const acc of await this.splitService.deleteSplitSideEffects(
             id,
             userId,
+            { touchedSecurityIds, bondGuard: replacementGuard },
           )) {
             counterpartAccountIds.add(acc);
           }
@@ -2467,9 +2861,12 @@ export class TransactionsService {
               parentStatus:
                 (updateData.status as TransactionStatus | undefined) ??
                 ((locked.status ?? undefined) as TransactionStatus | undefined),
+              carriedSeries,
+              touchedSecurityIds,
             },
             counterpartAccountIds,
           );
+          await replacementGuard.verify();
 
           // Set split-level tags (and mirror them onto any transfer counterpart)
           if (savedSplits) {
@@ -2479,6 +2876,7 @@ export class TransactionsService {
           for (const acc of await this.splitService.deleteSplitSideEffects(
             id,
             userId,
+            { touchedSecurityIds },
           )) {
             counterpartAccountIds.add(acc);
           }
@@ -2584,6 +2982,21 @@ export class TransactionsService {
       if (tagIds !== undefined) {
         await this.tagsService.setTransactionTags(id, tagIds, userId);
       }
+      // Tags a proposal adds (an email-receipt profile's `tag`): created when
+      // missing, linked additively, in this same transaction.
+      if (options?.addTagNames && options.addTagNames.length > 0) {
+        const tags = await this.tagsService.findOrCreateByNames(
+          m,
+          userId,
+          options.addTagNames,
+        );
+        await this.tagsService.addTransactionTags(
+          m,
+          userId,
+          [id],
+          tags.map((tag) => tag.id),
+        );
+      }
 
       const savedTransaction = await m.findOne(Transaction, {
         where: { id, userId },
@@ -2620,6 +3033,7 @@ export class TransactionsService {
           id,
           userId,
           newStatus,
+          touchedSecurityIds,
         )) {
           counterpartAccountIds.add(affected);
         }
@@ -2710,6 +3124,10 @@ export class TransactionsService {
         this.netWorthService.triggerDebouncedRecalc(affected, userId);
       }
     }
+    await this.splitService.recomputeBondPricesAfterWrite(
+      userId,
+      touchedSecurityIds,
+    );
 
     this.actionHistoryService.record(userId, {
       entityType: "transaction",
@@ -2737,7 +3155,19 @@ export class TransactionsService {
     return finalTransaction;
   }
 
-  async remove(userId: string, id: string): Promise<void> {
+  async remove(
+    userId: string,
+    id: string,
+    options?: {
+      /**
+       * Runs inside the delete's own transaction, after the row lock and the
+       * reconciled lock and before anything is removed. A throw refuses the
+       * delete with nothing written (the joint register's grant re-check,
+       * A26-M04).
+       */
+      beforeWrite?: (m: EntityManager) => Promise<void>;
+    },
+  ): Promise<void> {
     const transaction = await this.findOne(userId, id);
     const beforeSnapshot = this.snapshotTransaction(transaction);
     // Every account this deletion moves, not only the selected row's, so the
@@ -2748,6 +3178,7 @@ export class TransactionsService {
     // snapshot account would re-introduce the stale one into the net-worth
     // fan-out (RR5-002 must not undo the P4-002 locked-account guarantee).
     const affectedAccountIds = new Set<string>();
+    const touchedSecurityIds = new Set<string>();
 
     // One transaction: split side effects, linked/parent cleanup, the delete
     // itself, and the balance adjustment commit or roll back together.
@@ -2785,6 +3216,7 @@ export class TransactionsService {
       }
       // Strict reconciled lock, before the delete and any split cleanup.
       await assertReconciledRowsMutable(m, userId, [locked]);
+      if (options?.beforeWrite) await options.beforeWrite(m);
 
       // The locked row's account joins the fan-out set: a concurrent edit could
       // have moved the row, and the balance reversal below uses locked.accountId.
@@ -2796,6 +3228,7 @@ export class TransactionsService {
         for (const acc of await this.splitService.deleteSplitSideEffects(
           id,
           userId,
+          { touchedSecurityIds },
         )) {
           affectedAccountIds.add(acc);
         }
@@ -2836,6 +3269,10 @@ export class TransactionsService {
     for (const affected of affectedAccountIds) {
       this.netWorthService.triggerDebouncedRecalc(affected, userId);
     }
+    await this.splitService.recomputeBondPricesAfterWrite(
+      userId,
+      touchedSecurityIds,
+    );
     this.recordTransactionAction(
       userId,
       { ...transaction, ...beforeSnapshot } as Transaction,
@@ -2965,6 +3402,10 @@ export class TransactionsService {
     userId: string,
     id: string,
     isCleared: boolean,
+    options?: {
+      /** Inside the status write's transaction, after the row lock (A26-M04). */
+      beforeWrite?: (m: EntityManager) => Promise<void>;
+    },
   ): Promise<Transaction> {
     return this.reconciliationService.markCleared(
       userId,
@@ -2973,6 +3414,7 @@ export class TransactionsService {
       (accountId: string, userId: string) =>
         this.netWorthService.triggerDebouncedRecalc(accountId, userId),
       this.findOne.bind(this),
+      options?.beforeWrite,
     );
   }
 
@@ -3192,14 +3634,60 @@ export class TransactionsService {
     createTransferDto: CreateTransferDto,
     actor?: TransferActor,
   ): Promise<TransferResult> {
+    const outcome = await this.createTransferWithOutcome(
+      userId,
+      createTransferDto,
+      actor,
+    );
+    return outcome.transfer;
+  }
+
+  /**
+   * `createTransfer`, saying whether the legs were written by this call or
+   * already existed under the request's `externalId`. An existing transfer is
+   * read back as it stands, with no history entry, tags or recalculation.
+   */
+  async createTransferWithOutcome(
+    userId: string,
+    createTransferDto: CreateTransferDto,
+    actor?: TransferActor,
+  ): Promise<{ transfer: TransferResult; created: boolean }> {
+    const findOne = this.findOne.bind(this);
+    // A retry of a transfer from the caller's own account is answered before
+    // any validation or rate resolution; see findOwnTransferByExternalId.
+    const own = await this.transferService.findOwnTransferByExternalId(
+      userId,
+      createTransferDto,
+    );
+    if (own) {
+      return {
+        transfer: await this.transferService.readTransfer(own, findOne),
+        created: false,
+      };
+    }
     const prepared = await this.prepareTransfer(
       userId,
       createTransferDto,
       actor,
     );
-    const { savedFromId, savedToId } =
-      await this.transferService.writeTransferLegs(prepared);
-    return this.completeTransfer(prepared, savedFromId, savedToId);
+    const written = await this.transferService.writeTransferLegs(prepared);
+    if (written.existing) {
+      return {
+        transfer: await this.transferService.readTransfer(
+          { ...written, existing: written.existing },
+          findOne,
+        ),
+        created: false,
+      };
+    }
+    return {
+      transfer: await this.completeTransfer(
+        prepared,
+        written.savedFromId,
+        written.savedToId,
+      ),
+      created: true,
+    };
   }
 
   /**
@@ -3228,7 +3716,7 @@ export class TransactionsService {
   writeTransferLegs(
     prepared: PreparedTransfer,
     manager?: EntityManager,
-  ): Promise<{ savedFromId: string; savedToId: string }> {
+  ): Promise<WrittenTransfer> {
     return this.transferService.writeTransferLegs(prepared, manager);
   }
 

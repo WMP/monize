@@ -1,5 +1,5 @@
 import { ImportInvestmentProcessorService } from "./import-investment-processor.service";
-import { ImportContext } from "./import-context";
+import { ImportContext, bondStateOf } from "./import-context";
 import {
   InvestmentAction,
   InvestmentTransaction,
@@ -21,6 +21,7 @@ describe("ImportInvestmentProcessorService", () => {
   const makeImportResult = (): ImportResultDto => ({
     imported: 0,
     skipped: 0,
+    skippedRows: [],
     errors: 0,
     errorMessages: [],
     categoriesCreated: 0,
@@ -84,8 +85,10 @@ describe("ImportInvestmentProcessorService", () => {
       importStartTime: new Date(),
       dateCounters: new Map(),
       affectedAccountIds: new Set(),
+      settledScheduleIds: new Set(),
       importResult: makeImportResult(),
       transferDupCounts: new Map(),
+      heldExternalIds: new Map(),
       ...overrides,
     };
   };
@@ -135,6 +138,204 @@ describe("ImportInvestmentProcessorService", () => {
       expect(firstSaveArg.commission).toBe(9.99);
       // BUY: totalAmount = quantity * price + commission
       expect(firstSaveArg.totalAmount).toBe(1509.99);
+    });
+
+    describe("the bond series of a program-linked security (INV-BOND-007)", () => {
+      const SERIES = "11111111-1111-5111-8111-111111111111";
+      const buy = {
+        action: "Buy",
+        security: "EDO",
+        quantity: 10,
+        price: 100,
+        commission: 0,
+        date: "2026-10-15",
+      };
+      const linked = (
+        ctx: ImportContext,
+        opts: {
+          linked?: boolean;
+          onSale: string[];
+          /** Successive answers of the ledger read; the last repeats. */
+          ledgers?: Array<Array<Record<string, unknown>>>;
+        },
+      ) => {
+        let ledgerReads = 0;
+        return managerOf(ctx).query.mockImplementation(async (sql: string) => {
+          if (sql.includes("bond_auto_fetch")) {
+            return [
+              {
+                id: "sec-1",
+                user_id: "user-1",
+                symbol: "EDO",
+                currency_code: "PLN",
+                bond_program_id: opts.linked === false ? null : "prog-1",
+                bond_auto_fetch: false,
+              },
+            ];
+          }
+          if (sql.includes("counterpart_account_id")) {
+            const all = opts.ledgers ?? [[]];
+            const rows = all[Math.min(ledgerReads, all.length - 1)];
+            ledgerReads += 1;
+            return rows;
+          }
+          if (sql.includes("s.bond_program_id AS id")) {
+            return [
+              opts.linked === false
+                ? { id: null, program_code: null }
+                : { id: "prog-1", program_code: "EDO" },
+            ];
+          }
+          if (sql.includes("saleWindow")) {
+            return opts.onSale.map((id) => ({ id }));
+          }
+          return [[], 1];
+        });
+      };
+      const makeCtx = () =>
+        makeContext({ securityMap: new Map([["EDO", "sec-1"]]) });
+
+      it("stores the series the date puts on sale on an imported purchase", async () => {
+        const ctx = makeCtx();
+        linked(ctx, { onSale: [SERIES] });
+        await service.processTransaction(ctx, buy);
+        expect(managerOf(ctx).save.mock.calls[0][0].bondInstrumentId).toBe(
+          SERIES,
+        );
+      });
+
+      it("stores NULL, counted, instead of failing the row when no series covers the date (the lots name it)", async () => {
+        const ctx = makeCtx();
+        linked(ctx, { onSale: [] });
+        await service.processTransaction(ctx, buy);
+        expect(
+          managerOf(ctx).save.mock.calls[0][0].bondInstrumentId,
+        ).toBeNull();
+        expect(ctx.importResult.imported).toBe(1);
+        expect(ctx.importResult.bondRowsWithoutSeries).toBe(1);
+      });
+
+      it("omits the count when every acquisition resolved", async () => {
+        const ctx = makeCtx();
+        linked(ctx, { onSale: [SERIES] });
+        await service.processTransaction(ctx, buy);
+        expect(ctx.importResult.bondRowsWithoutSeries).toBeUndefined();
+      });
+
+      it("never infers the series of a share transfer in (SHRSIN) or a grant from the date", async () => {
+        const ctx = makeCtx();
+        linked(ctx, { onSale: [SERIES] });
+        await service.processTransaction(ctx, { ...buy, action: "ShrsIn" });
+        await service.processTransaction(ctx, { ...buy, action: "Grant" });
+        const saved = managerOf(ctx)
+          .save.mock.calls.map((c) => c[0])
+          .filter((e) => e instanceof InvestmentTransaction);
+        expect(saved.map((e) => e.bondInstrumentId)).toEqual([null, null]);
+        expect(ctx.importResult.bondRowsWithoutSeries).toBe(2);
+      });
+
+      it("looks the program up once per run, however many rows the file has", async () => {
+        const ctx = makeCtx();
+        linked(ctx, { onSale: [SERIES] });
+        await service.processTransaction(ctx, buy);
+        await service.processTransaction(ctx, { ...buy, date: "2026-10-16" });
+        await service.processTransaction(ctx, { ...buy, date: "2026-10-17" });
+        const lookups = managerOf(ctx).query.mock.calls.filter(([sql]) =>
+          String(sql).includes("s.bond_program_id AS id"),
+        );
+        expect(lookups).toHaveLength(1);
+      });
+
+      it("infers the series on sale once per (program, date), not once per row", async () => {
+        const ctx = makeCtx();
+        linked(ctx, { onSale: [SERIES] });
+        await service.processTransaction(ctx, buy);
+        await service.processTransaction(ctx, buy);
+        await service.processTransaction(ctx, { ...buy, action: "ReinvDiv" });
+        const sameDay = managerOf(ctx).query.mock.calls.filter(([sql]) =>
+          String(sql).includes("ORDER BY s.series_code"),
+        );
+        expect(sameDay).toHaveLength(1);
+        const saved = managerOf(ctx)
+          .save.mock.calls.map((c) => c[0])
+          .filter((e) => e instanceof InvestmentTransaction);
+        expect(saved.length).toBeGreaterThanOrEqual(3);
+        expect(new Set(saved.map((e) => e.bondInstrumentId))).toEqual(
+          new Set([SERIES]),
+        );
+
+        await service.processTransaction(ctx, { ...buy, date: "2026-10-16" });
+        expect(
+          managerOf(ctx).query.mock.calls.filter(([sql]) =>
+            String(sql).includes("ORDER BY s.series_code"),
+          ),
+        ).toHaveLength(2);
+      });
+
+      it("remembers a date with no series on sale too (null is an answer)", async () => {
+        const ctx = makeCtx();
+        linked(ctx, { onSale: [] });
+        await service.processTransaction(ctx, buy);
+        await service.processTransaction(ctx, buy);
+        expect(
+          managerOf(ctx).query.mock.calls.filter(([sql]) =>
+            String(sql).includes("ORDER BY s.series_code"),
+          ),
+        ).toHaveLength(1);
+        expect(ctx.importResult.bondRowsWithoutSeries).toBe(2);
+      });
+
+      it("does not count a row without a series whose cash leg then fails (the caller rolls the row back)", async () => {
+        const ctx = makeCtx();
+        linked(ctx, { onSale: [] });
+        const cash = jest
+          .spyOn(service as any, "processCashTransaction")
+          .mockRejectedValueOnce(new Error("cash leg failed"));
+
+        await expect(service.processTransaction(ctx, buy)).rejects.toThrow(
+          "cash leg failed",
+        );
+        expect(ctx.importResult.bondRowsWithoutSeries).toBeUndefined();
+
+        cash.mockResolvedValue(undefined as never);
+        await service.processTransaction(ctx, buy);
+        expect(ctx.importResult.bondRowsWithoutSeries).toBe(1);
+      });
+
+      it("the run's guard refuses the file after which a removal is not covered, once it is checked", async () => {
+        const ctx = makeCtx();
+        const sell = {
+          id: "s1",
+          action: "SELL",
+          status: "CLEARED",
+          tx_date: "2026-10-15",
+          quantity: "10",
+          account_id: "acc-1",
+          bond_instrument_id: null,
+          counterpart_account_id: null,
+        };
+        linked(ctx, { onSale: [SERIES], ledgers: [[], [sell]] });
+        await service.processTransaction(ctx, { ...buy, action: "Sell" });
+        await expect(bondStateOf(ctx).guard.verify()).rejects.toMatchObject({
+          response: { errorCode: "OVER_REMOVAL" },
+        });
+      });
+
+      it("leaves a sale without a series, and an unlinked security's rows without one", async () => {
+        const sale = makeCtx();
+        linked(sale, { onSale: [SERIES] });
+        await service.processTransaction(sale, { ...buy, action: "Sell" });
+        expect(
+          managerOf(sale).save.mock.calls[0][0].bondInstrumentId,
+        ).toBeNull();
+
+        const unlinked = makeCtx();
+        linked(unlinked, { linked: false, onSale: [SERIES] });
+        await service.processTransaction(unlinked, buy);
+        expect(
+          managerOf(unlinked).save.mock.calls[0][0].bondInstrumentId,
+        ).toBeNull();
+      });
     });
 
     describe("foreign-security cash posting (P5-003 / P5-009 in the import path)", () => {
@@ -725,6 +926,38 @@ describe("ImportInvestmentProcessorService", () => {
       expect(cashTx[0].amount).toBeGreaterThan(0);
     });
 
+    it("should create a positive cash transaction for a return of capital", async () => {
+      const securityMap = new Map<string, string | null>();
+      securityMap.set("Test Stock", "sec-1");
+      const ctx = makeContext({ securityMap });
+
+      managerOf(ctx).findOne.mockImplementation((entity: any, opts: any) => {
+        if (entity === Security && opts?.where?.id === "sec-1") {
+          return Promise.resolve({ id: "sec-1", symbol: "TST" });
+        }
+        return Promise.resolve(null);
+      });
+
+      await service.processTransaction(ctx, {
+        action: "RtrnCap",
+        security: "Test Stock",
+        date: "2025-01-15",
+        amount: 125.5,
+      });
+
+      const saveCalls = managerOf(ctx).save.mock.calls;
+      const investmentTx = saveCalls.find(
+        (call: any) => call[0] instanceof InvestmentTransaction,
+      );
+      expect(investmentTx[0].totalAmount).toBe(125.5);
+      const cashTx = saveCalls.find(
+        (call: any) =>
+          call[0]?.currencyCode === "USD" && call[0]?.amount !== undefined,
+      );
+      expect(cashTx).toBeDefined();
+      expect(cashTx[0].amount).toBe(125.5);
+    });
+
     it("should NOT create cash transaction for SPLIT action", async () => {
       const ctx = makeContext();
       const qifTx = {
@@ -1118,8 +1351,8 @@ describe("ImportInvestmentProcessorService", () => {
       expect(ctx.importResult.imported).toBe(1);
     });
 
-    it("maps RtrnCap to DIVIDEND", async () => {
-      await testActionMapping("RtrnCap", InvestmentAction.DIVIDEND);
+    it("maps RtrnCap to RETURN_OF_CAPITAL, not DIVIDEND (#1800)", async () => {
+      await testActionMapping("RtrnCap", InvestmentAction.RETURN_OF_CAPITAL);
     });
 
     it("maps MargInt to INTEREST", async () => {
@@ -1742,6 +1975,15 @@ describe("ImportInvestmentProcessorService", () => {
 
       expect(ctx.importResult.skipped).toBe(1);
       expect(ctx.importResult.imported).toBe(0);
+      expect(ctx.importResult.skippedRows).toEqual([
+        {
+          date: "2025-01-15",
+          amount: 300,
+          currencyCode: "USD",
+          payee: "",
+          reason: "duplicateTransfer",
+        },
+      ]);
     });
 
     it("Cash with transfer account creates linked transactions like XOut", async () => {

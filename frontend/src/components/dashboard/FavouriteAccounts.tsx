@@ -17,22 +17,29 @@ import { useDragReorder, DropIndicatorLine } from '@/hooks/useDragReorder';
 import { WidgetHeading } from './widget-meta';
 import { CARD_CLASS } from '@/components/ui/Card';
 import { preferredCurrency } from '@/lib/default-currency';
+import { useViewDefault } from '@/hooks/useViewDefault';
+import { opensAccountDashboard } from '@/lib/account-detail-views';
+import { BUILT_IN_VIEW_DEFAULTS } from '@/lib/view-defaults';
 
 interface FavouriteAccountsProps {
   accounts: Account[];
   brokerageMarketValues?: Map<string, number>;
   /** Holdings account id -> how many of its holdings have no price. */
   unpricedHoldingCounts?: Map<string, number>;
+  /** Holdings account ids whose valuation is a subtotal for any cause, a missing rate included. */
+  incompleteHoldingAccountIds?: ReadonlySet<string>;
   isLoading: boolean;
   onAccountsChanged?: () => void;
 }
 
-export function FavouriteAccounts({ accounts, brokerageMarketValues, unpricedHoldingCounts, isLoading, onAccountsChanged: _onAccountsChanged }: FavouriteAccountsProps) {
+export function FavouriteAccounts({ accounts, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds, isLoading, onAccountsChanged: _onAccountsChanged }: FavouriteAccountsProps) {
   const mainAccountName = useMainAccountName();
   const t = useTranslations('dashboard');
   const tAccounts = useTranslations('accounts');
   const router = useRouter();
   const preferences = usePreferencesStore((s) => s.preferences);
+  const accountOpenTarget =
+    useViewDefault('accountOpenTarget') ?? BUILT_IN_VIEW_DEFAULTS.accountOpenTarget;
   const { formatCurrency } = useNumberFormat();
   const defaultCurrency = preferredCurrency(preferences?.defaultCurrency);
   const [reordering, setReordering] = useState(false);
@@ -48,11 +55,12 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, unpricedHol
     for (const logical of buildLogicalAccounts(accounts, mainAccountName, {
       marketValues: brokerageMarketValues ?? new Map(),
       unpricedCounts: unpricedHoldingCounts ?? new Map(),
+      incompleteAccountIds: incompleteHoldingAccountIds,
     })) {
       for (const id of logical.memberIds) map.set(id, logical);
     }
     return map;
-  }, [accounts, mainAccountName, brokerageMarketValues, unpricedHoldingCounts]);
+  }, [accounts, mainAccountName, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds]);
 
   // Favouriting both halves of a pair is favouriting one account, so it gets
   // one card -- the brokerage half stands for the entity.
@@ -71,17 +79,21 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, unpricedHol
       .sort((a, b) => a.favouriteSortOrder - b.favouriteSortOrder);
 
   /**
-   * Where a card goes when it is clicked. Nothing moves while the list is being
-   * reordered -- a drag that ends over a card must not navigate.
+   * Where a card goes when it is clicked: the account's register, or its
+   * detail page for a reader who chose the dashboard in Settings
+   * (`accountOpenTarget`). Nothing moves while the list is being reordered --
+   * a drag that ends over a card must not navigate.
    */
   const navigateTo = (account: Account) => () => {
     if (reordering) return;
     const logical = logicalByMemberId.get(account.id);
     const target = logical?.primary ?? account;
     router.push(
-      target.accountSubType === 'INVESTMENT_BROKERAGE'
-        ? `/investments?accountId=${target.id}`
-        : `/transactions?accountId=${target.id}`,
+      opensAccountDashboard(target.accountType, accountOpenTarget)
+        ? `/accounts/${target.id}`
+        : target.accountSubType === 'INVESTMENT_BROKERAGE'
+          ? `/investments?accountId=${target.id}`
+          : `/transactions?accountId=${target.id}`,
     );
   };
 
@@ -137,7 +149,7 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, unpricedHol
   if (isLoading) {
     return (
       <div className={`${CARD_CLASS} p-3 sm:p-6 lg:self-start`}>
-        <WidgetHeading id="favourite-accounts" className="mb-4">
+        <WidgetHeading id="favourite-accounts" href="/accounts" className="mb-4">
           {t('favouriteAccounts.title')}
         </WidgetHeading>
         <div className="animate-pulse space-y-3">
@@ -152,7 +164,7 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, unpricedHol
   if (favouriteAccounts.length === 0) {
     return (
       <div className={`${CARD_CLASS} p-3 sm:p-6 lg:self-start`}>
-        <WidgetHeading id="favourite-accounts" className="mb-4">
+        <WidgetHeading id="favourite-accounts" href="/accounts" className="mb-4">
           {t('favouriteAccounts.title')}
         </WidgetHeading>
         <p className="text-gray-500 dark:text-gray-400 text-sm">
@@ -165,7 +177,7 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, unpricedHol
   return (
     <div className={`${CARD_CLASS} p-3 sm:p-6 lg:self-start`}>
       <div className="flex items-center justify-between mb-4">
-        <WidgetHeading id="favourite-accounts">
+        <WidgetHeading id="favourite-accounts" href="/accounts">
           {t('favouriteAccounts.title')}
         </WidgetHeading>
         {favouriteAccounts.length > 1 && (

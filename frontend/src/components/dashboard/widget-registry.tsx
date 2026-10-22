@@ -21,6 +21,7 @@ const widgetSkeleton = (minHeight = 'lg:min-h-[540px]') =>
   function WidgetSkeleton() {
     return <Card padding="md" className={minHeight} />;
   };
+const WarrantiesExpiringWidget = dynamic(() => import('./WarrantiesExpiringWidget').then(m => m.WarrantiesExpiringWidget), { ssr: false, loading: widgetSkeleton('lg:min-h-[390px]') });
 const ExpensesPieChart = dynamic(() => import('./ExpensesPieChart').then(m => m.ExpensesPieChart), {
   ssr: false,
   loading: widgetSkeleton(),
@@ -48,11 +49,13 @@ const SectorWeightingsWidget = dynamic(() => import('./SectorWeightingsWidget').
 const SecurityTypeAllocationWidget = dynamic(() => import('./SecurityTypeAllocationWidget').then(m => m.SecurityTypeAllocationWidget), { ssr: false, loading: widgetSkeleton() });
 const GeographicAllocationWidget = dynamic(() => import('./GeographicAllocationWidget').then(m => m.GeographicAllocationWidget), { ssr: false, loading: widgetSkeleton() });
 const RecurringExpensesWidget = dynamic(() => import('./RecurringExpensesWidget').then(m => m.RecurringExpensesWidget), { ssr: false, loading: widgetSkeleton() });
+const CashFlowForecastWidget = dynamic(() => import('./CashFlowForecastWidget').then(m => m.CashFlowForecastWidget), { ssr: false, loading: widgetSkeleton() });
 const WeekendVsWeekdayWidget = dynamic(() => import('./WeekendVsWeekdayWidget').then(m => m.WeekendVsWeekdayWidget), { ssr: false, loading: widgetSkeleton() });
 
 export type DashboardWidgetId =
   | 'favourite-accounts'
   | 'upcoming-bills'
+  | 'cash-flow-forecast'
   | 'top-movers'
   | 'favourite-securities'
   | 'net-worth'
@@ -73,7 +76,8 @@ export type DashboardWidgetId =
   | 'geographic-allocation'
   | 'recurring-expenses'
   | 'weekend-weekday'
-  | 'cash-flow-sankey';
+  | 'cash-flow-sankey'
+  | 'warranties-expiring';
 
 /** The kind of visualization a widget renders, shown as an icon in Customize. */
 export type WidgetIconType = 'bar' | 'line' | 'pie' | 'table' | 'list';
@@ -85,9 +89,13 @@ export interface DashboardWidgetContext {
   topMovers: TopMover[];
   favouriteSecurities: FavouriteSecurityQuote[];
   netWorthData: MonthlyNetWorth[];
+  /** The net worth request failed; `netWorthData` is then empty, not "no history". */
+  netWorthFailed: boolean;
   brokerageMarketValues: Map<string, number>;
   /** Holdings account id -> how many of its holdings have no price. */
   unpricedHoldingCounts: Map<string, number>;
+  /** Holdings account ids whose valuation is a subtotal for any cause, a missing rate included. */
+  incompleteHoldingAccountIds: ReadonlySet<string>;
   isLoading: boolean;
   hasInvestments: boolean;
   hasSecurities: boolean;
@@ -130,6 +138,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
         accounts={ctx.accounts}
         brokerageMarketValues={ctx.brokerageMarketValues}
         unpricedHoldingCounts={ctx.unpricedHoldingCounts}
+        incompleteHoldingAccountIds={ctx.incompleteHoldingAccountIds}
         isLoading={ctx.isLoading}
         onAccountsChanged={ctx.onAccountsChanged}
       />
@@ -147,6 +156,21 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
         accounts={ctx.accounts}
         isLoading={ctx.isLoading}
         maxItems={upcomingBillsMaxItems(ctx.accounts)}
+      />
+    ),
+  },
+  // Opt-in, and listed beside Upcoming Bills so the Customize modal's hidden
+  // widgets offer the two together.
+  {
+    id: 'cash-flow-forecast',
+    titleSection: 'cashFlowForecast',
+    iconType: 'line',
+    defaultEnabled: false,
+    render: (ctx) => (
+      <CashFlowForecastWidget
+        scheduledTransactions={ctx.scheduledTransactions}
+        accounts={ctx.accounts}
+        isLoading={ctx.isLoading}
       />
     ),
   },
@@ -196,14 +220,14 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
     titleSection: 'netWorth',
     iconType: 'line',
     defaultEnabled: true,
-    render: (ctx) => <NetWorthChart data={ctx.netWorthData} isLoading={ctx.isLoading} />,
+    render: (ctx) => <NetWorthChart isLoading={ctx.isLoading} />,
   },
   {
     id: 'assets-liabilities',
     titleSection: 'assetsVsLiabilities',
     iconType: 'bar',
     defaultEnabled: true,
-    render: (ctx) => <AssetsVsLiabilities data={ctx.netWorthData} isLoading={ctx.isLoading} />,
+    render: (ctx) => <AssetsVsLiabilities data={ctx.netWorthData} isLoading={ctx.isLoading} error={ctx.netWorthFailed} />,
   },
   {
     id: 'expenses-pie',
@@ -326,6 +350,15 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
     iconType: 'bar',
     defaultEnabled: false,
     render: (ctx) => <CashFlowSankeyWidget accounts={ctx.accounts} isLoading={ctx.isLoading} />,
+  },
+  // Opt-in for the owner; a delegate sees it with the warranties section.
+  {
+    id: 'warranties-expiring',
+    titleSection: 'warrantiesExpiring',
+    iconType: 'list',
+    defaultEnabled: false,
+    delegateVisible: (sections) => !!sections?.warranties,
+    render: (ctx) => <WarrantiesExpiringWidget isLoading={ctx.isLoading} />,
   },
 ];
 

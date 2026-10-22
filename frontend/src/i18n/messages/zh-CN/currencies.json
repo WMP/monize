@@ -13,6 +13,14 @@
     "modalTitleNew": "新增货币",
     "loading": "加载货币中...",
     "count": "{count, plural, one {# 种货币} other {# 种货币}}",
+    "providers": {
+      "line": "汇率来源：{providers}",
+      "separator": "，其次 ",
+      "names": {
+        "frankfurter": "Frankfurter（欧洲央行参考汇率）",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "加载货币失败",
       "updated": "货币更新成功",
@@ -24,6 +32,7 @@
       "statusFailed": "更新货币状态失败",
       "ratesRefreshed": "汇率已刷新：{updated} 对已更新",
       "ratesRefreshedWithFailed": "汇率已刷新：{updated} 对成功，{failed} 对失败",
+      "ratesAllFailed": "无法获取任何汇率；提供商未响应",
       "ratesFailed": "刷新汇率失败"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter（欧洲央行）",
         "mnyImport": "Money 导入",
         "unknown": "未知"
       }

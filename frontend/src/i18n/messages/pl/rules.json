@@ -90,7 +90,16 @@
       "imported": "Transakcja zostaje zaimportowana",
       "atLeastOne": "Zostaw zaznaczoną co najmniej jedną opcję",
       "stopProcessing": "Zatrzymaj przetwarzanie kolejnych reguł",
-      "stopProcessingHelp": "Gdy ta reguła pasuje do transakcji, reguły znajdujące się po niej na liście są dla tej transakcji pomijane."
+      "stopProcessingHelp": "Gdy ta reguła pasuje do transakcji, reguły znajdujące się po niej na liście są dla tej transakcji pomijane.",
+      "window": {
+        "title": "Aktywna w okresie",
+        "help": "Reguła dotyczy tylko transakcji z datą z tego okresu: przy ich tworzeniu lub imporcie oraz przy testowaniu i uruchamianiu reguły. Pozostaw datę pustą, aby nie ograniczać.",
+        "from": "Data początkowa",
+        "to": "Data końcowa",
+        "backwards": "Data końcowa nie może być wcześniejsza niż początkowa",
+        "noLimit": "bez ograniczenia",
+        "words": "Tylko dla transakcji z datą od {from} do {to}"
+      }
     },
     "if": {
       "description": "Akcje wykonują się tylko dla transakcji, które pasują",
@@ -138,7 +147,8 @@
       "dayOfMonth": "Dzień miesiąca",
       "weekday": "Dzień tygodnia",
       "status": "Status",
-      "hasAttachment": "Ma załącznik"
+      "hasAttachment": "Ma załącznik",
+      "date": "Data"
     },
     "operators": {
       "eq": "jest",
@@ -215,6 +225,59 @@
         "replace": "Zastąp opis",
         "append": "Dodaj po opisie",
         "prepend": "Dodaj przed opisem"
+      },
+      "convertHelp": "Dopasowany przychód lub wydatek staje się jedną stroną przelewu. Druga strona powstaje na wybranym koncie, które musi mieć tę samą walutę.",
+      "direction": "Kierunek",
+      "directionTo": "Wydatek: pieniądze trafiają na inne konto",
+      "directionFrom": "Przychód: pieniądze pochodzą z innego konta",
+      "clearCategory": "Usuń kategorię",
+      "clearCategoryHelp": "Przelew nie ma kategorii. Wyłącz, aby zachować kategorię, którą transakcja już ma.",
+      "splitPayee": "Odbiorca transakcji (opcjonalnie)",
+      "splitHint": "Kwota każdej części pochodzi z przechwyconej wartości we wzorcach powyżej albo jest resztą. Części muszą sumować się do kwoty transakcji, w przeciwnym razie reguła jej nie zmieni.",
+      "splitNoCaptures": "Nie zdefiniowano jeszcze żadnej przechwyconej wartości. Wpisz nazwę w nawiasach klamrowych we wzorcu powyżej, na przykład PRINCIPAL: {example}, aby użyć jej tutaj jako kwoty.",
+      "partAmountPlaceholder": "Wybierz kwotę...",
+      "partRest": "Reszta",
+      "partAccount": "Konto",
+      "partPayee": "Odbiorca drugiej strony (opcjonalnie)",
+      "partsLimit": "Podział może mieć co najwyżej {max} części.",
+      "guideTitle": "Jak tego używać",
+      "splitGuideHow": "W sekcji „Jeśli” dodaj warunek dotyczący tekstu odbiorcy lub opisu z operatorem „pasuje do wzorca” i wpisz nazwy w nawiasach klamrowych w miejscach, gdzie są kwoty, na przykład {first}. Każda nazwa staje się kwotą, którą możesz wybrać dla części, albo wybierz „Reszta”. Części muszą sumować się do kwoty transakcji, w przeciwnym razie reguła jej nie zmieni. Częścią może być kategoria lub przelew na inne konto (przelew zmienia saldo tego konta).",
+      "splitGuideExampleTitle": "Przykład: rata kredytu",
+      "splitGuideBank": "Tekst z banku: KAPITAŁ: 1200,50 ODSETKI: 300,25 KARNE: 0,00",
+      "splitGuidePattern": "Wzorzec: *KAPITAŁ: {first} ODSETKI: {second} KARNE*",
+      "splitGuidePart1": "Część 1: {first} jako przelew na konto kredytu",
+      "splitGuidePart2": "Część 2: {second} jako kategoria „Kredyty: Odsetki”",
+      "splitGuideResult": "Wynik dla -1500,75: -1200,50 przelane na konto kredytu i -300,25 wydatku na odsetki.",
+      "splitGuideTip": "Wskazówka: ustaw datę początkową w polu „Aktywna w okresie”, aby nie zmieniać starszych uzgodnionych transakcji, i użyj panelu Test przed zapisaniem.",
+      "convertGuide": "Wydatek staje się przelewem na wybrane konto, a przychód przelewem z tego konta. Zmienia się tylko saldo drugiego konta. Wskazówka: użyj pola „Aktywna w okresie”, aby nie zmieniać starszych transakcji.",
+      "splitGuideName1": "kapital",
+      "splitGuideName2": "odsetki",
+      "loanGuide": "Użyj tego dla obciążenia bankowego, które płaci ratę kredytu hipotecznego lub kredytu jako jedną kwotę. W „Jeśli” dopasuj obciążenie po koncie, tekście odbiorcy lub opisie. Transakcja staje się podziałem: kapitał jest przelewany na konto kredytu, a odsetki trafiają do kategorii odsetek, oba wyliczone dla raty, którą płacą. Wskazówka: wyłącz automatyczne księgowanie zaplanowanej płatności kredytu, aby rata nie została zapłacona dwa razy, i użyj panelu Test przed zapisaniem.",
+      "loan": {
+        "help": "Dopasowane obciążenie płaci najbliższą ratę kredytu z terminem w okolicy tej daty. Monize wylicza kapitał i odsetki tej raty; nigdy nie wpisujesz kwoty.",
+        "account": "Konto kredytu",
+        "accountPlaceholder": "Wybierz kredyt hipoteczny lub kredyt...",
+        "noLoans": "Nie masz otwartego konta kredytu hipotecznego lub kredytu do rozliczenia.",
+        "window": "Okno terminu płatności",
+        "windowHelp": "Jak daleko od terminu bank może pobrać płatność. Obciążenie do tej liczby dni przed lub po terminie raty płaci tę ratę; obciążenie poza oknem pozostaje bez zmian.",
+        "daysBefore": "Dni przed terminem",
+        "daysAfter": "Dni po terminie",
+        "excess": "Gdy obciążenie jest większe niż rata",
+        "excessPolicies": {
+          "extra_principal": "Zapłać różnicę jako dodatkową spłatę kapitału",
+          "refuse": "Pozostaw transakcję bez zmian"
+        },
+        "shortfall": "Gdy obciążenie jest mniejsze niż rata",
+        "shortfallPolicies": {
+          "refuse": "Pozostaw transakcję bez zmian",
+          "interest_first": "Zapłać najpierw odsetki, resztę jako kapitał"
+        },
+        "policyNote": "Różnica kilku centów jest wchłaniana przez pozycję odsetek.",
+        "policyHelp": "Banki zaokrąglają każdą część osobno, więc obciążenie w granicach 5 najmniejszych jednostek waluty (0,05 dla większości walut) jest traktowane jako dokładne, a różnicę przejmuje pozycja odsetek. Większa różnica podlega dwóm wyborom powyżej.",
+        "interestCategory": "Kategoria odsetek (opcjonalnie)",
+        "interestCategoryPlaceholder": "Własna kategoria odsetek kredytu",
+        "autoPostTitle": "Zaplanowana płatność kredytu księguje się sama",
+        "autoPostBody": "Automatyczne księgowanie jest włączone dla zaplanowanej płatności tego kredytu, więc ono i obciążenie bankowe rozliczane przez tę regułę zapłaciłyby tę samą ratę. Wyłącz automatyczne księgowanie zaplanowanej płatności."
       }
     },
     "actionTypes": {
@@ -224,7 +287,10 @@
       "set_payee": "Ustaw odbiorcę",
       "request_ai_review": "Poproś o przegląd AI",
       "set_payee_from_text": "Ustaw odbiorcę z tekstu",
-      "set_description": "Ustaw opis"
+      "set_description": "Ustaw opis",
+      "convert_to_transfer": "Zamień w przelew",
+      "split": "Podziel transakcję",
+      "settle_loan_installment": "Rozlicz ratę kredytu"
     },
     "save": {
       "button": "Zapisz regułę",
@@ -273,16 +339,17 @@
         "MAX_NODES": "Warunków i grup jest zbyt wiele. Limit to {maxNodes}.",
         "NO_ACTIONS": "Dodaj co najmniej jedną akcję.",
         "TOO_MANY_ACTIONS": "Akcji jest zbyt wiele. Limit to {maxActions}.",
-        "DUPLICATE_ACTION": "Reguła może prosić o przegląd AI tylko raz.",
-        "REFERENCE_NOT_FOUND": "Wybrana tu pozycja już nie istnieje. Wybierz inną.",
-        "NAME_REQUIRED": "Wpisz nazwę reguły.",
-        "UNKNOWN": "Ta część jest nieprawidłowa.",
+        "DUPLICATE_ACTION": "Reguła może mieć tylko jeden przegląd AI, jedną zamianę w przelew, podział lub rozliczenie raty kredytu, oraz jedną część podziału, która bierze resztę.",
+        "CONFLICTING_ACTIONS": "Akcji przelewu, podziału lub rozliczenia raty kredytu nie można łączyć z „Ustaw kategorię”, a każda część podziału ma kategorię albo konto.",
         "INVALID_CAPTURE": "Nazwa przechwytywania składa się z małych liter i cyfr, zaczyna się od litery i ma najwyżej 20 znaków.",
         "TOO_MANY_CAPTURES": "Wzorzec może zawierać najwyżej 5 przechwyceń.",
         "DUPLICATE_CAPTURE": "Każdą nazwę przechwytywania można użyć w regule tylko raz.",
-        "UNKNOWN_CAPTURE": "Tekst używa przechwytywania, którego nie definiuje żaden warunek tej reguły.",
+        "UNKNOWN_CAPTURE": "Używa wartości przechwyconej, której nie definiuje żaden warunek tej reguły.",
         "LOOKS_LIKE_REGEX": "Wyrażenia regularne nie są obsługiwane: | \\ oraz krótkie klasy w nawiasach, jak [xy], są traktowane jak zwykłe znaki, więc wzorzec zapisany jako regex nigdy nie dopasuje tego, o co chodziło. Aby dopasować jeden z kilku tekstów, dodaj grupę „Dowolny z poniższych” i umieść w niej po jednym warunku dla każdego tekstu.",
-        "PATTERN_WITHOUT_WILDCARD": "Bez * ten wzorzec musi być równy całemu tekstowi. Użyj operatora „jest” dla całego tekstu, „zawiera” dla jego części albo otocz tekst znakami *, na przykład *kawa*."
+        "PATTERN_WITHOUT_WILDCARD": "Bez * ten wzorzec musi być równy całemu tekstowi. Użyj operatora „jest” dla całego tekstu, „zawiera” dla jego części albo otocz tekst znakami *, na przykład *kawa*.",
+        "REFERENCE_NOT_FOUND": "Wybrana tu pozycja już nie istnieje. Wybierz inną.",
+        "NAME_REQUIRED": "Wpisz nazwę reguły.",
+        "UNKNOWN": "Ta część jest nieprawidłowa."
       }
     },
     "run": {
@@ -340,6 +407,19 @@
     "failed": "Nie udało się ukończyć testu. {message}",
     "stale": "Reguła lub filtry zmieniły się od czasu tego wyniku. Przetestuj ponownie, aby zobaczyć aktualny wynik."
   },
+  "match": {
+    "button": "Przetestuj regułę",
+    "buttonLabel": "Przetestuj regułę: warunki",
+    "incomplete": "Uzupełnij warunki powyżej, aby zobaczyć, do których transakcji pasują.",
+    "windowBackwards": "Daty aktywności kończą się przed rozpoczęciem, więc żadna transakcja nie może pasować.",
+    "summary": "{count, plural, =0 {Brak pasujących transakcji} one {# pasująca transakcja} few {# pasujące transakcje} many {# pasujących transakcji} other {# pasującej transakcji}}",
+    "summaryPending": "Pasujące transakcje",
+    "running": "Wyszukiwanie pasujących transakcji...",
+    "failed": "Nie udało się wczytać pasujących transakcji. {message}",
+    "empty": "Żadne istniejące transakcje nie spełniają tych warunków.",
+    "truncated": "Sprawdzono tylko {scanned, number} najnowszych transakcji.",
+    "stale": "Warunki zmieniły się od tego testu. Wybierz ponownie Przetestuj regułę, aby zobaczyć aktualne dopasowania."
+  },
   "run": {
     "title": "Uruchom „{name}” na istniejących transakcjach",
     "description": "Zobacz podgląd zmian, które wprowadziłaby reguła, a następnie potwierdź. Uruchomienie można cofnąć w historii akcji.",
@@ -355,7 +435,9 @@
     "summary": "{matched, plural, one {# transakcja zostałaby zmieniona} few {# transakcje zostałyby zmienione} many {# transakcji zostałoby zmienionych} other {# transakcji zostałoby zmienionych}} spośród {scanned, plural, one {# sprawdzonej transakcji} few {# sprawdzonych transakcji} many {# sprawdzonych transakcji} other {# sprawdzonych transakcji}}.",
     "matchesNone": "Ta reguła nie pasuje do żadnej ze sprawdzonych transakcji ({scanned}). Sprawdź warunki przed zapisem. Wzorzec bez * pasuje tylko do całego tekstu.",
     "noChange": "{matched} z {scanned} sprawdzonych transakcji spełnia warunki reguły, ale nic by się nie zmieniło (na przykład mają już tę wartość, a „tylko jeśli puste” jest włączone). To nie jest błąd.",
+    "aiReview": "{count, plural, one {# transakcja zostanie dodana do kolejki przeglądu AI} few {# transakcje zostaną dodane do kolejki przeglądu AI} many {# transakcji zostanie dodanych do kolejki przeglądu AI} other {# transakcji zostanie dodanych do kolejki przeglądu AI}}. Żądanie zostanie utworzone po potwierdzeniu.",
     "truncated": "Pasuje więcej transakcji, niż pozwala limit. Uwzględniono tylko najnowsze. Zwiększ limit lub zawęź daty, aby objąć resztę.",
+    "truncatedOldest": "Dopasowano więcej transakcji, niż pozwala limit. Uwzględniono tylko najstarsze, ponieważ ta reguła rozlicza raty kredytu w porządku dat. Uruchom ją ponownie po tym uruchomieniu, aby uwzględnić resztę.",
     "noMatches": {
       "title": "Żadna transakcja nie zostałaby zmieniona",
       "body": "Żadna ze sprawdzonych transakcji nie pasuje do reguły albo reguła niczego by w nich nie zmieniła."
@@ -369,7 +451,8 @@
     },
     "skipped": {
       "title": "{count, plural, one {# transakcja pozostaje bez zmian} few {# transakcje pozostają bez zmian} many {# transakcji pozostaje bez zmian} other {# transakcji pozostaje bez zmian}}",
-      "line": "{count, plural, one {# transakcja} few {# transakcje} many {# transakcji} other {# transakcji}}: {reason}"
+      "line": "{count, plural, one {# transakcja} few {# transakcje} many {# transakcji} other {# transakcji}}: {reason}",
+      "missing": "Brakuje w kredycie: {inputs}."
     },
     "skipReasons": {
       "reconciled_locked": "jest uzgodniona i zablokowana",
@@ -378,7 +461,28 @@
       "cross_owner_transfer_payee": "jest przelewem do innego właściciela, którego odbiorcy ta reguła nie może zmieniać",
       "empty_render": "tekst akcji okazał się dla niej pusty",
       "payee_not_found": "żaden odbiorca nie ma nazwy zbudowanej przez regułę, a reguła go nie tworzy",
-      "other": "reguła nie może jej zmienić"
+      "other": "reguła nie może jej zmienić",
+      "row_is_transfer_leg": "jest już przelewem",
+      "row_has_splits": "jest już podzielona",
+      "row_is_void": "jest unieważniona",
+      "zero_amount": "jej kwota wynosi zero",
+      "transfer_direction_mismatch": "kierunek przelewu nie pasuje: wydatek trafia na konto, przychód pochodzi z konta",
+      "transfer_same_account": "konto przelewu jest kontem samej transakcji",
+      "transfer_account_unavailable": "konto przelewu jest niedostępne (zostało usunięte lub nie należy do Ciebie)",
+      "transfer_currency_mismatch": "konto przelewu ma inną walutę",
+      "split_amount_unparseable": "kwoty z jej tekstu nie da się odczytać jako liczby",
+      "split_sum_mismatch": "części nie sumują się do jej kwoty",
+      "split_too_few_parts": "po pominięciu zerowych kwot zostaje mniej niż dwie części",
+      "row_from_scheduled_posting": "została zaksięgowana z zaplanowanej płatności kredytu, która już zapłaciła tę ratę",
+      "row_is_income": "jest przychodem, a ratę płaci tylko obciążenie",
+      "loan_account_unavailable": "konto kredytu jest niedostępne (zostało usunięte, jest zamknięte, nie jest Twoje albo nie jest kredytem hipotecznym lub kredytem)",
+      "loan_interest_booked_separately": "ten kredyt księguje odsetki jako osobne transakcje, więc płatność nie może ich nieść",
+      "loan_not_configured": "kredytowi brakuje danych potrzebnych do wyliczenia raty",
+      "no_installment_in_window": "żadna rata kredytu nie ma terminu w oknie wokół tej daty",
+      "occurrence_already_posted": "rata z terminem w oknie jest już zapłacona",
+      "loan_debt_retired": "kredyt jest już spłacony",
+      "installment_amount_excess": "jest większe niż rata, a reguła pozostawia większe obciążenia bez zmian",
+      "installment_amount_shortfall": "jest mniejsze niż rata, a reguła pozostawia mniejsze obciążenia bez zmian"
     },
     "change": {
       "category": "Kategoria: {before} → {after}",
@@ -390,7 +494,16 @@
       "unknown": "usunięty element",
       "payeeCreated": "{done, select, yes {Utworzono nowego odbiorcę: {name}} other {Zostanie utworzony nowy odbiorca: {name}}}",
       "description": "Opis: {before} → {after}",
-      "descriptionSet": "Ustaw opis na {value}"
+      "descriptionSet": "Ustaw opis na {value}",
+      "transfer": "{done, select, yes {Stała się przelewem z kontem {account}} other {Stanie się przelewem z kontem {account}}}",
+      "split": "{done, select, yes {Podzielono na {count, plural, one {# część} few {# części} many {# części} other {# części}}} other {Zostanie podzielona na {count, plural, one {# część} few {# części} many {# części} other {# części}}}}",
+      "splitPart": "Część {number}: {amount} {target}",
+      "splitPartMemo": ", notatka „{memo}”",
+      "splitToTransfer": "na konto {account}",
+      "splitToTransferPayee": "na konto {account}, odbiorca {payee}",
+      "splitToCategory": "jako {category}",
+      "splitUncategorised": "bez kategorii",
+      "loanSettlement": "{done, select, yes {Rozliczono ratę {number} kredytu {account}} other {Rozlicza ratę {number} kredytu {account}}}, termin {dueDate}: kapitał {principal}, odsetki {interest}{hasExtra, select, yes {, dodatkowa spłata kapitału {extra}} other {}}. Zadłużenie przed: {debtBefore}"
     },
     "filters": {
       "accounts": "Konta",
@@ -412,11 +525,30 @@
       "runFailed": "Nie udało się ukończyć uruchomienia. Sprawdź historię akcji, zanim spróbujesz ponownie."
     },
     "toast": {
-      "done": "{count, plural, =0 {Nie zmieniono żadnych transakcji} one {Zmieniono # transakcję} few {Zmieniono # transakcje} many {Zmieniono # transakcji} other {Zmieniono # transakcji}}. Możesz to cofnąć w historii akcji."
+      "done": "{count, plural, =0 {Nie zmieniono żadnych transakcji} one {Zmieniono # transakcję} few {Zmieniono # transakcje} many {Zmieniono # transakcji} other {Zmieniono # transakcji}}. Możesz to cofnąć w historii akcji.",
+      "changedNoUndo": "{count, plural, one {Zmieniono # transakcję} few {Zmieniono # transakcje} many {Zmieniono # transakcji} other {Zmieniono # transakcji}}.",
+      "aiReviewsQueued": "{count, plural, one {# transakcja dodana do kolejki przeglądu AI} few {# transakcje dodane do kolejki przeglądu AI} many {# transakcji dodanych do kolejki przeglądu AI} other {# transakcji dodanych do kolejki przeglądu AI}}.",
+      "aiReviewsAlreadyQueued": "{count, plural, one {# transakcja ma już otwartą prośbę o przegląd AI, więc nic nowego nie dodano do kolejki} few {# transakcje mają już otwartą prośbę o przegląd AI, więc nic nowego nie dodano do kolejki} many {# transakcji ma już otwartą prośbę o przegląd AI, więc nic nowego nie dodano do kolejki} other {# transakcji ma już otwartą prośbę o przegląd AI, więc nic nowego nie dodano do kolejki}}.",
+      "noChanges": "Nie zmieniono żadnej transakcji."
     },
     "done": {
       "summary": "{count, plural, =0 {Nie zmieniono żadnych transakcji.} one {Zmieniono # transakcję.} few {Zmieniono # transakcje.} many {Zmieniono # transakcji.} other {Zmieniono # transakcji.}}",
+      "aiReviewsQueued": "{count, plural, one {# transakcja została dodana do kolejki przeglądu AI.} few {# transakcje zostały dodane do kolejki przeglądu AI.} many {# transakcji zostało dodanych do kolejki przeglądu AI.} other {# transakcji zostało dodanych do kolejki przeglądu AI.}}",
+      "aiReviewsAlreadyQueued": "{count, plural, one {# transakcja miała już otwarte żądanie przeglądu AI, więc nie została dodana ponownie.} few {# transakcje miały już otwarte żądanie przeglądu AI, więc nie zostały dodane ponownie.} many {# transakcji miało już otwarte żądanie przeglądu AI, więc nie zostały dodane ponownie.} other {# transakcji miało już otwarte żądanie przeglądu AI, więc nie zostały dodane ponownie.}}",
       "undo": "Uruchomienie można cofnąć w historii akcji."
+    },
+    "missingInputs": {
+      "scheduledPayment": "zaplanowana płatność",
+      "managedTemplate": "płatność podzielona na kapitał i odsetki",
+      "scheduleCalendar": "harmonogram płatności",
+      "interestCategory": "kategoria odsetek",
+      "amortizationMonths": "okres amortyzacji",
+      "paymentStartDate": "data pierwszej płatności",
+      "paymentFrequency": "częstotliwość płatności",
+      "originalPrincipal": "kwota początkowa kredytu",
+      "rate": "stopa procentowa na tę datę",
+      "payment": "kwota płatności",
+      "other": "ustawienie kredytu"
     }
   },
   "applications": {
@@ -471,7 +603,16 @@
       "set_payee": "Ustaw odbiorcę na {name}{onlyIfEmpty, select, yes { (tylko jeśli pusty)} other {}}",
       "request_ai_review": "Poproś o przegląd AI: {instruction}",
       "set_payee_from_text": "Ustaw odbiorcę z tekstu: „{template}”{createIfMissing, select, yes { (utworzony, jeśli nie istnieje)} other {}}{onlyIfEmpty, select, yes { (tylko jeśli pusty)} other {}}",
-      "set_description": "Ustaw opis ({mode, select, append {dołącz na końcu} prepend {dołącz na początku} other {zastąp}}): „{template}”{onlyIfEmpty, select, yes { (tylko jeśli pusty)} other {}}"
+      "set_description": "Ustaw opis ({mode, select, append {dołącz na końcu} prepend {dołącz na początku} other {zastąp}}): „{template}”{onlyIfEmpty, select, yes { (tylko jeśli pusty)} other {}}",
+      "convert_to_transfer": "Zamień na przelew {direction, select, from {z konta} other {na konto}} {account}",
+      "split": "Podziel na: {parts}",
+      "settle_loan_installment": "Rozlicz ratę kredytu {account} płaconą obciążeniem do {before, plural, one {# dnia} few {# dni} many {# dni} other {# dnia}} przed terminem lub {after, plural, one {# dnia} few {# dni} many {# dni} other {# dnia}} po nim; większe obciążenie {excess, select, refuse {pozostaje bez zmian} other {płaci dodatkową spłatę kapitału}}, mniejsze {shortfall, select, interest_first {płaci najpierw odsetki} other {pozostaje bez zmian}}"
+    },
+    "splitPart": {
+      "transfer": "{amount} na konto {account}",
+      "category": "{amount} jako {category}",
+      "plain": "{amount}",
+      "rest": "reszta"
     }
   }
 }

@@ -11,6 +11,7 @@ Paths beginning with `src/` or `scripts/`, and layer configuration filenames, ar
 - `ProtectedRoute` (`components/auth/ProtectedRoute.tsx`) wraps authenticated pages.
 - **No `setState` in `useEffect`** — ESLint rule `react-hooks/set-state-in-effect` is enforced. To reset child state when a prop changes, use the "info from previous render" pattern (track the prop in `useState` and update during render).
 - **Dialogs use `Modal`** (`components/ui/Modal.tsx`) — handles Escape, focus trap, body scroll lock, focus restore, and stacked-modal popstate. Opt into `pushHistory` so the browser back button also closes. `ConfirmDialog` forwards `pushHistory` for stacked confirm flows.
+- **Leaving the page from inside a `pushHistory` modal** closes the modal first, then navigates through `afterModalHistoryPop` (`lib/after-modal-history-pop.ts`), never a bare link and never a fixed `setTimeout`. The closing modal pops its entry with an asynchronous `history.back()`, which undoes any push that lands before it; a guessed delay loses that race on a slow render, so the helper waits for the pop itself.
 
 ## Reusing existing UI patterns
 
@@ -36,6 +37,8 @@ Both are resolved server-side in one walk up the ancestry: read `category.effect
 
 `components/ui/Badge.tsx` is the small status pill (previously hand-rolled ~50 times). Pass `variant` and `size`; pass `as="button"` where the pill is also a control, rather than nesting a button in a span. It deliberately does not absorb pills whose colour *means* something -- `CategoryPill`, `AccountTypePill` and `SCHEDULED_KIND_CHIP_CLASSES` are each already one source of truth, exempted by name.
 
+A warranty's status pill is `WarrantyStatusBadge` (`components/warranties/WarrantyStatusBadge.tsx`), fed by the server's `status` and `daysLeft`; no component compares a warranty's dates itself (WTY-002).
+
 `components/ui/Table.tsx` is constants (`TABLE_CLASS`, `TH_CLASS`, `TD_CLASS`) plus thin `Th`/`Td` cells, not a `<Table>` wrapper -- these tables are hand-laid with colspans and sticky cells. `SortableHeader` deliberately stays off `TH_CLASS` (about twenty-five report tables draw a lighter header, and folding it in would restyle every report).
 
 ## The card shadow is `--shadow-card`; the bare `shadow` reads no token
@@ -44,7 +47,7 @@ Tailwind v4 trap: the bare `shadow` utility is a legacy alias with the stock val
 
 ## A focus ring is `focus-visible:`, and a hover animates
 
-`focus:ring-*` paints on a mouse click as well as a Tab; use `focus-visible:` on anything clickable. Text inputs are the one exception (`inputBaseClasses` and the element selectors in `globals.css`). Row hover comes from `HOVER_ROW_ON_CARD` / `HOVER_ROW_ON_PAGE` in `Card.tsx`, not a hand-picked grey, and includes the transition (a hover that snaps reads as a redraw). Pair any new transition with `motion-reduce:transition-none`. Both rules carry shrink-only baselines in `ui-conventions.test.ts`.
+`focus:ring-*` paints on a mouse click as well as a Tab; use `focus-visible:` on anything clickable. Text inputs are the one exception (`inputBaseClasses` and the element selectors in `globals.css`). Row hover comes from `HOVER_ROW_ON_CARD` / `HOVER_ROW_ON_PAGE` in `Card.tsx` (a text button in the bar above a table from `HOVER_TOOLBAR_BUTTON`, through `LIST_TOOLBAR_BUTTON_CLASS` on `ListTopToolbar.tsx`), not a hand-picked grey, and includes the transition (a hover that snaps reads as a redraw). Pair any new transition with `motion-reduce:transition-none`. Both rules carry shrink-only baselines in `ui-conventions.test.ts`.
 
 ## A dialog is titled through `Modal`, never by a hand-rolled heading
 
@@ -170,6 +173,7 @@ server will refuse is worse than an absent one.
 ## An attachment is opened in `AttachmentPreviewDialog`, never downloaded from a row
 
 Clicking an attachment previews it; Download is a footer action of the preview.
+A warranty's documents are `AttachmentsSection` with a warranty parent (`{ warrantyId }`, wrapped by `WarrantyDocumentsSection`), never a second uploader; a new warranty's are its staged mode with `stagedFor="warranty"`, which `WarrantyForm` uploads once the warranty exists.
 Four rules the viewer holds, each with a test:
 
 - **Bytes come through `attachmentsApi.fetchBytes`**, never a bare `<img src>`
@@ -241,6 +245,8 @@ file that imports `useIsMobile`, and a second hand-rolled `pointer: coarse`.
 
 If a figure or a setting carries an explanation on a desktop, the same explanation opens on a phone. `InfoTooltip` (`components/ui/InfoTooltip.tsx`) is the one help popover: a mouse hovers it, a keyboard focuses it, and a click, a tap or Enter pins it open until the reader presses outside it, taps it again, moves focus to another control, or presses Escape. It takes one `text`, which is the popover body and the trigger's `aria-label` at once, so desktop, phone and screen reader read one translated string and there is no second copy to drift.
 
+Help that holds controls is not a tooltip. The transaction search's syntax help (`components/transactions/SearchSyntaxHelp.tsx`) lists examples a reader can choose to fill the search box, so it is a click-opened `role="dialog"` through a portal, placed with `InfoTooltip`'s own `placePopover` and re-measured on scroll and resize; opening moves focus to its first example, because Tab from the trigger never reaches a panel portalled to the end of the document; an outside press closes it through `useClickOutside`; it claims Escape only while open, and takes a `popoverRef` so a parent with its own outside-press handler (the header search) can count a press inside the portal as inside.
+
 The trigger used to be `hidden md:inline-flex`, because its popover opened only on `:hover`, and so every metric explanation on the investments screens (TWR, MWR, CAGR, simple return, investment result, net flows, cost basis, incomplete valuation) was missing on a phone. What the fix rests on:
 
 - **Never hide the trigger at a breakpoint.** Its hit area is extended with a `before:` inset so a finger finds the 16px icon.
@@ -260,7 +266,7 @@ The login page pre-fills `DEMO_USER_EMAIL` / `DEMO_USER_PASSWORD` from that modu
 
 ## A link from a report to Transactions is `buildTransactionsHref`
 
-`buildTransactionsHref` (`frontend/src/lib/transactions-href.ts`) writes the parameters `useTransactionFilters` reads (`categoryId` including the `SPECIAL_CATEGORY_FILTER_IDS` pseudo-ids, `categoryType`, `accountIds`, `startDate`, `endDate`) through `URLSearchParams`. The Cash Flow Sankey uses it; the other reports still build their own URLs and migrate onto it in a separate cleanup (task M1 of `docs/future-plans/sankey-cash-flow-tasks.md`).
+`buildTransactionsHref` (`frontend/src/lib/transactions-href.ts`) writes the parameters `useTransactionFilters` reads (`categoryId` including the `SPECIAL_CATEGORY_FILTER_IDS` pseudo-ids, `categoryType`, `accountIds`, `startDate`, `endDate`) through `URLSearchParams`. The Cash Flow Sankey uses it; the other reports still build their own URLs and migrate onto it in a separate cleanup (follow-up M1 in `docs/specs/sankey-cash-flow.md` section 14).
 
 ## A clickable table row -- `useLongPress({ onClick })`
 
@@ -291,6 +297,8 @@ However a surface selects a category, the option list is one shape: built from `
 Whether a picker *offers* to create is a property of the surface, not the field: a form that can create passes the creator to **every** category picker it renders, split lines included (`SplitEditor`'s lines silently discarded unmatched text while the Category field offered "+ Create" -- issue #1187). An asynchronous create addresses the row it came from **by id** (rows can move while the request is in flight), and the new category's `isIncome` comes from what the creator returned.
 
 **A filter list's group boundary is a flag on the option, never a divider the caller draws.** `MultiSelectOption.separatorAfter` rules the row *below* the boundary, so a `MultiSelect` marked this way cannot leave a stray line behind when a search stops rendering the rows on one side of it. `buildCategoryFilterOptions` sets it on the last of `SPECIAL_CATEGORY_FILTER_IDS`, which is what separates the four filters for what a record *is* (no category, a transfer, a whole type) from the categories underneath; every panel built from that list gets the same boundary. The rule is dropped while a search is flattening the hierarchy, and when the marked option is the last row left.
+
+**A picker that applies tags to a transaction takes its options from `useTagPickerOptions`** (`frontend/src/hooks/useTagPickerOptions.ts`, over `buildTagOptions` in `frontend/src/lib/tag-options.ts`), fed by `GET /tags/usage`: the `RECENT_TAG_COUNT` tags used most recently (latest non-void transaction dated on or before today, then number of uses, then name) lead the list above a `separatorAfter` rule, and every other tag follows A-Z. Nothing is hidden, so a finished project's tag ("Holiday 2008") still turns up when searched for; it just stops sitting at the top (discussion #708). A transfer counts once, not once per leg, and an acting delegate's order comes only from their READ-granted accounts. The transaction form, its split lines (the form hands `SplitEditor` its `tagUsage`, so the editor does not fetch again), the scheduled-transaction form and bulk update use it; filters, reports, the Tags page and the security form stay A-Z. Usage is fetched on its own effect, never inside a form's `Promise.all`, so it cannot hold up the other dropdowns; it is not cached (it follows transaction writes, and `tags:` is classified as reference data); and a failed lookup is logged and leaves the picker A-Z rather than failing the form.
 
 ## An account balance is coloured by its sign -- `balanceColor`, never by account type
 
@@ -505,6 +513,17 @@ leaves the link unreachable for half the transactions a user creates), and the
 other six say why they do not. The two lists must between them account for every
 form the length guard names, so a new note field cannot ship with no way to
 reach the address in it.
+
+## An email's HTML is drawn in `EmailHtmlFrame`, never injected
+
+The receipts dialog shows the mail's own HTML (`bodyHtml`, detail only) in
+`EmailHtmlFrame` (`components/email-receipts/EmailHtmlFrame.tsx`), chosen with
+the Text view by `EmailBodyView`. The frame is an `<iframe sandbox="">` (no
+scripts, no same-origin, no forms, no popups) whose `srcDoc` starts with a CSP
+meta (`default-src 'none'`, inline styles and `data:` images only, so remote images, fonts and
+frames are not loaded) and `<base target="_blank">`; the dialog says "Remote
+images are not loaded." `dangerouslySetInnerHTML` stays out of this tree. A
+stored `body_text` that is really HTML is drawn the same way (`looksLikeHtml`). The dialog's third view, "Lines" (`EmailLinesView`), shows the numbered lines a parser matches against, per source, as plain text: the server derives them from the HTML (`lines` on the detail), and the page never parses the HTML itself.
 
 ## Nothing interactive goes inside a `<button>` or an `<a>`
 

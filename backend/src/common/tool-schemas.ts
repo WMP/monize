@@ -50,6 +50,14 @@ export const booleanArg = () =>
     z.boolean(),
   );
 
+/**
+ * A bond series code (`EDO1036`) a model names on an investment row: trimmed,
+ * never empty (an empty string would read as "no series named" and silently
+ * fall back to inference), at most 40 characters. One schema for the assistant
+ * and the MCP server.
+ */
+export const bondSeriesCodeSchema = z.string().trim().min(1).max(40);
+
 const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 export const isoDateSchema = z

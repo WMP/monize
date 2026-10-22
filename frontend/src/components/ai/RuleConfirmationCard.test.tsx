@@ -170,6 +170,27 @@ describe('RuleConfirmationCard: create', () => {
     expect(screen.queryByText(/matches none of the transactions examined/)).not.toBeInTheDocument();
   });
 
+  it('drops the nothing-would-change note when the run only queues AI reviews', () => {
+    renderCard(
+      makeRuleAction(
+        'create_transaction_rule',
+        makeRule({
+          test: makeTest({
+            matchedCount: 0,
+            conditionMatchedCount: 9,
+            rows: [],
+            skipped: [],
+            skippedCount: 0,
+            aiReviewRequests: 4,
+          }),
+        }),
+      ),
+    );
+    expect(screen.queryByText(/nothing would change/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/This is not an error/)).not.toBeInTheDocument();
+    expect(screen.getByText(/4/, { selector: 'p' })).toBeInTheDocument();
+  });
+
   it('does not warn when the rule matches something or nothing was examined', () => {
     renderCard(action);
     expect(screen.queryByText(/matches none of the transactions examined/)).not.toBeInTheDocument();
@@ -256,6 +277,25 @@ describe('RuleConfirmationCard: update', () => {
     expect(within(diff).queryByTestId('rule-diff-condition')).not.toBeInTheDocument();
     expect(within(diff).queryByTestId('rule-diff-stopProcessing')).not.toBeInTheDocument();
     expectNoIds();
+  });
+
+  it('shows a moved active window as its own changed part, and the window of a new rule', () => {
+    const windowed: PendingActionRule = makeRule({
+      activeFrom: '2026-10-01',
+      activeTo: null,
+      current: { ...proposed.current!, activeFrom: null, activeTo: null },
+    });
+    renderCard(makeRuleAction('update_transaction_rule', windowed));
+    const diff = within(screen.getByTestId('rule-diff'));
+    const part = within(diff.getByTestId('rule-diff-activeWindow'));
+    expect(part.getByText('Active between')).toBeInTheDocument();
+    expect(part.getByText(/Only for transactions dated from .*2026.* to no limit/)).toBeInTheDocument();
+    expect(diff.queryByTestId('rule-diff-name')).not.toBeInTheDocument();
+  });
+
+  it('shows the window on a card that reads the whole rule', () => {
+    renderCard(makeRuleAction('create_transaction_rule', makeRule({ activeFrom: '2026-10-01', activeTo: '2026-12-31' })));
+    expect(screen.getByText(/Only for transactions dated from .*2026.* to .*2026/)).toBeInTheDocument();
   });
 
   it('shows the test result of the edited rule', () => {
@@ -350,6 +390,8 @@ describe('RuleConfirmationCard: run', () => {
             { transactionId: 'tx-8', reason: 'reconciled_locked' },
           ],
           historyId: 'h1',
+          aiReviewsQueued: 0,
+          aiReviewsAlreadyQueued: 0,
         },
       }),
     );
@@ -361,11 +403,22 @@ describe('RuleConfirmationCard: run', () => {
     expect(screen.getByRole('link', { name: 'View rules' })).toBeInTheDocument();
   });
 
+  it('shows a run that only queued AI reviews without promising an undo', () => {
+    renderCard(
+      makeRuleAction('run_transaction_rule', { ...run, test: makeTest({ matchedCount: 0, rows: [], aiReviewRequests: 4 }) }, {
+        status: 'confirmed',
+        resultRuleRun: { changed: 0, skipped: [], historyId: null, aiReviewsQueued: 4, aiReviewsAlreadyQueued: 0 },
+      }),
+    );
+    expect(screen.getByText('4 transactions were queued for AI review.')).toBeInTheDocument();
+    expect(screen.queryByText('You can undo the run from the action history.')).not.toBeInTheDocument();
+  });
+
   it('shows a run that changed nothing as a known zero', () => {
     renderCard(
       makeRuleAction('run_transaction_rule', run, {
         status: 'confirmed',
-        resultRuleRun: { changed: 0, skipped: [], historyId: null },
+        resultRuleRun: { changed: 0, skipped: [], historyId: null, aiReviewsQueued: 0, aiReviewsAlreadyQueued: 0 },
       }),
     );
     expect(screen.getByText('No transactions were changed.')).toBeInTheDocument();
@@ -435,5 +488,32 @@ describe('RuleConfirmationCard: states and unknown values', () => {
     );
     expect(screen.getByText('A condition this version cannot show')).toBeInTheDocument();
     expect(screen.getByText('An action this version cannot show')).toBeInTheDocument();
+  });
+});
+
+describe('RuleConfirmationCard: a loan settlement', () => {
+  it('reads the settlement in words with the loan named, never its id', () => {
+    renderCard(
+      makeRuleAction(
+        'create_transaction_rule',
+        makeRule({
+          actions: [
+            {
+              type: 'settle_loan_installment',
+              loanAccountId: 'acc-2',
+              dueDateWindow: { daysBefore: 3, daysAfter: 7 },
+              excess: 'extra_principal',
+              shortfall: 'refuse',
+            },
+          ],
+        }),
+      ),
+    );
+    expect(
+      screen.getByText(
+        'Settle the installment of Savings paid by a debit up to 3 days before or 7 days after its due date; a larger debit pays extra principal, a smaller one is left alone',
+      ),
+    ).toBeInTheDocument();
+    expectNoIds();
   });
 });

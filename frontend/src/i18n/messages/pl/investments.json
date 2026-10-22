@@ -51,6 +51,7 @@
     "costBasisTooltip": "Ile kosztowało nabycie obecnych pozycji, odtworzone z historii transakcji: ceny zakupu plus prowizja naliczona przy każdym zakupie, każda przeliczona po kursie transakcji, która za nią zapłaciła. Wyświetlane w Twojej walucie prezentacji. Służy do obliczania zysków i strat.",
     "gainLoss": "Zysk/Strata",
     "gainLossTooltip": "Niezrealizowany zysk lub strata na obecnych pozycjach: wartość rynkowa po dzisiejszych cenach minus koszt nabycia powyżej. Nie obejmuje zysków zrealizowanych na wcześniejszych sprzedażach ani otrzymanych dywidend i odsetek.",
+    "gainPartialCaption": "Tylko dla pozycji z ceną",
     "returns": "Stopy zwrotu",
     "simpleReturn": "Prosta stopa zwrotu",
     "simpleReturnTooltip": "Zysk lub strata względem tego, co zapłaciłeś: (wartość rynkowa − koszt nabycia) ÷ koszt nabycia. Nie uwzględnia momentu wpływu pieniędzy, więc zmienia się skokowo przy każdym zakupie: pozycja o wartości 1 000 wzrastająca o 20% pokazuje +20%; kup kolejne 1 000 i pokaże +10% (200 ÷ 2 000), mimo że nic nie zostało stracone. TWR i MWR nie mają tego skoku.",
@@ -88,6 +89,14 @@
       "assetClass": "Wg klasy aktywów"
     }
   },
+  "assetClasses": {
+    "equity": "Akcje",
+    "fixedIncome": "Instrumenty dłużne",
+    "cash": "Gotówka",
+    "preferred": "Akcje uprzywilejowane",
+    "convertible": "Obligacje zamienne",
+    "crypto": "Kryptowaluty"
+  },
   "holdingsList": {
     "title": "Pozycje",
     "noHoldings": "Brak pozycji w tym portfelu.",
@@ -102,6 +111,7 @@
     "title": "Pozycje wg konta",
     "noHoldings": "Brak pozycji w Twoim portfelu.",
     "accountIncomplete": "Częściowo: sumy tego konta pomijają pozycje, których nie dało się wycenić w {currency}.",
+    "gainPartialCaption": "Tylko dla pozycji z ceną",
     "accountSummary": "{accounts} {accounts, plural, one {konto} few {konta} many {kont} other {konta}} z {positions} {positions, plural, one {pozycją} few {pozycjami} many {pozycjami} other {pozycji}}",
     "positionsWithCash": "{count} {count, plural, one {pozycja} few {pozycje} many {pozycji} other {pozycji}} + gotówka",
     "positions": "{count} {count, plural, one {pozycja} few {pozycje} many {pozycji} other {pozycji}}",
@@ -129,6 +139,7 @@
     "intradayUnavailableDescription": "Jedna lub więcej pozycji korzysta z dostawcy notowań (MSN Money), który nie udostępnia danych śróddziennych. Przełącz na dłuższy zakres, aby zobaczyć migawki dzienne.",
     "noDataForPeriod": "Brak danych inwestycyjnych dla tego okresu.",
     "highestValue": "Najwyższa wartość",
+    "incompleteTooltip": "Dla części punktów w tym okresie brakuje ceny lub kursu wymiany, więc maksimum i minimum nie są pokazane.",
     "lowestValue": "Najniższa wartość",
     "valueChange": "Zmiana wartości",
     "valueChangeTooltip": "Wartość papierów wartościowych na koniec okresu pomniejszona o ich wartość na początku: ostatni punkt wykresu minus pierwszy. Niezainwestowana gotówka nie jest uwzględniana.",
@@ -190,6 +201,7 @@
     "actionCapitalGainShort": "Krótkoterminowy zysk kapitałowy",
     "actionCapitalGainLong": "Długoterminowy zysk kapitałowy",
     "actionRedeem": "Wykup CD/obligacji",
+    "actionReturnOfCapital": "Zwrot kapitału",
     "allActions": "Wszystkie akcje"
   },
   "transactionForm": {
@@ -210,6 +222,7 @@
     "actionCapitalGainShort": "Krótkoterminowy zysk kapitałowy",
     "actionCapitalGainLong": "Długoterminowy zysk kapitałowy",
     "actionRedeem": "Wykup CD/obligacji",
+    "actionReturnOfCapital": "Zwrot kapitału",
     "actionTransfer": "Przelew",
     "brokerageAccount": "Konto maklerskie",
     "fromAccount": "Konto źródłowe",
@@ -253,7 +266,8 @@
     "sourceHolds": "Źródło posiada",
     "sharesAt": "udziałów @",
     "avgCostSuffix": "śr. koszt.",
-    "transferCostNote": "Koszt za udział (wypełniony z konta źródłowego) jest przenoszony do konta docelowego, aby raporty zysków i zysków pozostały poprawne. Operacja przenosi tylko udziały -- gotówka nie zmienia właściciela.",
+    "transferCostNote": "Koszt za udział to kwota, jaką udziały kosztowały na koncie źródłowym w dniu przeniesienia. Jest obliczany przy zapisie i przenoszony na konto docelowe, aby raporty zysków pozostały poprawne. Operacja przenosi tylko udziały; gotówka nie zmienia właściciela.",
+    "returnOfCapitalNote": "Zwrot kapitału nie jest dochodem. Zwraca część tego, ile kosztowały akcje, więc obniża koszt nabycia pozycji o tę kwotę. Nadwyżka ponad pozostały koszt nabycia jest wykazywana jako zrealizowany zysk kapitałowy.",
     "totalAmount": "Suma ({currency})",
     "sharesAtPrice": "{shares} udziałów @ {symbol}{price}",
     "commissionSuffix": "prowizja",
@@ -288,7 +302,30 @@
     "toastSaveFailed": "Nie udało się zapisać transakcji",
     "exchangeRateUnresolved": "Brak kursu z {from} na {to}. Przed zapisaniem wprowadź kurs lub przeliczoną kwotę łączną.",
     "toastExchangeRateRequired": "Wprowadź kurs wymiany przed zapisaniem transakcji między walutami.",
-    "notAvailable": "Niedostępne"
+    "notAvailable": "Niedostępne",
+    "bondSeries": {
+      "label": "Seria obligacji",
+      "fromDate": "Ustalana na podstawie daty",
+      "oldestFirst": "Najstarsze najpierw",
+      "loading": "Wczytywanie serii...",
+      "loadFailed": "Nie udało się wczytać serii.",
+      "retry": "Ponów",
+      "fromDateCode": "Z daty: {code}",
+      "noneOnSale": "Brak serii w sprzedaży w tym dniu",
+      "choose": "Wybierz serię",
+      "required": "Wybierz serię tych papierów.",
+      "heldOption": "{code} (posiadane: {quantity})",
+      "noLongerHeld": "{code} (nie jest już posiadana w tym dniu)",
+      "noLongerHeldUnknown": "Zapisana seria (nie jest już posiadana w tym dniu)",
+      "storedSeries": "Zapisana seria",
+      "seriesOnSaleMonth": "{code} — w sprzedaży {month}",
+      "seriesOnSaleRange": "{code} — w sprzedaży od {from} do {to}"
+    },
+    "bondRedemption": {
+      "summary": "Odsetki {interest}, potrącenie za wykup przedterminowy {deduction}, wypłata {payout}",
+      "outsideSaleWindow": "Partia tej serii została kupiona poza okresem sprzedaży, więc wykupu nie można rozbić.",
+      "failed": "Nie udało się obliczyć podziału wykupu."
+    }
   },
   "newTransactionButton": {
     "label": "+ Nowa transakcja",

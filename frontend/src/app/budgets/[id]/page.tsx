@@ -85,38 +85,56 @@ function BudgetDetailContent() {
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const loadData = useCallback(async () => {
+  // A different budget shows the spinner again; set during render rather than
+  // in the effect that loads it.
+  const [loadingBudgetId, setLoadingBudgetId] = useState(budgetId);
+  if (loadingBudgetId !== budgetId) {
+    setLoadingBudgetId(budgetId);
     setIsLoading(true);
     setError(null);
-    try {
-      const [summaryData, velocityData, periodsData, stData, dailyData, trend] =
-        await Promise.all([
-          budgetsApi.getSummary(budgetId),
-          budgetsApi.getVelocity(budgetId),
-          budgetsApi.getPeriods(budgetId),
-          scheduledTransactionsApi.getAll(),
-          budgetsApi.getDailySpending(budgetId).catch(() => []),
-          budgetsApi.getTrend(budgetId).catch(() => []),
-        ]);
+  }
 
-      setSummary(summaryData);
-      setVelocity(velocityData);
-      setPeriods(periodsData);
-      setScheduledTransactions(stData);
-      setDailySpending(dailyData);
-      setTrendData(trend);
-    } catch (err) {
-      const message = getErrorMessage(err, t('pages.detail.toasts.loadFailed'));
-      setError(message);
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
+  // The mount / budget-switch load: the state already says loading.
+  const fetchData = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const [summaryData, velocityData, periodsData, stData, dailyData, trend] =
+          await Promise.all([
+            budgetsApi.getSummary(budgetId),
+            budgetsApi.getVelocity(budgetId),
+            budgetsApi.getPeriods(budgetId),
+            scheduledTransactionsApi.getAll(),
+            budgetsApi.getDailySpending(budgetId).catch(() => []),
+            budgetsApi.getTrend(budgetId).catch(() => []),
+          ]);
+
+        setSummary(summaryData);
+        setVelocity(velocityData);
+        setPeriods(periodsData);
+        setScheduledTransactions(stData);
+        setDailySpending(dailyData);
+        setTrendData(trend);
+      } catch (err) {
+        const message = getErrorMessage(err, t('pages.detail.toasts.loadFailed'));
+        setError(message);
+        toast.error(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [budgetId, t]);
 
+  const loadData = useCallback(() => {
+    setIsLoading(true);
+    setError(null);
+    return fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    fetchData();
+  }, [fetchData]);
 
   useOnUndoRedo(loadData);
   // Refresh on AI chat-bubble writes (actual spending can change).

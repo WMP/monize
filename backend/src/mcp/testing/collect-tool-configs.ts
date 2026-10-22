@@ -10,6 +10,9 @@ import { McpBudgetsTools } from "../tools/budgets.tool";
 import { McpRelayTools } from "../tools/relay.tool";
 import { McpRulesTools } from "../tools/rules.tool";
 import { McpAiReviewTools } from "../tools/ai-review.tool";
+import { McpEmailReceiptParserTools } from "../tools/email-receipt-parsers.tool";
+import { McpBondSeriesTools } from "../tools/bond-series.tool";
+import { McpWarrantiesTools } from "../tools/warranties.tool";
 
 /**
  * Test helper: capture every tool's `registerTool` config without booting Nest.
@@ -80,7 +83,10 @@ export function collectToolConfigs(): CapturedToolConfig[] {
       {} as any,
       {} as any,
     ) as unknown as ToolProvider,
-    new McpAiReviewTools({} as any) as unknown as ToolProvider,
+    new McpAiReviewTools({} as any, {} as any) as unknown as ToolProvider,
+    new McpEmailReceiptParserTools({} as any) as unknown as ToolProvider,
+    new McpBondSeriesTools({} as any, {} as any) as unknown as ToolProvider,
+    new McpWarrantiesTools({} as any) as unknown as ToolProvider,
     new McpRelayTools({} as any) as unknown as ToolProvider,
   ];
 

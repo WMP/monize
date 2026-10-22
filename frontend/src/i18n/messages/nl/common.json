@@ -38,6 +38,14 @@
     "scheduleRecurring": "Terugkerend maken",
     "more": "Meer acties"
   },
+  "columns": {
+    "button": "Kolommen",
+    "buttonWithHidden": "Kolommen, {count} verborgen",
+    "menuLabel": "Kolommen tonen of verbergen",
+    "showAll": "Alles tonen",
+    "hideColumn": "Kolom verbergen",
+    "sheetSubtitle": "Zet hem terug via het menu Kolommen."
+  },
   "loading": "Laden...",
   "pagination": {
     "showing": "Weergeven",
@@ -262,5 +270,8 @@
     "normal": "Normaal",
     "compact": "Compact",
     "dense": "Dicht"
+  },
+  "scheduledOverdue": {
+    "included": "Inclusief {count, plural, one {# achterstallige geplande transactie} other {# achterstallige geplande transacties}}"
   }
 }

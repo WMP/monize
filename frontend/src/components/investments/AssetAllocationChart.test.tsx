@@ -464,11 +464,12 @@ describe('AssetAllocationChart', () => {
     const assetClassResult = {
       totalPortfolioValue: 10000,
       totalDirectValue: 4000,
-      totalEtfValue: 5000,
-      unclassifiedValue: 1000,
+      totalEtfValue: 5500,
+      unclassifiedValue: 500,
       items: [
-        { assetClass: 'Equity', directValue: 4000, etfValue: 2000, totalValue: 6000, percentage: 60 },
-        { assetClass: 'Fixed Income', directValue: 0, etfValue: 3000, totalValue: 3000, percentage: 30 },
+        { assetClass: 'Equities', assetClassKey: 'equity', directValue: 4000, etfValue: 2000, totalValue: 6000, percentage: 60 },
+        { assetClass: 'Fixed Income', assetClassKey: 'fixedIncome', directValue: 0, etfValue: 3000, totalValue: 3000, percentage: 30 },
+        { assetClass: 'Real Estate', assetClassKey: null, directValue: 0, etfValue: 500, totalValue: 500, percentage: 5 },
       ],
     };
 
@@ -484,8 +485,11 @@ describe('AssetAllocationChart', () => {
         fireEvent.click(button);
       });
 
-      expect(await screen.findByText('Equity')).toBeInTheDocument();
+      // Canonical classes are named from the translation catalog; a class the
+      // user typed is shown as typed.
+      expect(await screen.findByText('Equities')).toBeInTheDocument();
       expect(screen.getByText('Fixed Income')).toBeInTheDocument();
+      expect(screen.getByText('Real Estate')).toBeInTheDocument();
       // The unclassified remainder becomes the catch-all slice.
       expect(screen.getByText('Other Asset Classes')).toBeInTheDocument();
     });
@@ -514,7 +518,7 @@ describe('AssetAllocationChart', () => {
       totalDirectValue: 10000,
       totalEtfValue: 0,
       unclassifiedValue: 0,
-      items: [{ assetClass: 'Equity', directValue: 10000, etfValue: 0, totalValue: 10000, percentage: 100 }],
+      items: [{ assetClass: 'Equities', assetClassKey: 'equity', directValue: 10000, etfValue: 0, totalValue: 10000, percentage: 100 }],
     });
     (investmentsApi.getPortfolioTagSummary as any).mockResolvedValue({
       keys: [],

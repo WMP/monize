@@ -6,17 +6,21 @@ import { PATH_METADATA, METHOD_METADATA } from "@nestjs/common/constants";
 import { TransactionRulesController } from "./transaction-rules.controller";
 import { TransactionRulesService } from "./transaction-rules.service";
 import { TransactionRulesRunService } from "./transaction-rules-run.service";
+import { TransactionRulesMatchService } from "./transaction-rules-match.service";
 import { ALLOW_DELEGATE_KEY } from "../delegation/decorators/delegate-access.decorator";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { PreviewDraftRuleDto } from "./dto/rule-run.dto";
+import { MatchDraftRuleDto, PreviewDraftRuleDto } from "./dto/rule-run.dto";
 import { CreateTransactionRuleDto } from "./dto/create-transaction-rule.dto";
 import { UpdateTransactionRuleDto } from "./dto/update-transaction-rule.dto";
+import { ExplainRuleRowDto } from "./dto/explain-rule-row.dto";
+import { BadRequestException, ValidationPipe } from "@nestjs/common";
 
 describe("TransactionRulesController", () => {
   let controller: TransactionRulesController;
   let service: Record<string, jest.Mock>;
   let runService: Record<string, jest.Mock>;
+  let matchService: Record<string, jest.Mock>;
   const req = { user: { id: "user-1" } };
 
   beforeEach(async () => {
@@ -32,14 +36,17 @@ describe("TransactionRulesController", () => {
     runService = {
       previewRun: jest.fn(),
       previewDraft: jest.fn(),
+      explainRow: jest.fn(),
       run: jest.fn(),
       applications: jest.fn(),
     };
+    matchService = { matchDraft: jest.fn() };
     const module = await Test.createTestingModule({
       controllers: [TransactionRulesController],
       providers: [
         { provide: TransactionRulesService, useValue: service },
         { provide: TransactionRulesRunService, useValue: runService },
+        { provide: TransactionRulesMatchService, useValue: matchService },
       ],
     }).compile();
     controller = module.get(TransactionRulesController);
@@ -65,6 +72,116 @@ describe("TransactionRulesController", () => {
     await controller.previewDraft(req, dto);
 
     expect(runService.previewDraft).toHaveBeenCalledWith("user-1", dto);
+  });
+
+  it("matches an unsaved condition for the JWT user", async () => {
+    matchService.matchDraft.mockResolvedValue({ data: [] });
+    const dto = { condition: {}, page: 2 } as MatchDraftRuleDto;
+
+    await controller.matchDraft(req, dto);
+
+    expect(matchService.matchDraft).toHaveBeenCalledWith("user-1", dto);
+  });
+
+  describe("match-draft body, through the app's validation pipe", () => {
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
+    const meta = { type: "body", metatype: MatchDraftRuleDto } as const;
+    const condition = { field: "payeeText", op: "contains", value: "x" };
+
+    it("lets a condition with a page and a window through, with no actions", async () => {
+      await expect(
+        pipe.transform(
+          {
+            condition,
+            page: 2,
+            limit: 10,
+            activeFrom: "2026-10-01",
+            activeTo: "",
+          },
+          meta,
+        ),
+      ).resolves.toMatchObject({ page: 2, limit: 10 });
+    });
+
+    it.each([
+      ["a page size over the ceiling", { condition, limit: 51 }],
+      ["a page below one", { condition, page: 0 }],
+      [
+        "a date that is not a calendar date",
+        { condition, activeFrom: "2026-02-30" },
+      ],
+      ["a field the body does not take", { condition, actions: [] }],
+      ["no condition", {}],
+    ])("refuses %s", async (_label, body) => {
+      await expect(pipe.transform(body, meta)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+  });
+
+  it("explains a row for the JWT user, with the body the pipe validated", async () => {
+    runService.explainRow.mockResolvedValue({ rules: [], labels: {} });
+    const dto = {
+      trigger: "import",
+      input: { accountId: "a" },
+    } as unknown as ExplainRuleRowDto;
+
+    await expect(controller.explainRow(req, dto)).resolves.toEqual({
+      rules: [],
+      labels: {},
+    });
+
+    expect(runService.explainRow).toHaveBeenCalledWith("user-1", dto);
+  });
+
+  describe("explain-row body, through the app's validation pipe", () => {
+    // The settings of main.ts: whitelist + forbidNonWhitelisted + transform.
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
+    const meta = { type: "body", metatype: ExplainRuleRowDto } as const;
+    const row = {
+      accountId: "a0000000-0000-4000-8000-000000000001",
+      currencyCode: "PLN",
+      amount: "-1.0000",
+      isTransfer: false,
+      payeeId: null,
+      payeeText: "Sklep",
+      categoryId: null,
+      description: null,
+      tagIds: [],
+      hasSplits: false,
+    };
+
+    it("lets a bounded row through", async () => {
+      await expect(
+        pipe.transform({ trigger: "import", input: row }, meta),
+      ).resolves.toMatchObject({ trigger: "import" });
+    });
+
+    it("refuses an oversized row before the service is reached", async () => {
+      const tooManyTags = Array.from(
+        { length: 51 },
+        (_v, i) => `a0000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+      );
+      for (const input of [
+        { ...row, tagIds: tooManyTags },
+        { ...row, payeeText: "x".repeat(256) },
+        { ...row, description: "x".repeat(100000) },
+        { ...row, userId: "a0000000-0000-4000-8000-000000000002" },
+      ]) {
+        await expect(
+          pipe.transform({ trigger: "import", input }, meta),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      }
+      expect(runService.explainRow).not.toHaveBeenCalled();
+    });
   });
 
   it("forwards the ruleId of a saved rule's draft to the service untouched", async () => {
@@ -205,6 +322,14 @@ describe("TransactionRulesController", () => {
         path: "preview-draft",
         method: RequestMethod.POST,
       });
+      expect(route("matchDraft")).toEqual({
+        path: "match-draft",
+        method: RequestMethod.POST,
+      });
+      expect(route("explainRow")).toEqual({
+        path: "explain-row",
+        method: RequestMethod.POST,
+      });
       expect(route("previewRun")).toEqual({
         path: ":id/preview-run",
         method: RequestMethod.POST,
@@ -231,6 +356,20 @@ describe("TransactionRulesController", () => {
     it("registers preview-draft before the :id routes so it is not read as a UUID", () => {
       const order = Object.getOwnPropertyNames(proto);
       expect(order.indexOf("previewDraft")).toBeLessThan(
+        order.indexOf("findOne"),
+      );
+    });
+
+    it("registers match-draft before the :id routes so it is not read as a UUID", () => {
+      const order = Object.getOwnPropertyNames(proto);
+      expect(order.indexOf("matchDraft")).toBeLessThan(
+        order.indexOf("findOne"),
+      );
+    });
+
+    it("registers explain-row before the :id routes so it is not read as a UUID", () => {
+      const order = Object.getOwnPropertyNames(proto);
+      expect(order.indexOf("explainRow")).toBeLessThan(
         order.indexOf("findOne"),
       );
     });

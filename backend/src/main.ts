@@ -31,6 +31,7 @@ import { checkClusterBoot } from "./common/cluster/cluster-mode";
 import {
   PG_LISTENER,
   PG_WAKEUP_CHANNEL,
+  PG_WAKEUP_PROBE_CHANNEL,
   PgListener,
 } from "./common/cluster/pg-listener.provider";
 import { assertRuntimeRoleSafe } from "./common/db/runtime-role-check";
@@ -188,7 +189,12 @@ async function assertNotificationChannelOrExit(
     // that a notification from another connection reaches this one -- which is
     // exactly what a transaction-mode pooler cannot do, and exactly what the
     // refusal below claims to catch.
-    await listener.verifyDelivery(PG_WAKEUP_CHANNEL, (channel, payload) =>
+    //
+    // Probed on its own channel, not `PG_WAKEUP_CHANNEL`: `PostgresEventBus` is
+    // already listening on that one by this point and parses every payload it
+    // sees there as a wake-up envelope, which the probe token is not.
+    // `LISTEN`/`NOTIFY` delivery proves the same thing on either channel.
+    await listener.verifyDelivery(PG_WAKEUP_PROBE_CHANNEL, (channel, payload) =>
       dataSource.query("SELECT pg_notify($1, $2)", [channel, payload]),
     );
     logger.log(

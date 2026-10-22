@@ -4,7 +4,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { accountsApi } from '@/lib/accounts';
 import { investmentsApi } from '@/lib/investments';
-import { roundToCents } from '@/lib/format';
+import { roundToCents, sumMoney } from '@/lib/format';
+import {
+  INCOME_ACTIONS,
+  incomeBaseKind,
+  investmentIncomeAmount,
+  investmentRowHasEffect,
+} from '@/lib/investment-actions';
+import { convertRowAmount, rowAmountCurrency } from '@/lib/investment-row-currency';
+import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { PortfolioSummaryCard } from '@/components/investments/PortfolioSummaryCard';
 import { AssetAllocationChart } from '@/components/investments/AssetAllocationChart';
 import { InvestmentValueChart } from '@/components/investments/InvestmentValueChart';
@@ -13,6 +21,47 @@ import { InvestmentRegisterPanel } from '@/components/investments/InvestmentRegi
 import { InvestmentIncomePanel } from './InvestmentIncomePanel';
 import type { Account } from '@/types/account';
 import type { PortfolioSummary, InvestmentTransaction, RealizedGainEntry } from '@/types/investment';
+
+/** The year's dividends and interest, or why they cannot be added up. */
+type DividendInterestYtd =
+  | { amount: number; unknownReason?: undefined }
+  | { amount: null; unknownReason: 'displayFx' | 'unknownCurrency' };
+
+/**
+ * The year's dividends and interest in the brokerage's currency. Each row's
+ * income is in its own (security) currency and reaches the account's at the
+ * rate its cash leg settled at. A reinvest created in the app stores no total;
+ * its income is the cost of the shares it bought. One row that cannot be
+ * converted makes the year unknown, never a smaller sum.
+ */
+function dividendInterestYtdOf(
+  incomeTx: readonly InvestmentTransaction[],
+  brokerage: Account,
+  cash: Account | null,
+  convert: (amount: number, from: string, to: string) => number | null,
+): DividendInterestYtd {
+  const accountCurrency = new Map<string, string>([[brokerage.id, brokerage.currencyCode]]);
+  if (cash) accountCurrency.set(cash.id, cash.currencyCode);
+  const amounts: number[] = [];
+  for (const tx of incomeTx) {
+    const amount = convertRowAmount(
+      tx,
+      investmentIncomeAmount(tx),
+      accountCurrency.get(tx.accountId),
+      brokerage.currencyCode,
+      convert,
+    );
+    if (amount === null) {
+      // Two different repairs: a security to name, or a rate to add.
+      return {
+        amount: null,
+        unknownReason: rowAmountCurrency(tx) === null ? 'unknownCurrency' : 'displayFx',
+      };
+    }
+    amounts.push(amount);
+  }
+  return { amount: roundToCents(sumMoney(amounts)) };
+}
 
 interface InvestmentDetailViewProps {
   account: Account;
@@ -25,12 +74,15 @@ interface InvestmentDetailViewProps {
 }
 
 /**
- * The actions that count towards the YTD income figure. Filtered server-side,
- * one request each, because `GET /investment-transactions` matches a single
- * action per call -- the reinvestment actions are deliberately absent, matching
- * what this figure has always counted.
+ * The actions that count towards the YTD "Dividends & Interest" figure: every
+ * dividend and every interest payment, paid in cash or reinvested in shares.
+ * Filtered server-side, one request each, because `GET /investment-transactions`
+ * matches a single action per call.
  */
-const INCOME_ACTIONS = ['DIVIDEND', 'INTEREST'] as const;
+const DIVIDEND_INTEREST_ACTIONS = INCOME_ACTIONS.filter((action) => {
+  const kind = incomeBaseKind(action);
+  return kind === 'DIVIDEND' || kind === 'INTEREST';
+});
 
 /**
  * The investment detail body for a brokerage/cash pair. Resolves the pair (via
@@ -42,7 +94,7 @@ export function InvestmentDetailView({ account, refreshKey = 0 }: InvestmentDeta
   const [brokerage, setBrokerage] = useState<Account>(account);
   const [cash, setCash] = useState<Account | null>(null);
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
-  const [dividendInterestYtd, setDividendInterestYtd] = useState(0);
+  const [incomeTx, setIncomeTx] = useState<InvestmentTransaction[]>([]);
   const [realizedGainsYtd, setRealizedGainsYtd] = useState(0);
   const [loadedForId, setLoadedForId] = useState<string | null>(null);
   // Bumped by the register panel after any write on either ledger. The figures
@@ -80,10 +132,10 @@ export function InvestmentDetailView({ account, refreshKey = 0 }: InvestmentDeta
       // A single unfiltered request capped the year at one page, and asking for
       // a bigger page is what the server refuses outright -- the 400 landed in
       // the catch below and reported the year's dividends as 0.00.
-      const [summaryData, incomeTx, realized] = await Promise.all([
+      const [summaryData, fetchedIncome, realized] = await Promise.all([
         investmentsApi.getPortfolioSummary(ids).catch(() => null),
         Promise.all(
-          INCOME_ACTIONS.map((action) =>
+          DIVIDEND_INTEREST_ACTIONS.map((action) =>
             investmentsApi.getAllTransactionPages({
               accountIds: idsStr,
               startDate: yearStart,
@@ -103,8 +155,8 @@ export function InvestmentDetailView({ account, refreshKey = 0 }: InvestmentDeta
       setBrokerage(resolvedBrokerage);
       setCash(resolvedCash);
       setSummary(summaryData);
-      const income = incomeTx.reduce((sum, tx) => sum + (Number(tx.totalAmount) || 0), 0);
-      setDividendInterestYtd(roundToCents(income));
+      // A VOID row is listed by the endpoint as a record; it paid nothing.
+      setIncomeTx(fetchedIncome.filter(investmentRowHasEffect));
       setRealizedGainsYtd(roundToCents(realized.reduce((sum, r) => sum + (Number(r.realizedGain) || 0), 0)));
       setLoadedForId(account.id);
     })();
@@ -115,6 +167,9 @@ export function InvestmentDetailView({ account, refreshKey = 0 }: InvestmentDeta
 
   const accountIds = cash ? [brokerage.id, cash.id] : [brokerage.id];
   const currency = brokerage.currencyCode;
+
+  const { convert } = useExchangeRates();
+  const dividendInterestYtd = dividendInterestYtdOf(incomeTx, brokerage, cash, convert);
 
   return (
     <div className="space-y-6">
@@ -143,12 +198,13 @@ export function InvestmentDetailView({ account, refreshKey = 0 }: InvestmentDeta
       <GroupedHoldingsList
         holdingsByAccount={summary?.holdingsByAccount ?? []}
         isLoading={isLoading}
-        totalPortfolioValue={summary?.totalPortfolioValue ?? 0}
+        totalPortfolioValue={summary?.totalPortfolioValue ?? null}
         valuationComplete={summary?.valuationComplete}
       />
 
       <InvestmentIncomePanel
-        dividendInterestYtd={dividendInterestYtd}
+        dividendInterestYtd={dividendInterestYtd.amount}
+        dividendInterestUnknownReason={dividendInterestYtd.unknownReason}
         realizedGainsYtd={realizedGainsYtd}
         currencyCode={currency}
         isLoading={isLoading}

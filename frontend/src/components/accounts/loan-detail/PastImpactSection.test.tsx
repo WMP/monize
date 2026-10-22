@@ -7,6 +7,10 @@ import { deriveLoanPaymentHistory } from '@/lib/loan-history';
 import { Account } from '@/types/account';
 import { Transaction } from '@/types/transaction';
 
+// Every fixture is dated in the past; `todayYmd` is a required argument.
+const AFTER_ALL_FIXTURES = '2999-12-31';
+
+
 vi.mock('@/hooks/useNumberFormat', async () => {
   const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
   return {
@@ -50,7 +54,7 @@ function makeHistory(account: Account) {
         linkedTransaction: null,
       }) as Transaction,
   );
-  return deriveLoanPaymentHistory(account, transactions);
+  return deriveLoanPaymentHistory(account, transactions, [], [], AFTER_ALL_FIXTURES);
 }
 
 /**

@@ -14,7 +14,10 @@ import {
   ParseUUIDPipe,
   ParseBoolPipe,
   BadRequestException,
+  HttpStatus,
+  Res,
 } from "@nestjs/common";
+import type { Response } from "express";
 import {
   ApiTags,
   ApiOperation,
@@ -50,6 +53,8 @@ import { TransferActor } from "./transaction-transfer.service";
 import { GetRecentTransactionsDto } from "./dto/get-recent-transactions.dto";
 import { BulkReconcileDto } from "./dto/bulk-reconcile.dto";
 import { BulkUpdateDto, BulkDeleteDto } from "./dto/bulk-update.dto";
+import { BulkCreateTransactionsDto } from "./dto/bulk-create.dto";
+import { TransactionBulkCreateService } from "./transaction-bulk-create.service";
 import { MarkClearedDto } from "./dto/mark-cleared.dto";
 import { UpdateTransactionStatusDto } from "./dto/update-transaction-status.dto";
 import {
@@ -64,6 +69,11 @@ import {
 } from "../common/query-param-utils";
 import { tr } from "../i18n/translate";
 import {
+  MAX_SEARCH_LENGTH,
+  MAX_SEARCH_TERMS,
+  SEARCH_ENUM_VALUES,
+} from "./transaction-search-query.util";
+import {
   TagKeyFilter,
   TagKeyFilterOp,
   TAG_KEY_FILTER_OPS,
@@ -75,6 +85,28 @@ import { TRANSACTION_SORT_FIELDS } from "./register-order";
 const ALL_TRANSACTION_STATUSES = new Set<string>(
   Object.values(TransactionStatus),
 );
+
+/** The `search` parameter's Swagger text, one for every endpoint that takes it. */
+const SEARCH_PARAM_DESCRIPTION =
+  `Search text, at most ${MAX_SEARCH_LENGTH} characters and ` +
+  `${MAX_SEARCH_TERMS} terms. A bare word matches description, payee, ` +
+  "category, amount, reference number, split memo and tag; words are ANDed, " +
+  '"quotes" make a phrase and -word excludes. field:text is contains, ' +
+  "field:=text exact, * a wildcard, over payee, memo, cat, tag, account, " +
+  `ref, amount, date, status (${SEARCH_ENUM_VALUES.status.join("|")}), ` +
+  `is (${SEARCH_ENUM_VALUES.is.join("|")}) and has ` +
+  `(${SEARCH_ENUM_VALUES.has.join("|")}). #10 is reference exactly 10; ` +
+  "amounts and dates take >, >=, <, <= and a..b (date:2026-03 is that month).";
+
+/**
+ * The `search` query value: refused when not a string (a repeated key arrives
+ * as an array) and cut at the parser's length cap, on every endpoint that
+ * takes one, so the register and its totals read the same string.
+ */
+function searchParam(search: unknown): string | undefined {
+  const value = assertStringParam(search, "search");
+  return value ? value.slice(0, MAX_SEARCH_LENGTH) : undefined;
+}
 
 /**
  * Build a KEY:VALUE tag filter from the `tagKey` / `tagKeyOp` / `tagKeyValue`
@@ -174,6 +206,7 @@ export class TransactionsController {
     private readonly jointAccounts: JointAccountsService,
     private readonly crossOwnerAccess: CrossOwnerAccessService,
     private readonly jointRegister: JointRegisterService,
+    private readonly bulkCreateService: TransactionBulkCreateService,
   ) {}
 
   /**
@@ -230,6 +263,11 @@ export class TransactionsController {
   @Post()
   @ApiOperation({ summary: "Create a new transaction" })
   @ApiResponse({ status: 201, description: "Transaction created successfully" })
+  @ApiResponse({
+    status: 200,
+    description:
+      "The externalId was already used in the account: the existing transaction, unchanged",
+  })
   @ApiResponse({ status: 400, description: "Bad request" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @AllowDelegate()
@@ -239,22 +277,33 @@ export class TransactionsController {
   async create(
     @Request() req,
     @Body() createTransactionDto: CreateTransactionDto,
+    @Res({ passthrough: true }) res: Response,
   ) {
     // Own context targeting an account the caller does not own: the joint
     // register path (authorizes the joint grant, then writes as the owner).
-    if (
+    const outcome =
       !req.user.isActing &&
       !(await this.crossOwnerAccess.isAccountOwnedBy(
         createTransactionDto.accountId,
         req.user.id,
       ))
-    ) {
-      return this.jointRegister.create(
-        req.user.realUserId ?? req.user.id,
-        createTransactionDto,
-      );
-    }
-    return this.transactionsService.create(req.user.id, createTransactionDto);
+        ? await this.jointRegister.createWithOutcome(
+            req.user.realUserId ?? req.user.id,
+            createTransactionDto,
+          )
+        : // An acting delegate writes as the owner but is not the owner: the
+          // owner's structural rules would land in accounts the delegate guard
+          // never checked (no moving money via an account the delegate cannot
+          // access).
+          await this.transactionsService.createWithOutcome(
+            req.user.id,
+            createTransactionDto,
+            { actorIsNotOwner: req.user.isActing === true },
+          );
+    // A repeated externalId created nothing: say so with the status, so a
+    // single-row client can tell a retry's answer from a new row.
+    if (!outcome.created) res.status(HttpStatus.OK);
+    return outcome.transaction;
   }
 
   @Get()
@@ -321,8 +370,7 @@ export class TransactionsController {
   @ApiQuery({
     name: "search",
     required: false,
-    description:
-      "Search text matched against description, payee, category, subcategory, amount, reference number, split memo, and tag",
+    description: SEARCH_PARAM_DESCRIPTION,
   })
   @ApiQuery({
     name: "amountFrom",
@@ -373,6 +421,12 @@ export class TransactionsController {
     required: false,
     description: "Sort direction: asc or desc (default: desc)",
   })
+  @ApiQuery({
+    name: "externalId",
+    required: false,
+    description:
+      "Only the transaction created with this externalId (exact match, non-empty). Combine with accountIds to name the account, since a key is unique per account; a row in an investment brokerage account also needs includeInvestmentBrokerage=true.",
+  })
   @ApiResponse({
     status: 200,
     description: "List of transactions retrieved successfully",
@@ -407,6 +461,7 @@ export class TransactionsController {
     hasAttachments?: boolean,
     @Query("sortBy") sortBy?: string,
     @Query("sortDirection") sortDirection?: string,
+    @Query("externalId") externalId?: string,
   ) {
     // Validate pagination parameters
     if (page !== undefined) {
@@ -451,9 +506,18 @@ export class TransactionsController {
       );
     }
 
-    // Truncate search to prevent excessive ILIKE query length
-    const searchStr = assertStringParam(search, "search");
-    const sanitizedSearch = searchStr ? searchStr.slice(0, 200) : undefined;
+    const sanitizedSearch = searchParam(search);
+    // An exact match, so never trimmed or truncated: a key longer than any
+    // stored one simply matches nothing. An empty one is refused, as a create
+    // refuses it, rather than read as a filter no row can satisfy.
+    const externalIdFilter = assertStringParam(externalId, "externalId");
+    if (externalIdFilter === "") {
+      throw new BadRequestException(
+        tr("errors.params.isRequired", 'A value for "externalId" is required', {
+          param: "externalId",
+        }),
+      );
+    }
 
     const parsedAmountFrom =
       amountFrom !== undefined ? parseFloat(amountFrom) : undefined;
@@ -544,6 +608,7 @@ export class TransactionsController {
       parseCurrencyCodes(originalCurrencyCodes),
       hasAttachments,
       jointAccountIds,
+      externalIdFilter,
     );
   }
 
@@ -592,8 +657,7 @@ export class TransactionsController {
   @ApiQuery({
     name: "search",
     required: false,
-    description:
-      "Search text matched against description, payee, category, subcategory, amount, reference number, split memo, and tag",
+    description: SEARCH_PARAM_DESCRIPTION,
   })
   @ApiQuery({
     name: "amountFrom",
@@ -667,7 +731,7 @@ export class TransactionsController {
       endDate,
       parseCategoryIds(categoryIds ?? categoryId),
       parseIds(payeeIds, payeeId),
-      search,
+      searchParam(search),
       parsedAmountFrom,
       parsedAmountTo,
       parseUuids(tagIdsParam),
@@ -720,7 +784,7 @@ export class TransactionsController {
   @ApiQuery({
     name: "search",
     required: false,
-    description: "Search text (same fields as the summary endpoint)",
+    description: SEARCH_PARAM_DESCRIPTION,
   })
   @ApiQuery({
     name: "amountFrom",
@@ -827,7 +891,7 @@ export class TransactionsController {
       categoryIds: parseCategoryIds(categoryIds),
       payeeIds: parseUuids(payeeIds),
       tagIds: parseUuids(tagIdsParam),
-      search,
+      search: searchParam(search),
       amountFrom: parsedAmountFrom,
       amountTo: parsedAmountTo,
       limit: parsedLimit,
@@ -853,7 +917,11 @@ export class TransactionsController {
   @ApiQuery({ name: "categoryIds", required: false })
   @ApiQuery({ name: "payeeIds", required: false })
   @ApiQuery({ name: "tagIds", required: false })
-  @ApiQuery({ name: "search", required: false })
+  @ApiQuery({
+    name: "search",
+    required: false,
+    description: SEARCH_PARAM_DESCRIPTION,
+  })
   @ApiQuery({ name: "amountFrom", required: false })
   @ApiQuery({ name: "amountTo", required: false })
   @ApiQuery({ name: "limit", required: false })
@@ -931,7 +999,7 @@ export class TransactionsController {
         categoryIds: parseCategoryIds(categoryIds),
         payeeIds: parseUuids(payeeIds),
         tagIds: parseUuids(tagIdsParam),
-        search,
+        search: searchParam(search),
         amountFrom: parsedAmountFrom,
         amountTo: parsedAmountTo,
         limit: parsedLimit,
@@ -1060,8 +1128,7 @@ export class TransactionsController {
   @ApiQuery({
     name: "search",
     required: false,
-    description:
-      "Search text matched against description, payee, category, subcategory, amount, reference number, split memo, and tag",
+    description: SEARCH_PARAM_DESCRIPTION,
   })
   @ApiQuery({
     name: "amountFrom",
@@ -1149,7 +1216,7 @@ export class TransactionsController {
       endDate,
       parseCategoryIds(categoryIds),
       parseUuids(payeeIds),
-      search,
+      searchParam(search),
       parsedAmountFrom,
       parsedAmountTo,
       parseUuids(tagIdsParam),
@@ -1362,6 +1429,11 @@ export class TransactionsController {
   @ApiOperation({ summary: "Create a transfer between two accounts" })
   @ApiResponse({ status: 201, description: "Transfer created successfully" })
   @ApiResponse({
+    status: 200,
+    description:
+      "The externalId was already used in the source account by this transfer: the existing transfer, unchanged",
+  })
+  @ApiResponse({
     status: 400,
     description: "Bad request - invalid transfer data",
   })
@@ -1370,12 +1442,34 @@ export class TransactionsController {
   @AllowDelegate()
   @DelegatedTransferBody()
   @DelegateRequires("create")
-  createTransfer(@Request() req, @Body() createTransferDto: CreateTransferDto) {
-    return this.transactionsService.createTransfer(
+  async createTransfer(
+    @Request() req,
+    @Body() createTransferDto: CreateTransferDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const outcome = await this.transactionsService.createTransferWithOutcome(
       req.user.id,
       createTransferDto,
       transferActorFrom(req),
     );
+    if (!outcome.created) res.status(HttpStatus.OK);
+    return outcome.transfer;
+  }
+
+  @Post("bulk")
+  @ApiOperation({
+    summary: "Create many transactions and transfers in one request",
+    description:
+      "Each item carries a `transaction` (the body POST /transactions takes) or a `transfer` (the body POST /transactions/transfer takes). Each row is created on its own and in date order; a row that fails does not undo the others. The response has one result per item, in the request's order: `created` or `existing` with the new id, or `failed` with the status and message the single-row route would have returned. A row whose `externalId` is already used in its account comes back `existing`, so a batch whose response was lost can be sent again.",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Every row was attempted; see each result's status",
+  })
+  @ApiResponse({ status: 400, description: "Bad request" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  bulkCreate(@Request() req, @Body() dto: BulkCreateTransactionsDto) {
+    return this.bulkCreateService.createMany(transferActorFrom(req), dto);
   }
 
   @Post("bulk-update")
@@ -1427,7 +1521,11 @@ export class TransactionsController {
             req.user.realUserId ?? req.user.id,
           )),
         ];
-    return this.transactionsService.findOne(req.user.id, id, jointIds);
+    return this.transactionsService.findOneForDisplay(
+      req.user.id,
+      id,
+      jointIds,
+    );
   }
 
   @Patch(":id")

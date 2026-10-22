@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, MutableRefObject } from 'react';
-import { useForm, Controller, Resolver } from 'react-hook-form';
+import { useForm, useWatch, Controller, Resolver } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { MAX_REMINDER_DAYS_BEFORE } from '@/lib/scheduled-reminder-bounds';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +18,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { TagForm } from '@/components/tags/TagForm';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows, toCreateSplitData } from '@/components/transactions/SplitEditor';
+import { bookSplitRowsAtMinorUnit } from '@/lib/minor-unit-booking';
 import { CurrencyPickerButton } from '@/components/transactions/CurrencyPickerButton';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { exchangeRatesApi } from '@/lib/exchange-rates';
@@ -36,6 +37,7 @@ import { Payee } from '@/types/payee';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
 import { Tag } from '@/types/tag';
+import { useTagPickerOptions } from '@/hooks/useTagPickerOptions';
 import { buildCategoryTree } from '@/lib/categoryUtils';
 import { roundToCents, getCurrencySymbol, FX_RATE_DISPLAY_DECIMALS } from '@/lib/format';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
@@ -59,11 +61,11 @@ export type ScheduledTransactionMode = 'transaction' | 'split' | 'transfer' | 'i
 
 // Mirrors visibility rules in InvestmentTransactionForm — keep in sync.
 const SECURITY_REQUIRED_ACTIONS: InvestmentAction[] = [
-  'BUY', 'SELL', 'DIVIDEND', 'CAPITAL_GAIN', 'SPLIT', 'REINVEST', 'ADD_SHARES', 'REMOVE_SHARES',
+  'BUY', 'SELL', 'DIVIDEND', 'CAPITAL_GAIN', 'RETURN_OF_CAPITAL', 'SPLIT', 'REINVEST', 'ADD_SHARES', 'REMOVE_SHARES',
 ];
 const QUANTITY_PRICE_ACTIONS: InvestmentAction[] = ['BUY', 'SELL', 'REINVEST'];
 const QUANTITY_ONLY_ACTIONS: InvestmentAction[] = ['ADD_SHARES', 'REMOVE_SHARES', 'SPLIT'];
-const AMOUNT_ONLY_ACTIONS: InvestmentAction[] = ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN'];
+const AMOUNT_ONLY_ACTIONS: InvestmentAction[] = ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN', 'RETURN_OF_CAPITAL'];
 const FUNDING_ACCOUNT_ACTIONS: InvestmentAction[] = ['BUY', 'SELL'];
 
 const SCHEDULABLE_INVESTMENT_ACTIONS: InvestmentAction[] = [
@@ -71,6 +73,8 @@ const SCHEDULABLE_INVESTMENT_ACTIONS: InvestmentAction[] = [
   // Money's distribution vocabulary (issue #1149): schedulable like their base.
   'REINVEST_INTEREST', 'REINVEST_CAPITAL_GAIN_SHORT', 'REINVEST_CAPITAL_GAIN_LONG',
   'CAPITAL_GAIN_SHORT', 'CAPITAL_GAIN_LONG', 'REDEEM',
+  // A fund's regular return of capital (issue #1800).
+  'RETURN_OF_CAPITAL',
 ];
 
 const buildScheduledTransactionSchema = (t: (key: string) => string) => z.object({
@@ -227,19 +231,34 @@ export function ScheduledTransactionForm({
     scheduledTransaction?.occurrencesRemaining !== null &&
     scheduledTransaction?.occurrencesRemaining !== undefined
   );
-  const [splits, setSplits] = useState<SplitRow[]>(
+  // A stored template is priced at 4dp (a LINEAR mortgage installment is
+  // 864.5833 + 306.0625 = 1,170.6458); the form edits it in the currency's
+  // smallest unit, lines and parent alike, or saving a cents parent over the
+  // 4dp lines is refused (issue #1581).
+  const [bookedTemplate] = useState(() =>
     scheduledTransaction?.splits && scheduledTransaction.splits.length > 0 && !isScheduledTransfer(scheduledTransaction)
-      ? toSplitRows(scheduledTransaction.splits)
-      : templateTransaction?.splits && templateTransaction.splits.length > 0 && !templateTransaction.isTransfer
-        ? toSplitRows(templateTransaction.splits)
-        : []
+      ? bookSplitRowsAtMinorUnit(
+          toSplitRows(scheduledTransaction.splits),
+          Number(scheduledTransaction.amount),
+          scheduledTransaction.currencyCode,
+          scheduledTransaction.splits,
+        )
+      : null,
+  );
+  const [splits, setSplits] = useState<SplitRow[]>(
+    bookedTemplate
+      ? bookedTemplate.rows
+      : scheduledTransaction?.splits && scheduledTransaction.splits.length > 0 && !isScheduledTransfer(scheduledTransaction)
+        ? toSplitRows(scheduledTransaction.splits)
+        : templateTransaction?.splits && templateTransaction.splits.length > 0 && !templateTransaction.isTransfer
+          ? toSplitRows(templateTransaction.splits)
+          : []
   );
 
   const {
     register,
     handleSubmit,
     setValue,
-    watch,
     control,
     formState: { errors, isDirty },
   } = useForm<ScheduledTransactionFormData>({
@@ -253,7 +272,7 @@ export function ScheduledTransactionForm({
           categoryId: scheduledTransaction.categoryId || '',
           amount: isScheduledTransfer(scheduledTransaction)
             ? Math.abs(Math.round(Number(scheduledTransaction.amount) * 100) / 100)
-            : Math.round(Number(scheduledTransaction.amount) * 100) / 100,
+            : (bookedTemplate?.parentAmount ?? Math.round(Number(scheduledTransaction.amount) * 100) / 100),
           currencyCode: scheduledTransaction.currencyCode,
           description: scheduledTransaction.description || '',
           referenceNumber: '',
@@ -297,10 +316,13 @@ export function ScheduledTransactionForm({
 
   useFormDirtyNotify(isDirty, onDirtyChange);
 
-  const watchedAccountId = watch('accountId');
-  const watchedAmount = watch('amount');
-  const watchedFrequency = watch('frequency');
-  const watchedCurrencyCode = watch('currencyCode');
+  const watchedAccountId = useWatch({ control, name: 'accountId' });
+  const watchedAmount = useWatch({ control, name: 'amount' });
+  const watchedFrequency = useWatch({ control, name: 'frequency' });
+  const watchedCurrencyCode = useWatch({ control, name: 'currencyCode' });
+  const watchedIsActive = useWatch({ control, name: 'isActive' });
+  const watchedNextDueDate = useWatch({ control, name: 'nextDueDate' });
+  const watchedAutoPost = useWatch({ control, name: 'autoPost' });
 
   // Auto-set currencyCode from the selected account
   useEffect(() => {
@@ -413,9 +435,10 @@ export function ScheduledTransactionForm({
 
   // Re-sign the foreign amount when the category changes, so an expense
   // category flips it negative exactly as the account-currency path does.
-  const resignForeignAmount = (isIncome: boolean) => {
+  const resignForeignAmount = (category: Category) => {
+    if (category.effectiveAutoSign === false) return;
     if (foreignAmount === undefined || foreignAmount === 0) return;
-    const signed = isIncome ? Math.abs(foreignAmount) : -Math.abs(foreignAmount);
+    const signed = category.isIncome ? Math.abs(foreignAmount) : -Math.abs(foreignAmount);
     if (signed !== foreignAmount) {
       setForeignAmount(signed);
       recomputeFx(signed, fxRate);
@@ -534,12 +557,7 @@ export function ScheduledTransactionForm({
   );
 
   // Memoize tag options
-  const tagOptions = useMemo(() =>
-    [...tags]
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
-      .map(tag => ({ value: tag.id, label: tag.name })),
-    [tags]
-  );
+  const { tagOptions, tagUsage } = useTagPickerOptions(tags);
 
   // Load securities lazily — only fetch when the user actually enters investment mode.
   useEffect(() => {
@@ -564,16 +582,25 @@ export function ScheduledTransactionForm({
   // a quantity-price action has a Price field to fill; amount-only (DIVIDEND ...)
   // and quantity-only (ADD_SHARES ...) actions never use a close, so skip the
   // request for them -- matching the two dialogs, which gate the fetch the same way.
+  //
+  // Each change of those inputs resets what the last answer left behind, during
+  // render (the "info from previous render" pattern) rather than in the effect:
+  // no request, no close; and "no price history" is a completed-empty result,
+  // not the loading window and not a failed lookup.
+  const wantsMarketPrice =
+    mode === 'investment' && !!investmentSecurityId && isQuantityPriceAction;
+  const priceRequestKey = `${mode}|${investmentSecurityId}|${isQuantityPriceAction}`;
+  const [priceRequestFor, setPriceRequestFor] = useState(priceRequestKey);
+  if (priceRequestFor !== priceRequestKey) {
+    setPriceRequestFor(priceRequestKey);
+    if (!wantsMarketPrice) setMarketPrice(null);
+    setPriceHistoryEmpty(false);
+  }
   useEffect(() => {
     if (mode !== 'investment' || !investmentSecurityId || !isQuantityPriceAction) {
-      setMarketPrice(null);
-      setPriceHistoryEmpty(false);
       return;
     }
     let cancelled = false;
-    // Reset while the request is in flight: "no price history" is a
-    // completed-empty result, not the loading window and not a failed lookup.
-    setPriceHistoryEmpty(false);
     investmentsApi.getSecurityPrices(investmentSecurityId, { limit: 1 })
       .then((prices) => {
         if (cancelled) return;
@@ -885,10 +912,13 @@ export function ScheduledTransactionForm({
           // and let the conversion re-derive the account-currency amount.
           const category = categories.find((c) => c.id === payee.defaultCategoryId);
           if (category && isForeign) {
-            resignForeignAmount(category.isIncome);
+            resignForeignAmount(category);
           } else if (category && watchedAmount !== undefined && watchedAmount !== 0) {
             const absAmount = Math.abs(watchedAmount);
-            const newAmount = category.isIncome ? absAmount : -absAmount;
+            // Automatic sign off for this category: keep the typed sign.
+            const newAmount = category.effectiveAutoSign !== false
+              ? (category.isIncome ? absAmount : -absAmount)
+              : watchedAmount;
             if (newAmount !== watchedAmount) {
               const rounded = roundToCents(newAmount);
               setValue('amount', rounded, { shouldDirty: true });
@@ -930,10 +960,13 @@ export function ScheduledTransactionForm({
       if (mode !== 'transfer' && category && isForeign) {
         // The typed amount is the foreign one; re-sign it and let the
         // conversion re-derive the account-currency amount.
-        resignForeignAmount(category.isIncome);
+        resignForeignAmount(category);
       } else if (mode !== 'transfer' && category && watchedAmount !== undefined && watchedAmount !== 0) {
         const absAmount = Math.abs(watchedAmount);
-        const newAmount = category.isIncome ? absAmount : -absAmount;
+        // Automatic sign off for this category: keep the typed sign.
+        const newAmount = category.effectiveAutoSign !== false
+          ? (category.isIncome ? absAmount : -absAmount)
+          : watchedAmount;
         if (newAmount !== watchedAmount) {
           const rounded = roundToCents(newAmount);
           setValue('amount', rounded, { shouldDirty: true, shouldValidate: true });
@@ -1299,7 +1332,7 @@ export function ScheduledTransactionForm({
     <div className="flex items-center space-x-6">
       <label className="flex items-center gap-2 cursor-pointer">
         <ToggleSwitch
-          checked={!!watch('isActive')}
+          checked={!!watchedIsActive}
           onChange={(next) => setValue('isActive', next, { shouldDirty: true })}
           label={t('form.activeLabel')}
         />
@@ -1309,7 +1342,7 @@ export function ScheduledTransactionForm({
       </label>
       <label className="flex items-center gap-2 cursor-pointer">
         <ToggleSwitch
-          checked={!!watch('autoPost')}
+          checked={!!watchedAutoPost}
           onChange={(next) => setValue('autoPost', next, { shouldDirty: true })}
           label={t('form.autoPostLabel')}
         />
@@ -1653,6 +1686,7 @@ export function ScheduledTransactionForm({
               onChange={setSplits}
               categories={categories}
               tags={tags}
+              tagUsage={tagUsage}
               accounts={accounts}
               sourceAccountId={watchedAccountId || ''}
               parentAccountSubType={
@@ -1663,6 +1697,7 @@ export function ScheduledTransactionForm({
               currencyCode={watchedCurrencyCode || defaultCurrency}
               onConvertToRegular={handleConvertToRegular}
               onCreateCategory={createCategoryFromTypedName}
+              transactionDate={watchedNextDueDate}
             />
           </div>
 

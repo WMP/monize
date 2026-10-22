@@ -18,6 +18,7 @@ import {
   ExchangeRateService,
   directionlessPairKey,
 } from "./exchange-rate.service";
+import { FxProviderChain } from "./providers/fx-provider-chain";
 import {
   GAP_FILL_BUDGET_MS,
   MAX_GAP_WINDOWS,
@@ -208,14 +209,32 @@ export class ExchangeRateHistoryService {
    * A pair's history starts where it starts, so the window before it can never
    * be filled; without this, every press of the button re-asks for it. A cache
    * and not a guard, in the category `history-fill.ts` describes: losing an
-   * entry costs a round trip and changes no row.
+   * entry costs a round trip and changes no row. It needs no provider-chain
+   * scoping of its own: the chain is fixed for the life of the process, and
+   * changing `FX_PROVIDERS` takes a restart, which starts this memory empty.
    */
   private readonly emptyWindows = new EmptyWindowMemory();
 
   constructor(
     private readonly dataSource: DataSource,
     private readonly exchangeRateService: ExchangeRateService,
+    private readonly fxProviders: FxProviderChain,
   ) {}
+
+  /**
+   * The running provider chain as `exchange_rate_coverage.providers` records
+   * it: the ordered source slugs, joined with commas.
+   *
+   * Order is part of it on purpose. The chain answers a window from the first
+   * carrying provider that has anything, so reordering changes which history a
+   * fill sees just as adding or removing a provider does.
+   */
+  private providerFingerprint(): string {
+    return this.fxProviders
+      .describe()
+      .map((provider) => provider.source)
+      .join(",");
+  }
 
   /**
    * The pair `code` forms with the caller's reporting currency, and the two
@@ -463,6 +482,11 @@ export class ExchangeRateHistoryService {
    * planning at all: nothing before `earliestAvailableDate` exists to be
    * fetched, nothing between there and `firstGapDate` has been left unasked,
    * and `probedFrom` says how far back that second claim may be trusted.
+   *
+   * A row written under another provider chain -- including a `NULL` one,
+   * written before the chain was recorded -- reads as all-`null`. What Yahoo
+   * alone was found to carry says nothing about what Frankfurter does, and a
+   * stale floor would hide history the running chain can supply.
    */
   private async readPairCoverage(
     from: string,
@@ -473,21 +497,31 @@ export class ExchangeRateHistoryService {
       earliest_available: string | null;
       first_gap: string | null;
       probed_from: string | null;
+      providers: string | null;
     }> = await withScopedDb(this.dataSource, (manager) =>
       manager.query(
         `SELECT TO_CHAR(earliest_available_date, 'YYYY-MM-DD') AS earliest_available,
                 TO_CHAR(first_gap_date, 'YYYY-MM-DD') AS first_gap,
-                TO_CHAR(probed_from, 'YYYY-MM-DD') AS probed_from
+                TO_CHAR(probed_from, 'YYYY-MM-DD') AS probed_from,
+                providers
            FROM exchange_rate_coverage
           WHERE from_currency = $1
             AND to_currency = $2`,
         [first, second],
       ),
     );
+    const row = rows[0];
+    if (!row || row.providers !== this.providerFingerprint()) {
+      return {
+        earliestAvailableDate: null,
+        firstGapDate: null,
+        probedFrom: null,
+      };
+    }
     return {
-      earliestAvailableDate: rows[0]?.earliest_available ?? null,
-      firstGapDate: rows[0]?.first_gap ?? null,
-      probedFrom: rows[0]?.probed_from ?? null,
+      earliestAvailableDate: row.earliest_available ?? null,
+      firstGapDate: row.first_gap ?? null,
+      probedFrom: row.probed_from ?? null,
     };
   }
 
@@ -500,6 +534,12 @@ export class ExchangeRateHistoryService {
    * here: a column already set keeps its value against a `null`, an unset one
    * takes the new date, and neither ever moves backwards. A pointer that went
    * backwards would re-plan the years the press before it had just answered.
+   *
+   * The merge holds only within one provider chain. A row recorded under a
+   * different chain (or none) has its three dates **replaced** by this write's,
+   * and takes this chain's fingerprint: merging would carry the stale floor
+   * straight through the first write after a change to `FX_PROVIDERS`.
+   * `IS DISTINCT FROM` is what makes a `NULL` fingerprint count as different.
    */
   private async recordPairCoverage(
     from: string,
@@ -518,18 +558,31 @@ export class ExchangeRateHistoryService {
       manager.query(
         `INSERT INTO exchange_rate_coverage
                 (from_currency, to_currency, earliest_available_date,
-                 first_gap_date, probed_from)
-         VALUES ($1, $2, $3::DATE, $4::DATE, $5::DATE)
+                 first_gap_date, probed_from, providers)
+         VALUES ($1, $2, $3::DATE, $4::DATE, $5::DATE, $6)
          ON CONFLICT (from_currency, to_currency) DO UPDATE SET
-           earliest_available_date = GREATEST(
-             exchange_rate_coverage.earliest_available_date,
-             EXCLUDED.earliest_available_date),
-           first_gap_date = GREATEST(
-             exchange_rate_coverage.first_gap_date,
-             EXCLUDED.first_gap_date),
-           probed_from = LEAST(
-             exchange_rate_coverage.probed_from,
-             EXCLUDED.probed_from),
+           earliest_available_date = CASE
+             WHEN exchange_rate_coverage.providers IS DISTINCT FROM EXCLUDED.providers
+               THEN EXCLUDED.earliest_available_date
+             ELSE GREATEST(
+               exchange_rate_coverage.earliest_available_date,
+               EXCLUDED.earliest_available_date)
+           END,
+           first_gap_date = CASE
+             WHEN exchange_rate_coverage.providers IS DISTINCT FROM EXCLUDED.providers
+               THEN EXCLUDED.first_gap_date
+             ELSE GREATEST(
+               exchange_rate_coverage.first_gap_date,
+               EXCLUDED.first_gap_date)
+           END,
+           probed_from = CASE
+             WHEN exchange_rate_coverage.providers IS DISTINCT FROM EXCLUDED.providers
+               THEN EXCLUDED.probed_from
+             ELSE LEAST(
+               exchange_rate_coverage.probed_from,
+               EXCLUDED.probed_from)
+           END,
+           providers = EXCLUDED.providers,
            updated_at = CURRENT_TIMESTAMP`,
         [
           first,
@@ -537,6 +590,7 @@ export class ExchangeRateHistoryService {
           coverage.earliestAvailableDate,
           coverage.firstGapDate,
           coverage.probedFrom,
+          this.providerFingerprint(),
         ],
       ),
     );

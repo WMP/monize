@@ -427,5 +427,42 @@
         }
       }
     }
+  },
+  "emailReceipts": {
+    "basics": {
+      "title": "Belege aus E-Mails",
+      "steps": {
+        "welcome": {
+          "title": "Warum Belege aus E-Mails lesen",
+          "body": "Eine Banktransaktion zeigt, wie viel Sie wann bezahlt haben. Sie zeigt nicht, was Sie gekauft haben. Das zeigt die Bestellbestätigung per E-Mail. Monize liest diese E-Mails, findet die Transaktion, die jede davon bezahlt hat, und schlägt eine Beschreibung, einen Zahlungsempfänger und eine Aufteilung nach Positionen mit je einer Kategorie vor. Jeden Vorschlag bestätigen Sie, bevor er eine Transaktion ändert."
+        },
+        "aiRequired": {
+          "title": "In der Praxis brauchen Sie einen KI-Anbieter",
+          "body": "Monize liest eine E-Mail mit einem **Profil**: einem Satz von Mustern für eine Absenderdomain, zum Beispiel für einen Shop. Sie können ein Profil von Hand schreiben, aber jedes Muster muss genau zu den Zeilen der E-Mails dieses Shops passen. In der Praxis schreibt es deshalb eine KI. Die KI schreibt das Profil einmal, anhand weniger Beispiel-E-Mails. Nach Ihrer Bestätigung liest das Profil jede neue E-Mail dieses Shops ohne die KI."
+        },
+        "aiProviders": {
+          "title": "Richten Sie zuerst einen KI-Anbieter ein",
+          "body": "Fügen Sie hier einen Anbieter hinzu und testen Sie die Verbindung. Ohne Anbieter kann der Profil-Assistent kein Profil schreiben, und E-Mails von einem Shop ohne Profil bleiben ungelesen."
+        },
+        "tabs": {
+          "title": "Vier Tabs, in der Reihenfolge der Nutzung",
+          "body": "**Übersicht** zeigt, was Monize gelesen hat. Verbinden Sie unter **Postfach** ein Postfach, das nur Bestellbestätigungen enthält. Monize liest es nur: Es verschiebt, markiert oder löscht nie eine Nachricht. **Profile** enthält ein Profil pro Shop. **E-Mails** listet jede E-Mail mit ihrem Status auf."
+        },
+        "uncovered": {
+          "title": "Shops ohne Profil",
+          "body": "Dieser Kasten listet die Absenderdomains auf, die noch kein Profil lesen kann. Wählen Sie eine aus, um den Assistenten zu starten. Wählen Sie bis zu fünf ihrer E-Mails aus und ordnen Sie jeder die Banktransaktion zu, die sie bezahlt hat. Die KI schreibt ein Profil und testet es an diesen Paaren. Danach sehen Sie eine Vorschau für alle E-Mails dieses Shops und übernehmen das Profil oder bitten mit einer kurzen Notiz um eine Änderung.",
+          "fallbackBody": "Sie haben noch keine E-Mails von einem Shop ohne Profil. Nachdem Sie das Postfach verbunden haben, erscheint jede Absenderdomain hier als Tag, zum Beispiel **shop.example (12)**: die Domain und die Anzahl ihrer E-Mails. Wählen Sie das Tag, um den Assistenten zu starten. Wählen Sie bis zu fünf ihrer E-Mails aus und ordnen Sie jeder die Banktransaktion zu, die sie bezahlt hat. Die KI schreibt ein Profil und testet es an diesen Paaren. Danach sehen Sie eine Vorschau für alle E-Mails dieses Shops und übernehmen das Profil oder bitten mit einer kurzen Notiz um eine Änderung."
+        },
+        "profiles": {
+          "title": "Ihre Profile",
+          "body": "Jede Zeile ist ein Profil, genehmigt oder Entwurf. **Neues Profil manuell erstellen** öffnet den Editor für ein von Hand geschriebenes Profil. Nutzen Sie ihn, um ein kleines Detail in einem Entwurf der KI zu korrigieren. Wenn Sie ein Profil genehmigen, liest Monize die E-Mails seiner Domain sofort.",
+          "fallbackBody": "Sie haben noch keine Profile. Jedes Profil, das Sie übernehmen, erscheint hier als eine Zeile, zum Beispiel **Shop Example**, Domain **shop.example**, Status **Freigegeben**. **Neues Profil manuell erstellen** öffnet den Editor für ein von Hand geschriebenes Profil. Nutzen Sie ihn nur, um ein kleines Detail in einem Entwurf der KI zu korrigieren. Wenn Sie ein Profil genehmigen, liest Monize die E-Mails seiner Domain sofort."
+        },
+        "reviews": {
+          "title": "Vorschläge bestätigen",
+          "body": "Jede E-Mail, die zu einer Transaktion passt, wird zu einem Vorschlag im **KI-Prüfungseingang** im Menü **KI**. Ein Vorschlag zeigt zum Beispiel die Positionen einer Bestellung mit einer Kategorie für jede Zeile. An Ihren Transaktionen ändert sich nichts, bis Sie den Vorschlag dort bestätigen."
+        }
+      }
+    }
   }
 }

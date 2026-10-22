@@ -60,6 +60,7 @@ export interface CategoryDetailDto {
   category: Category & {
     effectiveColor: string | null;
     effectiveIcon: string | null;
+    effectiveAutoSign: boolean;
   };
   stats: CategoryDetailStats;
   accounts: CategoryAccountBreakdownRow[];

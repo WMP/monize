@@ -82,6 +82,8 @@ function toRuleDescriptor(rule: AiActionRuleState): RuleDefinitionDescriptor {
     condition: rule.condition,
     actions: [...rule.actions],
     stopProcessing: rule.stopProcessing,
+    activeFrom: rule.activeFrom,
+    activeTo: rule.activeTo,
   };
 }
 
@@ -165,6 +167,9 @@ export function investmentPreviewRow(
     cashCurrency: preview.cashCurrency,
     cashAmount: preview.cashAmount,
     description: preview.description,
+    accruedInterest: preview.accruedInterest,
+    bondSeriesCode: preview.bondSeriesCode,
+    bondRedemptionSplit: preview.redemptionSplit,
   };
 }
 
@@ -507,6 +512,10 @@ export class AiActionBuilderService {
   buildCreateInvestmentTransaction(
     userId: string,
     preview: CreateInvestmentTransactionPreview,
+    options: {
+      aiReviewRequestId?: string;
+      scheduled?: { id: string; name: string; dueDate: string };
+    } = {},
   ): PendingAiAction {
     const { actionId, expiresAt } = this.newEnvelope();
     const descriptor: CreateInvestmentTransactionDescriptor = {
@@ -522,8 +531,22 @@ export class AiActionBuilderService {
       quantity: preview.quantity,
       price: preview.price,
       commission: preview.commission,
+      accruedInterest: preview.accruedInterest,
       exchangeRate: preview.exchangeRate,
       description: preview.description,
+      bondInstrumentId: preview.bondInstrumentId,
+      ...(options.aiReviewRequestId
+        ? {
+            aiReviewRequestId: options.aiReviewRequestId,
+            totalAmount: preview.totalAmount,
+          }
+        : {}),
+      ...(options.scheduled
+        ? {
+            scheduledTransactionId: options.scheduled.id,
+            scheduledDueDate: options.scheduled.dueDate,
+          }
+        : {}),
     };
     return {
       actionId,
@@ -546,6 +569,15 @@ export class AiActionBuilderService {
         cashCurrency: preview.cashCurrency,
         cashAmount: preview.cashAmount,
         description: preview.description,
+        accruedInterest: preview.accruedInterest,
+        bondSeriesCode: preview.bondSeriesCode,
+        bondRedemptionSplit: preview.redemptionSplit,
+        ...(options.scheduled
+          ? {
+              scheduledName: options.scheduled.name,
+              scheduledDueDate: options.scheduled.dueDate,
+            }
+          : {}),
       },
     };
   }
@@ -576,6 +608,10 @@ export class AiActionBuilderService {
       currencyCode: preview.currencyCode,
       ...(splits ? { splits: splits.map(toSplitRowDescriptor) } : {}),
       ...(attachments?.length ? { attachments } : {}),
+      ...(preview.tagNames?.length ? { tagNames: [...preview.tagNames] } : {}),
+      ...(preview.referenceNumber === undefined
+        ? {}
+        : { referenceNumber: preview.referenceNumber }),
       ...(options.aiReviewRequestId
         ? { aiReviewRequestId: options.aiReviewRequestId }
         : {}),
@@ -594,12 +630,26 @@ export class AiActionBuilderService {
         payeeName: preview.payeeName,
         payeeWillBeCreated: preview.payeeWillBeCreated,
         categoryName: preview.categoryName,
+        ...(preview.categorySource === "ai" && !splits
+          ? { categorySource: "ai" as const }
+          : {}),
         description: preview.description,
         isReconciled: preview.isReconciled,
         ...(splits ? { splits: splits.map(toSplitPreview) } : {}),
         ...(attachments?.length
           ? { attachments: attachments.map(toAttachmentPreview) }
           : {}),
+        ...(preview.tagNames?.length
+          ? {
+              tagNames: [...preview.tagNames],
+              ...(preview.newTagNames?.length
+                ? { newTagNames: [...preview.newTagNames] }
+                : {}),
+            }
+          : {}),
+        ...(preview.referenceNumber === undefined
+          ? {}
+          : { referenceNumber: preview.referenceNumber }),
       },
     };
   }
@@ -654,8 +704,10 @@ export class AiActionBuilderService {
       quantity: preview.quantity,
       price: preview.price,
       commission: preview.commission,
+      accruedInterest: preview.accruedInterest,
       exchangeRate: preview.exchangeRate,
       description: preview.description,
+      bondInstrumentId: preview.bondInstrumentId,
     };
     return {
       actionId,
@@ -678,6 +730,9 @@ export class AiActionBuilderService {
         cashCurrency: preview.cashCurrency,
         cashAmount: preview.cashAmount,
         description: preview.description,
+        accruedInterest: preview.accruedInterest,
+        bondSeriesCode: preview.bondSeriesCode,
+        bondRedemptionSplit: preview.redemptionSplit,
       },
     };
   }
@@ -780,8 +835,10 @@ export class AiActionBuilderService {
         quantity: preview.quantity,
         price: preview.price,
         commission: preview.commission,
+        accruedInterest: preview.accruedInterest,
         exchangeRate: preview.exchangeRate,
         description: preview.description,
+        bondInstrumentId: preview.bondInstrumentId,
       })),
     };
     return {

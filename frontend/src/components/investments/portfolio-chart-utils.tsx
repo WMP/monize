@@ -3,6 +3,11 @@
 import type { ReactElement } from 'react';
 import { chartColors } from '@/lib/chart-colors';
 import { createLogger } from '@/lib/logger';
+import { useAuthStore } from '@/store/authStore';
+import {
+  clearAllIntradayCache,
+  INTRADAY_CACHE_PREFIX,
+} from '@/lib/identity-session-storage';
 import type { ChartDatePattern } from '@/lib/utils';
 
 const logger = createLogger('PortfolioValueChart');
@@ -32,10 +37,6 @@ export function isIntradayRange(range: string): range is IntradayRange {
   return INTRADAY_RANGES.has(range);
 }
 
-/**
- * sessionStorage prefix for cached intraday responses. Per-tab, so the data
- * persists during a navigation but not across browser sessions.
- */
 type FormatChartDate = (date: string, pattern: ChartDatePattern) => string;
 
 /**
@@ -95,7 +96,11 @@ export function monthEndAxisTicks(
     .map((point) => point.name);
 }
 
-export const INTRADAY_CACHE_PREFIX = 'monize-intraday|';
+// The helpers live in `lib/identity-session-storage` so `authStore` can clear
+// them without importing this module; re-exported for the existing callers.
+export { clearAllIntradayCache, INTRADAY_CACHE_PREFIX };
+
+const ANONYMOUS_CACHE_SCOPE = `${INTRADAY_CACHE_PREFIX}anonymous|`;
 
 export interface IntradayCachePayload {
   fetchedAt: number;
@@ -103,8 +108,14 @@ export interface IntradayCachePayload {
     timestamp: string;
     value: number;
     securitiesValue?: number;
+    fxComplete?: boolean;
+    pricesComplete?: boolean;
+    cashComplete?: boolean;
     sessionClose?: true;
   }>;
+  /** Response-level lists, so a hydrated chart can name what is missing. */
+  missingRatePairs?: string[];
+  unpricedSecurityIds?: string[];
   interval: '1m' | '2m' | '5m' | '15m' | '30m' | '60m' | '90m';
   currency: string;
   fallbackToDaily: boolean;
@@ -112,17 +123,27 @@ export interface IntradayCachePayload {
   failedSymbols: string[];
 }
 
+/**
+ * The key carries the signed-in user and the acting context, so two identities
+ * never share an entry (INV-SHARE-003). With nobody signed in the key is the
+ * anonymous scope, which is never written or read.
+ */
 export function buildIntradayCacheKey(
   range: string,
   accountIds: string[] | undefined,
   currency: string,
 ): string {
+  const { user, actingAsUserId } = useAuthStore.getState();
   const accts = (accountIds ?? []).slice().sort().join(',');
-  return `${INTRADAY_CACHE_PREFIX}${range}|${accts}|${currency}`;
+  const scope = user?.id
+    ? `${INTRADAY_CACHE_PREFIX}u:${user.id}|a:${actingAsUserId ?? 'self'}|`
+    : ANONYMOUS_CACHE_SCOPE;
+  return `${scope}${range}|${accts}|${currency}`;
 }
 
 export function readIntradayCache(key: string): IntradayCachePayload | null {
   if (typeof window === 'undefined') return null;
+  if (key.startsWith(ANONYMOUS_CACHE_SCOPE)) return null;
   try {
     const raw = window.sessionStorage.getItem(key);
     if (!raw) return null;
@@ -137,25 +158,11 @@ export function writeIntradayCache(
   payload: IntradayCachePayload,
 ): void {
   if (typeof window === 'undefined') return;
+  if (key.startsWith(ANONYMOUS_CACHE_SCOPE)) return;
   try {
     window.sessionStorage.setItem(key, JSON.stringify(payload));
   } catch (error) {
     logger.warn('Failed to write intraday cache:', error);
-  }
-}
-
-export function clearAllIntradayCache(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const ss = window.sessionStorage;
-    const keys: string[] = [];
-    for (let i = 0; i < ss.length; i++) {
-      const k = ss.key(i);
-      if (k && k.startsWith(INTRADAY_CACHE_PREFIX)) keys.push(k);
-    }
-    keys.forEach((k) => ss.removeItem(k));
-  } catch (error) {
-    logger.warn('Failed to clear intraday cache:', error);
   }
 }
 

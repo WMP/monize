@@ -5,6 +5,7 @@ import {
   AiActionsService,
   AI_ACTION_CLAIM_PURPOSE,
 } from "./ai-actions.service";
+import { PostCommitFailure } from "../../common/post-commit-failure";
 import { AiActionSigningService } from "./ai-action-signing.service";
 import { AiWriteLimiter, AI_DAILY_WRITE_LIMIT } from "./ai-write-limiter";
 import {
@@ -58,7 +59,12 @@ describe("AiActionsService", () => {
   let attachments: Record<string, jest.Mock>;
   let attachmentStore: Record<string, jest.Mock>;
   let singleUseTokens: SingleUseTokenMock;
-  let aiReviewRequests: { markApplied: jest.Mock };
+  let scheduled: { post: jest.Mock };
+  let aiReviewRequests: {
+    markApplied: jest.Mock;
+    markTradeApplied: jest.Mock;
+    isExemptFromWriteLimit: jest.Mock;
+  };
 
   beforeEach(() => {
     const config = {
@@ -114,7 +120,12 @@ describe("AiActionsService", () => {
       releaseForPrompt: jest.fn(),
     };
     singleUseTokens = createSingleUseTokenMock();
-    aiReviewRequests = { markApplied: jest.fn().mockResolvedValue(undefined) };
+    scheduled = { post: jest.fn().mockResolvedValue(null) };
+    aiReviewRequests = {
+      markApplied: jest.fn().mockResolvedValue(undefined),
+      markTradeApplied: jest.fn().mockResolvedValue(undefined),
+      isExemptFromWriteLimit: jest.fn().mockResolvedValue(false),
+    };
     service = new AiActionsService(
       transactions as never,
       payees as never,
@@ -128,6 +139,7 @@ describe("AiActionsService", () => {
       {} as never,
       {} as never,
       aiReviewRequests as never,
+      scheduled as never,
     );
   });
 
@@ -168,8 +180,10 @@ describe("AiActionsService", () => {
       quantity: 10,
       price: 150,
       commission: 4.99,
+      accruedInterest: 0,
       exchangeRate: 1,
       description: null,
+      bondInstrumentId: null,
       ...overrides,
     };
   }
@@ -359,11 +373,15 @@ describe("AiActionsService", () => {
       const result = await service.confirm(USER, dtoFor(descriptor));
 
       expect(attachmentStore.get).toHaveBeenCalledWith(USER, REF);
-      expect(attachments.create).toHaveBeenCalledWith(USER, "tx-new", {
-        originalname: "receipt.jpg",
-        buffer: FILE_BYTES,
-        size: FILE_BYTES.length,
-      });
+      expect(attachments.create).toHaveBeenCalledWith(
+        USER,
+        { kind: "transaction", id: "tx-new" },
+        {
+          originalname: "receipt.jpg",
+          buffer: FILE_BYTES,
+          size: FILE_BYTES.length,
+        },
+      );
       expect(attachmentStore.releaseForPrompt).toHaveBeenCalledWith(USER, [
         REF,
       ]);
@@ -392,11 +410,15 @@ describe("AiActionsService", () => {
       const result = await service.confirm(USER, dtoFor(descriptor));
 
       expect(transactions.update).toHaveBeenCalled();
-      expect(attachments.create).toHaveBeenCalledWith(USER, TX, {
-        originalname: "receipt.jpg",
-        buffer: FILE_BYTES,
-        size: FILE_BYTES.length,
-      });
+      expect(attachments.create).toHaveBeenCalledWith(
+        USER,
+        { kind: "transaction", id: TX },
+        {
+          originalname: "receipt.jpg",
+          buffer: FILE_BYTES,
+          size: FILE_BYTES.length,
+        },
+      );
       expect(result).toEqual({ type: "update_transaction", id: TX });
     });
 
@@ -743,6 +765,43 @@ describe("AiActionsService", () => {
     expect(result).toMatchObject({ type: "batch_actions", count: 1 });
   });
 
+  it("confirms a JSON-round-tripped update_payee batch with undefined fields", async () => {
+    const ids = [1, 2, 3, 4, 5].map(
+      (n) => `aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa${n}`,
+    );
+    const descriptor = {
+      type: "batch_actions" as const,
+      userId: USER,
+      actionId: "act-batch-up-rt",
+      expiresAt: Date.now() + 60_000,
+      operation: "update_payee" as const,
+      rows: ids.map((payeeId) => ({
+        payeeId,
+        website: undefined,
+        address: undefined,
+        email: undefined,
+        phone: undefined,
+        defaultCategoryId: CAT,
+      })),
+    };
+    const signature = signing.sign(descriptor as unknown as AiActionDescriptor);
+    const echoed = JSON.parse(JSON.stringify(descriptor));
+    const result = await service.confirm(USER, {
+      actionId: descriptor.actionId,
+      signature,
+      descriptor: echoed,
+    });
+    expect(payees.update).toHaveBeenCalledTimes(5);
+    ids.forEach((payeeId) =>
+      expect(payees.update).toHaveBeenCalledWith(
+        USER,
+        payeeId,
+        expect.objectContaining({ defaultCategoryId: CAT }),
+      ),
+    );
+    expect(result).toMatchObject({ type: "batch_actions", count: 5 });
+  });
+
   it("executes a batch_actions delete_payee envelope", async () => {
     const descriptor = {
       type: "batch_actions" as const,
@@ -822,6 +881,165 @@ describe("AiActionsService", () => {
     expect(result).toMatchObject({ type: "batch_actions", count: 1 });
   });
 
+  it("an approved bond REDEEM writes its accrued interest on every commit path (R2-1)", async () => {
+    const SERIES = "11111111-1111-5111-8111-111111111111";
+    await service.confirm(
+      USER,
+      dtoFor(
+        createInvestmentDescriptor({
+          action: InvestmentAction.REDEEM,
+          quantity: 10,
+          price: 100,
+          commission: 0,
+          accruedInterest: 47.05,
+          bondInstrumentId: SERIES,
+        }),
+      ),
+    );
+    expect(investments.create).toHaveBeenLastCalledWith(
+      USER,
+      expect.objectContaining({
+        action: InvestmentAction.REDEEM,
+        price: 100,
+        accruedInterest: 47.05,
+      }),
+    );
+
+    investments.createBulk.mockResolvedValue({
+      created: [{ id: "inv-1" }],
+      skipped: [],
+    });
+    const bulk: CreateInvestmentTransactionsDescriptor = {
+      type: "create_investment_transactions",
+      userId: USER,
+      actionId: "act-bulk-inv-redeem",
+      expiresAt: Date.now() + 60_000,
+      rows: [
+        {
+          accountId: ACC,
+          action: InvestmentAction.REDEEM,
+          transactionDate: "2026-04-01",
+          securityId: SEC,
+          fundingAccountId: null,
+          quantity: 10,
+          price: 100,
+          commission: 0,
+          accruedInterest: 47.05,
+          exchangeRate: 1,
+          description: null,
+          bondInstrumentId: SERIES,
+        },
+      ],
+    };
+    await service.confirm(USER, dtoFor(bulk));
+    expect(investments.createBulk).toHaveBeenLastCalledWith(USER, [
+      expect.objectContaining({ price: 100, accruedInterest: 47.05 }),
+    ]);
+
+    const update: UpdateInvestmentTransactionDescriptor = {
+      type: "update_investment_transaction",
+      userId: USER,
+      actionId: "act-update-inv-redeem",
+      expiresAt: Date.now() + 60_000,
+      transactionId: TX,
+      accountId: ACC,
+      action: InvestmentAction.REDEEM,
+      transactionDate: "2026-04-01",
+      securityId: SEC,
+      fundingAccountId: null,
+      quantity: 10,
+      price: 100,
+      commission: 0,
+      accruedInterest: 47.05,
+      exchangeRate: 1,
+      description: null,
+      bondInstrumentId: SERIES,
+    };
+    await service.confirm(USER, dtoFor(update));
+    expect(investments.update).toHaveBeenLastCalledWith(
+      USER,
+      TX,
+      expect.objectContaining({ accruedInterest: 47.05 }),
+    );
+  });
+
+  it("carries the series the preview resolved into the create, update and bulk commits (INV-BOND-007)", async () => {
+    const SERIES = "11111111-1111-5111-8111-111111111111";
+    await service.confirm(
+      USER,
+      dtoFor(createInvestmentDescriptor({ bondInstrumentId: SERIES })),
+    );
+    expect(investments.create).toHaveBeenCalledWith(
+      USER,
+      expect.objectContaining({ bondInstrumentId: SERIES }),
+    );
+
+    const update: UpdateInvestmentTransactionDescriptor = {
+      type: "update_investment_transaction",
+      userId: USER,
+      actionId: "act-update-inv-series",
+      expiresAt: Date.now() + 60_000,
+      transactionId: TX,
+      accountId: ACC,
+      action: InvestmentAction.BUY,
+      transactionDate: "2026-02-01",
+      securityId: SEC,
+      fundingAccountId: null,
+      quantity: 5,
+      price: 160,
+      commission: 0,
+      accruedInterest: 0,
+      exchangeRate: 1,
+      description: null,
+      bondInstrumentId: SERIES,
+    };
+    await service.confirm(USER, dtoFor(update));
+    expect(investments.update).toHaveBeenCalledWith(
+      USER,
+      TX,
+      expect.objectContaining({ bondInstrumentId: SERIES }),
+    );
+
+    investments.createBulk.mockResolvedValue({
+      created: [{ id: "inv-1" }],
+      skipped: [],
+    });
+    const bulk: CreateInvestmentTransactionsDescriptor = {
+      type: "create_investment_transactions",
+      userId: USER,
+      actionId: "act-bulk-inv-series",
+      expiresAt: Date.now() + 60_000,
+      rows: [
+        {
+          accountId: ACC,
+          action: InvestmentAction.BUY,
+          transactionDate: "2026-01-15",
+          securityId: SEC,
+          fundingAccountId: null,
+          quantity: 10,
+          price: 150,
+          commission: 0,
+          accruedInterest: 0,
+          exchangeRate: 1,
+          description: null,
+          bondInstrumentId: SERIES,
+        },
+      ],
+    };
+    await service.confirm(USER, dtoFor(bulk));
+    expect(investments.createBulk).toHaveBeenLastCalledWith(USER, [
+      expect.objectContaining({ bondInstrumentId: SERIES }),
+    ]);
+  });
+
+  it("sends no series for a non-bond row, so the write resolves nothing", async () => {
+    await service.confirm(USER, dtoFor(createInvestmentDescriptor()));
+    expect(investments.create).toHaveBeenLastCalledWith(
+      USER,
+      expect.not.objectContaining({ bondInstrumentId: expect.anything() }),
+    );
+  });
+
   it("creates an investment transaction on a valid confirmation", async () => {
     const descriptor = createInvestmentDescriptor();
     const result = await service.confirm(USER, dtoFor(descriptor));
@@ -841,6 +1059,242 @@ describe("AiActionsService", () => {
     expect(result).toEqual({
       type: "create_investment_transaction",
       id: "inv-tx-new",
+    });
+  });
+
+  describe("a creation that answers an email_trade request", () => {
+    const TRADE_REQUEST = "70000000-0000-4000-8000-000000000001";
+    /** The write's manager: the ledger check reads through it. */
+    const txManager = (ledgerRows: unknown[] = []) => ({
+      query: jest.fn(async (sql: string, ..._params: unknown[]) =>
+        String(sql).includes("FROM investment_transactions") ? ledgerRows : [],
+      ),
+    });
+
+    beforeEach(() => {
+      aiReviewRequests.markTradeApplied.mockResolvedValue({
+        emailReceiptId: "receipt-1",
+      });
+    });
+
+    it("passes the plain two-argument create when no request is named", async () => {
+      await service.confirm(USER, dtoFor(createInvestmentDescriptor()));
+      expect(investments.create.mock.calls[0]).toHaveLength(2);
+      expect(aiReviewRequests.markTradeApplied).not.toHaveBeenCalled();
+    });
+
+    it("hands create() a hook that marks the request applied on the write's own manager, before the write", async () => {
+      await service.confirm(
+        USER,
+        dtoFor(
+          createInvestmentDescriptor({ aiReviewRequestId: TRADE_REQUEST }),
+        ),
+      );
+      const options = investments.create.mock.calls[0][2];
+      expect(typeof options.beforeWrite).toBe("function");
+      // Nothing is marked outside the write's transaction ...
+      expect(aiReviewRequests.markTradeApplied).not.toHaveBeenCalled();
+      // ... the hook does it on the manager create() passes.
+      const manager = txManager();
+      await options.beforeWrite(manager);
+      expect(aiReviewRequests.markTradeApplied).toHaveBeenCalledWith(
+        manager,
+        USER,
+        TRADE_REQUEST,
+      );
+    });
+
+    it("stores the signed executed total as given (INV-TRADE-001)", async () => {
+      await service.confirm(
+        USER,
+        dtoFor(
+          createInvestmentDescriptor({
+            aiReviewRequestId: TRADE_REQUEST,
+            totalAmount: 1500,
+          }),
+        ),
+      );
+      expect(investments.create.mock.calls[0][1].totalAmount).toBe(1500);
+    });
+
+    it("refuses, inside the write and before it, a trade the ledger gained since the card was built", async () => {
+      await service.confirm(
+        USER,
+        dtoFor(
+          createInvestmentDescriptor({ aiReviewRequestId: TRADE_REQUEST }),
+        ),
+      );
+      const options = investments.create.mock.calls[0][2];
+      const manager = txManager([{ id: "it-auto-posted", claimed: false }]);
+      await expect(options.beforeWrite(manager)).rejects.toThrow(
+        /already has this trade/,
+      );
+      const [, params] = manager.query.mock.calls.find((c) =>
+        String(c[0]).includes("FROM investment_transactions"),
+      ) as [string, unknown[]];
+      // By the card's own security, and the email's own row does not count.
+      expect(params).toEqual(expect.arrayContaining(["receipt-1"]));
+    });
+
+    it("refuses a cash dividend the ledger gained since, matched by its amount as it moves no shares", async () => {
+      await service.confirm(
+        USER,
+        dtoFor(
+          createInvestmentDescriptor({
+            aiReviewRequestId: TRADE_REQUEST,
+            action: InvestmentAction.DIVIDEND,
+            quantity: null,
+            price: null,
+            totalAmount: 12.34,
+          }),
+        ),
+      );
+      const options = investments.create.mock.calls[0][2];
+      const manager = txManager([{ id: "it-entered", claimed: false }]);
+      await expect(options.beforeWrite(manager)).rejects.toThrow(
+        /already has this trade/,
+      );
+      const [, params] = manager.query.mock.calls.find((c) =>
+        String(c[0]).includes("FROM investment_transactions"),
+      ) as [string, unknown[]];
+      expect(params).toEqual(
+        expect.arrayContaining(["DIVIDEND", false, "12.34"]),
+      );
+    });
+
+    it("records the row it created on the email, in the write's own transaction", async () => {
+      await service.confirm(
+        USER,
+        dtoFor(
+          createInvestmentDescriptor({ aiReviewRequestId: TRADE_REQUEST }),
+        ),
+      );
+      const options = investments.create.mock.calls[0][2];
+      const manager = txManager();
+      await options.afterWrite(manager, "it-new");
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(String(sql)).toContain("SET investment_transaction_id = $3");
+      expect(params).toEqual([USER, TRADE_REQUEST, "it-new"]);
+    });
+
+    it("posts the scheduled bill it pays instead of creating a second row, marking the request applied in that post", async () => {
+      const SCHEDULE = "80000000-0000-4000-8000-000000000001";
+      await service.confirm(
+        USER,
+        dtoFor(
+          createInvestmentDescriptor({
+            aiReviewRequestId: TRADE_REQUEST,
+            scheduledTransactionId: SCHEDULE,
+            scheduledDueDate: "2026-10-16",
+            description: "Email receipt: filled",
+          }),
+        ),
+      );
+      expect(investments.create).not.toHaveBeenCalled();
+      const [user, id, postDto, options] = scheduled.post.mock.calls[0];
+      expect(user).toBe(USER);
+      expect(id).toBe(SCHEDULE);
+      expect(postDto).toEqual({
+        transactionDate: "2026-01-15",
+        investmentQuantity: 10,
+        investmentPrice: 150,
+        description: "Email receipt: filled",
+      });
+      expect(options.expectedDueDate).toBe("2026-10-16");
+      const manager = txManager();
+      await options.beforeWrite(manager);
+      expect(aiReviewRequests.markTradeApplied).toHaveBeenCalledWith(
+        manager,
+        USER,
+        TRADE_REQUEST,
+      );
+    });
+
+    it("posts a dividend schedule from a card with no shares without the card's price, which is the whole amount", async () => {
+      const SCHEDULE = "80000000-0000-4000-8000-000000000001";
+      await service.confirm(
+        USER,
+        dtoFor(
+          createInvestmentDescriptor({
+            aiReviewRequestId: TRADE_REQUEST,
+            action: InvestmentAction.DIVIDEND,
+            quantity: null,
+            price: 12.34,
+            totalAmount: 12.34,
+            scheduledTransactionId: SCHEDULE,
+            scheduledDueDate: "2026-10-16",
+          }),
+        ),
+      );
+      const [, , postDto, options] = scheduled.post.mock.calls[0];
+      expect(postDto.investmentQuantity).toBeUndefined();
+      expect(postDto.investmentPrice).toBeUndefined();
+      expect(options.investmentFigures.totalAmount).toBe(12.34);
+    });
+
+    it("posts the schedule with the card's executed total and rate, and returns the row the post created", async () => {
+      const SCHEDULE = "80000000-0000-4000-8000-000000000001";
+      scheduled.post.mockImplementation(
+        async (_u: string, _id: string, _dto: unknown, options: any) => {
+          await options.afterInvestmentWrite(txManager(), "it-posted");
+          return null;
+        },
+      );
+      const result = await service.confirm(
+        USER,
+        dtoFor(
+          createInvestmentDescriptor({
+            aiReviewRequestId: TRADE_REQUEST,
+            scheduledTransactionId: SCHEDULE,
+            scheduledDueDate: "2026-10-16",
+            totalAmount: 1500,
+            exchangeRate: 1.37,
+          }),
+        ),
+      );
+      const options = scheduled.post.mock.calls[0][3];
+      expect(options.investmentFigures).toEqual({
+        totalAmount: 1500,
+        exchangeRate: 1.37,
+      });
+      expect(result).toMatchObject({ id: "it-posted" });
+    });
+
+    it("lets the schedule's refusal (it moved on since the card) stop the approval", async () => {
+      scheduled.post.mockRejectedValue(new Error("already posted"));
+      await expect(
+        service.confirm(
+          USER,
+          dtoFor(
+            createInvestmentDescriptor({
+              aiReviewRequestId: TRADE_REQUEST,
+              scheduledTransactionId: "80000000-0000-4000-8000-000000000001",
+              scheduledDueDate: "2026-10-16",
+            }),
+          ),
+        ),
+      ).rejects.toThrow("already posted");
+      expect(investments.create).not.toHaveBeenCalled();
+    });
+
+    it("lets a refusal by the hook stop the creation", async () => {
+      aiReviewRequests.markTradeApplied.mockRejectedValue(
+        new Error("no longer open"),
+      );
+      investments.create.mockImplementation(
+        async (_u: string, _dto: unknown, options: any) => {
+          await options.beforeWrite(txManager());
+          return { id: "inv-tx-new" };
+        },
+      );
+      await expect(
+        service.confirm(
+          USER,
+          dtoFor(
+            createInvestmentDescriptor({ aiReviewRequestId: TRADE_REQUEST }),
+          ),
+        ),
+      ).rejects.toThrow("no longer open");
     });
   });
 
@@ -943,6 +1397,126 @@ describe("AiActionsService", () => {
       ).rejects.toThrow("no longer open");
     });
 
+    it("hands update() the tag names the card carries, to add (never to replace)", async () => {
+      await service.confirm(
+        USER,
+        dtoFor(reviewDescriptor({ tagNames: ["Allegro", "Gifts"] })),
+      );
+      const options = transactions.update.mock.calls[0][3];
+      expect(options.addTagNames).toEqual(["Allegro", "Gifts"]);
+      // The DTO carries no tagIds: the transaction's own tags are not replaced.
+      expect(transactions.update.mock.calls[0][2].tagIds).toBeUndefined();
+    });
+
+    it("hands update() the reference number the card sets, and no key when it sets none", async () => {
+      await service.confirm(
+        USER,
+        dtoFor(reviewDescriptor({ referenceNumber: "EX-1" })),
+      );
+      expect(transactions.update.mock.calls[0][2].referenceNumber).toBe("EX-1");
+
+      // A key present but undefined would clear the Ref # the transaction holds.
+      await service.confirm(USER, dtoFor(reviewDescriptor()));
+      expect(transactions.update.mock.calls[1][2]).not.toHaveProperty(
+        "referenceNumber",
+      );
+    });
+
+    it("passes no tag names when the card has none", async () => {
+      await service.confirm(USER, dtoFor(reviewDescriptor()));
+      expect(transactions.update.mock.calls[0][3]).not.toHaveProperty(
+        "addTagNames",
+      );
+    });
+
+    describe("the daily AI write limit and a profile's proposal (design 7.1)", () => {
+      const fillLimit = async () => {
+        for (let i = 0; i < AI_DAILY_WRITE_LIMIT; i++) {
+          await limiter.record(USER, "update_transaction");
+        }
+      };
+
+      it("asks the stored request and the stored switch, with the profile's claim key", async () => {
+        await service.confirm(USER, dtoFor(reviewDescriptor()));
+        expect(aiReviewRequests.isExemptFromWriteLimit).toHaveBeenCalledWith(
+          USER,
+          REVIEW,
+          "email-receipts",
+        );
+      });
+
+      it("counts the confirm when the request is not exempt: it is recorded", async () => {
+        await service.confirm(USER, dtoFor(reviewDescriptor()));
+        expect((await limiter.checkLimit(USER)).currentCount).toBe(1);
+      });
+
+      it("refuses a non-exempt confirm at the limit", async () => {
+        await fillLimit();
+        await expect(
+          service.confirm(USER, dtoFor(reviewDescriptor())),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(transactions.update).not.toHaveBeenCalled();
+      });
+
+      it("neither checks nor records the limit for an exempt profile proposal", async () => {
+        aiReviewRequests.isExemptFromWriteLimit.mockResolvedValue(true);
+        await fillLimit();
+
+        const result = await service.confirm(USER, dtoFor(reviewDescriptor()));
+
+        expect(result).toEqual({ type: "update_transaction", id: TX });
+        expect(transactions.update).toHaveBeenCalledTimes(1);
+        // Not counted: still exactly the limit's worth of earlier writes.
+        expect((await limiter.checkLimit(USER)).currentCount).toBe(
+          AI_DAILY_WRITE_LIMIT,
+        );
+      });
+
+      it("counts an ordinary confirm right after an exempt one: the exemption belongs to that request alone", async () => {
+        aiReviewRequests.isExemptFromWriteLimit.mockResolvedValue(true);
+        await service.confirm(USER, dtoFor(reviewDescriptor()));
+        // A plain create right after counts as usual.
+        await service.confirm(USER, dtoFor(createTxDescriptor()));
+        expect((await limiter.checkLimit(USER)).currentCount).toBe(1);
+      });
+
+      it("never asks for an edit that answers no request, or for another kind of action", async () => {
+        await service.confirm(
+          USER,
+          dtoFor(reviewDescriptor({ aiReviewRequestId: undefined })),
+        );
+        await service.confirm(USER, dtoFor(createTxDescriptor()));
+        expect(aiReviewRequests.isExemptFromWriteLimit).not.toHaveBeenCalled();
+      });
+
+      it("does not take the exemption from the client: only the signed request id is read", async () => {
+        // A descriptor field the client could add (and the signature would refuse)
+        // is not what decides: the stored request is.
+        aiReviewRequests.isExemptFromWriteLimit.mockResolvedValue(false);
+        await fillLimit();
+        await expect(
+          service.confirm(
+            USER,
+            dtoFor(
+              reviewDescriptor({
+                ...({ exemptFromLimit: true } as object),
+              } as never),
+            ),
+          ),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      });
+
+      it("releases an exempt confirm's claim like any other when the write fails", async () => {
+        aiReviewRequests.isExemptFromWriteLimit.mockResolvedValue(true);
+        transactions.update.mockRejectedValueOnce(new Error("db down"));
+        const descriptor = reviewDescriptor();
+        await expect(service.confirm(USER, dtoFor(descriptor))).rejects.toThrow(
+          "db down",
+        );
+        expect((await limiter.checkLimit(USER)).currentCount).toBe(0);
+      });
+    });
+
     it("leaves an ordinary edit without the hook", async () => {
       await service.confirm(
         USER,
@@ -993,8 +1567,10 @@ describe("AiActionsService", () => {
       quantity: 5,
       price: 160,
       commission: 0,
+      accruedInterest: 0,
       exchangeRate: 1,
       description: null,
+      bondInstrumentId: null,
     };
     const result = await service.confirm(USER, dtoFor(descriptor));
     expect(investments.update).toHaveBeenCalledWith(
@@ -1156,6 +1732,25 @@ describe("AiActionsService", () => {
     );
     const result = await service.confirm(USER, dtoFor(descriptor));
     expect(result).toEqual({ type: "create_transaction", id: "tx-new" });
+  });
+
+  // A26-S17-02 / A26-M14: a step after the ledger write committed (the
+  // attachment store) fails. The write is done, so the claim stays spent and a
+  // second confirm of the same descriptor cannot write a duplicate.
+  it("keeps the claim when a step after the committed write fails (PostCommitFailure)", async () => {
+    const descriptor = createTxDescriptor({ actionId: "act-post-commit" });
+    const failure = new PostCommitFailure("attachment store down");
+    transactions.create.mockRejectedValueOnce(failure);
+
+    await expect(service.confirm(USER, dtoFor(descriptor))).rejects.toBe(
+      failure,
+    );
+    expect(singleUseTokens.release).not.toHaveBeenCalled();
+
+    await expect(
+      service.confirm(USER, dtoFor(descriptor)),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(transactions.create).toHaveBeenCalledTimes(1);
   });
 
   it("rejects when the daily write limit is reached", async () => {
@@ -1337,8 +1932,10 @@ describe("AiActionsService", () => {
         quantity: 10,
         price: 150,
         commission: 0,
+        accruedInterest: 0,
         exchangeRate: 1,
         description: null,
+        bondInstrumentId: null,
       });
       const descriptor: CreateInvestmentTransactionsDescriptor = {
         type: "create_investment_transactions",

@@ -10,11 +10,15 @@
 | `database-access-and-tenancy.md` | writing a query that decides ownership, authorization, identity or which row counts |
 | `transactions-and-money.md` | touching a transaction write, an export, a loan or category derivation, or the Money import |
 | `securities-and-providers.md` | touching prices, `src/securities/`, or any `fetch` to a third party |
+| `bond-adapters.md` | adding a country's bonds, a new bond product or an engine primitive in `src/bonds/` |
 | `ai-and-payees.md` | touching `src/ai/`, `src/payees/lookup/`, a tool description or a search filter |
 | `notifications-and-push.md` | producing a notification, touching `src/push/` or `src/notification-center/`, or composing an email or push body |
 | `backup.md` | changing anything under `src/backup/` |
 | `cron-and-background-work.md` | adding a `@Cron`, a reaper or a long-running job |
 | `mcp.md` | adding or changing an MCP tool, resource or prompt, or touching the MCP transport |
+| `docs/future-plans/warranty-tracker.md` section 5 | touching `src/warranties/`: a warranty never writes a ledger row, a balance or a holding (WTY-001, `warranties.guard.spec.ts`), and its status comes from `warrantyStatus` alone (WTY-002) |
+| `docs/future-plans/warranty-tracker.md` decision 9 | letting a delegate read a warranty, its documents or its claims: the sixth `DelegateSection` is `warranties` (`@DelegateRequiresSection("warranties")`, read routes only), and a row's linked purchase is resolved through `delegateReadableAccountScope` so a delegate never learns a transaction outside their accounts (WTY-007) |
+| `docs/external-side-effects.md` section 2 | touching `src/attachments/`: an attachment's parent is a transaction or a warranty (`AttachmentParent`), its owner is `user_id`, and its bytes outlive a rollback |
 
 The cross-layer contracts these documents build on stay where they are: `docs/system-invariants.md` (the index), `docs/concurrency-and-idempotency.md`, `docs/financial-semantics.md`, `docs/external-side-effects.md`, `docs/cron-jobs.md`, `docs/verification-contract.md`, `docs/backup-restore-contract.md` and `docs/row-level-security-contract.md`. The database door itself -- `withScopedDb`, the identity contexts, the lint bans -- is in `AGENTS.md`.
 

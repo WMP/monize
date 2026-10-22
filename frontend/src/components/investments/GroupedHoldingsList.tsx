@@ -1,14 +1,24 @@
 'use client';
 
-import { useState, memo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { useTranslations } from 'next-intl';
 import { AccountHoldings, HoldingWithMarketValue } from '@/types/investment';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { gainLossColor } from '@/lib/format';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { portfolioPartialTotal } from '@/lib/net-worth-completeness';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { CAPTION_CLASS, CellLabel } from '@/components/ui/Table';
+import { ColumnChooserMenu, type ColumnChooserItem } from '@/components/ui/ColumnChooserMenu';
+import { useHiddenColumns } from '@/hooks/useHiddenColumns';
+import { useColumnHeaderActions } from '@/hooks/useColumnHeaderActions';
+import {
+  holdingsPhonePlacement,
+  type HoldingsColumn,
+  type HoldingsPhonePlacement,
+} from '@/lib/holdings-phone-grid';
 
 // A wrapped figure cell: no padding on phones (the card's grid spaces the
 // cells), the table cell's own padding and right alignment from `sm` up. The
@@ -20,7 +30,8 @@ const FIGURE_CELL =
 interface GroupedHoldingsListProps {
   holdingsByAccount: AccountHoldings[];
   isLoading: boolean;
-  totalPortfolioValue: number;
+  /** The portfolio's value, or `null` while it is not known (no summary yet, or a failed one). */
+  totalPortfolioValue: number | null;
   /**
    * False when `totalPortfolioValue` is a known subtotal rather than the whole
    * portfolio (a missing price or FX rate). A share of a subtotal is not a
@@ -43,6 +54,44 @@ export function GroupedHoldingsList({
   const t = useTranslations('investments');
   const { formatCurrency: formatCurrencyBase, formatCurrencyPrecise, formatSignedPercent, formatPercent: formatPlainPercent, formatQuantity } = useNumberFormat();
   const { getRate, defaultCurrency } = useExchangeRates();
+
+  // The stored `investmentHoldings` set (one per table kind), so the
+  // Investments page and the investment detail view follow the same choice. A
+  // hidden column is absent from the DOM at every width, the phone card
+  // included, never hidden by a class.
+  const {
+    hidden: hiddenColumns,
+    isVisible,
+    hide: hideColumn,
+    show: showColumn,
+    showAll: showAllColumns,
+    hideable,
+  } = useHiddenColumns('investmentHoldings');
+  const hideableColumns = useMemo<ColumnChooserItem<HoldingsColumn>[]>(() => {
+    const labels: Record<HoldingsColumn, string> = {
+      shares: t('groupedHoldings.sharesColumn'),
+      avgCost: t('groupedHoldings.avgCostColumn'),
+      price: t('groupedHoldings.priceColumn'),
+      costBasis: t('groupedHoldings.costBasisColumn'),
+      mktValue: t('groupedHoldings.mktValueColumn'),
+      gainLoss: t('groupedHoldings.gainLossColumn'),
+      portfolioPercent: t('groupedHoldings.portfolioPercentColumn'),
+    };
+    return hideable.map((id) => ({ id, label: labels[id] }));
+  }, [hideable, t]);
+  // The headers do not sort, so a plain click on one does nothing; a
+  // long-press or right-click opens the "Hide column" sheet.
+  const { headerHandlers, sheet: columnHeaderSheet } = useColumnHeaderActions({
+    columns: hideableColumns,
+    onHide: hideColumn,
+  });
+  // Where each visible figure sits in a row's phone card; a reference stable
+  // while the set is, so the memoised holding row is not re-rendered by it.
+  const placement = useMemo(() => holdingsPhonePlacement(hiddenColumns), [hiddenColumns]);
+  // The account-total label spans Symbol and the per-share columns, which have
+  // no account figure, so it narrows as they are hidden.
+  const totalLabelSpan =
+    1 + (['shares', 'avgCost', 'price'] as const).filter((id) => isVisible(id)).length;
 
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(
     new Set(holdingsByAccount.map((a) => a.accountId)),
@@ -91,7 +140,7 @@ export function GroupedHoldingsList({
   // (review #1133). getRate returns null for an unresolved pair, so the missing
   // conversion surfaces here rather than being silently dropped.
   const getPortfolioPercent = (value: number | null, currencyCode?: string): string => {
-    if (value === null || totalPortfolioValue === 0) return '-';
+    if (value === null || totalPortfolioValue === null || totalPortfolioValue === 0) return '-';
     if (valuationComplete === false) return '-';
     let converted = value;
     if (currencyCode && currencyCode !== defaultCurrency) {
@@ -165,12 +214,23 @@ export function GroupedHoldingsList({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
       <div className="p-3 sm:p-6 pb-3 sm:pb-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          {t('groupedHoldings.title')}
-        </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {t('groupedHoldings.accountSummary', { accounts: holdingsByAccount.length, accountsPlural: holdingsByAccount.length !== 1 ? 's' : '', positions: totalHoldings, positionsPlural: totalHoldings !== 1 ? 's' : '' })}
-        </p>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              {t('groupedHoldings.title')}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {t('groupedHoldings.accountSummary', { accounts: holdingsByAccount.length, accountsPlural: holdingsByAccount.length !== 1 ? 's' : '', positions: totalHoldings, positionsPlural: totalHoldings !== 1 ? 's' : '' })}
+            </p>
+          </div>
+          <ColumnChooserMenu
+            columns={hideableColumns}
+            hidden={hiddenColumns}
+            onHide={hideColumn}
+            onShow={showColumn}
+            onShowAll={showAllColumns}
+          />
+        </div>
       </div>
 
       <div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -183,6 +243,10 @@ export function GroupedHoldingsList({
           const defaultApprox = acctDisplayCurrency
             ? accountDefaultApprox(account, accountTotalValue)
             : null;
+          // The account's gain is over the holdings that have a value, so it is
+          // a partial figure whenever this account's own valuation is (A26-M38).
+          const accountGainPartial = portfolioPartialTotal(account.totalGainLoss, account);
+          const accountGainIsPartial = accountGainPartial.excludedCount > 0;
           const fmtAcct = (value: number | null) => {
             if (value === null) return '-';
             if (acctDisplayCurrency) return `${formatCurrencyBase(value, acctDisplayCurrency)} ${acctDisplayCurrency}`;
@@ -233,15 +297,23 @@ export function GroupedHoldingsList({
                     </div>
                   )}
                   <div className={`text-sm ${getGainLossColor(account.totalGainLoss)}`}>
-                    {fmtAcct(account.totalGainLoss)} ({formatPercent(account.totalGainLossPercent)})
+                    <PartialTotal total={accountGainPartial} displayCurrency={account.currencyCode}>
+                      {fmtAcct(account.totalGainLoss)} ({formatPercent(account.totalGainLossPercent)})
+                    </PartialTotal>
                   </div>
+                  {accountGainIsPartial && (
+                    <div className="text-xs text-amber-700 dark:text-amber-300">
+                      {t('groupedHoldings.gainPartialCaption')}
+                    </div>
+                  )}
                 </div>
               </button>
 
               {/* Account Holdings Table. Below `sm` the table becomes a block
-                  and each row wraps into a grid card so its eight figures fit a
-                  phone without a horizontal scroll; from `sm` up it is the
-                  ordinary table. Explicit roles put back the table semantics
+                  and each row wraps into a grid card so its figures fit a
+                  phone without a horizontal scroll (placed by
+                  `holdingsPhonePlacement`, so a hidden column leaves no gap);
+                  from `sm` up it is the ordinary table. Explicit roles put back the table semantics
                   that restyling `display` strips (inert from `sm` up). */}
               {isExpanded && (
                 <div className="overflow-x-auto">
@@ -251,27 +323,41 @@ export function GroupedHoldingsList({
                         <th role="columnheader" className="px-2 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           {t('groupedHoldings.symbolColumn')}
                         </th>
-                        <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          {t('groupedHoldings.sharesColumn')}
-                        </th>
-                        <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          {t('groupedHoldings.avgCostColumn')}
-                        </th>
-                        <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          {t('groupedHoldings.priceColumn')}
-                        </th>
-                        <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          {t('groupedHoldings.costBasisColumn')}
-                        </th>
-                        <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          {t('groupedHoldings.mktValueColumn')}
-                        </th>
-                        <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          {t('groupedHoldings.gainLossColumn')}
-                        </th>
-                        <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          {t('groupedHoldings.portfolioPercentColumn')}
-                        </th>
+                        {isVisible('shares') && (
+                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('shares')}>
+                            {t('groupedHoldings.sharesColumn')}
+                          </th>
+                        )}
+                        {isVisible('avgCost') && (
+                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('avgCost')}>
+                            {t('groupedHoldings.avgCostColumn')}
+                          </th>
+                        )}
+                        {isVisible('price') && (
+                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('price')}>
+                            {t('groupedHoldings.priceColumn')}
+                          </th>
+                        )}
+                        {isVisible('costBasis') && (
+                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('costBasis')}>
+                            {t('groupedHoldings.costBasisColumn')}
+                          </th>
+                        )}
+                        {isVisible('mktValue') && (
+                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('mktValue')}>
+                            {t('groupedHoldings.mktValueColumn')}
+                          </th>
+                        )}
+                        {isVisible('gainLoss') && (
+                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('gainLoss')}>
+                            {t('groupedHoldings.gainLossColumn')}
+                          </th>
+                        )}
+                        {isVisible('portfolioPercent') && (
+                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('portfolioPercent')}>
+                            {t('groupedHoldings.portfolioPercentColumn')}
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody role="rowgroup" className="block divide-y divide-gray-100 dark:divide-gray-700/50 sm:table-row-group">
@@ -279,6 +365,8 @@ export function GroupedHoldingsList({
                         <HoldingRow
                           key={holding.id}
                           holding={holding}
+                          hidden={hiddenColumns}
+                          placement={placement.row}
                           defaultCurrency={defaultCurrency}
                           accountCurrency={account.currencyCode}
                           formatMoney={formatMoney}
@@ -310,71 +398,97 @@ export function GroupedHoldingsList({
                               </div>
                             </button>
                           </td>
-                          <td role="cell" className={`col-start-1 row-start-2 text-gray-400 dark:text-gray-500 ${FIGURE_CELL}`}>
-                            <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.sharesColumn')}</CellLabel>
-                            -
-                          </td>
-                          <td role="cell" className={`col-start-2 row-start-2 text-gray-400 dark:text-gray-500 ${FIGURE_CELL}`}>
-                            <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.avgCostColumn')}</CellLabel>
-                            -
-                          </td>
-                          <td role="cell" className={`col-start-3 row-start-2 text-gray-400 dark:text-gray-500 ${FIGURE_CELL}`}>
-                            <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.priceColumn')}</CellLabel>
-                            -
-                          </td>
-                          <td role="cell" className={`col-start-1 col-span-2 row-start-3 text-gray-500 dark:text-gray-400 ${FIGURE_CELL}`}>
-                            <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.costBasisColumn')}</CellLabel>
-                            {fmtAcct(account.cashBalance)}
-                          </td>
-                          <td role="cell" className={`col-start-3 col-span-2 row-start-1 font-medium text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
-                            <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.mktValueColumn')}</CellLabel>
-                            {fmtAcct(account.cashBalance)}
-                          </td>
-                          <td role="cell" className={`col-start-3 col-span-2 row-start-3 text-gray-400 dark:text-gray-500 ${FIGURE_CELL}`}>
-                            <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.gainLossColumn')}</CellLabel>
-                            -
-                          </td>
-                          <td role="cell" className={`col-start-4 row-start-2 text-gray-500 dark:text-gray-400 ${FIGURE_CELL}`}>
-                            <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.portfolioPercentColumn')}</CellLabel>
-                            {getPortfolioPercent(account.cashBalance, acctDisplayCurrency || account.currencyCode)}
-                          </td>
+                          {isVisible('shares') && (
+                            <td role="cell" className={`${placement.row.shares} text-gray-400 dark:text-gray-500 ${FIGURE_CELL}`}>
+                              <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.sharesColumn')}</CellLabel>
+                              -
+                            </td>
+                          )}
+                          {isVisible('avgCost') && (
+                            <td role="cell" className={`${placement.row.avgCost} text-gray-400 dark:text-gray-500 ${FIGURE_CELL}`}>
+                              <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.avgCostColumn')}</CellLabel>
+                              -
+                            </td>
+                          )}
+                          {isVisible('price') && (
+                            <td role="cell" className={`${placement.row.price} text-gray-400 dark:text-gray-500 ${FIGURE_CELL}`}>
+                              <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.priceColumn')}</CellLabel>
+                              -
+                            </td>
+                          )}
+                          {isVisible('costBasis') && (
+                            <td role="cell" className={`${placement.row.costBasis} text-gray-500 dark:text-gray-400 ${FIGURE_CELL}`}>
+                              <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.costBasisColumn')}</CellLabel>
+                              {fmtAcct(account.cashBalance)}
+                            </td>
+                          )}
+                          {isVisible('mktValue') && (
+                            <td role="cell" className={`${placement.row.mktValue} font-medium text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+                              <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.mktValueColumn')}</CellLabel>
+                              {fmtAcct(account.cashBalance)}
+                            </td>
+                          )}
+                          {isVisible('gainLoss') && (
+                            <td role="cell" className={`${placement.row.gainLoss} text-gray-400 dark:text-gray-500 ${FIGURE_CELL}`}>
+                              <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.gainLossColumn')}</CellLabel>
+                              -
+                            </td>
+                          )}
+                          {isVisible('portfolioPercent') && (
+                            <td role="cell" className={`${placement.row.portfolioPercent} text-gray-500 dark:text-gray-400 ${FIGURE_CELL}`}>
+                              <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.portfolioPercentColumn')}</CellLabel>
+                              {getPortfolioPercent(account.cashBalance, acctDisplayCurrency || account.currencyCode)}
+                            </td>
+                          )}
                         </tr>
                       )}
 
                       {/* Account Summary Row */}
                       <tr role="row" className="grid grid-cols-4 items-start gap-x-3 gap-y-1.5 px-4 py-3 bg-gray-50 dark:bg-gray-700/30 font-medium sm:table-row sm:p-0">
-                        {/* colSpan drives the desktop table (label spans the
-                            first four columns); the grid placement drives the
-                            phone card. */}
-                        <td role="cell" colSpan={4} className="col-span-2 row-start-1 p-0 text-sm text-gray-700 dark:text-gray-300 sm:table-cell sm:px-6 sm:py-3">
+                        {/* colSpan drives the desktop table (the label spans
+                            Symbol and the visible per-share columns); the grid
+                            placement drives the phone card. */}
+                        <td role="cell" colSpan={totalLabelSpan} className="col-span-2 row-start-1 p-0 text-sm text-gray-700 dark:text-gray-300 sm:table-cell sm:px-6 sm:py-3">
                           {t('groupedHoldings.accountTotal')}
                         </td>
-                        <td role="cell" className={`col-start-1 col-span-2 row-start-2 text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
-                          <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.costBasisColumn')}</CellLabel>
-                          {fmtAcct(account.totalCostBasis + account.cashBalance)}
-                        </td>
-                        <td role="cell" className={`col-start-3 col-span-2 row-start-1 text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
-                          <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.mktValueColumn')}</CellLabel>
-                          <div>{fmtAcct(accountTotalValue)}</div>
-                          {defaultApprox !== null && (
-                            <div className="text-xs font-normal text-gray-400 dark:text-gray-500">
-                              {'\u2248 '}{formatCurrencyBase(defaultApprox, defaultCurrency)} {defaultCurrency}
+                        {isVisible('costBasis') && (
+                          <td role="cell" className={`${placement.total.costBasis} text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+                            <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.costBasisColumn')}</CellLabel>
+                            {fmtAcct(account.totalCostBasis + account.cashBalance)}
+                          </td>
+                        )}
+                        {isVisible('mktValue') && (
+                          <td role="cell" className={`${placement.total.mktValue} text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+                            <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.mktValueColumn')}</CellLabel>
+                            <div>{fmtAcct(accountTotalValue)}</div>
+                            {defaultApprox !== null && (
+                              <div className="text-xs font-normal text-gray-400 dark:text-gray-500">
+                                {'\u2248 '}{formatCurrencyBase(defaultApprox, defaultCurrency)} {defaultCurrency}
+                              </div>
+                            )}
+                          </td>
+                        )}
+                        {isVisible('gainLoss') && (
+                          <td role="cell" className={`${placement.total.gainLoss} ${FIGURE_CELL}`}>
+                            <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.gainLossColumn')}</CellLabel>
+                            <div className={`text-sm ${getGainLossColor(account.totalGainLoss)}`}>
+                              <PartialTotal total={accountGainPartial} displayCurrency={account.currencyCode}>
+                                {fmtAcct(account.totalGainLoss)}
+                              </PartialTotal>
                             </div>
-                          )}
-                        </td>
-                        <td role="cell" className={`col-start-3 col-span-2 row-start-2 ${FIGURE_CELL}`}>
-                          <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.gainLossColumn')}</CellLabel>
-                          <div className={`text-sm ${getGainLossColor(account.totalGainLoss)}`}>
-                            {fmtAcct(account.totalGainLoss)}
-                          </div>
-                          <div className={`text-xs ${getGainLossColor(account.totalGainLossPercent)}`}>
-                            {formatPercent(account.totalGainLossPercent)}
-                          </div>
-                        </td>
-                        <td role="cell" className={`col-start-1 col-span-2 row-start-3 text-gray-500 dark:text-gray-400 ${FIGURE_CELL}`}>
-                          <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.portfolioPercentColumn')}</CellLabel>
-                          {getPortfolioPercent(accountTotalValue, acctDisplayCurrency || account.currencyCode)}
-                        </td>
+                            <div className={`text-xs ${getGainLossColor(account.totalGainLossPercent)}`}>
+                              <PartialTotal total={accountGainPartial} displayCurrency={account.currencyCode}>
+                                {formatPercent(account.totalGainLossPercent)}
+                              </PartialTotal>
+                            </div>
+                          </td>
+                        )}
+                        {isVisible('portfolioPercent') && (
+                          <td role="cell" className={`${placement.total.portfolioPercent} text-gray-500 dark:text-gray-400 ${FIGURE_CELL}`}>
+                            <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.portfolioPercentColumn')}</CellLabel>
+                            {getPortfolioPercent(accountTotalValue, acctDisplayCurrency || account.currencyCode)}
+                          </td>
+                        )}
                       </tr>
                     </tbody>
                   </table>
@@ -384,12 +498,22 @@ export function GroupedHoldingsList({
           );
         })}
       </div>
+      {columnHeaderSheet}
     </div>
   );
 }
 
 interface HoldingRowProps {
   holding: HoldingWithMarketValue;
+  /**
+   * The hidden columns (`useHiddenColumns('investmentHoldings').hidden`, a
+   * reference stable while the preference is unchanged, so this memoised row
+   * is not re-rendered by a fresh callback). A hidden column's cell is absent
+   * from the DOM at every width.
+   */
+  hidden: ReadonlySet<string>;
+  /** Each visible figure's place in the phone card (`holdingsPhonePlacement(...).row`). */
+  placement: HoldingsPhonePlacement['row'];
   defaultCurrency: string;
   accountCurrency: string;
   formatMoney: (value: number | null) => string;
@@ -404,6 +528,8 @@ interface HoldingRowProps {
 
 const HoldingRow = memo(function HoldingRow({
   holding,
+  hidden,
+  placement,
   defaultCurrency,
   accountCurrency,
   formatMoney,
@@ -416,6 +542,7 @@ const HoldingRow = memo(function HoldingRow({
   onSecurityClick,
 }: HoldingRowProps) {
   const t = useTranslations('investments');
+  const isVisible = (id: HoldingsColumn) => !hidden.has(id);
   const isForeign = holding.currencyCode && holding.currencyCode !== defaultCurrency;
   const isForeignToAccount =
     holding.currencyCode && holding.currencyCode !== accountCurrency;
@@ -489,56 +616,70 @@ const HoldingRow = memo(function HoldingRow({
           </div>
         </button>
       </td>
-      <td role="cell" className={`col-start-1 row-start-2 text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
-        <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.sharesColumn')}</CellLabel>
-        {formatQuantity(holding.quantity)}
-      </td>
-      <td role="cell" className={`col-start-2 row-start-2 text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
-        <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.avgCostColumn')}</CellLabel>
-        {fmtPrice(holding.averageCost)}
-      </td>
-      <td role="cell" className={`col-start-3 row-start-2 text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
-        <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.priceColumn')}</CellLabel>
-        {fmtPrice(holding.currentPrice)}
-      </td>
-      <td role="cell" className={`col-start-1 col-span-2 row-start-3 text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
-        <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.costBasisColumn')}</CellLabel>
-        <div>{fmtVal(holding.costBasis)}</div>
-        {isForeignToAccount && (
-          <div className="text-xs font-normal text-gray-400 dark:text-gray-500">
-            {fmtAcctConverted(holding.costBasisAccountCurrency)}
+      {isVisible('shares') && (
+        <td role="cell" className={`${placement.shares} text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+          <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.sharesColumn')}</CellLabel>
+          {formatQuantity(holding.quantity)}
+        </td>
+      )}
+      {isVisible('avgCost') && (
+        <td role="cell" className={`${placement.avgCost} text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+          <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.avgCostColumn')}</CellLabel>
+          {fmtPrice(holding.averageCost)}
+        </td>
+      )}
+      {isVisible('price') && (
+        <td role="cell" className={`${placement.price} text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+          <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.priceColumn')}</CellLabel>
+          {fmtPrice(holding.currentPrice)}
+        </td>
+      )}
+      {isVisible('costBasis') && (
+        <td role="cell" className={`${placement.costBasis} text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+          <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.costBasisColumn')}</CellLabel>
+          <div>{fmtVal(holding.costBasis)}</div>
+          {isForeignToAccount && (
+            <div className="text-xs font-normal text-gray-400 dark:text-gray-500">
+              {fmtAcctConverted(holding.costBasisAccountCurrency)}
+            </div>
+          )}
+        </td>
+      )}
+      {isVisible('mktValue') && (
+        <td role="cell" className={`${placement.mktValue} font-medium text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
+          <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.mktValueColumn')}</CellLabel>
+          <div>{fmtVal(holding.marketValue)}</div>
+          {isForeignToAccount && (
+            <div className="text-xs font-normal text-gray-400 dark:text-gray-500">
+              {fmtAcctConverted(marketValueAcct)}
+            </div>
+          )}
+        </td>
+      )}
+      {isVisible('gainLoss') && (
+        <td role="cell" className={`${placement.gainLoss} ${FIGURE_CELL}`}>
+          <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.gainLossColumn')}</CellLabel>
+          <div className={`text-sm font-medium ${getGainLossColor(holding.gainLoss)}`}>
+            {fmtVal(holding.gainLoss)}
           </div>
-        )}
-      </td>
-      <td role="cell" className={`col-start-3 col-span-2 row-start-1 font-medium text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
-        <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.mktValueColumn')}</CellLabel>
-        <div>{fmtVal(holding.marketValue)}</div>
-        {isForeignToAccount && (
-          <div className="text-xs font-normal text-gray-400 dark:text-gray-500">
-            {fmtAcctConverted(marketValueAcct)}
+          {isForeignToAccount && (
+            <div className="text-xs font-normal text-gray-400 dark:text-gray-500">
+              {fmtAcctConverted(gainLossAcct)}
+            </div>
+          )}
+          <div className={`text-xs ${getGainLossColor(holding.gainLossPercent)}`}>
+            {formatPercent(holding.gainLossPercent)}
           </div>
-        )}
-      </td>
-      <td role="cell" className={`col-start-3 col-span-2 row-start-3 ${FIGURE_CELL}`}>
-        <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.gainLossColumn')}</CellLabel>
-        <div className={`text-sm font-medium ${getGainLossColor(holding.gainLoss)}`}>
-          {fmtVal(holding.gainLoss)}
-        </div>
-        {isForeignToAccount && (
-          <div className="text-xs font-normal text-gray-400 dark:text-gray-500">
-            {fmtAcctConverted(gainLossAcct)}
-          </div>
-        )}
-        <div className={`text-xs ${getGainLossColor(holding.gainLossPercent)}`}>
-          {formatPercent(holding.gainLossPercent)}
-        </div>
-      </td>
-      <td role="cell" className={`col-start-4 row-start-2 text-gray-500 dark:text-gray-400 ${FIGURE_CELL}`}>
-        <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.portfolioPercentColumn')}</CellLabel>
-        {/* The value is already in the reporting currency, so no code is passed
-            -- getPortfolioPercent must not re-convert it against a second rate. */}
-        {getPortfolioPercent(marketValueInDefault)}
-      </td>
+        </td>
+      )}
+      {isVisible('portfolioPercent') && (
+        <td role="cell" className={`${placement.portfolioPercent} text-gray-500 dark:text-gray-400 ${FIGURE_CELL}`}>
+          <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.portfolioPercentColumn')}</CellLabel>
+          {/* The value is already in the reporting currency, so no code is passed
+              -- getPortfolioPercent must not re-convert it against a second rate. */}
+          {getPortfolioPercent(marketValueInDefault)}
+        </td>
+      )}
     </tr>
   );
 });

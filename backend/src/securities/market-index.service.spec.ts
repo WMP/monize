@@ -588,6 +588,34 @@ describe("MarketIndexService", () => {
       );
     });
 
+    /**
+     * Yahoo answered ASX_200 with 2026-10-09 twice (the window's last bar and
+     * the live one). One INSERT carrying both made PostgreSQL refuse the
+     * command ("ON CONFLICT DO UPDATE command cannot affect row a second time"),
+     * so the whole index failed to refresh.
+     */
+    it("writes one row per date when the provider repeats a bar", async () => {
+      yahoo.fetchHistoricalWindow
+        .mockResolvedValue([])
+        .mockResolvedValueOnce([
+          bar("2025-01-02", 5900),
+          bar("2025-01-03", 5910),
+          bar("2025-01-03", 5915),
+        ]);
+
+      await service.ensureHistory(["SP500"], "2025-01-01");
+
+      const insert = manager.query.mock.calls.find((call) =>
+        String(call[0]).includes("INSERT INTO market_index_prices"),
+      );
+      const params = insert?.[1] as unknown[];
+      // Five bound parameters per row; two distinct dates, the later bar kept.
+      expect(params).toHaveLength(10);
+      expect(params.filter((p) => p === "2025-01-03")).toHaveLength(1);
+      expect(params).toContain(5915);
+      expect(params).not.toContain(5910);
+    });
+
     it("keeps an adjusted close the provider did supply", async () => {
       yahoo.fetchHistoricalWindow.mockResolvedValue([
         bar("2025-01-02", 5900, 5850),

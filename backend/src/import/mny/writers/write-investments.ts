@@ -1,4 +1,10 @@
 import { randomUUID } from "node:crypto";
+import { BondProgramCache } from "../../../bonds/bond-series-resolver";
+import {
+  ImportSeriesMemo,
+  resolveImportedSeriesMemo,
+} from "../../import-context";
+import { createBondWriteGuard } from "../../../bonds/bond-write-guard";
 import { EntityManager } from "typeorm";
 import { Security } from "../../../securities/entities/security.entity";
 import { InvestmentTransaction } from "../../../securities/entities/investment-transaction.entity";
@@ -146,6 +152,11 @@ export interface WrittenInvestments {
   readonly affectedAccountIds: ReadonlySet<string>;
   /** Brokerage account ids whose holdings need rebuilding. */
   readonly brokerageAccountIds: ReadonlySet<string>;
+  /**
+   * Acquisitions of a bond-program security stored without a series (see
+   * `resolveImportedSeries`): the lots report such a row until it is chosen.
+   */
+  readonly bondRowsWithoutSeries: number;
 }
 
 /**
@@ -187,6 +198,23 @@ export async function writeInvestments(
   const writable = input.transactions.filter((transaction) =>
     input.accountIdByKey.has(transaction.accountKey),
   );
+
+  // INV-BOND-007: a row of a security that is linked to a bond program carries
+  // a series where one can be told: a BUY or REINVEST takes the series on sale
+  // on its date; any other acquisition, or one with none on sale, stores NULL
+  // and is counted (the lots report it, the import is not refused for it). Only
+  // a security the user already had (reused by symbol) can be linked. The
+  // program is looked up once per security per run, and the guard refuses the
+  // import after which a removal is not covered by the lots.
+  const programCache: BondProgramCache = new Map();
+  const seriesMemo: ImportSeriesMemo = new Map();
+  const bondGuard = createBondWriteGuard(manager, userId, programCache);
+  // An unlinked security needs no filter here: the program lookup (cached per
+  // security) answers null for it, and the guard and the resolver both leave it
+  // untouched, exactly as the QIF path does.
+  await bondGuard.track(input.securityIdByHandle.values());
+  const insertedIds = new Set(writable.map((transaction) => transaction.id));
+  let bondRowsWithoutSeries = 0;
 
   let processed = 0;
   let cashTransactionsCreated = 0;
@@ -243,17 +271,16 @@ export async function writeInvestments(
 
       if (newCashTransactionId !== null) {
         affectedAccountIds.add(cashAccountId as string);
-        // Rendered in the row's own currency: this writer denominates the
-        // cash amount, the total and the price in `transaction.currencyCode`
-        // with `exchangeRate: 1`, so quoting the label in any other currency
-        // would disagree with the amount stored beside it.
+        // The label prints the price and total, which are in the security's
+        // currency (`securityCurrencyCode`); the cash amount beside it is in
+        // the account's (`currencyCode`, `exchangeRate: 1`).
         const activityPayeeName = formatInvestmentCashPayeeName({
           action: transaction.action,
           symbol,
           quantity: transaction.quantity,
           price: transaction.price,
           totalAmount: transaction.totalAmount,
-          currencyCode: transaction.currencyCode,
+          currencyCode: transaction.securityCurrencyCode,
         });
         cashRows.push({
           id: newCashTransactionId,
@@ -282,6 +309,26 @@ export async function writeInvestments(
         });
       }
 
+      const securityId =
+        input.securityIdByHandle.get(transaction.securityHandle) ?? null;
+      const series = await resolveImportedSeriesMemo(
+        manager,
+        userId,
+        {
+          securityId,
+          action: transaction.action,
+          transactionDate: transaction.transactionDate,
+          // A transfer leg whose partner is written too moves the partner's
+          // lots; it adds nothing of its own and names no series.
+          pairedTransfer:
+            transaction.linkedInvestmentId !== null &&
+            insertedIds.has(transaction.linkedInvestmentId),
+        },
+        { programCache, seriesMemo },
+      );
+      const bondInstrumentId = series.id;
+      if (series.unresolved) bondRowsWithoutSeries += 1;
+
       investmentRows.push({
         id: transaction.id,
         userId,
@@ -289,8 +336,8 @@ export async function writeInvestments(
         transactionId: newCashTransactionId ?? adoptedCashTransactionId,
         transactionSplitId,
         fundingAccountId,
-        securityId:
-          input.securityIdByHandle.get(transaction.securityHandle) ?? null,
+        securityId,
+        bondInstrumentId,
         action: transaction.action,
         transactionDate: transaction.transactionDate,
         quantity: transaction.quantity,
@@ -324,12 +371,16 @@ export async function writeInvestments(
 
   const linksApplied = await backPatchInvestmentLinks(manager, writable);
 
+  // After the legs are linked: a pair is read as one movement of lots.
+  await bondGuard.verify();
+
   return {
     investmentTransactionsCreated: writable.length,
     cashTransactionsCreated,
     linksApplied,
     affectedAccountIds,
     brokerageAccountIds,
+    bondRowsWithoutSeries,
   };
 }
 

@@ -29,7 +29,7 @@ describe("currencies module RLS context smoke (real withScopedDb)", () => {
       [Currency, currencyRepo],
     ]);
 
-    const service = new CurrenciesService(dataSource as never);
+    const service = new CurrenciesService(dataSource as never, {} as never);
     const warnSpy = jest
       .spyOn(service["logger"], "warn")
       .mockImplementation(() => undefined);
@@ -111,13 +111,13 @@ describe("currencies module RLS context smoke (real withScopedDb)", () => {
     const { dataSource } = createScopedDbMocks([
       [Currency, { findOne: jest.fn().mockResolvedValue(null) }],
     ]);
-    const service = new CurrenciesService(dataSource as never);
+    const service = new CurrenciesService(dataSource as never, {} as never);
 
     // Called with no ambient scope at all (no interceptor, no wrapper): the real
     // withScopedDb must throw, proving the smokes above pass because of the
     // wrappers and not because the check is inert.
-    await expect(service.ensureSystemCurrency("USD")).rejects.toThrow(
-      "DB access outside request/user/system context",
-    );
+    await expect(
+      service.ensureCurrencyForUser("user-1", "USD"),
+    ).rejects.toThrow("DB access outside request/user/system context");
   });
 });

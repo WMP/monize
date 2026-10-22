@@ -57,4 +57,34 @@ describe('BankingSummaryCards', () => {
     expect(screen.getByText('Interest Earned')).toBeInTheDocument();
     expect(screen.getByText('$30.00')).toBeInTheDocument();
   });
+
+  // Discussion #1784: when overdue occurrences moved the projection, the note
+  // under it says so.
+  it('notes overdue scheduled transactions under the projected balance', () => {
+    render(
+      <BankingSummaryCards
+        account={makeAccount()}
+        {...base}
+        overdue={{ date: '2026-03-02', count: 2, amount: -300 }}
+      />,
+    );
+    expect(screen.getByText('Includes 2 overdue scheduled transactions')).toBeInTheDocument();
+  });
+
+  it('keeps the plain note when nothing is overdue', () => {
+    render(<BankingSummaryCards account={makeAccount()} {...base} overdue={null} />);
+    expect(screen.queryByText(/overdue/)).not.toBeInTheDocument();
+  });
+
+  it('drops the overdue note when there is no projected balance', () => {
+    render(
+      <BankingSummaryCards
+        account={makeAccount()}
+        {...base}
+        projectedBalance={null}
+        overdue={{ date: '2026-03-02', count: 1, amount: -300 }}
+      />,
+    );
+    expect(screen.queryByText(/overdue/)).not.toBeInTheDocument();
+  });
 });

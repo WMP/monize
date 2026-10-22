@@ -1,5 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, HttpException } from "@nestjs/common";
 import { ToolExecutorService } from "./tool-executor.service";
 import { AccountsService } from "../../accounts/accounts.service";
 import { CategoriesService } from "../../categories/categories.service";
@@ -25,6 +25,11 @@ import { AttachmentToolPrepService } from "../../attachments/attachment-tool-pre
 import { RelayAttachmentStore } from "../relay/relay-attachment.store";
 import { AttachmentDto } from "./dto/ai-query.dto";
 import { AiReviewWorkService } from "../../ai-review/ai-review-work.service";
+import { EmailReceiptParserToolsService } from "../../email-receipts/parsers/email-receipt-parser-tools.service";
+import { SeriesFetchError } from "../../bonds/bond-adapter";
+import { BondSeriesService } from "../../bonds/bond-series.service";
+import { WarrantiesService } from "../../warranties/warranties.service";
+import { LlmWarrantyList } from "../../warranties/warranty-llm-shape";
 import { TransactionRuleToolPrepService } from "../../transaction-rules/rule-tool-prep.service";
 
 describe("ToolExecutorService", () => {
@@ -45,6 +50,12 @@ describe("ToolExecutorService", () => {
   let splitService: Record<string, jest.Mock>;
   let builtInReports: Record<string, jest.Mock>;
   let exchangeRates: { convertOnDate: jest.Mock };
+  let bondSeries: { fetchSeries: jest.Mock };
+  let warranties: {
+    getLlmWarranties: jest.MockedFunction<
+      WarrantiesService["getLlmWarranties"]
+    >;
+  };
   let attachmentPrep: Record<string, jest.Mock>;
   let attachmentStore: Record<string, jest.Mock>;
 
@@ -120,6 +131,11 @@ describe("ToolExecutorService", () => {
         totalIncome: 5000,
         totalExpenses: 3000,
         netCashFlow: 2000,
+        knownIncomeSubtotal: 5000,
+        knownExpensesSubtotal: 3000,
+        totalsCurrency: "USD",
+        fxComplete: true,
+        missingRatePairs: [],
         transactionCount: 45,
         groupedBy: "none",
         groups: null,
@@ -127,10 +143,23 @@ describe("ToolExecutorService", () => {
         perCurrency: [],
       }),
       getLlmPeriodComparison: jest.fn().mockResolvedValue({
-        period1: { start: "2025-12-01", end: "2025-12-31", total: 3000 },
-        period2: { start: "2026-01-01", end: "2026-01-31", total: 3500 },
+        period1: {
+          start: "2025-12-01",
+          end: "2025-12-31",
+          total: 3000,
+          knownSubtotal: 3000,
+        },
+        period2: {
+          start: "2026-01-01",
+          end: "2026-01-31",
+          total: 3500,
+          knownSubtotal: 3500,
+        },
         totalChange: 500,
         totalChangePercent: 16.67,
+        totalsCurrency: "USD",
+        fxComplete: true,
+        missingRatePairs: [],
         comparison: [],
       }),
       resolveLlmCategoryIds: jest
@@ -239,6 +268,14 @@ describe("ToolExecutorService", () => {
         totalAssets: 20000,
         totalLiabilities: 1200,
         netWorth: 18800,
+        knownAssetsSubtotal: 20000,
+        knownLiabilitiesSubtotal: 1200,
+        knownNetWorthSubtotal: 18800,
+        fxComplete: true,
+        pricesComplete: true,
+        valuationComplete: true,
+        unpricedSecurityIds: [],
+        unpricedSymbols: [],
         defaultCurrency: "USD",
         missingRatePairs: ["JPY->USD"],
         totalAccounts: 3,
@@ -318,6 +355,7 @@ describe("ToolExecutorService", () => {
         transactionCount: 3,
         totalAmount: 2325,
         totalCommission: 19.98,
+        incomeByCurrency: {},
         totalQuantity: 15,
         actionCounts: { BUY: 1, SELL: 1, DIVIDEND: 1 },
         groupedBy: null,
@@ -602,6 +640,18 @@ describe("ToolExecutorService", () => {
       }),
     };
 
+    warranties = {
+      getLlmWarranties: jest.fn().mockResolvedValue(warrantyList()),
+    };
+
+    bondSeries = {
+      fetchSeries: jest.fn().mockResolvedValue({
+        id: "i1",
+        seriesCode: "EDO1036",
+        termsProvider: "obligacjeskarbowe.pl",
+        created: true,
+      }),
+    };
     exchangeRates = {
       convertOnDate: jest.fn().mockResolvedValue({
         amount: 1500,
@@ -633,6 +683,17 @@ describe("ToolExecutorService", () => {
         currentMonthLabel: "April 2026",
         previousMonthLabel: "March 2026",
         currency: "USD",
+        netWorth: {
+          monthlyHistory: [],
+          currentNetWorth: 52000,
+          previousNetWorth: 50000,
+          knownCurrentNetWorth: 52000,
+          knownPreviousNetWorth: 50000,
+          netWorthChange: 2000,
+          netWorthChangePercent: 4,
+          fxComplete: true,
+          missingRatePairs: [],
+        },
       }),
     };
 
@@ -681,6 +742,9 @@ describe("ToolExecutorService", () => {
         { provide: ExchangeRateService, useValue: exchangeRates },
         // Exercised in tool-executor.transaction-rules.spec.ts.
         { provide: AiReviewWorkService, useValue: {} },
+        { provide: EmailReceiptParserToolsService, useValue: {} },
+        { provide: BondSeriesService, useValue: bondSeries },
+        { provide: WarrantiesService, useValue: warranties },
         { provide: TransactionRuleToolPrepService, useValue: {} },
         // Real prep + builder wrapping the mocked services, so the executor's
         // name resolution, preview building, and pending-action construction
@@ -743,6 +807,11 @@ describe("ToolExecutorService", () => {
         totalIncome: 0,
         totalExpenses: 0,
         netCashFlow: 0,
+        knownIncomeSubtotal: 0,
+        knownExpensesSubtotal: 0,
+        totalsCurrency: "USD",
+        fxComplete: true,
+        missingRatePairs: [],
         transactionCount: 2,
         groupedBy: "none",
         groups: null,
@@ -874,6 +943,53 @@ describe("ToolExecutorService", () => {
       expect(result.summary).not.toContain("Checking:");
     });
 
+    it("list_accounts withholds a net worth that is a subtotal and says why and where to fix it", async () => {
+      const complete = await accounts.getLlmAccounts();
+      accounts.getLlmAccounts.mockResolvedValueOnce({
+        ...complete,
+        totalAssets: null,
+        netWorth: null,
+        knownAssetsSubtotal: 1000,
+        knownNetWorthSubtotal: 1000,
+        fxComplete: false,
+        pricesComplete: false,
+        valuationComplete: false,
+        missingRatePairs: ["ZZZ->USD"],
+        unpricedSecurityIds: ["sec-abc"],
+        unpricedSymbols: ["ABC"],
+        accounts: [
+          {
+            ...complete.accounts[0],
+            id: "acc-4",
+            name: "Broker",
+            type: "INVESTMENT",
+            currency: "CAD",
+            balance: null,
+            knownBalanceSubtotal: 50,
+            valuationComplete: false,
+            balanceInDefaultCurrency: null,
+          },
+        ],
+      });
+
+      const result = await service.execute(userId, "list_accounts", {});
+
+      expect(result.isError).toBeFalsy();
+      expect(result.summary).toContain(
+        "Net worth: withheld (incomplete: no exchange rate for ZZZ->USD; no price for ABC); known subtotal 1000.00 USD",
+      );
+      expect(result.summary).toContain(
+        "Assets: withheld (incomplete: no exchange rate for ZZZ->USD; no price for ABC); known subtotal 1000.00 USD",
+      );
+      // Liabilities converted completely, so they stay a total.
+      expect(result.summary).toContain("Liabilities: 1200.00 USD");
+      expect(result.summary).toContain("Currencies page");
+      expect(result.summary).toContain("price history");
+      expect(result.summary).toContain(
+        "Broker: unknown (holdings not priced); known subtotal 50.00 CAD",
+      );
+    });
+
     it("list_accounts passes status, accountTypes, accountIds, and nameQuery through", async () => {
       await service.execute(userId, "list_accounts", {
         status: "closed",
@@ -965,6 +1081,110 @@ describe("ToolExecutorService", () => {
       expect(result.sources[0].type).toBe("comparison");
     });
 
+    it("list_transactions names the currency of its totals", async () => {
+      analytics.getLlmListTransactions.mockResolvedValueOnce({
+        totalIncome: 0,
+        totalExpenses: 7650,
+        netCashFlow: -7650,
+        knownIncomeSubtotal: 0,
+        knownExpensesSubtotal: 7650,
+        totalsCurrency: "PLN",
+        fxComplete: true,
+        missingRatePairs: [],
+        transactionCount: 2,
+        groupedBy: "none",
+      });
+
+      const result = await service.execute(userId, "list_transactions", {});
+
+      expect(result.summary).toContain("Expenses: 7650.00 PLN");
+      expect(result.summary).not.toContain("withheld");
+    });
+
+    it("list_transactions says the totals are withheld, naming the pair and the fix", async () => {
+      analytics.getLlmListTransactions.mockResolvedValueOnce({
+        totalIncome: null,
+        totalExpenses: null,
+        netCashFlow: null,
+        knownIncomeSubtotal: 0,
+        knownExpensesSubtotal: 4000,
+        totalsCurrency: "PLN",
+        fxComplete: false,
+        missingRatePairs: ["USD->PLN"],
+        transactionCount: 2,
+        groupedBy: "none",
+      });
+
+      const result = await service.execute(userId, "list_transactions", {});
+
+      expect(result.summary).toContain(
+        "Totals withheld: no exchange rate for USD->PLN; add it under Currencies.",
+      );
+      expect(result.summary).toContain("expenses 4000.00 PLN");
+      expect(result.summary).not.toContain("Expenses: ");
+    });
+
+    it("compare_periods names the currency of its totals", async () => {
+      analytics.getLlmPeriodComparison.mockResolvedValueOnce({
+        period1: {
+          start: "2026-08-01",
+          end: "2026-08-31",
+          total: 400,
+          knownSubtotal: 400,
+        },
+        period2: {
+          start: "2026-09-01",
+          end: "2026-09-30",
+          total: 7650,
+          knownSubtotal: 7650,
+        },
+        totalChange: 7250,
+        totalChangePercent: 1812.5,
+        totalsCurrency: "PLN",
+        fxComplete: true,
+        missingRatePairs: [],
+        comparison: [],
+      });
+
+      const result = await service.execute(userId, "compare_periods", {});
+
+      expect(result.summary).toContain("400.00 PLN");
+      expect(result.summary).toContain("7650.00 PLN");
+      expect(result.summary).toContain("Change: +7250.00 PLN (+1812.5%)");
+    });
+
+    it("compare_periods says the totals are withheld, naming the pair and the fix", async () => {
+      analytics.getLlmPeriodComparison.mockResolvedValueOnce({
+        period1: {
+          start: "2026-08-01",
+          end: "2026-08-31",
+          total: 400,
+          knownSubtotal: 400,
+        },
+        period2: {
+          start: "2026-09-01",
+          end: "2026-09-30",
+          total: null,
+          knownSubtotal: 4000,
+        },
+        totalChange: null,
+        totalChangePercent: null,
+        totalsCurrency: "PLN",
+        fxComplete: false,
+        missingRatePairs: ["USD->PLN"],
+        comparison: [],
+      });
+
+      const result = await service.execute(userId, "compare_periods", {});
+
+      expect(result.summary).toContain(
+        "Totals withheld: no exchange rate for USD->PLN; add it under Currencies.",
+      );
+      expect(result.summary).toContain("4000.00 PLN");
+      expect(result.summary).not.toContain("Change:");
+      expect(result.summary).not.toContain("null");
+    });
+
     it("compare_periods fills in all four dates when omitted", async () => {
       await service.execute(userId, "compare_periods", {});
 
@@ -1047,6 +1267,8 @@ describe("ToolExecutorService", () => {
         totalPortfolioValue: 100,
         totalGainLoss: 0,
         totalGainLossPercent: 0,
+        gainCostBasis: 0,
+        unpricedCostBasis: 0,
         timeWeightedReturn: null,
         cagr: null,
         holdings: [],
@@ -1061,12 +1283,43 @@ describe("ToolExecutorService", () => {
       expect((result.data as { fxComplete: boolean }).fxComplete).toBe(false);
     });
 
+    it("get_portfolio_summary says the gain is over the priced holdings only, naming the symbol and the excluded cost (A26-M38)", async () => {
+      portfolio.getLlmSummary.mockResolvedValueOnce({
+        holdingCount: 2,
+        fxComplete: true,
+        missingRatePairs: [],
+        pricesComplete: false,
+        unpricedSymbols: ["XYZ"],
+        valuationComplete: false,
+        totalCashValue: 0,
+        totalHoldingsValue: 100000,
+        totalCostBasis: 130000,
+        gainCostBasis: 80000,
+        unpricedCostBasis: 50000,
+        totalPortfolioValue: 100000,
+        totalGainLoss: 20000,
+        totalGainLossPercent: 25,
+        timeWeightedReturn: null,
+        cagr: null,
+        holdings: [],
+        holdingsByAccount: [],
+        allocation: [],
+      });
+
+      const result = await service.execute(userId, "get_portfolio_summary", {});
+
+      expect(result.summary).toContain("priced holdings only");
+      expect(result.summary).toContain("XYZ");
+      expect(result.summary).toContain("50000.00");
+    });
+
     it("list_investment_transactions delegates to investmentTransactions.getLlmInvestmentTransactions", async () => {
       investmentTransactions.getLlmInvestmentTransactions.mockResolvedValueOnce(
         {
           transactionCount: 3,
           totalAmount: 2325,
           totalCommission: 19.98,
+          incomeByCurrency: {},
           totalQuantity: 15,
           actionCounts: { BUY: 1, SELL: 1 },
           groupedBy: "security",
@@ -1077,6 +1330,7 @@ describe("ToolExecutorService", () => {
               totalQuantity: 15,
               totalAmount: 2325,
               totalCommission: 19.98,
+              incomeByCurrency: {},
             },
           ],
           transactions: [],
@@ -1306,6 +1560,47 @@ describe("ToolExecutorService", () => {
       expect(result.summary).toContain("of 9 matching");
     });
 
+    it("list_warranties reads the shared warranty method, unnarrowed", async () => {
+      // Same method the MCP tool calls, so both surfaces answer alike; no
+      // account scope, because a delegate reaches the assistant only with
+      // READ on every account (DelegateRequiresFullScope).
+      const result = await service.execute(userId, "list_warranties", {});
+
+      expect(warranties.getLlmWarranties).toHaveBeenCalledWith(userId, {});
+      expect(result.data).toEqual(warrantyList());
+      expect(result.sources[0].type).toBe("warranties");
+      expect(result.summary).toBe("2 warranties as of 2026-10-21.");
+    });
+
+    it("list_warranties passes the filters down and says a capped list is part of the matches", async () => {
+      warranties.getLlmWarranties.mockResolvedValueOnce({
+        ...warrantyList(),
+        warranties: warrantyList().warranties.slice(0, 1),
+        total: 5,
+      });
+      const input = { status: "expiring", q: "laptop", limit: "1" };
+
+      const result = await service.execute(userId, "list_warranties", input);
+
+      expect(warranties.getLlmWarranties).toHaveBeenCalledWith(userId, {
+        status: "expiring",
+        q: "laptop",
+        limit: 1,
+      });
+      expect(result.summary).toBe(
+        '1 warranty expiring matching "laptop" (of 5) as of 2026-10-21.',
+      );
+    });
+
+    it("list_warranties refuses a limit above the cap before reading", async () => {
+      const result = await service.execute(userId, "list_warranties", {
+        limit: 51,
+      });
+
+      expect(warranties.getLlmWarranties).not.toHaveBeenCalled();
+      expect(result.summary).toContain("Invalid input for list_warranties");
+    });
+
     it("generate_report delegates to the matching built-in report", async () => {
       const result = await service.execute(userId, "generate_report", {
         type: "spending_by_category",
@@ -1322,14 +1617,90 @@ describe("ToolExecutorService", () => {
       expect(result.summary).toContain("spending_by_category");
     });
 
+    it("generate_report names the missing rate and where to fix it in the summary (INV-FX-001)", async () => {
+      builtInReports.getSpendingByCategory.mockResolvedValueOnce({
+        data: [],
+        totalSpending: null,
+        knownSpending: 50,
+        currency: "USD",
+        missingCurrencies: ["JPY", "CHF"],
+        excludedCount: 2,
+      });
+
+      const result = await service.execute(userId, "generate_report", {
+        type: "spending_by_category",
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+      });
+
+      expect(result.summary).toContain(
+        "Total withheld: no exchange rate for JPY->USD, CHF->USD; add it under Currencies.",
+      );
+      // The payload is the report's own, untouched (MCP parity).
+      expect(
+        (result.data as { totalSpending: unknown }).totalSpending,
+      ).toBeNull();
+    });
+
+    it("generate_report adds no withheld clause when every row converted", async () => {
+      builtInReports.getSpendingByCategory.mockResolvedValueOnce({
+        data: [],
+        totalSpending: 0,
+        currency: "USD",
+        missingCurrencies: [],
+        excludedCount: 0,
+      });
+
+      const result = await service.execute(userId, "generate_report", {
+        type: "spending_by_category",
+      });
+
+      expect(result.summary).not.toContain("withheld");
+    });
+
+    it("generate_report spending_anomalies names the currencies it left out", async () => {
+      builtInReports.getSpendingAnomalies.mockResolvedValueOnce({
+        statistics: {},
+        anomalies: [],
+        counts: {},
+        currency: "USD",
+        missingCurrencies: ["JPY"],
+        excludedCount: 3,
+      });
+
+      const result = await service.execute(userId, "generate_report", {
+        type: "spending_anomalies",
+      });
+
+      expect(result.summary).toContain(
+        "Transactions in those currencies were left out of the analysis: no exchange rate for JPY->USD; add it under Currencies.",
+      );
+    });
+
+    it("generate_report spending_anomalies defaults to the report's own window and threshold", async () => {
+      const result = await service.execute(userId, "generate_report", {
+        type: "spending_anomalies",
+      });
+
+      expect(builtInReports.getSpendingAnomalies).toHaveBeenCalledWith(
+        userId,
+        2,
+        6,
+      );
+      expect(result.summary).toContain("over the last 6 months");
+    });
+
     it("generate_report type spending_anomalies delegates to getSpendingAnomalies", async () => {
       const result = await service.execute(userId, "generate_report", {
         type: "spending_anomalies",
         months: 6,
       });
 
+      // Months are the window, never the z-score threshold (A26-M34): the
+      // threshold is the Reports page's own default.
       expect(builtInReports.getSpendingAnomalies).toHaveBeenCalledWith(
         userId,
+        2,
         6,
       );
       expect(result.sources[0].type).toBe("anomalies");
@@ -1348,6 +1719,32 @@ describe("ToolExecutorService", () => {
       );
       expect(result.sources[0].type).toBe("monthly_comparison");
       expect(result.summary).toContain("April 2026 vs March 2026");
+      expect(result.summary).not.toContain("withheld");
+    });
+
+    it("month_comparison says net worth is withheld for an incomplete month and names the pairs", async () => {
+      const complete = await builtInReports.getMonthlyComparison();
+      builtInReports.getMonthlyComparison.mockResolvedValueOnce({
+        ...complete,
+        netWorth: {
+          ...complete.netWorth,
+          currentNetWorth: null,
+          netWorthChange: null,
+          netWorthChangePercent: null,
+          fxComplete: false,
+          missingRatePairs: ["ZZZ->USD"],
+        },
+      });
+
+      const result = await service.execute(userId, "generate_report", {
+        type: "month_comparison",
+        month: "2026-04",
+      });
+
+      expect(result.summary).toContain("April 2026 vs March 2026");
+      expect(result.summary).toContain(
+        "Net worth is withheld for an incomplete month: no exchange rate for ZZZ->USD",
+      );
     });
 
     it("calculate runs locally without hitting any service", async () => {
@@ -2747,6 +3144,96 @@ describe("ToolExecutorService", () => {
     });
   });
 
+  describe("fetch_bond_series (reference data, no card)", () => {
+    it("fetches through the service for the country and series code, with no pending action", async () => {
+      const result = await service.execute(userId, "fetch_bond_series", {
+        countryCode: "PL",
+        seriesCode: "EDO1036",
+      });
+
+      expect(bondSeries.fetchSeries).toHaveBeenCalledWith(
+        userId,
+        "PL",
+        "EDO1036",
+      );
+      expect(result.pendingAction).toBeUndefined();
+      expect(result.isError).toBeFalsy();
+      expect(result.data).toMatchObject({ created: true });
+      expect(result.summary).toMatch(/Stored bond series EDO1036/);
+      expect(result.sources[0].type).toBe("bond_series");
+    });
+
+    it("says nothing was fetched for a series that was already stored", async () => {
+      bondSeries.fetchSeries.mockResolvedValueOnce({
+        id: "i1",
+        seriesCode: "EDO1036",
+        termsProvider: "PL_MF",
+        created: false,
+      });
+      const result = await service.execute(userId, "fetch_bond_series", {
+        countryCode: "PL",
+        seriesCode: "EDO1036",
+      });
+      expect(result.summary).toMatch(/already in the catalog/);
+    });
+
+    it("refuses a value the model was never to supply, before any fetch", async () => {
+      const result = await service.execute(userId, "fetch_bond_series", {
+        countryCode: "PL",
+        seriesCode: "EDO1036/../x",
+      });
+      expect(result.isError).toBe(true);
+      expect(bondSeries.fetchSeries).not.toHaveBeenCalled();
+    });
+
+    it("relays a refusal in its translated words, as a tool error", async () => {
+      bondSeries.fetchSeries.mockRejectedValueOnce(
+        new SeriesFetchError("SOURCE_UNAVAILABLE", {
+          series: "EDO1036",
+          country: "PL",
+        }),
+      );
+      const result = await service.execute(userId, "fetch_bond_series", {
+        countryCode: "PL",
+        seriesCode: "EDO1036",
+      });
+      expect(result.isError).toBe(true);
+      expect(result.summary).toBe(
+        "The official source for series EDO1036 could not be read right now; try again later",
+      );
+    });
+
+    it("relays the per-user rate limit (429) in its translated words", async () => {
+      bondSeries.fetchSeries.mockRejectedValueOnce(
+        new HttpException(
+          {
+            message: "At most 10 bond series can be fetched per minute.",
+            errorCode: "SERIES_FETCH_RATE_LIMITED",
+          },
+          429,
+        ),
+      );
+      const result = await service.execute(userId, "fetch_bond_series", {
+        countryCode: "PL",
+        seriesCode: "EDO1036",
+      });
+      expect(result.isError).toBe(true);
+      expect(result.summary).toBe(
+        "At most 10 bond series can be fetched per minute.",
+      );
+    });
+
+    it("gives a generic error for anything that is not a refusal", async () => {
+      bondSeries.fetchSeries.mockRejectedValueOnce(new Error("db down"));
+      const result = await service.execute(userId, "fetch_bond_series", {
+        countryCode: "PL",
+        seriesCode: "EDO1036",
+      });
+      expect(result.isError).toBe(true);
+      expect(result.summary).toBe("Could not fetch the bond series.");
+    });
+  });
+
   describe("manage_payees (human-in-the-loop)", () => {
     it("create returns a signed pending action", async () => {
       const result = await service.execute(userId, "manage_payees", {
@@ -2895,6 +3382,60 @@ describe("ToolExecutorService", () => {
       const result = await service.execute(userId, "manage_payees", {
         operation: "create",
         items: [{ name: "A" }, { name: "B" }],
+      });
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("manage_securities list", () => {
+    it("lists the securities held in the resolved account", async () => {
+      accounts.resolveBrokerageByNameOrId = jest.fn().mockResolvedValue({
+        match: { id: "acc-3", name: "Brokerage", currencyCode: "USD" },
+        candidates: [],
+      });
+      const held = { symbol: "AAPL", quantity: 5 };
+      securities.listSecuritiesInAccount = jest.fn().mockResolvedValue([held]);
+
+      const result = await service.execute(userId, "manage_securities", {
+        operation: "list",
+        accountName: "Brokerage",
+      });
+
+      expect(securities.listSecuritiesInAccount).toHaveBeenCalledWith(
+        userId,
+        "acc-3",
+      );
+      expect(result.isError).toBeUndefined();
+      expect(result.pendingAction).toBeUndefined();
+      expect(result.data).toMatchObject({
+        operation: "list",
+        account: "Brokerage",
+        count: 1,
+        securities: [held],
+      });
+    });
+
+    it("errors without an accountName", async () => {
+      const result = await service.execute(userId, "manage_securities", {
+        operation: "list",
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    it("errors on an unknown account", async () => {
+      accounts.resolveBrokerageByNameOrId = jest
+        .fn()
+        .mockResolvedValue({ match: undefined, candidates: [] });
+      const result = await service.execute(userId, "manage_securities", {
+        operation: "list",
+        accountName: "Nope",
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    it("rejects a write operation with no items", async () => {
+      const result = await service.execute(userId, "manage_securities", {
+        operation: "create",
       });
       expect(result.isError).toBe(true);
     });
@@ -3097,3 +3638,43 @@ describe("ToolExecutorService", () => {
     });
   });
 });
+
+/** What `WarrantiesService.getLlmWarranties` answers: a dated and a lifetime row. */
+function warrantyList(): LlmWarrantyList {
+  const row = {
+    id: "w-1",
+    name: "Laptop",
+    vendorName: "Best Buy",
+    warrantyKind: "manufacturer" as const,
+    purchaseDate: "2026-10-01",
+    expiresOn: "2026-11-01",
+    isLifetime: false,
+    status: "expiring" as const,
+    daysLeft: 11,
+    purchasePrice: 1499.99,
+    currencyCode: "CAD",
+    serialNumbers: ["SN-1"],
+    linkedTransactionId: "tx-1",
+    openClaimCount: 0,
+    documentCount: 1,
+    archived: false as const,
+  };
+  return {
+    today: "2026-10-21",
+    windowDays: 30,
+    warranties: [
+      row,
+      {
+        ...row,
+        id: "w-2",
+        name: "Cast iron pan",
+        expiresOn: null,
+        isLifetime: true,
+        status: "lifetime",
+        daysLeft: null,
+        linkedTransactionId: null,
+      },
+    ],
+    total: 2,
+  };
+}

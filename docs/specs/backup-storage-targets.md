@@ -5,7 +5,7 @@ target, so a deployment can keep its recovery points on object storage instead o
 on a per-pod disk. Written before the implementation, per
 `docs/financial-calculation-contract.md` section 7 and `AGENTS.md` ("a financial
 feature of any substance starts from a short approved spec"). The staged plan is
-task S2 of `docs/future-plans/horizontal-scaling-tasks.md`.
+task S2 of the horizontal-scaling plan, `docs/specs/horizontal-scaling.md` (WP7).
 
 **Status: approved.** The maintainer answered section 11 on 2026-09-19 and took
 the recommendation on all four questions; those answers are now part of the
@@ -425,3 +425,5 @@ choosing for them is how a default becomes a surprise.
 is commented as local-only, the `s3` target's listing has no legacy entries to
 return, and retiring it is its own PR against its own evidence -- not a silent
 side effect of a refactor whose whole claim is that it changed nothing.
+(Superseded by A26-M07: the sweep deleted other owners' legacy files, so legacy
+entries are now listed but never removed; see `docs/external-side-effects.md`.)

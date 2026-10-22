@@ -316,6 +316,7 @@
     "totalInflows": "Wpływy łącznie",
     "totalOutflows": "Wypływy łącznie",
     "netCashFlow": "Przepływ netto",
+    "notAvailable": "Brak",
     "monthlyCashFlow": "Miesięczne przepływy pieniężne",
     "inflowsByCategory": "Wpływy według kategorii",
     "outflowsByCategory": "Wypływy według kategorii",
@@ -764,6 +765,7 @@
     "totalValue": "Wartość łączna",
     "costBasis": "Koszt nabycia",
     "totalGainLoss": "Łączny zysk/strata",
+    "gainPartialCaption": "Tylko dla pozycji z ceną",
     "return": "Zwrot",
     "viewHoldings": "Pozycje",
     "viewAllocation": "Alokacja",
@@ -821,6 +823,7 @@
     "actionCapitalGainShort": "Krótkoterminowy zysk kapitałowy",
     "actionCapitalGainLong": "Długoterminowy zysk kapitałowy",
     "actionRedeem": "Wykup CD/obligacji",
+    "actionReturnOfCapital": "Zwrot kapitału",
     "colCommission": "Prowizja",
     "colPriceCurrency": "Waluta ceny",
     "colAmountCurrency": "Waluta kwoty",
@@ -1146,6 +1149,11 @@
     "vsMonth": "vs {month}",
     "inMonth": "{amount} w {month}",
     "netWorthTotal": "Razem: {amount}",
+    "netWorthSummaryPartial": "Twoja wartość netto w {currentMonth} wyniosła <strong>{netWorth}</strong>. Nie można obliczyć zmiany w porównaniu z {previousMonth}, ponieważ brak kursu wymiany dla {pairs}. Dodaj go na stronie Waluty.",
+    "pdfPartialSuffix": "{amount} (częściowa)",
+    "pdfNote": "Uwaga",
+    "pdfNotAvailable": "Brak",
+    "pdfPartialNote": "Suma częściowa: brak kursu wymiany dla {pairs}.",
     "netWorthSummary": "Twoja wartość netto w {currentMonth} wyniosła <strong>{netWorth}</strong>, co stanowi <delta>{changeAmount}</delta> w porównaniu z {previousMonth}.",
     "pdfTitle": "Porównanie miesięczne",
     "pdfSubtitle": "{current} vs {previous}",
@@ -1190,7 +1198,15 @@
     "colMonth": "Miesiąc",
     "colAssets": "Aktywa",
     "colLiabilities": "Zobowiązania",
-    "colNetWorth": "Wartość netto"
+    "colNetWorth": "Wartość netto",
+    "barStyle": "Styl słupków",
+    "barStyleNetWorth": "Wartość netto",
+    "barStyleAccountType": "Według typu konta",
+    "notAvailable": "Brak",
+    "colNote": "Uwaga",
+    "partialMonthNote": "Częściowo: brak kursu wymiany dla {pairs}",
+    "pdfPartialNote": "Suma częściowa: brak kursu wymiany dla {pairs}. Dodaj go na stronie Waluty.",
+    "partialMonth": "Nie pokazano: części kwot w tym miesiącu nie udało się przeliczyć, więc wartość netto jest nieznana."
   },
   "portfolioValue": {
     "highestValue": "Najwyższa wartość",
@@ -1198,10 +1214,10 @@
     "valueChange": "Zmiana wartości",
     "investedValueChangeTooltip": "Wartość papierów wartościowych na koniec okresu pomniejszona o ich wartość na początku: ostatni punkt wykresu minus pierwszy. Niezainwestowana gotówka nie jest uwzględniana.",
     "netInvested": "Zainwestowano netto",
-    "netInvestedTooltip": "Kwota wpłacona w papiery wartościowe w okresie, pomniejszona o to, co z nich wyszło przez sprzedaż i przeniesienia udziałów. Wpłacona lub wypłacona gotówka nie jest liczona.",
+    "netInvestedTooltip": "Kwota wpłacona w papiery wartościowe w okresie, pomniejszona o to, co z nich wyszło przez sprzedaż i przeniesienia udziałów. Wypłaty reinwestowane w udziały liczą się jako wpłacone. Wpłacona lub wypłacona gotówka nie jest liczona.",
     "investmentIncome": "Dywidendy i odsetki",
     "investmentIncomeLine": "Dywidendy i odsetki {amount}",
-    "investmentIncomeTooltip": "Dywidendy, odsetki i wypłaty zysków kapitałowych, które papiery wartościowe wypłaciły w okresie. Zmiana wartości minus Zainwestowano netto plus te kwoty daje wynik inwestycyjny.",
+    "investmentIncomeTooltip": "Dywidendy, odsetki i wypłaty zysków kapitałowych, które papiery wartościowe wypłaciły w okresie. Wypłaty reinwestowane w udziały liczą się tak samo jak wypłacone w gotówce. Zmiana wartości minus Zainwestowano netto plus te kwoty daje wynik inwestycyjny.",
     "investmentResult": "Wynik inwestycyjny",
     "investmentReturn": "Zwrot z inwestycji",
     "investmentResultTooltip": "Ile zarobiły Twoje inwestycje: zmiana wartości papierów wartościowych, z pominięciem zakupów, sprzedaży, wpłat, wypłat i niezainwestowanej gotówki, a z uwzględnieniem dywidend i odsetek.",
@@ -1276,6 +1292,7 @@
     "colDate": "Data",
     "colShares": "Udziały",
     "colPrice": "Cena",
+    "returnOfCapitalRow": "Zwrot kapitału ponad koszt nabycia",
     "pdfTitle": "Raport zrealizowanych zysków",
     "pdfSubtitle": "{count} papierów | Zysk netto: {gain}",
     "csvColSecurity": "Papier wartościowy",
@@ -1848,6 +1865,13 @@
   "foreignCurrencyFees": {
     "noEligibleAccounts": "Żadne konto nie ma skonfigurowanej opłaty za transakcje zagraniczne. Ustaw procent opłaty na koncie, aby śledzić tutaj jego opłaty za transakcje w obcej walucie."
   },
+  "partialData": {
+    "notice": "Niektóre wartości są częściowe: {count, plural, one {# kwoty nie udało się przeliczyć na {displayCurrency} i została pominięta} few {# kwot nie udało się przeliczyć na {displayCurrency} i zostały pominięte} many {# kwot nie udało się przeliczyć na {displayCurrency} i zostały pominięte} other {# kwoty nie udało się przeliczyć na {displayCurrency} i zostały pominięte}}. Brak kursu dla {currencies}; dodaj go na stronie Waluty.",
+    "noticeExcluded": "Niektóre wartości są częściowe: {count, plural, one {# kwoty nie udało się obliczyć i została pominięta} few {# kwot nie udało się obliczyć i zostały pominięte} many {# kwot nie udało się obliczyć i zostały pominięte} other {# kwoty nie udało się obliczyć i zostały pominięte}}.",
+    "pdfNote": "Suma częściowa: brak kursu wymiany dla {currencies}",
+    "pdfNoteExcluded": "Suma częściowa: pominięto {count, plural, one {# kwotę} few {# kwoty} many {# kwot} other {# kwoty}}",
+    "pdfSuffix": "(częściowa)"
+  },
   "sankey": {
     "help": "Pieniądze, które wpłynęły, płyną przez środek do tego, na co je wydano, co zaoszczędzono lub zainwestowano i co spłaciło długi. Domyślnie raport obejmuje Twoje otwarte konta osobiste, oszczędnościowe, gotówkowe, karty kredytowe i linie kredytowe, a przelew między dwoma z nich nie jest pokazywany. Usuń konto oszczędnościowe z filtra kont, aby zobaczyć, co na nie przelałeś. Spłata karty kredytowej nigdy nie jest spłatą długu: zakupy, które rozlicza, są już liczone jako wydatki.",
     "depthLabel": "Szczegółowość",
@@ -1894,5 +1918,8 @@
       "residualDeficit": "Pobrane z sald",
       "unlinkedAccount": "(niepowiązane konto)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Wygenerowano: {timestamp}"
   }
 }

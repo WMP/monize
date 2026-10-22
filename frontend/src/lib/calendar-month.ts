@@ -8,7 +8,7 @@
  * one silently loses or repeats a day at the month boundary. The calendar's
  * days are calendar days, so they are never anything but strings here.
  *
- * `docs/future-plans/calendar-view.md` section 4 defines the grid; the dates
+ * `docs/specs/calendar-view.md` section 4 defines the grid; the dates
  * this is tested against are the table in `docs/testing-contract.md`.
  */
 

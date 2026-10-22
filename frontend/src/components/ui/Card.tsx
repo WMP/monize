@@ -40,6 +40,14 @@ export const HOVER_ROW_ON_CARD =
 export const HOVER_ROW_ON_PAGE =
   'transition-colors motion-reduce:transition-none hover:bg-gray-100 dark:hover:bg-gray-800';
 
+/**
+ * A text button's hover in the grey bar above a table (`ListTopToolbar`). Not
+ * a row: the bar is `gray-50` / `gray-800`, so each row pair would vanish
+ * against it in one of the two modes, and this one lifts a step in both.
+ */
+export const HOVER_TOOLBAR_BUTTON =
+  'transition-colors motion-reduce:transition-none hover:bg-gray-100 dark:hover:bg-gray-700';
+
 const CARD_PADDING = {
   none: '',
   sm: 'p-3 sm:p-4',

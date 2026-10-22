@@ -8,10 +8,12 @@ import toast from 'react-hot-toast';
 import { RuleActionCard } from '@/components/rules/RuleActionCard';
 import type { RuleTreeEnv } from '@/components/rules/RuleConditionGroup';
 import { RuleEditorBanners } from '@/components/rules/RuleEditorBanners';
+import { settlementScheduleId } from '@/components/rules/use-loan-bill-auto-post';
 import { RuleErrorList } from '@/components/rules/RuleCardShell';
 import { RuleIfSection } from '@/components/rules/RuleIfSection';
 import { RuleApplications } from '@/components/rules/RuleApplications';
 import { RuleSection } from '@/components/rules/RuleSection';
+import { RuleTestMatch } from '@/components/rules/RuleTestMatch';
 import { RuleTestPanel, type RuleTestOutcome } from '@/components/rules/RuleTestPanel';
 import { RunRuleDialog } from '@/components/rules/RunRuleDialog';
 import { RuleWhenSection } from '@/components/rules/RuleWhenSection';
@@ -41,6 +43,7 @@ import {
   removeAction,
   updateAction,
   actionKey,
+  isStructuralActionType,
 } from '@/lib/rule-actions';
 import { draftFromRule, draftSignature, draftToPayload, emptyDraft, type RuleDraft } from '@/lib/rule-draft';
 import {
@@ -51,6 +54,7 @@ import {
   isRevisionConflict,
   placeErrors,
   readRuleApiError,
+  structuralFieldErrors,
   type PlacedErrors,
 } from '@/lib/rule-errors';
 import { MAX_RULE_ACTIONS, MAX_RULE_NAME_LENGTH } from '@/lib/rule-fields';
@@ -155,7 +159,7 @@ export function RuleEditorBody({ rule, lookups, onSaved, onReload }: RuleEditorB
     }
     setSaving(true);
     try {
-      const payload = draftToPayload(draft);
+      const payload = draftToPayload(draft, loadedDraft);
       if (rule) {
         const saved = await transactionRulesApi.update(rule.id, {
           ...payload,
@@ -196,6 +200,7 @@ export function RuleEditorBody({ rule, lookups, onSaved, onReload }: RuleEditorB
         refused={refused}
         unplaced={errors.unplaced}
         message={message}
+        loanScheduleId={settlementScheduleId(draft.actions, lookups)}
       />
       <fieldset disabled={saving} aria-busy={saving} className="m-0 min-w-0 space-y-6 border-0 p-0">
         <Card padding="md">
@@ -227,9 +232,27 @@ export function RuleEditorBody({ rule, lookups, onSaved, onReload }: RuleEditorB
           stopProcessing={draft.stopProcessing}
           onTriggersChange={(triggers) => edit((current) => ({ ...current, triggers }))}
           onStopProcessingChange={(stopProcessing) => edit((current) => ({ ...current, stopProcessing }))}
+          activeFrom={draft.activeFrom}
+          activeTo={draft.activeTo}
+          onActiveFromChange={(activeFrom) => edit((current) => ({ ...current, activeFrom }))}
+          onActiveToChange={(activeTo) => edit((current) => ({ ...current, activeTo }))}
         />
 
-        <RuleIfSection expression={expression} env={env} index={index} conditionCodes={conditionCodes} />
+        <RuleIfSection
+          expression={expression}
+          env={env}
+          index={index}
+          conditionCodes={conditionCodes}
+          footer={
+            <RuleTestMatch
+              condition={draft.condition}
+              activeFrom={draft.activeFrom}
+              activeTo={draft.activeTo}
+              blocked={expression.error !== null}
+              categories={lookups.categories}
+            />
+          }
+        />
 
         <RuleSection
           title={t('sections.then')}
@@ -248,6 +271,7 @@ export function RuleEditorBody({ rule, lookups, onSaved, onReload }: RuleEditorB
                 options={options}
                 captures={captures}
                 errors={errors.byKey[actionKey(index)] ?? []}
+                fieldErrors={isStructuralActionType(action.type) ? structuralFieldErrors(errors, index) : undefined}
                 onChange={(next) => setActions((list) => updateAction(list, index, next))}
                 actions={cardActions({
                   canDuplicate: canDuplicateAction(draft.actions, index),

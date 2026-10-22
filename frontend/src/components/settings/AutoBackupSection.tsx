@@ -97,37 +97,44 @@ export function AutoBackupSection() {
   // re-probed on mount and after the two actions that can change the answer
   // (validating a folder, saving the folder), never on a manual run, which
   // cannot change where the server can write.
-  const loadCapability = useCallback(async () => {
-    try {
-      const value = await backupApi.getAutoBackupCapability();
-      setCapability(value);
-    } catch {
-      // Fail open: a capability probe we could not read is not a refusal. The
-      // server still creates and probes the directory on save, so it stays the
-      // authoritative guard; blocking here on a transient error or a backend
-      // that predates this endpoint would strand the controls with no way back.
-      setCapability(null);
-    } finally {
-      setIsCapabilityLoading(false);
-    }
+  // The writes of both loaders live in their inner `run`, so they happen after the request, not during the effect.
+  const loadCapability = useCallback(() => {
+    const run = async () => {
+      try {
+        const value = await backupApi.getAutoBackupCapability();
+        setCapability(value);
+      } catch {
+        // Fail open: a capability probe we could not read is not a refusal. The
+        // server still creates and probes the directory on save, so it stays the
+        // authoritative guard; blocking here on a transient error or a backend
+        // that predates this endpoint would strand the controls with no way back.
+        setCapability(null);
+      } finally {
+        setIsCapabilityLoading(false);
+      }
+    };
+    return run();
   }, []);
 
-  const loadSettings = useCallback(async () => {
-    try {
-      const data = await backupApi.getAutoBackupSettings();
-      setSettings(data);
-      setEnabled(data.enabled);
-      setFolderPath(data.folderPath);
-      setFrequency(data.frequency);
-      setBackupTime(data.backupTime);
-      setRetentionDaily(data.retentionDaily);
-      setRetentionWeekly(data.retentionWeekly);
-      setRetentionMonthly(data.retentionMonthly);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('toasts.loadFailed')));
-    } finally {
-      setIsLoading(false);
-    }
+  const loadSettings = useCallback(() => {
+    const run = async () => {
+      try {
+        const data = await backupApi.getAutoBackupSettings();
+        setSettings(data);
+        setEnabled(data.enabled);
+        setFolderPath(data.folderPath);
+        setFrequency(data.frequency);
+        setBackupTime(data.backupTime);
+        setRetentionDaily(data.retentionDaily);
+        setRetentionWeekly(data.retentionWeekly);
+        setRetentionMonthly(data.retentionMonthly);
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('toasts.loadFailed')));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [t]);
 
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import {
   IsPositive,
   IsString,
@@ -6,6 +7,7 @@ import {
   IsOptional,
   IsNumber,
   IsUUID,
+  ValidateIf,
   IsDateString,
   Min,
   MaxLength,
@@ -118,4 +120,23 @@ export class CreateInvestmentTransactionDto {
   @IsOptional()
   @IsEnum(TransactionStatus)
   status?: TransactionStatus;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    format: "uuid",
+    description:
+      "The bond series (bond instrument id) a share-moving transaction of a program-linked security acts on. " +
+      "An acquisition without one takes the program's series on sale on the transaction date; " +
+      "a removal without one leaves first-in first-out across the account's series. " +
+      "Refused for a security that is not linked to a bond program.",
+  })
+  // One canonical spelling (lower case) before anything compares or stores it.
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.toLowerCase() : value,
+  )
+  @IsOptional()
+  @ValidateIf((_o, value) => value !== null && value !== undefined)
+  @IsUUID()
+  bondInstrumentId?: string | null;
 }

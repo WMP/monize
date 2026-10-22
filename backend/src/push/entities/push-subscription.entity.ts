@@ -134,4 +134,13 @@ export class PushSubscription {
     nullable: true,
   })
   disabledReason: PushDisabledReason | null;
+
+  /**
+   * When this device's account signed out of the browser it lives in. Delivery
+   * skips a held row until the same account registers it again, which clears
+   * the column (INV-PUSH-011). Not a disable: the endpoint is healthy and the
+   * user has nothing to repair.
+   */
+  @Column({ name: "held_at", type: "timestamp", nullable: true })
+  heldAt: Date | null;
 }

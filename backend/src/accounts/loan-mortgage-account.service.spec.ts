@@ -16,24 +16,37 @@ import {
 import { LoanMortgageAccountService } from "./loan-mortgage-account.service";
 import { Account, AccountType } from "./entities/account.entity";
 import { Institution } from "../institutions/entities/institution.entity";
-import { CategoriesService } from "../categories/categories.service";
+import { Category } from "../categories/entities/category.entity";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
 import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
+import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
 import { CreateAccountDto } from "./dto/create-account.dto";
 
 describe("LoanMortgageAccountService", () => {
   let service: LoanMortgageAccountService;
   let accountsRepository: Record<string, jest.Mock>;
   let institutionsRepository: Record<string, jest.Mock>;
-  let categoriesService: Record<string, jest.Mock>;
+  let categoriesRepository: Record<string, jest.Mock>;
   let scheduledTransactionsService: Record<string, jest.Mock>;
   let loanRateChangesService: Record<string, jest.Mock>;
+  let paymentMatching: jest.Mocked<
+    Pick<
+      LoanPaymentMatchingService,
+      "assertDefinable" | "createMatchingRuleReported"
+    >
+  >;
   let manager: ManagerMock;
 
   const userId = "user-1";
 
   beforeEach(async () => {
+    paymentMatching = {
+      assertDefinable: jest.fn(),
+      createMatchingRuleReported: jest
+        .fn()
+        .mockResolvedValue({ ruleId: "rule-1", error: null }),
+    };
     accountsRepository = {
       create: jest.fn().mockImplementation((data: any) => ({
         id: "new-acc-id",
@@ -50,10 +63,13 @@ describe("LoanMortgageAccountService", () => {
       findOne: jest.fn().mockResolvedValue(null),
     };
 
-    categoriesService = {
-      findLoanCategories: jest.fn().mockResolvedValue({
-        interestCategory: { id: "cat-interest", name: "Loan Interest" },
-      }),
+    // The interest category is the caller's unless a case says otherwise.
+    categoriesRepository = {
+      findOne: jest
+        .fn()
+        .mockImplementation(({ where }: any) =>
+          Promise.resolve({ id: where.id, userId: where.userId }),
+        ),
     };
 
     scheduledTransactionsService = {
@@ -76,11 +92,13 @@ describe("LoanMortgageAccountService", () => {
           source: "manual",
         }),
       ),
+      applyScheduledPaymentSync: jest.fn().mockResolvedValue(null),
     };
 
     const mocks = createScopedDbMocks([
       [Account, accountsRepository],
       [Institution, institutionsRepository],
+      [Category, categoriesRepository],
     ]);
     const { dataSource } = mocks;
     manager = mocks.manager;
@@ -93,10 +111,6 @@ describe("LoanMortgageAccountService", () => {
         LoanMortgageAccountService,
         { provide: DataSource, useValue: dataSource },
         {
-          provide: CategoriesService,
-          useValue: categoriesService,
-        },
-        {
           provide: ScheduledTransactionsService,
           useValue: scheduledTransactionsService,
         },
@@ -105,6 +119,7 @@ describe("LoanMortgageAccountService", () => {
           useValue: loanRateChangesService,
         },
         { provide: LoanPaymentDetectorService, useValue: {} },
+        { provide: LoanPaymentMatchingService, useValue: paymentMatching },
       ],
     }).compile();
 
@@ -126,6 +141,7 @@ describe("LoanMortgageAccountService", () => {
         sourceAccountId: "acc-chequing",
         interestRate: 5.5,
         institution: "TD Bank",
+        interestCategoryId: "cat-interest",
       }) as any;
 
     it("should create a loan account with correct fields", async () => {
@@ -313,47 +329,80 @@ describe("LoanMortgageAccountService", () => {
       );
     });
 
-    it("should use provided interestCategoryId instead of looking up", async () => {
+    it("writes the chosen interest category on the account and the interest line", async () => {
       const dto = makeValidLoanDto();
       (dto as any).interestCategoryId = "custom-cat-id";
 
       await service.createLoanAccount(userId, dto);
 
-      expect(categoriesService.findLoanCategories).not.toHaveBeenCalled();
+      expect(categoriesRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "custom-cat-id", userId },
+      });
       expect(accountsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ interestCategoryId: "custom-cat-id" }),
+      );
+      const scheduleDto = scheduledTransactionsService.create.mock.calls[0][1];
+      expect(scheduleDto.splits).toContainEqual(
         expect.objectContaining({
-          interestCategoryId: "custom-cat-id",
+          memo: "Interest",
+          categoryId: "custom-cat-id",
         }),
       );
     });
 
-    it("should look up default interest category when not provided", async () => {
+    it("refuses a loan without an interest category before writing anything", async () => {
       const dto = makeValidLoanDto();
+      delete (dto as any).interestCategoryId;
 
-      await service.createLoanAccount(userId, dto);
-
-      expect(categoriesService.findLoanCategories).toHaveBeenCalledWith(userId);
-      expect(accountsRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          interestCategoryId: "cat-interest",
-        }),
+      await expect(service.createLoanAccount(userId, dto)).rejects.toThrow(
+        "Loan accounts require an interest category",
       );
+      expect(accountsRepository.create).not.toHaveBeenCalled();
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
     });
 
-    it("should handle missing interestCategory from findLoanCategories", async () => {
-      categoriesService.findLoanCategories.mockResolvedValue({
-        interestCategory: null,
+    it("refuses an interest category the caller does not own before writing anything", async () => {
+      categoriesRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.createLoanAccount(userId, makeValidLoanDto()),
+      ).rejects.toThrow(BadRequestException);
+      expect(accountsRepository.create).not.toHaveBeenCalled();
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a payment account in another currency before saving the loan (A26-S15-10)", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        id: "acc-chequing",
+        userId,
+        currencyCode: "PLN",
       });
 
-      const dto = makeValidLoanDto();
-
-      await service.createLoanAccount(userId, dto);
-
-      expect(accountsRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          interestCategoryId: null,
-        }),
+      await expect(
+        service.createLoanAccount(userId, makeValidLoanDto()),
+      ).rejects.toThrow(
+        "The payment account is in PLN and the loan in CAD. Choose an account in CAD.",
       );
+      expect(accountsRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "acc-chequing", userId },
+      });
+      expect(accountsRepository.create).not.toHaveBeenCalled();
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+    });
+
+    it("creates the loan when the payment account is in its currency", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        id: "acc-chequing",
+        userId,
+        currencyCode: "CAD",
+      });
+
+      await service.createLoanAccount(userId, makeValidLoanDto());
+
+      expect(scheduledTransactionsService.create).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -372,6 +421,7 @@ describe("LoanMortgageAccountService", () => {
         amortizationMonths: 300,
         mortgageType: "CANADIAN_FIXED",
         termMonths: 60,
+        interestCategoryId: "cat-interest",
       }) as any;
 
     it("should create a mortgage account with correct fields", async () => {
@@ -567,6 +617,215 @@ describe("LoanMortgageAccountService", () => {
       );
     });
 
+    it("stores originalPrincipal apart from the opening balance when given", async () => {
+      await service.createMortgageAccount(userId, {
+        ...makeValidMortgageDto(),
+        openingBalance: 450000,
+        originalPrincipal: 500000,
+      });
+
+      expect(accountsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          openingBalance: -450000,
+          currentBalance: -450000,
+          originalPrincipal: 500000,
+        }),
+      );
+    });
+
+    it("writes the chosen interest category on the mortgage's interest line", async () => {
+      await service.createMortgageAccount(userId, makeValidMortgageDto());
+
+      expect(accountsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ interestCategoryId: "cat-interest" }),
+      );
+      const scheduleDto = scheduledTransactionsService.create.mock.calls[0][1];
+      expect(scheduleDto.splits).toContainEqual(
+        expect.objectContaining({
+          memo: "Interest",
+          categoryId: "cat-interest",
+        }),
+      );
+    });
+
+    it("refuses a mortgage without an interest category before writing anything", async () => {
+      const dto = makeValidMortgageDto();
+      delete (dto as any).interestCategoryId;
+
+      await expect(service.createMortgageAccount(userId, dto)).rejects.toThrow(
+        "Mortgage accounts require an interest category",
+      );
+      expect(accountsRepository.create).not.toHaveBeenCalled();
+      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a payment account in another currency before saving the mortgage (A26-S15-10)", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        id: "acc-chequing",
+        userId,
+        currencyCode: "PLN",
+      });
+
+      await expect(
+        service.createMortgageAccount(userId, makeValidMortgageDto()),
+      ).rejects.toThrow(
+        "The payment account is in PLN and the loan in CAD. Choose an account in CAD.",
+      );
+      expect(accountsRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "acc-chequing", userId },
+      });
+      expect(accountsRepository.create).not.toHaveBeenCalled();
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+    });
+
+    it("creates the mortgage when the payment account is in its currency", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        id: "acc-chequing",
+        userId,
+        currencyCode: "CAD",
+      });
+
+      await service.createMortgageAccount(userId, makeValidMortgageDto());
+
+      expect(scheduledTransactionsService.create).toHaveBeenCalledTimes(1);
+    });
+
+    it("refuses a mortgage interest category the caller does not own before writing anything", async () => {
+      categoriesRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.createMortgageAccount(userId, makeValidMortgageDto()),
+      ).rejects.toThrow(BadRequestException);
+      expect(accountsRepository.create).not.toHaveBeenCalled();
+      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+    });
+
+    describe("payment matching", () => {
+      const paymentMatchingDto = { payeePattern: "RBC MORTGAGE*" };
+
+      it("checks the patterns before writing, then creates the rule for the saved mortgage", async () => {
+        const created = await service.createMortgageAccount(userId, {
+          ...makeValidMortgageDto(),
+          paymentMatching: paymentMatchingDto,
+        });
+
+        expect(paymentMatching.assertDefinable).toHaveBeenCalledWith(
+          "acc-chequing",
+          paymentMatchingDto,
+        );
+        expect(
+          paymentMatching.assertDefinable.mock.invocationCallOrder[0],
+        ).toBeLessThan(accountsRepository.save.mock.invocationCallOrder[0]);
+        expect(paymentMatching.createMatchingRuleReported).toHaveBeenCalledWith(
+          userId,
+          "new-acc-id",
+          paymentMatchingDto,
+        );
+        // After the account points at its schedule.
+        expect(
+          paymentMatching.createMatchingRuleReported.mock
+            .invocationCallOrder[0],
+        ).toBeGreaterThan(accountsRepository.save.mock.invocationCallOrder[1]);
+        expect(created).toMatchObject({
+          scheduledTransactionId: "sched-tx-1",
+          paymentMatchingRuleId: "rule-1",
+          paymentMatchingError: null,
+        });
+        // Not spread into the account row.
+        expect(accountsRepository.create.mock.calls[0][0]).not.toHaveProperty(
+          "paymentMatching",
+        );
+      });
+
+      it("refuses a pattern the rule would refuse before anything is written", async () => {
+        paymentMatching.assertDefinable.mockImplementation(() => {
+          throw new BadRequestException("The rule definition is not valid");
+        });
+
+        await expect(
+          service.createMortgageAccount(userId, {
+            ...makeValidMortgageDto(),
+            paymentMatching: { payeePattern: "RBC|TD*" },
+          }),
+        ).rejects.toThrow(BadRequestException);
+        expect(accountsRepository.save).not.toHaveBeenCalled();
+        expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+      });
+
+      it("reports a rule it could not create on the saved mortgage, which stays", async () => {
+        const error = {
+          errorCode: "RULE_LIMIT_REACHED",
+          message: "At most 200 rules can be created",
+        };
+        paymentMatching.createMatchingRuleReported.mockResolvedValue({
+          ruleId: null,
+          error,
+        });
+
+        const created = await service.createMortgageAccount(userId, {
+          ...makeValidMortgageDto(),
+          paymentMatching: paymentMatchingDto,
+        });
+
+        expect(created).toMatchObject({
+          id: "new-acc-id",
+          scheduledTransactionId: "sched-tx-1",
+          paymentMatchingRuleId: null,
+          paymentMatchingError: error,
+        });
+        expect(accountsRepository.save).toHaveBeenCalledTimes(2);
+      });
+
+      it("creates no rule when the request asks for none", async () => {
+        const created = await service.createMortgageAccount(
+          userId,
+          makeValidMortgageDto(),
+        );
+
+        expect(paymentMatching.assertDefinable).not.toHaveBeenCalled();
+        expect(
+          paymentMatching.createMatchingRuleReported,
+        ).not.toHaveBeenCalled();
+        expect(created).not.toHaveProperty("paymentMatchingError");
+      });
+
+      it("creates the rule for a loan created with its payment too", async () => {
+        const created = await service.createLoanAccount(userId, {
+          accountType: AccountType.LOAN,
+          name: "Car Loan",
+          currencyCode: "CAD",
+          openingBalance: 25000,
+          paymentAmount: 500,
+          paymentFrequency: "MONTHLY",
+          paymentStartDate: "2025-01-15",
+          sourceAccountId: "acc-chequing",
+          interestRate: 5.5,
+          institution: "TD Bank",
+          originalPrincipal: 30000,
+          interestCategoryId: "cat-interest",
+          paymentMatching: paymentMatchingDto,
+        } as CreateAccountDto);
+
+        expect(paymentMatching.assertDefinable).toHaveBeenCalledWith(
+          "acc-chequing",
+          paymentMatchingDto,
+        );
+        expect(accountsRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            openingBalance: -25000,
+            originalPrincipal: 30000,
+          }),
+        );
+        expect(paymentMatching.createMatchingRuleReported).toHaveBeenCalledWith(
+          userId,
+          "new-acc-id",
+          paymentMatchingDto,
+        );
+        expect(created.paymentMatchingRuleId).toBe("rule-1");
+      });
+    });
+
     it("should save scheduledTransactionId back to account", async () => {
       const dto = makeValidMortgageDto();
       await service.createMortgageAccount(userId, dto);
@@ -690,6 +949,46 @@ describe("LoanMortgageAccountService", () => {
       expect(result.principalPayment).toBeGreaterThan(0);
       expect(result.interestPayment).toBeGreaterThan(0);
       expect(result.effectiveDate).toBe("2025-06-01");
+    });
+
+    it("applies the scheduled-payment sync at once through the rate-change service's apply, after recording the change", async () => {
+      await service.updateMortgageRate(
+        makeMortgageAccount(),
+        userId,
+        4.5,
+        new Date("2025-06-01"),
+      );
+
+      expect(
+        loanRateChangesService.applyScheduledPaymentSync,
+      ).toHaveBeenCalledWith(userId, "acc-mortgage");
+      const createOrder =
+        loanRateChangesService.create.mock.invocationCallOrder[0];
+      const applyOrder =
+        loanRateChangesService.applyScheduledPaymentSync.mock
+          .invocationCallOrder[0];
+      expect(createOrder).toBeLessThan(applyOrder);
+      // The template is written by the loan core, never by the schedule
+      // service's update (which writes accounts.payment_amount), and the
+      // account row is not saved here.
+      expect(scheduledTransactionsService.update).not.toHaveBeenCalled();
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("answers the rate update when the sync fails after the change is recorded", async () => {
+      loanRateChangesService.applyScheduledPaymentSync.mockRejectedValue(
+        new Error("ledger unreadable"),
+      );
+
+      const result = await service.updateMortgageRate(
+        makeMortgageAccount(),
+        userId,
+        4.5,
+        new Date("2025-06-01"),
+      );
+
+      expect(result.newRate).toBe(4.5);
+      expect(loanRateChangesService.create).toHaveBeenCalledTimes(1);
     });
 
     it("should record a rate-history row with the recalculate default", async () => {

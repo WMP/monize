@@ -24,6 +24,12 @@ import {
 import { mapWithConcurrency } from "../common/concurrency.util";
 import { FxAggregate } from "../common/fx-aggregate";
 import {
+  BondValuationService,
+  ownLotsGrossValue,
+  SecurityValueByAccount,
+} from "../bonds/bond-valuation.service";
+import { ExactDecimal } from "../bonds/domain/exact-decimal";
+import {
   FX_MAX_RATE_AGE_DAYS,
   describeFxGap,
   resolveFxRate,
@@ -33,7 +39,11 @@ import {
   applyActionToQuantity,
   baseInvestmentAction,
   CASH_INCOME_ACTIONS,
+  HOLDING_QUANTITY_EPSILON,
   INVESTMENT_REPLAY_ORDER,
+  orderTransferOutBeforeIn,
+  applyReturnOfCapital,
+  returnOfCapitalAmount,
 } from "./investment-replay.util";
 import { stripBrokerageSuffix } from "../accounts/account-name.util";
 
@@ -130,6 +140,12 @@ export interface RealizedGainEntry {
   symbol: string | null;
   securityName: string | null;
   securityCurrencyCode: string | null;
+  /**
+   * The row that realized the gain: a SELL or REDEEM disposes of `quantity`
+   * shares, and a RETURN_OF_CAPITAL realizes what it paid beyond the basis
+   * with no shares sold (`quantity` and `price` are 0).
+   */
+  action: InvestmentAction;
   quantity: number;
   price: number;
   commission: number;
@@ -140,7 +156,8 @@ export interface RealizedGainEntry {
 
 /**
  * Per-(account, security, month) capital-gain breakdown including both the
- * realized portion (from SELLs in the month) and the unrealized mark-to-market
+ * realized portion (from SELLs in the month, and any return of capital
+ * beyond the basis) and the unrealized mark-to-market
  * change on the position. All monetary values are denominated in the holding
  * account's currency. The decomposition uses:
  *
@@ -287,18 +304,37 @@ function enumerateDays(startDate: string, endDate: string): PeriodBucket[] {
 function applyTxToState(
   tx: InvestmentTransaction,
   state: { quantity: number; costBasis: number; basisKnown: boolean },
+  carriedIn?: number,
 ): void {
   const quantity = Number(tx.quantity) || 0;
 
   switch (baseInvestmentAction(tx.action)) {
     case InvestmentAction.BUY:
-    case InvestmentAction.REINVEST:
-    case InvestmentAction.TRANSFER_IN: {
+    case InvestmentAction.REINVEST: {
       // Includes the commission, which is part of what the acquisition cost --
       // the linked cash debit already carries it. `null` means the row cannot
       // say what it cost, and shares whose cost is unknown must not join the
       // basis as free -- nor leave the basis pretending to be complete.
       const cost = acquisitionCost(tx);
+      if (cost !== null) state.costBasis += cost;
+      else state.basisKnown = false;
+      state.quantity = applyActionToQuantity(
+        state.quantity,
+        tx.action,
+        quantity,
+      );
+      break;
+    }
+    case InvestmentAction.TRANSFER_IN: {
+      // Not a purchase (A26-M21): the lot takes the account-currency basis its
+      // paired TRANSFER_OUT released (`carriedIn`, from
+      // `carriedBasisByTransferIn`). The leg's own row cannot supply it -- its
+      // price is a per-share figure in the security's currency and its rate is
+      // 1. Residual: with no carried amount (the OUT leg outside the rows, the
+      // source short of units, or the two accounts in different currencies)
+      // it falls back to `acquisitionCost(tx)`, which is only right when the
+      // leg's price and rate say what the shares cost.
+      const cost = carriedIn ?? acquisitionCost(tx);
       if (cost !== null) state.costBasis += cost;
       else state.basisKnown = false;
       state.quantity = applyActionToQuantity(
@@ -315,6 +351,18 @@ function applyTxToState(
         state.quantity > 0 ? state.costBasis / state.quantity : 0;
       state.costBasis -= sellQty * avgCostPerShare;
       state.quantity -= sellQty;
+      break;
+    }
+    case InvestmentAction.RETURN_OF_CAPITAL: {
+      // Pays back cost, never below zero; a row whose rate cannot convert it
+      // leaves the basis unknown rather than unreduced.
+      const amount = returnOfCapitalAmount(tx);
+      if (amount === null) state.basisKnown = false;
+      else
+        state.costBasis = applyReturnOfCapital(
+          state.costBasis,
+          amount,
+        ).costBasis;
       break;
     }
     default:
@@ -335,6 +383,78 @@ function applyTxToState(
 }
 
 /**
+ * The account-currency basis each TRANSFER_IN lot takes from its paired
+ * TRANSFER_OUT (A26-M21), keyed by the IN leg's id.
+ *
+ * One chronological pass over every row the caller fetched, whatever account it
+ * is in, so a destination's lot can be priced before or after its source group
+ * is folded. It folds with `applyTxToState`, the fold the capital-gains seed
+ * uses, and reads the rows OUT-before-IN (`orderTransferOutBeforeIn`). The OUT
+ * leg is matched to the IN leg through `linkedTransactionId`, and counts only
+ * when it relieved ALL its units (the source held at least the quantity) from
+ * a basis with no unpriced lot in it, and the two legs' accounts share a
+ * currency (`account` must be loaded): the
+ * released amount is in the source account's currency, and a rate-1 leg cannot
+ * convert it. An IN leg with no entry here is the caller's to price from its
+ * own row -- the residual `applyTxToState` names.
+ */
+function carriedBasisByTransferIn(
+  transactions: readonly InvestmentTransaction[],
+): Map<string, number> {
+  const states = new Map<
+    string,
+    { quantity: number; costBasis: number; basisKnown: boolean }
+  >();
+  const releasedByOut = new Map<
+    string,
+    { amount: number; currencyCode: string | null }
+  >();
+  const carriedIn = new Map<string, number>();
+
+  for (const tx of orderTransferOutBeforeIn(transactions)) {
+    if (!tx.securityId) continue;
+    const key = `${tx.accountId}:${tx.securityId}`;
+    let state = states.get(key);
+    if (!state) {
+      state = { quantity: 0, costBasis: 0, basisKnown: true };
+      states.set(key, state);
+    }
+
+    const action = baseInvestmentAction(tx.action);
+    let carried: number | undefined;
+    if (action === InvestmentAction.TRANSFER_IN && tx.linkedTransactionId) {
+      const source = releasedByOut.get(tx.linkedTransactionId);
+      const currencyCode = tx.account?.currencyCode ?? null;
+      if (
+        source !== undefined &&
+        source.currencyCode !== null &&
+        source.currencyCode === currencyCode
+      ) {
+        carried = source.amount;
+        carriedIn.set(tx.id, carried);
+      }
+    } else if (action === InvestmentAction.TRANSFER_OUT) {
+      const quantity = Number(tx.quantity) || 0;
+      // A source whose basis holds an unpriced lot releases a subtotal, not
+      // what the shares cost: nothing is carried, and the IN leg falls back.
+      if (
+        state.basisKnown &&
+        state.quantity > 0 &&
+        quantity > 0 &&
+        state.quantity >= quantity - HOLDING_QUANTITY_EPSILON
+      ) {
+        releasedByOut.set(tx.id, {
+          amount: quantity * (state.costBasis / state.quantity),
+          currencyCode: tx.account?.currencyCode ?? null,
+        });
+      }
+    }
+    applyTxToState(tx, state, carried);
+  }
+  return carriedIn;
+}
+
+/**
  * Service responsible for the core portfolio value calculations:
  * holdings valuation, account grouping, allocation, and CAGR. The summary's
  * time-weighted return is not here: it is the invested measure over the whole
@@ -342,6 +462,15 @@ function applyTxToState(
  *
  * Extracted from PortfolioService to keep file sizes manageable.
  */
+/** What `valueBondHoldings` needs of a holding; a `Holding` row satisfies it. */
+export interface BondHoldingRef {
+  readonly id: string;
+  readonly accountId: string;
+  readonly securityId: string;
+  readonly quantity: number | string;
+  readonly security?: { readonly bondProgramId: string | null } | null;
+}
+
 @Injectable()
 export class PortfolioCalculationService {
   private readonly logger = new Logger(PortfolioCalculationService.name);
@@ -349,6 +478,7 @@ export class PortfolioCalculationService {
   constructor(
     private dataSource: DataSource,
     private exchangeRateService: ExchangeRateService,
+    private bondValuationService: BondValuationService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -723,7 +853,13 @@ export class PortfolioCalculationService {
           // A CD/bond redemption's proceeds are a sale's; the term'd gain
           // distributions are income. Lists come from the shared constants so
           // a future refinement cannot fall out of this aggregate silently.
-          [InvestmentAction.SELL, InvestmentAction.REDEEM],
+          // A return of capital is capital coming back out, as a sale's
+          // proceeds are: it is cash in the sleeve that no deposit put there.
+          [
+            InvestmentAction.SELL,
+            InvestmentAction.REDEEM,
+            InvestmentAction.RETURN_OF_CAPITAL,
+          ],
           CASH_INCOME_ACTIONS,
         ],
       ),
@@ -846,26 +982,9 @@ export class PortfolioCalculationService {
       transactions,
     );
 
-    // Both legs of a transfer are written in one transaction, so `created_at`
-    // -- a statement timestamp -- is identical on the pair and the SQL order
-    // between them is whatever the plan happens to produce. The OUT leg has to
-    // be seen first, because it is what tells the IN leg what the shares cost.
-    // Only the two legs are reordered: the comparator returns 0 for everything
-    // else at the same instant, and `sort` is stable, so nothing else moves.
-    const legRank = (action: InvestmentAction): number =>
-      action === InvestmentAction.TRANSFER_OUT
-        ? -1
-        : action === InvestmentAction.TRANSFER_IN
-          ? 1
-          : 0;
-    const ordered = [...transactions].sort((a, b) => {
-      if (a.transactionDate !== b.transactionDate) {
-        return a.transactionDate < b.transactionDate ? -1 : 1;
-      }
-      const created = Number(a.createdAt) - Number(b.createdAt);
-      if (created !== 0) return created;
-      return legRank(a.action) - legRank(b.action);
-    });
+    // The OUT leg of a transfer has to be seen before its IN leg, because it is
+    // what tells the IN leg what the shares cost; the shared helper says why.
+    const ordered = orderTransferOutBeforeIn(transactions);
 
     /**
      * What each `TRANSFER_OUT` released, for its paired `TRANSFER_IN` to take.
@@ -1049,6 +1168,29 @@ export class PortfolioCalculationService {
             quantity,
           );
           break;
+        case InvestmentAction.RETURN_OF_CAPITAL: {
+          // Pays back cost, never below zero. The converted amount is in the
+          // currency it settled in, so it can come off the basis only when
+          // that is the basis's currency -- the same test an acquisition
+          // passes to join it.
+          const amount = returnOfCapitalAmount(tx);
+          const settledIn = tx.fundingAccountId
+            ? basisCurrencyByAccount.own.get(tx.fundingAccountId)
+            : basisCurrencyByAccount.brokerage.get(tx.accountId);
+          if (
+            amount === null ||
+            settledIn === undefined ||
+            (entry.currencyCode !== null && entry.currencyCode !== settledIn)
+          ) {
+            entry.basisGap ??= "mixed_basis_currency";
+            break;
+          }
+          entry.costBasis = applyReturnOfCapital(
+            entry.costBasis,
+            amount,
+          ).costBasis;
+          break;
+        }
         // DIVIDEND / INTEREST / CAPITAL_GAIN: cash only, no impact on cost basis
       }
 
@@ -1246,10 +1388,10 @@ export class PortfolioCalculationService {
   ): Promise<RealizedGainEntry[]> {
     const { accountIds, startDate, endDate } = opts;
 
+    // Not filtered by account: a lot transferred in from an account the caller
+    // did not ask about still carries its basis (A26-M21), so the replay reads
+    // every account's rows and only the RESULTS are filtered by `accountIds`.
     const where: FindOptionsWhere<InvestmentTransaction> = { userId };
-    if (accountIds && accountIds.length > 0) {
-      where.accountId = In(accountIds);
-    }
     if (endDate) {
       where.transactionDate = LessThanOrEqual(endDate);
     }
@@ -1257,13 +1399,17 @@ export class PortfolioCalculationService {
     // Rows as effects: a VOID transaction moved no shares and no cost.
     where.status = NON_VOID_INVESTMENT_STATUS;
 
-    const transactions = await withScopedDb(this.dataSource, (m) =>
+    const fetched = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(InvestmentTransaction).find({
         where,
         relations: ["security", "account"],
         order: INVESTMENT_REPLAY_ORDER,
       }),
     );
+    const transactions = orderTransferOutBeforeIn(fetched);
+    const carriedIn = carriedBasisByTransferIn(transactions);
+    const requestedAccounts =
+      accountIds && accountIds.length > 0 ? new Set(accountIds) : null;
 
     const state = new Map<string, { quantity: number; costBasis: number }>();
     const results: RealizedGainEntry[] = [];
@@ -1284,13 +1430,28 @@ export class PortfolioCalculationService {
 
       switch (baseInvestmentAction(tx.action)) {
         case InvestmentAction.BUY:
-        case InvestmentAction.REINVEST:
-        case InvestmentAction.TRANSFER_IN: {
+        case InvestmentAction.REINVEST: {
           // Acquisition commission belongs in the basis a later disposal is
           // measured against; omitting it reported the commission as gain and
           // taxed it. Shared with every other replay so the realized-gain
           // report and the holdings page cannot disagree about the same buy.
           const cost = acquisitionCost(tx);
+          if (cost !== null) entry.costBasis += cost;
+          entry.quantity = applyActionToQuantity(
+            entry.quantity,
+            tx.action,
+            quantity,
+          );
+          break;
+        }
+        case InvestmentAction.TRANSFER_IN: {
+          // Not a purchase (A26-M21): the lot takes the account-currency basis
+          // its paired TRANSFER_OUT released. Residual: with no carried amount
+          // (the OUT leg missing, the source short of units, or the two
+          // accounts in different currencies) it falls back to the leg's own
+          // `acquisitionCost`, right only when the row's price and rate say
+          // what the shares cost.
+          const cost = carriedIn.get(tx.id) ?? acquisitionCost(tx);
           if (cost !== null) entry.costBasis += cost;
           entry.quantity = applyActionToQuantity(
             entry.quantity,
@@ -1317,7 +1478,10 @@ export class PortfolioCalculationService {
             const proceeds = Number(tx.totalAmount) * exchangeRate;
             const realizedGain = proceeds - costBasisSold;
 
-            if (!startDate || tx.transactionDate >= startDate) {
+            if (
+              (!startDate || tx.transactionDate >= startDate) &&
+              (!requestedAccounts || requestedAccounts.has(tx.accountId))
+            ) {
               results.push({
                 transactionId: tx.id,
                 transactionDate: tx.transactionDate,
@@ -1328,6 +1492,7 @@ export class PortfolioCalculationService {
                 symbol: tx.security?.symbol ?? null,
                 securityName: tx.security?.name ?? null,
                 securityCurrencyCode: tx.security?.currencyCode ?? null,
+                action: tx.action,
                 quantity: Math.abs(quantity),
                 price,
                 commission: Number(tx.commission) || 0,
@@ -1336,6 +1501,46 @@ export class PortfolioCalculationService {
                 realizedGain: roundMoney(realizedGain),
               });
             }
+          }
+          break;
+        }
+        case InvestmentAction.RETURN_OF_CAPITAL: {
+          // Comes off the basis; only what the basis could not absorb is a
+          // gain, realized on the distribution's date with no shares sold.
+          // The row's own rate puts it in the holding account's currency. It
+          // is the raw stored rate, not `exchangeRate` above: that one has
+          // already turned a stored 0 into 1, and a rate that cannot convert
+          // is unknown, never par. An unknown amount leaves the basis as it
+          // was, as an unpriced acquisition leaves it in this replay.
+          const amount = returnOfCapitalAmount({
+            totalAmount: tx.totalAmount,
+            exchangeRate: tx.exchangeRate,
+          });
+          if (amount === null) break;
+          const effect = applyReturnOfCapital(entry.costBasis, amount);
+          entry.costBasis = effect.costBasis;
+          if (
+            effect.realizedGain > 0 &&
+            (!startDate || tx.transactionDate >= startDate)
+          ) {
+            results.push({
+              transactionId: tx.id,
+              transactionDate: tx.transactionDate,
+              accountId: tx.accountId,
+              accountName: tx.account?.name ?? null,
+              accountCurrencyCode: tx.account?.currencyCode ?? null,
+              securityId: tx.securityId,
+              symbol: tx.security?.symbol ?? null,
+              securityName: tx.security?.name ?? null,
+              securityCurrencyCode: tx.security?.currencyCode ?? null,
+              action: tx.action,
+              quantity: 0,
+              price: 0,
+              commission: Number(tx.commission) || 0,
+              proceeds: roundMoney(amount),
+              costBasis: roundMoney(effect.basisReturned),
+              realizedGain: roundMoney(effect.realizedGain),
+            });
           }
           break;
         }
@@ -1427,21 +1632,31 @@ export class PortfolioCalculationService {
   ): Promise<CapitalGainEntry[]> {
     const { accountIds, endDate } = opts;
 
+    // Not filtered by account: a lot transferred in from an account the caller
+    // did not ask about still carries its basis (A26-M21), so the carry reads
+    // every account's rows and only the groups reported are filtered below.
     const where: FindOptionsWhere<InvestmentTransaction> = { userId };
-    if (accountIds && accountIds.length > 0) {
-      where.accountId = In(accountIds);
-    }
     where.transactionDate = LessThanOrEqual(endDate);
 
     // Rows as effects: a VOID transaction moved no shares and no cost.
     where.status = NON_VOID_INVESTMENT_STATUS;
 
-    const transactions = await withScopedDb(this.dataSource, (m) =>
+    const fetched = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(InvestmentTransaction).find({
         where,
         relations: ["security", "account"],
         order: INVESTMENT_REPLAY_ORDER,
       }),
+    );
+
+    // Groups fold one (account, security) at a time, so a source group may be
+    // processed after its destination: the carried amounts come from one
+    // chronological pass over all rows, which each group's TRANSFER_IN reads.
+    const carriedIn = carriedBasisByTransferIn(fetched);
+    const requestedAccounts =
+      accountIds && accountIds.length > 0 ? new Set(accountIds) : null;
+    const transactions = fetched.filter(
+      (tx) => !requestedAccounts || requestedAccounts.has(tx.accountId),
     );
 
     if (transactions.length === 0) return [];
@@ -1561,7 +1776,7 @@ export class PortfolioCalculationService {
         txIdx < txs.length &&
         txs[txIdx].transactionDate < periods[0].periodStart
       ) {
-        applyTxToState(txs[txIdx], state);
+        applyTxToState(txs[txIdx], state, carriedIn.get(txs[txIdx].id));
         txIdx++;
       }
 
@@ -1598,28 +1813,36 @@ export class PortfolioCalculationService {
           const quantity = Number(tx.quantity) || 0;
           const exchangeRate = Number(tx.exchangeRate) || 1;
 
+          // `null` is a lot whose cost the row cannot state.
+          const addAcquisition = (cost: number | null) => {
+            if (cost === null) {
+              buysComplete = false;
+              state.basisKnown = false;
+            } else {
+              buys += cost;
+              state.costBasis += cost;
+            }
+            state.quantity = applyActionToQuantity(
+              state.quantity,
+              tx.action,
+              quantity,
+            );
+          };
+
           switch (baseInvestmentAction(tx.action)) {
             case InvestmentAction.BUY:
             case InvestmentAction.REINVEST:
-            case InvestmentAction.TRANSFER_IN: {
               // Commission included: it is money the period spent acquiring,
               // so leaving it out of `buys` also inflated the period's
               // capital gain by the same amount it understated the basis.
-              const cost = acquisitionCost(tx);
-              if (cost === null) {
-                buysComplete = false;
-                state.basisKnown = false;
-              } else {
-                buys += cost;
-                state.costBasis += cost;
-              }
-              state.quantity = applyActionToQuantity(
-                state.quantity,
-                tx.action,
-                quantity,
-              );
+              addAcquisition(acquisitionCost(tx));
               break;
-            }
+            case InvestmentAction.TRANSFER_IN:
+              // Not a purchase (A26-M21): the lot takes the basis its paired
+              // OUT released; the residual with no carried amount is
+              // `applyTxToState`'s.
+              addAcquisition(carriedIn.get(tx.id) ?? acquisitionCost(tx));
+              break;
             case InvestmentAction.SELL:
             case InvestmentAction.TRANSFER_OUT: {
               const sellQty = Math.min(quantity, state.quantity);
@@ -1635,6 +1858,31 @@ export class PortfolioCalculationService {
                 // A basis carrying an unknown lot cannot price what was sold.
                 if (!state.basisKnown) realizedKnown = false;
               }
+              break;
+            }
+            case InvestmentAction.RETURN_OF_CAPITAL: {
+              // Capital coming back out: the price falls by what was paid,
+              // so it nets against the value change as a sale's proceeds do,
+              // and only what exceeds the basis is realized. The raw stored
+              // rate, as `applyTxToState` reads it before the window: a 0 is
+              // unknown, and `exchangeRate` above would have made it 1.
+              const amount = returnOfCapitalAmount({
+                totalAmount: tx.totalAmount,
+                exchangeRate: tx.exchangeRate,
+              });
+              if (amount === null) {
+                // Neither the cash nor the basis it returned is known, so
+                // the period's capital movement is not either.
+                buysComplete = false;
+                realizedKnown = false;
+                state.basisKnown = false;
+                break;
+              }
+              const effect = applyReturnOfCapital(state.costBasis, amount);
+              state.costBasis = effect.costBasis;
+              sells += amount;
+              realizedGain += effect.realizedGain;
+              if (!state.basisKnown) realizedKnown = false;
               break;
             }
             default:
@@ -1716,6 +1964,107 @@ export class PortfolioCalculationService {
   }
 
   /**
+   * The value of each bond-linked holding from its own account's lots, keyed
+   * `accountId:securityId`; null is unpriced (see `ownLotsValue`). Only linked
+   * holdings in a non-zero quantity have an entry. One `valueByAccount` call per
+   * linked security, on the person's financial today unless `asOf` is given.
+   * Every surface that shows a per-account value of a holding reads it here, so
+   * none of them multiplies a quantity by the program-wide blend.
+   */
+  async valueBondHoldings(
+    userId: string,
+    holdings: readonly BondHoldingRef[],
+    asOf?: string,
+  ): Promise<Map<string, { marketValue: number; unitPrice: number } | null>> {
+    const valued = await this.valueLinkedSecurities(userId, holdings, asOf);
+    const values = new Map<
+      string,
+      { marketValue: number; unitPrice: number } | null
+    >();
+    for (const h of holdings) {
+      const quantity = Number(h.quantity);
+      if (!h.security?.bondProgramId || Math.abs(quantity) < 0.0001) continue;
+      values.set(
+        `${h.accountId}:${h.securityId}`,
+        this.ownLotsValue(h, quantity, valued.get(h.securityId)),
+      );
+    }
+    return values;
+  }
+
+  /**
+   * The per-account lot values of every bond-linked security held in a non-zero
+   * quantity, one `valueByAccount` call per security. A security whose valuation
+   * throws maps to `null` (every holding of it is unpriced); the portfolio is
+   * not failed for it.
+   */
+  private async valueLinkedSecurities(
+    userId: string,
+    holdings: readonly BondHoldingRef[],
+    asOf?: string,
+  ): Promise<Map<string, SecurityValueByAccount | null>> {
+    const linked = new Set(
+      holdings
+        .filter(
+          (h) =>
+            h.security?.bondProgramId && Math.abs(Number(h.quantity)) >= 0.0001,
+        )
+        .map((h) => h.securityId),
+    );
+    const values = new Map<string, SecurityValueByAccount | null>();
+    for (const securityId of linked) {
+      try {
+        values.set(
+          securityId,
+          await this.bondValuationService.valueByAccount(
+            userId,
+            securityId,
+            asOf,
+          ),
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Bond valuation of security ${securityId} failed; its holdings are unpriced: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        values.set(securityId, null);
+      }
+    }
+    return values;
+  }
+
+  /**
+   * One holding's value from its own account's lots, or null (unpriced) when
+   * the valuation failed, the lots are unknowable, any lot has no gross value,
+   * or the lots' bond count is not the holding's quantity (never price a
+   * different quantity). The unit price is the account's value per bond.
+   */
+  private ownLotsValue(
+    h: BondHoldingRef,
+    quantity: number,
+    valued: SecurityValueByAccount | null | undefined,
+  ): { marketValue: number; unitPrice: number } | null {
+    const own = ownLotsGrossValue(valued, h.accountId, quantity);
+    if ("unpriced" in own) {
+      if (own.unpriced === "QUANTITY_MISMATCH") {
+        this.logger.warn(
+          `Holding ${h.id} of bond security ${h.securityId} has quantity ${quantity} but its account's lots count a different number of bonds; left unpriced`,
+        );
+      }
+      return null;
+    }
+    const lots = { grossValue: own.grossValue, quantity: own.lotQuantity };
+    const value = ExactDecimal.parse(lots.grossValue);
+    return {
+      marketValue: Number(lots.grossValue),
+      unitPrice: Number(
+        value.div(ExactDecimal.fromInt(lots.quantity)).toFixed(10),
+      ),
+    };
+  }
+
+  /**
    * Fetch holdings for the given account IDs, compute per-holding market value,
    * gain/loss, and accumulate totals (converted to defaultCurrency).
    *
@@ -1761,6 +2110,20 @@ export class PortfolioCalculationService {
     pricesComplete: boolean;
     /** Securities held in a non-zero quantity with no current price. */
     unpricedSecurityIds: string[];
+    /**
+     * The gain's two sides, over the SAME holdings: the cost and the value of
+     * each holding whose value joined `totalHoldingsValue` and whose cost
+     * converted. `totalHoldingsValue - totalCostBasis` charged the cost of an
+     * unpriced holding against a value that never included it (A26-M38).
+     */
+    gainCostBasis: number;
+    gainMarketValue: number;
+    /**
+     * The converted cost of the holdings left out of the gain because they have
+     * no value. The knownSubtotal of what converted; a holding whose cost could
+     * not be converted is named by `missingRatePairs`.
+     */
+    unpricedCostBasis: number;
   }> {
     let holdings: Holding[] = [];
     if (holdingsAccountIds.length > 0) {
@@ -1775,6 +2138,11 @@ export class PortfolioCalculationService {
     // Get latest prices for all securities in holdings
     const securityIds = [...new Set(holdings.map((h) => h.securityId))];
     const priceMap = await getLatestPrices(securityIds);
+
+    // A bond-linked security spans a whole program, so its price is a blend over
+    // the lots of every account; a holding is worth its own account's lots
+    // (bond-program-securities.md 2.4). One valuation per linked security.
+    const bondValues = await this.valueBondHoldings(userId, holdings);
 
     // Historical cost basis, but only where the replay both knows it and
     // states it in the currency the holding's account keeps its books in.
@@ -1799,6 +2167,9 @@ export class PortfolioCalculationService {
 
     const costBasisTotal = new FxAggregate();
     const holdingsValueTotal = new FxAggregate();
+    const gainCostTotal = new FxAggregate();
+    const gainValueTotal = new FxAggregate();
+    const unpricedCostTotal = new FxAggregate();
     const unpricedSecurityIds = new Set<string>();
     const holdingsWithValues: HoldingWithMarketValue[] = [];
 
@@ -1808,9 +2179,19 @@ export class PortfolioCalculationService {
       const quantity = Number(h.quantity);
       const averageCost = Number(h.averageCost || 0);
       const costBasis = quantity * averageCost;
-      const currentPrice = priceMap.get(h.securityId) ?? null;
-      const marketValue =
-        currentPrice !== null ? quantity * currentPrice : null;
+      // A linked security is never priced from the blend or a stored close:
+      // its own lots' value, or unknown.
+      const own = h.security.bondProgramId
+        ? (bondValues.get(`${h.accountId}:${h.securityId}`) ?? null)
+        : null;
+      const currentPrice = h.security.bondProgramId
+        ? (own?.unitPrice ?? null)
+        : (priceMap.get(h.securityId) ?? null);
+      const marketValue = h.security.bondProgramId
+        ? (own?.marketValue ?? null)
+        : currentPrice !== null
+          ? quantity * currentPrice
+          : null;
       const gainLoss = marketValue !== null ? marketValue - costBasis : null;
       const gainLossPercent =
         gainLoss !== null && costBasis > 0
@@ -1842,6 +2223,10 @@ export class PortfolioCalculationService {
         );
       }
 
+      // This holding's cost in the reporting currency, or `null` when a hop has
+      // no rate. Kept so the gain can take the cost of exactly the holdings
+      // whose value it takes.
+      let costBasisDefaultCurrency: number | null = null;
       if (costBasisAccountCurrency === null) {
         // The conversion that failed is holding -> account; record that pair.
         // Filing it under account -> default named a hop that was never
@@ -1850,13 +2235,14 @@ export class PortfolioCalculationService {
         // that was not missing while never naming the one that was.
         costBasisTotal.add(null, holdingCurrency, accountCurrency);
       } else {
+        costBasisDefaultCurrency = await this.convertToDefault(
+          costBasisAccountCurrency,
+          accountCurrency,
+          defaultCurrency,
+          rateCache,
+        );
         costBasisTotal.add(
-          await this.convertToDefault(
-            costBasisAccountCurrency,
-            accountCurrency,
-            defaultCurrency,
-            rateCache,
-          ),
+          costBasisDefaultCurrency,
           accountCurrency,
           defaultCurrency,
         );
@@ -1886,19 +2272,28 @@ export class PortfolioCalculationService {
             );
       if (marketValue !== null) {
         holdingsValueTotal.add(
-          await this.convertToDefault(
-            marketValue,
-            holdingCurrency,
-            defaultCurrency,
-            rateCache,
-          ),
+          marketValueDefaultCurrency,
           holdingCurrency,
           defaultCurrency,
         );
+        // The gain takes a holding only when both its value and its cost are
+        // in the reporting currency; one without the other is in neither side.
+        if (
+          marketValueDefaultCurrency !== null &&
+          costBasisDefaultCurrency !== null
+        ) {
+          gainValueTotal.addConverted(marketValueDefaultCurrency);
+          gainCostTotal.addConverted(costBasisDefaultCurrency);
+        }
       } else {
         // The position is held and its value is unknown. Recorded rather than
         // silently dropped, so the total can say it is a subtotal.
         unpricedSecurityIds.add(h.securityId);
+        // Its cost is not part of the gain; it is reported apart so a reader
+        // sees how much cost the gain leaves out.
+        if (costBasisDefaultCurrency !== null) {
+          unpricedCostTotal.addConverted(costBasisDefaultCurrency);
+        }
       }
 
       holdingsWithValues.push({
@@ -1948,6 +2343,9 @@ export class PortfolioCalculationService {
       missingRatePairs,
       pricesComplete: unpricedSecurityIds.size === 0,
       unpricedSecurityIds: [...unpricedSecurityIds].sort(),
+      gainCostBasis: gainCostTotal.knownSubtotal,
+      gainMarketValue: gainValueTotal.knownSubtotal,
+      unpricedCostBasis: unpricedCostTotal.knownSubtotal,
     };
   }
 
@@ -1997,6 +2395,10 @@ export class PortfolioCalculationService {
     totalMarketValue: number;
     totalGainLoss: number;
     totalGainLossPercent: number;
+    /** Cost of the holdings the gain is over: those with a value that converted. */
+    gainCostBasis: number;
+    /** Cost of the holdings left out of the gain for having no value. */
+    unpricedCostBasis: number;
     fxComplete: boolean;
     missingRatePairs: string[];
     pricesComplete: boolean;
@@ -2006,6 +2408,9 @@ export class PortfolioCalculationService {
   }> {
     const costBasisAgg = new FxAggregate();
     const marketValueAgg = new FxAggregate();
+    const gainCostAgg = new FxAggregate();
+    const gainValueAgg = new FxAggregate();
+    const unpricedCostAgg = new FxAggregate();
     const unpriced = new Set<string>();
     let unpricedHoldingsCount = 0;
 
@@ -2023,18 +2428,31 @@ export class PortfolioCalculationService {
       if (h.marketValue === null) {
         unpriced.add(h.securityId);
         unpricedHoldingsCount += 1;
+        // Its cost is not part of the gain; it is reported apart.
+        if (h.costBasisAccountCurrency !== null) {
+          unpricedCostAgg.addConverted(h.costBasisAccountCurrency);
+        }
         continue;
       }
+      const valueInAccountCurrency = await this.convertToDefault(
+        h.marketValue,
+        h.currencyCode,
+        accountCurrency,
+        rateCache,
+      );
       marketValueAgg.add(
-        await this.convertToDefault(
-          h.marketValue,
-          h.currencyCode,
-          accountCurrency,
-          rateCache,
-        ),
+        valueInAccountCurrency,
         h.currencyCode,
         accountCurrency,
       );
+      // The gain takes the value and the cost of the same holdings only.
+      if (
+        valueInAccountCurrency !== null &&
+        h.costBasisAccountCurrency !== null
+      ) {
+        gainValueAgg.addConverted(valueInAccountCurrency);
+        gainCostAgg.addConverted(h.costBasisAccountCurrency);
+      }
     }
 
     const missingRatePairs = [
@@ -2051,14 +2469,19 @@ export class PortfolioCalculationService {
 
     const totalCostBasis = costBasisAgg.knownSubtotal;
     const totalMarketValue = marketValueAgg.knownSubtotal;
-    const totalGainLoss = totalMarketValue - totalCostBasis;
+    // Value less cost of the SAME holdings (A26-M38): the unpriced holdings' cost
+    // is not charged against a value that never included them.
+    const gainCostBasis = gainCostAgg.knownSubtotal;
+    const totalGainLoss = gainValueAgg.knownSubtotal - gainCostBasis;
 
     return {
       totalCostBasis,
       totalMarketValue,
       totalGainLoss,
       totalGainLossPercent:
-        totalCostBasis > 0 ? (totalGainLoss / totalCostBasis) * 100 : 0,
+        gainCostBasis > 0 ? (totalGainLoss / gainCostBasis) * 100 : 0,
+      gainCostBasis,
+      unpricedCostBasis: unpricedCostAgg.knownSubtotal,
       fxComplete: missingRatePairs.length === 0,
       missingRatePairs,
       pricesComplete: unpriced.size === 0,
@@ -2137,6 +2560,8 @@ export class PortfolioCalculationService {
         unpricedHoldingsCount: acctTotals.unpricedHoldingsCount,
         totalGainLoss: acctTotals.totalGainLoss,
         totalGainLossPercent: acctTotals.totalGainLossPercent,
+        gainCostBasis: acctTotals.gainCostBasis,
+        unpricedCostBasis: acctTotals.unpricedCostBasis,
         fxComplete: acctTotals.fxComplete,
         missingRatePairs: acctTotals.missingRatePairs,
         pricesComplete: acctTotals.pricesComplete,
@@ -2185,6 +2610,8 @@ export class PortfolioCalculationService {
         unpricedHoldingsCount: acctTotals.unpricedHoldingsCount,
         totalGainLoss: acctTotals.totalGainLoss,
         totalGainLossPercent: acctTotals.totalGainLossPercent,
+        gainCostBasis: acctTotals.gainCostBasis,
+        unpricedCostBasis: acctTotals.unpricedCostBasis,
         fxComplete: acctTotals.fxComplete,
         missingRatePairs: acctTotals.missingRatePairs,
         pricesComplete: acctTotals.pricesComplete,

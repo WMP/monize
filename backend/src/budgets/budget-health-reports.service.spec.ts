@@ -414,6 +414,26 @@ describe("BudgetHealthReportsService", () => {
       expect(result).toHaveLength(3);
     });
 
+    it("leaves the budget's excluded accounts out of the income and expense queries", async () => {
+      budgetsService.findOne.mockResolvedValueOnce({
+        ...mockBudget,
+        config: { excludedAccountIds: ["acc-x"] },
+      });
+      const qbs = [createMockQueryBuilder(), createMockQueryBuilder()];
+      transactionsRepository.createQueryBuilder
+        .mockReturnValueOnce(qbs[0])
+        .mockReturnValueOnce(qbs[1]);
+
+      await service.getSavingsRate("user-1", "budget-1", 1);
+
+      for (const qb of qbs) {
+        expect(qb.andWhere).toHaveBeenCalledWith(
+          "t.account_id NOT IN (:...excludedAccountIds)",
+          { excludedAccountIds: ["acc-x"] },
+        );
+      }
+    });
+
     it("computes savings rate as (income - expenses) / income * 100", async () => {
       transactionsRepository.createQueryBuilder.mockReturnValue(
         createMockQueryBuilder({

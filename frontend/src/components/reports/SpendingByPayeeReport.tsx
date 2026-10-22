@@ -27,6 +27,8 @@ import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions'
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
 import { ReportError } from '@/components/reports/ReportError';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { reportTotal } from '@/lib/currency-total';
 import { exportToCsv } from '@/lib/csv-export';
 import type { ChartDatum } from '@/types/chart';
 
@@ -34,11 +36,33 @@ type SpendingPayeeSortField = 'name' | 'value' | 'percentage';
 
 type ChartDataItem = ChartDatum & { id: string };
 
+interface SpendingPayeeTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: { name: string; value: number } }>;
+  totalExpenses: number;
+  formatCurrency: (value: number) => string;
+  formatPercent: (value: number, decimals?: number) => string;
+}
+
+function SpendingPayeeTooltip({ active, payload, totalExpenses, formatCurrency, formatPercent }: SpendingPayeeTooltipProps) {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0].payload;
+  const percentage = totalExpenses > 0 ? (data.value / totalExpenses) * 100 : 0;
+  return (
+    <ChartTooltipPanel>
+      <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
+      <p className="text-gray-600 dark:text-gray-400">
+        {formatCurrency(data.value)} ({formatPercent(percentage, 1)})
+      </p>
+    </ChartTooltipPanel>
+  );
+}
+
 export function SpendingByPayeeReport() {
   const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent, defaultCurrency } = useNumberFormat();
   const [viewType, setViewType] = useState<'bar' | 'table'>('bar');
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } =
     useDateRange({ defaultRange: '3m' });
@@ -70,7 +94,12 @@ export function SpendingByPayeeReport() {
     [response],
   );
 
-  const totalExpenses = response?.totalSpending ?? 0;
+  // The server withholds `totalSpending` when a row could not be converted, so
+  // what is shown is the part that did convert, marked as a subtotal. It is also
+  // the denominator: percentages are shares of what is on screen.
+  const spendingTotal = reportTotal(response?.totalSpending ?? response?.knownSpending ?? 0, response);
+  const totalExpenses = spendingTotal.value;
+  const reportingCurrency = response?.currency ?? defaultCurrency;
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -124,20 +153,6 @@ export function SpendingByPayeeReport() {
     }
   };
 
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { name: string; value: number } }> }) => {
-    if (!active || !payload || !payload.length) return null;
-    const data = payload[0].payload;
-    const percentage = totalExpenses > 0 ? (data.value / totalExpenses) * 100 : 0;
-    return (
-      <ChartTooltipPanel>
-        <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
-        <p className="text-gray-600 dark:text-gray-400">
-          {formatCurrency(data.value)} ({formatPercent(percentage, 1)})
-        </p>
-      </ChartTooltipPanel>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Controls -- always rendered so focus inside DateInput survives reloads */}
@@ -163,7 +178,7 @@ export function SpendingByPayeeReport() {
           <ReportToolbarActions
             onExportPdf={handleExportPdf}
             onExportCsv={handleExportCsv}
-            disabled={chartData.length === 0}
+            disabled={isLoading || !!error || chartData.length === 0}
           />
         </div>
       </div>
@@ -254,7 +269,9 @@ export function SpendingByPayeeReport() {
                       {t('spendingByPayee.totalTopPayees', { count: chartData.length })}
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-gray-900 dark:text-gray-100">
-                      {formatCurrency(totalExpenses)}
+                      <PartialTotal total={spendingTotal} displayCurrency={reportingCurrency}>
+                        {formatCurrency(totalExpenses)}
+                      </PartialTotal>
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-gray-900 dark:text-gray-100">100%</td>
                   </tr>
@@ -273,7 +290,7 @@ export function SpendingByPayeeReport() {
                     tickFormatter={formatCurrencyAxis}
                   />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<SpendingPayeeTooltip totalExpenses={totalExpenses} formatCurrency={formatCurrency} formatPercent={formatPercent} />} />
                   <Bar
                     dataKey="value"
                     cursor="pointer"
@@ -294,7 +311,9 @@ export function SpendingByPayeeReport() {
                 {t('spendingByPayee.totalTopPayees', { count: chartData.length })}
               </div>
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {formatCurrency(totalExpenses)}
+                <PartialTotal total={spendingTotal} displayCurrency={reportingCurrency}>
+                  {formatCurrency(totalExpenses)}
+                </PartialTotal>
               </div>
             </div>
           </>

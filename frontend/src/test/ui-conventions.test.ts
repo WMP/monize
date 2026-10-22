@@ -1618,11 +1618,10 @@ describe("a panel card is the shared Card surface", () => {
     "/src/components/layout/ActionHistoryPanel.tsx",
     "/src/components/payees/detail/PayeeRecurringPanel.tsx",
     "/src/components/reconcile/ReconciliationReminderBadge.tsx",
-    // Both keep an inline surface for their chart TOOLTIP -- a floating panel
-    // with its own stronger shadow, not the widget card. Their widget
-    // surfaces now come from CARD_CLASS; the tooltip shape is hand-rolled in
-    // ~44 files and is a separate drift from this one.
-    "/src/components/dashboard/AssetsVsLiabilities.tsx",
+    // Keeps an inline surface for its chart TOOLTIP -- a floating panel with
+    // its own stronger shadow, not the widget card. Its widget surface now
+    // comes from CARD_CLASS; the tooltip shape is hand-rolled in ~44 files
+    // and is a separate drift from this one.
     "/src/components/dashboard/NetWorthChart.tsx",
     "/src/components/reports/AccountBalancesReport.tsx",
     "/src/components/reports/BillPaymentHistoryReport.tsx",
@@ -2373,7 +2372,6 @@ describe("row hover comes from the shared pair, not a hand-picked grey", () => {
     "/src/components/transactions/TransactionActionSheet.tsx",
     "/src/components/transactions/TransactionFilterPanel.tsx",
     "/src/components/transactions/TransactionForm.tsx",
-    "/src/components/transactions/TransactionList.tsx",
     "/src/components/transactions/TransactionRow.tsx",
     "/src/components/ui/ActionMenu.tsx",
     "/src/components/ui/Button.tsx",
@@ -2621,7 +2619,6 @@ describe("a status pill is Badge, not a hand-rolled rounded-full", () => {
     "/src/components/transactions/PayeeInfoWidget.tsx",
     "/src/components/transactions/TransactionFilterPanel.tsx",
     "/src/components/transactions/TransactionForm.tsx",
-    "/src/components/transactions/TransactionRow.tsx",
   ];
 
   function filesWithInlinePill(): string[] {
@@ -3484,5 +3481,39 @@ describe("an investment amount is formatted with its own currency", () => {
         withoutComments("// formatCurrency(tx.totalAmount) is the defect"),
       ),
     ).toBe(false);
+  });
+});
+
+describe("a relative time is read through useRelativeTime", () => {
+  /**
+   * `formatRelativeTime` in `lib/format.ts` hardcodes English ("5m ago",
+   * "Yesterday") and a browser-locale date, so a Polish reader got English
+   * beside a translated page. `useRelativeTime()` goes through
+   * `Intl.RelativeTimeFormat` in the reader's language.
+   */
+  const RAW_RELATIVE_TIME_IMPORT =
+    /import\s*\{[^}]*\bformatRelativeTime\b[^}]*\}\s*from\s*["']@\/lib\/format["']/;
+  const UI_FILE = /^\/src\/(components|app|hooks)\//;
+
+  it("has no UI file importing formatRelativeTime from @/lib/format", () => {
+    const offenders = productionSources()
+      .filter(([path]) => UI_FILE.test(path))
+      .filter(([, content]) => RAW_RELATIVE_TIME_IMPORT.test(withoutComments(content)))
+      .map(([path]) => path);
+
+    // Use `useRelativeTime()` (hooks/useRelativeTime.ts).
+    expect(offenders).toEqual([]);
+  });
+
+  it("still recognises the import it bans", () => {
+    expect(
+      RAW_RELATIVE_TIME_IMPORT.test(
+        "import { formatDate, formatRelativeTime } from '@/lib/format';",
+      ),
+    ).toBe(true);
+    expect(
+      RAW_RELATIVE_TIME_IMPORT.test("import { useRelativeTime } from '@/hooks/useRelativeTime';"),
+    ).toBe(false);
+    expect(sources["/src/lib/format.ts"]).toContain("export function formatRelativeTime");
   });
 });

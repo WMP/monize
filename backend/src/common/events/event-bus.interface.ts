@@ -23,7 +23,7 @@
  * only subscriber is in the publishing process. `PostgresEventBus` replaces it
  * in `multi`, over the one `LISTEN` connection each replica holds.
  *
- * `docs/future-plans/horizontal-scaling.md` has the work this supports.
+ * `docs/specs/horizontal-scaling.md` has the work this supports.
  */
 export interface EventBus {
   /** Which implementation this is. Logged at boot and asserted in specs. */

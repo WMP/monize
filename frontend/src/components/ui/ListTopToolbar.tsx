@@ -3,6 +3,18 @@
 import { Pagination } from '@/components/ui/Pagination';
 import { DensityToggle } from '@/components/ui/DensityToggle';
 import type { DensityView } from '@/store/densityStore';
+import { HOVER_TOOLBAR_BUTTON } from '@/components/ui/Card';
+
+/**
+ * A text button in this bar's `actions`: the register's export button and the
+ * Columns menu trigger. The `sm` density toggle's size and colours, so the
+ * buttons beside it stand at its height, plus the disabled state an export
+ * needs.
+ */
+export const LIST_TOOLBAR_BUTTON_CLASS =
+  'inline-flex items-center px-2 py-1 text-xs font-medium rounded text-gray-600 dark:text-gray-300 ' +
+  `hover:text-gray-900 dark:hover:text-gray-100 ${HOVER_TOOLBAR_BUTTON} ` +
+  'disabled:opacity-50 disabled:cursor-not-allowed';
 
 interface ListTopToolbarProps {
   /** Which surface's remembered row density the toggle in this bar reads. */

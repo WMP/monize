@@ -2,7 +2,11 @@ import { Injectable } from "@nestjs/common";
 import { SpendingReportsService } from "./spending-reports.service";
 import { IncomeReportsService } from "./income-reports.service";
 import { ComparisonReportsService } from "./comparison-reports.service";
-import { AnomalyReportsService } from "./anomaly-reports.service";
+import {
+  AnomalyReportsService,
+  SPENDING_ANOMALY_DEFAULT_MONTHS,
+  SPENDING_ANOMALY_DEFAULT_THRESHOLD,
+} from "./anomaly-reports.service";
 import { TaxRecurringReportsService } from "./tax-recurring-reports.service";
 import { DataQualityReportsService } from "./data-quality-reports.service";
 import { MonthlyComparisonService } from "./monthly-comparison.service";
@@ -30,6 +34,8 @@ import {
   MonthlyCategoryBreakdownResponse,
   CashFlowSankeyResponse,
   SankeyDepth,
+  DEFAULT_RECURRING_EXPENSE_RANGE,
+  type RecurringExpenseRange,
 } from "./dto";
 
 @Injectable()
@@ -142,9 +148,10 @@ export class BuiltInReportsService {
 
   getSpendingAnomalies(
     userId: string,
-    threshold: number = 2,
+    threshold: number = SPENDING_ANOMALY_DEFAULT_THRESHOLD,
+    months: number = SPENDING_ANOMALY_DEFAULT_MONTHS,
   ): Promise<SpendingAnomaliesResponse> {
-    return this.anomalyReports.getSpendingAnomalies(userId, threshold);
+    return this.anomalyReports.getSpendingAnomalies(userId, threshold, months);
   }
 
   getTaxSummary(userId: string, year: number): Promise<TaxSummaryResponse> {
@@ -154,10 +161,12 @@ export class BuiltInReportsService {
   getRecurringExpenses(
     userId: string,
     minOccurrences: number = 3,
+    range: RecurringExpenseRange = DEFAULT_RECURRING_EXPENSE_RANGE,
   ): Promise<RecurringExpensesResponse> {
     return this.taxRecurringReports.getRecurringExpenses(
       userId,
       minOccurrences,
+      range,
     );
   }
 

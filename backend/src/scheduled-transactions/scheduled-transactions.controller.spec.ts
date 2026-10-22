@@ -3,6 +3,19 @@ import { ScheduledTransactionsController } from "./scheduled-transactions.contro
 import { ScheduledTransactionsService } from "./scheduled-transactions.service";
 import { DelegationService } from "../delegation/delegation.service";
 import { JointAccountsService } from "../delegation/joint-accounts.service";
+import {
+  DELEGATED_SCHEDULED_PARAM_KEY,
+  DELEGATED_SCHEDULED_READS_EVERY_ACCOUNT_KEY,
+} from "../delegation/decorators/delegate-access.decorator";
+
+// The occurrence the client was looking at (A26-S08-01) and the pin the
+// controller hands the service for it.
+const OVERRIDE_ID = "11111111-2222-4333-8444-555555555555";
+const PIN_BODY = {
+  expectedOccurrenceDate: "2026-09-01",
+  expectedOverrideId: OVERRIDE_ID,
+};
+const PIN = { occurrenceDate: "2026-09-01", overrideId: OVERRIDE_ID };
 
 describe("ScheduledTransactionsController", () => {
   let controller: ScheduledTransactionsController;
@@ -24,6 +37,7 @@ describe("ScheduledTransactionsController", () => {
       post: jest.fn(),
       skip: jest.fn(),
       getLoanProjectionAnchor: jest.fn(),
+      projectLoanOccurrences: jest.fn(),
       findOverrides: jest.fn(),
       hasOverrides: jest.fn(),
       findOverrideByDate: jest.fn(),
@@ -288,14 +302,52 @@ describe("ScheduledTransactionsController", () => {
 
   describe("post()", () => {
     it("delegates to service.post with userId, id, and dto", async () => {
-      const dto = { date: "2024-01-15" };
+      const dto = { date: "2024-01-15", ...PIN_BODY };
       const expected = { id: "tx-1", amount: 100 };
       mockService.post.mockResolvedValue(expected);
 
       const result = await controller.post(mockReq, "st-1", dto as any);
 
       expect(result).toEqual(expected);
-      expect(mockService.post).toHaveBeenCalledWith("user-1", "st-1", dto);
+      expect(mockService.post).toHaveBeenCalledWith("user-1", "st-1", dto, {
+        actorIsNotOwner: false,
+        occurrencePin: PIN,
+      });
+    });
+
+    it("forwards a null override id when the client saw none", async () => {
+      const dto = { expectedOccurrenceDate: "2026-09-01" };
+      mockService.post.mockResolvedValue({ id: "st-1" });
+
+      await controller.post(mockReq, "st-1", dto as any);
+
+      expect(mockService.post).toHaveBeenCalledWith("user-1", "st-1", dto, {
+        actorIsNotOwner: false,
+        occurrencePin: { occurrenceDate: "2026-09-01", overrideId: null },
+      });
+    });
+
+    it("tells the service the poster is not the owner when a delegate is acting", async () => {
+      const dto = { date: "2024-01-15", ...PIN_BODY };
+      mockService.post.mockResolvedValue({ id: "tx-1" });
+
+      await controller.post(
+        {
+          user: {
+            id: "owner-1",
+            realUserId: "delegate-1",
+            isActing: true,
+            delegationId: "d1",
+          },
+        },
+        "st-1",
+        dto as any,
+      );
+
+      expect(mockService.post).toHaveBeenCalledWith("owner-1", "st-1", dto, {
+        actorIsNotOwner: true,
+        occurrencePin: PIN,
+      });
     });
   });
 
@@ -314,6 +366,54 @@ describe("ScheduledTransactionsController", () => {
         "user-1",
         "acc-loan",
       );
+    });
+  });
+
+  describe("projectLoanOccurrences()", () => {
+    it("delegates with the caller's id, the schedule and the count asked for", async () => {
+      const expected = {
+        scheduledTransactionId: "st-1",
+        loanAccountId: "acc-loan",
+        status: "priced",
+        currencyCode: "CAD",
+        occurrences: [],
+      };
+      mockService.projectLoanOccurrences.mockResolvedValue(expected);
+
+      const result = await controller.projectLoanOccurrences(mockReq, "st-1", {
+        count: 3,
+      });
+
+      expect(result).toEqual(expected);
+      expect(mockService.projectLoanOccurrences).toHaveBeenCalledWith(
+        "user-1",
+        "st-1",
+        3,
+      );
+    });
+
+    it("asks for twelve occurrences when the query names no count", async () => {
+      mockService.projectLoanOccurrences.mockResolvedValue({});
+      await controller.projectLoanOccurrences(mockReq, "st-1", {});
+      expect(mockService.projectLoanOccurrences).toHaveBeenCalledWith(
+        "user-1",
+        "st-1",
+        12,
+      );
+    });
+
+    it("needs a delegate's READ on the loan, not only on the paying account: it answers the loan's debt and rate", () => {
+      const handler =
+        ScheduledTransactionsController.prototype.projectLoanOccurrences;
+      expect(Reflect.getMetadata(DELEGATED_SCHEDULED_PARAM_KEY, handler)).toBe(
+        "id",
+      );
+      expect(
+        Reflect.getMetadata(
+          DELEGATED_SCHEDULED_READS_EVERY_ACCOUNT_KEY,
+          handler,
+        ),
+      ).toBe(true);
     });
   });
 
@@ -372,14 +472,27 @@ describe("ScheduledTransactionsController", () => {
   });
 
   describe("skip()", () => {
-    it("delegates to service.skip with userId and id", async () => {
+    it("delegates to service.skip with userId, id and the occurrence pin", async () => {
       const expected = { id: "st-1", nextDueDate: "2024-02-15" };
       mockService.skip.mockResolvedValue(expected);
 
-      const result = await controller.skip(mockReq, "st-1");
+      const result = await controller.skip(mockReq, "st-1", PIN_BODY);
 
       expect(result).toEqual(expected);
-      expect(mockService.skip).toHaveBeenCalledWith("user-1", "st-1");
+      expect(mockService.skip).toHaveBeenCalledWith("user-1", "st-1", PIN);
+    });
+
+    it("forwards a null override id when the client saw none", async () => {
+      mockService.skip.mockResolvedValue({ id: "st-1" });
+
+      await controller.skip(mockReq, "st-1", {
+        expectedOccurrenceDate: "2026-09-01",
+      });
+
+      expect(mockService.skip).toHaveBeenCalledWith("user-1", "st-1", {
+        occurrenceDate: "2026-09-01",
+        overrideId: null,
+      });
     });
   });
 

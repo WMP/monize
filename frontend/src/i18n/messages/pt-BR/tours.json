@@ -427,5 +427,42 @@
         }
       }
     }
+  },
+  "emailReceipts": {
+    "basics": {
+      "title": "Recibos por e-mail",
+      "steps": {
+        "welcome": {
+          "title": "Por que ler recibos por e-mail",
+          "body": "Uma transação bancária mostra quanto você pagou e quando. Ela não mostra o que você comprou. O e-mail de confirmação do pedido mostra. O Monize lê esses e-mails, encontra a transação que cada um pagou e propõe uma descrição, um beneficiário e uma divisão por item, com uma categoria para cada linha. Você aprova cada proposta antes que ela altere uma transação."
+        },
+        "aiRequired": {
+          "title": "Na prática, você precisa de um provedor de IA",
+          "body": "O Monize lê um e-mail com um **perfil**: um conjunto de padrões para um domínio de remetente, por exemplo uma loja. Você pode escrever um perfil à mão, mas cada padrão precisa corresponder às linhas exatas dos e-mails dessa loja, então, na prática, uma IA o escreve. A IA escreve o perfil uma única vez, a partir de alguns e-mails de exemplo. Depois que você o aprova, o perfil lê cada novo e-mail dessa loja sem a IA."
+        },
+        "aiProviders": {
+          "title": "Configure primeiro um provedor de IA",
+          "body": "Adicione um provedor aqui e teste a conexão. Sem um provedor, o assistente de perfis não consegue escrever um perfil, e os e-mails de uma loja sem perfil continuam sem leitura."
+        },
+        "tabs": {
+          "title": "Quatro abas, na ordem de uso",
+          "body": "**Visão geral** mostra o que o Monize leu. Em **Caixa de e-mail**, conecte uma caixa que tenha apenas confirmações de pedidos. O Monize só a lê: nunca move, marca nem exclui uma mensagem. **Perfis** contém um perfil por loja. **E-mails** lista cada e-mail e o seu estado."
+        },
+        "uncovered": {
+          "title": "Lojas sem perfil",
+          "body": "Esta caixa lista os domínios de remetente que nenhum perfil consegue ler ainda. Escolha um para iniciar o assistente. Selecione até cinco e-mails dele e associe cada um à transação bancária que ele pagou. A IA escreve um perfil e o testa nesses pares. Depois você vê uma prévia de todos os e-mails dessa loja e aceita o perfil ou pede uma alteração com uma nota curta.",
+          "fallbackBody": "Você ainda não tem e-mails de uma loja sem perfil. Depois que você conectar a caixa de e-mail, cada domínio de remetente aparece aqui como uma etiqueta, por exemplo **shop.example (12)**: o domínio e o número de e-mails dele. Escolha a etiqueta para iniciar o assistente. Selecione até cinco e-mails dele e associe cada um à transação bancária que ele pagou. A IA escreve um perfil e o testa nesses pares. Depois você vê uma prévia de todos os e-mails dessa loja e aceita o perfil ou pede uma alteração com uma nota curta."
+        },
+        "profiles": {
+          "title": "Seus perfis",
+          "body": "Cada linha é um perfil, aprovado ou rascunho. **Criar um novo perfil manualmente** abre o editor de um perfil escrito à mão. Use-o para corrigir um pequeno detalhe em um rascunho da IA. Quando você aprova um perfil, o Monize lê imediatamente os e-mails do domínio dele.",
+          "fallbackBody": "Você ainda não tem perfis. Cada perfil que você aceita aparece aqui como uma linha, por exemplo **Shop Example**, domínio **shop.example**, status **Aprovado**. **Criar um novo perfil manualmente** abre o editor de um perfil escrito à mão. Use-o apenas para corrigir um pequeno detalhe em um rascunho da IA. Quando você aprova um perfil, o Monize lê imediatamente os e-mails do domínio dele."
+        },
+        "reviews": {
+          "title": "Aprove as propostas",
+          "body": "Cada e-mail que corresponde a uma transação vira uma proposta na **Caixa de revisão de IA**, no menu **IA**. Uma proposta mostra, por exemplo, as linhas de um pedido com uma categoria para cada linha. Nada muda nas suas transações até você aprovar a proposta lá."
+        }
+      }
+    }
   }
 }

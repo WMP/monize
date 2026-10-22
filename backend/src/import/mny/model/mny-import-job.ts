@@ -98,6 +98,12 @@ export interface MnyImportResult {
   readonly pricesImported: number;
   readonly exchangeRatesImported: number;
   readonly billsCreated: number;
+  /**
+   * Acquisitions of a bond-program security imported without a series (the file
+   * names none and none was on sale on the date): the bond lots report such a
+   * row until its series is chosen. Absent when zero.
+   */
+  readonly bondRowsWithoutSeries?: number;
   /** Rows the mapper could not use, by reason. Mirrors the warning codes. */
   readonly skipped: {
     readonly accounts: number;

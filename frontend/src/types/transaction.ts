@@ -95,6 +95,13 @@ export interface Transaction {
   linkedInvestmentTransactionId?: string | null;
   /** Number of file attachments on this transaction (populated by the list endpoint). */
   attachmentCount?: number;
+  /** Number of unarchived warranties linked to this transaction (populated by the list endpoint). */
+  warrantyCount?: number;
+  /**
+   * The key an API client created this row with (unique per account), or null.
+   * Not shown in the app; it exists so a client can retry a create safely.
+   */
+  externalId?: string | null;
   splits?: TransactionSplit[];
   tags?: Tag[];
   createdAt: string;
@@ -218,6 +225,51 @@ export interface PaginationInfo {
   hasMore: boolean;
 }
 
+/** A search field, as the server names it; `any` is a bare word or phrase. */
+export type SearchField =
+  | 'any'
+  | 'payee'
+  | 'memo'
+  | 'cat'
+  | 'tag'
+  | 'account'
+  | 'ref'
+  | 'amount'
+  | 'date'
+  | 'status'
+  | 'is'
+  | 'has';
+
+export type SearchOp =
+  | 'contains'
+  | 'exact'
+  | 'glob'
+  | 'eq'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'between';
+
+/** One term of a search as the server read it (`searchInterpretation`). */
+export interface SearchTermEcho {
+  field: SearchField;
+  op: SearchOp;
+  /** An amount is a plain decimal string, a date ISO `yyyy-MM-dd`. */
+  value: string;
+  /** `between` only: the inclusive upper bound. */
+  valueTo?: string;
+  negated: boolean;
+  /** The term as typed. */
+  raw: string;
+  /** Set when the server could not use the term as written. */
+  ignored?: 'malformed' | 'empty';
+}
+
+export interface SearchInterpretation {
+  terms: SearchTermEcho[];
+}
+
 export interface PaginatedTransactions {
   data: Transaction[];
   pagination: PaginationInfo;
@@ -228,6 +280,12 @@ export interface PaginatedTransactions {
    * `=== 'sort'`: absent is "nothing to say", not "a balance is coming".
    */
   startingBalanceWithheld?: 'sort';
+  /**
+   * How the server read the search string, term by term. Present when a
+   * search was sent; absent from a server that predates the search syntax, in
+   * which case nothing is shown.
+   */
+  searchInterpretation?: SearchInterpretation;
 }
 
 // Transfer types

@@ -1,7 +1,7 @@
 /**
  * The Cash Flow Sankey's arithmetic, apart from its SQL: the rows
  * `CashFlowSankeyService` selects go in, the response of
- * `docs/future-plans/sankey-cash-flow.md` section 6 comes out.
+ * `docs/specs/sankey-cash-flow.md` section 6 comes out.
  *
  * Kept pure so the closing identity (SANKEY-001) and the once-per-leg rule
  * (SANKEY-002) can be exercised over generated ledgers without a database

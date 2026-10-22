@@ -272,6 +272,32 @@ describe('InvestmentReportViewer', () => {
     );
   });
 
+  describe('a re-run is not the previous answer', () => {
+    async function loadThenChangeAsOf(next: () => unknown) {
+      await renderViewer();
+      await screen.findByText('AAA');
+      expect(screen.getByTitle('Export CSV')).toBeEnabled();
+
+      mockExecute.mockImplementation(next);
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('As of date'), { target: { value: '2024-03-15' } });
+      });
+      await waitFor(() =>
+        expect(mockExecute).toHaveBeenLastCalledWith('r1', { asOfDate: '2024-03-15', accountIds: [] }),
+      );
+    }
+
+    it('disables the export while the next run has failed', async () => {
+      await loadThenChangeAsOf(() => Promise.reject(new Error('500')));
+      await waitFor(() => expect(screen.getByTitle('Export CSV')).toBeDisabled());
+    });
+
+    it('disables the export while the next run is pending', async () => {
+      await loadThenChangeAsOf(() => new Promise(() => {}));
+      expect(screen.getByTitle('Export CSV')).toBeDisabled();
+    });
+  });
+
   it('formats each column type and renders a dash for missing values', async () => {
     mockGetById.mockResolvedValue({
       ...report,

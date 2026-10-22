@@ -15,6 +15,7 @@ export function rechartsMock() {
       <div data-testid="responsive-container">{children}</div>
     ),
     AreaChart: Pass,
+    ComposedChart: Pass,
     Area: Noop,
     LineChart: Pass,
     Line: Noop,

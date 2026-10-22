@@ -11,7 +11,9 @@ import {
   IsUUID,
   IsDateString,
   IsIn,
+  ValidateNested,
 } from "class-validator";
+import { Type } from "class-transformer";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   AccountType,
@@ -26,6 +28,7 @@ import {
   PREPAYMENT_MODES,
   PrepaymentMode,
 } from "../mortgage-type.util";
+import { PaymentMatchingDto } from "./payment-matching.dto";
 
 /**
  * Payment frequencies a loan account can carry.
@@ -241,7 +244,7 @@ export class CreateAccountDto {
 
   @ApiPropertyOptional({
     description:
-      'Category ID for interest portion of payments (defaults to "Loan Interest")',
+      "Category ID for the interest portion of payments; required for a LOAN or MORTGAGE",
   })
   @IsOptional()
   @IsUUID()
@@ -360,4 +363,25 @@ export class CreateAccountDto {
   @IsString()
   @IsIn(MORTGAGE_PAYMENT_FREQUENCIES)
   mortgagePaymentFrequency?: MortgagePaymentFrequency;
+
+  @ApiPropertyOptional({
+    example: 300000,
+    description:
+      "Loans and mortgages: the amount originally borrowed, kept apart from the opening balance (the debt where this ledger starts). A LINEAR mortgage's constant principal is this over the scheduled payment count; when absent the mortgage paths store the opening balance",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @IsPositive()
+  @Max(999999999999)
+  originalPrincipal?: number;
+
+  @ApiPropertyOptional({
+    type: () => PaymentMatchingDto,
+    description:
+      "Mortgages and loans created with their scheduled payment: create the rule that settles the bank debits of the payment against each installment (docs/specs/loan-installment-settlement.md decision 5) and turn the bill's auto-post off. A rule the server cannot create is reported as paymentMatchingError on the saved account, which stays",
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PaymentMatchingDto)
+  paymentMatching?: PaymentMatchingDto;
 }

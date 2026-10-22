@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -249,23 +249,29 @@ function EmergencyAccessSection() {
     resolver: zodResolver(contactSchema),
     defaultValues: { firstName: '', email: '' },
   });
+  // Read above the early returns below: a hook cannot follow them.
+  const enabledNow = useWatch({ control: settingsForm.control, name: 'enabled' });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await emergencyAccessApi.get();
-      setView(data);
-      settingsForm.reset({
-        enabled: data.enabled,
-        grantAfterDays: data.grantAfterDays,
-        reminderAfterDays: data.reminderAfterDays,
-      });
-    } catch (err) {
-      toast.error(getErrorMessage(err, t('toasts.loadFailed')));
-      logger.error(err);
-    } finally {
-      setLoading(false);
-    }
+  // The only load is the mount one, and the state already says loading.
+  const load = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const data = await emergencyAccessApi.get();
+        setView(data);
+        settingsForm.reset({
+          enabled: data.enabled,
+          grantAfterDays: data.grantAfterDays,
+          reminderAfterDays: data.reminderAfterDays,
+        });
+      } catch (err) {
+        toast.error(getErrorMessage(err, t('toasts.loadFailed')));
+        logger.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    return run();
   }, [settingsForm, t]);
 
   useEffect(() => {
@@ -285,13 +291,37 @@ function EmergencyAccessSection() {
 
   // Lock the message view whenever the step-up token disappears (expiry, "Lock now",
   // logout). This prevents stale plaintext from staying on-screen after the
-  // unlock window ends.
+  // unlock window ends. The mode is set during render, so the message is never
+  // painted without a token; the form's copy of it is cleared in the effect.
+  if (!hasStepUpToken && messageMode !== 'hidden') {
+    setMessageMode('hidden');
+  }
   useEffect(() => {
-    if (!hasStepUpToken && messageMode !== 'hidden') {
-      setMessageMode('hidden');
-      messageForm.reset({ message: '' });
-    }
-  }, [hasStepUpToken, messageMode, messageForm]);
+    if (!hasStepUpToken) messageForm.reset({ message: '' });
+  }, [hasStepUpToken, messageForm]);
+
+  const fetchMessageInto = useCallback(
+    async (nextMode: 'view' | 'edit') => {
+      setMessageLoading(true);
+      try {
+        const { message } = await emergencyAccessApi.getMessage();
+        messageForm.reset({ message: message ?? '' });
+        setMessageMode(nextMode);
+      } catch (err) {
+        if (err instanceof StepUpRequiredError) {
+          clearStepUp(STEP_UP_PURPOSE);
+          setPendingMode(nextMode);
+          setStepUpOpen(true);
+          return;
+        }
+        toast.error(getErrorMessage(err, tMsg('toasts.loadFailed')));
+        logger.error(err);
+      } finally {
+        setMessageLoading(false);
+      }
+    },
+    [messageForm, clearStepUp, tMsg, setPendingMode, setStepUpOpen],
+  );
 
   // Finalize step-up after an OIDC roundtrip. The user clicked "Continue to
   // identity provider" in the modal, which stashed the pending purpose +
@@ -334,29 +364,6 @@ function EmergencyAccessSection() {
     // first call, so re-runs would no-op anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const fetchMessageInto = useCallback(
-    async (nextMode: 'view' | 'edit') => {
-      setMessageLoading(true);
-      try {
-        const { message } = await emergencyAccessApi.getMessage();
-        messageForm.reset({ message: message ?? '' });
-        setMessageMode(nextMode);
-      } catch (err) {
-        if (err instanceof StepUpRequiredError) {
-          clearStepUp(STEP_UP_PURPOSE);
-          setPendingMode(nextMode);
-          setStepUpOpen(true);
-          return;
-        }
-        toast.error(getErrorMessage(err, tMsg('toasts.loadFailed')));
-        logger.error(err);
-      } finally {
-        setMessageLoading(false);
-      }
-    },
-    [messageForm, clearStepUp, tMsg],
-  );
 
   const handleReveal = () => {
     if (!hasStepUpToken) {
@@ -525,7 +532,6 @@ function EmergencyAccessSection() {
   }
 
   const inactiveDays = daysSince(view.lastActivityAt);
-  const enabledNow = settingsForm.watch('enabled');
   const { messageMetadata } = view;
 
   // Arming needs both dependencies; disabling needs neither. A feature already

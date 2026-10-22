@@ -13,11 +13,13 @@ import { Account } from '@/types/account';
 import { Category } from '@/types/category';
 import { Payee } from '@/types/payee';
 import { Tag } from '@/types/tag';
-import { TransactionStatus } from '@/types/transaction';
+import { SearchInterpretation, TransactionStatus } from '@/types/transaction';
 import { TimePeriod, TIME_PERIOD_OPTIONS, resolveTimePeriod } from '@/lib/time-periods';
 import { collectTagKeys } from '@/lib/tag-key-value';
 import { orderAccountsForPicker } from '@/lib/account-utils';
 import { TagKeyOp } from '@/hooks/useTransactionFilters';
+import { SearchSyntaxHelp } from './SearchSyntaxHelp';
+import { SearchInterpretationLine } from './SearchInterpretationLine';
 
 
 interface TransactionFilterPanelProps {
@@ -28,6 +30,8 @@ interface TransactionFilterPanelProps {
   filterEndDate: string;
   filterSearch: string;
   searchInput: string;
+  /** How the server read the applied search, from the last register response. */
+  searchInterpretation?: SearchInterpretation;
   filterAccountStatus: 'active' | 'closed' | '';
   filterTimePeriod: string;
   filterAmountFrom: string;
@@ -95,6 +99,7 @@ export function TransactionFilterPanel({
   filterEndDate,
   filterSearch,
   searchInput,
+  searchInterpretation,
   filterAccountStatus,
   filterTimePeriod,
   filterAmountFrom,
@@ -752,13 +757,23 @@ export function TransactionFilterPanel({
                   }
                 />
 
-                <Input
-                  label={t('filter.fields.search')}
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder={t('filter.placeholders.search')}
-                />
+                <div>
+                  <div className="flex items-end gap-1">
+                    <div className="min-w-0 flex-1">
+                      <Input
+                        label={t('filter.fields.search')}
+                        type="text"
+                        value={searchInput}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        placeholder={t('filter.placeholders.search')}
+                      />
+                    </div>
+                    <SearchSyntaxHelp onExample={handleSearchChange} />
+                  </div>
+                  {filterSearch && (
+                    <SearchInterpretationLine interpretation={searchInterpretation} />
+                  )}
+                </div>
               </div>
 
               {/* Bulk Update button - mobile only (full width at bottom) */}

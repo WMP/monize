@@ -21,6 +21,7 @@ import {
   InstallmentHistory,
   LoanPaymentDetectorService,
 } from "./loan-payment-detector.service";
+import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
 import { Account, AccountType } from "./entities/account.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
@@ -252,6 +253,7 @@ describe("LoanMortgageAccountService: mortgage type from history", () => {
         { provide: ScheduledTransactionsService, useValue: {} },
         { provide: LoanRateChangesService, useValue: {} },
         { provide: LoanPaymentDetectorService, useValue: detector },
+        { provide: LoanPaymentMatchingService, useValue: {} },
       ],
     }).compile();
     service = module.get(LoanMortgageAccountService);

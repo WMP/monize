@@ -807,6 +807,21 @@ describe("AnthropicProvider", () => {
       });
       expect(mockCreate.mock.calls[0][0].temperature).toBe(0.5);
     });
+
+    it("omits temperature for a model that rejects sampling parameters", async () => {
+      mockCreate.mockResolvedValueOnce({
+        content: [{ type: "text", text: "x" }],
+        usage: { input_tokens: 1, output_tokens: 1 },
+        stop_reason: "end_turn",
+        model: "claude-sonnet-5-5",
+      });
+      await new AnthropicProvider("k", "claude-sonnet-5-5").complete({
+        systemPrompt: "s",
+        messages: [{ role: "user", content: "u" }],
+        temperature: 0.1,
+      });
+      expect(mockCreate.mock.calls[0][0]).not.toHaveProperty("temperature");
+    });
   });
 
   describe("streamWithTools error paths", () => {

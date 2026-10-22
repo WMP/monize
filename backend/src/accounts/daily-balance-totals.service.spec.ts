@@ -112,6 +112,7 @@ describe("DailyBalanceTotalsService", () => {
     points,
     complete: true,
     gaps: [],
+    overdue: null,
   });
 
   describe("table A: history", () => {
@@ -301,6 +302,7 @@ describe("DailyBalanceTotalsService", () => {
                     toCurrency: "CAD",
                   },
                 ],
+                overdue: null,
               }
             : completeForecast("savings", "CAD", [
                 { date: TODAY, balance: 400 },
@@ -348,6 +350,7 @@ describe("DailyBalanceTotalsService", () => {
         points: [],
         complete: false,
         gaps: [gap],
+        overdue: null,
       });
 
       const res = await service.getDailyBalanceTotals(

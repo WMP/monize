@@ -31,6 +31,15 @@ const BALANCE_WRITING_ROUTES = [
   /['`]\/scheduled-transactions\/\$\{[^}]+\}\/post['`]/,
   /['`]\/investment-transactions/,
   /['`]\/import\/(qif|ofx|csv)['`]/,
+  // Bank sync: the two sync routes create transaction rows from the bank's
+  // booked entries. The credential, connection and link writes move none.
+  /['`]\/bank-sync\/(accounts|connections)\/\$\{[^}]+\}\/sync['`]/,
+  // Rewrites category_id on transaction rows, which moves budget roll-ups.
+  /['`]\/categories\/\$\{[^}]+\}\/reassign['`]/,
+  // Backfills category_id on existing transactions.
+  /['`]\/payees\/category-suggestions\/apply['`]/,
+  // A stored close values every holding, so it moves every portfolio total.
+  /['`]\/securities\/\$\{[^}]+\}\/prices/,
 ];
 
 /**
@@ -117,5 +126,10 @@ describe('a write that moves money drops the cached balances', () => {
     expect(covered).toContain('createTransfer');
     expect(covered).toContain('importCsv');
     expect(covered).toContain('createTransaction'); // investmentsApi
+    expect(covered).toContain('syncAccount'); // bankSyncApi
+    expect(covered).toContain('syncConnection'); // bankSyncApi
+    expect(covered).toContain('reassignTransactions'); // categoriesApi
+    expect(covered).toContain('applyCategorySuggestions'); // payeesApi
+    expect(covered).toContain('createSecurityPrice'); // investmentsApi
   });
 });

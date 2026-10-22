@@ -11,6 +11,8 @@ import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionTag } from "./entities/transaction-tag.entity";
 import { TransactionSplitTag } from "./entities/transaction-split-tag.entity";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { LEDGER_EXCLUDES_VOID } from "../common/ledger-balance.sql";
+import { todayYMD } from "../common/date-utils";
 import {
   createScopedDbMocks,
   ManagerMock,
@@ -380,6 +382,60 @@ describe("TagsService", () => {
       const result = await service.getAllTransactionCounts(userId);
 
       expect(result).toEqual({});
+    });
+  });
+
+  describe("getUsage()", () => {
+    it("returns the latest use date and link count keyed by tag ID", async () => {
+      mockManager.query.mockResolvedValue([
+        { tag_id: "tag-1", last_used: "2026-09-30", count: "12" },
+        { tag_id: "tag-2", last_used: "2008-12-24", count: "40" },
+      ]);
+
+      const result = await service.getUsage(userId);
+
+      expect(result).toEqual({
+        "tag-1": { lastUsed: "2026-09-30", count: 12 },
+        "tag-2": { lastUsed: "2008-12-24", count: 40 },
+      });
+    });
+
+    it("filters each branch by owner, void status and today, and counts movements", async () => {
+      mockManager.query.mockResolvedValue([]);
+
+      await service.getUsage(userId);
+
+      const [sql, params] = mockManager.query.mock.calls[0];
+      expect(params).toEqual([userId, todayYMD()]);
+      expect(sql.match(/g\.user_id = \$1/g)).toHaveLength(2);
+      expect(sql.split(LEDGER_EXCLUDES_VOID)).toHaveLength(3);
+      expect(sql.match(/t\.transaction_date <= \$2::date/g)).toHaveLength(2);
+      expect(sql).toContain("transaction_split_tags");
+      expect(sql).toContain("COUNT(DISTINCT u.use_id)");
+      expect(sql).not.toContain("account_id = ANY");
+    });
+
+    it("narrows both branches to a delegate's account scope", async () => {
+      mockManager.query.mockResolvedValue([]);
+
+      await service.getUsage(userId, ["acc-a", "acc-b"]);
+
+      const [sql, params] = mockManager.query.mock.calls[0];
+      expect(params).toEqual([userId, todayYMD(), ["acc-a", "acc-b"]]);
+      expect(sql.match(/t\.account_id = ANY\(\$3::uuid\[\]\)/g)).toHaveLength(
+        2,
+      );
+    });
+
+    it("reports nothing for an empty scope without querying", async () => {
+      await expect(service.getUsage(userId, [])).resolves.toEqual({});
+      expect(mockManager.query).not.toHaveBeenCalled();
+    });
+
+    it("returns an empty object when no tag has been used", async () => {
+      mockManager.query.mockResolvedValue([]);
+
+      await expect(service.getUsage(userId)).resolves.toEqual({});
     });
   });
 

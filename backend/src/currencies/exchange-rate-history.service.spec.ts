@@ -10,6 +10,7 @@ import {
 } from "./exchange-rate-history.service";
 import { MAX_GAP_WINDOWS } from "./rate-gap-plan";
 import { ExchangeRateService } from "./exchange-rate.service";
+import { FxProviderChain } from "./providers/fx-provider-chain";
 import { roundFxRate } from "../common/fx-entry.util";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
@@ -32,6 +33,9 @@ interface CoverageRow {
   observations: string;
 }
 
+/** The chain the suite runs under, as `exchange_rate_coverage.providers` records it. */
+const RUNNING_CHAIN = "frankfurter,yahoo_finance";
+
 interface StoredRow {
   rate_date: string;
   from_currency: string;
@@ -45,6 +49,19 @@ describe("ExchangeRateHistoryService", () => {
   let dataSource: ReturnType<typeof createScopedDbMocks>["dataSource"];
   let userPreferenceRepository: Record<string, jest.Mock>;
   let exchangeRateService: Record<string, jest.Mock>;
+  let fxProviders: Record<string, jest.Mock>;
+
+  const buildService = async (): Promise<ExchangeRateHistoryService> => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ExchangeRateHistoryService,
+        { provide: DataSource, useValue: dataSource },
+        { provide: ExchangeRateService, useValue: exchangeRateService },
+        { provide: FxProviderChain, useValue: fxProviders },
+      ],
+    }).compile();
+    return module.get(ExchangeRateHistoryService);
+  };
 
   /**
    * Answer each of the service's reads by what it asks for, rather than by call
@@ -61,6 +78,8 @@ describe("ExchangeRateHistoryService", () => {
       earliestAvailable?: string | null;
       firstGap?: string | null;
       probedFrom?: string | null;
+      /** The chain that wrote the row; the running chain when omitted. */
+      providers?: string | null;
     };
   }) => {
     let coverageCall = 0;
@@ -97,6 +116,10 @@ describe("ExchangeRateHistoryService", () => {
             earliest_available: answers.pairCoverage?.earliestAvailable ?? null,
             first_gap: answers.pairCoverage?.firstGap ?? null,
             probed_from: answers.pairCoverage?.probedFrom ?? null,
+            providers:
+              answers.pairCoverage && "providers" in answers.pairCoverage
+                ? answers.pairCoverage.providers
+                : RUNNING_CHAIN,
           },
         ]);
       }
@@ -132,6 +155,7 @@ describe("ExchangeRateHistoryService", () => {
           earliestAvailable: params[2],
           firstGap: params[3],
           probedFrom: params[4],
+          providers: params[5],
         }
       : null;
   };
@@ -155,15 +179,14 @@ describe("ExchangeRateHistoryService", () => {
         .mockResolvedValue({ stored: 240, answered: true }),
     };
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        ExchangeRateHistoryService,
-        { provide: DataSource, useValue: dataSource },
-        { provide: ExchangeRateService, useValue: exchangeRateService },
-      ],
-    }).compile();
+    fxProviders = {
+      describe: jest.fn(() => [
+        { name: "frankfurter", source: "frankfurter" },
+        { name: "yahoo", source: "yahoo_finance" },
+      ]),
+    };
 
-    service = module.get(ExchangeRateHistoryService);
+    service = await buildService();
   });
 
   describe("getCoverage()", () => {
@@ -754,6 +777,110 @@ describe("ExchangeRateHistoryService", () => {
       // This request established no floor of its own, so the reader is still
       // told the one on record.
       expect(result.providerHasNothingBefore).toBe("2003-09-01");
+    });
+
+    describe("a coverage row is scoped to the provider chain that wrote it", () => {
+      it("ignores a row recorded under another chain and plans back to first use", async () => {
+        // The production defect: a floor Yahoo alone established in 2003 kept
+        // hiding the years Frankfurter carries after the chain changed.
+        rowsFor({
+          firstUse: "1998-01-02",
+          pairCoverage: {
+            earliestAvailable: "2003-09-01",
+            firstGap: "2026-09-17",
+            probedFrom: "1996-09-16",
+            providers: "yahoo_finance",
+          },
+        });
+
+        const result = await service.fillRateGaps("user-1", "EUR");
+
+        expect(windowsAsked()[0][0]).toBe("1997-12-19");
+        expect(result.providerHasNothingBefore).toBeNull();
+      });
+
+      it("ignores a row written before the chain was recorded", async () => {
+        rowsFor({
+          firstUse: "1998-01-02",
+          pairCoverage: {
+            earliestAvailable: "2003-09-01",
+            probedFrom: "1996-09-16",
+            providers: null,
+          },
+        });
+
+        await service.fillRateGaps("user-1", "EUR");
+
+        expect(windowsAsked()[0][0]).toBe("1997-12-19");
+      });
+
+      it("treats a reordered chain as a different chain", async () => {
+        rowsFor({
+          firstUse: "1998-01-02",
+          pairCoverage: {
+            earliestAvailable: "2003-09-01",
+            providers: "yahoo_finance,frankfurter",
+          },
+        });
+
+        await service.fillRateGaps("user-1", "EUR");
+
+        expect(windowsAsked()[0][0]).toBe("1997-12-19");
+      });
+
+      it("still narrows the span with a row recorded under the running chain", async () => {
+        rowsFor({
+          firstUse: "1998-01-02",
+          pairCoverage: {
+            earliestAvailable: "2003-09-01",
+            providers: RUNNING_CHAIN,
+          },
+        });
+
+        await service.fillRateGaps("user-1", "EUR");
+
+        expect(windowsAsked()[0][0]).toBe("2003-08-18");
+      });
+
+      it("writes the running chain's fingerprint and replaces a foreign row's dates", async () => {
+        rowsFor({
+          firstUse: "1998-01-02",
+          pairCoverage: {
+            earliestAvailable: "2003-09-01",
+            providers: "yahoo_finance",
+          },
+        });
+
+        await service.fillRateGaps("user-1", "EUR");
+
+        expect(lastCoverageWrite()?.providers).toBe(RUNNING_CHAIN);
+        expect(lastCoverageWrite()?.probedFrom).toBe("1998-01-02");
+        // The merge is SQL, so the replacement is too: each of the three
+        // dates takes the new value outright when the chain differs.
+        const [sql] = coverageWrites()[coverageWrites().length - 1];
+        expect(
+          sql.match(
+            /WHEN exchange_rate_coverage\.providers IS DISTINCT FROM EXCLUDED\.providers/g,
+          ),
+        ).toHaveLength(3);
+        expect(sql).toContain("providers = EXCLUDED.providers");
+      });
+
+      it("does not carry the empty-window memory into a new process", async () => {
+        // A chain change needs a restart, and a restart builds a new service.
+        // What the old one learned is empty must not be skipped by the new one.
+        providerAnswers({ stored: 0, answered: true });
+        rowsFor({ firstUse: "2025-01-02" });
+        await service.fillRateGaps("user-1", "EUR");
+        const firstAsked = windowsAsked();
+        expect(firstAsked.length).toBeGreaterThan(0);
+
+        exchangeRateService.fillRateWindow.mockClear();
+        const restarted = await buildService();
+        await restarted.fillRateGaps("user-1", "EUR");
+
+        expect(windowsAsked()).toEqual(firstAsked);
+      });
     });
 
     it("keeps working on a history that holds only month ends", async () => {

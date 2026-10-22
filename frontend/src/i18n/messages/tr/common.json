@@ -38,6 +38,14 @@
     "scheduleRecurring": "Tekrarlayan Olarak Zamanla",
     "more": "Daha Fazla İşlem"
   },
+  "columns": {
+    "button": "Sütunlar",
+    "buttonWithHidden": "Sütunlar, {count} gizli",
+    "menuLabel": "Sütunları göster veya gizle",
+    "showAll": "Tümünü göster",
+    "hideColumn": "Sütunu gizle",
+    "sheetSubtitle": "Sütunlar menüsünden geri getirebilirsiniz."
+  },
   "loading": "Yükleniyor...",
   "pagination": {
     "showing": "Gösterilen",
@@ -262,5 +270,8 @@
     "normal": "Normal",
     "compact": "Kompakt",
     "dense": "Yoğun"
+  },
+  "scheduledOverdue": {
+    "included": "{count, plural, one {# vadesi geçmiş zamanlanmış işlem} other {# vadesi geçmiş zamanlanmış işlem}} dahil"
   }
 }

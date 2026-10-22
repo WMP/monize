@@ -173,7 +173,7 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
     handleSubmit,
     setValue,
     getValues,
-    watch,
+    subscribe,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<PayeeFormData>({
     resolver: zodResolver(schema),
@@ -331,20 +331,23 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
   // whatever they typed: the value is theirs again, and the undo must not put
   // the lookup's answer back over it.
   useEffect(() => {
-    const subscription = watch((_values, { name }) => {
-      if (applyingRef.current || !name) return;
-      const field = name as ContactLookupField;
-      if (suggestedRef.current.has(field)) {
-        suggestedRef.current.delete(field);
-        setSuggestedFields(new Set(suggestedRef.current));
-      }
-      if (replacedRef.current.has(field)) {
-        replacedRef.current.delete(field);
-        setReplacedFields(new Set(replacedRef.current.keys()));
-      }
+    const unsubscribe = subscribe({
+      formState: { values: true },
+      callback: ({ name }) => {
+        if (applyingRef.current || !name) return;
+        const field = name as ContactLookupField;
+        if (suggestedRef.current.has(field)) {
+          suggestedRef.current.delete(field);
+          setSuggestedFields(new Set(suggestedRef.current));
+        }
+        if (replacedRef.current.has(field)) {
+          replacedRef.current.delete(field);
+          setReplacedFields(new Set(replacedRef.current.keys()));
+        }
+      },
     });
-    return () => subscription.unsubscribe();
-  }, [watch]);
+    return () => unsubscribe();
+  }, [subscribe]);
 
   useEffect(() => () => lookupRef.current?.controller.abort(), []);
 

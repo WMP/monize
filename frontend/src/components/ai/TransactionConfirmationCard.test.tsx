@@ -133,6 +133,32 @@ describe('TransactionConfirmationCard', () => {
     expect(screen.getByText(/reconciled/i)).toBeInTheDocument();
   });
 
+  it('shows the reference number an update sets, and no row when it sets none', () => {
+    const update = (referenceNumber?: string) =>
+      makeAction({
+        type: 'update_transaction',
+        descriptor: { type: 'update_transaction' },
+        preview: {
+          accountName: 'Checking',
+          amount: -12.5,
+          currencyCode: 'USD',
+          transactionDate: '2026-01-15',
+          payeeName: 'Starbucks',
+          categoryName: 'Dining',
+          ...(referenceNumber === undefined ? {} : { referenceNumber }),
+        },
+      });
+    const { unmount } = render(
+      <TransactionConfirmationCard action={update('EX-20931')} onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+    expect(screen.getByText('Ref #')).toBeInTheDocument();
+    expect(screen.getByText('EX-20931')).toBeInTheDocument();
+    unmount();
+
+    render(<TransactionConfirmationCard action={update()} onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.queryByText('Ref #')).not.toBeInTheDocument();
+  });
+
   it('does not warn about reconciliation for a create action', () => {
     render(
       <TransactionConfirmationCard
@@ -329,6 +355,109 @@ describe('TransactionConfirmationCard', () => {
     expect(screen.getByText('Buy')).toBeInTheDocument();
     expect(screen.getByText('AAPL (Apple Inc.)')).toBeInTheDocument();
     expect(screen.getByText('10')).toBeInTheDocument();
+  });
+
+  it('names the scheduled bill or deposit that approving the trade marks as paid', () => {
+    render(
+      <TransactionConfirmationCard
+        action={makeInvestmentAction({ scheduledName: 'Monthly XCNS' })}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Marks as paid').nextElementSibling).toHaveTextContent('Monthly XCNS');
+  });
+
+  it('names the due day of the occurrence it marks paid, in the reader\'s date format', () => {
+    render(
+      <TransactionConfirmationCard
+        action={makeInvestmentAction({ scheduledName: 'Monthly XCNS', scheduledDueDate: '2026-10-15' })}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const value = screen.getByText('Marks as paid').nextElementSibling;
+    expect(value).toHaveTextContent(/^Monthly XCNS \(due .+\)$/);
+  });
+
+  it('says nothing about a schedule for a trade that pays none', () => {
+    render(<TransactionConfirmationCard action={makeInvestmentAction()} onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.queryByText('Marks as paid')).not.toBeInTheDocument();
+  });
+
+  it('shows the resolved bond series, the accrued interest and the redemption split of a bond redemption', () => {
+    render(
+      <TransactionConfirmationCard
+        action={makeInvestmentAction({
+          investmentAction: 'REDEEM',
+          symbol: 'EDO',
+          securityName: 'EDO bonds',
+          securityCurrency: 'PLN',
+          quantity: 10,
+          price: 100,
+          commission: 0,
+          totalAmount: 1000,
+          cashCurrency: 'PLN',
+          cashAmount: 1470.5,
+          accruedInterest: 470.5,
+          bondSeriesCode: 'EDO0423',
+          bondRedemptionSplit: {
+            principal: 1000,
+            interest: 470.5,
+            deduction: 0,
+            payout: 1470.5,
+            outcome: 'filled',
+          },
+        })}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Series')).toBeInTheDocument();
+    expect(screen.getByText('EDO0423')).toBeInTheDocument();
+    expect(screen.getByText('Accrued interest')).toBeInTheDocument();
+    expect(screen.getByText('Redemption split')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Principal .*1,000\.00.* \+ interest .*470\.50.* = payout .*1,470\.50/),
+    ).toBeInTheDocument();
+    // No fee was taken out, and the figures agree with the split: no warning.
+    expect(screen.queryByText('Early-redemption fee deducted')).toBeNull();
+    expect(screen.queryByText(/Check them before approving/)).toBeNull();
+  });
+
+  it('names the early-redemption fee, and warns when the figures differ from the split', () => {
+    render(
+      <TransactionConfirmationCard
+        action={makeInvestmentAction({
+          investmentAction: 'REDEEM',
+          securityCurrency: 'PLN',
+          bondSeriesCode: 'EDO1036',
+          bondRedemptionSplit: {
+            principal: 100,
+            interest: 7.2,
+            deduction: 3,
+            payout: 107.2,
+            outcome: 'differs',
+          },
+        })}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Early-redemption fee deducted')).toBeInTheDocument();
+    expect(screen.getByText(/Check them before approving/)).toBeInTheDocument();
+  });
+
+  it('shows no series or split row for an ordinary investment transaction', () => {
+    render(
+      <TransactionConfirmationCard
+        action={makeInvestmentAction()}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('Series')).toBeNull();
+    expect(screen.queryByText('Redemption split')).toBeNull();
   });
 
   it('omits cash and security rows for a share-only action', () => {

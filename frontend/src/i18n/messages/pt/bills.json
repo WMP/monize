@@ -53,7 +53,8 @@
     "totalOfAccounts": "Total das contas",
     "legendAriaLabel": "Linhas da previsão",
     "tooltipTransactionForAccount": "{name} ({account})",
-    "unavailableMissingRates": "Esta previsão não pode ser mostrada em {displayCurrency}: não há taxa de câmbio disponível para {currencies}, e um saldo projetado assenta em cada dia anterior. Adicione uma taxa, ou escolha uma conta de moeda única."
+    "unavailableMissingRates": "Esta previsão não pode ser mostrada em {displayCurrency}: não há taxa de câmbio disponível para {currencies}, e um saldo projetado assenta em cada dia anterior. Adicione uma taxa, ou escolha uma conta de moeda única.",
+    "untitledTransaction": "Transação"
   },
   "calendar": {
     "days": {

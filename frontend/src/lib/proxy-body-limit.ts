@@ -69,13 +69,30 @@ export interface LargeUploadRoute {
  */
 export const LARGE_UPLOAD_ROUTES: readonly LargeUploadRoute[] = [
   // `MnyImportController.parse` (multer, MNY_IMPORT_LIMIT_MB).
-  { pattern: /^\/api\/v1\/import\/mny\/parse\/?$/, limitBytes: () => mnyImportLimitBytes() },
+  {
+    pattern: /^\/api\/v1\/import\/mny\/parse\/?$/,
+    limitBytes: () => mnyImportLimitBytes(),
+  },
   // The restore upload. The backend's admission gate and BACKUP_RESTORE_LIMIT
   // decide; this is the ceiling the proxy has always applied to it, and the
   // body is streamed, so it costs the frontend no memory.
-  { pattern: /^\/api\/v1\/backup\/restore\/?$/, limitBytes: () => mnyImportLimitBytes() },
+  {
+    pattern: /^\/api\/v1\/backup\/restore\/?$/,
+    limitBytes: () => mnyImportLimitBytes(),
+  },
   // The assistant's attachments travel base64 in JSON (`express.json` at 30mb).
-  { pattern: /^\/api\/v1\/ai\/query(?:\/stream)?\/?$/, limitBytes: () => 30 * MIB },
+  {
+    pattern: /^\/api\/v1\/ai\/query(?:\/stream)?\/?$/,
+    limitBytes: () => 30 * MIB,
+  },
+  // The receipts archive import: the backend refuses a declared body above
+  // `EMAIL_IMPORT_REQUEST_LIMIT_MB` (26 MB); this cuts an undeclared one there.
+  // Kept to one file's worth: Next hands a route handler the body without
+  // backpressure, so the frontend buffers what the backend has not read yet.
+  {
+    pattern: /^\/api\/v1\/email-receipts\/mailbox\/import\/?$/,
+    limitBytes: () => 26 * MIB,
+  },
   // A file and its unprocessed original, 10 MB each (`MAX_ATTACHMENT_BYTES`).
   {
     pattern: /^\/api\/v1\/transactions\/[^/]+\/attachments\/?$/,
@@ -86,8 +103,8 @@ export const LARGE_UPLOAD_ROUTES: readonly LargeUploadRoute[] = [
 /** Thrown into a body stream that passed its ceiling. */
 export class BodyTooLargeError extends Error {
   constructor() {
-    super('Request body exceeds the limit for this route');
-    this.name = 'BodyTooLargeError';
+    super("Request body exceeds the limit for this route");
+    this.name = "BodyTooLargeError";
   }
 }
 
@@ -95,8 +112,11 @@ export class BodyTooLargeError extends Error {
  * True when the request declares a body longer than `limitBytes`. A missing or
  * unparsable header declares nothing; the byte count while reading decides.
  */
-export function declaresBodyOver(headers: Headers, limitBytes: number): boolean {
-  const declared = Number(headers.get('content-length'));
+export function declaresBodyOver(
+  headers: Headers,
+  limitBytes: number,
+): boolean {
+  const declared = Number(headers.get("content-length"));
   return Number.isFinite(declared) && declared > limitBytes;
 }
 

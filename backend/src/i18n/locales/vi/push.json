@@ -27,6 +27,30 @@
     "strategies": {
       "title": "Tín hiệu chiến lược",
       "body": "Một trong các chiến lược của bạn đã thay đổi khuyến nghị. Mở Monize để xem chi tiết."
+    },
+    "bank_sync": {
+      "title": "Kết nối ngân hàng",
+      "body": "Một kết nối ngân hàng cần được chú ý. Mở Monize để xem chi tiết."
+    },
+    "bank_sync_activity": {
+      "title": "Đồng bộ ngân hàng",
+      "body": "Đồng bộ ngân hàng của bạn có tin mới. Mở Monize để xem chi tiết."
+    },
+    "email_receipts": {
+      "title": "Biên lai email cần chú ý",
+      "body": "Một số email trong hộp inbox biên lai của bạn cần profil hoặc sửa chữa. Mở Monize để biết chi tiết."
+    },
+    "bonds": {
+      "title": "Thông báo trái phiếu",
+      "body": "Một trong các trái phiếu của bạn có tin mới. Mở Monize để xem chi tiết."
+    },
+    "ai_review": {
+      "title": "Đề xuất xem xét của AI",
+      "body": "Một số đề xuất xem xét của AI đang chờ quyết định của bạn. Mở Monize để xem chi tiết."
+    },
+    "warranties": {
+      "title": "Nhắc nhở bảo hành",
+      "body": "Một trong các bảo hành của bạn sắp hết hạn. Mở Monize để xem chi tiết."
     }
   },
   "actions": {

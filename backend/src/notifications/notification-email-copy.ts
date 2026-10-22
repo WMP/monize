@@ -6,6 +6,8 @@ import {
   Notification,
   NotificationType,
 } from "../notification-center/entities/notification.entity";
+import { CONSENT_REMINDER_THRESHOLDS } from "../bank-sync/bank-sync-notifications";
+import { composeBondCopy } from "./notification-bond-copy";
 import { NOTIFICATION_EMAIL_MESSAGES } from "./notification-email-messages";
 
 type Copy = Pick<Notification, "title" | "message">;
@@ -33,6 +35,41 @@ function numbers<K extends string>(
 
 function hasCurrency(data: Data): data is Data & { currencyCode: string } {
   return strings(data, "currencyCode") && /^[A-Z]{3}$/.test(data.currencyCode);
+}
+
+/**
+ * The `failures` a bank sync notification carries, or null when the list is
+ * absent, empty or malformed: a row written before the producer carried it, or
+ * one of another shape, falls back WHOLE rather than being relabelled.
+ */
+function bankSyncFailures(
+  value: unknown,
+): { label: string | null; code: string }[] | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const failures: { label: string | null; code: string }[] = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) return null;
+    const { label, code } = item as Record<string, unknown>;
+    if (typeof code !== "string" || code === "") return null;
+    if (label !== null && typeof label !== "string") return null;
+    failures.push({
+      label: label === "" ? null : (label as string | null),
+      code,
+    });
+  }
+  return failures;
+}
+
+/** A list as the reader's language joins it ("A, B and C"), never a comma written here. */
+function joinList(items: string[], locale: string): string {
+  try {
+    return new Intl.ListFormat(locale, {
+      style: "long",
+      type: "conjunction",
+    }).format(items);
+  } catch {
+    return items.join(", ");
+  }
 }
 
 /** Calendar dates stay in UTC; parsing never shifts them into the preceding day. */
@@ -228,6 +265,161 @@ export function composeLocalizedNotificationCopy(
           { strategy },
         );
       return null;
+    }
+    case NotificationType.BANK_SYNC_CONSENT_EXPIRING: {
+      // The mark is the producer's fact ("ends within N days"); nothing here
+      // counts days from `now`, so a copy rendered a day later says the same.
+      const end = calendarDate(data.validUntil);
+      if (
+        !strings(data, "institutionName") ||
+        end === null ||
+        !numbers(data, "threshold") ||
+        !CONSENT_REMINDER_THRESHOLDS.some((mark) => mark === data.threshold)
+      )
+        return null;
+      const days = data.threshold;
+      return {
+        title: text(
+          days === 0
+            ? "bankSync.expiringTitleToday"
+            : days === 1
+              ? "bankSync.expiringTitleOneDay"
+              : "bankSync.expiringTitleDays",
+          { institution: data.institutionName, days: number(days, 0) },
+        ),
+        message: text("bankSync.expiringMessage", {
+          institution: data.institutionName,
+          date: dateLabel(end),
+        }),
+      };
+    }
+    case NotificationType.BANK_SYNC_CONSENT_EXPIRED:
+      if (!strings(data, "institutionName")) return null;
+      return pair("bankSync.expiredTitle", "bankSync.expiredMessage", {
+        institution: data.institutionName,
+      });
+    case NotificationType.BANK_SYNC_FAILED: {
+      const failures = bankSyncFailures(data.failures);
+      if (!strings(data, "institutionName") || failures === null) return null;
+      const args = { institution: data.institutionName };
+      // One repair for the reader when every account failed on the credentials.
+      if (failures.every((failure) => failure.code === "credentials"))
+        return pair(
+          "bankSync.failedTitle",
+          "bankSync.failedCredentialsMessage",
+          args,
+        );
+      return pair("bankSync.failedTitle", "bankSync.failedMessage", {
+        ...args,
+        accounts: joinList(
+          failures.map(
+            (failure) => failure.label ?? text("bankSync.unnamedAccount"),
+          ),
+          locale,
+        ),
+      });
+    }
+    case NotificationType.BANK_SYNC_IMPORTED: {
+      if (
+        !strings(data, "institutionName") ||
+        !numbers(data, "imported") ||
+        !Number.isInteger(data.imported) ||
+        data.imported < 0
+      )
+        return null;
+      const args = { institution: data.institutionName };
+      return data.imported === 0
+        ? pair(
+            "bankSync.importedNoneTitle",
+            "bankSync.importedNoneMessage",
+            args,
+          )
+        : pair("bankSync.importedTitle", "bankSync.importedMessage", {
+            ...args,
+            imported: number(data.imported, 0),
+          });
+    }
+    case NotificationType.EMAIL_RECEIPTS_ATTENTION: {
+      if (
+        !numbers(data, "noParser", "parseFailed") ||
+        data.noParser < 0 ||
+        data.parseFailed < 0
+      )
+        return null;
+      return pair(
+        "emailReceiptsAttention.title",
+        "emailReceiptsAttention.message",
+        {
+          noParser: number(data.noParser, 0),
+          parseFailed: number(data.parseFailed, 0),
+        },
+      );
+    }
+    case NotificationType.BOND_MATURITY_SOON:
+    case NotificationType.BOND_INTEREST_PAYMENT:
+    case NotificationType.BOND_RATE_RESET:
+    case NotificationType.BOND_REDEMPTION_UNBOOKED:
+    case NotificationType.BOND_BENCHMARK_PUBLISHED:
+    case NotificationType.BOND_DATA_MISSING:
+      return composeBondCopy(row.type, data, {
+        text,
+        number,
+        money,
+        percent: (value, decimals = 1) => n.formatPercent(value, decimals),
+        // The catalog key is the whole lookup: a missing one resolves to the id.
+        benchmark: (id) =>
+          t(`emails.notificationCopy.bond.benchmarks.${id}`, id),
+        date: (value) => {
+          const parsed = calendarDate(value);
+          return parsed === null ? null : dateLabel(parsed);
+        },
+        locale,
+      });
+    case NotificationType.AI_REVIEW_PROPOSALS_READY: {
+      // Counts only: never the instruction, a payee, an amount or email text.
+      if (
+        !numbers(data, "count", "added") ||
+        !Number.isInteger(data.count) ||
+        !Number.isInteger(data.added) ||
+        data.count < 1 ||
+        data.added < 1
+      )
+        return null;
+      return pair("aiReview.readyTitle", "aiReview.readyMessage", {
+        count: number(data.count, 0),
+        added: number(data.added, 0),
+      });
+    }
+    case NotificationType.AI_REVIEW_PROPOSALS_EXPIRING: {
+      const earliest =
+        typeof data.earliestExpiresAt === "string"
+          ? new Date(data.earliestExpiresAt)
+          : null;
+      if (
+        !numbers(data, "count") ||
+        !Number.isInteger(data.count) ||
+        data.count < 1 ||
+        earliest === null ||
+        !Number.isFinite(earliest.getTime())
+      )
+        return null;
+      return pair("aiReview.expiringTitle", "aiReview.expiringMessage", {
+        count: number(data.count, 0),
+        date: dateLabel(earliest),
+      });
+    }
+    case NotificationType.WARRANTY_EXPIRING:
+    case NotificationType.WARRANTY_EXPIRES_TODAY: {
+      // The name and the stored expiry date only: nothing counts days from
+      // `now`, so a copy delivered later in a report says the same thing.
+      const expires = calendarDate(data.expiresOn);
+      if (!strings(data, "name") || expires === null) return null;
+      const today = row.type === NotificationType.WARRANTY_EXPIRES_TODAY;
+      return pair(
+        today ? "warranty.todayTitle" : "warranty.expiringTitle",
+        today ? "warranty.todayMessage" : "warranty.expiringMessage",
+        { name: data.name, date: dateLabel(expires) },
+      );
     }
     case NotificationType.BILL_DUE: {
       const due = calendarDate(data.dueDate);

@@ -2,7 +2,11 @@ import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { Category } from "../categories/entities/category.entity";
-import { ReportCurrencyService } from "./report-currency.service";
+import {
+  ConversionGaps,
+  ReportCurrencyService,
+} from "./report-currency.service";
+import { FxAggregate } from "../common/fx-aggregate";
 import {
   TaxSummaryResponse,
   RecurringExpensesResponse,
@@ -11,7 +15,11 @@ import {
   BillPaymentItem,
   MonthlyBillTotal,
 } from "./dto";
-import type { RecurringExpenseFrequency } from "./dto/recurring-expenses.dto";
+import {
+  DEFAULT_RECURRING_EXPENSE_RANGE,
+  type RecurringExpenseFrequency,
+  type RecurringExpenseRange,
+} from "./dto/recurring-expenses.dto";
 import { formatDateYMD } from "../common/date-utils";
 import { roundMoney, sumMoney, toMoneyNumber } from "../common/round.util";
 import {
@@ -44,6 +52,65 @@ const INVESTMENT_EXCLUSION_NO_SPLITS = investmentExclusionSql({
  * F-RPT-001).
  */
 const REPORTABLE_TX_AMOUNT = reportableTransactionAmountSql("t");
+
+/**
+ * The same two halves of the predicate for the history subquery's own aliases
+ * (`h`, `ha`), so the history start the recurring estimate is measured against
+ * counts exactly the rows the analysis counts.
+ */
+const HISTORY_INVESTMENT_EXCLUSION_NO_SPLITS = investmentExclusionSql({
+  accountAlias: "ha",
+  transactionAlias: "h",
+});
+const HISTORY_REPORTABLE_TX_AMOUNT = reportableTransactionAmountSql("h");
+
+/** Months each bounded recurring-expense window looks back. */
+const RECURRING_RANGE_MONTHS: Record<
+  Exclude<RecurringExpenseRange, "all">,
+  number
+> = {
+  "6m": 6,
+  "1y": 12,
+  "2y": 24,
+  "5y": 60,
+};
+
+/**
+ * Payments per six months for each frequency label. The thresholds were set
+ * for the original six-month window; a wider window scales them by its length,
+ * so a monthly bill reads MONTHLY over five years too rather than WEEKLY.
+ */
+const FREQUENCY_PER_SIX_MONTHS: ReadonlyArray<
+  [number, RecurringExpenseFrequency]
+> = [
+  [24, "WEEKLY"],
+  [12, "BIWEEKLY"],
+  [5, "MONTHLY"],
+  [3, "OCCASIONAL"],
+];
+
+function classifyFrequency(
+  occurrences: number,
+  monthCount: number,
+): RecurringExpenseFrequency {
+  for (const [perSixMonths, frequency] of FREQUENCY_PER_SIX_MONTHS) {
+    // occurrences / monthCount >= perSixMonths / 6, in integers.
+    if (occurrences * 6 >= perSixMonths * monthCount) return frequency;
+  }
+  return "IRREGULAR";
+}
+
+const DAYS_PER_MONTH = 365.25 / 12;
+
+/** Months from one YYYY-MM-DD date to another, to the nearest month, at least 1. */
+function monthsBetween(startYmd: string, endYmd: string): number {
+  const toUtc = (ymd: string) => {
+    const [y, m, d] = ymd.split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  const days = (toUtc(endYmd) - toUtc(startYmd)) / 86_400_000;
+  return Math.max(1, Math.round(days / DAYS_PER_MONTH));
+}
 
 @Injectable()
 export class TaxRecurringReportsService {
@@ -132,16 +199,25 @@ export class TaxRecurringReportsService {
     const incomeBySource = new Map<string, number>();
     const deductibleExpenses = new Map<string, number>();
     const allExpensesByCategory = new Map<string, number>();
-    let totalIncome = 0;
-    let totalExpenses = 0;
+    const totalIncome = new FxAggregate();
+    const totalExpenses = new FxAggregate();
+    // A row with no rate into the reporting currency is unknown, never its
+    // unconverted figure (INV-FX-001): it is in no category list and no total,
+    // and its currency is named. A tax figure is withheld rather than shown
+    // short.
+    const gaps = new ConversionGaps();
 
     rawResults.forEach((row) => {
-      const amount = this.currencyService.convertAmount(
+      const amount = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.amount),
         row.currency_code,
         defaultCurrency,
         rateMap,
       );
+      if (amount === null) {
+        gaps.record(row.currency_code);
+        return;
+      }
       const category = row.category_id
         ? categoryMap.get(row.category_id)
         : null;
@@ -151,14 +227,14 @@ export class TaxRecurringReportsService {
       const catName = parentCategory?.name || category?.name || "Uncategorized";
 
       if (amount > 0) {
-        totalIncome += amount;
+        totalIncome.addConverted(amount);
         incomeBySource.set(
           catName,
           (incomeBySource.get(catName) || 0) + amount,
         );
       } else {
         const expenseAmt = Math.abs(amount);
-        totalExpenses += expenseAmt;
+        totalExpenses.addConverted(expenseAmt);
         allExpensesByCategory.set(
           catName,
           (allExpensesByCategory.get(catName) || 0) + expenseAmt,
@@ -173,7 +249,11 @@ export class TaxRecurringReportsService {
       }
     });
 
-    const totalDeductible = sumMoney(Array.from(deductibleExpenses.values()));
+    const knownIncome = roundMoney(totalIncome.knownSubtotal);
+    const knownExpenses = roundMoney(totalExpenses.knownSubtotal);
+    const knownDeductible = roundMoney(
+      sumMoney(Array.from(deductibleExpenses.values())),
+    );
 
     return {
       incomeBySource: Array.from(incomeBySource.entries())
@@ -195,26 +275,39 @@ export class TaxRecurringReportsService {
         }))
         .sort((a, b) => b.total - a.total),
       totals: {
-        income: roundMoney(totalIncome),
-        expenses: roundMoney(totalExpenses),
-        deductible: roundMoney(totalDeductible),
+        income: gaps.headline(knownIncome),
+        expenses: gaps.headline(knownExpenses),
+        deductible: gaps.headline(knownDeductible),
+        knownIncome,
+        knownExpenses,
+        knownDeductible,
       },
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
     };
   }
 
   async getRecurringExpenses(
     userId: string,
     minOccurrences: number = 3,
+    range: RecurringExpenseRange = DEFAULT_RECURRING_EXPENSE_RANGE,
   ): Promise<RecurringExpensesResponse> {
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
     const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     const now = new Date();
-    const sixMonthsAgo = new Date(now);
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const startDate = formatDateYMD(sixMonthsAgo);
     const endDate = formatDateYMD(now);
+    // `all` has no lower bound: $2 is NULL and the predicate always holds.
+    let startDate: string | null = null;
+    if (range !== "all") {
+      const windowStart = new Date(now);
+      windowStart.setMonth(
+        windowStart.getMonth() - RECURRING_RANGE_MONTHS[range],
+      );
+      startDate = formatDateYMD(windowStart);
+    }
 
     const query = `
       SELECT
@@ -225,13 +318,25 @@ export class TaxRecurringReportsService {
         t.currency_code,
         COUNT(*)::int as occurrences,
         SUM(ABS(${REPORTABLE_TX_AMOUNT})) as total_amount,
-        MAX(t.transaction_date) as last_transaction_date
+        MAX(t.transaction_date) as last_transaction_date,
+        (
+          SELECT TO_CHAR(MIN(h.transaction_date), 'YYYY-MM-DD')
+          FROM transactions h
+          LEFT JOIN accounts ha ON ha.id = h.account_id
+          WHERE h.user_id = $1
+            AND h.transaction_date <= $3
+            AND ${HISTORY_REPORTABLE_TX_AMOUNT} < 0
+            AND h.is_transfer = false
+            AND (h.status IS NULL OR h.status != 'VOID')
+            AND h.parent_transaction_id IS NULL
+            AND ${HISTORY_INVESTMENT_EXCLUSION_NO_SPLITS}
+        ) as history_start
       FROM transactions t
       LEFT JOIN payees p ON p.id = t.payee_id
       LEFT JOIN categories c ON c.id = t.category_id
       LEFT JOIN accounts a ON a.id = t.account_id
       WHERE t.user_id = $1
-        AND t.transaction_date >= $2
+        AND ($2::date IS NULL OR t.transaction_date >= $2::date)
         AND t.transaction_date <= $3
         AND ${REPORTABLE_TX_AMOUNT} < 0
         AND t.is_transfer = false
@@ -253,6 +358,8 @@ export class TaxRecurringReportsService {
       occurrences: number;
       total_amount: string;
       last_transaction_date: Date;
+      /** The user's first spending row on or before the end date. */
+      history_start: string | null;
     }
 
     const rawResults: RawRecurring[] = await withScopedDb(
@@ -272,13 +379,23 @@ export class TaxRecurringReportsService {
       }
     >();
 
+    // A row with no rate into the reporting currency is unknown, never its
+    // unconverted figure (INV-FX-001): it is in no payee total and no summary,
+    // and its currency is named. A payee that also paid in a converted currency
+    // keeps that part only.
+    const gaps = new ConversionGaps();
+
     for (const row of rawResults) {
-      const totalAmount = this.currencyService.convertAmount(
+      const totalAmount = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.total_amount),
         row.currency_code,
         defaultCurrency,
         rateMap,
       );
+      if (totalAmount === null) {
+        gaps.record(row.currency_code);
+        continue;
+      }
       const key = row.payee_name_normalized;
       const existing = payeeMerged.get(key);
       if (existing) {
@@ -301,16 +418,28 @@ export class TaxRecurringReportsService {
       }
     }
 
+    // The estimate is spread over the months the window actually holds: a
+    // preset never claims more months than the user's spending history has
+    // (five years over eight months of data would understate it sevenfold),
+    // and `all` spans exactly that history.
+    const historyStart = rawResults[0]?.history_start ?? null;
+    const historyMonths =
+      historyStart !== null ? monthsBetween(historyStart, endDate) : null;
+    let monthCount: number;
+    if (range === "all") {
+      monthCount = historyMonths ?? 1;
+    } else {
+      monthCount = Math.min(
+        RECURRING_RANGE_MONTHS[range],
+        historyMonths ?? RECURRING_RANGE_MONTHS[range],
+      );
+    }
+
     const data: RecurringExpenseItem[] = Array.from(payeeMerged.values()).map(
       (row) => {
         const totalAmount = row.totalAmount;
         const occurrences = row.occurrences;
-
-        let frequency: RecurringExpenseFrequency = "IRREGULAR";
-        if (occurrences >= 24) frequency = "WEEKLY";
-        else if (occurrences >= 12) frequency = "BIWEEKLY";
-        else if (occurrences >= 5) frequency = "MONTHLY";
-        else if (occurrences >= 3) frequency = "OCCASIONAL";
+        const frequency = classifyFrequency(occurrences, monthCount);
 
         return {
           payeeName: row.payeeName,
@@ -325,15 +454,24 @@ export class TaxRecurringReportsService {
       },
     );
 
-    const totalRecurring = sumMoney(data.map((item) => item.totalAmount));
+    const knownTotalRecurring = roundMoney(
+      sumMoney(data.map((item) => item.totalAmount)),
+    );
+    const knownMonthlyEstimate = roundMoney(knownTotalRecurring / monthCount);
 
     return {
       data,
       summary: {
-        totalRecurring: roundMoney(totalRecurring),
-        monthlyEstimate: roundMoney(totalRecurring / 6),
+        totalRecurring: gaps.headline(knownTotalRecurring),
+        knownTotalRecurring,
+        monthlyEstimate: gaps.headline(knownMonthlyEstimate),
+        knownMonthlyEstimate,
+        monthCount,
         uniquePayees: data.length,
       },
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
     };
   }
 
@@ -376,10 +514,15 @@ export class TaxRecurringReportsService {
         monthlyTotals: [],
         summary: {
           totalPaid: 0,
+          knownTotalPaid: 0,
           totalPayments: 0,
           uniqueBills: 0,
           monthlyAverage: 0,
+          knownMonthlyAverage: 0,
         },
+        currency: defaultCurrency,
+        missingCurrencies: [],
+        excludedCount: 0,
       };
     }
 
@@ -450,17 +593,27 @@ export class TaxRecurringReportsService {
       }
     >();
 
+    // A payment with no rate into the reporting currency cannot be compared
+    // with the bill's amount, so it is neither matched nor missed (INV-FX-001):
+    // it is in no bill, month or total, and its currency is named. Only payments
+    // to a scheduled payee are counted: any other is not in this report at all.
+    const gaps = new ConversionGaps();
+
     transactions.forEach((tx) => {
       if (!tx.payee_name_normalized) return;
       const scheduled = payeeToScheduled.get(tx.payee_name_normalized);
       if (!scheduled) return;
 
-      const txAmount = this.currencyService.convertAmount(
+      const txAmount = this.currencyService.tryConvertAmount(
         toMoneyNumber(tx.amount),
         tx.currency_code,
         defaultCurrency,
         rateMap,
       );
+      if (txAmount === null) {
+        gaps.record(tx.currency_code);
+        return;
+      }
       if (
         txAmount >= scheduled.amount * 0.8 &&
         txAmount <= scheduled.amount * 1.2
@@ -526,7 +679,9 @@ export class TaxRecurringReportsService {
       }))
       .sort((a, b) => a.month.localeCompare(b.month));
 
-    const totalPaid = sumMoney(billPayments.map((bp) => bp.totalPaid));
+    const knownTotalPaid = roundMoney(
+      sumMoney(billPayments.map((bp) => bp.totalPaid)),
+    );
     const totalPayments = billPayments.reduce(
       (sum, bp) => sum + bp.paymentCount,
       0,
@@ -537,11 +692,16 @@ export class TaxRecurringReportsService {
       billPayments,
       monthlyTotals,
       summary: {
-        totalPaid: roundMoney(totalPaid),
+        totalPaid: gaps.headline(knownTotalPaid),
+        knownTotalPaid,
         totalPayments,
         uniqueBills: billPayments.length,
-        monthlyAverage: roundMoney(totalPaid / monthCount),
+        monthlyAverage: gaps.headline(roundMoney(knownTotalPaid / monthCount)),
+        knownMonthlyAverage: roundMoney(knownTotalPaid / monthCount),
       },
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
     };
   }
 }

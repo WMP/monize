@@ -290,7 +290,7 @@ export class PushConfigService implements OnApplicationBootstrap {
     if (cached !== null && cached.ciphertext === ciphertext) {
       return cached.identity;
     }
-    let identity: VapidIdentity | null = null;
+    let identity: VapidIdentity | null;
     try {
       // A row with a public key and no stored private half is unreadable, not a
       // crash: `getPublicConfig` reports `keyUnreadable` and the operator is
@@ -321,10 +321,10 @@ export class PushConfigService implements OnApplicationBootstrap {
     const counts = await withSystemContext(() =>
       withScopedDb(this.dataSource, async (manager) => {
         const repo = manager.getRepository(PushSubscription);
-        const [live, disabled] = await Promise.all([
-          repo.count({ where: { disabledAt: IsNull() } }),
-          repo.count({ where: { disabledAt: Not(IsNull()) } }),
-        ]);
+        const live = await repo.count({ where: { disabledAt: IsNull() } });
+        const disabled = await repo.count({
+          where: { disabledAt: Not(IsNull()) },
+        });
         return { live, disabled };
       }),
     );

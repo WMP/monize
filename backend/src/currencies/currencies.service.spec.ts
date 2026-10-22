@@ -5,10 +5,12 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from "@nestjs/common";
 import { CurrenciesService } from "./currencies.service";
 import { Currency } from "./entities/currency.entity";
 import { UserCurrencyPreference } from "./entities/user-currency-preference.entity";
+import { FxProviderChain } from "./providers/fx-provider-chain";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -21,6 +23,9 @@ describe("CurrenciesService", () => {
     Record<keyof Repository<UserCurrencyPreference>, jest.Mock>
   >;
   let mockDataSource: { query: jest.Mock };
+  let chain: jest.Mocked<
+    Pick<FxProviderChain, "carriesAny" | "verifyCurrency" | "searchCurrency">
+  >;
 
   const userId = "user-1";
 
@@ -59,6 +64,12 @@ describe("CurrenciesService", () => {
     scoped.dataSource.query = scoped.manager.query;
     mockDataSource = scoped.dataSource as unknown as { query: jest.Mock };
 
+    chain = {
+      carriesAny: jest.fn().mockResolvedValue(true),
+      verifyCurrency: jest.fn().mockResolvedValue(null),
+      searchCurrency: jest.fn().mockResolvedValue(null),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CurrenciesService,
@@ -66,6 +77,7 @@ describe("CurrenciesService", () => {
           provide: DataSource,
           useValue: mockDataSource,
         },
+        { provide: FxProviderChain, useValue: chain },
       ],
     }).compile();
 
@@ -304,6 +316,7 @@ describe("CurrenciesService", () => {
         .mockResolvedValueOnce([]) // main query: empty
         .mockResolvedValueOnce([{ default_currency: "EUR" }]) // preference lookup
         .mockResolvedValueOnce([]) // INSERT currencies
+        .mockResolvedValueOnce([]) // INSERT user_currency_preferences
         .mockResolvedValueOnce([
           {
             code: "EUR",
@@ -323,7 +336,9 @@ describe("CurrenciesService", () => {
       // The INSERT (3rd query) sets the proper symbol, not the bare code.
       const insertCall = mockDataSource.query.mock.calls[2];
       expect(insertCall[0]).toContain("INSERT INTO currencies");
-      expect(insertCall[1]).toEqual(["EUR", "Euro", "€", 2]);
+      expect(insertCall[1]).toEqual(["EUR", "Euro", "€", 2, false, null]);
+      // ...and is activated for this user only (4th query).
+      expect(mockDataSource.query.mock.calls[3][1]).toEqual([userId, "EUR"]);
     });
   });
 
@@ -361,22 +376,136 @@ describe("CurrenciesService", () => {
     });
   });
 
-  describe("ensureSystemCurrency()", () => {
-    it("creates a missing currency as a system currency with a proper symbol", async () => {
+  describe("ensureCurrencyForUser()", () => {
+    const insertCall = () =>
+      mockDataSource.query.mock.calls.find(([sql]) =>
+        String(sql).includes("INSERT INTO currencies"),
+      );
+    const preferenceCall = () =>
+      mockDataSource.query.mock.calls.find(([sql]) =>
+        String(sql).includes("INSERT INTO user_currency_preferences"),
+      );
+
+    it("adds a known ISO code as an inactive system row and activates it for the user only", async () => {
       mockCurrencyRepo.findOne!.mockResolvedValue(null);
 
-      await service.ensureSystemCurrency("eur");
+      await service.ensureCurrencyForUser(userId, "pln");
 
-      expect(mockDataSource.query).toHaveBeenCalledWith(
-        expect.stringContaining("INSERT INTO currencies"),
-        ["EUR", "Euro", "€", 2],
+      expect(insertCall()![0]).toContain("ON CONFLICT (code) DO NOTHING");
+      expect(insertCall()![1]).toEqual([
+        "PLN",
+        "Polish Zloty",
+        "zł",
+        2,
+        false,
+        null,
+      ]);
+      expect(preferenceCall()![0]).toContain(
+        "ON CONFLICT (user_id, currency_code) DO UPDATE SET is_active = true",
       );
+      expect(preferenceCall()![1]).toEqual([userId, "PLN"]);
     });
 
-    it("is a no-op when the currency already exists", async () => {
+    it("adds a code outside ISO 4217 as the user's own active currency", async () => {
+      mockCurrencyRepo.findOne!.mockResolvedValue(null);
+
+      await service.ensureCurrencyForUser(userId, "ZZZ");
+
+      const params = insertCall()![1];
+      expect(params[0]).toBe("ZZZ");
+      expect(params[4]).toBe(true);
+      expect(params[5]).toBe(userId);
+      expect(preferenceCall()![1]).toEqual([userId, "ZZZ"]);
+    });
+
+    it("leaves an existing row alone and still activates it for the user", async () => {
       mockCurrencyRepo.findOne!.mockResolvedValue(mockCurrency);
 
-      await service.ensureSystemCurrency("CAD");
+      await service.ensureCurrencyForUser(userId, "CAD");
+
+      expect(insertCall()).toBeUndefined();
+      expect(preferenceCall()![1]).toEqual([userId, "CAD"]);
+    });
+
+    it.each(["q#!", "US", "USDD", "", "U5D"])(
+      "refuses %p before any write",
+      async (code) => {
+        await expect(
+          service.ensureCurrencyForUser(userId, code),
+        ).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(mockDataSource.query).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe("lockCurrenciesCreatedBy()", () => {
+    it("locks the user's currencies in code order and returns their codes", async () => {
+      const manager = { query: jest.fn().mockResolvedValue([{ code: "PTS" }]) };
+
+      const codes = await service.lockCurrenciesCreatedBy(
+        manager as never,
+        userId,
+      );
+
+      expect(codes).toEqual(["PTS"]);
+      expect(manager.query).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /WHERE created_by_user_id = \$1 ORDER BY code FOR UPDATE/,
+        ),
+        [userId],
+      );
+    });
+  });
+
+  describe("removeUnreferencedCurrencies()", () => {
+    it("deletes only the creatorless rows nothing references", async () => {
+      const manager = {
+        query: jest.fn((sql: string, params: string[]) => {
+          if (sql.includes("currency_code_in_use_globally")) {
+            return Promise.resolve([{ inUse: params[0] === "KEP" }]);
+          }
+          return Promise.resolve([]);
+        }),
+      };
+
+      await service.removeUnreferencedCurrencies(manager as never, [
+        "KEP",
+        "PTS",
+      ]);
+
+      const deletes = manager.query.mock.calls.filter(([sql]) =>
+        sql.includes("DELETE FROM currencies"),
+      );
+      expect(deletes).toHaveLength(1);
+      expect(deletes[0][0]).toContain("created_by_user_id IS NULL");
+      expect(deletes[0][1]).toEqual(["PTS"]);
+    });
+
+    it("does nothing for an empty list", async () => {
+      const manager = { query: jest.fn() };
+
+      await service.removeUnreferencedCurrencies(manager as never, []);
+
+      expect(manager.query).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("ensureCatalogCurrency()", () => {
+    it("creates a missing currency inactive, so no user is offered it", async () => {
+      mockCurrencyRepo.findOne!.mockResolvedValue(null);
+
+      await service.ensureCatalogCurrency("pln");
+
+      const [sql, params] = mockDataSource.query.mock.calls[0];
+      expect(sql).toMatch(/VALUES \(\$1, \$2, \$3, \$4, false, NULL\)/);
+      expect(params[0]).toBe("PLN");
+    });
+
+    it("leaves an existing currency alone, active or not", async () => {
+      mockCurrencyRepo.findOne!.mockResolvedValue(mockCurrency);
+
+      await service.ensureCatalogCurrency("CAD");
 
       expect(mockDataSource.query).not.toHaveBeenCalled();
     });
@@ -862,7 +991,13 @@ describe("CurrenciesService", () => {
     const originalFetch = global.fetch;
 
     beforeEach(() => {
+      // Every provider question goes through the chain (INV-FX-005); a bare
+      // call from the service would land here and fail the assertions below.
       global.fetch = jest.fn();
+    });
+
+    afterEach(() => {
+      expect(global.fetch).not.toHaveBeenCalled();
     });
 
     afterAll(() => {
@@ -873,7 +1008,8 @@ describe("CurrenciesService", () => {
       const result = await service.lookupCurrency("A");
 
       expect(result).toBeNull();
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(chain.carriesAny).not.toHaveBeenCalled();
+      expect(chain.searchCurrency).not.toHaveBeenCalled();
     });
 
     it("returns null for empty string", async () => {
@@ -890,8 +1026,6 @@ describe("CurrenciesService", () => {
 
     describe("direct code match", () => {
       it("matches a known currency code directly (e.g., CAD)", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-
         const result = await service.lookupCurrency("CAD");
 
         expect(result).toEqual({
@@ -903,8 +1037,6 @@ describe("CurrenciesService", () => {
       });
 
       it("matches a known currency code case-insensitively", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-
         const result = await service.lookupCurrency("jpy");
 
         expect(result).toEqual({
@@ -915,26 +1047,67 @@ describe("CurrenciesService", () => {
         });
       });
 
-      it("still returns metadata when Yahoo verification fails with non-ok response", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: false,
-          status: 404,
-        });
+      it("a code a configured provider carries is verified without asking any provider to verify it", async () => {
+        const result = await service.lookupCurrency("CHF");
 
-        const result = await service.lookupCurrency("EUR");
+        expect(chain.carriesAny).toHaveBeenCalledWith("CHF");
+        expect(chain.verifyCurrency).not.toHaveBeenCalled();
+        expect(chain.searchCurrency).not.toHaveBeenCalled();
+        expect(result?.code).toBe("CHF");
+      });
 
+      it("a code no provider carries is put to the providers' verification", async () => {
+        chain.carriesAny.mockResolvedValue(false);
+        chain.verifyCurrency.mockResolvedValue(true);
+
+        const result = await service.lookupCurrency("KWD");
+
+        expect(chain.verifyCurrency).toHaveBeenCalledWith("KWD");
         expect(result).toEqual({
-          code: "EUR",
-          name: "Euro",
-          symbol: "\u20AC",
-          decimalPlaces: 2,
+          code: "KWD",
+          name: "Kuwaiti Dinar",
+          symbol: "KWD",
+          decimalPlaces: 3,
         });
       });
 
-      it("still returns metadata when Yahoo verification throws a network error", async () => {
-        (global.fetch as jest.Mock).mockRejectedValue(
-          new Error("Network error"),
-        );
+      it.each([
+        ["no provider knows it", false],
+        ["no provider answered", null],
+      ])(
+        "still returns local metadata when %s",
+        async (_label, known: boolean | null) => {
+          chain.carriesAny.mockResolvedValue(false);
+          chain.verifyCurrency.mockResolvedValue(known);
+
+          const result = await service.lookupCurrency("EUR");
+
+          expect(result).toEqual({
+            code: "EUR",
+            name: "Euro",
+            symbol: "\u20AC",
+            decimalPlaces: 2,
+          });
+        },
+      );
+
+      it("still returns local metadata when a provider's verification throws", async () => {
+        chain.carriesAny.mockResolvedValue(false);
+        chain.verifyCurrency.mockRejectedValue(new Error("boom"));
+
+        const result = await service.lookupCurrency("KWD");
+
+        expect(chain.verifyCurrency).toHaveBeenCalledWith("KWD");
+        expect(result).toEqual({
+          code: "KWD",
+          name: "Kuwaiti Dinar",
+          symbol: "KWD",
+          decimalPlaces: 3,
+        });
+      });
+
+      it("still returns local metadata when verification throws", async () => {
+        chain.carriesAny.mockRejectedValue(new Error("Network error"));
 
         const result = await service.lookupCurrency("GBP");
 
@@ -945,42 +1118,13 @@ describe("CurrenciesService", () => {
           decimalPlaces: 2,
         });
       });
-
-      it("calls Yahoo chart API with correct URL for verification", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-
-        await service.lookupCurrency("CHF");
-
-        expect(global.fetch).toHaveBeenCalledWith(
-          expect.stringContaining("CHFUSD%3DX"),
-          expect.objectContaining({
-            headers: expect.objectContaining({
-              "User-Agent": expect.any(String),
-            }),
-          }),
-        );
-      });
-
-      it("preserves decimalPlaces=3 for currencies like Kuwaiti Dinar", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-
-        const result = await service.lookupCurrency("KWD");
-
-        expect(result).toEqual({
-          code: "KWD",
-          name: "Kuwaiti Dinar",
-          symbol: "KWD",
-          decimalPlaces: 3,
-        });
-      });
     });
 
     describe("name/text match via searchMetadataByText", () => {
       it("matches an exact currency name (e.g., 'Canadian Dollar')", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-
         const result = await service.lookupCurrency("Canadian Dollar");
 
+        expect(chain.carriesAny).toHaveBeenCalledWith("CAD");
         expect(result).toEqual({
           code: "CAD",
           name: "Canadian Dollar",
@@ -990,8 +1134,6 @@ describe("CurrenciesService", () => {
       });
 
       it("matches exact name case-insensitively", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-
         const result = await service.lookupCurrency("japanese yen");
 
         expect(result).toEqual({
@@ -1003,8 +1145,6 @@ describe("CurrenciesService", () => {
       });
 
       it("matches a substring uniquely (e.g., 'Ringgit' matches 'Malaysian Ringgit')", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-
         const result = await service.lookupCurrency("Ringgit");
 
         expect(result).toEqual({
@@ -1016,8 +1156,6 @@ describe("CurrenciesService", () => {
       });
 
       it("matches a unique substring like 'Baht' for Thai Baht", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-
         const result = await service.lookupCurrency("Baht");
 
         expect(result).toEqual({
@@ -1028,41 +1166,21 @@ describe("CurrenciesService", () => {
         });
       });
 
-      it("returns null for ambiguous substring matching multiple currencies (e.g., 'Dollar')", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () => Promise.resolve({ quotes: [] }),
-        });
-
+      it("falls through to the providers' search for an ambiguous substring (e.g., 'Dollar')", async () => {
         const result = await service.lookupCurrency("Dollar");
 
-        expect(result).toBeNull();
-      });
-
-      it("returns null for ambiguous 'Krone' matching multiple currencies and no Yahoo results", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () => Promise.resolve({ quotes: [] }),
-        });
-
-        const result = await service.lookupCurrency("Krone");
-
+        expect(chain.searchCurrency).toHaveBeenCalledWith("Dollar");
         expect(result).toBeNull();
       });
     });
 
-    describe("Yahoo Finance fallback", () => {
-      it("uses Yahoo Finance search when no metadata matches and returns the currency", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              quotes: [{ symbol: "MYRUSD=X", quoteType: "CURRENCY" }],
-            }),
-        });
+    describe("provider search fallback", () => {
+      it("asks the chain's search with the trimmed query and returns the code's metadata", async () => {
+        chain.searchCurrency.mockResolvedValue("MYR");
 
-        const result = await service.lookupCurrency("Ringgit Malaysia");
+        const result = await service.lookupCurrency("  Ringgit Malaysia  ");
 
+        expect(chain.searchCurrency).toHaveBeenCalledWith("Ringgit Malaysia");
         expect(result).toEqual({
           code: "MYR",
           name: "Malaysian Ringgit",
@@ -1071,145 +1189,8 @@ describe("CurrenciesService", () => {
         });
       });
 
-      it("extracts base currency from 6-char forex pair when base matches query", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              quotes: [{ symbol: "EURUSD=X", quoteType: "CURRENCY" }],
-            }),
-        });
-
-        const result = await service.lookupCurrency("EUR something unknown");
-
-        expect(result).toEqual({
-          code: "EUR",
-          name: "Euro",
-          symbol: "\u20AC",
-          decimalPlaces: 2,
-        });
-      });
-
-      it("extracts quote currency from 6-char forex pair when quote matches query", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              quotes: [{ symbol: "JPYUSD=X", quoteType: "CURRENCY" }],
-            }),
-        });
-
-        const result = await service.lookupCurrency("USD");
-
-        expect(result).toEqual({
-          code: "USD",
-          name: "US Dollar",
-          symbol: "$",
-          decimalPlaces: 2,
-        });
-      });
-
-      it("defaults to base currency when neither part of pair matches query", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              quotes: [{ symbol: "GBPJPY=X", quoteType: "CURRENCY" }],
-            }),
-        });
-
-        const result = await service.lookupCurrency("some unknown forex");
-
-        expect(result).toEqual({
-          code: "GBP",
-          name: "British Pound",
-          symbol: "\u00A3",
-          decimalPlaces: 2,
-        });
-      });
-
-      it("handles non-6-char symbol by returning uppercased original query", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              quotes: [{ symbol: "BTC=X", quoteType: "CURRENCY" }],
-            }),
-        });
-
-        const result = await service.lookupCurrency("btc crypto");
-
-        expect(result).toEqual({
-          code: "BTC CRYPTO",
-          name: "BTC CRYPTO",
-          symbol: "BTC CRYPTO",
-          decimalPlaces: 2,
-        });
-      });
-
-      it("matches quotes by =X suffix even without quoteType CURRENCY", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              quotes: [{ symbol: "ZARUSD=X", quoteType: "OTHER" }],
-            }),
-        });
-
-        const result = await service.lookupCurrency("some rand query");
-
-        expect(result).toEqual({
-          code: "ZAR",
-          name: "South African Rand",
-          symbol: "R",
-          decimalPlaces: 2,
-        });
-      });
-
-      it("returns null when Yahoo returns no currency quotes", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              quotes: [{ symbol: "AAPL", quoteType: "EQUITY" }],
-            }),
-        });
-
-        const result = await service.lookupCurrency("something weird");
-
-        expect(result).toBeNull();
-      });
-
-      it("returns null when Yahoo returns empty quotes array", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () => Promise.resolve({ quotes: [] }),
-        });
-
-        const result = await service.lookupCurrency("xyznonexistent");
-
-        expect(result).toBeNull();
-      });
-
-      it("returns null when Yahoo returns no quotes property", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () => Promise.resolve({}),
-        });
-
-        const result = await service.lookupCurrency("xyznonexistent");
-
-        expect(result).toBeNull();
-      });
-
-      it("uses fallback name/symbol when Yahoo result code is not in CURRENCY_METADATA", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              quotes: [{ symbol: "ABCDEF=X", quoteType: "CURRENCY" }],
-            }),
-        });
+      it("uses the code as name and symbol when it is not in CURRENCY_METADATA", async () => {
+        chain.searchCurrency.mockResolvedValue("ABC");
 
         const result = await service.lookupCurrency("something exotic");
 
@@ -1220,52 +1201,30 @@ describe("CurrenciesService", () => {
           decimalPlaces: 2,
         });
       });
+
+      it("returns null when no provider's search resolves the query", async () => {
+        const result = await service.lookupCurrency("xyznonexistent");
+
+        expect(result).toBeNull();
+      });
+
+      it("returns null when the search throws", async () => {
+        chain.searchCurrency.mockRejectedValue(new Error("boom"));
+
+        const result = await service.lookupCurrency("something unknown");
+
+        expect(result).toBeNull();
+      });
     });
 
-    describe("error handling", () => {
-      it("returns null when Yahoo Finance search returns non-ok status", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: false,
-          status: 500,
-        });
+    it("trims whitespace from query before processing", async () => {
+      const result = await service.lookupCurrency("  CAD  ");
 
-        const result = await service.lookupCurrency("something unknown");
-
-        expect(result).toBeNull();
-      });
-
-      it("returns null when fetch throws a network error", async () => {
-        (global.fetch as jest.Mock).mockRejectedValue(
-          new Error("fetch failed"),
-        );
-
-        const result = await service.lookupCurrency("something unknown");
-
-        expect(result).toBeNull();
-      });
-
-      it("returns null when json() parsing throws", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({
-          ok: true,
-          json: () => Promise.reject(new Error("Invalid JSON")),
-        });
-
-        const result = await service.lookupCurrency("something unknown");
-
-        expect(result).toBeNull();
-      });
-
-      it("trims whitespace from query before processing", async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-
-        const result = await service.lookupCurrency("  CAD  ");
-
-        expect(result).toEqual({
-          code: "CAD",
-          name: "Canadian Dollar",
-          symbol: "CA$",
-          decimalPlaces: 2,
-        });
+      expect(result).toEqual({
+        code: "CAD",
+        name: "Canadian Dollar",
+        symbol: "CA$",
+        decimalPlaces: 2,
       });
     });
   });

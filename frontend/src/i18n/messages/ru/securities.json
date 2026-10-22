@@ -119,6 +119,8 @@
     "currencyLabel": "Валюта",
     "currencyNotConfigured": "{code} — нет в ваших валютах",
     "quoteProviderLabel": "Провайдер котировок",
+    "skipPriceUpdatesLabel": "Отключить автоматическое обновление цен",
+    "skipPriceUpdatesHelp": "Monize не будет загружать цены для этой ценной бумаги. Используйте это для бумаги, которую не котирует ни один поставщик; цены, введённые вами вручную, по-прежнему учитываются. Выбор другого поставщика котировок или идентификатора инструмента MSN снова включает обновления.",
     "msnIdLabel": "Идентификатор инструмента MSN (расширенный)",
     "lookupProviderAriaLabel": "Поиск провайдера",
     "lookupButton": "Найти",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "Модуль облигаций"
     },
     "types": {
       "select": "Выберите тип...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "Удалить",
       "deleteSuccess": "Класс активов «{name}» удалён",
       "deleteFailed": "Не удалось удалить класс активов «{name}»"
-    }
+    },
+    "bondFetchAction": "Получить {code} из официального источника",
+    "bondFetching": "Получение {code} от эмитента и его референсных ставок. Это может занять до минуты.",
+    "bondFetchFailed": "Не удалось получить серию.",
+    "bondCurrencyLocked": "Эта бумага связана с видом облигаций в валюте {linkedCurrency}. Верните валюту {linkedCurrency} или сначала отвяжите вид облигаций (при отвязке расчётные цены удаляются).",
+    "bondProgramLabel": "Вид облигаций",
+    "bondProgramNone": "Не привязана",
+    "bondProgramCurrent": "Привязанный вид облигаций",
+    "bondProgramLoading": "Загрузка видов облигаций...",
+    "bondProgramLoadFailed": "Не удалось загрузить виды облигаций, поэтому вид облигаций пока нельзя привязать.",
+    "bondProgramRetry": "Повторить",
+    "bondNoPrograms": "В каталоге облигаций пока нет ни одного вида облигаций.",
+    "bondAutoFetchLabel": "Автоматически получать новые серии этого вида облигаций",
+    "bondAutoFetchHelp": "Если включено, Monize ежедневно считывает новые серии этого вида облигаций из официального источника, поэтому покупку можно записать, не получая серию заранее.",
+    "bondCountryLabel": "Страна",
+    "bondCountryOther": "Другая",
+    "bondCountryOtherInfo": "Поддержку облигаций других стран можно запросить на <link>GitHub проекта</link>."
   },
   "priceForm": {
     "dateLabel": "Дата",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Реинвестирование долгосрочного прироста капитала",
       "CAPITAL_GAIN_SHORT": "Краткосрочный прирост капитала",
       "CAPITAL_GAIN_LONG": "Долгосрочный прирост капитала",
-      "REDEEM": "Погашение CD/облигации"
+      "REDEEM": "Погашение CD/облигации",
+      "RETURN_OF_CAPITAL": "Возврат капитала"
     },
     "toasts": {
       "loadHistoryFailed": "Не удалось загрузить историю",
@@ -340,6 +360,7 @@
     "nameRequired": "Имя обязательно",
     "nameMax": "Имя должно содержать не более 255 символов",
     "currencyRequired": "Валюта обязательна",
+    "bondProgramRequired": "Вид облигаций обязателен",
     "descriptionMax": "Описание не должно превышать 5000 символов"
   },
   "priceValidation": {

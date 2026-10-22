@@ -58,11 +58,21 @@ import {
   ScheduledOccurrenceService,
 } from "./scheduled-occurrence.service";
 import { ScheduledTransactionOverrideService } from "./scheduled-transaction-override.service";
-import { ScheduledTransactionLoanService } from "./scheduled-transaction-loan.service";
+import {
+  LoanOccurrencesProjection,
+  ScheduledTransactionLoanService,
+} from "./scheduled-transaction-loan.service";
+import {
+  assertOccurrencePin,
+  assertScheduleHasOccurrence,
+  OccurrencePin,
+} from "./occurrence-pin";
+import { advanceScheduleCursor, claimedSlotsFrom } from "./schedule-cursor";
 import { addDaysYMD, todayInTimezone, todayYMD } from "../common/date-utils";
 import {
   calculateNextDueDate as calcNextDueDate,
   ensureYMD,
+  FREQUENCY_CYCLE_DAYS,
 } from "../common/recurrence";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { getUsersByEffectiveTimezone } from "../common/users-by-timezone.util";
@@ -74,11 +84,12 @@ import {
 } from "../notification-center/entities/notification.entity";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { withScopedDb } from "../common/db/scoped-db";
-import { affectedRowCount } from "../common/db/query-result";
+import { returnedRows } from "../common/db/query-result";
 import { validateSplitAmountSum } from "../common/split-amount.util";
 import { roundMoney, sumMoney } from "../common/round.util";
 import {
   applyFxConversion,
+  assertTransactionCurrencyMatchesAccount,
   normalizeFxEntry,
   roundFxRate,
 } from "../common/fx-entry.util";
@@ -89,6 +100,11 @@ import {
 } from "../common/converting-total";
 import { resolveUserDefaultCurrency } from "../common/default-currency.util";
 import { tr } from "../i18n/translate";
+import {
+  programOfSecurity,
+  seriesRoleOf,
+  infersSeriesFromDate,
+} from "../bonds/bond-series-resolver";
 
 /**
  * What one scheduled occurrence is, for a model reading the list.
@@ -99,11 +115,7 @@ import { tr } from "../i18n/translate";
  * support (issue #1247 re-audit).
  */
 export type LlmScheduledKind =
-  | "bill"
-  | "deposit"
-  | "transfer"
-  | "investment"
-  | "unknown";
+  "bill" | "deposit" | "transfer" | "investment" | "unknown";
 
 export interface LlmScheduledItem {
   id: string;
@@ -383,6 +395,24 @@ function scheduledSplitBasis(split: ScheduledTransactionSplit): string {
   });
 }
 
+/**
+ * Days an auto-post of a bond-linked purchase may wait for its month's series
+ * before the failure alert fires (the series is fetched by a person or by the
+ * auto-fetch, so the 00:05 run on the 1st routinely precedes it).
+ */
+const BOND_SERIES_WAIT_DAYS = 3;
+
+/** The refusal of a bond purchase whose series cannot be inferred yet. */
+function isSeriesNotDetermined(error: unknown): boolean {
+  if (!(error instanceof BadRequestException)) return false;
+  const body = error.getResponse();
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    (body as { errorCode?: unknown }).errorCode === "SERIES_NOT_DETERMINED"
+  );
+}
+
 function sameScheduledSplitBasis(
   before: ScheduledTransactionSplit[],
   current: ScheduledTransactionSplit[],
@@ -422,6 +452,38 @@ function sameOverrideMutationBasis(
     ) &&
     JSON.stringify(before.splits ?? null) ===
       JSON.stringify(current.splits ?? null)
+  );
+}
+
+/**
+ * A hook run inside a posting transaction. Named, so a function taking it is not
+ * mistaken for one that holds a transaction (`transaction-fan-out.guard.spec.ts`
+ * reads a parameter typed `EntityManager` that way).
+ */
+export type PostBeforeWrite = (manager: EntityManager) => Promise<void>;
+
+/** A hook run inside a posting transaction with the investment transaction the post created. */
+export type PostAfterInvestmentWrite = (
+  manager: EntityManager,
+  investmentTransactionId: string,
+) => Promise<void>;
+
+/** How far from a trade's day a scheduled investment may be due and still be the one the trade paid, at most. */
+export const TRADE_SCHEDULE_WINDOW_DAYS = 7;
+
+/**
+ * The window for one schedule: under half its cycle, so the occurrence AFTER
+ * the one a trade paid is never inside it (a weekly buy posted on the 5th is
+ * next due on the 12th, which a 7-day window around a trade on the 5th would
+ * take for the one that trade paid). A daily schedule matches its own day only;
+ * a one-time one has no next occurrence and keeps the full window.
+ */
+export function tradeScheduleWindowDays(frequency: FrequencyType): number {
+  const cycle = FREQUENCY_CYCLE_DAYS[frequency];
+  if (!cycle) return TRADE_SCHEDULE_WINDOW_DAYS;
+  return Math.max(
+    0,
+    Math.min(TRADE_SCHEDULE_WINDOW_DAYS, Math.floor((cycle - 1) / 2)),
   );
 }
 
@@ -485,6 +547,7 @@ export class ScheduledTransactionsService {
       let totalSuccess = 0;
       let totalError = 0;
       let totalSkipped = 0;
+      let totalDeferred = 0;
 
       for (const [tz, userIds] of userIdsByTz) {
         const today = todayInTimezone(tz);
@@ -600,11 +663,42 @@ export class ScheduledTransactionsService {
               totalSkipped++;
               continue;
             }
+            // A bond-linked BUY/REINVEST due on the 1st posts at ~00:05, before
+            // the new month's series exists (the series is fetched by a person
+            // or by the 07:15 auto-fetch). That refusal is "wait", not
+            // "failed": nothing was written (the claim, the lock and the
+            // investment write share one transaction in post(), so the
+            // refusal rolled all of it back), `next_due_date` did not advance,
+            // and the next hourly run selects the occurrence again. No alert
+            // until it is BOND_SERIES_WAIT_DAYS past due. Double-posting stays
+            // impossible: the schedule row's pessimistic_write lock plus the
+            // `scheduled_transaction_postings` claim key (one row per
+            // occurrence) are taken in post() on every attempt, so a retry on
+            // any replica either posts exactly once or writes nothing.
+            const seriesWait = isSeriesNotDetermined(error);
+            const dueYmd = ensureYMD(scheduled.nextDueDate);
+            const daysOverdue = daysBetweenYMD(dueYmd, today);
+            if (seriesWait && daysOverdue < BOND_SERIES_WAIT_DAYS) {
+              totalDeferred++;
+              this.logger.log(
+                `Auto-post of "${scheduled.name}" (ID: ${scheduled.id}) waits ` +
+                  `for its bond series (due ${dueYmd}, ${daysOverdue} day(s) ` +
+                  "overdue); retried by the next run",
+              );
+              continue;
+            }
             totalError++;
             this.logger.error(
               `Failed to auto-post "${scheduled.name}" (ID: ${scheduled.id}): ${error.message}`,
               error.stack,
             );
+            const seriesMonth = dueYmd.slice(0, 7);
+            const failureText = seriesWait
+              ? `the bond series for ${seriesMonth} is missing, so the series ` +
+                `of this purchase cannot be determined (${daysOverdue} days ` +
+                "overdue). Fetch the series first (Refresh on the security " +
+                "page, or switch on auto-fetch)"
+              : String(error.message);
             // Tell the affected user in-app -- this is their money not moving,
             // actionable by them (post it manually from Bills), so it is a
             // per-user alert and not an admin one. `raiseUserAlert` never
@@ -617,7 +711,7 @@ export class ScheduledTransactionsService {
               message:
                 `Your scheduled transaction "${scheduled.name}" due ` +
                 `${scheduled.nextDueDate} failed to post automatically: ` +
-                `${String(error.message).slice(0, 300)}. You can post it ` +
+                `${failureText.slice(0, 300)}. You can post it ` +
                 "manually from Bills.",
               // Where the bell -- and now the push / email fan-out -- sends the
               // reader: the Bills page the copy tells them to post from. Without
@@ -628,11 +722,14 @@ export class ScheduledTransactionsService {
                 scheduledId: scheduled.id,
                 scheduledName: scheduled.name,
                 dueDate: scheduled.nextDueDate,
-                error: String(error.message).slice(0, 300),
+                error: failureText.slice(0, 300),
               },
-              dedupeKey:
-                `SCHEDULED_POST_FAILED:${scheduled.id}:` +
-                new Date().toISOString().slice(0, 10),
+              // A waiting series alert is once per occurrence (the key has no
+              // run date), not once per day like any other failure.
+              dedupeKey: seriesWait
+                ? `SCHEDULED_POST_FAILED:${scheduled.id}:${dueYmd}:series`
+                : `SCHEDULED_POST_FAILED:${scheduled.id}:` +
+                  new Date().toISOString().slice(0, 10),
             });
           }
         }
@@ -640,7 +737,10 @@ export class ScheduledTransactionsService {
 
       this.logger.log(
         `Auto-post processing complete: ${totalSuccess} succeeded, ` +
-          `${totalSkipped} already claimed elsewhere, ${totalError} failed`,
+          `${totalSkipped} already claimed elsewhere, ${totalError} failed` +
+          (totalDeferred > 0
+            ? `, ${totalDeferred} waiting for a bond series`
+            : ""),
       );
     } catch (error) {
       this.logger.error("Auto-post processing failed", error.stack);
@@ -809,6 +909,7 @@ export class ScheduledTransactionsService {
         );
       }
       this.validateInvestmentFields(createDto);
+      await this.assertBondSeriesNameable(userId, createDto);
       // Only validate a funding account the action will actually use; a value
       // supplied for a non-BUY/SELL action is dropped at persist time, so
       // rejecting it here would refuse a request the write would have cleaned.
@@ -836,6 +937,14 @@ export class ScheduledTransactionsService {
     if (hasSplits && !isTransfer) {
       this.validateSplits(splits, createDto.amount);
     }
+
+    // The schedule's own currency is its account's; a foreign entry is the
+    // `originalCurrencyCode` trio below. Refused before any write, as a
+    // posting would refuse it at every due date (A26-S15-10).
+    assertTransactionCurrencyMatchesAccount(
+      createDto.currencyCode,
+      account.currencyCode,
+    );
 
     const fx = this.resolveScheduleFx(createDto, account.currencyCode, {
       isSplit: !!(hasSplits && !isTransfer),
@@ -1006,6 +1115,45 @@ export class ScheduledTransactionsService {
         ? roundFxRate(Number(dto.exchangeRate))
         : 1,
     };
+  }
+
+  /**
+   * A schedule cannot name a bond series, so an action that must name one
+   * (ADD_SHARES, TRANSFER_IN: no purchase date to infer it from) of a
+   * bond-linked security would fail at every posting. Refused when the
+   * schedule is written, not at the first due date. BUY and REINVEST infer the
+   * series from the posting date and are allowed (they wait for it, see the
+   * auto-post cron).
+   */
+  private async assertBondSeriesNameable(
+    userId: string,
+    dto: {
+      investmentAction?: InvestmentAction | null;
+      investmentSecurityId?: string | null;
+    },
+  ): Promise<void> {
+    const action = dto.investmentAction;
+    if (
+      !action ||
+      !dto.investmentSecurityId ||
+      seriesRoleOf(action, false) !== "acquisition" ||
+      infersSeriesFromDate(action)
+    ) {
+      return;
+    }
+    const securityId = dto.investmentSecurityId;
+    const program = await withScopedDb(this.dataSource, (m) =>
+      programOfSecurity(m, userId, securityId),
+    );
+    if (program === null) return;
+    throw new BadRequestException({
+      message: tr(
+        "errors.scheduled.bondSeriesNotNameable",
+        `A scheduled ${action} of a bond-linked security cannot name the bond series of its shares. Record it as a transaction and choose the series, or schedule a BUY, which takes the series on sale on its date.`,
+        { action },
+      ),
+      errorCode: "SERIES_REQUIRED",
+    });
   }
 
   private validateInvestmentFields(dto: {
@@ -2017,6 +2165,7 @@ export class ScheduledTransactionsService {
         ),
       };
       this.validateInvestmentFields(merged);
+      await this.assertBondSeriesNameable(userId, merged);
       // Only validate a funding account that will actually be used: a stale one
       // on a non-BUY/SELL action is cleared below, so it need not resolve.
       const effectiveFundingAccountId = suppliedOrStored(
@@ -2286,9 +2435,7 @@ export class ScheduledTransactionsService {
         FUNDING_ACCOUNT_ACTIONS.has(effectiveInvestmentAction)
           ? suppliedOrStored(
               updateData.investmentFundingAccountId as
-                | string
-                | null
-                | undefined,
+                string | null | undefined,
               scheduled.investmentFundingAccountId,
             )
           : null;
@@ -2326,8 +2473,7 @@ export class ScheduledTransactionsService {
       //     so record the current pair.
       if (fieldsToUpdate.investmentExchangeRate !== undefined) {
         const writtenRate = fieldsToUpdate.investmentExchangeRate as
-          | number
-          | null;
+          number | null;
         const rateUnchanged =
           writtenRate !== null &&
           scheduled.investmentExchangeRate !== null &&
@@ -2527,36 +2673,74 @@ export class ScheduledTransactionsService {
     });
   }
 
-  async skip(userId: string, id: string): Promise<ScheduledTransaction> {
-    const scheduled = await this.findOne(userId, id);
+  /**
+   * Skip the due occurrence. One transaction: lock the schedule and the
+   * occurrence's override, refuse a stale `pin` or an exhausted schedule, then
+   * advance. Every refusal comes before the first write (A26-S08-01).
+   */
+  async skip(
+    userId: string,
+    id: string,
+    pin?: OccurrencePin,
+  ): Promise<ScheduledTransaction> {
+    await withScopedDb(this.dataSource, async (m) => {
+      const current = await m.findOne(ScheduledTransaction, {
+        where: { id, userId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!current) {
+        throw new NotFoundException(
+          tr(
+            "errors.scheduled.notFound",
+            `Scheduled transaction with ID ${id} not found`,
+            { id },
+          ),
+        );
+      }
+      const nextDueDateStr = ensureYMD(current.nextDueDate);
+      const override = await m
+        .getRepository(ScheduledTransactionOverride)
+        .findOne({
+          where: { scheduledTransactionId: id, originalDate: nextDueDateStr },
+          lock: { mode: "pessimistic_write" },
+        });
+      if (pin) {
+        assertOccurrencePin(nextDueDateStr, override, pin);
+      }
+      assertScheduleHasOccurrence(current);
 
-    const nextDueDateStr = ensureYMD(scheduled.nextDueDate);
+      if (calcNextDueDate(nextDueDateStr, current.frequency) > nextDueDateStr) {
+        // Step past this slot and every slot a settlement rule claimed at or
+        // after it. A skip posts nothing, so `last_posted_date` stays.
+        await advanceScheduleCursor(
+          m,
+          current,
+          new Set([
+            nextDueDateStr,
+            ...(await claimedSlotsFrom(m, id, nextDueDateStr)),
+          ]),
+          { stampLastPosted: false },
+        );
+        return;
+      }
 
-    const newNextDueDateStr = calcNextDueDate(
-      nextDueDateStr,
-      scheduled.frequency,
-    );
-
-    const updateFields: Record<string, any> = {
-      nextDueDate: newNextDueDateStr,
-    };
-
-    if (
-      scheduled.occurrencesRemaining !== null &&
-      scheduled.occurrencesRemaining > 0
-    ) {
-      const newRemaining = scheduled.occurrencesRemaining - 1;
-      updateFields.occurrencesRemaining = newRemaining;
-      if (newRemaining === 0) {
+      // A cadence that does not step (ONCE): the cursor stays, as before.
+      const updateFields: Record<string, any> = {
+        nextDueDate: nextDueDateStr,
+      };
+      if (
+        current.occurrencesRemaining !== null &&
+        current.occurrencesRemaining > 0
+      ) {
+        const newRemaining = current.occurrencesRemaining - 1;
+        updateFields.occurrencesRemaining = newRemaining;
+        if (newRemaining === 0) {
+          updateFields.isActive = false;
+        }
+      }
+      if (current.endDate && nextDueDateStr > ensureYMD(current.endDate)) {
         updateFields.isActive = false;
       }
-    }
-
-    if (scheduled.endDate && newNextDueDateStr > ensureYMD(scheduled.endDate)) {
-      updateFields.isActive = false;
-    }
-
-    await withScopedDb(this.dataSource, async (m) => {
       await m.getRepository(ScheduledTransactionOverride).delete({
         scheduledTransactionId: id,
         originalDate: nextDueDateStr,
@@ -2662,6 +2846,71 @@ export class ScheduledTransactionsService {
     };
   }
 
+  /**
+   * The active scheduled investment transaction a brokerage trade pays: same
+   * account, direction and security, its next (unposted) occurrence due within
+   * `tradeScheduleWindowDays` of the trade's day, and the same commission (a
+   * posting uses the schedule's own). Exactly one qualifies, or none: with two,
+   * which bill the trade paid is a guess, and a guess marks the wrong one paid.
+   * The schedule's funding account comes back with it, because posting the
+   * occurrence settles through that account, so the card must show it.
+   */
+  async findInvestmentOccurrenceForTrade(
+    userId: string,
+    trade: {
+      accountId: string;
+      securityId: string;
+      action: InvestmentAction;
+      date: string;
+      commission: number;
+    },
+  ): Promise<{
+    id: string;
+    name: string;
+    dueDate: string;
+    fundingAccountId: string | null;
+  } | null> {
+    const rows = await withScopedDb(this.dataSource, (m) =>
+      m
+        .getRepository(ScheduledTransaction)
+        .createQueryBuilder("st")
+        .where("st.userId = :userId", { userId })
+        .andWhere("st.isActive = true")
+        .andWhere("st.isInvestment = true")
+        .andWhere("st.accountId = :accountId", { accountId: trade.accountId })
+        .andWhere("st.investmentAction = :action", { action: trade.action })
+        .andWhere("st.investmentSecurityId = :securityId", {
+          securityId: trade.securityId,
+        })
+        .andWhere(
+          // Not `:date::date`: TypeORM reads the cast's `::date` as a second use
+          // of a parameter named `date` and emits `$5:$5`, a syntax error.
+          "st.nextDueDate BETWEEN (:tradeDate::date - :days::int) AND (:tradeDate::date + :days::int)",
+          { tradeDate: trade.date, days: TRADE_SCHEDULE_WINDOW_DAYS },
+        )
+        .andWhere("COALESCE(st.investmentCommission, 0) = :commission", {
+          commission: trade.commission,
+        })
+        .take(10)
+        .getMany(),
+    );
+    const due = rows.filter(
+      (row) =>
+        Math.abs(daysBetweenYMD(trade.date, ensureYMD(row.nextDueDate))) <=
+        tradeScheduleWindowDays(row.frequency),
+    );
+    if (due.length !== 1) return null;
+    const [row] = due;
+    return {
+      id: row.id,
+      name: row.name,
+      dueDate: ensureYMD(row.nextDueDate),
+      fundingAccountId: FUNDING_ACCOUNT_ACTIONS.has(trade.action)
+        ? (row.investmentFundingAccountId ?? null)
+        : null,
+    };
+  }
+
   async post(
     userId: string,
     id: string,
@@ -2674,6 +2923,49 @@ export class ScheduledTransactionsService {
        * whatever the schedule's `next_due_date` has advanced to since.
        */
       expectedDueDate?: string;
+      /**
+       * The occurrence a person was looking at when they pressed Post (the
+       * date shown, which an override may have moved, and that override's id).
+       * Refused with `ConflictException` before the lock and again under it
+       * unless it is still the occurrence the schedule would post, so a stale
+       * view cannot post the next occurrence early or pay an exhausted
+       * schedule again (A26-S08-01). Set by the HTTP controller; the cron, the
+       * AI action and the email receipt pin through `expectedDueDate`.
+       */
+      occurrencePin?: OccurrencePin;
+      /**
+       * The poster is a delegate acting as the owner (see
+       * `TransactionsService.create`): the owner's structural rules are
+       * skipped on the posted row. Set from the verified identity only.
+       */
+      actorIsNotOwner?: boolean;
+      /**
+       * Runs inside the posting transaction after the schedule is locked and
+       * confirmed still due, before the occurrence is claimed or anything is
+       * written; a throw rolls the whole post back. How an approved AI review
+       * request is marked applied together with the occurrence it paid.
+       */
+      beforeWrite?: PostBeforeWrite;
+      /**
+       * Mark the occurrence paid WITHOUT writing any money: the payment already
+       * exists in the ledger (a trade the person entered by hand, which an email
+       * confirmed). The occurrence is claimed and the schedule advances exactly
+       * as for a post; nothing is created.
+       */
+      recordOnly?: boolean;
+      /**
+       * The executed total and the rate a trade email's approved card showed
+       * (INV-TRADE-001: the total is the fact, stored as given). An investment
+       * posting then writes exactly what was approved rather than re-deriving
+       * the total from a price and re-resolving the rate.
+       */
+      investmentFigures?: { totalAmount: number; exchangeRate: number };
+      /**
+       * Runs inside the posting transaction after an investment occurrence's
+       * row is written, with its id; a throw rolls the whole post back. How a
+       * trade email records the row its approval booked.
+       */
+      afterInvestmentWrite?: PostAfterInvestmentWrite;
     } = {},
   ): Promise<ScheduledTransaction | null> {
     const scheduled = await this.findOne(userId, id);
@@ -2708,6 +3000,13 @@ export class ScheduledTransactionsService {
         .andWhere("override.originalDate = :nextDueDateStr", { nextDueDateStr })
         .getOne(),
     );
+    if (options.occurrencePin) {
+      assertOccurrencePin(
+        nextDueDateStr,
+        storedOverride,
+        options.occurrencePin,
+      );
+    }
 
     const postDate =
       postDto?.transactionDate ||
@@ -3124,6 +3423,10 @@ export class ScheduledTransactionsService {
         );
       }
 
+      // Nothing left to post: the cron stops at a zero count or past `end_date`,
+      // a manual post of the consumed slot would be an extra payment.
+      assertScheduleHasOccurrence(current);
+
       // Cron selected this row when it was active and auto-posting; if the user
       // turned either off after selection but before the lock, the automatic
       // post must not fire (issue #1154 re-review). Manual posts do not pass this
@@ -3168,6 +3471,13 @@ export class ScheduledTransactionsService {
           where: { scheduledTransactionId: id, originalDate: nextDueDateStr },
           lock: { mode: "pessimistic_write" },
         });
+      if (options.occurrencePin) {
+        assertOccurrencePin(
+          ensureYMD(current.nextDueDate),
+          lockedOverride,
+          options.occurrencePin,
+        );
+      }
       if (
         !sameOverrideMutationBasis(storedOverride, lockedOverride) ||
         (storedOverride?.updatedAt?.getTime() ?? null) !==
@@ -3251,6 +3561,23 @@ export class ScheduledTransactionsService {
               currentSplits,
               postDate,
             );
+          // The payload rows were mapped 1:1 (in order) from the pre-lock
+          // scheduled.splits, which the basis guard above just proved
+          // identical to the locked set -- so the source split id addresses
+          // each payload row.
+          const applyLineAmounts = (amountsBySplitId: Map<string, number>) => {
+            transactionPayload.splits = transactionPayload.splits.map(
+              (payloadSplit: any, index: number) => {
+                const sourceId = scheduled.splits?.[index]?.id;
+                const resolvedAmount = sourceId
+                  ? amountsBySplitId.get(sourceId)
+                  : undefined;
+                return resolvedAmount !== undefined
+                  ? { ...payloadSplit, amount: resolvedAmount }
+                  : payloadSplit;
+              },
+            );
+          };
           if (loanAllocation.kind === "retired") {
             // Nothing is owed through this occurrence's boundary, and every
             // line of this bill is one the payoff settles. Consume the
@@ -3259,26 +3586,27 @@ export class ScheduledTransactionsService {
             // push the loan into credit.
             skipFinancialWrite = true;
           } else if (loanAllocation.kind === "allocation") {
-            // The payload rows were mapped 1:1 (in order) from the pre-lock
-            // scheduled.splits, which the basis guard above just proved
-            // identical to the locked set -- so the source split id addresses
-            // each payload row.
-            transactionPayload.splits = transactionPayload.splits.map(
-              (payloadSplit: any, index: number) => {
-                const sourceId = scheduled.splits?.[index]?.id;
-                const resolvedAmount = sourceId
-                  ? loanAllocation.amountsBySplitId.get(sourceId)
-                  : undefined;
-                return resolvedAmount !== undefined
-                  ? { ...payloadSplit, amount: resolvedAmount }
-                  : payloadSplit;
-              },
-            );
+            applyLineAmounts(loanAllocation.amountsBySplitId);
             // A re-resolved child moves the parent with it, or the split
             // validator's exact-4dp equality refuses the whole post.
             transactionPayload.amount = sumMoney(
               transactionPayload.splits.map((s: any) => Number(s.amount)),
             );
+          } else if (
+            !transactionPayload.splits.some((s: any) => s.investment)
+          ) {
+            // A template the loan pricing does not re-divide (no loan, or one
+            // carrying an escrow line) is booked in the currency's smallest
+            // unit all the same, exactly as the Post dialog pre-fills it, so
+            // the occurrence does not post 1,170.6458 from one button and
+            // 1,170.65 from the other (issue #1581). An investment line's
+            // amount is its trade's cash impact and is not rounded here.
+            const booked = await this.loanService.bookTemplateAtMinorUnit(
+              current,
+              currentSplits,
+            );
+            applyLineAmounts(booked.amountsBySplitId);
+            transactionPayload.amount = booked.parentAmount;
           }
         }
       }
@@ -3318,25 +3646,43 @@ export class ScheduledTransactionsService {
         // only surface that produces inline splits. The amount is an echo when
         // it still equals what the locked template holds; a figure the user
         // actually changed is their statement and posts as given.
-        const amountIsEcho =
-          !hasInlineAmount ||
-          roundMoney(Number(postDto?.amount)) ===
-            roundMoney(Number(current.amount));
-        // Every line must echo a stored line at its stored amount; one typed
-        // figure (or one line that names no source) makes the whole set the
-        // user's own statement, which posts as given.
-        const isUnchangedEcho =
-          amountIsEcho &&
+        const echoes = (
+          parentAmount: number,
+          lineAmounts: Map<string, number>,
+        ): boolean =>
+          (!hasInlineAmount ||
+            roundMoney(Number(postDto?.amount)) === roundMoney(parentAmount)) &&
           Array.isArray(rows) &&
           rows.length === lockedSplits.length &&
           rows.every((row, index) => {
             const sourceId = postDto?.splits?.[index]?.sourceSplitId;
             return (
               !!sourceId &&
-              storedById.has(sourceId) &&
-              storedById.get(sourceId) === roundMoney(Number(row.amount))
+              lineAmounts.has(sourceId) &&
+              lineAmounts.get(sourceId) === roundMoney(Number(row.amount))
             );
           });
+        // Every line must echo a stored line at its stored amount; one typed
+        // figure (or one line that names no source) makes the whole set the
+        // user's own statement, which posts as given. The dialog pre-fills a
+        // template priced at 4dp in the currency's smallest unit, the rounding
+        // difference on the principal line (issue #1581), so that booking of
+        // the stored template is an echo too -- compared exactly, never with a
+        // tolerance, so a cent the user typed is still theirs.
+        const exactEcho = echoes(Number(current.amount), storedById);
+        const bookedTemplate = exactEcho
+          ? null
+          : await this.loanService.bookTemplateAtMinorUnit(
+              current,
+              lockedSplits,
+            );
+        const isUnchangedEcho =
+          exactEcho ||
+          (bookedTemplate !== null &&
+            echoes(
+              bookedTemplate.parentAmount,
+              bookedTemplate.amountsBySplitId,
+            ));
         if (isUnchangedEcho) {
           await this.lockLoanLedgerForPricing(
             m,
@@ -3369,19 +3715,25 @@ export class ScheduledTransactionsService {
         }
       }
 
+      await options.beforeWrite?.(m);
+
       // Claim the occurrence. The unique key on
       // (scheduled_transaction_id, original_due_date) is what makes the claim
       // the serialization point rather than the lock alone: it survives a
-      // crash, and manual and automatic posting both go through it.
-      const claim: unknown = await m.query(
-        `INSERT INTO scheduled_transaction_postings
-           (scheduled_transaction_id, original_due_date, posted_date)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (scheduled_transaction_id, original_due_date) DO NOTHING
-         RETURNING id`,
-        [id, nextDueDateStr, postDate],
+      // crash, and manual and automatic posting both go through it, as does
+      // a rule's settlement of a bank row against the same occurrence
+      // (INV-LOAN-008).
+      const claimed = returnedRows<{ id: string }>(
+        await m.query(
+          `INSERT INTO scheduled_transaction_postings
+             (scheduled_transaction_id, original_due_date, posted_date)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (scheduled_transaction_id, original_due_date) DO NOTHING
+           RETURNING id`,
+          [id, nextDueDateStr, postDate],
+        ),
       );
-      if (affectedRowCount(claim) === 0) {
+      if (claimed.length === 0) {
         throw new ConflictException(
           tr(
             "errors.scheduled.occurrenceAlreadyPosted",
@@ -3389,21 +3741,26 @@ export class ScheduledTransactionsService {
           ),
         );
       }
+      const claimId = claimed[0].id;
 
-      if (current.isInvestment) {
+      if (options.recordOnly) {
+        // The payment is already in the ledger: claim and advance only.
+      } else if (current.isInvestment) {
         // Post from the locked row, not the pre-lock `scheduled` snapshot: a
         // concurrent edit that switched the action/funding/security between the
         // snapshot read and this lock would otherwise post the stale action to
         // the stale account (issue #1154 review). `current` carries the
         // authoritative scalar investment fields; postInvestment reads only
         // those, and the nested create resolves its own settlement account.
-        await this.postInvestment(
+        const investmentTransactionId = await this.postInvestment(
           userId,
           current,
           postDto,
           postDate,
           lockedOverride,
+          options.investmentFigures,
         );
+        await options.afterInvestmentWrite?.(m, investmentTransactionId);
       } else if (preparedTransfer) {
         // Already validated and authorized above; only the writes join this
         // transaction, so the legs and their balance updates commit with the
@@ -3412,8 +3769,25 @@ export class ScheduledTransactionsService {
           preparedTransfer,
           m,
         );
+        await this.recordClaimTransaction(
+          m,
+          claimId,
+          writtenTransfer.savedFromId,
+        );
       } else if (!skipFinancialWrite) {
-        await this.transactionsService.create(userId, transactionPayload);
+        const created = await this.transactionsService.create(
+          userId,
+          transactionPayload,
+          {
+            // Server-set: the row pays the occurrence claimed above, so the
+            // owner's settlement rules refuse it (row_from_scheduled_posting).
+            fromScheduledPosting: true,
+            ...(options.actorIsNotOwner === true
+              ? { actorIsNotOwner: true }
+              : {}),
+          },
+        );
+        await this.recordClaimTransaction(m, claimId, created.id);
       } else {
         this.logger.log(
           `Scheduled loan payment ${id} posted no money: the loan owes nothing ` +
@@ -3438,45 +3812,20 @@ export class ScheduledTransactionsService {
       // Recurring frequency: advance nextDueDate, prune stale overrides,
       // decrement occurrencesRemaining, deactivate if past endDate.
       //
-      // Read from `current`, the locked row, not from the `scheduled` snapshot
+      // From `current`, the locked row, not from the `scheduled` snapshot
       // taken before the transaction: a concurrent edit to occurrencesRemaining
-      // or endDate would otherwise be reverted by this advancement.
-      const newNextDueDateStr = calcNextDueDate(
-        nextDueDateStr,
-        current.frequency,
+      // or endDate would otherwise be reverted by this advancement. The
+      // consumed slots are the occurrence claimed above and every claim at or
+      // after it: a settlement rule may hold a later slot (INV-LOAN-008), and a
+      // cursor left on it would refuse every later post (A26-S08-03).
+      await advanceScheduleCursor(
+        m,
+        current,
+        new Set([
+          nextDueDateStr,
+          ...(await claimedSlotsFrom(m, id, nextDueDateStr)),
+        ]),
       );
-
-      await m
-        .createQueryBuilder()
-        .delete()
-        .from(ScheduledTransactionOverride)
-        .where("scheduledTransactionId = :id", { id })
-        .andWhere("originalDate < :newNextDueDate", {
-          newNextDueDate: newNextDueDateStr,
-        })
-        .execute();
-
-      const updateFields: Record<string, any> = {
-        lastPostedDate: todayYMD(),
-        nextDueDate: newNextDueDateStr,
-      };
-
-      if (
-        current.occurrencesRemaining !== null &&
-        current.occurrencesRemaining > 0
-      ) {
-        const newRemaining = current.occurrencesRemaining - 1;
-        updateFields.occurrencesRemaining = newRemaining;
-        if (newRemaining === 0) {
-          updateFields.isActive = false;
-        }
-      }
-
-      if (current.endDate && newNextDueDateStr > ensureYMD(current.endDate)) {
-        updateFields.isActive = false;
-      }
-
-      await m.update(ScheduledTransaction, id, updateFields);
       return false;
     });
 
@@ -3485,10 +3834,14 @@ export class ScheduledTransactionsService {
     // inside it -- the history recorder swallows its own failures, so nesting it
     // would either abort the posting with `25P02` or lose the undo entry.
     if (preparedTransfer && writtenTransfer) {
-      await this.transactionsService.completeTransfer(
-        preparedTransfer,
-        writtenTransfer.savedFromId,
-        writtenTransfer.savedToId,
+      const prepared = preparedTransfer;
+      const written = writtenTransfer;
+      await this.afterPostCommit(id, "completeTransfer", () =>
+        this.transactionsService.completeTransfer(
+          prepared,
+          written.savedFromId,
+          written.savedToId,
+        ),
       );
     }
 
@@ -3501,10 +3854,60 @@ export class ScheduledTransactionsService {
       // recalculation locks the parent and derives the loan from the current
       // split set itself, so a concurrent retarget (Loan A -> Loan B) cannot
       // recalculate the wrong loan (issue #1154 re-review).
-      await this.loanService.recalculateLoanPaymentSplits(id);
+      await this.afterPostCommit(id, "recalculateLoanPaymentSplits", () =>
+        this.loanService.recalculateLoanPaymentSplits(id),
+      );
     }
 
     return this.findOne(userId, id);
+  }
+
+  /**
+   * Run a step that belongs after the posting transaction committed.
+   *
+   * A26-S08-02 / A26-M14: the money, the occurrence claim and the cursor advance
+   * are already committed here, so a failure of the step must not be reported
+   * as "not posted" (the cron's SCHEDULED_POST_FAILED alert, an HTTP error the
+   * caller retries). It is logged and not rethrown. The loan template is
+   * re-priced by the next posting's own re-resolution, and the transfer's
+   * history and tags are best-effort.
+   */
+  private async afterPostCommit(
+    id: string,
+    step: string,
+    fn: () => Promise<unknown>,
+  ): Promise<void> {
+    try {
+      await fn();
+    } catch (error) {
+      this.logger.error(
+        `Scheduled transaction ${id}: ${step} failed after the posting ` +
+          "committed; the occurrence is posted and the step is left to the " +
+          `next run: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+  }
+
+  /**
+   * Name the transaction a claim's occurrence was paid by
+   * (`docs/specs/loan-installment-settlement.md` section 5.2), in the same
+   * transaction as the claim, once the create has returned the id. From here
+   * on deleting that transaction releases the claim (`ON DELETE CASCADE`),
+   * for every schedule, and a settlement rule reads the row as a posted bill
+   * (`row_from_scheduled_posting`). An investment post records nothing: it
+   * writes through the investment service, and nothing reads which of its
+   * rows paid the occurrence.
+   */
+  private async recordClaimTransaction(
+    m: EntityManager,
+    claimId: string,
+    transactionId: string,
+  ): Promise<void> {
+    await m.query(
+      `UPDATE scheduled_transaction_postings SET transaction_id = $1 WHERE id = $2`,
+      [transactionId, claimId],
+    );
   }
 
   /**
@@ -3551,7 +3954,8 @@ export class ScheduledTransactionsService {
     postDto: PostScheduledTransactionDto | undefined,
     postDate: string,
     storedOverride: ScheduledTransactionOverride | null,
-  ): Promise<void> {
+    figures?: { totalAmount: number; exchangeRate: number },
+  ): Promise<string> {
     const action = scheduled.investmentAction as InvestmentAction | null;
     if (!action) {
       throw new BadRequestException(
@@ -3677,6 +4081,7 @@ export class ScheduledTransactionsService {
       dto.quantity = quantity;
       dto.price = price;
       if (commission !== undefined) dto.commission = commission;
+      if (figures) dto.totalAmount = figures.totalAmount;
     } else if (QUANTITY_ONLY_ACTIONS.has(action)) {
       dto.quantity = quantity;
     } else if (AMOUNT_ONLY_ACTIONS.has(action)) {
@@ -3705,9 +4110,17 @@ export class ScheduledTransactionsService {
     // settlement pair -- the staleness check above already reset `exchangeRate`
     // to undefined otherwise, so a rate for a pair that no longer applies falls
     // through to fresh resolution in the posting resolver (issue #1167).
-    if (exchangeRate !== undefined) dto.exchangeRate = exchangeRate;
+    if (figures) {
+      dto.exchangeRate = figures.exchangeRate;
+    } else if (exchangeRate !== undefined) {
+      dto.exchangeRate = exchangeRate;
+    }
 
-    await this.investmentTransactionsService.create(userId, dto);
+    const created = await this.investmentTransactionsService.create(
+      userId,
+      dto,
+    );
+    return created.id;
   }
 
   private calculateNextDueDate(
@@ -3920,6 +4333,19 @@ export class ScheduledTransactionsService {
     loanAccountId: string,
   ): Promise<{ nextDueDate: string | null; debt: number | null }> {
     return this.loanService.getLoanProjectionAnchor(userId, loanAccountId);
+  }
+
+  /** See `ScheduledTransactionLoanService.projectLoanOccurrences`. */
+  async projectLoanOccurrences(
+    userId: string,
+    scheduledTransactionId: string,
+    count: number,
+  ): Promise<LoanOccurrencesProjection> {
+    return this.loanService.projectLoanOccurrences(
+      userId,
+      scheduledTransactionId,
+      count,
+    );
   }
 }
 

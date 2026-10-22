@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { PendingAction, PendingActionPreviewRow } from '@/types/ai';
 import { formatPhoneForDisplay } from '@/lib/phone-number';
+import { RuleEffectsLines } from '@/components/ai/RuleEffectsLines';
 
 interface BulkConfirmationCardProps {
   action: PendingAction;
@@ -147,7 +148,13 @@ export function BulkConfirmationCard({
           )
         : '';
       const symbol = row.symbol ?? '';
-      const primary = [date, [actionLabel, symbol].filter(Boolean).join(' ')]
+      const series = row.bondSeriesCode
+        ? `${t('confirmAction.bondSeries')} ${row.bondSeriesCode}`
+        : '';
+      const primary = [
+        date,
+        [actionLabel, symbol, series].filter(Boolean).join(' '),
+      ]
         .filter(Boolean)
         .join(' · ');
       const parts: string[] = [];
@@ -162,6 +169,17 @@ export function BulkConfirmationCard({
         parts.push(
           formatCurrency(row.totalAmount, row.securityCurrency ?? undefined),
         );
+      }
+      if (row.accruedInterest) {
+        parts.push(
+          `${t('confirmAction.accruedInterest')} ${formatCurrency(
+            row.accruedInterest,
+            row.securityCurrency ?? undefined,
+          )}`,
+        );
+      }
+      if (row.bondRedemptionSplit?.outcome === 'differs') {
+        parts.push(t('confirmAction.redemptionSplitDiffers'));
       }
       return { primary, secondary: parts.join(' · ') };
     }
@@ -294,6 +312,10 @@ export function BulkConfirmationCard({
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   {secondary}
                 </div>
+              )}
+              {!isError && (
+                // A transfer or split the rules add moves another account's balance: never hidden.
+                <RuleEffectsLines effects={row.ruleEffects} currencyCode={row.currencyCode} />
               )}
               {isError && row.error && (
                 <div className="text-xs text-amber-700 dark:text-amber-400">

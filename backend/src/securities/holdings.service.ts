@@ -23,7 +23,10 @@ import {
   acquisitionCost,
   isQuantityOnlyAction,
   INVESTMENT_REPLAY_ORDER,
+  HOLDING_QUANTITY_EPSILON,
+  orderTransferOutBeforeIn,
   projectedHoldingRow,
+  basisAfterReturnOfCapital,
 } from "./investment-replay.util";
 import { Holding } from "./entities/holding.entity";
 import {
@@ -65,6 +68,28 @@ export interface HoldingDiscrepancy {
   storedAverageCost: number | null;
   replayedQuantity: number | null;
   replayedAverageCost: number | null;
+}
+
+/**
+ * What an acquiring row adds to a position's basis in the fold: the basis its
+ * paired TRANSFER_OUT released when `carried` has one (A26-M22), otherwise
+ * the row's own `acquisitionCost` -- `null` when the row cannot say. Prices
+ * here are in the security's currency, as is `averageCost`, so the row's rate
+ * is not applied.
+ */
+function acquiredBasis(
+  tx: InvestmentTransaction,
+  carried: number | undefined,
+): number | null {
+  return (
+    carried ??
+    acquisitionCost({
+      quantity: tx.quantity,
+      price: tx.price,
+      commission: tx.commission,
+      totalAmount: tx.totalAmount,
+    })
+  );
 }
 
 @Injectable()
@@ -193,13 +218,28 @@ export class HoldingsService {
       const txQty = Number(tx.quantity) || 0;
       switch (baseInvestmentAction(tx.action)) {
         case InvestmentAction.BUY:
-        case InvestmentAction.REINVEST:
-        case InvestmentAction.TRANSFER_IN: {
+        case InvestmentAction.REINVEST: {
           // Same basis rule as the full rebuild: commission included, and an
           // unpriced acquisition adds no cost rather than being treated as free.
           // This replay feeds the SPLIT form's "holdings as they were" preview,
           // so a different average cost here than computeHoldingsMap produces
           // shows the user one number and stores another.
+          const cost = acquisitionCost({
+            quantity: tx.quantity,
+            price: tx.price,
+            commission: tx.commission,
+            totalAmount: tx.totalAmount,
+          });
+          if (cost !== null) totalCost += cost;
+          qty += txQty;
+          break;
+        }
+        case InvestmentAction.TRANSFER_IN: {
+          // A transfer is not a purchase (A26-M22). This replay reads one
+          // scope, so the paired OUT leg is not in its rows; the leg's own
+          // price is the carried per-share basis `transferSecurity` and the
+          // transfer edit write from the source's ledger, which is what the
+          // full rebuild falls back to when it cannot see the OUT leg either.
           const cost = acquisitionCost({
             quantity: tx.quantity,
             price: tx.price,
@@ -220,6 +260,10 @@ export class HoldingsService {
           qty -= txQty;
           break;
         }
+        case InvestmentAction.RETURN_OF_CAPITAL:
+          // Same basis rule as the full rebuild; no shares move.
+          totalCost = basisAfterReturnOfCapital(totalCost, tx);
+          break;
         default:
           // ADD_SHARES / REMOVE_SHARES move shares without a cost; SPLIT scales
           // the position by its ratio; cash actions leave it alone. All three
@@ -505,20 +549,74 @@ export class HoldingsService {
   }
 
   /**
+   * The per-share basis the TRANSFER_OUT leg `outLegId` relieves from its
+   * source position, read from the ledger as the caller's transaction sees it
+   * (A26-M22). `transferSecurity` and the transfer edit call this under
+   * `lockHoldingScope`, after the OUT leg is written, and store the answer as
+   * the price of both legs: the carried basis is the source's at the transfer's
+   * own position in the replay, not today's stored average and not a figure
+   * the client sent.
+   *
+   * It is `computeHoldingsMap` over every row of the security -- the fold that
+   * writes `holdings`, not a second one -- so a source that itself received
+   * the shares by an earlier transfer is replayed with that transfer's carry.
+   * `null` when the basis is not knowable: the leg is not in the ledger (VOID
+   * or absent), or the source held fewer units than it moved, in which case
+   * `validateNoNegativeHoldingsHistory` is the refusal and the caller keeps its
+   * fallback until then.
+   */
+  async releasedBasisPerShare(
+    userId: string,
+    securityId: string,
+    outLegId: string,
+    manager: EntityManager,
+  ): Promise<number | null> {
+    const ledger = await manager.find(InvestmentTransaction, {
+      where: {
+        userId,
+        securityId,
+        // Rows as effects: a VOID transaction moved no shares.
+        status: NON_VOID_INVESTMENT_STATUS,
+      },
+      order: INVESTMENT_REPLAY_ORDER,
+    });
+    const releasedByTransferOut = new Map<string, number>();
+    this.computeHoldingsMap(ledger, releasedByTransferOut);
+
+    const released = releasedByTransferOut.get(outLegId);
+    const quantity = Number(ledger.find((tx) => tx.id === outLegId)?.quantity);
+    if (released === undefined || !(quantity > 0)) return null;
+    return released / quantity;
+  }
+
+  /**
    * Fold a chronologically-ordered list of investment transactions into a
    * holdings map (accountId -> securityId -> { quantity, totalCost }). Shared by
    * every rebuild path so the share-count and cost-basis math stays identical.
    */
   private computeHoldingsMap(
     transactions: InvestmentTransaction[],
+    releasedByTransferOut: Map<string, number> = new Map(),
   ): Map<string, Map<string, { quantity: number; totalCost: number }>> {
     const holdingsMap = new Map<
       string,
       Map<string, { quantity: number; totalCost: number }>
     >();
 
-    for (const tx of transactions) {
-      if (!SHARE_MOVING_ACTIONS.includes(tx.action) || !tx.securityId) {
+    // A transferred-in lot takes the basis its paired TRANSFER_OUT relieved
+    // (A26-M22), so the OUT leg has to be folded before its IN leg when the two
+    // share an instant. `releasedByTransferOut` is keyed by the OUT leg's id,
+    // which the IN leg names in `linkedTransactionId`; it holds only OUT legs
+    // that relieved ALL their units, and a caller may pass its own map to read
+    // what each leg released.
+    for (const tx of orderTransferOutBeforeIn(transactions)) {
+      // A return of capital moves no shares but does move the basis, so it is
+      // the one cash action this fold must read.
+      const returnsCapital = tx.action === InvestmentAction.RETURN_OF_CAPITAL;
+      if (
+        (!SHARE_MOVING_ACTIONS.includes(tx.action) && !returnsCapital) ||
+        !tx.securityId
+      ) {
         continue;
       }
 
@@ -543,6 +641,19 @@ export class HoldingsService {
       }
       const holding = accountHoldings.get(tx.securityId)!;
 
+      // The position before this row, for the basis a TRANSFER_OUT relieves.
+      const quantityBefore = holding.quantity;
+      const costBefore = holding.totalCost;
+      // A TRANSFER_IN is not a purchase: it takes what its paired OUT leg
+      // relieved, when that leg is in this fold and relieved every unit.
+      // Otherwise (the OUT leg is outside the rows or VOID, or the source held
+      // fewer units than it moved) it falls back to its own row's price.
+      const carried =
+        baseInvestmentAction(tx.action) === InvestmentAction.TRANSFER_IN &&
+        tx.linkedTransactionId
+          ? releasedByTransferOut.get(tx.linkedTransactionId)
+          : undefined;
+
       // Quantity always moves through the shared reducer; only the basis
       // treatment varies by action. Note that a disposal subtracts in full
       // rather than drawing down to zero: an over-sell is history the import
@@ -550,7 +661,10 @@ export class HoldingsService {
       // subtracted) and `recomputeAsOf` both already carry as negative, and
       // clamping it here made the same position reconcile in one replay and
       // not another.
-      if (tx.action === InvestmentAction.SPLIT) {
+      if (returnsCapital) {
+        // Pays back cost, never below zero, in the security's currency.
+        holding.totalCost = basisAfterReturnOfCapital(holding.totalCost, tx);
+      } else if (tx.action === InvestmentAction.SPLIT) {
         // Total cost basis is preserved across a split; the per-share cost
         // falls out of totalCost / quantity once the ratio is applied.
       } else if (isQuantityOnlyAction(tx.action)) {
@@ -561,12 +675,7 @@ export class HoldingsService {
         // 101.00 per share, not 100.00: leaving it out reported the commission
         // as gain on the disposal (P5-006). Prices here are in the security's
         // currency, as is `averageCost`, so the row's rate is not applied.
-        const cost = acquisitionCost({
-          quantity: tx.quantity,
-          price: tx.price,
-          commission: tx.commission,
-          totalAmount: tx.totalAmount,
-        });
+        const cost = acquiredBasis(tx, carried);
         if (cost !== null) holding.totalCost += cost;
       } else if (holding.quantity > 0) {
         // Relieve basis proportionally, for at most the shares actually held.
@@ -581,8 +690,23 @@ export class HoldingsService {
         quantity,
       );
 
-      // Snap near-zero to exactly zero to prevent ghost holdings
-      if (Math.abs(holding.quantity) < 0.0001) {
+      // What a TRANSFER_OUT relieved, kept for its paired IN leg -- only when
+      // the source held every unit the leg moved (A26-M22).
+      if (
+        baseInvestmentAction(tx.action) === InvestmentAction.TRANSFER_OUT &&
+        quantityBefore > 0 &&
+        quantityBefore >= quantity - HOLDING_QUANTITY_EPSILON
+      ) {
+        releasedByTransferOut.set(tx.id, costBefore - holding.totalCost);
+      }
+
+      // Snap a rounding residue to exactly zero, at the stored scale (8 dp).
+      // It used to be 0.0001 at every step, so purchases under 0.0001 shares
+      // (a daily 0.00009 BTC) each started from a snapped zero and never
+      // formed a holding while their cash left the account (A26-M23). A real
+      // fractional position is not a ghost; `projectedHoldingRow` decides at
+      // the end with the same epsilon.
+      if (Math.abs(holding.quantity) <= HOLDING_QUANTITY_EPSILON) {
         holding.quantity = 0;
         holding.totalCost = 0;
       }

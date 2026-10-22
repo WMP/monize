@@ -46,8 +46,8 @@ export function PortfolioAlertControl() {
 
   // One loader for both the mount effect and the retry button, so the two
   // cannot drift; `isCancelled` drops a response that arrives after unmount.
+  // It writes state only in its callbacks; the retry clears the failure itself.
   const load = useCallback((isCancelled: () => boolean = () => false) => {
-    setLoadFailed(false);
     notificationPreferencesApi
       .getPortfolioAlert()
       .then(({ movePercent }) => {
@@ -122,7 +122,15 @@ export function PortfolioAlertControl() {
     return (
       <div className="text-sm text-gray-600 dark:text-gray-300">
         <p>{t('loadError')}</p>
-        <Button variant="secondary" size="sm" onClick={() => load()} className="mt-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            setLoadFailed(false);
+            load();
+          }}
+          className="mt-2"
+        >
           {t('retry')}
         </Button>
       </div>

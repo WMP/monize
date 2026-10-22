@@ -62,13 +62,17 @@ describe('nextTransactionSort', () => {
 });
 
 describe('resolveRegisterSort', () => {
+  const nothingHidden: ReadonlySet<string> = new Set();
+
   it('drops an account sort where there is no Account column to click', () => {
     // The column is not rendered on a single account's page, so a stored
     // account sort would order the register by a header nobody can reach.
     const stored: TransactionSort = { field: 'account', direction: 'asc' };
-    expect(resolveRegisterSort(stored, true)).toEqual(DEFAULT_TRANSACTION_SORT);
+    expect(resolveRegisterSort(stored, true, nothingHidden)).toEqual(
+      DEFAULT_TRANSACTION_SORT,
+    );
     // Storage is untouched, so widening the filter brings it back.
-    expect(resolveRegisterSort(stored, false)).toBe(stored);
+    expect(resolveRegisterSort(stored, false, nothingHidden)).toBe(stored);
   });
 
   it('leaves every other field alone on either kind of page', () => {
@@ -76,9 +80,33 @@ describe('resolveRegisterSort', () => {
       (f) => f !== 'account',
     )) {
       const sort: TransactionSort = { field, direction: 'asc' };
-      expect(resolveRegisterSort(sort, true)).toBe(sort);
-      expect(resolveRegisterSort(sort, false)).toBe(sort);
+      expect(resolveRegisterSort(sort, true, nothingHidden)).toBe(sort);
+      expect(resolveRegisterSort(sort, false, nothingHidden)).toBe(sort);
     }
+  });
+
+  it('drops a sort on a column the reader has hidden, storage untouched', () => {
+    // A hidden column has no header at any width and no chip on a phone, so
+    // a register ordered by it would also withhold the running balance with
+    // nothing on screen to sort by date again. The same shape as the Account
+    // rule: the fallback is for this render only, and showing the column
+    // again restores the remembered sort.
+    for (const field of ['description', 'refNumber', 'status'] as const) {
+      const stored: TransactionSort = { field, direction: 'asc' };
+      const hidden = new Set<string>([field]);
+      expect(resolveRegisterSort(stored, false, hidden)).toEqual(
+        DEFAULT_TRANSACTION_SORT,
+      );
+      expect(resolveRegisterSort(stored, true, hidden)).toEqual(
+        DEFAULT_TRANSACTION_SORT,
+      );
+      expect(resolveRegisterSort(stored, false, nothingHidden)).toBe(stored);
+    }
+    // A hidden column the sort is not on changes nothing.
+    const byPayee: TransactionSort = { field: 'payee', direction: 'asc' };
+    expect(
+      resolveRegisterSort(byPayee, false, new Set(['status', 'tags'])),
+    ).toBe(byPayee);
   });
 
   it('refuses a remembered value the server would refuse', () => {
@@ -93,10 +121,10 @@ describe('resolveRegisterSort', () => {
       null,
     ];
     for (const stored of cases) {
-      expect(resolveRegisterSort(stored as never, false)).toEqual(
+      expect(resolveRegisterSort(stored as never, false, nothingHidden)).toEqual(
         DEFAULT_TRANSACTION_SORT,
       );
-      expect(resolveRegisterSort(stored as never, true)).toEqual(
+      expect(resolveRegisterSort(stored as never, true, nothingHidden)).toEqual(
         DEFAULT_TRANSACTION_SORT,
       );
     }

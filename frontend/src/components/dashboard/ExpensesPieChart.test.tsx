@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, render, screen, fireEvent, waitFor } from '@/test/render';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { act, render, screen, fireEvent, waitFor, within } from '@/test/render';
 import { ExpensesPieChart } from './ExpensesPieChart';
 import type { SpendingByCategoryResponse } from '@/types/built-in-reports';
 
@@ -22,7 +22,12 @@ vi.mock('@/lib/built-in-reports', () => ({
 
 const { widgetConfig, mockUpdateConfig } = vi.hoisted(() => ({
   widgetConfig: {
-    current: { range: '1m', accountIds: [] as string[], topLevelOnly: false },
+    current: {
+      range: '1m',
+      accountIds: [] as string[],
+      topLevelOnly: false,
+      view: 'legend' as 'legend' | 'callouts',
+    },
   },
   mockUpdateConfig: vi.fn(),
 }));
@@ -39,7 +44,7 @@ vi.mock('recharts', () => ({
   Pie: ({ data, onClick }: any) => (
     <div data-testid="pie" style={{ display: 'none' }}>
       {data?.map((d: any, i: number) => (
-        <button key={i} data-testid={`pie-slice-${d.name}`} onClick={() => onClick?.(d)} />
+        <button key={i} data-testid={`pie-slice-${d.name}`} onClick={() => onClick?.(d, i)} />
       ))}
     </div>
   ),
@@ -102,7 +107,7 @@ describe('ExpensesPieChart', () => {
     mockPush.mockClear();
     mockGetSpendingByCategory.mockReset();
     mockUpdateConfig.mockClear();
-    widgetConfig.current = { range: '1m', accountIds: [], topLevelOnly: false };
+    widgetConfig.current = { range: '1m', accountIds: [], topLevelOnly: false, view: 'legend' };
   });
 
   it('renders loading state with title and pulse animation', async () => {
@@ -164,6 +169,7 @@ describe('ExpensesPieChart', () => {
       range: '1m',
       accountIds: ['acct-1', 'acct-2'],
       topLevelOnly: true,
+      view: 'legend',
     };
     await renderChart(report([]));
 
@@ -264,7 +270,7 @@ describe('ExpensesPieChart', () => {
     fireEvent.click(screen.getByTestId('pie-slice-Other'));
     expect(screen.getByText('Cat 13')).toBeInTheDocument();
 
-    widgetConfig.current = { range: '3m', accountIds: [], topLevelOnly: false };
+    widgetConfig.current = { range: '3m', accountIds: [], topLevelOnly: false, view: 'legend' };
     mockGetSpendingByCategory.mockResolvedValue(overflowReport(13));
     await act(async () => {
       rerender(<ExpensesPieChart accounts={[]} isLoading={false} />);
@@ -291,5 +297,98 @@ describe('ExpensesPieChart', () => {
     await renderChart(report([category(null, 'Uncategorized', 40)]));
     fireEvent.click(screen.getByTestId('pie-slice-Uncategorized'));
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('leaves Uncategorized inert even while Other has categories in it', async () => {
+    await renderChart(
+      report([
+        category(null, 'Uncategorized', 500),
+        ...Array.from({ length: 12 }, (_, i) => category(`c${i}`, `Cat ${i}`, 200 - i)),
+      ]),
+    );
+    expect(screen.getByRole('button', { name: 'Uncategorized' })).toBeDisabled();
+    fireEvent.click(screen.getByTestId('pie-slice-Uncategorized'));
+    expect(screen.queryByText(/categories in Other/)).not.toBeInTheDocument();
+  });
+
+  // --- views -------------------------------------------------------------
+
+  describe('callout view', () => {
+    /** A ResizeObserver that reports the given content box as soon as it observes. */
+    function observeAs(width: number, height: number) {
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          constructor(private readonly callback: ResizeObserverCallback) {}
+          observe() {
+            this.callback(
+              [{ contentRect: { width, height } } as ResizeObserverEntry],
+              this as unknown as ResizeObserver,
+            );
+          }
+          unobserve() {}
+          disconnect() {}
+        },
+      );
+    }
+
+    beforeEach(() => {
+      widgetConfig.current = { range: '1m', accountIds: [], topLevelOnly: false, view: 'callouts' };
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('boxes the top ten categories and Other inside the chart area', async () => {
+      observeAs(560, 300);
+      await renderChart(overflowReport(14));
+
+      const callouts = screen.getByRole('list', { name: 'Expenses by Category' });
+      const boxes = within(callouts).getAllByRole('listitem');
+      expect(boxes).toHaveLength(11);
+      expect(within(callouts).getByText('Cat 9')).toBeInTheDocument();
+      expect(within(callouts).queryByText('Cat 10')).not.toBeInTheDocument();
+      expect(within(callouts).getByText('Other')).toBeInTheDocument();
+      for (const box of boxes) {
+        expect(parseFloat(box.style.left)).toBeGreaterThanOrEqual(0);
+        expect(parseFloat(box.style.top)).toBeGreaterThanOrEqual(0);
+        expect(parseFloat(box.style.left) + parseFloat(box.style.width)).toBeLessThanOrEqual(560);
+        expect(parseFloat(box.style.top) + parseFloat(box.style.height)).toBeLessThanOrEqual(300);
+      }
+      // The total stays in the hole, compact so it fits the callout view's
+      // smaller one.
+      expect(screen.getByText('$1.1K')).toBeInTheDocument();
+      expect(screen.queryByText('$1050.00')).not.toBeInTheDocument();
+    });
+
+    it('opens a category from its box, and Other into the four it merged', async () => {
+      observeAs(560, 300);
+      await renderChart(overflowReport(14));
+      const callouts = screen.getByRole('list', { name: 'Expenses by Category' });
+
+      fireEvent.click(within(callouts).getByRole('button', { name: /Cat 3/ }));
+      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('categoryIds=c3'));
+
+      fireEvent.click(within(callouts).getByRole('button', { name: /Other/ }));
+      expect(screen.getByText('4 categories in Other')).toBeInTheDocument();
+    });
+
+    it('falls back to the legend where the boxes would not fit', async () => {
+      observeAs(300, 300);
+      await renderChart(overflowReport(14));
+      expect(screen.queryByRole('list', { name: 'Expenses by Category' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cat 0' })).toBeInTheDocument();
+    });
+  });
+
+  it('stores the view chosen in the settings', async () => {
+    await renderChart(report([category('cat1', 'Food', 50)]));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Configure Expenses by Category' }));
+    });
+    expect(screen.getByText("Labels need a wider screen. Where they don't fit, the legend is shown.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Labels' }));
+    expect(mockUpdateConfig).toHaveBeenCalledWith({ view: 'callouts' });
   });
 });

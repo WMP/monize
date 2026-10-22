@@ -39,6 +39,7 @@ describe("MonthlyCategoryBreakdownService", () => {
     icon: null,
     color: "#FF5733",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-01"),
   };
@@ -54,6 +55,7 @@ describe("MonthlyCategoryBreakdownService", () => {
     icon: null,
     color: "#33FF57",
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-02"),
   };
@@ -69,6 +71,7 @@ describe("MonthlyCategoryBreakdownService", () => {
     icon: null,
     color: "#5733FF",
     isIncome: true,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-03"),
   };
@@ -417,5 +420,69 @@ describe("MonthlyCategoryBreakdownService", () => {
     const transferSql = scopedManager.query.mock.calls[1][0];
     expect(transferSql).toContain("t.is_transfer = true");
     expect(transferSql).toContain("t.category_id IS NULL");
+  });
+
+  // A missing exchange rate is unknown, never 1:1 (INV-FX-001).
+  describe("a currency that has no rate", () => {
+    beforeEach(() => {
+      exchangeRateService.getLatestRates.mockResolvedValue([]);
+    });
+
+    it("leaves the unconverted rows out of every figure and names the currency", async () => {
+      categoriesRepository.find.mockResolvedValue([mockIncomeCategory]);
+      scopedManager.query
+        .mockResolvedValueOnce([
+          {
+            month: "2025-01",
+            category_id: "cat-income",
+            currency_code: "USD",
+            deposits: "50.00",
+            withdrawals: "0.00",
+          },
+          {
+            month: "2025-02",
+            category_id: "cat-income",
+            currency_code: "JPY",
+            deposits: "100000",
+            withdrawals: "0.00",
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            month: "2025-03",
+            account_id: "acc-yen",
+            account_name: "Yen",
+            currency_code: "JPY",
+            outflow: "100000",
+            inflow: "0.00",
+          },
+        ]);
+
+      const result = await service.getMonthlyCategoryBreakdown(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      expect(result.months).toEqual(["2025-01"]);
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].depositTotal).toBe(50);
+      expect(result.transfers).toEqual([]);
+      expect(result.currency).toBe("USD");
+      expect(result.missingCurrencies).toEqual(["JPY"]);
+      expect(result.excludedCount).toBe(2);
+      expect(JSON.stringify(result)).not.toContain("100000");
+    });
+
+    it("reports no gaps when nothing is excluded", async () => {
+      const result = await service.getMonthlyCategoryBreakdown(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      expect(result.missingCurrencies).toEqual([]);
+      expect(result.excludedCount).toBe(0);
+    });
   });
 });

@@ -96,6 +96,32 @@ export class UserPreference {
   })
   dashboardWidgetConfig: Record<string, any>;
 
+  // Account-level default hidden column ids per table kind (transactions,
+  // investmentHoldings, investmentRegister), merged by kind on update. A
+  // browser that has saved its own choice for a kind keeps it. Empty object =
+  // no columns hidden by default. Typed as
+  // Record<string, any> (matching the other jsonb columns on
+  // relation-reachable entities, e.g. action-history) so TypeORM's DeepPartial
+  // stays satisfiable where UserPreference is reached through the User relation.
+  @Column({
+    name: "hidden_table_columns",
+    type: "jsonb",
+    default: {},
+  })
+  hiddenTableColumns: Record<string, any>;
+
+  // Account-level defaults for the browser-local view settings (density,
+  // hideRegisterYear, widgetsCollapsed, chartCollapsed) and accountOpenTarget;
+  // `src/users/view-defaults.ts` declares the keys and values. A browser that
+  // has saved its own choice keeps it. Empty object = no defaults. Typed as
+  // Record<string, any> for the DeepPartial reason given on hiddenTableColumns.
+  @Column({
+    name: "view_defaults",
+    type: "jsonb",
+    default: {},
+  })
+  viewDefaults: Record<string, any>;
+
   @Column({ name: "show_created_at", default: false })
   showCreatedAt: boolean;
 
@@ -173,12 +199,7 @@ export class UserPreference {
     default: "device",
   })
   defaultMapProvider:
-    | "device"
-    | "openstreetmap"
-    | "google"
-    | "apple"
-    | "bing"
-    | "waze";
+    "device" | "openstreetmap" | "google" | "apple" | "bing" | "waze";
 
   @Column({
     name: "recent_transactions_limit",

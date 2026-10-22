@@ -359,10 +359,11 @@ describe("BuiltInReportsController", () => {
       expect(mockService.getRecurringExpenses).toHaveBeenCalledWith(
         "user-1",
         5,
+        "6m",
       );
     });
 
-    it("defaults minOccurrences to 3 when not provided", async () => {
+    it("defaults minOccurrences to 3 and the range to 6m when not provided", async () => {
       mockService.getRecurringExpenses.mockResolvedValue({ expenses: [] });
 
       await controller.getRecurringExpenses(mockReq);
@@ -370,6 +371,46 @@ describe("BuiltInReportsController", () => {
       expect(mockService.getRecurringExpenses).toHaveBeenCalledWith(
         "user-1",
         3,
+        "6m",
+      );
+    });
+
+    it.each(["1y", "2y", "5y", "all"])(
+      "passes the %s range through",
+      async (range) => {
+        mockService.getRecurringExpenses.mockResolvedValue({ expenses: [] });
+
+        await controller.getRecurringExpenses(mockReq, "3", range);
+
+        expect(mockService.getRecurringExpenses).toHaveBeenCalledWith(
+          "user-1",
+          3,
+          range,
+        );
+      },
+    );
+
+    it("falls back to 6m for an unknown or repeated range", async () => {
+      mockService.getRecurringExpenses.mockResolvedValue({ expenses: [] });
+
+      await controller.getRecurringExpenses(mockReq, "3", "10y");
+      // A repeated query key arrives as an array.
+      await controller.getRecurringExpenses(mockReq, "3", [
+        "1y",
+        "2y",
+      ] as unknown as string);
+
+      expect(mockService.getRecurringExpenses).toHaveBeenNthCalledWith(
+        1,
+        "user-1",
+        3,
+        "6m",
+      );
+      expect(mockService.getRecurringExpenses).toHaveBeenNthCalledWith(
+        2,
+        "user-1",
+        3,
+        "6m",
       );
     });
   });

@@ -1,7 +1,11 @@
 import {
+  budgetExcludedAccountIds,
+  CategorySpending,
+  excludeBudgetAccounts,
   queryCategorySpending,
   resolveCategoryName,
   resolveCategorySpent,
+  resolveCategorySpentOrNull,
 } from "./budget-spending.util";
 import { BudgetCategory } from "./entities/budget-category.entity";
 
@@ -19,6 +23,42 @@ function makeBudgetCategory(
     ...overrides,
   } as unknown as BudgetCategory;
 }
+
+describe("budgetExcludedAccountIds", () => {
+  it("reads nothing excluded from a missing or empty config", () => {
+    expect(budgetExcludedAccountIds(null)).toEqual([]);
+    expect(budgetExcludedAccountIds({})).toEqual([]);
+  });
+
+  it("reads nothing excluded when the value is not an array", () => {
+    expect(budgetExcludedAccountIds({ excludedAccountIds: "x" })).toEqual([]);
+  });
+
+  it("keeps only the string entries of the array", () => {
+    expect(
+      budgetExcludedAccountIds({ excludedAccountIds: ["a", 3, "b"] }),
+    ).toEqual(["a", "b"]);
+  });
+});
+
+describe("excludeBudgetAccounts", () => {
+  it("adds no clause when no account is excluded", () => {
+    const qb: any = { andWhere: jest.fn().mockReturnThis() };
+
+    expect(excludeBudgetAccounts(qb, [])).toBe(qb);
+    expect(qb.andWhere).not.toHaveBeenCalled();
+  });
+
+  it("adds the NOT IN clause with the ids as its parameter", () => {
+    const qb: any = { andWhere: jest.fn().mockReturnThis() };
+
+    expect(excludeBudgetAccounts(qb, ["a"])).toBe(qb);
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      "t.account_id NOT IN (:...excludedAccountIds)",
+      { excludedAccountIds: ["a"] },
+    );
+  });
+});
 
 describe("resolveCategoryName", () => {
   it("returns the transfer account name for transfer categories", () => {
@@ -132,14 +172,26 @@ describe("queryCategorySpending", () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
       innerJoin: jest.fn().mockReturnThis(),
       getRawMany: jest.fn().mockResolvedValue(rows),
     };
     return qb;
   }
 
+  /** A manager whose budget is CAD and whose rate table is empty. */
+  function makeManager(rateRows: any[] = []) {
+    return {
+      query: jest
+        .fn()
+        .mockImplementation(async (sql: string) =>
+          sql.includes("FROM budgets") ? [{ currency_code: "CAD" }] : rateRows,
+        ),
+    };
+  }
+
   it("returns empty maps when there are no budget categories", async () => {
-    const txRepo = { createQueryBuilder: jest.fn() };
+    const txRepo = { createQueryBuilder: jest.fn(), manager: makeManager() };
     const splitRepo = { createQueryBuilder: jest.fn() };
 
     const result = await queryCategorySpending(
@@ -157,20 +209,69 @@ describe("queryCategorySpending", () => {
     expect(splitRepo.createQueryBuilder).not.toHaveBeenCalled();
   });
 
-  it("aggregates transaction and split spending for category budgets", async () => {
+  it("passes the budget's excluded accounts into the direct and split queries", async () => {
+    const directQb = makeQbReturning([]);
+    const splitQb = makeQbReturning([]);
+    const manager = {
+      query: jest.fn().mockImplementation(async (sql: string) =>
+        sql.includes("FROM budgets")
+          ? [
+              {
+                currency_code: "CAD",
+                config: { excludedAccountIds: ["acc-x"] },
+              },
+            ]
+          : [],
+      ),
+    };
     const txRepo: any = {
-      createQueryBuilder: jest
-        .fn()
-        .mockImplementation(() =>
-          makeQbReturning([{ categoryId: "cat-1", total: "-50" }]),
-        ),
+      manager,
+      createQueryBuilder: jest.fn().mockReturnValue(directQb),
     };
     const splitRepo: any = {
-      createQueryBuilder: jest
-        .fn()
-        .mockImplementation(() =>
-          makeQbReturning([{ categoryId: "cat-1", total: "-25" }]),
-        ),
+      createQueryBuilder: jest.fn().mockReturnValue(splitQb),
+    };
+
+    await queryCategorySpending(
+      txRepo,
+      splitRepo,
+      "user-1",
+      [makeBudgetCategory({ categoryId: "cat-1" })],
+      "2026-01-01",
+      "2026-01-31",
+    );
+
+    const clause = "t.account_id NOT IN (:...excludedAccountIds)";
+    const params = { excludedAccountIds: ["acc-x"] };
+    expect(directQb.andWhere).toHaveBeenCalledWith(clause, params);
+    expect(splitQb.andWhere).toHaveBeenCalledWith(clause, params);
+  });
+
+  it("aggregates transaction and split spending for category budgets", async () => {
+    const txRepo: any = {
+      manager: makeManager(),
+      createQueryBuilder: jest.fn().mockImplementation(() =>
+        makeQbReturning([
+          {
+            key: "cat-1",
+            currencyCode: "CAD",
+            txDate: "2026-01-10",
+            total: "-50",
+          },
+        ]),
+      ),
+    };
+    const splitRepo: any = {
+      createQueryBuilder: jest.fn().mockImplementation(() =>
+        makeQbReturning([
+          {
+            key: "cat-1",
+            currencyCode: "CAD",
+            txDate: "2026-01-10",
+            total: "-25",
+          },
+        ]),
+      ),
     };
 
     const result = await queryCategorySpending(
@@ -187,11 +288,19 @@ describe("queryCategorySpending", () => {
 
   it("aggregates transfer spending separately for transfer budgets", async () => {
     const txRepo: any = {
+      manager: makeManager(),
       createQueryBuilder: jest
         .fn()
         // first call: category SUM (no category, returns nothing as no categoryId budgets)
         .mockReturnValueOnce(
-          makeQbReturning([{ destinationAccountId: "acc-1", total: "300" }]),
+          makeQbReturning([
+            {
+              key: "acc-1",
+              currencyCode: "CAD",
+              txDate: "2026-01-10",
+              total: "300",
+            },
+          ]),
         ),
     };
     const splitRepo: any = {
@@ -228,17 +337,23 @@ describe("queryCategorySpending", () => {
     // investment-contribution budgets all under-reported whenever the user
     // recorded the transfer alongside a category on one transaction.
     const txRepo: any = {
+      manager: makeManager(),
       createQueryBuilder: jest
         .fn()
         // No plain transfer rows in the period.
         .mockImplementation(() => makeQbReturning([])),
     };
     const splitRepo: any = {
-      createQueryBuilder: jest
-        .fn()
-        .mockImplementation(() =>
-          makeQbReturning([{ destinationAccountId: "acc-1", total: "40" }]),
-        ),
+      createQueryBuilder: jest.fn().mockImplementation(() =>
+        makeQbReturning([
+          {
+            key: "acc-1",
+            currencyCode: "CAD",
+            txDate: "2026-01-10",
+            total: "40",
+          },
+        ]),
+      ),
     };
 
     const result = await queryCategorySpending(
@@ -263,18 +378,29 @@ describe("queryCategorySpending", () => {
     // Counted once each, not once in total and not twice: the split query reads
     // the split row's own target, and a counterpart row is not itself a split.
     const txRepo: any = {
-      createQueryBuilder: jest
-        .fn()
-        .mockImplementation(() =>
-          makeQbReturning([{ destinationAccountId: "acc-1", total: "300" }]),
-        ),
+      manager: makeManager(),
+      createQueryBuilder: jest.fn().mockImplementation(() =>
+        makeQbReturning([
+          {
+            key: "acc-1",
+            currencyCode: "CAD",
+            txDate: "2026-01-10",
+            total: "300",
+          },
+        ]),
+      ),
     };
     const splitRepo: any = {
-      createQueryBuilder: jest
-        .fn()
-        .mockImplementation(() =>
-          makeQbReturning([{ destinationAccountId: "acc-1", total: "40" }]),
-        ),
+      createQueryBuilder: jest.fn().mockImplementation(() =>
+        makeQbReturning([
+          {
+            key: "acc-1",
+            currencyCode: "CAD",
+            txDate: "2026-01-10",
+            total: "40",
+          },
+        ]),
+      ),
     };
 
     const result = await queryCategorySpending(
@@ -297,18 +423,29 @@ describe("queryCategorySpending", () => {
 
   it("treats null totals as 0", async () => {
     const txRepo: any = {
-      createQueryBuilder: jest
-        .fn()
-        .mockImplementation(() =>
-          makeQbReturning([{ categoryId: "cat-1", total: null }]),
-        ),
+      manager: makeManager(),
+      createQueryBuilder: jest.fn().mockImplementation(() =>
+        makeQbReturning([
+          {
+            key: "cat-1",
+            currencyCode: "CAD",
+            txDate: "2026-01-10",
+            total: null,
+          },
+        ]),
+      ),
     };
     const splitRepo: any = {
-      createQueryBuilder: jest
-        .fn()
-        .mockImplementation(() =>
-          makeQbReturning([{ categoryId: "cat-1", total: null }]),
-        ),
+      createQueryBuilder: jest.fn().mockImplementation(() =>
+        makeQbReturning([
+          {
+            key: "cat-1",
+            currencyCode: "CAD",
+            txDate: "2026-01-10",
+            total: null,
+          },
+        ]),
+      ),
     };
 
     const result = await queryCategorySpending(
@@ -321,5 +458,153 @@ describe("queryCategorySpending", () => {
     );
 
     expect(result.spendingMap.get("cat-1")).toBe(0);
+  });
+
+  it("converts a foreign row at its own date's rate and keeps the line complete", async () => {
+    const txRepo: any = {
+      manager: makeManager([
+        {
+          from_currency: "JPY",
+          to_currency: "CAD",
+          rate: "0.009",
+          rate_date: "2026-01-01",
+        },
+      ]),
+      createQueryBuilder: jest.fn().mockImplementation(() =>
+        makeQbReturning([
+          {
+            key: "cat-1",
+            currencyCode: "CAD",
+            txDate: "2026-01-10",
+            total: "-200",
+          },
+          {
+            key: "cat-1",
+            currencyCode: "JPY",
+            txDate: "2026-01-12",
+            total: "-10000",
+          },
+        ]),
+      ),
+    };
+    const splitRepo: any = {
+      createQueryBuilder: jest
+        .fn()
+        .mockImplementation(() => makeQbReturning([])),
+    };
+
+    const result = await queryCategorySpending(
+      txRepo,
+      splitRepo,
+      "user-1",
+      [makeBudgetCategory({ categoryId: "cat-1" })],
+      "2026-01-01",
+      "2026-01-31",
+    );
+
+    expect(result.currency).toBe("CAD");
+    expect(result.spendingMap.get("cat-1")).toBe(-290);
+    expect(result.incompleteCategoryIds.size).toBe(0);
+    expect(result.missingRatePairs).toEqual([]);
+  });
+
+  it("keeps the known part and names the pair when a rate is missing", async () => {
+    const txRepo: any = {
+      manager: makeManager(),
+      createQueryBuilder: jest.fn().mockImplementation(() =>
+        makeQbReturning([
+          {
+            key: "cat-1",
+            currencyCode: "CAD",
+            txDate: "2026-01-10",
+            total: "-200",
+          },
+          {
+            key: "cat-1",
+            currencyCode: "JPY",
+            txDate: "2026-01-12",
+            total: "-10000",
+          },
+        ]),
+      ),
+    };
+    const splitRepo: any = {
+      createQueryBuilder: jest
+        .fn()
+        .mockImplementation(() => makeQbReturning([])),
+    };
+
+    const result = await queryCategorySpending(
+      txRepo,
+      splitRepo,
+      "user-1",
+      [makeBudgetCategory({ categoryId: "cat-1" })],
+      "2026-01-01",
+      "2026-01-31",
+    );
+
+    expect(result.spendingMap.get("cat-1")).toBe(-200);
+    expect([...result.incompleteCategoryIds]).toEqual(["cat-1"]);
+    expect(result.missingRatePairs).toEqual(["JPY->CAD"]);
+  });
+});
+
+describe("resolveCategorySpentOrNull", () => {
+  function spendingOf(
+    overrides: Partial<CategorySpending> = {},
+  ): CategorySpending {
+    return {
+      spendingMap: new Map(),
+      transferSpendingMap: new Map(),
+      currency: "CAD",
+      incompleteCategoryIds: new Set(),
+      incompleteTransferAccountIds: new Set(),
+      missingRatePairs: [],
+      ...overrides,
+    };
+  }
+
+  it("returns null for an incomplete category", () => {
+    const spending = spendingOf({
+      spendingMap: new Map([["cat-1", -200]]),
+      incompleteCategoryIds: new Set(["cat-1"]),
+    });
+    expect(
+      resolveCategorySpentOrNull(makeBudgetCategory(), spending),
+    ).toBeNull();
+  });
+
+  it("returns null for an incomplete transfer destination", () => {
+    const bc = makeBudgetCategory({
+      isTransfer: true,
+      transferAccountId: "acc-1",
+    } as any);
+    const spending = spendingOf({
+      incompleteTransferAccountIds: new Set(["acc-1"]),
+    });
+    expect(resolveCategorySpentOrNull(bc, spending)).toBeNull();
+  });
+
+  it("matches resolveCategorySpent for complete data, clamping included", () => {
+    const spending = spendingOf({
+      spendingMap: new Map([
+        ["cat-1", -123.45],
+        ["cat-2", 50],
+        ["cat-3", 1500],
+        ["cat-4", -75],
+      ]),
+      transferSpendingMap: new Map([["acc-1", 250.5]]),
+    });
+    const at = (o: Partial<BudgetCategory>) =>
+      resolveCategorySpentOrNull(makeBudgetCategory(o), spending);
+    expect(at({ categoryId: "cat-1" })).toBe(123.45);
+    expect(at({ categoryId: "cat-2" })).toBe(0);
+    expect(at({ categoryId: "cat-3", isIncome: true } as any)).toBe(1500);
+    expect(at({ categoryId: "cat-4", isIncome: true } as any)).toBe(0);
+    expect(at({ categoryId: null } as any)).toBe(0);
+    expect(at({ isTransfer: true, transferAccountId: "acc-1" } as any)).toBe(
+      250.5,
+    );
+    expect(at({ isTransfer: true, transferAccountId: "acc-9" } as any)).toBe(0);
   });
 });

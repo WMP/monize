@@ -1,6 +1,6 @@
 import { isAxiosError } from 'axios';
 import apiClient from './api';
-import { Attachment } from '@/types/attachment';
+import type { Attachment, AttachmentParent, DocumentKind } from '@/types/attachment';
 import { invalidateCache } from './apiCache';
 
 /**
@@ -97,10 +97,20 @@ export interface AttachmentBytes {
  */
 export const ATTACHMENT_BYTES_TIMEOUT_MS = 60_000;
 
+/**
+ * The collection route for a parent's attachments: one route per parent kind
+ * on the server (`attachments.controller.ts`), never two ids in one request.
+ */
+export function attachmentParentPath(parent: AttachmentParent): string {
+  return 'warrantyId' in parent
+    ? `/warranties/${parent.warrantyId}/attachments`
+    : `/transactions/${parent.transactionId}/attachments`;
+}
+
 export const attachmentsApi = {
-  list: async (transactionId: string): Promise<Attachment[]> => {
+  list: async (parent: AttachmentParent): Promise<Attachment[]> => {
     const response = await apiClient.get<Attachment[]>(
-      `/transactions/${transactionId}/attachments`,
+      attachmentParentPath(parent),
     );
     return response.data;
   },
@@ -113,21 +123,30 @@ export const attachmentsApi = {
    * transaction: uploading the original separately would leave a window where
    * the pair is half stored, and a failure would leave an orphan the user can
    * see but not explain.
+   *
+   * `documentKind` is a warranty's field only: the transaction route takes no
+   * body beside the files, so it is never sent there.
    */
   upload: async (
-    transactionId: string,
+    parent: AttachmentParent,
     file: File,
     original?: File,
+    documentKind?: DocumentKind,
   ): Promise<Attachment> => {
     const formData = new FormData();
     formData.append('file', file);
     if (original) formData.append('original', original);
+    if (documentKind && 'warrantyId' in parent) {
+      formData.append('documentKind', documentKind);
+    }
     const response = await apiClient.post<Attachment>(
-      `/transactions/${transactionId}/attachments`,
+      attachmentParentPath(parent),
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     invalidateCache('attachments:');
+    // A warranty carries its `documentCount`, so its cached view moved too.
+    if ('warrantyId' in parent) invalidateCache('warranties:');
     return response.data;
   },
 
@@ -163,8 +182,27 @@ export const attachmentsApi = {
     };
   },
 
+  /**
+   * Change what kind of document a warranty's document is. A transaction's
+   * own attachment has no kind to change (the server answers 400).
+   */
+  updateDocumentKind: async (
+    id: string,
+    documentKind: DocumentKind,
+  ): Promise<Attachment> => {
+    const response = await apiClient.patch<Attachment>(`/attachments/${id}`, {
+      documentKind,
+    });
+    invalidateCache('attachments:');
+    invalidateCache('warranties:');
+    return response.data;
+  },
+
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/attachments/${id}`);
     invalidateCache('attachments:');
+    // The id does not say which parent it hung off; when that was a warranty,
+    // its cached `documentCount` is now one too many.
+    invalidateCache('warranties:');
   },
 };

@@ -49,6 +49,11 @@
     "nextMonth": "Bulan berikutnya",
     "emptyAll": "Tidak ada tagihan, setoran, atau transfer aktif yang dijadwalkan."
   },
+  "cashFlowForecast": {
+    "title": "Prakiraan Arus Kas",
+    "period": "Periode prakiraan",
+    "loadFailed": "Tidak dapat memuat transaksi yang sudah bertanggal setelah hari ini, sehingga prakiraan tidak dapat ditampilkan. Muat ulang dasbor untuk mencoba lagi."
+  },
   "gettingStarted": {
     "title": "Memulai",
     "subtitle": "Atur akun Anda dalam beberapa langkah cepat",
@@ -88,6 +93,11 @@
     "viewAll": "Lihat semua wawasan",
     "activeCount": "{count} aktif"
   },
+  "warrantiesExpiring": {
+    "title": "Garansi yang segera berakhir",
+    "empty": "Tidak ada yang berakhir dalam 30 hari ke depan",
+    "loadFailed": "Garansi Anda yang akan berakhir tidak dapat dimuat. Muat ulang dasbor untuk mencoba lagi."
+  },
   "topMovers": {
     "title": "Penggerak Teratas",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "Nilai Bersih",
     "empty": "Belum ada data nilai bersih yang tersedia.",
-    "past12Months": "12 bulan terakhir",
-    "viewReport": "Lihat laporan lengkap"
+    "barStyle": "Gaya batang",
+    "barStyleNetWorth": "Nilai bersih",
+    "barStyleAccountType": "Menurut jenis akun",
+    "loadFailed": "Tidak dapat memuat riwayat nilai bersih Anda. Muat ulang dasbor untuk mencoba lagi."
   },
   "assetsVsLiabilities": {
     "title": "Aset vs Liabilitas",
@@ -135,7 +147,10 @@
     "current": "Saat ini",
     "netWorthLabel": "Nilai Bersih",
     "assets": "Aset",
-    "liabilities": "Liabilitas"
+    "liabilities": "Liabilitas",
+    "partialName": "{name} (parsial)",
+    "viewCallouts": "Label",
+    "viewLegend": "Keterangan"
   },
   "expensesPieChart": {
     "title": "Pengeluaran per Kategori",
@@ -145,7 +160,9 @@
     "other": "Lainnya",
     "insideOther": "{count, plural, other {# kategori dalam Lainnya}}",
     "topLevelOnly": "Kategori tingkat atas",
-    "topLevelOnlyHint": "Hitung subkategori pada induknya"
+    "topLevelOnlyHint": "Hitung subkategori pada induknya",
+    "viewCallouts": "Label",
+    "viewLegend": "Keterangan"
   },
   "incomeExpenses": {
     "title": "Pendapatan vs Pengeluaran",
@@ -183,6 +200,7 @@
     "accounts": "Akun",
     "chartType": "Tipe Grafik",
     "view": "Tampilan",
+    "viewCalloutsHint": "Label memerlukan layar yang lebih lebar. Jika tidak muat, keterangan yang ditampilkan.",
     "displayName": "Nama tampilan",
     "description": "Deskripsi",
     "descriptionPlaceholder": "Tambahkan deskripsi opsional",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "Semua",
       "1w": "1M",
@@ -204,7 +223,7 @@
     "empty": "Belum ada riwayat investasi untuk ditampilkan.",
     "refresh": "Segarkan nilai saat ini",
     "investmentResult": "Hasil Investasi",
-    "periodBreakdownInvestedTooltip": "Nilai sekuritas berubah {valueChange} selama periode ini. Dari jumlah itu, {netInvested} adalah dana yang dimasukkan, setelah dikurangi penjualan, dan sekuritas membayar {income} berupa dividen dan bunga. Angka di atas adalah hasil investasi itu sendiri, tanpa kas yang tidak diinvestasikan.",
+    "periodBreakdownInvestedTooltip": "Nilai sekuritas berubah {valueChange} selama periode ini. Dari jumlah itu, {netInvested} adalah dana yang dimasukkan, setelah dikurangi penjualan, dan sekuritas membayar {income} berupa dividen dan bunga. Distribusi yang diinvestasikan kembali dalam saham dihitung di keduanya. Angka di atas adalah hasil investasi itu sendiri, tanpa kas yang tidak diinvestasikan.",
     "notAvailable": "N/A"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "Kejadian minimum",
     "minOccurrencesOption": "{count} atau lebih",
     "occurrences": "{count} kejadian",
-    "monthlyEstimate": "Perkiraan Bulanan"
+    "monthlyEstimate": "Perkiraan Bulanan",
+    "viewCallouts": "Label",
+    "viewLegend": "Keterangan"
   },
   "weekendVsWeekday": {
     "title": "Pengeluaran Akhir Pekan vs Hari Kerja",

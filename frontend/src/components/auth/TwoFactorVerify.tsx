@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -42,7 +42,7 @@ export function TwoFactorVerify({ tempToken, onVerified, onCancel }: TwoFactorVe
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     reset,
   } = useForm<VerifyFormData>({
     resolver: zodResolver(useBackupCode ? buildBackupCodeSchema(t) : buildTotpSchema(tc)),
@@ -52,7 +52,7 @@ export function TwoFactorVerify({ tempToken, onVerified, onCancel }: TwoFactorVe
     },
   });
 
-  const codeValue = watch('code');
+  const codeValue = useWatch({ control, name: 'code' });
   const codeRef = register('code');
 
   const handleToggleMode = () => {

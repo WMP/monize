@@ -104,11 +104,11 @@ function ShareContent() {
   const [showForm, setShowForm] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
+  // Nothing is read for these; the screen says why without waiting on a load.
+  const skipsRead = missed || stashError || !isShareInboxSupported();
+
   useEffect(() => {
-    if (missed || stashError || !isShareInboxSupported()) {
-      setLoaded(true);
-      return;
-    }
+    if (skipsRead) return;
     // Still resolving who is reading: stay on the loading state rather than
     // reporting an empty inbox we have not actually looked in.
     if (!viewerUserId) return;
@@ -140,7 +140,7 @@ function ShareContent() {
     return () => {
       cancelled = true;
     };
-  }, [requestedId, missed, stashError, viewerUserId]);
+  }, [requestedId, skipsRead, viewerUserId]);
 
   /** The files that are actually usable, and what they can be used for. */
   const usable = useMemo(() => {
@@ -162,7 +162,7 @@ function ShareContent() {
     };
   }, [bundle]);
 
-  const state: ReviewState = !loaded
+  const state: ReviewState = !loaded && !skipsRead
     ? 'loading'
     : missed
       ? 'missed'

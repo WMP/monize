@@ -193,6 +193,10 @@ export class MnyImportService {
           // second claim on a slot this request already owns.
           "mny-import",
         );
+        // The wipe deleted every row an earlier import committed, so the keys
+        // that refuse a second import of those bytes go with them; held, they
+        // would make this import's own commit refuse the file (A26-H08).
+        await this.jobs.releaseCommittedContent(userId);
       } catch (error) {
         // The request is refused, so the slot it took must go back. The stale
         // reap in `create` would clear it on the next start anyway, but only
@@ -274,12 +278,13 @@ export class MnyImportService {
     const parsedAt = Date.now();
     sampleRss();
 
-    // Currencies are global reference data with their own idempotent creation
-    // path, so they are ensured before the import transaction opens. Securities
-    // and exchange rates reference currencies no account need touch, which is
-    // why this list is not just the accounts'.
+    // Ensured before the import transaction opens, for this user only: a known
+    // ISO code becomes an inactive reference row, any other code is this user's
+    // own currency, so an import never offers one to everybody. Securities and
+    // exchange rates reference currencies no account need touch, which is why
+    // this list is not just the accounts'.
     for (const code of parsed.currencyCodes) {
-      await this.currencies.ensureSystemCurrency(code);
+      await this.currencies.ensureCurrencyForUser(userId, code);
     }
 
     const written = await this.writeAll(userId, parsed, context);
@@ -295,6 +300,7 @@ export class MnyImportService {
       userId,
       parsed.investments.transactions.length > 0,
       new Set(written.affectedAccountIds),
+      written.settledScheduleIds,
     );
 
     await context.reportProgress({
@@ -316,7 +322,7 @@ export class MnyImportService {
 
     // Delete-on-complete: the bytes have done their job, and they are the
     // largest thing this feature stores.
-    await this.staging.remove(userId, stagedFileId);
+    await this.staging.removeConsumed(userId, stagedFileId);
     sampleRss();
 
     this.logTiming({
@@ -362,6 +368,9 @@ export class MnyImportService {
       transfersLinked: parsed.transactions.transfersLinked,
       securitiesCreated: written.securitiesCreated,
       investmentTransactionsCreated: written.investmentTransactionsCreated,
+      ...(written.bondRowsWithoutSeries > 0
+        ? { bondRowsWithoutSeries: written.bondRowsWithoutSeries }
+        : {}),
       pricesImported: written.pricesImported,
       exchangeRatesImported: written.exchangeRatesImported,
       billsCreated: written.billsCreated,
@@ -435,10 +444,13 @@ export class MnyImportService {
     splitsCreated: number;
     securitiesCreated: number;
     investmentTransactionsCreated: number;
+    bondRowsWithoutSeries: number;
     billsCreated: number;
     pricesImported: number;
     exchangeRatesImported: number;
     affectedAccountIds: ReadonlySet<string>;
+    /** Schedules a settlement rule claimed on, repriced after the commit. */
+    settledScheduleIds: ReadonlySet<string>;
   }> {
     return withScopedDb(this.dataSource, async (manager) => {
       await context.reportProgress({
@@ -487,16 +499,21 @@ export class MnyImportService {
       // Transaction rules (design 6.3): one bulk pass over the regular rows just
       // inserted, in this transaction. Transfers and the cash rows a trade
       // adopts are not evaluated.
-      await applyImportRules(manager, this.rulesApplier, userId, {
-        transactions: parsed.transactions.transactions,
-        writtenTransactionIds: transactions.writtenTransactionIds,
-        payeeNameByHandle: parsed.payees.nameByHandle,
-        investmentCashTransactionIds: new Set(
-          [...parsed.transactions.investmentCashSources.values()]
-            .map((source) => source.transactionId)
-            .filter((id): id is string => id !== null),
-        ),
-      });
+      const ruleResult = await applyImportRules(
+        manager,
+        this.rulesApplier,
+        userId,
+        {
+          transactions: parsed.transactions.transactions,
+          writtenTransactionIds: transactions.writtenTransactionIds,
+          payeeNameByHandle: parsed.payees.nameByHandle,
+          investmentCashTransactionIds: new Set(
+            [...parsed.transactions.investmentCashSources.values()]
+              .map((source) => source.transactionId)
+              .filter((id): id is string => id !== null),
+          ),
+        },
+      );
 
       await context.reportProgress({
         phase: "investments",
@@ -639,13 +656,18 @@ export class MnyImportService {
         securitiesCreated: securities.created,
         investmentTransactionsCreated:
           investments.investmentTransactionsCreated,
+        bondRowsWithoutSeries: investments.bondRowsWithoutSeries,
         billsCreated: bills.created,
         pricesImported,
         exchangeRatesImported,
         affectedAccountIds: new Set([
           ...transactions.affectedAccountIds,
           ...investments.affectedAccountIds,
+          // Accounts a structural rule action credited: recomputed and
+          // refreshed with the rest after the commit.
+          ...ruleResult.affectedAccountIds,
         ]),
+        settledScheduleIds: ruleResult.settledScheduleIds,
       };
 
       // Last statement before commit, and both halves of the fence in one

@@ -55,26 +55,45 @@ export function SecurityTransactionHistory({
   const [allAccounts, setAllAccounts] = useState<Account[]>([]);
   const [editTransaction, setEditTransaction] = useState<InvestmentTransaction | null>(null);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await investmentsApi.getSecurityTransactionHistory(security.id);
-      setHistory(data);
-    } catch (error) {
-      logger.error('Failed to load security transaction history:', error);
-      // getErrorMessage keeps the message consistent with the rest of the app.
-      setHistory(null);
-      throw new Error(getErrorMessage(error, t('transactionHistory.toasts.loadHistoryFailed')));
-    } finally {
-      setIsLoading(false);
-    }
+  const fetchHistory = useCallback(() => {
+    // The writes live in the inner function so they run after the request,
+    // not during the effect that starts it.
+    const run = async () => {
+      try {
+        const data = await investmentsApi.getSecurityTransactionHistory(security.id);
+        setHistory(data);
+      } catch (error) {
+        logger.error('Failed to load security transaction history:', error);
+        // getErrorMessage keeps the message consistent with the rest of the app.
+        setHistory(null);
+        throw new Error(getErrorMessage(error, t('transactionHistory.toasts.loadHistoryFailed')));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [security.id, t]);
 
+  // Every reload after a change shows the spinner again.
+  const load = useCallback(() => {
+    setIsLoading(true);
+    return fetchHistory();
+  }, [fetchHistory]);
+
+  // A different security is a new request: it shows as loading from the
+  // render that asks for it (the "info from previous render" pattern). The
+  // first load needs nothing here, `isLoading` starts true.
+  const [loadingFor, setLoadingFor] = useState(security.id);
+  if (loadingFor !== security.id) {
+    setLoadingFor(security.id);
+    setIsLoading(true);
+  }
+
   useEffect(() => {
-    load().catch(() => {
+    fetchHistory().catch(() => {
       /* error already logged; UI shows empty state */
     });
-  }, [load]);
+  }, [fetchHistory]);
 
   // Load all accounts (including closed) once, so editing a transaction in a
   // closed account still has its account available in the form.

@@ -418,4 +418,37 @@ describe('BillPaymentHistoryReport', () => {
       });
     }
   });
+
+  it('marks the null summary totals as subtotals and shows no 0.00', async () => {
+    mockGetBillPaymentHistory.mockResolvedValue({
+      billPayments: [
+        {
+          scheduledTransactionId: 'st-1',
+          scheduledTransactionName: 'Rent',
+          payeeName: 'Landlord',
+          paymentCount: 1,
+          averagePayment: 50,
+          totalPaid: 50,
+          lastPaymentDate: '2025-01-01',
+        },
+      ],
+      monthlyTotals: [{ month: '2025-01', total: 50 }],
+      summary: {
+        totalPaid: null,
+        knownTotalPaid: 50,
+        monthlyAverage: null,
+        knownMonthlyAverage: 50,
+        uniqueBills: 1,
+        totalPayments: 1,
+      },
+      currency: 'CAD',
+      missingCurrencies: ['JPY'],
+      excludedCount: 1,
+    });
+    render(<BillPaymentHistoryReport />);
+    await waitFor(() => expect(screen.getAllByTestId('partial-total')).toHaveLength(2));
+    screen.getAllByTestId('partial-total').forEach((marker) => expect(marker).toHaveTextContent('$50.00'));
+    expect(screen.queryByText('$0.00')).not.toBeInTheDocument();
+    expect(screen.getByTestId('partial-data-notice')).toHaveTextContent('JPY');
+  });
 });

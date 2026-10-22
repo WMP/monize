@@ -52,6 +52,21 @@ describe("planFingerprint", () => {
   it("an empty plan still has a fingerprint that depends on the revision", () => {
     expect(planFingerprint(1, [])).not.toBe(planFingerprint(2, []));
   });
+
+  describe("the rows queued for an AI review", () => {
+    it("hash as before when a plan queues none", () => {
+      expect(planFingerprint(1, [a, b], [])).toBe(planFingerprint(1, [a, b]));
+    });
+
+    it("change the hash of a plan with no field changes, whatever their order", () => {
+      const none = planFingerprint(1, []);
+      const one = planFingerprint(1, [], ["t1"]);
+      const two = planFingerprint(1, [], ["t1", "t2"]);
+      expect(new Set([none, one, two]).size).toBe(3);
+      expect(planFingerprint(1, [], ["t2", "t1"])).toBe(two);
+      expect(planFingerprint(1, [], ["t2"])).not.toBe(one);
+    });
+  });
 });
 
 describe("canonicalChanges", () => {
@@ -104,6 +119,104 @@ describe("canonicalChanges", () => {
       expect(
         new Set([plain, named, created, described, describedOther]).size,
       ).toBe(5);
+    });
+  });
+});
+
+describe("canonicalChanges: a settlement", () => {
+  const settlement = (debtBefore: string, extra: object = {}) => ({
+    loanAccountId: "loan",
+    scheduledTransactionId: "st",
+    dueDate: "2024-02-01",
+    installmentNumber: 2,
+    pricing: {
+      dueDate: "2024-02-01",
+      installmentNumber: 2,
+      method: "LINEAR" as const,
+      prepaymentMode: "SHORTEN_TERM" as const,
+      currencyCode: "EUR",
+      debtLedger: "300000.0000",
+      foldedPrincipal: "1033.3300",
+      debtBefore,
+      annualRate: "2",
+      periodicRate: 0.0016666666666666668,
+      priced: {
+        principal: "833.3333",
+        interest: "498.2778",
+        extra: "0.0000",
+        total: "1331.6111",
+      },
+      booked: {
+        principal: "833.33",
+        interest: "498.28",
+        extra: "0.00",
+        total: "1331.61",
+      },
+      paid: "1331.61",
+      difference: "0.00",
+      outcome: "exact" as const,
+      lines: { principal: "833.33", interest: "498.28", extra: "0.00" },
+    },
+    ...extra,
+  });
+  const structure = {
+    kind: "split" as const,
+    parts: [
+      {
+        amount: -833.33,
+        categoryId: null,
+        transferAccountId: "loan",
+        payeeId: null,
+        memo: "Principal",
+      },
+      {
+        amount: -498.28,
+        categoryId: "interest",
+        transferAccountId: null,
+        payeeId: null,
+        memo: "Interest",
+      },
+    ],
+  };
+  const planned = (debtBefore: string, extra: object = {}) =>
+    change("a", {
+      structure: { before: null, after: structure },
+      loanSettlement: { before: null, after: settlement(debtBefore, extra) },
+    });
+
+  it("two plans differing only in debtBefore hash differently (INV-RULE-005)", () => {
+    // The fold moved between the preview and the commit: same lines, same
+    // slot, another debt; the commit must refuse as a changed preview.
+    expect(planFingerprint(1, [planned("298966.6700")])).not.toBe(
+      planFingerprint(1, [planned("300000.0000")]),
+    );
+  });
+
+  it("a plan without a settlement hashes as before: no loanSettlement key", () => {
+    expect(
+      Object.keys(
+        canonicalChanges({ structure: { before: null, after: structure } }),
+      ),
+    ).toEqual(["categoryId", "payeeId", "tagIds", "structure"]);
+  });
+
+  it("reads only the planned fields: the claim a stored trace adds does not change the hash", () => {
+    const written = planned("298966.6700", {
+      claimId: "claim-1",
+      cursorAdvanced: true,
+      cursor: {
+        before: { nextDueDate: "2024-02-01" },
+        after: { nextDueDate: "2024-03-01" },
+      },
+    });
+    expect(planFingerprint(1, [written])).toBe(
+      planFingerprint(1, [planned("298966.6700")]),
+    );
+    const canonical = canonicalChanges(written.changes);
+    expect(canonical.loanSettlement?.after).not.toHaveProperty("claimId");
+    expect(canonical.loanSettlement?.after).toMatchObject({
+      dueDate: "2024-02-01",
+      pricing: { debtBefore: "298966.6700" },
     });
   });
 });

@@ -27,6 +27,30 @@
     "strategies": {
       "title": "[XX-Strategy signal-XX]",
       "body": "[XX-One of your strategies changed its recommendation. Open Monize for the details.-XX]"
+    },
+    "bank_sync": {
+      "title": "[XX-Bank connection-XX]",
+      "body": "[XX-A bank connection needs your attention. Open Monize for the details.-XX]"
+    },
+    "bank_sync_activity": {
+      "title": "[XX-Bank sync-XX]",
+      "body": "[XX-Your bank sync has news. Open Monize for the details.-XX]"
+    },
+    "email_receipts": {
+      "title": "[XX-Email receipts need attention-XX]",
+      "body": "[XX-Some emails in your receipts inbox need a profile or a fix. Open Monize for the details.-XX]"
+    },
+    "bonds": {
+      "title": "[XX-Bond notice-XX]",
+      "body": "[XX-One of your bonds has news. Open Monize for the details.-XX]"
+    },
+    "ai_review": {
+      "title": "[XX-AI review proposals-XX]",
+      "body": "[XX-Some AI review proposals wait for your decision. Open Monize for the details.-XX]"
+    },
+    "warranties": {
+      "title": "[XX-Warranty reminder-XX]",
+      "body": "[XX-One of your warranties expires soon. Open Monize for the details.-XX]"
     }
   },
   "actions": {

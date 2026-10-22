@@ -51,6 +51,7 @@
     "costBasisTooltip": "What your current holdings cost to acquire, rebuilt from your transaction history: purchase prices plus the commission charged on each purchase, each converted at the rate of the trade that paid for it. Shown in your display currency. Used to calculate gains and losses.",
     "gainLoss": "Gain/Loss",
     "gainLossTooltip": "Unrealized gain or loss on your current holdings: market value at today's prices minus the cost basis above. Does not include realized gains from past sales, or dividends and interest received.",
+    "gainPartialCaption": "Over priced holdings only",
     "returns": "Returns",
     "simpleReturn": "Simple Return",
     "simpleReturnTooltip": "Gain or loss against what you paid: (Market Value − Cost Basis) ÷ Cost Basis. It ignores when money arrived, so it jumps on every purchase: a 1,000 position up 20% shows +20%; buy another 1,000 and it shows +10% (200 ÷ 2,000) although nothing was lost. TWR and MWR do not have this jump.",
@@ -121,6 +122,14 @@
       "assetClass": "By asset class"
     }
   },
+  "assetClasses": {
+    "equity": "Equities",
+    "fixedIncome": "Fixed Income",
+    "cash": "Cash",
+    "preferred": "Preferred Shares",
+    "convertible": "Convertibles",
+    "crypto": "Crypto"
+  },
   "holdingsList": {
     "title": "Holdings",
     "noHoldings": "No holdings in this portfolio.",
@@ -135,6 +144,7 @@
     "title": "Holdings by Account",
     "noHoldings": "No holdings in your portfolio.",
     "accountIncomplete": "Partial: this account's totals leave out holdings that could not be valued in {currency}.",
+    "gainPartialCaption": "Over priced holdings only",
     "accountSummary": "{accounts} account{accountsPlural} with {positions} position{positionsPlural}",
     "positionsWithCash": "{count} position{plural} + Cash",
     "positions": "{count} position{plural}",
@@ -162,6 +172,7 @@
     "intradayUnavailableDescription": "One or more holdings use a quote provider (MSN Money) that does not expose intraday data. Switch to a longer range to see daily snapshots.",
     "noDataForPeriod": "No investment data for this period.",
     "highestValue": "Highest Value",
+    "incompleteTooltip": "Some points in this window are missing a price or an exchange rate, so the high and the low are not shown.",
     "lowestValue": "Lowest Value",
     "valueChange": "Value Change",
     "valueChangeTooltip": "What the securities are worth at the end of the period, less what they were worth at the start: the last point on the chart less the first. Uninvested cash is left out.",
@@ -223,6 +234,7 @@
     "actionCapitalGainShort": "Short-Term Capital Gain",
     "actionCapitalGainLong": "Long-Term Capital Gain",
     "actionRedeem": "Redeem CD/Bond",
+    "actionReturnOfCapital": "Return of Capital",
     "allActions": "All Actions"
   },
   "transactionForm": {
@@ -243,6 +255,7 @@
     "actionCapitalGainShort": "Short-Term Capital Gain",
     "actionCapitalGainLong": "Long-Term Capital Gain",
     "actionRedeem": "Redeem CD/Bond",
+    "actionReturnOfCapital": "Return of Capital",
     "actionTransfer": "Transfer",
     "brokerageAccount": "Brokerage Account",
     "fromAccount": "From Account",
@@ -286,7 +299,8 @@
     "sourceHolds": "Source holds",
     "sharesAt": "shares @",
     "avgCostSuffix": "avg cost.",
-    "transferCostNote": "The cost per share (prefilled from the source account) is carried to the destination so your gain and profit reports stay correct. This moves shares only -- no cash changes hands.",
+    "transferCostNote": "The cost per share is what the shares cost in the source account on the transfer date. It is worked out when you save and carried to the destination, so your gain and profit reports stay correct. This moves shares only; no cash changes hands.",
+    "returnOfCapitalNote": "A return of capital is not income. It pays back part of what the shares cost, so it lowers the cost basis of your holding by this amount. Anything beyond the remaining cost basis is reported as a realized capital gain.",
     "totalAmount": "Total Amount ({currency})",
     "sharesAtPrice": "{shares} shares @ {symbol}{price}",
     "commissionSuffix": "commission",
@@ -321,7 +335,30 @@
     "toastSaveFailed": "Failed to save transaction",
     "exchangeRateUnresolved": "No {from} to {to} rate is available. Enter one, or the converted total, before saving.",
     "toastExchangeRateRequired": "Enter an exchange rate before saving a cross-currency trade.",
-    "notAvailable": "Not available"
+    "notAvailable": "Not available",
+    "bondSeries": {
+      "label": "Bond series",
+      "fromDate": "Determined from the date",
+      "oldestFirst": "Oldest first",
+      "loading": "Loading the series...",
+      "loadFailed": "The series could not be loaded.",
+      "retry": "Retry",
+      "fromDateCode": "From the date: {code}",
+      "noneOnSale": "No series on sale on this date",
+      "choose": "Choose a series",
+      "required": "Choose the series of these shares.",
+      "heldOption": "{code} ({quantity} held)",
+      "noLongerHeld": "{code} (no longer held on this date)",
+      "noLongerHeldUnknown": "Stored series (no longer held on this date)",
+      "storedSeries": "Stored series",
+      "seriesOnSaleMonth": "{code} — on sale {month}",
+      "seriesOnSaleRange": "{code} — on sale {from} to {to}"
+    },
+    "bondRedemption": {
+      "summary": "Interest {interest}, early-redemption deduction {deduction}, payout {payout}",
+      "outsideSaleWindow": "A lot of this series was bought outside its sale window, so the redemption cannot be split.",
+      "failed": "The redemption split could not be calculated."
+    }
   },
   "newTransactionButton": {
     "label": "+ New Transaction",

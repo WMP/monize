@@ -6,6 +6,9 @@ import { UseFormRegister, UseFormSetValue, FieldErrors } from 'react-hook-form';
 import { NumericInput } from '@/components/ui/NumericInput';
 import { DateInput } from '@/components/ui/DateInput';
 import { Select } from '@/components/ui/Select';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { PaymentMatchingFields } from './PaymentMatchingFields';
 import {
   Account,
   MortgageAmortizationPreview,
@@ -23,6 +26,7 @@ import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { createLogger } from '@/lib/logger';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { getCurrencySymbol } from '@/lib/format';
 
 const logger = createLogger('MortgageFields');
 
@@ -49,6 +53,14 @@ interface MortgageFieldsProps {
   categories: Category[];
   formatCurrency: (amount: number, currency?: string) => string;
   isEditing: boolean;
+  sourceAccountId: string | undefined;
+  /** The amount originally borrowed; defaults to `openingBalance` until set. */
+  originalPrincipal: number | undefined;
+  paymentMatchingEnabled: boolean | undefined;
+  paymentMatchingPayeePattern: string | undefined;
+  paymentMatchingDescriptionPattern: string | undefined;
+  /** The selected institution's name, used to prefill the payee pattern. */
+  institutionName: string;
   selectedInterestCategoryId: string;
   handleInterestCategoryChange: (categoryId: string) => void;
   interestBookingMode: InterestBookingMode;
@@ -76,6 +88,12 @@ export function MortgageFields({
   categories,
   formatCurrency,
   isEditing,
+  sourceAccountId,
+  originalPrincipal,
+  paymentMatchingEnabled,
+  paymentMatchingPayeePattern,
+  paymentMatchingDescriptionPattern,
+  institutionName,
   selectedInterestCategoryId,
   handleInterestCategoryChange,
   interestBookingMode,
@@ -90,6 +108,18 @@ export function MortgageFields({
   // Money arrives as a prop; the preview's rate does not, and it is just as
   // user-facing -- so it takes the same number locale rather than `toFixed`.
   const { formatPercent } = useNumberFormat();
+  const currencySymbol = getCurrencySymbol(watchedCurrency);
+  const sourceAccountName = accounts.find((a) => a.id === sourceAccountId)?.name;
+
+  const handlePaymentMatchingToggle = (next: boolean) => {
+    setValue('paymentMatchingEnabled', next, { shouldDirty: true });
+    if (next && !paymentMatchingPayeePattern && institutionName) {
+      setValue('paymentMatchingPayeePattern', `*${institutionName}*`, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  };
 
   // A LINEAR or INTEREST_ONLY mortgage has no constant payment: its preview
   // shows the first installment, and the accelerated cadences -- a fraction of
@@ -149,19 +179,23 @@ export function MortgageFields({
   );
 
   // Sync local state when termMonths/amortizationMonths change externally (e.g. form reset)
-  useEffect(() => {
+  const [prevTermMonths, setPrevTermMonths] = useState(termMonths);
+  if (!Object.is(prevTermMonths, termMonths)) {
+    setPrevTermMonths(termMonths);
     if (termMonths != null && termMonths > 0) {
       setTermYears(Math.floor(termMonths / 12));
       setTermRemainder(termMonths % 12);
     }
-  }, [termMonths]);
+  }
 
-  useEffect(() => {
+  const [prevAmortizationMonths, setPrevAmortizationMonths] = useState(amortizationMonths);
+  if (!Object.is(prevAmortizationMonths, amortizationMonths)) {
+    setPrevAmortizationMonths(amortizationMonths);
     if (amortizationMonths != null && amortizationMonths > 0) {
       setAmortYears(Math.floor(amortizationMonths / 12));
       setAmortRemainder(amortizationMonths % 12);
     }
-  }, [amortizationMonths]);
+  }
 
   const updateTermMonths = (years: number | undefined, months: number | undefined) => {
     const total = (years ?? 0) * 12 + (months ?? 0);
@@ -390,6 +424,30 @@ export function MortgageFields({
         </div>
       </div>
 
+      {/* Original Principal: the amount originally borrowed, apart from the
+          opening balance (the debt where an imported history starts). Shown
+          create and edit; defaults to the mortgage amount until the user
+          types a value of their own -- a plain `?? openingBalance` fallback,
+          so a later change to the opening balance keeps tracking it only
+          while this field has never been touched. */}
+      <div>
+        <div className="flex items-center mb-1">
+          <label htmlFor="mortgage-original-principal" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            {t('mortgageFields.originalPrincipal.label')}
+          </label>
+          <InfoTooltip text={t('mortgageFields.originalPrincipal.help')} placement="top" usePortal />
+        </div>
+        <CurrencyInput
+          id="mortgage-original-principal"
+          prefix={currencySymbol}
+          value={originalPrincipal ?? openingBalance}
+          onChange={(value) =>
+            setValue('originalPrincipal', value, { shouldDirty: true, shouldValidate: true })
+          }
+          error={errors.originalPrincipal?.message as string | undefined}
+        />
+      </div>
+
       {!isEditing && (
         <>
           <div className="grid grid-cols-2 gap-4">
@@ -410,19 +468,60 @@ export function MortgageFields({
               {...register('paymentStartDate')}
             />
           </div>
+        </>
+      )}
 
-          <Select
-            label={t('mortgageFields.paymentFromAccount')}
-            options={[
-              { value: '', label: t('mortgageFields.selectAccount') },
-              ...buildAccountDropdownOptions(
-                accounts,
-                () => true,
-                (a) => `${a.name} (${a.currencyCode})`,
-              ),
-            ]}
-            error={errors.sourceAccountId?.message as string | undefined}
-            {...register('sourceAccountId')}
+      {/* Editable after creation: the server moves the scheduled payment and
+          the payment-matching rule to the new account on save. */}
+      <div>
+        <Select
+          label={t('mortgageFields.paymentFromAccount')}
+          options={[
+            { value: '', label: t('mortgageFields.selectAccount') },
+            ...buildAccountDropdownOptions(
+              accounts,
+              () => true,
+              (a) => `${a.name} (${a.currencyCode})`,
+            ),
+          ]}
+          error={errors.sourceAccountId?.message as string | undefined}
+          {...register('sourceAccountId')}
+        />
+        {isEditing && (
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {t('mortgageFields.paymentFromAccountEditHelp')}
+          </p>
+        )}
+      </div>
+
+      {!isEditing && (
+        <>
+
+          {/* Payment matching: the rule that settles the bank's own debit of
+              this payment against each installment instead of posting the
+              bill separately (docs/specs/loan-installment-settlement.md
+              decision 5). Create only -- an existing loan gets this from its
+              Loan Details panel. The two glob fields are registered here
+              (hidden) so react-hook-form tracks them; the shared component
+              below is a controlled view over the same watched values. */}
+          <input type="hidden" {...register('paymentMatchingEnabled')} />
+          <input type="hidden" {...register('paymentMatchingPayeePattern')} />
+          <input type="hidden" {...register('paymentMatchingDescriptionPattern')} />
+          <PaymentMatchingFields
+            enabled={!!paymentMatchingEnabled}
+            onToggle={handlePaymentMatchingToggle}
+            payeePattern={paymentMatchingPayeePattern ?? ''}
+            onPayeePatternChange={(value) =>
+              setValue('paymentMatchingPayeePattern', value, { shouldDirty: true, shouldValidate: true })
+            }
+            payeePatternError={errors.paymentMatchingPayeePattern?.message as string | undefined}
+            descriptionPattern={paymentMatchingDescriptionPattern ?? ''}
+            onDescriptionPatternChange={(value) =>
+              setValue('paymentMatchingDescriptionPattern', value, { shouldDirty: true, shouldValidate: true })
+            }
+            descriptionPatternError={errors.paymentMatchingDescriptionPattern?.message as string | undefined}
+            sourceAccountName={sourceAccountName}
+            kind="mortgage"
           />
 
           {/* Mortgage Amortization Preview */}
@@ -516,6 +615,7 @@ export function MortgageFields({
         categories={categories}
         selectedInterestCategoryId={selectedInterestCategoryId}
         onInterestCategoryChange={handleInterestCategoryChange}
+        interestCategoryRequired={!isEditing}
         interestBookingMode={interestBookingMode}
         onInterestBookingModeChange={handleInterestBookingModeChange}
         selectedOverpaymentCategoryId={selectedOverpaymentCategoryId}

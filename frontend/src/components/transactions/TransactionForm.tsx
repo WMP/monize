@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback, MutableRefObject } from 'react';
 import { useTranslations } from 'next-intl';
-import { useForm, Resolver } from 'react-hook-form';
+import { useForm, useWatch, Resolver } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,6 +19,7 @@ import { exchangeRatesApi } from '@/lib/exchange-rates';
 import {
   FX_RATE_DISPLAY_DECIMALS,
   getCurrencySymbol,
+  roundMoney,
   roundToCents,
   roundToDecimals,
 } from '@/lib/format';
@@ -48,18 +49,21 @@ import { Payee } from '@/types/payee';
 import { Category } from '@/types/category';
 import { Account, TransferCandidate } from '@/types/account';
 import { Tag } from '@/types/tag';
+import { useTagPickerOptions } from '@/hooks/useTagPickerOptions';
 import { ReactivatePayeeDialog } from '@/components/payees/ReactivatePayeeDialog';
 import { ContactLookupDialog } from '@/components/payees/ContactLookupDialog';
 import { useContactLookupAvailable } from '@/hooks/useContactLookupAvailable';
 import { usePayeeContactLookup } from '@/hooks/usePayeeContactLookup';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { buildCategoryTree } from '@/lib/categoryUtils';
+import { buildCategoryTree, signAmountByCategory } from '@/lib/categoryUtils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { useAuthStore } from '@/store/authStore';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import { AttachmentsSection } from './AttachmentsSection';
+import { TransactionWarrantiesLine } from './TransactionWarrantiesLine';
 import { attachmentsApi } from '@/lib/attachments';
 import type { StagedAttachment } from '@/types/attachment';
 import { optionalUuid, optionalString } from '@/lib/zod-helpers';
@@ -91,22 +95,15 @@ const buildTransactionSchema = (t: (key: string) => string) => z.object({
 type TransactionFormData = z.infer<ReturnType<typeof buildTransactionSchema>>;
 
 /**
- * Sign a freshly entered amount magnitude according to a category: an income
- * category makes it positive, an expense category negative. An explicit sign
- * toggle -- the magnitude is unchanged from `reference`, so the user just
- * flipped the sign -- is preserved so a manual override is respected. Shared by
- * the account-currency and foreign-currency amount inputs so both behave
- * identically. With no category (or no reference), the value is returned as-is.
+ * The figure a transfer form shows as "Transfer Amount": the FROM (negative)
+ * leg's, whichever leg the form was opened on. The receiving leg holds the
+ * amount in the destination currency, which is the "Amount Received" field,
+ * so loading it here would re-price the transfer on an unedited save.
  */
-function signAmountByCategory(
-  value: number,
-  reference: number | undefined,
-  category: Category | undefined,
-): number {
-  const referenceAbs = reference !== undefined ? Math.abs(reference) : 0;
-  const isJustSignChange = referenceAbs === Math.abs(value) && referenceAbs !== 0;
-  if (isJustSignChange || !category) return value;
-  return category.isIncome ? Math.abs(value) : -Math.abs(value);
+function transferSourceAmount(source: Transaction): number {
+  const linked = source.linkedTransaction;
+  const fromLeg = Number(source.amount) >= 0 && linked ? linked : source;
+  return Math.abs(Number(fromLeg.amount));
 }
 
 /**
@@ -115,21 +112,21 @@ function signAmountByCategory(
  * fields (payee, category, notes, reference) leaves the reconciliation intact
  * and should save without a warning. Returns true only when the submitted date
  * or amount differs from the original, in which case the edit is gated behind a
- * confirmation. Amounts are compared in integer cents at the same 2-decimal
- * precision the form loads them with, so float drift never triggers a warning.
+ * confirmation. Amounts are compared at the server's four decimals, the
+ * precision the form loads them with, so float drift never triggers a warning
+ * and a sub-cent change is not missed.
  */
 function reconciledEditAffectsReconciliation(
   original: Transaction,
   data: TransactionFormData,
 ): boolean {
   const dateChanged = data.transactionDate !== original.transactionDate;
-  // Mirror the form's defaultValues normalization: transfers always load an
-  // absolute amount, everything else keeps its sign.
+  // Mirror the form's defaultValues normalization: transfers always load the
+  // source leg's absolute amount, everything else keeps its sign.
   const originalAmount = original.isTransfer
-    ? Math.abs(Math.round(Number(original.amount) * 100) / 100)
-    : Math.round(Number(original.amount) * 100) / 100;
-  const amountChanged =
-    Math.round(Number(data.amount) * 100) !== Math.round(originalAmount * 100);
+    ? transferSourceAmount(original)
+    : Number(original.amount);
+  const amountChanged = roundMoney(Number(data.amount)) !== roundMoney(originalAmount);
   return dateChanged || amountChanged;
 }
 
@@ -166,6 +163,21 @@ interface TransactionFormProps {
    * so each becomes a `StagedAttachment` carrying only `file`.
    */
   initialStagedFiles?: File[];
+  /**
+   * The Warranties line's "Add warranty": the host closes this form through
+   * its own close path (which asks about unsaved edits) and then opens the
+   * Warranties page's form prefilled from the transaction. Leave it off and
+   * the line offers no Add.
+   */
+  onAddWarranty?: (transaction: Transaction) => void;
+  /**
+   * Opens one linked warranty's page from the Warranties line, through the
+   * same close-then-navigate as `onAddWarranty`. A plain link cannot do it:
+   * this form sits in a `pushHistory` Modal, and the Modal's unmount pops its
+   * history entry, which undoes the link's navigation. Leave it off and the
+   * line lists the warranties without links.
+   */
+  onOpenWarranty?: (warrantyId: string) => void;
 }
 
 interface TransactionFormFieldsProps extends TransactionFormProps {
@@ -176,8 +188,11 @@ interface TransactionFormFieldsProps extends TransactionFormProps {
 // Transaction mode type
 type TransactionMode = 'normal' | 'split' | 'transfer';
 
-function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, defaultDate, onSuccess, onCancel, onDirtyChange, submitRef, onCreateAnother, initialStagedFiles }: TransactionFormFieldsProps) {
+function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, defaultDate, onSuccess, onCancel, onDirtyChange, submitRef, onCreateAnother, initialStagedFiles, onAddWarranty, onOpenWarranty }: TransactionFormFieldsProps) {
   const t = useTranslations('transactions');
+  // An acting delegate never sees the Warranties line: a warranty is the
+  // owner's to add, and the same rule makes the Warranties page read-only.
+  const actingAsDelegate = useAuthStore((s) => s.actingAsUserId) !== null;
   const { defaultCurrency, formatCurrency, formatNumber } = useNumberFormat();
   const showCreatedAt = usePreferencesStore((s) => s.preferences?.showCreatedAt ?? false);
   const timeFormat = usePreferencesStore((s) => s.preferences?.timeFormat ?? '24h');
@@ -339,7 +354,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     getValues,
     formState: { errors, isDirty },
   } = useForm<TransactionFormData>({
@@ -355,10 +370,11 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
           payeeId: initSource.payeeId || '',
           payeeName: initSource.payeeName || '',
           categoryId: initSource.categoryId || '',
-          // For transfers, always show absolute amount
+          // As stored (four decimals), so an unedited save re-sends it. For
+          // transfers, the source (FROM) leg's absolute amount.
           amount: initSource.isTransfer
-            ? Math.abs(Math.round(Number(initSource.amount) * 100) / 100)
-            : Math.round(Number(initSource.amount) * 100) / 100,
+            ? roundMoney(transferSourceAmount(initSource))
+            : roundMoney(Number(initSource.amount)),
           currencyCode: initSource.currencyCode,
           description: initSource.description || '',
           referenceNumber: initSource.referenceNumber || '',
@@ -375,15 +391,15 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
 
   useFormDirtyNotify(isDirty, onDirtyChange);
 
-  const watchedAccountId = watch('accountId');
-  const watchedAmount = watch('amount');
-  const watchedCurrencyCode = watch('currencyCode');
-  const watchedPayeeName = watch('payeeName');
+  const watchedAccountId = useWatch({ control, name: 'accountId' });
+  const watchedAmount = useWatch({ control, name: 'amount' });
+  const watchedCurrencyCode = useWatch({ control, name: 'currencyCode' });
+  const watchedPayeeName = useWatch({ control, name: 'payeeName' });
   // Read live so the links under the field track what is being typed. The
   // textarea itself cannot hold an anchor, so this is the only way the address
   // in a draft is reachable without saving first.
-  const watchedDescription = watch('description');
-  const watchedDate = watch('transactionDate');
+  const watchedDescription = useWatch({ control, name: 'description' });
+  const watchedDate = useWatch({ control, name: 'transactionDate' });
 
   // Foreign-currency entry is active only for non-transfer transactions whose
   // entry currency differs from the account currency. Transfers already have
@@ -506,12 +522,8 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   }), [categoryTree, effectiveCategories]);
 
   // Memoize tag options for multiselect
-  const tagOptions = useMemo(() =>
-    [...tags]
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
-      .map(tag => ({ value: tag.id, label: tag.name })),
-    [tags]
-  );
+  // Tags are per-user, so the picker (and its usage lookup) is off on a joint account.
+  const { tagOptions, tagUsage } = useTagPickerOptions(tags, !selectedIsJoint);
 
   // Handle mode changes
   const handleModeChange = (newMode: TransactionMode) => {
@@ -561,11 +573,22 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
     }
   }, [defaultAccountId, transaction, setValue]);
 
-  // Set defaultCategoryId when it changes (and we're not editing/duplicating)
+  // Set defaultCategoryId when it changes (and we're not editing/duplicating).
+  // The picker's own state follows during render (the "info from previous
+  // render" pattern); the form value and the auto-set flag stay in the effect.
+  const [categoryDefaultFor, setCategoryDefaultFor] = useState({ defaultCategoryId, initSource });
+  if (
+    categoryDefaultFor.defaultCategoryId !== defaultCategoryId ||
+    categoryDefaultFor.initSource !== initSource
+  ) {
+    setCategoryDefaultFor({ defaultCategoryId, initSource });
+    if (!initSource && defaultCategoryId) {
+      setSelectedCategoryId(defaultCategoryId);
+    }
+  }
   useEffect(() => {
     if (!initSource && defaultCategoryId) {
       setValue('categoryId', defaultCategoryId);
-      setSelectedCategoryId(defaultCategoryId);
       categoryWasAutoSetRef.current = true;
     }
   }, [defaultCategoryId, initSource, setValue]);
@@ -920,6 +943,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   // converted amount), otherwise on the account-currency amount. Mirrors the
   // sign adjustment the account-currency flow applies on category change.
   const resignActiveAmount = (category: Category) => {
+    if (category.effectiveAutoSign === false) return;
     if (isForeign) {
       if (foreignAmount === undefined || foreignAmount === 0) return;
       const signed = category.isIncome
@@ -1138,14 +1162,19 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
     return formatDatetimeLocal(isoToDatetimeLocal(transaction.createdAt, userTimezone), dateFormat, timeFormat);
   });
 
-  // Recalculate if the timezone preference or date format loads/changes after initial mount
-  useEffect(() => {
-    if (!transaction?.createdAt) return;
-    const dtLocal = isoToDatetimeLocal(transaction.createdAt, userTimezone);
-    setCreatedAtValue(dtLocal);
-    setCreatedAtOriginal(dtLocal);
-    setCreatedAtDisplay(formatDatetimeLocal(dtLocal, dateFormat, timeFormat));
-  }, [transaction?.createdAt, userTimezone, dateFormat, timeFormat]);
+  // Recalculate if the timezone preference or date format loads/changes after
+  // initial mount (the "info from previous render" pattern, not an effect)
+  const createdAtKey = `${transaction?.createdAt ?? ''}|${userTimezone}|${dateFormat}|${timeFormat}`;
+  const [createdAtFor, setCreatedAtFor] = useState(createdAtKey);
+  if (createdAtFor !== createdAtKey) {
+    setCreatedAtFor(createdAtKey);
+    if (transaction?.createdAt) {
+      const dtLocal = isoToDatetimeLocal(transaction.createdAt, userTimezone);
+      setCreatedAtValue(dtLocal);
+      setCreatedAtOriginal(dtLocal);
+      setCreatedAtDisplay(formatDatetimeLocal(dtLocal, dateFormat, timeFormat));
+    }
+  }
 
   // Tag creation modal state
   const [showTagForm, setShowTagForm] = useState(false);
@@ -1179,7 +1208,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
         // Both halves of a scan pair go in ONE request: the server writes them
         // in one transaction, so uploading the original separately would leave
         // a window where the pair is half stored.
-        await attachmentsApi.upload(newTransactionId, file, original);
+        await attachmentsApi.upload({ transactionId: newTransactionId }, file, original);
       } catch (error) {
         failed += 1;
         logger.error('Failed to upload staged attachment:', error);
@@ -1238,6 +1267,15 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
     try {
       // Handle transfer mode
       if (mode === 'transfer') {
+        // An existing income, expense or split cannot become a transfer from
+        // here: creating one would leave the edited row in place and book the
+        // money twice (A26-H14). The mode is not offered on such an edit; this
+        // refuses it should anything else ever select it.
+        if (transaction && !transaction.isTransfer) {
+          toast.error(t('form.toasts.convertToTransferUnsupported'));
+          setIsLoading(false);
+          return;
+        }
         if (!transferToAccountId) {
           toast.error(t('form.toasts.destinationRequired'));
           setIsLoading(false);
@@ -1312,9 +1350,12 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
 
       // Validate splits sum to amount if in split mode
       if (isSplitMode && splitsData) {
+        // At the server's precision: it requires the lines to equal the parent
+        // exactly at four decimals, so a one-cent tolerance here let through a
+        // set the server refuses and refused a stored four-decimal set.
         const splitsTotal = splitsData.reduce((sum, s) => sum + s.amount, 0);
-        const roundedSplitsTotal = Math.round(splitsTotal * 100) / 100;
-        const roundedAmount = Math.round(data.amount * 100) / 100;
+        const roundedSplitsTotal = roundMoney(splitsTotal);
+        const roundedAmount = roundMoney(data.amount);
         if (roundedSplitsTotal !== roundedAmount) {
           toast.error(t('form.toasts.splitsNotEqual', { splitTotal: roundedSplitsTotal, txAmount: roundedAmount }));
           setIsLoading(false);
@@ -1522,7 +1563,10 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
       onSubmit={handleSubmit(onSubmit)}
       className="space-y-4"
     >
-      {/* Mode selector - show for new/duplicate transactions, or non-transfer edits */}
+      {/* Mode selector - show for new/duplicate transactions, or non-transfer
+          edits. Transfer is offered only on a new entry: an edit has no route
+          that converts the row, and creating a transfer beside it would book
+          the money twice (A26-H14). */}
       {(!transaction || !transaction.isTransfer) && (
         <div className="flex space-x-2 pb-2 border-b dark:border-gray-700">
           <button
@@ -1557,17 +1601,19 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
           >
             {t('form.modeSplit')}
           </button>
-          <button
-            type="button"
-            onClick={() => handleModeChange('transfer')}
-            className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-              mode === 'transfer'
-                ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            {t('form.modeTransfer')}
-          </button>
+          {!transaction && (
+            <button
+              type="button"
+              onClick={() => handleModeChange('transfer')}
+              className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                mode === 'transfer'
+                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              {t('form.modeTransfer')}
+            </button>
+          )}
         </div>
       )}
 
@@ -1694,6 +1740,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
             onChange={setSplits}
             categories={effectiveCategories}
             tags={tags}
+            tagUsage={tagUsage}
             accounts={accounts}
             sourceAccountId={watchedAccountId || ''}
             parentAccountSubType={
@@ -1707,6 +1754,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
             displayCurrencyCode={isForeign ? entryCurrency : undefined}
             displayRate={isForeign ? (fxRate ?? undefined) : undefined}
             onCreateCategory={jointSafeCategoryCreator}
+            transactionDate={watchedDate}
           />
         </div>
       )}
@@ -1776,6 +1824,18 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
         <AttachmentsSection
           stagedFiles={stagedAttachments}
           onStagedFilesChange={setStagedAttachments}
+        />
+      )}
+
+      {/* Warranties linked to this purchase, and Add warranty. A saved row
+          only (a warranty links to a transaction that exists), not on a joint
+          account's row (a warranty is the reader's own, as attachments are),
+          and not for an acting delegate. */}
+      {transaction && !selectedIsJoint && !actingAsDelegate && (
+        <TransactionWarrantiesLine
+          transaction={transaction}
+          onAddWarranty={onAddWarranty ? () => onAddWarranty(transaction) : undefined}
+          onOpenWarranty={onOpenWarranty}
         />
       )}
 

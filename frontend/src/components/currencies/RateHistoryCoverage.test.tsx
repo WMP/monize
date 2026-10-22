@@ -51,6 +51,12 @@ const storedRates = {
       source: 'mny_import',
       inverted: false,
     },
+    {
+      rateDate: '2026-09-14',
+      rate: 4.28,
+      source: 'frankfurter',
+      inverted: false,
+    },
   ],
   truncated: false,
   limit: 2000,
@@ -152,6 +158,8 @@ describe('RateHistoryCoverage', () => {
       expect(rows[1]).toHaveTextContent('Yahoo Finance');
       expect(rows[2]).toHaveTextContent('4.300000');
       expect(rows[2]).toHaveTextContent('Money import');
+      expect(rows[3]).toHaveTextContent('4.280000');
+      expect(rows[3]).toHaveTextContent('Frankfurter (ECB)');
     });
 
     it('says which direction the column is in', async () => {

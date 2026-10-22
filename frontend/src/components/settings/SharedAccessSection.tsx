@@ -103,22 +103,32 @@ export function SharedAccessSection() {
     formSubmitRef,
   } = useFormModal<DelegateSummary>();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [d, a] = await Promise.all([
-        delegationApi.listDelegates(),
-        accountsApi.getAll(),
-      ]);
-      setDelegates(d);
-      setAccounts(a);
-    } catch (err) {
-      toast.error(getErrorMessage(err, t('errors.loadFailed')));
-      logger.error(err);
-    } finally {
-      setLoading(false);
-    }
+  // The writes live in the inner `run`, so they happen after the request, not
+  // during the effect; the mount read starts from the loading state already.
+  const load = useCallback(() => {
+    const run = async () => {
+      try {
+        const [d, a] = await Promise.all([
+          delegationApi.listDelegates(),
+          accountsApi.getAll(),
+        ]);
+        setDelegates(d);
+        setAccounts(a);
+      } catch (err) {
+        toast.error(getErrorMessage(err, t('errors.loadFailed')));
+        logger.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    return run();
   }, [t]);
+
+  // Every read after the first shows the spinner too.
+  const reload = useCallback(() => {
+    setLoading(true);
+    return load();
+  }, [load]);
 
   useEffect(() => {
     void load();
@@ -241,7 +251,7 @@ export function SharedAccessSection() {
       }
       setShowCreate(false);
       resetCreateForm();
-      await load();
+      await reload();
     } catch (err) {
       toast.error(getErrorMessage(err, t('errors.createFailed')));
       logger.error(err);
@@ -257,7 +267,7 @@ export function SharedAccessSection() {
       await delegationApi.revokeDelegate(revokeTarget.id);
       toast.success(t('toasts.removed'));
       setRevokeTarget(null);
-      await load();
+      await reload();
     } catch (err) {
       toast.error(getErrorMessage(err, t('errors.revokeFailed')));
       logger.error(err);
@@ -516,7 +526,7 @@ export function SharedAccessSection() {
             onCancel={close}
             onSaved={() => {
               close();
-              void load();
+              void reload();
             }}
             setFormDirty={setFormDirty}
             submitRef={formSubmitRef}

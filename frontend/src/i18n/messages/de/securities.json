@@ -119,6 +119,8 @@
     "currencyLabel": "Währung",
     "currencyNotConfigured": "{code} — nicht in Ihren Währungen",
     "quoteProviderLabel": "Kursanbieter",
+    "skipPriceUpdatesLabel": "Automatische Kursaktualisierungen deaktivieren",
+    "skipPriceUpdatesHelp": "Monize ruft für dieses Wertpapier keine Kurse ab. Verwenden Sie dies für ein Wertpapier, für das kein Anbieter Kurse liefert; selbst eingegebene Kurse zählen weiterhin. Die Wahl eines anderen Kursanbieters oder einer MSN-Instrument-ID schaltet die Aktualisierungen wieder ein.",
     "msnIdLabel": "MSN Instrument ID (erweitert)",
     "lookupProviderAriaLabel": "Anbieter suchen",
     "lookupButton": "Suchen",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "Anleihen-Engine"
     },
     "types": {
       "select": "Typ auswählen...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "Löschen",
       "deleteSuccess": "Anlageklasse „{name}“ gelöscht",
       "deleteFailed": "Anlageklasse „{name}“ konnte nicht gelöscht werden"
-    }
+    },
+    "bondFetchAction": "{code} aus der offiziellen Quelle abrufen",
+    "bondFetching": "{code} wird beim Emittenten samt Referenzzinsen abgerufen. Das kann bis zu einer Minute dauern.",
+    "bondFetchFailed": "Die Serie konnte nicht abgerufen werden.",
+    "bondCurrencyLocked": "Dieses Wertpapier ist mit einer Anleiheart in {linkedCurrency} verknüpft. Setzen Sie die Währung wieder auf {linkedCurrency} oder lösen Sie zuerst die Verknüpfung der Anleiheart (dabei werden die berechneten Kurse entfernt).",
+    "bondProgramLabel": "Anleiheart",
+    "bondProgramNone": "Nicht verknüpft",
+    "bondProgramCurrent": "Verknüpfte Anleiheart",
+    "bondProgramLoading": "Anleihearten werden geladen...",
+    "bondProgramLoadFailed": "Die Anleihearten konnten nicht geladen werden, daher lässt sich noch keine Anleiheart verknüpfen.",
+    "bondProgramRetry": "Erneut versuchen",
+    "bondNoPrograms": "Der Anleihenkatalog enthält noch keine Anleiheart.",
+    "bondAutoFetchLabel": "Neue Serien dieser Anleiheart automatisch abrufen",
+    "bondAutoFetchHelp": "Wenn aktiviert, liest Monize jeden Tag neue Serien dieser Anleiheart aus der offiziellen Quelle, sodass Sie einen Kauf erfassen können, ohne die Serie zuvor abzurufen.",
+    "bondCountryLabel": "Land",
+    "bondCountryOther": "Andere",
+    "bondCountryOtherInfo": "Die Unterstützung für Anleihen anderer Länder kann auf dem <link>GitHub des Projekts</link> angefragt werden."
   },
   "priceForm": {
     "dateLabel": "Datum",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Wiederanlage langfristiger Kapitalerträge",
       "CAPITAL_GAIN_SHORT": "Kurzfristiger Kapitalertrag",
       "CAPITAL_GAIN_LONG": "Langfristiger Kapitalertrag",
-      "REDEEM": "CD/Anleihe einlösen"
+      "REDEEM": "CD/Anleihe einlösen",
+      "RETURN_OF_CAPITAL": "Kapitalrückzahlung"
     },
     "toasts": {
       "loadHistoryFailed": "Verlauf konnte nicht geladen werden",
@@ -340,6 +360,7 @@
     "nameRequired": "Name ist erforderlich",
     "nameMax": "Name darf maximal 255 Zeichen lang sein",
     "currencyRequired": "Währung ist erforderlich",
+    "bondProgramRequired": "Anleiheart ist erforderlich",
     "descriptionMax": "Die Beschreibung darf höchstens 5000 Zeichen lang sein"
   },
   "priceValidation": {

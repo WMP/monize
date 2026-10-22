@@ -279,6 +279,15 @@ describe('SecurityPriceHistory', () => {
     expect(screen.getByText('No price history available')).toBeInTheDocument();
   });
 
+  it('renders a translated label, not the raw id, for a bond engine price', async () => {
+    (investmentsApi.getSecurityPrices as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 30, securityId: 'sec-1', priceDate: '2025-06-10', openPrice: null, highPrice: null, lowPrice: null, closePrice: 1, volume: null, source: 'bond_engine', createdAt: 'x' },
+    ]);
+    await renderExpanded();
+    expect(screen.getByText('Bond engine')).toBeInTheDocument();
+    expect(screen.queryByText('bond_engine')).not.toBeInTheDocument();
+  });
+
   it('renders all source label variants including unknowns', async () => {
     (investmentsApi.getSecurityPrices as ReturnType<typeof vi.fn>).mockResolvedValue([
       { id: 10, securityId: 'sec-1', priceDate: '2025-06-10', openPrice: null, highPrice: null, lowPrice: null, closePrice: 1, volume: null, source: 'msn_finance', createdAt: 'x' },

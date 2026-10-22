@@ -316,6 +316,7 @@
     "totalInflows": "総流入",
     "totalOutflows": "総流出",
     "netCashFlow": "純キャッシュフロー",
+    "notAvailable": "N/A",
     "monthlyCashFlow": "月次キャッシュフロー",
     "inflowsByCategory": "カテゴリ別流入",
     "outflowsByCategory": "カテゴリ別流出",
@@ -764,6 +765,7 @@
     "totalValue": "総価値",
     "costBasis": "取得原価",
     "totalGainLoss": "総損益",
+    "gainPartialCaption": "価格のある保有銘柄のみ",
     "return": "リターン",
     "viewHoldings": "保有銘柄",
     "viewAllocation": "配分",
@@ -821,6 +823,7 @@
     "actionCapitalGainShort": "短期キャピタルゲイン",
     "actionCapitalGainLong": "長期キャピタルゲイン",
     "actionRedeem": "CD・債券の償還",
+    "actionReturnOfCapital": "資本の払い戻し",
     "colCommission": "手数料",
     "colPriceCurrency": "価格通貨",
     "colAmountCurrency": "金額通貨",
@@ -1146,6 +1149,11 @@
     "vsMonth": "{month} 比",
     "inMonth": "{month} に {amount}",
     "netWorthTotal": "合計：{amount}",
+    "netWorthSummaryPartial": "{currentMonth} の純資産は <strong>{netWorth}</strong> でした。{pairs} の為替レートがないため、{previousMonth} との比較による変化を算出できません。通貨ページで追加してください。",
+    "pdfPartialSuffix": "{amount}（部分的）",
+    "pdfNote": "注記",
+    "pdfNotAvailable": "N/A",
+    "pdfPartialNote": "部分的な合計: {pairs} の為替レートがありません。",
     "netWorthSummary": "{currentMonth} の純資産は <strong>{netWorth}</strong> で、{previousMonth} と比較して <delta>{changeAmount}</delta> でした。",
     "pdfTitle": "月次比較",
     "pdfSubtitle": "{current} vs {previous}",
@@ -1190,7 +1198,15 @@
     "colMonth": "月",
     "colAssets": "資産",
     "colLiabilities": "負債",
-    "colNetWorth": "純資産"
+    "colNetWorth": "純資産",
+    "barStyle": "棒の表示",
+    "barStyleNetWorth": "純資産",
+    "barStyleAccountType": "口座の種類別",
+    "notAvailable": "N/A",
+    "colNote": "注記",
+    "partialMonthNote": "部分的: {pairs} の為替レートがありません",
+    "pdfPartialNote": "部分的な合計: {pairs} の為替レートがありません。通貨ページで追加してください。",
+    "partialMonth": "表示されません: この月の一部の金額を換算できなかったため、純資産は不明です。"
   },
   "portfolioValue": {
     "highestValue": "最高値",
@@ -1198,10 +1214,10 @@
     "valueChange": "評価額の変化",
     "investedValueChangeTooltip": "期間末の証券の評価額から期間初めの評価額を引いたもの。つまりチャートの最後の点から最初の点を引いた値です。投資されていない現金は含みません。",
     "netInvested": "純投資額",
-    "netInvestedTooltip": "期間中に証券へ投じた金額から、売却や株式の移管で証券から出た金額を差し引いたもの。入金・出金した現金は含みません。",
+    "netInvestedTooltip": "期間中に証券へ投じた金額から、売却や株式の移管で証券から出た金額を差し引いたもの。株式に再投資された分配金は投じた金額に含まれます。入金・出金した現金は含みません。",
     "investmentIncome": "配当と利息",
     "investmentIncomeLine": "配当と利息 {amount}",
-    "investmentIncomeTooltip": "期間中に証券が支払った配当、利息、キャピタルゲイン分配金。評価額の変化から純投資額を引き、これらを加えたものが投資成果です。",
+    "investmentIncomeTooltip": "期間中に証券が支払った配当、利息、キャピタルゲイン分配金。株式に再投資された分配金も現金で支払われたものと同様に含まれます。評価額の変化から純投資額を引き、これらを加えたものが投資成果です。",
     "investmentResult": "投資成果",
     "investmentReturn": "投資リターン",
     "investmentResultTooltip": "投資が生み出した金額です。有価証券の価値の変化から、売買、入金、出金、未投資の現金を除き、配当と利息を含めています。",
@@ -1276,6 +1292,7 @@
     "colDate": "日付",
     "colShares": "株数",
     "colPrice": "価格",
+    "returnOfCapitalRow": "取得原価を超える資本の払い戻し",
     "pdfTitle": "実現損益レポート",
     "pdfSubtitle": "{count} 種類の有価証券 | 純損益：{gain}",
     "csvColSecurity": "有価証券",
@@ -1848,6 +1865,13 @@
   "foreignCurrencyFees": {
     "noEligibleAccounts": "外貨取引手数料が設定されている口座はありません。口座に手数料の割合を設定すると、その外貨手数料をここで追跡できます。"
   },
+  "partialData": {
+    "notice": "一部の数値は部分的です: {count, plural, other {# 件の金額}}を {displayCurrency} に換算できなかったため除外しています。{currencies} の為替レートがありません。通貨ページで追加してください。",
+    "noticeExcluded": "一部の数値は部分的です: {count, plural, other {# 件の金額}}を算出できなかったため除外しています。",
+    "pdfNote": "部分的な合計: {currencies} の為替レートがありません",
+    "pdfNoteExcluded": "部分的な合計: {count, plural, other {# 件の金額}}を除外",
+    "pdfSuffix": "（部分的）"
+  },
   "sankey": {
     "help": "入ってきたお金は中央を通って、支出、貯蓄や投資、借入の返済へと流れます。既定では、開いている当座、普通預金、現金、クレジットカード、信用枠の口座が対象で、これらの間の振替は表示されません。貯蓄口座へ移した金額を見るには、その口座を口座フィルターから外してください。クレジットカードの支払いは借入の返済にはなりません。精算される購入は、すでに支出として計上されています。",
     "depthLabel": "詳細度",
@@ -1894,5 +1918,8 @@
       "residualDeficit": "残高から充当",
       "unlinkedAccount": "（リンクされていない口座）"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "作成日時: {timestamp}"
   }
 }

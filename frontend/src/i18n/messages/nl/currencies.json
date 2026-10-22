@@ -13,6 +13,14 @@
     "modalTitleNew": "Nieuwe valuta",
     "loading": "Valuta's laden...",
     "count": "{count, plural, one {# valuta} other {# valuta's}}",
+    "providers": {
+      "line": "Koersen van {providers}",
+      "separator": ", daarna ",
+      "names": {
+        "frankfurter": "Frankfurter (ECB-referentiekoersen)",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "Valuta's laden mislukt",
       "updated": "Valuta succesvol bijgewerkt",
@@ -24,6 +32,7 @@
       "statusFailed": "Status van valuta bijwerken mislukt",
       "ratesRefreshed": "Wisselkoersen vernieuwd: {updated} paren bijgewerkt",
       "ratesRefreshedWithFailed": "Wisselkoersen vernieuwd: {updated} bijgewerkt, {failed} mislukt",
+      "ratesAllFailed": "Er konden geen wisselkoersen worden opgehaald; de aanbieder antwoordde niet",
       "ratesFailed": "Wisselkoersen vernieuwen mislukt"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter (ECB)",
         "mnyImport": "Money-import",
         "unknown": "Onbekend"
       }

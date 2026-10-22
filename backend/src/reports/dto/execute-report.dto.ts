@@ -49,9 +49,22 @@ export interface ReportTimeframe {
 }
 
 export interface ReportSummary {
-  total: number;
+  /**
+   * Sum of `data`, or `null` when any row could not be converted into
+   * {@link ReportResult.currency} -- a missing rate makes the total unknowable,
+   * never smaller. `knownTotal` carries the part that did convert. The count
+   * metric sums counts, which need no rate, so it is never `null`.
+   */
+  total: number | null;
+  /**
+   * Sum of `data`. Equals `total` when nothing was excluded; otherwise it is a
+   * subtotal and must be labelled as one, never under "Total".
+   */
+  knownTotal: number;
+  /** Rows counted in `data`; rows left out for want of a rate are not in it. */
   count: number;
-  average: number;
+  /** `null` with `total`: a mean over the rows that converted is not the mean. */
+  average: number | null;
 }
 
 export interface ReportResult {
@@ -62,5 +75,14 @@ export interface ReportResult {
   timeframe: ReportTimeframe;
   data: AggregatedDataPoint[];
   summary: ReportSummary;
+  /** Reporting currency every money figure in `data` and `summary` is in. */
+  currency: string;
+  /**
+   * Source currencies with no usable rate into {@link currency}, so their rows
+   * are in none of the figures. Empty when the report is complete.
+   */
+  missingCurrencies: string[];
+  /** How many rows (or split lines) were left out for want of a rate. */
+  excludedCount: number;
   tableColumns?: TableColumn[];
 }

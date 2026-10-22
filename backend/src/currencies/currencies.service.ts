@@ -4,6 +4,7 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
   OnApplicationBootstrap,
 } from "@nestjs/common";
 import { tr } from "../i18n/translate";
@@ -18,9 +19,11 @@ import {
   CURRENCY_METADATA,
   resolveCurrencyMetadata,
   getCurrencyCatalog,
+  isKnownIsoCurrency,
   type CurrencyMetadata,
 } from "./currency-metadata";
 import { FALLBACK_DEFAULT_CURRENCY } from "../common/default-currency.util";
+import { FxProviderChain } from "./providers/fx-provider-chain";
 
 export interface CurrencyLookupResult {
   code: string;
@@ -55,7 +58,10 @@ const DEFAULT_CURRENCY_CODE = FALLBACK_DEFAULT_CURRENCY;
 export class CurrenciesService implements OnApplicationBootstrap {
   private readonly logger = new Logger(CurrenciesService.name);
 
-  constructor(private dataSource: DataSource) {}
+  constructor(
+    private dataSource: DataSource,
+    private readonly fxProviders: FxProviderChain,
+  ) {}
 
   /**
    * Currencies are created on demand rather than pre-seeded, but a brand-new
@@ -71,7 +77,7 @@ export class CurrenciesService implements OnApplicationBootstrap {
   async onApplicationBootstrap(): Promise<void> {
     try {
       await withSystemContext(() =>
-        this.ensureSystemCurrency(DEFAULT_CURRENCY_CODE),
+        this.ensureBootstrapCurrency(DEFAULT_CURRENCY_CODE),
       );
     } catch (err) {
       this.logger.warn(
@@ -192,7 +198,7 @@ export class CurrenciesService implements OnApplicationBootstrap {
 
     // One transaction around the whole block: the lazy-create fallback re-runs
     // the same query and must see the row it just wrote. The nested
-    // `ensureSystemCurrency` joins this transaction (scoped-db re-entrancy).
+    // `ensureCurrencyForUser` joins this transaction (scoped-db re-entrancy).
     return withScopedDb(this.dataSource, async (manager) => {
       const rows: UserCurrencyView[] = await manager.query(query, [userId]);
 
@@ -208,7 +214,7 @@ export class CurrenciesService implements OnApplicationBootstrap {
           );
         const defaultCurrency = prefRows[0]?.default_currency;
         if (defaultCurrency) {
-          await this.ensureSystemCurrency(defaultCurrency);
+          await this.ensureCurrencyForUser(userId, defaultCurrency);
           return manager.query(query, [userId]);
         }
       }
@@ -226,14 +232,91 @@ export class CurrenciesService implements OnApplicationBootstrap {
   }
 
   /**
-   * Ensure a system currency row exists for `code`, creating it from the
-   * curated/derived metadata (name, symbol, decimal places) when missing.
-   * Idempotent and safe to call on every default-currency change. Used so we
-   * create a currency on demand -- with a real symbol -- instead of seeding a
-   * whole list up front.
+   * Ensure the bootstrap system currency row exists, creating it from the
+   * curated/derived metadata (name, symbol, decimal places) when missing. It is
+   * ACTIVE and owned by nobody, so every user is offered it: that is right for
+   * the one default-preference currency and wrong for anything else. Called only
+   * from `onApplicationBootstrap`, never from a user's request -- a request
+   * goes through `ensureCurrencyForUser`.
    */
-  async ensureSystemCurrency(code: string): Promise<void> {
+  private async ensureBootstrapCurrency(code: string): Promise<void> {
+    await this.insertSystemCurrencyIfMissing(code, true);
+  }
+
+  /**
+   * Make `code` usable by `userId` -- as the default-currency preference, or as
+   * the currency an imported account, security or rate is priced in -- without
+   * offering it to anybody else. A user's action never creates a currency every
+   * other user is shown: a known ISO 4217 code becomes an inactive reference row
+   * (as the bond catalog's does, and owned by nobody), and anything else is the
+   * user's own custom currency. Either way only this user's preference row is
+   * activated.
+   *
+   * One `withScopedDb`: it joins the caller's transaction, so a preference
+   * written after this call in the same transaction finds its foreign key. The
+   * insert is `ON CONFLICT DO NOTHING`, so an existing row (active, inactive,
+   * system or somebody's own) is left as it is.
+   */
+  async ensureCurrencyForUser(userId: string, code: string): Promise<void> {
     const upper = code.toUpperCase();
+    if (!/^[A-Z]{3}$/.test(upper)) {
+      throw new BadRequestException(
+        tr(
+          "errors.common.currencyCodeInvalid",
+          "Currency code must be exactly 3 letters (e.g., USD, CAD)",
+        ),
+      );
+    }
+
+    await withScopedDb(this.dataSource, async (manager) => {
+      const existing = await manager.getRepository(Currency).findOne({
+        where: { code: upper },
+      });
+      if (!existing) {
+        const meta = resolveCurrencyMetadata(upper);
+        const isReference = isKnownIsoCurrency(upper);
+        await manager.query(
+          `INSERT INTO currencies (code, name, symbol, decimal_places, is_active, created_by_user_id)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (code) DO NOTHING`,
+          [
+            upper,
+            meta.name,
+            meta.symbol,
+            meta.decimalPlaces,
+            !isReference,
+            isReference ? null : userId,
+          ],
+        );
+      }
+
+      await manager.query(
+        `INSERT INTO user_currency_preferences (user_id, currency_code, is_active)
+         VALUES ($1, $2, true)
+         ON CONFLICT (user_id, currency_code) DO UPDATE SET is_active = true`,
+        [userId, upper],
+      );
+    });
+  }
+
+  /**
+   * Ensure the currency a reference catalog row is priced in exists, without
+   * offering it to anyone: a deployment's users did not choose it, so it is
+   * created inactive (`findAll` lists only what a user has activated or what is
+   * active globally) and stays selectable by code through `create`. Used only
+   * by the bond catalog (its seed and a series fetch); an existing row, active or not, is left as is.
+   */
+  async ensureCatalogCurrency(code: string): Promise<void> {
+    await this.insertSystemCurrencyIfMissing(code, false);
+  }
+
+  private async insertSystemCurrencyIfMissing(
+    code: string,
+    active: boolean,
+  ): Promise<void> {
+    const upper = code.toUpperCase();
+    // A fixed fragment, never caller text.
+    const isActive = active ? "true" : "false";
     await withScopedDb(this.dataSource, async (manager) => {
       const existing = await manager.getRepository(Currency).findOne({
         where: { code: upper },
@@ -243,11 +326,51 @@ export class CurrenciesService implements OnApplicationBootstrap {
       const meta = resolveCurrencyMetadata(upper);
       await manager.query(
         `INSERT INTO currencies (code, name, symbol, decimal_places, is_active, created_by_user_id)
-       VALUES ($1, $2, $3, $4, true, NULL)
+       VALUES ($1, $2, $3, $4, ${isActive}, NULL)
        ON CONFLICT (code) DO NOTHING`,
         [upper, meta.name, meta.symbol, meta.decimalPlaces],
       );
     });
+  }
+
+  /**
+   * Lock the custom currencies `userId` created and return their codes, in code
+   * order. Called in the transaction that deletes the user, before the user row
+   * goes: the lock keeps a concurrent activation from committing a reference
+   * between this decision and `removeUnreferencedCurrencies`.
+   */
+  async lockCurrenciesCreatedBy(
+    manager: EntityManager,
+    userId: string,
+  ): Promise<string[]> {
+    const rows: Array<{ code: string }> = await manager.query(
+      `SELECT code FROM currencies WHERE created_by_user_id = $1 ORDER BY code FOR UPDATE`,
+      [userId],
+    );
+    return rows.map((row) => row.code);
+  }
+
+  /**
+   * After a user is deleted, remove the currencies they created that nothing
+   * references any more. The foreign key's ON DELETE SET NULL has by then turned
+   * each into a system row (a trigger deactivated it), so only a row with no
+   * creator is deleted, and only when `currency_code_in_use_globally` says
+   * nobody -- including rows this scope cannot see -- still points at it.
+   *
+   * Lock the candidates (`lockCurrenciesCreatedBy`), then decide here, one code
+   * at a time on the transaction's single connection: the CONC-008 rule.
+   */
+  async removeUnreferencedCurrencies(
+    manager: EntityManager,
+    codes: string[],
+  ): Promise<void> {
+    for (const code of codes) {
+      if (await this.isInUseGlobally(manager, code)) continue;
+      await manager.query(
+        `DELETE FROM currencies WHERE code = $1 AND created_by_user_id IS NULL`,
+        [code],
+      );
+    }
   }
 
   async findOne(code: string): Promise<Currency> {
@@ -516,41 +639,11 @@ export class CurrenciesService implements OnApplicationBootstrap {
         );
       }
 
-      // 3. Fall back to Yahoo Finance search API for unknown currencies
-      const searchUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(trimmed)}&quotesCount=20&newsCount=0`;
-      const searchResponse = await fetch(searchUrl, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        },
-      });
-
-      if (!searchResponse.ok) {
-        this.logger.warn(
-          `Yahoo Finance search returned ${searchResponse.status} for currency query: ${query}`,
-        );
+      // 3. Fall back to the providers' free-text search for unknown currencies
+      const resultCode = await this.fxProviders.searchCurrency(trimmed);
+      if (resultCode === null) {
         return null;
       }
-
-      const searchData = await searchResponse.json();
-      const quotes = searchData.quotes || [];
-
-      // Find currency-type results (forex pairs like EURUSD=X)
-      const currencyQuotes = quotes.filter(
-        (q: any) =>
-          q.quoteType === "CURRENCY" || (q.symbol && q.symbol.includes("=X")),
-      );
-
-      if (currencyQuotes.length === 0) {
-        return null;
-      }
-
-      // Extract the currency code from the first forex pair result
-      const firstResult = currencyQuotes[0];
-      const resultCode = this.extractCurrencyCode(
-        firstResult.symbol,
-        upperQuery,
-      );
 
       const resultMetadata = CURRENCY_METADATA[resultCode];
 
@@ -659,34 +752,30 @@ export class CurrenciesService implements OnApplicationBootstrap {
   }
 
   /**
-   * Verify a currency exists on Yahoo Finance and return our metadata name.
+   * Verify a currency through the configured exchange rate providers and
+   * return our metadata. A code some provider carries is verified without a
+   * call; otherwise each provider that can verify one is asked. The local
+   * metadata is the name and symbol source either way, and an unverified code
+   * is still returned: verification is a lookup aid, not a gate.
    */
   private async verifyAndReturnCurrency(
     code: string,
     metadata: CurrencyMetadata,
   ): Promise<CurrencyLookupResult> {
     try {
-      const yahooSymbol = `${code}USD=X`;
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=1d`;
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        },
-      });
-
-      if (response.ok) {
-        // Verified on Yahoo - use our metadata name (not Yahoo's forex pair name)
-        return {
-          code,
-          name: metadata.name,
-          symbol: metadata.symbol,
-          decimalPlaces: metadata.decimalPlaces,
-        };
+      if (!(await this.fxProviders.carriesAny(code))) {
+        const known = await this.fxProviders.verifyCurrency(code);
+        if (known !== true) {
+          this.logger.debug(
+            known === false
+              ? `No configured exchange rate provider knows ${code}; returning local metadata`
+              : `No configured exchange rate provider could verify ${code}; returning local metadata`,
+          );
+        }
       }
     } catch (err) {
       this.logger.debug(
-        `Yahoo verification failed for ${code}, falling back to local metadata: ${err instanceof Error ? err.message : err}`,
+        `Provider verification failed for ${code}, falling back to local metadata: ${err instanceof Error ? err.message : err}`,
       );
     }
 
@@ -696,24 +785,5 @@ export class CurrenciesService implements OnApplicationBootstrap {
       symbol: metadata.symbol,
       decimalPlaces: metadata.decimalPlaces,
     };
-  }
-
-  /**
-   * Extract a currency code from a Yahoo Finance forex symbol like "EURUSD=X"
-   */
-  private extractCurrencyCode(symbol: string, originalQuery: string): string {
-    // Remove =X suffix
-    const pair = symbol.replace("=X", "");
-    // Forex pairs are 6 chars: EURUSD -> EUR + USD
-    if (pair.length === 6) {
-      const base = pair.substring(0, 3);
-      const quote = pair.substring(3, 6);
-      // Return whichever part matches the query
-      const upperQuery = originalQuery.toUpperCase();
-      if (base === upperQuery) return base;
-      if (quote === upperQuery) return quote;
-      return base; // Default to base currency
-    }
-    return originalQuery.toUpperCase();
   }
 }

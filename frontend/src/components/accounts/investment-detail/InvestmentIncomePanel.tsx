@@ -2,9 +2,13 @@
 
 import { useTranslations } from 'next-intl';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { UnknownAmount } from '@/components/ui/UnknownAmount';
 
 interface InvestmentIncomePanelProps {
-  dividendInterestYtd: number;
+  /** `null` when a payment could not be expressed in `currencyCode`. */
+  dividendInterestYtd: number | null;
+  /** Why `dividendInterestYtd` is `null`. */
+  dividendInterestUnknownReason?: 'displayFx' | 'unknownCurrency';
   realizedGainsYtd: number;
   currencyCode: string;
   isLoading: boolean;
@@ -17,6 +21,7 @@ function gainClass(value: number): string {
 /** Year-to-date investment income: dividends/interest plus realized gains. */
 export function InvestmentIncomePanel({
   dividendInterestYtd,
+  dividendInterestUnknownReason = 'displayFx',
   realizedGainsYtd,
   currencyCode,
   isLoading,
@@ -43,7 +48,11 @@ export function InvestmentIncomePanel({
                 {t('income.dividendsInterest')}
               </dt>
               <dd className="text-xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(dividendInterestYtd, currencyCode)}
+                {dividendInterestYtd === null ? (
+                  <UnknownAmount reason={dividendInterestUnknownReason} />
+                ) : (
+                  formatCurrency(dividendInterestYtd, currencyCode)
+                )}
               </dd>
               <dd className="text-xs text-gray-500 dark:text-gray-400">{t('income.ytd')}</dd>
             </div>

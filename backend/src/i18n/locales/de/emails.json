@@ -308,6 +308,87 @@
     "priceMovement": {
       "title": "Alarm bei Kursänderung: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}: {{ percent }}% gegenüber der letzten verfügbaren Sitzung."
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}: Bankzugriff endet heute",
+      "expiringTitleOneDay": "{{ institution }}: Bankzugriff endet innerhalb von 1 Tag",
+      "expiringTitleDays": "{{ institution }}: Bankzugriff endet innerhalb von {{ days }} Tagen",
+      "expiringMessage": "Ihre Einwilligung, dass Monize auf {{ institution }} zugreifen darf, endet am {{ date }}. Erneuern Sie die Verbindung in Monize, um weiter zu synchronisieren.",
+      "expiredTitle": "{{ institution }}: Bankzugriff ist beendet",
+      "expiredMessage": "Ihre Einwilligung, dass Monize auf {{ institution }} zugreifen darf, ist beendet. Erneuern Sie die Verbindung in Monize, um die Synchronisierung fortzusetzen.",
+      "failedTitle": "{{ institution }}: Synchronisierung fehlgeschlagen",
+      "failedMessage": "Die tägliche Synchronisierung von {{ institution }} ist fehlgeschlagen für: {{ accounts }}. Öffnen Sie die Einstellungen der Bank-Synchronisierung, um den Grund zu sehen.",
+      "failedCredentialsMessage": "Die tägliche Synchronisierung von {{ institution }} konnte nicht starten, weil die Zugangsdaten der Bank-Synchronisierung fehlen oder abgelehnt wurden. Prüfen Sie sie in den Einstellungen der Bank-Synchronisierung.",
+      "unnamedAccount": "ein Konto",
+      "importedTitle": "{{ institution }}: neue Buchungen importiert",
+      "importedMessage": "Durch die tägliche Synchronisierung aus {{ institution }} importierte Buchungen: {{ imported }}.",
+      "importedNoneTitle": "{{ institution }}: keine neuen Buchungen",
+      "importedNoneMessage": "Die tägliche Synchronisierung von {{ institution }} hat keine neuen Buchungen gefunden."
+    },
+    "bond": {
+      "maturitySoonTitle": "{{ series }}: Fälligkeit am {{ date }}",
+      "maturitySoonMessage": "{{ quantity }} × {{ series }} werden am {{ date }} fällig. {{ payout }}",
+      "interestTitle": "{{ series }}: Zinszahlung am {{ date }}",
+      "interestMessage": "{{ quantity }} × {{ series }} zahlen am {{ date }} {{ amount }} Zinsen. Buchen Sie sie auf der Wertpapierseite, falls sie noch nicht auf Ihrem Konto sind.",
+      "interestMessageUnknown": "{{ quantity }} × {{ series }} zahlen am {{ date }} Zinsen. Der Betrag steht noch nicht fest: Ein Zinssatz, von dem er abhängt, ist noch nicht veröffentlicht.",
+      "rateResetTitle": "{{ series }}: neue Zinsperiode",
+      "rateResetMessage": "{{ series }} hat am {{ date }} die Periode {{ period }} mit {{ rate }} p. a. begonnen.",
+      "unbookedTitle": "{{ series }}: fällig, Rückzahlung nicht gebucht",
+      "unbookedMessage": "{{ quantity }} × {{ series }} wurden am {{ date }} fällig, und es ist keine Rückzahlung gebucht. {{ payout }} Buchen Sie die Rückzahlung auf der Wertpapierseite.",
+      "payoutKnown": "Die Auszahlung beträgt {{ payout }}.",
+      "payoutUnknown": "Die Auszahlung steht noch nicht fest: {{ reason }}.",
+      "reason": {
+        "RATE_UNKNOWN": "ein Zinssatz, von dem sie abhängt, ist noch nicht veröffentlicht",
+        "TERMS_INCOMPLETE": "die Konditionen der Serie sind unvollständig",
+        "PURCHASE_OUTSIDE_SALE_WINDOW": "ein Kaufdatum liegt außerhalb des Verkaufszeitraums der Serie",
+        "other": "sie lässt sich aus den gespeicherten Daten nicht berechnen"
+      },
+      "benchmarkTitle": "{{ benchmark }}: neuer Wert für {{ observation }}",
+      "benchmarkMessage": "{{ publisher }} hat {{ benchmark }} für {{ observation }} veröffentlicht: {{ value }}. Betroffen: {{ series }}.",
+      "benchmarkMessageMore": "{{ publisher }} hat {{ benchmark }} für {{ observation }} veröffentlicht: {{ value }}. Betroffen: {{ series }} und {{ more }} weitere.",
+      "missingTitle": "Anleihedaten noch nicht bekannt",
+      "missingMessage": "Einige Anleihedaten lassen sich nicht berechnen: {{ causes }}.",
+      "benchmarks": {
+        "PL_CPI_GUS_YOY": "Inflationsrate (VPI), 12 Monate (GUS)",
+        "PL_NBP_REFERENCE": "NBP-Referenzzins"
+      },
+      "cause": {
+        "observation": "der Wert {{ observation }} von {{ benchmark }} ({{ publisher }}) ist nicht gespeichert: Er ist noch nicht veröffentlicht, oder der Feed wurde seitdem nicht abgerufen; aktualisieren Sie auf der Anleiheseite",
+        "observationNoPublisher": "der Wert {{ observation }} von {{ benchmark }} ist nicht gespeichert: Er ist noch nicht veröffentlicht, oder der Feed wurde seitdem nicht abgerufen; aktualisieren Sie auf der Anleiheseite",
+        "terms": "die Konditionen von {{ series }} sind unvollständig; aktualisieren Sie die Serie auf der Anleiheseite",
+        "purchase": "ein Kauf von {{ series }} am {{ date }} liegt außerhalb des Verkaufszeitraums ({{ from }} bis {{ to }}); korrigieren Sie das Kaufdatum",
+        "lots": "die Lots lassen sich nicht aus dem Buchungsverlauf ableiten ({{ code }}); korrigieren Sie den Buchungsverlauf",
+        "lotsRow": "{{ action }} vom {{ date }}: Die Lots lassen sich nicht ableiten ({{ code }}); korrigieren Sie die Buchung",
+        "lotsRowSeries": "{{ action }} vom {{ date }} ist keiner Serie zugeordnet ({{ code }}); wählen Sie die Serie in dieser Buchung",
+        "lotsRowRemoval": "{{ action }} vom {{ date }} entnimmt mehr, als das Konto von dieser Serie hält ({{ code }}); korrigieren Sie die Buchung"
+      },
+      "action": {
+        "BUY": "Kauf",
+        "SELL": "Verkauf",
+        "REINVEST": "Wiederanlage",
+        "ADD_SHARES": "Anteilszubuchung",
+        "REMOVE_SHARES": "Anteilsausbuchung",
+        "SPLIT": "Split",
+        "TRANSFER_IN": "eingehende Übertragung",
+        "TRANSFER_OUT": "ausgehende Übertragung",
+        "other": "Buchung"
+      }
+    },
+    "emailReceiptsAttention": {
+      "title": "E-Mail-Belege benötigen Aufmerksamkeit",
+      "message": "Ihr Belegepostfach enthält {{ noParser }} ohne Profil und {{ parseFailed }}, die ihr Profil nicht erkannt hat. Öffnen Sie zur Prüfung."
+    },
+    "aiReview": {
+      "readyTitle": "KI-Prüfvorschläge warten auf Sie",
+      "readyMessage": "Vorschläge, die auf Ihre Entscheidung warten: {{ count }}. Neu seit der letzten Benachrichtigung: {{ added }}. Öffnen Sie sie zur Prüfung.",
+      "expiringTitle": "KI-Prüfvorschläge laufen bald ab",
+      "expiringMessage": "Vorschläge, die innerhalb von 3 Tagen ablaufen: {{ count }}. Der erste läuft am {{ date }} ab. Öffnen Sie sie zur Prüfung."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: Garantie läuft bald ab",
+      "expiringMessage": "Die Garantie für {{ name }} läuft am {{ date }} ab. Öffnen Sie sie, um ihre Dokumente zu prüfen oder einen Anspruch zu erfassen.",
+      "todayTitle": "{{ name }}: Garantie läuft heute ab",
+      "todayMessage": "Die Garantie für {{ name }} läuft heute, am {{ date }}, ab. Öffnen Sie sie, um ihre Dokumente zu prüfen oder einen Anspruch zu erfassen."
     }
   },
   "backupOffsite": {

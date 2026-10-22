@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
@@ -57,8 +57,11 @@ interface PanelState {
 }
 
 /** The provider slugs `exchange_rates.source` actually holds. */
-function sourceKey(source: string | null): 'yahooFinance' | 'mnyImport' | null {
+function sourceKey(
+  source: string | null,
+): 'yahooFinance' | 'frankfurter' | 'mnyImport' | null {
   if (source === 'yahoo_finance') return 'yahooFinance';
+  if (source === 'frankfurter') return 'frankfurter';
   if (source === 'mny_import') return 'mnyImport';
   return null;
 }
@@ -96,36 +99,50 @@ export function RateHistoryCoverage({
   // itself and nothing to fill.
   const sameCurrency = code === defaultCurrency;
 
+  // A new request input means a new read: show it as loading from this render
+  // on ("info from previous render"), rather than from inside the effect.
+  const requestKey = `${code}|${showStoredRates}|${sameCurrency}`;
+  const [loadingKey, setLoadingKey] = useState(requestKey);
+  if (loadingKey !== requestKey) {
+    setLoadingKey(requestKey);
+    setIsLoading(true);
+  }
+
   // Read in the effect below, and by the fill's completion, to decide whether
   // what came back is still about the currency on screen.
   const currentCode = useRef(code);
-  currentCode.current = code;
+  useLayoutEffect(() => {
+    currentCode.current = code;
+  });
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    const requestCode = code;
-    const [coverage, stored] = await Promise.allSettled([
-      exchangeRatesApi.getRateCoverage(requestCode),
-      showStoredRates
-        ? exchangeRatesApi.getStoredRates(requestCode)
-        : Promise.resolve(null),
-    ]);
-    if (currentCode.current !== requestCode) return;
+  // The writes live in the inner `run`, so they happen after the request, not during the effect.
+  const load = useCallback(() => {
+    const run = async () => {
+      const requestCode = code;
+      const [coverage, stored] = await Promise.allSettled([
+        exchangeRatesApi.getRateCoverage(requestCode),
+        showStoredRates
+          ? exchangeRatesApi.getStoredRates(requestCode)
+          : Promise.resolve(null),
+      ]);
+      if (currentCode.current !== requestCode) return;
 
-    if (coverage.status === 'rejected') {
-      logger.error('Rate coverage load failed:', coverage.reason);
-    }
-    if (stored.status === 'rejected') {
-      logger.error('Stored rate load failed:', stored.reason);
-    }
-    setPanel({
-      code: requestCode,
-      coverage: coverage.status === 'fulfilled' ? coverage.value : null,
-      coverageFailed: coverage.status === 'rejected',
-      stored: stored.status === 'fulfilled' ? stored.value : null,
-      storedFailed: stored.status === 'rejected',
-    });
-    setIsLoading(false);
+      if (coverage.status === 'rejected') {
+        logger.error('Rate coverage load failed:', coverage.reason);
+      }
+      if (stored.status === 'rejected') {
+        logger.error('Stored rate load failed:', stored.reason);
+      }
+      setPanel({
+        code: requestCode,
+        coverage: coverage.status === 'fulfilled' ? coverage.value : null,
+        coverageFailed: coverage.status === 'rejected',
+        stored: stored.status === 'fulfilled' ? stored.value : null,
+        storedFailed: stored.status === 'rejected',
+      });
+      setIsLoading(false);
+    };
+    return run();
   }, [code, showStoredRates]);
 
   useEffect(() => {
@@ -182,6 +199,7 @@ export function RateHistoryCoverage({
       }
       // Re-read rather than patch: the server decides what is stored, and it
       // has just written rows this component has never seen.
+      setIsLoading(true);
       await load();
     } catch (error) {
       logger.error('Rate gap fill failed:', error);

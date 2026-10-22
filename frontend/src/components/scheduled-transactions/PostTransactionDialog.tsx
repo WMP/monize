@@ -15,7 +15,14 @@ import { Modal } from '@/components/ui/Modal';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows } from '@/components/transactions/SplitEditor';
 import { toOverrideSplits } from './splitSerialization';
-import { ScheduledTransaction, PostScheduledTransactionData } from '@/types/scheduled-transaction';
+import { bookSplitRowsAtMinorUnit } from '@/lib/minor-unit-booking';
+import {
+  ScheduledTransaction,
+  PostScheduledTransactionData,
+  LoanOccurrencesProjection,
+} from '@/types/scheduled-transaction';
+import { isLoanBillCandidate, loanOccurrenceLines } from '@/lib/loan-occurrence';
+import { nextOccurrenceDueDate, occurrencePin } from '@/lib/scheduled-effective-amount';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
@@ -28,6 +35,7 @@ import {
   roundToCents,
   roundToDecimals,
   getCurrencySymbol,
+  getDecimalPlacesForCurrency,
   formatAmount,
   FX_RATE_DISPLAY_DECIMALS,
 } from '@/lib/format';
@@ -103,6 +111,18 @@ export function PostTransactionDialog({
   const [description, setDescription] = useState<string>('');
   const [isSplit, setIsSplit] = useState(false);
   const [splits, setSplits] = useState<SplitRow[]>([]);
+  // A loan bill's rows as the stored template books them (the rows an
+  // unchanged post echoes back), and the projection's rows once the server's
+  // priced occurrence replaced them in the form. Both belong to the
+  // initialization of the occurrence they were made for.
+  const [templateBaseline, setTemplateBaseline] = useState<{
+    rows: SplitRow[];
+    amount: number;
+  } | null>(null);
+  const [loanPrefill, setLoanPrefill] = useState<{
+    rows: SplitRow[];
+    amount: number;
+  } | null>(null);
   const [transactionDate, setTransactionDate] = useState<string>('');
   const [referenceNumber, setReferenceNumber] = useState<string>('');
 
@@ -142,7 +162,7 @@ export function PostTransactionDialog({
     (investmentAction === 'ADD_SHARES' || investmentAction === 'REMOVE_SHARES' || investmentAction === 'SPLIT');
   const isInvestmentAmountOnly = isInvestmentKind &&
     investmentAction != null &&
-    ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN'].includes(baseInvestmentAction(investmentAction));
+    ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN', 'RETURN_OF_CAPITAL'].includes(baseInvestmentAction(investmentAction));
 
   const todayStr = useMemo(() => getLocalDateString(), []);
 
@@ -244,6 +264,15 @@ export function PostTransactionDialog({
     [postFxFeePercent],
   );
 
+  // A new occurrence starts from the looked-up rate, not one the user derived
+  // for the last. Declared ahead of the lookup below so that lookup already
+  // sees the cleared flag when the dialog opens.
+  useEffect(() => {
+    if (isOpen) {
+      rateOverriddenRef.current = false;
+    }
+  }, [isOpen, scheduledTransaction]);
+
   // Re-fetch the rate whenever the posting date changes, debounced.
   //
   // The debounce is not cosmetic. Stepping the date with the arrow keys fires a
@@ -297,11 +326,19 @@ export function PostTransactionDialog({
   ]);
 
   // Keep the account-currency amount (what the balance preview and the split
-  // editor work in) in step with the foreign amount and the fetched rate.
-  useEffect(() => {
-    if (!isForeignPosting || postFxRate == null) return;
-    setAmount(convertForeign(foreignAmount, postFxRate).total);
-  }, [isForeignPosting, foreignAmount, postFxRate, convertForeign]);
+  // editor work in) in step with the foreign amount and the fetched rate. The
+  // "info from previous render" pattern rather than a setState in an effect.
+  const amountInputs = [isForeignPosting, foreignAmount, postFxRate, convertForeign] as const;
+  const [amountSyncedFor, setAmountSyncedFor] = useState<typeof amountInputs | null>(null);
+  if (
+    amountSyncedFor === null ||
+    amountInputs.some((value, index) => !Object.is(value, amountSyncedFor[index]))
+  ) {
+    setAmountSyncedFor(amountInputs);
+    if (isForeignPosting && postFxRate != null) {
+      setAmount(convertForeign(foreignAmount, postFxRate).total);
+    }
+  }
 
   const foreignConversion =
     isForeignPosting && postFxRate != null
@@ -390,15 +427,29 @@ export function PostTransactionDialog({
   }, [sourceAccount, transferAccount, transactionDate, effectivePostAmount, scheduledTransactions, futureTransactions, scheduledTransaction.id, accounts]);
 
   // Initialize form with transaction values (including override if exists)
-  useEffect(() => {
+  // Initialize the form whenever the dialog opens or the occurrence it posts
+  // changes. The "info from previous render" pattern rather than a setState in
+  // an effect.
+  const [initializedFor, setInitializedFor] = useState<{
+    isOpen: boolean;
+    scheduledTransaction: typeof scheduledTransaction;
+  } | null>(null);
+  if (
+    initializedFor === null ||
+    initializedFor.isOpen !== isOpen ||
+    initializedFor.scheduledTransaction !== scheduledTransaction
+  ) {
+    setInitializedFor({ isOpen, scheduledTransaction });
     if (isOpen) {
       const nextOverride = scheduledTransaction.nextOverride;
 
-      // Use override values if they exist, otherwise use base transaction values
-      const amt = roundToCents(
-        nextOverride?.amount ?? scheduledTransaction.amount
-      );
-      setAmount(amt);
+      // Use override values if they exist, otherwise use base transaction values.
+      // The bill is priced at storage precision (a LINEAR mortgage installment
+      // is 1,170.6458) and booked in the currency's smallest unit (1,170.65),
+      // which is what the bank debits (issue #1581).
+      const decimals = getDecimalPlacesForCurrency(scheduledTransaction.currencyCode);
+      const rawAmount = Number(nextOverride?.amount ?? scheduledTransaction.amount);
+      const amt = roundToDecimals(rawAmount, decimals);
       // Foreign-currency schedule: the field the user edits is the biller's
       // amount in its own currency. An occurrence override deliberately stays
       // an account-currency figure (see resolveFxForPosting on the backend), so
@@ -410,7 +461,6 @@ export function PostTransactionDialog({
       );
       setPostFxRate(null);
       setRateLookupFailed(false);
-      rateOverriddenRef.current = false;
       setCategoryId(nextOverride?.categoryId ?? scheduledTransaction.categoryId ?? '');
       setDescription(nextOverride?.description ?? scheduledTransaction.description ?? '');
       setIsSplit(nextOverride?.isSplit ?? scheduledTransaction.isSplit);
@@ -423,19 +473,36 @@ export function PostTransactionDialog({
 
       // Initialize splits
       if ((nextOverride?.isSplit ?? scheduledTransaction.isSplit)) {
-        if (nextOverride?.splits && nextOverride.splits.length > 0) {
-          setSplits(toSplitRows(nextOverride.splits.map((s, i) => ({
-            id: `override-${i}`,
-            ...s,
-          }))));
-        } else if (scheduledTransaction.splits && scheduledTransaction.splits.length > 0) {
-          setSplits(toSplitRows(scheduledTransaction.splits));
+        const rows =
+          nextOverride?.splits && nextOverride.splits.length > 0
+            ? toSplitRows(nextOverride.splits.map((s, i) => ({
+                id: `override-${i}`,
+                ...s,
+              })))
+            : scheduledTransaction.splits && scheduledTransaction.splits.length > 0
+              ? toSplitRows(scheduledTransaction.splits)
+              : null;
+        // The lines are booked in the same unit as the parent, the rounding
+        // difference on the loan's principal line, so they sum to the amount
+        // shown. Rounding the parent alone left 4dp lines under a cents
+        // parent, which the server refused. The server recognises exactly
+        // this booking of the stored template as an unchanged echo and
+        // re-prices it from the ledger.
+        const booked = rows
+          ? bookSplitRowsAtMinorUnit(rows, rawAmount, scheduledTransaction.currencyCode, scheduledTransaction.splits)
+          : null;
+        if (booked) {
+          setSplits(booked.rows);
         } else {
-          setSplits(createEmptySplits(amt));
+          setSplits(rows ?? createEmptySplits(amt));
         }
+        setTemplateBaseline(booked ? { rows: booked.rows, amount: amt } : null);
       } else {
         setSplits(createEmptySplits(amt));
+        setTemplateBaseline(null);
       }
+      setLoanPrefill(null);
+      setAmount(amt);
 
       // Investment-kind: prefill from the next-occurrence override if one
       // exists, falling back to the base scheduled transaction's saved values.
@@ -495,11 +562,106 @@ export function PostTransactionDialog({
       }
       setMarketPrice(null);
       // This dialog stays mounted across open/close, so reset the previous
-      // occurrence's "no history" verdict here too -- otherwise reopening for a
-      // different security paints the hint one frame before the fetch resets it.
+      // occurrence's "no history" verdict here, before the first frame --
+      // otherwise reopening for a different security paints the stale hint.
       setPriceHistoryEmpty(false);
     }
-  }, [isOpen, scheduledTransaction]);
+  }
+
+  // A loan bill posts what the server prices from the ledger at the posting
+  // date, not the template's stored split (INV-LOAN-009), so the rows preview
+  // the first priced occurrence. Only a split bill that pays a loan asks, and
+  // only an occurrence no override governs: an override's own figures stand.
+  // The answer is kept with the request that produced it, so a late reply for
+  // another occurrence is never read as this one's, and a failed or pending
+  // request leaves the template pre-fill as it is.
+  const loanRequestKey =
+    isOpen &&
+    !isInvestmentKind &&
+    scheduledTransaction.isSplit &&
+    !scheduledTransaction.nextOverride &&
+    isLoanBillCandidate(scheduledTransaction)
+      ? `${scheduledTransaction.id}:${nextOccurrenceDueDate(scheduledTransaction)}`
+      : null;
+  const [loadedLoan, setLoadedLoan] = useState<{
+    key: string;
+    projection: LoanOccurrencesProjection;
+  } | null>(null);
+
+  // A reopened dialog asks again: the previous answer is dropped when the
+  // request key changes, so a reply held from an earlier open (the ledger has
+  // moved since) is never adopted as this one's.
+  const [loanKeySeen, setLoanKeySeen] = useState<string | null>(null);
+  if (loanKeySeen !== loanRequestKey) {
+    setLoanKeySeen(loanRequestKey);
+    setLoadedLoan(null);
+  }
+
+  useEffect(() => {
+    if (!loanRequestKey) return;
+    let cancelled = false;
+    scheduledTransactionsApi
+      .getLoanOccurrences(scheduledTransaction.id, 1)
+      .then((projection) => {
+        if (!cancelled) setLoadedLoan({ key: loanRequestKey, projection });
+      })
+      .catch((error) => {
+        if (!cancelled) logger.error('Failed to load the loan occurrence:', error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loanRequestKey, scheduledTransaction.id]);
+
+  // Adopt the priced rows once, for the initialization they were fetched
+  // under, and only while the form still shows the template's own booking: a
+  // line the user typed first is theirs. The "info from previous render"
+  // pattern rather than a setState in an effect.
+  if (
+    loanRequestKey &&
+    loadedLoan?.key === loanRequestKey &&
+    loanPrefill === null &&
+    templateBaseline !== null &&
+    loadedLoan.projection.status === 'priced' &&
+    splits.length === templateBaseline.rows.length &&
+    amount === templateBaseline.amount &&
+    splits.every((row, index) => row.amount === templateBaseline.rows[index].amount)
+  ) {
+    const occurrence = loadedLoan.projection.occurrences[0];
+    // No override governs this occurrence (the request key requires it), so
+    // the date it falls on is its slot, the projection's identity.
+    const slot = nextOccurrenceDueDate(scheduledTransaction);
+    if (occurrence && occurrence.originalDate === slot && occurrence.overrideId === null) {
+      const decimals = getDecimalPlacesForCurrency(scheduledTransaction.currencyCode);
+      // Direction only: the projection's money is unsigned, and the bill
+      // moves it the way the template does. A capitalized principal is
+      // negative there and so lands as a line against the bill's direction.
+      const sign: 1 | -1 = Number(scheduledTransaction.amount) < 0 ? -1 : 1;
+      const lines =
+        occurrence.amount !== null
+          ? loanOccurrenceLines(
+              splits,
+              occurrence,
+              loadedLoan.projection.loanAccountId,
+              sign,
+            )
+          : null;
+      if (lines && occurrence.amount !== null) {
+        const parent = sign * occurrence.amount;
+        const booked = bookSplitRowsAtMinorUnit(
+          lines,
+          parent,
+          scheduledTransaction.currencyCode,
+          scheduledTransaction.splits,
+        );
+        const rows = booked ? booked.rows : lines;
+        const pricedAmount = roundToDecimals(parent, decimals);
+        setSplits(rows);
+        setAmount(pricedAmount);
+        setLoanPrefill({ rows, amount: pricedAmount });
+      }
+    }
+  }
 
   // Fetch the most recent close price for the security so we can auto-fill
   // the Price field (matching the new-scheduled-transaction form's behaviour).
@@ -508,9 +670,9 @@ export function PostTransactionDialog({
     const securityId = scheduledTransaction.investmentSecurityId;
     if (!securityId) return;
     let cancelled = false;
-    // Reset while the request is in flight: "no price history" is a
-    // completed-empty result, not the loading window and not a failed lookup.
-    setPriceHistoryEmpty(false);
+    // "No price history" is a completed-empty result, not the loading window and
+    // not a failed lookup: every input this request depends on also re-runs the
+    // initialization above, which has already cleared it for this request.
     investmentsApi
       .getSecurityPrices(securityId, { limit: 1 })
       .then((prices) => {
@@ -686,10 +848,27 @@ export function PostTransactionDialog({
       }
     }
 
+    // The rows still showing the server's priced preview are not the user's
+    // statement: send the stored template's booking, which the server
+    // recognises as an unchanged echo and re-prices from the ledger at the
+    // posting date with the same planner. A line the user changed is sent as
+    // typed.
+    const previewUnchanged =
+      loanPrefill !== null &&
+      templateBaseline !== null &&
+      amount === loanPrefill.amount &&
+      splits.length === loanPrefill.rows.length &&
+      splits.every((row, index) => row.amount === loanPrefill.rows[index].amount);
+    const postAmount = previewUnchanged ? templateBaseline.amount : amount;
+    const postSplits = previewUnchanged
+      ? splits.map((row, index) => ({ ...row, amount: templateBaseline.rows[index].amount }))
+      : splits;
+
     setIsLoading(true);
     try {
       const postData: PostScheduledTransactionData = isInvestmentKind
         ? {
+            ...occurrencePin(scheduledTransaction),
             transactionDate,
             description: description || null,
             investmentQuantity:
@@ -700,6 +879,9 @@ export function PostTransactionDialog({
               investmentTotalAmount === '' ? undefined : Number(investmentTotalAmount),
           }
         : {
+            // The occurrence as the dialog opened it: a post that finds another
+            // tab or the cron has moved on is refused with 409.
+            ...occurrencePin(scheduledTransaction),
             transactionDate,
             // For a foreign-currency schedule only the biller's amount is sent,
             // so the backend -- not this dialog -- decides what is booked;
@@ -713,12 +895,12 @@ export function PostTransactionDialog({
                   originalAmount: foreignAmount,
                   ...(rateOverriddenRef.current ? { exchangeRate: postFxRate } : {}),
                 }
-              : { amount }),
+              : { amount: postAmount }),
             categoryId: isSplit ? null : (categoryId || null),
             description: description || null,
             referenceNumber: referenceNumber || undefined,
             isSplit,
-            splits: isSplit ? toOverrideSplits(splits) : undefined,
+            splits: isSplit ? toOverrideSplits(postSplits) : undefined,
           };
 
       await scheduledTransactionsApi.post(scheduledTransaction.id, postData);
@@ -1146,6 +1328,7 @@ export function PostTransactionDialog({
                 onTransactionAmountChange={handleAmountChange}
                 currencyCode={scheduledTransaction.currencyCode}
                 onCreateCategory={onCreateCategory}
+                transactionDate={transactionDate}
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

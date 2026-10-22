@@ -32,7 +32,7 @@ export { MIN_JWT_SECRET_LENGTH } from "../jwt-secret-policy";
  * unrecognized value refuses the boot instead of silently falling back to a
  * mode the operator did not ask for.
  *
- * See `docs/future-plans/horizontal-scaling.md` for the work this gates.
+ * See `docs/specs/horizontal-scaling.md` for the work this gates.
  */
 export const CLUSTER_MODES = ["single", "multi"] as const;
 

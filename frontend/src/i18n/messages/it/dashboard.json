@@ -49,6 +49,11 @@
     "nextMonth": "Mese successivo",
     "emptyAll": "Nessuna bolletta, entrata o trasferimento attivo pianificato."
   },
+  "cashFlowForecast": {
+    "title": "Previsione flusso di cassa",
+    "period": "Periodo di previsione",
+    "loadFailed": "Impossibile caricare le transazioni già datate dopo oggi, quindi la previsione non può essere mostrata. Ricarica la dashboard per riprovare."
+  },
   "gettingStarted": {
     "title": "Per iniziare",
     "subtitle": "Configura il tuo account in pochi passaggi",
@@ -88,6 +93,11 @@
     "viewAll": "Visualizza tutte le analisi",
     "activeCount": "{count} attive"
   },
+  "warrantiesExpiring": {
+    "title": "Garanzie in scadenza",
+    "empty": "Nessuna scadenza nei prossimi 30 giorni",
+    "loadFailed": "Impossibile caricare le garanzie in scadenza. Ricarica la dashboard per riprovare."
+  },
   "topMovers": {
     "title": "Maggiori variazioni",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "Patrimonio netto",
     "empty": "Nessun dato sul patrimonio netto disponibile.",
-    "past12Months": "Ultimi 12 mesi",
-    "viewReport": "Visualizza report completo"
+    "barStyle": "Stile delle barre",
+    "barStyleNetWorth": "Patrimonio netto",
+    "barStyleAccountType": "Per tipo di conto",
+    "loadFailed": "Impossibile caricare lo storico del tuo patrimonio netto. Ricarica la dashboard per riprovare."
   },
   "assetsVsLiabilities": {
     "title": "Attività vs Passività",
@@ -135,7 +147,10 @@
     "current": "Attuale",
     "netWorthLabel": "Patrimonio netto",
     "assets": "Attività",
-    "liabilities": "Passività"
+    "liabilities": "Passività",
+    "partialName": "{name} (parziale)",
+    "viewCallouts": "Etichette",
+    "viewLegend": "Legenda"
   },
   "expensesPieChart": {
     "title": "Uscite per categoria",
@@ -145,7 +160,9 @@
     "other": "Altro",
     "insideOther": "{count, plural, one {# categoria in Altro} other {# categorie in Altro}}",
     "topLevelOnly": "Categorie di primo livello",
-    "topLevelOnlyHint": "Conteggia le sottocategorie nella categoria principale"
+    "topLevelOnlyHint": "Conteggia le sottocategorie nella categoria principale",
+    "viewCallouts": "Etichette",
+    "viewLegend": "Legenda"
   },
   "incomeExpenses": {
     "title": "Entrate vs Uscite",
@@ -183,6 +200,7 @@
     "accounts": "Conti",
     "chartType": "Tipo di grafico",
     "view": "Vista",
+    "viewCalloutsHint": "Le etichette richiedono uno schermo più ampio. Dove non c'è spazio, viene mostrata la legenda.",
     "displayName": "Nome visualizzato",
     "description": "Descrizione",
     "descriptionPlaceholder": "Aggiungi una descrizione facoltativa",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "Tutti",
       "1w": "1S",
@@ -204,7 +223,7 @@
     "empty": "Nessuno storico investimenti da mostrare per ora.",
     "refresh": "Aggiorna valore attuale",
     "investmentResult": "Risultato dell'investimento",
-    "periodBreakdownInvestedTooltip": "Il valore dei titoli è variato di {valueChange} in questo periodo. Di questo, {netInvested} è stato versato, al netto delle vendite, e i titoli hanno pagato {income} in dividendi e interessi. La cifra sopra è ciò che gli investimenti hanno reso da soli, esclusa la liquidità non investita.",
+    "periodBreakdownInvestedTooltip": "Il valore dei titoli è variato di {valueChange} in questo periodo. Di questo, {netInvested} è stato versato, al netto delle vendite, e i titoli hanno pagato {income} in dividendi e interessi. Una distribuzione reinvestita in quote conta in entrambe le cifre. La cifra sopra è ciò che gli investimenti hanno reso da soli, esclusa la liquidità non investita.",
     "notAvailable": "N/A"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "Occorrenze minime",
     "minOccurrencesOption": "{count} o più",
     "occurrences": "{count} occorrenze",
-    "monthlyEstimate": "Stima mensile"
+    "monthlyEstimate": "Stima mensile",
+    "viewCallouts": "Etichette",
+    "viewLegend": "Legenda"
   },
   "weekendVsWeekday": {
     "title": "Uscite weekend vs giorni feriali",

@@ -111,6 +111,36 @@ Decisions 1 to 6 were agreed in #1486; 7 to 11 are made here.
    money precision the codebase does not have. A ledger whose installments
    were recorded at statement cents (imported, or typed from the bank's
    statement) is priced from what it holds; section 7.2 asserts that case too.
+
+   **Amended (#1581): priced at 4dp, booked at the currency's unit.** The
+   precision above is the pricing precision. A posting moves real money out
+   of a bank account, which a bank debits in whole cents (whole yen for JPY),
+   so the posted installment is booked in the source currency's smallest
+   unit: the total and the interest are each rounded to it, and principal
+   takes what the two roundings leave (`bookLoanAllocation`,
+   `backend/src/accounts/loan-payment-waterfall.util.ts`). A 1,170.6458
+   installment of 864.5833 principal and 306.0625 interest posts as 1,170.65
+   = 864.59 + 306.06. The template stays at 4dp, so the method still
+   reproduces the #1501 tables; the ledger it then accumulates is the cents
+   ledger of section 7.2.
+
+   Booking never retires more than the debt. A ledger booked in cents owes
+   a whole number of cents, so its final installment retires it exactly. A
+   ledger posted at 4dp before #1581 can owe a sub-cent tail (833.3449);
+   rounding its final principal could overshoot into credit, so that
+   principal is cut down to the cent at or below the debt (833.34). The
+   residue left, under one cent, is not decision 8's leftover: the next
+   occurrence reads a debt of 0.01 or less as paid off and retires the
+   schedule, and the account shows a balance under one cent rather than a
+   credit. Asserted by `loan-payment-waterfall.util.spec.ts` ("never retires
+   more than the debt").
+
+   The Post dialog, the occurrence override editor and the template form
+   pre-fill the same booking (`bookSplitRowsAtMinorUnit`;
+   `bookSplitsAtMinorUnit` per layer, held together by the parity fixture
+   `backend/src/common/minor-unit-booking-cases.json`), and the server
+   recognises the dialog's pre-fill as an unchanged echo of the template
+   (`docs/specs/scheduled-loan-installment-pricing.md` section 3).
 8. **The final LINEAR SHORTEN_TERM installment absorbs a small leftover.**
    An installment is the final one, and its principal is the whole
    `debt(d)`, when `debt(d) - c <= roundMoney(N * 0.005)` (1.80 in the worked
@@ -274,9 +304,9 @@ rise a LINEAR installment grows, and a posting re-divides the bill the user was
 shown without growing it. Two mechanisms close the gap, and neither relaxes the
 posting rule:
 
-- the rate-change sync (`LoanRateChangesService.syncScheduledTransaction`,
-  user-confirmed) rewrites the template at the effective date with the
-  method's installment;
+- the rate-change sync (`LoanRateChangesService.applyScheduledPaymentSync`,
+  user-confirmed) rewrites the template at its own `next_due_date` with the
+  method's installment (pricing spec 7.5);
 - template advancement (`recalculateLoanPaymentSplits`, `InstallmentPurpose`
   `"template"`) targets the method's installment for non-annuity methods,
   where for ANNUITY it grows back only toward `account.paymentAmount`.
@@ -290,7 +320,9 @@ the template to the method installment, unbounded by payment_amount".
 
 ### 5.3 Rate change (`buildScheduledUpdate`, `recalculatePaymentForRate`, the mortgage rate update)
 
-All three read `debt(effectiveDate)` (decision 5).
+All three read `debt(effectiveDate)` (decision 5) for the payment a change
+records. The template the sync writes is a different question, priced at the
+template's own due date (the table after this one).
 
 | Method | New installment at the effective date | Asserted by |
 | --- | --- | --- |
@@ -303,11 +335,14 @@ What a rate change writes:
 
 | Method | Template (through the user-confirmed sync) | `accounts.payment_amount` | `loan_rate_changes.new_payment_amount` | Asserted by |
 | --- | --- | --- | --- | --- |
-| ANNUITY, CANADIAN_FIXED | the new installment, as today | unchanged from today's behaviour | as today: stated by the user, recalculated, or inferred | `loan-rate-changes.service.spec.ts`; `loan-rate-changes.mortgage-methods.spec.ts` ("still accepts a stated payment on an annuity mortgage") |
-| LINEAR, INTEREST_ONLY | the new installment above, split per table 4.3 | stays null (decision 11) | null: the method states every installment, so a stated payment would be a second, conflicting answer. The mortgage rate update refuses a non-null `paymentAmount` for these methods with a 400 naming the method; rate inference writes null for them. | `loan-rate-changes.mortgage-methods.spec.ts` ("applies the confirmed sync with the method's split", "records no payment when asked to recalculate one", the stated-payment refusal); `loan-mortgage-account.mortgage-methods.spec.ts` ("refuses a stated payment for a LINEAR mortgage before recording anything"); `rate-change-inference.service.spec.ts` ("records no payment for a %s mortgage, cutting segments on the rate alone") |
+| ANNUITY, CANADIAN_FIXED | the installment at the template's own `next_due_date`, never at the effective date: the payment dated there (`docs/specs/scheduled-loan-installment-pricing.md` 7.1) on `debt(next_due_date)` at `rate(next_due_date)`, through `resolveInstallmentCore` (purpose `sync`), and applied through `applyLoanTemplateRewrite`; a change dated after `next_due_date` leaves that installment as it is, and the preview names the first due date it changes (pricing spec 7.5) | not written by any rate-change path: the sync applies through the loan core's template rewrite, which writes only the template (pricing spec 7.5), never through `ScheduledTransactionsService.update`, whose template-amount edit writes it | as today: stated by the user, recalculated, or inferred | `loan-rate-changes.service.spec.ts` ("the scheduled-payment sync (spec 7.5)": every row of the pricing spec's table 7.5, the account row untouched on every path, and the source scan refusing the scheduled-transactions service); `loan-rate-changes.mortgage-methods.spec.ts` ("still accepts a stated payment on an annuity mortgage"); `dated-loan-payment.integration.spec.ts` ("the rate-change sync at the template's own due date") |
+| LINEAR, INTEREST_ONLY | the method's installment at the template's own `next_due_date` (`debt` and `rate` dated there), split per table 4.3, applied through the loan core's template rewrite; a change dated after `next_due_date` leaves that installment's interest at the rate in force there | stays null (decision 11) | null: the method states every installment, so a stated payment would be a second, conflicting answer. The mortgage rate update refuses a non-null `paymentAmount` for these methods with a 400 naming the method; rate inference writes null for them. | `loan-rate-changes.mortgage-methods.spec.ts` ("applies the confirmed sync with the method's split, through the template rewrite", "a change dated after the template's due date leaves the next installment's interest at the old rate", "records no payment when asked to recalculate one", the stated-payment refusal); `loan-mortgage-account.mortgage-methods.spec.ts` ("refuses a stated payment for a LINEAR mortgage before recording anything", "applies the sync through the rate-change service's apply and writes nothing on the account"); `rate-change-inference.service.spec.ts` ("records no payment for a %s mortgage, cutting segments on the rate alone") |
 
 A declined sync leaves the template at the old installment for one posting
-(section 5.2); nothing else holds a copy that could go stale.
+(section 5.2); nothing else holds a copy that could go stale. For an annuity
+the same holds from B1 of the dated-payment plan: the advancement steps into a
+stated payment at the first installment it newly applies to (pricing spec
+7.3), so a declined sync no longer leaves the old payment standing beyond it.
 
 ### 5.4 Frontend projection (`generateLoanSchedule`)
 
@@ -387,9 +422,9 @@ INTEREST_ONLY:
 | `LoanMortgageAccountService` create (`backend/src/accounts/loan-mortgage-account.service.ts`) | stores the preview's `paymentAmount`; the template is `-paymentAmount` | stores null; the template is the first installment from the preview | P2-B1 | `loan-mortgage-account.mortgage-methods.spec.ts` ("createMortgageAccount") |
 | `LoanMortgageAccountService` mortgage rate update (`UpdateMortgageRateDto`) | `newPaymentAmount ?? account.paymentAmount`, `currentBalance` | 5.3; a stated payment refused | P1-B3 (dated debt), P2-B1 | `loan-mortgage-account.mortgage-methods.spec.ts` ("updateMortgageRate") |
 | `LoanPaymentSetupService` (`SetupLoanPaymentsDto.paymentAmount`) | the request's payment, written to the column and the template | the server prices the first installment from table 4.3; a request whose `paymentAmount` differs from it by more than 0.00005 is refused (the dialog previews through the same code), and the column is not written | P2-B1 | `loan-payment-setup.mortgage-methods.spec.ts` |
-| `ScheduledTransactionLoanService.resolveInstallment` | `Math.max(templateAmount, account.paymentAmount)` for purpose `"template"` | the method installment (5.2); the column is not read | P2-B1 | `scheduled-transaction-loan.mortgage-methods.spec.ts` |
-| `ScheduledTransactionsService` schedule update (`backend/src/scheduled-transactions/scheduled-transactions.service.ts`) | a template amount edit writes `payment_amount` | not written; the edit stands for the template only, and the next advancement reprices it (5.2) | P2-B1 | `scheduled-transactions.service.spec.ts` ("records no payment amount when the user edits a %s mortgage's schedule") |
-| `LoanRateChangesService` (`buildScheduledUpdate`, `recalculatePaymentForRate`) | `override?.paymentAmount ?? account.paymentAmount` | 5.3 | P1-B3, P2-B1 | `loan-rate-changes.mortgage-methods.spec.ts` |
+| `ScheduledTransactionLoanService.resolveInstallment`, through `priceInstallment` (`backend/src/loan-installments/price-installment.ts`) | `Math.max(templateAmount, account.paymentAmount)` for purpose `"template"` | the method installment (5.2); the column is not read | P2-B1 | `price-installment.spec.ts` (the figures), `scheduled-transaction-loan.mortgage-methods.spec.ts` (what the service writes) |
+| `ScheduledTransactionsService` schedule update (`backend/src/scheduled-transactions/scheduled-transactions.service.ts`) | a template amount edit writes `payment_amount`; no rate-change path reaches it (the sync applies through the loan core's template rewrite, 5.3), so the column moves only when the user edits the schedule or the account | not written; the edit stands for the template only, and the next advancement reprices it (5.2) | P2-B1 | `scheduled-transactions.service.spec.ts` ("records no payment amount when the user edits a %s mortgage's schedule") |
+| `LoanRateChangesService` (`buildScheduledUpdate`, `recalculatePaymentForRate`) | the payment dated at the template's `next_due_date` (pricing spec 7.1), through `resolveInstallmentCore`; no write of the column on any path (create, update, delete, apply): the template is written through the loan core's `applyLoanTemplateRewrite`, never `ScheduledTransactionsService.update` | 5.3 | P1-B3, P2-B1; B2 of the dated-payment plan | `loan-rate-changes.mortgage-methods.spec.ts`; `loan-rate-changes.service.spec.ts` ("the scheduled-payment sync (spec 7.5)", the account row untouched on every path, and the source scan); `dated-loan-payment.integration.spec.ts` |
 | `RateChangeInferenceService` | a segment's most common payment becomes `new_payment_amount` | null (5.3); segments are still cut on the rate alone | P2-B1 | `rate-change-inference.service.spec.ts` |
 | `LlmAccountRow.paymentAmount` (`getLlmAccounts`, the MCP accounts tool, the in-app assistant) | the column | null, beside `mortgageType` (P1-B3) and the next occurrence's amount and date; INTEREST_ONLY also carries the bullet and its date | P2-B1 | `accounts.service.spec.ts` ("carries a dated installment for LINEAR and INTEREST_ONLY, and the bullet"); `mortgage-installment-facts.spec.ts` |
 | `LoanPaymentDetectorService` | a detected payment offered for setup | a suggestion for the template; not written to the column (the CHECK refuses it) | P2-B2 | `loan-payment-setup.mortgage-methods.spec.ts` (the setup stores no payment); `mortgage-method-checks.integration.spec.ts` (the CHECK refuses one) |
@@ -484,7 +519,9 @@ residue bound of decision 8 is 1.80.
 Each table gives the debt two ways: **exact** (the schedule with unrounded
 principal, which is what #1501 printed) and **as posted** (the ledger after
 the engine's own 4dp postings, which is what `datedLoanDebt` returns and what
-the fixtures assert). Principal, interest and installment are the engine's 4dp
+the fixtures assert). Since #1581 a posting books cents (decision 7,
+amended), so a live ledger follows section 7.2 rather than this column; the
+column stays as the pricing fixture for a ledger recorded at 4dp. Principal, interest and installment are the engine's 4dp
 figures; the fixtures assert those, and printed at cents they are #1501's.
 
 ### 7.1 LINEAR, SHORTEN_TERM (default)
@@ -760,7 +797,8 @@ the E2E one, which has no spec to hold it and says why.
 | Backend unit | `loan-rate-changes.service.spec.ts` | the rate-change paths read `debt(effectiveDate)`, not `currentBalance`, with a future-dated change | P1-B3 |
 | Backend unit | `mortgage-amortization.util.spec.ts` ("calculateMortgageAmortization: LINEAR and INTEREST_ONLY") | table 7.5; accelerated frequencies refused for both new methods | P2-B1 |
 | Backend unit | `mortgage-installment.util.spec.ts` | the calendar of section 2; table 4.3 and decision 8; tables 7.1 to 7.4 row by row; the refusals of section 8 | P2-B1 |
-| Backend unit | `scheduled-transaction-loan.mortgage-methods.spec.ts` | tables 7.1 to 7.4 through `resolveInstallment`, including the 7.2 cents ledger and the absent 2050-07-01 payment; section 9's obligations; the stale-template-after-rate-rise sequence (5.2); a method change repricing the template (5.6) | P2-B1 |
+| Backend unit | `price-installment.spec.ts` (`backend/src/loan-installments/`) | tables 7.1 to 7.4 through the pure `priceInstallment`, including the 7.2 cents ledger and the final installment; the settlement purpose | P2-B1 |
+| Backend unit | `scheduled-transaction-loan.mortgage-methods.spec.ts` | what the service writes from the resolved installment: the absent 2050-07-01 payment (deactivation); section 9's posting obligation; the stale-template-after-rate-rise sequence (5.2); a method change repricing the template (5.6); the missing-term decline (section 8) | P2-B1 |
 | Backend unit | `split-amount.util.spec.ts` | an INTEREST_ONLY template's zero principal line passes the split validator (section 9) | P2-B1 |
 | Backend unit | `rate-change-inference.service.spec.ts` | the 4.2 row 4 annualization change; LINEAR and INTEREST_ONLY record no payment and annualize by day count | P1-B3, P2-B1 |
 | Backend integration | `scheduled-loan-dated-balance.integration.spec.ts` | `remaining(d)` and the dated debt on a real ledger for a LOWER_INSTALLMENT account, including a next due date moved off the calendar (`k(d)` per section 2) | P2-B1 |

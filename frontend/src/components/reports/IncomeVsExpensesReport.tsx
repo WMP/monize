@@ -39,6 +39,7 @@ import { useChartDateFormat } from "@/hooks/useChartDateFormat";
 import { useTranslations } from 'next-intl';
 import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { PartialTotal } from "@/components/ui/PartialTotal";
+import { usePartialTotalNote } from "@/hooks/usePartialTotalNote";
 import { useTagKeys } from "@/hooks/useTagKeys";
 import { TagKeyBreakdownSelect } from "@/components/reports/TagKeyBreakdownSelect";
 import { TagKeyBreakdownBuckets } from "@/components/reports/TagKeyBreakdownBuckets";
@@ -80,6 +81,37 @@ interface ChartDataItem {
   SavingsRate: number;
   monthStart: string;
   monthEnd: string;
+}
+
+interface IncomeVsExpensesTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    color: string;
+    payload: { fullName: string; SavingsRate: number };
+  }>;
+  label?: string;
+  formatCurrency: (value: number) => string;
+  t: ReturnType<typeof useTranslations<'reports'>>;
+}
+
+function IncomeVsExpensesTooltip({ active, payload, formatCurrency, t }: IncomeVsExpensesTooltipProps) {
+  const data = payload?.[0]?.payload;
+  return (
+    <ChartTooltip
+      active={active}
+      label={data?.fullName}
+      payload={payload}
+      formatValue={(v) => formatCurrency(v)}
+    >
+      {data && (
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          {t('incomeVsExpenses.savingsRateTooltip', { rate: data.SavingsRate })}
+        </p>
+      )}
+    </ChartTooltip>
+  );
 }
 
 export function IncomeVsExpensesReport() {
@@ -172,6 +204,9 @@ export function IncomeVsExpensesReport() {
     [response],
   );
   const reportingCurrency = response?.currency ?? defaultCurrency;
+  // The screen marks income, expenses and savings with `PartialTotal`; the PDF
+  // writes the same three under a note, since a document has no hover.
+  const { noteFor } = usePartialTotalNote();
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -228,12 +263,13 @@ export function IncomeVsExpensesReport() {
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import("@/lib/pdf-export");
+    const partialNote = noteFor({ value: totals.totalIncome, ...completeness });
     await exportToPdf({
       title: t('page.names.income-vs-expenses' as Parameters<typeof t>[0]),
       summaryCards: [
-        { label: t('incomeVsExpenses.totalIncome'), value: formatCurrency(totals.totalIncome), color: "#16a34a" },
-        { label: t('incomeVsExpenses.totalExpenses'), value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
-        { label: t('incomeVsExpenses.totalSavings'), value: formatCurrency(totals.totalSavings), color: totals.totalSavings >= 0 ? "#2563eb" : "#ea580c" },
+        { label: t('incomeVsExpenses.totalIncome'), value: formatCurrency(totals.totalIncome), color: "#16a34a", note: partialNote },
+        { label: t('incomeVsExpenses.totalExpenses'), value: formatCurrency(totals.totalExpenses), color: "#dc2626", note: partialNote },
+        { label: t('incomeVsExpenses.totalSavings'), value: formatCurrency(totals.totalSavings), color: totals.totalSavings >= 0 ? "#2563eb" : "#ea580c", note: partialNote },
         { label: t('incomeVsExpenses.savingsRate'), value: formatPercent(totals.savingsRate, 1), color: totals.savingsRate >= 0 ? "#9333ea" : "#ea580c" },
       ],
       chartContainer: chartRef.current,
@@ -281,36 +317,6 @@ export function IncomeVsExpensesReport() {
     }
   };
 
-  const CustomTooltip = ({
-    active,
-    payload,
-  }: {
-    active?: boolean;
-    payload?: Array<{
-      name: string;
-      value: number;
-      color: string;
-      payload: { fullName: string; SavingsRate: number };
-    }>;
-    label?: string;
-  }) => {
-    const data = payload?.[0]?.payload;
-    return (
-      <ChartTooltip
-        active={active}
-        label={data?.fullName}
-        payload={payload}
-        formatValue={(v) => formatCurrency(v)}
-      >
-        {data && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {t('incomeVsExpenses.savingsRateTooltip', { rate: data.SavingsRate })}
-          </p>
-        )}
-      </ChartTooltip>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Controls -- always rendered so focus inside DateInput survives reloads */}
@@ -337,7 +343,7 @@ export function IncomeVsExpensesReport() {
           <ReportToolbarActions
             onExportPdf={handleExportPdf}
             onExportCsv={handleExportCsv}
-            disabled={chartData.length === 0}
+            disabled={isLoading || !!error || chartData.length === 0}
           />
         </div>
       </div>
@@ -520,7 +526,7 @@ export function IncomeVsExpensesReport() {
                     tickFormatter={formatCurrencyAxis}
                     tick={{ fontSize: 12 }}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<IncomeVsExpensesTooltip formatCurrency={formatCurrency} t={t} />} />
                   <Legend />
                   <ReferenceLine y={0} stroke={chartColors.axis} />
                   <Bar

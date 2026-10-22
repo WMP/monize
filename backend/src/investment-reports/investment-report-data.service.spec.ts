@@ -617,10 +617,165 @@ describe("InvestmentReportDataService", () => {
     const v = rows[0].values;
     expect(v.quantity).toBe(26); // from the holdings table
     expect(v.reinvestments).toBe(110);
-    expect(v.income).toBe(12); // interest 5 + capital gain 7
+    // The reinvested dividend 110 + interest 5 + capital gain 7.
+    expect(v.income).toBe(122);
     // Held > 0.5 years -> annualized return is computed (not null)
     expect(v.totalAnnualizedReturn).not.toBeNull();
     expect(v.totalReturn3Year).not.toBeNull();
+  });
+
+  /**
+   * Discussion #1670. A reinvested dividend is income, but a reinvest created
+   * in the app stores no total, and the Income column read only cash rows: the
+   * distribution sat in the cost basis with nothing to offset it, so the gain
+   * understated it by exactly its value.
+   */
+  it("counts a reinvested dividend as income at its shares' cost, without counting it twice in a period return", async () => {
+    securitiesRepository.find.mockResolvedValue([
+      {
+        id: "sec1",
+        symbol: "AAA",
+        name: "Alpha",
+        securityType: "STOCK",
+        currencyCode: "USD",
+      },
+    ]);
+    holdingsRepository.find.mockResolvedValue([
+      holding({ quantity: 10, averageCost: 100 }),
+    ]);
+    txRepository.find.mockResolvedValue([
+      makeTx({
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-10",
+        quantity: 9,
+        price: 100,
+        totalAmount: 900,
+      }),
+      // As the app writes one: quantity and price, no total.
+      makeTx({
+        action: InvestmentAction.REINVEST,
+        transactionDate: "2024-06-05",
+        quantity: 1,
+        price: 100,
+        totalAmount: 0,
+      }),
+    ]);
+    manager.query.mockResolvedValue([
+      priceRow({ price_date: "2024-06-01", close_price: "100" }),
+      priceRow({ price_date: "2024-06-10", close_price: "110" }),
+    ]);
+
+    const { rows } = await service.computeHoldings(
+      "u1",
+      ["acc1"],
+      "2024-06-10",
+      "USD",
+    );
+    const v = rows[0].values;
+    expect(v.reinvestments).toBe(100);
+    expect(v.income).toBe(100);
+    // 900 of cash bought what is now 1,100: market value 1,100 plus the
+    // reinvested 100 of income, less the 1,000 basis that includes it.
+    expect(v.gain).toBe(200);
+    // 9 shares worth 900 at the window's start became 10 worth 1,100. The
+    // reinvested shares are already in the market value, so the period return
+    // reads cash income only: 22.22%, not 33.33%.
+    expect(v.totalReturn1Week).toBeCloseTo(22.2222, 4);
+  });
+
+  it("treats a return of capital as capital paid back, not income (#1800)", async () => {
+    securitiesRepository.find.mockResolvedValue([
+      {
+        id: "sec1",
+        symbol: "AAA",
+        name: "Alpha",
+        securityType: "STOCK",
+        currencyCode: "USD",
+      },
+    ]);
+    holdingsRepository.find.mockResolvedValue([
+      holding({ quantity: 10, averageCost: 0 }),
+    ]);
+    txRepository.find.mockResolvedValue([
+      makeTx({
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-10",
+        quantity: 10,
+        price: 100,
+        totalAmount: 1000,
+      }),
+      // 120 a share paid back on 100 a share of cost: 1,000 comes off the
+      // basis and the 200 beyond it is realized.
+      makeTx({
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        transactionDate: "2024-06-05",
+        quantity: null,
+        price: null,
+        totalAmount: 1200,
+      }),
+    ]);
+    manager.query.mockResolvedValue([
+      priceRow({ price_date: "2024-06-01", close_price: "200" }),
+      priceRow({ price_date: "2024-06-10", close_price: "80" }),
+    ]);
+
+    const { rows } = await service.computeHoldings(
+      "u1",
+      ["acc1"],
+      "2024-06-10",
+      "USD",
+    );
+    const v = rows[0].values;
+    expect(v.income).toBe(0);
+    expect(v.realizedGains).toBe(200);
+    // 2,000 at the window's start became 800 of shares plus 1,200 of cash
+    // paid back: no return, where leaving the cash out read it as -60%.
+    expect(v.totalReturn1Week).toBe(0);
+  });
+
+  it("keeps an imported reinvest that carries a total but no price in Reinvestments and Income", async () => {
+    // A QIF ReinvDiv with no price line: the basis cannot price it, but the
+    // distribution itself is the file's total.
+    securitiesRepository.find.mockResolvedValue([
+      {
+        id: "sec1",
+        symbol: "AAA",
+        name: "Alpha",
+        securityType: "STOCK",
+        currencyCode: "USD",
+      },
+    ]);
+    holdingsRepository.find.mockResolvedValue([
+      holding({ quantity: 20, averageCost: 50 }),
+    ]);
+    txRepository.find.mockResolvedValue([
+      makeTx({
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-10",
+        quantity: 10,
+        price: 50,
+        totalAmount: 500,
+      }),
+      makeTx({
+        action: InvestmentAction.REINVEST,
+        transactionDate: "2024-03-01",
+        quantity: 10,
+        price: null,
+        totalAmount: 500,
+      }),
+    ]);
+    manager.query.mockResolvedValue([
+      priceRow({ price_date: "2024-06-10", close_price: "50" }),
+    ]);
+
+    const { rows } = await service.computeHoldings(
+      "u1",
+      ["acc1"],
+      "2024-06-10",
+      "USD",
+    );
+    expect(rows[0].values.reinvestments).toBe(500);
+    expect(rows[0].values.income).toBe(500);
   });
 
   /**

@@ -49,6 +49,11 @@
     "nextMonth": "次の月",
     "emptyAll": "予定されている有効な請求、入金、振替はありません。"
   },
+  "cashFlowForecast": {
+    "title": "キャッシュフロー予測",
+    "period": "予測期間",
+    "loadFailed": "今日より後の日付の取引を読み込めなかったため、予測を表示できません。ダッシュボードを再読み込みしてもう一度お試しください。"
+  },
   "gettingStarted": {
     "title": "はじめに",
     "subtitle": "いくつかの簡単な手順でアカウントを設定してください",
@@ -88,6 +93,11 @@
     "viewAll": "すべてのインサイトを見る",
     "activeCount": "{count} 件有効"
   },
+  "warrantiesExpiring": {
+    "title": "まもなく期限切れになる保証",
+    "empty": "今後 30 日以内に期限切れになるものはありません",
+    "loadFailed": "期限切れが近い保証を読み込めませんでした。ダッシュボードを再読み込みして、もう一度お試しください。"
+  },
   "topMovers": {
     "title": "値動き上位",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "純資産",
     "empty": "純資産データがまだありません。",
-    "past12Months": "過去12ヶ月",
-    "viewReport": "レポートの全体を見る"
+    "barStyle": "棒の表示",
+    "barStyleNetWorth": "純資産",
+    "barStyleAccountType": "口座の種類別",
+    "loadFailed": "純資産の履歴を読み込めませんでした。ダッシュボードを再読み込みしてもう一度お試しください。"
   },
   "assetsVsLiabilities": {
     "title": "資産 対 負債",
@@ -135,7 +147,10 @@
     "current": "現在",
     "netWorthLabel": "純資産",
     "assets": "資産",
-    "liabilities": "負債"
+    "liabilities": "負債",
+    "partialName": "{name}（部分的）",
+    "viewCallouts": "ラベル",
+    "viewLegend": "凡例"
   },
   "expensesPieChart": {
     "title": "カテゴリ別支出",
@@ -145,7 +160,9 @@
     "other": "その他",
     "insideOther": "{count, plural, other {その他に# カテゴリ}}",
     "topLevelOnly": "最上位カテゴリ",
-    "topLevelOnlyHint": "サブカテゴリを親カテゴリに集計します"
+    "topLevelOnlyHint": "サブカテゴリを親カテゴリに集計します",
+    "viewCallouts": "ラベル",
+    "viewLegend": "凡例"
   },
   "incomeExpenses": {
     "title": "収入 対 支出",
@@ -183,6 +200,7 @@
     "accounts": "口座",
     "chartType": "グラフの種類",
     "view": "表示",
+    "viewCalloutsHint": "ラベルには広い画面が必要です。収まらない場合は凡例が表示されます。",
     "displayName": "表示名",
     "description": "説明",
     "descriptionPlaceholder": "任意の説明を追加",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "すべて",
       "1w": "1週",
@@ -204,7 +223,7 @@
     "empty": "表示する投資履歴がまだありません。",
     "refresh": "現在の価値を更新",
     "investmentResult": "投資成果",
-    "periodBreakdownInvestedTooltip": "この期間に証券の価値は {valueChange} 変動しました。そのうち {netInvested} は売却を差し引いた投資額で、配当と利息として {income} が支払われました。上の数値は、投資されていない現金を除いた、投資そのものの成果です。",
+    "periodBreakdownInvestedTooltip": "この期間に証券の価値は {valueChange} 変動しました。そのうち {netInvested} は売却を差し引いた投資額で、配当と利息として {income} が支払われました。株式に再投資された分配金は両方に含まれます。上の数値は、投資されていない現金を除いた、投資そのものの成果です。",
     "notAvailable": "N/A"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "最小発生回数",
     "minOccurrencesOption": "{count} 回以上",
     "occurrences": "{count} 回",
-    "monthlyEstimate": "月次見積もり"
+    "monthlyEstimate": "月次見積もり",
+    "viewCallouts": "ラベル",
+    "viewLegend": "凡例"
   },
   "weekendVsWeekday": {
     "title": "週末 vs 平日の支出",

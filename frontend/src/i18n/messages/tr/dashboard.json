@@ -49,6 +49,11 @@
     "nextMonth": "Sonraki ay",
     "emptyAll": "Planlanmış etkin fatura, para yatırma veya transfer yok."
   },
+  "cashFlowForecast": {
+    "title": "Nakit Akışı Tahmini",
+    "period": "Tahmin dönemi",
+    "loadFailed": "Bugünden sonraki bir tarihe sahip işlemler yüklenemedi, bu nedenle tahmin gösterilemiyor. Tekrar denemek için panoyu yeniden yükleyin."
+  },
   "gettingStarted": {
     "title": "Başlarken",
     "subtitle": "Hesabınızı birkaç hızlı adımda ayarlayın",
@@ -88,6 +93,11 @@
     "viewAll": "Tüm analizleri görüntüle",
     "activeCount": "{count} aktif"
   },
+  "warrantiesExpiring": {
+    "title": "Süresi yakında dolacak garantiler",
+    "empty": "Önümüzdeki 30 gün içinde süresi dolan bir şey yok",
+    "loadFailed": "Süresi dolmak üzere olan garantileriniz yüklenemedi. Yeniden denemek için panoyu yenileyin."
+  },
   "topMovers": {
     "title": "En Çok Değişenler",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "Net Değer",
     "empty": "Henüz net değer verisi yok.",
-    "past12Months": "Son 12 ay",
-    "viewReport": "Tam raporu görüntüle"
+    "barStyle": "Çubuk stili",
+    "barStyleNetWorth": "Net değer",
+    "barStyleAccountType": "Hesap türüne göre",
+    "loadFailed": "Net değer geçmişiniz yüklenemedi. Tekrar denemek için panoyu yeniden yükleyin."
   },
   "assetsVsLiabilities": {
     "title": "Varlıklar ve Borçlar",
@@ -135,7 +147,10 @@
     "current": "Güncel",
     "netWorthLabel": "Net Değer",
     "assets": "Varlıklar",
-    "liabilities": "Borçlar"
+    "liabilities": "Borçlar",
+    "partialName": "{name} (kısmi)",
+    "viewCallouts": "Etiketler",
+    "viewLegend": "Gösterge"
   },
   "expensesPieChart": {
     "title": "Kategoriye Göre Giderler",
@@ -145,7 +160,9 @@
     "other": "Diğer",
     "insideOther": "{count, plural, other {Diğer içinde # kategori}}",
     "topLevelOnly": "Üst düzey kategoriler",
-    "topLevelOnlyHint": "Alt kategorileri üst kategorisinde say"
+    "topLevelOnlyHint": "Alt kategorileri üst kategorisinde say",
+    "viewCallouts": "Etiketler",
+    "viewLegend": "Gösterge"
   },
   "incomeExpenses": {
     "title": "Gelir ve Giderler",
@@ -183,6 +200,7 @@
     "accounts": "Hesaplar",
     "chartType": "Grafik türü",
     "view": "Görünüm",
+    "viewCalloutsHint": "Etiketler daha geniş bir ekran gerektirir. Sığmadıkları yerde gösterge gösterilir.",
     "displayName": "Görünen ad",
     "description": "Açıklama",
     "descriptionPlaceholder": "İsteğe bağlı bir açıklama ekleyin",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "Tümü",
       "1w": "1H",
@@ -204,7 +223,7 @@
     "empty": "Henüz gösterilecek yatırım geçmişi yok.",
     "refresh": "Güncel değeri yenile",
     "investmentResult": "Yatırım Sonucu",
-    "periodBreakdownInvestedTooltip": "Menkul kıymetlerin değeri bu dönemde {valueChange} değişti. Bunun {netInvested} kadarı satışlar düşüldükten sonra yatırılan tutardı ve {income} temettü ve faiz olarak ödendi. Yukarıdaki rakam, yatırılmamış nakit hariç, yatırımların kendi kazancıdır.",
+    "periodBreakdownInvestedTooltip": "Menkul kıymetlerin değeri bu dönemde {valueChange} değişti. Bunun {netInvested} kadarı satışlar düşüldükten sonra yatırılan tutardı ve {income} temettü ve faiz olarak ödendi. Hisselere yeniden yatırılan bir dağıtım her ikisinde de sayılır. Yukarıdaki rakam, yatırılmamış nakit hariç, yatırımların kendi kazancıdır.",
     "notAvailable": "Yok"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "Minimum tekrar",
     "minOccurrencesOption": "{count} veya daha fazla",
     "occurrences": "{count} tekrar",
-    "monthlyEstimate": "Aylık Tahmin"
+    "monthlyEstimate": "Aylık Tahmin",
+    "viewCallouts": "Etiketler",
+    "viewLegend": "Gösterge"
   },
   "weekendVsWeekday": {
     "title": "Hafta Sonu - Hafta İçi Harcama",

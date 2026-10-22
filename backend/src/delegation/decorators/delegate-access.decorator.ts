@@ -81,6 +81,19 @@ export const DelegatedScheduledParam = (key = "id") =>
   SetMetadata(DELEGATED_SCHEDULED_PARAM_KEY, key);
 
 /**
+ * A scheduled READ whose answer discloses the other accounts' own figures,
+ * not just their names (the loan occurrence projection answers the loan's
+ * dated debt and rate). Pair with @DelegatedScheduledParam: the read then
+ * needs READ on every account the schedule touches, as a write needs its
+ * operation, because the interceptor masks a counterpart's name and nothing
+ * else.
+ */
+export const DELEGATED_SCHEDULED_READS_EVERY_ACCOUNT_KEY =
+  "delegatedScheduledReadsEveryAccount";
+export const DelegateReadsEveryScheduledAccount = () =>
+  SetMetadata(DELEGATED_SCHEDULED_READS_EVERY_ACCOUNT_KEY, true);
+
+/**
  * 2C: a route that creates/edits/deletes shared reference data (payees,
  * categories, tags). A delegate may reach it only if the owner granted the
  * matching per-delegation manage capability.
@@ -99,17 +112,13 @@ export const DelegateRequiresCapability = (
 
 /**
  * 3A: a route belonging to a whole app section a delegate can be granted
- * READ on (Bills & Deposits, Investments, Budgets, Reports, AI). A delegate
- * may reach it only if the owner granted that section. Pair with
+ * READ on (Bills & Deposits, Investments, Budgets, Reports, AI, Warranties).
+ * A delegate may reach it only if the owner granted that section. Pair with
  * @AllowDelegate(); account-scoped data still also needs the per-account
  * decorators.
  */
 export type DelegateSection =
-  | "bills"
-  | "investments"
-  | "budgets"
-  | "reports"
-  | "ai";
+  "bills" | "investments" | "budgets" | "reports" | "ai" | "warranties";
 export const DELEGATE_SECTION_KEY = "delegateSection";
 export const DelegateRequiresSection = (section: DelegateSection) =>
   SetMetadata(DELEGATE_SECTION_KEY, section);

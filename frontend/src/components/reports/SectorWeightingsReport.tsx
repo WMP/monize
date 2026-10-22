@@ -393,6 +393,7 @@ export function SectorWeightingsReport() {
           <ReportToolbarActions
             onRefreshComplete={loadWeightings}
             onExportPdf={handleExportPdf}
+            disabled={isLoading || !!error}
           />
         </div>
       </div>

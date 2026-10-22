@@ -84,6 +84,33 @@ export enum LockScope {
   UserImport = 3,
   /** One user's transaction-rule list (positions, the per-user cap). */
   TransactionRules = 4,
+  /**
+   * The open review requests of one transaction (id = the transaction's id): a
+   * request with no rule is outside the partial unique index, so queueing one
+   * serializes here instead.
+   */
+  AiReviewRequests = 5,
+  /**
+   * The open parser-draft review request of one (user, sender domain) (id =
+   * `<userId>:<domain>`): creating one first closes the open one for the same
+   * sender, and two creators queue behind one another here before the partial
+   * unique index would refuse the second.
+   */
+  AiParserDraftRequests = 6,
+  /**
+   * One bond-linked security's engine prices (id = the security's id): a
+   * recompute, and the unlink that deletes the engine's rows, run one after the
+   * other. The recompute reads the link inside the lock, so it prices from the
+   * link as it is now or refuses when there is none (INV-BOND-005).
+   */
+  BondPriceRecompute = 7,
+  /**
+   * One bond instrument's first terms version (id = the deterministic
+   * instrument id): two fetches or manual entries of the same series queue here,
+   * so the second finds the row the first committed and writes nothing
+   * (INV-BOND-001, INV-BOND-006).
+   */
+  BondSeriesFetch = 8,
 }
 
 /**
@@ -356,6 +383,38 @@ export async function lockTransactionRows(
     }
   }
   return found;
+}
+
+/**
+ * Row-lock one warranty, or null when it is gone or not this user's.
+ *
+ * The same owner-scoped `FOR UPDATE` doctrine as `lockTransactionRow`: the
+ * attachment cap is a refusal decided from a count, and a count taken without
+ * the parent's lock is a check-then-act (audit P4-017), so every uploader to
+ * one warranty queues behind its row first. Scoped to `userId` in the query,
+ * not only by the policy, so the lock can never be taken on a warranty the
+ * caller is not authorised for whatever the `RLS_MODE`. Nothing a caller
+ * derives a write from is carried yet; the row's identity is the result.
+ */
+export interface LockedWarrantyRow {
+  id: string;
+}
+
+export async function lockWarrantyRow(
+  manager: EntityManager,
+  id: string,
+  userId: string,
+): Promise<LockedWarrantyRow | null> {
+  const rows: { id: string }[] = await manager.query(
+    `SELECT id
+       FROM warranties
+      WHERE id = $1 AND user_id = $2
+        FOR UPDATE`,
+    [id, userId],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return { id: row.id };
 }
 
 /**

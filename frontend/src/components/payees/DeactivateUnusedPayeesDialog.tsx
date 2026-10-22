@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -55,13 +55,15 @@ export function DeactivateUnusedPayeesDialog({
   }, [maxTransactions, monthsUnused, t]);
 
   // Reset state when dialog opens
-  useEffect(() => {
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen);
     if (isOpen) {
       setCandidates([]);
       setSelectedIds(new Set());
       setHasPreviewLoaded(false);
     }
-  }, [isOpen]);
+  }
 
   const handleApply = async () => {
     if (selectedIds.size === 0) {

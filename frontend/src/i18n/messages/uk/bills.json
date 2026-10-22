@@ -53,7 +53,8 @@
     "totalOfAccounts": "Разом за рахунками",
     "legendAriaLabel": "Лінії прогнозу",
     "tooltipTransactionForAccount": "{name} ({account})",
-    "unavailableMissingRates": "Цей прогноз не можна показати у {displayCurrency}: немає курсу обміну для {currencies}, а прогнозований баланс спирається на кожен попередній день. Додайте курс або виберіть рахунок з однією валютою."
+    "unavailableMissingRates": "Цей прогноз не можна показати у {displayCurrency}: немає курсу обміну для {currencies}, а прогнозований баланс спирається на кожен попередній день. Додайте курс або виберіть рахунок з однією валютою.",
+    "untitledTransaction": "Транзакція"
   },
   "calendar": {
     "days": {

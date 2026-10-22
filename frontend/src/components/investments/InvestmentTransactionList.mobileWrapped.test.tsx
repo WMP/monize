@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, within } from '@/test/render';
+import { render, screen, fireEvent, act, within, cleanup } from '@/test/render';
 import { InvestmentTransactionList, type TransactionFilters } from './InvestmentTransactionList';
 import { investmentsApi } from '@/lib/investments';
 import { TransactionStatus } from '@/types/transaction';
 import { useDensityStore } from '@/store/densityStore';
+import { usePreferencesStore } from '@/store/preferencesStore';
 
 /**
  * Model B: on a phone the density toggle picks the LAYOUT, not only the row
@@ -29,13 +30,17 @@ vi.mock('@/hooks/useDateFormat', () => ({
   useDateFormat: () => ({ formatDate: (d: string) => d, dateFormat: 'browser', datePattern: 'YYYY-MM-DD' }),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number, _code?: string, digits?: number) => `$${n.toFixed(digits ?? 2)}`,
-    formatQuantity: (n: number) => String(n),
-    numberFormat: 'en-US',
-  }),
-}));
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number, _code?: string, digits?: number) => `$${n.toFixed(digits ?? 2)}`,
+      formatQuantity: (n: number) => String(n),
+      numberFormat: 'en-US',
+    }),
+  };
+});
 
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({ defaultCurrency: 'CAD' }),
@@ -534,5 +539,61 @@ describe('the investment register on a phone', () => {
     // no spanning row to reconcile with the wrapped column count.
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.getByText('No investment transactions yet.')).toBeInTheDocument();
+  });
+});
+
+describe('the investment card with a hidden column', () => {
+  // Hidden is absent at every width, the card included: line 2 carries the
+  // visible of Shares and Price and is omitted when both are hidden, and a
+  // hidden Status drops the card's status button (and with it the row's
+  // status cycle, plan section 10).
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    setPhoneViewport(true);
+    useDensityStore.setState({ densities: { investments: 'normal' } });
+  });
+
+  afterEach(() => {
+    // Unmount first, so resetting the store re-renders nothing outside act().
+    cleanup();
+    window.matchMedia = originalMatchMedia;
+    usePreferencesStore.setState({ preferences: null });
+  });
+
+  const seed = (investmentRegister: string[]) =>
+    usePreferencesStore.setState({
+      preferences: { hiddenTableColumns: { investmentRegister } } as any,
+    });
+
+  it('omits the status button when Status is hidden', () => {
+    seed(['status']);
+    const { container } = renderList();
+    const [row] = bodyRows(container);
+    expect(within(row).queryByText('Pending')).not.toBeInTheDocument();
+    expect(within(row).getByText('Shares')).toBeInTheDocument();
+    expect(within(row).getByText('Price')).toBeInTheDocument();
+  });
+
+  it('keeps the visible one of Shares and Price on line 2', () => {
+    seed(['shares']);
+    const { container } = renderList();
+    const [row] = bodyRows(container);
+    expect(within(row).queryByText('Shares')).not.toBeInTheDocument();
+    expect(within(row).getByText('Price')).toBeInTheDocument();
+    expect(within(row).getByText('Pending')).toBeInTheDocument();
+  });
+
+  it('omits line 2 when Shares and Price are both hidden', () => {
+    seed(['shares', 'price']);
+    const { container } = renderList();
+    const [row] = bodyRows(container);
+    expect(within(row).queryByText('Shares')).not.toBeInTheDocument();
+    expect(within(row).queryByText('Price')).not.toBeInTheDocument();
+    // Line 1 and line 3 are all that is left in the card's grid.
+    const grid = row.querySelector('td > div > div.grid')!;
+    expect(grid.children).toHaveLength(3);
+    expect(within(row).getByText('Total')).toBeInTheDocument();
+    expect(within(row).getByText('Pending')).toBeInTheDocument();
   });
 });

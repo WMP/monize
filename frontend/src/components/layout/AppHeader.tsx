@@ -6,10 +6,11 @@ import { useClickOutside } from '@/hooks/useClickOutside';
 import { useHideOnScroll } from '@/hooks/useHideOnScroll';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { releasePushForSignOut } from '@/lib/push';
+import { holdPushForSignOut } from '@/lib/push';
 import { authApi } from '@/lib/auth';
 import { isNavSectionActive } from '@/lib/nav-section';
 import {
+  beginSignOut,
   markLogoutIncomplete,
   clearLogoutIncomplete,
 } from '@/lib/logout-state';
@@ -33,6 +34,7 @@ import {
   NAV_ICONS,
 } from '@/lib/nav-links';
 import toast from 'react-hot-toast';
+import { SearchSyntaxHelp } from '@/components/transactions/SearchSyntaxHelp';
 
 // Labels are translation keys in the `navigation` namespace, resolved at
 // render time. The href doubles as the route, the active-state match, and
@@ -116,8 +118,9 @@ export function AppHeader() {
   const visibleAiLinks = isDelegateView
     ? aiLinks.filter((l) => !l.ownerOnly)
     : aiLinks;
-  // A delegate sees only the Tools sections they were granted manage
-  // capability for (payees/categories/tags). Everyone else sees all.
+  // A delegate sees a Tools entry when either its manage capability
+  // (payees/categories/tags) or its READ section (warranties) was granted.
+  // Everyone else sees all.
   const toolsCapabilityByHref: Record<
     string,
     'payees' | 'categories' | 'tags'
@@ -126,8 +129,13 @@ export function AppHeader() {
     '/payees': 'payees',
     '/tags': 'tags',
   };
+  const toolsSectionByHref: Record<string, 'warranties'> = {
+    '/warranties': 'warranties',
+  };
   const visibleToolsLinks = isDelegateView
     ? toolsLinks.filter((l) => {
+        const sec = toolsSectionByHref[l.href];
+        if (sec && delegateSections?.[sec]) return true;
         const cap = toolsCapabilityByHref[l.href];
         if (!cap) return false;
         const r = delegateCapabilities?.[cap];
@@ -149,12 +157,16 @@ export function AppHeader() {
   const aiRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // The syntax help renders through a portal, so a press inside it is not
+  // inside `searchRef`; it is named here so choosing an example keeps the
+  // search open.
+  const searchHelpRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns when clicking outside
   useClickOutside(toolsRef, () => setToolsOpen(false));
   useClickOutside(aiRef, () => setAiOpen(false));
   useClickOutside(adminRef, () => setAdminOpen(false));
-  useClickOutside(searchRef, () => setSearchOpen(false));
+  useClickOutside([searchRef, searchHelpRef], () => setSearchOpen(false));
 
   // Focus the search input as it slides open.
   useEffect(() => {
@@ -227,17 +239,27 @@ export function AppHeader() {
   const handleLogout = async () => {
     // Deliberately here rather than in the store's `logout()`, which the 401
     // interceptor and the rehydrate error path also call: a session that merely
-    // expired is not somebody handing the browser over, and deregistering push
-    // on it would make every timeout cost the user their notifications. This is
-    // the one place someone chose to leave. The push subscription is scoped to
-    // the origin, not the session, so without releasing it the departing
-    // account's notifications keep arriving on a browser the next person is
-    // using -- and hold the endpoint against their own subscribe.
+    // expired is not somebody handing the browser over, and touching push on it
+    // would make every timeout cost the user their notifications. This is the
+    // one place someone chose to leave. The push subscription is scoped to the
+    // origin, not the session, so left delivering, the departing account's
+    // notifications would keep arriving on a browser the next person is using.
     //
-    // Before `authApi.logout()`, because deleting the server row needs the
-    // session that is ending -- and under its own short bound, because the
-    // cleanup is best effort and revoking the session is not.
-    await releasePushForSignOut();
+    // So the server HOLDS this browser's row: nothing is delivered to it, and
+    // the same account signing in here again resumes push with no prompt
+    // (`usePushResumeOnSignIn`). The browser keeps its subscription only once
+    // the server has confirmed the hold; any other outcome (an error, an older
+    // backend, a delegate session) falls back to releasing both halves, the
+    // row and the subscription, as account deletion always does.
+    //
+    // Before `authApi.logout()`, because holding or deleting the server row
+    // needs the session that is ending -- and under its own short bound,
+    // because the cleanup is best effort and revoking the session is not.
+    //
+    // First of all, so no 401 from the page still mounted here can start a
+    // competing redirect to /login once the session is gone.
+    beginSignOut();
+    await holdPushForSignOut();
     try {
       await authApi.logout();
       clearLogoutIncomplete();
@@ -595,6 +617,15 @@ export function AppHeader() {
                       : 'w-0 px-0 py-1.5 border-transparent opacity-0 pointer-events-none'
                   }`}
                 />
+                {searchOpen && (
+                  <SearchSyntaxHelp
+                    popoverRef={searchHelpRef}
+                    onExample={(example) => {
+                      setSearchTerm(example);
+                      searchInputRef.current?.focus();
+                    }}
+                  />
+                )}
                 <button
                   type="button"
                   onClick={() => {

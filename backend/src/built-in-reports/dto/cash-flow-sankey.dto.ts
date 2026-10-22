@@ -24,7 +24,7 @@ export type SankeyDepth = (typeof SANKEY_DEPTHS)[number];
 
 /**
  * The Cash Flow Sankey's scope and depth
- * (`docs/future-plans/sankey-cash-flow.md` section 6). Absent `accountIds`
+ * (`docs/specs/sankey-cash-flow.md` section 6). Absent `accountIds`
  * resolves to the default cash-flow scope (decision 1), which the response
  * echoes as `scopeAccountIds`.
  */

@@ -38,6 +38,14 @@
     "scheduleRecurring": "[XX-Make recurring-XX]",
     "more": "[XX-More actions-XX]"
   },
+  "columns": {
+    "button": "[XX-Columns-XX]",
+    "buttonWithHidden": "[XX-Columns, {count} hidden-XX]",
+    "menuLabel": "[XX-Show or hide columns-XX]",
+    "showAll": "[XX-Show all-XX]",
+    "hideColumn": "[XX-Hide column-XX]",
+    "sheetSubtitle": "[XX-Bring it back from the Columns menu.-XX]"
+  },
   "loading": "[XX-Loading...-XX]",
   "pagination": {
     "showing": "[XX-Showing-XX]",
@@ -262,5 +270,8 @@
     "normal": "[XX-Normal-XX]",
     "compact": "[XX-Compact-XX]",
     "dense": "[XX-Dense-XX]"
+  },
+  "scheduledOverdue": {
+    "included": "[XX-Includes {count, plural, one {# overdue scheduled transaction} other {# overdue scheduled transactions}}-XX]"
   }
 }

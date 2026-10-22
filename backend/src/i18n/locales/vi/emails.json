@@ -308,6 +308,87 @@
     "priceMovement": {
       "title": "Cảnh báo biến động giá: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}: {{ percent }}% so với phiên có dữ liệu trước đó."
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}: quyền truy cập ngân hàng kết thúc hôm nay",
+      "expiringTitleOneDay": "{{ institution }}: quyền truy cập ngân hàng kết thúc trong vòng 1 ngày",
+      "expiringTitleDays": "{{ institution }}: quyền truy cập ngân hàng kết thúc trong vòng {{ days }} ngày",
+      "expiringMessage": "Sự đồng ý của bạn cho Monize đọc {{ institution }} sẽ kết thúc vào {{ date }}. Hãy gia hạn kết nối trong Monize để tiếp tục đồng bộ.",
+      "expiredTitle": "{{ institution }}: quyền truy cập ngân hàng đã kết thúc",
+      "expiredMessage": "Sự đồng ý của bạn cho Monize đọc {{ institution }} đã kết thúc. Hãy gia hạn kết nối trong Monize để đồng bộ trở lại.",
+      "failedTitle": "{{ institution }}: đồng bộ thất bại",
+      "failedMessage": "Đồng bộ hằng ngày của {{ institution }} đã thất bại với: {{ accounts }}. Mở cài đặt đồng bộ ngân hàng để xem lý do.",
+      "failedCredentialsMessage": "Không thể bắt đầu đồng bộ hằng ngày của {{ institution }} vì thông tin xác thực đồng bộ ngân hàng bị thiếu hoặc bị từ chối. Hãy kiểm tra chúng trong cài đặt đồng bộ ngân hàng.",
+      "unnamedAccount": "một tài khoản",
+      "importedTitle": "{{ institution }}: đã nhập giao dịch mới",
+      "importedMessage": "Các giao dịch được nhập từ {{ institution }} bởi đồng bộ hằng ngày: {{ imported }}.",
+      "importedNoneTitle": "{{ institution }}: không có giao dịch mới",
+      "importedNoneMessage": "Đồng bộ hằng ngày của {{ institution }} không tìm thấy giao dịch mới."
+    },
+    "bond": {
+      "maturitySoonTitle": "{{ series }} đáo hạn vào {{ date }}",
+      "maturitySoonMessage": "{{ quantity }} × {{ series }} đáo hạn vào {{ date }}. {{ payout }}",
+      "interestTitle": "{{ series }}: trả lãi vào {{ date }}",
+      "interestMessage": "{{ quantity }} × {{ series }} trả {{ amount }} tiền lãi vào {{ date }}. Hãy ghi nhận trên trang chứng khoán nếu khoản này chưa có trong tài khoản của bạn.",
+      "interestMessageUnknown": "{{ quantity }} × {{ series }} trả lãi vào {{ date }}. Số tiền chưa được biết: lãi suất mà nó phụ thuộc chưa được công bố.",
+      "rateResetTitle": "{{ series }}: kỳ tính lãi mới",
+      "rateResetMessage": "{{ series }} bước vào kỳ {{ period }} vào {{ date }} với lãi suất {{ rate }} một năm.",
+      "unbookedTitle": "{{ series }}: đã đáo hạn, chưa ghi nhận thanh toán",
+      "unbookedMessage": "{{ quantity }} × {{ series }} đã đáo hạn vào {{ date }} và chưa có khoản thanh toán nào được ghi nhận. {{ payout }} Hãy ghi nhận khoản thanh toán trên trang chứng khoán.",
+      "payoutKnown": "Số tiền nhận được là {{ payout }}.",
+      "payoutUnknown": "Số tiền nhận được chưa được biết: {{ reason }}.",
+      "reason": {
+        "RATE_UNKNOWN": "lãi suất mà nó phụ thuộc chưa được công bố",
+        "TERMS_INCOMPLETE": "điều khoản của đợt phát hành chưa đầy đủ",
+        "PURCHASE_OUTSIDE_SALE_WINDOW": "ngày mua nằm ngoài thời gian bán của đợt phát hành",
+        "other": "không thể tính từ dữ liệu đã lưu"
+      },
+      "benchmarkTitle": "{{ benchmark }}: quan sát mới {{ observation }}",
+      "benchmarkMessage": "{{ publisher }} đã công bố {{ benchmark }} cho {{ observation }}: {{ value }}. Được {{ series }} sử dụng.",
+      "benchmarkMessageMore": "{{ publisher }} đã công bố {{ benchmark }} cho {{ observation }}: {{ value }}. Được {{ series }} và {{ more }} đợt khác sử dụng.",
+      "missingTitle": "Chưa biết các số liệu trái phiếu",
+      "missingMessage": "Một số số liệu trái phiếu không thể tính được: {{ causes }}.",
+      "benchmarks": {
+        "PL_CPI_GUS_YOY": "CPI, 12 tháng (GUS)",
+        "PL_NBP_REFERENCE": "Lãi suất tham chiếu NBP"
+      },
+      "cause": {
+        "observation": "quan sát {{ observation }} của {{ benchmark }} ({{ publisher }}) chưa được lưu: chưa được công bố, hoặc nguồn dữ liệu chưa được tải lại kể từ đó; hãy làm mới trên trang trái phiếu",
+        "observationNoPublisher": "quan sát {{ observation }} của {{ benchmark }} chưa được lưu: chưa được công bố, hoặc nguồn dữ liệu chưa được tải lại kể từ đó; hãy làm mới trên trang trái phiếu",
+        "terms": "điều khoản của {{ series }} chưa đầy đủ; hãy làm mới đợt phát hành trên trang trái phiếu",
+        "purchase": "lần mua {{ series }} vào {{ date }} nằm ngoài thời gian bán ({{ from }} đến {{ to }}); hãy sửa ngày mua",
+        "lots": "không thể suy ra các lô từ sổ cái ({{ code }}); hãy sửa sổ cái",
+        "lotsRow": "{{ action }} ngày {{ date }}: không thể suy ra các lô ({{ code }}); hãy sửa giao dịch",
+        "lotsRowSeries": "{{ action }} ngày {{ date }}: chưa gán series ({{ code }}); hãy chọn series trong giao dịch đó",
+        "lotsRowRemoval": "{{ action }} ngày {{ date }}: rút nhiều hơn số tài khoản đang giữ của series đó ({{ code }}); hãy sửa giao dịch"
+      },
+      "action": {
+        "BUY": "mua",
+        "SELL": "bán",
+        "REINVEST": "tái đầu tư",
+        "ADD_SHARES": "thêm cổ phần",
+        "REMOVE_SHARES": "bớt cổ phần",
+        "SPLIT": "chia tách (split)",
+        "TRANSFER_IN": "chuyển vào",
+        "TRANSFER_OUT": "chuyển ra",
+        "other": "giao dịch"
+      }
+    },
+    "emailReceiptsAttention": {
+      "title": "Biên lai email cần chú ý",
+      "message": "Hộp inbox biên lai của bạn chứa {{ noParser }} không có profil và {{ parseFailed }} mà profil của họ không nhận dạng được. Mở để xem xét."
+    },
+    "aiReview": {
+      "readyTitle": "Đề xuất xem xét của AI đang chờ bạn",
+      "readyMessage": "Số đề xuất đang chờ quyết định của bạn: {{ count }}. Mới kể từ thông báo trước: {{ added }}. Mở để xem xét.",
+      "expiringTitle": "Đề xuất xem xét của AI sắp hết hạn",
+      "expiringMessage": "Số đề xuất hết hạn trong vòng 3 ngày: {{ count }}. Đề xuất đầu tiên hết hạn vào {{ date }}. Mở để xem xét."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: bảo hành sắp hết hạn",
+      "expiringMessage": "Bảo hành của {{ name }} hết hạn vào {{ date }}. Mở để xem tài liệu hoặc ghi lại yêu cầu bảo hành.",
+      "todayTitle": "{{ name }}: bảo hành hết hạn hôm nay",
+      "todayMessage": "Bảo hành của {{ name }} hết hạn hôm nay, {{ date }}. Mở để xem tài liệu hoặc ghi lại yêu cầu bảo hành."
     }
   },
   "backupOffsite": {

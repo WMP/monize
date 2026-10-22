@@ -1167,7 +1167,7 @@ CREATE INDEX idx_investment_reports_user_id ON investment_reports(user_id);
 CREATE INDEX idx_investment_reports_user_favourite ON investment_reports(user_id, is_favourite);
 CREATE INDEX idx_investment_reports_user_sort ON investment_reports(user_id, sort_order);
 
--- Row-Level Security identity helpers (see docs/future-plans/row-level-security.md).
+-- Row-Level Security identity helpers (see docs/specs/row-level-security.md).
 --
 -- app.current_user_id -- effective user (the owner when a delegate is acting).
 -- app.real_user_id    -- authenticated identity (the delegate while acting);

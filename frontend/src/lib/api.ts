@@ -2,6 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 import { useAuthStore } from '@/store/authStore';
 import { createLogger } from '@/lib/logger';
+import { isSigningOut } from '@/lib/logout-state';
 
 const logger = createLogger('API');
 
@@ -105,7 +106,7 @@ async function refreshCsrfToken(): Promise<boolean> {
   }
 }
 
-async function attemptTokenRefresh(): Promise<boolean> {
+async function postTokenRefresh(): Promise<boolean> {
   try {
     // Use raw axios to avoid interceptor recursion; refresh_token cookie sent automatically
     await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
@@ -114,6 +115,26 @@ async function attemptTokenRefresh(): Promise<boolean> {
   } catch (_) {
     logger.warn('Token refresh failed');
     return false;
+  }
+}
+
+// One refresh per browser, not per tab. Every tab sends the same refresh
+// cookie, and two tabs presenting it together read as token theft on the
+// server, which signed every session out. A tab that waits on this lock sends
+// the cookie the holder's response already rotated. Without the Web Locks API
+// the per-tab single flight below still applies, and the server's short
+// rotation grace answers the second tab.
+const TOKEN_REFRESH_LOCK = 'monize-token-refresh';
+
+async function attemptTokenRefresh(): Promise<boolean> {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (!locks) return postTokenRefresh();
+  try {
+    return await locks.request(TOKEN_REFRESH_LOCK, postTokenRefresh);
+  } catch (_) {
+    // The lock itself was refused (an opaque origin, a disabled API); the
+    // refresh never ran, so run it unlocked.
+    return postTokenRefresh();
   }
 }
 
@@ -189,6 +210,7 @@ apiClient.interceptors.response.use(
       !originalRequest?._authRetried &&
       !originalRequest?._skipAuthRedirect &&
       !isLoggingOut &&
+      !isSigningOut() &&
       !isUnauthEndpoint(originalRequest?.url)
     ) {
       originalRequest._authRetried = true;

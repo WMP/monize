@@ -107,7 +107,7 @@ interface PerformResult {
 
 /**
  * Copies a completed local backup artifact to this user's off-machine
- * destinations (WP4 of `docs/future-plans/backup-off-machine.md`;
+ * destinations (WP4 of `docs/specs/backup-off-machine.md`;
  * INV-BACKUP-002, INV-BACKUP-003, INV-BACKUP-005).
  *
  * Four rules shape the whole class, and each of them is a way the naive version

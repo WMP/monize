@@ -3,6 +3,7 @@ import { join } from "path";
 import { gitListFiles } from "./repo-tree.util";
 import {
   ACCOUNT_BALANCE_AS_OF_SQL,
+  ACCOUNT_BALANCES_AS_OF_DATES_SQL,
   LEDGER_EXCLUDES_VOID,
   LEDGER_MOVEMENT_PREDICATE,
   LEDGER_TOP_LEVEL_ONLY,
@@ -121,5 +122,12 @@ describe("as-of ledger balance SQL", () => {
     expect(LEDGER_MOVEMENT_PREDICATE).toContain(LEDGER_EXCLUDES_VOID);
     expect(LEDGER_MOVEMENT_PREDICATE).toContain(LEDGER_TOP_LEVEL_ONLY);
     expect(ACCOUNT_BALANCE_AS_OF_SQL).toContain(LEDGER_MOVEMENT_PREDICATE);
+  });
+
+  it("bounds the many-dates query by the same join at each unnested date", () => {
+    expect(ACCOUNT_BALANCES_AS_OF_DATES_SQL).toContain(
+      ledgerBalanceJoin("d.as_of"),
+    );
+    expect(ACCOUNT_BALANCES_AS_OF_DATES_SQL).toContain("unnest($3::date[])");
   });
 });

@@ -10,12 +10,14 @@ import {
   Min,
   Max,
   IsPositive,
+  IsNotEmpty,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { TransactionStatus } from "../entities/transaction.entity";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
 import { TRANSACTION_NOTE_MAX_LENGTH } from "../../common/transaction-note";
+import { EXTERNAL_ID_MAX_LENGTH } from "../transaction-external-id";
 
 export class CreateTransferDto {
   @ApiProperty({
@@ -133,4 +135,15 @@ export class CreateTransferDto {
   @IsArray()
   @IsUUID("4", { each: true })
   tagIds?: string[];
+
+  @ApiPropertyOptional({
+    description:
+      "Your own stable id for this transfer, the same on every retry. Stored on the source leg and unique per source account: a transfer that repeats a key already used in the source account returns the existing transfer instead of creating a second one, and a key held by a row that is not a transfer to the same destination account is refused with 409.",
+    maxLength: EXTERNAL_ID_MAX_LENGTH,
+  })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(EXTERNAL_ID_MAX_LENGTH)
+  externalId?: string;
 }

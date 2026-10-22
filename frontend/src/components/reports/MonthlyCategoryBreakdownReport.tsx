@@ -27,6 +27,7 @@ import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { ReportError } from '@/components/reports/ReportError';
+import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
 import { exportToCsv } from '@/lib/csv-export';
 import { roundMoney, sumMoney } from '@/lib/format';
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
@@ -1291,9 +1292,20 @@ export function MonthlyCategoryBreakdownReport() {
           </div>
           {/* CSV only: this view is a matrix of figures, with nothing to render
               as a picture. */}
-          <ReportToolbarActions onExportCsv={handleExportCsv} disabled={!hasData} />
+          <ReportToolbarActions onExportCsv={handleExportCsv} disabled={isLoading || !!error || !hasData} />
         </div>
       </div>
+
+      {/* Every cell, subtotal and total below sums the rows that converted, so
+          a currency with no rate is named once, here, rather than left to be
+          read as zero. */}
+      {data && (
+        <PartialDataNotice
+          missingCurrencies={data.missingCurrencies ?? []}
+          excludedCount={data.excludedCount ?? 0}
+          displayCurrency={currency ?? ''}
+        />
+      )}
 
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">

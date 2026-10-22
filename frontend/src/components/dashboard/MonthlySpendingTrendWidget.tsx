@@ -118,7 +118,7 @@ export function MonthlySpendingTrendWidget({ isLoading }: MonthlySpendingTrendWi
                     label={
                       (payload?.[0]?.payload as { fullName?: string } | undefined)?.fullName
                     }
-                    payload={payload as { name?: string; value?: number; color?: string }[]}
+                    payload={payload as readonly { name?: string; value?: number; color?: string }[]}
                     formatValue={(v) => formatCurrency(Number(v))}
                   />
                 )}

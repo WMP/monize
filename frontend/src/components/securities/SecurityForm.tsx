@@ -1,16 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, MutableRefObject } from 'react';
-import { useTranslations } from 'next-intl';
-import { useForm } from 'react-hook-form';
+import { useLocale, useTranslations } from 'next-intl';
+import { useForm, useWatch } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { NumericInput } from '@/components/ui/NumericInput';
 import { Select } from '@/components/ui/Select';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { Combobox } from '@/components/ui/Combobox';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { Modal } from '@/components/ui/Modal';
@@ -18,6 +18,14 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { SecurityLookupPicker, LookupCandidate } from './SecurityLookupPicker';
 import { AllocationEditor, AllocationRow } from './AllocationEditor';
+import { BondProgramSelect, bondCountryName, useBondProgramPicker } from './BondProgramSelect';
+import { programLabel } from './detail/bond-labels';
+import {
+  LookupProviderSelect,
+  MsnInstrumentIdInput,
+  QuoteProviderSelect,
+  type LookupProviderValue,
+} from './QuoteProviderControls';
 import { TagForm } from '@/components/tags/TagForm';
 import { Security, CreateSecurityData } from '@/types/investment';
 import { Tag } from '@/types/tag';
@@ -31,64 +39,14 @@ import { useFormSubmitRef } from '@/hooks/useFormSubmitRef';
 import { useFormDirtyNotify } from '@/hooks/useFormDirtyNotify';
 import { FormActions } from '@/components/ui/FormActions';
 import { EXCHANGE_OPTIONS, COUNTRY_OPTIONS } from '@/lib/constants';
-
-// Map stored weightings (decimal 0-1) to editor rows (percentage strings).
-const toAllocationRows = (
-  weightings: { name: string; weight: number }[] | null | undefined,
-): AllocationRow[] =>
-  (weightings ?? [])
-    // An "Other" bucket isn't a real slice: don't surface it as a row --
-    // it's folded into the editor's computed (100 - total) "Other" remainder.
-    .filter((w) => (w.name ?? '').trim().toLowerCase() !== 'other')
-    .map((w) => ({
-      name: w.name,
-      weight: String(Math.round(w.weight * 1000000) / 10000),
-    }));
-
-// Editor rows -> API slices: trim names, drop blank/zero rows. Weights stay in
-// percentage units here; the caller converts to the stored decimal 0-1 form.
-const toAllocationSlices = (rows: AllocationRow[]) =>
-  rows
-    .map((row) => ({ name: row.name.trim(), weight: parseFloat(row.weight) }))
-    .filter(
-      (row) => row.name !== '' && Number.isFinite(row.weight) && row.weight > 0,
-    );
+import {
+  buildSecuritySchema,
+  toAllocationRows,
+  toAllocationSlices,
+  type SecurityFormData,
+} from './securityFormModel';
 
 const logger = createLogger('SecurityForm');
-
-const buildSecuritySchema = (t: (key: string) => string) => z.object({
-  symbol: z.string().min(1, t('validation.symbolRequired')).max(20, t('validation.symbolMax')),
-  name: z.string().min(1, t('validation.nameRequired')).max(255, t('validation.nameMax')),
-  securityType: z.string().optional(),
-  exchange: z.string().optional(),
-  currencyCode: z.string().min(1, t('validation.currencyRequired')),
-  description: z.string().max(5000, t('validation.descriptionMax')).optional(),
-  website: z.string().max(2048).optional(),
-  irWebsite: z.string().max(2048).optional(),
-  quoteProvider: z.enum(['', 'yahoo', 'msn', 'lse', 'deutsche_boerse']).optional(),
-  msnInstrumentId: z.string().max(50).optional(),
-  priceChartEnabled: z.boolean().optional(),
-  priceAlertPercent: z.string().optional().refine((v) => !v?.trim() || (Number.isFinite(Number(v)) && Number(v) >= 0.1 && Number(v) <= 1000), t('priceAlert.range')),
-  isFavourite: z.boolean().optional(),
-});
-
-type SecurityFormData = z.infer<ReturnType<typeof buildSecuritySchema>>;
-
-const quoteProviderOverrideOptions = [
-  { value: '', labelKey: 'form.providers.auto' },
-  { value: 'yahoo', labelKey: 'form.providers.yahoo' },
-  { value: 'msn', labelKey: 'form.providers.msn' },
-  { value: 'lse', labelKey: 'form.providers.lse' },
-  { value: 'deutsche_boerse', labelKey: 'form.providers.deutsche_boerse' },
-];
-
-const lookupProviderOptions = [
-  { value: 'auto', labelKey: 'form.providers.auto' },
-  { value: 'yahoo', labelKey: 'form.providers.yahoo' },
-  { value: 'msn', labelKey: 'form.providers.msn' },
-  { value: 'lse', labelKey: 'form.providers.lse' },
-  { value: 'deutsche_boerse', labelKey: 'form.providers.deutsche_boerse' },
-];
 
 interface SecurityFormProps {
   security?: Security;
@@ -106,6 +64,10 @@ interface SecurityFormProps {
   submitRef?: MutableRefObject<(() => void) | null>;
 }
 
+/** The Country choice for a bond no program supports: it works as a plain security. */
+const BOND_COUNTRY_OTHER = 'OTHER';
+const BOND_REQUEST_URL = 'https://github.com/kenlasko/monize/discussions';
+
 const securityTypeOptions = [
   { value: '', labelKey: 'form.types.select' },
   { value: 'STOCK', labelKey: 'form.types.stock' },
@@ -119,6 +81,8 @@ const securityTypeOptions = [
 
 export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyChange, submitRef }: SecurityFormProps) {
   const t = useTranslations('securities');
+  const tDetail = useTranslations('securityDetail');
+  const locale = useLocale();
   const { defaultCurrency } = useNumberFormat();
   const rawPreferredExchanges = usePreferencesStore((s) => s.preferences?.preferredExchanges);
   const preferredExchanges = useMemo(() => rawPreferredExchanges || [], [rawPreferredExchanges]);
@@ -126,9 +90,7 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [hasLookupResult, setHasLookupResult] = useState(false);
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
-  const [lookupProvider, setLookupProvider] = useState<
-    'auto' | 'yahoo' | 'msn' | 'lse' | 'deutsche_boerse'
-  >('auto');
+  const [lookupProvider, setLookupProvider] = useState<LookupProviderValue>('auto');
   const [pickerQuery, setPickerQuery] = useState<string>('');
   const [pickerCandidates, setPickerCandidates] = useState<LookupCandidate[]>([]);
   // Bumped by Clear/Revert to remount the exchange combobox, whose internal
@@ -159,6 +121,9 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
   // Asset class the user asked to delete from the list, pending confirmation.
   const [assetToDelete, setAssetToDelete] = useState<string | null>(null);
   const [showTagForm, setShowTagForm] = useState(false);
+  // The country the reader picked for a bond; null until they pick one, when it
+  // follows the linked program (or is "Other" for an unlinked bond).
+  const [bondCountryChoice, setBondCountryChoice] = useState<string | null>(null);
 
   useEffect(() => {
     exchangeRatesApi.getCurrencies().then(setCurrencies).catch(() => {});
@@ -226,11 +191,24 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
     handleSubmit,
     setValue,
     getValues,
-    watch,
+    control,
     reset,
+    clearErrors,
     formState: { errors, isSubmitting, isDirty, defaultValues },
   } = useForm<SecurityFormData>({
-    resolver: zodResolver(buildSecuritySchema(t)),
+    // The schema plus one rule it cannot hold: the country is not a form value,
+    // so a listed country without a bond kind is refused here, as a required field.
+    resolver: async (values, context, options) => {
+      const result = await zodResolver(buildSecuritySchema(t))(values, context, options);
+      if (!bondKindMissing) return result;
+      return {
+        values: {},
+        errors: {
+          ...result.errors,
+          bondProgramId: { type: 'required', message: t('validation.bondProgramRequired') },
+        },
+      };
+    },
     defaultValues: {
       symbol: security?.symbol || defaults?.symbol || '',
       name: security?.name || defaults?.name || '',
@@ -242,13 +220,16 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
       irWebsite: security?.irWebsite || '',
       quoteProvider: security?.quoteProvider || '',
       msnInstrumentId: security?.msnInstrumentId || '',
+      bondProgramId: security?.bondProgramId || defaults?.bondProgramId || '',
+      bondAutoFetch: security?.bondAutoFetch ?? defaults?.bondAutoFetch ?? false,
       isFavourite: security?.isFavourite || false,
       priceChartEnabled: security?.priceChartEnabled ?? false,
+      skipPriceUpdates: security?.skipPriceUpdates ?? false,
       priceAlertPercent: security?.priceAlertPercent == null ? '' : String(security.priceAlertPercent),
     },
   });
 
-  const selectedCurrency = watch('currencyCode');
+  const selectedCurrency = useWatch({ control, name: 'currencyCode' });
 
   /**
    * The user's currencies, plus whatever the form currently holds.
@@ -282,7 +263,118 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
     return options;
   }, [currencies, defaultCurrency, selectedCurrency, t]);
 
-  const isFavourite = watch('isFavourite') ?? false;
+  /**
+   * Whether the user clicked the "disable price updates" switch. Only then is
+   * it sent; left alone, the backend decides, and a newly picked provider or
+   * MSN Instrument ID turns updates back on. RHF's dirty state cannot stand in
+   * for this: re-ticking a box the effect below unticked is back at its
+   * default, so it reads as clean, yet it is the user's explicit choice.
+   */
+  const [skipSwitchTouched, setSkipSwitchTouched] = useState(false);
+  const watchedQuoteProvider = useWatch({ control, name: 'quoteProvider' }) || '';
+  const watchedMsnInstrumentId = useWatch({ control, name: 'msnInstrumentId' })?.trim() || '';
+
+  // Show what the save will store: the same rule as `SecuritiesService.update`,
+  // a provider or MSN id that differs from the stored one clears the flag.
+  useEffect(() => {
+    if (skipSwitchTouched || !getValues('skipPriceUpdates')) return;
+    const newProvider =
+      watchedQuoteProvider !== '' &&
+      watchedQuoteProvider !== (defaultValues?.quoteProvider || '');
+    const newMsnId =
+      watchedMsnInstrumentId !== '' &&
+      watchedMsnInstrumentId !== (defaultValues?.msnInstrumentId?.trim() || '');
+    if (newProvider || newMsnId) {
+      setValue('skipPriceUpdates', false);
+    }
+  }, [
+    watchedQuoteProvider,
+    watchedMsnInstrumentId,
+    skipSwitchTouched,
+    defaultValues,
+    getValues,
+    setValue,
+  ]);
+  const watchedSecurityType = useWatch({ control, name: 'securityType' });
+  const watchedExchange = useWatch({ control, name: 'exchange' });
+  const watchedSkipPriceUpdates = useWatch({ control, name: 'skipPriceUpdates' });
+  const watchedPriceAlertPercent = useWatch({ control, name: 'priceAlertPercent' });
+  const watchedPriceChartEnabled = useWatch({ control, name: 'priceChartEnabled' });
+  const isBond = watchedSecurityType === 'BOND';
+  const selectedBondProgramId = useWatch({ control, name: 'bondProgramId' }) || '';
+  const bondAutoFetch = useWatch({ control, name: 'bondAutoFetch' }) ?? false;
+
+  const bondPicker = useBondProgramPicker(isBond, selectedCurrency, selectedBondProgramId);
+  const effectiveBondProgramId = bondPicker.effectiveProgramId;
+
+  // Choosing a kind is a person's choice of product, so it fills everything the
+  // program determines: symbol (its code), name (its translated name), currency
+  // and the issuer's page, and it empties the exchange. Each stays editable.
+  // Only a change made here fills; opening a linked security does not.
+  const handleBondProgramChange = (programId: string) => {
+    // Emptying the kind keeps the country: it follows the link only until chosen.
+    if (programId === '' && bondCountry !== '') setBondCountryChoice(bondCountry);
+    setValue('bondProgramId', programId, { shouldDirty: true });
+    // The resolver still holds the previous render's choice, so the required
+    // error is cleared here rather than by revalidating.
+    if (programId !== '') clearErrors('bondProgramId');
+    const program = bondPicker.programs.find((p) => p.id === programId);
+    if (program === undefined) return;
+    const fill = { shouldDirty: true, shouldValidate: true };
+    setValue('symbol', program.programCode, fill);
+    setValue('name', programLabel(tDetail, program.programCode), fill);
+    setValue('currencyCode', program.currency, fill);
+    setValue('exchange', '', { shouldDirty: true });
+    if (program.infoUrl) setValue('website', program.infoUrl, { shouldDirty: true });
+  };
+
+  // A linked bond is priced from its terms, never by asking a quote provider,
+  // so the controls that configure quote fetching are hidden. Their stored
+  // values stay in the form state and are submitted unchanged.
+  const isLinkedToBond = isBond && effectiveBondProgramId !== '';
+
+  // '' is a link whose country is not known yet (the catalog has not loaded).
+  const bondCountry =
+    bondCountryChoice ??
+    bondPicker.program?.issuerCountryCode ??
+    (effectiveBondProgramId !== '' ? '' : BOND_COUNTRY_OTHER);
+  const isOtherBondCountry = isBond && bondCountry === BOND_COUNTRY_OTHER;
+  // A bond of a supported country is found by its program, not an exchange.
+  const hideExchange = isBond && bondCountry !== BOND_COUNTRY_OTHER;
+  // The engine prices a listed country's bond, and its program fixes the
+  // currency, so the quote provider and currency controls are not offered. The
+  // currency stays visible only when a stored link disagrees with it, which the
+  // reader must be able to repair.
+  const hideCurrency = hideExchange && bondPicker.mismatchedLinkCurrency === null;
+  // A listed country needs a bond kind; the resolver reads this at submit.
+  const bondKindMissing = hideExchange && effectiveBondProgramId === '';
+
+  // Type, Country (Bond), Exchange and Currency, less what the country hides.
+  const firstRowCount = 1 + (isBond ? 1 : 0) + (hideExchange ? 0 : 1) + (hideCurrency ? 0 : 1);
+  const firstRowColumns =
+    firstRowCount === 4 ? 'sm:grid-cols-2 lg:grid-cols-4' : firstRowCount === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2';
+
+  const bondCountryOptions = useMemo(() => {
+    const codes = [...new Set(bondPicker.programs.map((p) => p.issuerCountryCode))];
+    const named = codes
+      .map((code) => ({ value: code, label: bondCountryName(code, locale) }))
+      .sort((a, b) => a.label.localeCompare(b.label, locale));
+    return [
+      ...(bondCountry === '' ? [{ value: '', label: t('form.bondProgramCurrent') }] : []),
+      ...named,
+      { value: BOND_COUNTRY_OTHER, label: t('form.bondCountryOther') },
+    ];
+  }, [bondPicker.programs, bondCountry, locale, t]);
+
+  // Changing the country resets the program: it belongs to one country.
+  const handleBondCountryChange = (code: string) => {
+    if (code === bondCountry) return;
+    setBondCountryChoice(code);
+    setValue('bondProgramId', '', { shouldDirty: true });
+    setValue('bondAutoFetch', false, { shouldDirty: true });
+  };
+
+  const isFavourite = useWatch({ control, name: 'isFavourite' }) ?? false;
   const toggleFavourite = () =>
     setValue('isFavourite', !isFavourite, { shouldDirty: true });
 
@@ -376,8 +468,10 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
   }, [getValues, preferredExchanges, lookupProvider, applyLookupResult, t]);
 
   // In edit mode, revert to the original security values. In create mode,
-  // blank everything out (keeping the user's default currency).
-  const handleClear = useCallback(() => {
+  // blank everything out (keeping the user's default currency). Only a button's
+  // onClick reads it, so it is left to the compiler to memoize.
+  const handleClear = () => {
+    setSkipSwitchTouched(false);
     if (security) {
       reset();
       setSelectedTagIds(security.tags?.map((tag) => tag.id) || []);
@@ -393,17 +487,21 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
         description: '',
         quoteProvider: '',
         msnInstrumentId: '',
+        bondProgramId: '',
+        bondAutoFetch: false,
         isFavourite: false,
         priceChartEnabled: false,
+        skipPriceUpdates: false,
         priceAlertPercent: '',
       });
       setSelectedTagIds([]);
       setCountryRows([]);
       setAssetRows([]);
     }
+    setBondCountryChoice(null);
     setHasLookupResult(false);
     setResetNonce((n) => n + 1);
-  }, [reset, defaultValues, defaultCurrency, security]);
+  };
 
   // Drop an asset class from the user's list. The backend removes it from every
   // security that used it; nothing is re-apportioned, so the freed percentage
@@ -445,7 +543,7 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
   };
 
   const isFundType =
-    watch('securityType') === 'ETF' || watch('securityType') === 'MUTUAL_FUND';
+    watchedSecurityType === 'ETF' || watchedSecurityType === 'MUTUAL_FUND';
 
   const onFormSubmit = async (data: SecurityFormData) => {
     const isFund =
@@ -462,11 +560,26 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
       return;
     }
 
+    // A linked security keeps its program's currency: changing it would unlink
+    // the security and delete its engine prices, so it is refused here.
+    if (isBond && bondPicker.mismatchedLinkCurrency !== null) {
+      toast.error(
+        t('form.bondCurrencyLocked', {
+          linkedCurrency: bondPicker.mismatchedLinkCurrency,
+        }),
+      );
+      return;
+    }
+
+    const storedBondProgramId = security?.bondProgramId || null;
+    const storedAutoFetch = security?.bondAutoFetch ?? false;
     const cleanedData: CreateSecurityData = {
       symbol: data.symbol.toUpperCase().trim(),
       name: data.name.trim(),
       securityType: data.securityType || undefined,
-      exchange: data.exchange?.trim() || undefined,
+      // A listed bond has no exchange: null clears a stored one (undefined would
+      // be stripped and leave it), and nothing is sent when there is none.
+      exchange: hideExchange ? (security?.exchange ? null : undefined) : data.exchange?.trim() || undefined,
       currencyCode: data.currencyCode,
       description: data.description?.trim() || undefined,
       tagIds: selectedTagIds,
@@ -480,8 +593,35 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
       website: data.website?.trim() ?? '',
       irWebsite: data.irWebsite?.trim() ?? '',
       msnInstrumentId: data.msnInstrumentId?.trim() || undefined,
+      // The link is sent only when it changed (null unlinks), so a save that
+      // leaves it alone is accepted by a server that predates the field. A type
+      // moved away from BOND unlinks a security that was linked.
+      ...(data.securityType === 'BOND' && isOtherBondCountry
+        ? { bondProgramId: null }
+        : data.securityType === 'BOND'
+        ? (effectiveBondProgramId || null) !== storedBondProgramId
+          ? { bondProgramId: effectiveBondProgramId || null }
+          : {}
+        : security?.bondProgramId
+          ? { bondProgramId: null }
+          : {}),
+      // The switch belongs to a linked security: sent when it changed, and
+      // turned off when the link goes away.
+      ...(data.securityType === 'BOND' && isOtherBondCountry
+        ? { bondAutoFetch: false }
+        : data.securityType === 'BOND' && effectiveBondProgramId !== ''
+        ? (data.bondAutoFetch ?? false) !== storedAutoFetch
+          ? { bondAutoFetch: data.bondAutoFetch ?? false }
+          : {}
+        : storedAutoFetch
+          ? { bondAutoFetch: false }
+          : {}),
       isFavourite: data.isFavourite ?? false,
       priceChartEnabled: data.priceChartEnabled ?? false,
+      // Sent only when the user clicked it (see `skipSwitchTouched`).
+      ...(skipSwitchTouched
+        ? { skipPriceUpdates: data.skipPriceUpdates ?? false }
+        : {}),
       priceAlertPercent: data.priceAlertPercent?.trim() ? Number(data.priceAlertPercent) : null,
       // Only ETFs/funds carry the manual breakdowns; send [] to clear them.
       ...(isFund
@@ -521,6 +661,97 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
       }}
     />
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
+      <div className={`grid grid-cols-1 gap-4 ${firstRowColumns}`}>
+        <Select
+          label={t('form.typeLabel')}
+          options={securityTypeOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+          value={watchedSecurityType || ''}
+          onChange={(e) => setValue('securityType', e.target.value, { shouldDirty: true })}
+          error={errors.securityType?.message}
+        />
+
+        {isBond && (
+          <Select
+            label={t('form.bondCountryLabel')}
+            options={bondCountryOptions}
+            value={bondCountry}
+            onChange={(e) => handleBondCountryChange(e.target.value)}
+          />
+        )}
+
+        {!hideExchange && (
+        <Combobox
+          key={`exchange-${resetNonce}`}
+          label={t('form.exchangeLabel')}
+          options={EXCHANGE_OPTIONS}
+          value={watchedExchange || ''}
+          onChange={(value, label) => setValue('exchange', value || label, { shouldDirty: true })}
+          error={errors.exchange?.message}
+          placeholder={t('form.exchangeSearchPlaceholder')}
+          allowCustomValue
+          usePortal
+          alwaysShowSubtitle
+          priorityValues={preferredExchanges}
+        />
+        )}
+
+        {!hideCurrency && (
+          <Select
+            label={t('form.currencyLabel')}
+            options={currencyOptions}
+            value={selectedCurrency || ''}
+            onChange={(e) =>
+              setValue('currencyCode', e.target.value, { shouldDirty: true })
+            }
+            error={errors.currencyCode?.message}
+          />
+        )}
+      </div>
+
+      {isOtherBondCountry && (
+        <p className="-mt-2 text-sm text-gray-500 dark:text-gray-400">
+          {t.rich('form.bondCountryOtherInfo', {
+            link: (chunks) => (
+              <a
+                href={BOND_REQUEST_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline dark:text-blue-400"
+              >
+                {chunks}
+              </a>
+            ),
+          })}
+        </p>
+      )}
+
+      {isBond && !isOtherBondCountry && (
+        <BondProgramSelect
+          picker={bondPicker}
+          onChange={handleBondProgramChange}
+          countryCode={bondCountry || undefined}
+          error={errors.bondProgramId?.message}
+        />
+      )}
+
+      {isLinkedToBond && (
+        <div>
+          <label className="flex w-fit cursor-pointer items-center gap-2">
+            <ToggleSwitch
+              checked={bondAutoFetch}
+              onChange={(next) => setValue('bondAutoFetch', next, { shouldDirty: true })}
+              label={t('form.bondAutoFetchLabel')}
+            />
+            <span className="text-sm text-gray-900 dark:text-gray-100">
+              {t('form.bondAutoFetchLabel')}
+            </span>
+          </label>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {t('form.bondAutoFetchHelp')}
+          </p>
+        </div>
+      )}
+
       {/* Symbol + Lookup / Clear buttons */}
       <div className="flex gap-2 items-end">
         <div className="flex-1">
@@ -532,49 +763,37 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
             className="uppercase"
           />
         </div>
-        <div className="flex gap-1.5">
-          <Select
-            aria-label={t('form.lookupProviderAriaLabel')}
-            options={lookupProviderOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-            value={lookupProvider}
-            onChange={(e) =>
-              setLookupProvider(
-                e.target.value as
-                  | 'auto'
-                  | 'yahoo'
-                  | 'msn'
-                  | 'lse'
-                  | 'deutsche_boerse',
-              )
-            }
-            className="mb-[1px] w-24"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleLookup}
-            disabled={isLookingUp}
-            className="mb-[1px] relative"
-          >
-            <span className={isLookingUp ? 'invisible' : ''}>{t('form.lookupButton')}</span>
-            {isLookingUp && (
-              <span className="absolute inset-0 flex items-center justify-center">
-                <LoadingSpinner size="sm" fullContainer={false} />
-              </span>
-            )}
-          </Button>
-          {hasLookupResult && (
+        {/* A bond of a listed country is filled from its kind, never looked up. */}
+        {!hideExchange && (
+          <div className="flex gap-1.5">
+            <LookupProviderSelect value={lookupProvider} onChange={setLookupProvider} />
             <Button
               type="button"
-              variant="ghost"
-              onClick={handleClear}
-              className="mb-[1px] text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              title={security ? t('form.revertTitle') : t('form.clearTitle')}
+              variant="outline"
+              onClick={handleLookup}
+              disabled={isLookingUp}
+              className="mb-[1px] relative"
             >
-              {security ? t('form.revertButton') : t('form.clearButton')}
+              <span className={isLookingUp ? 'invisible' : ''}>{t('form.lookupButton')}</span>
+              {isLookingUp && (
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <LoadingSpinner size="sm" fullContainer={false} />
+                </span>
+              )}
             </Button>
-          )}
-        </div>
+            {hasLookupResult && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleClear}
+                className="mb-[1px] text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                title={security ? t('form.revertTitle') : t('form.clearTitle')}
+              >
+                {security ? t('form.revertButton') : t('form.clearButton')}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       <Input
@@ -584,71 +803,36 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
         placeholder={t('form.namePlaceholder')}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Select
-          label={t('form.typeLabel')}
-          options={securityTypeOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-          value={watch('securityType') || ''}
-          onChange={(e) => setValue('securityType', e.target.value, { shouldDirty: true })}
-          error={errors.securityType?.message}
-        />
-
-        <Combobox
-          key={`exchange-${resetNonce}`}
-          label={t('form.exchangeLabel')}
-          options={EXCHANGE_OPTIONS}
-          value={watch('exchange') || ''}
-          onChange={(value, label) => setValue('exchange', value || label, { shouldDirty: true })}
-          error={errors.exchange?.message}
-          placeholder={t('form.exchangeSearchPlaceholder')}
-          allowCustomValue
-          usePortal
-          alwaysShowSubtitle
-          priorityValues={preferredExchanges}
-        />
-
-        <Select
-          label={t('form.currencyLabel')}
-          options={currencyOptions}
-          value={selectedCurrency || ''}
-          onChange={(e) =>
-            setValue('currencyCode', e.target.value, { shouldDirty: true })
-          }
-          error={errors.currencyCode?.message}
-        />
-      </div>
-
-      <div>
-        <Select
-          label={t('form.quoteProviderLabel')}
-          options={[
-            { value: '', label: t('form.quoteProviderUseDefault', { provider: t(`form.providers.${userDefaultProvider}`) }) },
-            ...quoteProviderOverrideOptions
-              .slice(1)
-              .map((o) => ({ value: o.value, label: t(o.labelKey) })),
-          ]}
-          value={watch('quoteProvider') || ''}
-          onChange={(e) =>
-            setValue(
-              'quoteProvider',
-              e.target.value as 'yahoo' | 'msn' | 'lse' | 'deutsche_boerse' | '',
-              {
-                shouldDirty: true,
-              },
-            )
-          }
+      {!hideExchange && (
+        <QuoteProviderSelect
+          value={watchedQuoteProvider}
+          onChange={(value) => setValue('quoteProvider', value, { shouldDirty: true })}
+          userDefaultProvider={userDefaultProvider}
+          msnReady={msnReady}
           error={errors.quoteProvider?.message}
         />
-        {watch('quoteProvider') === 'msn' && msnReady === false && (
-          <p
-            role="alert"
-            className="text-sm text-red-600 dark:text-red-400 mt-2"
-            data-testid="msn-not-configured-error"
-          >
-            {t('form.msnNotConfigured')}
+      )}
+
+      {/* A bond of a listed country is priced by the engine, never by a quote
+          refresh, so the switch that stops quote refreshes has nothing to stop. */}
+      {!hideExchange && (
+        <div>
+          <label className="flex items-center gap-2 text-sm cursor-pointer w-fit">
+            <ToggleSwitch
+              checked={!!watchedSkipPriceUpdates}
+              onChange={(next) => {
+                setValue('skipPriceUpdates', next, { shouldDirty: true });
+                setSkipSwitchTouched(true);
+              }}
+              label={t('form.skipPriceUpdatesLabel')}
+            />
+            {t('form.skipPriceUpdatesLabel')}
+          </label>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {t('form.skipPriceUpdatesHelp')}
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
       {/*
         A threshold is a number the user types, so it goes through
@@ -671,8 +855,8 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
       <NumericInput
         label={t('priceAlert.label')}
         value={
-          watch('priceAlertPercent')?.trim()
-            ? Number(watch('priceAlertPercent'))
+          watchedPriceAlertPercent?.trim()
+            ? Number(watchedPriceAlertPercent)
             : undefined
         }
         onChange={(value) =>
@@ -691,17 +875,19 @@ export function SecurityForm({ security, defaults, onSubmit, onCancel, onDirtyCh
 
       <p id="price-alert-help" className="text-sm text-gray-500 dark:text-gray-400">{t('priceAlert.help')}</p>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" {...register('priceChartEnabled')} />
+      <label className="flex items-center gap-2 text-sm cursor-pointer w-fit">
+        <ToggleSwitch
+          checked={!!watchedPriceChartEnabled}
+          onChange={(next) => setValue('priceChartEnabled', next, { shouldDirty: true })}
+          label={t('priceAlert.chartLabel')}
+        />
         {t('priceAlert.chartLabel')}
       </label>
 
-      {watch('quoteProvider') === 'msn' && (
-        <Input
-          label={t('form.msnIdLabel')}
-          {...register('msnInstrumentId')}
+      {!hideExchange && watchedQuoteProvider === 'msn' && (
+        <MsnInstrumentIdInput
+          registration={register('msnInstrumentId')}
           error={errors.msnInstrumentId?.message}
-          placeholder={t('form.exchangePlaceholder')}
         />
       )}
 

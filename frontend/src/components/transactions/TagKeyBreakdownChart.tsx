@@ -114,19 +114,15 @@ export function TagKeyBreakdownChart({ tagKey, params }: TagKeyBreakdownChartPro
     // No rate, no slice: a bar cannot represent unknown. Count the tags left out
     // so the chart can say it is a subtotal rather than presenting a breakdown
     // that sums to 100% of only the tags that converted.
-    let excludedCount = 0;
-    const aggregated = aggregateGroupedTotals(rows, strategy)
-      .filter((r): r is typeof r & { total: number } => {
-        if (r.total === null) {
-          excludedCount += 1;
-          return false;
-        }
-        return true;
-      })
-      .map((r) => ({
-        name: r.name ?? '',
-        value: Math.abs(r.total),
-      }));
+    const grouped = aggregateGroupedTotals(rows, strategy);
+    const converted = grouped.filter(
+      (r): r is typeof r & { total: number } => r.total !== null,
+    );
+    const excludedCount = grouped.length - converted.length;
+    const aggregated = converted.map((r) => ({
+      name: r.name ?? '',
+      value: Math.abs(r.total),
+    }));
 
     const top = aggregated.slice(0, TOP_N);
     const rest = aggregated.slice(TOP_N);

@@ -47,6 +47,13 @@ export interface PushDevice {
   lastSuccessAt: string | null;
   disabledAt: string | null;
   disabledReason: PushDisabledReason | null;
+  /**
+   * When this device's account signed out of the browser it lives in. Nothing
+   * is delivered to it until that account signs in there again, and then it
+   * resumes on its own. Absent on a response from an older backend, and read
+   * as not held, which is the only state such a backend has.
+   */
+  heldAt?: string | null;
 }
 
 export interface PushConfig {
@@ -133,6 +140,11 @@ export const pushApi = {
 
   removeDevice: async (id: string, options?: BestEffort): Promise<void> => {
     await apiClient.delete(`/push/subscriptions/${id}`, options);
+  },
+
+  /** Stop delivery to one of the account's devices until it registers again. */
+  holdDevice: async (id: string, options?: BestEffort): Promise<void> => {
+    await apiClient.post(`/push/subscriptions/${id}/hold`, undefined, options);
   },
 
   sendTest: async (): Promise<PushTestResult> => {
@@ -683,6 +695,14 @@ const REGISTERED_ENDPOINT_KEY = 'monize.push.registeredEndpoint';
 interface RegisteredEndpointMarker {
   userId: string;
   fingerprint: string;
+  /**
+   * The account signed out of this browser and the server confirmed it holds
+   * the row (`holdPushForSignOut`), so the subscription was kept on purpose and
+   * the same account's next sign-in here resumes it
+   * (`resumePushAfterSignIn`). A marker written before the field reads as
+   * `false`.
+   */
+  held: boolean;
 }
 
 /** Every accessor is guarded: some browsers throw on `localStorage` outright. */
@@ -690,10 +710,26 @@ export function rememberRegisteredEndpoint(
   userId: string,
   fingerprint: string,
 ): void {
+  writeRegisteredEndpoint({ userId, fingerprint, held: false });
+}
+
+/**
+ * Record that the server holds this browser's row for `userId` across a
+ * sign-out, so the subscription the browser keeps is resumed, not reconciled
+ * away, when that account signs in here again.
+ */
+export function markRegisteredEndpointHeld(
+  userId: string,
+  fingerprint: string,
+): void {
+  writeRegisteredEndpoint({ userId, fingerprint, held: true });
+}
+
+function writeRegisteredEndpoint(marker: RegisteredEndpointMarker): void {
   try {
     window.localStorage.setItem(
       REGISTERED_ENDPOINT_KEY,
-      JSON.stringify({ userId, fingerprint } satisfies RegisteredEndpointMarker),
+      JSON.stringify(marker satisfies RegisteredEndpointMarker),
     );
   } catch {
     // Storage blocked. The reconciliation degrades to doing nothing, which is
@@ -724,7 +760,11 @@ export function readRegisteredEndpoint(): RegisteredEndpointMarker | null {
     ) {
       return null;
     }
-    return { userId: marker.userId, fingerprint: marker.fingerprint };
+    return {
+      userId: marker.userId,
+      fingerprint: marker.fingerprint,
+      held: marker.held === true,
+    };
   } catch {
     // Blocked storage, or a value from the pre-owner format (a bare
     // fingerprint, which is not JSON). Both are "no information".
@@ -1009,6 +1049,186 @@ export async function releasePushForSignOut(
   } finally {
     if (timer !== undefined) clearTimeout(timer);
   }
+}
+
+/**
+ * Hold this browser's push registration on the way out of a session, instead
+ * of releasing it: the server stops delivering to the row, and the browser
+ * keeps its subscription so the same account's next sign-in here resumes push
+ * with no prompt (INV-PUSH-011).
+ *
+ * The browser may keep the subscription only once the server has CONFIRMED
+ * the hold. A subscription left in place while its row still delivers would
+ * show the departing account's notifications to whoever uses the browser next,
+ * which is the defect the release exists to prevent. So every other outcome
+ * (no row for this browser, a refusal, an older backend's 404, a delegate's
+ * 403, a network error) runs `releasePushForSignOut`'s full release instead.
+ *
+ * Bounded like the release. If the bound elapses before the hold is
+ * confirmed, the browser subscription is released locally without waiting, so
+ * an unconfirmed hold never leaves a subscription behind; a hold that commits
+ * afterwards only leaves a row the daily sweep removes.
+ *
+ * Only the header sign-out holds. Account deletion keeps the full release.
+ * Never throws.
+ */
+export async function holdPushForSignOut(
+  timeoutMs = SIGN_OUT_PUSH_RELEASE_TIMEOUT_MS,
+): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const attempt = { abandoned: false };
+  try {
+    const finished = await Promise.race([
+      holdThisBrowsersRegistration(attempt).then(() => true),
+      new Promise<false>((resolve) => {
+        timer = setTimeout(() => resolve(false), timeoutMs);
+      }),
+    ]);
+    if (!finished) {
+      attempt.abandoned = true;
+      // Not awaited: the sign-out has already waited as long as it will.
+      void releaseLocalPushSubscription();
+    }
+  } catch {
+    // Best effort.
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+async function holdThisBrowsersRegistration(attempt: {
+  abandoned: boolean;
+}): Promise<void> {
+  const marker = readRegisteredEndpoint();
+  const readerId = useAuthStore.getState().user?.id ?? null;
+  // Another account's subscription: not this sign-out's to hold or release.
+  if (marker !== null && readerId !== null && marker.userId !== readerId) {
+    return;
+  }
+
+  let held = false;
+  try {
+    const fingerprint = readerId === null ? null : await currentDeviceFingerprint();
+    if (readerId !== null && fingerprint !== null) {
+      const mine = (await pushApi.listDevices(BEST_EFFORT)).find(
+        (device) => device.endpointFingerprint === fingerprint,
+      );
+      if (mine) {
+        await pushApi.holdDevice(mine.id, BEST_EFFORT);
+        if (!attempt.abandoned) {
+          // Written from what this browser holds and who is leaving, not
+          // patched onto the old marker: a cleared or missing one must not
+          // turn a confirmed hold into a subscription nothing will resume.
+          markRegisteredEndpointHeld(readerId, fingerprint);
+          held = true;
+        }
+      }
+    }
+  } catch {
+    // Unconfirmed: the release below runs.
+  }
+  if (!held && !attempt.abandoned) await removeThisBrowsersRegistration();
+}
+
+/**
+ * Resume push for the account that just signed in, when this browser kept its
+ * subscription across that account's own sign-out (`holdPushForSignOut`).
+ *
+ * Acts only when the marker is held AND names the signed-in user; an ordinary
+ * page load costs nothing. The resume is a re-registration, so the server's
+ * cap, key and ownership checks all apply, and its upsert clears the hold.
+ *
+ * - Permission no longer granted: the subscription cannot show anything, so it
+ *   is released and the held row retired rather than left for the sweep.
+ * - No subscription any more: the marker is stale; it is forgotten and the
+ *   held row retired.
+ * - Minted under a key the instance no longer uses, or one the browser will
+ *   not disclose: released locally and the held row retired (a real rotation
+ *   has already retired it, and retiring it again is harmless). Enable is the
+ *   repair.
+ * - The browser replaced the endpoint while signed out: the old row is retired
+ *   FIRST, so it does not hold a slot under the device cap against the new
+ *   one, then the new endpoint is registered -- the repair the settings panel
+ *   makes for a rotation.
+ * - A refusal from the server (409 claimed, the device cap, any other 4xx):
+ *   released locally and the held row retired, so neither half promises a
+ *   delivery that will not happen. A request that never got an answer, or got
+ *   a 5xx, a 401, a 408 or a 429, changes nothing, and the next sign-in or
+ *   page load tries again.
+ *
+ * Returns whether it changed anything, so the caller knows to re-read the
+ * device state. Never throws.
+ */
+export async function resumePushAfterSignIn(publicKey: string): Promise<boolean> {
+  const marker = readRegisteredEndpoint();
+  const readerId = useAuthStore.getState().user?.id ?? null;
+  if (marker === null || !marker.held || readerId === null) return false;
+  if (marker.userId !== readerId) return false;
+
+  try {
+    if (
+      typeof Notification === 'undefined' ||
+      Notification.permission !== 'granted'
+    ) {
+      await releaseLocalPushSubscription();
+      await retireServerRowFor(marker.fingerprint);
+      return true;
+    }
+
+    const registration = await serviceWorkerReady();
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      forgetRegisteredEndpoint();
+      await retireServerRowFor(marker.fingerprint);
+      return true;
+    }
+    if (
+      !keyMatches(
+        subscription.options?.applicationServerKey,
+        urlBase64ToUint8Array(publicKey),
+      )
+    ) {
+      await releaseLocalPushSubscription();
+      await retireServerRowFor(marker.fingerprint);
+      return true;
+    }
+
+    const current = await fingerprintEndpoint(subscription.endpoint);
+    if (current !== marker.fingerprint) {
+      await retireServerRowFor(marker.fingerprint);
+    }
+    try {
+      await postSubscription(subscription, publicKey);
+    } catch (error) {
+      if (!isServerRefusal(error)) return false;
+      await releaseLocalPushSubscription();
+      await retireServerRowFor(marker.fingerprint);
+      return true;
+    }
+    return true;
+  } catch {
+    // Best effort: the held row stays held, which delivers nothing.
+    return false;
+  }
+}
+
+/**
+ * The server answered and refused THIS registration, as opposed to never
+ * answering, failing on its own side (5xx, a gateway mid-deploy), losing the
+ * session (401) or asking to be retried (408, 429). Only a refusal justifies
+ * dropping the browser subscription.
+ */
+const RETRYABLE_CLIENT_STATUSES: readonly number[] = [401, 408, 429];
+
+function isServerRefusal(error: unknown): boolean {
+  const status = (error as { response?: { status?: unknown } } | null)
+    ?.response?.status;
+  return (
+    typeof status === 'number' &&
+    status >= 400 &&
+    status < 500 &&
+    !RETRYABLE_CLIENT_STATUSES.includes(status)
+  );
 }
 
 async function removeThisBrowsersRegistration(): Promise<void> {

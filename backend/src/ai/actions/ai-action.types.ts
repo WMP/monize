@@ -26,6 +26,7 @@ import type { RuleConditionNode } from "../../transaction-rules/rule-condition.t
 import type { RuleDefinitionLabels } from "../../transaction-rules/rule-labels";
 import type {
   RuleRunMatchedRow,
+  RuleRunScanOrder,
   RuleRunSkippedRow,
 } from "../../transaction-rules/rule-run.types";
 import type { RuleTrigger } from "../../transaction-rules/rule-trigger.types";
@@ -163,6 +164,8 @@ export interface SplitRowDescriptor {
  */
 export interface ResolvedSplitLine extends SplitRowDescriptor {
   categoryName: string;
+  /** `"ai"` when the AI chose the category: shown on the card, never signed (see `toSplitRowDescriptor`). */
+  categorySource?: "ai";
 }
 
 /**
@@ -202,6 +205,7 @@ export function toSplitPreview(line: ResolvedSplitLine): AiActionSplitPreview {
     categoryName: line.categoryName,
     amount: line.amount,
     memo: line.memo,
+    ...(line.categorySource === "ai" ? { categorySource: "ai" as const } : {}),
   };
 }
 
@@ -341,6 +345,22 @@ export interface DeleteSecurityDescriptor extends BaseDescriptor {
   securityId: string;
 }
 
+/**
+ * What a bond redemption pays, split into returned principal and interest
+ * (`BondHoldingsService.redemptionSplit`), in the security's currency, for a
+ * confirmation card. `outcome` says where the row's price and accrued interest
+ * came from: `filled` (the server set them from the split), `matches` (the
+ * caller's own agree with it) or `differs` (the caller's own were kept and
+ * differ from the split by more than rounding: the card warns).
+ */
+export interface BondRedemptionSplitPreview {
+  principal: number;
+  interest: number;
+  deduction: number;
+  payout: number;
+  outcome: "filled" | "matches" | "differs";
+}
+
 export interface CreateInvestmentTransactionDescriptor extends BaseDescriptor {
   type: "create_investment_transaction";
   accountId: string;
@@ -353,9 +373,35 @@ export interface CreateInvestmentTransactionDescriptor extends BaseDescriptor {
   quantity: number | null;
   price: number | null;
   commission: number;
+  /** REDEEM only: the interest the card showed, written as the linked INTEREST row. */
+  accruedInterest: number;
   /** Resolved at preview time so confirm persists the rate the user approved. */
   exchangeRate: number;
   description: string | null;
+  /** The bond series resolved at preview time (INV-BOND-007); null for a non-bond. */
+  bondInstrumentId: string | null;
+  /**
+   * The `email_trade` AI review request this creation answers. Not part of the
+   * transaction (nothing on it reads the id) and not an envelope field: it is
+   * signed with the rest, so a client cannot point an approval at another
+   * request, and confirm marks that request applied in the transaction that
+   * writes the row.
+   */
+  aiReviewRequestId?: string;
+  /**
+   * The executed total the card showed, for a card that answers an
+   * `email_trade` request: signed with the rest and stored as given, never
+   * re-derived from the price (INV-TRADE-001). Absent on every other card.
+   */
+  totalAmount?: number;
+  /**
+   * The scheduled bill or deposit this trade pays. When set (with
+   * `scheduledDueDate`, the occurrence the card was built for), confirm posts
+   * that occurrence with the figures above instead of creating a second row, so
+   * the schedule is marked paid and advances. Signed with the rest.
+   */
+  scheduledTransactionId?: string;
+  scheduledDueDate?: string;
 }
 
 /**
@@ -395,8 +441,11 @@ export interface InvestmentTransactionRowDescriptor {
   quantity: number | null;
   price: number | null;
   commission: number;
+  /** REDEEM only: the interest the card showed, written as the linked INTEREST row. */
+  accruedInterest: number;
   exchangeRate: number;
   description: string | null;
+  bondInstrumentId: string | null;
 }
 
 export interface CreateInvestmentTransactionsDescriptor extends BaseDescriptor {
@@ -430,6 +479,17 @@ export interface UpdateTransactionDescriptor extends BaseDescriptor {
   /** Files to persist as transaction attachments after the update commits. */
   attachments?: AttachmentRefDescriptor[];
   /**
+   * Tag names this edit ADDS to the transaction (the tags it carries stay): the
+   * user's tag of that name, created by the write's own transaction when there is
+   * none. Signed with the rest, so a client cannot add a tag the card did not show.
+   */
+  tagNames?: string[];
+  /**
+   * The reference number ("Ref #") this edit sets; absent: left as it is.
+   * Signed with the rest, so a client cannot set one the card did not show.
+   */
+  referenceNumber?: string;
+  /**
    * The AI review request this edit answers. Not part of the change (nothing on
    * the transaction reads it) and not an envelope field: it is signed with the
    * rest, so a client cannot point an approval at another request, and confirm
@@ -459,8 +519,11 @@ export interface UpdateInvestmentTransactionDescriptor extends BaseDescriptor {
   quantity: number | null;
   price: number | null;
   commission: number;
+  /** REDEEM only: the interest the card showed, written as the linked INTEREST row. */
+  accruedInterest: number;
   exchangeRate: number;
   description: string | null;
+  bondInstrumentId: string | null;
 }
 
 /** Delete an existing investment transaction. */
@@ -587,6 +650,7 @@ export interface BatchUpdateInvestmentTransactionRow {
   accruedInterest: number;
   exchangeRate: number;
   description: string | null;
+  bondInstrumentId: string | null;
 }
 
 /** One investment-transaction deletion inside a `batch_actions` envelope. */
@@ -710,6 +774,12 @@ export interface RuleDefinitionDescriptor {
   condition: RuleConditionNode;
   actions: RuleAction[];
   stopProcessing: boolean;
+  /**
+   * The active window (INV-RULE-004). Optional so a descriptor signed before
+   * the window existed still confirms; absent is "leave as stored" on an edit.
+   */
+  activeFrom?: string | null;
+  activeTo?: string | null;
 }
 
 /** Create a rule (appended at the end of the user's list). */
@@ -788,6 +858,8 @@ export interface AiActionSplitPreview {
   categoryName: string | null;
   amount: number;
   memo?: string | null;
+  /** `"ai"` when the AI chose this line's category (display only). */
+  categorySource?: "ai";
 }
 
 /** Display-only preview of one file an action will attach on approval. */
@@ -811,6 +883,8 @@ export interface AiActionRuleTestPreview {
   conditionMatchedCount: number;
   /** Transactions examined. */
   scanned: number;
+  /** Which end of the register the test scanned from: the oldest rows for a rule that settles loan installments, else the latest. */
+  scanOrder?: RuleRunScanOrder;
   /** More transactions matched the filters than the run examines. */
   truncated: boolean;
   /** The first {@link RULE_CARD_PREVIEW_ROWS} rows that would change. */
@@ -832,6 +906,9 @@ export interface AiActionRuleState {
   condition: RuleConditionNode;
   actions: RuleAction[];
   stopProcessing: boolean;
+  /** The active window, `YYYY-MM-DD`; null is open on that side. */
+  activeFrom: string | null;
+  activeTo: string | null;
 }
 
 /**
@@ -863,6 +940,8 @@ export interface AiActionPreview {
   /** True when approving the transaction will also create a new payee. */
   payeeWillBeCreated?: boolean;
   categoryName?: string | null;
+  /** `"ai"` when the AI chose `categoryName` (display only; an email-receipt proposal). */
+  categorySource?: "ai";
   /**
    * What the user's transaction rules will do to a created transaction on
    * approval (display-only, not signed). Absent when no rule matches.
@@ -899,6 +978,12 @@ export interface AiActionPreview {
    * Display-only mirror of the descriptor's attachment refs.
    */
   attachments?: AiActionAttachmentPreview[];
+  /** update_transaction: tag names the approval adds (display mirror of the descriptor's). */
+  tagNames?: string[];
+  /** The subset of `tagNames` the approval creates because the user has no such tag yet. */
+  newTagNames?: string[];
+  /** update_transaction: the reference number ("Ref #") the approval sets (display mirror of the descriptor's). */
+  referenceNumber?: string;
   // create_investment_transaction display fields.
   investmentAction?: InvestmentAction;
   symbol?: string | null;
@@ -911,6 +996,16 @@ export interface AiActionPreview {
   cashAccountName?: string | null;
   cashCurrency?: string | null;
   cashAmount?: number | null;
+  /** REDEEM: the accrued interest riding on the cash movement. */
+  accruedInterest?: number;
+  /** The bond series a program-linked security's row acts on (e.g. EDO1036). */
+  bondSeriesCode?: string | null;
+  /** create_investment_transaction: the bill or deposit that approving this marks paid. */
+  scheduledName?: string | null;
+  /** create_investment_transaction: the due date of the occurrence it marks paid (`YYYY-MM-DD`). */
+  scheduledDueDate?: string | null;
+  /** REDEEM of a bond-linked security: the redemption split the card shows. */
+  bondRedemptionSplit?: BondRedemptionSplitPreview | null;
   // create_security display fields (symbol/securityName/securityCurrency above
   // are reused for the ticker, full name, and currency).
   securityType?: string | null;
@@ -986,6 +1081,12 @@ export interface AiActionPreviewRow {
   cashAccountName?: string | null;
   cashCurrency?: string | null;
   cashAmount?: number | null;
+  /** REDEEM: the accrued interest riding on the cash movement. */
+  accruedInterest?: number;
+  /** The bond series a program-linked security's row acts on (e.g. EDO1036). */
+  bondSeriesCode?: string | null;
+  /** REDEEM of a bond-linked security: the redemption split the card shows. */
+  bondRedemptionSplit?: BondRedemptionSplitPreview | null;
   // Transfer-row display fields (batch_actions with operation: "create_transfer").
   // The "from" leg reuses accountName/amount/currencyCode.
   fromAccountName?: string;

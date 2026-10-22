@@ -15,7 +15,7 @@ interface ChartTooltipProps {
   /** Heading shown above the entries (e.g. the category/month name). */
   label?: ReactNode;
   /** Series rows to render as "name: value" lines. */
-  payload?: ChartTooltipEntry[];
+  payload?: readonly ChartTooltipEntry[];
   /** Formats each entry's numeric value (defaults to String). */
   formatValue?: (value: number, entry: ChartTooltipEntry) => string;
   /** Extra content rendered below the entries (e.g. a percentage line). */

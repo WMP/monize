@@ -133,10 +133,19 @@ export const SORT_FIELDS: readonly SecuritySortField[] = (
   Object.keys(SORT_FIELD_ORDER) as SecuritySortField[]
 ).sort((a, b) => SORT_FIELD_ORDER[a] - SORT_FIELD_ORDER[b]);
 
-/** Format a security_prices.source value into a short human label. */
-export function formatPriceSource(source: string | null | undefined): string {
+/**
+ * Format a security_prices.source value into a short human label. The bond
+ * engine's accrual rows have a translated name, so the 'securities' translator
+ * is passed in; the rest are provider names and short codes that read the same
+ * in every language.
+ */
+export function formatPriceSource(
+  source: string | null | undefined,
+  t: (key: 'form.providers.bond_engine') => string,
+): string {
   if (!source) return '';
   switch (source) {
+    case 'bond_engine': return t('form.providers.bond_engine');
     case 'yahoo_finance': return 'Yahoo';
     case 'msn_finance': return 'MSN';
     case 'lse': return 'LSE';
@@ -257,6 +266,17 @@ export function SecurityProviderBadge({
   defaultQuoteProvider: 'yahoo' | 'msn' | 'lse' | 'deutsche_boerse';
 }) {
   const t = useTranslations('securities');
+  // A bond-linked security is priced from its issue terms; no quote provider
+  // is ever asked, so neither an override nor the inherited default is shown.
+  if (security.bondProgramId) {
+    return (
+      <span
+        className="inline-flex items-center rounded text-xs font-medium px-2 py-0.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+      >
+        {formatPriceSource('bond_engine', t)}
+      </span>
+    );
+  }
   const effective = security.quoteProvider ?? defaultQuoteProvider;
   const isOverride = !!security.quoteProvider;
   const baseClass = PROVIDER_BADGE_CLASS[effective] ?? PROVIDER_BADGE_CLASS.yahoo;
@@ -286,15 +306,17 @@ const PROVIDER_BADGE_CLASS: Record<string, string> = {
  * never been priced has no source to state and shows "-".
  */
 export function SecurityPriceSourceBadge({ security }: { security: Security }) {
+  const t = useTranslations('securities');
   if (!security.lastPriceSource) {
     return <span className="text-sm text-gray-400 dark:text-gray-500">-</span>;
   }
+  const label = formatPriceSource(security.lastPriceSource, t);
   return (
     <span
       className={`inline-flex items-center rounded text-xs font-medium px-2 py-0.5 ${priceSourceBadgeClass(security.lastPriceSource)}`}
       title={security.lastPriceSource}
     >
-      {formatPriceSource(security.lastPriceSource)}
+      {label}
     </span>
   );
 }

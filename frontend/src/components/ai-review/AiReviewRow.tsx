@@ -10,7 +10,7 @@ import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { ProposalCardState } from '@/hooks/useAiReviewInbox';
 import type { PendingAction } from '@/types/ai';
-import type { AiReviewItem, AiReviewStatus } from '@/types/ai-review';
+import { draftParserIds, isApprovable, isSendableToAssistant, reviewItemLabel, type AiReviewItem, type AiReviewStatus } from '@/types/ai-review';
 
 /** Requests still open: the person may dismiss them. */
 const DISMISSIBLE: readonly AiReviewStatus[] = ['pending', 'claimed', 'proposed'];
@@ -31,6 +31,10 @@ export interface AiReviewRowProps {
   item: AiReviewItem;
   card?: ProposalCardState;
   dismissing: boolean;
+  /** Whether the list offers a selection (a column of checkboxes); a row that can be neither approved nor sent gets an empty cell. */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelected?: (item: AiReviewItem) => void;
   onApprove: (item: AiReviewItem, action: Omit<PendingAction, 'status'>) => void;
   onDismiss: (item: AiReviewItem) => void;
 }
@@ -39,34 +43,157 @@ export interface AiReviewRowProps {
  * One request: its transaction, the rule's instruction and status, then, when
  * an agent proposed an edit, the ordinary confirmation card on a row of its own
  * (the split display is the card's, not re-implemented here).
+ *
+ * A request of kind `email_parser_draft` is about emails, not a transaction: it
+ * says how many emails and which sender, waits for an agent while `pending`, and
+ * once `proposed` (an agent saved a DRAFT parser) points to the parser settings
+ * where the draft is tested and approved. There is no card: approving the parser
+ * there marks this request applied.
  */
-export function AiReviewRow({ item, card, dismissing, onApprove, onDismiss }: AiReviewRowProps) {
+export function AiReviewRow({
+  item,
+  card,
+  dismissing,
+  selectable = false,
+  selected = false,
+  onToggleSelected,
+  onApprove,
+  onDismiss,
+}: AiReviewRowProps) {
   const t = useTranslations('aiReview');
   const { formatDate } = useDateFormat();
-  const { formatCurrency } = useNumberFormat();
-  const { transaction, proposal } = item;
+  const { formatCurrency, formatNumber, formatShareQuantity } = useNumberFormat();
+  const { transaction, proposal, parserDraft, trade } = item;
+  const draftIds = parserDraft ? draftParserIds(parserDraft) : [];
 
   const action = proposal && 'action' in proposal ? proposal.action : null;
   const proposalError = proposal && 'error' in proposal ? proposal.error : null;
   const showCard = action !== null && (item.status === 'proposed' || card?.status === 'confirmed');
+  const rowName = reviewItemLabel(item) ?? t('row.noPayee');
   const canDismiss = DISMISSIBLE.includes(item.status) && !showCard && proposalError === null;
+  // A trade request an agent has not answered yet holds no trade and no
+  // transaction: it is about an email, not a missing transaction.
+  const tradeRequest = item.kind === 'email_trade';
+  const tradeCurrency = action?.preview.securityCurrency ?? trade?.currency ?? null;
 
   return (
     <>
       <tr>
-        <Td className={`${CELL} whitespace-nowrap`}>{transaction ? formatDate(transaction.date) : ''}</Td>
+        {selectable && (
+          <Td className={`${CELL} w-10`}>
+            {(isApprovable(item) || isSendableToAssistant(item)) && (
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={() => onToggleSelected?.(item)}
+                aria-label={t('bulk.selectRow', { name: rowName })}
+                className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus-visible:ring-blue-500 dark:border-gray-600"
+              />
+            )}
+          </Td>
+        )}
+        <Td className={`${CELL} whitespace-nowrap`}>
+          {transaction
+            ? formatDate(transaction.date)
+            : trade
+              ? formatDate(trade.date)
+              : parserDraft || tradeRequest
+                ? formatDate(new Date(item.createdAt))
+                : ''}
+        </Td>
         <Td className={`${CELL} min-w-0 break-words`}>
           <div className="font-medium">
-            {transaction ? (
+            {parserDraft ? (
+              t('row.parserDraft', { count: parserDraft.emailCount, domain: parserDraft.domain })
+            ) : trade ? (
+              t('row.trade', {
+                action: trade.action,
+                // A cash dividend may state no shares; its sentence names none.
+                ...(trade.quantity !== null ? { quantity: formatShareQuantity(trade.quantity) } : {}),
+                symbol: trade.symbol,
+              })
+            ) : tradeRequest ? (
+              // "Not read yet" only while an agent may still answer it; a closed one never will.
+              item.status === 'pending' || item.status === 'claimed' ? (
+                t('row.tradePending')
+              ) : (
+                t('row.tradeEmail')
+              )
+            ) : transaction ? (
               (transaction.payeeName ?? <span className="text-gray-500 dark:text-gray-400">{t('row.noPayee')}</span>)
             ) : (
               <span className="text-gray-500 dark:text-gray-400">{t('row.transactionMissing')}</span>
             )}
           </div>
           <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-            {item.ruleName ? t('row.rule', { name: item.ruleName }) : t('row.manualRequest')}
+            {parserDraft ? (
+              <Link href="/email-receipts?tab=emails" className="text-blue-600 hover:underline dark:text-blue-400">
+                {t('row.viewEmailReceipts')}
+              </Link>
+            ) : item.kind === 'email_receipt' || item.kind === 'email_trade' ? (
+              <>
+                {/* A forward's sender is what its text claims: the card names who forwarded it. */}
+                {item.emailReceipt
+                  ? item.emailReceipt.forwardedBy
+                    ? t('row.emailReceiptForwarded', {
+                        subject: item.emailReceipt.subject,
+                        sender: item.emailReceipt.fromAddress,
+                        forwarder: item.emailReceipt.forwardedBy,
+                      })
+                    : t('row.emailReceipt', { subject: item.emailReceipt.subject, sender: item.emailReceipt.fromAddress })
+                  : t('row.emailReceiptMissing')}{' '}
+                {/* The email's own detail when it still exists; the list when it was deleted. */}
+                <Link
+                  href={
+                    item.emailReceipt
+                      ? `/email-receipts?tab=emails&email=${encodeURIComponent(item.emailReceipt.id)}`
+                      : '/email-receipts?tab=emails'
+                  }
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  {t('row.viewEmailReceipts')}
+                </Link>
+              </>
+            ) : item.ruleName ? (
+              t('row.rule', { name: item.ruleName })
+            ) : (
+              t('row.manualRequest')
+            )}
           </div>
-          <p className="mt-1 whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{item.instruction}</p>
+          {/* A parser draft request's instruction is the fixed text an agent reads, not a sentence for the person. */}
+          {/* A receipt request's fixed instruction is shown in the reader's language; a rule's is their own words. */}
+          {!parserDraft && (
+            <p className="mt-1 whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">
+              {item.instructionKey ? t(`row.receiptInstruction.${item.instructionKey}`) : item.instruction}
+            </p>
+          )}
+          {(item.kind === 'email_receipt' || tradeRequest || parserDraft) && item.status === 'pending' && (
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              {t.rich('row.waitingForAgent', {
+                link: (chunks) => (
+                  <Link href="/settings/ai" className="text-blue-600 hover:underline dark:text-blue-400">
+                    {chunks}
+                  </Link>
+                ),
+              })}
+            </p>
+          )}
+          {parserDraft && item.status === 'proposed' && (
+            <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+              {t.rich('row.parserDraftReady', {
+                link: (chunks) => (
+                  <Link href="/email-receipts?tab=profiles" className="text-blue-600 hover:underline dark:text-blue-400">
+                    {chunks}
+                  </Link>
+                ),
+              })}
+              {draftIds.length > 0 && (
+                <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+                  {t('row.parserDraftIds', { ids: draftIds.join(', ') })}
+                </span>
+              )}
+            </p>
+          )}
           {item.agentNote && (
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               {t('row.agentNote', { reason: item.agentNote.reason })}
@@ -92,7 +219,13 @@ export function AiReviewRow({ item, card, dismissing, onApprove, onDismiss }: Ai
           </div>
         </Td>
         <Td align="right" className={`${CELL} whitespace-nowrap`}>
-          {transaction ? formatCurrency(transaction.amount, transaction.currencyCode) : ''}
+          {transaction
+            ? formatCurrency(transaction.amount, transaction.currencyCode)
+            : trade
+              ? tradeCurrency
+                ? formatCurrency(trade.totalAmount, tradeCurrency)
+                : formatNumber(trade.totalAmount, 2)
+              : ''}
         </Td>
         <Td className={CELL}>
           <Badge variant={STATUS_VARIANT[item.status]}>{t(`status.${item.status}`)}</Badge>
@@ -100,7 +233,7 @@ export function AiReviewRow({ item, card, dismissing, onApprove, onDismiss }: Ai
       </tr>
       {(showCard || proposalError !== null) && (
         <tr>
-          <Td colSpan={4} className="px-2 pb-4 pt-0 sm:px-4">
+          <Td colSpan={selectable ? 5 : 4} className="px-2 pb-4 pt-0 sm:px-4">
             {showCard && action && (
               <TransactionConfirmationCard
                 action={{ ...action, status: card?.status ?? 'pending', errorMessage: card?.errorMessage, resultId: card?.resultId }}

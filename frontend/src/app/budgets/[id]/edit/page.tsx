@@ -53,26 +53,43 @@ function BudgetEditContent() {
     null,
   );
 
-  const loadData = useCallback(async () => {
+  // A different budget shows the spinner again; set during render rather than
+  // in the effect that loads it.
+  const [loadingBudgetId, setLoadingBudgetId] = useState(budgetId);
+  if (loadingBudgetId !== budgetId) {
+    setLoadingBudgetId(budgetId);
     setIsLoading(true);
-    try {
-      const [budgetData, summaryData] = await Promise.all([
-        budgetsApi.getById(budgetId),
-        budgetsApi.getSummary(budgetId),
-      ]);
-      setBudget(budgetData);
-      setSummary(summaryData);
-    } catch (err) {
-      toast.error(getErrorMessage(err, t('pages.edit.toasts.loadFailed')));
-      router.push('/budgets');
-    } finally {
-      setIsLoading(false);
-    }
+  }
+
+  // The mount / budget-switch load: the state already says loading.
+  const fetchData = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const [budgetData, summaryData] = await Promise.all([
+          budgetsApi.getById(budgetId),
+          budgetsApi.getSummary(budgetId),
+        ]);
+        setBudget(budgetData);
+        setSummary(summaryData);
+      } catch (err) {
+        toast.error(getErrorMessage(err, t('pages.edit.toasts.loadFailed')));
+        router.push('/budgets');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [budgetId, router, t]);
 
+  const loadData = useCallback(() => {
+    setIsLoading(true);
+    return fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    fetchData();
+  }, [fetchData]);
 
   const handleSaveBudget = async (data: UpdateBudgetData) => {
     setIsSaving(true);

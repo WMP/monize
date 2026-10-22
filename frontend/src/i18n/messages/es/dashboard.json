@@ -49,6 +49,11 @@
     "nextMonth": "Mes siguiente",
     "emptyAll": "No hay facturas, ingresos ni transferencias activas programadas."
   },
+  "cashFlowForecast": {
+    "title": "Pronóstico de flujo de caja",
+    "period": "Periodo de pronóstico",
+    "loadFailed": "No se pudieron cargar las transacciones con fecha posterior a hoy, por lo que no se puede mostrar el pronóstico. Recarga el panel para intentarlo de nuevo."
+  },
   "gettingStarted": {
     "title": "Primeros pasos",
     "subtitle": "Configura tu cuenta en unos pocos pasos rápidos",
@@ -88,6 +93,11 @@
     "viewAll": "Ver todos los análisis",
     "activeCount": "{count} activos"
   },
+  "warrantiesExpiring": {
+    "title": "Garantías que vencen pronto",
+    "empty": "Nada vence en los próximos 30 días",
+    "loadFailed": "No se pudieron cargar tus garantías por vencer. Recarga el panel para intentarlo de nuevo."
+  },
   "topMovers": {
     "title": "Mayores movimientos",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "Patrimonio neto",
     "empty": "Aún no hay datos de patrimonio neto disponibles.",
-    "past12Months": "Últimos 12 meses",
-    "viewReport": "Ver informe completo"
+    "barStyle": "Estilo de barras",
+    "barStyleNetWorth": "Patrimonio neto",
+    "barStyleAccountType": "Por tipo de cuenta",
+    "loadFailed": "No se pudo cargar el historial de tu patrimonio neto. Recarga el panel para intentarlo de nuevo."
   },
   "assetsVsLiabilities": {
     "title": "Activos vs Pasivos",
@@ -135,7 +147,10 @@
     "current": "Actual",
     "netWorthLabel": "Patrimonio neto",
     "assets": "Activos",
-    "liabilities": "Pasivos"
+    "liabilities": "Pasivos",
+    "partialName": "{name} (parcial)",
+    "viewCallouts": "Etiquetas",
+    "viewLegend": "Leyenda"
   },
   "expensesPieChart": {
     "title": "Gastos por categoría",
@@ -145,7 +160,9 @@
     "other": "Otros",
     "insideOther": "{count, plural, one {# categoría en Otros} other {# categorías en Otros}}",
     "topLevelOnly": "Categorías principales",
-    "topLevelOnlyHint": "Contar las subcategorías en su categoría principal"
+    "topLevelOnlyHint": "Contar las subcategorías en su categoría principal",
+    "viewCallouts": "Etiquetas",
+    "viewLegend": "Leyenda"
   },
   "incomeExpenses": {
     "title": "Ingresos vs Gastos",
@@ -183,6 +200,7 @@
     "accounts": "Cuentas",
     "chartType": "Tipo de gráfico",
     "view": "Vista",
+    "viewCalloutsHint": "Las etiquetas necesitan una pantalla más ancha. Donde no caben, se muestra la leyenda.",
     "displayName": "Nombre visible",
     "description": "Descripción",
     "descriptionPlaceholder": "Añade una descripción opcional",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "Todo",
       "1w": "1S",
@@ -204,7 +223,7 @@
     "empty": "Aún no hay historial de inversiones para mostrar.",
     "refresh": "Actualizar valor actual",
     "investmentResult": "Resultado de la inversión",
-    "periodBreakdownInvestedTooltip": "El valor de los títulos varió {valueChange} en este período. De eso, {netInvested} fue dinero aportado, descontadas las ventas, y pagaron {income} en dividendos e intereses. La cifra de arriba es lo que ganaron las inversiones por sí mismas, sin contar el efectivo no invertido.",
+    "periodBreakdownInvestedTooltip": "El valor de los títulos varió {valueChange} en este período. De eso, {netInvested} fue dinero aportado, descontadas las ventas, y pagaron {income} en dividendos e intereses. Una distribución reinvertida en acciones cuenta en ambas cifras. La cifra de arriba es lo que ganaron las inversiones por sí mismas, sin contar el efectivo no invertido.",
     "notAvailable": "N/A"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "Ocurrencias mínimas",
     "minOccurrencesOption": "{count} o más",
     "occurrences": "{count} ocurrencias",
-    "monthlyEstimate": "Estimado mensual"
+    "monthlyEstimate": "Estimado mensual",
+    "viewCallouts": "Etiquetas",
+    "viewLegend": "Leyenda"
   },
   "weekendVsWeekday": {
     "title": "Gastos fin de semana vs días de semana",

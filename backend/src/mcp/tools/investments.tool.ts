@@ -32,6 +32,7 @@ import { AiActionBuilderService } from "../../ai/actions/ai-action-builder.servi
 import {
   ApprovalMode,
   PendingAiAction,
+  BondRedemptionSplitPreview,
   resolveApprovalMode,
 } from "../../ai/actions/ai-action.types";
 import { RELAY_PREVIEW_SHOWN, emitRelayCard } from "../mcp-relay-confirm";
@@ -66,11 +67,15 @@ import {
   dryRun,
   itemsArray,
 } from "./schema-fragments";
-import { numberArg, booleanArg } from "../../common/tool-schemas";
+import {
+  numberArg,
+  booleanArg,
+  bondSeriesCodeSchema,
+} from "../../common/tool-schemas";
 import { TRANSACTION_NOTE_MAX_LENGTH } from "../../common/transaction-note";
 
 type ManageInvOperation = "create" | "update" | "delete";
-type ManageSecOperation = "create" | "update" | "delete";
+type ManageSecOperation = "create" | "update" | "delete" | "list";
 
 interface ManageInvItem {
   // create
@@ -85,6 +90,7 @@ interface ManageInvItem {
   accruedInterest?: number;
   exchangeRate?: number;
   description?: string;
+  bondSeriesCode?: string;
   // update / delete
   transactionId?: string;
 }
@@ -175,10 +181,10 @@ export class McpInvestmentsTools {
         title: "List investment transactions",
         annotations: READ_ONLY,
         description:
-          "Brokerage transactions -- trades, income, splits, transfers and " +
-          "share adjustments -- filtered by account, symbol, action and date, " +
-          "with optional grouping. A VOID row is listed but excluded from " +
-          "every total.",
+          "Brokerage trades, income, splits, transfers and share adjustments " +
+          "by account, symbol, action and date, optionally grouped. A VOID " +
+          "row is listed but in no total. incomeByCurrency includes " +
+          "reinvested income.",
         inputSchema: z.object({
           startDate: z.string().max(10).optional().describe("Start date."),
           endDate: z.string().max(10).optional().describe("End date."),
@@ -186,15 +192,15 @@ export class McpInvestmentsTools {
             .array(z.string().max(100))
             .max(50)
             .optional()
-            .describe("Investment account names."),
+            .describe("Account names."),
           symbols: z
             .array(z.string().min(1).max(20))
             .max(50)
             .optional()
-            .describe("Ticker symbols, case-insensitive."),
+            .describe("Tickers, case-insensitive."),
           actions: z
             .array(z.nativeEnum(InvestmentAction))
-            .max(17)
+            .max(18)
             .optional()
             .describe("Narrow to these actions."),
           groupBy: z
@@ -364,85 +370,92 @@ export class McpInvestmentsTools {
         title: "Manage securities",
         annotations: WRITE,
         description:
-          "Create, edit or delete securities. A create is validated against " +
-          "the user's price provider, which supplies the official symbol, " +
-          "name, exchange, type and currency -- do not invent them; pass " +
-          "`exchange` only to disambiguate a symbol trading in more than one " +
-          "place. An update identifies the security by symbol or name. " +
-          "A delete fails while the security still has holdings or " +
+          "List, create, edit or delete securities. list takes accountName " +
+          "(name or id) and returns what it holds, with no items. A create " +
+          "is validated against the price provider, which supplies the " +
+          "official symbol, name, exchange, type and currency -- do not " +
+          "invent them; pass `exchange` only to disambiguate a symbol listed " +
+          "in more than one place. An update identifies the security by " +
+          "symbol or name. A delete fails while it has holdings or " +
           "transactions.",
         inputSchema: z.object({
-          operation: manageOperation(),
-          items: itemsArray(
-            z.object({
-              query: z
-                .string()
-                .min(1)
-                .max(100)
-                .optional()
-                .describe("create: ticker or name to look up and validate."),
-              symbol: z
-                .string()
-                .min(1)
-                .max(100)
-                .optional()
-                .describe("update/delete: the security's ticker or name."),
-              exchange: z
-                .enum(SECURITY_EXCHANGES)
-                .optional()
-                .describe(
-                  "create: disambiguates the lookup. update: the new exchange.",
-                ),
-              securityType: z
-                .enum(SECURITY_TYPES)
-                .optional()
-                .describe("The security type."),
-              isFavourite: booleanArg()
-                .optional()
-                .describe("Pin it to the dashboard's favourites widget."),
-              currencyCode: z
-                .string()
-                .regex(/^[A-Za-z]{3}$/)
-                .optional()
-                .describe("ISO 4217 currency code."),
-              countryWeightings: z
-                .array(
-                  z.object({
-                    name: z
-                      .string()
-                      .min(1)
-                      .max(100)
-                      .describe("Country name, canonical where possible."),
-                    weight: numberArg(z.number().min(0).max(100)).describe(
-                      "Percentage 0-100.",
-                    ),
-                  }),
-                )
-                .max(60)
-                .optional()
-                .describe(
-                  "update: manual country allocation for a fund. Weights are percentages and need not reach 100; the rest is 'Other'.",
-                ),
-              assetWeightings: z
-                .array(
-                  z.object({
-                    name: z
-                      .string()
-                      .min(1)
-                      .max(100)
-                      .describe("Asset class name, free text."),
-                    weight: numberArg(z.number().min(0).max(100)).describe(
-                      "Percentage 0-100.",
-                    ),
-                  }),
-                )
-                .max(60)
-                .optional()
-                .describe(
-                  "update: manual asset-class allocation for a fund, same weighting rule. Names are free text -- reuse the spelling on the user's other securities.",
-                ),
-            }),
-          ),
+          operation: z
+            .enum(["list", "create", "update", "delete"])
+            .describe("list: accountName's holdings. Others: every item."),
+          accountName: z
+            .string()
+            .max(100)
+            .optional()
+            .describe("list: name or id."),
+          items: z
+            .array(
+              z.object({
+                query: z
+                  .string()
+                  .min(1)
+                  .max(100)
+                  .optional()
+                  .describe("create: ticker or name."),
+                symbol: z
+                  .string()
+                  .min(1)
+                  .max(100)
+                  .optional()
+                  .describe("update/delete: ticker or name."),
+                exchange: z
+                  .enum(SECURITY_EXCHANGES)
+                  .optional()
+                  .describe("create: disambiguates. update: the new one."),
+                securityType: z.enum(SECURITY_TYPES).optional(),
+                isFavourite: booleanArg()
+                  .optional()
+                  .describe("Pin to favourites."),
+                currencyCode: z
+                  .string()
+                  .regex(/^[A-Za-z]{3}$/)
+                  .optional()
+                  .describe("ISO 4217."),
+                countryWeightings: z
+                  .array(
+                    z.object({
+                      name: z
+                        .string()
+                        .min(1)
+                        .max(100)
+                        .describe("Country name, canonical where possible."),
+                      weight: numberArg(z.number().min(0).max(100)).describe(
+                        "Percent, 0-100.",
+                      ),
+                    }),
+                  )
+                  .max(60)
+                  .optional()
+                  .describe(
+                    "update: country allocation in percent; the rest is 'Other'.",
+                  ),
+                assetWeightings: z
+                  .array(
+                    z.object({
+                      name: z
+                        .string()
+                        .min(1)
+                        .max(100)
+                        .describe("Asset class name, free text."),
+                      weight: numberArg(z.number().min(0).max(100)).describe(
+                        "Percent, 0-100.",
+                      ),
+                    }),
+                  )
+                  .max(60)
+                  .optional()
+                  .describe(
+                    "update: asset-class allocation, same rule; reuse their spelling.",
+                  ),
+              }),
+            )
+            .max(25)
+            .optional()
+            .describe("The rows to act on (1-25)."),
           approvalMode: approvalMode(),
           dryRun: dryRun(),
         }),
@@ -451,11 +464,28 @@ export class McpInvestmentsTools {
       async (args, ctx) => {
         const user = resolveUserContext(ctx);
         if (!user) return toolError("No user context");
-        const check = requireScope(user.scopes, "write");
+        const operation = args.operation as ManageSecOperation;
+        const check = requireScope(
+          user.scopes,
+          operation === "list" ? "read" : "write",
+        );
         if (check.error) return check.result;
 
-        const operation = args.operation as ManageSecOperation;
-        const items = args.items as ManageSecItem[];
+        if (operation === "list") {
+          try {
+            return await this.listSecuritiesInAccount(
+              user.userId,
+              args.accountName,
+            );
+          } catch (err: unknown) {
+            return safeToolError(err);
+          }
+        }
+
+        const items = args.items as ManageSecItem[] | undefined;
+        if (!items || items.length === 0) {
+          return toolError(`${operation} needs 1-25 items.`);
+        }
         const approvalMode = (args.approvalMode ?? "bulk") as ApprovalMode;
 
         try {
@@ -500,8 +530,8 @@ export class McpInvestmentsTools {
         annotations: WRITE,
         description:
           "Create, update or delete brokerage transactions. Account, funding " +
-          "account and security resolve by name. A buy debits, and a sale, " +
-          "dividend, interest or capital gain credits, the brokerage's linked " +
+          "account and security resolve by name. A buy debits, and a sale or " +
+          "a distribution credits, the brokerage's linked " +
           "cash account automatically -- never record that cash movement " +
           "yourself; fundingAccountName overrides which account settles. " +
           "An update changes only the fields you send and recomputes the " +
@@ -531,7 +561,7 @@ export class McpInvestmentsTools {
                 .max(100)
                 .optional()
                 .describe(
-                  "The security, by ticker or name. Required to create anything that moves shares.",
+                  "Ticker or name. Required for anything that moves shares.",
                 ),
               action: z
                 .nativeEnum(InvestmentAction)
@@ -552,18 +582,21 @@ export class McpInvestmentsTools {
               accruedInterest: numberArg(z.number().min(0).max(999999999999))
                 .optional()
                 .describe(
-                  "REDEEM: accrued interest paid out with it. Booked as a linked INTEREST row inside the same cash movement, so never record it separately.",
+                  "REDEEM: accrued interest (linked INTEREST row). Bonds: omit; the redemption split fills it.",
                 ),
               exchangeRate: numberArg(z.number().min(0).max(999999999999))
                 .optional()
                 .describe(
-                  "Rate from the security's currency into the settlement account's. Supply the broker's own rate to make the cash posting exact; omit for same-currency, or to use the date's rate.",
+                  "Security-to-settlement currency rate. Give the broker's own for an exact cash posting; omit to use the date's rate.",
                 ),
               description: z
                 .string()
                 .max(TRANSACTION_NOTE_MAX_LENGTH)
                 .optional()
                 .describe("Description or memo."),
+              bondSeriesCode: bondSeriesCodeSchema
+                .optional()
+                .describe("e.g. EDO1036"),
               transactionId: uuidString()
                 .optional()
                 .describe("update/delete: the row's id."),
@@ -636,6 +669,7 @@ export class McpInvestmentsTools {
       fundingAccountName: item.fundingAccountName,
       exchangeRate: item.exchangeRate,
       description: item.description,
+      bondSeriesCode: item.bondSeriesCode,
     };
   }
 
@@ -651,6 +685,7 @@ export class McpInvestmentsTools {
       accruedInterest: item.accruedInterest,
       exchangeRate: item.exchangeRate,
       description: item.description,
+      bondSeriesCode: item.bondSeriesCode,
     };
   }
 
@@ -702,8 +737,10 @@ export class McpInvestmentsTools {
         quantity: preview.quantity ?? undefined,
         price: preview.price ?? undefined,
         commission: preview.commission,
+        accruedInterest: preview.accruedInterest,
         exchangeRate: preview.exchangeRate,
         description: preview.description ?? undefined,
+        bondInstrumentId: preview.bondInstrumentId ?? undefined,
       });
       await this.writeLimiter.record(userId, "create_investment_transaction");
       return toolResult({ id: tx.id, date: tx.transactionDate, count: 1 });
@@ -767,8 +804,10 @@ export class McpInvestmentsTools {
         quantity: preview.quantity ?? undefined,
         price: preview.price ?? undefined,
         commission: preview.commission,
+        accruedInterest: preview.accruedInterest,
         exchangeRate: preview.exchangeRate,
         description: preview.description ?? undefined,
+        bondInstrumentId: preview.bondInstrumentId ?? undefined,
       })),
     );
     const skipped = [...bulk.skipped];
@@ -838,8 +877,10 @@ export class McpInvestmentsTools {
           quantity: preview.quantity ?? undefined,
           price: preview.price ?? undefined,
           commission: preview.commission,
+          accruedInterest: preview.accruedInterest,
           exchangeRate: preview.exchangeRate,
           description: preview.description ?? undefined,
+          bondInstrumentId: preview.bondInstrumentId ?? undefined,
         },
       );
       await this.writeLimiter.record(userId, "update_investment_transaction");
@@ -922,8 +963,10 @@ export class McpInvestmentsTools {
           quantity: row.quantity ?? undefined,
           price: row.price ?? undefined,
           commission: row.commission,
+          accruedInterest: row.accruedInterest,
           exchangeRate: row.exchangeRate,
           description: row.description ?? undefined,
+          bondInstrumentId: row.bondInstrumentId ?? undefined,
         },
       );
       ids.push(tx.id);
@@ -1113,8 +1156,10 @@ export class McpInvestmentsTools {
           quantity: d.quantity ?? undefined,
           price: d.price ?? undefined,
           commission: d.commission,
+          accruedInterest: d.accruedInterest,
           exchangeRate: d.exchangeRate,
           description: d.description ?? undefined,
+          bondInstrumentId: d.bondInstrumentId ?? undefined,
         });
         await this.writeLimiter.record(userId, "create_investment_transaction");
         return tx.id;
@@ -1131,8 +1176,10 @@ export class McpInvestmentsTools {
             quantity: d.quantity ?? undefined,
             price: d.price ?? undefined,
             commission: d.commission,
+            accruedInterest: d.accruedInterest,
             exchangeRate: d.exchangeRate,
             description: d.description ?? undefined,
+            bondInstrumentId: d.bondInstrumentId ?? undefined,
           },
         );
         await this.writeLimiter.record(userId, "update_investment_transaction");
@@ -1153,7 +1200,9 @@ export class McpInvestmentsTools {
 
   private confirmLineFor(card: PendingAiAction): string {
     const p = card.preview;
-    const sec = p.symbol ? `\nSecurity: ${p.symbol}` : "";
+    const sec =
+      (p.symbol ? `\nSecurity: ${p.symbol}` : "") +
+      (p.bondSeriesCode ? `\nSeries: ${p.bondSeriesCode}` : "");
     switch (card.type) {
       case "delete_investment_transaction":
         return `Delete this investment transaction?\nAccount: ${p.accountName}\nType: ${p.investmentAction}\nDate: ${p.transactionDate}${sec}`;
@@ -1176,6 +1225,9 @@ export class McpInvestmentsTools {
     cashAccountName: string | null;
     cashCurrency: string | null;
     cashAmount: number | null;
+    accruedInterest?: number;
+    bondSeriesCode?: string | null;
+    redemptionSplit?: BondRedemptionSplitPreview | null;
   }): string[] {
     return ["Create this investment transaction?", ...this.editLines(preview)];
   }
@@ -1193,6 +1245,9 @@ export class McpInvestmentsTools {
     cashAccountName: string | null;
     cashCurrency: string | null;
     cashAmount: number | null;
+    accruedInterest?: number;
+    bondSeriesCode?: string | null;
+    redemptionSplit?: BondRedemptionSplitPreview | null;
   }): string[] {
     const lines: string[] = [
       `Account: ${preview.accountName}`,
@@ -1204,9 +1259,26 @@ export class McpInvestmentsTools {
         `Security: ${preview.symbol}${preview.securityName ? ` (${preview.securityName})` : ""}`,
       );
     }
+    if (preview.bondSeriesCode) {
+      lines.push(`Series: ${preview.bondSeriesCode}`);
+    }
     if (preview.quantity !== null) lines.push(`Quantity: ${preview.quantity}`);
     if (preview.price !== null) lines.push(`Price: ${preview.price}`);
     if (preview.commission) lines.push(`Commission: ${preview.commission}`);
+    if (preview.accruedInterest) {
+      lines.push(`Accrued interest: ${preview.accruedInterest}`);
+    }
+    const split = preview.redemptionSplit;
+    if (split) {
+      lines.push(
+        `Redemption split: principal ${split.principal}, interest ${split.interest}, deduction ${split.deduction}, payout ${split.payout}`,
+      );
+      if (split.outcome === "differs") {
+        lines.push(
+          "Warning: the price and accrued interest differ from the redemption split.",
+        );
+      }
+    }
     if (preview.cashAccountName && preview.cashAmount !== null) {
       lines.push(
         `Cash: ${preview.cashAmount} ${preview.cashCurrency} in ${preview.cashAccountName}`,
@@ -1230,6 +1302,37 @@ export class McpInvestmentsTools {
   // -------------------------------------------------------------------------
   // manage_securities helpers
   // -------------------------------------------------------------------------
+
+  private async listSecuritiesInAccount(
+    userId: string,
+    accountName: string | undefined,
+  ) {
+    if (!accountName?.trim()) {
+      return toolError("list needs accountName.");
+    }
+    const { match, candidates } =
+      await this.accountsService.resolveBrokerageByNameOrId(
+        userId,
+        accountName,
+      );
+    if (!match) {
+      return toolError(
+        candidates.length > 0
+          ? `"${accountName}" is ambiguous: ${candidates.map((c) => c.name).join(", ")}.`
+          : `Unknown account: ${accountName}. Call list_accounts to look up valid names.`,
+      );
+    }
+    const securities = await this.securitiesService.listSecuritiesInAccount(
+      userId,
+      match.id,
+    );
+    return toolResult({
+      operation: "list",
+      account: match.name,
+      count: securities.length,
+      securities,
+    });
+  }
 
   private toSecCreateRow(item: ManageSecItem): ManageCreateSecurityRow {
     return {

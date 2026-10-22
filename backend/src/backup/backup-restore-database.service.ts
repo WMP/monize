@@ -4,8 +4,20 @@ import { resolveCurrencyMetadata } from "../currencies/currency-metadata";
 import { tr } from "../i18n/translate";
 import { boundRestoredNotification } from "./notification-restore-bounds";
 import { withResolvedMortgageTypeColumn } from "../accounts/legacy-mortgage-type.util";
-import { BackupData, backupTables } from "./backup-format";
+import { deleteAllUserData } from "./restore-wipe";
 import {
+  BackupData,
+  backupTables,
+  SeveredCatalogLinks,
+  SeveredRow,
+} from "./backup-format";
+import {
+  CATALOG_CURRENCY_MATCHED_COLUMNS,
+  CATALOG_ON_SEVERED,
+  CATALOG_REFERENCE_COLUMNS,
+} from "./restore-references";
+import {
+  CONFLICT_ARBITER_COLUMNS,
   DEFERRED_FK_COLUMNS,
   DEFERRED_FK_REPAIRS,
   RESTORABLE_TABLES,
@@ -30,324 +42,7 @@ export class BackupRestoreDatabaseService {
     userId: string,
     manager: EntityManager,
   ): Promise<void> {
-    // Delete in FK-safe order (reverse of insert order)
-
-    // Action history (undo/redo log) -- not included in backups, so wipe it
-    // outright; restored data should not be undoable to the prior state.
-    await manager.query("DELETE FROM action_history WHERE user_id = $1", [
-      userId,
-    ]);
-
-    // Transaction rules (their trace rows cascade from the rule and from the
-    // transactions deleted below; the trace is not part of a backup).
-    await manager.query("DELETE FROM transaction_rules WHERE user_id = $1", [
-      userId,
-    ]);
-
-    // GEM strategies (accounts, assets and signals cascade on strategy delete,
-    // but are deleted explicitly first so the order is self-documenting)
-    await manager.query("DELETE FROM gem_strategy_signals WHERE user_id = $1", [
-      userId,
-    ]);
-    await manager.query("DELETE FROM gem_strategy_assets WHERE user_id = $1", [
-      userId,
-    ]);
-    await manager.query(
-      "DELETE FROM gem_strategy_accounts WHERE user_id = $1",
-      [userId],
-    );
-    await manager.query("DELETE FROM gem_strategies WHERE user_id = $1", [
-      userId,
-    ]);
-
-    // Monte Carlo scenarios (cash flows cascade on scenario delete)
-    await manager.query(
-      `DELETE FROM monte_carlo_cash_flows WHERE scenario_id IN
-       (SELECT id FROM monte_carlo_scenarios WHERE user_id = $1)`,
-      [userId],
-    );
-    await manager.query(
-      "DELETE FROM monte_carlo_scenarios WHERE user_id = $1",
-      [userId],
-    );
-
-    // AI provider configs
-    await manager.query("DELETE FROM ai_provider_configs WHERE user_id = $1", [
-      userId,
-    ]);
-
-    // Payee lookup settings (Google Places key and cap).
-    await manager.query(
-      "DELETE FROM payee_lookup_settings WHERE user_id = $1",
-      [userId],
-    );
-    // `payee_lookup_usage` is exported and restored beside it, and is
-    // deliberately NOT cleared here. It is a record of what has been spent
-    // against a Google key, not user content: with the rows left in place the
-    // insert's ON CONFLICT DO NOTHING gives the archive's count to a machine
-    // that has none (the migration this exists for) and leaves a live count
-    // alone, so no restore can lower one and hand back quota. Deleting first
-    // would make an older archive do exactly that.
-    //
-    // `google_places_instance_usage` is not exported at all: it has no owner,
-    // and every user on the deployment spends it.
-
-    // Investment data
-    await manager.query(
-      "DELETE FROM investment_transactions WHERE user_id = $1",
-      [userId],
-    );
-    // Security tags (join rows cascade from securities/tags, deleted here
-    // explicitly before securities so the delete order is self-documenting)
-    await manager.query(
-      `DELETE FROM security_tags WHERE security_id IN
-       (SELECT id FROM securities WHERE user_id = $1)`,
-      [userId],
-    );
-    await manager.query(
-      `DELETE FROM holdings WHERE account_id IN
-       (SELECT id FROM accounts WHERE user_id = $1)`,
-      [userId],
-    );
-    await manager.query(
-      `DELETE FROM security_prices WHERE security_id IN
-       (SELECT id FROM securities WHERE user_id = $1)`,
-      [userId],
-    );
-    await manager.query("DELETE FROM security_documents WHERE user_id = $1", [
-      userId,
-    ]);
-    // Scheduled transactions and their splits reference securities via
-    // investment_security_id. Clear those FKs before deleting securities; the
-    // rows themselves are removed in the scheduled-transactions block below.
-    await manager.query(
-      `UPDATE scheduled_transaction_splits SET investment_security_id = NULL
-       WHERE scheduled_transaction_id IN
-       (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
-      [userId],
-    );
-    await manager.query(
-      "UPDATE scheduled_transactions SET investment_security_id = NULL WHERE user_id = $1",
-      [userId],
-    );
-    await manager.query("DELETE FROM securities WHERE user_id = $1", [userId]);
-
-    // Budget data
-    // Reminders before notifications is not required (source_notification_id is
-    // ON DELETE SET NULL), but both are cleared: the insert path is ON CONFLICT
-    // DO NOTHING, so without this pre-clear a restore over an existing account
-    // keeps the local reminder rows and drops the backup's.
-    await manager.query(
-      "DELETE FROM notification_reminders WHERE user_id = $1",
-      [userId],
-    );
-    await manager.query("DELETE FROM notifications WHERE user_id = $1", [
-      userId,
-    ]);
-    // Per-category channel preferences. The insert path is ON CONFLICT DO
-    // NOTHING keyed on (user_id, category), so without this pre-clear a restore
-    // over an existing account keeps the local preference rows and silently
-    // drops the backup's -- every other user-owned restore-plan table clears
-    // here for exactly that reason.
-    await manager.query(
-      "DELETE FROM notification_preferences WHERE user_id = $1",
-      [userId],
-    );
-    // Portfolio-movement baseline + threshold: one row per user, restored by an
-    // insert path with the same over-existing-account hazard, so it clears here
-    // too.
-    await manager.query(
-      "DELETE FROM notification_portfolio_state WHERE user_id = $1",
-      [userId],
-    );
-    await manager.query(
-      `DELETE FROM budget_period_categories WHERE budget_period_id IN
-       (SELECT bp.id FROM budget_periods bp
-        JOIN budgets b ON bp.budget_id = b.id
-        WHERE b.user_id = $1)`,
-      [userId],
-    );
-    await manager.query(
-      `DELETE FROM budget_periods WHERE budget_id IN
-       (SELECT id FROM budgets WHERE user_id = $1)`,
-      [userId],
-    );
-    await manager.query(
-      `DELETE FROM budget_categories WHERE budget_id IN
-       (SELECT id FROM budgets WHERE user_id = $1)`,
-      [userId],
-    );
-    await manager.query("DELETE FROM budgets WHERE user_id = $1", [userId]);
-
-    // Transaction tags
-    await manager.query(
-      `DELETE FROM transaction_split_tags WHERE transaction_split_id IN
-       (SELECT ts.id FROM transaction_splits ts
-        JOIN transactions t ON ts.transaction_id = t.id
-        WHERE t.user_id = $1)`,
-      [userId],
-    );
-    await manager.query(
-      `DELETE FROM transaction_tags WHERE transaction_id IN
-       (SELECT id FROM transactions WHERE user_id = $1)`,
-      [userId],
-    );
-
-    // Transaction splits
-    await manager.query(
-      `DELETE FROM transaction_splits WHERE transaction_id IN
-       (SELECT id FROM transactions WHERE user_id = $1)`,
-      [userId],
-    );
-
-    // Transaction attachments (bytes first, then metadata). Both would cascade
-    // from the transactions delete below, but we clear them explicitly to match
-    // the rest of this FK-ordered teardown.
-    await manager.query(
-      `DELETE FROM attachment_blobs WHERE attachment_id IN
-       (SELECT id FROM transaction_attachments WHERE user_id = $1)`,
-      [userId],
-    );
-    await manager.query(
-      "DELETE FROM transaction_attachments WHERE user_id = $1",
-      [userId],
-    );
-
-    // Transactions
-    await manager.query("DELETE FROM transactions WHERE user_id = $1", [
-      userId,
-    ]);
-
-    // Tags
-    await manager.query("DELETE FROM tags WHERE user_id = $1", [userId]);
-
-    // Scheduled transactions
-    await manager.query(
-      `DELETE FROM scheduled_transaction_overrides WHERE scheduled_transaction_id IN
-       (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
-      [userId],
-    );
-    await manager.query(
-      `DELETE FROM scheduled_transaction_split_tags WHERE scheduled_transaction_split_id IN
-       (SELECT sts.id FROM scheduled_transaction_splits sts
-        JOIN scheduled_transactions st ON sts.scheduled_transaction_id = st.id
-        WHERE st.user_id = $1)`,
-      [userId],
-    );
-    await manager.query(
-      `DELETE FROM scheduled_transaction_splits WHERE scheduled_transaction_id IN
-       (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
-      [userId],
-    );
-    // Clear account FK references to scheduled_transactions before deleting them
-    await manager.query(
-      "UPDATE accounts SET scheduled_transaction_id = NULL WHERE user_id = $1",
-      [userId],
-    );
-    await manager.query(
-      "DELETE FROM scheduled_transactions WHERE user_id = $1",
-      [userId],
-    );
-
-    // Monthly account balances
-    await manager.query(
-      "DELETE FROM monthly_account_balances WHERE user_id = $1",
-      [userId],
-    );
-
-    // Custom reports, import mappings
-    await manager.query("DELETE FROM custom_reports WHERE user_id = $1", [
-      userId,
-    ]);
-    await manager.query("DELETE FROM investment_reports WHERE user_id = $1", [
-      userId,
-    ]);
-    await manager.query(
-      "DELETE FROM import_column_mappings WHERE user_id = $1",
-      [userId],
-    );
-
-    // AI data
-    await manager.query("DELETE FROM ai_insights WHERE user_id = $1", [userId]);
-
-    // Payees
-    await manager.query("DELETE FROM payee_aliases WHERE user_id = $1", [
-      userId,
-    ]);
-    await manager.query("DELETE FROM payees WHERE user_id = $1", [userId]);
-
-    // Loan rate-change history and saved overpayment scenarios (both cascade
-    // from accounts, deleted here explicitly before accounts)
-    await manager.query("DELETE FROM loan_rate_changes WHERE user_id = $1", [
-      userId,
-    ]);
-    await manager.query("DELETE FROM loan_scenarios WHERE user_id = $1", [
-      userId,
-    ]);
-
-    // Clear account FK references to categories before deleting accounts
-    await manager.query(
-      "UPDATE accounts SET principal_category_id = NULL, interest_category_id = NULL, asset_category_id = NULL WHERE user_id = $1",
-      [userId],
-    );
-
-    // Accounts
-    await manager.query("DELETE FROM accounts WHERE user_id = $1", [userId]);
-
-    // Institutions (accounts reference these via institution_id; deleted after
-    // accounts so no rows still point at them)
-    await manager.query("DELETE FROM institutions WHERE user_id = $1", [
-      userId,
-    ]);
-
-    // Categories
-    await manager.query("DELETE FROM categories WHERE user_id = $1", [userId]);
-
-    // Calendar day notes: no child rows and no foreign key but `users`, so the
-    // order relative to the rest does not matter -- only that it is cleared at
-    // all, or the insert's ON CONFLICT DO NOTHING would keep the destination's
-    // note and silently drop the archive's.
-    await manager.query("DELETE FROM calendar_day_notes WHERE user_id = $1", [
-      userId,
-    ]);
-
-    // User preferences and auto-backup settings
-    await manager.query("DELETE FROM auto_backup_settings WHERE user_id = $1", [
-      userId,
-    ]);
-    await manager.query(
-      "DELETE FROM user_currency_preferences WHERE user_id = $1",
-      [userId],
-    );
-    await manager.query("DELETE FROM user_preferences WHERE user_id = $1", [
-      userId,
-    ]);
-
-    // User-created currencies, but only ones nothing else still points at.
-    //
-    // Columns across most of the financial tables reference `currencies(code)`.
-    // Deleting a row any of them still holds aborts the whole restore with
-    // "violates foreign key constraint" -- except `user_currency_preferences`,
-    // whose FK cascades and would silently remove another user's activation.
-    //
-    // This user's own accounts/transactions/securities/scheduled/budgets/prefs
-    // are already deleted above, so a surviving reference is another user's (or
-    // the global `exchange_rates`, which a restore never clears and which gets a
-    // row for every currency the FX backfill has ever seen). That is exactly
-    // what must block the delete.
-    //
-    // The `NOT EXISTS` chain this replaced listed every column but ran
-    // inside this restore's transaction, where RLS filters every table to the
-    // restoring user -- so the clauses looking for *other* users' rows could not
-    // see them, and the cascade fired. `currency_code_in_use_globally`
-    // (migration 136) is SECURITY DEFINER, so the answer is global, and it runs
-    // in this transaction, so it stays atomic with the delete.
-    await manager.query(
-      `DELETE FROM currencies c
-        WHERE c.created_by_user_id = $1
-          AND NOT currency_code_in_use_globally(c.code)`,
-      [userId],
-    );
+    await deleteAllUserData(userId, manager);
   }
 
   async restoreDeferredFkColumns(
@@ -496,6 +191,139 @@ export class BackupRestoreDatabaseService {
     }
   }
 
+  /**
+   * Write NULL over every reference to catalog data the target deployment cannot
+   * honour, for each entry of `CATALOG_REFERENCE_COLUMNS` (so a column added
+   * there is checked here, not just declared).
+   *
+   * A catalog table (`bond_programs`, `bond_instruments`) is reference data
+   * held per deployment and not part of a backup, so a reference survives a
+   * restore only where the same row exists here (a catalog id is derived from
+   * its codes, so it is the same id on every deployment). The series a backup
+   * references are fetched before this runs (`BackupBondSeriesRecoveryService`),
+   * so what is severed here is what this deployment could not obtain.
+   * What else a severed link costs the row is `CATALOG_ON_SEVERED`. A reference to a row this
+   * catalog lacks -- a series a newer release seeds, an adapter this build does
+   * not install -- is restored as NULL rather than failing the restore on the
+   * foreign key. A column in `CATALOG_CURRENCY_MATCHED_COLUMNS` is also dropped
+   * when the referenced row is in another currency than the referencing row: that
+   * pair would price the row in the wrong currency (INV-PRICE-001), and a crafted
+   * file is the only way to produce one.
+   *
+   * A security whose bond link was dropped keeps none of the engine's price rows
+   * from the file: they were computed from an instrument it is no longer linked
+   * to, nothing would ever recompute or remove them, and a security priced by a
+   * stale engine looks like a valid price (INV-BOND-005).
+   *
+   * Replaces `data[table]` with new rows. Returns how many references were
+   * dropped per `table.column`, each also in the log, and which rows lost one;
+   * the caller tells the user (a quietly unpriced bond is a surprise).
+   */
+  async severUnavailableCatalogLinks(
+    manager: EntityManager,
+    data: BackupData,
+    columns: Readonly<
+      Record<string, Readonly<Record<string, string>>>
+    > = CATALOG_REFERENCE_COLUMNS,
+  ): Promise<SeveredCatalogLinks> {
+    const counts: Record<string, number> = {};
+    const severed: Record<string, SeveredRow[]> = {};
+    for (const [table, references] of Object.entries(columns)) {
+      for (const [column, referenced] of Object.entries(references)) {
+        if (!/^[a-z_]+$/.test(referenced)) {
+          // The names come from a constant, never from the file; refuse a typo
+          // loudly rather than interpolate it.
+          throw new Error(`Invalid catalog table name "${referenced}"`);
+        }
+        const key = `${table}.${column}`;
+        const rows = (data as unknown as Record<string, unknown>)[table] as
+          Array<Record<string, unknown>> | undefined;
+        if (!rows) continue;
+        const { count: dropped, rows: severedRows } =
+          await this.severOneCatalogColumn(
+            manager,
+            data,
+            table,
+            column,
+            referenced,
+            rows,
+            CATALOG_CURRENCY_MATCHED_COLUMNS.has(key),
+          );
+        if (dropped > 0) {
+          counts[key] = dropped;
+          severed[key] = severedRows;
+        }
+      }
+    }
+    return { counts, severed };
+  }
+
+  private async severOneCatalogColumn(
+    manager: EntityManager,
+    data: BackupData,
+    table: string,
+    column: string,
+    referenced: string,
+    rows: Array<Record<string, unknown>>,
+    mustMatchCurrency: boolean,
+  ): Promise<{ count: number; rows: SeveredRow[] }> {
+    const wanted = [
+      ...new Set(
+        rows
+          .map((row) => row[column])
+          .filter((id): id is string => typeof id === "string"),
+      ),
+    ];
+    if (wanted.length === 0) return { count: 0, rows: [] };
+
+    const found: Array<{ id: string; currency_code?: string }> =
+      await manager.query(
+        `SELECT id${mustMatchCurrency ? ", currency_code" : ""} FROM ${referenced} WHERE id = ANY($1::uuid[])`,
+        [wanted],
+      );
+    const present = new Map(found.map((r) => [r.id, r.currency_code]));
+
+    let absent = 0;
+    let foreignCurrency = 0;
+    const severedRows: SeveredRow[] = [];
+    const next = rows.map((row) => {
+      const id = row[column];
+      if (typeof id !== "string") return row;
+      if (!present.has(id)) {
+        absent += 1;
+      } else if (!mustMatchCurrency || present.get(id) === row.currency_code) {
+        return row;
+      } else {
+        foreignCurrency += 1;
+      }
+      if (typeof row.id === "string") {
+        const symbol = typeof row.symbol === "string" ? row.symbol : null;
+        severedRows.push({ id: row.id, symbol });
+      }
+      return { ...row, [column]: null };
+    });
+    (data as unknown as Record<string, unknown>)[table] = next;
+
+    if (absent > 0) {
+      this.logger.warn(
+        `Backup restore: ${absent} ${table}.${column} reference(s) to ${referenced} this ` +
+          "deployment's catalog does not carry were restored as NULL.",
+      );
+    }
+    if (foreignCurrency > 0) {
+      this.logger.warn(
+        `Backup restore: ${foreignCurrency} ${table}.${column} reference(s) to ${referenced} ` +
+          "in another currency than the row were restored as NULL.",
+      );
+    }
+
+    CATALOG_ON_SEVERED.get(`${table}.${column}`)?.(
+      data,
+      new Set(severedRows.map((row) => row.id)),
+    );
+    return { count: absent + foreignCurrency, rows: severedRows };
+  }
+
   async insertRows(
     manager: EntityManager,
     table: string,
@@ -568,6 +396,14 @@ export class BackupRestoreDatabaseService {
         .map((r) => r.column_name),
     );
 
+    // A table with a DEFERRABLE unique constraint cannot take a bare ON
+    // CONFLICT; it names its arbiter (restore-plan.ts). Constant identifiers,
+    // never from the uploaded file.
+    const arbiter = CONFLICT_ARBITER_COLUMNS[table];
+    const conflictTarget = arbiter
+      ? `(${arbiter.map((c) => `"${c}"`).join(", ")}) `
+      : "";
+
     let count = 0;
     for (const row of rows) {
       // An `accounts` row from a backup taken before the mortgage-type
@@ -636,7 +472,7 @@ export class BackupRestoreDatabaseService {
 
       await manager.query(
         `INSERT INTO "${table}" (${columnList}) VALUES (${placeholders})
-         ON CONFLICT DO NOTHING`,
+         ON CONFLICT ${conflictTarget}DO NOTHING`,
         values,
       );
       count++;

@@ -6,6 +6,7 @@ import { PatService } from "../auth/pat.service";
 import { OAuthProviderService } from "../oauth/oauth-provider.service";
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
+import type { AuthInfo } from "@modelcontextprotocol/server";
 
 describe("McpHttpController", () => {
   let controller: McpHttpController;
@@ -1169,6 +1170,37 @@ describe("McpHttpController", () => {
       });
     });
 
+    it("serves an existing session's tools the scopes of the token presented now", async () => {
+      // INV-MCP-001 / MON-M04 (A26-S17-05): the session was opened with a
+      // write-scoped token; the same credential now carries read only. What the
+      // tools see is the `authInfo` the transport forwards from `req.auth`, so
+      // that is what must carry the narrowed scope when the request reaches the
+      // session -- not the scopes stored when the session was created.
+      const sessionId = "narrowed-tool-session";
+      let authAtDispatch: AuthInfo | undefined;
+      const handleRequest = seedSession(sessionId, {
+        userId: USER,
+        scopes: "read,write",
+        credentialId: "pat:tok-n",
+      });
+      handleRequest.mockImplementation(async (req: { auth?: AuthInfo }) => {
+        authAtDispatch = req.auth;
+      });
+      patService.validateToken.mockResolvedValue({
+        userId: USER,
+        scopes: "read",
+        tokenId: "tok-n",
+      });
+
+      await controller.handlePost(post(sessionId), makeRes());
+
+      expect(handleRequest).toHaveBeenCalledTimes(1);
+      expect(authAtDispatch?.scopes).toEqual(["read"]);
+      expect(authAtDispatch?.extra).toEqual(
+        expect.objectContaining({ userId: USER, credentialId: "pat:tok-n" }),
+      );
+    });
+
     it("accepts the same credential and still rejects another user's", async () => {
       const sessionId = "same-credential-session";
       const handleRequest = seedSession(sessionId, {
@@ -1310,7 +1342,7 @@ describe("McpHttpController", () => {
   });
 
   /**
-   * M1 (`docs/future-plans/horizontal-scaling-tasks.md`) asked whether a 2025-era
+   * M1 (`docs/specs/horizontal-scaling.md`, WP6) asked whether a 2025-era
    * session can be re-created on another replica from a persisted
    * `session_id -> user_id` row. It cannot, and these two SDK facts are why.
    * They are pinned here rather than written down only in prose: an SDK upgrade

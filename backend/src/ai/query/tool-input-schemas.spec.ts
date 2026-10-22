@@ -17,6 +17,7 @@ import {
   manageInvestmentTransactionsSchema,
   manageTransactionsSchema,
   createTransactionsSchema,
+  listWarrantiesSchema,
 } from "./tool-input-schemas";
 
 describe("tool-input-schemas", () => {
@@ -482,6 +483,38 @@ describe("tool-input-schemas", () => {
         items: [createItem],
       });
       expect(result.success).toBe(true);
+    });
+
+    it("accepts a bond series code on create, bounded, and as the only field of an update", () => {
+      expect(
+        manageInvestmentTransactionsSchema.safeParse({
+          operation: "create",
+          items: [{ ...createItem, bondSeriesCode: "EDO1036" }],
+        }).success,
+      ).toBe(true);
+      expect(
+        manageInvestmentTransactionsSchema.safeParse({
+          operation: "create",
+          items: [{ ...createItem, bondSeriesCode: "X".repeat(41) }],
+        }).success,
+      ).toBe(false);
+      expect(
+        manageInvestmentTransactionsSchema.safeParse({
+          operation: "create",
+          items: [{ ...createItem, bondSeriesCode: "  " }],
+        }).success,
+      ).toBe(false);
+      expect(
+        manageInvestmentTransactionsSchema.safeParse({
+          operation: "update",
+          items: [
+            {
+              transactionId: "11111111-1111-4111-8111-111111111111",
+              bondSeriesCode: "EDO1036",
+            },
+          ],
+        }).success,
+      ).toBe(true);
     });
 
     it("accepts a minimal cash-only create (INTEREST)", () => {
@@ -1021,6 +1054,35 @@ describe("tool-input-schemas", () => {
         rows: [{ accountName: "Checking", date: "2026-01-15" }],
       });
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe("listWarrantiesSchema", () => {
+    it("accepts no arguments and a limit a model wrote as a string", () => {
+      expect(listWarrantiesSchema.parse({})).toEqual({});
+      expect(
+        listWarrantiesSchema.parse({
+          status: "expiring",
+          q: "laptop",
+          limit: "10",
+        }),
+      ).toEqual({ status: "expiring", q: "laptop", limit: 10 });
+    });
+
+    it.each([
+      [{ status: "soon" }],
+      [{ q: "x".repeat(101) }],
+      [{ limit: 0 }],
+      [{ limit: 51 }],
+      [{ limit: 2.5 }],
+    ])("refuses %p", (input) => {
+      expect(listWarrantiesSchema.safeParse(input).success).toBe(false);
+    });
+
+    it("is the schema the executor validates list_warranties against", () => {
+      expect(validateToolInput("list_warranties", { limit: 99 }).success).toBe(
+        false,
+      );
     });
   });
 });

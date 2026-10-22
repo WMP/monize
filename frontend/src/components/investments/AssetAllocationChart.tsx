@@ -19,6 +19,7 @@ import {
 } from '@/lib/look-through-allocation';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
+import { useAssetClassLabel, type AssetClassName } from '@/hooks/useAssetClassLabel';
 import { ChartLegend } from '@/components/ui/ChartLegend';
 
 type GroupBy = 'security' | 'tag' | 'tagKey' | 'country' | 'assetClass';
@@ -72,15 +73,16 @@ function buildCountryAllocation(
   );
 }
 
-/** Asset-class look-through -> pie slices. */
+/** Asset-class look-through -> pie slices, each class named by `labelOf`. */
 function buildAssetClassAllocation(
   result: AssetClassWeightingResult,
   otherClassesLabel: string,
+  labelOf: (item: AssetClassName) => string,
 ): AssetAllocation {
   return buildLookThroughAllocation(
     {
       ...result,
-      items: result.items.map((i) => ({ ...i, name: i.assetClass })),
+      items: result.items.map((i) => ({ ...i, name: labelOf(i) })),
     },
     otherClassesLabel,
     'assetClass',
@@ -259,13 +261,14 @@ export function AssetAllocationChart({
   );
 
   const otherClassesLabel = t('assetAllocation.otherAssetClasses');
+  const assetClassLabel = useAssetClassLabel();
   const assetClassResult = assetClassCache[accountKey];
   const assetClassAllocation = useMemo(
     () =>
       assetClassResult
-        ? buildAssetClassAllocation(assetClassResult, otherClassesLabel)
+        ? buildAssetClassAllocation(assetClassResult, otherClassesLabel, assetClassLabel)
         : null,
-    [assetClassResult, otherClassesLabel],
+    [assetClassResult, otherClassesLabel, assetClassLabel],
   );
 
   // A selector is only offered once its data confirms it is meaningful for the

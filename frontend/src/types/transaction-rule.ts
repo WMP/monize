@@ -26,7 +26,8 @@ export type RuleField =
   | 'dayOfMonth'
   | 'weekday'
   | 'status'
-  | 'hasAttachment';
+  | 'hasAttachment'
+  | 'date';
 
 export type RuleOperator =
   | 'eq'
@@ -117,6 +118,65 @@ export interface SetDescriptionAction {
   readonly onlyIfEmpty: boolean;
 }
 
+/**
+ * Makes the matched row one leg of a transfer. Exactly one of `toAccountId`
+ * (an expense) and `fromAccountId` (an income). Created in the rule editor, the
+ * assistant or MCP.
+ */
+export interface ConvertToTransferAction {
+  readonly type: 'convert_to_transfer';
+  readonly toAccountId?: string;
+  readonly fromAccountId?: string;
+  readonly clearCategory: boolean;
+  readonly payeeId?: string;
+}
+
+/** One part of a `split`: `amount` is `"{capture}"` or `"rest"`. */
+export interface SplitActionPart {
+  readonly amount: string;
+  readonly categoryId?: string;
+  readonly transferAccountId?: string;
+  readonly payeeId?: string;
+  readonly description?: string;
+}
+
+/** Turns the matched row into a split whose part amounts come from the rule's captures. */
+export interface SplitAction {
+  readonly type: 'split';
+  readonly payeeId?: string;
+  readonly parts: readonly SplitActionPart[];
+}
+
+/** What a row that paid more than the priced installment becomes. */
+export type LoanSettlementExcessPolicy = 'extra_principal' | 'refuse';
+
+/** What a row that paid less than the base installment becomes. */
+export type LoanSettlementShortfallPolicy = 'refuse' | 'interest_first';
+
+/**
+ * Settles the matched bank debit against the scheduled installment of a
+ * `MORTGAGE` or `LOAN` account (`docs/specs/loan-installment-settlement.md`
+ * section 5.1): the row becomes a split of a principal transfer to the loan,
+ * an interest line and, when it paid more, an extra-principal transfer, each
+ * priced by the server. No amount is stored.
+ */
+export interface SettleLoanInstallmentAction {
+  readonly type: 'settle_loan_installment';
+  readonly loanAccountId: string;
+  /** The slots a row dated `t` may pay: `[t - daysAfter, t + daysBefore]`, each 0..31. */
+  readonly dueDateWindow: {
+    readonly daysBefore: number;
+    readonly daysAfter: number;
+  };
+  readonly excess: LoanSettlementExcessPolicy;
+  readonly shortfall: LoanSettlementShortfallPolicy;
+  /** The interest line's category; absent means the loan's own interest category. */
+  readonly interestCategoryId?: string;
+}
+
+/** The three actions that restructure the row (a transfer, a split, a loan settlement). */
+export type StructuralRuleAction = ConvertToTransferAction | SplitAction | SettleLoanInstallmentAction;
+
 /** Queues a person-approved AI review; never changes the row itself. */
 export interface RequestAiReviewAction {
   readonly type: 'request_ai_review';
@@ -130,6 +190,7 @@ export type RuleAction =
   | SetPayeeAction
   | SetPayeeFromTextAction
   | SetDescriptionAction
+  | StructuralRuleAction
   | RequestAiReviewAction;
 
 export type RuleActionType = RuleAction['type'];
@@ -150,6 +211,13 @@ export interface TransactionRule {
   condition: RuleConditionNode;
   actions: RuleAction[];
   stopProcessing: boolean;
+  /**
+   * The active window: first and last transaction date (`YYYY-MM-DD`, both
+   * inclusive) the rule is evaluated for, on every path. Null is open on that
+   * side.
+   */
+  activeFrom: string | null;
+  activeTo: string | null;
   /** Compare-and-swap token: send the value last read with every update. */
   revision: number;
   createdAt: string;
@@ -170,6 +238,9 @@ export interface CreateTransactionRuleData {
   condition: RuleConditionNode;
   actions: RuleAction[];
   stopProcessing?: boolean;
+  /** `YYYY-MM-DD`; null (on an update) clears the side. */
+  activeFrom?: string | null;
+  activeTo?: string | null;
 }
 
 export interface UpdateTransactionRuleData extends Partial<CreateTransactionRuleData> {

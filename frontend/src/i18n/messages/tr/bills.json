@@ -53,7 +53,8 @@
     "totalOfAccounts": "Hesapların toplamı",
     "legendAriaLabel": "Tahmin çizgileri",
     "tooltipTransactionForAccount": "{name} ({account})",
-    "unavailableMissingRates": "Bu tahmin {displayCurrency} cinsinden gösterilemiyor: {currencies} için döviz kuru yok ve öngörülen bakiye önceki her güne dayanır. Bir kur ekleyin veya tek para birimli bir hesap seçin."
+    "unavailableMissingRates": "Bu tahmin {displayCurrency} cinsinden gösterilemiyor: {currencies} için döviz kuru yok ve öngörülen bakiye önceki her güne dayanır. Bir kur ekleyin veya tek para birimli bir hesap seçin.",
+    "untitledTransaction": "İşlem"
   },
   "calendar": {
     "days": {

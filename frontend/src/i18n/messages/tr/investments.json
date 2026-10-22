@@ -51,6 +51,7 @@
     "costBasisTooltip": "Mevcut pozisyonlarınızın edinme maliyeti, işlem geçmişinizden yeniden oluşturulur: alış fiyatları artı her alışta kesilen komisyon, her biri onu ödeyen işlemin kuruyla çevrilir. Görüntüleme para biriminizde gösterilir. Kazanç ve kayıpları hesaplamak için kullanılır.",
     "gainLoss": "Kazanç/Kayıp",
     "gainLossTooltip": "Mevcut pozisyonlarınızdaki gerçekleşmemiş kazanç veya kayıp: bugünkü fiyatlarla piyasa değeri eksi yukarıdaki maliyet esası. Geçmiş satışlardan gerçekleşen kazançları veya alınan temettü ve faizi içermez.",
+    "gainPartialCaption": "Yalnızca fiyatı olan varlıklar üzerinden",
     "returns": "Getiriler",
     "simpleReturn": "Basit Getiri",
     "simpleReturnTooltip": "Ödediğinize karşı kazanç veya kayıp: (Piyasa Değeri − Maliyet Esası) ÷ Maliyet Esası. Paranın ne zaman geldiğini dikkate almaz, bu yüzden her alışta sıçrar: %20 artan 1.000'lik bir pozisyon +%20 gösterir; bir 1.000 daha alın ve hiçbir şey kaybedilmemiş olsa da +%10 (200 ÷ 2.000) gösterir. TWR ve MWR'de bu sıçrama yoktur.",
@@ -88,6 +89,14 @@
       "assetClass": "Varlık sınıfına göre"
     }
   },
+  "assetClasses": {
+    "equity": "Hisse senetleri",
+    "fixedIncome": "Sabit getirili",
+    "cash": "Nakit",
+    "preferred": "İmtiyazlı hisseler",
+    "convertible": "Dönüştürülebilir tahviller",
+    "crypto": "Kripto"
+  },
   "holdingsList": {
     "title": "Pozisyonlar",
     "noHoldings": "Bu portföyde pozisyon yok.",
@@ -102,6 +111,7 @@
     "title": "Hesaba Göre Pozisyonlar",
     "noHoldings": "Portföyünüzde pozisyon yok.",
     "accountIncomplete": "Kısmi: bu hesabın toplamları, {currency} cinsinden değerlenemeyen pozisyonları içermiyor.",
+    "gainPartialCaption": "Yalnızca fiyatı olan varlıklar üzerinden",
     "accountSummary": "{positions} pozisyonlu {accounts} hesap",
     "positionsWithCash": "{count} pozisyon + Nakit",
     "positions": "{count} pozisyon",
@@ -129,6 +139,7 @@
     "intradayUnavailableDescription": "Bir veya daha fazla pozisyon, gün içi veriyi sunmayan bir fiyat sağlayıcısı (MSN Money) kullanıyor. Günlük anlık görüntüleri görmek için daha uzun bir aralığa geçin.",
     "noDataForPeriod": "Bu dönem için yatırım verisi yok.",
     "highestValue": "En Yüksek Değer",
+    "incompleteTooltip": "Bu aralıktaki bazı noktalarda fiyat veya döviz kuru eksik, bu yüzden en yüksek ve en düşük değer gösterilmiyor.",
     "lowestValue": "En Düşük Değer",
     "valueChange": "Değer Değişimi",
     "valueChangeTooltip": "Menkul kıymetlerin dönem sonundaki değeri eksi dönem başındaki değeri: grafikteki son nokta eksi ilk nokta. Yatırılmamış nakit hesaba katılmaz.",
@@ -190,6 +201,7 @@
     "actionCapitalGainShort": "Kısa Vadeli Sermaye Kazancı",
     "actionCapitalGainLong": "Uzun Vadeli Sermaye Kazancı",
     "actionRedeem": "CD/Tahvil İtfası",
+    "actionReturnOfCapital": "Sermaye İadesi",
     "allActions": "Tüm Eylemler"
   },
   "transactionForm": {
@@ -210,6 +222,7 @@
     "actionCapitalGainShort": "Kısa Vadeli Sermaye Kazancı",
     "actionCapitalGainLong": "Uzun Vadeli Sermaye Kazancı",
     "actionRedeem": "CD/Tahvil İtfası",
+    "actionReturnOfCapital": "Sermaye İadesi",
     "actionTransfer": "Transfer",
     "brokerageAccount": "Aracı Kurum Hesabı",
     "fromAccount": "Kaynak Hesap",
@@ -253,7 +266,8 @@
     "sourceHolds": "Kaynak elinde tutar",
     "sharesAt": "hisse @",
     "avgCostSuffix": "ort. maliyet.",
-    "transferCostNote": "Hisse başı maliyet (kaynak hesaptan önceden doldurulmuş) kazanç ve kâr raporlarınızın doğru kalması için hedefe taşınır. Bu yalnızca hisseleri taşır -- nakit el değiştirmez.",
+    "transferCostNote": "Pay başına maliyet, payların transfer tarihinde kaynak hesaptaki maliyetidir. Kaydettiğinizde hesaplanır ve hedef hesaba aktarılır; böylece kazanç ve kâr raporlarınız doğru kalır. Yalnızca paylar taşınır; nakit el değiştirmez.",
+    "returnOfCapitalNote": "Sermaye iadesi gelir değildir. Hisselerin maliyetinin bir kısmını geri öder, bu nedenle pozisyonunuzun maliyet esasını bu tutar kadar düşürür. Kalan maliyet esasını aşan tutar gerçekleşmiş sermaye kazancı olarak raporlanır.",
     "totalAmount": "Toplam Tutar ({currency})",
     "sharesAtPrice": "{shares} hisse @ {symbol}{price}",
     "commissionSuffix": "komisyon",
@@ -288,7 +302,30 @@
     "toastSaveFailed": "İşlem kaydedilemedi",
     "exchangeRateUnresolved": "{from} → {to} kuru yok. Kaydetmeden önce bir kur veya çevrilmiş toplamı girin.",
     "toastExchangeRateRequired": "Para birimleri arası bir işlemi kaydetmeden önce bir döviz kuru girin.",
-    "notAvailable": "Mevcut değil"
+    "notAvailable": "Mevcut değil",
+    "bondSeries": {
+      "label": "Tahvil serisi",
+      "fromDate": "Tarihe göre belirlenir",
+      "oldestFirst": "Önce en eskiler",
+      "loading": "Seriler yükleniyor...",
+      "loadFailed": "Seriler yüklenemedi.",
+      "retry": "Yeniden dene",
+      "fromDateCode": "Tarihten: {code}",
+      "noneOnSale": "Bu tarihte satışta seri yok",
+      "choose": "Bir seri seçin",
+      "required": "Bu payların serisini seçin.",
+      "heldOption": "{code} ({quantity} eldeki)",
+      "noLongerHeld": "{code} (bu tarihte artık elde değil)",
+      "noLongerHeldUnknown": "Kayıtlı seri (bu tarihte artık elde değil)",
+      "storedSeries": "Kayıtlı seri",
+      "seriesOnSaleMonth": "{code} — satışta {month}",
+      "seriesOnSaleRange": "{code} — satışta {from} - {to}"
+    },
+    "bondRedemption": {
+      "summary": "Faiz {interest}, erken itfa kesintisi {deduction}, ödeme {payout}",
+      "outsideSaleWindow": "Bu serinin bir lotu satış döneminin dışında alındığından itfa bölünemiyor.",
+      "failed": "İtfa dökümü hesaplanamadı."
+    }
   },
   "newTransactionButton": {
     "label": "+ Yeni İşlem",

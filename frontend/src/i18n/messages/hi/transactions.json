@@ -135,6 +135,7 @@
       "toggleTitle": "तिथियों से वर्ष हटाएँ ताकि भुगतानकर्ता का नाम अधिक दिखे"
     },
     "attachmentsCount": "{count, plural, one {# अटैचमेंट} other {# अटैचमेंट}}",
+    "warrantiesCount": "{count, plural, one {# वारंटी} other {# वारंटी}}",
     "today": "आज",
     "export": {
       "button": "निर्यात",
@@ -198,7 +199,9 @@
       "duplicateTitle": "लेन-देन डुप्लिकेट करें",
       "copy": "कॉपी",
       "duplicate": "डुप्लिकेट",
-      "scheduleRecurring": "आवर्ती के रूप में शेड्यूल करें"
+      "scheduleRecurring": "आवर्ती के रूप में शेड्यूल करें",
+      "addWarranty": "वारंटी जोड़ें",
+      "viewWarranties": "वारंटी देखें"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "संपादित करें",
     "duplicate": "डुप्लिकेट",
     "scheduleRecurring": "आवर्ती के रूप में शेड्यूल करें",
+    "addWarranty": "वारंटी जोड़ें",
+    "viewWarranties": "वारंटी देखें",
     "delete": "हटाएं"
   },
   "filter": {
@@ -219,7 +224,7 @@
       "title": "फ़िल्टर",
       "clear": "साफ करें",
       "hide": "छुपाएं",
-      "show": "दिखाएं"
+      "show": "फ़िल्टर दिखाएं"
     },
     "accounts": {
       "label": "खाते दिखाएं:",
@@ -258,7 +263,7 @@
       "statuses": "सभी स्थितियां",
       "amountMin": "न्यूनतम",
       "amountMax": "अधिकतम",
-      "search": "भुगतानकर्ता, श्रेणी, राशि, टैग, विवरण, संदर्भ # खोजें...",
+      "search": "खोजें, या #10 या payee:costco आज़माएँ",
       "tagKeyValue": "जैसे usa"
     },
     "tagKeyNone": "कोई भी (कुंजी फ़िल्टर नहीं)",
@@ -431,6 +436,7 @@
       "destinationRequired": "कृपया गंतव्य खाता चुनें",
       "sameAccount": "स्रोत और गंतव्य खाते अलग होने चाहिए",
       "negativeTransfer": "ट्रांसफर राशि ऋणात्मक नहीं होनी चाहिए",
+      "convertToTransferUnsupported": "किसी मौजूदा लेनदेन को यहाँ ट्रांसफर में नहीं बदला जा सकता। इसे हटाएँ और इसके बजाय ट्रांसफर बनाएँ।",
       "payeeCreated": "भुगतानकर्ता \"{name}\" बनाया गया",
       "payeeCreateFailed": "भुगतानकर्ता बनाने में विफल",
       "payeeReactivated": "भुगतानकर्ता \"{name}\" पुनः सक्रिय किया गया",
@@ -465,7 +471,14 @@
       },
       "feeCaption": "इसमें {percent}% विदेशी लेनदेन शुल्क ({fee}) शामिल है।"
     },
-    "jointSplitDisabled": "साझा खाते में विभाजित लेनदेन केवल स्वामी ही प्रबंधित कर सकता है"
+    "jointSplitDisabled": "साझा खाते में विभाजित लेनदेन केवल स्वामी ही प्रबंधित कर सकता है",
+    "warranties": {
+      "title": "वारंटी",
+      "add": "वारंटी जोड़ें",
+      "expires": "{date} को समाप्त",
+      "loading": "वारंटी लोड हो रही हैं",
+      "loadError": "इस लेनदेन की वारंटी लोड नहीं हो सकीं।"
+    }
   },
   "splitEditor": {
     "header": "विभाजन विवरण",
@@ -582,6 +595,11 @@
       "log": "लॉग",
       "autoTitle": "स्वत: ({scale})",
       "scaleTitle": "{label} स्केल"
+    },
+    "collapse": {
+      "hide": "चार्ट छिपाएँ",
+      "show": "चार्ट दिखाएँ",
+      "hidden": "चार्ट छिपा हुआ है"
     }
   },
   "toasts": {
@@ -604,5 +622,71 @@
     "title": "{key} के अनुसार खर्च",
     "other": "अन्य",
     "noData": "इस कुंजी के लिए विभाजित करने हेतु कोई टैग किया गया खर्च नहीं है।"
+  },
+  "searchSyntax": {
+    "open": "खोज सिंटैक्स",
+    "title": "खोज सिंटैक्स",
+    "fields": "फ़ील्ड: payee, memo, cat, tag, account, ref, amount, date, status, is, has। किसी उदाहरण को खोज बॉक्स में डालने के लिए उसे चुनें।",
+    "examples": {
+      "allWords": "हर शब्द कहीं न कहीं मिलता है",
+      "phrase": "यही सटीक वाक्यांश",
+      "exclude": "refund से मेल खाने वाली हर चीज़ हटाएँ",
+      "fieldContains": "प्राप्तकर्ता में costco है",
+      "fieldExact": "प्राप्तकर्ता ठीक Costco है",
+      "reference": "चेक या संदर्भ संख्या ठीक 10",
+      "wildcard": "संदर्भ 10 से शुरू होता है",
+      "amountOver": "राशि 100 से अधिक",
+      "amountRange": "राशि 50 से 100 तक",
+      "datePeriod": "मार्च 2026 का कोई भी दिन",
+      "isSplit": "विभाजित लेन-देन",
+      "hasAttachment": "अनुलग्नक है",
+      "hasWarranty": "वारंटी है"
+    }
+  },
+  "searchInterpretation": {
+    "label": "खोज रहे हैं:",
+    "negated": "{phrase} नहीं",
+    "malformed": "{raw} (समझा नहीं गया, पाठ के रूप में खोजा गया)",
+    "empty": "{raw} (खाली, अनदेखा)",
+    "status": "स्थिति {value} है",
+    "any": "“{value}” कहीं भी",
+    "fields": {
+      "payee": "प्राप्तकर्ता",
+      "memo": "नोट",
+      "cat": "श्रेणी",
+      "tag": "टैग",
+      "account": "खाता",
+      "ref": "संदर्भ",
+      "amount": "राशि",
+      "date": "तारीख",
+      "status": "स्थिति",
+      "is": "प्रकार",
+      "has": "में है"
+    },
+    "ops": {
+      "contains": "{field} में “{value}” है",
+      "exact": "{field} “{value}” है",
+      "glob": "{field} “{value}” से मेल खाता है",
+      "eq": "{field} {value} है",
+      "gt": "{field} {value} से अधिक",
+      "gte": "{field} {value} या अधिक",
+      "lt": "{field} {value} से कम",
+      "lte": "{field} {value} या कम",
+      "between": "{field} {value} से {valueTo} तक"
+    },
+    "enum": {
+      "is": {
+        "transfer": "स्थानांतरण",
+        "split": "विभाजित लेन-देन",
+        "uncategorized": "बिना श्रेणी"
+      },
+      "has": {
+        "attachment": "अनुलग्नक है",
+        "warranty": "वारंटी है",
+        "ref": "संदर्भ संख्या है",
+        "memo": "नोट है",
+        "tag": "टैग है"
+      }
+    }
   }
 }

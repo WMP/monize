@@ -158,13 +158,32 @@ export function MonteCarloReport() {
   // Fetch per-holding historical stats for the selected accounts whenever the
   // user is in historical-returns mode. Cleared otherwise so the table doesn't
   // show stale data after a mode toggle.
-  useEffect(() => {
-    if (!form.useHistoricalReturns || form.accountIds.length === 0) {
+  const wantsHoldingStats = form.useHistoricalReturns && form.accountIds.length > 0;
+  // The inputs the stats were last requested for (null before the first
+  // render). When they change, the clear / "becomes loading" transition
+  // happens here, during render, rather than from inside the fetch effect.
+  const [holdingStatsInputs, setHoldingStatsInputs] = useState<{
+    useHistoricalReturns: boolean;
+    accountIds: string[];
+  } | null>(null);
+  if (
+    holdingStatsInputs === null ||
+    holdingStatsInputs.useHistoricalReturns !== form.useHistoricalReturns ||
+    holdingStatsInputs.accountIds !== form.accountIds
+  ) {
+    setHoldingStatsInputs({
+      useHistoricalReturns: form.useHistoricalReturns,
+      accountIds: form.accountIds,
+    });
+    if (wantsHoldingStats) {
+      setHoldingStatsLoading(true);
+    } else {
       setHoldingStats(null);
-      return;
     }
+  }
+  useEffect(() => {
+    if (!form.useHistoricalReturns || form.accountIds.length === 0) return;
     let cancelled = false;
-    setHoldingStatsLoading(true);
     monteCarloApi
       .holdingStats(form.accountIds)
       .then((stats) => {
@@ -1196,7 +1215,7 @@ export function MonteCarloReport() {
                         <FanChartTooltip
                           active={props.active}
                           payload={
-                            props.payload as Array<{
+                            props.payload as ReadonlyArray<{
                               payload?: Record<string, number>;
                             }>
                           }

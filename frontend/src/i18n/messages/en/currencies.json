@@ -13,6 +13,14 @@
     "modalTitleNew": "New Currency",
     "loading": "Loading currencies...",
     "count": "{count, plural, one {# currency} other {# currencies}}",
+    "providers": {
+      "line": "Rates from {providers}",
+      "separator": ", then ",
+      "names": {
+        "frankfurter": "Frankfurter (ECB reference rates)",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "Failed to load currencies",
       "updated": "Currency updated successfully",
@@ -24,6 +32,7 @@
       "statusFailed": "Failed to update currency status",
       "ratesRefreshed": "Exchange rates refreshed: {updated} pairs updated",
       "ratesRefreshedWithFailed": "Exchange rates refreshed: {updated} updated, {failed} failed",
+      "ratesAllFailed": "No exchange rates could be fetched; the provider did not answer",
       "ratesFailed": "Failed to refresh exchange rates"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter (ECB)",
         "mnyImport": "Money import",
         "unknown": "Unknown"
       }

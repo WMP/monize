@@ -13,13 +13,16 @@ import {
 } from "../scheduled-transactions/scheduled-occurrence.service";
 import {
   BalanceForecastGap,
+  BalanceForecastOverdue,
   ForecastOccurrenceInput,
   ForecastPoint,
   accumulateForecastDeltas,
   buildForecastSeries,
+  forecastLanding,
 } from "./balance-forecast.util";
 import { roundMoney } from "../common/round.util";
 import { addDaysYMD, todayYMD } from "../common/date-utils";
+import { overdueCarryFrom } from "../common/scheduled-occurrences";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
 import { LEDGER_MOVEMENT_PREDICATE } from "../common/ledger-balance.sql";
@@ -38,6 +41,13 @@ export interface BalanceForecastResult {
   complete: boolean;
   /** The schedules that made it incomplete, so the client can say which and why. */
   gaps: BalanceForecastGap[];
+  /**
+   * The occurrences due before today that were neither posted nor skipped, which
+   * the series applies on its first projected day (discussion #1784); `null`
+   * when there are none, or when the series is withheld and states nothing
+   * after today.
+   */
+  overdue: BalanceForecastOverdue | null;
 }
 
 /**
@@ -148,10 +158,13 @@ export class BalanceForecastService {
     // pricing all come from the one occurrence contract, so this chart cannot
     // disagree with the cash-flow forecast, the budget or the register about
     // which occurrence falls when and what it costs (issue #1247).
+    //
+    // From `OVERDUE_CARRY_DAYS` back: an occurrence already due and still
+    // unposted is owed, and `forecastLanding` applies it on the first projected
+    // day rather than on today's anchor, which stays the fact it is (discussion
+    // #1784). An older one is read as forgotten and left out.
     const occurrences = await this.occurrences.expand(userId, candidates, {
-      // Strictly after today: today's balance is already a fact, and the anchor
-      // point carries it.
-      from: addDaysYMD(today, 1),
+      from: overdueCarryFrom(today),
       through: horizon,
     });
 
@@ -165,12 +178,14 @@ export class BalanceForecastService {
       }
 
       const gap = this.gapFor(occurrence, account, isTransferTarget);
+      const landing = forecastLanding(occurrence.dueDate, today);
       inputs.push({
         scheduledTransactionId: occurrence.scheduledTransactionId,
         name: row.name,
         accountId: occurrence.settlementAccountId,
         transferAccountId: row.transferAccountId,
-        dueDate: occurrence.dueDate,
+        dueDate: landing.date,
+        overdue: landing.overdue,
         amount: gap ? null : occurrence.amount,
         gapReason: gap?.reason,
         gapFromCurrency: gap?.from ?? null,
@@ -178,7 +193,7 @@ export class BalanceForecastService {
       });
     }
 
-    const { byDate, gaps } = accumulateForecastDeltas(
+    const { byDate, gaps, overdue } = accumulateForecastDeltas(
       inputs,
       accountId,
       actualByDate,
@@ -195,6 +210,10 @@ export class BalanceForecastService {
       points,
       complete,
       gaps,
+      overdue:
+        complete && overdue.count > 0
+          ? { date: addDaysYMD(today, 1), ...overdue }
+          : null,
     };
   }
 

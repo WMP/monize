@@ -21,6 +21,7 @@ import { LanguageSelector } from '@/components/settings/LanguageSelector';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { ColorThemeSelector } from '@/components/settings/ColorThemeSelector';
 import { ColorTheme } from '@/lib/color-themes';
+import { DefaultViewsGroup } from '@/components/settings/DefaultViewsGroup';
 import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 
 const NUMBER_FORMAT_OPTIONS = [
@@ -445,6 +446,13 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
             </div>
           </div>
         </div>
+
+        <DefaultViewsGroup
+          className={GROUP_DIVIDER_CLASS}
+          initial={preferences.viewDefaults}
+          initialHiddenColumns={preferences.hiddenTableColumns}
+          commit={commitPreference}
+        />
 
         <div className={GROUP_DIVIDER_CLASS}>
           <h3 className={GROUP_HEADING_CLASS}>

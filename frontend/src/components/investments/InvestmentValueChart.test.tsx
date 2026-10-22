@@ -7,6 +7,7 @@ import {
 } from './InvestmentValueChart';
 import { netWorthApi } from '@/lib/net-worth';
 import { investmentsApi } from '@/lib/investments';
+import { useAuthStore } from '@/store/authStore';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import type { PortfolioPeriodResult } from '@/types/net-worth';
 
@@ -168,6 +169,7 @@ vi.mock('@/lib/investments', () => ({
       failedSymbols: [],
       fallbackToDaily: false,
     }),
+    getSecurities: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -204,6 +206,8 @@ describe('InvestmentValueChart', () => {
     } catch {
       // jsdom without sessionStorage: nothing to clear.
     }
+    // The intraday cache key carries the signed-in identity (INV-SHARE-003).
+    useAuthStore.setState({ user: { id: 'user-1' } as never, actingAsUserId: null });
     // A null store is the pre-load state, where the hook takes the default.
     usePreferencesStore.setState({ preferences: null });
     dateRangeState.dateRange = '1y';
@@ -1220,7 +1224,7 @@ describe('InvestmentValueChart', () => {
       const { rerender } = render(<InvestmentValueChart refreshKey={0} />);
       await screen.findByText('Portfolio Value Over Time');
       await waitFor(() =>
-        expect(window.sessionStorage.getItem('monize-intraday|1d||CAD')).toBeTruthy(),
+        expect(window.sessionStorage.getItem('monize-intraday|u:user-1|a:self|1d||CAD')).toBeTruthy(),
       );
       const before = vi.mocked(investmentsApi.getIntradayValue).mock.calls.length;
 
@@ -1454,7 +1458,7 @@ describe('InvestmentValueChart', () => {
     };
     // Seed the session-storage cache manually
     window.sessionStorage.setItem(
-      `monize-intraday|1d||CAD`,
+      `monize-intraday|u:user-1|a:self|1d||CAD`,
       JSON.stringify(cachedPayload),
     );
 
@@ -1572,5 +1576,105 @@ describe('InvestmentValueChart', () => {
     render(<InvestmentValueChart />);
     await screen.findByText('Portfolio Value Over Time');
     expect(screen.getByTestId('area-chart')).toBeInTheDocument();
+  });
+
+  describe('a point the server could not finish is not a measured value', () => {
+    const plotted = () =>
+      JSON.parse(
+        screen.getByTestId('area-chart').getAttribute('data-points') ?? '[]',
+      ) as Array<{ iso: string; Value: number | null }>;
+
+    it('does not rank a pricesComplete:false point as the Lowest Value', async () => {
+      vi.mocked(netWorthApi.getInvestmentsDaily).mockResolvedValue([
+        { date: '2023-06-01', value: 10000, securitiesValue: 10000, pricesComplete: true },
+        { date: '2023-09-01', value: 100, securitiesValue: 100, pricesComplete: false, unpricedSecurityIds: ['sec-1'] },
+        { date: '2024-01-01', value: 15000, securitiesValue: 15000, pricesComplete: true },
+      ]);
+      render(<InvestmentValueChart />);
+      await screen.findByText('Lowest Value');
+      await waitFor(() => expect(plotted()).toHaveLength(3));
+      expect(screen.queryByText('$100.00')).not.toBeInTheDocument();
+      // The subtotal can sit anywhere in the ordering, so neither extreme is
+      // named: a high ranked over the other points could be the missing day.
+      expect(screen.queryByText('$15000.00')).not.toBeInTheDocument();
+      expect(screen.queryByText('$10000.00')).not.toBeInTheDocument();
+      expect(plotted().map((p) => p.Value)).toEqual([10000, null, 15000]);
+    });
+
+    it('plots an fxComplete:false daily point as null', async () => {
+      vi.mocked(netWorthApi.getInvestmentsDaily).mockResolvedValue([
+        { date: '2023-06-01', value: 10000, securitiesValue: 10000 },
+        { date: '2023-09-01', value: 50, securitiesValue: 50, fxComplete: false, missingRatePairs: ['EUR->CAD'] },
+      ]);
+      render(<InvestmentValueChart />);
+      await screen.findByText('Lowest Value');
+      await waitFor(() => expect(plotted()).toHaveLength(2));
+      expect(plotted().map((p) => p.Value)).toEqual([10000, null]);
+    });
+
+    it('ranks the extremes as before when every point is complete', async () => {
+      vi.mocked(netWorthApi.getInvestmentsDaily).mockResolvedValue([
+        { date: '2023-06-01', value: 10000, securitiesValue: 10000, pricesComplete: true, fxComplete: true },
+        { date: '2024-01-01', value: 15000, securitiesValue: 15000, pricesComplete: true, fxComplete: true },
+      ]);
+      render(<InvestmentValueChart />);
+      await screen.findByText('Lowest Value');
+      expect(screen.getByText('$15000.00')).toBeInTheDocument();
+      expect(screen.getByText('$10000.00')).toBeInTheDocument();
+    });
+
+    it('does not read the cash flag: the chart plots the invested value', async () => {
+      vi.mocked(netWorthApi.getInvestmentsDaily).mockResolvedValue([
+        { date: '2023-06-01', value: 10000, securitiesValue: 9000, cashComplete: false },
+        { date: '2024-01-01', value: 15000, securitiesValue: 14000 },
+      ]);
+      render(<InvestmentValueChart />);
+      await screen.findByText('Lowest Value');
+      await waitFor(() => expect(plotted()).toHaveLength(2));
+      expect(plotted().map((p) => p.Value)).toEqual([9000, 14000]);
+    });
+
+    it('plots an intraday point with fxComplete:false as null and withholds the extremes', async () => {
+      dateRangeState.dateRange = '1w';
+      dateRangeState.resolvedRange = { start: '2023-12-26', end: '2024-01-02' };
+      vi.mocked(investmentsApi.getIntradayValue).mockResolvedValue({
+        points: [
+          { timestamp: '2023-12-26T09:30:00.000Z', value: 9400, securitiesValue: 9400, fxComplete: true, pricesComplete: true, cashComplete: true },
+          { timestamp: '2023-12-27T09:30:00.000Z', value: 120, securitiesValue: 120, fxComplete: false, pricesComplete: true, cashComplete: true },
+          { timestamp: '2023-12-28T09:30:00.000Z', value: 9600, securitiesValue: 9600, fxComplete: true, pricesComplete: true, cashComplete: true },
+        ],
+        interval: '5m',
+        currency: 'CAD',
+        range: '1w',
+        fetchedAt: '2024-01-02T16:00:00.000Z',
+        skippedSymbols: [],
+        failedSymbols: [],
+        fallbackToDaily: false,
+        fxComplete: false,
+        pricesComplete: true,
+        valuationComplete: false,
+        missingRatePairs: ['EUR->CAD'],
+        unpricedSecurityIds: [],
+      });
+      render(<InvestmentValueChart />);
+      await screen.findByText('Portfolio Value Over Time');
+      await waitFor(() => expect(plotted()).toHaveLength(3));
+      expect(plotted().map((p) => p.Value)).toEqual([9400, null, 9600]);
+      expect(screen.queryByText('$120.00')).not.toBeInTheDocument();
+      expect(screen.queryByText('$9600.00')).not.toBeInTheDocument();
+    });
+
+    it('names the security behind a withheld daily point', async () => {
+      vi.mocked(investmentsApi.getSecurities).mockResolvedValue([
+        { id: 'sec-1', symbol: 'AGGG', name: 'Aggregate' },
+      ] as never);
+      vi.mocked(netWorthApi.getInvestmentsDaily).mockResolvedValue([
+        { date: '2023-06-01', value: 10000, securitiesValue: 10000 },
+        { date: '2023-09-01', value: 100, securitiesValue: 100, pricesComplete: false, unpricedSecurityIds: ['sec-1'] },
+      ]);
+      render(<InvestmentValueChart />);
+      expect(await screen.findByTestId('incomplete-data-details')).toBeInTheDocument();
+      expect(await screen.findByText('AGGG')).toBeInTheDocument();
+    });
   });
 });

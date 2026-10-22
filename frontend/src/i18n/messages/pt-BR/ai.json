@@ -82,6 +82,7 @@
     "newCategory": "Nova categoria",
     "currentCategory": "Categoria atual",
     "description": "Descrição",
+    "referenceNumber": "Ref. #",
     "name": "Nome",
     "website": "Site",
     "address": "Endereço",
@@ -111,6 +112,13 @@
     "commission": "Comissão",
     "total": "Total",
     "cashImpact": "Impacto no caixa",
+    "bondSeries": "Série",
+    "marksPaid": "Marca como pago",
+    "accruedInterest": "Juros acumulados",
+    "redemptionSplit": "Divisão do resgate",
+    "redemptionSplitValue": "Principal {principal} + juros {interest} = pagamento {payout}",
+    "redemptionDeduction": "Taxa de resgate antecipado deduzida",
+    "redemptionSplitDiffers": "O preço e os juros acumulados diferem do que este resgate paga (veja a divisão). Confira-os antes de aprovar.",
     "createTransactionsTitle": "Criar estas transações?",
     "createInvestmentTransactionsTitle": "Criar estas transações de investimento?",
     "approveAll": "Aprovar tudo",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinvestimento de rendimento de longo prazo",
       "CAPITAL_GAIN_SHORT": "Rendimento de capital de curto prazo",
       "CAPITAL_GAIN_LONG": "Rendimento de capital de longo prazo",
-      "REDEEM": "Resgate de CD/título"
+      "REDEEM": "Resgate de CD/título",
+      "RETURN_OF_CAPITAL": "Devolução de capital"
     },
     "createSecurityTitle": "Criar este ativo?",
     "createdSecurity": "Ativo criado",
@@ -224,7 +233,11 @@
       "category": "Definir a categoria como {name}",
       "payee": "Definir o favorecido como {name}",
       "aiReview": "{count, plural, one {Colocar na fila # pedido de revisão da IA} other {Colocar na fila # pedidos de revisão da IA}}"
-    }
+    },
+    "aiCategory": "sugerida pela IA",
+    "tags": "Tags",
+    "newTag": "(nova tag)",
+    "marksPaidDue": "{name} (vence em {date})"
   },
   "table": {
     "downloadTitle": "Baixar tabela como CSV",

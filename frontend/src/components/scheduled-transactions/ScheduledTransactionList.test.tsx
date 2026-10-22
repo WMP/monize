@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/test/render';
 import { ScheduledTransactionList } from './ScheduledTransactionList';
 import toast from 'react-hot-toast';
+import { AxiosError, AxiosHeaders } from 'axios';
 import { useDensityStore } from '@/store/densityStore';
 
 vi.mock('react-hot-toast', () => ({
@@ -696,7 +697,10 @@ describe('ScheduledTransactionList', () => {
     fireEvent.click(screen.getByText('Post'));
 
     await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith(transaction.id);
+      expect(mockPost).toHaveBeenCalledWith(transaction.id, {
+        expectedOccurrenceDate: transaction.nextDueDate,
+        expectedOverrideId: null,
+      });
     });
 
     await waitFor(() => {
@@ -749,7 +753,10 @@ describe('ScheduledTransactionList', () => {
     fireEvent.click(screen.getByText('Skip'));
 
     await waitFor(() => {
-      expect(mockSkip).toHaveBeenCalledWith(transaction.id);
+      expect(mockSkip).toHaveBeenCalledWith(transaction.id, {
+        expectedOccurrenceDate: transaction.nextDueDate,
+        expectedOverrideId: null,
+      });
     });
 
     await waitFor(() => {
@@ -768,6 +775,105 @@ describe('ScheduledTransactionList', () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Failed to skip occurrence');
     });
+  });
+
+  // --- The occurrence pin and a stale row (A26-S08-01) ---
+  const conflict = (message: string) =>
+    new AxiosError('Conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
+      status: 409,
+      statusText: 'Conflict',
+      data: { message },
+      headers: {},
+      config: { headers: new AxiosHeaders() },
+    });
+
+  it('posts the override date and id when an override moved the occurrence', async () => {
+    const slot = futureDate(15);
+    const moved = futureDate(18);
+    const transaction = createTransaction({
+      nextDueDate: slot,
+      nextOverride: { id: 'ovr-1', originalDate: slot, overrideDate: moved },
+    });
+    render(<ScheduledTransactionList transactions={[transaction]} />);
+
+    fireEvent.click(screen.getByTitle('Post Transaction'));
+    fireEvent.click(screen.getByText('Post'));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith('s1', {
+        expectedOccurrenceDate: moved,
+        expectedOverrideId: 'ovr-1',
+      });
+    });
+  });
+
+  it('skips with the override date and id when an override moved the occurrence', async () => {
+    const slot = futureDate(15);
+    const moved = futureDate(18);
+    const transaction = createTransaction({
+      nextDueDate: slot,
+      nextOverride: { id: 'ovr-1', originalDate: slot, overrideDate: moved },
+    });
+    render(<ScheduledTransactionList transactions={[transaction]} />);
+
+    fireEvent.click(screen.getByTitle('Skip Occurrence'));
+    fireEvent.click(screen.getByText('Skip'));
+
+    await waitFor(() => {
+      expect(mockSkip).toHaveBeenCalledWith('s1', {
+        expectedOccurrenceDate: moved,
+        expectedOverrideId: 'ovr-1',
+      });
+    });
+  });
+
+  it('refreshes the stale list when the server refuses a post with 409, and still shows the error', async () => {
+    mockPost.mockRejectedValueOnce(conflict('changed'));
+    const onRefresh = vi.fn();
+    render(<ScheduledTransactionList transactions={[createTransaction()]} onRefresh={onRefresh} />);
+
+    fireEvent.click(screen.getByTitle('Post Transaction'));
+    fireEvent.click(screen.getByText('Post'));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to post transaction');
+    });
+    expect(toast.success).not.toHaveBeenCalled();
+    await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1));
+  });
+
+  it('refreshes the stale list when the server refuses a skip with 409', async () => {
+    mockSkip.mockRejectedValueOnce(conflict('changed'));
+    const onRefresh = vi.fn();
+    render(<ScheduledTransactionList transactions={[createTransaction()]} onRefresh={onRefresh} />);
+
+    fireEvent.click(screen.getByTitle('Skip Occurrence'));
+    fireEvent.click(screen.getByText('Skip'));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to skip occurrence');
+    });
+    await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not refresh when a post fails with an error other than 409', async () => {
+    mockPost.mockRejectedValueOnce(new AxiosError('Server', 'ERR_BAD_RESPONSE', undefined, undefined, {
+      status: 500,
+      statusText: 'Server Error',
+      data: {},
+      headers: {},
+      config: { headers: new AxiosHeaders() },
+    }));
+    const onRefresh = vi.fn();
+    render(<ScheduledTransactionList transactions={[createTransaction()]} onRefresh={onRefresh} />);
+
+    fireEvent.click(screen.getByTitle('Post Transaction'));
+    fireEvent.click(screen.getByText('Post'));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to post transaction');
+    });
+    expect(onRefresh).not.toHaveBeenCalled();
   });
 
   // --- Category with color ---

@@ -11,6 +11,8 @@
   "institutions": "Фінансові установи",
   "tags": "Теги",
   "rules": "Правила",
+  "warranties": "Гарантії",
+  "emailReceipts": "Чеки з електронної пошти",
   "securities": "Цінні папери",
   "currencies": "Валюти",
   "import": "Імпорт транзакцій",

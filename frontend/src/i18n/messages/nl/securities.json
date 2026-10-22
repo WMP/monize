@@ -119,6 +119,8 @@
     "currencyLabel": "Valuta",
     "currencyNotConfigured": "{code} — niet in uw valuta's",
     "quoteProviderLabel": "Koersprovider",
+    "skipPriceUpdatesLabel": "Automatische koersupdates uitschakelen",
+    "skipPriceUpdatesHelp": "Monize haalt geen koersen op voor dit effect. Gebruik dit voor een effect dat geen enkele aanbieder kan noteren; koersen die u zelf invoert tellen nog steeds mee. Een andere koersaanbieder of MSN-instrument-ID kiezen zet de updates weer aan.",
     "msnIdLabel": "MSN-instrument-ID (geavanceerd)",
     "lookupProviderAriaLabel": "Provider opzoeken",
     "lookupButton": "Opzoeken",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "Obligatie-engine"
     },
     "types": {
       "select": "Selecteer type...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "Verwijderen",
       "deleteSuccess": "Beleggingscategorie \"{name}\" verwijderd",
       "deleteFailed": "Kan beleggingscategorie \"{name}\" niet verwijderen"
-    }
+    },
+    "bondFetchAction": "{code} ophalen bij de officiële bron",
+    "bondFetching": "{code} wordt opgehaald bij de uitgever, samen met de referentierentes. Dit kan tot een minuut duren.",
+    "bondFetchFailed": "De reeks kon niet worden opgehaald.",
+    "bondCurrencyLocked": "Dit effect is gekoppeld aan een obligatiesoort in {linkedCurrency}. Zet de valuta terug op {linkedCurrency} of ontkoppel eerst de obligatiesoort (ontkoppelen verwijdert de berekende koersen).",
+    "bondProgramLabel": "Obligatiesoort",
+    "bondProgramNone": "Niet gekoppeld",
+    "bondProgramCurrent": "Gekoppelde obligatiesoort",
+    "bondProgramLoading": "Obligatiesoorten laden...",
+    "bondProgramLoadFailed": "De obligatiesoorten konden niet worden geladen, dus er kan nog geen obligatiesoort worden gekoppeld.",
+    "bondProgramRetry": "Opnieuw proberen",
+    "bondNoPrograms": "De obligatiecatalogus bevat nog geen obligatiesoort.",
+    "bondAutoFetchLabel": "Nieuwe series van deze obligatiesoort automatisch ophalen",
+    "bondAutoFetchHelp": "Indien ingeschakeld leest Monize elke dag nieuwe series van deze obligatiesoort uit de officiële bron, zodat u een aankoop kunt vastleggen zonder de serie eerst op te halen.",
+    "bondCountryLabel": "Land",
+    "bondCountryOther": "Overig",
+    "bondCountryOtherInfo": "Ondersteuning voor obligaties van andere landen kan worden aangevraagd op de <link>GitHub van het project</link>."
   },
   "priceForm": {
     "dateLabel": "Datum",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Langetermijnwinst herbeleggen",
       "CAPITAL_GAIN_SHORT": "Kortetermijnkapitaalwinst",
       "CAPITAL_GAIN_LONG": "Langetermijnkapitaalwinst",
-      "REDEEM": "CD/obligatie aflossen"
+      "REDEEM": "CD/obligatie aflossen",
+      "RETURN_OF_CAPITAL": "Kapitaalterugbetaling"
     },
     "toasts": {
       "loadHistoryFailed": "Historie laden mislukt",
@@ -340,6 +360,7 @@
     "nameRequired": "Naam is verplicht",
     "nameMax": "Naam mag maximaal 255 tekens bevatten",
     "currencyRequired": "Valuta is verplicht",
+    "bondProgramRequired": "Obligatiesoort is verplicht",
     "descriptionMax": "De omschrijving mag maximaal 5000 tekens bevatten"
   },
   "priceValidation": {

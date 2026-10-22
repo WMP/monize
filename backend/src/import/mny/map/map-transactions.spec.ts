@@ -565,6 +565,77 @@ describe("mapTransactions", () => {
         expect(result.transfersLinked).toBe(1);
       });
 
+      it("credits the sleeve with the far row's own amount across currencies", () => {
+        // EUR chequing funds a USD purchase: Money stores EUR -2400 on the bank
+        // side and USD +2640 on the investment side. The sleeve takes the USD
+        // figure, so the trade's own USD 2640 cash leg nets it to zero.
+        const result = mapTransactions(
+          investmentInput({
+            currencyByHandle: new Map([
+              [1, "EUR"],
+              [5, "USD"],
+            ]),
+            transactions: transactionData({
+              transactions: [
+                mnyTransaction({ handle: 1, account: 1, amount: -2400 }),
+                mnyTransaction({
+                  handle: 2,
+                  account: 5,
+                  amount: 2640,
+                  security: 9,
+                }),
+              ],
+              transfers: [mnyTransfer({ from: 1, to: 2 })],
+            }),
+          }),
+        );
+
+        const [bank, sleeve] = result.transactions;
+        expect(bank).toMatchObject({ amount: -2400, currencyCode: "EUR" });
+        expect(sleeve).toMatchObject({
+          handle: 2,
+          accountKey: "acct-5-cash",
+          amount: 2640,
+          currencyCode: "USD",
+        });
+        expect(
+          result.warnings.filter((w) => w.code === "transferAmountMismatch"),
+        ).toEqual([]);
+      });
+
+      it("warns when Money's two same-currency sides disagree", () => {
+        const result = mapTransactions(
+          investmentInput({
+            transactions: transactionData({
+              transactions: [
+                mnyTransaction({ handle: 1, account: 1, amount: -2400 }),
+                mnyTransaction({
+                  handle: 2,
+                  account: 5,
+                  amount: 2500,
+                  security: 9,
+                }),
+              ],
+              transfers: [mnyTransfer({ from: 1, to: 2 })],
+            }),
+          }),
+        );
+
+        const sleeve = result.transactions.find((t) => t.handle === 2);
+        expect(sleeve?.amount).toBe(2400);
+        const mismatches = result.warnings.filter(
+          (w) => w.code === "transferAmountMismatch",
+        );
+        expect(mismatches).toEqual([
+          {
+            code: "transferAmountMismatch",
+            subject: "htrn=2",
+            detail: "money 2500 imported 2400",
+            row: expect.objectContaining({ handle: 2 }),
+          },
+        ]);
+      });
+
       it("routes a split leg into the sleeve and links it to the parent", () => {
         const result = mapTransactions(
           investmentInput({

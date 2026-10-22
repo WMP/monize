@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { tr } from "../i18n/translate";
-import { In, DataSource, EntityManager } from "typeorm";
+import { In, DataSource, EntityManager, Not } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { returnedRows } from "../common/db/query-result";
 import { Cron } from "@nestjs/schedule";
@@ -13,7 +13,8 @@ import {
   FetchSyncJob,
   FetchSyncService,
 } from "../common/jobs/fetch-sync.service";
-import { lockAccountsForBalanceWrite } from "../common/db/locks";
+import { markHoldingAccountsDirty } from "./holding-accounts-dirty.util";
+import { isPricedByQuoteProvider } from "./provider-priced.util";
 import {
   QuoteProvider,
   QuoteProviderName,
@@ -53,18 +54,39 @@ import {
   monthFetchWindow,
 } from "../common/time-series/history-fill";
 import { daysBetween } from "../common/time-series/price-boundary.util";
+import { BOND_ENGINE_PRICE_SOURCE } from "../bonds/bond-price-source";
 
 export { SecurityLookupResult } from "./providers/quote-provider.interface";
 
 // Lowercased action names a transaction-derived price row is stored under.
 // Derived from the shared trade list so a new Money-vocabulary action cannot
 // write a source this guard list does not recognize (an unlisted source would
-// never be overwritten or cleaned up again).
+// never be overwritten or cleaned up again). It is also the whole list of rows
+// a transaction-derived price may replace: another transaction price, and
+// nothing else. A bond-engine row is not among them (INV-BOND-005): a
+// transaction price is one lot's trade price, not the holding's value, so for a
+// linked security the engine's row replaces a transaction-derived one and never
+// the reverse; the engine's own upsert replaces every non-manual row, so the
+// two orders end the same.
 const TRANSACTION_SOURCES = [
   ...MARKET_PRICED_TRADE_ACTIONS.map((action) => action.toLowerCase()),
   "transfer_in",
   "transfer_out",
 ];
+
+/**
+ * A provider write is re-checked against the link at the moment of the write,
+ * not only when the security list was loaded: a refresh or backfill can hold an
+ * unlinked security in memory for minutes while the user links it to a bond
+ * instrument (INV-BOND-005, the engine is a linked security's only automatic
+ * price source). `$1` is the security id in every statement that uses these.
+ */
+const BOND_LINKED_SQL = `SELECT 1 FROM securities bl
+   WHERE bl.id = $1::UUID AND bl.bond_program_id IS NOT NULL`;
+
+/** The existing rows a provider may replace: neither a manual nor a bond-engine price. */
+const PROVIDER_MAY_REPLACE_SQL = `security_prices.source IS DISTINCT FROM 'manual'
+         AND security_prices.source IS DISTINCT FROM '${BOND_ENGINE_PRICE_SOURCE}'`;
 
 // Cap simultaneous external quote fetches so a large securities universe does
 // not fire hundreds of concurrent Yahoo/MSN requests and trip rate limits.
@@ -185,20 +207,22 @@ function orderProvidersByDefault(
 }
 
 /**
- * A security is eligible for price refresh when skipPriceUpdates is false,
- * OR the user has explicitly opted in by setting a per-security provider
- * override or supplying an MSN Instrument ID. The latter exists because
- * QIF/OFX imports auto-flag securities with skipPriceUpdates=true (since the
- * symbol is auto-generated and may not be a real ticker), and we don't want
- * the user to also have to manually clear that flag after picking a provider.
+ * A security linked to a bond instrument is never eligible: the bond engine is
+ * its only automatic price source (`isPricedByQuoteProvider`, INV-BOND-005).
+ * Otherwise a security is eligible for scheduled price refresh when
+ * skipPriceUpdates is false. The flag is the user's own switch (the security
+ * form's "disable automatic price updates"), and imports set it on the
+ * securities whose symbol they invented. A per-security provider override or
+ * MSN Instrument ID does not override it: choosing one clears the flag at
+ * write time (`SecuritiesService.update`), so a security that still carries
+ * the flag is one the user has asked not to be fetched.
  */
 function isRefreshEligible(s: {
   skipPriceUpdates: boolean;
-  quoteProvider: string | null;
-  msnInstrumentId: string | null;
+  bondProgramId?: string | null;
 }): boolean {
-  if (!s.skipPriceUpdates) return true;
-  return Boolean(s.quoteProvider) || Boolean(s.msnInstrumentId);
+  if (!isPricedByQuoteProvider(s)) return false;
+  return !s.skipPriceUpdates;
 }
 
 export interface PriceUpdateResult {
@@ -862,7 +886,7 @@ export class SecurityPriceService {
         .map((s) => s.symbol)
         .join(", ");
       this.logger.log(
-        `Skipping ${skipped} security/securities flagged with skipPriceUpdates and no explicit provider override: ${skippedSymbols}`,
+        `Skipping ${skipped} security/securities with price updates disabled: ${skippedSymbols}`,
       );
     }
     securities.length = 0;
@@ -1024,6 +1048,7 @@ export class SecurityPriceService {
                           AND adj.adjusted_close IS NOT NULL
                      ) THEN $6::NUMERIC ELSE NULL END,
                 $7::BIGINT, $8::VARCHAR, $9::TIMESTAMPTZ
+          WHERE NOT EXISTS (${BOND_LINKED_SQL})
          ON CONFLICT (security_id, price_date) DO UPDATE SET
            close_price    = EXCLUDED.close_price,
            adjusted_close = EXCLUDED.adjusted_close,
@@ -1033,7 +1058,7 @@ export class SecurityPriceService {
            volume      = COALESCE(EXCLUDED.volume,      security_prices.volume),
            source      = EXCLUDED.source,
            quoted_at   = COALESCE(EXCLUDED.quoted_at,   security_prices.quoted_at)
-         WHERE security_prices.source IS DISTINCT FROM 'manual'
+         WHERE ${PROVIDER_MAY_REPLACE_SQL}
          RETURNING id`,
         [
           securityId,
@@ -1258,10 +1283,15 @@ export class SecurityPriceService {
     return null;
   }
 
+  /**
+   * When a quote provider last wrote a price. A bond-engine row is written every
+   * day by accrual, whatever the providers are doing, so it does not move this
+   * marker: an outage of the quote providers must stay visible.
+   */
   async getLastUpdateTime(): Promise<Date | null> {
     const latest = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(SecurityPrice).findOne({
-        where: {},
+        where: { source: Not(BOND_ENGINE_PRICE_SOURCE) },
         order: { createdAt: "DESC" },
       }),
     );
@@ -1546,10 +1576,12 @@ export class SecurityPriceService {
     const batchSize = 500;
     for (let i = 0; i < prices.length; i += batchSize) {
       const batch = prices.slice(i, i + batchSize);
+      // Typed so the rows can be a subquery (a bare VALUES list types a
+      // parameter as text), which is what lets the link predicate gate them.
       const values = batch
         .map((_, idx) => {
           const offset = idx * 9;
-          return `($${offset + 1}::UUID, $${offset + 2}::DATE, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9})`;
+          return `($${offset + 1}::UUID, $${offset + 2}::DATE, $${offset + 3}::NUMERIC, $${offset + 4}::NUMERIC, $${offset + 5}::NUMERIC, $${offset + 6}::NUMERIC, $${offset + 7}::NUMERIC, $${offset + 8}::BIGINT, $${offset + 9}::VARCHAR)`;
         })
         .join(", ");
 
@@ -1582,14 +1614,14 @@ export class SecurityPriceService {
       // something it is not. The column's contract already says so -- NULL for
       // rows that are not a struck quote.
       //
-      // A `manual` row is a correction the user typed, so the provider does not
-      // get to overwrite it. `refreshAllPricesGlobally` used to be the only
-      // place that respected manual entries, which meant a backfill silently
-      // undid every one of them.
+      // A `manual` row is a correction the user typed, and a `bond_engine` row
+      // is a linked security's own price, so the provider overwrites neither;
+      // and a security linked since the list was loaded gets no row at all.
       await withScopedDb(this.dataSource, (m) =>
         m.query(
           `INSERT INTO security_prices (security_id, price_date, open_price, high_price, low_price, close_price, adjusted_close, volume, source)
-         VALUES ${values}
+         SELECT v.* FROM (VALUES ${values}) AS v
+          WHERE NOT EXISTS (${BOND_LINKED_SQL})
          ON CONFLICT (security_id, price_date) DO UPDATE SET
            close_price = EXCLUDED.close_price,
            open_price = EXCLUDED.open_price,
@@ -1599,7 +1631,7 @@ export class SecurityPriceService {
            volume = EXCLUDED.volume,
            source = EXCLUDED.source,
            quoted_at = NULL
-         WHERE security_prices.source IS DISTINCT FROM 'manual'`,
+         WHERE ${PROVIDER_MAY_REPLACE_SQL}`,
           params,
         ),
       );
@@ -1836,6 +1868,8 @@ export class SecurityPriceService {
     range: string,
     opts: { force?: boolean } = {},
   ): Promise<number> {
+    // A forced backfill ignores skipPriceUpdates, never the bond link.
+    if (!isPricedByQuoteProvider(security)) return 0;
     if (security.skipPriceUpdates && !opts.force) return 0;
 
     const [ctx] =
@@ -1904,9 +1938,9 @@ export class SecurityPriceService {
    * the total null -- rather than failing the request. Nothing here invents a
    * price.
    *
-   * `skipPriceUpdates` is honoured (via `isRefreshEligible`): an import that
-   * auto-generated a symbol marked it precisely because fetching against it is
-   * pointless.
+   * `skipPriceUpdates` is honoured (via `isRefreshEligible`): the user turned
+   * updates off for the security, or an import that auto-generated a symbol
+   * marked it precisely because fetching against it is pointless.
    *
    * Returns the number of daily bars persisted.
    */
@@ -2020,15 +2054,18 @@ export class SecurityPriceService {
     const fromDate = new Date(`${start}T00:00:00.000Z`);
     const toDate = new Date(`${end}T23:59:59.999Z`);
     // Whether any provider gave an answer, as opposed to failing or being
-    // refused by its breaker.
+    // refused by its breaker -- and whether EVERY routed provider did. A month
+    // is "empty" only when all of them were heard from: one answering [] for a
+    // window it lacks says nothing while the next one failed (A26-L20).
     let answered = false;
+    let allAnswered = true;
 
     for (const provider of this.providers.resolveForSecurity(
       security,
       userCtx.defaultQuoteProvider,
     )) {
       const opts = this.optsFor(provider, security, userCtx);
-      let series: HistoricalSeries | null = null;
+      let series: HistoricalSeries | null;
       try {
         series = provider.fetchHistoricalWindowSeries
           ? await provider.fetchHistoricalWindowSeries(
@@ -2048,6 +2085,7 @@ export class SecurityPriceService {
         this.logger.warn(
           `${provider.name} historical fill failed for ${security.symbol}: ${err instanceof Error ? err.message : String(err)}`,
         );
+        allAnswered = false;
         continue;
       }
       // `[]` is an answer -- the provider has no bars in this window -- while
@@ -2055,6 +2093,7 @@ export class SecurityPriceService {
       // caller may remember the window as empty, so it is tracked rather than
       // collapsed into "nothing came back".
       if (series !== null) answered = true;
+      else allAnswered = false;
       if (!series || series.prices.length === 0) continue;
 
       // This path reaches `bulkUpsertPrices` without going through either
@@ -2064,6 +2103,8 @@ export class SecurityPriceService {
       if (
         this.refuseForeignCurrency(security, series.currencyCode, provider.name)
       ) {
+        // Bars about another listing are not "no bars": not an empty month.
+        allAnswered = false;
         continue;
       }
 
@@ -2078,7 +2119,7 @@ export class SecurityPriceService {
       return { stored: series.prices.length, answered: true };
     }
 
-    return { stored: 0, answered };
+    return { stored: 0, answered: answered && allAnswered };
   }
 
   /**
@@ -2108,6 +2149,18 @@ export class SecurityPriceService {
           { securityId },
         ),
       );
+    }
+
+    // The user asked for it explicitly, so say why nothing will be fetched.
+    if (!isPricedByQuoteProvider(security)) {
+      return {
+        symbol: security.symbol,
+        success: false,
+        error: tr(
+          "errors.securities.bondPricedByEngine",
+          "This security is linked to a bond instrument and is priced by the bond engine, not by a quote provider. Use Recompute prices instead.",
+        ),
+      };
     }
 
     const ctx = (await this.loadUserContexts([userId])).get(userId) ?? {
@@ -2251,8 +2304,10 @@ export class SecurityPriceService {
    * Upsert a transaction-derived price for a security on a given date.
    * Computes average price from all price-relevant transactions on that date.
    * Never overwrites provider-sourced (yahoo_finance, msn_finance) or manual
-   * prices — the ON CONFLICT WHERE clause restricts updates to rows whose
-   * existing source is itself a transaction action.
+   * prices or bond-engine prices — the ON CONFLICT WHERE clause restricts
+   * updates to rows whose existing source is itself a transaction action (the
+   * engine's value of a linked security replaces a trade price of its day, never
+   * the reverse).
    */
   async upsertTransactionPrice(
     securityId: string,
@@ -2357,7 +2412,6 @@ export class SecurityPriceService {
     );
 
     let created = 0;
-    let skipped = 0;
     const batchSize = 500;
 
     for (let i = 0; i < pairs.length; i += batchSize) {
@@ -2397,7 +2451,7 @@ export class SecurityPriceService {
       created += affected;
     }
 
-    skipped = pairs.length - created;
+    const skipped = pairs.length - created;
 
     this.logger.log(
       `Transaction price backfill completed: ${pairs.length} processed, ${created} created/updated, ${skipped} skipped`,
@@ -2430,53 +2484,21 @@ export class SecurityPriceService {
    * investment-transaction edit leaves via its balance write. The security is
    * per-user, so every holder is an account of the same `userId`.
    *
-   * One residual window remains, and it is why this says "recovered from the
-   * data" rather than "crash-durable": both `now()` here and the `accounts`
-   * `updated_at` trigger stamp **transaction-start** time, not the instant of
-   * the write. A concurrent recompute that begins after this transaction starts
-   * but commits its (still-stale) snapshots before it can leave `computed_at`
-   * newer than this marker, and then the sweep's `updated_at > computed_at`
-   * predicate misses the account -- so if the post-commit debounce is also lost
-   * to a crash, that snapshot waits for the next touch of the account instead of
-   * the sweep. The account row lock above serializes this write against such a
-   * recompute of the same account, which is what narrows the window to the
-   * near-impossible; the snapshot self-heals on the account's next change
-   * regardless. Making the marker unconditionally crash-durable would mean
-   * stamping `clock_timestamp()`, which the shared `updated_at` trigger clobbers
-   * back to transaction-start for every table -- out of proportion to a window
-   * this small.
+   * The marker's one residual window, and the account row lock that narrows it
+   * (`lockAccountsForBalanceWrite`, taken inside the helper), are explained on
+   * `markHoldingAccountsDirty` in `holding-accounts-dirty.util.ts`.
    *
    * Returns the affected account ids so the caller can, after commit, schedule
    * the debounced recompute as a latency optimization on top of the marker.
+   * The statement itself is `markHoldingAccountsDirty`
+   * (`holding-accounts-dirty.util.ts`), shared with the bond-engine price writer.
    */
   private async markHoldingAccountsDirty(
     manager: EntityManager,
     securityId: string,
     userId: string,
   ): Promise<string[]> {
-    const rows: Array<{ account_id: string }> = await manager.query(
-      `SELECT DISTINCT account_id FROM investment_transactions
-        WHERE security_id = $1 AND status != 'VOID'`,
-      [securityId],
-    );
-    const accountIds = (rows ?? []).map((r) => r.account_id);
-    if (accountIds.length > 0) {
-      // Take the account row locks in ascending-id order *before* the UPDATE,
-      // exactly as every other account writer does (common/db/locks.ts). The
-      // UPDATE's own `WHERE id = ANY(...)` would otherwise lock rows in scan
-      // order, and the debounced recompute this mutation schedules runs in the
-      // background -- so saving a second manual price while a prior save's
-      // recompute is in flight could lock the same holding accounts in opposite
-      // orders, a 40P01 deadlock surfacing as a generic 500 (review MZ-1242,
-      // same class as audit RV4-005).
-      await lockAccountsForBalanceWrite(manager, accountIds, userId);
-      await manager.query(
-        `UPDATE accounts SET updated_at = now()
-          WHERE id = ANY($1::UUID[]) AND user_id = $2`,
-        [accountIds, userId],
-      );
-    }
-    return accountIds;
+    return markHoldingAccountsDirty(manager, securityId, userId);
   }
 
   /**
@@ -2521,6 +2543,10 @@ export class SecurityPriceService {
            high_price  = COALESCE(EXCLUDED.high_price,  security_prices.high_price),
            low_price   = COALESCE(EXCLUDED.low_price,   security_prices.low_price),
            volume      = COALESCE(EXCLUDED.volume,      security_prices.volume),
+           -- A manual close written over the engine's row must not carry the
+           -- engine's adjusted close along: its own input has none.
+           adjusted_close = CASE WHEN security_prices.source = '${BOND_ENGINE_PRICE_SOURCE}'
+                                 THEN NULL ELSE security_prices.adjusted_close END,
            source      = 'manual'
          RETURNING id`,
           [
@@ -2581,6 +2607,8 @@ export class SecurityPriceService {
     if (dto.lowPrice !== undefined) price.lowPrice = dto.lowPrice;
     if (dto.volume !== undefined) price.volume = dto.volume;
     if (dto.priceDate !== undefined) price.priceDate = dto.priceDate;
+    // A manual correction of the engine's row keeps no adjusted close of its own.
+    if (price.source === BOND_ENGINE_PRICE_SOURCE) price.adjustedClose = null;
     price.source = "manual";
 
     const { saved, accountIds } = await withScopedDb(

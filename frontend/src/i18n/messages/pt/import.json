@@ -41,6 +41,9 @@
     "instructions": "Selecione um ou mais ficheiros para importar. Formatos suportados: QIF, OFX/QFX, CSV e Microsoft Money (.mny).\nPode selecionar vários ficheiros do mesmo tipo para importação em massa. Importe um ficheiro do Microsoft Money de cada vez — um ficheiro .mny contém um perfil completo.",
     "importingTo": "A importar para:",
     "clickToSelect": "Clique para selecionar ficheiro(s)",
+    "orDragAndDrop": "ou arraste e largue-os aqui",
+    "dropToImport": "Largue para importar",
+    "unsupportedDrop": "Estes ficheiros não podem ser importados: {names}. Utilize ficheiros QIF, OFX, QFX, CSV ou Microsoft Money (.mny).",
     "processing": "A processar...",
     "acceptedFormats": "QIF, OFX, QFX, CSV ou Microsoft Money (.mny)",
     "mnyFailedHeading": "Não foi possível abrir este ficheiro do Microsoft Money",
@@ -287,7 +290,7 @@
     "totalImported": "Total importado:",
     "totalImportedSuffix": "transações",
     "totalSkipped": "Total ignorado:",
-    "totalSkippedSuffix": "transferências duplicadas",
+    "totalSkippedSuffix": "transações",
     "totalErrors": "Total de erros:",
     "categoriesCreated": "Categorias criadas:",
     "accountsCreated": "Contas criadas:",
@@ -299,17 +302,24 @@
     "imported": "Importadas:",
     "importedSuffix": "transações",
     "skipped": "Ignoradas:",
-    "skippedSuffix": "transferências duplicadas",
+    "skippedSuffix": "transações",
     "errors": "Erros:",
     "errorsLabel": "Erros:",
     "andMoreErrors": "...e mais {count} erros",
+    "skippedRowsHeading": "Linhas ignoradas:",
+    "skippedRow": "{date}: {amount}, {payee} ({reason})",
+    "skippedRowNoPayee": "{date}: {amount} ({reason})",
+    "skipReasonAlreadyImported": "já importada",
+    "skipReasonDuplicateTransfer": "transferência já registada",
+    "andMoreSkipped": "...e mais {count} linhas ignoradas",
     "loanSetupHeading": "Configurar Pagamentos Recorrentes",
     "loanSetupDescription": "As seguintes contas de empréstimo/crédito habitação foram importadas sem pagamentos agendados. Configure pagamentos recorrentes para continuar a acompanhar o progresso do seu empréstimo.",
     "setUpPayments": "Configurar Pagamentos",
     "scheduledPaymentsConfigured": "Pagamentos agendados configurados para {count} conta{plural}.",
     "viewInvestments": "Ver Investimentos",
     "viewTransactions": "Ver Transações",
-    "importMoreFiles": "Importar Mais Ficheiros"
+    "importMoreFiles": "Importar Mais Ficheiros",
+    "bondRowsWithoutSeries": "{count, plural, one {# compra de obrigações foi importada sem série. Escolha a série nos lotes de obrigações do título.} other {# compras de obrigações foram importadas sem série. Escolha as séries nos lotes de obrigações do título.}}"
   },
   "multiAccountReview": {
     "heading": "Importação QIF para Várias Contas",
@@ -492,7 +502,8 @@
     },
     "warningsHeading": "Notas sobre esta importação",
     "downloadReport": "Descarregar relatório",
-    "done": "Concluído"
+    "done": "Concluído",
+    "bondRowsWithoutSeries": "{count, plural, one {# compra de obrigações foi importada sem série. Escolha a série nos lotes de obrigações do título.} other {# compras de obrigações foram importadas sem série. Escolha as séries nos lotes de obrigações do título.}}"
   },
   "mnyWarnings": {
     "missingTable": "Esta versão do Money não tem {count, plural, one {# tabela} other {# tabelas}} que a importação utiliza.",
@@ -521,6 +532,8 @@
     "unusableBill": "{count, plural, one {# conta agendada não tinha} other {# contas agendadas não tinham}} conta, data utilizável nem periodicidade reconhecida e foram ignoradas.",
     "billFrequencyApproximated": "{count, plural, one {# conta agendada usa} other {# contas agendadas usam}} um intervalo de repetição que o Monize não consegue exprimir exatamente, pelo que foi usado o mais curto mais próximo.",
     "loanInterestCategoryUnclear": "{count, plural, one {# pagamento de empréstimo incluía} other {# pagamentos de empréstimo incluíam}} várias categorias além do capital, pelo que a categoria de juros do empréstimo ficou por definir. Verifique se o pagamento inclui uma conta caução (escrow) e defina a categoria de juros após a importação.",
+    "transferAmountMismatch": "{count, plural, one {# transferência para uma conta de investimento registou} other {# transferências para uma conta de investimento registaram}} no lado do investimento um valor diferente do lado bancário. O lado do investimento foi importado tal como registado.",
+    "crossCurrencyTradeUnconverted": "{count, plural, one {# operação com um valor mobiliário cotado noutra moeda foi guardada} other {# operações com um valor mobiliário cotado noutra moeda foram guardadas}} na moeda da conta, porque o ficheiro não tem taxa de câmbio para esse par de moedas perto da data da operação. Adicione a taxa de câmbio e corrija o preço de cada operação.",
     "showTransactions": "{count, plural, one {Mostrar a # transação} other {Mostrar as # transações}}",
     "hideTransactions": "Ocultar transações",
     "reviewInMoney": "Abra-as no Microsoft Money para as verificar ou corrigir e depois exporte e importe novamente.",
@@ -539,6 +552,8 @@
     "mnyImportFailed": "Algo falhou durante a importação. Nada foi guardado -- pode tentar novamente.",
     "mnyJobStalled": "A importação deixou de responder, muito provavelmente porque o servidor reiniciou. O ficheiro que carregou continua aqui, pelo que tentar novamente é seguro.",
     "mnyJobStalledAfterCommit": "A importação deixou de responder depois de já ter guardado os seus dados, muito provavelmente porque o servidor reiniciou. Os registos importados estão na sua conta, pelo que importar o mesmo ficheiro de novo iria duplicá-los. Verifique as suas contas antes de importar mais alguma coisa.",
+    "mnyImportFailedAfterCommit": "A importação guardou os seus dados, mas um passo posterior falhou. Os registos importados estão na sua conta, pelo que importar novamente o mesmo ficheiro iria duplicá-los. Verifique as suas contas antes de importar outra coisa.",
+    "mnyAlreadyImported": "Este ficheiro já foi importado para a sua conta, pelo que importá-lo novamente iria duplicar os seus registos. Para os substituir, recomece e escolha substituir os seus dados existentes.",
     "mnyStagedFileMissing": "O ficheiro do Money carregado já não está disponível. Carregue-o novamente.",
     "mnyFileTruncated": "Este ficheiro do Money parece incompleto. O carregamento pode ter sido interrompido.",
     "mnyNotAMoneyFile": "Este ficheiro não é um ficheiro do Microsoft Money (.mny).",
@@ -546,5 +561,80 @@
     "mnyPasswordRequired": "Este ficheiro do Money está protegido por palavra-passe.",
     "mnyPasswordIncorrect": "Essa palavra-passe não abre o ficheiro do Money.",
     "mnyUnreadableDatabase": "Este ficheiro do Money foi desencriptado, mas não foi possível ler o seu conteúdo. Pode estar danificado."
+  },
+  "preview": {
+    "choice": {
+      "legend": "O que fazer com {payee} se não for importada",
+      "skip": "Ignorar por agora",
+      "except": "Adicionar às exceções"
+    },
+    "payeeTip": {
+      "name": "Do banco: {original}. Corresponde a: {name}",
+      "alias": "Do banco: {original}. Corresponde a: {name} (alias \"{pattern}\")",
+      "aliasNoPattern": "Do banco: {original}. Corresponde a: {name} (alias)",
+      "new": "Do banco: {original}. Corresponde a: {name} (novo beneficiário)",
+      "rule": "Do banco: {original}. Corresponde a: {name} (definido por uma regra)",
+      "ruleNone": "Do banco: {original}. Corresponde a: nenhum beneficiário (definido por uma regra)"
+    },
+    "expand": {
+      "show": "Mostrar os detalhes de {payee}",
+      "hide": "Ocultar os detalhes de {payee}"
+    },
+    "rules": {
+      "heading": "Regras de importação",
+      "none": "Nenhuma regra de importação correspondeu a esta transação.",
+      "skipped": "{action}: ignorada ({reason})",
+      "stopped": "Interrompe as regras seguintes.",
+      "applied": "Aplicadas: {actions}",
+      "openNewTab": "Abrir a regra {name} num novo separador"
+    },
+    "ruleTest": {
+      "loading": "A carregar o resultado do teste de regras",
+      "error": "Não foi possível carregar o resultado do teste de regras.",
+      "retry": "Tentar novamente",
+      "noRules": "Não tem regras de importação, por isso não havia nada a testar.",
+      "showNotMatched": "Mostrar as regras que não correspondem ({count})",
+      "hideNotMatched": "Ocultar as regras que não correspondem ({count})",
+      "noChanges": "Corresponde, mas não altera nada nesta transação.",
+      "badge": {
+        "matched": "Corresponde",
+        "notMatched": "Não corresponde",
+        "notEvaluated": "Não avaliada"
+      },
+      "notEvaluated": {
+        "afterStop": "Não avaliada: uma regra anterior interrompeu as regras.",
+        "disabled": "Não avaliada: a regra está desativada.",
+        "invalid": "Não avaliada: a regra não é válida. Abra-a para a reparar.",
+        "outside_active_window": "Não avaliada: a data da linha está fora das datas ativas da regra."
+      },
+      "condition": {
+        "met": "Condição cumprida",
+        "notMet": "Condição não cumprida",
+        "actual": "Valor nesta transação: {value}",
+        "noValue": "nenhum",
+        "noTags": "sem etiquetas",
+        "capture": "{name} = {value}",
+        "omitted": "Os detalhes desta parte da condição não são apresentados."
+      },
+      "skipReasons": {
+        "already_set": "já tem um valor e a regra só preenche os vazios",
+        "no_change": "já tem o que a regra definiria",
+        "payee_unresolved": "não foi possível procurar o beneficiário que a regra constrói"
+      }
+    },
+    "payee": {
+      "heading": "Beneficiário",
+      "unknown": "Não há informação do beneficiário para esta transação.",
+      "original": "Texto do banco: {original}",
+      "name": "Corresponde ao seu beneficiário existente {name}.",
+      "alias": "Associado a {name} através do alias \"{pattern}\".",
+      "aliasNoPattern": "Associado a {name} através de um alias.",
+      "new": "Nenhum beneficiário tem ainda este nome, pelo que {name} seria criado.",
+      "rule": "Uma regra de importação define o beneficiário: {name}.",
+      "ruleNone": "Uma regra de importação remove o beneficiário.",
+      "none": "O banco não indicou contraparte, pelo que a transação não tem beneficiário.",
+      "openAliases": "Abrir os alias do beneficiário",
+      "openAliasesNewTab": "Abrir os alias do beneficiário num novo separador"
+    }
   }
 }

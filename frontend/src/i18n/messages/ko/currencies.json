@@ -13,6 +13,14 @@
     "modalTitleNew": "새 통화",
     "loading": "통화를 불러오는 중...",
     "count": "{count, plural, one {# 통화} other {# 통화}}",
+    "providers": {
+      "line": "환율 제공: {providers}",
+      "separator": ", 그다음 ",
+      "names": {
+        "frankfurter": "Frankfurter(ECB 기준 환율)",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "통화를 불러오지 못했습니다",
       "updated": "통화가 성공적으로 업데이트되었습니다",
@@ -24,6 +32,7 @@
       "statusFailed": "통화 상태를 업데이트하지 못했습니다",
       "ratesRefreshed": "환율 갱신 완료: {updated}쌍 업데이트됨",
       "ratesRefreshedWithFailed": "환율 갱신 완료: {updated}개 업데이트됨, {failed}개 실패",
+      "ratesAllFailed": "환율을 가져올 수 없습니다. 제공업체가 응답하지 않았습니다",
       "ratesFailed": "환율을 갱신하지 못했습니다"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter(ECB)",
         "mnyImport": "Money 가져오기",
         "unknown": "알 수 없음"
       }

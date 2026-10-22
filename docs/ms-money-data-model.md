@@ -18,7 +18,7 @@ that were never observed say so.
 > Where the two disagree, the disagreement is called out inline with a
 > **Correction** note and the evidence for it, because the original is still in
 > circulation and someone reading both should be able to see which claim won and
-> why. Design rationale lives in `docs/future-plans/mny-import.md`; the code that
+> why. Design rationale lives in `docs/specs/mny-import.md`; the code that
 > implements all of this is `backend/src/import/mny/`, whose `README.md` lists
 > the traps in the order you will hit them.
 

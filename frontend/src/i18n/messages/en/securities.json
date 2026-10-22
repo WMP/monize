@@ -119,6 +119,8 @@
     "currencyLabel": "Currency",
     "currencyNotConfigured": "{code} — not in your currencies",
     "quoteProviderLabel": "Quote Provider",
+    "skipPriceUpdatesLabel": "Disable automatic price updates",
+    "skipPriceUpdatesHelp": "Monize will not fetch prices for this security. Use this for a security no provider can price; prices you enter yourself still count. Choosing a different quote provider or MSN Instrument ID turns updates back on.",
     "msnIdLabel": "MSN Instrument ID (advanced)",
     "lookupProviderAriaLabel": "Lookup provider",
     "lookupButton": "Lookup",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "Bond engine"
     },
     "types": {
       "select": "Select type...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "Delete",
       "deleteSuccess": "Deleted asset class \"{name}\"",
       "deleteFailed": "Could not delete asset class \"{name}\""
-    }
+    },
+    "bondFetchAction": "Fetch {code} from the official source",
+    "bondFetching": "Fetching {code} from the issuer and its reference rates. This can take up to a minute.",
+    "bondFetchFailed": "The series could not be fetched.",
+    "bondCurrencyLocked": "This security is linked to a bond kind in {linkedCurrency}. Set the currency back to {linkedCurrency}, or unlink the bond kind first (unlinking removes its calculated prices).",
+    "bondProgramLabel": "Bond kind",
+    "bondProgramNone": "Not linked",
+    "bondProgramCurrent": "Linked bond kind",
+    "bondProgramLoading": "Loading the bond kinds...",
+    "bondProgramLoadFailed": "The bond kinds could not be loaded, so a bond kind cannot be linked yet.",
+    "bondProgramRetry": "Retry",
+    "bondNoPrograms": "The bond catalog holds no bond kind yet.",
+    "bondAutoFetchLabel": "Fetch new series of this bond kind automatically",
+    "bondAutoFetchHelp": "When on, Monize reads each new series of this bond kind from the official source every day, so you can record a purchase without fetching the series first.",
+    "bondCountryLabel": "Country",
+    "bondCountryOther": "Other",
+    "bondCountryOtherInfo": "Support for bonds of other countries can be requested on the project's <link>GitHub</link>."
   },
   "priceForm": {
     "dateLabel": "Date",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinvest Long-Term Cap Gain",
       "CAPITAL_GAIN_SHORT": "Short-Term Capital Gain",
       "CAPITAL_GAIN_LONG": "Long-Term Capital Gain",
-      "REDEEM": "Redeem CD/Bond"
+      "REDEEM": "Redeem CD/Bond",
+      "RETURN_OF_CAPITAL": "Return of Capital"
     },
     "toasts": {
       "loadHistoryFailed": "Failed to load history",
@@ -340,6 +360,7 @@
     "nameRequired": "Name is required",
     "nameMax": "Name must be 255 characters or less",
     "currencyRequired": "Currency is required",
+    "bondProgramRequired": "Bond kind is required",
     "descriptionMax": "Description must be 5000 characters or fewer"
   },
   "priceValidation": {

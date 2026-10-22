@@ -81,28 +81,39 @@ export function InsightsList() {
     }
   }, [filterType, filterSeverity, showDismissed, t]);
 
-  const loadInsights = useCallback(async () => {
-    try {
-      setError(null);
-      const response = await aiApi.getInsights({
-        type: filterType || undefined,
-        severity: filterSeverity || undefined,
-        includeDismissed: showDismissed,
-      });
-      setInsights(response.insights);
-      setTotal(response.total);
-      setLastGeneratedAt(response.lastGeneratedAt);
+  // A change of filter starts a new read: its error is cleared from this render on ("info from previous render").
+  const filterKey = `${filterType}|${filterSeverity}|${showDismissed}`;
+  const [loadedFilterKey, setLoadedFilterKey] = useState(filterKey);
+  if (loadedFilterKey !== filterKey) {
+    setLoadedFilterKey(filterKey);
+    setError(null);
+  }
 
-      // Resume polling if generation is in progress on the server
-      if (response.isGenerating) {
-        pollForResults(response.lastGeneratedAt);
+  // The writes live in the inner `run`, so they happen after the request, not during the effect.
+  const loadInsights = useCallback(() => {
+    const run = async () => {
+      try {
+        const response = await aiApi.getInsights({
+          type: filterType || undefined,
+          severity: filterSeverity || undefined,
+          includeDismissed: showDismissed,
+        });
+        setInsights(response.insights);
+        setTotal(response.total);
+        setLastGeneratedAt(response.lastGeneratedAt);
+
+        // Resume polling if generation is in progress on the server
+        if (response.isGenerating) {
+          pollForResults(response.lastGeneratedAt);
+        }
+      } catch (err) {
+        logger.error('Failed to load insights:', err);
+        setError(t('list.errorLoadFailed'));
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      logger.error('Failed to load insights:', err);
-      setError(t('list.errorLoadFailed'));
-    } finally {
-      setIsLoading(false);
-    }
+    };
+    return run();
   }, [filterType, filterSeverity, showDismissed, pollForResults, t]);
 
   useEffect(() => {

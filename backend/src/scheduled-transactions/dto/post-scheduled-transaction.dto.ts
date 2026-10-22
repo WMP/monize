@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsOptional,
   IsNumber,
@@ -9,11 +9,13 @@ import {
   IsEnum,
   Min,
   Max,
+  ValidateIf,
   ValidateNested,
   IsDateString,
   MaxLength,
 } from "class-validator";
 import { Type } from "class-transformer";
+import { IsCalendarDate } from "../../common/validators/is-calendar-date.validator";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { InvestmentSplitDto } from "../../transactions/dto/create-transaction-split.dto";
 import { SplitKind } from "../../transactions/entities/split-kind.enum";
@@ -83,6 +85,28 @@ class InlineSplitDto {
 }
 
 export class PostScheduledTransactionDto {
+  // Required at the HTTP boundary (no `@IsOptional`), typed `?:` only because
+  // in-process callers (the auto-post cron, the AI action and the email receipt)
+  // build this DTO without it and pin through `post()`'s `expectedDueDate`
+  // option instead.
+  @ApiProperty({
+    description:
+      "The occurrence the client is posting, YYYY-MM-DD: the override's date when an override moved it, else the due date. Refused with 409 once it is no longer the due occurrence.",
+    example: "2026-09-01",
+  })
+  @IsCalendarDate()
+  expectedOccurrenceDate?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Id of the override the client saw on that occurrence, or null when it saw none. Refused with 409 when an override was created, replaced or removed since.",
+    nullable: true,
+  })
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null && v !== "")
+  @IsUUID()
+  expectedOverrideId?: string | null;
+
   @ApiPropertyOptional({
     description: "Transaction date (defaults to next due date)",
   })

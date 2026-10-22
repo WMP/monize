@@ -1,6 +1,8 @@
 import {
   OCCURRENCE_WALK_GUARD,
+  OVERDUE_CARRY_DAYS,
   expandOccurrenceSlots,
+  overdueCarryFrom,
 } from "./scheduled-occurrences";
 
 /** A monthly schedule due on the 15th, with no end. */
@@ -16,6 +18,14 @@ const override = (originalDate: string, overrideDate: string, id = "ovr") => ({
   id,
   originalDate,
   overrideDate,
+});
+
+describe("overdueCarryFrom", () => {
+  it(`opens the carry window ${OVERDUE_CARRY_DAYS} days before today`, () => {
+    expect(OVERDUE_CARRY_DAYS).toBe(31);
+    expect(overdueCarryFrom("2026-03-15")).toBe("2026-02-12");
+    expect(overdueCarryFrom("2024-03-01")).toBe("2024-01-30");
+  });
 });
 
 describe("expandOccurrenceSlots", () => {

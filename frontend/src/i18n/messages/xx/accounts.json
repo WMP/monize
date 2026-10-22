@@ -3,6 +3,15 @@
     "cash": "[XX-Cash-XX]",
     "brokerage": "[XX-Brokerage-XX]"
   },
+  "paymentMatching": {
+    "toggleLabel": "[XX-{kind, select, mortgage {Match imported bank payments to this mortgage} other {Match imported bank payments to this loan}}-XX]",
+    "toggleHelp": "[XX-When an imported bank transaction matches the payee pattern, Monize settles the scheduled payment with it and splits it into principal and interest, instead of posting a separate bill transaction.-XX]",
+    "payeePattern": "[XX-Payee pattern-XX]",
+    "payeePatternPlaceholder": "[XX-e.g. *MY BANK*-XX]",
+    "descriptionPattern": "[XX-Description pattern (optional)-XX]",
+    "descriptionPatternPlaceholder": "[XX-e.g. *Loan payment*-XX]",
+    "fromAccount": "[XX-Matched against debits from {account}.-XX]"
+  },
   "page": {
     "title": "[XX-Accounts-XX]",
     "subtitle": "[XX-Manage your bank accounts, credit cards, and investments-XX]",
@@ -52,6 +61,7 @@
     "combinedBreakdown": "[XX-Investments {investments} · Cash {cash}-XX]",
     "combinedUnknown": "[XX-Total unavailable-XX]",
     "combinedUnknownTooltip": "[XX-{count, plural, one {# holding has no price, so this account's total cannot be worked out} other {# holdings have no price, so this account's total cannot be worked out}}-XX]",
+    "combinedUnknownValuation": "[XX-Some holdings in this account could not be converted into your reporting currency, so its total cannot be worked out. Add the missing exchange rate on the Currencies page.-XX]",
     "combinedUnknownNoPortfolio": "[XX-Holdings could not be loaded, so this account's total cannot be worked out-XX]",
     "limit": "[XX-Limit: {amount}-XX]",
     "pairedWith": "[XX-Paired with {name}-XX]",
@@ -172,8 +182,6 @@
     "statementDueDayPlaceholder": "[XX-e.g. 15-XX]",
     "statementSettlementDayPlaceholder": "[XX-e.g. 25-XX]",
     "fxFeeTitle": "[XX-Foreign Currency Conversion Fee (optional)-XX]",
-    "fxFeePercent": "[XX-Fee Percentage-XX]",
-    "fxFeePercentPlaceholder": "[XX-e.g. 2.5-XX]",
     "jointSharedWith": "[XX-Joint account shared with {count, plural, one {# person} other {# people}}-XX]",
     "jointManage": "[XX-Manage sharing-XX]"
   },
@@ -225,15 +233,15 @@
     "analyzingHistory": "[XX-Analyzing transaction history...-XX]",
     "detectedPayments": "[XX-Detected {count} payments from {from} to {to}.-XX]",
     "confidence": "[XX-Confidence:-XX]",
-    "lastSplit": "[XX-Last payment split: {currency}{principal} principal / {currency}{interest} interest-XX]",
-    "extraPayments": "[XX-{count, plural, one {# extra principal payment} other {# extra principal payments}} detected (avg {currency}{avg}/period)-XX]",
+    "lastSplit": "[XX-Last payment split: {principal} principal / {interest} interest-XX]",
+    "extraPayments": "[XX-{count, plural, one {# extra principal payment} other {# extra principal payments}} detected (avg {avg}/period)-XX]",
     "reviewValues": "[XX-Review and adjust the values below before saving.-XX]",
     "regularPaymentAmount": "[XX-Regular Payment Amount *-XX]",
     "includeExtraPrincipal": "[XX-Include extra payment to principal-XX]",
     "extraPrincipalPerPayment": "[XX-Extra Principal Per Payment-XX]",
-    "totalPayment": "[XX-Total payment: {currency}{amount}-XX]",
+    "totalPayment": "[XX-Total payment: {amount}-XX]",
     "useDetectedSplit": "[XX-Use principal/interest split from imported transactions-XX]",
-    "useDetectedSplitDesc": "[XX-Will use {currency}{interest} for interest, remainder to principal-XX]",
+    "useDetectedSplitDesc": "[XX-Will use {interest} for interest, remainder to principal-XX]",
     "calculateFromRate": "[XX-Will calculate split from the interest rate and current balance-XX]",
     "paymentFrequency": "[XX-Payment Frequency *-XX]",
     "paymentFromAccount": "[XX-Payment From Account *-XX]",
@@ -243,6 +251,7 @@
     "interestRatePlaceholder": "[XX-e.g. 5.5-XX]",
     "estimatedFromHistory": "[XX-Estimated from transaction history: {rate}%-XX]",
     "interestExpenseCategory": "[XX-Interest Expense Category-XX]",
+    "interestExpenseCategoryRequired": "[XX-Interest Expense Category (required)-XX]",
     "detectedCategory": "[XX-Detected: {name}-XX]",
     "selectCategory": "[XX-Select category...-XX]",
     "payeeLender": "[XX-Payee / Lender-XX]",
@@ -270,7 +279,11 @@
     "firstInstallmentHelp": "[XX-This mortgage has no fixed payment: each installment is worked out from the balance, the rate and the amortization period. This is the one due {date}, including any extra principal.-XX]",
     "firstInstallmentPending": "[XX-Enter the next payment date to work out the first installment.-XX]",
     "firstInstallmentCalculating": "[XX-Working out the first installment...-XX]",
-    "firstInstallmentFailed": "[XX-The first installment could not be worked out. Check the values below and try again.-XX]"
+    "firstInstallmentFailed": "[XX-The first installment could not be worked out. Check the values below and try again.-XX]",
+    "paymentMatching": {
+      "autoPostDisabled": "[XX-Turned off automatically: payment matching settles this bill from the bank's own debit, so it must not also post itself.-XX]",
+      "payeePatternRequired": "[XX-Enter a payee pattern that includes a * wildcard-XX]"
+    }
   },
   "mortgageFields": {
     "title": "[XX-Mortgage Details-XX]",
@@ -296,6 +309,8 @@
     "paymentFrequency": "[XX-Payment Frequency (required)-XX]",
     "firstPaymentDate": "[XX-First Payment Date (required)-XX]",
     "paymentFromAccount": "[XX-Payment From Account (required)-XX]",
+    "interestCategoryRequired": "[XX-Interest Category (required)-XX]",
+    "paymentFromAccountEditHelp": "[XX-Changing this moves the upcoming scheduled payments and the payment matching rule to the new account. Payments already posted are not changed.-XX]",
     "interestCategory": "[XX-Interest Category-XX]",
     "interestBookingMode": {
       "label": "[XX-How is interest recorded?-XX]",
@@ -326,6 +341,10 @@
       "memoLabel": "[XX-Overpayment memo text-XX]",
       "memoPlaceholder": "[XX-e.g. overpayment-XX]",
       "memoHelp": "[XX-Case-insensitive substring match against the payment's memo, its source transaction's memo, or a split memo.-XX]"
+    },
+    "originalPrincipal": {
+      "label": "[XX-Original Principal-XX]",
+      "help": "[XX-The amount you originally borrowed. For an account whose recorded history starts after the mortgage did, this is the amount borrowed, not the opening balance — which is the debt at the start of your history.-XX]"
     },
     "previewTitle": "[XX-Amortization Preview-XX]",
     "previewPaymentAmount": "[XX-Payment Amount:-XX]",
@@ -436,7 +455,11 @@
     "paymentStartDateRequired": "[XX-First payment date is required-XX]",
     "paymentAccountRequired": "[XX-Payment account is required-XX]",
     "amortizationRequired": "[XX-Amortization period is required-XX]",
-    "acceleratedNeedsAnnuity": "[XX-This mortgage is paid on an accelerated schedule, which only an annuity mortgage has. A linear or interest-only mortgage needs a regular payment frequency, so keep an annuity type.-XX]"
+    "interestCategoryRequired": "[XX-Choose the category this loan's interest is booked to-XX]",
+    "acceleratedNeedsAnnuity": "[XX-This mortgage is paid on an accelerated schedule, which only an annuity mortgage has. A linear or interest-only mortgage needs a regular payment frequency, so keep an annuity type.-XX]",
+    "paymentMatchingPayeePatternRequired": "[XX-Enter a payee pattern to match the bank's debit-XX]",
+    "paymentMatchingPayeePatternWildcard": "[XX-The payee pattern must include a * wildcard-XX]",
+    "paymentMatchingDescriptionPatternWildcard": "[XX-The description pattern must include a * wildcard-XX]"
   },
   "loanDetail": {
     "backToAccounts": "[XX-Back to Accounts-XX]",
@@ -541,7 +564,10 @@
       "detectedToast": "[XX-{count, plural, =0 {No new rate changes detected} one {# rate change detected} other {# rate changes detected}}-XX]",
       "detectFailed": "[XX-Could not detect rate changes from the payment history-XX]",
       "scheduledUpdateTitle": "[XX-Update scheduled payment?-XX]",
-      "scheduledUpdateMessage": "[XX-The scheduled bill payment \"{name}\" can be updated to match the new rate: {payment} total, split into {principal} principal and {interest} interest. Update it now?-XX]",
+      "scheduledUpdateNextPaymentUnchanged": "[XX-The scheduled bill payment \"{name}\" matches the rate timeline. Next payment on {date}: unchanged ({payment}).-XX]",
+      "scheduledUpdateNextPaymentChanged": "[XX-The scheduled bill payment \"{name}\" can be updated to match the rate timeline. Next payment on {date}: {before} → {after}, split into {principal} principal and {interest} interest.-XX]",
+      "scheduledUpdateNextPaymentNew": "[XX-The scheduled bill payment \"{name}\" can be updated to match the rate timeline. Next payment on {date}: {payment}, split into {principal} principal and {interest} interest.-XX]",
+      "scheduledUpdateUpcomingChange": "[XX-From {date} the payment becomes {amount}.-XX]",
       "scheduledUpdateDefaultName": "[XX-this mortgage-XX]",
       "scheduledUpdateConfirm": "[XX-Update payment-XX]",
       "scheduledUpdateSkip": "[XX-Leave as-is-XX]",
@@ -717,6 +743,71 @@
       "utilization": "[XX-Utilization-XX]",
       "balanceHistory": "[XX-Balance History-XX]",
       "noHistory": "[XX-No balance history available.-XX]"
+    },
+    "paymentMatching": {
+      "title": "[XX-Payment matching-XX]",
+      "description": "[XX-Recognises the bank's own debit of each installment and settles it against the loan's schedule as principal and interest, instead of posting the bill separately.-XX]",
+      "noSchedule": "[XX-Payment matching settles the bank's debits against the loan's scheduled payment. Set up this loan's payments first.-XX]",
+      "noRule": "[XX-No payment matching rule is linked to this loan.-XX]",
+      "createOne": "[XX-Create one-XX]",
+      "ruleLabel": "[XX-Rule:-XX]",
+      "ruleLoading": "[XX-Loading the rule-XX]",
+      "ruleFailed": "[XX-The payment matching rule could not be loaded.-XX]",
+      "scheduleLoading": "[XX-Loading the scheduled payment-XX]",
+      "scheduleFailed": "[XX-The loan's scheduled payment could not be loaded.-XX]",
+      "retry": "[XX-Try again-XX]",
+      "autoPost": {
+        "title": "[XX-The scheduled payment still posts itself-XX]",
+        "body": "[XX-Auto-post is on for this loan's bill, so an installment the rule settles from the bank's debit would also be posted by the bill. Turn auto-post off on the bill in Bills.-XX]"
+      },
+      "preconditions": {
+        "openingBalance": "[XX-The loan's opening balance must be the debt at the start of the history being processed; every installment's interest is priced on it.-XX]",
+        "originalPrincipal": "[XX-The original principal must be the amount originally borrowed, not the opening balance.-XX]",
+        "scheduleStart": "[XX-Debits dated before {date}, when the scheduled payment starts, have no installment to match.-XX]"
+      },
+      "process": {
+        "button": "[XX-Process history-XX]",
+        "scope": "[XX-Runs the rule over the debits in {account}, oldest first.-XX]",
+        "running": "[XX-Processing history: {count, plural, one {# installment} other {# installments}} settled so far.-XX]",
+        "done": "[XX-{count, plural, =0 {No installments were settled.} one {# installment was settled.} other {# installments were settled.}}-XX]",
+        "undo": "[XX-Each page of the run can be undone from the action history.-XX]",
+        "failed": "[XX-Processing history stopped-XX]",
+        "stuckTitle": "[XX-Processing history could not continue-XX]",
+        "stuck": "[XX-More than {limit, number} transactions are dated {date}, so the run cannot move past that day. Settle the rest from Tools > Rules with a narrower filter.-XX]",
+        "stuckUnknown": "[XX-The server did not say how far the run reached, so it cannot continue. Reload the page and try again.-XX]"
+      },
+      "create": {
+        "title": "[XX-Create payment matching rule-XX]",
+        "description": "[XX-The rule settles matching debits from the loan's scheduled payment account, and the bill's auto-post is turned off.-XX]",
+        "descriptionWithAccount": "[XX-The rule settles matching debits from {account}, and the bill's auto-post is turned off.-XX]",
+        "submit": "[XX-Create rule-XX]",
+        "payeePatternRequired": "[XX-Enter a payee pattern that includes a * wildcard-XX]",
+        "descriptionPatternWildcard": "[XX-A description pattern must include a * wildcard-XX]",
+        "failed": "[XX-The payment matching rule could not be created.-XX]",
+        "done": "[XX-Rule \"{name}\" created-XX]"
+      },
+      "settled": {
+        "title": "[XX-Settled installments-XX]",
+        "titleWithCount": "[XX-Settled installments ({count})-XX]",
+        "colDueDate": "[XX-Due date-XX]",
+        "colTransaction": "[XX-Transaction-XX]",
+        "colPrincipal": "[XX-Principal-XX]",
+        "colInterest": "[XX-Interest-XX]",
+        "colExtra": "[XX-Extra principal-XX]",
+        "colDebtBefore": "[XX-Debt before-XX]",
+        "openTransaction": "[XX-Open the transaction-XX]",
+        "void": "[XX-Void-XX]",
+        "notRecorded": "[XX-Not recorded-XX]",
+        "empty": {
+          "title": "[XX-No installments settled yet-XX]",
+          "body": "[XX-Process history, or import the bank's debits, to settle installments.-XX]"
+        },
+        "error": {
+          "title": "[XX-The settled installments could not be loaded-XX]",
+          "body": "[XX-This is not an empty list. Try again to see which installments were settled.-XX]",
+          "retry": "[XX-Try again-XX]"
+        }
+      }
     }
   }
 }

@@ -97,9 +97,16 @@ export interface InvestedPeriodDecision {
    * is why a surface reads it rather than subtracting those two.
    */
   investedValueChange: number | null;
-  /** Net value paid into the invested part on `(b, e]`: buys less disposals. */
+  /**
+   * Net value paid into the invested part on `(b, e]`: buys less disposals,
+   * plus the distributions reinvested in shares (each the BUY half of the
+   * DIVIDEND and BUY it stands for).
+   */
   investmentCapitalFlows: number | null;
-  /** Dividends, interest and capital-gain distributions received on `(b, e]`. */
+  /**
+   * Dividends, interest and capital-gain distributions received on `(b, e]`,
+   * paid in cash or reinvested in shares.
+   */
   investmentIncome: number | null;
   /** `IV(e) - IV(b) - capital + income`: what the investments earned. */
   investmentPnl: number | null;
@@ -228,10 +235,15 @@ export function investedPeriodResult(
   // summed as floats (AGENTS.md, Financial math).
   let capitalMinor = 0;
   let incomeMinor = 0;
+  // A reinvested distribution is income AND capital: it enters both printed
+  // figures, so the P&L they add up to is the one the value change already
+  // holds -- its shares are in `IV(e)` -- and neither return chain reads it.
+  let reinvestedMinor = 0;
   let flowsComplete = true;
   for (const day of flowDays) {
     capitalMinor += Math.round((day.capitalIn - day.capitalOut) * 10000);
     incomeMinor += Math.round(day.income * 10000);
+    reinvestedMinor += Math.round(day.reinvestedIncome * 10000);
     if (!day.complete) {
       flowsComplete = false;
       // Two different repairs, so two different reasons: a rate to add on the
@@ -243,10 +255,10 @@ export function investedPeriodResult(
     }
   }
   const investmentCapitalFlows = flowsComplete
-    ? roundMoney(capitalMinor / 10000)
+    ? roundMoney((capitalMinor + reinvestedMinor) / 10000)
     : null;
   const investmentIncome = flowsComplete
-    ? roundMoney(incomeMinor / 10000)
+    ? roundMoney((incomeMinor + reinvestedMinor) / 10000)
     : null;
 
   for (const point of [start, ...days]) {

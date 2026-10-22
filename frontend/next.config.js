@@ -60,7 +60,19 @@ const nextConfig = {
         { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
       );
     }
-    return [{ source: '/(.*)', headers: securityHeaders }];
+    // robots.txt and sitemap.xml contain a dot, so the proxy matcher skips them
+    // and they never receive its nonce CSP. Neither is a document that loads
+    // anything, so they get a policy that allows nothing. Not widened to every
+    // dotted path: a CSP on sw.js would govern the service worker's own fetches.
+    const lockedDownCsp = {
+      key: 'Content-Security-Policy',
+      value: "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+    };
+    return [
+      { source: '/(.*)', headers: securityHeaders },
+      { source: '/robots.txt', headers: [lockedDownCsp] },
+      { source: '/sitemap.xml', headers: [lockedDownCsp] },
+    ];
   },
 };
 

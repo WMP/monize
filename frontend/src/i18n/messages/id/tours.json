@@ -427,5 +427,42 @@
         }
       }
     }
+  },
+  "emailReceipts": {
+    "basics": {
+      "title": "Struk dari surel",
+      "steps": {
+        "welcome": {
+          "title": "Mengapa membaca struk dari surel",
+          "body": "Transaksi bank menunjukkan berapa yang Anda bayar dan kapan. Transaksi itu tidak menunjukkan apa yang Anda beli. Surel konfirmasi pesanan menunjukkannya. Monize membaca surel ini, menemukan transaksi yang dibayar oleh tiap surel, dan mengusulkan deskripsi, penerima pembayaran, serta pemisahan per item dengan satu kategori untuk setiap baris. Anda menyetujui setiap usulan sebelum usulan itu mengubah transaksi."
+        },
+        "aiRequired": {
+          "title": "Dalam praktiknya, Anda memerlukan penyedia AI",
+          "body": "Monize membaca surel dengan **profil**: sekumpulan pola untuk satu domain pengirim, misalnya satu toko. Anda dapat menulis profil dengan tangan, tetapi setiap pola harus cocok dengan baris yang persis sama di surel toko itu, sehingga dalam praktiknya AI yang menulisnya. AI menulis profil satu kali, dari beberapa contoh surel. Setelah Anda menyetujuinya, profil membaca setiap surel baru dari toko itu tanpa AI."
+        },
+        "aiProviders": {
+          "title": "Siapkan penyedia AI terlebih dahulu",
+          "body": "Tambahkan penyedia di sini dan uji koneksinya. Tanpa penyedia, wizard profil tidak dapat menulis profil, dan surel dari toko tanpa profil tetap tidak terbaca."
+        },
+        "tabs": {
+          "title": "Empat tab, sesuai urutan pemakaian",
+          "body": "**Ringkasan** menampilkan apa yang telah dibaca Monize. Di **Kotak surel**, hubungkan kotak surel yang hanya berisi konfirmasi pesanan. Monize hanya membacanya: tidak pernah memindahkan, menandai, atau menghapus pesan. **Profil** berisi satu profil untuk setiap toko. **Surel** mencantumkan setiap surel beserta statusnya."
+        },
+        "uncovered": {
+          "title": "Toko tanpa profil",
+          "body": "Kotak ini mencantumkan domain pengirim yang belum dapat dibaca oleh profil mana pun. Pilih satu untuk memulai wizard. Pilih hingga lima surelnya dan pasangkan masing-masing dengan transaksi bank yang dibayarnya. AI menulis profil dan mengujinya pada pasangan ini. Lalu Anda melihat pratinjau untuk semua surel dari toko itu, dan Anda menerima profil atau meminta perubahan dengan catatan singkat.",
+          "fallbackBody": "Anda belum memiliki surel dari toko tanpa profil. Setelah Anda menghubungkan kotak surel, setiap domain pengirim muncul di sini sebagai tag, misalnya **shop.example (12)**: domain dan jumlah surelnya. Pilih tag untuk memulai wizard. Pilih hingga lima surelnya dan pasangkan masing-masing dengan transaksi bank yang dibayarnya. AI menulis profil dan mengujinya pada pasangan ini. Lalu Anda melihat pratinjau untuk semua surel dari toko itu, dan Anda menerima profil atau meminta perubahan dengan catatan singkat."
+        },
+        "profiles": {
+          "title": "Profil Anda",
+          "body": "Setiap baris adalah satu profil, disetujui atau draf. **Buat profil baru secara manual** membuka editor untuk profil yang ditulis dengan tangan. Gunakan untuk memperbaiki detail kecil pada draf dari AI. Saat Anda menyetujui profil, Monize langsung membaca surel dari domainnya.",
+          "fallbackBody": "Anda belum memiliki profil. Setiap profil yang Anda terima muncul di sini sebagai satu baris, misalnya **Shop Example**, domain **shop.example**, status **Disetujui**. **Buat profil baru secara manual** membuka editor untuk profil yang ditulis dengan tangan. Gunakan hanya untuk memperbaiki detail kecil pada draf dari AI. Saat Anda menyetujui profil, Monize langsung membaca surel dari domainnya."
+        },
+        "reviews": {
+          "title": "Setujui usulan",
+          "body": "Setiap surel yang cocok dengan transaksi menjadi usulan di **Kotak masuk peninjauan AI**, di menu **AI**. Usulan menampilkan, misalnya, item baris sebuah pesanan dengan satu kategori untuk setiap baris. Tidak ada yang berubah pada transaksi Anda sampai Anda menyetujui usulan di sana."
+        }
+      }
+    }
   }
 }

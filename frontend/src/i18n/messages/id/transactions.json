@@ -135,6 +135,7 @@
       "toggleTitle": "Hilangkan tahun dari tanggal agar nama penerima lebih terlihat"
     },
     "attachmentsCount": "{count, plural, other {# lampiran}}",
+    "warrantiesCount": "{count, plural, other {# garansi}}",
     "today": "Hari ini",
     "export": {
       "button": "Ekspor",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Duplikat transaksi",
       "copy": "Salin",
       "duplicate": "Duplikat",
-      "scheduleRecurring": "Jadwalkan sebagai Berulang"
+      "scheduleRecurring": "Jadwalkan sebagai Berulang",
+      "addWarranty": "Tambah garansi",
+      "viewWarranties": "Lihat garansi"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Edit",
     "duplicate": "Duplikat",
     "scheduleRecurring": "Jadwalkan sebagai Berulang",
+    "addWarranty": "Tambah garansi",
+    "viewWarranties": "Lihat garansi",
     "delete": "Hapus"
   },
   "filter": {
@@ -219,7 +224,7 @@
       "title": "Filter",
       "clear": "Hapus",
       "hide": "Sembunyikan",
-      "show": "Tampilkan"
+      "show": "Tampilkan filter"
     },
     "accounts": {
       "label": "Tampilkan akun:",
@@ -258,7 +263,7 @@
       "statuses": "Semua status",
       "amountMin": "Min",
       "amountMax": "Maks",
-      "search": "Cari penerima, kategori, jumlah, tag, keterangan, referensi #...",
+      "search": "Cari, atau coba #10 atau payee:costco",
       "tagKeyValue": "mis. usa"
     },
     "tagKeyNone": "Semua (tanpa filter kunci)",
@@ -431,6 +436,7 @@
       "destinationRequired": "Silakan pilih akun tujuan",
       "sameAccount": "Akun sumber dan tujuan harus berbeda",
       "negativeTransfer": "Jumlah transfer tidak boleh negatif",
+      "convertToTransferUnsupported": "Transaksi yang sudah ada tidak dapat diubah menjadi transfer di sini. Hapus transaksi tersebut dan buat transfer sebagai gantinya.",
       "payeeCreated": "Penerima \"{name}\" dibuat",
       "payeeCreateFailed": "Gagal membuat penerima",
       "payeeReactivated": "Penerima \"{name}\" diaktifkan kembali",
@@ -465,7 +471,14 @@
       },
       "feeCaption": "Termasuk biaya transaksi luar negeri {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Transaksi split di akun bersama hanya dapat dikelola oleh pemilik"
+    "jointSplitDisabled": "Transaksi split di akun bersama hanya dapat dikelola oleh pemilik",
+    "warranties": {
+      "title": "Garansi",
+      "add": "Tambah garansi",
+      "expires": "Berakhir {date}",
+      "loading": "Memuat garansi",
+      "loadError": "Garansi untuk transaksi ini tidak dapat dimuat."
+    }
   },
   "splitEditor": {
     "header": "Detail Pembagian",
@@ -582,6 +595,11 @@
       "log": "Log",
       "autoTitle": "Otomatis ({scale})",
       "scaleTitle": "Skala {label}"
+    },
+    "collapse": {
+      "hide": "Sembunyikan grafik",
+      "show": "Tampilkan grafik",
+      "hidden": "Grafik disembunyikan"
     }
   },
   "toasts": {
@@ -604,5 +622,71 @@
     "title": "Pengeluaran menurut {key}",
     "other": "Lainnya",
     "noData": "Tidak ada pengeluaran bertag untuk dirinci pada kunci ini."
+  },
+  "searchSyntax": {
+    "open": "Sintaks pencarian",
+    "title": "Sintaks pencarian",
+    "fields": "Kolom: payee, memo, cat, tag, account, ref, amount, date, status, is, has. Pilih contoh untuk memasukkannya ke kotak pencarian.",
+    "examples": {
+      "allWords": "Setiap kata cocok di suatu tempat",
+      "phrase": "Frasa persis ini",
+      "exclude": "Kecualikan apa pun yang cocok dengan refund",
+      "fieldContains": "Penerima mengandung costco",
+      "fieldExact": "Penerima persis Costco",
+      "reference": "Nomor cek atau referensi persis 10",
+      "wildcard": "Referensi diawali 10",
+      "amountOver": "Jumlah di atas 100",
+      "amountRange": "Jumlah dari 50 sampai 100",
+      "datePeriod": "Hari apa pun di Maret 2026",
+      "isSplit": "Transaksi terpisah",
+      "hasAttachment": "Memiliki lampiran",
+      "hasWarranty": "Memiliki garansi"
+    }
+  },
+  "searchInterpretation": {
+    "label": "Mencari:",
+    "negated": "bukan {phrase}",
+    "malformed": "{raw} (tidak dipahami, dicari sebagai teks)",
+    "empty": "{raw} (kosong, diabaikan)",
+    "status": "Status adalah {value}",
+    "any": "“{value}” di mana saja",
+    "fields": {
+      "payee": "Penerima",
+      "memo": "Catatan",
+      "cat": "Kategori",
+      "tag": "Tag",
+      "account": "Akun",
+      "ref": "Referensi",
+      "amount": "Jumlah",
+      "date": "Tanggal",
+      "status": "Status",
+      "is": "Jenis",
+      "has": "Memiliki"
+    },
+    "ops": {
+      "contains": "{field} mengandung “{value}”",
+      "exact": "{field} adalah “{value}”",
+      "glob": "{field} cocok dengan “{value}”",
+      "eq": "{field} adalah {value}",
+      "gt": "{field} di atas {value}",
+      "gte": "{field} {value} atau lebih",
+      "lt": "{field} di bawah {value}",
+      "lte": "{field} {value} atau kurang",
+      "between": "{field} dari {value} sampai {valueTo}"
+    },
+    "enum": {
+      "is": {
+        "transfer": "Transfer",
+        "split": "Transaksi terpisah",
+        "uncategorized": "Tanpa kategori"
+      },
+      "has": {
+        "attachment": "Memiliki lampiran",
+        "warranty": "Memiliki garansi",
+        "ref": "Memiliki nomor referensi",
+        "memo": "Memiliki catatan",
+        "tag": "Memiliki tag"
+      }
+    }
   }
 }

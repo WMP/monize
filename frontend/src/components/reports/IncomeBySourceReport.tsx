@@ -35,6 +35,8 @@ import type {
 import { INTERACTIVE_ROW_FOCUS_CLASS, activateOnKey } from '@/components/ui/interactive-row';
 import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
 import { ReportError } from '@/components/reports/ReportError';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { isComplete, reportTotal } from '@/lib/currency-total';
 import { CHART_COLOURS_INCOME } from '@/lib/chart-colours';
 import { chartColors } from '@/lib/chart-colors';
 import { exportToCsv } from '@/lib/csv-export';
@@ -98,11 +100,34 @@ const FIGURE_CELL =
 const IDENTITY_CELL =
   `${CELL_PLACEMENT.name} min-w-0 p-0 text-sm sm:table-cell sm:px-4 sm:py-3`;
 
+interface IncomeSourceTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: { id: string; name: string; value: number } }>;
+  totalIncome: number;
+  formatCurrency: (value: number) => string;
+  formatPercent: (value: number, decimals?: number) => string;
+}
+
+function IncomeSourceTooltip({ active, payload, totalIncome, formatCurrency, formatPercent }: IncomeSourceTooltipProps) {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0].payload;
+  const percentage = totalIncome > 0 ? (data.value / totalIncome) * 100 : 0;
+  return (
+    <ChartTooltipPanel>
+      <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
+      <p className="text-gray-600 dark:text-gray-400">
+        {formatCurrency(data.value)} ({formatPercent(percentage, 1)})
+      </p>
+    </ChartTooltipPanel>
+  );
+}
+
 export function IncomeBySourceReport() {
   const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
-  const { formatCurrencyCompact: formatCurrency, formatPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercent, defaultCurrency } = useNumberFormat();
+  const tCommon = useTranslations('common');
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } = useDateRange({ defaultRange: '1y', alignment: 'day' });
   const [viewType, setViewType] = useState<'pie' | 'bar' | 'table'>('pie');
   const { sortField, sortDirection, handleSort } = useSortableTable<IncomeSourceSortField>(
@@ -141,7 +166,12 @@ export function IncomeBySourceReport() {
     });
   }, [response]);
 
-  const totalIncome = response?.totalIncome ?? 0;
+  // The server withholds `totalIncome` when a row could not be converted, so
+  // what is shown is the part that did convert, marked as a subtotal. It is also
+  // the denominator: percentages are shares of what is on screen.
+  const incomeTotal = reportTotal(response?.totalIncome ?? response?.knownIncome ?? 0, response);
+  const totalIncome = incomeTotal.value;
+  const reportingCurrency = response?.currency ?? defaultCurrency;
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -199,7 +229,14 @@ export function IncomeBySourceReport() {
     await exportToPdf({
       title: t('page.names.income-by-source' as Parameters<typeof t>[0]),
       summaryCards: [
-        { label: t('incomeBySource.totalIncome'), value: formatCurrency(totalIncome), color: '#16a34a' },
+        {
+          // A figure in a file has no tooltip, so the label carries the marker.
+          label: isComplete(incomeTotal)
+            ? t('incomeBySource.totalIncome')
+            : `${t('incomeBySource.totalIncome')} ${tCommon('partialTotal.srSuffix')}`,
+          value: formatCurrency(totalIncome),
+          color: '#16a34a',
+        },
       ],
       chartContainer: chartRef.current,
       chartLegend: legendItems.length > 0 ? legendItems : undefined,
@@ -221,20 +258,6 @@ export function IncomeBySourceReport() {
       const { start, end } = resolvedRange;
       router.push(`/transactions?categoryId=${categoryId}&startDate=${start}&endDate=${end}`);
     }
-  };
-
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { id: string; name: string; value: number } }> }) => {
-    if (!active || !payload || !payload.length) return null;
-    const data = payload[0].payload;
-    const percentage = totalIncome > 0 ? (data.value / totalIncome) * 100 : 0;
-    return (
-      <ChartTooltipPanel>
-        <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
-        <p className="text-gray-600 dark:text-gray-400">
-          {formatCurrency(data.value)} ({formatPercent(percentage, 1)})
-        </p>
-      </ChartTooltipPanel>
-    );
   };
 
   return (
@@ -262,7 +285,7 @@ export function IncomeBySourceReport() {
           <ReportToolbarActions
             onExportPdf={handleExportPdf}
             onExportCsv={handleExportCsv}
-            disabled={chartData.length === 0}
+            disabled={isLoading || !!error || chartData.length === 0}
           />
         </div>
       </div>
@@ -414,7 +437,9 @@ export function IncomeBySourceReport() {
                     </td>
                     <td role="cell" className={`${CELL_PLACEMENT.value} font-bold text-green-600 dark:text-green-400 ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{columns.value.label}</CellLabel>
-                      {formatCurrency(totalIncome)}
+                      <PartialTotal total={incomeTotal} displayCurrency={reportingCurrency}>
+                        {formatCurrency(totalIncome)}
+                      </PartialTotal>
                     </td>
                     <td role="cell" className={`${CELL_PLACEMENT.percentage} font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
@@ -440,13 +465,16 @@ export function IncomeBySourceReport() {
                       paddingAngle={2}
                       dataKey="value"
                       cursor="pointer"
-                      onClick={(data) => data.id && handleCategoryClick(data.id)}
+                      onClick={(data) => {
+                        const { id } = data as typeof data & { id?: string };
+                        if (id) handleCategoryClick(id);
+                      }}
                     >
                       {chartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.colour} />
                       ))}
                     </Pie>
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip content={<IncomeSourceTooltip totalIncome={totalIncome} formatCurrency={formatCurrency} formatPercent={formatPercent} />} />
                   </PieChart>
                 </ResponsiveContainer>
                 {/* The aggregate belongs in the donut's hole. */}
@@ -454,7 +482,9 @@ export function IncomeBySourceReport() {
                   label={t('incomeBySource.totalIncome')}
                   value={
                     <span className="text-green-600 dark:text-green-400">
-                      {formatCurrency(totalIncome)}
+                      <PartialTotal total={incomeTotal} displayCurrency={reportingCurrency}>
+                        {formatCurrency(totalIncome)}
+                      </PartialTotal>
                     </span>
                   }
                 />
@@ -466,7 +496,7 @@ export function IncomeBySourceReport() {
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                     <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={80} />
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip content={<IncomeSourceTooltip totalIncome={totalIncome} formatCurrency={formatCurrency} formatPercent={formatPercent} />} />
                     <Bar
                       dataKey="value"
                       cursor="pointer"
@@ -504,7 +534,9 @@ export function IncomeBySourceReport() {
               <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t('incomeBySource.totalIncome')}</div>
                 <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(totalIncome)}
+                  <PartialTotal total={incomeTotal} displayCurrency={reportingCurrency}>
+                    {formatCurrency(totalIncome)}
+                  </PartialTotal>
                 </div>
               </div>
             )}

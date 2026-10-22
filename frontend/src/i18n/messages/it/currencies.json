@@ -13,6 +13,14 @@
     "modalTitleNew": "Nuova valuta",
     "loading": "Caricamento valute...",
     "count": "{count, plural, one {# valuta} other {# valute}}",
+    "providers": {
+      "line": "Tassi da {providers}",
+      "separator": ", poi ",
+      "names": {
+        "frankfurter": "Frankfurter (tassi di riferimento BCE)",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "Caricamento valute non riuscito",
       "updated": "Valuta aggiornata con successo",
@@ -24,6 +32,7 @@
       "statusFailed": "Aggiornamento stato valuta non riuscito",
       "ratesRefreshed": "Tassi di cambio aggiornati: {updated} coppie aggiornate",
       "ratesRefreshedWithFailed": "Tassi di cambio aggiornati: {updated} aggiornati, {failed} non riusciti",
+      "ratesAllFailed": "Impossibile recuperare i tassi di cambio; il fornitore non ha risposto",
       "ratesFailed": "Aggiornamento tassi di cambio non riuscito"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter (BCE)",
         "mnyImport": "Importazione Money",
         "unknown": "Sconosciuto"
       }

@@ -27,6 +27,7 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { ChartDownloadButton } from '@/components/ui/ChartDownloadButton';
+import { ChartCollapseButton } from '@/components/transactions/ChartCollapseControls';
 
 // Desktop switches the bar-top value labels to vertical (and widens the top
 // margin) once there are more than this many bars, before wide horizontal
@@ -64,6 +65,8 @@ interface CategoryPayeeBarChartProps {
   onMonthClick?: (startDate: string, endDate: string) => void;
   /** Category/payee/tag/search descriptor appended to the download filename. */
   filterLabel?: string;
+  /** Offer the header button that folds the chart away (the Transactions page). */
+  onCollapse?: () => void;
 }
 
 interface ChartDataPoint extends BucketedPoint {
@@ -117,6 +120,7 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
   isLoading,
   onMonthClick,
   filterLabel,
+  onCollapse,
 }: CategoryPayeeBarChartProps) {
   const t = useTranslations('transactions');
   const chartTitle = t('charts.monthlyTotals.title');
@@ -224,9 +228,12 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 mb-6 min-h-[420px]">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          {chartTitle}
-        </h3>
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            {chartTitle}
+          </h3>
+          {onCollapse && <ChartCollapseButton onCollapse={onCollapse} />}
+        </div>
         <div className="h-72 flex items-center justify-center">
           <Skeleton className="w-full h-full" />
         </div>
@@ -237,9 +244,12 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
   if (chartData.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 mb-6 min-h-[420px]">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          {chartTitle}
-        </h3>
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            {chartTitle}
+          </h3>
+          {onCollapse && <ChartCollapseButton onCollapse={onCollapse} />}
+        </div>
         <div className="h-72 flex items-center justify-center text-gray-500 dark:text-gray-400">
           <p>{t('charts.monthlyTotals.noData')}</p>
         </div>
@@ -293,6 +303,7 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
             filename={downloadFilename}
             summary={exportSummary}
           />
+          {onCollapse && <ChartCollapseButton onCollapse={onCollapse} />}
         </div>
       </div>
 

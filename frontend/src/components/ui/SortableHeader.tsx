@@ -1,9 +1,10 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, type SyntheticEvent } from 'react';
 import { SortIcon } from './SortIcon';
 import { INTERACTIVE_ROW_FOCUS_CLASS, activateOnKey } from './interactive-row';
 import type { SortDirection } from '@/hooks/useSortableTable';
+import type { LongPressRowHandlers } from '@/hooks/useLongPress';
 
 interface SortableHeaderProps<F extends string> {
   field: F;
@@ -22,6 +23,39 @@ interface SortableHeaderProps<F extends string> {
    * wrapper makes every press on it sort as well.
    */
   controls?: ReactNode;
+  /**
+   * Press-and-hold handlers for a header that opens a sheet of its own (the
+   * hideable columns' "Hide column", from `useColumnHeaderActions`). When
+   * present the header spreads them and drops its own `onClick`: the sort
+   * arrives through their `onClick`, which `useLongPress` withholds after a
+   * long-press, so one press never both opens the sheet and sorts. The
+   * keyboard sort is unchanged.
+   */
+  pressHandlers?: LongPressRowHandlers;
+}
+
+/**
+ * The press handlers with the three that start a press (mouse down, touch
+ * start, right-click) ignoring a press that begins on a header control. The
+ * control's own wrapper cannot stop those events instead: a stopped
+ * `mousedown` never reaches `document`, so every `useClickOutside` popover
+ * open elsewhere would stay open when the control is pressed. Its click is
+ * already stopped by the wrapper, which is harmless for the same reason.
+ */
+function outsideControls(handlers: LongPressRowHandlers): LongPressRowHandlers {
+  const unlessInControls =
+    <E extends SyntheticEvent>(handler: (event: E) => void) =>
+    (event: E) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('[data-header-controls]')) return;
+      handler(event);
+    };
+  return {
+    ...handlers,
+    onMouseDown: unlessInControls(handlers.onMouseDown),
+    onTouchStart: unlessInControls(handlers.onTouchStart),
+    onContextMenu: unlessInControls(handlers.onContextMenu),
+  };
 }
 
 /**
@@ -37,6 +71,7 @@ export function SortableHeader<F extends string>({
   className = '',
   children,
   controls,
+  pressHandlers,
 }: SortableHeaderProps<F>) {
   const justify =
     align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : '';
@@ -51,7 +86,7 @@ export function SortableHeader<F extends string>({
       role="columnheader"
       tabIndex={0}
       aria-sort={isActive ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-      onClick={sort}
+      {...(pressHandlers ? outsideControls(pressHandlers) : { onClick: sort })}
       onKeyDown={activateOnKey(sort)}
       className={`cursor-pointer transition-colors motion-reduce:transition-none hover:bg-gray-100 dark:hover:bg-gray-700 ${INTERACTIVE_ROW_FOCUS_CLASS} select-none ${className}`}
     >
@@ -60,6 +95,7 @@ export function SortableHeader<F extends string>({
         <SortIcon field={field} sortField={sortField} sortDirection={sortDirection} />
         {controls && (
           <span
+            data-header-controls=""
             role="presentation"
             className="inline-flex items-center"
             onClick={(event) => event.stopPropagation()}

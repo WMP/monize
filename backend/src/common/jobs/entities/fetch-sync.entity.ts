@@ -49,4 +49,12 @@ export class FetchSync {
   /** Why the last attempt failed, bounded. Bookkeeping, like the column above. */
   @Column({ type: "text", name: "last_error", nullable: true })
   lastError: string | null;
+
+  /**
+   * What the holder reports while it works (`FetchSyncService.reportProgress`),
+   * camelCase JSON, for a person polling a long run. Null for a job that
+   * reports nothing.
+   */
+  @Column({ type: "jsonb", name: "progress", nullable: true })
+  progress: Record<string, unknown> | null;
 }

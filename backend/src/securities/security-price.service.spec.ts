@@ -1,3 +1,4 @@
+import { Not } from "typeorm";
 import { Logger, NotFoundException } from "@nestjs/common";
 import {
   SecurityPriceService,
@@ -360,11 +361,9 @@ describe("SecurityPriceService", () => {
             securityId: securityId as string,
             priceDate: priceDate as string,
             openPrice: (openPrice ?? previous?.openPrice ?? null) as
-              | number
-              | null,
+              number | null,
             highPrice: (highPrice ?? previous?.highPrice ?? null) as
-              | number
-              | null,
+              number | null,
             lowPrice: (lowPrice ?? previous?.lowPrice ?? null) as number | null,
             closePrice: closePrice as number,
             adjustedClose: (seriesIsAdjusted
@@ -634,7 +633,9 @@ describe("SecurityPriceService", () => {
 
       expect(result).toEqual(createdAt);
       expect(securityPriceRepository.findOne).toHaveBeenCalledWith({
-        where: {},
+        // A bond-engine row is written every day by accrual: it is not a quote
+        // provider's write, and counting it would hide a provider outage.
+        where: { source: Not("bond_engine") },
         order: { createdAt: "DESC" },
       });
     });
@@ -2080,6 +2081,25 @@ describe("SecurityPriceService", () => {
       expect(global.fetch).not.toHaveBeenCalled();
     });
 
+    // The flag is the user's "disable price updates" switch; a provider
+    // override or MSN instrument id saved beside it must not turn it back on.
+    it("skips a flagged security even when it carries a provider override", async () => {
+      securitiesRepository.find.mockResolvedValue([
+        {
+          ...mockSecurity,
+          skipPriceUpdates: true,
+          quoteProvider: "msn",
+          msnInstrumentId: "MSN-123",
+        },
+      ]);
+      global.fetch = jest.fn() as jest.Mock;
+
+      const result = await service.settleDailyBars();
+
+      expect(result.totalSecurities).toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
     it("runs under a system context: prices are global, not the caller's", async () => {
       let ctx: ReturnType<typeof getRequestContext>;
       securitiesRepository.find.mockImplementation(() => {
@@ -3039,6 +3059,8 @@ describe("SecurityPriceService", () => {
           "redeem",
           "transfer_in",
           "transfer_out",
+          // Not "bond_engine": a trade price is one lot's price, not the
+          // holding's value, so it never replaces the engine's row (R3).
         ],
       ]);
     });
@@ -3335,6 +3357,20 @@ describe("SecurityPriceService", () => {
       });
     });
 
+    it("a manual price written over a bond-engine row takes no adjusted close from it (R3)", async () => {
+      await service.createManualPrice(
+        "sec-1",
+        { priceDate: "2025-06-01", closePrice: 101.5 },
+        "user-1",
+      );
+      // The conflict branch sets the adjusted close from the manual entry's own
+      // input (it has none) when the row it replaces is the engine's; any other
+      // row keeps the adjusted close it had.
+      expect(priceUpsertSql()).toMatch(
+        /adjusted_close = CASE WHEN security_prices\.source = 'bond_engine'\s+THEN NULL ELSE security_prices\.adjusted_close END/,
+      );
+    });
+
     // Issue #1242 invalidation: a manual price changes an accepted close, so
     // every account holding the security has a stale monthly snapshot. The
     // create recomputes them through the shared debounced net-worth path.
@@ -3455,6 +3491,34 @@ describe("SecurityPriceService", () => {
           closePrice: 200.0,
           source: "manual",
         }),
+      );
+    });
+
+    it("editing a bond-engine row makes it manual and drops the engine's adjusted close", async () => {
+      securityPriceRepository.findOne.mockResolvedValue({
+        ...mockPriceEntry,
+        source: "bond_engine",
+        adjustedClose: 99.5,
+      });
+      await service.updatePrice("sec-1", 1, { closePrice: 200.0 }, "user-1");
+      expect(securityPriceRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: "manual",
+          closePrice: 200.0,
+          adjustedClose: null,
+        }),
+      );
+    });
+
+    it("editing a provider row keeps its adjusted close", async () => {
+      securityPriceRepository.findOne.mockResolvedValue({
+        ...mockPriceEntry,
+        source: "yahoo_finance",
+        adjustedClose: 99.5,
+      });
+      await service.updatePrice("sec-1", 1, { closePrice: 200.0 }, "user-1");
+      expect(securityPriceRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ source: "manual", adjustedClose: 99.5 }),
       );
     });
 
@@ -3742,8 +3806,13 @@ describe("SecurityPriceService", () => {
     it("does not ask again for a security-month that came back empty", async () => {
       // `[]`, not `null`: the provider answering "no bars in that window" is
       // what may be remembered. `null` is no answer at all -- a failure or a
-      // refusal -- and remembering that poisons the month for everyone.
+      // refusal -- and remembering that poisons the month for everyone. Every
+      // routed provider answers empty here (A26-L20).
       windowSpy.mockResolvedValue({ prices: [], currencyCode: null });
+      msnFinanceService.fetchHistoricalSeries.mockResolvedValue({
+        prices: [],
+        currencyCode: null,
+      });
 
       await service.ensurePricesForDate(["sec-1"], "2017-08-18");
       const afterFirst = windowSpy.mock.calls.length;
@@ -3845,6 +3914,26 @@ describe("SecurityPriceService", () => {
       expect(securitiesRepository.find).toHaveBeenCalled();
     });
 
+    it("does not remember a window empty while another routed provider failed", async () => {
+      // A26-L20: Yahoo answering [] for a window it lacks is not "this month
+      // has no prices" while MSN, the next provider routed, timed out -- MSN
+      // was never heard from, so the month is asked again.
+      seedSecurity();
+      jest
+        .spyOn(yahoo, "fetchHistoricalWindowSeries")
+        .mockResolvedValue({ prices: [], currencyCode: "USD" });
+      msnFinanceService.fetchHistoricalSeries.mockRejectedValue(
+        new Error("timeout"),
+      );
+
+      await service.ensurePricesForDate(["sec-1"], "2017-03-15");
+      expect(msnFinanceService.fetchHistoricalSeries).toHaveBeenCalled();
+
+      securitiesRepository.find.mockClear();
+      await service.ensurePricesForDate(["sec-1"], "2017-03-16");
+      expect(securitiesRepository.find).toHaveBeenCalled();
+    });
+
     it("still remembers a window the provider answered as empty", async () => {
       // The memory has to keep working, or a report reloaded on the same date
       // re-asks the provider for every security it has no history for.
@@ -3852,6 +3941,10 @@ describe("SecurityPriceService", () => {
       jest
         .spyOn(yahoo, "fetchHistoricalWindowSeries")
         .mockResolvedValue({ prices: [], currencyCode: null });
+      msnFinanceService.fetchHistoricalSeries.mockResolvedValue({
+        prices: [],
+        currencyCode: null,
+      });
 
       await service.ensurePricesForDate(["sec-1"], "2026-03-15");
 
@@ -4093,6 +4186,93 @@ describe("SecurityPriceService", () => {
       expect(result.failed).toBe(1);
       expect(result.results[0].error).toContain("GBP");
       expect(priceWrites()).toHaveLength(0);
+    });
+  });
+  // INV-BOND-005: the bond engine is a linked security's only automatic price
+  // source. Each path below fetches from a provider for some other security
+  // class; none may fetch for this one. provider-priced.guard.spec.ts holds that
+  // every such path consults the predicate; these hold what it does.
+  describe("a bond-linked security is never priced by a quote provider", () => {
+    const linked = {
+      ...mockSecurity,
+      symbol: "TOS1029",
+      bondProgramId: "11111111-1111-5111-8111-111111111111",
+      // The strongest opt-in a user can give a provider: an explicit override.
+      quoteProvider: "yahoo",
+      skipPriceUpdates: false,
+    } as Security;
+
+    beforeEach(() => {
+      global.fetch = jest.fn() as jest.Mock;
+      securitiesRepository.find.mockResolvedValue([linked]);
+    });
+
+    it("is skipped by the scheduled quote refresh", async () => {
+      const result = await service.refreshAllPrices();
+      expect(result.totalSecurities).toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(msnFinanceService.fetchQuote).not.toHaveBeenCalled();
+    });
+
+    it("is skipped by the refresh of selected securities", async () => {
+      const result = await service.refreshPricesForSecurities(["sec-1"]);
+      expect(result.totalSecurities).toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("is skipped by the daily settlement", async () => {
+      const result = await service.settleDailyBars();
+      expect(result.totalSecurities).toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("is skipped by the scheduled historical backfill", async () => {
+      dataSourceMock.query.mockResolvedValueOnce([]);
+      const result = await service.backfillHistoricalPrices();
+      expect(result.totalSecurities).toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("is skipped by the on-demand fill behind a report", async () => {
+      const loaded = await service.ensurePricesForDate(["sec-1"], "2026-10-01");
+      expect(loaded).toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("is skipped by the one-year backfill a new security gets, forced or not", async () => {
+      await service.backfillSecurity(linked);
+      await expect(
+        service.backfillSecurityRange(linked, "max", { force: true }),
+      ).resolves.toBe(0);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("answers an explicit holding-period backfill with the reason, fetching nothing", async () => {
+      securitiesRepository.findOne.mockResolvedValue(linked);
+
+      for (const range of [undefined, "5y" as const]) {
+        const result = await service.backfillSecurityHoldingPeriod(
+          TEST_USER_ID,
+          "sec-1",
+          range,
+        );
+        expect(result.success).toBe(false);
+        expect(result.error).toMatch(/priced by the bond engine/);
+      }
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("leaves an unlinked security with the same override eligible", async () => {
+      securitiesRepository.find.mockResolvedValue([
+        { ...mockSecurity, bondProgramId: null, quoteProvider: "yahoo" },
+      ]);
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse(makeYahooChartResponse()),
+        ) as jest.Mock;
+      const result = await service.refreshPricesForSecurities(["sec-1"]);
+      expect(result.totalSecurities).toBe(1);
     });
   });
 });

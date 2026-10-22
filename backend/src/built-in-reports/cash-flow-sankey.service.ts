@@ -251,7 +251,7 @@ const toRate = (value: unknown): number | null => {
 };
 
 /**
- * The Cash Flow Sankey (`docs/future-plans/sankey-cash-flow.md`): where money
+ * The Cash Flow Sankey (`docs/specs/sankey-cash-flow.md`): where money
  * came from and where it went over a window, for a scope of cash-flow
  * accounts. Every figure is this service's; the client merges small nodes for
  * drawing only (SANKEY-005).

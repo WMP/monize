@@ -49,6 +49,11 @@
     "nextMonth": "下個月",
     "emptyAll": "沒有已排程的有效帳單、存入或轉帳。"
   },
+  "cashFlowForecast": {
+    "title": "現金流量預測",
+    "period": "預測期間",
+    "loadFailed": "無法載入日期晚於今天的交易，因此無法顯示預測。請重新載入儀表板後再試一次。"
+  },
   "gettingStarted": {
     "title": "快速入門",
     "subtitle": "透過幾個簡單步驟設定您的帳號",
@@ -88,6 +93,11 @@
     "viewAll": "查看所有洞察",
     "activeCount": "{count} 則有效"
   },
+  "warrantiesExpiring": {
+    "title": "即將到期的保固",
+    "empty": "未來 30 天內沒有即將到期的保固",
+    "loadFailed": "無法載入即將到期的保固。請重新載入儀表板後再試。"
+  },
   "topMovers": {
     "title": "漲跌幅排行",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "資產淨值",
     "empty": "尚無資產淨值資料。",
-    "past12Months": "過去 12 個月",
-    "viewReport": "查看完整報告"
+    "barStyle": "長條樣式",
+    "barStyleNetWorth": "資產淨值",
+    "barStyleAccountType": "依帳戶類型",
+    "loadFailed": "無法載入資產淨值歷史記錄。請重新載入儀表板後再試一次。"
   },
   "assetsVsLiabilities": {
     "title": "資產與負債",
@@ -135,7 +147,10 @@
     "current": "目前",
     "netWorthLabel": "資產淨值",
     "assets": "資產",
-    "liabilities": "負債"
+    "liabilities": "負債",
+    "partialName": "{name}（不完整）",
+    "viewCallouts": "標籤",
+    "viewLegend": "圖例"
   },
   "expensesPieChart": {
     "title": "依類別支出",
@@ -145,7 +160,9 @@
     "other": "其他",
     "insideOther": "{count, plural, other {其他中有 # 個類別}}",
     "topLevelOnly": "頂層類別",
-    "topLevelOnlyHint": "將子類別計入其父類別"
+    "topLevelOnlyHint": "將子類別計入其父類別",
+    "viewCallouts": "標籤",
+    "viewLegend": "圖例"
   },
   "incomeExpenses": {
     "title": "收入與支出",
@@ -183,6 +200,7 @@
     "accounts": "科目",
     "chartType": "圖表類型",
     "view": "檢視",
+    "viewCalloutsHint": "標籤需要更寬的螢幕。放不下時會顯示圖例。",
     "displayName": "顯示名稱",
     "description": "描述",
     "descriptionPlaceholder": "新增選填的描述",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "全部",
       "1w": "1週",
@@ -204,7 +223,7 @@
     "empty": "尚無投資歷史可顯示。",
     "refresh": "重新整理目前價值",
     "investmentResult": "投資結果",
-    "periodBreakdownInvestedTooltip": "本期證券價值變動了 {valueChange}。其中 {netInvested} 是扣除賣出後的投入資金，證券支付了 {income} 的股息和利息。上方數字是投資本身的收益，不含未投資的現金。",
+    "periodBreakdownInvestedTooltip": "本期證券價值變動了 {valueChange}。其中 {netInvested} 是扣除賣出後的投入資金，證券支付了 {income} 的股息和利息。再投資為股份的分配同時計入這兩項。上方數字是投資本身的收益，不含未投資的現金。",
     "notAvailable": "不適用"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "最少出現次數",
     "minOccurrencesOption": "{count} 次或以上",
     "occurrences": "出現 {count} 次",
-    "monthlyEstimate": "每月估計"
+    "monthlyEstimate": "每月估計",
+    "viewCallouts": "標籤",
+    "viewLegend": "圖例"
   },
   "weekendVsWeekday": {
     "title": "假日與平日支出",

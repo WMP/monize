@@ -46,6 +46,29 @@ interface ChartDataItem {
   monthEnd: string;
 }
 
+interface SpendingTrendTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    color: string;
+    payload?: { fullName?: string };
+  }>;
+  label?: string;
+  formatCurrency: (value: number) => string;
+}
+
+function SpendingTrendTooltip({ active, payload, formatCurrency }: SpendingTrendTooltipProps) {
+  return (
+    <ChartTooltip
+      active={active}
+      label={payload?.[0]?.payload?.fullName}
+      payload={payload}
+      formatValue={(v) => formatCurrency(v)}
+    />
+  );
+}
+
 export function MonthlySpendingTrendReport() {
   const t = useTranslations('reports');
   const router = useRouter();
@@ -171,27 +194,6 @@ export function MonthlySpendingTrendReport() {
     }
   };
 
-  const CustomTooltip = ({
-    active,
-    payload,
-  }: {
-    active?: boolean;
-    payload?: Array<{
-      name: string;
-      value: number;
-      color: string;
-      payload?: { fullName?: string };
-    }>;
-    label?: string;
-  }) => (
-    <ChartTooltip
-      active={active}
-      label={payload?.[0]?.payload?.fullName}
-      payload={payload}
-      formatValue={(v) => formatCurrency(v)}
-    />
-  );
-
   return (
     <div className="space-y-6">
       {/* Controls -- always rendered so focus inside DateInput survives reloads */}
@@ -217,7 +219,7 @@ export function MonthlySpendingTrendReport() {
           <ReportToolbarActions
             onExportPdf={handleExportPdf}
             onExportCsv={handleExportCsv}
-            disabled={chartData.length === 0}
+            disabled={isLoading || !!error || chartData.length === 0}
           />
         </div>
       </div>
@@ -351,7 +353,7 @@ export function MonthlySpendingTrendReport() {
                     tickFormatter={formatCurrencyAxis}
                     tick={{ fontSize: 12 }}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<SpendingTrendTooltip formatCurrency={formatCurrency} />} />
                   <Legend />
                   <Line
                     type="monotone"

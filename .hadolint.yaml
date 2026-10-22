@@ -20,8 +20,10 @@ ignored:
   # loses the upgrade, so this exemption cannot outlive the thing it exempts.
   - DL3017
 
+# CI pulls no image from Docker Hub (docs/verification-contract.md section 7):
+# the base images come from mirror.gcr.io, Google's mirror of the official images.
 trustedRegistries:
-  - docker.io
+  - mirror.gcr.io
   - ghcr.io
 
 failure-threshold: warning

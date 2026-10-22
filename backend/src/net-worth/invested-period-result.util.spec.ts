@@ -121,6 +121,34 @@ describe("investedPeriodResult (spec section 10.5)", () => {
     expect(withDeposit.investmentReturnPercent).toBe(10);
   });
 
+  it("a reinvested dividend is income and capital at once, and moves no return", () => {
+    // Discussion #1670. 10,000 bought on d1; a 200 dividend reinvested on d2
+    // at an unchanged price, so IV rises to 10,200 with no external flow.
+    const values = [0, 10_000, 10_200, 10_200];
+    const reinvested = run(values, {
+      1: { capitalIn: 10_000 },
+      2: { reinvestedIncome: 200 },
+    });
+    // The same ledger before reinvestments were counted as income.
+    const unclassified = run(values, { 1: { capitalIn: 10_000 } });
+
+    // The distribution is printed as income, and as the purchase it funded.
+    expect(reinvested.investmentIncome).toBe(200);
+    expect(reinvested.investmentCapitalFlows).toBe(10_200);
+    // So the three figures still add up: 10,200 - 10,200 + 200 = 200.
+    expect(reinvested.investedValueChange).toBe(10_200);
+    expect(reinvested.investmentPnl).toBe(200);
+    // And the result and both rates are the ones the shares in IV already gave.
+    expect(reinvested.investmentPnl).toBe(unclassified.investmentPnl);
+    expect(reinvested.investmentReturnPercent).toBe(2);
+    expect(reinvested.investmentReturnPercent).toBe(
+      unclassified.investmentReturnPercent,
+    );
+    expect(reinvested.investmentMoneyWeightedTotalPercent).toBe(
+      unclassified.investmentMoneyWeightedTotalPercent,
+    );
+  });
+
   it("case 5: a second purchase at an unchanged price changes neither figure", () => {
     // 8,000 in, up 10% to 8,800, then 4,000 more at an unchanged price.
     const result = run([0, 8_000, 8_800, 12_800, 12_800], {

@@ -82,6 +82,7 @@
     "newCategory": "Новая категория",
     "currentCategory": "Текущая категория",
     "description": "Описание",
+    "referenceNumber": "Реф. №",
     "name": "Имя",
     "website": "Веб-сайт",
     "address": "Адрес",
@@ -111,6 +112,13 @@
     "commission": "Комиссия",
     "total": "Итого",
     "cashImpact": "Влияние на денежные средства",
+    "bondSeries": "Серия",
+    "marksPaid": "Отмечает как оплаченное",
+    "accruedInterest": "Накопленные проценты",
+    "redemptionSplit": "Разбивка погашения",
+    "redemptionSplitValue": "Номинал {principal} + проценты {interest} = выплата {payout}",
+    "redemptionDeduction": "Удержана комиссия за досрочное погашение",
+    "redemptionSplitDiffers": "Цена и накопленные проценты отличаются от суммы, которую выплачивает это погашение (см. разбивку). Проверьте их перед подтверждением.",
     "createTransactionsTitle": "Создать эти транзакции?",
     "createInvestmentTransactionsTitle": "Создать эти инвестиционные операции?",
     "approveAll": "Подтвердить все",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Реинвестирование долгосрочного прироста капитала",
       "CAPITAL_GAIN_SHORT": "Краткосрочный прирост капитала",
       "CAPITAL_GAIN_LONG": "Долгосрочный прирост капитала",
-      "REDEEM": "Погашение CD/облигации"
+      "REDEEM": "Погашение CD/облигации",
+      "RETURN_OF_CAPITAL": "Возврат капитала"
     },
     "createSecurityTitle": "Создать эту ценную бумагу?",
     "createdSecurity": "Ценная бумага создана",
@@ -224,7 +233,11 @@
       "category": "Задать категорию: {name}",
       "payee": "Задать получателя: {name}",
       "aiReview": "{count, plural, one {Поставить в очередь # запрос на проверку ИИ} few {Поставить в очередь # запроса на проверку ИИ} many {Поставить в очередь # запросов на проверку ИИ} other {Поставить в очередь # запроса на проверку ИИ}}"
-    }
+    },
+    "aiCategory": "предложена ИИ",
+    "tags": "Теги",
+    "newTag": "(новый тег)",
+    "marksPaidDue": "{name} (срок {date})"
   },
   "table": {
     "downloadTitle": "Скачать таблицу в формате CSV",

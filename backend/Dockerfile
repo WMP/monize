@@ -1,5 +1,5 @@
 # Development stage
-FROM node:24-alpine AS development
+FROM mirror.gcr.io/library/node:24-alpine AS development
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ EXPOSE 3000
 CMD ["npm", "run", "start:dev"]
 
 # Builder stage (uses slim/glibc to avoid Alpine musl stalling under QEMU arm64 emulation)
-FROM node:24-slim AS builder
+FROM mirror.gcr.io/library/node:24-slim AS builder
 
 WORKDIR /app
 
@@ -38,18 +38,24 @@ COPY database/migrations ./migrations
 # Copy release notes (needed by production stage for the What's New digest)
 COPY docs/release-notes ./release-notes
 
-RUN npm run build
+# `nest build` type-checks the whole backend in one tsc process, which now
+# needs more than the ~2 GB heap Node defaults to on an 8 GB host (WSL,
+# Docker Desktop). CI runners default higher, so only local builds hit it.
+RUN NODE_OPTIONS=--max-old-space-size=4096 npm run build
 
 # Production deps stage (uses slim/glibc to avoid Alpine musl SIGILL under QEMU)
-FROM node:24-slim AS deps
+FROM mirror.gcr.io/library/node:24-slim AS deps
 
 WORKDIR /app
 
 COPY backend/package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+# --libc=musl: these node_modules run on the Alpine production stage, so any
+# libc-specific optional binary must be the musl build, not the glibc one this
+# stage would pick natively.
+RUN npm ci --omit=dev --libc=musl && npm cache clean --force
 
 # Production stage
-FROM node:24-alpine AS production
+FROM mirror.gcr.io/library/node:24-alpine AS production
 ARG GIT_SHA
 ARG BUILD_DATE
 ARG VERSION

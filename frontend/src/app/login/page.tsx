@@ -149,7 +149,7 @@ export default function LoginPage() {
       } else if (returnTo) {
         // Full-page navigation so server-side OAuth interaction routes see
         // the freshly issued auth_token cookie on the very next request.
-        window.location.href = returnTo;
+        window.location.assign(returnTo);
       } else {
         router.push('/dashboard');
       }
@@ -185,7 +185,7 @@ export default function LoginPage() {
       );
       router.push(SECURITY_TWO_FACTOR_HREF);
     } else if (returnTo) {
-      window.location.href = returnTo;
+      window.location.assign(returnTo);
     } else {
       router.push('/dashboard');
     }

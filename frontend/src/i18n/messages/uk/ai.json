@@ -82,6 +82,7 @@
     "newCategory": "Нова категорія",
     "currentCategory": "Поточна категорія",
     "description": "Опис",
+    "referenceNumber": "Реф. №",
     "name": "Ім'я",
     "website": "Вебсайт",
     "address": "Адреса",
@@ -111,6 +112,13 @@
     "commission": "Комісія",
     "total": "Разом",
     "cashImpact": "Вплив на готівку",
+    "bondSeries": "Серія",
+    "marksPaid": "Позначає як сплачене",
+    "accruedInterest": "Накопичені відсотки",
+    "redemptionSplit": "Розбивка погашення",
+    "redemptionSplitValue": "Номінал {principal} + відсотки {interest} = виплата {payout}",
+    "redemptionDeduction": "Утримано комісію за дострокове погашення",
+    "redemptionSplitDiffers": "Ціна й накопичені відсотки відрізняються від суми, яку виплачує це погашення (див. розбивку). Перевірте їх перед підтвердженням.",
     "createTransactionsTitle": "Створити ці транзакції?",
     "createInvestmentTransactionsTitle": "Створити ці інвестиційні операції?",
     "approveAll": "Підтвердити все",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Реінвестування довгострокового приросту капіталу",
       "CAPITAL_GAIN_SHORT": "Короткостроковий приріст капіталу",
       "CAPITAL_GAIN_LONG": "Довгостроковий приріст капіталу",
-      "REDEEM": "Погашення CD/облігації"
+      "REDEEM": "Погашення CD/облігації",
+      "RETURN_OF_CAPITAL": "Повернення капіталу"
     },
     "createSecurityTitle": "Створити цей цінний папір?",
     "createdSecurity": "Цінний папір створено",
@@ -224,7 +233,11 @@
       "category": "Задати категорію: {name}",
       "payee": "Задати одержувача: {name}",
       "aiReview": "{count, plural, one {Поставити в чергу # запит на перевірку ШІ} few {Поставити в чергу # запити на перевірку ШІ} many {Поставити в чергу # запитів на перевірку ШІ} other {Поставити в чергу # запиту на перевірку ШІ}}"
-    }
+    },
+    "aiCategory": "запропоновано ШІ",
+    "tags": "Теги",
+    "newTag": "(новий тег)",
+    "marksPaidDue": "{name} (термін {date})"
   },
   "table": {
     "downloadTitle": "Завантажити таблицю як CSV",

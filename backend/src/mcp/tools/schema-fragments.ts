@@ -46,9 +46,12 @@ export const manageOperation = () =>
  * one card each below that) is stated once in the server instructions.
  */
 export const approvalMode = () =>
+  // A client form that leaves the field blank sends "": read it as unset.
   z
-    .enum(["bulk", "individual"])
-    .optional()
+    .preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.enum(["bulk", "individual"]).optional(),
+    )
     .describe("Force one confirmation per item with 'individual'.");
 
 /** Preview without saving. */

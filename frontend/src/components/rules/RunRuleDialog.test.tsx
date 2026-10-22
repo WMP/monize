@@ -184,6 +184,63 @@ describe('RunRuleDialog', () => {
     expect(button('Confirm and run')).toBeDisabled();
   });
 
+  it('confirms a run whose only work is queueing AI reviews, and reports what it queued without an undo', async () => {
+    mocks.rules.previewRun.mockResolvedValue(
+      makePreview({
+        matched: [],
+        conditionMatchedCount: 3,
+        scanned: 5,
+        aiReviewRequests: 3,
+        fingerprint: FP,
+      }),
+    );
+    mocks.rules.run.mockResolvedValue({
+      changed: 0,
+      skipped: [],
+      historyId: null,
+      aiReviewsQueued: 2,
+      aiReviewsAlreadyQueued: 1,
+    });
+    await renderDialog();
+    await preview();
+    expect(screen.getByTestId('rule-run-ai-review')).toHaveTextContent(
+      '3 transactions would be queued for AI review. The request is created when you confirm.',
+    );
+    expect(screen.queryByText('No transactions would change')).not.toBeInTheDocument();
+    expect(button('Confirm and run')).toBeEnabled();
+
+    await confirm();
+    expect(mocks.rules.run).toHaveBeenCalledWith('rule-1', { limit: 200 }, FP);
+    expect(toast.success).toHaveBeenCalledWith('2 transactions queued for AI review.');
+    expect(screen.getByText('No transactions were changed.')).toBeInTheDocument();
+    expect(screen.getByText('2 transactions were queued for AI review.')).toBeInTheDocument();
+    expect(
+      screen.getByText('1 transaction already had an open AI review request, so it was not queued again.'),
+    ).toBeInTheDocument();
+    // Nothing was written to the ledger, so there is no history entry to undo.
+    expect(screen.queryByText('You can undo the run from the action history.')).not.toBeInTheDocument();
+  });
+
+  it('says nothing new was queued, and promises no undo, when every review was already open', async () => {
+    mocks.rules.previewRun.mockResolvedValue(
+      makePreview({ matched: [], conditionMatchedCount: 3, scanned: 5, aiReviewRequests: 1, fingerprint: FP }),
+    );
+    mocks.rules.run.mockResolvedValue({
+      changed: 0,
+      skipped: [],
+      historyId: null,
+      aiReviewsQueued: 0,
+      aiReviewsAlreadyQueued: 3,
+    });
+    await renderDialog();
+    await preview();
+    await confirm();
+    expect(toast.success).toHaveBeenCalledWith(
+      '3 transactions already had an open AI review request, so nothing new was queued.',
+    );
+    expect(toast.success).not.toHaveBeenCalledWith(expect.stringContaining('undo'));
+  });
+
   it('on PREVIEW_CHANGED shows a message and a refreshed preview, and confirms the new fingerprint only after the reader sees it', async () => {
     mocks.rules.run
       .mockRejectedValueOnce(

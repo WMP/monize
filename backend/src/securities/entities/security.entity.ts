@@ -13,6 +13,7 @@ import {
 import { ApiProperty } from "@nestjs/swagger";
 import { User } from "../../users/entities/user.entity";
 import { Tag } from "../../tags/entities/tag.entity";
+import { BondProgram } from "../../bonds/entities/bond-program.entity";
 
 /** NUMERIC(9,4) comes back from pg as a string; keep it a number. */
 const numericTransformer = {
@@ -236,6 +237,33 @@ export class Security {
   @ApiProperty({ required: false, nullable: true })
   @Column({ type: "time", nullable: true, name: "market_close_time" })
   marketCloseTime: string | null;
+
+  @ApiProperty({
+    nullable: true,
+    description:
+      "The bond program (the product, e.g. EDO; GET /bonds/programs) this security is linked to " +
+      "(global catalog row). A linked security is priced by the bond engine only, never by a quote provider.",
+  })
+  @Column({ type: "uuid", nullable: true, name: "bond_program_id" })
+  bondProgramId: string | null;
+
+  @ApiProperty({
+    description:
+      "Fetch every new series of the linked program automatically (the daily series job).",
+  })
+  @Column({ type: "boolean", default: false, name: "bond_auto_fetch" })
+  bondAutoFetch: boolean;
+
+  // Declared so the integration schema, which is built from the entities, carries
+  // the `fk_securities_bond_program ... ON DELETE RESTRICT` of the migration:
+  // a program is never deleted from under a security that points at it. Never
+  // loaded; `bondProgramId` is what the code reads and writes.
+  @ManyToOne(() => BondProgram, { onDelete: "RESTRICT", nullable: true })
+  @JoinColumn({
+    name: "bond_program_id",
+    foreignKeyConstraintName: "fk_securities_bond_program",
+  })
+  bondProgram?: BondProgram | null;
 
   @ApiProperty({ description: "User-defined tags classifying this security" })
   @ManyToMany(() => Tag)

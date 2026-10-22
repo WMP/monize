@@ -13,6 +13,14 @@
     "modalTitleNew": "नई मुद्रा",
     "loading": "मुद्राएं लोड हो रही हैं...",
     "count": "{count, plural, one {# मुद्रा} other {# मुद्राएं}}",
+    "providers": {
+      "line": "दरें {providers} से",
+      "separator": ", फिर ",
+      "names": {
+        "frankfurter": "Frankfurter (ECB संदर्भ दरें)",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "मुद्राएं लोड करने में विफल",
       "updated": "मुद्रा सफलतापूर्वक अपडेट की गई",
@@ -24,6 +32,7 @@
       "statusFailed": "मुद्रा स्थिति अपडेट करने में विफल",
       "ratesRefreshed": "विनिमय दरें रीफ्रेश की गईं: {updated} जोड़े अपडेट हुए",
       "ratesRefreshedWithFailed": "विनिमय दरें रीफ्रेश की गईं: {updated} अपडेट, {failed} विफल",
+      "ratesAllFailed": "कोई विनिमय दर प्राप्त नहीं की जा सकी; प्रदाता ने उत्तर नहीं दिया",
       "ratesFailed": "विनिमय दरें रीफ्रेश करने में विफल"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter (ECB)",
         "mnyImport": "Money आयात",
         "unknown": "अज्ञात"
       }

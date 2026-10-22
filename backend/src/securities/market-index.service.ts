@@ -469,7 +469,7 @@ export class MarketIndexService implements OnApplicationBootstrap {
   ): Promise<void> {
     try {
       const chunks: Array<{ start: string; end: string }> = [];
-      for (let start = from; start <= to; ) {
+      for (let start = from; start <= to;) {
         const end = addDays(start, FETCH_CHUNK_DAYS - 1);
         chunks.push({ start, end: end < to ? end : to });
         start = addDays(end, 1);
@@ -762,11 +762,22 @@ export class MarketIndexService implements OnApplicationBootstrap {
    * `SecurityPriceService.bulkUpsertPrices` does it: a later provider that
    * supplies no adjusted close must not erase one an earlier fetch stored, or
    * the series' basis silently flips from adjusted to raw between two reads.
+   *
+   * One bar per index and date: the provider can answer the same session twice
+   * (the last bar of a window repeated as the live one), and PostgreSQL refuses
+   * an `ON CONFLICT DO UPDATE` that would update one row twice in a command
+   * (SQLSTATE 21000), which failed the whole index's refresh. The later bar wins,
+   * as the later fetch does across two commands.
    */
   private async bulkUpsert(rows: readonly UpsertRow[]): Promise<void> {
+    const unique = [
+      ...new Map(
+        rows.map((row) => [`${row.indexCode}|${row.priceDate}`, row] as const),
+      ).values(),
+    ];
     const BATCH = 500;
-    for (let offset = 0; offset < rows.length; offset += BATCH) {
-      const batch = rows.slice(offset, offset + BATCH);
+    for (let offset = 0; offset < unique.length; offset += BATCH) {
+      const batch = unique.slice(offset, offset + BATCH);
       const values: unknown[] = [];
       const tuples = batch.map((row, i) => {
         const base = i * 5;

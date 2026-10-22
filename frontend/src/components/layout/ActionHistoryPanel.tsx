@@ -54,17 +54,34 @@ export function ActionHistoryPanel() {
   const canUndo = history.some((h) => !h.isUndone);
   const canRedo = history.some((h) => h.isUndone);
 
-  const fetchHistory = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await actionHistoryApi.getHistory(20);
-      setHistory(data);
-    } catch {
-      // Silently fail
-    } finally {
-      setIsLoading(false);
-    }
+  // Opening the panel starts a read: show it as loading from this render on
+  // ("info from previous render"), not from the effect that fetches.
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen);
+    if (isOpen) setIsLoading(true);
+  }
+
+  // The writes live in the inner `run`, so they happen after the request, not during the effect.
+  const fetchHistory = useCallback(() => {
+    const run = async () => {
+      try {
+        const data = await actionHistoryApi.getHistory(20);
+        setHistory(data);
+      } catch {
+        // Silently fail
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, []);
+
+  // Every read after the first shows the spinner too.
+  const refetchHistory = useCallback(() => {
+    setIsLoading(true);
+    return fetchHistory();
+  }, [fetchHistory]);
 
   // Fetch history when panel opens
   useEffect(() => {
@@ -76,8 +93,8 @@ export function ActionHistoryPanel() {
   // Refresh history when undo/redo happens via keyboard
   useEffect(() => {
     if (!isOpen) return;
-    return subscribeUndoRedo(() => fetchHistory());
-  }, [isOpen, fetchHistory]);
+    return subscribeUndoRedo(() => refetchHistory());
+  }, [isOpen, refetchHistory]);
 
   // Close on click outside
   useClickOutside(dropdownRef, () => setIsOpen(false));
@@ -94,7 +111,7 @@ export function ActionHistoryPanel() {
       );
       clearAllCache();
       notifyUndoRedo();
-      await fetchHistory();
+      await refetchHistory();
     } catch (error: any) {
       const status = error?.response?.status;
       const message = error?.response?.data?.message;
@@ -123,7 +140,7 @@ export function ActionHistoryPanel() {
       );
       clearAllCache();
       notifyUndoRedo();
-      await fetchHistory();
+      await refetchHistory();
     } catch (error: any) {
       const status = error?.response?.status;
       const message = error?.response?.data?.message;

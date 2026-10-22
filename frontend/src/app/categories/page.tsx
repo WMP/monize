@@ -51,22 +51,31 @@ function CategoriesContent() {
   const [sortDirection, setSortDirection] = useLocalStorage<SortDirection>('monize-categories-sort-dir', 'asc');
   const { showForm, editingItem, openCreate, openEdit, close, isEditing, modalProps, setFormDirty, unsavedChangesDialog, formSubmitRef } = useFormModal<Category>();
 
-  const loadCategories = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await categoriesApi.getAll();
-      setCategories(data);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('toasts.loadFailed')));
-      logger.error(error);
-    } finally {
-      setIsLoading(false);
-    }
+  // The mount load: the state already says loading.
+  const fetchCategories = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const data = await categoriesApi.getAll();
+        setCategories(data);
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('toasts.loadFailed')));
+        logger.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [t]);
 
+  const loadCategories = useCallback(() => {
+    setIsLoading(true);
+    return fetchCategories();
+  }, [fetchCategories]);
+
   useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
+    fetchCategories();
+  }, [fetchCategories]);
 
   useOnUndoRedo(loadCategories);
   // Refresh on AI chat-bubble writes (category transaction counts can change).

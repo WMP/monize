@@ -14,6 +14,7 @@ import { TransactionStatus, BulkUpdateData, BulkUpdateResult } from '@/types/tra
 import { Category } from '@/types/category';
 import { Payee } from '@/types/payee';
 import { Tag } from '@/types/tag';
+import { useTagPickerOptions } from '@/hooks/useTagPickerOptions';
 import { categoriesApi } from '@/lib/categories';
 import { payeesApi } from '@/lib/payees';
 import { tagsApi } from '@/lib/tags';
@@ -127,19 +128,14 @@ export function BulkUpdateModal({
     { value: TransactionStatus.VOID, label: t('bulk.modal.statusOptions.void') },
   ];
 
-  const tagOptions = useMemo(() =>
-    [...tags]
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map(tag => ({
-        value: tag.id,
-        label: tag.name,
-      })), [tags]);
 
   const enablePayee = useWatch({ control, name: 'enablePayee' });
   const enableCategory = useWatch({ control, name: 'enableCategory' });
   const enableDescription = useWatch({ control, name: 'enableDescription' });
   const enableStatus = useWatch({ control, name: 'enableStatus' });
   const enableTags = useWatch({ control, name: 'enableTags' });
+  // Usage is only asked for once the Tags field is switched on.
+  const { tagOptions } = useTagPickerOptions(tags, isOpen && !!enableTags);
 
   const hasAnyEnabled =
     enablePayee || enableCategory || enableDescription || enableStatus || enableTags;

@@ -240,6 +240,22 @@
       },
       "allocationMessageUnknown": "Your GEM strategy \"{{ strategy }}\" changed its target. Open to review the recommendation."
     },
+    "emailReceiptsAttention": {
+      "title": "Email receipts need attention",
+      "message": "Your receipts inbox holds {{ noParser }} without a profile and {{ parseFailed }} that their profile did not recognize. Open to review."
+    },
+    "aiReview": {
+      "readyTitle": "AI review proposals wait for you",
+      "readyMessage": "Proposals waiting for your decision: {{ count }}. New since the last notice: {{ added }}. Open to review.",
+      "expiringTitle": "AI review proposals expire soon",
+      "expiringMessage": "Proposals that expire within 3 days: {{ count }}. The first one expires on {{ date }}. Open to review."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: warranty expires soon",
+      "expiringMessage": "The warranty for {{ name }} expires on {{ date }}. Open to review its documents or record a claim.",
+      "todayTitle": "{{ name }}: warranty expires today",
+      "todayMessage": "The warranty for {{ name }} expires today, {{ date }}. Open to review its documents or record a claim."
+    },
     "portfolioMovement": {
       "titleUp": "Investments up {{ percent }}%",
       "titleDown": "Investments down {{ percent }}%",
@@ -308,6 +324,71 @@
     "priceMovement": {
       "title": "Price change alert: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}: {{ percent }}% compared with the previous available session."
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}: bank access ends today",
+      "expiringTitleOneDay": "{{ institution }}: bank access ends within 1 day",
+      "expiringTitleDays": "{{ institution }}: bank access ends within {{ days }} days",
+      "expiringMessage": "Your consent for Monize to read {{ institution }} ends on {{ date }}. Renew the connection in Monize to keep syncing.",
+      "expiredTitle": "{{ institution }}: bank access has ended",
+      "expiredMessage": "Your consent for Monize to read {{ institution }} has ended. Renew the connection in Monize to resume syncing.",
+      "failedTitle": "{{ institution }}: sync failed",
+      "failedMessage": "The daily sync of {{ institution }} failed for: {{ accounts }}. Open bank sync settings to see why.",
+      "failedCredentialsMessage": "The daily sync of {{ institution }} could not start because the bank sync credentials are missing or were rejected. Check them in bank sync settings.",
+      "unnamedAccount": "an account",
+      "importedTitle": "{{ institution }}: new transactions imported",
+      "importedMessage": "Transactions imported from {{ institution }} by the daily sync: {{ imported }}.",
+      "importedNoneTitle": "{{ institution }}: no new transactions",
+      "importedNoneMessage": "The daily sync of {{ institution }} found no new transactions."
+    },
+    "bond": {
+      "maturitySoonTitle": "{{ series }} matures on {{ date }}",
+      "maturitySoonMessage": "{{ quantity }} x {{ series }} mature on {{ date }}. {{ payout }}",
+      "interestTitle": "{{ series }}: interest payment on {{ date }}",
+      "interestMessage": "{{ quantity }} x {{ series }} pay {{ amount }} of interest on {{ date }}. Book it on the security page if it is not in your account yet.",
+      "interestMessageUnknown": "{{ quantity }} x {{ series }} pay interest on {{ date }}. The amount is not known yet: a rate it depends on is not published.",
+      "rateResetTitle": "{{ series }}: new interest period",
+      "rateResetMessage": "{{ series }} entered period {{ period }} on {{ date }} at {{ rate }} a year.",
+      "unbookedTitle": "{{ series }}: matured, redemption not booked",
+      "unbookedMessage": "{{ quantity }} x {{ series }} matured on {{ date }} and no redemption is booked. {{ payout }} Book the redemption on the security page.",
+      "payoutKnown": "The payout is {{ payout }}.",
+      "payoutUnknown": "The payout is not known yet: {{ reason }}.",
+      "reason": {
+        "RATE_UNKNOWN": "a rate it depends on is not published yet",
+        "TERMS_INCOMPLETE": "the terms of the series are incomplete",
+        "PURCHASE_OUTSIDE_SALE_WINDOW": "a purchase date is outside the sale window of the series",
+        "other": "it cannot be worked out from the data stored"
+      },
+      "benchmarkTitle": "{{ benchmark }}: new observation {{ observation }}",
+      "benchmarkMessage": "{{ publisher }} published {{ benchmark }} for {{ observation }}: {{ value }}. It is read by {{ series }}.",
+      "benchmarkMessageMore": "{{ publisher }} published {{ benchmark }} for {{ observation }}: {{ value }}. It is read by {{ series }} and {{ more }} more.",
+      "missingTitle": "Bond figures are not known yet",
+      "missingMessage": "Some bond figures cannot be worked out: {{ causes }}.",
+      "benchmarks": {
+        "PL_CPI_GUS_YOY": "CPI, 12 months (GUS)",
+        "PL_NBP_REFERENCE": "NBP reference rate"
+      },
+      "cause": {
+        "observation": "the {{ observation }} observation of {{ benchmark }} ({{ publisher }}) is not stored: it is not published yet, or the feed has not been fetched since; refresh on the bond page",
+        "observationNoPublisher": "the {{ observation }} observation of {{ benchmark }} is not stored: it is not published yet, or the feed has not been fetched since; refresh on the bond page",
+        "terms": "the terms of {{ series }} are incomplete; refresh the series on the bond page",
+        "purchase": "a purchase of {{ series }} on {{ date }} is outside its sale window ({{ from }} to {{ to }}); correct the purchase date",
+        "lots": "the lots cannot be derived from the ledger ({{ code }}); correct the ledger",
+        "lotsRow": "the {{ action }} dated {{ date }} makes the lots impossible to derive ({{ code }}); correct the transaction",
+        "lotsRowSeries": "the {{ action }} dated {{ date }} is not placed in a series ({{ code }}); choose the series on that transaction",
+        "lotsRowRemoval": "the {{ action }} dated {{ date }} removes more than the account holds of that series ({{ code }}); correct the transaction"
+      },
+      "action": {
+        "BUY": "purchase",
+        "SELL": "sale",
+        "REINVEST": "reinvestment",
+        "ADD_SHARES": "share addition",
+        "REMOVE_SHARES": "share removal",
+        "SPLIT": "split",
+        "TRANSFER_IN": "incoming transfer",
+        "TRANSFER_OUT": "outgoing transfer",
+        "other": "transaction"
+      }
     }
   },
   "backupOffsite": {

@@ -119,6 +119,8 @@
     "currencyLabel": "통화",
     "currencyNotConfigured": "{code} — 등록한 통화에 없음",
     "quoteProviderLabel": "시세 제공자",
+    "skipPriceUpdatesLabel": "자동 가격 업데이트 끄기",
+    "skipPriceUpdatesHelp": "Monize가 이 증권의 가격을 가져오지 않습니다. 어떤 제공업체도 가격을 제공할 수 없는 증권에 사용하세요. 직접 입력한 가격은 계속 반영됩니다. 다른 시세 제공업체나 MSN 상품 ID를 선택하면 업데이트가 다시 켜집니다.",
     "msnIdLabel": "MSN 금융 상품 ID (고급)",
     "lookupProviderAriaLabel": "제공자 조회",
     "lookupButton": "조회",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "채권 엔진"
     },
     "types": {
       "select": "유형 선택...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "삭제",
       "deleteSuccess": "자산군 \"{name}\"을(를) 삭제했습니다",
       "deleteFailed": "자산군 \"{name}\"을(를) 삭제하지 못했습니다"
-    }
+    },
+    "bondFetchAction": "공식 출처에서 {code} 가져오기",
+    "bondFetching": "발행자로부터 {code} 및 기준 금리를 가져오는 중입니다. 최대 1분 정도 걸릴 수 있습니다.",
+    "bondFetchFailed": "시리즈를 가져오지 못했습니다.",
+    "bondCurrencyLocked": "이 종목은 {linkedCurrency} 채권 종류에 연결되어 있습니다. 통화를 {linkedCurrency}(으)로 되돌리거나 먼저 채권 종류 연결을 해제하세요(해제하면 계산된 가격이 삭제됩니다).",
+    "bondProgramLabel": "채권 종류",
+    "bondProgramNone": "연결 안 됨",
+    "bondProgramCurrent": "연결된 채권 종류",
+    "bondProgramLoading": "채권 종류를 불러오는 중...",
+    "bondProgramLoadFailed": "채권 종류를 불러오지 못해 아직 채권 종류를 연결할 수 없습니다.",
+    "bondProgramRetry": "다시 시도",
+    "bondNoPrograms": "채권 카탈로그에 아직 채권 종류가 없습니다.",
+    "bondAutoFetchLabel": "이 채권 종류의 새 시리즈를 자동으로 가져오기",
+    "bondAutoFetchHelp": "켜면 Monize가 매일 공식 출처에서 이 채권 종류의 새 시리즈를 읽어 오므로, 시리즈를 먼저 가져오지 않고도 매수를 기록할 수 있습니다.",
+    "bondCountryLabel": "국가",
+    "bondCountryOther": "기타",
+    "bondCountryOtherInfo": "다른 국가 채권 지원은 프로젝트의 <link>GitHub</link>에서 요청할 수 있습니다."
   },
   "priceForm": {
     "dateLabel": "날짜",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "장기 자본이득 재투자",
       "CAPITAL_GAIN_SHORT": "단기 자본이득",
       "CAPITAL_GAIN_LONG": "장기 자본이득",
-      "REDEEM": "CD/채권 상환"
+      "REDEEM": "CD/채권 상환",
+      "RETURN_OF_CAPITAL": "자본 환급"
     },
     "toasts": {
       "loadHistoryFailed": "이력 로드에 실패했습니다",
@@ -340,6 +360,7 @@
     "nameRequired": "이름은 필수입니다",
     "nameMax": "이름은 255자 이하여야 합니다",
     "currencyRequired": "통화는 필수입니다",
+    "bondProgramRequired": "채권 종류는 필수입니다",
     "descriptionMax": "설명은 5000자 이하여야 합니다"
   },
   "priceValidation": {

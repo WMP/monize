@@ -45,9 +45,10 @@ const USER_DIRECTORY_NAME =
  * The `local` handle: the user's own directory, and the flat base a version
  * before per-user folders wrote into.
  *
- * Both travel together because retention sweeps both and nothing else may: the
- * legacy directory is where a shared history ages out, and it is the one part of
- * this layout an object store cannot represent.
+ * Both travel together because the listing reports both: the legacy directory
+ * is a shared history nobody can attribute, so it is listed (marked `legacy`)
+ * but never opened or removed, and it is the one part of this layout an object
+ * store cannot represent.
  */
 interface LocalBackupStoreLocation extends BackupStoreLocation {
   readonly folder: string;
@@ -60,7 +61,7 @@ interface LocalBackupStoreLocation extends BackupStoreLocation {
  *
  * This is the behaviour `AutoBackupService` performed inline before the storage
  * target was extracted, moved rather than rewritten: the same containment model,
- * the same atomic write, the same probe, the same legacy sweep. The proof that
+ * the same atomic write, the same probe, the same legacy listing. The proof that
  * the extraction changed nothing is that the service's existing spec suite runs
  * against this target unchanged.
  *
@@ -428,9 +429,15 @@ export class LocalBackupStorageTarget implements BackupStorageTarget {
     location: BackupStoreLocation,
     entry: StoredArtifactEntry,
   ): Promise<void> {
-    const { folder, legacyBase } = this.own(location);
-    const directory = entry.legacy ? legacyBase : folder;
-    await fs.unlink(this.safePath(directory, entry.name));
+    // A legacy artifact names no owner, so no user's pass may delete it
+    // (INV-BACKUP-001); `open()` refuses it for the same reason.
+    if (entry.legacy) {
+      throw new Error(
+        `Refusing to remove legacy artifact ${entry.name}: it names no owner`,
+      );
+    }
+    const { folder } = this.own(location);
+    await fs.unlink(this.safePath(folder, entry.name));
   }
 
   async sweepIncomplete(

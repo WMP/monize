@@ -19,7 +19,12 @@ vi.mock('@/hooks/useNumberFormat', async () => {
     }),
 };
 });
-const STABLE_RANGE = { start: "2024-01-01", end: "2025-01-01" };
+// The selection the mocked range hook reports; a test moves it and re-renders.
+const mockRange = { end: "2025-01-01" };
+const STABLE_RANGE = {
+  start: "2024-01-01",
+  get end() { return mockRange.end; },
+};
 vi.mock("@/hooks/useDateRange", () => ({
   useDateRange: () => ({
     dateRange: "1y",
@@ -31,6 +36,11 @@ vi.mock("@/hooks/useDateRange", () => ({
     resolvedRange: STABLE_RANGE,
     isValid: true,
   }),
+}));
+
+const mockExportToPdf = vi.fn();
+vi.mock("@/lib/pdf-export", () => ({
+  exportToPdf: (...args: any[]) => mockExportToPdf(...args),
 }));
 
 vi.mock("@/components/ui/DateRangeSelector", () => ({
@@ -47,9 +57,9 @@ vi.mock("@/components/ui/ChartViewToggle", () => ({
 }));
 
 vi.mock("@/components/ui/ExportDropdown", () => ({
-  ExportDropdown: ({ onExportPdf, onExportCsv }: any) => (
+  ExportDropdown: ({ onExportPdf, onExportCsv, disabled }: any) => (
     <div data-testid="export-dropdown">
-      <button data-testid="export-pdf" onClick={onExportPdf}>PDF</button>
+      <button data-testid="export-pdf" onClick={onExportPdf} data-disabled={String(disabled === true)}>PDF</button>
       {onExportCsv && (
         <button data-testid="export-csv" onClick={onExportCsv}>CSV</button>
       )}
@@ -115,6 +125,7 @@ describe("IncomeVsExpensesReport", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPush.mockClear();
+    mockRange.end = "2025-01-01";
   });
 
   it("shows loading state initially", async () => {
@@ -351,6 +362,52 @@ describe("IncomeVsExpensesReport", () => {
     expect((await screen.findAllByTestId("partial-total")).length).toBeGreaterThan(0);
   });
 
+  it("carries the partial note onto the PDF cards the screen marks", async () => {
+    // The screen wraps income, expenses and savings in PartialTotal; the PDF
+    // used to print the same subtotals under "Total ..." with nothing beside
+    // them, and a document leaves the application without its caveat.
+    mockExportToPdf.mockResolvedValue(undefined);
+    mockGetIncomeVsExpenses.mockResolvedValue({
+      data: [{ period: "2024-01", periodStart: "2024-01-01", periodEnd: "2024-01-31", income: 5000, expenses: 3000, net: 2000 }],
+      totals: { income: null, expenses: null, net: null, knownIncome: 5000, knownExpenses: 3000, knownNet: 2000 },
+      currency: "CAD",
+      missingCurrencies: ["JPY"],
+      excludedCount: 1,
+    });
+    await act(async () => {
+      render(<IncomeVsExpensesReport />);
+    });
+    await waitFor(() => expect(screen.getByTestId("bar-chart")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("export-pdf"));
+    });
+    const cards = mockExportToPdf.mock.calls[0][0].summaryCards as Array<{ label: string; note?: string }>;
+    for (const label of ["Total Income", "Total Expenses", "Total Savings"]) {
+      const card = cards.find((c) => c.label === label);
+      expect(card?.note, label).toEqual(expect.stringContaining("JPY"));
+    }
+  });
+
+  it("writes no note on the PDF cards of a complete report", async () => {
+    mockExportToPdf.mockResolvedValue(undefined);
+    mockGetIncomeVsExpenses.mockResolvedValue({
+      data: [{ period: "2024-01", periodStart: "2024-01-01", periodEnd: "2024-01-31", income: 5000, expenses: 3000, net: 2000 }],
+      totals: { income: 5000, expenses: 3000, net: 2000, knownIncome: 5000, knownExpenses: 3000, knownNet: 2000 },
+      currency: "CAD",
+      missingCurrencies: [],
+      excludedCount: 0,
+    });
+    await act(async () => {
+      render(<IncomeVsExpensesReport />);
+    });
+    await waitFor(() => expect(screen.getByTestId("bar-chart")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("export-pdf"));
+    });
+    const cards = mockExportToPdf.mock.calls[0][0].summaryCards as Array<{ note?: string }>;
+    expect(cards.every((c) => c.note === undefined)).toBe(true);
+  });
+
   it("leaves complete totals unmarked", async () => {
     mockGetIncomeVsExpenses.mockResolvedValue({
       data: [{ period: "2024-01", periodStart: "2024-01-01", periodEnd: "2024-01-31", income: 5000, expenses: 3000, net: 2000 }],
@@ -479,5 +536,46 @@ describe("IncomeVsExpensesReport", () => {
 
       expect((await screen.findAllByTestId("partial-total")).length).toBeGreaterThan(0);
     });
+  });
+});
+
+describe("IncomeVsExpensesReport: a reload is not the previous answer", () => {
+  const answer = { data: [{ period: "2024-01", periodStart: "2024-01-01", periodEnd: "2024-01-31", income: 5000, expenses: 3000, net: 2000 }], totals: { income: 5000, expenses: 3000, net: 2000, knownIncome: 5000, knownExpenses: 3000, knownNet: 2000 } };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRange.end = "2025-01-01";
+  });
+
+  async function loadThenChangeRange(next: () => unknown) {
+    mockGetIncomeVsExpenses.mockResolvedValue(answer);
+    let view!: ReturnType<typeof render>;
+    await act(async () => {
+      view = render(<IncomeVsExpensesReport />);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("export-pdf")).toHaveAttribute("data-disabled", "false"),
+    );
+
+    mockGetIncomeVsExpenses.mockImplementation(next);
+    mockRange.end = "2025-02-01";
+    await act(async () => {
+      view.rerender(<IncomeVsExpensesReport />);
+    });
+    await waitFor(() =>
+      expect(mockGetIncomeVsExpenses).toHaveBeenLastCalledWith(
+        expect.objectContaining({ endDate: "2025-02-01" }),
+      ),
+    );
+  }
+
+  it("disables the export while the next request has failed", async () => {
+    await loadThenChangeRange(() => Promise.reject(new Error("500")));
+    expect(screen.getByTestId("export-pdf")).toHaveAttribute("data-disabled", "true");
+  });
+
+  it("disables the export while the next request is pending", async () => {
+    await loadThenChangeRange(() => new Promise(() => {}));
+    expect(screen.getByTestId("export-pdf")).toHaveAttribute("data-disabled", "true");
   });
 });

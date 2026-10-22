@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ComponentProps } from 'react';
-import { render, screen, fireEvent, act, waitFor } from '@/test/render';
+import { render, screen, fireEvent, act, waitFor, cleanup } from '@/test/render';
 import { LoanPaymentSetupDialog } from './LoanPaymentSetupDialog';
 import { accountsApi } from '@/lib/accounts';
 import { categoriesApi } from '@/lib/categories';
 import { payeesApi } from '@/lib/payees';
 import { Account, DetectedLoanPayment } from '@/types/account';
 import toast from 'react-hot-toast';
+import { usePreferencesStore } from '@/store/preferencesStore';
 
 vi.mock('@/lib/accounts', () => ({
   accountsApi: {
@@ -93,8 +94,8 @@ const defaultDetected: DetectedLoanPayment = {
   confidence: 0.85,
   sourceAccountId: 'acc-1',
   sourceAccountName: 'My Chequing',
-  interestCategoryId: null,
-  interestCategoryName: null,
+  interestCategoryId: 'cat-int',
+  interestCategoryName: 'Loan Interest',
   principalCategoryId: null,
   estimatedInterestRate: 5.5,
   suggestedNextDueDate: '2026-04-01',
@@ -175,6 +176,7 @@ describe('LoanPaymentSetupDialog', () => {
       paymentFrequency: 'MONTHLY',
       sourceAccountId: 'acc-1',
       nextDueDate: '2026-04-01',
+      interestCategoryId: 'cat-int',
     }));
     expect(toast.success).toHaveBeenCalled();
     expect(defaultProps.onSetupComplete).toHaveBeenCalled();
@@ -625,6 +627,108 @@ describe('LoanPaymentSetupDialog', () => {
     expect(cb).toBeChecked();
   });
 
+  describe('payment matching', () => {
+    it('forces auto-post off and disables the checkbox while it is on', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      await renderDialog();
+
+      const autoPost = screen.getByLabelText(/Automatically post transactions when due/i);
+      await act(async () => fireEvent.click(autoPost));
+      expect(autoPost).toBeChecked();
+
+      await act(async () =>
+        fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this loan' })),
+      );
+
+      expect(autoPost).not.toBeChecked();
+      expect(autoPost).toBeDisabled();
+    });
+
+    it('submits paymentMatching and keeps autoPost off even though it was checked first', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      mockSetupLoanPayments.mockResolvedValue({} as any);
+      await renderDialog();
+
+      await act(async () =>
+        fireEvent.click(screen.getByLabelText(/Automatically post transactions when due/i)),
+      );
+      await act(async () =>
+        fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this loan' })),
+      );
+      await act(async () =>
+        fireEvent.change(screen.getByLabelText('Payee pattern'), {
+          target: { value: '*ING HYPOTHEKEN*' },
+        }),
+      );
+
+      const submitButton = screen.getByRole('button', { name: /Set Up Payments/i });
+      await act(async () => fireEvent.click(submitButton));
+
+      expect(mockSetupLoanPayments).toHaveBeenCalledWith('loan-1', expect.objectContaining({
+        autoPost: false,
+        paymentMatching: { payeePattern: '*ING HYPOTHEKEN*', descriptionPattern: undefined },
+      }));
+    });
+
+    it('warns when the server could not create the rule, but still reports the schedule as saved', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      mockSetupLoanPayments.mockResolvedValue({
+        paymentMatchingRuleId: null,
+        paymentMatchingError: { errorCode: 'RULE_LIMIT_REACHED', message: 'Too many rules already exist.' },
+      } as any);
+      await renderDialog();
+
+      await act(async () =>
+        fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this loan' })),
+      );
+      await act(async () =>
+        fireEvent.change(screen.getByLabelText('Payee pattern'), {
+          target: { value: '*ING HYPOTHEKEN*' },
+        }),
+      );
+
+      const submitButton = screen.getByRole('button', { name: /Set Up Payments/i });
+      await act(async () => fireEvent.click(submitButton));
+
+      // The schedule is saved either way (docs/specs/loan-installment-settlement.md
+      // decision 5): the setup-complete toast still fires, and the rule
+      // failure is reported as a second, separate warning.
+      expect(toast.success).toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith('Too many rules already exist.');
+    });
+
+    it('refuses to submit a payee pattern without a wildcard', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      await renderDialog();
+
+      await act(async () =>
+        fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this loan' })),
+      );
+      await act(async () =>
+        fireEvent.change(screen.getByLabelText('Payee pattern'), {
+          target: { value: 'ING HYPOTHEKEN' },
+        }),
+      );
+
+      const submitButton = screen.getByRole('button', { name: /Set Up Payments/i });
+      await act(async () => fireEvent.click(submitButton));
+
+      expect(toast.error).toHaveBeenCalledWith('Enter a payee pattern that includes a * wildcard');
+      expect(mockSetupLoanPayments).not.toHaveBeenCalled();
+    });
+
+    it('shows the source account the debit will be matched against', async () => {
+      mockDetectLoanPayments.mockResolvedValue(defaultDetected);
+      await renderDialog();
+
+      await act(async () =>
+        fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this loan' })),
+      );
+
+      expect(screen.getByText(/Matched against debits from My Chequing\./)).toBeInTheDocument();
+    });
+  });
+
   it('updates payment amount via CurrencyInput', async () => {
     mockDetectLoanPayments.mockResolvedValue(defaultDetected);
     await renderDialog();
@@ -709,6 +813,35 @@ describe('LoanPaymentSetupDialog', () => {
     expect(mockDetectLoanPayments).not.toHaveBeenCalled();
   });
 
+  it('refuses to submit without an interest category, and only a chosen one is sent', async () => {
+    mockDetectLoanPayments.mockResolvedValue({
+      ...defaultDetected,
+      interestCategoryId: null,
+      interestCategoryName: null,
+    });
+    mockSetupLoanPayments.mockResolvedValue({} as any);
+    await renderDialog();
+
+    expect(screen.getByText('Interest Expense Category (required)')).toBeInTheDocument();
+    const submitButton = screen.getByRole('button', { name: /Set Up Payments/i });
+    await act(async () => {
+      fireEvent.click(submitButton);
+    });
+    expect(toast.error).toHaveBeenCalledWith('Please fill in all required fields');
+    expect(mockSetupLoanPayments).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.change(screen.getByTestId('combobox-input-category'), { target: { value: 'cat-chosen' } });
+    });
+    await act(async () => {
+      fireEvent.click(submitButton);
+    });
+    expect(mockSetupLoanPayments).toHaveBeenCalledWith(
+      'loan-1',
+      expect.objectContaining({ interestCategoryId: 'cat-chosen' }),
+    );
+  });
+
   it('shows validation error toast when required fields are missing', async () => {
     // No detection result -> paymentAmount 0, nextDueDate '' -> submit blocked
     mockDetectLoanPayments.mockResolvedValue(null);
@@ -785,6 +918,34 @@ describe('LoanPaymentSetupDialog', () => {
     });
     await renderDialog();
     expect(screen.getByText(/Last payment split:/)).toBeInTheDocument();
+  });
+
+  it('writes the detected amounts in the reader number locale, with the currency once', async () => {
+    usePreferencesStore.setState({
+      preferences: { numberFormat: 'pl-PL', language: 'en' } as any,
+    });
+    try {
+      mockDetectLoanPayments.mockResolvedValue({
+        ...defaultDetected,
+        lastPrincipalAmount: 1200.5,
+        lastInterestAmount: 300.25,
+        extraPrincipalCount: 2,
+        averageExtraPrincipal: 99.5,
+      });
+      await renderDialog();
+
+      const split = screen.getByText(/Last payment split:/).textContent ?? '';
+      expect(split).toMatch(/300,25/);
+      expect(split).toMatch(/1\s?200,50/);
+      expect(split).not.toMatch(/\d\.\d\d/);
+      // The currency comes from the formatter alone, not from a `{currency}`
+      // placeholder beside it.
+      expect(split.match(/USD|\$/g) ?? []).toHaveLength(2);
+      expect(screen.getByText(/avg [^)]*99,50/)).toBeInTheDocument();
+    } finally {
+      cleanup();
+      usePreferencesStore.setState({ preferences: null });
+    }
   });
 
   it('enables detected split by default for mortgages when split data is available', async () => {

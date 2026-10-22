@@ -2,13 +2,13 @@
 
 Status: accepted
 Date: 2026-09-19 (retrospective: the decision was taken with
-`docs/future-plans/horizontal-scaling.md` and most of it has shipped)
+`docs/specs/horizontal-scaling.md` and most of it has shipped)
 
 ## Context
 
 Monize was written to run as one backend process, and it shows in the places
 that count. A survey before any of this work began
-(`docs/future-plans/horizontal-scaling.md`, "Why this is non-trivial here")
+(`docs/specs/horizontal-scaling.md`, "Why this is non-trivial here")
 found most of the hard parts already right -- every cron has a durable claim,
 bootstrap takes an advisory lock, refresh-token rotation and the TOTP secret are
 rows, the CSRF and OAuth cookie keys are derived from `JWT_SECRET` so every

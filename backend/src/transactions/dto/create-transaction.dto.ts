@@ -12,6 +12,7 @@ import {
   IsArray,
   ArrayMaxSize,
   ValidateNested,
+  IsNotEmpty,
 } from "class-validator";
 import { Type } from "class-transformer";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
@@ -20,6 +21,7 @@ import { TransactionStatus } from "../entities/transaction.entity";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
 import { TRANSACTION_NOTE_MAX_LENGTH } from "../../common/transaction-note";
+import { EXTERNAL_ID_MAX_LENGTH } from "../transaction-external-id";
 
 export class CreateTransactionDto {
   @ApiProperty({ description: "Account ID where the transaction occurs" })
@@ -155,4 +157,15 @@ export class CreateTransactionDto {
   @IsArray()
   @IsUUID(undefined, { each: true })
   tagIds?: string[];
+
+  @ApiPropertyOptional({
+    description:
+      "Your own stable id for this row (for example the bank's transaction id), unique per account. Send the same key on every retry: a create that repeats a key already used in the account returns the existing transaction instead of creating a second one, so a request whose response was lost can be retried safely. Stored exactly as sent, and not changeable afterwards; find a row by it with GET /transactions?externalId=.",
+    maxLength: EXTERNAL_ID_MAX_LENGTH,
+  })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(EXTERNAL_ID_MAX_LENGTH)
+  externalId?: string;
 }

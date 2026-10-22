@@ -51,6 +51,7 @@
     "costBasisTooltip": "Chi phí để có được các vị thế hiện tại, được dựng lại từ lịch sử giao tác: giá mua cộng hoa hồng tính trên mỗi lần mua, mỗi khoản được quy đổi theo tỷ giá của giao dịch đã thanh toán nó. Hiển thị bằng đồng tiền hiển thị của bạn. Dùng để tính lãi lỗ.",
     "gainLoss": "Lãi/Lỗ",
     "gainLossTooltip": "Lãi hoặc lỗ chưa thực hiện của các vị thế hiện tại: giá trị thị trường theo giá hôm nay trừ cơ sở chi phí ở trên. Không bao gồm lãi đã thực hiện từ các lần bán trước, cũng như cổ tức và lãi suất đã nhận.",
+    "gainPartialCaption": "Chỉ tính trên các khoản nắm giữ có giá",
     "returns": "Lợi nhuận",
     "simpleReturn": "Lợi nhuận đơn giản",
     "simpleReturnTooltip": "Lãi hoặc lỗ so với số tiền bạn đã trả: (Giá trị thị trường − Cơ sở chi phí) ÷ Cơ sở chi phí. Nó không tính đến thời điểm tiền vào, nên sẽ nhảy vọt mỗi lần mua: một khoản nắm giữ 1.000 tăng 20% sẽ hiển thị +20%; mua thêm 1.000 nữa thì sẽ hiển thị +10% (200 ÷ 2.000) dù không mất gì cả. TWR và MWR không có bước nhảy này.",
@@ -88,6 +89,14 @@
       "assetClass": "Theo loại tài sản"
     }
   },
+  "assetClasses": {
+    "equity": "Cổ phiếu",
+    "fixedIncome": "Thu nhập cố định",
+    "cash": "Tiền mặt",
+    "preferred": "Cổ phiếu ưu đãi",
+    "convertible": "Chứng khoán chuyển đổi",
+    "crypto": "Tiền mã hóa"
+  },
   "holdingsList": {
     "title": "Nắm giữ",
     "noHoldings": "Không có khoản nắm giữ trong danh mục này.",
@@ -102,6 +111,7 @@
     "title": "Nắm giữ theo tài khoản",
     "noHoldings": "Không có khoản nắm giữ trong danh mục của bạn.",
     "accountIncomplete": "Một phần: tổng của tài khoản này bỏ qua các khoản nắm giữ không thể định giá bằng {currency}.",
+    "gainPartialCaption": "Chỉ tính trên các khoản nắm giữ có giá",
     "accountSummary": "{accounts} tài khoản{accountsPlural} với {positions} vị thế{positionsPlural}",
     "positionsWithCash": "{count} vị thế{plural} + Tiền mặt",
     "positions": "{count} vị thế{plural}",
@@ -129,6 +139,7 @@
     "intradayUnavailableDescription": "Một hoặc nhiều khoản nắm giữ sử dụng nhà cung cấp báo giá (MSN Money) không hiển thị dữ liệu trong ngày. Chuyển sang phạm vi dài hơn để xem ảnh chụp hàng ngày.",
     "noDataForPeriod": "Không có dữ liệu đầu tư cho kỳ này.",
     "highestValue": "Giá trị cao nhất",
+    "incompleteTooltip": "Một số điểm trong khoảng này thiếu giá hoặc tỷ giá, nên không hiển thị mức cao nhất và thấp nhất.",
     "lowestValue": "Giá trị thấp nhất",
     "valueChange": "Thay đổi giá trị",
     "valueChangeTooltip": "Giá trị chứng khoán vào cuối kỳ trừ đi giá trị vào đầu kỳ: điểm cuối cùng trên biểu đồ trừ điểm đầu tiên. Tiền mặt chưa đầu tư không được tính.",
@@ -190,6 +201,7 @@
     "actionCapitalGainShort": "Lãi vốn ngắn hạn",
     "actionCapitalGainLong": "Lãi vốn dài hạn",
     "actionRedeem": "Đáo hạn CD/trái phiếu",
+    "actionReturnOfCapital": "Hoàn vốn",
     "allActions": "Tất cả hành động"
   },
   "transactionForm": {
@@ -210,6 +222,7 @@
     "actionCapitalGainShort": "Lãi vốn ngắn hạn",
     "actionCapitalGainLong": "Lãi vốn dài hạn",
     "actionRedeem": "Đáo hạn CD/trái phiếu",
+    "actionReturnOfCapital": "Hoàn vốn",
     "actionTransfer": "Chuyển khoản",
     "brokerageAccount": "Tài khoản môi giới",
     "fromAccount": "Tài khoản nguồn",
@@ -253,7 +266,8 @@
     "sourceHolds": "Nguồn nắm giữ",
     "sharesAt": "cổ phiếu @",
     "avgCostSuffix": "giá TB.",
-    "transferCostNote": "Giá mỗi cổ phiếu (điền sẵn từ tài khoản nguồn) được chuyển sang tài khoản đích để báo cáo lãi lỗ của bạn chính xác. Thao tác này chỉ chuyển cổ phiếu -- không có thay đổi tiền mặt.",
+    "transferCostNote": "Giá vốn mỗi cổ phần là chi phí của cổ phần đó tại tài khoản nguồn vào ngày chuyển. Giá vốn được tính khi bạn lưu và chuyển sang tài khoản đích, để báo cáo lãi và lợi nhuận của bạn luôn chính xác. Thao tác này chỉ chuyển cổ phần; không có tiền mặt nào được trao tay.",
+    "returnOfCapitalNote": "Hoàn vốn không phải là thu nhập. Khoản này trả lại một phần chi phí mua cổ phiếu, vì vậy nó làm giảm cơ sở chi phí của khoản nắm giữ theo số tiền này. Phần vượt quá cơ sở chi phí còn lại được ghi nhận là lãi vốn đã thực hiện.",
     "totalAmount": "Tổng số tiền ({currency})",
     "sharesAtPrice": "{shares} cổ phiếu @ {symbol}{price}",
     "commissionSuffix": "hoa hồng",
@@ -288,7 +302,30 @@
     "toastSaveFailed": "Lưu giao dịch thất bại",
     "exchangeRateUnresolved": "Không có tỷ giá {from} sang {to}. Nhập tỷ giá, hoặc tổng đã quy đổi, trước khi lưu.",
     "toastExchangeRateRequired": "Nhập tỷ giá trước khi lưu một giao dịch giữa hai loại tiền tệ.",
-    "notAvailable": "Không có sẵn"
+    "notAvailable": "Không có sẵn",
+    "bondSeries": {
+      "label": "Đợt phát hành trái phiếu",
+      "fromDate": "Xác định theo ngày",
+      "oldestFirst": "Cũ nhất trước",
+      "loading": "Đang tải các đợt phát hành...",
+      "loadFailed": "Không thể tải các đợt phát hành.",
+      "retry": "Thử lại",
+      "fromDateCode": "Theo ngày: {code}",
+      "noneOnSale": "Không có series nào được bán vào ngày này",
+      "choose": "Chọn một series",
+      "required": "Chọn series của các chứng khoán này.",
+      "heldOption": "{code} (đang nắm giữ {quantity})",
+      "noLongerHeld": "{code} (không còn nắm giữ vào ngày này)",
+      "noLongerHeldUnknown": "Series đã lưu (không còn nắm giữ vào ngày này)",
+      "storedSeries": "Series đã lưu",
+      "seriesOnSaleMonth": "{code} — mở bán {month}",
+      "seriesOnSaleRange": "{code} — mở bán từ {from} đến {to}"
+    },
+    "bondRedemption": {
+      "summary": "Lãi {interest}, khoản khấu trừ khi hoàn trả sớm {deduction}, số tiền chi trả {payout}",
+      "outsideSaleWindow": "Một lô của đợt phát hành này được mua ngoài thời gian bán, nên không thể tách khoản hoàn trả.",
+      "failed": "Không thể tính phần tách của khoản hoàn trả."
+    }
   },
   "newTransactionButton": {
     "label": "+ Giao dịch mới",

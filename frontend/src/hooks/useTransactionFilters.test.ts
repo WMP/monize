@@ -651,6 +651,32 @@ describe('useTransactionFilters - URL update', () => {
     vi.clearAllMocks();
     mockSearchParams = new URLSearchParams();
     localStorage.clear();
+    window.history.replaceState({}, '', '/');
+  });
+
+  // The page re-syncs the URL on every load. A replace to the URL it is already
+  // on is a server round trip that a full-page navigation away can cancel, and
+  // Next answers that by hard-loading this page over the navigation.
+  it('does not navigate when the URL is already the one it would write', () => {
+    window.history.replaceState({}, '', '/transactions?search=foo');
+    const { result } = renderHook(() => useTransactionFilters(defaultOptions));
+    const filters = {
+      accountIds: [], categoryIds: [], payeeIds: [], tagIds: [],
+      startDate: '', endDate: '', amountFrom: '', amountTo: '',
+      statuses: [], originalCurrencyCodes: [],
+      tagKey: '', tagKeyOp: 'hasValue' as const, tagKeyValue: '', hasAttachments: '' as const,
+    };
+    act(() => {
+      result.current.updateUrl(1, { ...filters, search: 'foo' });
+      result.current.updateUrl(1, { ...filters, search: 'foo' }, true);
+    });
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.updateUrl(1, { ...filters, search: 'bar' });
+    });
+    expect(mockReplace).toHaveBeenCalledWith('/transactions?search=bar', { scroll: false });
   });
 
   it('updates URL with all params when push=false (replace)', () => {

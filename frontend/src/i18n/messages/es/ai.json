@@ -82,6 +82,7 @@
     "newCategory": "Nueva categoría",
     "currentCategory": "Categoría actual",
     "description": "Descripción",
+    "referenceNumber": "Ref. #",
     "name": "Nombre",
     "website": "Sitio web",
     "address": "Dirección",
@@ -111,6 +112,13 @@
     "commission": "Comisión",
     "total": "Total",
     "cashImpact": "Impacto en efectivo",
+    "bondSeries": "Serie",
+    "marksPaid": "Marca como pagado",
+    "accruedInterest": "Intereses devengados",
+    "redemptionSplit": "Desglose de la amortización",
+    "redemptionSplitValue": "Principal {principal} + intereses {interest} = pago {payout}",
+    "redemptionDeduction": "Comisión por amortización anticipada deducida",
+    "redemptionSplitDiffers": "El precio y los intereses devengados difieren de lo que paga esta amortización (véase el desglose). Revísalos antes de aprobar.",
     "createTransactionsTitle": "¿Crear estas transacciones?",
     "createInvestmentTransactionsTitle": "¿Crear estas transacciones de inversión?",
     "approveAll": "Aprobar todo",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinversión de ganancias a largo plazo",
       "CAPITAL_GAIN_SHORT": "Ganancia de capital a corto plazo",
       "CAPITAL_GAIN_LONG": "Ganancia de capital a largo plazo",
-      "REDEEM": "Rescate de CD/bono"
+      "REDEEM": "Rescate de CD/bono",
+      "RETURN_OF_CAPITAL": "Devolución de capital"
     },
     "createSecurityTitle": "¿Crear este valor?",
     "createdSecurity": "Valor creado",
@@ -224,7 +233,11 @@
       "category": "Establecer la categoría en {name}",
       "payee": "Establecer el beneficiario en {name}",
       "aiReview": "{count, plural, one {Poner en cola # solicitud de revisión de IA} other {Poner en cola # solicitudes de revisión de IA}}"
-    }
+    },
+    "aiCategory": "sugerida por la IA",
+    "tags": "Etiquetas",
+    "newTag": "(nueva etiqueta)",
+    "marksPaidDue": "{name} (vence el {date})"
   },
   "table": {
     "downloadTitle": "Descargar tabla como CSV",

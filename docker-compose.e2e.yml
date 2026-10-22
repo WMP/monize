@@ -32,7 +32,7 @@ x-backend-env: &backend-env
   DATABASE_USER: monize_user
   DATABASE_PASSWORD: monize_password
   # RLS stays off for E2E (behavior identical to pre-RLS). Keys present so
-  # the compose files stay uniform; see docs/future-plans/row-level-security.md.
+  # the compose files stay uniform; see docs/specs/row-level-security.md.
   RLS_MODE: "off"
   DATABASE_APP_USER: monize_app
   DATABASE_APP_PASSWORD: ""
@@ -98,7 +98,7 @@ x-backend: &backend
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: mirror.gcr.io/library/postgres:16-alpine
     environment:
       POSTGRES_DB: monize
       POSTGRES_USER: monize_user
@@ -130,7 +130,7 @@ services:
   # frontend's INTERNAL_API_URL points here in the cluster shard, so every API
   # call the browser makes alternates replicas.
   api-lb:
-    image: nginx:1.29-alpine
+    image: mirror.gcr.io/library/nginx:1.29-alpine
     profiles:
       - cluster
     depends_on:

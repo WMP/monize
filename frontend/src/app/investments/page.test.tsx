@@ -225,7 +225,8 @@ vi.mock('@/components/layout/PageLayout', () => ({
   PageLayout: ({ children }: { children: React.ReactNode }) => <div data-testid="page-layout">{children}</div>,
 }));
 
-vi.mock('@/components/ui/Button', () => ({
+vi.mock('@/components/ui/Button', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/components/ui/Button')>()),
   Button: ({ children, onClick, disabled, ...rest }: any) => (
     <button onClick={onClick} disabled={disabled} {...rest}>{children}</button>
   ),
@@ -424,6 +425,12 @@ describe('InvestmentsPage', () => {
       });
     });
 
+    it('no longer links to the Treasury bonds page (it lives under Securities)', async () => {
+      await renderPage();
+      await screen.findByText('Investments');
+      expect(screen.queryByRole('link', { name: 'Treasury bonds' })).not.toBeInTheDocument();
+    });
+
     it('renders within page layout', async () => {
       await renderPage();
       await waitFor(() => {
@@ -610,6 +617,29 @@ describe('InvestmentsPage', () => {
       await waitFor(() => {
         // sec-3 (qty=0) should be excluded, only sec-1 and sec-2
         expect(mockRefreshSelectedPrices).toHaveBeenCalledWith(['sec-1', 'sec-2']);
+      });
+    });
+
+    // Issue #1617: the chart and the period-result cards fetch their own
+    // figures and only re-ask when this key moves, so a refresh that left it
+    // alone kept the pre-refresh Value change and Portfolio performance on
+    // screen until a full page reload.
+    it('bumps the chart and performance card reload keys after a price refresh', async () => {
+      mockRefreshSelectedPrices.mockResolvedValue({
+        updated: 2, failed: 0, results: [], lastUpdated: '2026-02-14T12:00:00Z',
+      });
+      await renderPage();
+      await waitFor(() => expect(screen.getByText(/Refresh/)).toBeInTheDocument());
+      const chartKeyBefore = screen.getByTestId('value-chart-refresh-key').textContent;
+      const performanceKeyBefore = screen.getByTestId('performance-reload-key').textContent;
+
+      await act(async () => {
+        fireEvent.click(screen.getByText(/Refresh/));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('value-chart-refresh-key').textContent).not.toBe(chartKeyBefore);
+        expect(screen.getByTestId('performance-reload-key').textContent).not.toBe(performanceKeyBefore);
       });
     });
 

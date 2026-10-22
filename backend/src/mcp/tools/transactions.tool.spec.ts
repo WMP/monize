@@ -7,6 +7,9 @@ import { CLIENT_CAPABILITIES_META_KEY } from "@modelcontextprotocol/server";
 import { installConfirmSupport } from "../mcp-confirm";
 import { McpRequestStateCodec } from "../mcp-request-state";
 import { mcpTestCtx, McpTestContext } from "../testing/mcp-test-context";
+import { collectToolConfigs } from "../testing/collect-tool-configs";
+import { FINANCIAL_TOOLS } from "../../ai/query/tool-definitions";
+import { SEARCH_SYNTAX_SUMMARY } from "../../transactions/transaction-search-query.util";
 
 /**
  * A builder double that mints a FRESH envelope per call, exactly as the real
@@ -205,6 +208,11 @@ describe("McpTransactionsTools", () => {
       totalIncome: 1000,
       totalExpenses: 200,
       netCashFlow: 800,
+      knownIncomeSubtotal: 1000,
+      knownExpensesSubtotal: 200,
+      totalsCurrency: "USD",
+      fxComplete: true,
+      missingRatePairs: [] as string[],
       transactionCount: 5,
       groupedBy: "none",
     };
@@ -241,6 +249,30 @@ describe("McpTransactionsTools", () => {
       const parsed = result.structuredContent as any;
       expect(parsed.totalIncome).toBe(1000);
       expect(parsed.transactions).toBeUndefined();
+    });
+
+    it("returns the service's withheld totals as they are, naming the currency and the pairs", async () => {
+      ctx.setUser({ userId: "u1", scopes: "read" });
+      const withheld = {
+        ...summary,
+        totalIncome: null,
+        totalExpenses: null,
+        netCashFlow: null,
+        knownExpensesSubtotal: 4000,
+        totalsCurrency: "PLN",
+        fxComplete: false,
+        missingRatePairs: ["USD->PLN"],
+      };
+      analyticsService.getLlmListTransactions.mockResolvedValue(withheld);
+
+      const result = await handlers["list_transactions"](
+        { startDate: "2026-09-01", endDate: "2026-09-30" },
+        ctx,
+      );
+
+      // The same data object the assistant's executor gets (shared-tool
+      // parity): no total is invented where the service withheld one.
+      expect(result.structuredContent).toEqual(withheld);
     });
 
     it("fills in default dates when omitted", async () => {
@@ -454,10 +486,23 @@ describe("McpTransactionsTools", () => {
     it("delegates to analyticsService.getLlmPeriodComparison", async () => {
       ctx.setUser({ userId: "u1", scopes: "read" });
       analyticsService.getLlmPeriodComparison.mockResolvedValue({
-        period1: { start: "2025-12-01", end: "2025-12-31", total: 0 },
-        period2: { start: "2026-01-01", end: "2026-01-31", total: 0 },
+        period1: {
+          start: "2025-12-01",
+          end: "2025-12-31",
+          total: 0,
+          knownSubtotal: 0,
+        },
+        period2: {
+          start: "2026-01-01",
+          end: "2026-01-31",
+          total: 0,
+          knownSubtotal: 0,
+        },
         totalChange: 0,
         totalChangePercent: 0,
+        totalsCurrency: "USD",
+        fxComplete: true,
+        missingRatePairs: [],
         comparison: [],
       });
 
@@ -480,13 +525,53 @@ describe("McpTransactionsTools", () => {
       );
     });
 
+    it("returns the service's withheld totals as they are, naming the currency and the pairs", async () => {
+      ctx.setUser({ userId: "u1", scopes: "read" });
+      const withheld = {
+        period1: {
+          start: "2026-08-01",
+          end: "2026-08-31",
+          total: 400,
+          knownSubtotal: 400,
+        },
+        period2: {
+          start: "2026-09-01",
+          end: "2026-09-30",
+          total: null,
+          knownSubtotal: 4000,
+        },
+        totalChange: null,
+        totalChangePercent: null,
+        totalsCurrency: "PLN",
+        fxComplete: false,
+        missingRatePairs: ["USD->PLN"],
+        comparison: [],
+      };
+      analyticsService.getLlmPeriodComparison.mockResolvedValue(withheld);
+
+      const result = await handlers["compare_periods"](
+        {
+          period1Start: "2026-08-01",
+          period1End: "2026-08-31",
+          period2Start: "2026-09-01",
+          period2End: "2026-09-30",
+        },
+        ctx,
+      );
+
+      expect(result.structuredContent).toEqual(withheld);
+    });
+
     it("fills in all four dates when omitted", async () => {
       ctx.setUser({ userId: "u1", scopes: "read" });
       analyticsService.getLlmPeriodComparison.mockResolvedValue({
-        period1: { start: "", end: "", total: 0 },
-        period2: { start: "", end: "", total: 0 },
+        period1: { start: "", end: "", total: 0, knownSubtotal: 0 },
+        period2: { start: "", end: "", total: 0, knownSubtotal: 0 },
         totalChange: 0,
         totalChangePercent: 0,
+        totalsCurrency: "USD",
+        fxComplete: true,
+        missingRatePairs: [],
         comparison: [],
       });
 
@@ -2334,7 +2419,7 @@ describe("McpTransactionsTools", () => {
       expect(transactionsService.create).toHaveBeenCalledTimes(1);
       expect(attachmentsService.create).toHaveBeenCalledWith(
         UUID_USER,
-        "t1",
+        { kind: "transaction", id: "t1" },
         expect.objectContaining({ originalname: "receipt.png" }),
       );
       expect(relayAttachmentStore.releaseForPrompt).toHaveBeenCalledWith(
@@ -2467,7 +2552,7 @@ describe("McpTransactionsTools", () => {
       );
       expect(attachmentsService.create).toHaveBeenCalledWith(
         UUID_USER,
-        TXID,
+        { kind: "transaction", id: TXID },
         expect.objectContaining({ originalname: "receipt.png" }),
       );
       const parsed = result.structuredContent as any;
@@ -2495,5 +2580,26 @@ describe("McpTransactionsTools", () => {
       expect(result.content[0].text).toContain("transfer");
       expect(attachmentsService.create).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("list_transactions searchText", () => {
+  // Both adapters teach a model the same search syntax, from one constant
+  // (docs/backend/ai-and-payees.md, "Transaction search syntax").
+  it("describes the search syntax identically in the MCP tool and the assistant", () => {
+    const mcp = collectToolConfigs().find(
+      (tool) => tool.name === "list_transactions",
+    );
+    const assistant = FINANCIAL_TOOLS.find(
+      (tool) => tool.name === "list_transactions",
+    );
+    const assistantProps = assistant?.inputSchema.properties as Record<
+      string,
+      { description?: string }
+    >;
+    expect(mcp?.config.inputSchema.shape.searchText.description).toBe(
+      SEARCH_SYNTAX_SUMMARY,
+    );
+    expect(assistantProps.searchText.description).toBe(SEARCH_SYNTAX_SUMMARY);
   });
 });

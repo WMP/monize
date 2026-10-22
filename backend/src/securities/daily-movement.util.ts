@@ -73,7 +73,7 @@ export interface DailyMovementDecision {
  * A change needs **two complete values of two different observations**, plus the
  * contributions the reader made themselves. Each guard below removes one way
  * that can fail to hold, in the order of truth table B in
- * `docs/future-plans/calendar-view.md`:
+ * `docs/specs/calendar-view.md`:
  *
  * 1. Not a trading day -> blank. No security the scope held struck a close, so
  *    there is no market observation to compare; a weekend deposit is not a gain.

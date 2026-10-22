@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, createEvent, act } from "@/test/render";
 import { FavouriteAccounts } from "./FavouriteAccounts";
 import { accountsApi } from "@/lib/accounts";
@@ -8,6 +8,10 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+const mockPreferences = vi.hoisted(() => ({
+  viewDefaults: undefined as Record<string, unknown> | undefined,
+}));
+
 vi.mock("@/store/preferencesStore", () => ({
   // The selector has to be applied. Returning the whole state object regardless
   // meant `usePreferencesStore((s) => s.preferences)` got `{ preferences: ... }`,
@@ -15,7 +19,9 @@ vi.mock("@/store/preferencesStore", () => ({
   // the fallback while the fixture claimed to set CAD -- a mock that cannot do
   // what the real hook does, hiding the branch the fixture was written to pin.
   usePreferencesStore: (selector?: (state: unknown) => unknown) => {
-    const state = { preferences: { defaultCurrency: "CAD" } };
+    const state = {
+      preferences: { defaultCurrency: "CAD", viewDefaults: mockPreferences.viewDefaults },
+    };
     return selector ? selector(state) : state;
   },
 }));
@@ -40,6 +46,33 @@ describe("FavouriteAccounts", () => {
     render(<FavouriteAccounts accounts={[]} isLoading={true} />);
     expect(screen.getByText("Favourite Accounts")).toBeInTheDocument();
     expect(document.querySelector(".animate-pulse")).toBeInTheDocument();
+  });
+
+  it("links the title to the Accounts page in every state", () => {
+    const favourite = [
+      {
+        id: "1",
+        name: "Checking",
+        currentBalance: 1500,
+        currencyCode: "CAD",
+        isFavourite: true, favouriteSortOrder: 0,
+        isClosed: false,
+      },
+    ] as any[];
+    for (const [accounts, isLoading] of [
+      [[], true],
+      [[], false],
+      [favourite, false],
+    ] as const) {
+      const { unmount } = render(
+        <FavouriteAccounts accounts={accounts as any[]} isLoading={isLoading} />,
+      );
+      expect(screen.getByRole("link", { name: "Favourite Accounts" })).toHaveAttribute(
+        "href",
+        "/accounts",
+      );
+      unmount();
+    }
   });
 
   it("renders empty state when no favourites", () => {
@@ -289,6 +322,53 @@ describe("FavouriteAccounts", () => {
     render(<FavouriteAccounts accounts={accounts} isLoading={false} />);
     fireEvent.click(screen.getByText("My Brokerage"));
     expect(mockPush).toHaveBeenCalledWith("/investments?accountId=brok-1");
+  });
+
+  describe("when the reader chose to open accounts on their dashboard", () => {
+    beforeEach(() => {
+      mockPush.mockClear();
+      mockPreferences.viewDefaults = { accountOpenTarget: "dashboard" };
+    });
+    afterEach(() => {
+      mockPreferences.viewDefaults = undefined;
+    });
+
+    it("opens a regular account on its dashboard", () => {
+      const accounts = [
+        {
+          id: "acc-1",
+          name: "Checking",
+          currentBalance: 1500,
+          currencyCode: "CAD",
+          isFavourite: true, favouriteSortOrder: 0,
+          isClosed: false,
+          accountType: "CHEQUING",
+        },
+      ] as any[];
+
+      render(<FavouriteAccounts accounts={accounts} isLoading={false} />);
+      fireEvent.click(screen.getByText("Checking"));
+      expect(mockPush).toHaveBeenCalledWith("/accounts/acc-1");
+    });
+
+    it("opens a brokerage account on its dashboard rather than the portfolio", () => {
+      const accounts = [
+        {
+          id: "brok-1",
+          name: "My Brokerage",
+          currentBalance: 0,
+          currencyCode: "CAD",
+          isFavourite: true, favouriteSortOrder: 0,
+          isClosed: false,
+          accountType: "INVESTMENT",
+          accountSubType: "INVESTMENT_BROKERAGE",
+        },
+      ] as any[];
+
+      render(<FavouriteAccounts accounts={accounts} isLoading={false} />);
+      fireEvent.click(screen.getByText("My Brokerage"));
+      expect(mockPush).toHaveBeenCalledWith("/accounts/brok-1");
+    });
   });
 
   it("navigates from the statement line, which the card's hover promises", () => {
@@ -700,6 +780,49 @@ describe("FavouriteAccounts", () => {
         accounts={accounts}
         brokerageMarketValues={new Map([["brok-1", 9000]])}
         unpricedHoldingCounts={new Map([["brok-1", 2]])}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByText("Total unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("$3500.00")).not.toBeInTheDocument();
+    expect(screen.queryByText("$9000.00")).not.toBeInTheDocument();
+  });
+
+  it("shows no total for an account whose valuation is incomplete though every holding is priced", () => {
+    const accounts = [
+      {
+        id: "brok-1",
+        name: "TFSA - Brokerage",
+        currentBalance: 0,
+        currencyCode: "CAD",
+        isFavourite: true,
+        favouriteSortOrder: 1,
+        isClosed: false,
+        accountType: "INVESTMENT",
+        accountSubType: "INVESTMENT_BROKERAGE",
+        linkedAccountId: "cash-1",
+      },
+      {
+        id: "cash-1",
+        name: "TFSA - Cash",
+        currentBalance: 3500,
+        currencyCode: "CAD",
+        isFavourite: false,
+        favouriteSortOrder: 1,
+        isClosed: false,
+        accountType: "INVESTMENT",
+        accountSubType: "INVESTMENT_CASH",
+        linkedAccountId: "brok-1",
+      },
+    ] as any[];
+
+    render(
+      <FavouriteAccounts
+        accounts={accounts}
+        brokerageMarketValues={new Map([["brok-1", 9000]])}
+        unpricedHoldingCounts={new Map([["brok-1", 0]])}
+        incompleteHoldingAccountIds={new Set(["brok-1"])}
         isLoading={false}
       />
     );

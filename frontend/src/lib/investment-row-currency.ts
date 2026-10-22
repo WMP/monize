@@ -16,7 +16,9 @@ import type { InvestmentTransaction } from '@/types/investment';
  * predates the stamped fields. `null` is unknown and renders as unknown; the
  * reader's own currency is never the answer.
  */
-export function rowAmountCurrency(tx: InvestmentTransaction): string | null {
+export function rowAmountCurrency(
+  tx: Pick<InvestmentTransaction, 'amountCurrencyCode' | 'security'>,
+): string | null {
   return tx.amountCurrencyCode ?? tx.security?.currencyCode ?? null;
 }
 
@@ -40,8 +42,39 @@ export function rowCommissionCurrency(tx: InvestmentTransaction): string | null 
  * counts in `marketRateCount`.
  */
 export function rowConversionBasis(
-  tx: InvestmentTransaction,
+  tx: Pick<InvestmentTransaction, 'exchangeRate'>,
 ): 'transaction' | 'market' {
   const rate = Number(tx.exchangeRate);
   return Number.isFinite(rate) && rate > 0 ? 'transaction' : 'market';
+}
+
+/**
+ * An amount of this row, in `rowAmountCurrency(tx)`, expressed in `target`, or
+ * `null` when it cannot be.
+ *
+ * Into the account's currency, a row carrying its own settlement rate converts
+ * at that rate, the one its cash leg settled at (INV-FX-002). Beyond the
+ * account's currency, and for a row without a rate of its own, `convert`
+ * supplies the market rate. A row whose own currency is unknown is unknown:
+ * it is never taken to be in the account's currency.
+ */
+export function convertRowAmount(
+  tx: Pick<InvestmentTransaction, 'amountCurrencyCode' | 'security' | 'exchangeRate'>,
+  amount: number,
+  accountCurrency: string | null | undefined,
+  target: string,
+  convert: (amount: number, from: string, to: string) => number | null,
+): number | null {
+  const from = rowAmountCurrency(tx);
+  if (from === null) return null;
+  if (from === target) return amount;
+  if (
+    accountCurrency &&
+    from !== accountCurrency &&
+    rowConversionBasis(tx) === 'transaction'
+  ) {
+    const inAccount = amount * Number(tx.exchangeRate);
+    return accountCurrency === target ? inAccount : convert(inAccount, accountCurrency, target);
+  }
+  return convert(amount, from, target);
 }

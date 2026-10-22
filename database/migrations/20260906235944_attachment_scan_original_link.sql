@@ -1,5 +1,5 @@
 -- Document scanner: link a scanned attachment to the unprocessed photo it came
--- from (docs/future-plans/document-scanner.md).
+-- from (docs/specs/document-scanner.md).
 --
 -- A "scan pair" is two rows in this table: the enhanced image the user sees,
 -- and the original camera photo kept beside it. The link lives on the

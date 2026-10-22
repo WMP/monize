@@ -59,6 +59,30 @@ export interface RestoreResult {
    * deducted from it. Absent when none.
    */
   unusableAiProviderKeys?: number;
+  /**
+   * Securities restored unlinked from their bond instrument because this
+   * server's catalog does not carry it (or carries it in another currency). The
+   * rows were written, so this stays outside `restored`; the user has to link
+   * them again. `symbols` is capped by the server (50), so it can be shorter
+   * than `count`. Absent when none.
+   */
+  unlinkedBondSecurities?: { count: number; symbols: string[] };
+  /**
+   * Bond transactions restored without their series because this server's
+   * catalog does not carry it. The rows were written, so this stays outside
+   * `restored`. Rows whose series could not be obtained keep no series.
+   * Absent when none.
+   */
+  unlinkedBondSeries?: { count: number };
+  /**
+   * The bond series the backup names that the restore could not get from the
+   * official source, with why. `series` is capped by the server (50), so it can
+   * be shorter than `count`. Outside `restored`. Absent when none.
+   */
+  unrecoveredBondSeries?: {
+    count: number;
+    series: { issuerCountryCode: string; seriesCode: string; reason: string }[];
+  };
 }
 
 export type SupportBackupSection =

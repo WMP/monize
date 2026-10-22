@@ -47,8 +47,6 @@ workload_kind() {
 	return 1
 }
 
-cd ~/monize
-
 for component in $COMPONENTS; do
 	echo "Building $component..."
 	build_component "$component"

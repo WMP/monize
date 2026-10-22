@@ -12,11 +12,13 @@ import { BadRequestException } from "@nestjs/common";
 import { LoanMortgageAccountService } from "./loan-mortgage-account.service";
 import { Account, AccountType } from "./entities/account.entity";
 import { Institution } from "../institutions/entities/institution.entity";
-import { CategoriesService } from "../categories/categories.service";
+import { Category } from "../categories/entities/category.entity";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
 import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
+import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
 import { CreateAccountDto } from "./dto/create-account.dto";
+import { constantLinearPrincipal } from "./mortgage-installment.util";
 
 /**
  * Creating a LINEAR or INTEREST_ONLY mortgage, and the mortgage rate update
@@ -46,6 +48,7 @@ describe("LoanMortgageAccountService: LINEAR and INTEREST_ONLY", () => {
       institution: "ING",
       amortizationMonths: 360,
       mortgageType: "LINEAR",
+      interestCategoryId: "cat-interest",
       ...overrides,
     }) as unknown as CreateAccountDto;
 
@@ -91,11 +94,22 @@ describe("LoanMortgageAccountService: LINEAR and INTEREST_ONLY", () => {
           source: "manual",
         }),
       ),
+      applyScheduledPaymentSync: jest.fn().mockResolvedValue(null),
     };
 
     const mocks = createScopedDbMocks([
       [Account, accountsRepository],
       [Institution, { findOne: jest.fn().mockResolvedValue(null) }],
+      [
+        Category,
+        {
+          findOne: jest
+            .fn()
+            .mockImplementation(({ where }: any) =>
+              Promise.resolve({ id: where.id, userId: where.userId }),
+            ),
+        },
+      ],
     ]);
     manager = mocks.manager;
     manager.query.mockResolvedValue([{ balance: "-235000.0012" }]);
@@ -105,19 +119,12 @@ describe("LoanMortgageAccountService: LINEAR and INTEREST_ONLY", () => {
         LoanMortgageAccountService,
         { provide: DataSource, useValue: mocks.dataSource },
         {
-          provide: CategoriesService,
-          useValue: {
-            findLoanCategories: jest.fn().mockResolvedValue({
-              interestCategory: { id: "cat-interest" },
-            }),
-          },
-        },
-        {
           provide: ScheduledTransactionsService,
           useValue: scheduledTransactionsService,
         },
         { provide: LoanRateChangesService, useValue: loanRateChangesService },
         { provide: LoanPaymentDetectorService, useValue: {} },
+        { provide: LoanPaymentMatchingService, useValue: {} },
       ],
     }).compile();
     service = module.get(LoanMortgageAccountService);
@@ -191,6 +198,52 @@ describe("LoanMortgageAccountService: LINEAR and INTEREST_ONLY", () => {
       );
     });
 
+    it("prices a LINEAR constant principal from originalPrincipal, not the opening balance, when they differ", async () => {
+      // A loan of 300,000 whose ledger opens at 260,000 (docs/specs/
+      // loan-installment-settlement.md section 14.3): c is 300,000 / 360,
+      // interest is on the 260,000 owed.
+      await service.createMortgageAccount(
+        userId,
+        makeDto({ openingBalance: 260000, originalPrincipal: 300000 }),
+      );
+
+      const stored = accountsRepository.create.mock.calls[0][0];
+      expect(stored).toMatchObject({
+        openingBalance: -260000,
+        originalPrincipal: 300000,
+      });
+      const c = constantLinearPrincipal(stored);
+      expect(c).toBe(833.3333);
+      const template = scheduledTransactionsService.create.mock.calls[0][1];
+      expect(template.splits).toEqual([
+        { transferAccountId: "new-acc-id", amount: -c!, memo: "Principal" },
+        {
+          categoryId: "cat-interest",
+          amount: -433.3333,
+          memo: "Interest",
+        },
+      ]);
+      expect(template.amount).toBe(-1266.6666);
+      // Not the opening balance over the count (722.2222).
+      expect(
+        constantLinearPrincipal({ ...stored, originalPrincipal: null }),
+      ).toBe(722.2222);
+    });
+
+    it("stores the opening balance as originalPrincipal when the request names none", async () => {
+      await service.createMortgageAccount(
+        userId,
+        makeDto({ openingBalance: 260000 }),
+      );
+
+      const stored = accountsRepository.create.mock.calls[0][0];
+      expect(stored.originalPrincipal).toBe(260000);
+      expect(
+        scheduledTransactionsService.create.mock.calls[0][1].splits[0].amount,
+      ).toBe(-constantLinearPrincipal(stored)!);
+      expect(constantLinearPrincipal(stored)).toBe(722.2222);
+    });
+
     it("refuses an accelerated LINEAR mortgage before writing anything", async () => {
       await expect(
         service.createMortgageAccount(
@@ -241,6 +294,20 @@ describe("LoanMortgageAccountService: LINEAR and INTEREST_ONLY", () => {
         interestPayment: 783.3333,
         effectiveDate: "2027-01-01",
       });
+    });
+
+    it("applies the sync through the rate-change service's apply and writes nothing on the account", async () => {
+      await service.updateMortgageRate(
+        makeMortgage(),
+        userId,
+        4,
+        new Date("2027-01-01"),
+      );
+
+      expect(
+        loanRateChangesService.applyScheduledPaymentSync,
+      ).toHaveBeenCalledWith(userId, "mortgage-1");
+      expect(accountsRepository.save).not.toHaveBeenCalled();
     });
 
     it("answers the interest alone for an INTEREST_ONLY mortgage", async () => {

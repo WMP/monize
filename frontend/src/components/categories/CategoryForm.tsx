@@ -22,6 +22,8 @@ const buildCategorySchema = (t: (key: string) => string) => z.object({
   color: z.string().optional(),
   icon: z.string().optional(),
   isIncome: z.boolean(),
+  // null = no explicit choice, inherit the nearest ancestor's (a root behaves as on).
+  autoSign: z.boolean().nullable(),
 });
 
 type CategoryFormData = z.infer<ReturnType<typeof buildCategorySchema>>;
@@ -65,10 +67,12 @@ export function CategoryForm({ category, categories, onSubmit, onCancel, onDirty
           color: category.color || '',
           icon: category.icon || '',
           isIncome: category.isIncome,
+          autoSign: category.autoSign ?? null,
         }
       : {
           parentId: '',
           isIncome: false,
+          autoSign: null,
         },
   });
 
@@ -80,8 +84,11 @@ export function CategoryForm({ category, categories, onSubmit, onCancel, onDirty
   const watchedIcon = useWatch({ control, name: 'icon' });
   const watchedParentId = useWatch({ control, name: 'parentId' });
   const watchedIsIncome = useWatch({ control, name: 'isIncome' });
+  const watchedAutoSign = useWatch({ control, name: 'autoSign' });
 
-  // When parent category changes, set type to match parent
+  // When parent category changes, set type to match parent. The automatic
+  // sign is deliberately not copied: an inherited value and an explicit one
+  // that happens to match are different choices.
   useEffect(() => {
     if (watchedParentId) {
       const parentCategory = categories.find(c => c.id === watchedParentId);
@@ -150,6 +157,16 @@ export function CategoryForm({ category, categories, onSubmit, onCancel, onDirty
     const parent = cat.parentId ? categories.find(c => c.id === cat.parentId) : null;
     return parent ? `${parent.name}: ${cat.name}` : cat.name;
   }, [initialParentId, categories]);
+
+  const autoSignOptions = [
+    ...(hasParent ? [{ value: '', label: t('form.autoSignInherit') }] : []),
+    { value: 'true', label: t('form.autoSignOn') },
+    { value: 'false', label: t('form.autoSignOff') },
+  ];
+  const autoSignValue =
+    watchedAutoSign === null || watchedAutoSign === undefined
+      ? (hasParent ? '' : 'true')
+      : String(watchedAutoSign);
 
   const typeOptions = [
     { value: 'false', label: t('form.typeExpense') },
@@ -263,6 +280,33 @@ export function CategoryForm({ category, categories, onSubmit, onCancel, onDirty
             </p>
           )}
         </div>
+      </div>
+
+      <div>
+        <Select
+          label={t('form.autoSignLabel')}
+          options={autoSignOptions}
+          error={errors.autoSign?.message}
+          value={autoSignValue}
+          onChange={(e) =>
+            setValue(
+              'autoSign',
+              e.target.value === '' ? null : e.target.value === 'true',
+              { shouldDirty: true },
+            )
+          }
+        />
+        <p className="mt-1 text-xs text-gray-500">{t('form.autoSignHelp')}</p>
+        {hasParent && autoSignValue === '' && parentCategory && (
+          <p className="mt-1 text-xs text-gray-500">
+            {t('form.autoSignInheritedFrom', {
+              name: parentCategory.name,
+              state: parentCategory.effectiveAutoSign === false
+                ? t('form.autoSignOff')
+                : t('form.autoSignOn'),
+            })}
+          </p>
+        )}
       </div>
 
       <div>

@@ -9,6 +9,7 @@ import {
   DEDUPE_KEY_MAX_LENGTH,
   TARGET_MAX_LENGTH,
 } from "./notification.service";
+import { STATE_KEYED_FORGET_DAYS } from "./notification-bounds";
 import {
   Notification,
   NotificationCategory,
@@ -543,7 +544,49 @@ describe("NotificationService", () => {
       expect(read).toContain("notification_reminders");
       expect(read).toContain("source_notification_id = n.id");
       expect(read).toContain("stopped_at IS NULL");
-      expect(dismissed).not.toContain("NOT EXISTS");
+      expect(dismissed).not.toContain("notification_reminders");
+    });
+
+    it("keeps the state-keyed bond rows: the dedupe row is the only memory that the event was raised", async () => {
+      manager.query.mockResolvedValue([[], 0]);
+
+      await service.purgeOld();
+
+      const calls = manager.query.mock.calls.filter(([sql]) =>
+        String(sql).includes("DELETE FROM notifications"),
+      );
+      const [[dismissed, dismissedArgs], [read, readArgs]] = calls;
+      // Parameterized, never concatenated into the statement.
+      expect(String(dismissed)).not.toContain("bond:");
+      expect(String(read)).not.toContain("bond:");
+      expect(String(dismissed)).toContain("starts_with(");
+      expect(String(read)).toContain("starts_with(");
+      expect(String(dismissed)).not.toContain("LIKE");
+      // `gem:` too: the GEM signal-change row is the only memory that a
+      // period's change was announced, and the period outlives the window
+      // (A26-L24).
+      expect(dismissedArgs[1]).toEqual([
+        "bond:unbooked:",
+        "bond:missing:",
+        "gem:",
+      ]);
+      expect(readArgs[1]).toEqual(["bond:unbooked:", "bond:missing:", "gem:"]);
+    });
+
+    it("forgets a dismissed state-keyed row only after the long window", async () => {
+      const before = Date.now();
+      manager.query.mockResolvedValue([[], 0]);
+
+      await service.purgeOld();
+
+      const [[dismissed, args]] = manager.query.mock.calls.filter(([sql]) =>
+        String(sql).includes("DELETE FROM notifications"),
+      );
+      expect(String(dismissed)).toContain("OR dismissed_at < $3");
+      const expected = before - STATE_KEYED_FORGET_DAYS * 24 * 60 * 60 * 1000;
+      expect(Math.abs((args[2] as Date).getTime() - expected)).toBeLessThan(
+        60_000,
+      );
     });
 
     it("keeps the cutoff at the documented retention window", async () => {

@@ -82,6 +82,7 @@
     "newCategory": "Nieuwe categorie",
     "currentCategory": "Huidige categorie",
     "description": "Beschrijving",
+    "referenceNumber": "Ref #",
     "name": "Naam",
     "website": "Website",
     "address": "Adres",
@@ -111,6 +112,13 @@
     "commission": "Commissie",
     "total": "Totaal",
     "cashImpact": "Kaseffect",
+    "bondSeries": "Serie",
+    "marksPaid": "Markeert als betaald",
+    "accruedInterest": "Opgelopen rente",
+    "redemptionSplit": "Splitsing van de aflossing",
+    "redemptionSplitValue": "Hoofdsom {principal} + rente {interest} = uitkering {payout}",
+    "redemptionDeduction": "Vergoeding voor vervroegde aflossing ingehouden",
+    "redemptionSplitDiffers": "De koers en de opgelopen rente wijken af van wat deze aflossing uitkeert (zie de splitsing). Controleer ze voordat je goedkeurt.",
     "createTransactionsTitle": "Deze transacties aanmaken?",
     "createInvestmentTransactionsTitle": "Deze beleggingstransacties aanmaken?",
     "approveAll": "Alles goedkeuren",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Langetermijnwinst herbeleggen",
       "CAPITAL_GAIN_SHORT": "Kortetermijnkapitaalwinst",
       "CAPITAL_GAIN_LONG": "Langetermijnkapitaalwinst",
-      "REDEEM": "CD/obligatie aflossen"
+      "REDEEM": "CD/obligatie aflossen",
+      "RETURN_OF_CAPITAL": "Kapitaalterugbetaling"
     },
     "createSecurityTitle": "Dit effect aanmaken?",
     "createdSecurity": "Effect aangemaakt",
@@ -224,7 +233,11 @@
       "category": "Categorie instellen op {name}",
       "payee": "Begunstigde instellen op {name}",
       "aiReview": "{count, plural, one {# AI-controleverzoek in de wachtrij zetten} other {# AI-controleverzoeken in de wachtrij zetten}}"
-    }
+    },
+    "aiCategory": "voorgesteld door AI",
+    "tags": "Tags",
+    "newTag": "(nieuwe tag)",
+    "marksPaidDue": "{name} (vervalt op {date})"
   },
   "table": {
     "downloadTitle": "Tabel downloaden als CSV",

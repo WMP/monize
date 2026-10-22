@@ -7,14 +7,17 @@ import {
   IsInt,
   Min,
   Max,
-  Length,
 } from "class-validator";
+import { Transform } from "class-transformer";
+import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 
 export class CreateCurrencyDto {
   @ApiProperty({ example: "CAD", description: "ISO 4217 currency code" })
-  @IsString()
-  @Length(3, 3, { message: "Currency code must be exactly 3 characters" })
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.toUpperCase() : value,
+  )
+  @IsCurrencyCode()
   code: string;
 
   @ApiProperty({ example: "Canadian Dollar" })

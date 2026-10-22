@@ -51,6 +51,7 @@
     "costBasisTooltip": "当前持仓的取得成本，由交易历史重建：买入价格加上每次买入收取的佣金，各自按支付该笔交易时的汇率换算。以您的显示货币显示。用于计算盈亏。",
     "gainLoss": "盈亏",
     "gainLossTooltip": "当前持仓的未实现盈亏：按今日价格计算的市值减去上面的成本基础。不包括过去卖出已实现的收益，也不包括已收到的股息和利息。",
+    "gainPartialCaption": "仅限有价格的持仓",
     "returns": "回报率",
     "simpleReturn": "简单回报率",
     "simpleReturnTooltip": "相对于您所支付金额的盈亏：（市值 − 成本基础）÷ 成本基础。它不考虑资金到账的时间，因此每次买入都会跳动：一笔 1,000 的持仓上涨 20% 显示为 +20%；再买入 1,000，尽管没有任何损失，却会显示为 +10%（200 ÷ 2,000）。TWR 和 MWR 没有这种跳动。",
@@ -88,6 +89,14 @@
       "assetClass": "按资产类别"
     }
   },
+  "assetClasses": {
+    "equity": "股票",
+    "fixedIncome": "固定收益",
+    "cash": "现金",
+    "preferred": "优先股",
+    "convertible": "可转换证券",
+    "crypto": "加密货币"
+  },
   "holdingsList": {
     "title": "持仓",
     "noHoldings": "此投资组合无持仓。",
@@ -102,6 +111,7 @@
     "title": "按账户划分的持仓",
     "noHoldings": "您的投资组合无持仓。",
     "accountIncomplete": "部分：此账户的合计不包含无法以 {currency} 计价的持仓。",
+    "gainPartialCaption": "仅限有价格的持仓",
     "accountSummary": "{accounts} 个账户{accountsPlural}，{positions} 个持仓{positionsPlural}",
     "positionsWithCash": "{count} 个持仓{plural} + 现金",
     "positions": "{count} 个持仓{plural}",
@@ -129,6 +139,7 @@
     "intradayUnavailableDescription": "一个或多个持仓使用的行情提供商（MSN Money）不提供日内数据。请切换到较长时间范围以查看每日快照。",
     "noDataForPeriod": "此时段无投资数据。",
     "highestValue": "最高价值",
+    "incompleteTooltip": "此区间内部分数据点缺少价格或汇率，因此不显示最高值和最低值。",
     "lowestValue": "最低价值",
     "valueChange": "价值变化",
     "valueChangeTooltip": "期末证券的价值减去期初的价值：图表的最后一个点减去第一个点。未投资的现金不计入。",
@@ -190,6 +201,7 @@
     "actionCapitalGainShort": "短期资本收益",
     "actionCapitalGainLong": "长期资本收益",
     "actionRedeem": "赎回存单/债券",
+    "actionReturnOfCapital": "资本返还",
     "allActions": "所有操作"
   },
   "transactionForm": {
@@ -210,6 +222,7 @@
     "actionCapitalGainShort": "短期资本收益",
     "actionCapitalGainLong": "长期资本收益",
     "actionRedeem": "赎回存单/债券",
+    "actionReturnOfCapital": "资本返还",
     "actionTransfer": "转移",
     "brokerageAccount": "经纪账户",
     "fromAccount": "来源账户",
@@ -253,7 +266,8 @@
     "sourceHolds": "来源持有",
     "sharesAt": "股 @",
     "avgCostSuffix": "平均成本。",
-    "transferCostNote": "每股成本（从来源账户预填）会转移到目标账户，以确保盈亏报表正确。此操作仅移动股份，不涉及现金。",
+    "transferCostNote": "每股成本是这些股份在转出日期于来源账户中的成本。它会在保存时计算并结转到目标账户，确保您的收益和利润报告保持正确。此操作仅转移股份，不涉及现金往来。",
+    "returnOfCapitalNote": "资本返还不是收入。它退还的是股票成本的一部分，因此会按此金额降低您持仓的成本基础。超出剩余成本基础的部分将记为已实现资本收益。",
     "totalAmount": "总金额（{currency}）",
     "sharesAtPrice": "{shares} 股 @ {symbol}{price}",
     "commissionSuffix": "佣金",
@@ -288,7 +302,30 @@
     "toastSaveFailed": "保存交易失败",
     "exchangeRateUnresolved": "没有 {from} 兑 {to} 的汇率。请在保存前输入汇率或换算后的总额。",
     "toastExchangeRateRequired": "在保存跨货币交易前请输入汇率。",
-    "notAvailable": "不可用"
+    "notAvailable": "不可用",
+    "bondSeries": {
+      "label": "债券系列",
+      "fromDate": "按日期确定",
+      "oldestFirst": "最早的优先",
+      "loading": "正在加载系列...",
+      "loadFailed": "无法加载系列。",
+      "retry": "重试",
+      "fromDateCode": "按日期:{code}",
+      "noneOnSale": "该日期没有在售系列",
+      "choose": "选择系列",
+      "required": "请选择这些份额的系列。",
+      "heldOption": "{code}(持有 {quantity})",
+      "noLongerHeld": "{code}(在此日期已不再持有)",
+      "noLongerHeldUnknown": "已保存的系列(在此日期已不再持有)",
+      "storedSeries": "已保存的系列",
+      "seriesOnSaleMonth": "{code} — {month}发售",
+      "seriesOnSaleRange": "{code} — {from}至{to}发售"
+    },
+    "bondRedemption": {
+      "summary": "利息 {interest}，提前兑付扣减 {deduction}，兑付金额 {payout}",
+      "outsideSaleWindow": "该系列的一个批次在其销售期之外购入，因此无法拆分兑付。",
+      "failed": "无法计算兑付拆分。"
+    }
   },
   "newTransactionButton": {
     "label": "+ 新建交易",

@@ -959,6 +959,44 @@ describe('TransactionRow', () => {
     expect(screen.getByText(/Buy: AAPL:/)).toBeInTheDocument();
   });
 
+  it('names a return of capital split line rather than printing the raw action (#1800)', () => {
+    renderRow(
+      { density: 'normal' },
+      {
+        isSplit: true,
+        splits: [
+          {
+            id: 's1',
+            amount: 2500,
+            kind: 'category',
+            category: { id: 'cat-salary', name: 'Salary' },
+            transferAccount: null,
+            investmentTransaction: null,
+          } as any,
+          {
+            id: 's2',
+            amount: 40,
+            kind: 'investment',
+            category: null,
+            transferAccount: null,
+            investmentTransaction: {
+              id: 'inv1',
+              action: 'RETURN_OF_CAPITAL',
+              securityId: 'sec1',
+              security: { id: 'sec1', symbol: 'XYZ', name: 'XYZ Fund' },
+              quantity: null,
+              price: 40,
+              commission: 0,
+              exchangeRate: 1,
+            },
+          } as any,
+        ],
+      },
+    );
+    expect(screen.getByText(/Return of Capital: XYZ:/)).toBeInTheDocument();
+    expect(screen.queryByText(/RETURN_OF_CAPITAL/)).not.toBeInTheDocument();
+  });
+
   it('falls back to raw action when investment split lacks a security', () => {
     renderRow(
       { density: 'normal' },
@@ -1215,5 +1253,166 @@ describe('TransactionRow compact dates (the day/month view)', () => {
       renderRow({}, { description: null });
       expect(screen.getAllByText('-').length).toBeGreaterThan(0);
     });
+  });
+});
+
+describe('TransactionRow hidden columns', () => {
+  // The register's hidden set reaches the row as a prop; a hidden column's
+  // cell is absent from the DOM at every width, in the tier row and the phone
+  // card alike (lib/hidden-columns.ts, decision 4 of the plan).
+  const tags = [{ id: 'tag1', name: 'work', color: null, icon: null }] as Transaction['tags'];
+
+  it('renders every column with nothing hidden, as before', () => {
+    const { container } = renderRow({ hidden: new Set() }, { referenceNumber: 'CHK-1', tags, attachmentCount: 2 });
+    expect(screen.getByText('Latte')).toBeInTheDocument();
+    expect(screen.getByText('CHK-1')).toBeInTheDocument();
+    expect(screen.getByText('work')).toBeInTheDocument();
+    expect(screen.getByTestId('attachment-badge')).toBeInTheDocument();
+    expect(screen.getByTitle('Click to cycle status')).toBeInTheDocument();
+    // Date, payee, category, the five hideable, amount, balance, actions.
+    expect(container.querySelectorAll('td')).toHaveLength(11);
+  });
+
+  it('omits a hidden tier cell from the DOM', () => {
+    const { container } = renderRow(
+      { hidden: new Set(['description', 'refNumber', 'tags', 'attachments', 'status']) },
+      { referenceNumber: 'CHK-1', tags, attachmentCount: 2 },
+    );
+    expect(screen.queryByText('Latte')).not.toBeInTheDocument();
+    expect(screen.queryByText('CHK-1')).not.toBeInTheDocument();
+    expect(screen.queryByText('work')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('attachment-badge')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Click to cycle status')).not.toBeInTheDocument();
+    // Date, payee, category, amount, balance (single-account view), actions.
+    expect(container.querySelectorAll('td')).toHaveLength(4 + 1 + 1);
+    // The structural columns are untouched.
+    expect(screen.getByText('Coffee Co')).toBeInTheDocument();
+    expect(screen.getByText('Food')).toBeInTheDocument();
+  });
+
+  it('hides one column without moving the others', () => {
+    const { container } = renderRow({ hidden: new Set(['status']) }, { referenceNumber: 'CHK-1' });
+    expect(screen.queryByTitle('Click to cycle status')).not.toBeInTheDocument();
+    expect(screen.getByText('Latte')).toBeInTheDocument();
+    expect(screen.getByText('CHK-1')).toBeInTheDocument();
+    expect(container.querySelectorAll('td')).toHaveLength(10);
+  });
+
+  it('gates the phone card: the status pill', () => {
+    renderRow({ wrapped: true, hidden: new Set(['status']) });
+    expect(screen.queryByTitle('Click to cycle status')).not.toBeInTheDocument();
+    expect(screen.getByText('Coffee Co')).toBeInTheDocument();
+  });
+
+  it('gates the phone card: the attachment badge', () => {
+    renderRow({ wrapped: true, hidden: new Set(['attachments']) }, { attachmentCount: 2 });
+    expect(screen.queryByTestId('attachment-badge')).not.toBeInTheDocument();
+    expect(screen.getByTitle('Click to cycle status')).toBeInTheDocument();
+  });
+
+  it('gates the phone card: the tags line', () => {
+    const { container } = renderRow({ wrapped: true, hidden: new Set(['tags']) }, { tags });
+    expect(screen.queryByText('work')).not.toBeInTheDocument();
+    // The card is back to two lines: no third `col-span-3` block after line 2.
+    const grid = container.querySelector('td > div')!;
+    expect(grid.querySelectorAll(':scope > .col-span-3')).toHaveLength(1);
+  });
+
+  it('keeps the card as it was with nothing hidden', () => {
+    const { container } = renderRow({ wrapped: true, hidden: new Set() }, { tags, attachmentCount: 2 });
+    expect(screen.getByText('work')).toBeInTheDocument();
+    expect(screen.getByTestId('attachment-badge')).toBeInTheDocument();
+    expect(screen.getByTitle('Click to cycle status')).toBeInTheDocument();
+    const grid = container.querySelector('td > div')!;
+    expect(grid.querySelectorAll(':scope > .col-span-3')).toHaveLength(2);
+  });
+});
+
+describe('TransactionRow warranties', () => {
+  it('renders exactly as before on a row without warranties', () => {
+    const first = renderRow({}, { warrantyCount: 0, attachmentCount: 2 });
+    const before = first.container.innerHTML;
+    first.unmount();
+    const { container: without } = renderRow({}, { attachmentCount: 2 });
+    expect(without.innerHTML).toBe(before);
+    expect(screen.queryByTestId('warranty-badge')).not.toBeInTheDocument();
+  });
+
+  it('shows the shield and count beside the paperclip in the attachments cell', () => {
+    renderRow({}, { warrantyCount: 2, attachmentCount: 1 });
+    const badge = screen.getByRole('img', { name: '2 warranties' });
+    expect(badge).toHaveTextContent('2');
+    const attachment = screen.getByTestId('attachment-badge');
+    expect(badge.closest('td')).toBe(attachment.closest('td'));
+  });
+
+  it('shows the shield alone, without the dash, on a row with no attachments', () => {
+    renderRow({}, { warrantyCount: 1 });
+    const badge = screen.getByRole('img', { name: '1 warranty' });
+    expect(badge.closest('td')).not.toHaveTextContent('-');
+    expect(screen.queryByTestId('attachment-badge')).not.toBeInTheDocument();
+  });
+
+  it('shows the shield on the phone card, and gates it with the attachments column', () => {
+    const first = renderRow({ wrapped: true }, { warrantyCount: 3 });
+    expect(screen.getByRole('img', { name: '3 warranties' })).toBeInTheDocument();
+    first.unmount();
+    renderRow({ wrapped: true, hidden: new Set(['attachments']) }, { warrantyCount: 3 });
+    expect(screen.queryByTestId('warranty-badge')).not.toBeInTheDocument();
+  });
+
+  it('offers Add warranty in the Copy menu on a row with none', () => {
+    const onAddWarranty = vi.fn();
+    const onViewWarranties = vi.fn();
+    const { props } = renderRow({ onDuplicate: vi.fn(), onAddWarranty, onViewWarranties }, { warrantyCount: 0 });
+    fireEvent.click(screen.getByText('Copy'));
+    expect(screen.queryByText('View warranties')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Add warranty'));
+    expect(onAddWarranty).toHaveBeenCalledWith(props.transaction);
+    expect(onViewWarranties).not.toHaveBeenCalled();
+    expect(props.onRowClick).not.toHaveBeenCalled();
+  });
+
+  it('offers View warranties in the Copy menu on a row with some', () => {
+    const onAddWarranty = vi.fn();
+    const onViewWarranties = vi.fn();
+    const { props } = renderRow({ onDuplicate: vi.fn(), onAddWarranty, onViewWarranties }, { warrantyCount: 1 });
+    fireEvent.click(screen.getByText('Copy'));
+    expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('View warranties'));
+    expect(onViewWarranties).toHaveBeenCalledWith(props.transaction);
+    expect(onAddWarranty).not.toHaveBeenCalled();
+  });
+
+  it('keeps every press on the menu item from the row', () => {
+    const { props } = renderRow({ onDuplicate: vi.fn(), onAddWarranty: vi.fn() });
+    fireEvent.click(screen.getByText('Copy'));
+    const item = screen.getByText('Add warranty');
+    fireEvent.mouseDown(item);
+    fireEvent.touchStart(item);
+    fireEvent.contextMenu(item);
+    expect(props.onLongPressStart).not.toHaveBeenCalled();
+    expect(props.onLongPressStartTouch).not.toHaveBeenCalled();
+    expect(props.onContextMenu).not.toHaveBeenCalled();
+  });
+
+  it('opens the Copy menu for the warranty action alone, rather than the single Duplicate button', () => {
+    renderRow({ onDuplicate: vi.fn(), onAddWarranty: vi.fn() });
+    expect(screen.getByTitle('Copy options')).toBeInTheDocument();
+    expect(screen.queryByTitle('Duplicate transaction')).not.toBeInTheDocument();
+  });
+
+  it('keeps the single Duplicate button when no warranty handler is passed', () => {
+    renderRow({ onDuplicate: vi.fn() }, { warrantyCount: 2 });
+    expect(screen.getByTitle('Duplicate transaction')).toBeInTheDocument();
+  });
+
+  it('offers no warranty action on a linked investment row', () => {
+    renderRow(
+      { onDuplicate: vi.fn(), onAddWarranty: vi.fn(), onViewWarranties: vi.fn() },
+      { linkedInvestmentTransactionId: 'inv-1' },
+    );
+    expect(screen.queryByText('Copy')).not.toBeInTheDocument();
+    expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
   });
 });

@@ -135,6 +135,7 @@
       "toggleTitle": "Прибрати рік із дат, щоб вмістилося більше імені одержувача"
     },
     "attachmentsCount": "{count, plural, one {# вкладення} few {# вкладення} many {# вкладень} other {# вкладення}}",
+    "warrantiesCount": "{count, plural, one {# гарантія} few {# гарантії} many {# гарантій} other {# гарантії}}",
     "today": "Сьогодні",
     "export": {
       "button": "Експорт",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Дублювати транзакцію",
       "copy": "Копіювати",
       "duplicate": "Дублювати",
-      "scheduleRecurring": "Запланувати як повторювану"
+      "scheduleRecurring": "Запланувати як повторювану",
+      "addWarranty": "Додати гарантію",
+      "viewWarranties": "Переглянути гарантії"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Редагувати",
     "duplicate": "Дублювати",
     "scheduleRecurring": "Запланувати як повторювану",
+    "addWarranty": "Додати гарантію",
+    "viewWarranties": "Переглянути гарантії",
     "delete": "Видалити"
   },
   "filter": {
@@ -219,7 +224,7 @@
       "title": "Фільтри",
       "clear": "Очистити",
       "hide": "Приховати",
-      "show": "Показати"
+      "show": "Показати фільтри"
     },
     "accounts": {
       "label": "Показати рахунки:",
@@ -258,7 +263,7 @@
       "statuses": "Всі статуси",
       "amountMin": "Мін",
       "amountMax": "Макс",
-      "search": "Пошук за одержувачем, категорією, сумою, тегом, описом, реф. №...",
+      "search": "Пошук, або спробуйте #10 чи payee:costco",
       "tagKeyValue": "напр. usa"
     },
     "tagKeyNone": "Будь-який (без фільтра за ключем)",
@@ -431,6 +436,7 @@
       "destinationRequired": "Оберіть рахунок-отримувач",
       "sameAccount": "Рахунок-джерело та рахунок-отримувач мають бути різними",
       "negativeTransfer": "Сума переказу не може бути від'ємною",
+      "convertToTransferUnsupported": "Наявну транзакцію не можна тут перетворити на переказ. Видаліть її та створіть переказ.",
       "payeeCreated": "Одержувача платежу «{name}» створено",
       "payeeCreateFailed": "Не вдалося створити одержувача платежу",
       "payeeReactivated": "Одержувача платежу «{name}» реактивовано",
@@ -465,7 +471,14 @@
       },
       "feeCaption": "Включає комісію за закордонну операцію {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Розділеними транзакціями на спільному рахунку може керувати лише власник"
+    "jointSplitDisabled": "Розділеними транзакціями на спільному рахунку може керувати лише власник",
+    "warranties": {
+      "title": "Гарантії",
+      "add": "Додати гарантію",
+      "expires": "Закінчується {date}",
+      "loading": "Завантаження гарантій",
+      "loadError": "Не вдалося завантажити гарантії для цієї транзакції."
+    }
   },
   "splitEditor": {
     "header": "Деталі розподілу",
@@ -582,6 +595,11 @@
       "log": "Логарифмічний",
       "autoTitle": "Авто ({scale})",
       "scaleTitle": "Масштаб {label}"
+    },
+    "collapse": {
+      "hide": "Приховати графік",
+      "show": "Показати графік",
+      "hidden": "Графік приховано"
     }
   },
   "toasts": {
@@ -604,5 +622,71 @@
     "title": "Витрати за {key}",
     "other": "Інше",
     "noData": "Немає позначених тегами витрат для розподілу за цим ключем."
+  },
+  "searchSyntax": {
+    "open": "Синтаксис пошуку",
+    "title": "Синтаксис пошуку",
+    "fields": "Поля: payee, memo, cat, tag, account, ref, amount, date, status, is, has. Виберіть приклад, щоб вставити його в поле пошуку.",
+    "examples": {
+      "allWords": "Кожне слово десь трапляється",
+      "phrase": "Саме ця фраза",
+      "exclude": "Виключити все, що збігається з refund",
+      "fieldContains": "Отримувач містить costco",
+      "fieldExact": "Отримувач точно Costco",
+      "reference": "Номер чека або посилання рівно 10",
+      "wildcard": "Посилання починається з 10",
+      "amountOver": "Сума понад 100",
+      "amountRange": "Сума від 50 до 100",
+      "datePeriod": "Будь-який день березня 2026",
+      "isSplit": "Розділені операції",
+      "hasAttachment": "Має вкладення",
+      "hasWarranty": "Має гарантію"
+    }
+  },
+  "searchInterpretation": {
+    "label": "Пошук:",
+    "negated": "не {phrase}",
+    "malformed": "{raw} (не розпізнано, шукали як текст)",
+    "empty": "{raw} (порожньо, пропущено)",
+    "status": "Статус: {value}",
+    "any": "«{value}» у будь-якому полі",
+    "fields": {
+      "payee": "Отримувач",
+      "memo": "Нотатка",
+      "cat": "Категорія",
+      "tag": "Мітка",
+      "account": "Рахунок",
+      "ref": "Посилання",
+      "amount": "Сума",
+      "date": "Дата",
+      "status": "Статус",
+      "is": "Тип",
+      "has": "Має"
+    },
+    "ops": {
+      "contains": "{field} містить «{value}»",
+      "exact": "{field}: «{value}»",
+      "glob": "{field} відповідає «{value}»",
+      "eq": "{field}: {value}",
+      "gt": "{field} понад {value}",
+      "gte": "{field} від {value}",
+      "lt": "{field} менше {value}",
+      "lte": "{field} до {value}",
+      "between": "{field} від {value} до {valueTo}"
+    },
+    "enum": {
+      "is": {
+        "transfer": "Перекази",
+        "split": "Розділені операції",
+        "uncategorized": "Без категорії"
+      },
+      "has": {
+        "attachment": "Має вкладення",
+        "warranty": "Має гарантію",
+        "ref": "Має номер посилання",
+        "memo": "Має нотатку",
+        "tag": "Має мітку"
+      }
+    }
   }
 }

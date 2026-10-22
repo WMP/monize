@@ -1,7 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { BadRequestException, NotFoundException } from "@nestjs/common";
-import { DataSource } from "typeorm";
+import { DataSource, QueryFailedError } from "typeorm";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import { EXTERNAL_ID_INDEX } from "../transactions/transaction-external-id";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -27,6 +28,7 @@ import {
 import { Holding } from "../securities/entities/holding.entity";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { SecurityPriceService } from "../securities/security-price.service";
+import { SecuritiesService } from "../securities/securities.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { HoldingsService } from "../securities/holdings.service";
 import { ImportEntityCreatorService } from "./import-entity-creator.service";
@@ -328,6 +330,14 @@ describe("ImportService", () => {
         { provide: DataSource, useValue: mockDataSource },
         { provide: NetWorthService, useValue: mockNetWorthService },
         { provide: SecurityPriceService, useValue: mockSecurityPriceService },
+        {
+          provide: SecuritiesService,
+          useValue: {
+            recomputeBondPricesOfAccounts: jest
+              .fn()
+              .mockResolvedValue(undefined),
+          },
+        },
         { provide: ExchangeRateService, useValue: mockExchangeRateService },
         { provide: HoldingsService, useValue: mockHoldingsService },
         ImportPostProcessingService,
@@ -722,6 +732,41 @@ describe("ImportService", () => {
         expect(mockDataSource.transaction).toHaveBeenCalled();
       });
 
+      it("processes the file's rows oldest first, keeping the file's order within a date (INV-RULE-005)", async () => {
+        mockedParseQif.mockReturnValue({
+          accountType: "CHEQUING",
+          accountName: "",
+          transactions: [
+            makeQifTransaction({ date: "2025-02-20", payee: "February" }),
+            makeQifTransaction({ date: "2025-01-15", payee: "January first" }),
+            makeQifTransaction({ date: "2025-01-15", payee: "January second" }),
+          ],
+          categories: ["Food"],
+          transferAccounts: [],
+          securities: [],
+          detectedDateFormat: "MM/DD/YYYY",
+          sampleDates: ["02/20/2025"],
+          openingBalance: null,
+          openingBalanceDate: null,
+        });
+        const processed = jest
+          .spyOn(ImportRegularProcessorService.prototype, "processTransaction")
+          .mockResolvedValue(undefined);
+        try {
+          const result = await service.importQifFile(userId, makeBaseDto());
+          expect(result.errors).toBe(0);
+          expect(
+            processed.mock.calls.map((call) => [call[1].date, call[1].payee]),
+          ).toEqual([
+            ["2025-01-15", "January first"],
+            ["2025-01-15", "January second"],
+            ["2025-02-20", "February"],
+          ]);
+        } finally {
+          processed.mockRestore();
+        }
+      });
+
       it("creates transaction with correct properties", async () => {
         await service.importQifFile(userId, makeBaseDto());
 
@@ -1023,6 +1068,51 @@ describe("ImportService", () => {
         const sqls = mockQueryRunner.query.mock.calls.map((call) => call[0]);
         expect(sqls).toContain("ROLLBACK TO SAVEPOINT tx_import_1");
         expect(sqls).toContain("RELEASE SAVEPOINT tx_import_2");
+      });
+
+      it("refuses the file as a whole, before the holdings are rebuilt, when the run's bond guard finds a removal the lots do not cover (INV-BOND-007)", async () => {
+        mockedParseQif.mockReturnValue({
+          accountType: "INVESTMENT",
+          accountName: "",
+          transactions: [
+            makeQifTransaction({ action: "Sell", security: "EDO" }),
+          ],
+          categories: [],
+          transferAccounts: [],
+          securities: [],
+          detectedDateFormat: "MM/DD/YYYY",
+          sampleDates: [],
+          openingBalance: null,
+          openingBalanceDate: null,
+        });
+        accountsRepository.findOne.mockResolvedValue(mockBrokerageAccount);
+        mockHoldingsService.rebuildAccountsFromTransactions.mockClear();
+        const verify = jest
+          .fn()
+          .mockRejectedValue(new BadRequestException("OVER_REMOVAL"));
+        const processed = jest
+          .spyOn(
+            ImportInvestmentProcessorService.prototype,
+            "processTransaction",
+          )
+          .mockImplementation(async (ctx) => {
+            ctx.bond = {
+              programCache: new Map(),
+              seriesMemo: new Map(),
+              guard: { verify } as never,
+            };
+          });
+        try {
+          await expect(
+            service.importQifFile(userId, makeBaseDto()),
+          ).rejects.toThrow(/OVER_REMOVAL/);
+          expect(verify).toHaveBeenCalledTimes(1);
+          expect(
+            mockHoldingsService.rebuildAccountsFromTransactions,
+          ).not.toHaveBeenCalled();
+        } finally {
+          processed.mockRestore();
+        }
       });
 
       it("does not load rules for an investment file", async () => {
@@ -1814,21 +1904,33 @@ describe("ImportService", () => {
           openingBalance: 0,
           currentBalance: 200,
         });
+        // The opening balance the delta is taken from, read under the lock.
+        const defaultQuery =
+          mockQueryRunner.manager.query.getMockImplementation();
+        mockQueryRunner.manager.query.mockImplementation(
+          async (sql: string, params?: unknown[]) =>
+            typeof sql === "string" && sql.includes("SELECT opening_balance")
+              ? [{ opening_balance: "0" }]
+              : defaultQuery
+                ? defaultQuery(sql, params)
+                : [],
+        );
 
         await service.importQifFile(userId, makeBaseDto());
 
-        // Should update account with new opening balance and adjusted current balance
-        const updateCalls = mockQueryRunner.manager.update.mock.calls.filter(
-          (call: unknown[]) => call[0] === Account && call[1] === "acct-1",
-        );
-        const openingBalanceUpdate = updateCalls.find(
-          (call: unknown[]) =>
-            (call[2] as Record<string, unknown>).openingBalance !== undefined,
+        // The opening balance is set and current_balance moved by the change,
+        // as one atomic delta under the account lock (A26-M13), never an
+        // absolute figure computed from the account read before the import.
+        const openingBalanceUpdate = (
+          mockQueryRunner.manager.query.mock.calls as unknown[][]
+        ).find(
+          ([sql]) =>
+            typeof sql === "string" && sql.includes("SET opening_balance"),
         );
         expect(openingBalanceUpdate).toBeDefined();
-        expect(openingBalanceUpdate[2].openingBalance).toBe(500.5);
-        // new currentBalance = 200 - 0 + 500.50 = 700.50
-        expect(openingBalanceUpdate[2].currentBalance).toBe(700.5);
+        const [, , newOpening, delta] = openingBalanceUpdate![1] as unknown[];
+        expect(newOpening).toBe(500.5);
+        expect(delta).toBe(500.5);
       });
     });
 
@@ -3043,6 +3145,102 @@ describe("ImportService", () => {
       expect(result).toBeDefined();
       expect(result.imported).toBeDefined();
     });
+
+    describe("a row whose bank id another writer committed first", () => {
+      const ofxRow = (overrides: Record<string, unknown>) => ({
+        date: "2025-03-01",
+        amount: -50,
+        payee: "Store",
+        memo: "",
+        number: "",
+        cleared: true,
+        reconciled: false,
+        category: "",
+        isTransfer: false,
+        transferAccount: "",
+        splits: [],
+        security: "",
+        action: "",
+        price: 0,
+        quantity: 0,
+        commission: 0,
+        ...overrides,
+      });
+
+      const importTwoRows = async (constraint: string) => {
+        mockedValidateOfxContent.mockReturnValue({ valid: true });
+        mockedParseOfx.mockReturnValue({
+          accountType: "CHEQUING",
+          accountName: "",
+          transactions: [
+            ofxRow({ fitId: "A1" }),
+            ofxRow({ date: "2025-03-02", amount: -7.5, fitId: "A2" }),
+          ],
+          categories: [],
+          transferAccounts: [],
+          securities: [],
+          detectedDateFormat: "YYYY-MM-DD",
+          sampleDates: [],
+          openingBalance: null,
+          openingBalanceDate: null,
+        });
+        accountsRepository.findOne.mockResolvedValue(mockChequingAccount);
+        // The lookup missed (findOne answers null), and the unique index
+        // refuses the insert of the first row: the race the lookup cannot see.
+        const save = mockQueryRunner.manager.save.getMockImplementation();
+        mockQueryRunner.manager.save.mockImplementation(
+          (entity: { externalId?: string | null }) =>
+            entity?.externalId === "ofx:A1"
+              ? Promise.reject(
+                  new QueryFailedError("INSERT INTO transactions", [], {
+                    code: "23505",
+                    constraint,
+                  } as unknown as Error),
+                )
+              : save!(entity),
+        );
+
+        return service.importOfxFile(userId, {
+          content: "<OFX>...</OFX>",
+          accountId: "acct-1",
+          categoryMappings: [],
+          accountMappings: [],
+        });
+      };
+
+      it("rolls the row back and counts it as already imported, not as an error", async () => {
+        const result = await importTwoRows(EXTERNAL_ID_INDEX);
+
+        expect(result.errors).toBe(0);
+        expect(result.errorMessages).toEqual([]);
+        expect(result.imported).toBe(1);
+        expect(result.skipped).toBe(1);
+        expect(result.skippedRows).toEqual([
+          {
+            date: "2025-03-01",
+            amount: -50,
+            currencyCode: "CAD",
+            payee: "Store",
+            reason: "alreadyImported",
+          },
+        ]);
+        const sqls = mockQueryRunner.query.mock.calls.map((call) => call[0]);
+        expect(sqls).toContain("ROLLBACK TO SAVEPOINT tx_import_1");
+        expect(sqls).toContain("RELEASE SAVEPOINT tx_import_2");
+        // Each row created its payee, and the first one's was rolled back with
+        // it, so only the second counts.
+        expect(result.payeesCreated).toBe(1);
+      });
+
+      it("still reports a violation of another constraint as an error", async () => {
+        const result = await importTwoRows("some_other_index");
+
+        expect(result.errors).toBe(1);
+        expect(result.skipped).toBe(0);
+        expect(result.skippedRows).toEqual([]);
+        expect(result.imported).toBe(1);
+      });
+    });
   });
 
   // --- CSV Tests ---
@@ -3996,6 +4194,53 @@ describe("ImportService", () => {
       }
     });
 
+    it("processes each block's rows oldest first, keeping the file's order within a date (INV-RULE-005)", async () => {
+      const first = makeFullParseResult().accountBlocks[0].transactions[0];
+      mockedValidateQifContent.mockReturnValue({ valid: true });
+      mockedParseQifFull.mockReturnValue(
+        makeFullParseResult({
+          accountBlocks: [
+            {
+              ...makeFullParseResult().accountBlocks[0],
+              transactions: [
+                { ...first, date: "2025-02-20", payee: "February" },
+                { ...first, date: "2025-01-15", payee: "January first" },
+                { ...first, date: "2025-01-15", payee: "January second" },
+              ],
+            },
+          ],
+        }),
+      );
+      mockQueryRunner.manager.findOne.mockImplementation((entity, options) =>
+        Promise.resolve(
+          entity === Account && options?.where?.id
+            ? {
+                id: options.where.id,
+                userId,
+                accountType: AccountType.CHEQUING,
+                currencyCode: "CAD",
+              }
+            : null,
+        ),
+      );
+      const processed = jest
+        .spyOn(ImportRegularProcessorService.prototype, "processTransaction")
+        .mockResolvedValue(undefined);
+      try {
+        const result = await service.importQifMultiAccountFile(userId, baseDto);
+        expect(result.errorMessages).toEqual([]);
+        expect(
+          processed.mock.calls.map((call) => [call[1].date, call[1].payee]),
+        ).toEqual([
+          ["2025-01-15", "January first"],
+          ["2025-01-15", "January second"],
+          ["2025-02-20", "February"],
+        ]);
+      } finally {
+        processed.mockRestore();
+      }
+    });
+
     it("creates categories from definitions", async () => {
       mockedValidateQifContent.mockReturnValue({ valid: true });
       mockedParseQifFull.mockReturnValue(
@@ -4440,11 +4685,16 @@ describe("ImportService", () => {
 
       await service.importQifMultiAccountFile(userId, baseDto);
 
-      // "_IntExp" should be created as "Interest Expense" (description used)
-      const catCreates = mockQueryRunner.manager.create.mock.calls.filter(
-        (call) => call[0] === Category,
-      );
-      const catNames = catCreates.map((c) => c[1].name);
+      // "_IntExp" should be created as "Interest Expense" (description used).
+      // Categories are inserted with ON CONFLICT DO NOTHING (INV-IMPORT-003),
+      // so the name is the INSERT's second parameter.
+      const catNames = mockQueryRunner.query.mock.calls
+        .filter(
+          (call: unknown[]) =>
+            typeof call[0] === "string" &&
+            call[0].includes("INSERT INTO categories"),
+        )
+        .map((call: unknown[]) => (call[1] as unknown[])[1]);
       expect(catNames).toContain("Interest Expense");
       // "_401k" has no description, so original name is used
       expect(catNames).toContain("_401k");

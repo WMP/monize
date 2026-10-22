@@ -32,7 +32,9 @@ concerns this document describes:
 | `backend/src/backup/backup-envelope.ts`, `backup-stream-crypto.ts`, `backup-key-wrap.ts` | The encrypted-backup format: all three container versions, the framed writer and reader, and the key-wrapped (v3) container the automatic backup writes. |
 | `backend/src/backup/backup-restore.service.ts` | §3 and §6: the processing gate, decryption, decompression, format validation, re-authentication ordering, id remapping, and the one transaction the rest runs inside. |
 | `backend/src/backup/backup-attachment-transfer.service.ts` | §4's restore half: staging carried bytes, the legacy ownership proof, and both object-store cleanup paths. |
-| `backend/src/backup/backup-restore-database.service.ts` | The restore's SQL: teardown, currency preparation, row inserts, deferred-FK repair. |
+| `backend/src/backup/backup-restore-database.service.ts` | The restore's SQL: currency preparation, row inserts, deferred-FK repair; delegates the teardown. |
+| `backend/src/backup/restore-wipe.ts` | The restore's teardown: the FK-safe `DELETE` of everything the user owns, on the restore's own transaction. |
+| `backend/src/backup/backup-bond-series-recovery.service.ts`, `restore-bond-series.ts`, `export-bond-catalog.ts` | §3a: the catalog-identity member the export writes, and the restore's fetch of the series it names before the transaction. |
 | `backend/src/backup/backup-format.ts` | The file format itself -- version, `BackupData`, the two result types -- shared by all four. |
 | `backend/src/backup/export-table-queries.ts` | §2's other half: what is read, in what order, and what is deliberately not read. |
 | `backend/src/backup/restore-plan.ts` | §2: insertion order and deferred foreign keys, as data. |
@@ -56,6 +58,8 @@ every live table is either exported or named in
 - Attachment **bytes** for every provider, base64-encoded in `attachment_blobs`.
   (This said "only for the `database` provider" long after section 4 stopped
   being true of it.) See section 4.
+- The identity of every bond series the user's rows reference, in the
+  `bondCatalog` member (section 3a); never its terms.
 - Every currency definition the user's data references, whoever created it —
   not just the ones they created. Currencies are shared, and a code without its
   definition means the restore invents a name, symbol and decimal places.
@@ -187,7 +191,103 @@ before re-authentication -- it is free, and it writes nothing:
   whose counterpart is another user's transaction on a cross-owner transfer --
   so a restore now comes back with such a leg unlinked rather than re-linked
   one-way to a row the file cannot vouch for -- and `accounts.institution_id`
-  from a backup older than the institution export.
+  from a backup older than the institution export;
+- a reference to reference data the backup never carries is a catalog reference
+  (`CATALOG_REFERENCE_COLUMNS`: `securities.bond_program_id` -> the bond
+  programs and `investment_transactions.bond_instrument_id` -> the bond series),
+  canonicalised like any other and then kept only where this deployment's own
+  catalog holds the row and, for a program link, in the security's currency;
+  otherwise it is written NULL and logged
+  (`BackupRestoreDatabaseService.severUnavailableCatalogLinks`, which iterates
+  `CATALOG_REFERENCE_COLUMNS`), so a restore never fails on a row this
+  deployment does not hold. What else a severed link costs is declared beside the
+  column list (`CATALOG_ON_SEVERED`): the file's `bond_engine` price rows of a
+  security it unlinked are not restored, and the series of that security's rows
+  are dropped with the link. The restore says so: the result carries
+  `unlinkedBondSecurities: { count, symbols }` (omitted at zero, outside
+  `restored`; `symbols` names at most `MAX_UNLINKED_BOND_SYMBOLS` = 50 of them,
+  `count` is the full number) and the restore dialogue lists them, because the
+  bond engine no longer prices those securities. A transaction whose series the
+  catalog lacks is restored without it and counted in
+  `unlinkedBondSeries: { count }` (omitted at zero, outside `restored`). Such a
+  row is not read "from the transaction date" afterwards: an ADD_SHARES or an
+  unpaired TRANSFER_IN can never be re-inferred, and the security's valuation
+  refuses it until the series is chosen again -- which is why the restore
+  fetches the series first (section 3a) and a NULL is the outcome only for a
+  series the official source could not supply. After the inserts
+  `clearForeignSeriesOfUser` nulls any series that is not of its own security's
+  program, whatever the file said (INV-BOND-007). The program id and the series
+  id are derived from their codes (`bondProgramId`, `bondInstrumentId`), so each
+  is the same on every deployment; programs are seeded at boot (INV-BOND-008
+  allows programs), so a program link resolves on any deployment that installs
+  the country's adapter and needs no recovery of its own.
+  The file's `bond_engine` price rows of a security whose link survived came from
+  another deployment's catalog and engine, so after the restore commits
+  `BackupRestoreService` calls `BondPriceService.recomputeLinkedSecurities` with
+  the ids it restored (it keeps the program-linked ones, best effort, logged; the
+  daily job repairs a failure) and the engine's own prices replace the file's.
+
+### 3a. The bond series a backup references are fetched before the restore (INV-BOND-008)
+
+A fresh deployment's catalog holds no series (INV-BOND-008: nothing is fetched or
+stored until a person asks), so a restore onto a new server used to lose every
+series for good. The person's decision to hold those bonds was made when they
+added them, and the restore is the person's own action, so it may fetch the
+series the file references from the official source -- only those, and only
+through the existing door.
+
+- **What travels.** Every backup writes a `bondCatalog` member beside
+  `completeness`: `{ series: [{ bondInstrumentId, issuerCountryCode, issuerCode,
+  programCode, seriesCode }] }`, one entry per series the user's investment
+  transactions reference (`readBondCatalogIdentity`, `export-bond-catalog.ts`,
+  read inside the export's `REPEATABLE READ` snapshot). It is identity only,
+  never terms: a rate enters the catalog only from the official source or an
+  administrator (INV-BOND-006), so a file is never the origin of one. It is a
+  document member, not a table and not a version bump -- `validateBackupFormat`
+  compares `version` for equality, every walker skips a non-array value, and it
+  is added the way `completeness` was. A backup without it (written before it
+  existed, or by the support export, which has none) restores exactly as before.
+- **What the restore does, in order.** After re-authentication and before
+  attachment staging and the transaction, `BackupBondSeriesRecoveryService`
+  keeps the entries some row names, looks each up in the catalog by
+  `(country, issuer, series)`, and fetches the missing ones through
+  `BondSeriesService.fetchSeries` -- the same adapters, the same hardened door, no
+  fetching code of its own -- sequentially, at most
+  `MAX_BOND_SERIES_FETCHES_PER_RESTORE` = 200 per restore, with `BACKFILL_GAP_MS`
+  between two fetches (the pacing toward the issuer is the backfill's; the sleep is
+  injectable). It then looks every
+  identity up again and points each row's `bond_instrument_id` at the catalog's id
+  for that identity; the transaction's `severUnavailableCatalogLinks` finds the
+  series present and keeps the link. The member is untrusted text: an entry that
+  is not five well-formed strings is ignored, an entry no row names fetches
+  nothing, and a series fetched under another issuer than the entry named is not
+  the entry's.
+- **Pacing, not the per-user limit.** A restore is a bounded one-off action of
+  the person, so its fetches pass `{ limiter: "none" }` to `fetchSeries` and are
+  not charged against the interactive 10-per-minute allowance (`bond-series-fetch`);
+  otherwise a restore would recover ten series and report the rest. The option is
+  an internal parameter of `fetchSeries`: the REST route, the assistant and MCP
+  call it with three arguments and no DTO or tool schema reaches it, so they
+  still charge the allowance. The gap and the cap of 200 are what bound the load
+  on the issuer.
+- **Why before the transaction.** A fetch is an external effect that cannot roll
+  back (`docs/external-side-effects.md`) and a network wait does not belong in
+  the transaction holding every one of the user's rows. The catalog store is
+  idempotent and global (an advisory lock per instrument, an immutable first terms
+  version), so a series fetched for a restore that then fails is what the
+  person's next fetch would have stored; nothing fetched is undone.
+- **What a failed fetch leaves.** Nothing but a record. The restore does not
+  fail, the series is not stored, and the rows that named it keep NULL as before.
+  The result lists it in `unrecoveredBondSeries: { count, series: [{
+  issuerCountryCode, seriesCode, reason }] }` (omitted at zero, outside
+  `restored`, `series` capped at `MAX_UNRECOVERED_BOND_SERIES` = 50, `count` the
+  full number), with the reason: `not-published`, `source-unavailable`,
+  `no-adapter` (no installed adapter for the country), `refused` (the source
+  answered and the answer was not acceptable), `rate-limited` (an HTTP 429
+  answered, the source's own, since the restore is not charged the per-user
+  allowance; the pass stops and reports the rest) and
+  `not-attempted` (past the cap). `unlinkedBondSeries` still counts the rows
+  that lost their series.
 
 Every key is then remapped to a fresh id, so the restored graph is closed over
 rows this restore inserted. A UUID nested in a JSONB or array value
@@ -427,12 +527,39 @@ sites are handled so it does not:
   object before re-raising. The discard swallows its own delete failures, so a
   failed tidy-up cannot mask the error that aborted the restore.
 
-**Known gap:** this covers *catchable* failures only. A process crash or kill
-between staging and commit still orphans the staged objects, and there is no
-sweeper or recovery pass for them yet. It is a bounded storage cost, never a row
-promising bytes that are gone, so it is a leak to reclaim rather than a
-correctness hazard — tracked as a separate follow-up, not closed by the #1094
-fix.
+**A staged object carries an upload intent, so a process death leaves bytes the
+sweeper can find (INV-ATTACHMENT-001).** `tryStageAttachmentObject` follows the
+protocol of `AttachmentsService.create` through the helpers in
+`attachments/storage/object-intent.ts`, and does not hand-roll the SQL:
+
+- **Before each put**, `recordObjectIntent` commits an `attachment_blob_tombstones`
+  row for the staged key on its own connection, with the lease
+  `RESTORE_STAGING_INTENT_LEASE_MS` (two hours). It covers staging the rest of the
+  artifact, the 15-minute maintenance lease the transaction runs under
+  (`USER_MAINTENANCE_LEASE_MS`) and the transaction itself; the 15-minute upload
+  lease covers one put and is too short. The lease is a latency mechanism, not the
+  safety one: a longer value only delays reclaiming the bytes of a dead process.
+  The `database` provider records nothing (its bytes roll back with the
+  transaction). If the intent cannot be recorded, the bytes are not written and
+  the attachment is dropped exactly as one whose put failed (`skippedAttachments`).
+- **In the restore transaction**, `clearStagingIntents` runs `clearObjectIntent`
+  for every staged key, one statement after another on the transaction's manager,
+  after the rows are written. The delete is fenced on `swept_at IS NULL`: if the
+  sweeper claimed a key first it throws, the restore rolls back, and the existing
+  `.catch` discards the staged objects. The intents therefore commit away together
+  with the rows that now own the bytes, or not at all.
+- **On failure**, `discardStagedAttachmentObjects` drops an intent
+  (`dropCommittedObjectIntent`, best effort) only after the object's delete
+  succeeded. When the delete fails, or the process dies before the discard runs,
+  the intent stays and the hourly `AttachmentOrphanSweeper` removes the bytes once
+  the lease has expired (and re-deletes during its late-write quarantine).
+- Source keys read in place (`sourceKeys`) are never written, so they take no
+  intent; only keys the restore wrote (`stagedKeys`) do.
+
+`backend/test/integration/backup-restore-staging.integration.spec.ts` holds this
+on the `local` provider in a real temporary directory: a failure inside the
+transaction with the discard suppressed leaves the bytes and one intent per
+staged key, and one sweeper pass after the leases expire removes them.
 
 Operationally: for an artifact that carries its own bytes there is nothing to
 restore alongside it — that is the point. The sidecar directory or bucket only
@@ -868,6 +995,12 @@ line now — but the restore's shape is unchanged: its `express.raw` upload is b
 before any of our code runs, so making the restore stream is a different change from
 this one, and it is what would replace a measured multiple with a bound.
 
+**Still owed from the admission work (issue #1073):** a full-path restore
+measurement under a real cgroup memory limit (`/sys/fs/cgroup/memory.peak`
+read after each case, the in-process sample kept beside it). `PEAK_MULTIPLE`
+and `restoreProcessBaselineBytes` are estimates until that record is
+committed; every ceiling above is derived by dividing by the same estimate.
+
 ## 7. Automatic backups in the store
 
 **Who configures it, and where.** Automatic backup is a deployment/operator
@@ -1230,6 +1363,38 @@ Known and unresolved; none of these is a bug report waiting to be filed:
   `backend/src/common/db/migration-table-renames.spec.ts` reads the renames out
   of the migrations themselves, so the next rename is checked without being
   registered.
+- **A migration that changes what a stored value means is replayed on the
+  restored rows (A26-S06-04).** The migration backfills the rows the database
+  holds when it runs, once; a restore inserts rows as the file stores them, so an
+  older artifact brings the old meaning back. `LEGACY_NORMALIZATIONS`
+  (`backend/src/backup/restore-legacy-normalizations.ts`) is a registry of those
+  backfills keyed by the migration that introduced each change. It is applied
+  inside the restore transaction after the rows are inserted, scoped to
+  `user_id = $1`, with the `WHERE` mirroring the migration's. One entry exists:
+  `skip_price_updates` (`20261012131846`), which became the user's own switch, so
+  a pre-1.19 `true` on a security with a `quote_provider` or an
+  `msn_instrument_id` is cleared, as the migration did.
+
+  Whether an artifact is older is decided by `artifactPredates`. The export writes
+  an optional `producedBy: { schemaMigration }` member (`readProducedBy`,
+  `export-produced-by.ts`): the newest applied migration by
+  `compareMigrationFilenames`, read from `schema_migrations` (the runtime role may
+  `SELECT` it), or `null` when the ledger does not exist. With a usable marker the
+  artifact is older when the marker is strictly before the entry's migration. A
+  marker that is `null`, not a string, or not a migration filename is treated as
+  absent. `BACKUP_VERSION` stays `1`: the member is optional, and an artifact
+  without it restores as before.
+
+  Without a marker the artifact is older only on **positive evidence**, written on
+  each registry entry: its `user_preferences` rows exist and carry no
+  `hidden_table_columns` key. That column came from
+  `20261012133629_user_preferences_hidden_table_columns.sql`; both migrations
+  first shipped in release 1.19.0 and neither in 1.18.0, and the export is a
+  `SELECT *`, so a null value is still a key. A marker-less artifact that has the
+  key comes from 1.19.0, where `true` is a deliberate switch and is kept. With no
+  preference rows nothing is known, so nothing is normalized. A new entry states
+  its own evidence rule; a migration with no such column to lean on has no safe
+  marker-less rule and normalizes only artifacts that carry a marker.
 - **Delegation is reset.** `account_delegates`, `account_delegate_grants` and
   `delegate_account_favourites` are excluded by design, and cascade away when
   accounts are deleted. A restore therefore removes existing grants and

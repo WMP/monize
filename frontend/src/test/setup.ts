@@ -32,6 +32,9 @@ afterEach(async () => {
   // assertion read the mock. The two would never see each other's writes.
   const { useDensityStore } = await import('@/store/densityStore');
   useDensityStore.setState({ densities: {} });
+  // Hidden columns are the same shape of store, for the same reason.
+  const { useHiddenColumnsStore } = await import('@/store/hiddenColumnsStore');
+  useHiddenColumnsStore.setState({ columns: {} });
   // Last, so an update React commits during `cleanup()` is counted against the
   // test that mounted the tree rather than the next one.
   failOnIntlErrors();

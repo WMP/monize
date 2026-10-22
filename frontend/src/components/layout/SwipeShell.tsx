@@ -15,6 +15,7 @@ import { WeakJwtSecretBanner } from './WeakJwtSecretBanner';
 import { AiChatBubble } from '@/components/ai/AiChatBubble';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { useScrollToTopOnNavigation } from '@/hooks/useScrollToTopOnNavigation';
+import { usePushResumeOnSignIn } from '@/hooks/usePushResumeOnSignIn';
 
 const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password', '/setup-2fa', '/change-password'];
 
@@ -30,6 +31,9 @@ export function SwipeShell({ children, httpsHeadersActive = false }: SwipeShellP
   // title and action buttons are always in view. Back/Forward keep their
   // restored scroll position.
   useScrollToTopOnNavigation();
+  // Push held across this account's own sign-out resumes here, whichever
+  // sign-in path brought the reader in. A no-op without a held marker.
+  usePushResumeOnSignIn();
 
   const isAuthRoute = AUTH_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
 

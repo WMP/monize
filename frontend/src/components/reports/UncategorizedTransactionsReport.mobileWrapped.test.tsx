@@ -417,7 +417,7 @@ describe("UncategorizedTransactionsReport (phone wrapped rows)", () => {
       fireEvent.click(row);
     });
     expect(mockPush).toHaveBeenCalledWith(
-      "/transactions?categoryIds=uncategorized&accountIds=acc-z&search=Westside+Hardware+%26+Garden+Supply",
+      "/transactions?categoryIds=uncategorized&accountIds=acc-z&search=payee%3A%3D%22Westside+Hardware+%26+Garden+Supply%22",
     );
 
     // A click landing on a captioned value cell is still a click on the row --
@@ -427,7 +427,7 @@ describe("UncategorizedTransactionsReport (phone wrapped rows)", () => {
       fireEvent.click(row.querySelectorAll("td")[3]);
     });
     expect(mockPush).toHaveBeenCalledWith(
-      "/transactions?categoryIds=uncategorized&accountIds=acc-z&search=Westside+Hardware+%26+Garden+Supply",
+      "/transactions?categoryIds=uncategorized&accountIds=acc-z&search=payee%3A%3D%22Westside+Hardware+%26+Garden+Supply%22",
     );
   });
 

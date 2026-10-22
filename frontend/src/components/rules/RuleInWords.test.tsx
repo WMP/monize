@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@/test/render';
-import { RuleActionsInWords, RuleConditionInWords, type RuleWordsLabels } from './RuleInWords';
+import { RuleActionsInWords, RuleActiveWindowInWords, RuleConditionInWords, RuleInWords, type RuleWordsLabels } from './RuleInWords';
 import type { RuleAction, RuleConditionNode } from '@/types/transaction-rule';
 
 const labels: RuleWordsLabels = { accounts: {}, payees: {}, categories: {}, tags: {} };
@@ -40,6 +40,39 @@ describe('the conditions in words: the newer fields', () => {
   });
 });
 
+describe('the date condition in words', () => {
+  it('reads a date in the reader\'s format and a range with both ends', () => {
+    words({ all: [{ field: 'date', op: 'gte', value: '2026-10-01' }] });
+    expect(screen.getByText(/^Date is at least .*2026/)).toBeInTheDocument();
+  });
+
+  it('reads a range of two dates', () => {
+    words({ all: [{ field: 'date', op: 'between', value: ['2026-10-01', '2026-10-31'] }] });
+    expect(screen.getByText(/^Date is between .*2026.* and .*2026/)).toBeInTheDocument();
+  });
+});
+
+describe('the active window in words', () => {
+  it('names both ends', () => {
+    render(<RuleActiveWindowInWords activeFrom="2026-10-01" activeTo="2026-12-31" />);
+    expect(screen.getByText(/^Only for transactions dated from .*2026.* to .*2026/)).toBeInTheDocument();
+  });
+
+  it('says no limit for an open side', () => {
+    render(<RuleActiveWindowInWords activeFrom="2026-10-01" activeTo={null} />);
+    expect(screen.getByText(/to no limit$/)).toBeInTheDocument();
+  });
+
+  it('is shown on a whole rule only when it has a window', () => {
+    const rule = { triggers: ['create'] as const, condition: { all: [] }, actions: [], stopProcessing: false };
+    const { unmount } = render(<RuleInWords rule={{ ...rule, triggers: ['create'] }} labels={labels} />);
+    expect(screen.queryByText(/Only for transactions dated/)).not.toBeInTheDocument();
+    unmount();
+    render(<RuleInWords rule={{ ...rule, triggers: ['create'], activeFrom: '2026-10-01' }} labels={labels} />);
+    expect(screen.getByText(/Only for transactions dated from .*2026.* to no limit/)).toBeInTheDocument();
+  });
+});
+
 describe('the actions in words: the text actions', () => {
   function actions(list: RuleAction[]) {
     render(<RuleActionsInWords actions={list} labels={labels} />);
@@ -63,5 +96,86 @@ describe('the actions in words: the text actions', () => {
     expect(screen.getByText('Set the description (replace): "{payee}"')).toBeInTheDocument();
     expect(screen.getByText('Set the description (append): " / {ref}" (only if empty)')).toBeInTheDocument();
     expect(screen.getByText('Set the description (prepend): "{ref}: "')).toBeInTheDocument();
+  });
+});
+
+describe('the actions in words: the structural actions', () => {
+  const ACCOUNT = '22222222-2222-4222-8222-222222222222';
+  const CATEGORY = '33333333-3333-4333-8333-333333333333';
+  const named: RuleWordsLabels = {
+    ...labels,
+    accounts: { [ACCOUNT]: 'Loan account' },
+    categories: { [CATEGORY]: 'Loans: Interest' },
+  };
+
+  function actions(list: RuleAction[], withLabels = named) {
+    render(<RuleActionsInWords actions={list} labels={withLabels} />);
+  }
+
+  it('says which way a transfer goes and to or from which account', () => {
+    actions([
+      { type: 'convert_to_transfer', toAccountId: ACCOUNT, clearCategory: true },
+      { type: 'convert_to_transfer', fromAccountId: ACCOUNT, clearCategory: false },
+    ]);
+    expect(screen.getByText('Turn into a transfer to Loan account')).toBeInTheDocument();
+    expect(screen.getByText('Turn into a transfer from Loan account')).toBeInTheDocument();
+  });
+
+  it('lists the parts of a split with the account, the category and the rest', () => {
+    actions([
+      {
+        type: 'split',
+        parts: [
+          { amount: '{principal}', transferAccountId: ACCOUNT },
+          { amount: '{interest}', categoryId: CATEGORY },
+          { amount: 'rest' },
+        ],
+      },
+    ]);
+    expect(
+      screen.getByText('Split into: {principal} to Loan account, {interest} as Loans: Interest, and the rest'),
+    ).toBeInTheDocument();
+  });
+
+  it('reads a loan settlement with its loan, its window and its two policies', () => {
+    actions([
+      {
+        type: 'settle_loan_installment',
+        loanAccountId: ACCOUNT,
+        dueDateWindow: { daysBefore: 3, daysAfter: 1 },
+        excess: 'extra_principal',
+        shortfall: 'interest_first',
+      },
+      {
+        type: 'settle_loan_installment',
+        loanAccountId: ACCOUNT,
+        dueDateWindow: { daysBefore: 0, daysAfter: 7 },
+        excess: 'refuse',
+        shortfall: 'refuse',
+      },
+    ]);
+    expect(
+      screen.getByText(
+        'Settle the installment of Loan account paid by a debit up to 3 days before or 1 day after its due date; a larger debit pays extra principal, a smaller one pays the interest first',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Settle the installment of Loan account paid by a debit up to 0 days before or 7 days after its due date; a larger debit is left alone, a smaller one is left alone',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('does not read a settlement without a window as zero days', () => {
+    actions([
+      { type: 'settle_loan_installment', loanAccountId: ACCOUNT, excess: 'refuse', shortfall: 'refuse' } as unknown as RuleAction,
+    ]);
+    expect(screen.queryByText(/Settle the installment/)).not.toBeInTheDocument();
+  });
+
+  it('does not name an account that is gone', () => {
+    actions([{ type: 'convert_to_transfer', toAccountId: ACCOUNT, clearCategory: true }], labels);
+    expect(screen.getByText(/^Turn into a transfer to /)).toBeInTheDocument();
+    expect(screen.queryByText(/Loan account/)).not.toBeInTheDocument();
   });
 });

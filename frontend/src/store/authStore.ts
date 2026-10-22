@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { AxiosError } from 'axios';
 import { User } from '@/types/auth';
 import { clearAllCache } from '@/lib/apiCache';
+import { endSignOut } from '@/lib/logout-state';
+import { clearIdentityScopedSessionStorage } from '@/lib/identity-session-storage';
 import { markWhatsNewPendingForLogin } from './whatsNewStore';
 import type {
   DelegateContext,
@@ -80,6 +82,9 @@ export const useAuthStore = create<AuthState>()(
         // rehydrates isAuthenticated from localStorage without coming through
         // here, which is exactly why the digest used to reappear on every one.
         markWhatsNewPendingForLogin();
+        // A sign-out earlier in this tab suppressed 401 recovery; this session
+        // needs it back.
+        endSignOut();
         // Backend sets httpOnly cookies; we only track auth state in Zustand
         set({
           user,
@@ -93,6 +98,10 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         // Backend clears httpOnly cookies via /auth/logout; we only clear Zustand state
         clearAllCache();
+        // SECURITY: sessionStorage holds the intraday portfolio series and the
+        // remembered entry date/currency; the next identity on this tab must
+        // not be drawn them (INV-SHARE-003).
+        clearIdentityScopedSessionStorage();
         // SECURITY: A share is one account's document. Drop the stash so the
         // next account to sign in on this device does not find it waiting.
         import('@/lib/share-inbox').then(({ clearShareInbox }) => {

@@ -9,11 +9,9 @@ Read this before adding a table, exempting one, or reaching the database by any
 route other than `withScopedDb`.
 
 Operational material -- rollout stages, mode flips, monitoring, emergency
-rollback -- stays in `docs/future-plans/row-level-security-runbook.md`. The
-original design and the task record are
-`docs/future-plans/row-level-security.md` and
-`docs/future-plans/row-level-security-tasks.md`; both describe work that has
-since shipped, and where they disagree with this document, this document wins.
+rollback -- stays in `docs/rls-runbook.md`. The original design is
+`docs/specs/row-level-security.md`; it describes work that has since shipped,
+and where it disagrees with this document, this document wins.
 
 ## 1. What RLS is here
 
@@ -40,6 +38,11 @@ lands in none or several: **direct** (`user_id` column), **owner-column**,
 **indirect** (`EXISTS` back to the owning parent), or **exempt**. The first
 three are described in `database/CLAUDE.md`. This document owns the fourth.
 
+`scheduled_transaction_postings` gained the settlement claim columns
+(`transaction_id`, `source`, `rule_id`, `pricing`;
+`docs/specs/loan-installment-settlement.md` section 5.2) and stays **indirect**:
+its policy, an `EXISTS` back to `scheduled_transactions.user_id`, is unchanged.
+
 ## 2. The exempt tables
 
 The set is `RLS_EXEMPT_TABLES` in
@@ -63,8 +66,14 @@ ran in `npm run test:unit` and nothing failed.
 |---|---|
 | `auth_attempt_counters` | Rate-limit and lockout counters: how many times a wrong 2FA code, a forgot-password request or a step-up challenge has been seen inside a window. There is no owner column because the row is written on the *failure* path, before any identity is established -- a wrong code on a temp token, a reset request for an address that may not exist -- and because a per-user copy would not be the limit that matters when several replicas serve one account. `key` is a hash (`sha256(email)`, `sha256(tempToken)`, or a user id the caller already holds), which is what keeps a table every session can read from being a directory of who tried to log in. Written under whatever ambient context the unauthenticated route has; read only by the limiter that wrote it, and swept daily. |
 | `auto_backup_policy` | The deployment's automatic-backup policy: one schedule, folder and retention for the whole instance. There is no owner column because there is no owner -- every account is reconciled onto this one row, and the operator who edits it is configuring the deployment rather than their own account. It is exempt for the reason it exists: the policy previously lived on the earliest active administrator's `auto_backup_settings` row, where deactivating, demoting or deleting that account handed a deployment-wide setting to whoever came next -- usually to nobody, so every account reverted to the built-in defaults -- and restoring that account's own backup replayed a months-old policy over the instance. Written under system context by the admin surface and by the hourly reconcile; also carries `manual_run_claimed_at`, the conditional-UPDATE claim that keeps two "back up every account" fan-outs from interleaving. Excluded from every per-user archive (`INTENTIONALLY_EXCLUDED_TABLES`), which is what closes the restore path. |
+| `benchmark_series` | The registry of benchmark series a bond can read -- a central-bank reference rate, a CPI index -- with its kind (`STEP` or `MONTHLY`), publisher, source and `covered_through`, how far it has been fetched. There is no owner column because there is no owner: one series serves every account and every country's instruments, and a per-user copy would multiply provider traffic and let two users see different values for one series. Written by the reference refresh (system context) and, when a series that reads the benchmark is stored, by that store, which seeds the row in its own transaction; `covered_through` only moves forward. Excluded from every per-user archive (`INTENTIONALLY_EXCLUDED_TABLES`) because the deployment refetches it. |
+| `benchmark_values` | The observations of a benchmark series: a rate effective from a date, or a CPI print for a reference month. No owner column -- one published value serves every account, exactly as an exchange rate does -- and a per-user copy would let two users see different values for one series and date. A correction is an update, not a new row. Excluded from every per-user archive. |
+| `bond_programs` | One row per sovereign bond program (the product a person holds, e.g. EDO), keyed by issuer country, issuer and program code, so another country's products need no schema change; a security links to one (`securities.bond_program_id`) and each series (`bond_instruments`) belongs to one. There is no owner column because there is no owner: a program is the same for every account on the deployment, and a per-user copy would let two users hold different definitions of one product. Insert only, held by the same trigger as the series (`bond_reject_mutation`, INV-BOND-001); written under system context by the catalog seed (the adapters' programs, no series) and a series store, in the transaction of the first series of the program. Excluded from every per-user archive because the deployment reseeds it. |
+| `bond_instruments` | One row per sovereign bond series, keyed by issuer country, issuer and series code, so another country's bonds need no schema change. There is no owner column because there is no owner: the terms of a series are published once and are the same for every account on the deployment. A per-user copy would multiply provider traffic by the number of accounts and let two users see different terms for one series. Insert only, held by a trigger (`bond_reject_mutation`, INV-BOND-001) that refuses `UPDATE` and `DELETE`; written by the series store (`BondCatalogService.storeEntry`), under the identity of the person whose fetch or entry stored it or the system context of the series cron. Excluded from every per-user archive because the deployment refetches it. |
+| `bond_period_rates` | The published rate of each interest period of an instrument. No owner column, for the reason `bond_instruments` has none; a per-user copy would let two users value one series at different rates. Immutable once written (INV-BOND-001), held by a trigger rather than by the writer. Excluded from every per-user archive. |
+| `bond_terms_versions` | The terms of an instrument as published, versioned per instrument and carrying a content hash, their source URL and retrieval time. No owner column, for the reason `bond_instruments` has none. Immutable once written (INV-BOND-001): a trigger refuses `UPDATE` and `DELETE`, so changed terms are a new version and a holding valued last year stays reproducible. Excluded from every per-user archive. |
 | `currencies` | Global reference data keyed by ISO 4217 code. It carries `created_by_user_id`, but that is attribution (`NULL` = system currency), not ownership: any user may reference a custom code via `accounts.currency_code`, and a `created_by_user_id` policy would hide every system currency and break those foreign keys. Per-user visibility is already expressed by `user_currency_preferences`, which **is** policied. |
-| `exchange_rate_coverage` | What a rate provider is known to hold for one currency pair, and where the next history fill resumes. There is no owner column because there is nothing to own: Yahoo's history for `USDCAD=X` starts in December 2003 for every account on the deployment, and a per-user copy would have each reader pay their own provider calls to learn the same date. One row per pair in the canonical orientation only (`from_currency < to_currency`, INV-FX-003), held by a CHECK constraint rather than by a convention in the writer -- a rate window answers a pair, not a direction. Written under whatever context the reader's own fill runs in, which is an authenticated request; read only by that fill. Excluded from every per-user archive (`INTENTIONALLY_EXCLUDED_TABLES`) alongside `exchange_rates` itself, because a restore that replayed one deployment's provider bookkeeping onto another would suppress history the second provider does carry. |
+| `exchange_rate_coverage` | What a rate provider is known to hold for one currency pair, and where the next history fill resumes. There is no owner column because there is nothing to own: Yahoo's history for `USDCAD=X` starts in December 2003 for every account on the deployment, and a per-user copy would have each reader pay their own provider calls to learn the same date. One row per pair in the canonical orientation only (`from_currency < to_currency`, INV-FX-003), held by a CHECK constraint rather than by a convention in the writer -- a rate window answers a pair, not a direction. Scoped to a provider set as well: `providers` names the ordered chain that wrote the row, and a row written under any other `FX_PROVIDERS` configuration reads as never probed and has its dates replaced, not merged, by the next fill, because what Yahoo carries says nothing about what Frankfurter does. Written under whatever context the reader's own fill runs in, which is an authenticated request; read only by that fill. Excluded from every per-user archive (`INTENTIONALLY_EXCLUDED_TABLES`) alongside `exchange_rates` itself, because a restore that replayed one deployment's provider bookkeeping onto another would suppress history the second provider does carry. |
 | `exchange_rates` | Global reference data with no owner column; written by the scheduled refresh under system context. A Microsoft Money import also inserts its file's rates, under the importing user's context, but only for dates the table holds nothing for (`ON CONFLICT ... DO NOTHING`, INV-FX-004), so one user's file cannot rewrite the rate another user converts at. |
 | `fetch_sync` | Deployment-wide leases for the jobs one replica should run per tick: the three outbound market-data fetches (exchange rates, security prices, market indexes) and the attachment relocation pass that follows a storage-provider switch. There is no owner column because there is no owner -- one USD/EUR rate and one index close serve every account -- and `job_claims`, the per-user claim table, cannot express it: its `user_id` is a `NOT NULL` foreign key to `users`. The lease is a **cost control, not a correctness mechanism**: the fetches it guards write idempotent upserts, so N replicas running produce the same rows and N times the provider bill. Written under system context by those jobs; `lease_token` identifies the holder so a worker delayed past its own expiry cannot release a lease another replica retook. Distinct from `market_index_sync`, which keeps a per-index attempt cooldown -- how often ONE index is worth re-asking for, not which replica asks. |
 | `google_places_instance_usage` | The month-by-month request count against the OPERATOR's Google Places key (`GOOGLE_PLACES_API_KEY`), which pays for every user's payee contact lookups. There is no owner column because there is no owner: one key is one bill, and a per-user copy could not enforce the one cap that matters. A user who configures their own key is counted in `payee_lookup_usage`, which is policied like any user-owned table. Written under system context by the quota claim; read only by the settings status. |
@@ -301,7 +310,7 @@ Two smaller consequences of being outside a transaction, both deliberate:
    horizontal-scaling plan reserved an optional Redis for exactly this message.
    Rejected, and recorded in the plan: another store to run, back up, secure and
    probe, for a channel PostgreSQL already has. See
-   `docs/future-plans/horizontal-scaling.md`.
+   `docs/specs/horizontal-scaling.md`.
 
 ### Review triggers
 
@@ -320,6 +329,19 @@ Reconsider this decision when any of these happens:
 Adding a **user-owned** table: ship its `CREATE POLICY` in the same migration,
 and -- for any migration numbered after `123` -- its own `ALTER TABLE ... ENABLE
 ROW LEVEL SECURITY`. `database/CLAUDE.md` has the rules and the worked examples.
+
+**A read arm never goes into `WITH CHECK`.** A policy whose `USING` admits a
+second party (a delegate's `app.real_user_id` arm, a joint read arm) states its
+`WITH CHECK` separately, naming only the identity that may create the row: one
+expression for both let a delegate-side session issue itself a delegation from
+any owner (A26-M06). `account_delegates` and `account_delegate_grants` admit a
+write only from the owner's own session (`current = real = owner`), and a grant
+only over the owner's own account, checked through the SECURITY DEFINER
+`delegation_grant_account_is_owners` because a policy on the grants cannot read
+`accounts` (the accounts policy reads the grants, and PostgreSQL refuses the
+cycle as infinite recursion). Migration `20261022142820`; the cases are in
+`rls-enforcement.integration.spec.ts`, "delegation rows are issued by the owner
+only".
 
 Exempting a table is a deliberate decision, and takes four things in one change:
 

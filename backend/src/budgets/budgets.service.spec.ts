@@ -1,10 +1,15 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import {
+  queryCategorySpending,
+  resolveCategorySpentOrNull,
+} from "./budget-spending.util";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { NotFoundException, BadRequestException } from "@nestjs/common";
 import { BudgetsService } from "./budgets.service";
 import { ScheduledEffectiveAmountService } from "../scheduled-transactions/scheduled-effective-amount.service";
 import { ScheduledOccurrenceService } from "../scheduled-transactions/scheduled-occurrence.service";
+import { ScheduledTransactionLoanService } from "../scheduled-transactions/scheduled-transaction-loan.service";
 import { CreateNotificationInput } from "../notification-center/notification.service";
 import { NotificationDispatchService } from "../notifications/notification-dispatch.service";
 import { InvestmentTransactionsService } from "../securities/investment-transactions.service";
@@ -29,6 +34,7 @@ import { ScheduledTransactionOverride } from "../scheduled-transactions/entities
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { addDaysYMD, getMonthEndYMD, todayYMD } from "../common/date-utils";
+import { OVERDUE_CARRY_DAYS } from "../common/scheduled-occurrences";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import {
   createScopedDbMocks,
@@ -39,6 +45,31 @@ import {
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
+
+/**
+ * The actuals query converts every row into the budget's currency, so a mock
+ * repository must answer the budget lookup and hand back raw rows that carry a
+ * currency and a date. Every row here is in the budget's currency, which needs
+ * no rate: each existing number is the one the unconverted query returned.
+ */
+const TEST_BUDGET_CURRENCY = "USD";
+const spendingRow = (key: string, total: string) => ({
+  key,
+  currencyCode: TEST_BUDGET_CURRENCY,
+  txDate: "2026-01-10",
+  total,
+});
+// A Mock carrying `query`, so it fits the specs' `Record<string, jest.Mock>`.
+const spendingManager = () =>
+  Object.assign(jest.fn(), {
+    query: jest
+      .fn()
+      .mockImplementation(async (sql: string) =>
+        sql.includes("FROM budgets")
+          ? [{ currency_code: TEST_BUDGET_CURRENCY }]
+          : [],
+      ),
+  });
 
 describe("BudgetsService", () => {
   let scopedManager: ManagerMock;
@@ -89,6 +120,7 @@ describe("BudgetsService", () => {
     icon: null,
     color: null,
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-01"),
   };
@@ -128,6 +160,7 @@ describe("BudgetsService", () => {
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
     groupBy: jest.fn().mockReturnThis(),
+    addGroupBy: jest.fn().mockReturnThis(),
     getMany: jest.fn().mockResolvedValue([]),
     getRawMany: jest.fn().mockResolvedValue([]),
     getCount: jest.fn().mockResolvedValue(0),
@@ -179,6 +212,7 @@ describe("BudgetsService", () => {
     };
 
     transactionsRepository = {
+      manager: spendingManager(),
       createQueryBuilder: jest.fn(() => createMockQueryBuilder()),
     };
 
@@ -253,6 +287,14 @@ describe("BudgetsService", () => {
         // its stored one and every pre-existing expectation still holds.
         ScheduledEffectiveAmountService,
         ScheduledOccurrenceService,
+        // No loan bill here: the per-occurrence loan pricing is
+        // `scheduled-occurrence.service.spec.ts`'s.
+        {
+          provide: ScheduledTransactionLoanService,
+          useValue: {
+            projectLoanOccurrencesMany: jest.fn().mockResolvedValue(new Map()),
+          },
+        },
         {
           provide: InvestmentTransactionsService,
           useValue: investmentTransactionsService,
@@ -748,11 +790,13 @@ describe("BudgetsService", () => {
       budgetsRepository.findOne.mockResolvedValue(budgetWithCategories);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { categoryId: "cat-1", total: "-350" },
-          { categoryId: "cat-2", total: "-1500" },
-          { categoryId: "cat-3", total: "3000" },
-        ]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([
+            spendingRow("cat-1", "-350"),
+            spendingRow("cat-2", "-1500"),
+            spendingRow("cat-3", "3000"),
+          ]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -806,14 +850,10 @@ describe("BudgetsService", () => {
       budgetsRepository.findOne.mockResolvedValue(budgetWithCategories);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-200" }]),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "-200")]),
       });
       const splitQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-100" }]),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "-100")]),
       });
       transactionsRepository.createQueryBuilder.mockReturnValue(directQb);
       splitsRepository.createQueryBuilder.mockReturnValue(splitQb);
@@ -824,6 +864,52 @@ describe("BudgetsService", () => {
         (c) => c.categoryName === "Groceries",
       );
       expect(groceries!.spent).toBe(300);
+    });
+
+    it("leaves a foreign row with no rate out of spent and reports the line unknown", async () => {
+      // 10,000 JPY beside 200 USD, and no JPY->USD rate stored: the line's
+      // figure is the known 200, never 10,200, and the strict resolver says
+      // unknown so a caller that can show that does (INV-FX-001).
+      const category = {
+        ...mockBudgetCategory,
+        id: "bc-1",
+        categoryId: "cat-1",
+        amount: 500,
+        isIncome: false,
+        category: { name: "Groceries" },
+      };
+      budgetsRepository.findOne.mockResolvedValue({
+        ...mockBudget,
+        categories: [category],
+      });
+      const rows = [
+        spendingRow("cat-1", "-200"),
+        { ...spendingRow("cat-1", "-10000"), currencyCode: "JPY" },
+      ];
+      transactionsRepository.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder({
+          getRawMany: jest.fn().mockResolvedValue(rows),
+        }),
+      );
+
+      const result = await service.getSummary("user-1", "budget-1");
+      const groceries = result.categoryBreakdown.find(
+        (c) => c.categoryName === "Groceries",
+      );
+      expect(groceries!.spent).toBe(200);
+
+      const spending = await queryCategorySpending(
+        transactionsRepository as never,
+        splitsRepository as never,
+        "user-1",
+        [category as BudgetCategory],
+        "2026-01-01",
+        "2026-01-31",
+      );
+      expect(
+        resolveCategorySpentOrNull(category as BudgetCategory, spending),
+      ).toBeNull();
+      expect(spending.missingRatePairs).toEqual(["JPY->USD"]);
     });
   });
 
@@ -845,9 +931,7 @@ describe("BudgetsService", () => {
       budgetsRepository.findOne.mockResolvedValue(budgetWithCategories);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-200" }]),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "-200")]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -884,9 +968,7 @@ describe("BudgetsService", () => {
       budgetsRepository.findOne.mockResolvedValue(budgetWithCategories);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-150" }]),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "-150")]),
       });
       transactionsRepository.createQueryBuilder.mockReturnValue(directQb);
       splitsRepository.createQueryBuilder.mockReturnValue(
@@ -923,7 +1005,7 @@ describe("BudgetsService", () => {
         createMockQueryBuilder({
           getRawMany: jest
             .fn()
-            .mockResolvedValue([{ categoryId: "cat-1", total: "-200" }]),
+            .mockResolvedValue([spendingRow("cat-1", "-200")]),
         }),
       );
       splitsRepository.createQueryBuilder.mockReturnValue(
@@ -1637,13 +1719,15 @@ describe("BudgetsService", () => {
       budgetsRepository.find.mockResolvedValue([budgetWithCategories]);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { categoryId: "cat-1", total: "-400" },
-          { categoryId: "cat-2", total: "-950" },
-          { categoryId: "cat-3", total: "-280" },
-          { categoryId: "cat-4", total: "-50" },
-          { categoryId: "cat-5", total: "5000" },
-        ]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([
+            spendingRow("cat-1", "-400"),
+            spendingRow("cat-2", "-950"),
+            spendingRow("cat-3", "-280"),
+            spendingRow("cat-4", "-50"),
+            spendingRow("cat-5", "5000"),
+          ]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -1692,7 +1776,7 @@ describe("BudgetsService", () => {
       const directQb = createMockQueryBuilder({
         getRawMany: jest
           .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-1000" }]),
+          .mockResolvedValue([spendingRow("cat-1", "-1000")]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -1729,9 +1813,7 @@ describe("BudgetsService", () => {
       budgetsRepository.find.mockResolvedValue([budgetWithNoExpenseCategories]);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "5000" }]),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "5000")]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -1792,10 +1874,12 @@ describe("BudgetsService", () => {
       budgetsRepository.find.mockResolvedValue([budgetWithCategories]);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { categoryId: "cat-1", total: "-350" },
-          { categoryId: "cat-2", total: "-900" },
-        ]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([
+            spendingRow("cat-1", "-350"),
+            spendingRow("cat-2", "-900"),
+          ]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -1850,10 +1934,12 @@ describe("BudgetsService", () => {
       budgetsRepository.find.mockResolvedValue([budgetWithIncomeAndExpense]);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { categoryId: "cat-1", total: "-300" },
-          { categoryId: "cat-2", total: "5000" },
-        ]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([
+            spendingRow("cat-1", "-300"),
+            spendingRow("cat-2", "5000"),
+          ]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -1904,11 +1990,13 @@ describe("BudgetsService", () => {
       budgetsRepository.find.mockResolvedValue([budgetWithCategories]);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { categoryId: "cat-1", total: "-200" },
-          { categoryId: "cat-2", total: "-800" },
-          { categoryId: "cat-3", total: "-150" },
-        ]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([
+            spendingRow("cat-1", "-200"),
+            spendingRow("cat-2", "-800"),
+            spendingRow("cat-3", "-150"),
+          ]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -1963,11 +2051,13 @@ describe("BudgetsService", () => {
       // Income query returns 4000
       const incomeQb = createMockQueryBuilder({
         getRawOne: jest.fn().mockResolvedValue({ total: "4000" }),
-        getRawMany: jest.fn().mockResolvedValue([
-          { categoryId: "cat-inc", total: "4000" },
-          { categoryId: "cat-1", total: "-900" },
-          { categoryId: "cat-2", total: "-1800" },
-        ]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([
+            spendingRow("cat-inc", "4000"),
+            spendingRow("cat-1", "-900"),
+            spendingRow("cat-2", "-1800"),
+          ]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -2017,9 +2107,7 @@ describe("BudgetsService", () => {
       budgetsRepository.findOne.mockResolvedValue(normalBudget);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-200" }]),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "-200")]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -2115,6 +2203,39 @@ describe("BudgetsService", () => {
       expect(result[1].amount).toBe(79.99);
     });
 
+    // Discussion #1784: a bill still unposted within OVERDUE_CARRY_DAYS is owed
+    // and counted; one older than that is read as forgotten.
+    it("getUpcomingBills counts a recent overdue bill and leaves a forgotten one out", async () => {
+      const stQb = createMockQueryBuilder({
+        getMany: jest.fn().mockResolvedValue([
+          {
+            id: "st-1",
+            name: "Netflix",
+            amount: -15.99,
+            frequency: "ONCE",
+            nextDueDate: addDaysYMD(todayYMD(), -OVERDUE_CARRY_DAYS),
+            categoryId: "cat-ent",
+          },
+          {
+            id: "st-2",
+            name: "Internet",
+            amount: -79.99,
+            frequency: "ONCE",
+            nextDueDate: addDaysYMD(todayYMD(), -OVERDUE_CARRY_DAYS - 1),
+            categoryId: "cat-util",
+          },
+        ]),
+      });
+      scheduledTransactionsRepository.createQueryBuilder.mockReturnValue(stQb);
+
+      const result = await service.getUpcomingBills(
+        "user-1",
+        addDaysYMD(todayYMD(), 7),
+      );
+
+      expect(result.map((bill) => bill.name)).toEqual(["Netflix"]);
+    });
+
     it("getUpcomingBills returns empty array when no bills are due", async () => {
       const stQb = createMockQueryBuilder({
         getMany: jest.fn().mockResolvedValue([]),
@@ -2146,9 +2267,7 @@ describe("BudgetsService", () => {
       budgetsRepository.findOne.mockResolvedValue(budgetWithCategories);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-400" }]),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "-400")]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -2199,9 +2318,7 @@ describe("BudgetsService", () => {
       budgetsRepository.findOne.mockResolvedValue(budgetWithCategories);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-400" }]),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "-400")]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest.fn().mockResolvedValue([]),

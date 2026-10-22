@@ -123,13 +123,22 @@ vi.mock('@/lib/errors', () => ({
 
 // Mock child components with data-testid markers
 vi.mock('@/components/import/UploadStep', () => ({
-  UploadStep: ({ isLoading, onFileSelect }: any) => (
+  UploadStep: ({ isLoading, onFileSelect, onFilesDrop }: any) => (
     <div data-testid="upload-step">
       <span>{isLoading ? 'Processing...' : 'Upload QIF Files'}</span>
       <input
         data-testid="file-input"
         type="file"
         onChange={onFileSelect}
+      />
+      <button
+        type="button"
+        data-testid="drop-files"
+        onClick={() => {
+          const file = new File(['!Type:Bank\n^'], 'dropped.qif');
+          file.text = () => Promise.resolve('!Type:Bank\n^');
+          onFilesDrop([file]);
+        }}
       />
     </div>
   ),
@@ -539,6 +548,27 @@ describe('ImportPage', () => {
         expect(screen.getByTestId('select-account-step')).toBeInTheDocument();
       });
       expect(screen.queryByTestId('upload-step')).not.toBeInTheDocument();
+    });
+
+    it('transitions from upload to selectAccount after files are dropped', async () => {
+      mockParseQif.mockResolvedValue(mockParsedData);
+      mockGetAllAccounts.mockResolvedValue(mockAccounts);
+      mockGetAllCategories.mockResolvedValue(mockCategories);
+      mockGetSecurities.mockResolvedValue([]);
+      mockGetCurrencies.mockResolvedValue(mockCurrencies);
+
+      render(<ImportPage />);
+
+      await waitFor(() => {
+        expect(mockGetAllAccounts).toHaveBeenCalled();
+      });
+
+      fireEvent.click(screen.getByTestId('drop-files'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('select-account-step')).toBeInTheDocument();
+      });
+      expect(mockParseQif).toHaveBeenCalledWith('!Type:Bank\n^');
     });
 
     it('navigates from selectAccount to mapCategories', async () => {

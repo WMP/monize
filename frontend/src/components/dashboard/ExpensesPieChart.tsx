@@ -4,16 +4,13 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { chartColors } from '@/lib/chart-colors';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Account } from '@/types/account';
 import { builtInReportsApi } from '@/lib/built-in-reports';
 import { CategorySpendingItem } from '@/types/built-in-reports';
-import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useNumberFormat, type NumberFormatters } from '@/hooks/useNumberFormat';
 import { PartialTotal } from '@/components/ui/PartialTotal';
 import type { ConvertedTotal } from '@/lib/currency-total';
-import { DonutCenterTotal } from '@/components/ui/DonutCenterTotal';
 import { HOVER_ROW_ON_CARD } from '@/components/ui/Card';
-import { ChartLegend } from '@/components/ui/ChartLegend';
 import { useReportData } from '@/hooks/useReportData';
 import { useWidgetConfig } from '@/hooks/useWidgetConfig';
 import { resolveRangePreset } from '@/lib/date-range';
@@ -22,6 +19,8 @@ import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
 import { WidgetCard, WidgetConfigRow, WidgetMessage } from './WidgetCard';
+import { WidgetSegmentedControl } from './WidgetSegmentedControl';
+import { DonutCalloutChart, DonutCalloutSlice, DonutCalloutViewHint } from './DonutCalloutChart';
 import {
   EXPENSES_PIE_DEFAULT,
   SPENDING_RANGES,
@@ -29,8 +28,12 @@ import {
 } from './widget-config';
 
 const WIDGET_ID = 'expenses-pie';
-/** How many categories keep a slice of their own before the rest become Other. */
-const MAX_SLICES = 11;
+/**
+ * How many categories keep a slice of their own before the rest become Other,
+ * per view: the legend lists eleven, the callout view boxes the top ten (plus
+ * Other), which is what fits beside the donut.
+ */
+const MAX_SLICES: Record<ExpensesPieConfig['view'], number> = { legend: 11, callouts: 10 };
 
 const nonInvestmentAccounts = (a: Account) => a.accountType !== 'INVESTMENT';
 
@@ -40,6 +43,8 @@ interface CategorySlice {
   name: string;
   value: number;
   colour: string;
+  /** The slice merging the categories past the cut. */
+  isOther?: boolean;
 }
 
 interface ExpensesPieChartProps {
@@ -47,10 +52,29 @@ interface ExpensesPieChartProps {
   isLoading: boolean;
 }
 
+interface ExpensesPieTooltipProps {
+  slice: { name: string; value: number };
+  totalExpenses: number;
+  formatCurrency: NumberFormatters['formatCurrency'];
+  formatPercent: NumberFormatters['formatPercent'];
+}
+
+function ExpensesPieTooltip({ slice, totalExpenses, formatCurrency, formatPercent }: ExpensesPieTooltipProps) {
+  const percentage = (slice.value / totalExpenses) * 100;
+  return (
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+      <p className="font-medium text-gray-900 dark:text-gray-100">{slice.name}</p>
+      <p className="text-gray-600 dark:text-gray-400">
+        {formatCurrency(slice.value)} ({formatPercent(percentage, 1)})
+      </p>
+    </div>
+  );
+}
+
 export function ExpensesPieChart({ accounts, isLoading }: ExpensesPieChartProps) {
   const t = useTranslations('dashboard');
   const router = useRouter();
-  const { formatCurrencyCompact: formatCurrency, formatPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyTight, formatPercent } = useNumberFormat();
   const { config, updateConfig } = useWidgetConfig<ExpensesPieConfig>(
     WIDGET_ID,
     EXPENSES_PIE_DEFAULT,
@@ -87,6 +111,9 @@ export function ExpensesPieChart({ accounts, isLoading }: ExpensesPieChartProps)
     [start, end, accountIdsKey, config.topLevelOnly],
   );
 
+  const view = config.view === 'callouts' ? 'callouts' : 'legend';
+  const maxSlices = MAX_SLICES[view];
+
   const breakdown = useMemo(() => {
     // Already largest-first from the server, which also decides which
     // categories are net-spending at all.
@@ -99,23 +126,24 @@ export function ExpensesPieChart({ accounts, isLoading }: ExpensesPieChartProps)
       colour: item.color || CHART_COLOURS[colourIndex++ % CHART_COLOURS.length],
     }));
 
-    const inOther = slices.slice(MAX_SLICES);
+    const inOther = slices.slice(maxSlices);
     const otherTotal = inOther.reduce((sum, item) => sum + item.value, 0);
     const data =
       inOther.length > 0
         ? [
-            ...slices.slice(0, MAX_SLICES),
+            ...slices.slice(0, maxSlices),
             {
               id: '',
               name: t('expensesPieChart.other'),
               value: otherTotal,
               colour: chartColors.neutral,
+              isOther: true,
             },
           ]
         : slices;
 
     return { data, inOther };
-  }, [response, t]);
+  }, [response, t, maxSlices]);
 
   const chartData = breakdown.data;
   /**
@@ -157,28 +185,21 @@ export function ExpensesPieChart({ accounts, isLoading }: ExpensesPieChartProps)
     }
   };
 
-  // A slice with an id opens its transactions; Other has none, and opens into
-  // the categories it merged instead of going nowhere.
-  const handleSliceClick = (categoryId: string) => {
-    if (categoryId) return handleCategoryClick(categoryId);
-    if (otherCategories.length > 0) setOtherExpanded((open) => !open);
-  };
 
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { id: string; name: string; value: number; colour: string } }> }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      const percentage = (data.value / totalExpenses) * 100;
-      return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
-          <p className="text-gray-600 dark:text-gray-400">
-            {formatCurrency(data.value)} ({formatPercent(percentage, 1)})
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
+  // A slice with an id opens its transactions; Other has none, and opens into
+  // the categories it merged instead of going nowhere. A slice with neither
+  // (Uncategorized) is inert, so it is not offered as a button.
+  const chartSlices: DonutCalloutSlice[] = chartData.map((item, index) => ({
+    key: item.id || `${item.name}-${index}`,
+    name: item.name,
+    value: item.value,
+    color: item.colour,
+    onClick: item.id
+      ? () => handleCategoryClick(item.id)
+      : item.isOther
+        ? () => setOtherExpanded((open) => !open)
+        : undefined,
+  }));
 
   const configControls = (
     <>
@@ -211,6 +232,17 @@ export function ExpensesPieChart({ accounts, isLoading }: ExpensesPieChartProps)
           </span>
         </div>
       </WidgetConfigRow>
+      <WidgetConfigRow label={t('widgets.view')}>
+        <WidgetSegmentedControl
+          value={view}
+          onChange={(next) => updateConfig({ view: next })}
+          options={[
+            { value: 'callouts', label: t('expensesPieChart.viewCallouts') },
+            { value: 'legend', label: t('expensesPieChart.viewLegend') },
+          ]}
+        />
+        <DonutCalloutViewHint />
+      </WidgetConfigRow>
     </>
   );
 
@@ -237,52 +269,42 @@ export function ExpensesPieChart({ accounts, isLoading }: ExpensesPieChartProps)
         <WidgetMessage>{t('expensesPieChart.empty')}</WidgetMessage>
       ) : (
         <>
-          <div className="relative h-64">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="value"
-                  cursor="pointer"
-                  onClick={(data) => handleSliceClick(String(data.id ?? ''))}
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.colour} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* The aggregate belongs in the donut's hole, not in a row beneath
-                the legend that a phone has to scroll to. */}
-            <DonutCenterTotal
-              label={t('expensesPieChart.total')}
-              value={
+          <DonutCalloutChart
+            slices={chartSlices}
+            view={view}
+            label={t('expensesPieChart.title')}
+            formatValue={(value) => formatCurrency(value)}
+            legendValues={false}
+            // One vertical column on a phone, three from `sm` up -- the desktop
+            // density this legend carried before the mobile-first redesign.
+            legendColumnsClassName="sm:grid-cols-3"
+            legendRadii={{ inner: 50, outer: 80 }}
+            legendAreaClassName="h-64"
+            // The aggregate belongs in the donut's hole, not in a row beneath
+            // the legend that a phone has to scroll to.
+            center={{
+              label: t('expensesPieChart.total'),
+              value: (
                 <PartialTotal total={spendingTotal} displayCurrency={displayCurrency}>
                   {formatCurrency(totalExpenses)}
                 </PartialTotal>
-              }
-            />
-          </div>
-          {/* One vertical column on a phone, three from `sm` up -- the desktop
-              density this legend carried before the mobile-first redesign. */}
-          <ChartLegend
-            className="mt-4"
-            columnsClassName="sm:grid-cols-3"
-            items={chartData.map((item, index) => ({
-              key: String(index),
-              name: item.name,
-              color: item.colour,
-              onClick: () => handleSliceClick(item.id),
-              // Other is only inert while it merged nothing; with categories
-              // inside it, it opens them.
-              disabled: !item.id && otherCategories.length === 0,
-            }))}
+              ),
+              // The callout view's hole is the smallest; a six-figure total in
+              // full would run onto the ring there.
+              compactValue: (
+                <PartialTotal total={spendingTotal} displayCurrency={displayCurrency}>
+                  {formatCurrencyTight(totalExpenses)}
+                </PartialTotal>
+              ),
+            }}
+            renderTooltip={(slice) => (
+              <ExpensesPieTooltip
+                slice={slice}
+                totalExpenses={totalExpenses}
+                formatCurrency={formatCurrency}
+                formatPercent={formatPercent}
+              />
+            )}
           />
           {otherExpanded && otherCategories.length > 0 && (
             // What Other merged, at the same precision as the slices above it.

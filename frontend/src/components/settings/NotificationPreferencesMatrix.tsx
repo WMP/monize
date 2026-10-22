@@ -94,13 +94,17 @@ export function NotificationPreferencesMatrix({
     };
   }, []);
 
-  const refreshDevices = useCallback(async () => {
-    const [rowsFromServer, fingerprint] = await Promise.all([
-      pushApi.listDevices(),
-      currentDeviceFingerprint().catch(() => null),
-    ]);
-    setDevices(rowsFromServer);
-    setThisDevice(fingerprint);
+  // The writes live in the inner `run`, so they happen after the request, not during the effect.
+  const refreshDevices = useCallback(() => {
+    const run = async () => {
+      const [rowsFromServer, fingerprint] = await Promise.all([
+        pushApi.listDevices(),
+        currentDeviceFingerprint().catch(() => null),
+      ]);
+      setDevices(rowsFromServer);
+      setThisDevice(fingerprint);
+    };
+    return run();
   }, []);
 
   useEffect(() => {
@@ -169,6 +173,8 @@ export function NotificationPreferencesMatrix({
   // can toggle push, not unifiedpush. A device from before the transport field
   // reads as web push, today's only browser wire -- never as UnifiedPush, so an
   // old row cannot light a column whose endpoint does not exist.
+  // A held device (its account signed out of that browser) counts: it resumes
+  // when the account signs in there again, so the preference still matters.
   const live = devices.filter((device) => device.disabledAt === null);
   const pushAvailable = live.some(
     (device) => (device.transport ?? 'webpush') === 'webpush',

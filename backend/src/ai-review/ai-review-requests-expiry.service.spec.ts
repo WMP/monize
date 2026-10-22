@@ -6,6 +6,7 @@ import {
   AI_REVIEW_RELEASE_MAX_BATCHES,
   AiReviewRequestsExpiryService,
 } from "./ai-review-requests-expiry.service";
+import { AiReviewNotificationService } from "./ai-review-notification.service";
 import { AiReviewRequestsService } from "./ai-review-requests.service";
 import { withSystemContext } from "../common/db/with-context";
 import {
@@ -26,6 +27,7 @@ describe("AiReviewRequestsExpiryService", () => {
   let manager: Record<string, jest.Mock>;
   let dataSource: DataSourceMock;
   let requests: { expireStale: jest.Mock };
+  let notifications: { notifyReady: jest.Mock };
 
   const rows = (n: number) => [
     Array.from({ length: n }, () => ({ id: "x" })),
@@ -35,9 +37,11 @@ describe("AiReviewRequestsExpiryService", () => {
   beforeEach(() => {
     ({ dataSource, manager } = createScopedDbMocks([]));
     requests = { expireStale: jest.fn().mockResolvedValue(0) };
+    notifications = { notifyReady: jest.fn().mockResolvedValue(0) };
     service = new AiReviewRequestsExpiryService(
       dataSource as unknown as DataSource,
       requests as unknown as AiReviewRequestsService,
+      notifications as unknown as AiReviewNotificationService,
     );
   });
 
@@ -73,6 +77,42 @@ describe("AiReviewRequestsExpiryService", () => {
 
     expect(withSystemContext).toHaveBeenCalledTimes(1);
     expect(order).toEqual(["expire", "release"]);
+  });
+
+  it("raises the ready notices after expiry and release", async () => {
+    const order: string[] = [];
+    requests.expireStale.mockImplementation(async () => {
+      order.push("expire");
+      return 1;
+    });
+    manager.query.mockImplementation(async () => {
+      order.push("release");
+      return rows(0);
+    });
+    notifications.notifyReady.mockImplementation(async () => {
+      order.push("notify");
+      return 1;
+    });
+
+    await service.sweepQueue();
+
+    expect(order).toEqual(["expire", "release", "notify"]);
+  });
+
+  it("does not let a failing ready step break the sweep", async () => {
+    requests.expireStale.mockResolvedValue(2);
+    manager.query.mockResolvedValue(rows(0));
+    notifications.notifyReady.mockRejectedValue(new Error("boom"));
+    const warn = jest
+      .spyOn(service["logger"], "warn")
+      .mockImplementation(() => undefined);
+
+    await expect(service.sweepQueue()).resolves.toEqual({
+      expired: 2,
+      released: 0,
+    });
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("boom"));
   });
 
   it("releases only unexpired claimed rows past the timeout, by the database clock", async () => {

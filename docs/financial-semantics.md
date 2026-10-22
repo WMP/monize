@@ -29,6 +29,14 @@ No server rule requires an income category to carry a positive amount, so the
 category and the sign can disagree; code that needs to know direction must read
 the sign, not the category.
 
+The client's habit of signing a freshly typed amount from the category's
+income/expense type is a data-entry convenience, not a server rule, and a
+category can switch it off: `categories.auto_sign` is a nullable per-category
+override (`null` inherits the nearest ancestor's, a root with none is on),
+resolved into the read-only `effectiveAutoSign` the same way `effectiveColor`
+and `effectiveIcon` already are. The frontend's `signAmountByCategory`
+(`frontend/src/lib/categoryUtils.ts`) is the one place that reads it.
+
 For transfers the sign is structural rather than caller-supplied. The DTO's
 `amount` must be non-negative, and `createTransfer` writes the source leg as
 `-amount` and the destination leg as `+toAmount`. Consequently **the sign is
@@ -86,7 +94,7 @@ neither.
 
 The Cash Flow Sankey report (`backend/src/built-in-reports/cash-flow-sankey.service.ts`,
 arithmetic in `cash-flow-sankey-assembly.ts`) is the one surface that draws a
-transfer leg as a flow. Its rules, from `docs/future-plans/sankey-cash-flow.md`:
+transfer leg as a flow. Its rules, from `docs/specs/sankey-cash-flow.md`:
 
 1. **Scope is a set of cash-flow accounts.** By default every open `CHEQUING`,
    `SAVINGS`, `CASH`, `CREDIT_CARD` and `LINE_OF_CREDIT` account (never an
@@ -305,6 +313,34 @@ const costBasisSold = sellQty * avgCostPerShare;
 const realizedGain = proceeds - costBasisSold;
 ```
 
+### A transfer carries the basis the source released
+
+A security transfer (a TRANSFER_OUT paired with a TRANSFER_IN through
+`linkedTransactionId`) is neither a sale nor a purchase. The OUT leg relieves
+basis at the source's running average at its own place in the replay; the IN
+leg takes exactly that amount. Every fold that carries a basis does this, and
+reads the rows through `orderTransferOutBeforeIn`
+(`backend/src/securities/investment-replay.util.ts`), because both legs share
+`created_at` and the OUT leg has to be seen first:
+
+```text
+BUY 10 @ 100 on 2026-01-10, BUY 10 @ 200 on 2026-03-10 (today's average 150)
+Transfer 10 dated 2026-02-10:  destination 10 @ 100, source 10 @ 200 (3,000)
+Pricing the IN leg at today's average gave 10 @ 150: 3,500 of basis for 3,000 paid.
+
+Two CAD accounts, a USD security: BUY 10 @ USD 100 at 1.37 (CAD 1,370),
+transfer, SELL 10 @ USD 140 at 1.37 (CAD 1,918): realized gain CAD 548.
+Folding the IN leg as a purchase at its USD price and rate 1 gave CAD 918.
+```
+
+The holdings fold works in the security's currency; the realized-gain and
+capital-gains replays work in the account's, carrying the amount only between
+two accounts of the same currency (otherwise the IN leg's own row stands, a
+recorded residual). Both legs' `price` is written by the server from the
+source's ledger (`HoldingsService.releasedBasisPerShare`), so a replay that
+cannot see the OUT leg falls back to the right per-share figure; a client price
+on a transfer leg is never applied (A26-M21, A26-M22).
+
 ### A SPLIT multiplies
 
 ```text
@@ -329,6 +365,35 @@ the ledger the SPLIT row now belongs to (INV-HOLDING-001).
 
 `holdings.service.ts` implements this correctly (`qty *= txQty`). Section 9
 records where it is implemented additively instead.
+
+### A reinvested distribution is income
+
+A REINVEST (and REINVEST_INTEREST, REINVEST_CAPITAL_GAIN_SHORT and
+REINVEST_CAPITAL_GAIN_LONG) is a distribution paid in shares: income of the same
+kind as its cash twin (`incomeKind` in
+`backend/src/securities/investment-replay.util.ts`) and a purchase of the
+shares in the same row, with no cash leg. It is on the 1099-DIV like a cash
+dividend, and Microsoft Money counted it as one. Its value is
+`reinvestedIncomeAmount`: the stored total when the row has one (an imported
+row keeps the file's amount, sometimes with no price beside it), otherwise
+quantity x price + commission, which is the cost its shares entered the basis
+at, because a reinvest created in the app stores no total. Every surface that
+reports income reads a row through `incomeKind` and `investmentIncomeAmount`;
+`frontend/src/lib/investment-actions.ts` mirrors both for the client-side
+reports.
+
+Each formula is on one side of the ledger or the other:
+
+| Formula | Reinvested distribution | Why |
+| --- | --- | --- |
+| Income figures, and a gain measured as `value + income - cost` (investment report Income, Gain and all-dates return; security detail; Dividend Income, Dividend Yield and Security Performance reports; the investment transaction summary; the AI and MCP `incomeByCurrency`, kept per currency because nothing there is converted) | counted | the cost basis already holds the reinvested shares' cost, so leaving the income out reads the distribution as no return at all |
+| A return whose market value holds the reinvested shares but whose base does not hold their cost (investment report period returns; portfolio summary Net Invested and CAGR) | not counted: `CASH_INCOME_ACTIONS` only | adding it counts the same value twice |
+| Portfolio period result | in both `investmentIncome` and `investmentCapitalFlows` | it is the DIVIDEND and the BUY it stands for, so the P&L, TWR and MWR are unchanged (`docs/specs/portfolio-period-result.md` section 10.2) |
+
+The built-in income and tax reports are category reports over the cash ledger
+and leave out every investment distribution, cash or reinvested
+(INV-REPORT-001). A legacy reinvest with neither a total nor a price is in no
+cost basis (`acquisitionCost` returns `null`) and in no income.
 
 ### A daily change needs two adjacent closes AND a current one
 
@@ -539,6 +604,34 @@ alone left every consumer free to pick the wrong occurrence and be confidently
 wrong about a number that was itself correct. INV-OCCURRENCE-003 in
 `docs/system-invariants.md` records the enforcement.
 
+An occurrence that fell due and was neither posted nor skipped is still owed. Posting and skipping both advance `next_due_date` past the slot, and every expansion walks from there, so an occurrence that comes back dated before a projection's first day is one the user still has to pay or collect. Both balance projections apply it on their first day rather than dropping it: the cash-flow forecast on today, the account balance forecast on tomorrow, because its today is the posted balance. Each projection says how many it carried. Dropping it showed a balance that only held if the bill was never paid. That is the opposite of a forecast, and the gap grew with every day the bill stayed unposted (discussion #1784). Only the last 31 days are carried (`OVERDUE_CARRY_DAYS`, the same number in `common/scheduled-occurrences.ts` and `lib/forecast.ts`): an occurrence older than that is read as a schedule the user forgot rather than a bill still owed, so a forgotten schedule moves a projection by at most one window of occurrences instead of every slot since it was last posted. `BudgetsService.getUpcomingBills`, which safe-to-spend subtracts, counts from the same day, so a bill the forecast calls owed is not also reported as money available to spend. The occurrence keeps every other rule: its effective amount and date, its share of `occurrences_remaining`, the schedule's `end_date`, and the withholding when it cannot be priced. The projection knows an occurrence is settled only through `next_due_date`: a bill paid by entering a plain transaction, with its occurrence left unposted, is counted a second time on the first day until that occurrence is posted or skipped. The projected half of the calendar's daily totals (`GET /accounts/daily-balance-totals`) carries the same occurrences on the same day but does not say so: its response has no `overdue` field (`docs/backend/transactions-and-money.md`).
+
+```text
+FIN-OCC-PIN
+A request that consumes a scheduled occurrence -- a post or a skip -- names the
+occurrence its caller saw, and the server refuses it with 409, before anything
+is written, when that is no longer the occurrence due. The cron names the slot
+it selected (`expectedDueDate`); a person's request names the date the
+occurrence falls on and the override that moved it (`expectedOccurrenceDate`,
+`expectedOverrideId`, from `occurrencePin` on the client). The server's
+cursor at request time is never the identity: it is whatever another tab, a
+replica or a retry left it at.
+```
+
+Without the pin, a Bills tab loaded before the hourly auto-post sent September's
+post after the cron had already posted September: the server read the advanced
+cursor and booked October, a month early under September's date, and on a
+schedule with one occurrence left it booked an extra payment of the whole bill
+(audit A26-H07). A stale Skip skipped October. The pin is also the safe answer
+to a retried request whose response was lost: the retry finds the cursor moved
+and is refused. INV-OCCURRENCE-001 records the enforcement.
+
+Every advance of the cursor, whoever makes it, steps past every slot already
+claimed on or after it (`claimedSlotsFrom` in `schedule-cursor.ts`). A
+settlement rule may claim a slot ahead of the cursor (INV-LOAN-008); a post that
+stepped past its own slot only left the cursor on that claimed slot, and every
+later post was refused as already posted, with no alert (audit A26-M15).
+
 ## 8. Import and restore: zero, null, absent
 
 The MS Money importer is deliberately not uniform, and the distinction is worth
@@ -641,7 +734,7 @@ of the annuity's monthly installment and are refused for both new methods.
 | The method of a type | `amortizationMethodFor` in `backend/src/accounts/mortgage-type.util.ts` and `frontend/src/lib/mortgage-type.ts` |
 | The principal on a date | `methodPrincipal` / `nonAnnuityInstallment` in `backend/src/accounts/mortgage-installment.util.ts`; `methodPrincipal` in `frontend/src/lib/mortgage-installment.ts` |
 | Preview | `calculateMortgageAmortization` in `backend/src/accounts/mortgage-amortization.util.ts` |
-| Scheduled installment | `ScheduledTransactionLoanService.resolveInstallment` (`backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`) |
+| Scheduled installment | `priceInstallment` / `resolveInstallmentCore` (`backend/src/loan-installments/price-installment.ts`), which `ScheduledTransactionLoanService.resolveInstallment` (`backend/src/scheduled-transactions/scheduled-transaction-loan.service.ts`) delegates to |
 | Frontend projection | `generateLoanSchedule` in `frontend/src/lib/loan-schedule.ts`, over `frontend/src/lib/loan-schedule-methods.ts` |
 
 The figures are fixed by the worked example in `docs/specs/mortgage-types.md`
@@ -837,6 +930,80 @@ charged for the days the money had not yet arrived.
 monthly payment" card. It is not what the engine applies, and it must not be
 used to compute a balance.
 
+### A settled installment is the bank's row re-divided
+
+A bank that posts one undivided mortgage debit never tells Monize the
+principal/interest split; `settle_loan_installment` (a transaction-rule
+structural action, `docs/specs/loan-installment-settlement.md`) re-divides
+that one row into the installment the loan core would have priced for the
+matched occurrence, through the same `priceInstallment` pricing path as
+`post()`, the posting allocation and the projection anchor (INV-LOAN-006's
+fourth consumer). The row's own amount is the fact; the priced total `T` is
+a proposal the bank's actual debit may disagree with by rounding or by a
+real extra or short payment, so the lines booked are the row's amount
+divided by the amount policy below, never the priced total's own split
+unless the row paid exactly that.
+
+`paid = abs(row.amount)`, `diff = paid - T` at 4dp. Within
+`LOAN_SETTLEMENT_TOLERANCE_MINOR_UNITS = 5` minor units of the account's
+currency (0.05 EUR/USD, 5 JPY, 0.005 KWD) the difference is rounding, not
+money, and lands on the interest line: a bank's own day-count or rounding
+convention differs from Monize's by a few minor units on an otherwise
+correct installment, and no one overpays a mortgage by five cents, so
+anything inside the tolerance is absorbed and anything outside it is money.
+Above the tolerance the excess becomes a third line, extra principal
+(merged with any standing extra the template already carries, memo "Extra
+Principal"), capped at the remaining debt; past the cap, or when the rule's
+`excess` policy is `refuse`, the action is skipped rather than booking a
+principal payment larger than what is owed. Below the tolerance the
+shortfall refuses by default, or (`shortfall: interest_first`) pays
+interest first and gives the rest to principal, never a negative interest
+line. `docs/specs/loan-installment-settlement.md` section 8 is the total
+amount-policy table; section 9 is its worked fixtures at cents.
+
+A rule pass that settles several rows prices each one on the ledger debt
+less the principal and extra principal of every settlement planned earlier
+in the same pass and dated on or before it (INV-RULE-005) -- the fold that
+makes a manual run's newest-first scan price a chain of installments
+wrongly, and why a run carrying the action plans oldest first instead, with
+every import path sorting its rows by date before rules run (so a file
+listed out of order settles the same chain the bank statement would). The
+occurrence is claimed in `scheduled_transaction_postings` in the same
+database transaction as the split (INV-LOAN-008): one settlement per
+scheduled occurrence, and the claim is the arbiter between `post()` and a
+settlement racing the same slot.
+
+### An installment below the interest adds the shortfall to the debt
+
+Interest accrues on the debt whether or not the installment covers it. When a
+scheduled bill's installment is smaller than the period's interest (a rate
+rise whose payment sync the user declined, a payment set too low), the bill
+books the whole accrued interest and a negative principal line of the
+difference, so the unpaid interest is added to the loan in the same
+transaction as the payment (negative amortization). LOAN 400,000.00 at 6 %
+monthly, installment 1,500.00: interest 2,000.00, principal -500.00, debt
+400,500.00; the next installment's interest is 2,002.50, principal -502.50,
+debt 401,002.50. `allocateLoanPayment` does it with
+`capitalizeUnpaidInterest` and reports the amount as `unpaidInterest`, which
+the loan occurrence projection carries, so the bill, the posting and the
+projection agree (INV-LOAN-006). It is one transaction rather than a separate
+interest-accrual row on the loan, so deleting or undoing the payment removes
+the capitalization with it and a re-post cannot book it twice.
+
+The cap it replaces booked interest equal to the installment and principal
+zero: the debt stayed flat while 500.00 a month of interest was recorded
+nowhere, and every payoff date read from the ledger was optimistic (audit
+A26-M29). A rule's settlement of a bank row keeps its own shortfall policy
+above (refuse, or interest first with the interest capped at what the bank
+took), because there the row's amount is the fact being divided.
+
+The bill's source account is in the loan's currency. Loan payment setup and
+the loan and mortgage create paths refuse a source account in another
+currency before anything is written, because the bill is booked on the source
+account in the loan's currency and every posting of it would be refused
+(audit A26-M30). A cross-currency loan payment would need an FX transfer
+template priced in two currencies, which does not exist.
+
 ## 10. Gap register
 
 Places where two paths currently answer the same question differently. Each was
@@ -901,6 +1068,8 @@ Where two rows can hold *different* statuses -- a cross-owner transfer, whose st
 ### Editing one row must not leave the pair describing two different events
 
 A split parent and the transfer legs its children created are one movement of money, so voiding *one* leg from the target side is refused rather than applied -- refuse and point at the parent, which already has a propagation path. Only the VOID boundary is shared; reconciliation states (`PENDING`/`CLEARED`/`RECONCILED`) are genuinely per-ledger.
+
+The same holds for a leg's figures. `TransactionsService.update` (the generic row update behind `PATCH /transactions/:id`, a personal access token, the joint register, the assistant and MCP) refuses a change to a transfer leg's amount, account, date or rate with `errors.transactions.cannotEditTransfer`, inside its transaction and under the row lock, before anything is written (`assertNoStructuralTransferLegEdit`); the transfer routes write both legs together. The comparison is by value, so a form re-sending the figures the leg already holds is accepted. Before it, `PATCH` on the savings leg of a 100.00 transfer with `amount: 150` wrote legs of -100.00 and +150.00 (A26-M10); `transfers.integration.spec.ts` ("update() on a transfer leg") holds both legs of a pair and a split-transfer leg.
 
 A refusal is only worth as much as its least-guarded entry point: the same state was reachable through `bulkUpdate`. When you refuse something on one path, grep for the bulk, AI-action and MCP routes to the same write in the same commit.
 

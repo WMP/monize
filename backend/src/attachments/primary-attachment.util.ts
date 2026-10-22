@@ -6,7 +6,7 @@ import { IsNull } from "typeorm";
  * A scanned document is stored as two rows -- the enhanced image the user sees
  * and the original photo it came from -- linked by
  * `original_of_attachment_id`, which is set on the ORIGINAL and NULL on
- * everything a user is meant to see (`docs/future-plans/document-scanner.md`).
+ * everything a user is meant to see (`docs/specs/document-scanner.md`).
  * So every read that answers "how many attachments does this transaction have"
  * or "which ones do I show" has to exclude the originals, and each of those
  * reads is in a different file: the per-transaction cap, the list, the

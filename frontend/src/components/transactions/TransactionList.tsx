@@ -4,7 +4,6 @@ import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Transaction, TransactionStatus } from '@/types/transaction';
-import { classifyStaleRow, type StaleUnreconciledReason } from '@/lib/stale-reconciliation';
 import {
   nextCycleStatus,
   RECONCILED_UNDO_WINDOW_SECONDS,
@@ -13,7 +12,12 @@ import { CategoryBudgetStatus } from '@/types/budget';
 import { transactionsApi } from '@/lib/transactions';
 import { getErrorMessage } from '@/lib/errors';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { ListTopToolbar } from '@/components/ui/ListTopToolbar';
+import { ListTopToolbar, LIST_TOOLBAR_BUTTON_CLASS } from '@/components/ui/ListTopToolbar';
+import { ColumnChooserMenu, type ColumnChooserItem } from '@/components/ui/ColumnChooserMenu';
+import { useHiddenColumns } from '@/hooks/useHiddenColumns';
+import { useColumnHeaderActions } from '@/hooks/useColumnHeaderActions';
+import type { HideableColumn } from '@/lib/hidden-columns';
+import type { LongPressRowHandlers } from '@/hooks/useLongPress';
 import { TransactionRow } from './TransactionRow';
 import { registerDateColumnPadding } from './register-date-columns';
 import {
@@ -46,6 +50,14 @@ interface TransactionListProps {
   onEdit?: (transaction: Transaction) => void;
   onDuplicate?: (transaction: Transaction) => void;
   onScheduleRecurring?: (transaction: Transaction) => void;
+  /**
+   * Warranties, offered on a row's Copy menu and action sheet: "Add warranty"
+   * on a row with none, "View warranties" on a row with some. Only the
+   * Transactions page passes them; a joint row never offers them, as its edit
+   * form never offers attachments.
+   */
+  onAddWarranty?: (transaction: Transaction) => void;
+  onViewWarranties?: (transaction: Transaction) => void;
   /**
    * Notification that the row has **already been deleted** -- this list owns the
    * confirmation, the `transactionsApi.delete`/`deleteTransfer` call and the
@@ -142,53 +154,6 @@ interface TransactionListProps {
     string,
     { canCreate: boolean; canEdit: boolean; canDelete: boolean }
   >;
-  /**
-   * What the register needs to say which rows a reconciled statement left out:
-   * the last reconciled date of each account the user reconciles, and the date
-   * the server chose as the overdue boundary. Undefined means the caller has no
-   * information -- a page that has not asked, or whose request failed -- and no
-   * row is marked, which is the right answer for both. An account absent from
-   * the map has never been reconciled and so has nothing outstanding at all.
-   *
-   * The register draws only the `missed` half of the classification; see
-   * `registerStaleReason` below for why.
-   */
-  staleContext?: {
-    lastReconciledByAccount: Map<string, string>;
-    overdueBefore: string;
-  };
-}
-
-/**
- * The reconciliation mark the *register* draws, which is not every mark
- * `classifyStaleRow` can produce.
- *
- * A `missed` row is a fact about the ledger: the statement covering it was
- * reconciled without it, so the account's reconciled balance and its real one
- * disagree until somebody looks. That is worth an amber chip anywhere the row
- * appears.
- *
- * `overdue` is not that. It only says nobody has reconciled recently, which is
- * true of every row in the account at once -- so on a register showing months
- * of history it marked page after page of ordinary transactions with nothing
- * wrong with them, for a condition about the *account* rather than about any
- * row. The reconcile screen still shows it (`ReconcileTable`), where it is
- * about the statement being worked on, and the header badge still counts it.
- */
-function registerStaleReason(
-  staleContext:
-    | { lastReconciledByAccount: Map<string, string>; overdueBefore: string }
-    | undefined,
-  transaction: Transaction,
-): StaleUnreconciledReason | undefined {
-  if (!staleContext) return undefined;
-  const reason = classifyStaleRow(
-    transaction.status,
-    transaction.transactionDate,
-    staleContext.lastReconciledByAccount.get(transaction.accountId) ?? null,
-    staleContext.overdueBefore,
-  );
-  return reason === 'missed' ? reason : undefined;
 }
 
 /**
@@ -204,6 +169,12 @@ function registerStaleReason(
  * guard reads those literals out of this file in source order to check them
  * against the column contract. Moving them into a lookup table would leave
  * that guard with nothing to read.
+ *
+ * `pressHandlers` (a hideable column's long-press / right-click "Hide column"
+ * sheet, from `useColumnHeaderActions`) is forwarded on both branches: the
+ * plain header spreads them so the sheet opens on every surface, and the sort
+ * header hands them to `SortableHeader`, which sorts from their click instead
+ * of its own so one press never both opens the sheet and sorts.
  */
 function RegisterHeader({
   field,
@@ -212,6 +183,7 @@ function RegisterHeader({
   align = 'left',
   className,
   controls,
+  pressHandlers,
   children,
 }: {
   field: TransactionSortField;
@@ -220,11 +192,12 @@ function RegisterHeader({
   align?: 'left' | 'right' | 'center';
   className: string;
   controls?: React.ReactNode;
+  pressHandlers?: LongPressRowHandlers;
   children: React.ReactNode;
 }) {
   if (!sort || !onSortChange) {
     return (
-      <th className={className}>
+      <th className={className} {...pressHandlers}>
         {controls ? (
           <span className="inline-flex items-center gap-1">
             {children}
@@ -246,6 +219,7 @@ function RegisterHeader({
       align={align}
       className={className}
       controls={controls}
+      pressHandlers={pressHandlers}
     >
       {children}
     </SortableHeader>
@@ -293,6 +267,8 @@ export function TransactionList({
   onEdit,
   onDuplicate,
   onScheduleRecurring,
+  onAddWarranty,
+  onViewWarranties,
   onDeleted,
   onRefresh,
   onTransactionUpdate,
@@ -303,7 +279,6 @@ export function TransactionList({
   onDateFilterClick,
   onAccountFilterClick,
   onPayeeFilterClick,
-  staleContext,
   onExport,
   isExporting,
   startingBalance,
@@ -441,6 +416,13 @@ export function TransactionList({
   }, [onEdit]);
 
   const { cellPadding, headerPadding } = useTableDensity(density);
+
+  // A joint row belongs to the sharing owner, and a warranty is the reader's
+  // own, so a row in an account shared to this user offers no warranty action.
+  const isJointRow = useCallback(
+    (transaction: Transaction) => !!jointPermissionsByAccount?.has(transaction.accountId),
+    [jointPermissionsByAccount],
+  );
 
   const handleActionSheetClose = useCallback(() => {
     setActionSheet({ isOpen: false, transaction: null });
@@ -581,10 +563,53 @@ export function TransactionList({
     amount: t('list.header.amount'),
     status: t('list.header.status'),
   };
+  // The reader's hidden columns: one read for the whole list (the row takes
+  // the set as a prop). A hidden column's header and cells are absent from the
+  // DOM at every width, never hidden by a class; the tiers decide the rest.
+  const {
+    hidden: hiddenColumns,
+    isVisible,
+    hide: hideColumn,
+    show: showColumn,
+    showAll: showAllColumns,
+    hideable,
+  } = useHiddenColumns('transactions');
+  const hideableColumns = useMemo<ColumnChooserItem<HideableColumn<'transactions'>>[]>(
+    () => {
+      const labels: Record<HideableColumn<'transactions'>, string> = {
+        description: t('list.header.description'),
+        refNumber: t('list.header.refNumber'),
+        tags: t('list.header.tags'),
+        attachments: t('list.header.attachments'),
+        status: t('list.header.status'),
+      };
+      return hideable.map((id) => ({ id, label: labels[id] }));
+    },
+    [hideable, t],
+  );
+  // A plain click on a hideable header is the sort it always was, where the
+  // column sorts and the surface offers sorting; Tags and Attachments sort
+  // nowhere, so their click does nothing.
+  const handleHideableHeaderClick = useCallback(
+    (id: HideableColumn<'transactions'>) => {
+      if ((TRANSACTION_SORT_FIELDS as readonly string[]).includes(id)) {
+        onSortChange?.(id as TransactionSortField);
+      }
+    },
+    [onSortChange],
+  );
+  const { headerHandlers, sheet: columnHeaderSheet } = useColumnHeaderActions({
+    columns: hideableColumns,
+    onHide: hideColumn,
+    onHeaderClick: handleHideableHeaderClick,
+  });
+
   // The Account column is not drawn on a single account's page, so it gets no
-  // chip there either (the page resolves a remembered account sort away).
+  // chip there either (the page resolves a remembered account sort away). A
+  // hidden column's chip is omitted the same way: the page resolves a
+  // remembered sort on it to the date sort.
   const sortChipFields = TRANSACTION_SORT_FIELDS.filter(
-    (field) => field !== 'account' || !isSingleAccountView,
+    (field) => (field !== 'account' || !isSingleAccountView) && isVisible(field),
   );
 
   // The rows' own order, not the headers': turning the column back on the
@@ -595,13 +620,14 @@ export function TransactionList({
     (isSingleAccountView || startingBalance !== undefined) && sortedByDate;
   // Row-invariant, so computed once rather than per row: ten unconditional
   // columns (register-columns.ts order, minus Account/FX/Balance, which are
-  // conditional) plus the ones this render actually drew. Used by the "today"
-  // divider's colSpan in the tier table.
+  // conditional) plus the ones this render actually drew, minus the ones the
+  // reader has hidden. Used by the "today" divider's colSpan in the tier table.
   const colCount = 10
     + (isSingleAccountView ? 0 : 1)
     + (selectionMode ? 1 : 0)
     + (showRunningBalance ? 1 : 0)
-    + (showFxColumns ? 3 : 0);
+    + (showFxColumns ? 3 : 0)
+    - hiddenColumns.size;
 
   // Compute display amounts for split transactions.  When a filter
   // causes only some splits to be returned, the sum of visible splits
@@ -699,6 +725,15 @@ export function TransactionList({
           itemName={t('list.itemNamePlural')}
           actions={
             <>
+              {/* The one way to bring a hidden column back, so it is first and
+                  always drawn; its trigger carries the count of hidden ones. */}
+              <ColumnChooserMenu
+                columns={hideableColumns}
+                hidden={hiddenColumns}
+                onHide={hideColumn}
+                onShow={showColumn}
+                onShowAll={showAllColumns}
+              />
               {/* Withholding a figure is only honest if the reader learns why
                   and what to do: the Balance column is gone because the
                   register is not in date order, and sorting by date brings it
@@ -713,7 +748,7 @@ export function TransactionList({
                 <button
                   onClick={onExport}
                   disabled={isExporting}
-                  className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={LIST_TOOLBAR_BUTTON_CLASS}
                   title={t('list.export.title')}
                 >
                   {isExporting ? (
@@ -859,32 +894,47 @@ export function TransactionList({
               >
                 {t('list.header.category')}
               </RegisterHeader>
-              <RegisterHeader
-                field="description"
-                sort={sort}
-                onSortChange={onSortChange}
-                className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('description')}`}
-              >
-                {t('list.header.description')}
-              </RegisterHeader>
-              <RegisterHeader
-                field="refNumber"
-                sort={sort}
-                onSortChange={onSortChange}
-                className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('refNumber')}`}
-              >
-                {t('list.header.refNumber')}
-              </RegisterHeader>
-              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('tags')}`}>{t('list.header.tags')}</th>
-              <th
-                className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('attachments')}`}
-                title={t('list.header.attachments')}
-                aria-label={t('list.header.attachments')}
-              >
-                <svg className="w-4 h-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                </svg>
-              </th>
+              {/* The five hideable columns (description, ref #, tags,
+                  attachments, status) are gated on the reader's hidden set:
+                  absent from the DOM, never hidden by a class. Each header
+                  also takes the long-press / right-click "Hide column" sheet. */}
+              {isVisible('description') && (
+                <RegisterHeader
+                  field="description"
+                  sort={sort}
+                  onSortChange={onSortChange}
+                  className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('description')}`}
+                  pressHandlers={headerHandlers('description')}
+                >
+                  {t('list.header.description')}
+                </RegisterHeader>
+              )}
+              {isVisible('refNumber') && (
+                <RegisterHeader
+                  field="refNumber"
+                  sort={sort}
+                  onSortChange={onSortChange}
+                  className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('refNumber')}`}
+                  pressHandlers={headerHandlers('refNumber')}
+                >
+                  {t('list.header.refNumber')}
+                </RegisterHeader>
+              )}
+              {isVisible('tags') && (
+                <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('tags')}`} {...headerHandlers('tags')}>{t('list.header.tags')}</th>
+              )}
+              {isVisible('attachments') && (
+                <th
+                  className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('attachments')}`}
+                  title={t('list.header.attachments')}
+                  aria-label={t('list.header.attachments')}
+                  {...headerHandlers('attachments')}
+                >
+                  <svg className="w-4 h-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                </th>
+              )}
               <RegisterHeader
                 field="amount"
                 sort={sort}
@@ -904,15 +954,18 @@ export function TransactionList({
               {showRunningBalance && (
                 <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>{t('list.header.balance')}</th>
               )}
-              <RegisterHeader
-                field="status"
-                sort={sort}
-                onSortChange={onSortChange}
-                align="center"
-                className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('status')}`}
-              >
-                {t('list.header.status')}
-              </RegisterHeader>
+              {isVisible('status') && (
+                <RegisterHeader
+                  field="status"
+                  sort={sort}
+                  onSortChange={onSortChange}
+                  align="center"
+                  className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('status')}`}
+                  pressHandlers={headerHandlers('status')}
+                >
+                  {t('list.header.status')}
+                </RegisterHeader>
+              )}
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${registerColumnClass('actions')} sticky right-0 bg-gray-50 dark:bg-gray-800`}>{t('list.header.actions')}</th>
             </tr>
             )}
@@ -971,6 +1024,8 @@ export function TransactionList({
                     }
                     onDuplicate={onDuplicate}
                     onScheduleRecurring={onScheduleRecurring}
+                    onAddWarranty={isJointRow(transaction) ? undefined : onAddWarranty}
+                    onViewWarranties={isJointRow(transaction) ? undefined : onViewWarranties}
                     onDeleteClick={handleDeleteClick}
                     hideDelete={
                       !!jointPermissionsByAccount?.get(transaction.accountId) &&
@@ -985,7 +1040,7 @@ export function TransactionList({
                     isFuture={isFuture}
                     isHighlighted={!!highlightTransactionId && transaction.id === highlightTransactionId}
                     showFxColumns={showFxColumns}
-                    staleReason={registerStaleReason(staleContext, transaction)}
+                    hidden={hiddenColumns}
                   />
                 </React.Fragment>
               );
@@ -993,6 +1048,9 @@ export function TransactionList({
           </tbody>
         </table>
       </div>
+
+      {/* A hideable header's long-press / right-click sheet: "Hide column". */}
+      {columnHeaderSheet}
 
       {/* Long-press Action Sheet */}
       <TransactionActionSheet
@@ -1003,6 +1061,8 @@ export function TransactionList({
         onEdit={onEdit}
         onDuplicate={onDuplicate}
         onScheduleRecurring={onScheduleRecurring}
+        onAddWarranty={actionSheet.transaction && isJointRow(actionSheet.transaction) ? undefined : onAddWarranty}
+        onViewWarranties={actionSheet.transaction && isJointRow(actionSheet.transaction) ? undefined : onViewWarranties}
         onDeleteClick={handleDeleteClick}
         onDateFilterClick={onDateFilterClick}
         onAccountFilterClick={onAccountFilterClick}

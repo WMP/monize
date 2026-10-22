@@ -427,5 +427,42 @@
         }
       }
     }
+  },
+  "emailReceipts": {
+    "basics": {
+      "title": "Reçus par e-mail",
+      "steps": {
+        "welcome": {
+          "title": "Pourquoi lire les reçus par e-mail",
+          "body": "Une transaction bancaire indique combien vous avez payé et quand. Elle n'indique pas ce que vous avez acheté. L'e-mail de confirmation de commande, si. Monize lit ces e-mails, trouve la transaction que chacun a réglée et propose une description, un bénéficiaire et une ventilation par ligne, avec une catégorie pour chaque ligne. Vous approuvez chaque proposition avant qu'elle ne modifie une transaction."
+        },
+        "aiRequired": {
+          "title": "En pratique, il faut un fournisseur d'IA",
+          "body": "Monize lit un e-mail avec un **profil** : un ensemble de motifs pour un domaine d'expéditeur, par exemple une boutique. Vous pouvez écrire un profil à la main, mais chaque motif doit correspondre exactement aux lignes des e-mails de cette boutique ; en pratique, c'est donc une IA qui l'écrit. L'IA écrit le profil une seule fois, à partir de quelques e-mails d'exemple. Une fois que vous l'avez approuvé, le profil lit chaque nouvel e-mail de cette boutique sans l'IA."
+        },
+        "aiProviders": {
+          "title": "Configurez d'abord un fournisseur d'IA",
+          "body": "Ajoutez ici un fournisseur et testez la connexion. Sans fournisseur, l'assistant de profil ne peut pas écrire de profil, et les e-mails d'une boutique sans profil restent non lus."
+        },
+        "tabs": {
+          "title": "Quatre onglets, dans l'ordre d'utilisation",
+          "body": "**Aperçu** montre ce que Monize a lu. Dans **Boîte mail**, connectez une boîte qui ne contient que des confirmations de commande. Monize ne fait que la lire : il ne déplace, ne marque et ne supprime jamais un message. **Profils** contient un profil par boutique. **E-mails** liste chaque e-mail et son état."
+        },
+        "uncovered": {
+          "title": "Boutiques sans profil",
+          "body": "Ce cadre liste les domaines d'expéditeur qu'aucun profil ne sait encore lire. Choisissez-en un pour lancer l'assistant. Sélectionnez jusqu'à cinq de ses e-mails et associez chacun à la transaction bancaire qu'il a réglée. L'IA écrit un profil et le teste sur ces paires. Vous voyez ensuite un aperçu pour tous les e-mails de cette boutique, puis vous acceptez le profil ou demandez une modification par une courte note.",
+          "fallbackBody": "Vous n'avez pas encore d'e-mails d'une boutique sans profil. Une fois la boîte connectée, chaque domaine d'expéditeur apparaît ici sous forme d'étiquette, par exemple **shop.example (12)** : le domaine et le nombre de ses e-mails. Choisissez l'étiquette pour lancer l'assistant. Sélectionnez jusqu'à cinq de ses e-mails et associez chacun à la transaction bancaire qu'il a réglée. L'IA écrit un profil et le teste sur ces paires. Vous voyez ensuite un aperçu pour tous les e-mails de cette boutique, puis vous acceptez le profil ou demandez une modification par une courte note."
+        },
+        "profiles": {
+          "title": "Vos profils",
+          "body": "Chaque ligne est un profil, approuvé ou brouillon. **Créer un nouveau profil manuellement** ouvre l'éditeur d'un profil écrit à la main. Utilisez-le pour corriger un petit détail dans un brouillon de l'IA. Quand vous approuvez un profil, Monize lit immédiatement les e-mails de son domaine.",
+          "fallbackBody": "Vous n'avez pas encore de profil. Chaque profil que vous acceptez apparaît ici sous forme de ligne, par exemple **Shop Example**, domaine **shop.example**, statut **Approuvé**. **Créer un nouveau profil manuellement** ouvre l'éditeur d'un profil écrit à la main. Utilisez-le uniquement pour corriger un petit détail dans un brouillon de l'IA. Quand vous approuvez un profil, Monize lit immédiatement les e-mails de son domaine."
+        },
+        "reviews": {
+          "title": "Approuvez les propositions",
+          "body": "Chaque e-mail qui correspond à une transaction devient une proposition dans la **Boîte de révision par l'IA**, dans le menu **IA**. Une proposition montre, par exemple, les lignes d'une commande avec une catégorie pour chaque ligne. Rien ne change dans vos transactions tant que vous n'approuvez pas la proposition là-bas."
+        }
+      }
+    }
   }
 }

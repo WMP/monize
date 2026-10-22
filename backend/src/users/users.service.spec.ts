@@ -58,7 +58,14 @@ describe("UsersService", () => {
   let demoModeService: { isDemo: boolean };
   let maintenance: UserMaintenanceMock;
   let exchangeRateService: { refreshAllRates: jest.Mock };
-  let currenciesService: { ensureSystemCurrency: jest.Mock };
+  let currenciesService: jest.Mocked<
+    Pick<
+      CurrenciesService,
+      | "ensureCurrencyForUser"
+      | "lockCurrenciesCreatedBy"
+      | "removeUnreferencedCurrencies"
+    >
+  >;
   let backupEncryptionService: { rewrapBackupKey: jest.Mock };
   let moduleRef: { get: jest.Mock };
   let emailService: { getStatus: jest.Mock; sendMail: jest.Mock };
@@ -145,7 +152,9 @@ describe("UsersService", () => {
     };
 
     currenciesService = {
-      ensureSystemCurrency: jest.fn().mockResolvedValue(undefined),
+      ensureCurrencyForUser: jest.fn().mockResolvedValue(undefined),
+      lockCurrenciesCreatedBy: jest.fn().mockResolvedValue([]),
+      removeUnreferencedCurrencies: jest.fn().mockResolvedValue(undefined),
     };
 
     // SMTP off by default: the email-change tests that need a confirmation
@@ -764,14 +773,34 @@ describe("UsersService", () => {
       expect(preferencesRow.row()!.defaultCurrency).toBe("EUR");
     });
 
-    it("ensures the chosen default currency exists when it changes", async () => {
+    it("ensures the chosen default currency for the user, before the preference is written", async () => {
       preferencesRow.seed(mockPreferences);
+      let patchesWhenEnsured = -1;
+      currenciesService.ensureCurrencyForUser.mockImplementation(async () => {
+        patchesWhenEnsured = preferencesRow.patches().length;
+      });
 
       await service.updatePreferences("user-1", { defaultCurrency: "EUR" });
 
-      expect(currenciesService.ensureSystemCurrency).toHaveBeenCalledWith(
+      expect(currenciesService.ensureCurrencyForUser).toHaveBeenCalledWith(
+        "user-1",
         "EUR",
       );
+      expect(patchesWhenEnsured).toBe(0);
+      expect(preferencesRow.row()!.defaultCurrency).toBe("EUR");
+    });
+
+    it("fails the request, writing nothing, when the currency cannot be ensured", async () => {
+      preferencesRow.seed(mockPreferences);
+      currenciesService.ensureCurrencyForUser.mockRejectedValue(
+        new Error("refused"),
+      );
+
+      await expect(
+        service.updatePreferences("user-1", { defaultCurrency: "EUR" }),
+      ).rejects.toThrow("refused");
+
+      expect(preferencesRow.patches()).toHaveLength(0);
     });
 
     it("does not ensure a currency when the default is unchanged", async () => {
@@ -779,7 +808,7 @@ describe("UsersService", () => {
 
       await service.updatePreferences("user-1", { defaultCurrency: "USD" });
 
-      expect(currenciesService.ensureSystemCurrency).not.toHaveBeenCalled();
+      expect(currenciesService.ensureCurrencyForUser).not.toHaveBeenCalled();
     });
 
     it("updates multiple fields at once", async () => {
@@ -849,6 +878,105 @@ describe("UsersService", () => {
       expect(savedData.dashboardWidgetConfig).toEqual({
         "spending-by-payee": { range: "6m" },
       });
+    });
+
+    it("updates hiddenTableColumns", async () => {
+      preferencesRow.seed(mockPreferences);
+
+      await service.updatePreferences("user-1", {
+        hiddenTableColumns: {
+          transactions: ["refNumber", "attachments"],
+          investmentRegister: ["status"],
+        },
+      });
+
+      const savedData = preferencesRow.row()!;
+      expect(savedData.hiddenTableColumns).toEqual({
+        transactions: ["refNumber", "attachments"],
+        investmentRegister: ["status"],
+      });
+    });
+
+    it("merges hiddenTableColumns by table kind, keeping kinds it was not sent", async () => {
+      // Another device set the holdings default; this save, from a screen that
+      // never saw it, sends only the kind it changed.
+      preferencesRow.seed({
+        ...mockPreferences,
+        hiddenTableColumns: {
+          transactions: ["tags"],
+          investmentHoldings: ["avgCost"],
+        },
+      });
+
+      await service.updatePreferences("user-1", {
+        hiddenTableColumns: { transactions: [] },
+      });
+
+      expect(preferencesRow.row()!.hiddenTableColumns).toEqual({
+        transactions: [],
+        investmentHoldings: ["avgCost"],
+      });
+    });
+
+    it("leaves hiddenTableColumns untouched when not provided", async () => {
+      preferencesRow.seed({
+        ...mockPreferences,
+        hiddenTableColumns: { transactions: ["tags"] },
+      });
+
+      await service.updatePreferences("user-1", { timeFormat: "24h" });
+
+      const savedData = preferencesRow.row()!;
+      expect(savedData.hiddenTableColumns).toEqual({ transactions: ["tags"] });
+    });
+
+    it("updates viewDefaults", async () => {
+      preferencesRow.seed({ ...mockPreferences, viewDefaults: {} });
+
+      await service.updatePreferences("user-1", {
+        viewDefaults: {
+          density: "compact",
+          chartCollapsed: true,
+          accountOpenTarget: "dashboard",
+        },
+      });
+
+      const savedData = preferencesRow.row()!;
+      expect(savedData.viewDefaults).toEqual({
+        density: "compact",
+        chartCollapsed: true,
+        accountOpenTarget: "dashboard",
+      });
+    });
+
+    it("merges viewDefaults into the stored map, keeping keys it was not sent", async () => {
+      // Another device set density; this save, from a screen that never saw
+      // it, sends only the key it changed.
+      preferencesRow.seed({
+        ...mockPreferences,
+        viewDefaults: { density: "compact", chartCollapsed: false },
+      });
+
+      await service.updatePreferences("user-1", {
+        viewDefaults: { chartCollapsed: true },
+      });
+
+      expect(preferencesRow.row()!.viewDefaults).toEqual({
+        density: "compact",
+        chartCollapsed: true,
+      });
+    });
+
+    it("leaves viewDefaults untouched when not provided", async () => {
+      preferencesRow.seed({
+        ...mockPreferences,
+        viewDefaults: { widgetsCollapsed: true },
+      });
+
+      await service.updatePreferences("user-1", { timeFormat: "24h" });
+
+      const savedData = preferencesRow.row()!;
+      expect(savedData.viewDefaults).toEqual({ widgetsCollapsed: true });
     });
 
     it("updates preferredExchanges", async () => {
@@ -1061,6 +1189,56 @@ describe("UsersService", () => {
       );
     });
 
+    it("converges the refresh sessions after the password commit", async () => {
+      // The in-transaction blanket UPDATE misses a successor a concurrent
+      // rotation inserts after its snapshot (A26-M02); the converging revoke
+      // runs after the commit, in its own transactions.
+      const hashedPassword = await bcrypt.hash("OldPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        passwordHash: hashedPassword,
+      });
+      const order: string[] = [];
+      const runTransaction =
+        mockDataSource.transaction.getMockImplementation()!;
+      mockDataSource.transaction.mockImplementation(async (...args: any[]) => {
+        order.push("begin");
+        const result = await runTransaction(...args);
+        order.push("commit");
+        return result;
+      });
+      usersRepository.save.mockImplementation(async (u: unknown) => {
+        order.push("save");
+        return u;
+      });
+      const answer = mockQueryRunner.query.getMockImplementation();
+      mockQueryRunner.query.mockImplementation(
+        async (sql: unknown, params?: unknown[]) => {
+          if (String(sql).includes("SELECT DISTINCT family_id")) {
+            order.push("converge");
+            expect(params).toEqual(["user-1", null]);
+            return [];
+          }
+          return answer ? answer(sql, params) : [];
+        },
+      );
+
+      await service.changePassword("user-1", {
+        currentPassword: "OldPass123!",
+        newPassword: "NewPass456!",
+      });
+
+      const write = order.lastIndexOf("save");
+      expect(order.slice(write - 1, write + 5)).toEqual([
+        "begin",
+        "save",
+        "commit",
+        "begin",
+        "converge",
+        "commit",
+      ]);
+    });
+
     it("writes the password and the row revocations in one transaction", async () => {
       const hashedPassword = await bcrypt.hash("OldPass123!", 10);
       usersRepository.findOne.mockResolvedValue({
@@ -1200,6 +1378,32 @@ describe("UsersService", () => {
         { isRevoked: true },
       );
       expect(usersRepository.remove).toHaveBeenCalled();
+    });
+
+    it("locks the user's custom currencies, then removes the unreferenced ones after the user row", async () => {
+      const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        passwordHash: hashedPassword,
+      });
+      currenciesService.lockCurrenciesCreatedBy.mockResolvedValue(["PTS"]);
+
+      await service.deleteAccount("user-1", { password: "CorrectPass123!" });
+
+      expect(currenciesService.lockCurrenciesCreatedBy).toHaveBeenCalledWith(
+        expect.anything(),
+        "user-1",
+      );
+      expect(
+        currenciesService.removeUnreferencedCurrencies,
+      ).toHaveBeenCalledWith(expect.anything(), ["PTS"]);
+      expect(
+        currenciesService.lockCurrenciesCreatedBy.mock.invocationCallOrder[0],
+      ).toBeLessThan(usersRepository.remove.mock.invocationCallOrder[0]);
+      expect(usersRepository.remove.mock.invocationCallOrder[0]).toBeLessThan(
+        currenciesService.removeUnreferencedCurrencies.mock
+          .invocationCallOrder[0],
+      );
     });
 
     it("deletes sessions and tokens so a non-cascading FK cannot block the delete", async () => {
@@ -1727,6 +1931,17 @@ describe("UsersService", () => {
       expect(
         queries.some((q: string) => q.includes("DELETE FROM transactions")),
       ).toBe(true);
+      // A warranty's transaction link is ON DELETE SET NULL and the account
+      // survives, so nothing cascades to it: without its own delete every
+      // warranty and claim outlives "delete my data".
+      const claims = queries.findIndex((q: string) =>
+        q.includes("DELETE FROM warranty_claims"),
+      );
+      const warranties = queries.findIndex((q: string) =>
+        q.includes("DELETE FROM warranties"),
+      );
+      expect(claims).toBeGreaterThanOrEqual(0);
+      expect(claims).toBeLessThan(warranties);
       expect(
         queries.some((q: string) =>
           q.includes("DELETE FROM scheduled_transactions"),

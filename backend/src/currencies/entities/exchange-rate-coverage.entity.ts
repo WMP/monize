@@ -26,6 +26,10 @@ import {
  * `canonicalRateRow` applies, and the CHECK constraint is what holds it rather
  * than a convention in the writer.
  *
+ * **Scoped to a provider set.** What one chain of providers carries is not
+ * what another does, so the row names the chain that wrote it (`providers`)
+ * and is ignored, then replaced, under any other `FX_PROVIDERS` configuration.
+ *
  * Global reference data with no owner column, like `exchange_rates` itself:
  * what a provider carries is the same fact for every account on the deployment.
  * RLS-exempt for that reason (`docs/row-level-security-contract.md`).
@@ -81,6 +85,21 @@ export class ExchangeRateCoverage {
    */
   @Column({ type: "date", name: "probed_from", nullable: true })
   probedFrom: string | null;
+
+  /**
+   * The provider chain the three dates above describe: the ordered source
+   * slugs of `FxProviderChain.describe()`, joined with commas, or `null` on a
+   * row written before the column existed.
+   *
+   * The row is scoped to a provider set, not to the pair alone. A floor Yahoo
+   * established says nothing about what Frankfurter carries, so a row whose
+   * value differs from the running chain's reads as never probed, and the next
+   * write replaces its dates instead of merging them -- otherwise the stale
+   * `GREATEST` ratchet would survive the first write after a change to
+   * `FX_PROVIDERS`.
+   */
+  @Column({ type: "varchar", length: 200, name: "providers", nullable: true })
+  providers: string | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

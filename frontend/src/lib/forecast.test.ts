@@ -4,7 +4,9 @@ import type { ScheduledTransaction } from '@/types/scheduled-transaction';
 import {
   buildForecast,
   buildMultiAccountForecast,
+  countOverdueOccurrences,
   getForecastSummary,
+  OVERDUE_CARRY_DAYS,
   getProjectedBalanceAtDate,
   FORECAST_PERIOD_DAYS,
   FORECAST_PERIOD_LABELS,
@@ -1321,7 +1323,9 @@ describe('buildForecast', () => {
 
   // --- ONCE frequency ---
   describe('ONCE frequency', () => {
-    it('does not include ONCE transaction if before start date', () => {
+    // Discussion #1784: a ONCE occurrence still unposted after its date is
+    // owed, so it lands on the first forecast day instead of vanishing.
+    it('carries an overdue ONCE transaction onto today', () => {
       const accounts = [makeAccount({ currentBalance: 5000 })];
       const transactions = [makeScheduled({
         nextDueDate: '2025-01-10', // Before "today" Jan 15
@@ -1329,8 +1333,12 @@ describe('buildForecast', () => {
         frequency: 'ONCE',
       })];
       const result = forecastPoints(accounts, transactions, 'month', 'all');
-      const allBalances = result.map(dp => dp.balance);
-      expect(allBalances.every(b => b === 5000)).toBe(true);
+      expect(result[0].date).toBe('2025-01-15');
+      expect(result[0].balance).toBe(4500);
+      expect(result[0].transactions).toEqual([
+        expect.objectContaining({ amount: -500, overdueOriginalDate: '2025-01-10' }),
+      ]);
+      expect(result.every(dp => dp.balance === 4500)).toBe(true);
     });
 
     it('does not include ONCE transaction if past endDate', () => {
@@ -1344,6 +1352,210 @@ describe('buildForecast', () => {
       const result = forecastPoints(accounts, transactions, 'month', 'all');
       const jan20 = result.find(dp => dp.date === '2025-01-20');
       expect(jan20?.transactions.length ?? 0).toBe(0);
+    });
+  });
+
+  // --- Overdue occurrences (discussion #1784) ---
+  describe('overdue occurrences', () => {
+    const on = (points: ReturnType<typeof forecastPoints>, date: string) =>
+      points.find(dp => dp.date === date);
+    const overdueOf = (points: ReturnType<typeof forecastPoints>) =>
+      points.flatMap(dp => dp.transactions).filter(tx => tx.overdueOriginalDate !== undefined);
+
+    it('applies each overdue occurrence once, on today, tagged with its slot', () => {
+      const accounts = [makeAccount({ currentBalance: 5000 })];
+      const transactions = [makeScheduled({
+        nextDueDate: '2025-01-01',
+        amount: -100,
+        frequency: 'WEEKLY',
+      })];
+      const result = forecastPoints(accounts, transactions, 'month', 'all');
+      // Jan 1 and Jan 8 are overdue; Jan 15 is due today and is not.
+      expect(result[0].date).toBe('2025-01-15');
+      expect(result[0].balance).toBe(4700);
+      expect(result[0].transactions.map(tx => tx.overdueOriginalDate)).toEqual([
+        '2025-01-01', '2025-01-08', undefined,
+      ]);
+      expect(countOverdueOccurrences(result[0].transactions)).toBe(2);
+      expect(overdueOf(result)).toHaveLength(2);
+      expect(on(result, '2025-01-22')?.balance).toBe(4600);
+    });
+
+    it('applies an overdue slot an override moved into the window on its new date, unmarked', () => {
+      const accounts = [makeAccount({ currentBalance: 5000 })];
+      const transactions = [makeScheduled({
+        nextDueDate: '2025-01-10',
+        amount: -500,
+        frequency: 'MONTHLY',
+        futureOverrides: [{
+          originalDate: '2025-01-10',
+          overrideDate: '2025-01-20',
+          amount: null,
+        }] as any,
+      })];
+      const result = forecastPoints(accounts, transactions, 'month', 'all');
+      expect(result[0].transactions).toEqual([]);
+      expect(result[0].balance).toBe(5000);
+      const jan20 = on(result, '2025-01-20');
+      expect(jan20?.transactions).toHaveLength(1);
+      expect(jan20?.transactions[0].overdueOriginalDate).toBeUndefined();
+      expect(jan20?.balance).toBe(4500);
+      expect(overdueOf(result)).toEqual([]);
+      // The next slot is unaffected, and nothing was counted twice.
+      expect(on(result, '2025-02-10')?.balance).toBe(4000);
+    });
+
+    it('counts an occurrence an override moved into the past as overdue', () => {
+      const accounts = [makeAccount({ currentBalance: 5000 })];
+      const transactions = [makeScheduled({
+        nextDueDate: '2025-01-20',
+        amount: -500,
+        frequency: 'MONTHLY',
+        futureOverrides: [{
+          originalDate: '2025-01-20',
+          overrideDate: '2025-01-12',
+          amount: -650,
+        }] as any,
+      })];
+      const result = forecastPoints(accounts, transactions, 'month', 'all');
+      expect(result[0].balance).toBe(4350);
+      expect(result[0].transactions).toEqual([
+        expect.objectContaining({ amount: -650, overdueOriginalDate: '2025-01-20' }),
+      ]);
+      expect(on(result, '2025-01-20')?.transactions.length ?? 0).toBe(0);
+    });
+
+    it('carries nothing once the overdue slot was skipped or posted', () => {
+      // Posting and skipping both advance next_due_date past the slot.
+      const accounts = [makeAccount({ currentBalance: 5000 })];
+      const transactions = [makeScheduled({
+        nextDueDate: '2025-02-10',
+        amount: -500,
+        frequency: 'MONTHLY',
+      })];
+      const result = forecastPoints(accounts, transactions, 'month', 'all');
+      expect(result[0].balance).toBe(5000);
+      expect(overdueOf(result)).toEqual([]);
+    });
+
+    it('carries nothing for an inactive schedule', () => {
+      const accounts = [makeAccount({ currentBalance: 5000 })];
+      const transactions = [makeScheduled({
+        nextDueDate: '2025-01-01',
+        amount: -100,
+        frequency: 'WEEKLY',
+        isActive: false,
+      })];
+      const result = forecastPoints(accounts, transactions, 'month', 'all');
+      expect(result.every(dp => dp.balance === 5000)).toBe(true);
+    });
+
+    it('stops at the schedule endDate, overdue slots included', () => {
+      const accounts = [makeAccount({ currentBalance: 5000 })];
+      const transactions = [makeScheduled({
+        nextDueDate: '2025-01-01',
+        amount: -100,
+        frequency: 'WEEKLY',
+        endDate: '2025-01-05',
+      })];
+      const result = forecastPoints(accounts, transactions, 'month', 'all');
+      expect(countOverdueOccurrences(result[0].transactions)).toBe(1);
+      expect(result.every(dp => dp.balance === 4900)).toBe(true);
+    });
+
+    it('spends occurrencesRemaining on the overdue slots first', () => {
+      const accounts = [makeAccount({ currentBalance: 5000 })];
+      const transactions = [makeScheduled({
+        nextDueDate: '2025-01-01',
+        amount: -100,
+        frequency: 'WEEKLY',
+        occurrencesRemaining: 3,
+      })];
+      const result = forecastPoints(accounts, transactions, 'month', 'all');
+      // Jan 1 and Jan 8 overdue, Jan 15 on time: three, and none after.
+      expect(result[0].transactions).toHaveLength(3);
+      expect(countOverdueOccurrences(result[0].transactions)).toBe(2);
+      expect(on(result, '2025-01-22')?.transactions.length ?? 0).toBe(0);
+      expect(result[result.length - 1].balance).toBe(4700);
+    });
+
+    it('credits an overdue transfer to its destination and debits its source', () => {
+      const transfer = makeScheduled({
+        nextDueDate: '2025-01-10',
+        amount: -500,
+        frequency: 'ONCE',
+        isTransfer: true,
+        accountId: 'acc-1',
+        transferAccountId: 'acc-2',
+      });
+      const accounts = [
+        makeAccount({ id: 'acc-1', currentBalance: 1000 }),
+        makeAccount({ id: 'acc-2', currentBalance: 1000 }),
+      ];
+      const source = forecastPoints(accounts, [transfer], 'month', 'acc-1');
+      expect(source[0].balance).toBe(500);
+      expect(countOverdueOccurrences(source[0].transactions)).toBe(1);
+      const destination = forecastPoints(accounts, [transfer], 'month', 'acc-2');
+      expect(destination[0].balance).toBe(1500);
+      expect(countOverdueOccurrences(destination[0].transactions)).toBe(1);
+    });
+
+    it('withholds the series when an overdue occurrence cannot be priced', () => {
+      const cashAccount = makeAccount({ id: 'cash-1', currentBalance: 10000 });
+      const transactions = [makeScheduled({
+        id: 'split-inv-1',
+        accountId: 'cash-1',
+        amount: -1500,
+        frequency: 'ONCE',
+        nextDueDate: '2025-01-10',
+        isSplit: true,
+        splits: [{
+          id: 's1',
+          kind: 'investment',
+          amount: -1500,
+          investmentAction: 'BUY',
+          investmentSecurityId: 'sec-usd',
+        }],
+        investmentForecastAmount: null,
+      } as any)];
+      const result = buildForecast([cashAccount], transactions, 'month', 'cash-1');
+      expect(result.points).toEqual([]);
+      expect(result.missingCurrencies.length).toBeGreaterThan(0);
+    });
+
+    it(`carries only the last ${OVERDUE_CARRY_DAYS} days of a forgotten schedule`, () => {
+      const accounts = [makeAccount({ currentBalance: 5000 })];
+      const transactions = [makeScheduled({
+        nextDueDate: '2024-11-01',
+        amount: -1,
+        frequency: 'DAILY',
+      })];
+      const result = forecastPoints(accounts, transactions, 'week', 'all');
+      // Dec 15 to Jan 14 are carried, and Jan 15 is due on time.
+      expect(countOverdueOccurrences(result[0].transactions)).toBe(OVERDUE_CARRY_DAYS);
+      expect(result[0].balance).toBe(5000 - OVERDUE_CARRY_DAYS - 1);
+    });
+
+    it('carries an occurrence exactly at the edge of the window', () => {
+      const accounts = [makeAccount({ currentBalance: 5000 })];
+      const edge = makeScheduled({ nextDueDate: '2024-12-15', amount: -100, frequency: 'ONCE' });
+      const beyond = makeScheduled({ id: 'st-2', nextDueDate: '2024-12-14', amount: -100, frequency: 'ONCE' });
+      const result = forecastPoints(accounts, [edge, beyond], 'week', 'all');
+      expect(countOverdueOccurrences(result[0].transactions)).toBe(1);
+      expect(result[0].balance).toBe(4900);
+    });
+
+    it('bounds the catch-up walk at 2000 steps, as the server does', () => {
+      const accounts = [makeAccount({ currentBalance: 5000 })];
+      const transactions = [makeScheduled({
+        nextDueDate: '2015-01-01',
+        amount: -1,
+        frequency: 'DAILY',
+      })];
+      const result = forecastPoints(accounts, transactions, 'week', 'all');
+      // The walk stops in mid-2020, long before the carry window opens.
+      expect(countOverdueOccurrences(result[0].transactions)).toBe(0);
+      expect(result[0].balance).toBe(5000);
     });
   });
 
@@ -1561,6 +1773,20 @@ describe('getForecastSummary', () => {
     expect(summary.goesNegative).toBe(false);
   });
 
+  it('starts from the balance before the overdue occurrences carried onto the first day', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 0, 15));
+    try {
+      const accounts = [makeAccount({ currentBalance: 5000 })];
+      const transactions = [makeScheduled({ nextDueDate: '2025-01-10', amount: -500, frequency: 'ONCE' })];
+      const points = buildForecast(accounts, transactions, 'month', 'all').points;
+      expect(points[0].balance).toBe(4500);
+      expect(getForecastSummary(points).startingBalance).toBe(5000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('detects goesNegative as false when min balance is exactly zero', () => {
     const dataPoints = [
       { date: '2025-01-01', balance: 100, transactions: [] },
@@ -1585,6 +1811,18 @@ describe('getProjectedBalanceAtDate', () => {
     const account = makeAccount({ currentBalance: 5000 });
     const result = getProjectedBalanceAtDate(account, '2025-01-20', [], []);
     expect(result).toBe(5000);
+  });
+
+  // The posting dialog's 'balance before' reads this; discussion #1784 left
+  // it as it was, so an overdue occurrence is not carried into it.
+  it('does not carry overdue occurrences', () => {
+    const account = makeAccount({ currentBalance: 5000 });
+    const scheduled = [makeScheduled({
+      nextDueDate: '2025-01-10',
+      amount: -500,
+      frequency: 'ONCE',
+    })];
+    expect(getProjectedBalanceAtDate(account, '2025-01-25', scheduled, [])).toBe(5000);
   });
 
   it('includes scheduled transaction occurrences up to target date', () => {
@@ -2007,6 +2245,28 @@ describe('buildMultiAccountForecast', () => {
     expect(jan20?.balance).toBe(1500);
   });
 
+  // Discussion #1784: an overdue transfer inside the selection lands on today
+  // on both lines, and the tooltip counts it once.
+  it('carries an overdue transfer onto today on both lines and counts it once', () => {
+    const transactions = [makeScheduled({
+      id: 'st-1', accountId: 'acc-1', amount: -300,
+      isTransfer: true, transferAccountId: 'acc-2',
+      frequency: 'ONCE', nextDueDate: '2025-01-10',
+    }), makeScheduled({
+      id: 'st-2', accountId: 'acc-2', amount: -50,
+      frequency: 'ONCE', nextDueDate: '2025-01-12',
+    })];
+    const result = buildMultiAccountForecast(
+      [chequing, savings], transactions, 'month', ['acc-1', 'acc-2'],
+    );
+    const first = result.points[0];
+    expect(first.date).toBe('2025-01-15');
+    expect(first.balances).toEqual({ 'acc-1': 700, 'acc-2': 750 });
+    expect(first.balance).toBe(1450);
+    expect(first.transactions).toHaveLength(3);
+    expect(countOverdueOccurrences(first.transactions)).toBe(2);
+  });
+
   it('takes a transfer out to an unselected account off the total', () => {
     const outside = makeAccount({ id: 'acc-3', name: 'Outside', currentBalance: 0 });
     const transactions = [makeScheduled({
@@ -2097,5 +2357,97 @@ describe('buildMultiAccountForecast', () => {
     );
     const jan20 = on(result, '2025-01-20');
     expect(jan20?.balances).toEqual({ 'acc-1': 600, 'acc-2': 500 });
+  });
+});
+
+describe('forecast money arithmetic (integer 1/10000 units, one rounding for display)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 0, 15));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const tenTenths = (accountId: string): FutureTransaction[] =>
+    Array.from({ length: 10 }, (_, i) => ({
+      id: `ft-${accountId}-${i}`,
+      accountId,
+      name: 'Tenth',
+      amount: 0.1,
+      date: '2025-01-16',
+    }));
+
+  describe('buildForecast', () => {
+    it('rounds a 1.0050 starting balance half away from zero to 1.01', () => {
+      const points = buildForecast([makeAccount({ currentBalance: 1.005 })], [], 'week', 'acc-1').points;
+      expect(points[0].balance).toBe(1.01);
+    });
+
+    it('rounds a -2500.0050 balance to -2500.01', () => {
+      const points = buildForecast([makeAccount({ currentBalance: -2500.005 })], [], 'week', 'acc-1').points;
+      expect(points[0].balance).toBe(-2500.01);
+    });
+
+    it('sums ten 0.1 transactions on 0 to exactly 1', () => {
+      const points = buildForecast(
+        [makeAccount({ currentBalance: 0 })], [], 'week', 'acc-1', tenTenths('acc-1'),
+      ).points;
+      expect(points.find(p => p.date === '2025-01-16')?.balance).toBe(1);
+    });
+
+    it('rounds a converted amount to the storage precision', () => {
+      const scheduled = makeScheduled({ nextDueDate: '2025-01-20', amount: -10, frequency: 'ONCE' });
+      const result = buildForecast(
+        [makeAccount({ currentBalance: 0, currencyCode: 'EUR' })], [scheduled], 'week', 'acc-1', [],
+        (amount) => amount * (1 / 3),
+      );
+      const tx = result.points.find(p => p.date === '2025-01-20')?.transactions[0];
+      expect(tx?.amount).toBe(-3.3333);
+    });
+  });
+
+  describe('getProjectedBalanceAtDate', () => {
+    it('rounds 1.0050 to 1.01 and -2500.0050 to -2500.01', () => {
+      expect(getProjectedBalanceAtDate(makeAccount({ currentBalance: 1.005 }), '2025-01-20', [], [])).toBe(1.01);
+      expect(getProjectedBalanceAtDate(makeAccount({ currentBalance: -2500.005 }), '2025-01-20', [], [])).toBe(-2500.01);
+    });
+
+    it('sums ten 0.1 future transactions on 0 to exactly 1', () => {
+      expect(
+        getProjectedBalanceAtDate(makeAccount({ currentBalance: 0 }), '2025-01-20', [], tenTenths('acc-1')),
+      ).toBe(1);
+    });
+  });
+
+  describe('buildMultiAccountForecast', () => {
+    it('rounds each line half away from zero and totals the rounded lines', () => {
+      const result = buildMultiAccountForecast(
+        [
+          makeAccount({ id: 'acc-1', name: 'A', currentBalance: 1.005 }),
+          makeAccount({ id: 'acc-2', name: 'B', currentBalance: -2500.005 }),
+        ],
+        [], 'week', ['acc-1', 'acc-2'],
+      );
+      expect(result.points[0].balances).toEqual({ 'acc-1': 1.01, 'acc-2': -2500.01 });
+      expect(result.points[0].balance).toBe(-2499);
+    });
+
+    it('sums ten 0.1 transactions on 0 to exactly 1', () => {
+      const result = buildMultiAccountForecast(
+        [makeAccount({ currentBalance: 0 })], [], 'week', ['acc-1'], tenTenths('acc-1'),
+      );
+      const point = result.points.find(p => p.date === '2025-01-16');
+      expect(point?.balances).toEqual({ 'acc-1': 1 });
+      expect(point?.balance).toBe(1);
+    });
+  });
+
+  describe('getForecastSummary', () => {
+    it('rounds the starting balance half away from zero', () => {
+      const summary = getForecastSummary([{ date: '2025-01-15', balance: 1.01, transactions: [] }]);
+      expect(summary.startingBalance).toBe(1.01);
+    });
   });
 });

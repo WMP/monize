@@ -27,6 +27,30 @@
     "strategies": {
       "title": "Sygnał strategii",
       "body": "Jedna z Twoich strategii zmieniła swoją rekomendację. Otwórz Monize, aby zobaczyć szczegóły."
+    },
+    "bank_sync": {
+      "title": "Połączenie bankowe",
+      "body": "Połączenie bankowe wymaga uwagi. Otwórz Monize, aby zobaczyć szczegóły."
+    },
+    "bank_sync_activity": {
+      "title": "Synchronizacja bankowa",
+      "body": "Synchronizacja bankowa ma nowe informacje. Otwórz Monize, aby zobaczyć szczegóły."
+    },
+    "email_receipts": {
+      "title": "Potwierdzenia e-maili wymagają uwagi",
+      "body": "Kilka wiadomości e-mail w skrzynce potwierdzeń wymaga profilu lub poprawy. Otwórz Monize, aby uzyskać szczegóły."
+    },
+    "bonds": {
+      "title": "Powiadomienie o obligacjach",
+      "body": "Co najmniej jedna z Twoich obligacji ma nowe informacje. Otwórz Monize, aby zobaczyć szczegóły."
+    },
+    "ai_review": {
+      "title": "Propozycje przeglądu AI",
+      "body": "Część propozycji przeglądu AI czeka na Twoją decyzję. Otwórz Monize, aby zobaczyć szczegóły."
+    },
+    "warranties": {
+      "title": "Przypomnienie o gwarancji",
+      "body": "Jedna z Twoich gwarancji wkrótce wygaśnie. Otwórz Monize, aby zobaczyć szczegóły."
     }
   },
   "actions": {

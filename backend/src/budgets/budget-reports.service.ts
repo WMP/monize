@@ -275,8 +275,7 @@ export class BudgetReportsService {
       return { error: "Failed to retrieve budget summary" };
     }
 
-    let velocity: Awaited<ReturnType<BudgetsService["getVelocity"]>> | null =
-      null;
+    let velocity: Awaited<ReturnType<BudgetsService["getVelocity"]>> | null;
     try {
       velocity = await this.budgetsService.getVelocity(userId, budget.id);
     } catch (err) {
@@ -286,7 +285,7 @@ export class BudgetReportsService {
       velocity = null;
     }
 
-    let healthScore: HealthScoreResult | null = null;
+    let healthScore: HealthScoreResult | null;
     try {
       healthScore = await this.getHealthScore(userId, budget.id);
     } catch (err) {

@@ -978,6 +978,68 @@ describe("YahooFinanceService", () => {
     });
   });
 
+  describe("searchQuotes", () => {
+    it("asks the search endpoint for the count and answers the quotes", async () => {
+      mockFetchResponse({
+        quotes: [
+          { symbol: "MYRUSD=X", quoteType: "CURRENCY", shortname: "MYR/USD" },
+          { symbol: "MAYBANK.KL", quoteType: "EQUITY" },
+        ],
+      });
+
+      const result = await service.searchQuotes("Ringgit Malaysia", 20);
+
+      expect(result).toEqual([
+        { symbol: "MYRUSD=X", quoteType: "CURRENCY", shortname: "MYR/USD" },
+        { symbol: "MAYBANK.KL", quoteType: "EQUITY" },
+      ]);
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toBe(
+        "https://query1.finance.yahoo.com/v1/finance/search?q=Ringgit%20Malaysia&quotesCount=20&newsCount=0",
+      );
+    });
+
+    it("drops an item without a symbol", async () => {
+      mockFetchResponse({
+        quotes: [{ quoteType: "CURRENCY" }, { symbol: "EURUSD=X" }],
+      });
+
+      expect(await service.searchQuotes("euro", 5)).toEqual([
+        { symbol: "EURUSD=X" },
+      ]);
+    });
+
+    it.each([
+      ["no quotes", { quotes: [] }],
+      ["no quotes property", {}],
+    ])("is an empty answer for %s", async (_label, body) => {
+      mockFetchResponse(body);
+
+      expect(await service.searchQuotes("xyz", 20)).toEqual([]);
+    });
+
+    it("is no answer on a non-OK response", async () => {
+      mockFetchResponse({}, false, 500);
+
+      expect(await service.searchQuotes("xyz", 20)).toBeNull();
+    });
+
+    it("is no answer on a network error", async () => {
+      mockFetchError(new Error("Network failure"));
+
+      expect(await service.searchQuotes("xyz", 20)).toBeNull();
+    });
+
+    it("records the answer with the breaker once the body arrives", async () => {
+      const recordSuccess = jest.spyOn(health, "recordSuccess");
+      mockFetchResponse({ quotes: [] });
+
+      await service.searchQuotes("xyz", 20);
+
+      expect(recordSuccess).toHaveBeenCalledWith("yahoo_finance");
+    });
+  });
+
   describe("lookupSecurity", () => {
     it("should return the best matching security from search results", async () => {
       mockFetchResponse({
@@ -2495,6 +2557,7 @@ describe("YahooFinanceService", () => {
 
       expect(await service.fetchQuote("MSFT")).toBeNull();
       expect(await service.lookupSecurityMany("micro")).toEqual([]);
+      expect(await service.searchQuotes("ringgit", 20)).toBeNull();
       expect(
         await service.fetchIntradaySeries("MSFT", null, {
           interval: "5m",

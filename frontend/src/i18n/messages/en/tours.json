@@ -427,5 +427,42 @@
         }
       }
     }
+  },
+  "emailReceipts": {
+    "basics": {
+      "title": "Receipts from email",
+      "steps": {
+        "welcome": {
+          "title": "Why read receipts from email",
+          "body": "A bank transaction tells you how much you paid and when. It does not tell you what you bought. The order confirmation email does. Monize reads these emails, finds the transaction that each one paid for and proposes a description, a payee and a split by line item, with a category for each line. You approve each proposal before it changes a transaction."
+        },
+        "aiRequired": {
+          "title": "In practice, you need an AI provider",
+          "body": "Monize reads an email with a **profile**: a set of patterns for one sender domain, for example one shop. You can write a profile by hand, but each pattern must match the exact lines of that shop's emails, so in practice an AI writes it. The AI writes the profile one time, from a few sample emails. After you approve it, the profile reads each new email from that shop without the AI."
+        },
+        "aiProviders": {
+          "title": "Set up an AI provider first",
+          "body": "Add a provider here and test the connection. Without a provider, the profile wizard cannot write a profile, and emails from a shop with no profile stay unread."
+        },
+        "tabs": {
+          "title": "Four tabs, in the order you use them",
+          "body": "**Overview** shows what Monize has read. In **Mailbox**, connect a mailbox that holds only order confirmations. Monize only reads it: it never moves, flags or deletes a message. **Profiles** holds one profile for each shop. **Emails** lists each email and its state."
+        },
+        "uncovered": {
+          "title": "Shops with no profile",
+          "body": "This box lists the sender domains that no profile can read yet. Choose one to start the wizard. Select up to five of its emails and pair each one with the bank transaction it paid for. The AI writes a profile and tests it on these pairs. Then you see a preview for all emails from that shop, and you accept the profile or ask for a change with a short note.",
+          "fallbackBody": "You have no emails from a shop without a profile yet. After you connect the mailbox, each sender domain appears here as a tag, for example **shop.example (12)**: the domain and the number of its emails. Choose the tag to start the wizard. Select up to five of its emails and pair each one with the bank transaction it paid for. The AI writes a profile and tests it on these pairs. Then you see a preview for all emails from that shop, and you accept the profile or ask for a change with a short note."
+        },
+        "profiles": {
+          "title": "Your profiles",
+          "body": "Each row is one profile, approved or draft. **Create a new profile manually** opens the editor for a profile written by hand. Use it to correct a small detail in a draft from the AI. When you approve a profile, Monize reads the emails from its domain immediately.",
+          "fallbackBody": "You have no profiles yet. Each profile you accept appears here as one row, for example **Shop Example**, domain **shop.example**, status **Approved**. **Create a new profile manually** opens the editor for a profile written by hand. Use it only to correct a small detail in a draft from the AI. When you approve a profile, Monize reads the emails from its domain immediately."
+        },
+        "reviews": {
+          "title": "Approve the proposals",
+          "body": "Each email that matches a transaction becomes a proposal in the **AI Review Inbox**, in the **AI** menu. A proposal shows, for example, the line items of an order with a category for each line. Nothing changes in your transactions until you approve the proposal there."
+        }
+      }
+    }
   }
 }

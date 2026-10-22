@@ -90,12 +90,12 @@ const mockAccounts: Account[] = [
 const mockCategories: Category[] = [
   {
     id: 'cat-1', userId: 'user-1', parentId: null, parent: null, children: [],
-    name: 'Interest Expenses', description: null, icon: null, color: null, effectiveColor: null, effectiveIcon: null,
+    name: 'Interest Expenses', description: null, icon: null, color: null, effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true,
     isIncome: false, isSystem: false, createdAt: '2024-01-01T00:00:00Z',
   },
   {
     id: 'cat-2', userId: 'user-1', parentId: null, parent: null, children: [],
-    name: 'Mortgage Interest', description: null, icon: null, color: null, effectiveColor: null, effectiveIcon: null,
+    name: 'Mortgage Interest', description: null, icon: null, color: null, effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true,
     isIncome: false, isSystem: false, createdAt: '2024-01-01T00:00:00Z',
   },
 ];
@@ -137,6 +137,11 @@ describe('MortgageFields', () => {
     categories: mockCategories,
     formatCurrency: mockFormatCurrency,
     isEditing: false,
+    sourceAccountId: undefined as string | undefined,
+    paymentMatchingEnabled: false as boolean | undefined,
+    paymentMatchingPayeePattern: undefined as string | undefined,
+    paymentMatchingDescriptionPattern: undefined as string | undefined,
+    institutionName: '',
     selectedInterestCategoryId: '',
     handleInterestCategoryChange: vi.fn(),
     interestBookingMode: 'AUTO' as const,
@@ -161,7 +166,7 @@ describe('MortgageFields', () => {
     expect(screen.getByText('Mortgage Details')).toBeInTheDocument();
     expect(screen.getByText('Payment Frequency (required)')).toBeInTheDocument();
     expect(screen.getByText('First Payment Date (required)')).toBeInTheDocument();
-    expect(screen.getByText('Interest Category')).toBeInTheDocument();
+    expect(screen.getByText('Interest Category (required)')).toBeInTheDocument();
   });
 
   it('renders payment frequency options for mortgages', () => {
@@ -232,11 +237,13 @@ describe('MortgageFields', () => {
     expect(screen.getByText('Payment From Account (required)')).toBeInTheDocument();
     expect(screen.getByText('Main Chequing (CAD)')).toBeInTheDocument();
     expect(screen.getByText('Savings (CAD)')).toBeInTheDocument();
+    // The edit-only note about moving the schedule has nothing to move on create
+    expect(screen.queryByText(/moves the upcoming scheduled payments/)).not.toBeInTheDocument();
   });
 
   it('renders interest category select with sorted categories', () => {
     render(<MortgageFields {...defaultProps} />);
-    expect(screen.getByText('Interest Category')).toBeInTheDocument();
+    expect(screen.getByText('Interest Category (required)')).toBeInTheDocument();
   });
 
   it('renders one Mortgage Type select in place of the two checkboxes', () => {
@@ -519,7 +526,11 @@ describe('MortgageFields', () => {
     // Payment-setup fields (create-only) should be hidden
     expect(screen.queryByText('Payment Frequency (required)')).not.toBeInTheDocument();
     expect(screen.queryByText('First Payment Date (required)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Payment From Account (required)')).not.toBeInTheDocument();
+    // The paying account stays editable; the server moves the schedule and rule with it
+    expect(screen.getByText('Payment From Account (required)')).toBeInTheDocument();
+    expect(
+      screen.getByText(/moves the upcoming scheduled payments and the payment matching rule/),
+    ).toBeInTheDocument();
     // Recognition settings (interest category + overpayment) stay available on edit
     expect(screen.getByText('Interest Category')).toBeInTheDocument();
     expect(screen.getByText('Overpayment recognition')).toBeInTheDocument();
@@ -888,5 +899,94 @@ describe('MortgageFields', () => {
     render(<MortgageFields {...defaultProps} mortgageType="ANNUITY" termMonths={60} />);
     fireEvent.change(periodInputs()[0], { target: { value: '3' } });
     expect(mockSetValue).toHaveBeenCalledWith('termMonths', 36, { shouldValidate: true, shouldDirty: true });
+  });
+
+  describe('original principal', () => {
+    it('defaults to the mortgage amount until the user edits it', () => {
+      render(<MortgageFields {...defaultProps} openingBalance={300000} />);
+      expect(screen.getByLabelText('Original Principal')).toHaveValue('300000.00');
+    });
+
+    it('keeps an edited value when the opening balance later changes', () => {
+      const { rerender } = render(
+        <MortgageFields {...defaultProps} openingBalance={300000} />,
+      );
+      fireEvent.change(screen.getByLabelText('Original Principal'), {
+        target: { value: '250000' },
+      });
+      expect(mockSetValue).toHaveBeenCalledWith('originalPrincipal', 250000, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+
+      // The prop a parent would pass once `setValue` above lands in the form;
+      // the opening balance itself also moves. The typed value is what shows,
+      // not the (now different) opening balance.
+      rerender(
+        <MortgageFields
+          {...defaultProps}
+          openingBalance={310000}
+          originalPrincipal={250000}
+        />,
+      );
+      expect(screen.getByLabelText('Original Principal')).toHaveValue('250000.00');
+    });
+
+    it('shows on both create and edit', () => {
+      const { unmount } = render(<MortgageFields {...defaultProps} openingBalance={300000} />);
+      expect(screen.getByLabelText('Original Principal')).toBeInTheDocument();
+      unmount();
+      render(<MortgageFields {...defaultProps} isEditing openingBalance={300000} />);
+      expect(screen.getByLabelText('Original Principal')).toBeInTheDocument();
+    });
+  });
+
+  describe('payment matching', () => {
+    it('is offered only while creating', () => {
+      const { unmount } = render(<MortgageFields {...defaultProps} />);
+      expect(screen.getByRole('switch', { name: 'Match imported bank payments to this mortgage' })).toBeInTheDocument();
+      unmount();
+      render(<MortgageFields {...defaultProps} isEditing />);
+      expect(
+        screen.queryByRole('switch', { name: 'Match imported bank payments to this mortgage' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('prefills the payee pattern from the selected institution when switched on', () => {
+      render(<MortgageFields {...defaultProps} institutionName="ING Bank" />);
+      fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this mortgage' }));
+      expect(mockSetValue).toHaveBeenCalledWith('paymentMatchingEnabled', true, { shouldDirty: true });
+      expect(mockSetValue).toHaveBeenCalledWith('paymentMatchingPayeePattern', '*ING Bank*', {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    });
+
+    it('does not overwrite a payee pattern the user already typed', () => {
+      render(
+        <MortgageFields
+          {...defaultProps}
+          institutionName="ING Bank"
+          paymentMatchingPayeePattern="*Already Typed*"
+        />,
+      );
+      fireEvent.click(screen.getByRole('switch', { name: 'Match imported bank payments to this mortgage' }));
+      expect(mockSetValue).not.toHaveBeenCalledWith(
+        'paymentMatchingPayeePattern',
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it('shows the source account the debit will be matched against', () => {
+      render(
+        <MortgageFields
+          {...defaultProps}
+          paymentMatchingEnabled
+          sourceAccountId="acc-1"
+        />,
+      );
+      expect(screen.getByText(/Matched against debits from Main Chequing\./)).toBeInTheDocument();
+    });
   });
 });

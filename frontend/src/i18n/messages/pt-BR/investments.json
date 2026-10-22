@@ -51,6 +51,7 @@
     "costBasisTooltip": "Quanto custou adquirir suas posições atuais, reconstruído do histórico de transações: preços de compra mais a corretagem cobrada em cada compra, cada um convertido pela taxa da operação que o pagou. Mostrado na sua moeda de exibição. Usado para calcular ganhos e perdas.",
     "gainLoss": "Ganho/Perda",
     "gainLossTooltip": "Ganho ou perda não realizado das posições atuais: valor de mercado aos preços de hoje menos o custo de aquisição acima. Não inclui ganhos realizados de vendas passadas, nem dividendos e juros recebidos.",
+    "gainPartialCaption": "Apenas sobre posições com preço",
     "returns": "Retornos",
     "simpleReturn": "Retorno Simples",
     "simpleReturnTooltip": "Ganho ou perda em relação ao que você pagou: (Valor de Mercado − Custo de Aquisição) ÷ Custo de Aquisição. Não considera quando o dinheiro chegou, por isso ele salta a cada compra: uma posição de 1.000 com alta de 20% mostra +20%; compre mais 1.000 e ela mostrará +10% (200 ÷ 2.000) embora nada tenha sido perdido. O TWR e o MWR não têm esse salto.",
@@ -88,6 +89,14 @@
       "assetClass": "Por classe de ativos"
     }
   },
+  "assetClasses": {
+    "equity": "Ações",
+    "fixedIncome": "Renda fixa",
+    "cash": "Numerário",
+    "preferred": "Ações preferenciais",
+    "convertible": "Conversíveis",
+    "crypto": "Cripto"
+  },
   "holdingsList": {
     "title": "Posições",
     "noHoldings": "Sem posições neste portfólio.",
@@ -102,6 +111,7 @@
     "title": "Posições por Conta",
     "noHoldings": "Sem posições no seu portfólio.",
     "accountIncomplete": "Parcial: os totais desta conta deixam de fora posições que não puderam ser avaliadas em {currency}.",
+    "gainPartialCaption": "Apenas sobre posições com preço",
     "accountSummary": "{accounts} conta{accountsPlural} com {positions} posição{positionsPlural}",
     "positionsWithCash": "{count} posição{plural} + Numerário",
     "positions": "{count} posição{plural}",
@@ -129,6 +139,7 @@
     "intradayUnavailableDescription": "Uma ou mais posições usam um fornecedor de cotações (MSN Money) que não disponibiliza dados intradiários. Selecione um intervalo mais longo para ver instantâneos diários.",
     "noDataForPeriod": "Sem dados de investimento para este período.",
     "highestValue": "Valor Mais Alto",
+    "incompleteTooltip": "Alguns pontos deste período não têm preço ou taxa de câmbio, então a máxima e a mínima não são exibidas.",
     "lowestValue": "Valor Mais Baixo",
     "valueChange": "Variação de Valor",
     "valueChangeTooltip": "O valor dos títulos no fim do período, menos o valor que tinham no início: o último ponto do gráfico menos o primeiro. O dinheiro não investido fica de fora.",
@@ -190,6 +201,7 @@
     "actionCapitalGainShort": "Rendimento de capital de curto prazo",
     "actionCapitalGainLong": "Rendimento de capital de longo prazo",
     "actionRedeem": "Resgate de CD/título",
+    "actionReturnOfCapital": "Devolução de capital",
     "allActions": "Todas as Ações"
   },
   "transactionForm": {
@@ -210,6 +222,7 @@
     "actionCapitalGainShort": "Rendimento de capital de curto prazo",
     "actionCapitalGainLong": "Rendimento de capital de longo prazo",
     "actionRedeem": "Resgate de CD/título",
+    "actionReturnOfCapital": "Devolução de capital",
     "actionTransfer": "Transferência",
     "brokerageAccount": "Conta de Corretagem",
     "fromAccount": "Conta de Origem",
@@ -253,7 +266,8 @@
     "sourceHolds": "A origem detém",
     "sharesAt": "ações @",
     "avgCostSuffix": "custo médio.",
-    "transferCostNote": "O custo por ação (pré-preenchido a partir da conta de origem) é transferido para o destino para que seus relatórios de ganhos e lucros se mantenham corretos. Esta operação move apenas ações — não há movimentação de numerário.",
+    "transferCostNote": "O custo por ação é quanto as ações custaram na conta de origem na data da transferência. Ele é calculado ao salvar e levado para a conta de destino, para que seus relatórios de ganhos e lucros continuem corretos. Apenas ações são movidas; nenhum dinheiro troca de mãos.",
+    "returnOfCapitalNote": "Uma devolução de capital não é rendimento. Ela restitui parte do que as ações custaram, por isso reduz o custo de aquisição da sua posição neste valor. O que exceder o custo de aquisição restante é registrado como ganho de capital realizado.",
     "totalAmount": "Valor Total ({currency})",
     "sharesAtPrice": "{shares} ações @ {symbol}{price}",
     "commissionSuffix": "comissão",
@@ -288,7 +302,30 @@
     "toastSaveFailed": "Falha ao salvar a transação",
     "exchangeRateUnresolved": "Não há taxa de {from} para {to} disponível. Insira uma, ou o total convertido, antes de salvar.",
     "toastExchangeRateRequired": "Insira uma taxa de câmbio antes de salvar uma operação entre moedas.",
-    "notAvailable": "Não disponível"
+    "notAvailable": "Não disponível",
+    "bondSeries": {
+      "label": "Série de títulos",
+      "fromDate": "Determinada pela data",
+      "oldestFirst": "As mais antigas primeiro",
+      "loading": "Carregando as séries...",
+      "loadFailed": "Não foi possível carregar as séries.",
+      "retry": "Tentar novamente",
+      "fromDateCode": "Da data: {code}",
+      "noneOnSale": "Nenhuma série à venda nesta data",
+      "choose": "Escolha uma série",
+      "required": "Escolha a série destes títulos.",
+      "heldOption": "{code} ({quantity} em carteira)",
+      "noLongerHeld": "{code} (não é mais mantida nesta data)",
+      "noLongerHeldUnknown": "Série salva (não é mais mantida nesta data)",
+      "storedSeries": "Série salva",
+      "seriesOnSaleMonth": "{code} — à venda em {month}",
+      "seriesOnSaleRange": "{code} — à venda de {from} a {to}"
+    },
+    "bondRedemption": {
+      "summary": "Juros {interest}, dedução por resgate antecipado {deduction}, pagamento {payout}",
+      "outsideSaleWindow": "Um lote desta série foi comprado fora do período de venda, então o resgate não pode ser dividido.",
+      "failed": "Não foi possível calcular a divisão do resgate."
+    }
   },
   "newTransactionButton": {
     "label": "+ Nova Transação",

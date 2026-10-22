@@ -124,8 +124,24 @@ and import the resulting `.mny`.
 
 ## Known limitations
 
-**No merge, no de-duplication.** Version 1 targets a fresh profile. Importing
-the same file twice creates the transactions twice.
+**No merge, no de-duplication.** Version 1 targets a fresh profile. Monize
+refuses to import a file whose exact bytes it already imported into your account,
+and names the earlier import; to import it again, start over and choose to replace
+your existing data. A different export of the same Money file (saved again, so its
+bytes differ) is not recognised as the same file, and importing it creates the
+transactions a second time.
+
+**A failure after the data was saved says so.** If an import fails after its
+records were written (a final check, for example), the wizard tells you the records
+are in your account and does not offer to try again: importing the same file again
+would duplicate them.
+
+**Securities quoted in another currency than their account.** Money records a
+trade in the account's currency. Monize stores the trade's price and total in the
+security's own currency, converted with the exchange rate your file holds for that
+date, and keeps the cash movement in the account's currency. If your file has no
+rate for that pair within 45 days before the trade, the trade is imported
+unconverted and the report lists it, so you can add the rate and correct the price.
 
 **Foreign-currency cost basis.** Money stores a foreign holding's cost basis
 converted to your base currency at the historical rate, not in the security's own
@@ -189,7 +205,7 @@ every warning -- without importing anything.
 
 - `docs/ms-money-data-model.md` -- the `.mny` format reference: tables, codes,
   and the traps that produce plausible-looking wrong answers.
-- `docs/future-plans/mny-import.md` -- design, architecture decisions and the
+- `docs/specs/mny-import.md` -- design, architecture decisions and the
   task history.
 - `backend/src/import/mny/README.md` -- how the pipeline is layered and what it
   refuses to guess at.

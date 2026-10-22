@@ -92,6 +92,21 @@ describe('CustomizeDashboardModal', () => {
     });
   });
 
+  it('lists the hidden Cash Flow Forecast beside a hidden Upcoming Bills', async () => {
+    await renderModal();
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Hide Upcoming Bills & Deposits'));
+    });
+    const chips = screen
+      .getAllByTestId(/^widget-hidden-/)
+      .map((chip) => chip.getAttribute('data-testid'));
+    const upcoming = chips.indexOf('widget-hidden-upcoming-bills');
+    expect(chips[upcoming + 1]).toBe('widget-hidden-cash-flow-forecast');
+    expect(screen.getByTestId('widget-hidden-cash-flow-forecast')).toHaveTextContent(
+      'Cash Flow Forecast',
+    );
+  });
+
   it('saves the new order after moving a widget earlier with the arrow button', async () => {
     await renderModal();
     await act(async () => {

@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act, within } from '@/test/render';
+import { render, screen, fireEvent, waitFor, act, within, cleanup } from '@/test/render';
 import * as nextNavigation from 'next/navigation';
 import { AccountList } from './AccountList';
 import { Account } from '@/types/account';
+import type { UserPreferences } from '@/types/auth';
+import { usePreferencesStore } from '@/store/preferencesStore';
 import { accountsApi } from '@/lib/accounts';
 import { useDensityStore } from '@/store/densityStore';
 
@@ -1093,6 +1095,52 @@ describe('AccountList', () => {
     expect(within(row).queryByText('$9000.00')).not.toBeInTheDocument();
   });
 
+  // valuationComplete also covers a missing exchange rate with every price
+  // present, which the unpriced count (zero here) cannot see.
+  it('shows no total for an account whose valuation is incomplete though every holding is priced', () => {
+    const accounts = [
+      createAccount({
+        id: 'broker-1',
+        name: 'TFSA - Brokerage',
+        accountType: 'INVESTMENT',
+        accountSubType: 'INVESTMENT_BROKERAGE',
+        linkedAccountId: 'cash-1',
+        currentBalance: 0,
+      }),
+      createAccount({
+        id: 'cash-1',
+        name: 'TFSA - Cash',
+        accountType: 'INVESTMENT',
+        accountSubType: 'INVESTMENT_CASH',
+        linkedAccountId: 'broker-1',
+        currentBalance: 3500,
+      }),
+    ];
+
+    render(
+      <AccountList
+        accounts={accounts}
+        brokerageMarketValues={new Map([['broker-1', 9000]])}
+        unpricedHoldingCounts={new Map([['broker-1', 0]])}
+        incompleteHoldingAccountIds={new Set(['broker-1'])}
+        onEdit={mockOnEdit}
+        defaultCurrency="CAD" convertToDefault={exchangeMocks.convertToDefault} onRefresh={mockOnRefresh}
+      />
+    );
+
+    const row = screen.getByText('TFSA').closest('tr')!;
+    expect(within(row).getByText('—')).toBeInTheDocument();
+    expect(within(row).getByText('Total unavailable')).toBeInTheDocument();
+    expect(within(row).queryByText('$3500.00')).not.toBeInTheDocument();
+    expect(within(row).queryByText('$9000.00')).not.toBeInTheDocument();
+    // The tooltip says what is missing: not a failed load, not a price.
+    const tooltip = within(row).getByText('—').getAttribute('title') ?? '';
+    expect(tooltip).not.toMatch(/could not be loaded|no price/);
+    expect(tooltip).toMatch(/exchange rate/i);
+    // The group total leaves the account out and says so.
+    expect(screen.getAllByTestId('partial-total').length).toBeGreaterThan(0);
+  });
+
   it('shows credit limit for accounts with a credit limit', () => {
     const account = createAccount({
       accountType: 'CREDIT_CARD',
@@ -1641,6 +1689,32 @@ describe('AccountList', () => {
       fireEvent.click(screen.getByText('Main Chequing'));
 
       expect(mockPush).toHaveBeenCalledWith('/transactions?accountId=chequing-1');
+    });
+
+    describe('when the reader chose to open accounts on their dashboard', () => {
+      beforeEach(() => {
+        usePreferencesStore.setState({
+          preferences: { viewDefaults: { accountOpenTarget: 'dashboard' } } as unknown as UserPreferences,
+        });
+      });
+      afterEach(() => {
+        // Unmount first: this hook runs before Testing Library's own cleanup,
+        // and a store write to a mounted list re-renders it outside act.
+        cleanup();
+        usePreferencesStore.setState({ preferences: null });
+      });
+
+      it('opens a chequing account on its dashboard', () => {
+        const account = createAccount({ id: 'chequing-1', name: 'Main Chequing', accountType: 'CHEQUING' });
+
+        render(
+          <AccountList accounts={[account]} onEdit={mockOnEdit} defaultCurrency="CAD" convertToDefault={exchangeMocks.convertToDefault} onRefresh={mockOnRefresh} />
+        );
+
+        fireEvent.click(screen.getByText('Main Chequing'));
+
+        expect(mockPush).toHaveBeenCalledWith('/accounts/chequing-1');
+      });
     });
   });
 

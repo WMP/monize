@@ -2,6 +2,7 @@ import {
   ForecastOccurrenceInput,
   accumulateForecastDeltas,
   buildForecastSeries,
+  forecastLanding,
 } from "./balance-forecast.util";
 
 /**
@@ -212,6 +213,87 @@ describe("balance-forecast.util", () => {
       expect(byDate.get("2024-07-15")).toBe(-100);
       expect(byDate.has("2024-08-15")).toBe(false);
       expect(gaps).toHaveLength(1);
+    });
+  });
+
+  // Discussion #1784: an occurrence due and unposted is owed, not dropped.
+  describe("forecastLanding", () => {
+    it("keeps a future occurrence on its own date", () => {
+      expect(forecastLanding("2024-07-15", "2024-07-08")).toEqual({
+        date: "2024-07-15",
+        overdue: false,
+      });
+    });
+
+    it("moves an occurrence due before today onto tomorrow, as overdue", () => {
+      expect(forecastLanding("2024-07-01", "2024-07-08")).toEqual({
+        date: "2024-07-09",
+        overdue: true,
+      });
+    });
+
+    it("moves an occurrence due today onto tomorrow without calling it overdue", () => {
+      expect(forecastLanding("2024-07-08", "2024-07-08")).toEqual({
+        date: "2024-07-09",
+        overdue: false,
+      });
+    });
+
+    it("crosses a month boundary", () => {
+      expect(forecastLanding("2024-07-30", "2024-07-31")).toEqual({
+        date: "2024-08-01",
+        overdue: true,
+      });
+    });
+  });
+
+  describe("accumulateForecastDeltas: overdue summary", () => {
+    it("counts each overdue occurrence once and nets their effect", () => {
+      const { byDate, overdue } = accumulateForecastDeltas(
+        [
+          occurrence({ dueDate: "2024-07-09", overdue: true, amount: -100 }),
+          occurrence({ dueDate: "2024-07-09", overdue: true, amount: -50 }),
+          occurrence({ dueDate: "2024-07-09", amount: -25 }),
+        ],
+        "acc-1",
+      );
+      expect(overdue).toEqual({ count: 2, amount: -150 });
+      expect(byDate.get("2024-07-09")).toBe(-175);
+    });
+
+    it("signs an overdue transfer by the side this account is on", () => {
+      const transfer = occurrence({
+        accountId: "acc-1",
+        transferAccountId: "acc-2",
+        dueDate: "2024-07-09",
+        overdue: true,
+        amount: -300,
+      });
+      expect(accumulateForecastDeltas([transfer], "acc-1").overdue).toEqual({
+        count: 1,
+        amount: -300,
+      });
+      expect(accumulateForecastDeltas([transfer], "acc-2").overdue).toEqual({
+        count: 1,
+        amount: 300,
+      });
+    });
+
+    it("ignores an overdue occurrence that does not touch this account", () => {
+      const { overdue } = accumulateForecastDeltas(
+        [occurrence({ accountId: "acc-9", overdue: true })],
+        "acc-1",
+      );
+      expect(overdue).toEqual({ count: 0, amount: 0 });
+    });
+
+    it("counts an unpriced overdue occurrence and reports it as a gap", () => {
+      const { gaps, overdue } = accumulateForecastDeltas(
+        [occurrence({ overdue: true, amount: null })],
+        "acc-1",
+      );
+      expect(gaps).toHaveLength(1);
+      expect(overdue).toEqual({ count: 1, amount: 0 });
     });
   });
 

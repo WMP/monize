@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
@@ -39,7 +39,7 @@ import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { categoriesApi } from '@/lib/categories';
 import { payeesApi } from '@/lib/payees';
 import { tagsApi } from '@/lib/tags';
-import { Transaction, PaginationInfo, BulkUpdateData, BulkUpdateFilters, MonthlyTotal, BulkDeleteData } from '@/types/transaction';
+import { Transaction, PaginationInfo, BulkUpdateData, BulkUpdateFilters, MonthlyTotal, BulkDeleteData, SearchInterpretation } from '@/types/transaction';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useTransactionSelection } from '@/hooks/useTransactionSelection';
 import { useTransactionFilters } from '@/hooks/useTransactionFilters';
@@ -52,7 +52,7 @@ import {
   type TransactionSort,
   type TransactionSortField,
 } from '@/lib/transaction-sort';
-import { useStaleReconciliation } from '@/hooks/useStaleReconciliation';
+import { useHiddenColumns } from '@/hooks/useHiddenColumns';
 import { BulkSelectionBanner } from '@/components/transactions/BulkSelectionBanner';
 import { Account, isLiabilityAccountType } from '@/types/account';
 import { Institution } from '@/types/institution';
@@ -60,9 +60,11 @@ import { Category } from '@/types/category';
 import { Payee } from '@/types/payee';
 import { Tag } from '@/types/tag';
 import { ScheduledTransaction } from '@/types/scheduled-transaction';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useTransactionsPanelCollapsed } from '@/hooks/useTransactionsPanelCollapsed';
+import { ChartCollapseButton, CollapsedChartStrip } from '@/components/transactions/ChartCollapseControls';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { useAuthStore } from '@/store/authStore';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useFormModal } from '@/hooks/useFormModal';
 import { useSwipeToPaginate } from '@/hooks/useSwipeToPaginate';
@@ -84,6 +86,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { createLogger } from '@/lib/logger';
 import { showErrorToast } from '@/lib/errors';
 import { exportToCsv } from '@/lib/csv-export';
+import { afterModalHistoryPop } from '@/lib/after-modal-history-pop';
 import { PAGE_SIZE } from '@/lib/constants';
 import { budgetsApi } from '@/lib/budgets';
 import { CategoryBudgetStatus } from '@/types/budget';
@@ -124,6 +127,11 @@ function TransactionsContent() {
     usePreferencesStore((s) => s.preferences?.defaultCurrency),
   );
   const { convertToDefault } = useExchangeRates();
+  // An acting delegate never adds a warranty (every warranty write is the
+  // owner's), and lists one only with the Warranties section granted.
+  const actingAsDelegate = useAuthStore((s) => s.actingAsUserId) !== null;
+  const delegateSections = useAuthStore((s) => s.delegateSections);
+  const canViewWarranties = !actingAsDelegate || delegateSections?.warranties === true;
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   // Joint accounts: effective write permissions per shared account, used to
@@ -162,9 +170,14 @@ function TransactionsContent() {
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [showPayeeForm, setShowPayeeForm] = useState(false);
   const [editingPayee, setEditingPayee] = useState<Payee | undefined>();
-  const [accountWidgetCollapsed, setAccountWidgetCollapsed] = useLocalStorage<boolean>('monize-transactions-account-widget-collapsed', false);
-  const [payeeWidgetCollapsed, setPayeeWidgetCollapsed] = useLocalStorage<boolean>('monize-transactions-payee-widget-collapsed', false);
-  const [categoryWidgetCollapsed, setCategoryWidgetCollapsed] = useLocalStorage<boolean>('monize-transactions-category-widget-collapsed', false);
+  const [accountWidgetCollapsed, setAccountWidgetCollapsed] = useTransactionsPanelCollapsed('accountWidget');
+  const [payeeWidgetCollapsed, setPayeeWidgetCollapsed] = useTransactionsPanelCollapsed('payeeWidget');
+  const [categoryWidgetCollapsed, setCategoryWidgetCollapsed] = useTransactionsPanelCollapsed('categoryWidget');
+  // The chart band (the chart and any info widget beside it) folds into one
+  // strip; each widget keeps its own state for when the band comes back.
+  const [chartCollapsed, setChartCollapsed] = useTransactionsPanelCollapsed('chart');
+  const collapseChart = useCallback(() => setChartCollapsed(true), [setChartCollapsed]);
+  const expandChart = useCallback(() => setChartCollapsed(false), [setChartCollapsed]);
   const [showBulkUpdate, setShowBulkUpdate] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkSelectMode, setBulkSelectMode] = useState(false);
@@ -172,12 +185,22 @@ function TransactionsContent() {
 
   // Ref to track whether any modal is open (used by popstate handler to avoid conflicts)
   const modalOpenRef = useRef(false);
-  modalOpenRef.current = showForm || showScheduleForm || showPayeeForm || showBulkUpdate || showBulkDeleteConfirm;
+  const anyModalOpen = showForm || showScheduleForm || showPayeeForm || showBulkUpdate || showBulkDeleteConfirm;
+  useLayoutEffect(() => {
+    modalOpenRef.current = anyModalOpen;
+  });
 
   const filters = useTransactionFilters({ accounts, categories, payees, tags, weekStartsOn });
+  // The hook's refs under local names, so they are written as refs rather than
+  // as fields of the hook's return value, which must not be modified.
+  const {
+    isFilterChange: isFilterChangeRef,
+    targetTransactionIdRef,
+    syncingFromPopstateRef,
+    filterDebounceRef,
+  } = filters;
   // Which register rows are overdue for reconciliation. Undefined until known,
   // and left undefined on failure, so a lookup that did not answer marks no row.
-  const staleReconciliation = useStaleReconciliation();
 
   // Accounts every query should cover: an explicit account filter wins;
   // otherwise narrow to filteredAccounts (which strips brokerage and honours
@@ -239,6 +262,12 @@ function TransactionsContent() {
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [startingBalance, setStartingBalance] = useState<number | undefined>();
   const [startingBalanceWithheld, setStartingBalanceWithheld] = useState<'sort' | undefined>();
+  // How the server read the search, kept with the search string that produced
+  // it so a reply for an earlier string is never shown under a newer one.
+  const [searchEcho, setSearchEcho] = useState<{
+    search: string;
+    interpretation: SearchInterpretation | undefined;
+  } | null>(null);
   // The order the rows currently on screen came back in. Held beside them
   // rather than read from the live sort, so a click that has not been answered
   // yet cannot make the register reinterpret the page it is still showing.
@@ -260,10 +289,13 @@ function TransactionsContent() {
   );
   // The Account column is not drawn on a single account's page, so a
   // remembered account sort would order the register by a header nobody can
-  // reach. Storage is left alone: widening the filter brings it back.
+  // reach. Storage is left alone: widening the filter brings it back. A column
+  // the reader has hidden is the same shape (the register reads the same
+  // stored set), and showing it again brings that sort back.
+  const { hidden: hiddenColumns } = useHiddenColumns('transactions');
   const registerSort = useMemo(
-    () => resolveRegisterSort(storedSort, isSingleAccountView),
-    [storedSort, isSingleAccountView],
+    () => resolveRegisterSort(storedSort, isSingleAccountView, hiddenColumns),
+    [storedSort, isSingleAccountView, hiddenColumns],
   );
   // The loader reads the sort from here rather than closing over it, so
   // remembering a deep link's fallback order does not re-run the reload effect
@@ -272,14 +304,17 @@ function TransactionsContent() {
   // trigger: the register is already on page 1 half the time, and nothing else
   // in the dependency list moves.
   const registerSortRef = useRef(registerSort);
-  registerSortRef.current = registerSort;
+  // Declared before the effects that read it, so they see this render's sort.
+  useLayoutEffect(() => {
+    registerSortRef.current = registerSort;
+  });
   const [sortRequestTick, setSortRequestTick] = useState(0);
   // Which register read is the newest; only that one may write state.
   const requestSeqRef = useRef(0);
 
   const handleSortChange = useCallback(
     (field: TransactionSortField) => {
-      filters.isFilterChange.current = true;
+      isFilterChangeRef.current = true;
       // Toggled from the sort the header is DISPLAYING, not the one in
       // storage. They differ where a remembered account sort has been resolved
       // away on a single account's page, and toggling from the stored one
@@ -315,80 +350,107 @@ function TransactionsContent() {
   const staticDataLoaded = useRef(false);
 
   // Load static data (accounts, categories, payees) - only runs once
-  const loadStaticData = useCallback(async () => {
-    if (staticDataLoaded.current) return;
-    try {
-      const [accountsData, categoriesData, payeesData, tagsData, institutionsData, scheduledData] = await Promise.all([
-        accountsApi.getAll(true),
-        categoriesApi.getAll(),
-        payeesApi.getAll(),
-        tagsApi.getAll(),
-        institutionsApi.getAll().catch(() => [] as Institution[]),
-        scheduledTransactionsApi.getAll().catch(() => [] as ScheduledTransaction[]),
-      ]);
-      setAccounts(accountsData);
-      setCategories(categoriesData);
-      setPayees(payeesData);
-      setTags(tagsData);
-      setInstitutions(institutionsData);
-      setScheduledTransactions(scheduledData);
-      staticDataLoaded.current = true;
-    } catch (error) {
-      showErrorToast(error, t('toasts.loadFormDataFailed'));
-      logger.error(error);
-    }
+  const loadStaticData = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      if (staticDataLoaded.current) return;
+      try {
+        const [accountsData, categoriesData, payeesData, tagsData, institutionsData, scheduledData] = await Promise.all([
+          accountsApi.getAll(true),
+          categoriesApi.getAll(),
+          payeesApi.getAll(),
+          tagsApi.getAll(),
+          institutionsApi.getAll().catch(() => [] as Institution[]),
+          scheduledTransactionsApi.getAll().catch(() => [] as ScheduledTransaction[]),
+        ]);
+        setAccounts(accountsData);
+        setCategories(categoriesData);
+        setPayees(payeesData);
+        setTags(tagsData);
+        setInstitutions(institutionsData);
+        setScheduledTransactions(scheduledData);
+        staticDataLoaded.current = true;
+      } catch (error) {
+        showErrorToast(error, t('toasts.loadFormDataFailed'));
+        logger.error(error);
+      }
+    };
+    return run();
   }, [t]);
 
   // Load transaction data and chart data in parallel
-  const loadTransactions = useCallback(async (page: number) => {
-    const safePage = (!page || page < 1) ? 1 : page;
-    // Which request this is. Two header clicks further apart than the debounce
-    // put two register reads in flight, and without a sequence the display is
-    // whichever one answered last rather than the one the reader asked for
-    // last: amount-ordered rows under a Payee header, or page 1 over the page
-    // a deep link had just resolved. Only the newest request may write state.
-    const seq = ++requestSeqRef.current;
-    const isCurrentRequest = () => seq === requestSeqRef.current;
-    try {
-      const targetTransactionId = filters.targetTransactionIdRef.current;
-      filters.targetTransactionIdRef.current = null;
+  const loadTransactions = useCallback((page: number) => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      const safePage = (!page || page < 1) ? 1 : page;
+      // Which request this is. Two header clicks further apart than the debounce
+      // put two register reads in flight, and without a sequence the display is
+      // whichever one answered last rather than the one the reader asked for
+      // last: amount-ordered rows under a Payee header, or page 1 over the page
+      // a deep link had just resolved. Only the newest request may write state.
+      const seq = ++requestSeqRef.current;
+      const isCurrentRequest = () => seq === requestSeqRef.current;
+      // Read, not consumed: the target is cleared only once the reply that
+      // carried it is adopted (below). On a cold load the accounts arrive while
+      // this read is in flight, the account scope changes and a newer read
+      // supersedes this one; consuming the target here sent that newer read
+      // without it, so the register stayed on page 1 and the row the link
+      // pointed at was never shown.
+      const targetTransactionId = targetTransactionIdRef.current;
+      try {
+        // A row's page is counted by comparing it with the register's order, and
+        // only the date order has a comparison to make -- the server refuses the
+        // pair outright. Arriving at a row therefore drops back to the date
+        // order, keeping the direction, exactly as it already drops the filters
+        // that would have hidden the row. Remembering it too keeps the headers
+        // agreeing with the rows.
+        //
+        // Read from a ref rather than closed over, so that `setSort` below does
+        // not change this callback's identity: it would re-run the reload effect
+        // and fire a second register read for the same click, this time with the
+        // target already consumed, racing the page the first one resolved.
+        let effectiveSort = registerSortRef.current;
+        if (targetTransactionId && effectiveSort.field !== 'date') {
+          effectiveSort = { field: 'date', direction: effectiveSort.direction };
+          setSort(effectiveSort);
+        }
 
-      // A row's page is counted by comparing it with the register's order, and
-      // only the date order has a comparison to make -- the server refuses the
-      // pair outright. Arriving at a row therefore drops back to the date
-      // order, keeping the direction, exactly as it already drops the filters
-      // that would have hidden the row. Remembering it too keeps the headers
-      // agreeing with the rows.
-      //
-      // Read from a ref rather than closed over, so that `setSort` below does
-      // not change this callback's identity: it would re-run the reload effect
-      // and fire a second register read for the same click, this time with the
-      // target already consumed, racing the page the first one resolved.
-      let effectiveSort = registerSortRef.current;
-      if (targetTransactionId && effectiveSort.field !== 'date') {
-        effectiveSort = { field: 'date', direction: effectiveSort.direction };
-        setSort(effectiveSort);
-      }
+        const hasCategoryOrPayeeFilter = filters.filterCategoryIds.length > 0 || filters.filterPayeeIds.length > 0 || filters.filterTagIds.length > 0 || filters.filterSearch.length > 0;
 
-      const hasCategoryOrPayeeFilter = filters.filterCategoryIds.length > 0 || filters.filterPayeeIds.length > 0 || filters.filterTagIds.length > 0 || filters.filterSearch.length > 0;
+        const chartParams: { startDate?: string; endDate?: string; accountIds?: string; allTime?: boolean } = {};
+        if (filters.filterStartDate) chartParams.startDate = filters.filterStartDate;
+        if (filters.filterEndDate) chartParams.endDate = filters.filterEndDate;
+        // With no start-date filter the transaction list shows the account's full
+        // history, so the Balance History chart should span it too (downsampled
+        // server-side) rather than the backend's default one-year window.
+        if (!filters.filterStartDate) chartParams.allTime = true;
+        // Mirror the Show Accounts filter (Active/Closed/All) into the chart query
+        // so the Account Balances and Balance History charts only include accounts
+        // that the transaction list is actually showing.
+        if (accountIdsForQuery) chartParams.accountIds = accountIdsForQuery.join(',');
 
-      const chartParams: { startDate?: string; endDate?: string; accountIds?: string; allTime?: boolean } = {};
-      if (filters.filterStartDate) chartParams.startDate = filters.filterStartDate;
-      if (filters.filterEndDate) chartParams.endDate = filters.filterEndDate;
-      // With no start-date filter the transaction list shows the account's full
-      // history, so the Balance History chart should span it too (downsampled
-      // server-side) rather than the backend's default one-year window.
-      if (!filters.filterStartDate) chartParams.allTime = true;
-      // Mirror the Show Accounts filter (Active/Closed/All) into the chart query
-      // so the Account Balances and Balance History charts only include accounts
-      // that the transaction list is actually showing.
-      if (accountIdsForQuery) chartParams.accountIds = accountIdsForQuery.join(',');
+        const parsedAmountFrom = filters.filterAmountFrom ? parseFloat(filters.filterAmountFrom) : undefined;
+        const parsedAmountTo = filters.filterAmountTo ? parseFloat(filters.filterAmountTo) : undefined;
 
-      const parsedAmountFrom = filters.filterAmountFrom ? parseFloat(filters.filterAmountFrom) : undefined;
-      const parsedAmountTo = filters.filterAmountTo ? parseFloat(filters.filterAmountTo) : undefined;
+        const chartPromise = hasCategoryOrPayeeFilter
+          ? transactionsApi.getMonthlyTotals({
+              accountIds: accountIdsForQuery,
+              startDate: filters.filterStartDate || undefined,
+              endDate: filters.filterEndDate || undefined,
+              categoryIds: filters.filterCategoryIds.length > 0 ? filters.filterCategoryIds : undefined,
+              payeeIds: filters.filterPayeeIds.length > 0 ? filters.filterPayeeIds : undefined,
+              tagIds: filters.filterTagIds.length > 0 ? filters.filterTagIds : undefined,
+              search: filters.filterSearch || undefined,
+              amountFrom: parsedAmountFrom,
+              amountTo: parsedAmountTo,
+            }).catch(() => [] as MonthlyTotal[])
+          : accountsApi.getDailyBalances(
+              Object.keys(chartParams).length > 0 ? chartParams : undefined,
+            ).catch(() => [] as Array<{ date: string; balance: number; accountId: string; currencyCode: string }>);
 
-      const chartPromise = hasCategoryOrPayeeFilter
-        ? transactionsApi.getMonthlyTotals({
+        const requestedSearch = filters.filterSearch;
+        const [transactionsResponse, chartResult] = await Promise.all([
+          transactionsApi.getAll({
             accountIds: accountIdsForQuery,
             startDate: filters.filterStartDate || undefined,
             endDate: filters.filterEndDate || undefined,
@@ -396,97 +458,98 @@ function TransactionsContent() {
             payeeIds: filters.filterPayeeIds.length > 0 ? filters.filterPayeeIds : undefined,
             tagIds: filters.filterTagIds.length > 0 ? filters.filterTagIds : undefined,
             search: filters.filterSearch || undefined,
+            page: safePage,
+            limit: PAGE_SIZE,
+            targetTransactionId: targetTransactionId || undefined,
+            sortBy: effectiveSort.field,
+            sortDirection: effectiveSort.direction,
             amountFrom: parsedAmountFrom,
             amountTo: parsedAmountTo,
-          }).catch(() => [] as MonthlyTotal[])
-        : accountsApi.getDailyBalances(
-            Object.keys(chartParams).length > 0 ? chartParams : undefined,
-          ).catch(() => [] as Array<{ date: string; balance: number; accountId: string; currencyCode: string }>);
+            statuses: filters.filterStatuses.length > 0 ? filters.filterStatuses : undefined,
+            originalCurrencyCodes: filters.filterOriginalCurrencyCodes.length > 0 ? filters.filterOriginalCurrencyCodes : undefined,
+            tagKey: filters.filterTagKey || undefined,
+            tagKeyOp: filters.filterTagKeyOp,
+            tagKeyValue: filters.filterTagKeyValue || undefined,
+            hasAttachments:
+              filters.filterHasAttachments === ''
+                ? undefined
+                : filters.filterHasAttachments === 'yes',
+          }),
+          chartPromise,
+        ]);
 
-      const [transactionsResponse, chartResult] = await Promise.all([
-        transactionsApi.getAll({
-          accountIds: accountIdsForQuery,
-          startDate: filters.filterStartDate || undefined,
-          endDate: filters.filterEndDate || undefined,
-          categoryIds: filters.filterCategoryIds.length > 0 ? filters.filterCategoryIds : undefined,
-          payeeIds: filters.filterPayeeIds.length > 0 ? filters.filterPayeeIds : undefined,
-          tagIds: filters.filterTagIds.length > 0 ? filters.filterTagIds : undefined,
-          search: filters.filterSearch || undefined,
-          page: safePage,
-          limit: PAGE_SIZE,
-          targetTransactionId: targetTransactionId || undefined,
-          sortBy: effectiveSort.field,
-          sortDirection: effectiveSort.direction,
-          amountFrom: parsedAmountFrom,
-          amountTo: parsedAmountTo,
-          statuses: filters.filterStatuses.length > 0 ? filters.filterStatuses : undefined,
-          originalCurrencyCodes: filters.filterOriginalCurrencyCodes.length > 0 ? filters.filterOriginalCurrencyCodes : undefined,
-          tagKey: filters.filterTagKey || undefined,
-          tagKeyOp: filters.filterTagKeyOp,
-          tagKeyValue: filters.filterTagKeyValue || undefined,
-          hasAttachments:
-            filters.filterHasAttachments === ''
-              ? undefined
-              : filters.filterHasAttachments === 'yes',
-        }),
-        chartPromise,
-      ]);
+        // A reply that a newer request has already superseded is discarded whole
+        // -- rows, pagination, balance, order and charts together -- rather than
+        // written over half of the newer one's state.
+        if (!isCurrentRequest()) return;
 
-      // A reply that a newer request has already superseded is discarded whole
-      // -- rows, pagination, balance, order and charts together -- rather than
-      // written over half of the newer one's state.
-      if (!isCurrentRequest()) return;
+        // A newer deep link may have replaced the target while this read was in
+        // flight; that one is still owed its own read.
+        if (targetTransactionId && targetTransactionIdRef.current === targetTransactionId) {
+          targetTransactionIdRef.current = null;
+        }
 
-      setTransactions(transactionsResponse.data);
-      setPagination(transactionsResponse.pagination);
-      setStartingBalance(transactionsResponse.startingBalance);
-      // Adopted with the rows and the balance it belongs to: a reload that
-      // keeps the rows has to keep the reason the balance is missing too.
-      setStartingBalanceWithheld(transactionsResponse.startingBalanceWithheld);
-      // The order these rows were fetched in, adopted with them. The headers
-      // moved the moment the reader clicked; the running balance, the today
-      // divider and the Balance column itself must not, because they are
-      // statements about rows that still belong to the previous request.
-      setRowsSort(effectiveSort);
+        setTransactions(transactionsResponse.data);
+        setPagination(transactionsResponse.pagination);
+        setStartingBalance(transactionsResponse.startingBalance);
+        // Adopted with the rows and the balance it belongs to: a reload that
+        // keeps the rows has to keep the reason the balance is missing too.
+        setStartingBalanceWithheld(transactionsResponse.startingBalanceWithheld);
+        setSearchEcho({
+          search: requestedSearch,
+          interpretation: transactionsResponse.searchInterpretation,
+        });
+        // The order these rows were fetched in, adopted with them. The headers
+        // moved the moment the reader clicked; the running balance, the today
+        // divider and the Balance column itself must not, because they are
+        // statements about rows that still belong to the previous request.
+        setRowsSort(effectiveSort);
 
-      if (hasCategoryOrPayeeFilter) {
-        setMonthlyTotals(chartResult as MonthlyTotal[]);
-        setDailyBalances([]);
-      } else {
-        setDailyBalances(chartResult as Array<{ date: string; balance: number; accountId: string; currencyCode: string }>);
-        setMonthlyTotals([]);
+        if (hasCategoryOrPayeeFilter) {
+          setMonthlyTotals(chartResult as MonthlyTotal[]);
+          setDailyBalances([]);
+        } else {
+          setDailyBalances(chartResult as Array<{ date: string; balance: number; accountId: string; currencyCode: string }>);
+          setMonthlyTotals([]);
+        }
+
+        if (targetTransactionId && transactionsResponse.pagination.page !== safePage) {
+          filters.setCurrentPage(transactionsResponse.pagination.page);
+        }
+
+        // Fetch budget status for visible categories (non-blocking)
+        const categoryIds = [
+          ...new Set(
+            transactionsResponse.data
+              .filter((t) => t.category?.id && !t.isTransfer)
+              .map((t) => t.category!.id),
+          ),
+        ];
+        if (categoryIds.length > 0) {
+          budgetsApi.getCategoryBudgetStatus(categoryIds).then(setBudgetStatusMap).catch(() => {});
+        }
+      } catch (error) {
+        // A superseded request's failure is not this register's failure: the
+        // reader is waiting on a newer one, and a toast for the one they
+        // abandoned only tells them something is broken that is not.
+        if (!isCurrentRequest()) return;
+        // A target the newest read failed on is dropped, as before, so every
+        // later read does not repeat the same failing request.
+        if (targetTransactionIdRef.current === targetTransactionId) {
+          targetTransactionIdRef.current = null;
+        }
+        showErrorToast(error, t('toasts.loadFailed'));
+        logger.error(error);
+      } finally {
+        if (isCurrentRequest()) {
+          setIsLoading(false);
+          // Signal the entity info widgets to refetch their summaries in lockstep
+          // with the freshly loaded chart/list data.
+          setReloadKey((k) => k + 1);
+        }
       }
-
-      if (targetTransactionId && transactionsResponse.pagination.page !== safePage) {
-        filters.setCurrentPage(transactionsResponse.pagination.page);
-      }
-
-      // Fetch budget status for visible categories (non-blocking)
-      const categoryIds = [
-        ...new Set(
-          transactionsResponse.data
-            .filter((t) => t.category?.id && !t.isTransfer)
-            .map((t) => t.category!.id),
-        ),
-      ];
-      if (categoryIds.length > 0) {
-        budgetsApi.getCategoryBudgetStatus(categoryIds).then(setBudgetStatusMap).catch(() => {});
-      }
-    } catch (error) {
-      // A superseded request's failure is not this register's failure: the
-      // reader is waiting on a newer one, and a toast for the one they
-      // abandoned only tells them something is broken that is not.
-      if (!isCurrentRequest()) return;
-      showErrorToast(error, t('toasts.loadFailed'));
-      logger.error(error);
-    } finally {
-      if (isCurrentRequest()) {
-        setIsLoading(false);
-        // Signal the entity info widgets to refetch their summaries in lockstep
-        // with the freshly loaded chart/list data.
-        setReloadKey((k) => k + 1);
-      }
-    }
+    };
+    return run();
   }, [accountIdsForQuery, filters.filterAccountStatus, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.filterOriginalCurrencyCodes, filters.filterTagKey, filters.filterTagKeyOp, filters.filterTagKeyValue, filters.filterHasAttachments, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadData = useCallback(async (page: number = filters.currentPage) => {
@@ -523,15 +586,15 @@ function TransactionsContent() {
     // Reload static data if invalidated (e.g. after undo/redo)
     loadStaticData();
 
-    const page = filters.isFilterChange.current ? 1 : filters.currentPage;
-    const wasFilterChange = filters.isFilterChange.current;
-    if (filters.isFilterChange.current) {
+    const page = isFilterChangeRef.current ? 1 : filters.currentPage;
+    const wasFilterChange = isFilterChangeRef.current;
+    if (isFilterChangeRef.current) {
       filters.setCurrentPage(1);
-      filters.isFilterChange.current = false;
+      isFilterChangeRef.current = false;
     }
 
-    if (filters.syncingFromPopstateRef.current) {
-      filters.syncingFromPopstateRef.current = false;
+    if (syncingFromPopstateRef.current) {
+      syncingFromPopstateRef.current = false;
     } else {
       filters.updateUrl(page, {
         accountIds: filters.filterAccountIds,
@@ -552,9 +615,9 @@ function TransactionsContent() {
       }, wasFilterChange);
     }
 
-    if (filters.filterDebounceRef.current) clearTimeout(filters.filterDebounceRef.current);
+    if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
     if (wasFilterChange) {
-      filters.filterDebounceRef.current = setTimeout(() => {
+      filterDebounceRef.current = setTimeout(() => {
         loadTransactions(page);
       }, 150);
     } else {
@@ -601,7 +664,9 @@ function TransactionsContent() {
     if (transaction.isTransfer || transaction.isSplit) {
       try {
         const fullTransaction = await transactionsApi.getById(transaction.id);
-        openEdit(fullTransaction);
+        // The register row's warranty count is a list-only field; the form's
+        // Warranties line reads it to decide whether to fetch the list.
+        openEdit({ ...fullTransaction, warrantyCount: transaction.warrantyCount });
       } catch (error) {
         logger.error('Failed to load transaction details:', error);
         openEdit(transaction);
@@ -643,6 +708,52 @@ function TransactionsContent() {
     setShowScheduleForm(true);
   };
 
+  // A warranty lives on its own page: Add opens its form prefilled from this
+  // row, View lists the warranties linked to it.
+  const handleAddWarranty = (transaction: Transaction) => {
+    router.push(`/warranties?new=1&transactionId=${transaction.id}`);
+  };
+
+  const handleViewWarranties = (transaction: Transaction) => {
+    router.push(`/warranties?transactionId=${transaction.id}`);
+  };
+
+  // Add warranty, or a linked warranty, from inside the edit window leaves the
+  // page, so it goes through the window's own close: a dirty form asks first
+  // (Save, Discard or keep editing) and the navigation waits on the answer. It
+  // also waits for the closed Modal's history entry to be popped, which would
+  // otherwise undo the push; a fixed delay lost that race on a slow render. A
+  // bare link in the window is undone the same way, which is why the
+  // Warranties line hands its links here too.
+  const pendingFormNavigation = useRef<string | null>(null);
+  const navigateAfterFormCloses = (href: string) => {
+    afterModalHistoryPop(() => router.push(href));
+  };
+
+  const navigateFromForm = (href: string) => {
+    if (modalProps.onBeforeClose() === false) {
+      pendingFormNavigation.current = href;
+      return;
+    }
+    handleClose();
+    navigateAfterFormCloses(href);
+  };
+
+  const handleAddWarrantyFromForm = (transaction: Transaction) => {
+    navigateFromForm(`/warranties?new=1&transactionId=${transaction.id}`);
+  };
+
+  const handleOpenWarrantyFromForm = (warrantyId: string) => {
+    navigateFromForm(`/warranties/${warrantyId}`);
+  };
+
+  /** The navigation a dirty form's dialog was holding, now that it may go. */
+  const releaseFormNavigation = () => {
+    const href = pendingFormNavigation.current;
+    pendingFormNavigation.current = null;
+    if (href !== null) navigateAfterFormCloses(href);
+  };
+
   const handleScheduleFormSuccess = () => {
     setSchedulingFrom(undefined);
     setShowScheduleForm(false);
@@ -655,6 +766,7 @@ function TransactionsContent() {
   };
 
   const handleClose = () => {
+    pendingFormNavigation.current = null;
     setDuplicatingFrom(undefined);
     close();
   };
@@ -666,6 +778,9 @@ function TransactionsContent() {
     close();
     setFormKey(prev => prev + 1);
     loadData();
+    // Save from the unsaved-changes dialog: the edits are kept, and the
+    // navigation that asked for the close goes ahead.
+    releaseFormNavigation();
   };
 
   // "Create & New" keeps the window open and the form resets itself, so the
@@ -1175,6 +1290,7 @@ function TransactionsContent() {
           }
         />
         {(() => {
+          if (chartCollapsed) return <CollapsedChartStrip onExpand={expandChart} />;
           const chartKind =
             filters.filterCategoryIds.length > 0 || filters.filterPayeeIds.length > 0 || filters.filterTagIds.length > 0 || filters.filterSearch.length > 0
               ? 'monthlyTotals'
@@ -1196,8 +1312,9 @@ function TransactionsContent() {
                   data={monthlyTotals}
                   isLoading={isLoading}
                   filterLabel={monthlyTotalsFilterLabel}
+                  onCollapse={collapseChart}
                   onMonthClick={(startDate, endDate) => {
-                    filters.isFilterChange.current = true;
+                    isFilterChangeRef.current = true;
                     filters.setFilterStartDate(startDate);
                     filters.setFilterEndDate(endDate);
                     filters.setFilterTimePeriod('custom');
@@ -1209,6 +1326,7 @@ function TransactionsContent() {
                   isLoading={isLoading}
                   currencyCode={chartCurrency}
                   onAccountClick={filters.handleAccountFilterClick}
+                  onCollapse={collapseChart}
                 />
               ) : chartKind === 'zeroBalances' ? (
                 isLoading ? (
@@ -1216,8 +1334,11 @@ function TransactionsContent() {
                 ) : (
                   <div
                     data-testid="chart-zero-balances"
-                    className={`${CARD_CLASS} p-3 sm:p-6 mb-6 min-h-[420px] flex items-center justify-center`}
+                    className={`${CARD_CLASS} relative p-3 sm:p-6 mb-6 min-h-[420px] flex items-center justify-center`}
                   >
+                    <div className="absolute top-3 right-3 sm:top-6 sm:right-6">
+                      <ChartCollapseButton onCollapse={collapseChart} />
+                    </div>
                     <p className="text-gray-500 dark:text-gray-400 text-center max-w-md">
                       {t('charts.zeroBalances.message')}
                     </p>
@@ -1232,6 +1353,7 @@ function TransactionsContent() {
                   // Only when narrowed to a single liability account is a
                   // negative balance expected; an aggregate of accounts is not.
                   isLiability={isLiabilityAccountType(singleFilteredAccount?.accountType)}
+                  onCollapse={collapseChart}
                 />
               )}
             </div>
@@ -1386,11 +1508,14 @@ function TransactionsContent() {
             onCancel={handleClose}
             onDirtyChange={setFormDirty}
             submitRef={formSubmitRef}
+            onAddWarranty={actingAsDelegate ? undefined : handleAddWarrantyFromForm}
+            onOpenWarranty={handleOpenWarrantyFromForm}
           />
         </Modal>
         <UnsavedChangesDialog
           {...unsavedChangesDialog}
-          onDiscard={() => { setDuplicatingFrom(undefined); unsavedChangesDialog.onDiscard(); }}
+          onDiscard={() => { setDuplicatingFrom(undefined); unsavedChangesDialog.onDiscard(); releaseFormNavigation(); }}
+          onCancel={() => { pendingFormNavigation.current = null; unsavedChangesDialog.onCancel(); }}
         />
 
         {/* Schedule as Recurring Modal */}
@@ -1429,6 +1554,11 @@ function TransactionsContent() {
           filterEndDate={filters.filterEndDate}
           filterSearch={filters.filterSearch}
           searchInput={filters.searchInput}
+          searchInterpretation={
+            searchEcho && searchEcho.search === filters.filterSearch
+              ? searchEcho.interpretation
+              : undefined
+          }
           filterAccountStatus={filters.filterAccountStatus}
           filterTimePeriod={filters.filterTimePeriod}
           filterAmountFrom={filters.filterAmountFrom}
@@ -1570,10 +1700,11 @@ function TransactionsContent() {
             <TransactionList
               transactions={transactions}
               jointPermissionsByAccount={jointPermissionsByAccount}
-              staleContext={staleReconciliation}
               onEdit={handleEdit}
               onDuplicate={handleDuplicate}
               onScheduleRecurring={handleScheduleRecurring}
+              onAddWarranty={actingAsDelegate ? undefined : handleAddWarranty}
+              onViewWarranties={canViewWarranties ? handleViewWarranties : undefined}
               onRefresh={loadAllData}
               onTransactionUpdate={handleTransactionUpdate}
               onPayeeClick={handlePayeeView}

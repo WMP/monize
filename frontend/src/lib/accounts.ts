@@ -22,7 +22,10 @@ import {
   PreviewLoanPaymentSetupResponse,
   AccountBalancesAsOfResponse,
   DailyBalanceTotalsResponse,
+  LoanSettlementRow,
+  PaymentMatching,
 } from '@/types/account';
+import type { TransactionRule } from '@/types/transaction-rule';
 import { StatementCycle, InterestPaid } from '@/types/credit-card-detail';
 import { BalanceForecast } from '@/types/banking-detail';
 import {
@@ -30,12 +33,22 @@ import {
   invalidateCache,
   invalidateScheduledFxReadModel,
 } from './apiCache';
+import { invalidateTransactionRulesCache } from './transaction-rules-api';
+
+// The Investments page reads its account list from its own cached endpoint
+// (`investments:accounts`), not from `accounts:`. A write that adds, renames,
+// closes, reopens or removes an account drops both, or the page keeps offering
+// the pre-write list -- a just-created account missing from its selector.
+function invalidateAccountLists(): void {
+  invalidateCache('accounts:');
+  invalidateCache('investments:accounts');
+}
 
 export const accountsApi = {
   // Create account
   create: async (data: CreateAccountData): Promise<Account> => {
     const response = await apiClient.post<Account>('/accounts', data);
-    invalidateCache('accounts:');
+    invalidateAccountLists();
     return response.data;
   },
 
@@ -45,7 +58,7 @@ export const accountsApi = {
       ...data,
       createInvestmentPair: true,
     });
-    invalidateCache('accounts:');
+    invalidateAccountLists();
     return response.data;
   },
 
@@ -108,7 +121,7 @@ export const accountsApi = {
   // Update account
   update: async (id: string, data: UpdateAccountData): Promise<Account> => {
     const response = await apiClient.patch<Account>(`/accounts/${id}`, data);
-    invalidateCache('accounts:');
+    invalidateAccountLists();
     // Issue #1167: a funding / linked-cash / brokerage account's currency is one
     // side of a scheduled investment's settlement pair, and the cached
     // scheduled-transaction read model holds server-derived FX fields resolved
@@ -122,14 +135,14 @@ export const accountsApi = {
   // Close account
   close: async (id: string): Promise<Account> => {
     const response = await apiClient.post<Account>(`/accounts/${id}/close`);
-    invalidateCache('accounts:');
+    invalidateAccountLists();
     return response.data;
   },
 
   // Reopen account
   reopen: async (id: string): Promise<Account> => {
     const response = await apiClient.post<Account>(`/accounts/${id}/reopen`);
-    invalidateCache('accounts:');
+    invalidateAccountLists();
     return response.data;
   },
 
@@ -191,7 +204,7 @@ export const accountsApi = {
   // Delete account (only if no transactions)
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/accounts/${id}`);
-    invalidateCache('accounts:');
+    invalidateAccountLists();
   },
 
   // Get daily running balances for accounts (per-account rows with currency)
@@ -325,6 +338,27 @@ export const accountsApi = {
   setupLoanPayments: async (id: string, data: SetupLoanPaymentsData): Promise<SetupLoanPaymentsResponse> => {
     const response = await apiClient.post<SetupLoanPaymentsResponse>(`/accounts/${id}/setup-loan-payments`, data);
     invalidateCache('accounts:');
+    return response.data;
+  },
+
+  // Create the "Payment matching" rule of a loan that has none: the rule, the
+  // loan's pointer to it and the bill's auto-post turned off, in one server
+  // transaction. Moves no money, so only the lists it changes are dropped.
+  createPaymentMatchingRule: async (id: string, data: PaymentMatching): Promise<TransactionRule> => {
+    try {
+      const response = await apiClient.post<TransactionRule>(`/accounts/${id}/payment-matching-rule`, data);
+      return response.data;
+    } finally {
+      invalidateCache('accounts:');
+      invalidateCache('scheduled:');
+      invalidateTransactionRulesCache();
+    }
+  },
+
+  // The installments payment matching settled on a loan, newest first. Never
+  // cached: Process history and every import change it.
+  getLoanSettlements: async (id: string): Promise<LoanSettlementRow[]> => {
+    const response = await apiClient.get<LoanSettlementRow[]>(`/accounts/${id}/loan-settlements`);
     return response.data;
   },
 

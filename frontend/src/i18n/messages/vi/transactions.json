@@ -135,6 +135,7 @@
       "toggleTitle": "Bỏ năm khỏi ngày để hiện được nhiều tên người nhận hơn"
     },
     "attachmentsCount": "{count, plural, other {# tệp đính kèm}}",
+    "warrantiesCount": "{count, plural, other {# bảo hành}}",
     "today": "Hôm nay",
     "export": {
       "button": "Xuất",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Sao chép giao tác",
       "copy": "Sao chép",
       "duplicate": "Nhân bản",
-      "scheduleRecurring": "Lên lịch định kỳ"
+      "scheduleRecurring": "Lên lịch định kỳ",
+      "addWarranty": "Thêm bảo hành",
+      "viewWarranties": "Xem bảo hành"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Chỉnh sửa",
     "duplicate": "Nhân bản",
     "scheduleRecurring": "Lên lịch định kỳ",
+    "addWarranty": "Thêm bảo hành",
+    "viewWarranties": "Xem bảo hành",
     "delete": "Xóa"
   },
   "filter": {
@@ -219,7 +224,7 @@
       "title": "Bộ lọc",
       "clear": "Xóa",
       "hide": "Ẩn",
-      "show": "Hiển thị"
+      "show": "Hiển thị bộ lọc"
     },
     "accounts": {
       "label": "Hiển thị tài khoản:",
@@ -258,7 +263,7 @@
       "statuses": "Tất cả trạng thái",
       "amountMin": "Tối thiểu",
       "amountMax": "Tối đa",
-      "search": "Tìm kiếm người nhận, danh mục, số tiền, thẻ, mô tả, số tham chiếu...",
+      "search": "Tìm kiếm, hoặc thử #10 hay payee:costco",
       "tagKeyValue": "ví dụ: usa"
     },
     "tagKeyNone": "Bất kỳ (không lọc theo khóa)",
@@ -431,6 +436,7 @@
       "destinationRequired": "Vui lòng chọn tài khoản đích",
       "sameAccount": "Tài khoản nguồn và đích phải khác nhau",
       "negativeTransfer": "Số tiền chuyển không được là âm",
+      "convertToTransferUnsupported": "Không thể chuyển một giao dịch hiện có thành chuyển khoản tại đây. Hãy xóa giao dịch đó và tạo chuyển khoản thay thế.",
       "payeeCreated": "Người nhận \"{name}\" đã được tạo",
       "payeeCreateFailed": "Không thể tạo người nhận",
       "payeeReactivated": "Người nhận \"{name}\" đã được kích hoạt lại",
@@ -465,7 +471,14 @@
       },
       "feeCaption": "Bao gồm phí giao dịch nước ngoài {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Chỉ chủ sở hữu mới có thể quản lý giao dịch tách trong tài khoản được chia sẻ"
+    "jointSplitDisabled": "Chỉ chủ sở hữu mới có thể quản lý giao dịch tách trong tài khoản được chia sẻ",
+    "warranties": {
+      "title": "Bảo hành",
+      "add": "Thêm bảo hành",
+      "expires": "Hết hạn {date}",
+      "loading": "Đang tải bảo hành",
+      "loadError": "Không thể tải các bảo hành của giao tác này."
+    }
   },
   "splitEditor": {
     "header": "Chi tiết phần chia",
@@ -582,6 +595,11 @@
       "log": "Logarit",
       "autoTitle": "Tự động ({scale})",
       "scaleTitle": "Thang đo {label}"
+    },
+    "collapse": {
+      "hide": "Ẩn biểu đồ",
+      "show": "Hiện biểu đồ",
+      "hidden": "Biểu đồ đã ẩn"
     }
   },
   "toasts": {
@@ -604,5 +622,71 @@
     "title": "Chi tiêu theo {key}",
     "other": "Khác",
     "noData": "Không có chi tiêu được gắn thẻ để phân tích cho khóa này."
+  },
+  "searchSyntax": {
+    "open": "Cú pháp tìm kiếm",
+    "title": "Cú pháp tìm kiếm",
+    "fields": "Trường: payee, memo, cat, tag, account, ref, amount, date, status, is, has. Chọn một ví dụ để đưa vào ô tìm kiếm.",
+    "examples": {
+      "allWords": "Mỗi từ khớp ở đâu đó",
+      "phrase": "Đúng cụm từ này",
+      "exclude": "Loại trừ mọi thứ khớp với refund",
+      "fieldContains": "Người nhận chứa costco",
+      "fieldExact": "Người nhận đúng là Costco",
+      "reference": "Số séc hoặc số tham chiếu đúng 10",
+      "wildcard": "Tham chiếu bắt đầu bằng 10",
+      "amountOver": "Số tiền trên 100",
+      "amountRange": "Số tiền từ 50 đến 100",
+      "datePeriod": "Bất kỳ ngày nào trong tháng 3 năm 2026",
+      "isSplit": "Giao dịch tách",
+      "hasAttachment": "Có tệp đính kèm",
+      "hasWarranty": "Có bảo hành"
+    }
+  },
+  "searchInterpretation": {
+    "label": "Đang tìm:",
+    "negated": "không {phrase}",
+    "malformed": "{raw} (không hiểu, tìm như văn bản)",
+    "empty": "{raw} (trống, bỏ qua)",
+    "status": "Trạng thái là {value}",
+    "any": "“{value}” ở bất kỳ đâu",
+    "fields": {
+      "payee": "Người nhận",
+      "memo": "Ghi chú",
+      "cat": "Danh mục",
+      "tag": "Thẻ",
+      "account": "Tài khoản",
+      "ref": "Tham chiếu",
+      "amount": "Số tiền",
+      "date": "Ngày",
+      "status": "Trạng thái",
+      "is": "Loại",
+      "has": "Có"
+    },
+    "ops": {
+      "contains": "{field} chứa “{value}”",
+      "exact": "{field} là “{value}”",
+      "glob": "{field} khớp “{value}”",
+      "eq": "{field} là {value}",
+      "gt": "{field} trên {value}",
+      "gte": "{field} từ {value} trở lên",
+      "lt": "{field} dưới {value}",
+      "lte": "{field} từ {value} trở xuống",
+      "between": "{field} từ {value} đến {valueTo}"
+    },
+    "enum": {
+      "is": {
+        "transfer": "Chuyển khoản",
+        "split": "Giao dịch tách",
+        "uncategorized": "Chưa phân loại"
+      },
+      "has": {
+        "attachment": "Có tệp đính kèm",
+        "warranty": "Có bảo hành",
+        "ref": "Có số tham chiếu",
+        "memo": "Có ghi chú",
+        "tag": "Có thẻ"
+      }
+    }
   }
 }

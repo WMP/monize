@@ -10,7 +10,7 @@ import { extractTsComments } from "./repo-paths.util";
  * something -- an attempt budget, a replay window, a claim, a session -- N
  * replicas mean N answers, and the deployment quietly gets N times the limit it
  * wrote down. That is the whole of the horizontal-scaling work
- * (`docs/future-plans/horizontal-scaling.md`): the counters, the single-use
+ * (`docs/specs/horizontal-scaling.md`): the counters, the single-use
  * artifacts, the relay queue and the signing keys became rows.
  *
  * `db/derived-state-writers.guard.spec.ts` already scans the files containing an
@@ -112,7 +112,7 @@ function blankComments(source: string): string {
 
 /** The first occurrence of `body` at or after `from` that a `//` or `/*` opens. */
 function commentBodyStart(source: string, body: string, from: number): number {
-  for (let at = source.indexOf(body, from); at !== -1; ) {
+  for (let at = source.indexOf(body, from); at !== -1;) {
     const opener = source.slice(Math.max(0, at - 2), at);
     if (opener === "//" || opener === "/*") return at;
     at = source.indexOf(body, at + 1);
@@ -153,7 +153,7 @@ function processLocalFields(): Field[] {
 /**
  * Every class-scope `Map`/`Set` in the tree that is allowed to stay per replica,
  * with the reason it is allowed. Seeded from the "Per-replica state that stays"
- * table in `docs/future-plans/horizontal-scaling.md`.
+ * table in `docs/specs/horizontal-scaling.md`.
  */
 const ALLOWED = new Map<string, string>([
   // -- Sockets and connections this process owns ---------------------------
@@ -227,6 +227,13 @@ const ALLOWED = new Map<string, string>([
     "the empty-window negative cache for the user-driven gap fill; a window " +
       "the provider answered with nothing cannot be filled by asking again, " +
       "and a cold replica costs one extra fetch behind the same upsert",
+  ],
+  [
+    "currencies/providers/yahoo-fx.provider.ts#reverseFirst",
+    "Yahoo pairs whose direct symbol answered the 0.01 placeholder, asked " +
+      "reverse-first; a call-order hint that changes no rate (every answer " +
+      "still passes the same cross-check), bounded, and a cold replica costs " +
+      "one extra quote call",
   ],
   [
     "currencies/exchange-rate-history.service.ts#inFlight",

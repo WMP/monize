@@ -427,5 +427,42 @@
         }
       }
     }
+  },
+  "emailReceipts": {
+    "basics": {
+      "title": "Bonnen uit e-mail",
+      "steps": {
+        "welcome": {
+          "title": "Waarom bonnen uit e-mail lezen",
+          "body": "Een banktransactie laat zien hoeveel u betaalde en wanneer. Ze laat niet zien wat u kocht. De orderbevestiging per e-mail wel. Monize leest deze e-mails, vindt de transactie waarvoor elke e-mail de betaling was en stelt een omschrijving, een begunstigde en een splitsing per regel voor, met een categorie voor elke regel. U keurt elk voorstel goed voordat het een transactie wijzigt."
+        },
+        "aiRequired": {
+          "title": "In de praktijk hebt u een AI-aanbieder nodig",
+          "body": "Monize leest een e-mail met een **profiel**: een set patronen voor één afzenderdomein, bijvoorbeeld één winkel. U kunt een profiel met de hand schrijven, maar elk patroon moet precies passen bij de regels in de e-mails van die winkel, dus in de praktijk schrijft een AI het. De AI schrijft het profiel één keer, op basis van een paar voorbeeld-e-mails. Nadat u het hebt goedgekeurd, leest het profiel elke nieuwe e-mail van die winkel zonder de AI."
+        },
+        "aiProviders": {
+          "title": "Stel eerst een AI-aanbieder in",
+          "body": "Voeg hier een aanbieder toe en test de verbinding. Zonder aanbieder kan de profielwizard geen profiel schrijven en blijven e-mails van een winkel zonder profiel ongelezen."
+        },
+        "tabs": {
+          "title": "Vier tabbladen, in de volgorde van gebruik",
+          "body": "**Overzicht** toont wat Monize heeft gelezen. Koppel bij **Mailbox** een mailbox die alleen orderbevestigingen bevat. Monize leest hem alleen: het verplaatst, markeert of verwijdert nooit een bericht. **Profielen** bevat één profiel per winkel. **E-mails** toont elke e-mail en de status ervan."
+        },
+        "uncovered": {
+          "title": "Winkels zonder profiel",
+          "body": "Dit vak toont de afzenderdomeinen die nog geen enkel profiel kan lezen. Kies er een om de wizard te starten. Selecteer maximaal vijf e-mails ervan en koppel elke e-mail aan de banktransactie waarvoor ze de betaling was. De AI schrijft een profiel en test het op deze paren. Daarna ziet u een voorbeeld voor alle e-mails van die winkel en accepteert u het profiel of vraagt u met een korte notitie om een wijziging.",
+          "fallbackBody": "U hebt nog geen e-mails van een winkel zonder profiel. Nadat u de mailbox hebt gekoppeld, verschijnt elk afzenderdomein hier als label, bijvoorbeeld **shop.example (12)**: het domein en het aantal e-mails ervan. Kies het label om de wizard te starten. Selecteer maximaal vijf e-mails ervan en koppel elke e-mail aan de banktransactie waarvoor ze de betaling was. De AI schrijft een profiel en test het op deze paren. Daarna ziet u een voorbeeld voor alle e-mails van die winkel en accepteert u het profiel of vraagt u met een korte notitie om een wijziging."
+        },
+        "profiles": {
+          "title": "Uw profielen",
+          "body": "Elke rij is één profiel, goedgekeurd of concept. **Nieuw profiel handmatig maken** opent de editor voor een met de hand geschreven profiel. Gebruik het om een klein detail in een concept van de AI te corrigeren. Wanneer u een profiel goedkeurt, leest Monize meteen de e-mails van het bijbehorende domein.",
+          "fallbackBody": "U hebt nog geen profielen. Elk profiel dat u accepteert, verschijnt hier als een rij, bijvoorbeeld **Shop Example**, domein **shop.example**, status **Goedgekeurd**. **Nieuw profiel handmatig maken** opent de editor voor een met de hand geschreven profiel. Gebruik het alleen om een klein detail in een concept van de AI te corrigeren. Wanneer u een profiel goedkeurt, leest Monize meteen de e-mails van het bijbehorende domein."
+        },
+        "reviews": {
+          "title": "Keur de voorstellen goed",
+          "body": "Elke e-mail die bij een transactie past, wordt een voorstel in het **AI-controlepostvak**, in het menu **AI**. Een voorstel toont bijvoorbeeld de regels van een bestelling met een categorie voor elke regel. Er verandert niets aan uw transacties totdat u het voorstel daar goedkeurt."
+        }
+      }
+    }
   }
 }

@@ -16,11 +16,13 @@ import { AccountsController } from "@/accounts/accounts.controller";
 import { CalendarModule } from "@/calendar/calendar.module";
 import { CalendarDayNotesController } from "@/calendar/calendar-day-notes.controller";
 import { AccountDelegateGuard } from "@/delegation/guards/account-delegate.guard";
+import { BondPriceService } from "@/bonds/bond-price.service";
 import { BackupService } from "@/backup/backup.service";
 import { BackupExportService } from "@/backup/backup-export.service";
 import { BackupRestoreService } from "@/backup/backup-restore.service";
 import { BackupAttachmentTransferService } from "@/backup/backup-attachment-transfer.service";
 import { BackupRestoreDatabaseService } from "@/backup/backup-restore-database.service";
+import { BackupBondSeriesRecoveryService } from "@/backup/backup-bond-series-recovery.service";
 import { NetWorthService } from "@/net-worth/net-worth.service";
 import { OidcReauthService } from "@/auth/oidc/oidc-reauth.service";
 import { EncryptionService } from "@/common/encryption/encryption.service";
@@ -410,6 +412,24 @@ describe("Calendar day notes survive a backup round trip", () => {
         BackupService,
         BackupExportService,
         BackupRestoreService,
+        // The restore's bond price recompute is not under test here.
+        {
+          provide: BondPriceService,
+          useValue: {
+            recomputeSecurity: async () => ({}),
+            recomputeLinkedSecurities: async () => undefined,
+          },
+        },
+        // The restore's bond series recovery finds nothing to recover here.
+        {
+          provide: BackupBondSeriesRecoveryService,
+          useValue: {
+            recover: async (_userId: string, data: unknown) => ({
+              data,
+              unrecovered: [],
+            }),
+          },
+        },
         BackupAttachmentTransferService,
         BackupRestoreDatabaseService,
         NetWorthService,

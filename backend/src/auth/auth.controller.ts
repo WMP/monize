@@ -215,16 +215,20 @@ export class AuthController {
   private setAuthCookies(
     res: Response,
     accessToken: string,
-    refreshToken: string,
+    refreshToken: string | null,
     userId: string,
     rememberMe?: boolean,
   ) {
     res.cookie("auth_token", accessToken, this.getAccessCookieOptions());
-    res.cookie(
-      "refresh_token",
-      refreshToken,
-      this.getRefreshCookieOptions(rememberMe),
-    );
+    // `null` is a refresh answered inside the rotation grace (a second tab):
+    // the refresh cookie the first response set is the live one, keep it.
+    if (refreshToken !== null) {
+      res.cookie(
+        "refresh_token",
+        refreshToken,
+        this.getRefreshCookieOptions(rememberMe),
+      );
+    }
     res.cookie(
       "csrf_token",
       generateCsrfToken(userId, this.authService.getCsrfKey()),
@@ -702,9 +706,12 @@ export class AuthController {
       // in `error.cause` (a fetch Response). The generic message ("unexpected
       // HTTP response status code") hides the real status/body from the IdP
       // token endpoint -- surface them so 5xx/3xx/HTML answers are diagnosable.
+      // `globalThis.` because `Response` here is express's type-only import;
+      // a bare `Response` only reaches the fetch class when the compiler can
+      // see that the import has no value, which per-file transpilation cannot.
       const cause = (error as { cause?: unknown })?.cause;
-      if (cause instanceof Response) {
-        let body = "";
+      if (cause instanceof globalThis.Response) {
+        let body: string;
         try {
           body = (await cause.clone().text()).slice(0, 2000);
         } catch {

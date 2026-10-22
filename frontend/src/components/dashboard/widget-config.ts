@@ -5,6 +5,10 @@
  * by useWidgetConfig, which memoizes on the defaults reference).
  */
 
+import type { ForecastPeriod } from '@/lib/forecast';
+import type { NetWorthBarStyle } from '@/components/reports/NetWorthByAccountTypeChart';
+import { RECURRING_EXPENSE_RANGES, type RecurringExpenseRange } from '@/types/built-in-reports';
+
 /** Range presets offered by the transaction-based spending/income widgets. */
 export const SPENDING_RANGES = ['mtd', '1m', '3m', '6m', '1y', 'ytd'] as const;
 /** Range presets for month-trend widgets. */
@@ -27,6 +31,10 @@ export const PORTFOLIO_RANGES = [
   '5y',
   'all',
 ] as const;
+/** Range presets for the recurring expenses widget (the analysis' own windows). */
+export const RECURRING_RANGES = RECURRING_EXPENSE_RANGES;
+/** Range presets for the net worth widget: whole years of months. */
+export const NET_WORTH_RANGES = ['1y', '2y', '5y', '10y'] as const;
 /** Range presets for the weekend/weekday widget. */
 export const WEEKEND_RANGES = ['1m', '3m', '6m', '1y'] as const;
 
@@ -73,10 +81,14 @@ export interface RangeAccountsConfig {
 /**
  * Expenses by Category adds a rollup choice: with `topLevelOnly` a subcategory's
  * spend is counted against its top-level ancestor, so the chart answers "which
- * part of my budget" rather than listing every leaf.
+ * part of my budget" rather than listing every leaf. `view` names the top ten
+ * categories in boxes beside the donut (`callouts`, which falls back to the
+ * legend where the widget is too small for the boxes), or eleven in a legend
+ * under it.
  */
 export interface ExpensesPieConfig extends RangeAccountsConfig {
   topLevelOnly: boolean;
+  view: 'callouts' | 'legend';
 }
 
 /**
@@ -107,8 +119,44 @@ export interface UpcomingBillsConfig {
   view: 'list' | 'calendar';
 }
 
+/**
+ * Cash Flow Forecast settings: how far ahead to project, and which accounts.
+ * An empty `accountIds` is every account, drawn as one line.
+ */
+export interface CashFlowForecastConfig {
+  period: ForecastPeriod;
+  accountIds: string[];
+}
+
+/**
+ * Top Recurring Expenses settings. `view` names each slice either in a box
+ * beside the donut with a line to its slice (`callouts`, which falls back to
+ * the legend where the widget is too small for the boxes) or in a legend
+ * under it.
+ */
 export interface RecurringConfig {
   minOccurrences: number;
+  range: RecurringExpenseRange;
+  view: 'callouts' | 'legend';
+}
+
+/**
+ * Assets vs Liabilities settings. `view` names the two slices either in boxes
+ * beside the donut with a line to each slice (`callouts`, which falls back to
+ * the legend where the widget is too small for the boxes) or in a legend
+ * under it.
+ */
+export interface AssetsLiabilitiesConfig {
+  view: 'callouts' | 'legend';
+}
+
+/**
+ * Net Worth settings: how many years of months to draw, and whether the bars
+ * are one solid bar of net worth or stacked by account type.
+ */
+export interface NetWorthConfig {
+  range: (typeof NET_WORTH_RANGES)[number];
+  barStyle: NetWorthBarStyle;
 }
 
 export interface WeekendConfig {
@@ -157,7 +205,30 @@ export const UPCOMING_BILLS_DEFAULT: UpcomingBillsConfig = {
   view: 'list',
 };
 
-export const RECURRING_EXPENSES_DEFAULT: RecurringConfig = { minOccurrences: 3 };
+// The Bills & Deposits chart's own default window.
+export const CASH_FLOW_FORECAST_DEFAULT: CashFlowForecastConfig = {
+  period: 'month',
+  accountIds: [],
+};
+
+// Six months is the window the widget always used.
+export const RECURRING_EXPENSES_DEFAULT: RecurringConfig = {
+  minOccurrences: 3,
+  range: '6m',
+  view: 'callouts',
+};
+
+// Twelve months is the window the widget always drew; stacked by account
+// type is the bar it draws today.
+export const NET_WORTH_DEFAULT: NetWorthConfig = {
+  range: '1y',
+  barStyle: 'accountType',
+};
+
+// The legend is what the widget always showed.
+export const ASSETS_LIABILITIES_DEFAULT: AssetsLiabilitiesConfig = {
+  view: 'legend',
+};
 
 export const WEEKEND_WEEKDAY_DEFAULT: WeekendConfig = {
   range: '3m',
@@ -170,6 +241,7 @@ export const EXPENSES_PIE_DEFAULT: ExpensesPieConfig = {
   range: '1m',
   accountIds: [],
   topLevelOnly: false,
+  view: 'legend',
 };
 
 /**

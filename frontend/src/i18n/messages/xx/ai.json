@@ -84,6 +84,7 @@
     "newCategory": "[XX-New category-XX]",
     "currentCategory": "[XX-Current category-XX]",
     "description": "[XX-Description-XX]",
+    "referenceNumber": "[XX-Ref #-XX]",
     "name": "[XX-Name-XX]",
     "website": "[XX-Website-XX]",
     "address": "[XX-Address-XX]",
@@ -128,6 +129,13 @@
     "commission": "[XX-Commission-XX]",
     "total": "[XX-Total-XX]",
     "cashImpact": "[XX-Cash impact-XX]",
+    "bondSeries": "[XX-Series-XX]",
+    "marksPaid": "[XX-Marks as paid-XX]",
+    "accruedInterest": "[XX-Accrued interest-XX]",
+    "redemptionSplit": "[XX-Redemption split-XX]",
+    "redemptionSplitValue": "[XX-Principal {principal} + interest {interest} = payout {payout}-XX]",
+    "redemptionDeduction": "[XX-Early-redemption fee deducted-XX]",
+    "redemptionSplitDiffers": "[XX-The price and accrued interest differ from what this redemption pays (see the split). Check them before approving.-XX]",
     "createTransactionsTitle": "[XX-Create these transactions?-XX]",
     "createInvestmentTransactionsTitle": "[XX-Create these investment transactions?-XX]",
     "approveAll": "[XX-Approve all-XX]",
@@ -155,7 +163,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "[XX-Reinvest long-term cap gain-XX]",
       "CAPITAL_GAIN_SHORT": "[XX-Short-term capital gain-XX]",
       "CAPITAL_GAIN_LONG": "[XX-Long-term capital gain-XX]",
-      "REDEEM": "[XX-Redeem CD/Bond-XX]"
+      "REDEEM": "[XX-Redeem CD/Bond-XX]",
+      "RETURN_OF_CAPITAL": "[XX-Return of capital-XX]"
     },
     "createTransferTitle": "[XX-Create this transfer?-XX]",
     "updateTransferTitle": "[XX-Apply this transfer edit?-XX]",
@@ -224,7 +233,11 @@
       "category": "[XX-Set the category to {name}-XX]",
       "payee": "[XX-Set the payee to {name}-XX]",
       "aiReview": "[XX-{count, plural, one {Queue # AI review request} other {Queue # AI review requests}}-XX]"
-    }
+    },
+    "aiCategory": "[XX-suggested by AI-XX]",
+    "tags": "[XX-Tags-XX]",
+    "newTag": "[XX-(new tag)-XX]",
+    "marksPaidDue": "[XX-{name} (due {date})-XX]"
   },
   "table": {
     "downloadTitle": "[XX-Download table as CSV-XX]",

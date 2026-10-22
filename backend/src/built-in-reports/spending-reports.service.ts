@@ -4,6 +4,7 @@ import { withScopedDb } from "../common/db/scoped-db";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import {
+  ConversionGaps,
   ReportCurrencyService,
   RawCategoryAggregate,
   RawPayeeAggregate,
@@ -191,8 +192,7 @@ export class SpendingReportsService {
 
     for (const row of rawResults) {
       // A missing rate is unknown, never the unconverted figure: adding foreign
-      // units to a home-currency total is the defect `convertAmount` still
-      // carries for the reports that have nowhere to report a gap.
+      // units to a home-currency total is the defect INV-FX-001 forbids.
       const converted = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.total),
         row.currency_code,
@@ -323,25 +323,35 @@ export class SpendingReportsService {
 
     const payeeTotals = new Map<
       string,
-      { payeeId: string | null; payeeName: string; total: number }
+      { payeeId: string | null; payeeName: string; agg: FxAggregate }
     >();
+    // A row with no rate is unknown, never its unconverted figure (INV-FX-001):
+    // it is in no payee, no ranking and no total. Excluding it can change which
+    // twenty payees make the list, so the total is withheld, not merely smaller.
+    const gaps = new ConversionGaps();
     for (const row of rawResults) {
-      const total = this.currencyService.convertAmount(
+      const total = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.total),
         row.currency_code,
         defaultCurrency,
         rateMap,
       );
+      if (total === null) {
+        gaps.record(row.currency_code);
+        continue;
+      }
       const key = row.payee_id || row.payee_name || "unknown";
       const payee = row.payee_id ? payeeMap.get(row.payee_id) : null;
       const existing = payeeTotals.get(key);
       if (existing) {
-        existing.total += total;
+        existing.agg.addConverted(total);
       } else {
+        const agg = new FxAggregate();
+        agg.addConverted(total);
         payeeTotals.set(key, {
           payeeId: row.payee_id,
           payeeName: payee?.name || row.payee_name || "Unknown",
-          total,
+          agg,
         });
       }
     }
@@ -350,16 +360,20 @@ export class SpendingReportsService {
       .map((row) => ({
         payeeId: row.payeeId,
         payeeName: row.payeeName,
-        total: roundMoney(row.total),
+        total: roundMoney(row.agg.knownSubtotal),
       }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 20);
 
-    const totalSpending = sumMoney(data.map((item) => item.total));
+    const knownSpending = roundMoney(sumMoney(data.map((item) => item.total)));
 
     return {
       data,
-      totalSpending: roundMoney(totalSpending),
+      totalSpending: gaps.headline(knownSpending),
+      knownSpending,
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
     };
   }
 
@@ -423,17 +437,25 @@ export class SpendingReportsService {
 
     const monthlyData = new Map<
       string,
-      Map<string, { total: number; category: Category | null }>
+      Map<string, { agg: FxAggregate; category: Category | null }>
     >();
+    // A row with no rate is unknown, never its unconverted figure (INV-FX-001):
+    // it is in no month, no category and no ranking, and does not create a month
+    // that holds nothing else.
+    const gaps = new ConversionGaps();
 
     for (const row of rawResults) {
       const month = row.month;
-      const total = this.currencyService.convertAmount(
+      const total = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.total),
         row.currency_code,
         defaultCurrency,
         rateMap,
       );
+      if (total === null) {
+        gaps.record(row.currency_code);
+        continue;
+      }
       const categoryId = row.category_id;
 
       if (!monthlyData.has(month)) {
@@ -457,19 +479,20 @@ export class SpendingReportsService {
 
       const existing = monthMap.get(displayId);
       if (existing) {
-        existing.total += total;
+        existing.agg.addConverted(total);
       } else {
-        monthMap.set(displayId, { total, category: displayCategory });
+        const agg = new FxAggregate();
+        agg.addConverted(total);
+        monthMap.set(displayId, { agg, category: displayCategory });
       }
     }
 
-    const allCategoryTotals = new Map<string, number>();
+    const allCategoryTotals = new Map<string, FxAggregate>();
     for (const monthMap of monthlyData.values()) {
-      for (const [catId, { total }] of monthMap) {
-        allCategoryTotals.set(
-          catId,
-          (allCategoryTotals.get(catId) || 0) + total,
-        );
+      for (const [catId, { agg }] of monthMap) {
+        const overall = allCategoryTotals.get(catId) ?? new FxAggregate();
+        overall.addConverted(agg.knownSubtotal);
+        allCategoryTotals.set(catId, overall);
       }
     }
     // Whether a category belongs in a spending trend is decided over the whole
@@ -479,12 +502,14 @@ export class SpendingReportsService {
     // is one.
     const spendingCategories = new Set(
       Array.from(allCategoryTotals.entries())
-        .filter(([, total]) => isNetSpending(roundMoney(total)))
+        .filter(([, overall]) =>
+          isNetSpending(roundMoney(overall.knownSubtotal)),
+        )
         .map(([id]) => id),
     );
     const topCategories = Array.from(allCategoryTotals.entries())
       .filter(([id]) => spendingCategories.has(id))
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => b[1].knownSubtotal - a[1].knownSubtotal)
       .slice(0, 10)
       .map(([id]) => id);
 
@@ -512,7 +537,7 @@ export class SpendingReportsService {
               categoryId: catId === "uncategorized" ? null : catId,
               categoryName: category?.name || "Uncategorized",
               color: category?.color || null,
-              total: roundMoney(catData?.total || 0),
+              total: roundMoney(catData?.agg.knownSubtotal ?? 0),
             };
           },
         );
@@ -526,6 +551,11 @@ export class SpendingReportsService {
         };
       });
 
-    return { data };
+    return {
+      data,
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
+    };
   }
 }

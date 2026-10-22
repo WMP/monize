@@ -5,6 +5,7 @@ import { DataSource } from "typeorm";
 import { returnedRows } from "../common/db/query-result";
 import { withScopedDb } from "../common/db/scoped-db";
 import { withSystemContext } from "../common/db/with-context";
+import { AiReviewNotificationService } from "./ai-review-notification.service";
 import { AiReviewRequestsService } from "./ai-review-requests.service";
 
 /** How long an agent may hold a claim before the request goes back to the queue. */
@@ -29,6 +30,9 @@ export const AI_REVIEW_RELEASE_MAX_BATCHES = 50;
  *    that was only slow finds its later proposal refused, because the
  *    transition is conditional on `status = 'claimed'`, and claims again.
  *
+ * 3. `AiReviewNotificationService.notifyReady` tells each user whose count of
+ *    open proposals grew (docs/specs/ai-review-notifications.md section 3).
+ *
  * Expiry runs first, so a request past its life is never resurrected. Both
  * cutoffs are `CURRENT_TIMESTAMP` in the database, never a clock this process
  * holds, and both are conditional on the stored status, so every replica firing
@@ -44,6 +48,7 @@ export class AiReviewRequestsExpiryService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly requests: AiReviewRequestsService,
+    private readonly notifications: AiReviewNotificationService,
   ) {}
 
   @Cron("20 * * * *")
@@ -66,6 +71,9 @@ export class AiReviewRequestsExpiryService {
             `${result.released} stale claim(s)`,
         );
       }
+      // After expiry and release, so an expired request is never counted. It
+      // never throws; the guard keeps a notice from ever breaking the sweep.
+      await this.notifyReady();
     } catch (error) {
       // Warned and swallowed: every claim path re-checks expiry and status in
       // the database, so nothing depends on this run having happened.
@@ -74,6 +82,17 @@ export class AiReviewRequestsExpiryService {
       );
     }
     return result;
+  }
+
+  /** The "proposals ready" step: its failure is logged, never the sweep's. */
+  private async notifyReady(): Promise<void> {
+    try {
+      await this.notifications.notifyReady();
+    } catch (error) {
+      this.logger.warn(
+        `AI review ready notices failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   /** One bounded release in its own transaction; returns the claims released. */

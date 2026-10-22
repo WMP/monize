@@ -371,7 +371,7 @@ AGENTS.md rule asks for.)
 
 - **Cross-owner transfer legs are recorded, not restored** (`kind =
   'cross_owner'`). Restoring one leg needs the counterpart owner's consent
-  model from `docs/future-plans/cross-owner-transfers.md`; a follow-up.
+  model from `docs/specs/cross-owner-transfers.md`; a follow-up.
 - **Attachment bytes are not kept in v1.** Phase 2: `transaction_attachments`
   gains a nullable `trash_entry_id`; the delete re-points the rows to the
   entry instead of letting the cascade drop them (an `UPDATE` before the

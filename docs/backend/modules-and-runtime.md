@@ -29,15 +29,16 @@ at once (naming the offending edge), then at runtime from every module file in
 turn, walking `imports` and every provider's `design:paramtypes` as Nest reads
 them. Reordering imports is not a fix; defer the edge.
 
-## A stub standing in for a real module inherits its export list
+## The integration harness builds the real module graph
 
-`test/helpers/integration-setup.ts` replaces `ScheduledTransactionsModule` with
-a stub, so that stub's `exports` are a claim about the real module. It derives
-them from `Reflect.getMetadata("exports", ScheduledTransactionsModule)` rather
-than restating them: a hand-written copy keeps compiling until a consumer of the
-newly added export appears, and then eighteen suites fail somewhere else
-entirely ("argument ScheduledOccurrenceService at index [5] is available in the
-NotificationsModule module").
+`test/helpers/integration-setup.ts` builds the real `ScheduledTransactionsModule`
+wherever a suite's imports reach it, through the same `forwardRef` edges the app
+uses. It used to replace that module with a stub of empty services to break the
+Transactions -> Accounts -> ScheduledTransactions cycle, which kept the real
+`post()`, the auto-post cron and every consumer of the occurrence services out of
+every suite. Do not reintroduce a module stub there: a stub's exports are a claim
+about the real module that only fails when a consumer appears, and a service it
+fakes cannot be tested at the database boundary at all.
 
 ## Global Providers (app.module.ts)
 
@@ -131,7 +132,11 @@ Before adding an env var for anything a user can also configure, ask which resou
 
 ## CodeQL runs as default setup, and a suppression annotation closes nothing there
 
-Code scanning on this repository is CodeQL *default setup*, which runs the standard code-scanning suite and never the alert-suppression query -- so a `codeql` bracket annotation in the source does not close an alert on the Security tab. Two of them sat in `password-breach.service.ts` and its spec for months, above the wrong line as well, while the `js/insufficient-password-hash` alerts they named stayed open. An accepted false positive (SHA-1 is what the HIBP k-anonymity protocol hashes with; `fingerprintPublicKey` in `push-config.service.ts` hashes a *public* key, which is not a password hash) is **dismissed on the Security tab, with its reason**, by someone with security-events write. Touching the flagged line in a PR re-reports the alert as new in that PR and fails its CodeQL check, so a false positive is dismissed first and its file left alone. Prefer a test fixture that carries a known hash over one that recomputes it: the spec now holds SHA-1("password123") as a constant, which proves the protocol against an independent value and gives CodeQL nothing to report. The annotation still goes in, on the line directly above the reported location -- the only line CodeQL's suppression library lets it cover, and for `js/insufficient-password-hash` that is the `.update(...)` call, not the `createHash` statement -- so it takes effect the day the suppression query is added to the analysis. `src/common/codeql-suppression.guard.spec.ts` fails an annotation that follows code on its line, names no query id, sits above a blank or a comment, or sits above the wrong line for a query it knows.
+Code scanning on this repository is CodeQL *default setup*, which runs the standard code-scanning suite and never the alert-suppression query -- so a `codeql` bracket annotation in the source does not close an alert on the Security tab. Two of them sat in `password-breach.service.ts` and its spec for months, above the wrong line as well, while the `js/insufficient-password-hash` alerts they named stayed open. An accepted false positive (SHA-1 is what the HIBP k-anonymity protocol hashes with; `fingerprintPublicKey` in `push-config.service.ts` hashes a *public* key, which is not a password hash; `hashToken` in `crypto.util.ts` hashes a high-entropy random token for an equality lookup, which a randomly-salted password hash would make impossible; `pkceChallenge` in `email-receipts/oauth/oauth-state.ts` hashes a random PKCE verifier exactly as RFC 7636 requires) is **dismissed on the Security tab, with its reason**, by someone with security-events write. Where the false positive comes from a name rather than the hash, rename instead: CodeQL's sensitive-name heuristic reads any identifier containing `oauth` (or `password`, `apiKey`, `authKey`) as a password, so a call to a function once named `openOAuthState` made its decrypted nonce reaching `hashToken` and its verifier reaching `pkceChallenge` two password-hash alerts. The state functions are `newAuthorizationState`, `sealAuthorizationState` and `openAuthorizationState`, and `oauth-state.spec.ts` fails an exported function of that module whose name contains `oauth`. Touching the flagged line in a PR re-reports the alert as new in that PR and fails its CodeQL check, so a false positive is dismissed first and its file left alone. Prefer a test fixture that carries a known hash over one that recomputes it: the spec now holds SHA-1("password123") as a constant, which proves the protocol against an independent value and gives CodeQL nothing to report. The annotation still goes in, on the line directly above the reported location -- the only line CodeQL's suppression library lets it cover, and for `js/insufficient-password-hash` that is the `.update(...)` call, not the `createHash` statement -- so it takes effect the day the suppression query is added to the analysis. `src/common/codeql-suppression.guard.spec.ts` fails an annotation that follows code on its line, names no query id, sits above a blank or a comment, or sits above the wrong line for a query it knows.
+
+## A JWT verifier accepts only its own token type
+
+One `JWT_SECRET` signs every token the server mints: access tokens, `2fa_pending`, `step_up`, the OIDC re-auth marker (`oidc_reauth_pending`) and artifact (`oidc_reauth`). A verifier that deny-lists the types it knows accepts every type it does not, so a script-readable step-up token or re-auth artifact sent as `Authorization: Bearer` passed `JwtStrategy` as a five-minute access token (A26-L06). Access tokens carry `type: "access"` (`ACCESS_TOKEN_TYPE`, `src/auth/access-token.ts`, set in `TokenService`), and every verifier that authenticates a request with one checks `isAccessTokenPayload`: `JwtStrategy.validate` refuses anything else, `AccountDelegateGuard` leaves it to `AuthGuard('jwt')`. The other verifiers check their own positive type (`StepUpGuard`, `two-factor.service.ts`). A type-less payload is accepted for one release, because access tokens minted before the claim live 15 minutes; remove that arm in the next release. Still open: `resolveCookieUser` in `src/oauth/oauth-interaction.controller.ts` deny-lists `2fa_pending` only.
 
 ## The demo login is written once
 

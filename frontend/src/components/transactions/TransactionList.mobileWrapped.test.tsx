@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@/test/render';
+import { render, screen, waitFor, fireEvent, cleanup } from '@/test/render';
 import { TransactionList } from './TransactionList';
 import { Transaction, TransactionStatus } from '@/types/transaction';
 import { useDensityStore } from '@/store/densityStore';
+import { usePreferencesStore } from '@/store/preferencesStore';
 
 /**
  * Model B: on a phone the density toggle picks the LAYOUT, not only the row
@@ -34,11 +35,15 @@ vi.mock('@/hooks/useDateFormat', () => ({
   }),
 }));
 
-vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({
-    formatCurrency: (n: number) => `$${n.toFixed(2)}`,
-  }),
-}));
+vi.mock('@/hooks/useNumberFormat', async () => {
+  const { numberFormatMockDefaults } = await import('@/test/number-format-mock');
+  return {
+    useNumberFormat: () => ({
+      ...numberFormatMockDefaults(),
+      formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+    }),
+  };
+});
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
@@ -435,5 +440,91 @@ describe('the sort strip on a phone', () => {
       expect(screen.getByText('Grocery Store')).toBeInTheDocument();
     });
     expect(container.querySelector('thead tr[aria-label="Sort by"]')).toBeNull();
+  });
+});
+
+describe('the phone card with a hidden column', () => {
+  // Hidden is absent at every width, the card included: the status pill,
+  // the attachment badge and the tags line each follow the stored set, and
+  // the sort strip omits a hidden column's chip the way it omits Account's.
+  const tags = [{ id: 'tag-1', name: 'Reimbursable', color: '#f59e0b' }] as Transaction['tags'];
+
+  const seed = (transactions: string[]) =>
+    usePreferencesStore.setState({
+      preferences: { hiddenTableColumns: { transactions } } as any,
+    });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setPhoneViewport(true);
+    useDensityStore.setState({ densities: { transactions: 'normal' } });
+  });
+
+  afterEach(() => {
+    // `cleanup()` first: a store write with the tree still mounted re-renders
+    // it outside act (`src/test/test-hygiene.test.ts`).
+    cleanup();
+    window.matchMedia = originalMatchMedia;
+    usePreferencesStore.setState({ preferences: null });
+  });
+
+  it('drops the status pill from the card and the Status chip from the strip', async () => {
+    seed(['status']);
+    const { container } = render(
+      <TransactionList
+        transactions={[createTransaction()]}
+        onEdit={vi.fn()}
+        onRefresh={vi.fn()}
+        sort={{ field: 'date', direction: 'desc' }}
+        onSortChange={vi.fn()}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Grocery Store')).toBeInTheDocument();
+    });
+    const [row] = bodyRows(container);
+    expect(row.textContent).not.toContain('Pending');
+    expect(screen.queryByTitle('Click to cycle status')).not.toBeInTheDocument();
+    const strip = container.querySelector('thead tr[aria-label="Sort by"]')!;
+    expect(strip.textContent).not.toContain('Status');
+    expect(strip.textContent).toContain('Date');
+  });
+
+  it('drops the tags line from the card', async () => {
+    seed(['tags']);
+    const { container } = render(
+      <TransactionList
+        transactions={[createTransaction({ tags })]}
+        onEdit={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Grocery Store')).toBeInTheDocument();
+    });
+    const [row] = bodyRows(container);
+    expect(row.textContent).not.toContain('Reimbursable');
+    // Back to two lines: only the category line carries `col-span-3`.
+    expect(row.querySelectorAll('.col-span-3')).toHaveLength(1);
+    // The pill is not hidden, so line 2 keeps it.
+    expect(row.textContent).toContain('Pending');
+  });
+
+  it('drops the attachment badge from the card', async () => {
+    seed(['attachments']);
+    const { container } = render(
+      <TransactionList
+        transactions={[createTransaction({ attachmentCount: 2 })]}
+        onEdit={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Grocery Store')).toBeInTheDocument();
+    });
+    const [row] = bodyRows(container);
+    expect(row.querySelector('[data-testid="attachment-badge"]')).toBeNull();
+    // The category line is otherwise as it was.
+    expect(row.querySelector('.col-span-3')!.textContent).toContain('Groceries');
   });
 });

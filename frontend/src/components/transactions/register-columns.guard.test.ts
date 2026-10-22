@@ -12,6 +12,7 @@ import {
   registerPayeeLayout,
   type RegisterColumnId,
 } from './register-columns';
+import { HIDEABLE_COLUMNS } from '@/lib/hidden-columns';
 
 /**
  * Guard for the register's column contract (`register-columns.ts`).
@@ -396,5 +397,124 @@ describe('the register column contract', () => {
         true,
       );
     }
+  });
+
+  describe('the hideable columns', () => {
+    // The register's hideable set (`lib/hidden-columns.ts`, the one list both
+    // layers declare) and the structural ids this guard names outright: the
+    // ids that say what a row IS, which no preference may remove. Category is
+    // structural by the maintainer's call -- its cell carries the transfer
+    // arrow, the split marker and the linked-investment pill.
+    const hideable: readonly string[] = HIDEABLE_COLUMNS.transactions;
+    const STRUCTURAL = [
+      'date',
+      'account',
+      'payee',
+      'category',
+      'amount',
+      'paidCurrency',
+      'paidAmount',
+      'feePaid',
+      'balance',
+      'actions',
+    ] as const satisfies readonly RegisterColumnId[];
+
+    /** The line the element's gate would be on: the nearest code line above. */
+    function codeLineBefore(lines: string[], index: number): string {
+      for (let i = index - 1; i >= 0; i -= 1) {
+        if (lines[i].trim() !== '') return lines[i];
+      }
+      return '';
+    }
+
+    /** The opening tag of the cell whose class is on `index`, which may be above it. */
+    function openingTagIndex(lines: string[], index: number): number {
+      for (let i = index; i >= 0; i -= 1) {
+        if (/^\s*<(th|td|RegisterHeader)\b/.test(lines[i])) return i;
+      }
+      throw new Error(`no opening tag above line ${index + 1}`);
+    }
+
+    it('are a subset of the column order, disjoint from the structural ids, in order', () => {
+      expect(hideable).toEqual(REGISTER_COLUMN_ORDER.filter((id) => hideable.includes(id)));
+      expect(hideable.length).toBeGreaterThan(0);
+      for (const id of STRUCTURAL) {
+        expect(hideable, `${id} says what a row is`).not.toContain(id);
+      }
+      // Together they are the whole contract: a column added to the order
+      // has to be declared one or the other.
+      expect([...STRUCTURAL, ...hideable].sort()).toEqual([...REGISTER_COLUMN_ORDER].sort());
+    });
+
+    it('gates every hideable cell, and no structural one, in both files', () => {
+      // Hidden is ABSENT from the DOM, never a class: the cell is wrapped in
+      // `isVisible('<id>') && (` on the line before its opening tag. A
+      // hideable cell left ungated renders a column the reader turned off; a
+      // structural cell gated could be removed by a stored id the validator
+      // was never told about.
+      for (const [path, content] of Object.entries(REGISTER_SOURCES)) {
+        const code = withoutComments(content);
+        const lines = code.split('\n');
+        const cellLines = (id: string) =>
+          lines
+            .map((line, index) => ({ line, index }))
+            .filter(({ line }) => line.includes(`registerColumnClass('${id}')`));
+
+        for (const id of hideable) {
+          expect(code, `${path} gates ${id}`).toContain(`isVisible('${id}') &&`);
+          for (const { index } of cellLines(id)) {
+            const opening = openingTagIndex(lines, index);
+            expect(
+              codeLineBefore(lines, opening),
+              `${path}:${opening + 1}: the ${id} cell sits under its isVisible('${id}') && ( gate`,
+            ).toContain(`isVisible('${id}') &&`);
+          }
+        }
+        for (const id of STRUCTURAL) {
+          expect(code, `${path} never gates ${id} on the hidden set`).not.toContain(
+            `isVisible('${id}')`,
+          );
+          for (const { index } of cellLines(id)) {
+            const opening = openingTagIndex(lines, index);
+            expect(
+              codeLineBefore(lines, opening),
+              `${path}:${opening + 1}: the ${id} cell is structural`,
+            ).not.toContain('isVisible(');
+          }
+        }
+      }
+    });
+
+    it("gates the phone card's status pill, attachment badge and tags line", () => {
+      // The card carries status, attachments and tags (description and ref #
+      // are not on it), so each of those three is gated twice in the row --
+      // once in the tier cell, once on the card -- and the other two once.
+      const row = withoutComments(
+        REGISTER_SOURCES['/src/components/transactions/TransactionRow.tsx'],
+      );
+      const gates = (id: string) =>
+        (row.match(new RegExp(`isVisible\\('${id}'\\) &&`, 'g')) ?? []).length;
+      expect(gates('status'), 'status: tier cell and card pill').toBe(2);
+      expect(gates('attachments'), 'attachments: tier cell and card badge').toBe(2);
+      expect(gates('tags'), 'tags: tier cell and card line').toBe(2);
+      expect(gates('description'), 'description is not on the card').toBe(1);
+      expect(gates('refNumber'), 'ref # is not on the card').toBe(1);
+    });
+
+    it('reads the hidden set once, in the list; the row takes it as a prop', () => {
+      // One read per list: the memoised row would re-render on every list
+      // render if it took a fresh callback, and a second read of the store
+      // is a second place to get the table kind wrong.
+      const list = withoutComments(
+        REGISTER_SOURCES['/src/components/transactions/TransactionList.tsx'],
+      );
+      const row = withoutComments(
+        REGISTER_SOURCES['/src/components/transactions/TransactionRow.tsx'],
+      );
+      expect(list.match(/useHiddenColumns\('transactions'\)/g) ?? []).toHaveLength(1);
+      expect(list).toContain('hidden={hiddenColumns}');
+      expect(row).not.toContain('useHiddenColumns');
+      expect(row).toContain('hidden?: ReadonlySet<string>');
+    });
   });
 });

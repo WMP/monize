@@ -34,6 +34,7 @@ import { UserPreference } from "../users/entities/user-preference.entity";
 import { RefreshToken } from "../auth/entities/refresh-token.entity";
 import {
   revokeOAuthGrantsAfterCommit,
+  revokeRefreshSessionsAfterCommit,
   revokeStandingCredentials,
 } from "../auth/credential-revocation";
 import { Account, AccountType } from "../accounts/entities/account.entity";
@@ -76,6 +77,7 @@ export interface DelegateSectionSet {
   budgets: boolean;
   reports: boolean;
   ai: boolean;
+  warranties: boolean;
 }
 
 const SECTION_FIELD: Record<DelegateSection, keyof AccountDelegate> = {
@@ -84,6 +86,7 @@ const SECTION_FIELD: Record<DelegateSection, keyof AccountDelegate> = {
   budgets: "budgetsCanRead",
   reports: "reportsCanRead",
   ai: "aiCanRead",
+  warranties: "warrantiesCanRead",
 };
 
 /**
@@ -858,6 +861,7 @@ export class DelegationService {
       budgets: !!d?.budgetsCanRead,
       reports: !!d?.reportsCanRead,
       ai: !!d?.aiCanRead,
+      warranties: !!d?.warrantiesCanRead,
     };
   }
 
@@ -946,27 +950,13 @@ export class DelegationService {
         | "investmentsCanRead"
         | "budgetsCanRead"
         | "reportsCanRead"
-        | "aiCanRead",
+        | "aiCanRead"
+        | "warrantiesCanRead",
         boolean
       >
     >,
   ): Promise<void> {
-    const delegation = await this.scoped(AccountDelegate, (repo) =>
-      repo.findOne({
-        where: { id: delegationId, ownerUserId },
-      }),
-    );
-    if (!delegation) {
-      throw new NotFoundException(
-        tr("errors.delegation.delegateNotFound", "Delegate not found"),
-      );
-    }
-    for (const [key, value] of Object.entries(sections)) {
-      if (value !== undefined) {
-        (delegation as unknown as Record<string, boolean>)[key] = value;
-      }
-    }
-    await this.scoped(AccountDelegate, (repo) => repo.save(delegation));
+    await this.writeDelegationFlags(ownerUserId, delegationId, sections);
   }
 
   async setCapabilities(
@@ -987,22 +977,38 @@ export class DelegationService {
       >
     >,
   ): Promise<void> {
-    const delegation = await this.scoped(AccountDelegate, (repo) =>
-      repo.findOne({
-        where: { id: delegationId, ownerUserId },
-      }),
+    await this.writeDelegationFlags(ownerUserId, delegationId, caps);
+  }
+
+  /**
+   * Write only the flags given, by one conditional `UPDATE` keyed on the
+   * owner, and 404 when it matches nothing.
+   *
+   * Reading the entity in one transaction and `save`-ing it in another wrote
+   * every column back from a stale copy, and when a revoke had deleted the row
+   * in between, `save` found nothing by id and INSERTed it: the same
+   * delegation back as `active` with its flags (A26-M05). Two settings saves
+   * also overwrote each other's columns.
+   */
+  private async writeDelegationFlags(
+    ownerUserId: string,
+    delegationId: string,
+    flags: Partial<Record<string, boolean>>,
+  ): Promise<void> {
+    const patch = Object.fromEntries(
+      Object.entries(flags).filter(([, value]) => value !== undefined),
+    ) as Partial<AccountDelegate>;
+    const matched = await this.scoped(AccountDelegate, async (repo) =>
+      Object.keys(patch).length > 0
+        ? ((await repo.update({ id: delegationId, ownerUserId }, patch))
+            .affected ?? 0) > 0
+        : repo.exists({ where: { id: delegationId, ownerUserId } }),
     );
-    if (!delegation) {
+    if (!matched) {
       throw new NotFoundException(
         tr("errors.delegation.delegateNotFound", "Delegate not found"),
       );
     }
-    for (const [key, value] of Object.entries(caps)) {
-      if (value !== undefined) {
-        (delegation as unknown as Record<string, boolean>)[key] = value;
-      }
-    }
-    await this.scoped(AccountDelegate, (repo) => repo.save(delegation));
   }
 
   /**
@@ -1108,7 +1114,13 @@ export class DelegationService {
     let inviteToken: string | undefined;
 
     return withScopedDb(this.dataSource, async (manager) => {
-      let delegateUser = await manager.findOne(User, { where: { email } });
+      // Locked: linking an existing login to a second owner is the event that
+      // takes away the first owner's right to reset its password, so the link
+      // and a reset of the same login serialize on this row (A26-M05).
+      let delegateUser = await manager.findOne(User, {
+        where: { email },
+        lock: { mode: "pessimistic_write" },
+      });
       const isNew = !delegateUser;
 
       if (delegateUser && delegateUser.id === ownerUserId) {
@@ -1148,28 +1160,21 @@ export class DelegationService {
         if (delegateUser.oidcSubject || delegateUser.role === "admin") {
           mayManageCredentials = false;
         } else {
-          const [
-            ownsAccounts,
-            ownsDelegations,
-            alreadyDelegate,
-            delegateOfAnotherOwner,
-          ] = await Promise.all([
-            manager.count(Account, {
-              where: { userId: delegateUser.id },
-            }),
-            manager.count(AccountDelegate, {
-              where: { ownerUserId: delegateUser.id },
-            }),
-            manager.count(AccountDelegate, {
-              where: { delegateUserId: delegateUser.id },
-            }),
-            manager.count(AccountDelegate, {
-              where: {
-                delegateUserId: delegateUser.id,
-                ownerUserId: Not(ownerUserId),
-              },
-            }),
-          ]);
+          const ownsAccounts = await manager.count(Account, {
+            where: { userId: delegateUser.id },
+          });
+          const ownsDelegations = await manager.count(AccountDelegate, {
+            where: { ownerUserId: delegateUser.id },
+          });
+          const alreadyDelegate = await manager.count(AccountDelegate, {
+            where: { delegateUserId: delegateUser.id },
+          });
+          const delegateOfAnotherOwner = await manager.count(AccountDelegate, {
+            where: {
+              delegateUserId: delegateUser.id,
+              ownerUserId: Not(ownerUserId),
+            },
+          });
           const isPureDelegateRow = alreadyDelegate > 0;
           if (
             ownsAccounts > 0 ||
@@ -1352,14 +1357,15 @@ export class DelegationService {
         // own right (isDelegateOnly=false). Without the isDelegateOnly
         // check a self-registered user who hasn't created any accounts yet
         // would be silently deleted on revoke.
-        const [otherDelegations, ownsAccounts, ownsDelegations] =
-          await Promise.all([
-            manager.count(AccountDelegate, { where: { delegateUserId } }),
-            manager.count(Account, { where: { userId: delegateUserId } }),
-            manager.count(AccountDelegate, {
-              where: { ownerUserId: delegateUserId },
-            }),
-          ]);
+        const otherDelegations = await manager.count(AccountDelegate, {
+          where: { delegateUserId },
+        });
+        const ownsAccounts = await manager.count(Account, {
+          where: { userId: delegateUserId },
+        });
+        const ownsDelegations = await manager.count(AccountDelegate, {
+          where: { ownerUserId: delegateUserId },
+        });
         const delegateUser = await manager.findOne(User, {
           where: { id: delegateUserId },
         });
@@ -1526,22 +1532,36 @@ export class DelegationService {
     // so a locked-out delegate can sign in with the new password.
     delegate.failedLoginAttempts = 0;
     delegate.lockedUntil = null;
-    await this.systemScoped(User, (repo) => repo.save(delegate));
-
     // Same reach: the sessions being cut are the delegate's, and
     // `refresh_tokens` is keyed to them. A scoped UPDATE matched nothing, so
     // the old password's sessions survived a reset that reported success --
     // the one outcome a credential rotation must never have.
-    // PATs and trusted devices go with them, in the same transaction, and the
-    // OAuth grants after it: a reset that left either live would keep the old
-    // password's access working (`credential-revocation.ts`).
-    await this.systemScoped(RefreshToken, async (repo) => {
-      await repo.update(
-        { userId: delegate.id, isRevoked: false },
-        { isRevoked: true },
-      );
-      await revokeStandingCredentials(repo.manager, delegate.id);
-    });
+    // The password, PATs and trusted devices are one transaction, so a reset
+    // whose revocation fails leaves the old password in place; the refresh
+    // sessions converge and the OAuth grants go after the commit
+    // (`credential-revocation.ts`).
+    await withSystemContext(() =>
+      withScopedDb(this.dataSource, async (manager) => {
+        await manager.getRepository(User).save(delegate);
+        await manager
+          .getRepository(RefreshToken)
+          .update(
+            { userId: delegate.id, isRevoked: false },
+            { isRevoked: true },
+          );
+        await revokeStandingCredentials(manager, delegate.id);
+      }),
+    );
+    // The blanket UPDATE above misses a successor a concurrent rotation
+    // inserted after its snapshot; converge under the family locks. System
+    // context for the same reach as the write above.
+    await withSystemContext(() =>
+      revokeRefreshSessionsAfterCommit(
+        this.dataSource,
+        delegate.id,
+        this.logger,
+      ),
+    );
     await revokeOAuthGrantsAfterCommit(
       this.moduleRef,
       delegate.id,

@@ -1,6 +1,8 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import toast from 'react-hot-toast';
 import { Account } from '@/types/account';
 import { formatAccountType } from '@/lib/account-utils';
 
@@ -8,6 +10,8 @@ interface UploadStepProps {
   preselectedAccount: Account | undefined;
   isLoading: boolean;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  /** Files dropped onto the drop zone, already checked against the accept list. */
+  onFilesDrop: (files: File[]) => void;
   /**
    * Why the last Microsoft Money file would not open. Shown here rather than
    * toasted because the useful ones are instructions -- "open and save it once
@@ -35,14 +39,80 @@ function wikiLink(href: string) {
   };
 }
 
+/**
+ * A drop bypasses the picker's `accept` filter, so the dropped names are checked
+ * against that same attribute rather than a second list of extensions.
+ */
+function isAcceptedFile(file: File, accept: string): boolean {
+  const name = file.name.toLowerCase();
+  return accept
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .some((extension) => extension.length > 0 && name.endsWith(extension));
+}
+
+function carriesFiles(e: React.DragEvent): boolean {
+  return Array.from(e.dataTransfer?.types ?? []).includes('Files');
+}
+
 export function UploadStep({
   preselectedAccount,
   isLoading,
   onFileSelect,
+  onFilesDrop,
   mnyError = null,
 }: UploadStepProps) {
   const t = useTranslations('import');
   const tc = useTranslations('common');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  // dragenter and dragleave fire for every child the pointer crosses; counting
+  // them keeps the highlight from flickering while it moves over the icon.
+  const dragDepth = useRef(0);
+
+  // A file drag is always claimed, even while loading: a zone that does not
+  // call preventDefault lets the browser open the released file in the tab,
+  // leaving the wizard mid-upload. Only the highlight and the drop effect
+  // depend on whether a drop would be taken.
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!carriesFiles(e)) return;
+    e.preventDefault();
+    if (isLoading) return;
+    dragDepth.current += 1;
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!carriesFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = isLoading ? 'none' : 'copy';
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!carriesFiles(e)) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    dragDepth.current = 0;
+    setIsDragging(false);
+    if (isLoading) return;
+    const files = Array.from(e.dataTransfer?.files ?? []);
+    if (files.length === 0) return;
+    const accept = inputRef.current?.accept ?? '';
+    const rejected = files.filter((file) => !isAcceptedFile(file, accept));
+    if (rejected.length > 0) {
+      toast.error(
+        t('upload.unsupportedDrop', {
+          names: rejected.map((file) => file.name).join(', '),
+        }),
+      );
+      return;
+    }
+    onFilesDrop(files);
+  };
 
   return (
     <div className="max-w-xl mx-auto">
@@ -99,8 +169,20 @@ export function UploadStep({
             </p>
           </div>
         )}
-        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
+        <div
+          data-testid="import-drop-zone"
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors motion-reduce:transition-none ${
+            isDragging
+              ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/20'
+              : 'border-gray-300 dark:border-gray-600'
+          }`}
+        >
           <input
+            ref={inputRef}
             type="file"
             accept=".qif,.ofx,.qfx,.csv,.mny"
             multiple
@@ -127,8 +209,17 @@ export function UploadStep({
               />
             </svg>
             <span className="text-gray-600 dark:text-gray-400">
-              {isLoading ? t('upload.processing') : t('upload.clickToSelect')}
+              {isLoading
+                ? t('upload.processing')
+                : isDragging
+                  ? t('upload.dropToImport')
+                  : t('upload.clickToSelect')}
             </span>
+            {!isLoading && !isDragging && (
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {t('upload.orDragAndDrop')}
+              </span>
+            )}
             <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">
               {t('upload.acceptedFormats')}
             </span>

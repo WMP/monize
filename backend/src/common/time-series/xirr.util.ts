@@ -184,7 +184,7 @@ export function xirrAnnualRate(flows: readonly XirrFlow[]): number | null {
   let low = RATE_LOW;
   let high = RATE_HIGH;
   let atLow = netPresentValue(folded, low);
-  let atHigh = netPresentValue(folded, high);
+  const atHigh = netPresentValue(folded, high);
   if (!Number.isFinite(atLow) || !Number.isFinite(atHigh)) return null;
   if (atLow === 0) return low;
   if (atHigh === 0) return high;
@@ -204,7 +204,6 @@ export function xirrAnnualRate(flows: readonly XirrFlow[]): number | null {
       atLow = value;
     } else {
       high = middle;
-      atHigh = value;
     }
   }
 

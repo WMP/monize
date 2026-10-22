@@ -22,7 +22,7 @@
 -- NULL (not true), and the row is filtered out. Missing context yields zero
 -- rows, never an open door.
 --
--- See docs/future-plans/row-level-security.md (Phase 3).
+-- See docs/specs/row-level-security.md (Phase 3).
 
 -- ---------------------------------------------------------------------------
 -- Group A: keyed by the EFFECTIVE user (26 tables)

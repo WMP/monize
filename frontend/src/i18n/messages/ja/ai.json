@@ -82,6 +82,7 @@
     "newCategory": "新しいカテゴリ",
     "currentCategory": "現在のカテゴリ",
     "description": "説明",
+    "referenceNumber": "参照番号",
     "name": "名前",
     "website": "ウェブサイト",
     "address": "住所",
@@ -111,6 +112,13 @@
     "commission": "手数料",
     "total": "合計",
     "cashImpact": "現金への影響",
+    "bondSeries": "シリーズ",
+    "marksPaid": "支払い済みにします",
+    "accruedInterest": "経過利子",
+    "redemptionSplit": "償還の内訳",
+    "redemptionSplitValue": "元本 {principal} + 利子 {interest} = 支払額 {payout}",
+    "redemptionDeduction": "早期償還手数料を控除",
+    "redemptionSplitDiffers": "価格と経過利子が、この償還の支払額と異なります（内訳を参照）。承認前に確認してください。",
     "createTransactionsTitle": "これらの取引を作成しますか？",
     "createInvestmentTransactionsTitle": "これらの投資取引を作成しますか？",
     "approveAll": "すべて承認",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "長期キャピタルゲインの再投資",
       "CAPITAL_GAIN_SHORT": "短期キャピタルゲイン",
       "CAPITAL_GAIN_LONG": "長期キャピタルゲイン",
-      "REDEEM": "CD・債券の償還"
+      "REDEEM": "CD・債券の償還",
+      "RETURN_OF_CAPITAL": "資本の払い戻し"
     },
     "createSecurityTitle": "この証券を作成しますか？",
     "createdSecurity": "証券を作成しました",
@@ -224,7 +233,11 @@
       "category": "カテゴリを {name} に設定",
       "payee": "支払先を {name} に設定",
       "aiReview": "{count, plural, other {AIレビューの依頼 # 件をキューに追加}}"
-    }
+    },
+    "aiCategory": "AIの提案",
+    "tags": "タグ",
+    "newTag": "(新しいタグ)",
+    "marksPaidDue": "{name}（期日 {date}）"
   },
   "table": {
     "downloadTitle": "テーブルを CSV でダウンロード",

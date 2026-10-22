@@ -316,6 +316,7 @@
     "totalInflows": "總流入",
     "totalOutflows": "總流出",
     "netCashFlow": "淨現金流",
+    "notAvailable": "不適用",
     "monthlyCashFlow": "每月現金流",
     "inflowsByCategory": "依類別流入",
     "outflowsByCategory": "依類別流出",
@@ -764,6 +765,7 @@
     "totalValue": "總值",
     "costBasis": "成本基礎",
     "totalGainLoss": "總損益",
+    "gainPartialCaption": "僅限有價格的持倉",
     "return": "報酬率",
     "viewHoldings": "持倉",
     "viewAllocation": "配置",
@@ -821,6 +823,7 @@
     "actionCapitalGainShort": "短期資本利得",
     "actionCapitalGainLong": "長期資本利得",
     "actionRedeem": "贖回定存單/債券",
+    "actionReturnOfCapital": "資本返還",
     "colCommission": "佣金",
     "colPriceCurrency": "價格幣別",
     "colAmountCurrency": "金額幣別",
@@ -1146,6 +1149,11 @@
     "vsMonth": "對比 {month}",
     "inMonth": "{amount} 在 {month}",
     "netWorthTotal": "總計：{amount}",
+    "netWorthSummaryPartial": "您在 {currentMonth} 的資產淨值為 <strong>{netWorth}</strong>。由於 {pairs} 沒有匯率，無法計算相較 {previousMonth} 的變化；請在貨幣頁面新增。",
+    "pdfPartialSuffix": "{amount}（不完整）",
+    "pdfNote": "備註",
+    "pdfNotAvailable": "不適用",
+    "pdfPartialNote": "不完整的總額：{pairs} 沒有匯率。",
     "netWorthSummary": "您在 {currentMonth} 的資產淨值為 <strong>{netWorth}</strong>，相較 {previousMonth} 變化了 <delta>{changeAmount}</delta>。",
     "pdfTitle": "月度比較",
     "pdfSubtitle": "{current} 對比 {previous}",
@@ -1190,7 +1198,15 @@
     "colMonth": "月份",
     "colAssets": "資產",
     "colLiabilities": "負債",
-    "colNetWorth": "資產淨值"
+    "colNetWorth": "資產淨值",
+    "barStyle": "長條樣式",
+    "barStyleNetWorth": "資產淨值",
+    "barStyleAccountType": "依帳戶類型",
+    "notAvailable": "不適用",
+    "colNote": "備註",
+    "partialMonthNote": "不完整：{pairs} 沒有匯率",
+    "pdfPartialNote": "不完整的總額：{pairs} 沒有匯率。請在貨幣頁面新增。",
+    "partialMonth": "未顯示：本月部分金額無法換算，因此資產淨值未知。"
   },
   "portfolioValue": {
     "highestValue": "最高價值",
@@ -1198,10 +1214,10 @@
     "valueChange": "價值變化",
     "investedValueChangeTooltip": "期末證券的價值減去期初的價值：圖表的最後一個點減去第一個點。未投資的現金不計入。",
     "netInvested": "淨投入",
-    "netInvestedTooltip": "期間投入證券的金額，減去透過賣出和股份轉出流出的金額。存入或提取的現金不計入。",
+    "netInvestedTooltip": "期間投入證券的金額，減去透過賣出和股份轉出流出的金額。再投資為股份的分配計入投入金額。存入或提取的現金不計入。",
     "investmentIncome": "股息和利息",
     "investmentIncomeLine": "股息和利息 {amount}",
-    "investmentIncomeTooltip": "期間證券支付的股息、利息和資本利得分配。價值變化減去淨投入，再加上這些金額，即為投資結果。",
+    "investmentIncomeTooltip": "期間證券支付的股息、利息和資本利得分配。再投資為股份的分配與現金支付的一樣計入。價值變化減去淨投入，再加上這些金額，即為投資結果。",
     "investmentResult": "投資結果",
     "investmentReturn": "投資報酬",
     "investmentResultTooltip": "你的投資賺取的金額：證券價值的變化，扣除買進、賣出、存入、提出資金與未投資現金，計入股利與利息。",
@@ -1276,6 +1292,7 @@
     "colDate": "日期",
     "colShares": "股數",
     "colPrice": "價格",
+    "returnOfCapitalRow": "超出成本基礎的資本返還",
     "pdfTitle": "已實現獲利報表",
     "pdfSubtitle": "{count} 個證券 | 淨獲利：{gain}",
     "csvColSecurity": "證券",
@@ -1848,6 +1865,13 @@
   "foreignCurrencyFees": {
     "noEligibleAccounts": "沒有科目設定境外交易手續費。在科目上設定手續費百分比，即可在此追蹤其外幣手續費。"
   },
+  "partialData": {
+    "notice": "部分數字不完整：{count, plural, other {# 筆金額}}無法換算為 {displayCurrency}，已被排除。{currencies} 沒有匯率；請在貨幣頁面新增。",
+    "noticeExcluded": "部分數字不完整：{count, plural, other {# 筆金額}}無法計算，已被排除。",
+    "pdfNote": "不完整的總額：{currencies} 沒有匯率",
+    "pdfNoteExcluded": "不完整的總額：已排除 {count, plural, other {# 筆金額}}",
+    "pdfSuffix": "（不完整）"
+  },
   "sankey": {
     "help": "流入的資金經過中間，流向其被花費的去處、被儲蓄或投資的部分以及用於償還債務的部分。預設情況下，報表涵蓋您未關閉的支票、儲蓄、現金、信用卡和信用額度帳戶，這些帳戶之間的轉帳不會顯示。將某個儲蓄帳戶從帳戶篩選中移除，即可看到您轉入其中的金額。信用卡繳款從不算作債務還款：它結清的消費已計為支出。",
     "depthLabel": "細節",
@@ -1894,5 +1918,8 @@
       "residualDeficit": "動用餘額",
       "unlinkedAccount": "（未關聯帳戶）"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "產生時間：{timestamp}"
   }
 }

@@ -29,6 +29,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { usePriceRefresh } from '@/hooks/usePriceRefresh';
 import { createLogger } from '@/lib/logger';
+import { incompleteHoldingAccountIds as incompleteHoldingAccountIdsOf } from '@/lib/logical-accounts';
 import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { TourBanner } from '@/components/dashboard/TourBanner';
 
@@ -62,6 +63,9 @@ function DashboardContent() {
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
   const [hasInvestments, setHasInvestments] = useState(false);
   const [netWorthData, setNetWorthData] = useState<MonthlyNetWorth[]>([]);
+  // The net worth request failed: `netWorthData` is then empty, which is not
+  // the answer "no history yet" and must not be shown as one.
+  const [netWorthFailed, setNetWorthFailed] = useState(false);
   const [favouriteSecurities, setFavouriteSecurities] = useState<FavouriteSecurityQuote[]>([]);
   const [hasSecurities, setHasSecurities] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -84,6 +88,11 @@ function DashboardContent() {
     }
     return map;
   }, [portfolioSummary]);
+
+  const incompleteHoldingAccountIds = useMemo(
+    () => incompleteHoldingAccountIdsOf(portfolioSummary?.holdingsByAccount),
+    [portfolioSummary],
+  );
 
   const reloadInvestmentWidgets = useCallback(async () => {
     // Favourite securities can exist without investment accounts, so always
@@ -112,79 +121,101 @@ function DashboardContent() {
     onRefreshComplete: reloadInvestmentWidgets,
   });
 
-  const loadDashboardData = useCallback(async () => {
-    if (!authHydrated) return;
-    setIsLoading(true);
-    try {
-      // Phase 1: a delegate only sees the Favourite Accounts widget, and the
-      // other dashboard endpoints are not delegate-accessible. Load just the
-      // (server-filtered) accounts and stop.
-      if (isDelegateView) {
-        const delegateAccounts = await accountsApi.getAll();
-        setAccounts(delegateAccounts);
-        // 3C: when the owner granted the Bills & Deposits section, the
-        // scheduled endpoint is delegate-reachable (server-filtered to the
-        // delegate's readable accounts) so the widget can render.
-        if (delegateBills) {
-          try {
-            const sched = await scheduledTransactionsApi.getAll();
-            setScheduledTransactions(sched);
-          } catch (error) {
-            logger.error('Failed to load delegate scheduled data:', error);
+  // A change of who the dashboard is loaded for shows the spinner again; set
+  // during render rather than in the effect that reloads it.
+  const requestKey = `${authHydrated}|${isDelegateView}|${delegateBills}`;
+  const [loadingKey, setLoadingKey] = useState(requestKey);
+  if (loadingKey !== requestKey) {
+    setLoadingKey(requestKey);
+    if (authHydrated) setIsLoading(true);
+  }
+
+  // The effect's load: the state already says loading.
+  const fetchDashboardData = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      if (!authHydrated) return;
+      try {
+        // Phase 1: a delegate only sees the Favourite Accounts widget, and the
+        // other dashboard endpoints are not delegate-accessible. Load just the
+        // (server-filtered) accounts and stop.
+        if (isDelegateView) {
+          const delegateAccounts = await accountsApi.getAll();
+          setAccounts(delegateAccounts);
+          // 3C: when the owner granted the Bills & Deposits section, the
+          // scheduled endpoint is delegate-reachable (server-filtered to the
+          // delegate's readable accounts) so the widget can render.
+          if (delegateBills) {
+            try {
+              const sched = await scheduledTransactionsApi.getAll();
+              setScheduledTransactions(sched);
+            } catch (error) {
+              logger.error('Failed to load delegate scheduled data:', error);
+            }
           }
+          setIsLoading(false);
+          return;
         }
+
+        const now = new Date();
+        const today = format(now, 'yyyy-MM-dd');
+
+        const twelveMonthsAgo = format(subMonths(new Date(), 12), 'yyyy-MM-dd');
+
+        const [accountsData, scheduledData, netWorth, favouriteSecs, securitiesList] = await Promise.all([
+          accountsApi.getAll(),
+          scheduledTransactionsApi.getAll(),
+          netWorthApi.getMonthly({ startDate: twelveMonthsAgo, endDate: today }).catch((error) => {
+            logger.error('Failed to load net worth history:', error);
+            return null;
+          }),
+          investmentsApi.getFavouriteSecurities().catch(() => [] as FavouriteSecurityQuote[]),
+          investmentsApi.getSecurities().catch(() => []),
+        ]);
+
+        setAccounts(accountsData);
+        setScheduledTransactions(scheduledData);
+        setNetWorthData(netWorth ?? []);
+        setNetWorthFailed(netWorth === null);
+        setFavouriteSecurities(favouriteSecs);
+        setHasSecurities(securitiesList.length > 0);
+
+        const investmentAccounts = accountsData.filter(
+          (a: Account) => a.accountType === 'INVESTMENT' && !a.isClosed,
+        );
+        // A linked pair is one investment account, not two.
+        const investmentAccountCount = countLogicalAccounts(investmentAccounts);
+        const hasInvestmentAccounts = investmentAccountCount > 0;
+        setHasInvestments(hasInvestmentAccounts);
+
+        // Load investment data directly so it appears even when price refresh is
+        // skipped (outside market hours, cooldown active, etc.)
+        if (hasInvestmentAccounts) {
+          Promise.all([
+            investmentsApi.getTopMovers().catch(() => [] as TopMover[]),
+            investmentsApi.getPortfolioSummary().catch(() => null),
+          ]).then(([moversData, portfolio]) => {
+            setTopMovers(moversData);
+            setPortfolioSummary(portfolio);
+          });
+        }
+      } catch (error) {
+        logger.error('Failed to load dashboard data:', error);
+      } finally {
         setIsLoading(false);
-        return;
       }
-
-      const now = new Date();
-      const today = format(now, 'yyyy-MM-dd');
-
-      const twelveMonthsAgo = format(subMonths(new Date(), 12), 'yyyy-MM-dd');
-
-      const [accountsData, scheduledData, netWorth, favouriteSecs, securitiesList] = await Promise.all([
-        accountsApi.getAll(),
-        scheduledTransactionsApi.getAll(),
-        netWorthApi.getMonthly({ startDate: twelveMonthsAgo, endDate: today }).catch(() => [] as MonthlyNetWorth[]),
-        investmentsApi.getFavouriteSecurities().catch(() => [] as FavouriteSecurityQuote[]),
-        investmentsApi.getSecurities().catch(() => []),
-      ]);
-
-      setAccounts(accountsData);
-      setScheduledTransactions(scheduledData);
-      setNetWorthData(netWorth);
-      setFavouriteSecurities(favouriteSecs);
-      setHasSecurities(securitiesList.length > 0);
-
-      const investmentAccounts = accountsData.filter(
-        (a: Account) => a.accountType === 'INVESTMENT' && !a.isClosed,
-      );
-      // A linked pair is one investment account, not two.
-      const investmentAccountCount = countLogicalAccounts(investmentAccounts);
-      const hasInvestmentAccounts = investmentAccountCount > 0;
-      setHasInvestments(hasInvestmentAccounts);
-
-      // Load investment data directly so it appears even when price refresh is
-      // skipped (outside market hours, cooldown active, etc.)
-      if (hasInvestmentAccounts) {
-        Promise.all([
-          investmentsApi.getTopMovers().catch(() => [] as TopMover[]),
-          investmentsApi.getPortfolioSummary().catch(() => null),
-        ]).then(([moversData, portfolio]) => {
-          setTopMovers(moversData);
-          setPortfolioSummary(portfolio);
-        });
-      }
-    } catch (error) {
-      logger.error('Failed to load dashboard data:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+    return run();
   }, [authHydrated, isDelegateView, delegateBills]);
 
+  const loadDashboardData = useCallback(() => {
+    if (authHydrated) setIsLoading(true);
+    return fetchDashboardData();
+  }, [authHydrated, fetchDashboardData]);
+
   useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   useOnUndoRedo(loadDashboardData);
   // An AI write (e.g. a transaction created from the chat bubble) changes the
@@ -203,8 +234,10 @@ function DashboardContent() {
     topMovers,
     favouriteSecurities,
     netWorthData,
+    netWorthFailed,
     brokerageMarketValues,
     unpricedHoldingCounts,
+    incompleteHoldingAccountIds,
     isLoading,
     hasInvestments,
     hasSecurities,

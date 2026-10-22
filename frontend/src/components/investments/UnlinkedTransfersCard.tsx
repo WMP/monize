@@ -48,17 +48,22 @@ export function UnlinkedTransfersCard({
 
   const accountIdsCsv = accountIds?.length ? accountIds.join(",") : "";
 
-  const load = useCallback(async () => {
-    try {
-      const found = await investmentsApi.getUnlinkedTransferPairs(
-        accountIdsCsv ? accountIdsCsv.split(",") : undefined,
-      );
-      setPairs(found);
-    } catch (err) {
-      logger.error("Failed to load unlinked transfers:", err);
-      // Nothing is claimed either way: a failed look is not "none found".
-      setPairs(null);
-    }
+  const load = useCallback(() => {
+    // The writes live in the inner function so they run after the request,
+    // not during the effect that starts it.
+    const run = async () => {
+      try {
+        const found = await investmentsApi.getUnlinkedTransferPairs(
+          accountIdsCsv ? accountIdsCsv.split(",") : undefined,
+        );
+        setPairs(found);
+      } catch (err) {
+        logger.error("Failed to load unlinked transfers:", err);
+        // Nothing is claimed either way: a failed look is not "none found".
+        setPairs(null);
+      }
+    };
+    return run();
   }, [accountIdsCsv]);
 
   useEffect(() => {

@@ -84,6 +84,7 @@
     "newCategory": "New category",
     "currentCategory": "Current category",
     "description": "Description",
+    "referenceNumber": "Ref #",
     "name": "Name",
     "website": "Website",
     "address": "Address",
@@ -128,6 +129,13 @@
     "commission": "Commission",
     "total": "Total",
     "cashImpact": "Cash impact",
+    "bondSeries": "Series",
+    "marksPaid": "Marks as paid",
+    "accruedInterest": "Accrued interest",
+    "redemptionSplit": "Redemption split",
+    "redemptionSplitValue": "Principal {principal} + interest {interest} = payout {payout}",
+    "redemptionDeduction": "Early-redemption fee deducted",
+    "redemptionSplitDiffers": "The price and accrued interest differ from what this redemption pays (see the split). Check them before approving.",
     "createTransactionsTitle": "Create these transactions?",
     "createInvestmentTransactionsTitle": "Create these investment transactions?",
     "approveAll": "Approve all",
@@ -155,7 +163,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinvest long-term cap gain",
       "CAPITAL_GAIN_SHORT": "Short-term capital gain",
       "CAPITAL_GAIN_LONG": "Long-term capital gain",
-      "REDEEM": "Redeem CD/Bond"
+      "REDEEM": "Redeem CD/Bond",
+      "RETURN_OF_CAPITAL": "Return of capital"
     },
     "createTransferTitle": "Create this transfer?",
     "updateTransferTitle": "Apply this transfer edit?",
@@ -224,7 +233,11 @@
       "category": "Set the category to {name}",
       "payee": "Set the payee to {name}",
       "aiReview": "{count, plural, one {Queue # AI review request} other {Queue # AI review requests}}"
-    }
+    },
+    "aiCategory": "suggested by AI",
+    "tags": "Tags",
+    "newTag": "(new tag)",
+    "marksPaidDue": "{name} (due {date})"
   },
   "table": {
     "downloadTitle": "Download table as CSV",

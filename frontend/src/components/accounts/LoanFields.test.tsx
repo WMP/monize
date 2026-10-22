@@ -75,7 +75,7 @@ const mockAccounts: Account[] = [
 const mockCategories: Category[] = [
   {
     id: 'cat-1', userId: 'user-1', parentId: null, parent: null, children: [],
-    name: 'Interest Expenses', description: null, icon: null, color: null, effectiveColor: null, effectiveIcon: null,
+    name: 'Interest Expenses', description: null, icon: null, color: null, effectiveColor: null, effectiveIcon: null, autoSign: null, effectiveAutoSign: true,
     isIncome: false, isSystem: false, createdAt: '2024-01-01T00:00:00Z',
   },
 ];
@@ -127,7 +127,7 @@ describe('LoanFields', () => {
     expect(screen.getByText('Payment Frequency (required)')).toBeInTheDocument();
     expect(screen.getByText('First Payment Date (required)')).toBeInTheDocument();
     expect(screen.getByText('Payment From Account (required)')).toBeInTheDocument();
-    expect(screen.getByText('Interest Category')).toBeInTheDocument();
+    expect(screen.getByText('Interest Category (required)')).toBeInTheDocument();
   });
 
   it('renders payment frequency select options', () => {
@@ -149,7 +149,7 @@ describe('LoanFields', () => {
 
   it('renders categories in the interest category select', () => {
     render(<LoanFields {...defaultProps} />);
-    const categorySelect = screen.getByTestId('combobox-select-Interest Category');
+    const categorySelect = screen.getByTestId('combobox-select-Interest Category (required)');
     const options = categorySelect.querySelectorAll('option');
     expect(options[0].textContent).toBe('Select category...');
     expect(options[1].textContent).toBe('Interest Expenses');
@@ -356,6 +356,6 @@ describe('LoanFields', () => {
     ] as any[];
 
     render(<LoanFields {...defaultProps} categories={categoriesWithParent} />);
-    expect(screen.getByText('Interest Category')).toBeInTheDocument();
+    expect(screen.getByText('Interest Category (required)')).toBeInTheDocument();
   });
 });

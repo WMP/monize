@@ -6,6 +6,10 @@ import toast from 'react-hot-toast';
 
 // Per-test query string, so the `?price=<id>` deep link can be exercised.
 const nav = vi.hoisted(() => ({ params: new URLSearchParams() }));
+// What the stubbed SecurityForm submits; a test sets it to submit another payload.
+const form = vi.hoisted(() => ({
+  payload: { symbol: 'NEW', name: 'New Security', currencyCode: 'USD' } as Record<string, unknown>,
+}));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
@@ -36,7 +40,7 @@ vi.mock('next/dynamic', () => ({
         <div data-testid="security-form">
           SecurityForm
           {props.security && <span data-testid="editing-security">{props.security.symbol}</span>}
-          <button data-testid="submit-form" onClick={() => Promise.resolve(props.onSubmit({ symbol: 'NEW', name: 'New Security', currencyCode: 'USD' })).catch(() => {})}>Submit</button>
+          <button data-testid="submit-form" onClick={() => Promise.resolve(props.onSubmit(form.payload)).catch(() => {})}>Submit</button>
           <button data-testid="cancel-form" onClick={props.onCancel}>Cancel</button>
         </div>
       );
@@ -175,6 +179,11 @@ vi.mock('@/components/securities/SecurityList', () => ({
   SecurityHoldings: {},
 }));
 
+vi.mock('@/components/securities/BondRefreshProgress', () => ({
+  BondRefreshProgress: ({ programId, active }: { programId: string | null; active: boolean }) =>
+    active ? <div data-testid="bond-progress">{programId}</div> : null,
+}));
+
 vi.mock('@/components/ui/Modal', () => ({
   Modal: ({ children, isOpen }: any) => isOpen ? <div data-testid="modal">{children}</div> : null,
 }));
@@ -234,6 +243,7 @@ describe('SecuritiesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     nav.params = new URLSearchParams();
+    form.payload = { symbol: 'NEW', name: 'New Security', currencyCode: 'USD' };
     mockGetSecurities.mockResolvedValue([
       { id: 's1', symbol: 'AAPL', name: 'Apple Inc.', securityType: 'STOCK', exchange: 'NASDAQ', currencyCode: 'USD', isActive: true, skipPriceUpdates: false, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
       { id: 's2', symbol: 'XEQT', name: 'iShares Core Equity', securityType: 'ETF', exchange: 'TSX', currencyCode: 'CAD', isActive: true, skipPriceUpdates: false, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
@@ -355,6 +365,14 @@ describe('SecuritiesPage', () => {
     await waitFor(() => {
       expect(screen.getByText('+ New Security')).toBeInTheDocument();
     });
+  });
+
+  it('has no Treasury bonds button in the header', async () => {
+    render(<SecuritiesPage />);
+    await waitFor(() => {
+      expect(screen.getByText('+ New Security')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('link', { name: 'Treasury bonds' })).not.toBeInTheDocument();
   });
 
   it('opens form modal when + New Security is clicked', async () => {
@@ -624,6 +642,109 @@ describe('SecuritiesPage', () => {
     await waitFor(() => {
       expect(mockCreateSecurity).toHaveBeenCalled();
       expect(toast.success).toHaveBeenCalledWith('Security created successfully');
+    });
+  });
+
+  describe('a linked bond security refreshes through the list Refresh', () => {
+    const submitNew = async () => {
+      mockGetSecurities.mockResolvedValue([
+        { id: 'bond1', symbol: 'EDO', name: 'EDO', securityType: 'BOND', exchange: null, currencyCode: 'PLN', isActive: true, skipPriceUpdates: false, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      ]);
+      render(<SecuritiesPage />);
+      await waitFor(() => expect(screen.getByText('+ New Security')).toBeInTheDocument());
+      await act(async () => { fireEvent.click(screen.getByText('+ New Security')); });
+      await waitFor(() => expect(screen.getByTestId('submit-form')).toBeInTheDocument());
+      await act(async () => { fireEvent.click(screen.getByTestId('submit-form')); });
+    };
+
+    it('refreshes the created security when auto-fetch is on', async () => {
+      mockCreateSecurity.mockResolvedValue({ id: 'bond1', symbol: 'EDO' });
+      form.payload = { symbol: 'EDO', name: 'EDO', currencyCode: 'PLN', bondProgramId: 'p1', bondAutoFetch: true };
+      await submitNew();
+      await waitFor(() => expect(mockRefreshSelectedPrices).toHaveBeenCalledWith(['bond1']));
+    });
+
+    it('shows the progress bar for the program while that refresh runs, and hides it after', async () => {
+      mockCreateSecurity.mockResolvedValue({ id: 'bond1', symbol: 'EDO' });
+      let finish!: (v: unknown) => void;
+      mockRefreshSelectedPrices.mockReturnValueOnce(new Promise((r) => { finish = r; }));
+      form.payload = { symbol: 'EDO', name: 'EDO', currencyCode: 'PLN', bondProgramId: 'p1', bondAutoFetch: true };
+      await submitNew();
+      await waitFor(() => expect(screen.getByTestId('bond-progress')).toHaveTextContent('p1'));
+      await act(async () => { finish({ updated: 1, failed: 0, results: [], lastUpdated: null }); });
+      await waitFor(() => expect(screen.queryByTestId('bond-progress')).not.toBeInTheDocument());
+    });
+
+    it('shows no progress bar when no bond refresh was triggered', async () => {
+      mockCreateSecurity.mockResolvedValue({ id: 'bond1', symbol: 'EDO' });
+      form.payload = { symbol: 'EDO', name: 'EDO', currencyCode: 'PLN', bondProgramId: 'p1', bondAutoFetch: false };
+      await submitNew();
+      await waitFor(() => expect(mockCreateSecurity).toHaveBeenCalled());
+      expect(screen.queryByTestId('bond-progress')).not.toBeInTheDocument();
+    });
+
+    it('does not refresh when auto-fetch is off', async () => {
+      mockCreateSecurity.mockResolvedValue({ id: 'bond1', symbol: 'EDO' });
+      form.payload = { symbol: 'EDO', name: 'EDO', currencyCode: 'PLN', bondProgramId: 'p1', bondAutoFetch: false };
+      await submitNew();
+      await waitFor(() => expect(mockCreateSecurity).toHaveBeenCalled());
+      expect(mockRefreshSelectedPrices).not.toHaveBeenCalled();
+    });
+
+    it('refreshes an edited security when auto-fetch turns on, not when it was already on', async () => {
+      mockUpdateSecurity.mockResolvedValue({ id: 's1', symbol: 'AAPL' });
+      form.payload = { symbol: 'AAPL', name: 'Apple', currencyCode: 'USD', bondProgramId: 'p1', bondAutoFetch: true };
+      render(<SecuritiesPage />);
+      await waitFor(() => expect(screen.getByTestId('security-list')).toBeInTheDocument());
+      await act(async () => { fireEvent.click(screen.getByTestId('edit-AAPL')); });
+      await act(async () => { fireEvent.click(screen.getByTestId('submit-form')); });
+      await waitFor(() => expect(mockRefreshSelectedPrices).toHaveBeenCalledWith(['s1']));
+    });
+
+    it('does not refresh an edit that leaves a linked auto-fetch security as it was', async () => {
+      mockUpdateSecurity.mockResolvedValue({ id: 's1', symbol: 'AAPL' });
+      mockGetSecurities.mockResolvedValue([
+        { id: 's1', symbol: 'AAPL', name: 'Apple Inc.', securityType: 'BOND', exchange: null, currencyCode: 'USD', isActive: true, skipPriceUpdates: false, bondProgramId: 'p1', bondAutoFetch: true, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+      ]);
+      form.payload = { symbol: 'AAPL', name: 'Apple', currencyCode: 'USD', bondProgramId: 'p1', bondAutoFetch: true };
+      render(<SecuritiesPage />);
+      await waitFor(() => expect(screen.getByTestId('security-list')).toBeInTheDocument());
+      await act(async () => { fireEvent.click(screen.getByTestId('edit-AAPL')); });
+      await act(async () => { fireEvent.click(screen.getByTestId('submit-form')); });
+      await waitFor(() => expect(mockUpdateSecurity).toHaveBeenCalled());
+      expect(mockRefreshSelectedPrices).not.toHaveBeenCalled();
+    });
+
+    const editLinked = async (stored: Record<string, unknown>, payload: Record<string, unknown>) => {
+      mockUpdateSecurity.mockResolvedValue({ id: 's1', symbol: 'AAPL' });
+      mockGetSecurities.mockResolvedValue([
+        { id: 's1', symbol: 'AAPL', name: 'Apple Inc.', securityType: 'BOND', exchange: null, currencyCode: 'USD', isActive: true, skipPriceUpdates: false, createdAt: '2026-01-01', updatedAt: '2026-01-01', ...stored },
+      ]);
+      form.payload = payload;
+      render(<SecuritiesPage />);
+      await waitFor(() => expect(screen.getByTestId('security-list')).toBeInTheDocument());
+      await act(async () => { fireEvent.click(screen.getByTestId('edit-AAPL')); });
+      await act(async () => { fireEvent.click(screen.getByTestId('submit-form')); });
+    };
+
+    it('refreshes when only auto-fetch is switched on for an already linked security (program omitted)', async () => {
+      await editLinked({ bondProgramId: 'p1', bondAutoFetch: false }, { bondAutoFetch: true });
+      await waitFor(() => expect(mockRefreshSelectedPrices).toHaveBeenCalledWith(['s1']));
+    });
+
+    it('refreshes when only the program changes on a security with auto-fetch on (auto-fetch omitted)', async () => {
+      let finish!: (v: unknown) => void;
+      mockRefreshSelectedPrices.mockReturnValueOnce(new Promise((r) => { finish = r; }));
+      await editLinked({ bondProgramId: 'p1', bondAutoFetch: true }, { bondProgramId: 'p2' });
+      await waitFor(() => expect(mockRefreshSelectedPrices).toHaveBeenCalledWith(['s1']));
+      await waitFor(() => expect(screen.getByTestId('bond-progress')).toHaveTextContent('p2'));
+      await act(async () => { finish({ updated: 1, failed: 0, results: [], lastUpdated: null }); });
+    });
+
+    it('does not refresh an edit that sends neither link field', async () => {
+      await editLinked({ bondProgramId: 'p1', bondAutoFetch: true }, { name: 'Renamed' });
+      await waitFor(() => expect(mockUpdateSecurity).toHaveBeenCalled());
+      expect(mockRefreshSelectedPrices).not.toHaveBeenCalled();
     });
   });
 

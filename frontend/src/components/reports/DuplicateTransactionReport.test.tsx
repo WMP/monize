@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@/test/render';
+import { fireEvent, render, screen, waitFor } from '@/test/render';
 import { DuplicateTransactionReport } from './DuplicateTransactionReport';
 
 vi.mock('@/hooks/useNumberFormat', async () => {
@@ -30,6 +30,11 @@ vi.mock('@/lib/utils', () => ({
 
 vi.mock('@/components/ui/DateRangeSelector', () => ({
   DateRangeSelector: () => <div data-testid="date-range-selector" />,
+}));
+
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
 }));
 
 const mockGetDuplicateTransactions = vi.fn();
@@ -92,6 +97,31 @@ describe('DuplicateTransactionReport', () => {
     });
     expect(screen.getByText('Potential Duplicates')).toBeInTheDocument();
     expect(screen.getByText('High Confidence')).toBeInTheDocument();
+  });
+
+  it('opens the register on that exact payee, as one quoted term', async () => {
+    mockGetDuplicateTransactions.mockResolvedValue({
+      groups: [
+        {
+          key: 'group-1',
+          confidence: 'high',
+          reason: 'Same date, amount, and payee',
+          transactions: [
+            { id: 'tx-1', transactionDate: '2025-02-01', payeeName: 'Costco Gas', amount: -50, accountName: 'Chequing' },
+            { id: 'tx-2', transactionDate: '2025-02-01', payeeName: 'Costco Gas', amount: -50, accountName: 'Chequing' },
+          ],
+        },
+      ],
+      summary: { totalGroups: 1, highCount: 1, mediumCount: 0, lowCount: 0, potentialSavings: 50 },
+    });
+    render(<DuplicateTransactionReport />);
+    await waitFor(() => {
+      expect(screen.getAllByText('Costco Gas').length).toBeGreaterThan(0);
+    });
+    fireEvent.click(screen.getAllByText('Costco Gas')[0]);
+    expect(mockPush).toHaveBeenCalledWith(
+      '/transactions?search=payee%3A%3D%22Costco%20Gas%22',
+    );
   });
 
   it('renders summary cards', async () => {

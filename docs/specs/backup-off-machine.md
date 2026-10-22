@@ -4,8 +4,9 @@ Approved specification for copying an automatic backup off the container it was
 written on, so the loss of the backup volume is not the loss of every backup.
 Written before the implementation, per `docs/financial-calculation-contract.md`
 section 7 and `AGENTS.md` ("a financial feature of any substance starts from a
-short approved spec"). The staged plan and its task graph are
-`docs/future-plans/backup-off-machine.md` and its `-tasks.md`.
+short approved spec"). The feature has shipped (`backend/src/backup/offsite/`);
+the work packages, guards and rollout order it was built from are the appendix
+at the end of this document.
 
 This spec governs the invariants of the off-machine copy. They hold for every
 destination kind alike: S3 and email are independent destinations a user may
@@ -13,7 +14,7 @@ enable together (a 3-2-1 arrangement), and neither loosens the rules for the
 other. The ordering and verification rules it builds on are `EXT-001`..`EXT-004`
 in `docs/external-side-effects.md`; the completeness rule it builds on is
 `INV-BACKUP-001`. The maintainer's decisions on the open questions are the table
-in `docs/future-plans/backup-off-machine.md`.
+in the appendix at the end of this document.
 
 ## 1. What this adds
 
@@ -403,7 +404,7 @@ real database, per `docs/verification-contract.md`.
   attachment store) -- explicitly out of this feature per
   `docs/backup-restore-contract.md`.
 - Replacing the local backup store with S3 (that is the `BACKUP_STORAGE_PROVIDER`
-  idea in `docs/future-plans/horizontal-scaling.md`, task S2 -- a *different*
+  idea in `docs/specs/horizontal-scaling.md`, task S2 -- a *different*
   change; see the plan's "Relationship to the horizontal-scaling plan").
 - Restoring directly from an off-machine copy; restore continues to read the
   local artifact (or an uploaded file). An operator recovering from S3 first
@@ -413,3 +414,102 @@ real database, per `docs/verification-contract.md`.
   backups only.
 - A presigned or otherwise linked download from the bucket: it would need a read
   credential this feature deliberately does not hold.
+
+## Appendix: work packages, guards and rollout, as built
+
+Carried over from the plan this feature was built from (its task list is
+closed). Work-package ids (WP1 to WP6) are the ones code comments cite.
+
+### Work packages
+
+Each names its mechanism, the invariant it serves, the test kind it owes, and its
+deploy impact.
+
+**WP1. Egress digest at write time.** Compute the SHA-256 of the exact bytes in
+`exportToFile`, return it alongside `{ filename, report }`. *Invariant:
+INV-BACKUP-005 (foundation). Tests: unit. Deploy impact: neutral.*
+
+**WP2. Shared S3 transport, distinct egress uploader.** Extract client build,
+`withDeadline` and key safety into a shared module used by
+`s3-storage.provider.ts` (no behaviour change); add `BackupOffsiteS3Uploader`
+with one operation -- a conditional, checksummed put, multipart above the
+threshold -- importing no delete/overwrite command. *Invariant: INV-BACKUP-004.
+Tests: unit against a local fake S3 endpoint (the pattern
+`s3-storage.provider.deadline.spec.ts` already uses); guard on imports. Deploy
+impact: neutral.*
+
+**WP3. Durable state + per-user settings.** Migration + `schema.sql` for
+`backup_offsite_settings` (encrypted secret columns) and `backup_offsite_uploads`
+(one row per user, destination, key), both RLS-scoped; entities; DTOs with
+`whitelist`/bounded fields; settings service that masks secrets on read.
+*Invariant: INV-BACKUP-005. Tests: unit; integration where the migration is
+exercised. Deploy impact: two new tables.*
+
+**WP4. Dispatch.** After `applyBackupOutcome` for a complete, encrypted artifact,
+under the user's context and outside the export transaction, for each enabled
+destination: claim a row (`pending -> uploading`, conditional `UPDATE ...
+RETURNING`, one replica wins), perform, record the verified outcome. Plaintext
+artifacts are refused with an admin alert. *Invariant: INV-BACKUP-002,
+INV-BACKUP-003, INV-BACKUP-005. Tests: unit (gating, refusal, no status
+regression); integration (single winner). Deploy impact: off until configured.*
+
+**WP5. Email destination.** Attachment-carrying send on `EmailService`, bounded
+by `BACKUP_EMAIL_MAX_BYTES`; the notice path above it; encrypted-only.
+*Invariant: INV-BACKUP-002, INV-BACKUP-005. Tests: unit. Deploy impact: off
+until configured.*
+
+**WP6. Retry reaper.** Hourly cron re-attempts `failed` rows under a conditional
+claim with bounded attempts and backoff, same key and bytes; `docs/cron-jobs.md`
+row. *Invariant: INV-BACKUP-005 (retry half). Tests: unit; two-connection
+integration for the claim. Deploy impact: new cron.*
+
+**WP7. Guards + catalog.** The two source-scanning guards; INV-BACKUP-002..005
+added to `docs/system-invariants.md` and `docs/verification-contract.md`
+together; `docs/external-side-effects.md` and `docs/backend/backup.md` updated.
+*Deploy impact: neutral.*
+
+**WP8. Surface.** Settings UI for the user's destinations (S3 mode and own-bucket
+fields with write-only secret, email toggle and address) and a per-destination
+status list; i18n English-first, pseudo-locale, every locale. *Tests: frontend
+unit + i18n parity. Deploy impact: neutral.*
+
+## Invariants to add
+
+Reserved here; each is added to `docs/system-invariants.md` **and**
+`docs/verification-contract.md` section 3 by WP7 (both files together, or
+`invariant-catalog-parity.spec.ts` fails). Full text in
+`docs/specs/backup-off-machine.md` section 4.
+
+| ID | Statement | Mechanism | Test kind |
+| --- | --- | --- | --- |
+| INV-BACKUP-002 | Only an encrypted artifact leaves the machine | encrypted-extension gate in the dispatcher + source-scan guard | unit + guard |
+| INV-BACKUP-003 | A complete local copy exists before any off-machine copy | dispatch after `applyBackupOutcome`, outside the transaction | unit |
+| INV-BACKUP-004 | The app cannot delete or overwrite an off-machine copy | PutObject-only IAM + no delete import + `IfNoneMatch` on every completing put | guard + unit |
+| INV-BACKUP-005 | An off-machine copy is verified before it is recorded done | checksummed put + durable claimed state | unit against fake S3 + integration |
+
+## Guards to add
+
+- A `*.guard.spec.ts` that the off-site uploader imports no `DeleteObjectCommand`
+  and every completing put carries `IfNoneMatch` (INV-BACKUP-004).
+- A `*.guard.spec.ts` that egress candidates are selected by encrypted extension
+  only (INV-BACKUP-002).
+- New raw SQL is column-checked by the existing `raw-sql-columns.spec.ts`.
+
+## Rollout order and deployment safety
+
+1. WP1 and WP2 are neutral and land first.
+2. WP3 adds the tables; WP4/WP5 add the dispatch, all **off until configured**.
+3. Enable in staging against MinIO first; confirm `uploaded` states and that the
+   token genuinely cannot delete (attempt a delete with it and observe the deny).
+4. WP6 (retry) is additive.
+
+Migrations already merged to `main` are never edited; the new tables are a new
+migration with `schema.sql` updated in the same commit.
+
+## Open questions (remaining)
+
+- **Digest column reuse.** WP1's egress digest is close to a general artifact
+  content hash `INV-BACKUP-001`'s restore path could also use. Kept egress-only
+  for now.
+- **Answer mapping.** Rows 5 and 7 of the decisions table are inferred mappings;
+  the maintainer should confirm or correct them in the discussion.

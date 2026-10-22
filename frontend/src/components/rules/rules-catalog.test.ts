@@ -4,9 +4,13 @@ import common from '@/i18n/messages/en/common.json';
 import transactions from '@/i18n/messages/en/transactions.json';
 import { DESCRIPTION_MODES } from '@/lib/rule-actions';
 import { CEL_ERROR_KEYS, EntityIndex, complete } from '@/lib/rule-cel';
+import { RULE_SKIP_REASONS } from '@/types/transaction-rule-run';
 import {
   EDITOR_RULE_FIELDS,
-  RULE_ACTION_TYPES,
+  ACCEPTED_RULE_ACTION_TYPES,
+  LOAN_SETTLEMENT_EXCESS_POLICIES,
+  LOAN_SETTLEMENT_MISSING_INPUTS,
+  LOAN_SETTLEMENT_SHORTFALL_POLICIES,
   RULE_CONDITION_FIELDS,
   RULE_FIELDS,
   RULE_OPERATORS,
@@ -27,7 +31,7 @@ describe('the rule editor catalog', () => {
     ['fields', EDITOR_RULE_FIELDS],
     ['operators', RULE_OPERATORS],
     ['types', RULE_TRANSACTION_TYPES],
-    ['actionTypes', RULE_ACTION_TYPES],
+    ['actionTypes', ACCEPTED_RULE_ACTION_TYPES],
   ])('has a label for every entry of %s', (group, keys) => {
     for (const key of keys) expect(typeof editor[group][key], `${group}.${key}`).toBe('string');
   });
@@ -56,6 +60,22 @@ describe('the rule editor catalog', () => {
     expect(Object.keys(modes).sort()).toEqual([...DESCRIPTION_MODES].sort());
   });
 
+  it('names both settlement policies of each kind, and every action in words', () => {
+    const loan = (editor.action as Record<string, Record<string, Record<string, unknown>>>).loan;
+    expect(Object.keys(loan.excessPolicies).sort()).toEqual([...LOAN_SETTLEMENT_EXCESS_POLICIES].sort());
+    expect(Object.keys(loan.shortfallPolicies).sort()).toEqual([...LOAN_SETTLEMENT_SHORTFALL_POLICIES].sort());
+    const words = en.words.action as Record<string, unknown>;
+    for (const type of ACCEPTED_RULE_ACTION_TYPES) expect(typeof words[type], type).toBe('string');
+  });
+
+  it('has a sentence for every skip reason and every missing loan input', () => {
+    const skipReasons = en.run.skipReasons as Record<string, unknown>;
+    for (const reason of RULE_SKIP_REASONS) expect(typeof skipReasons[reason], reason).toBe('string');
+    expect(Object.keys(skipReasons).sort()).toEqual([...RULE_SKIP_REASONS, 'other'].sort());
+    const missing = en.run.missingInputs as Record<string, unknown>;
+    expect(Object.keys(missing).sort()).toEqual([...LOAN_SETTLEMENT_MISSING_INPUTS, 'other'].sort());
+  });
+
   it('has a sentence for every validation code, for the reference check, the local name check and an unknown code', () => {
     const codes = editor.errors.codes as Record<string, unknown>;
     for (const code of [...RULE_VALIDATION_CODES, 'REFERENCE_NOT_FOUND', 'NAME_REQUIRED', 'UNKNOWN']) {
@@ -66,7 +86,7 @@ describe('the rule editor catalog', () => {
   it('has no label without a table entry to draw it', () => {
     expect(Object.keys(editor.fields).sort()).toEqual([...EDITOR_RULE_FIELDS].sort());
     expect(Object.keys(editor.operators).sort()).toEqual([...RULE_OPERATORS].sort());
-    expect(Object.keys(editor.actionTypes).sort()).toEqual([...RULE_ACTION_TYPES].sort());
+    expect(Object.keys(editor.actionTypes).sort()).toEqual([...ACCEPTED_RULE_ACTION_TYPES].sort());
     expect(Object.keys(editor.errors.codes as object).sort()).toEqual(
       [...RULE_VALIDATION_CODES, 'REFERENCE_NOT_FOUND', 'NAME_REQUIRED', 'UNKNOWN'].sort(),
     );

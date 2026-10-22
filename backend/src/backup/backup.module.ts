@@ -7,6 +7,7 @@ import { BackupExportService } from "./backup-export.service";
 import { BackupRestoreService } from "./backup-restore.service";
 import { BackupAttachmentTransferService } from "./backup-attachment-transfer.service";
 import { BackupRestoreDatabaseService } from "./backup-restore-database.service";
+import { BackupBondSeriesRecoveryService } from "./backup-bond-series-recovery.service";
 import { AutoBackupService } from "./auto-backup.service";
 import { BackupEncryptionService } from "./backup-encryption.service";
 import { SupportBackupService } from "./support-backup/support-backup.service";
@@ -25,6 +26,7 @@ import { EncryptionModule } from "../common/encryption/encryption.module";
 import { AttachmentsModule } from "../attachments/attachments.module";
 import { SystemAlertsModule } from "../system-alerts/system-alerts.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { BondsModule } from "../bonds/bonds.module";
 
 @Module({
   imports: [
@@ -39,6 +41,9 @@ import { NotificationsModule } from "../notifications/notifications.module";
     // reachable from NotificationsModule imports this module back, so it cannot
     // lie on a require cycle (`src/module-graph.spec.ts`).
     NotificationsModule,
+    // BackupRestoreService recomputes the engine prices of a restored bond link,
+    // and its series recovery fetches a referenced series (BondSeriesService).
+    BondsModule,
   ],
   controllers: [
     BackupController,
@@ -73,6 +78,8 @@ import { NotificationsModule } from "../notifications/notifications.module";
     BackupRestoreService,
     BackupAttachmentTransferService,
     BackupRestoreDatabaseService,
+    // Fetches the bond series a restored file references and the catalog lacks.
+    BackupBondSeriesRecoveryService,
     BackupService,
     AutoBackupService,
     BackupEncryptionService,

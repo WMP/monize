@@ -13,6 +13,14 @@
     "modalTitleNew": "Mata Uang Baru",
     "loading": "Memuat mata uang...",
     "count": "{count, plural, one {# mata uang} other {# mata uang}}",
+    "providers": {
+      "line": "Kurs dari {providers}",
+      "separator": ", lalu ",
+      "names": {
+        "frankfurter": "Frankfurter (kurs referensi ECB)",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "Gagal memuat mata uang",
       "updated": "Mata uang berhasil diperbarui",
@@ -24,6 +32,7 @@
       "statusFailed": "Gagal memperbarui status mata uang",
       "ratesRefreshed": "Kurs tukar diperbarui: {updated} pasang diperbarui",
       "ratesRefreshedWithFailed": "Kurs tukar diperbarui: {updated} berhasil, {failed} gagal",
+      "ratesAllFailed": "Tidak ada kurs yang dapat diambil; penyedia tidak merespons",
       "ratesFailed": "Gagal memperbarui kurs tukar"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter (ECB)",
         "mnyImport": "Impor Money",
         "unknown": "Tidak diketahui"
       }

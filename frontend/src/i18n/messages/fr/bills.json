@@ -53,7 +53,8 @@
     "totalOfAccounts": "Total des comptes",
     "legendAriaLabel": "Courbes de la prévision",
     "tooltipTransactionForAccount": "{name} ({account})",
-    "unavailableMissingRates": "Cette prévision ne peut pas être affichée en {displayCurrency} : aucun taux de change n'est disponible pour {currencies}, et un solde projeté s'appuie sur chaque jour précédent. Ajoutez un taux, ou choisissez un compte à devise unique."
+    "unavailableMissingRates": "Cette prévision ne peut pas être affichée en {displayCurrency} : aucun taux de change n'est disponible pour {currencies}, et un solde projeté s'appuie sur chaque jour précédent. Ajoutez un taux, ou choisissez un compte à devise unique.",
+    "untitledTransaction": "Transaction"
   },
   "calendar": {
     "days": {

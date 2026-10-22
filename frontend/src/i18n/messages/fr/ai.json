@@ -82,6 +82,7 @@
     "newCategory": "Nouvelle catégorie",
     "currentCategory": "Catégorie actuelle",
     "description": "Description",
+    "referenceNumber": "Réf. #",
     "name": "Nom",
     "website": "Site web",
     "address": "Adresse",
@@ -111,6 +112,13 @@
     "commission": "Commission",
     "total": "Total",
     "cashImpact": "Impact sur les liquidités",
+    "bondSeries": "Série",
+    "marksPaid": "Marque comme payé",
+    "accruedInterest": "Intérêts courus",
+    "redemptionSplit": "Répartition du remboursement",
+    "redemptionSplitValue": "Capital {principal} + intérêts {interest} = versement {payout}",
+    "redemptionDeduction": "Frais de remboursement anticipé déduits",
+    "redemptionSplitDiffers": "Le prix et les intérêts courus diffèrent de ce que ce remboursement verse (voir la répartition). Vérifiez-les avant d'approuver.",
     "createTransactionsTitle": "Créer ces transactions ?",
     "createInvestmentTransactionsTitle": "Créer ces transactions de placement ?",
     "approveAll": "Tout approuver",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Réinvestissement de plus-value à long terme",
       "CAPITAL_GAIN_SHORT": "Plus-value à court terme",
       "CAPITAL_GAIN_LONG": "Plus-value à long terme",
-      "REDEEM": "Remboursement CD/obligation"
+      "REDEEM": "Remboursement CD/obligation",
+      "RETURN_OF_CAPITAL": "Remboursement de capital"
     },
     "createSecurityTitle": "Créer ce titre ?",
     "createdSecurity": "Titre créé",
@@ -224,7 +233,11 @@
       "category": "Définir la catégorie sur {name}",
       "payee": "Définir le bénéficiaire sur {name}",
       "aiReview": "{count, plural, one {Mettre en file # demande de révision par l'IA} other {Mettre en file # demandes de révision par l'IA}}"
-    }
+    },
+    "aiCategory": "suggérée par l'IA",
+    "tags": "Étiquettes",
+    "newTag": "(nouvelle étiquette)",
+    "marksPaidDue": "{name} (échéance le {date})"
   },
   "table": {
     "downloadTitle": "Télécharger le tableau en CSV",

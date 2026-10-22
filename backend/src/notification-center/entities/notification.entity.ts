@@ -59,6 +59,40 @@ export enum NotificationType {
   // category). `data.kind` is "risk" (RISK_ON<->RISK_OFF) or "allocation".
   // See `docs/specs/gem-signal-change-notifications.md`.
   GEM_SIGNAL_CHANGED = "GEM_SIGNAL_CHANGED",
+  // Bank sync (BANK_SYNC and BANK_SYNC_ACTIVITY categories): consent reminders
+  // and the daily sync's outcomes. Each carries a dedupe_key (`bsc:...`) so a
+  // replica that loses the insert sends nothing. See
+  // `docs/specs/bank-sync-notifications.md`.
+  BANK_SYNC_CONSENT_EXPIRING = "BANK_SYNC_CONSENT_EXPIRING",
+  BANK_SYNC_CONSENT_EXPIRED = "BANK_SYNC_CONSENT_EXPIRED",
+  BANK_SYNC_FAILED = "BANK_SYNC_FAILED",
+  BANK_SYNC_IMPORTED = "BANK_SYNC_IMPORTED",
+  // The email-receipts inbox holds messages that need the owner (EMAIL_RECEIPTS
+  // category): some have no profile (`no_parser`), some have a profile that did
+  // not recognise them (`parse_failed`). One row per (count of the first, count of
+  // the second) via the dedupe key, raised only when a count grows.
+  EMAIL_RECEIPTS_ATTENTION = "EMAIL_RECEIPTS_ATTENTION",
+  // What is about to happen to, or has happened to, the money in a person's
+  // engine-priced bonds (BONDS category). Each carries a dedupe_key (`bond:...`)
+  // so a re-run or a second replica raises nothing new. See
+  // `docs/specs/bond-notifications.md`.
+  BOND_MATURITY_SOON = "BOND_MATURITY_SOON",
+  BOND_INTEREST_PAYMENT = "BOND_INTEREST_PAYMENT",
+  BOND_RATE_RESET = "BOND_RATE_RESET",
+  BOND_REDEMPTION_UNBOOKED = "BOND_REDEMPTION_UNBOOKED",
+  BOND_BENCHMARK_PUBLISHED = "BOND_BENCHMARK_PUBLISHED",
+  BOND_DATA_MISSING = "BOND_DATA_MISSING",
+  // Open AI review proposals wait for the person (AI_REVIEW category): the
+  // count grew (`air:ready:...` dedupe key), or proposals are 3 days from
+  // expiry (`air:exp:...`). See `docs/specs/ai-review-notifications.md`.
+  AI_REVIEW_PROPOSALS_READY = "AI_REVIEW_PROPOSALS_READY",
+  AI_REVIEW_PROPOSALS_EXPIRING = "AI_REVIEW_PROPOSALS_EXPIRING",
+  // A warranty reaches a reminder mark (WARRANTIES category): 30 or 7 days
+  // before `expires_on`, or the day itself. The date is part of the dedupe key,
+  // so a changed `expires_on` earns a fresh set. See
+  // `docs/future-plans/warranty-tracker.md` section 6.6.
+  WARRANTY_EXPIRING = "WARRANTY_EXPIRING",
+  WARRANTY_EXPIRES_TODAY = "WARRANTY_EXPIRES_TODAY",
 }
 
 /**
@@ -110,10 +144,20 @@ export enum NotificationCategory {
   BUDGETS = "BUDGETS",
   SYSTEM = "SYSTEM",
   // Each arrives with its producer (never a dead row): balance crossings,
-  // daily portfolio movement, GEM strategy signal changes.
+  // daily portfolio movement, GEM strategy signal changes, email-receipt attention.
   BALANCES = "BALANCES",
   INVESTMENTS = "INVESTMENTS",
   STRATEGIES = "STRATEGIES",
+  // What needs the user's action at a bank connection (consent ending or ended,
+  // a failed sync) versus what only reports (rows imported): two categories so
+  // the matrix can give them different default channels
+  // (`docs/specs/bank-sync-notifications.md` section 2).
+  BANK_SYNC = "BANK_SYNC",
+  BANK_SYNC_ACTIVITY = "BANK_SYNC_ACTIVITY",
+  EMAIL_RECEIPTS = "EMAIL_RECEIPTS",
+  BONDS = "BONDS",
+  AI_REVIEW = "AI_REVIEW",
+  WARRANTIES = "WARRANTIES",
 }
 
 /**
@@ -133,6 +177,32 @@ export const INVESTMENT_NOTIFICATION_TYPES: readonly NotificationType[] = [
 ];
 export const STRATEGY_NOTIFICATION_TYPES: readonly NotificationType[] = [
   NotificationType.GEM_SIGNAL_CHANGED,
+];
+export const BANK_SYNC_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.BANK_SYNC_CONSENT_EXPIRING,
+  NotificationType.BANK_SYNC_CONSENT_EXPIRED,
+  NotificationType.BANK_SYNC_FAILED,
+];
+export const BANK_SYNC_ACTIVITY_NOTIFICATION_TYPES: readonly NotificationType[] =
+  [NotificationType.BANK_SYNC_IMPORTED];
+export const EMAIL_RECEIPT_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.EMAIL_RECEIPTS_ATTENTION,
+];
+export const BOND_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.BOND_MATURITY_SOON,
+  NotificationType.BOND_INTEREST_PAYMENT,
+  NotificationType.BOND_RATE_RESET,
+  NotificationType.BOND_REDEMPTION_UNBOOKED,
+  NotificationType.BOND_BENCHMARK_PUBLISHED,
+  NotificationType.BOND_DATA_MISSING,
+];
+export const AI_REVIEW_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.AI_REVIEW_PROPOSALS_READY,
+  NotificationType.AI_REVIEW_PROPOSALS_EXPIRING,
+];
+export const WARRANTY_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.WARRANTY_EXPIRING,
+  NotificationType.WARRANTY_EXPIRES_TODAY,
 ];
 
 /**
@@ -171,6 +241,24 @@ export function notificationCategoryOf(
   }
   if (STRATEGY_NOTIFICATION_TYPES.includes(type)) {
     return NotificationCategory.STRATEGIES;
+  }
+  if (BANK_SYNC_NOTIFICATION_TYPES.includes(type)) {
+    return NotificationCategory.BANK_SYNC;
+  }
+  if (BANK_SYNC_ACTIVITY_NOTIFICATION_TYPES.includes(type)) {
+    return NotificationCategory.BANK_SYNC_ACTIVITY;
+  }
+  if (EMAIL_RECEIPT_NOTIFICATION_TYPES.includes(type)) {
+    return NotificationCategory.EMAIL_RECEIPTS;
+  }
+  if (BOND_NOTIFICATION_TYPES.includes(type)) {
+    return NotificationCategory.BONDS;
+  }
+  if (AI_REVIEW_NOTIFICATION_TYPES.includes(type)) {
+    return NotificationCategory.AI_REVIEW;
+  }
+  if (WARRANTY_NOTIFICATION_TYPES.includes(type)) {
+    return NotificationCategory.WARRANTIES;
   }
   return NotificationCategory.BUDGETS;
 }

@@ -308,6 +308,87 @@
     "priceMovement": {
       "title": "Fiyat değişimi uyarısı: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}: önceki mevcut seansa göre %{{ percent }}."
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}: banka erişimi bugün sona eriyor",
+      "expiringTitleOneDay": "{{ institution }}: banka erişimi 1 gün içinde sona eriyor",
+      "expiringTitleDays": "{{ institution }}: banka erişimi {{ days }} gün içinde sona eriyor",
+      "expiringMessage": "Monize'in {{ institution }} kaydını okumasına verdiğiniz onay {{ date }} tarihinde sona eriyor. Senkronizasyonu sürdürmek için Monize'de bağlantıyı yenileyin.",
+      "expiredTitle": "{{ institution }}: banka erişimi sona erdi",
+      "expiredMessage": "Monize'in {{ institution }} kaydını okumasına verdiğiniz onay sona erdi. Senkronizasyonu yeniden başlatmak için Monize'de bağlantıyı yenileyin.",
+      "failedTitle": "{{ institution }}: senkronizasyon başarısız",
+      "failedMessage": "{{ institution }} günlük senkronizasyonu şu hesaplar için başarısız oldu: {{ accounts }}. Nedenini görmek için banka senkronizasyonu ayarlarını açın.",
+      "failedCredentialsMessage": "Banka senkronizasyonu kimlik bilgileri eksik olduğu veya reddedildiği için {{ institution }} günlük senkronizasyonu başlatılamadı. Bunları banka senkronizasyonu ayarlarında kontrol edin.",
+      "unnamedAccount": "bir hesap",
+      "importedTitle": "{{ institution }}: yeni işlemler içe aktarıldı",
+      "importedMessage": "Günlük senkronizasyonla {{ institution }} kaynağından içe aktarılan işlemler: {{ imported }}.",
+      "importedNoneTitle": "{{ institution }}: yeni işlem yok",
+      "importedNoneMessage": "{{ institution }} günlük senkronizasyonu yeni işlem bulamadı."
+    },
+    "bond": {
+      "maturitySoonTitle": "{{ series }} için vade {{ date }} tarihinde doluyor",
+      "maturitySoonMessage": "{{ quantity }} × {{ series }} için vade {{ date }} tarihinde doluyor. {{ payout }}",
+      "interestTitle": "{{ series }}: {{ date }} tarihinde faiz ödemesi",
+      "interestMessage": "{{ quantity }} × {{ series }} için {{ date }} tarihinde {{ amount }} faiz ödenecek. Henüz hesabınızda değilse menkul kıymet sayfasında kaydedin.",
+      "interestMessageUnknown": "{{ quantity }} × {{ series }} için {{ date }} tarihinde faiz ödenecek. Tutar henüz bilinmiyor: bağlı olduğu oran henüz yayımlanmadı.",
+      "rateResetTitle": "{{ series }}: yeni faiz dönemi",
+      "rateResetMessage": "{{ series }}: {{ date }} tarihinde başlayan dönem {{ period }}, yıllık oran {{ rate }}.",
+      "unbookedTitle": "{{ series }}: vadesi doldu, itfa kaydedilmedi",
+      "unbookedMessage": "{{ quantity }} × {{ series }} için vade {{ date }} tarihinde doldu ve kayıtlı bir itfa yok. {{ payout }} İtfayı menkul kıymet sayfasında kaydedin.",
+      "payoutKnown": "Ödeme tutarı {{ payout }}.",
+      "payoutUnknown": "Ödeme tutarı henüz bilinmiyor: {{ reason }}.",
+      "reason": {
+        "RATE_UNKNOWN": "bağlı olduğu oran henüz yayımlanmadı",
+        "TERMS_INCOMPLETE": "serinin koşulları eksik",
+        "PURCHASE_OUTSIDE_SALE_WINDOW": "bir alış tarihi serinin satış döneminin dışında",
+        "other": "kayıtlı verilerden hesaplanamıyor"
+      },
+      "benchmarkTitle": "{{ benchmark }}: yeni gözlem {{ observation }}",
+      "benchmarkMessage": "{{ publisher }}, {{ observation }} için {{ benchmark }} değerini yayımladı: {{ value }}. Kullanan seri: {{ series }}.",
+      "benchmarkMessageMore": "{{ publisher }}, {{ observation }} için {{ benchmark }} değerini yayımladı: {{ value }}. Kullanan seriler: {{ series }} ve {{ more }} diğeri.",
+      "missingTitle": "Tahvil rakamları henüz bilinmiyor",
+      "missingMessage": "Bazı tahvil rakamları hesaplanamıyor: {{ causes }}.",
+      "benchmarks": {
+        "PL_CPI_GUS_YOY": "TÜFE, 12 ay (GUS)",
+        "PL_NBP_REFERENCE": "NBP referans faizi"
+      },
+      "cause": {
+        "observation": "{{ benchmark }} ({{ publisher }}) için {{ observation }} gözlemi kayıtlı değil: henüz yayımlanmadı veya veri akışı o zamandan beri alınmadı; tahvil sayfasında yenileyin",
+        "observationNoPublisher": "{{ benchmark }} için {{ observation }} gözlemi kayıtlı değil: henüz yayımlanmadı veya veri akışı o zamandan beri alınmadı; tahvil sayfasında yenileyin",
+        "terms": "{{ series }} koşulları eksik; seriyi tahvil sayfasında yenileyin",
+        "purchase": "{{ series }} için {{ date }} tarihli alış, satış döneminin ({{ from }} – {{ to }}) dışında; alış tarihini düzeltin",
+        "lots": "lotlar defterden türetilemiyor ({{ code }}); defteri düzeltin",
+        "lotsRow": "{{ action }} ({{ date }}): lotlar türetilemiyor ({{ code }}); işlemi düzeltin",
+        "lotsRowSeries": "{{ action }} ({{ date }}): bir seriye atanmamış ({{ code }}); bu işlemde seriyi seçin",
+        "lotsRowRemoval": "{{ action }} ({{ date }}): hesapta bulunandan fazlasını o seriden çıkarıyor ({{ code }}); işlemi düzeltin"
+      },
+      "action": {
+        "BUY": "alım",
+        "SELL": "satım",
+        "REINVEST": "yeniden yatırım",
+        "ADD_SHARES": "pay ekleme",
+        "REMOVE_SHARES": "pay çıkarma",
+        "SPLIT": "bölünme (split)",
+        "TRANSFER_IN": "gelen transfer",
+        "TRANSFER_OUT": "giden transfer",
+        "other": "işlem"
+      }
+    },
+    "emailReceiptsAttention": {
+      "title": "E-posta makbuzları ilgilenilmesi gerekiyor",
+      "message": "Makbuz gelen kutunuz {{ noParser }} profil olmadan ve {{ parseFailed }} ki profili tanımadığı içeriyor. Gözden geçirmek için açın."
+    },
+    "aiReview": {
+      "readyTitle": "Yapay zeka inceleme önerileri sizi bekliyor",
+      "readyMessage": "Kararınızı bekleyen öneri sayısı: {{ count }}. Son bildirimden bu yana yeni: {{ added }}. İncelemek için açın.",
+      "expiringTitle": "Yapay zeka inceleme önerilerinin süresi yakında doluyor",
+      "expiringMessage": "3 gün içinde süresi dolacak öneri sayısı: {{ count }}. İlkinin süresi {{ date }} tarihinde doluyor. İncelemek için açın."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: garantinin süresi yakında doluyor",
+      "expiringMessage": "{{ name }} garantisinin süresi {{ date }} tarihinde doluyor. Belgelerini incelemek veya bir talep kaydetmek için açın.",
+      "todayTitle": "{{ name }}: garantinin süresi bugün doluyor",
+      "todayMessage": "{{ name }} garantisinin süresi bugün, {{ date }} tarihinde doluyor. Belgelerini incelemek veya bir talep kaydetmek için açın."
     }
   },
   "backupOffsite": {

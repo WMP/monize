@@ -63,6 +63,30 @@ export const PUSH_CATEGORY_COPY: Readonly<
     title: "Strategy signal",
     body: "One of your strategies changed its recommendation. Open Monize for the details.",
   },
+  [NotificationCategory.BANK_SYNC]: {
+    title: "Bank connection",
+    body: "A bank connection needs your attention. Open Monize for the details.",
+  },
+  [NotificationCategory.BANK_SYNC_ACTIVITY]: {
+    title: "Bank sync",
+    body: "Your bank sync has news. Open Monize for the details.",
+  },
+  [NotificationCategory.EMAIL_RECEIPTS]: {
+    title: "Email receipts need attention",
+    body: "Some emails in your receipts inbox need a profile or a fix. Open Monize for the details.",
+  },
+  [NotificationCategory.BONDS]: {
+    title: "Bond notice",
+    body: "One of your bonds has news. Open Monize for the details.",
+  },
+  [NotificationCategory.AI_REVIEW]: {
+    title: "AI review proposals",
+    body: "Some AI review proposals wait for your decision. Open Monize for the details.",
+  },
+  [NotificationCategory.WARRANTIES]: {
+    title: "Warranty reminder",
+    body: "One of your warranties expires soon. Open Monize for the details.",
+  },
 };
 
 export interface NotifyOptions {

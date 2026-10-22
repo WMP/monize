@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { UserPreference } from "../users/entities/user-preference.entity";
@@ -45,8 +45,6 @@ export type RateMap = Map<string, number>;
 
 @Injectable()
 export class ReportCurrencyService {
-  private readonly logger = new Logger(ReportCurrencyService.name);
-
   constructor(
     private dataSource: DataSource,
     private exchangeRateService: ExchangeRateService,
@@ -76,11 +74,10 @@ export class ReportCurrencyService {
   /**
    * Convert, or answer `null` when there is no rate.
    *
-   * The honest half of the pair below. A caller that can carry "unknown"
-   * through to what it reports -- excluding the row and naming the currency --
-   * uses this; `convertAmount` returns the amount unconverted, which silently
-   * adds foreign units to a home-currency total and is why Spending by Category
-   * stopped using it.
+   * The only conversion door a report has. A missing rate is unknown, never 1:1
+   * and never the unconverted amount under the reporting currency's name
+   * (INV-FX-001): the caller excludes the row from every figure and records the
+   * currency in a {@link ConversionGaps}.
    */
   tryConvertAmount(
     amount: number,
@@ -88,6 +85,8 @@ export class ReportCurrencyService {
     defaultCurrency: string,
     rateMap: RateMap,
   ): number | null {
+    // Flat latest-rate lookup; the direct/inverse decision is shared with
+    // net worth via convertWithRateLookup so the two surfaces stay consistent.
     return convertWithRateLookup(
       amount,
       fromCurrency,
@@ -95,28 +94,45 @@ export class ReportCurrencyService {
       (f, t) => rateMap.get(`${f}->${t}`),
     );
   }
+}
 
-  convertAmount(
-    amount: number,
-    fromCurrency: string,
-    defaultCurrency: string,
-    rateMap: RateMap,
-  ): number {
-    // Flat latest-rate lookup; the direct/inverse decision is shared with
-    // net worth via convertWithRateLookup so the two surfaces stay consistent.
-    const result = convertWithRateLookup(
-      amount,
-      fromCurrency,
-      defaultCurrency,
-      (f, t) => rateMap.get(`${f}->${t}`),
-    );
-    if (result == null) {
-      // M30: Log warning when no conversion rate is found instead of silently returning unconverted amount
-      this.logger.warn(
-        `No exchange rate found for ${fromCurrency} -> ${defaultCurrency}, returning unconverted amount`,
-      );
-      return amount;
+/**
+ * What a report could not convert, kept apart from the arithmetic so every
+ * report answers the same two questions the same way: which currencies had no
+ * rate, and how many aggregate rows that cost.
+ *
+ * An excluded row is not a smaller number: it could have changed which
+ * categories, payees or bills appear at all. So a headline total is withheld
+ * (`null`) whenever anything was excluded, and the part that did convert goes in
+ * a separately named `known*` field.
+ */
+export class ConversionGaps {
+  private currencies: readonly string[] = [];
+  private excluded = 0;
+
+  /** Record one aggregate row left out because `currency` has no rate. */
+  record(currency: string): void {
+    if (!this.currencies.includes(currency)) {
+      this.currencies = [...this.currencies, currency];
     }
-    return result;
+    this.excluded += 1;
+  }
+
+  /** Source currencies with no usable rate, sorted and unique. */
+  get missingCurrencies(): string[] {
+    return [...this.currencies].sort();
+  }
+
+  get excludedCount(): number {
+    return this.excluded;
+  }
+
+  get isComplete(): boolean {
+    return this.excluded === 0;
+  }
+
+  /** The headline total, or `null` when any row was excluded. */
+  headline(knownTotal: number): number | null {
+    return this.isComplete ? knownTotal : null;
   }
 }

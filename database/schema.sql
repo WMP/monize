@@ -71,6 +71,23 @@ CREATE TABLE currencies (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- A user's deletion clears created_by_user_id (ON DELETE SET NULL); a currency
+-- that loses its creator must not become an active system currency every user is
+-- offered, so it is deactivated as the creator is cleared.
+CREATE OR REPLACE FUNCTION currencies_creator_cleared_deactivate() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.is_active := false;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER currencies_creator_cleared_deactivate
+    BEFORE UPDATE OF created_by_user_id ON currencies
+    FOR EACH ROW
+    WHEN (OLD.created_by_user_id IS NOT NULL AND NEW.created_by_user_id IS NULL)
+    EXECUTE FUNCTION currencies_creator_cleared_deactivate();
+
 -- Per-user currency preferences (visibility + is_active)
 CREATE TABLE user_currency_preferences (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -116,6 +133,10 @@ CREATE TABLE exchange_rate_coverage (
     -- The earliest date any fill has planned over, which is what makes the
     -- pointer above safe when a reader imports older data. Moves back only.
     probed_from DATE,
+    -- The provider chain that wrote the row: ordered source slugs joined with
+    -- commas. A row written under another chain (or NULL) reads as never
+    -- probed, and the next write replaces its dates rather than merging them.
+    providers VARCHAR(200),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_exchange_rate_coverage_pair UNIQUE (from_currency, to_currency),
@@ -203,6 +224,9 @@ CREATE TABLE accounts (
     term_end_date DATE, -- When the current term ends (for renewal reminders)
     amortization_months INTEGER, -- Total amortization period in months (e.g., 300 for 25 years)
     original_principal NUMERIC(20, 4), -- Original mortgage amount for reference
+    -- The rule a loan's "Payment matching" created; a pointer for the UI only
+    -- (FK added after transaction_rules).
+    payment_matching_rule_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_statement_due_day
@@ -254,6 +278,7 @@ CREATE TABLE categories (
     icon VARCHAR(50),
     color VARCHAR(7), -- hex color
     is_income BOOLEAN DEFAULT false,
+    auto_sign BOOLEAN,
     is_system BOOLEAN DEFAULT false, -- system categories can't be deleted
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, name, parent_id)
@@ -367,6 +392,7 @@ CREATE TABLE transactions (
     parent_transaction_id UUID REFERENCES transactions(id) ON DELETE CASCADE, -- for split children
     is_transfer BOOLEAN DEFAULT false, -- indicates this is part of an account-to-account transfer
     linked_transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL, -- links the paired transfer transaction
+    external_id VARCHAR(255), -- caller-supplied idempotency key for an API create; unique per account (below)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -382,6 +408,11 @@ CREATE INDEX idx_transactions_original_currency ON transactions(original_currenc
 -- Trigram indexes accelerate the register/report search (ILIKE '%term%')
 CREATE INDEX idx_transactions_payee_name_trgm ON transactions USING gin (payee_name gin_trgm_ops);
 CREATE INDEX idx_transactions_description_trgm ON transactions USING gin (description gin_trgm_ops);
+-- At most one row per (account, external_id): an API create retried with the
+-- same key returns the row it already made instead of a second one.
+CREATE UNIQUE INDEX idx_transactions_account_external_id
+  ON transactions(account_id, external_id)
+  WHERE external_id IS NOT NULL;
 
 -- Transaction Splits (details for split transactions)
 CREATE TABLE transaction_splits (
@@ -406,13 +437,26 @@ CREATE INDEX idx_transaction_splits_category ON transaction_splits(category_id);
 CREATE INDEX idx_transaction_splits_transfer_account ON transaction_splits(transfer_account_id);
 CREATE INDEX idx_transaction_splits_linked ON transaction_splits(linked_transaction_id);
 
--- Transaction Attachments: receipts/invoices/documents stored in Postgres by
--- default. Metadata lives here; the bytes live in attachment_blobs (database
--- provider) or an external store keyed by storage_key. See migration 109.
+-- Attachments: receipts/invoices/documents stored in Postgres by default.
+-- Metadata lives here; the bytes live in attachment_blobs (database provider)
+-- or an external store keyed by storage_key. See migration 109.
+--
+-- An attachment has exactly one parent (chk_attachment_one_parent, WTY-003):
+-- the transaction whose receipt it is, or the warranty whose receipt, manual
+-- or photo it is (docs/future-plans/warranty-tracker.md decision 7). The
+-- table keeps its historical name. Ownership is user_id on this row whichever
+-- parent it has, so the attachment_blobs policy, the tombstone trigger, the
+-- orphan sweeper and the storage migrator never look at the parent.
 CREATE TABLE transaction_attachments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE CASCADE,
+    -- The other parent. Its foreign key to warranties is added after that
+    -- table, further down (fk added with ALTER TABLE, like accounts').
+    warranty_id UUID,
+    -- What a warranty's document is; a transaction's attachments are always
+    -- 'other' (the register offers no picker).
+    document_kind VARCHAR(20) NOT NULL DEFAULT 'other', -- 'receipt' | 'manual' | 'photo' | 'warranty' | 'other'
     filename VARCHAR(255) NOT NULL,
     content_type VARCHAR(100) NOT NULL, -- server-sniffed MIME, not the client's claim
     byte_size BIGINT NOT NULL,
@@ -422,14 +466,20 @@ CREATE TABLE transaction_attachments (
     -- Set on the unprocessed original of a scanned document, pointing at the
     -- visible (enhanced) attachment; NULL for every attachment a user sees.
     -- The link lives on the original so deleting the visible row cascades to
-    -- it. See docs/future-plans/document-scanner.md.
+    -- it. See docs/specs/document-scanner.md.
     original_of_attachment_id UUID NULL REFERENCES transaction_attachments(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_attachment_not_own_original
-        CHECK (original_of_attachment_id IS NULL OR original_of_attachment_id <> id)
+        CHECK (original_of_attachment_id IS NULL OR original_of_attachment_id <> id),
+    CONSTRAINT chk_attachment_document_kind
+        CHECK (document_kind IN ('receipt', 'manual', 'photo', 'warranty', 'other')),
+    -- Exactly one parent: never none, never both.
+    CONSTRAINT chk_attachment_one_parent
+        CHECK (((transaction_id IS NOT NULL)::int + (warranty_id IS NOT NULL)::int) = 1)
 );
 
 CREATE INDEX idx_transaction_attachments_transaction ON transaction_attachments(transaction_id);
+CREATE INDEX idx_transaction_attachments_warranty ON transaction_attachments(warranty_id);
 CREATE INDEX idx_transaction_attachments_user ON transaction_attachments(user_id);
 -- At most one original per attachment: a scan pair is exactly two rows.
 CREATE UNIQUE INDEX uq_transaction_attachments_original_of
@@ -651,6 +701,8 @@ CREATE TABLE transaction_rules (
     actions JSONB NOT NULL DEFAULT '[]'::jsonb,
     stop_processing BOOLEAN NOT NULL DEFAULT false,
     revision INTEGER NOT NULL DEFAULT 1, -- compare-and-swap counter for updates
+    active_from DATE, -- first transaction date the rule applies to (inclusive); NULL = open
+    active_to DATE,   -- last transaction date the rule applies to (inclusive); NULL = open
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_transaction_rules_name_length
@@ -659,6 +711,8 @@ CREATE TABLE transaction_rules (
     CONSTRAINT ck_transaction_rules_revision CHECK (revision >= 1),
     CONSTRAINT ck_transaction_rules_triggers
       CHECK (cardinality(triggers) >= 1 AND triggers <@ ARRAY['create', 'import']::text[]),
+    CONSTRAINT ck_transaction_rules_active_window
+      CHECK (active_from IS NULL OR active_to IS NULL OR active_from <= active_to),
     CONSTRAINT uq_transaction_rules_user_position
       UNIQUE (user_id, position) DEFERRABLE INITIALLY DEFERRED
 );
@@ -684,6 +738,195 @@ CREATE INDEX idx_transaction_rule_applications_rule
 CREATE INDEX idx_transaction_rule_applications_transaction
     ON transaction_rule_applications(transaction_id);
 
+-- Email receipts (docs/future-plans/email-receipts.md section 4): a user's
+-- dedicated IMAP mailbox (one per user), per-merchant parsers, and the stored
+-- emails. password_enc and oauth_refresh_token_enc are AES-256-GCM ciphertext
+-- and never returned to a client; a mailbox is a password mailbox (a password, no
+-- provider) or an oauth2 one (a provider, no password; the refresh token is
+-- absent while it is disconnected), which ck_email_receipt_mailboxes_credentials
+-- holds;
+-- uid_validity and last_uid are the poll's cursor; UNIQUE (mailbox_id,
+-- uid_validity, uid) is the ingestion idempotency. email_receipts.ai_review_request_id
+-- has no foreign key: ai_review_requests references email_receipts. Defined
+-- before ai_review_requests, whose email_receipt_id points here. The defaults on
+-- the CHECKed columns exist for the RLS spec's generic row seeder.
+CREATE TABLE email_receipt_mailboxes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    host VARCHAR(255) NOT NULL,
+    port INTEGER NOT NULL DEFAULT 993,
+    security VARCHAR(10) NOT NULL DEFAULT 'tls',
+    username VARCHAR(320) NOT NULL,
+    password_enc TEXT,
+    auth_method VARCHAR(10) NOT NULL DEFAULT 'password',
+    oauth_provider VARCHAR(12),
+    oauth_refresh_token_enc TEXT,
+    folder VARCHAR(255) NOT NULL DEFAULT 'INBOX',
+    enabled BOOLEAN NOT NULL DEFAULT false,
+    ai_mode VARCHAR(12) NOT NULL DEFAULT 'off',
+    auto_apply BOOLEAN NOT NULL DEFAULT false,
+    profile_proposals_count_toward_ai_limit BOOLEAN NOT NULL DEFAULT true,
+    uid_validity BIGINT,
+    last_uid BIGINT,
+    last_polled_at TIMESTAMPTZ,
+    last_success_at TIMESTAMPTZ,
+    last_error VARCHAR(300),
+    last_error_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_email_receipt_mailboxes_user UNIQUE (user_id),
+    CONSTRAINT ck_email_receipt_mailboxes_host_length
+      CHECK (char_length(host) BETWEEN 1 AND 255),
+    CONSTRAINT ck_email_receipt_mailboxes_port
+      CHECK (port BETWEEN 1 AND 65535),
+    CONSTRAINT ck_email_receipt_mailboxes_security
+      CHECK (security IN ('tls', 'starttls')),
+    CONSTRAINT ck_email_receipt_mailboxes_ai_mode
+      CHECK (ai_mode IN ('off', 'on_demand', 'automatic')),
+    CONSTRAINT ck_email_receipt_mailboxes_auth_method
+      CHECK (auth_method IN ('password', 'oauth2')),
+    CONSTRAINT ck_email_receipt_mailboxes_oauth_provider
+      CHECK (oauth_provider IS NULL OR oauth_provider IN ('google', 'microsoft')),
+    CONSTRAINT ck_email_receipt_mailboxes_credentials
+      CHECK (
+        (auth_method = 'password'
+          AND password_enc IS NOT NULL
+          AND oauth_provider IS NULL
+          AND oauth_refresh_token_enc IS NULL)
+        OR
+        (auth_method = 'oauth2'
+          AND oauth_provider IS NOT NULL
+          AND password_enc IS NULL)
+      )
+);
+
+CREATE TABLE email_receipt_parsers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    payee_id UUID REFERENCES payees(id) ON DELETE SET NULL,
+    from_domains TEXT[] NOT NULL DEFAULT ARRAY['example.invalid']::text[],
+    subject_contains TEXT[] NOT NULL DEFAULT '{}'::text[],
+    definition JSONB NOT NULL DEFAULT '{}'::jsonb,
+    status VARCHAR(10) NOT NULL DEFAULT 'draft',
+    source VARCHAR(10) NOT NULL DEFAULT 'manual',
+    approved_at TIMESTAMPTZ,
+    revision INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_email_receipt_parsers_name_length
+      CHECK (char_length(name) BETWEEN 1 AND 100),
+    CONSTRAINT ck_email_receipt_parsers_from_domains
+      CHECK (cardinality(from_domains) BETWEEN 1 AND 10),
+    CONSTRAINT ck_email_receipt_parsers_subject_contains
+      CHECK (cardinality(subject_contains) BETWEEN 0 AND 10),
+    CONSTRAINT ck_email_receipt_parsers_status
+      CHECK (status IN ('draft', 'approved')),
+    CONSTRAINT ck_email_receipt_parsers_source
+      CHECK (source IN ('manual', 'ai')),
+    CONSTRAINT ck_email_receipt_parsers_revision CHECK (revision >= 1)
+);
+
+CREATE TABLE email_receipts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    mailbox_id UUID NOT NULL REFERENCES email_receipt_mailboxes(id) ON DELETE CASCADE,
+    uid_validity BIGINT NOT NULL,
+    uid BIGINT NOT NULL,
+    message_id VARCHAR(500),
+    from_address VARCHAR(320) NOT NULL,
+    from_domain VARCHAR(255) NOT NULL,
+    subject VARCHAR(500) NOT NULL,
+    received_at TIMESTAMPTZ NOT NULL,
+    body_text TEXT NOT NULL,
+    body_html TEXT,
+    forwarded_by VARCHAR(320),
+    original_sent_at TIMESTAMPTZ,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    status_reason VARCHAR(40),
+    parser_id UUID REFERENCES email_receipt_parsers(id) ON DELETE SET NULL,
+    parsed JSONB,
+    trade JSONB,
+    -- The ledger row a trade email accounts for (FK added after investment_transactions below).
+    investment_transaction_id UUID,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    candidate_transaction_ids UUID[] NOT NULL DEFAULT '{}'::uuid[],
+    match_kind VARCHAR(20),
+    ai_review_request_id UUID,
+    -- The link value of a `component` receipt (docs/specs/email-receipt-linked-receipts.md); null otherwise.
+    link_key VARCHAR(100),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_email_receipts_message UNIQUE (mailbox_id, uid_validity, uid),
+    CONSTRAINT ck_email_receipts_body_length
+      CHECK (char_length(body_text) <= 100000),
+    CONSTRAINT ck_email_receipts_body_html_length
+      CHECK (body_html IS NULL OR char_length(body_html) <= 1000000),
+    CONSTRAINT ck_email_receipts_status
+      CHECK (status IN ('pending', 'skipped', 'no_parser', 'parse_failed',
+                        'unmatched', 'ambiguous', 'review_conflict', 'review',
+                        'ignored', 'component')),
+    CONSTRAINT ck_email_receipts_match_kind
+      CHECK (match_kind IS NULL
+             OR match_kind IN ('order_id', 'reference', 'amount_payee',
+                               'amount_date', 'amount_only', 'manual')),
+    CONSTRAINT ck_email_receipts_candidates
+      CHECK (cardinality(candidate_transaction_ids) <= 10)
+);
+
+-- The receipts page and the poll's rematch both read a user's receipts by state,
+-- newest first. The unique key above already serves the mailbox cascade.
+CREATE INDEX idx_email_receipts_user_status
+    ON email_receipts(user_id, status, received_at);
+CREATE INDEX idx_email_receipts_transaction
+    ON email_receipts(transaction_id) WHERE transaction_id IS NOT NULL;
+CREATE INDEX idx_email_receipts_parser
+    ON email_receipts(parser_id) WHERE parser_id IS NOT NULL;
+CREATE INDEX idx_email_receipts_investment_transaction
+    ON email_receipts(investment_transaction_id) WHERE investment_transaction_id IS NOT NULL;
+CREATE INDEX idx_email_receipts_link_key
+    ON email_receipts(user_id, link_key) WHERE link_key IS NOT NULL;
+CREATE INDEX idx_email_receipt_parsers_user
+    ON email_receipt_parsers(user_id);
+CREATE INDEX idx_email_receipt_parsers_payee
+    ON email_receipt_parsers(payee_id) WHERE payee_id IS NOT NULL;
+
+-- Linked email receipts (docs/specs/email-receipt-linked-receipts.md): one row
+-- per part of a settlement receipt (a repayment email): the part's link value
+-- and amount, the component receipt it joined (set only for `joined` and
+-- `scaled`; SET NULL when that email is deleted) and what the part became. The
+-- rows of a settlement are replaced in the transaction that stores its new
+-- state; a deleted settlement takes its rows with it. The defaults on part_index
+-- and outcome exist for the RLS spec's generic row seeder.
+CREATE TABLE email_receipt_links (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    settlement_receipt_id UUID NOT NULL REFERENCES email_receipts(id) ON DELETE CASCADE,
+    part_index INTEGER NOT NULL DEFAULT 0,
+    link_value VARCHAR(100),
+    part_amount NUMERIC(20,4) NOT NULL,
+    component_receipt_id UUID REFERENCES email_receipts(id) ON DELETE SET NULL,
+    outcome VARCHAR(30) NOT NULL DEFAULT 'no_link',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_email_receipt_links_part UNIQUE (settlement_receipt_id, part_index),
+    CONSTRAINT ck_email_receipt_links_part_index
+      CHECK (part_index BETWEEN 0 AND 99),
+    CONSTRAINT ck_email_receipt_links_part_amount
+      CHECK (part_amount >= 0),
+    CONSTRAINT ck_email_receipt_links_outcome
+      CHECK (outcome IN ('no_link', 'not_found', 'component_incomplete',
+                         'component_used', 'joined', 'scaled', 'amount_exceeds'))
+);
+
+-- A component that arrives after its settlement finds the parts waiting for it;
+-- `taken` sums the parts that already used a component.
+CREATE INDEX idx_email_receipt_links_waiting
+    ON email_receipt_links(user_id, link_value)
+    WHERE component_receipt_id IS NULL AND link_value IS NOT NULL;
+CREATE INDEX idx_email_receipt_links_component
+    ON email_receipt_links(component_receipt_id) WHERE component_receipt_id IS NOT NULL;
+
 -- AI review requests: the durable queue behind a rule's `request_ai_review`
 -- action (docs/future-plans/transaction-rules.md section 6.5). pending ->
 -- claimed -> proposed -> applied | rejected, expired from any open state; the
@@ -691,12 +934,18 @@ CREATE INDEX idx_transaction_rule_applications_transaction
 -- (transaction_id, rule_id): the partial unique index is the dedupe. rule_id is
 -- nullable, and NULLs are distinct there, so a manual request is not deduped
 -- (NULLS NOT DISTINCT would make deleting a rule fail on two open requests).
+-- A request of kind email_parser_draft (email-receipts design section 6) asks an
+-- agent to write a receipt parser from up to 25 stored emails (at most five per
+-- sender, at most five senders): it has no transaction, names its emails in
+-- email_receipt_ids (no foreign key: an array has none) and its main sender domain
+-- in parser_domain, and at most one is open per (user, domain). NULL transaction
+-- ids are distinct in the open-request index above, so it never conflicts there.
 -- The defaults on kind, status and expires_at exist for the RLS spec's generic
 -- row seeder.
 CREATE TABLE ai_review_requests (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE CASCADE,
     rule_id UUID REFERENCES transaction_rules(id) ON DELETE SET NULL,
     kind VARCHAR(40) NOT NULL DEFAULT 'transaction_review',
     instruction TEXT NOT NULL,
@@ -707,8 +956,29 @@ CREATE TABLE ai_review_requests (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP + INTERVAL '30 days',
+    email_receipt_id UUID REFERENCES email_receipts(id) ON DELETE SET NULL,
+    email_receipt_ids UUID[],
+    parser_domain VARCHAR(255),
     CONSTRAINT ck_ai_review_requests_kind
-      CHECK (kind IN ('transaction_review')),
+      CHECK (kind IN ('transaction_review', 'email_receipt', 'email_parser_draft', 'email_trade')),
+    CONSTRAINT ck_ai_review_requests_email_receipt_ids
+      CHECK (email_receipt_ids IS NULL OR cardinality(email_receipt_ids) <= 25),
+    CONSTRAINT ck_ai_review_requests_transaction_required
+      CHECK (kind IN ('email_parser_draft', 'email_trade') OR transaction_id IS NOT NULL),
+    CONSTRAINT ck_ai_review_requests_trade_shape
+      CHECK (kind <> 'email_trade' OR transaction_id IS NULL),
+    CONSTRAINT ck_ai_review_requests_parser_draft_shape
+      CHECK (
+        (kind = 'email_parser_draft'
+          AND transaction_id IS NULL
+          AND email_receipt_ids IS NOT NULL
+          AND cardinality(email_receipt_ids) >= 1
+          AND parser_domain IS NOT NULL)
+        OR
+        (kind <> 'email_parser_draft'
+          AND email_receipt_ids IS NULL
+          AND parser_domain IS NULL)
+      ),
     CONSTRAINT ck_ai_review_requests_instruction_length
       CHECK (char_length(instruction) BETWEEN 1 AND 1000),
     CONSTRAINT ck_ai_review_requests_status
@@ -726,6 +996,14 @@ CREATE INDEX idx_ai_review_requests_expiry
 CREATE UNIQUE INDEX uq_ai_review_requests_open
     ON ai_review_requests(transaction_id, rule_id)
     WHERE status IN ('pending', 'claimed', 'proposed');
+CREATE INDEX idx_ai_review_requests_email_receipt
+    ON ai_review_requests(email_receipt_id) WHERE email_receipt_id IS NOT NULL;
+CREATE UNIQUE INDEX uq_ai_review_requests_parser_draft_open
+    ON ai_review_requests(user_id, parser_domain)
+    WHERE kind = 'email_parser_draft' AND status IN ('pending', 'claimed', 'proposed');
+CREATE UNIQUE INDEX uq_ai_review_requests_trade_open
+    ON ai_review_requests(email_receipt_id)
+    WHERE kind = 'email_trade' AND status IN ('pending', 'claimed', 'proposed');
 
 -- Securities (stocks, bonds, mutual funds, ETFs)
 -- Defined before scheduled_transactions because that table (and others below)
@@ -744,7 +1022,7 @@ CREATE TABLE securities (
     is_favourite BOOLEAN NOT NULL DEFAULT false, -- pinned to the dashboard Favourite Securities widget
     price_chart_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     price_alert_percent NUMERIC(9,4) CHECK (price_alert_percent >= 0.1 AND price_alert_percent <= 1000),
-    skip_price_updates BOOLEAN DEFAULT false, -- for auto-generated symbols that can't be looked up
+    skip_price_updates BOOLEAN DEFAULT false, -- user switch: no automatic price fetching; imports set it on symbols they invent
     sector VARCHAR(100),             -- stock sector from Yahoo Finance (e.g. 'Technology')
     industry VARCHAR(100),           -- stock industry (e.g. 'Consumer Electronics')
     sector_weightings JSONB,         -- ETF sector breakdown [{sector, weight}] (weight is a decimal 0-1, from Yahoo)
@@ -759,6 +1037,8 @@ CREATE TABLE securities (
     market_timezone VARCHAR(64),     -- IANA zone the instrument trades in, from the provider (e.g. America/New_York)
     market_open_time TIME,           -- start of the regular session, in market_timezone local time
     market_close_time TIME,          -- end of the regular session, in market_timezone local time
+    bond_program_id UUID,            -- linked bond program (FK fk_securities_bond_program, added below); a linked security is priced by the bond engine only
+    bond_auto_fetch BOOLEAN NOT NULL DEFAULT false, -- fetch every new series of the linked program automatically (daily series cron)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, symbol),
@@ -770,6 +1050,7 @@ CREATE INDEX idx_securities_user_id ON securities(user_id);
 CREATE INDEX idx_securities_symbol ON securities(symbol);
 CREATE INDEX idx_securities_exchange ON securities(exchange);
 CREATE INDEX idx_securities_user_favourite ON securities(user_id, is_favourite);
+CREATE INDEX idx_securities_bond_program ON securities(bond_program_id) WHERE bond_program_id IS NOT NULL;
 
 -- Security Tags (many-to-many) -- reuses the shared tags pool, mirrors transaction_tags
 CREATE TABLE security_tags (
@@ -914,6 +1195,8 @@ ALTER TABLE accounts ADD CONSTRAINT fk_accounts_institution
     FOREIGN KEY (institution_id) REFERENCES institutions(id) ON DELETE SET NULL;
 ALTER TABLE accounts ADD CONSTRAINT fk_accounts_linked_loan_account
     FOREIGN KEY (linked_loan_account_id) REFERENCES accounts(id) ON DELETE SET NULL;
+ALTER TABLE accounts ADD CONSTRAINT fk_accounts_payment_matching_rule
+    FOREIGN KEY (payment_matching_rule_id) REFERENCES transaction_rules(id) ON DELETE SET NULL;
 
 -- Scheduled Transaction Overrides (for modifying individual occurrences)
 CREATE TABLE scheduled_transaction_overrides (
@@ -961,11 +1244,24 @@ CREATE TABLE scheduled_transaction_postings (
     scheduled_transaction_id UUID NOT NULL REFERENCES scheduled_transactions(id) ON DELETE CASCADE,
     original_due_date DATE NOT NULL,
     posted_date DATE NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- The settlement claim (docs/specs/loan-installment-settlement.md 5.2): the
+    -- transaction that paid the occurrence, who claimed it, the rule that did,
+    -- and the priced breakdown a rule booked.
+    transaction_id UUID NULL REFERENCES transactions(id) ON DELETE CASCADE,
+    source VARCHAR(16) NOT NULL DEFAULT 'post',
+    rule_id UUID NULL REFERENCES transaction_rules(id) ON DELETE SET NULL,
+    pricing JSONB NULL,
+    CONSTRAINT chk_stp_source CHECK (source IN ('post', 'rule')),
+    CONSTRAINT chk_stp_rule_claim_transaction
+        CHECK (source = 'post' OR transaction_id IS NOT NULL)
 );
 
 CREATE UNIQUE INDEX idx_stp_occurrence
     ON scheduled_transaction_postings(scheduled_transaction_id, original_due_date);
+CREATE UNIQUE INDEX idx_stp_transaction
+    ON scheduled_transaction_postings(transaction_id)
+    WHERE transaction_id IS NOT NULL;
 
 -- Security documents: factsheet, KIID, prospectus, annual report, tax slip,
 -- research. Real columns rather than a JSONB blob so the type, name, date and
@@ -1004,7 +1300,7 @@ CREATE TABLE security_prices (
     close_price NUMERIC(24, 10) NOT NULL,
     adjusted_close NUMERIC(24, 10),
     volume BIGINT,
-    source VARCHAR(50), -- yahoo_finance, msn_finance, manual, or transaction action (buy, sell, reinvest, transfer_in, transfer_out)
+    source VARCHAR(50), -- yahoo_finance, msn_finance, manual, bond_engine (a bond-linked security's engine price), or transaction action (buy, sell, reinvest, transfer_in, transfer_out)
     quoted_at TIMESTAMPTZ, -- instant the provider says the quote was struck; NULL for manual/transaction-derived rows
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(security_id, price_date)
@@ -1040,6 +1336,114 @@ CREATE TABLE market_index_sync (
     last_success_at TIMESTAMPTZ,
     last_error TEXT
 );
+
+-- Sovereign bond reference data, any issuer country (docs/specs/polish-retail-bonds.md;
+-- migration 20261010170817_bond_reference_tables.sql). Global reference data with
+-- no owner column: one instrument's terms or one CPI print serves every account,
+-- so these are RLS-exempt (see the marker block at the foot of the RLS section).
+-- INV-BOND-001: terms versions and period rates are immutable against UPDATE and
+-- DELETE, enforced by the row-level trigger bond_reject_mutation(). TRUNCATE fires
+-- no row-level trigger and is not covered (an operator action; the integration
+-- suites reset tables with it).
+CREATE TABLE bond_programs (
+    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    issuer_country_code CHAR(2) NOT NULL,
+    issuer_code         VARCHAR(40) NOT NULL,
+    program_code        VARCHAR(40) NOT NULL,
+    currency_code       VARCHAR(3) NOT NULL REFERENCES currencies(code),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (issuer_country_code, issuer_code, program_code)
+);
+
+CREATE TABLE bond_instruments (
+    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    issuer_country_code CHAR(2) NOT NULL,
+    issuer_code         VARCHAR(40) NOT NULL,
+    program_code        VARCHAR(40) NOT NULL,
+    bond_program_id     UUID NOT NULL REFERENCES bond_programs(id) ON DELETE RESTRICT,
+    series_code         VARCHAR(40) NOT NULL,
+    currency_code       VARCHAR(3) NOT NULL REFERENCES currencies(code),
+    marketability       VARCHAR(30) NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (issuer_country_code, issuer_code, series_code)
+);
+
+CREATE TABLE bond_terms_versions (
+    bond_instrument_id UUID NOT NULL REFERENCES bond_instruments(id) ON DELETE RESTRICT,
+    version            INTEGER NOT NULL CHECK (version >= 1),
+    terms              JSONB NOT NULL,
+    content_hash       VARCHAR(64) NOT NULL,
+    source_url         TEXT NOT NULL,
+    published_at       DATE,
+    retrieved_at       TIMESTAMPTZ NOT NULL,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (bond_instrument_id, version)
+);
+
+CREATE TABLE bond_period_rates (
+    bond_instrument_id UUID NOT NULL REFERENCES bond_instruments(id) ON DELETE RESTRICT,
+    period_number      INTEGER NOT NULL CHECK (period_number >= 1),
+    annual_rate        NUMERIC(20, 10) NOT NULL,
+    source_url         TEXT NOT NULL,
+    retrieved_at       TIMESTAMPTZ NOT NULL,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (bond_instrument_id, period_number)
+);
+
+CREATE TABLE benchmark_series (
+    code            VARCHAR(40) PRIMARY KEY,
+    kind            VARCHAR(10) NOT NULL CHECK (kind IN ('STEP', 'MONTHLY')),
+    publisher       VARCHAR(40) NOT NULL,
+    source_url      TEXT NOT NULL,
+    unit            VARCHAR(20) NOT NULL,
+    covered_through DATE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE benchmark_values (
+    benchmark_code   VARCHAR(40) NOT NULL REFERENCES benchmark_series(code) ON DELETE RESTRICT,
+    observation_date DATE NOT NULL,
+    value            NUMERIC(20, 10) NOT NULL,
+    published_on     DATE,
+    source_url       TEXT NOT NULL,
+    retrieved_at     TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (benchmark_code, observation_date)
+);
+
+-- A security's link to a bond program. Declared here because securities is
+-- created before the bond tables (a transaction's link to a series follows
+-- investment_transactions below). RESTRICT: a program or a series is never deleted from
+-- under a row that points at it.
+ALTER TABLE securities
+    ADD CONSTRAINT fk_securities_bond_program
+    FOREIGN KEY (bond_program_id) REFERENCES bond_programs(id) ON DELETE RESTRICT;
+
+CREATE OR REPLACE FUNCTION bond_reject_mutation() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION
+      '% rows are immutable once written (INV-BOND-001); % is refused. Publish a new version instead.',
+      TG_TABLE_NAME, TG_OP
+      USING ERRCODE = 'raise_exception';
+END;
+$$;
+
+CREATE TRIGGER trg_bond_programs_immutable
+    BEFORE UPDATE OR DELETE ON bond_programs
+    FOR EACH ROW EXECUTE FUNCTION bond_reject_mutation();
+
+CREATE TRIGGER trg_bond_instruments_immutable
+    BEFORE UPDATE OR DELETE ON bond_instruments
+    FOR EACH ROW EXECUTE FUNCTION bond_reject_mutation();
+
+CREATE TRIGGER trg_bond_terms_versions_immutable
+    BEFORE UPDATE OR DELETE ON bond_terms_versions
+    FOR EACH ROW EXECUTE FUNCTION bond_reject_mutation();
+
+CREATE TRIGGER trg_bond_period_rates_immutable
+    BEFORE UPDATE OR DELETE ON bond_period_rates
+    FOR EACH ROW EXECUTE FUNCTION bond_reject_mutation();
 
 -- The upstream release check's answer, as one row. Held on the deployment
 -- rather than in a field per process: two replicas answering /updates from two
@@ -1082,7 +1486,8 @@ CREATE TABLE fetch_sync (
     lease_until TIMESTAMPTZ,
     lease_token UUID,
     last_success_at TIMESTAMPTZ,
-    last_error TEXT
+    last_error TEXT,
+    progress JSONB
 );
 
 -- Outbound market-data provider availability, and what has already been said
@@ -1142,7 +1547,10 @@ CREATE TYPE investment_action AS ENUM (
     'REINVEST_CAPITAL_GAIN_LONG',
     'CAPITAL_GAIN_SHORT',
     'CAPITAL_GAIN_LONG',
-    'REDEEM'
+    'REDEEM',
+    -- Return of capital (issue #1800): cash in like a dividend, no shares, and
+    -- the amount reduces the position's cost basis instead of counting as income.
+    'RETURN_OF_CAPITAL'
 );
 
 CREATE TABLE investment_transactions (
@@ -1163,6 +1571,7 @@ CREATE TABLE investment_transactions (
     exchange_rate NUMERIC(20, 10) NOT NULL DEFAULT 1,
     description TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'UNRECONCILED', -- 'UNRECONCILED', 'CLEARED', 'RECONCILED', 'VOID'
+    bond_instrument_id UUID, -- the bond series a share-moving row of a program-linked security acts on (FK added with the bond tables below)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1175,6 +1584,14 @@ CREATE INDEX idx_investment_transactions_date ON investment_transactions(transac
 CREATE INDEX idx_investment_transactions_transaction ON investment_transactions(transaction_id);
 CREATE INDEX idx_investment_transactions_split_id ON investment_transactions(transaction_split_id);
 CREATE INDEX idx_investment_transactions_linked ON investment_transactions(linked_transaction_id);
+CREATE INDEX idx_investment_transactions_bond_instrument ON investment_transactions(bond_instrument_id) WHERE bond_instrument_id IS NOT NULL;
+ALTER TABLE email_receipts ADD CONSTRAINT fk_email_receipts_investment_transaction
+    FOREIGN KEY (investment_transaction_id) REFERENCES investment_transactions(id) ON DELETE SET NULL;
+-- A share-moving row's series (bond-program-securities.md 2.3); RESTRICT keeps a
+-- series from being deleted from under a row that names it.
+ALTER TABLE investment_transactions
+    ADD CONSTRAINT fk_investment_transactions_bond_instrument
+    FOREIGN KEY (bond_instrument_id) REFERENCES bond_instruments(id) ON DELETE RESTRICT;
 
 -- User Preferences
 CREATE TABLE user_preferences (
@@ -1194,6 +1611,8 @@ CREATE TABLE user_preferences (
     favourite_report_ids TEXT[] DEFAULT '{}',
     dashboard_widgets TEXT[] DEFAULT '{}', -- ordered visible dashboard widget ids; empty = default layout
     dashboard_widget_config JSONB NOT NULL DEFAULT '{}', -- per-widget settings (timeframe, accounts, chart type), keyed by widget id
+    hidden_table_columns JSONB NOT NULL DEFAULT '{}', -- hidden column ids, keyed by table kind: transactions, investmentHoldings, investmentRegister
+    view_defaults JSONB NOT NULL DEFAULT '{}', -- account-level defaults for browser-local view settings (density, hideRegisterYear, widgetsCollapsed, chartCollapsed, accountOpenTarget)
     show_created_at BOOLEAN DEFAULT false,
     time_format VARCHAR(10) DEFAULT '24h',
     preferred_exchanges TEXT[] DEFAULT '{}',
@@ -1344,6 +1763,7 @@ CREATE TABLE account_delegates (
     budgets_can_read      BOOLEAN NOT NULL DEFAULT false,
     reports_can_read      BOOLEAN NOT NULL DEFAULT false,
     ai_can_read           BOOLEAN NOT NULL DEFAULT false,
+    warranties_can_read   BOOLEAN NOT NULL DEFAULT false,
     CONSTRAINT account_delegates_owner_delegate_unique UNIQUE (owner_user_id, delegate_user_id),
     CONSTRAINT account_delegates_no_self CHECK (owner_user_id <> delegate_user_id)
 );
@@ -1583,7 +2003,7 @@ CREATE INDEX idx_investment_reports_user_id ON investment_reports(user_id);
 CREATE INDEX idx_investment_reports_user_favourite ON investment_reports(user_id, is_favourite);
 CREATE INDEX idx_investment_reports_user_sort ON investment_reports(user_id, sort_order);
 
--- Row-Level Security identity helpers (see docs/future-plans/row-level-security.md).
+-- Row-Level Security identity helpers (see docs/specs/row-level-security.md).
 --
 -- app.current_user_id -- effective user (the owner when a delegate is acting).
 -- app.real_user_id    -- authenticated identity (the delegate while acting);
@@ -2099,13 +2519,19 @@ CREATE INDEX idx_notifications_budget_period ON notifications(budget_id, period_
 --
 -- Duplicates predating the key are collapsed by the migration's preflight before
 -- it is created, keeping whichever row the user acted on.
+--
+-- A flex-group warning is budget-wide too, and the group it is about lives only
+-- in `data`, so the group is part of the key: two flex groups over 90 percent in
+-- one period are two alerts (audit A26-L39, migration
+-- 20261022103319_notifications_fingerprint_flex_group.sql).
 CREATE UNIQUE INDEX idx_notifications_fingerprint
     ON notifications(
         budget_id,
         period_start,
         alert_type,
         COALESCE(budget_category_id, '00000000-0000-0000-0000-000000000000'::uuid),
-        severity
+        severity,
+        COALESCE(data->>'flexGroup', '')
     );
 
 -- System-level alerts (BACKUP_FAILED, PROVIDER_OUTAGE, SMTP_FAILURE, ...) have
@@ -2278,6 +2704,11 @@ CREATE TABLE import_jobs (
     -- import transaction's last statement is a fenced compare-and-set on this
     -- column, and a zero-row result rolls the whole import back (audit RV4-001).
     attempt_token UUID,
+    -- The staged file's digest, copied by the commit checkpoint inside the import
+    -- transaction (migration 20261022061534). Held by the unique index below, so
+    -- the same bytes cannot be committed into one user's ledger twice; cleared
+    -- when a "start fresh" import's wipe removed the rows it vouched for.
+    content_sha256 CHAR(64),
     heartbeat_at TIMESTAMP,
     started_at TIMESTAMP,
     completed_at TIMESTAMP,
@@ -2338,8 +2769,157 @@ CREATE INDEX idx_import_jobs_running_heartbeat ON import_jobs(heartbeat_at) WHER
 CREATE UNIQUE INDEX idx_import_jobs_one_active_per_user
     ON import_jobs(user_id)
     WHERE status IN ('pending', 'running');
+-- One committed import per user and file content (audit A26-H08). The service
+-- refuses the start first; this is what makes a second commit of the same bytes
+-- abort its own import transaction.
+CREATE UNIQUE INDEX idx_import_jobs_committed_content
+    ON import_jobs(user_id, content_sha256)
+    WHERE content_sha256 IS NOT NULL;
 
 CREATE TRIGGER update_import_jobs_updated_at BEFORE UPDATE ON import_jobs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Bank sync (Open Banking / PSD2 through a regulated aggregator; the first
+-- provider is Enable Banking): docs/specs/bank-sync.md section 4. The defaults
+-- on provider, psu_type, status, auto_sync and the counters exist for the RLS
+-- spec's generic row seeder.
+--
+-- Credentials: one row per user and provider. private_key_enc is the RSA
+-- private key encrypted with EncryptionService and never returned to a client
+-- (INV-BANKSYNC-002); it is deliberately not named api_key_enc.
+CREATE TABLE bank_sync_credentials (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(30) NOT NULL DEFAULT 'enable_banking',
+    application_id VARCHAR(100) NOT NULL,
+    private_key_enc TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_bank_sync_credentials_provider
+      CHECK (provider IN ('enable_banking')),
+    CONSTRAINT uq_bank_sync_credentials_user_provider
+      UNIQUE (user_id, provider)
+);
+
+-- Connections: one authorization of one user at one institution.
+-- auth_state_hash is the SHA-256 hex of the one-time OAuth state; clearing it
+-- is the claim that makes a replayed callback find nothing. psu_type is kept
+-- so a re-authorization asks for the same kind of access.
+CREATE TABLE bank_sync_connections (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(30) NOT NULL DEFAULT 'enable_banking',
+    institution_name VARCHAR(255) NOT NULL,
+    institution_country VARCHAR(2) NOT NULL,
+    psu_type VARCHAR(20) NOT NULL DEFAULT 'personal',
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    auth_state_hash VARCHAR(64),
+    auth_started_at TIMESTAMPTZ,
+    external_session_id VARCHAR(255),
+    valid_until TIMESTAMPTZ,
+    auto_sync BOOLEAN NOT NULL DEFAULT true,
+    last_error VARCHAR(500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- How the daily sync reports a successful run (docs/specs/bank-sync-notifications.md
+    -- section 3); a column added by 20261001202917_bank_sync_notify_success.sql.
+    notify_success VARCHAR(20) NOT NULL DEFAULT 'when_imported',
+    -- Whether a synced transaction is tagged with the bank's operation type
+    -- (docs/specs/bank-sync.md section 7b); a column added by
+    -- 20261002074622_bank_sync_exceptions_and_operation_tags.sql.
+    tag_operation_type BOOLEAN NOT NULL DEFAULT true,
+    CONSTRAINT ck_bank_sync_connections_provider
+      CHECK (provider IN ('enable_banking')),
+    CONSTRAINT ck_bank_sync_connections_psu_type
+      CHECK (psu_type IN ('personal', 'business')),
+    CONSTRAINT ck_bank_sync_connections_status
+      CHECK (status IN ('pending', 'active', 'expired', 'revoked', 'failed')),
+    CONSTRAINT ck_bank_sync_connections_notify_success
+      CHECK (notify_success IN ('always', 'when_imported', 'never'))
+);
+
+CREATE INDEX idx_bank_sync_connections_user ON bank_sync_connections(user_id);
+CREATE UNIQUE INDEX uq_bank_sync_connections_auth_state
+    ON bank_sync_connections(auth_state_hash)
+    WHERE auth_state_hash IS NOT NULL;
+
+-- Bank accounts: one account a connection can read, mapped to at most one
+-- Monize account. account_id is ON DELETE SET NULL (deleting the Monize account
+-- unlinks the bank account); a linked row always has a cut-off date.
+-- bank_balance is what the bank reported, at money precision; it never writes
+-- accounts.current_balance.
+CREATE TABLE bank_sync_accounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    connection_id UUID NOT NULL REFERENCES bank_sync_connections(id) ON DELETE CASCADE,
+    external_account_id VARCHAR(255) NOT NULL,
+    identification_hash VARCHAR(255),
+    display_name VARCHAR(255),
+    identifier_masked VARCHAR(50),
+    account_identifier VARCHAR(64),
+    cash_account_type VARCHAR(10),
+    currency_code VARCHAR(3),
+    account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    sync_from_date DATE,
+    last_synced_at TIMESTAMPTZ,
+    last_success_at TIMESTAMPTZ,
+    last_sync_status VARCHAR(20),
+    last_sync_error VARCHAR(500),
+    last_imported_count INTEGER NOT NULL DEFAULT 0,
+    last_skipped_count INTEGER NOT NULL DEFAULT 0,
+    last_refused_count INTEGER NOT NULL DEFAULT 0,
+    bank_balance NUMERIC(20,4),
+    bank_balance_currency VARCHAR(3),
+    bank_balance_date DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_bank_sync_accounts_last_sync_status
+      CHECK (last_sync_status IS NULL OR last_sync_status IN ('succeeded', 'failed')),
+    CONSTRAINT ck_bank_sync_accounts_linked_has_cutoff
+      CHECK (account_id IS NULL OR sync_from_date IS NOT NULL),
+    CONSTRAINT ck_bank_sync_accounts_counts
+      CHECK (last_imported_count >= 0 AND last_skipped_count >= 0 AND last_refused_count >= 0),
+    CONSTRAINT uq_bank_sync_accounts_connection_external
+      UNIQUE (connection_id, external_account_id)
+);
+
+CREATE INDEX idx_bank_sync_accounts_user ON bank_sync_accounts(user_id);
+CREATE UNIQUE INDEX uq_bank_sync_accounts_account
+    ON bank_sync_accounts(account_id)
+    WHERE account_id IS NOT NULL;
+
+-- The ledger behind INV-BANKSYNC-001 (a bank transaction is imported into a
+-- Monize account at most once): UNIQUE (account_id, external_key), keyed on the
+-- Monize account so a disconnect and reconnect does not re-import history.
+-- transaction_id is ON DELETE SET NULL, so a deleted Monize transaction keeps
+-- its ledger row and the next sync does not bring it back.
+CREATE TABLE bank_sync_imported_transactions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    external_key VARCHAR(255) NOT NULL,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    booking_date DATE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Set when the user added the bank transaction to the exceptions from the
+    -- preview: the row then has no transaction and still claims the key, so no
+    -- later sync imports it (docs/specs/bank-sync.md section 7b); a column added
+    -- by 20261002074622_bank_sync_exceptions_and_operation_tags.sql.
+    excluded_at TIMESTAMPTZ,
+    CONSTRAINT uq_bank_sync_imported_transactions_key
+      UNIQUE (account_id, external_key)
+);
+
+CREATE INDEX idx_bank_sync_imported_transactions_user
+    ON bank_sync_imported_transactions(user_id);
+-- The ON DELETE SET NULL above scans this column whenever a transaction row is
+-- deleted; without the index that is a sequential scan of the ledger.
+CREATE INDEX idx_bank_sync_imported_transactions_transaction
+    ON bank_sync_imported_transactions(transaction_id)
+    WHERE transaction_id IS NOT NULL;
+
+CREATE TRIGGER update_bank_sync_credentials_updated_at BEFORE UPDATE ON bank_sync_credentials FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_bank_sync_connections_updated_at BEFORE UPDATE ON bank_sync_connections FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_bank_sync_accounts_updated_at BEFORE UPDATE ON bank_sync_accounts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Durable claims on per-user work that must happen at most once (migration 140).
 --
@@ -2499,6 +3079,10 @@ CREATE INDEX idx_single_use_tokens_expiry
 CREATE TRIGGER update_tags_updated_at BEFORE UPDATE ON tags FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_transaction_rules_updated_at BEFORE UPDATE ON transaction_rules FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_ai_review_requests_updated_at BEFORE UPDATE ON ai_review_requests FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_email_receipt_mailboxes_updated_at BEFORE UPDATE ON email_receipt_mailboxes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_email_receipt_parsers_updated_at BEFORE UPDATE ON email_receipt_parsers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_email_receipts_updated_at BEFORE UPDATE ON email_receipts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_email_receipt_links_updated_at BEFORE UPDATE ON email_receipt_links FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Action History (undo/redo support)
 CREATE TABLE action_history (
@@ -2860,7 +3444,12 @@ CREATE TABLE push_subscriptions (
     last_success_at TIMESTAMP,
     failure_count INTEGER NOT NULL DEFAULT 0,
     disabled_at TIMESTAMP,
-    disabled_reason VARCHAR(40)
+    disabled_reason VARCHAR(40),
+    -- A push device whose account signed out of this browser. Delivery skips it
+    -- until the same account signs in there again (the subscribe upsert clears
+    -- it). A healthy endpoint, so not a disable: `disabled_at` asks the user for
+    -- a repair, and a hold needs none.
+    held_at TIMESTAMP
 );
 
 -- Globally unique, not unique per user, and that is the security property.
@@ -2876,7 +3465,8 @@ CREATE TABLE push_subscriptions (
 -- and no ownership check covers it, so a takeover would be a cross-tenant
 -- delete on an unverified identifier -- and a silent one. The client answers
 -- the refusal by unsubscribing and subscribing again, which mints a fresh
--- endpoint nobody holds, and logging out releases the endpoint the same way.
+-- endpoint nobody holds. Logging out holds the row (held_at) and releases the
+-- endpoint only when the hold is not confirmed.
 CREATE UNIQUE INDEX idx_push_subscriptions_endpoint ON push_subscriptions(endpoint_hash);
 
 -- Every send starts with "which of this user's devices are still live".
@@ -2921,6 +3511,89 @@ CREATE TABLE calendar_day_notes (
         daterange(note_date, end_date, '[]') WITH &&
     )
 );
+
+-- ---------------------------------------------------------------------------
+-- Warranties (docs/future-plans/warranty-tracker.md sections 6.1 and 6.2)
+--
+-- One purchased item: its expiry, vendor, serial and model numbers and an
+-- informational purchase price, optionally linked to the transaction that
+-- bought it. A warranty never moves money: nothing sums `purchase_price`, and
+-- the transaction link is ON DELETE SET NULL, so deleting the purchase keeps
+-- the warranty. Status (lifetime, active, expiring, expired) is derived from
+-- `expires_on` and `is_lifetime` by the application and never stored.
+--
+-- `expires_on` is the stored fact; a lifetime warranty may leave it NULL and
+-- every other one must carry it (chk_warranty_expiry). The price carries its
+-- own currency, both set or both NULL (chk_warranty_price_currency).
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE warranties (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(200) NOT NULL,
+    vendor_name VARCHAR(200),
+    payee_id UUID REFERENCES payees(id) ON DELETE SET NULL,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    model_number VARCHAR(100),
+    serial_numbers TEXT[] NOT NULL DEFAULT '{}',
+    warranty_kind VARCHAR(20) NOT NULL DEFAULT 'manufacturer'
+        CHECK (warranty_kind IN ('manufacturer', 'extended', 'store', 'other')),
+    purchase_date DATE NOT NULL,
+    expires_on DATE,
+    is_lifetime BOOLEAN NOT NULL DEFAULT false,
+    purchase_price NUMERIC(20,4) CHECK (purchase_price IS NULL OR purchase_price >= 0),
+    currency_code VARCHAR(3) REFERENCES currencies(code),
+    product_url VARCHAR(500),
+    notes VARCHAR(2000),
+    archived_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_warranty_expiry CHECK (is_lifetime OR expires_on IS NOT NULL),
+    CONSTRAINT chk_warranty_expiry_after_purchase
+        CHECK (expires_on IS NULL OR expires_on >= purchase_date),
+    CONSTRAINT chk_warranty_price_currency
+        CHECK ((purchase_price IS NULL) = (currency_code IS NULL))
+);
+
+-- The list, the widget and the reminder cron all read a user's unarchived rows
+-- by expiry.
+CREATE INDEX idx_warranties_user_status
+    ON warranties(user_id, archived_at, expires_on);
+CREATE INDEX idx_warranties_transaction ON warranties(transaction_id);
+CREATE INDEX idx_warranties_payee ON warranties(payee_id);
+
+CREATE TRIGGER update_warranties_updated_at
+  BEFORE UPDATE ON warranties
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- The claims made against one warranty. A claim never changes the warranty's
+-- status; it is a log the owner keeps.
+CREATE TABLE warranty_claims (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    warranty_id UUID NOT NULL REFERENCES warranties(id) ON DELETE CASCADE,
+    claim_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'open'
+        CHECK (status IN ('open', 'approved', 'denied', 'resolved')),
+    description VARCHAR(2000),
+    resolution VARCHAR(2000),
+    resolved_on DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_warranty_claims_warranty ON warranty_claims(warranty_id);
+
+-- A warranty's documents live in transaction_attachments (its second parent;
+-- see that table). The column is declared there; the foreign key is added
+-- here because warranties is defined after it. The name is the one PostgreSQL
+-- gives an inline REFERENCES, which is how the migration adds it.
+ALTER TABLE transaction_attachments ADD CONSTRAINT transaction_attachments_warranty_id_fkey
+    FOREIGN KEY (warranty_id) REFERENCES warranties(id) ON DELETE CASCADE;
+
+CREATE TRIGGER update_warranty_claims_updated_at
+  BEFORE UPDATE ON warranty_claims
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ---------------------------------------------------------------------------
 -- Off-machine backup destinations (docs/specs/backup-off-machine.md section 9).
@@ -3053,9 +3726,17 @@ DECLARE
         'auto_backup_settings',
         'backup_offsite_settings',
         'backup_offsite_uploads',
+        'bank_sync_accounts',
+        'bank_sync_connections',
+        'bank_sync_credentials',
+        'bank_sync_imported_transactions',
         'budgets',
         'calendar_day_notes',
         'custom_reports',
+        'email_receipt_links',
+        'email_receipt_mailboxes',
+        'email_receipt_parsers',
+        'email_receipts',
         'gem_strategies',
         'gem_strategy_accounts',
         'gem_strategy_assets',
@@ -3083,7 +3764,9 @@ DECLARE
         'transaction_attachments',
         'transaction_rule_applications',
         'transaction_rules',
-        'user_currency_preferences'
+        'user_currency_preferences',
+        'warranties',
+        'warranty_claims'
     ];
 BEGIN
     FOREACH t IN ARRAY direct_tables LOOP
@@ -3530,6 +4213,35 @@ CREATE POLICY monte_carlo_cash_flows_isolation ON monte_carlo_cash_flows
 -- while acting (current = owner, real = delegate).
 -- ---------------------------------------------------------------------------
 
+-- A grant's account must belong to the delegation's owner. The grants WITH
+-- CHECK cannot read accounts under RLS (the accounts policy reads
+-- account_delegate_grants: "infinite recursion detected in policy"), so this
+-- reads both rows as the definer. EXECUTE stays with PUBLIC: a policy
+-- expression runs with the caller's privileges (A26-M06).
+CREATE OR REPLACE FUNCTION delegation_grant_account_is_owners(
+  p_delegation_id UUID,
+  p_account_id UUID
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+      FROM account_delegates ad
+      JOIN accounts a ON a.user_id = ad.owner_user_id
+     WHERE ad.id = p_delegation_id
+       AND a.id = p_account_id
+  )
+$$;
+
+COMMENT ON FUNCTION delegation_grant_account_is_owners(UUID, UUID) IS
+  'True when the account belongs to the owner of the delegation. SECURITY '
+  'DEFINER because the account_delegate_grants WITH CHECK cannot read accounts '
+  'under RLS: the accounts policy reads account_delegate_grants (a policy cycle).';
+
 DROP POLICY IF EXISTS account_delegate_grants_isolation ON account_delegate_grants;
 CREATE POLICY account_delegate_grants_isolation ON account_delegate_grants
   USING ((SELECT app_bypass_rls()) OR EXISTS (
@@ -3537,11 +4249,14 @@ CREATE POLICY account_delegate_grants_isolation ON account_delegate_grants
     WHERE ad.id = account_delegate_grants.delegation_id
       AND (ad.owner_user_id = (SELECT app_current_user_id())
         OR ad.delegate_user_id = (SELECT app_real_user_id()))))
-  WITH CHECK ((SELECT app_bypass_rls()) OR EXISTS (
+  WITH CHECK ((SELECT app_bypass_rls()) OR (EXISTS (
     SELECT 1 FROM account_delegates ad
     WHERE ad.id = account_delegate_grants.delegation_id
-      AND (ad.owner_user_id = (SELECT app_current_user_id())
-        OR ad.delegate_user_id = (SELECT app_real_user_id()))));
+      AND ad.owner_user_id = (SELECT app_current_user_id())
+      AND ad.owner_user_id = (SELECT app_real_user_id()))
+    AND delegation_grant_account_is_owners(
+      account_delegate_grants.delegation_id,
+      account_delegate_grants.account_id)));
 
 -- ---------------------------------------------------------------------------
 -- Bespoke owner columns, and the documented exemptions
@@ -3563,15 +4278,17 @@ CREATE POLICY users_self ON users
 -- with). The delegate reaches it through app.real_user_id, which works both in
 -- their own session (current = real = delegate) and while acting for the owner
 -- (current = owner, real = delegate) -- the latter is what lets the delegate
--- guard resolve its own grant row on every acting request.
+-- guard resolve its own grant row on every acting request. Those are read arms:
+-- WITH CHECK admits only the owner's own session (current = real = owner), so
+-- no delegate-side statement can issue itself a delegation (A26-M06).
 -- ---------------------------------------------------------------------------
 DROP POLICY IF EXISTS account_delegates_isolation ON account_delegates;
 CREATE POLICY account_delegates_isolation ON account_delegates
   USING (owner_user_id = (SELECT app_current_user_id())
       OR delegate_user_id = (SELECT app_real_user_id())
       OR (SELECT app_bypass_rls()))
-  WITH CHECK (owner_user_id = (SELECT app_current_user_id())
-      OR delegate_user_id = (SELECT app_real_user_id())
+  WITH CHECK ((owner_user_id = (SELECT app_current_user_id())
+               AND owner_user_id = (SELECT app_real_user_id()))
       OR (SELECT app_bypass_rls()));
 
 -- ---------------------------------------------------------------------------
@@ -3642,6 +4359,12 @@ CREATE POLICY emergency_access_contacts_isolation ON emergency_access_contacts
 --
 -- rls-exempt: auth_attempt_counters
 -- rls-exempt: auto_backup_policy
+-- rls-exempt: benchmark_series
+-- rls-exempt: benchmark_values
+-- rls-exempt: bond_instruments
+-- rls-exempt: bond_period_rates
+-- rls-exempt: bond_programs
+-- rls-exempt: bond_terms_versions
 -- rls-exempt: currencies
 -- rls-exempt: exchange_rate_coverage
 -- rls-exempt: exchange_rates
@@ -3760,9 +4483,12 @@ AS $$
     UNION ALL SELECT 1 FROM transactions
       WHERE currency_code = p_code OR original_currency_code = p_code
     UNION ALL SELECT 1 FROM securities WHERE currency_code = p_code
+    UNION ALL SELECT 1 FROM bond_programs WHERE currency_code = p_code
+    UNION ALL SELECT 1 FROM bond_instruments WHERE currency_code = p_code
     UNION ALL SELECT 1 FROM scheduled_transactions
       WHERE currency_code = p_code OR original_currency_code = p_code
     UNION ALL SELECT 1 FROM budgets WHERE currency_code = p_code
+    UNION ALL SELECT 1 FROM warranties WHERE currency_code = p_code
     UNION ALL SELECT 1 FROM user_preferences WHERE default_currency = p_code
   )
 $$;
@@ -3845,6 +4571,7 @@ AS $$
     UNION SELECT currency_code FROM scheduled_transactions WHERE user_id = p_user_id
     UNION SELECT original_currency_code FROM scheduled_transactions WHERE user_id = p_user_id
     UNION SELECT currency_code FROM budgets WHERE user_id = p_user_id
+    UNION SELECT currency_code FROM warranties WHERE user_id = p_user_id
   ) referenced
   WHERE code IS NOT NULL
 $$;

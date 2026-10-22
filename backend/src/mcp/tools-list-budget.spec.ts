@@ -69,6 +69,41 @@ import { McpServerService } from "./mcp-server.service";
 // regain the true|false, unsigned absAmount and capture-name guidance the
 // rewrite dropped. 4,647 -> 4,904 bytes measured (+257); cap 4,660 -> 4,910;
 // total 59,170 -> 59,420 (59,413 measured).
+//
+// Added, as a reviewed decision (email-receipts, "draft a parser with AI"): the
+// tool `email_receipt_parsers` (2,606 bytes: three operations and the compact
+// parser language a model must be told to write and test a parser from stored
+// order emails; its input and output schemas declare only what a model reasons
+// about). Total 59,420 -> 62,040 = the new tool plus a 14-byte margin; NO
+// existing cap moved, and `ai_review_requests` did not grow to describe the new
+// request kind (its claim result carries that guidance).
+//
+// Added, as a reviewed decision (bond series fetch, docs/specs/bond-series-fetch.md
+// section 5): `fetch_bond_series` (998 bytes: a country and a series code, the
+// instrument and `created` back) and the administrator's
+// `enter_bond_series_manually` (1,685 bytes: the per-series values of a template).
+// Total 62,040 -> 63,050 (63,046 measured, a 4-byte margin); no existing cap moved.
+// Approved by the owner on 2026-10-11 (WMP/monize#24).
+//
+// Raised, as a reviewed decision (owner-approved): `email_receipt_parsers`
+// gained the read-only `get` operation (the saved parsers, or one in full with
+// `parserId`) so an agent revising a profile reads the previous version instead
+// of the 200-character excerpt a queued instruction carries. Now 2,730
+// bytes measured; cap 2,620 -> 2,740 and total 63,050 -> 63,170 (63,158
+// measured); no other cap moved.
+//
+// Raised, as a reviewed decision approved by the maintainer (linked receipts spec
+// 10a: `test` takes `componentDrafts` on the MCP surface too): the new input
+// field `componentDrafts` (an array of {definition, fromDomains}, no prose: the
+// language guide explains it). `email_receipt_parsers` 2,730 -> 3,023 bytes
+// measured (+293); cap 2,740 -> 3,030 and total 63,170 -> 63,460 (63,451
+// measured); no other cap moved.
+//
+// Added, as a reviewed decision (warranty tracker, design decision 11): the
+// read-only `list_warranties` (1,135 bytes: a status, a search and a limit in;
+// `today`, the rows and `total` out). Total 63,460 -> 64,595 = exactly the
+// new tool's measured bytes (64,586 measured, the previous 9-byte margin
+// kept); no existing cap moved.
 const TOOL_BYTE_BUDGET: Record<string, number> = {
   list_accounts: 2500,
   list_transactions: 3550,
@@ -89,12 +124,16 @@ const TOOL_BYTE_BUDGET: Record<string, number> = {
   get_budget_status: 2550,
   manage_transaction_rules: 4910,
   ai_review_requests: 3050,
+  email_receipt_parsers: 3030,
+  fetch_bond_series: 1000,
+  enter_bond_series_manually: 1690,
+  list_warranties: 1140,
   get_next_prompt: 1400,
   post_response: 1050,
   report_progress: 1250,
 };
 
-const TOTAL_BYTE_BUDGET = 59_420;
+const TOTAL_BYTE_BUDGET = 64_595;
 const INSTRUCTIONS_BYTE_BUDGET = 2_600;
 
 /**
@@ -123,6 +162,10 @@ const EXPECTED_TOOL_ORDER = [
   "get_budget_status",
   "manage_transaction_rules",
   "ai_review_requests",
+  "email_receipt_parsers",
+  "fetch_bond_series",
+  "enter_bond_series_manually",
+  "list_warranties",
   "get_next_prompt",
   "post_response",
   "report_progress",
@@ -334,6 +377,9 @@ describe("tools/list payload budget", () => {
     // provider doubles are enough to read them back off the server.
     const noopProvider = { register: () => {} } as any;
     const service = new McpServerService(
+      noopProvider,
+      noopProvider,
+      noopProvider,
       noopProvider,
       noopProvider,
       noopProvider,

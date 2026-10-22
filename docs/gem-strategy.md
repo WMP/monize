@@ -549,6 +549,18 @@ unpriced one for the backtest, and for momentum a trailing return of exactly
 zero, computed from one observation, that decides a signal the user is invited
 to trade on.
 
+The roles of one evaluation are priced at **one session** (A26-M27). The lag
+window tolerates a market shut on the boundary, but it also tolerated a feed gap:
+an ex-US series with no closes from the 19th to the 30th was priced off its 18th
+while the US leg used the 30th, and the ranking compared two sessions.
+`momentumSnapshot` takes the newest exit close any role holds on or before the
+boundary as the boundary's session and leaves a role whose own exit trails it by
+more than `BOUNDARY_HOLIDAY_DAYS` (four days, `price-boundary.util.ts`) unpriced,
+so the period defers through `evaluate` as it does for any unpriced mapped role.
+Algorithm version 3. The backtest's per-role spans and the configuration save's
+backfill check (`coversBoundaries`) still use the fortnight window alone; a gap
+already materialized under version 2 is history-of-record.
+
 The lag window has a second half: **a boundary is priceable only once the series
 holds a close dated at or after it.** Inside the window alone, "the market was
 shut on the 31st" and "the 31st's close has not been fetched yet" are the same

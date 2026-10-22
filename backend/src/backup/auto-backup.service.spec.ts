@@ -3867,7 +3867,7 @@ describe("AutoBackupService", () => {
       expect(remaining).toContain("monize-backup-monthly-26-02.json.gz");
     });
 
-    it("counts files left flat in the base folder by an older version", async () => {
+    it("never deletes a file left flat in the base folder by an older version", async () => {
       mockSettingsRepo.findOne.mockResolvedValue(
         createSettings({
           enabled: true,
@@ -3893,18 +3893,46 @@ describe("AutoBackupService", () => {
 
       await service.runManualBackup(userId);
 
-      // Legacy flat files carry no user id, so nothing new will ever appear
-      // beside them: sweeping them with the sharded ones ages them out instead
-      // of stranding them under a limit that no longer looks at them.
+      // A legacy flat file carries no user id, so it is nobody's to delete:
+      // any user's pass would otherwise sweep another owner's only
+      // pre-upgrade recovery points (A26-M07, INV-BACKUP-001).
       for (const name of legacyNames) {
-        await expect(fs.access(join(root, name))).rejects.toThrow();
+        await expect(fs.access(join(root, name))).resolves.toBeUndefined();
       }
       const remaining = await listBackups(folderFor());
       expect(remaining).toContain("monize-backup-daily-2026-04-03.json.gz");
       expect(remaining).toContain("monize-backup-daily-2026-04-04.json.gz");
     });
 
-    it("keeps the sharded copy over the legacy one on an equal date", async () => {
+    it("still prunes the user's own sharded files to the limit beside legacy ones", async () => {
+      mockSettingsRepo.findOne.mockResolvedValue(
+        createSettings({
+          enabled: true,
+          folderPath: root,
+          // Today's write takes one slot, leaving one for the seeded files.
+          retentionDaily: 2,
+          retentionWeekly: 0,
+          retentionMonthly: 0,
+        }),
+      );
+      await seed([
+        "monize-backup-daily-2026-04-03.json.gz",
+        "monize-backup-daily-2026-04-04.json.gz",
+      ]);
+      const legacy = join(root, "monize-backup-daily-2026-04-05.json.gz");
+      await fs.writeFile(legacy, "legacy");
+
+      await service.runManualBackup(userId);
+
+      // The newer legacy file neither takes a slot nor is deleted; the user's
+      // own oldest sharded file is still pruned.
+      await expect(fs.access(legacy)).resolves.toBeUndefined();
+      const remaining = await listBackups(folderFor());
+      expect(remaining).not.toContain("monize-backup-daily-2026-04-03.json.gz");
+      expect(remaining).toContain("monize-backup-daily-2026-04-04.json.gz");
+    });
+
+    it("keeps both the sharded and the legacy copy on an equal date", async () => {
       mockSettingsRepo.findOne.mockResolvedValue(
         createSettings({
           enabled: true,
@@ -3922,8 +3950,9 @@ describe("AutoBackupService", () => {
 
       await service.runManualBackup(userId);
 
-      // The sharded file is known to be this user's; the flat one is anyone's.
-      await expect(fs.access(legacy)).rejects.toThrow();
+      // The sharded file is this user's and within the limit; the flat one is
+      // not this user's to delete, whatever its date.
+      await expect(fs.access(legacy)).resolves.toBeUndefined();
       expect(await listBackups(folderFor())).toContain(
         "monize-backup-daily-2026-04-01.json.gz",
       );

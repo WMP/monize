@@ -3,6 +3,7 @@ import {
   ACCOUNT_DETAIL_VIEWS,
   DETAIL_ACCOUNT_TYPES,
   hasAccountDetailView,
+  opensAccountDashboard,
   resolveAccountDetailView,
 } from './account-detail-views';
 import type { AccountType } from '@/types/account';
@@ -33,5 +34,23 @@ describe('account detail view registry', () => {
     // counted as something the user can open Details on.
     expect(hasAccountDetailView(undefined)).toBe(false);
     expect(hasAccountDetailView(null)).toBe(false);
+  });
+});
+
+describe('opensAccountDashboard', () => {
+  it('opens the dashboard of a type that has one, when the reader chose the dashboard', () => {
+    expect(opensAccountDashboard('CHEQUING', 'dashboard')).toBe(true);
+    expect(opensAccountDashboard('INVESTMENT', 'dashboard')).toBe(true);
+  });
+
+  it('never opens it when the reader chose the register', () => {
+    for (const type of DETAIL_ACCOUNT_TYPES) {
+      expect(opensAccountDashboard(type, 'register')).toBe(false);
+    }
+  });
+
+  it('opens the register of a type with no dashboard whatever the choice', () => {
+    expect(opensAccountDashboard('NOT_A_TYPE' as AccountType, 'dashboard')).toBe(false);
+    expect(opensAccountDashboard(undefined, 'dashboard')).toBe(false);
   });
 });

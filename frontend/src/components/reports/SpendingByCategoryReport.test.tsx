@@ -21,8 +21,13 @@ vi.mock('@/hooks/useNumberFormat', async () => {
 };
 });
 let mockIsValid = true;
+// The selection the mocked range hook reports; a test moves it and re-renders.
+const mockRange = { end: "2025-03-31" };
 vi.mock("@/hooks/useDateRange", () => {
-  const resolvedRange = { start: "2025-01-01", end: "2025-03-31" };
+  const resolvedRange = {
+    start: "2025-01-01",
+    get end() { return mockRange.end; },
+  };
   return {
     useDateRange: () => ({
       dateRange: "3m",
@@ -56,11 +61,11 @@ vi.mock("@/components/ui/ChartViewToggle", () => ({
 }));
 
 vi.mock("@/components/ui/ExportDropdown", () => ({
-  ExportDropdown: ({ onExportPdf, onExportCsv }: any) => (
+  ExportDropdown: ({ onExportPdf, onExportCsv, disabled }: any) => (
     <div data-testid="export-dropdown">
-      <button data-testid="export-pdf" onClick={onExportPdf}>PDF</button>
+      <button data-testid="export-pdf" onClick={onExportPdf} data-disabled={String(disabled === true)}>PDF</button>
       {onExportCsv && (
-        <button data-testid="export-csv" onClick={onExportCsv}>CSV</button>
+        <button data-testid="export-csv" onClick={onExportCsv} data-disabled={String(disabled === true)}>CSV</button>
       )}
     </div>
   ),
@@ -131,6 +136,7 @@ describe("SpendingByCategoryReport", () => {
     vi.clearAllMocks();
     mockPush.mockClear();
     mockIsValid = true;
+    mockRange.end = "2025-03-31";
   });
 
   it("shows loading state initially", async () => {
@@ -595,6 +601,48 @@ describe("SpendingByCategoryReport", () => {
     expect(await screen.findByTestId('partial-total')).toBeInTheDocument();
   });
 
+  it('carries the partial note onto the PDF card the screen marks', async () => {
+    mockExportToPdf.mockResolvedValue(undefined);
+    mockGetSpendingByCategory.mockResolvedValue({
+      data: [{ categoryId: 'c1', categoryName: 'Food', color: null, total: 100 }],
+      totalSpending: null,
+      knownSpending: 100,
+      currency: 'CAD',
+      missingCurrencies: ['JPY'],
+      excludedCount: 1,
+    } satisfies SpendingByCategoryResponse);
+
+    await act(async () => {
+      render(<SpendingByCategoryReport />);
+    });
+    await screen.findByText('Food');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('export-pdf'));
+    });
+
+    const cards = mockExportToPdf.mock.calls[0][0].summaryCards as Array<{ note?: string }>;
+    expect(cards[0].note).toEqual(expect.stringContaining('JPY'));
+  });
+
+  it('writes no note on the PDF card of a complete report', async () => {
+    mockExportToPdf.mockResolvedValue(undefined);
+    mockGetSpendingByCategory.mockResolvedValue(
+      completeReport(
+        [{ categoryId: 'c1', categoryName: 'Food', color: null, total: 100 }],
+        100,
+      ),
+    );
+    await act(async () => {
+      render(<SpendingByCategoryReport />);
+    });
+    await screen.findByText('Food');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('export-pdf'));
+    });
+    const cards = mockExportToPdf.mock.calls[0][0].summaryCards as Array<{ note?: string }>;
+    expect(cards[0].note).toBeUndefined();
+  });
+
   it('leaves a complete total unmarked', async () => {
     mockGetSpendingByCategory.mockResolvedValue(
       completeReport(
@@ -608,5 +656,50 @@ describe("SpendingByCategoryReport", () => {
     });
 
     expect(screen.queryByTestId('partial-total')).toBeNull();
+  });
+});
+
+describe("SpendingByCategoryReport: a reload is not the previous answer", () => {
+  const answer = completeReport(
+    [{ categoryId: "cat-1", categoryName: "Groceries", total: 500, color: "#ff0000" }],
+    500,
+  );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsValid = true;
+    mockRange.end = "2025-03-31";
+  });
+
+  async function loadThenChangeRange(next: () => unknown) {
+    mockGetSpendingByCategory.mockResolvedValue(answer);
+    let view!: ReturnType<typeof render>;
+    await act(async () => {
+      view = render(<SpendingByCategoryReport />);
+    });
+    expect(screen.getByTestId("export-pdf")).toHaveAttribute("data-disabled", "false");
+
+    mockGetSpendingByCategory.mockImplementation(next);
+    mockRange.end = "2025-04-30";
+    await act(async () => {
+      view.rerender(<SpendingByCategoryReport />);
+    });
+    await waitFor(() =>
+      expect(mockGetSpendingByCategory).toHaveBeenLastCalledWith(
+        expect.objectContaining({ endDate: "2025-04-30" }),
+      ),
+    );
+  }
+
+  it("disables the export while the next request has failed", async () => {
+    await loadThenChangeRange(() => Promise.reject(new Error("500")));
+    expect(screen.getByTestId("export-pdf")).toHaveAttribute("data-disabled", "true");
+    expect(screen.getByTestId("export-csv")).toHaveAttribute("data-disabled", "true");
+  });
+
+  it("disables the export while the next request is pending", async () => {
+    await loadThenChangeRange(() => new Promise(() => {}));
+    expect(screen.getByTestId("export-pdf")).toHaveAttribute("data-disabled", "true");
+    expect(screen.getByTestId("export-csv")).toHaveAttribute("data-disabled", "true");
   });
 });

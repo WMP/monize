@@ -1,0 +1,175 @@
+# Adding a country's bonds
+
+Read this before "add <country>'s bonds", a new bond product, or a new engine primitive. The engine is global; a country is an adapter, and nearly every product is data. The rules that hold it are in `docs/system-invariants.md` (INV-BOND-001 to INV-BOND-009); the Polish products and their formulas are `docs/specs/polish-retail-bonds.md`; the engine specification is `docs/specs/sovereign-bonds.md`.
+
+## 1. The model
+
+A country-agnostic engine (`backend/src/bonds/engine/`) values a lot of bonds from a terms document, stored benchmark observations and announced rates; the domain (`backend/src/bonds/domain/`) holds the exact decimal type, calendar dates, period schedules and the terms types with their strict parser (`parseBondTerms`). A country is an adapter, a `BondAdapter` (`backend/src/bonds/bond-adapter.ts`): business-day calendars, benchmark definitions and fetchers, programs, product templates and, when the issuer publishes terms in a readable form, a series fetch. Adapters are listed in `INSTALLED_BOND_ADAPTERS` (`backend/src/bonds/bond-adapters.ts`), the one place they are wired; the domain, the engine and the shared services never name one. A program is the product a person holds (`bond_programs`, e.g. EDO) and a security links to one program (`securities.bond_program_id`); a series is one issue of it (`bond_instruments`, e.g. EDO1036) and its terms are stored versions (`bond_terms_versions`) that are never changed: a correction is a new `termsVersion` (INV-BOND-001). A share-moving transaction names its series (`investment_transactions.bond_instrument_id`, INV-BOND-007). No table names a country, so a country needs no migration.
+
+## 2. What an adapter provides
+
+`BondAdapter` members. "Optional" means the adapter may leave it out and the feature around it is then refused or skipped, never guessed.
+
+| Member | Required | What it is for |
+|---|---|---|
+| `countryCode` | yes | ISO 3166-1 alpha-2, upper case. It is the `issuerCountryCode` of every program and series and the `countryCode` of `GET /bonds/offer`, `GET /bonds/history` and `POST /bonds/instruments/fetch` (`^[A-Z]{2}$`). |
+| `specDoc` | yes | The repo-relative path of the country's spec under `docs/specs/` (Poland: `docs/specs/polish-retail-bonds.md`). A country is not installed without it; `adapter-docs.guard.spec.ts` requires that the file exists and names every program code, every benchmark code, the country code and an official `https://` source (section 5). |
+| `timezone` | yes | IANA zone of the market's publishers. The adapter's own calendar day decides whether its benchmark is fresh (`BenchmarkRefreshService`) and what "today" is for `backfillCodes`. |
+| `registerCalendars(registry)` | yes | Adds the business-day calendars (`BusinessDayCalendar`: `id`, `isBusinessDay`) the terms name in a `calendarId`; returns a new registry and throws on a duplicate id. `BOND_CALENDARS` is built from every adapter. A schedule always names a calendar, so register one even for a product that uses no business-day rule: an unknown id makes the terms incomplete. |
+| `benchmarks` | yes (may be empty) | `BenchmarkSeriesDefinition`: `code` (at most 40 characters, the id a rate rule reads), `kind` (`STEP`: a value in force from a date; `MONTHLY`: one value per `YYYY-MM`), `publisher`, `sourceUrl`, `hosts` (every host the fetcher requests, exact names: the door refuses any other address, a redirect target included), `unit` (`RATE_FRACTION`), `providerId` (the `TrackedProviderId` its fetch is gated and reported under). A new kind needs a migration (`benchmark_series.kind` CHECK). |
+| `fetchBenchmark(code, fetch)` | yes | Reads one series from its publisher through the `BondFetch` it is given and returns `BenchmarkFetchResult`: observations (a fraction as an exact decimal string, never a JSON number), `coveredThrough` (the source is authoritative up to this day) and `sourceUrl`. Throws `BenchmarkFetchError` for a code it does not own. |
+| `programs` | yes | `BondProgramDefinition`: `issuerCountryCode`, `issuerCode`, `programCode`, `currency`, `faceValue` (the nominal of one bond, the product template's `instrument.faceValue`, an exact decimal string), optional `infoUrl` (an https page of the issuer describing the product). The boot seed stores these rows and nothing else; the security form offers them. `faceValue` is not stored: `templateFaceValueOf` (`backend/src/bonds/bond-adapters.ts`) finds it by the stored program's key, and the write guard reads an acquisition of a linked security with no series against it (INV-BOND-005). |
+| `fetchSeries?(code, fetch)` | no | Reads one series' terms from the official source and returns `FetchedSeries` (`entry`: `termsVersion`, `publishedAt`, the raw `terms`; `sources`). Refuses with a `SeriesFetchError`. Without it the country answers `SERIES_FETCH_UNSUPPORTED` and a series can only be entered by an administrator, if `manualSeries` exists. |
+| `manualSeries?(code, values)` | no | The same entry built from an administrator's values (`ManualSeriesValues`) on the same template, with `source.provider` `manual`. |
+| `seriesProviderId?` | with `fetchSeries` or `currentSeries` | The `TrackedProviderId` the series requests are gated and reported under. A new id is added to `TRACKED_PROVIDERS` (`backend/src/provider-health/providers.ts`) with its label; it is the key of the durable outage state, so it never changes. |
+| `currentSeries?(fetch)` | no | The series codes the issuer lists as on sale now, for the Refresh of a linked security and the daily check. Needs `fetchSeries` and `seriesProviderId`. |
+| `backfillCodes?(today)` | no | Every series code the templates cover, from `seriesValidFrom` to the month of `today` (YYYY-MM-DD, the market's own day), oldest sale month first: the candidates of the history backfill. Needs `fetchSeries` and `seriesProviderId`. |
+| `programOf?(code)` | no, but see below | The program code of a series code, or null when it is not this adapter's. The daily check and the Refresh fetch only the programs a person follows, so an adapter without it is never fetched by them. |
+| `seriesCodeFor?(programCode, saleDate)` | no | The code of the series of a program sold on a date (`YYYY-MM-DD`, a valid calendar date), or null when the adapter cannot name one. `GET /bonds/securities/:securityId/expected-series` answers it with `fetchable` (the adapter has `fetchSeries` and `seriesProviderId`), so the purchase form offers "Fetch <code>" without knowing a country's code grammar. Poland derives it from `series/series-code.ts`. |
+| `seriesValidFrom?` | no | The earliest sale month (`YYYY-MM`) the templates are validated for; the lower bound of the history's `coverage`. |
+
+The templates are not a member: they are adapter data, `backend/src/bonds/adapters/<cc>/templates/<product>.template.json`, and the directory must exist for every installed adapter (`no-automatic-bonds.guard.spec.ts`). A template is a terms document with every per-series value left out (series code, rates, margin or spread, fee, sale window, source); the series fetch and the manual entry fill it and the result goes through `parseBondTerms`.
+
+### The Polish adapter, file by file
+
+`backend/src/bonds/adapters/pl/`:
+
+| File | What it does |
+|---|---|
+| `index.ts` | `POLISH_BOND_ADAPTER`: country `PL`, zone `Europe/Warsaw`, the two benchmarks, one program per template (with `infoUrl` from `productPageUrl`), `seriesProviderId` `obligacjeskarbowe`, and `fetchBenchmark` dispatching on the code. |
+| `pl-calendar.ts` | `plCalendar` (id `PL`): weekends and Polish public holidays (`polishHolidays`, `easterSunday`). |
+| `pl-benchmarks.ts` | The benchmark ids `PL_NBP_REFERENCE` (`STEP`) and `PL_CPI_GUS_YOY` (`MONTHLY`). |
+| `pl-nbp-reference.ts`, `pl-gus-cpi.ts` | The two benchmark fetchers: NBP rate changes (and the proof that `coveredThrough` holds) and GUS year-on-year CPI (link discovery, a stale-feed refusal after `GUS_MAX_STALE_MONTHS`). |
+| `templates/*.template.json`, `series/templates.ts` | The eight product templates (`SERIES_TEMPLATES`), each with `validFrom`, the per-series fields it takes (`addend`, `hasFee`) and `fillTemplate`. |
+| `series/series-code.ts` | The series-code grammar (`parseSeriesCode`, `seriesCodeFor`, `PRODUCT_TENOR_MONTHS`, the page slugs). |
+| `series/series-source.ts` | The issuer's host, the page and letter URLs, and `getFromIssuer`: one GET on the issuer's host, refusing another host, a redirect elsewhere, a status other than 200 and an oversized body. |
+| `series/page-parser.ts`, `letter-parser.ts`, `pdf-text.ts` | Read the series page and the issue letter (PDF text through `pdfjs-dist`). |
+| `series/series-values.ts`, `series-entry.ts` | `SeriesValues` and its bounds (`assertSeriesValues`), the template's `validFrom` check (`assertTemplateCovers`) and `buildSeriesEntry` (template plus values, through `parseBondTerms`): one path for a fetch and a manual entry. |
+| `series/fetch-series.ts` | `fetchSeries`: page and letter, cross-checked field by field, then `buildSeriesEntry`. |
+| `series/manual-series.ts`, `current-offer.ts`, `backfill-codes.ts` | `manualSeries`, `fetchCurrentSeries` (the issuer's home page), `backfillCodes` and `SERIES_VALID_FROM`. |
+| `*-cases.json`, `golden.spec.ts`, `redemption-split.golden.spec.ts`, `pl-test-input.ts`, `fixtures/` | Golden cases from the issuer's published examples and letters, and the terms fixtures they read. |
+| `series/fixtures/` | The saved pages, letters and PDF the fetch specs read; the network is never used by a test. |
+
+## 3. The engine primitive catalogue
+
+A terms document (`schemaVersion` 1, `backend/src/bonds/domain/bond-terms.ts`) is built only from the primitives below. `parseBondTerms` refuses an unknown field, a JSON number where a decimal string is required (INV-BOND-003) and an unknown `type` (`UNSUPPORTED_PRIMITIVE`, with the field's path); an unknown calendar or benchmark id is not a parse error, the valuation reports it as missing data.
+
+| Primitive | Meaning | Parser |
+|---|---|---|
+| `instrument` | `issuerCountryCode`, `issuerCode`, `programCode`, `seriesCode`, `currency`, `marketability` (`RETAIL_REDEEMABLE` only), `faceValue` (positive), optional `issuePrice`. | `parseBondTerms` |
+| `saleWindow` | `{ from, to }` the series is sold in, or null: a lot bought outside it is REFUSED (`PURCHASE_OUTSIDE_SALE_WINDOW`), a lot whose purchase date is assumed is not checked. | `parseBondTerms` |
+| `FIXED` | The same `annualRate` in every period. | `parseRateRule` |
+| `BENCHMARK_PLUS_SPREAD` | Period 1 is `firstPeriodRate` (derived like the rest when null); later periods are `max(benchmarkFloor, observation) + spread` (no floor: the observation). | `parseRateRule` |
+| `INFLATION_PLUS_MARGIN_AS_RATE` | The same shape with a `margin`, for an inflation benchmark. Both read the benchmark through an observation rule. | `parseRateRule` |
+| `ZERO_COUPON_DISCOUNT` | No rate: bought at `instrument.issuePrice`, below `faceValue`, the value rises ratably (by days) to the face value at maturity. Needs an `ISSUE_DATE` schedule, capitalization `NONE` and redemption `MATURITY_ONLY`. | `parseRateRule`, `assertDiscountConsistent` |
+| Observation `STEP_VALUE_ON_NTH_BUSINESS_DAY_BEFORE_START_MONTH` | Reads a `STEP` benchmark on the n-th business day (named calendar) before the first day of the month a period starts in. | `parseObservation` |
+| Observation `MONTHLY_VALUE_MONTHS_BEFORE_START` | Reads a `MONTHLY` benchmark at the reference month `start month - months`. | `parseObservation` |
+| An announced rate | A stored period rate (`bond_period_rates`) wins over a derived one; a period with neither is unknown, never substituted (INV-BOND-002). | the engine (`resolvePeriodRates`) |
+| Schedule `LOT_PURCHASE_DATE` | Periods of `periodMonths` (a divisor of 12), `periodCount` of them, counted from each lot's own purchase date, the day clamped to the month (`ANCHOR_DAY_CLAMPED`). | `parseSchedule` |
+| Schedule `ISSUE_DATE` | One period from `issueDate` to `maturityDate`, whatever the lot's purchase date. | `parseSchedule` |
+| `accrual` `ACTUAL_DAYS_IN_PERIOD` | A period's interest accrues by the days elapsed of its days. | `parseBondTerms` |
+| `principalRule` `FIXED_NOMINAL` | The principal is the face value (the issue price for a discount instrument), read through `principalAt`. | `parseBondTerms` |
+| Capitalization `NONE` | A coupon bond: each period's interest is paid at its end. | `parseCapitalization` |
+| Capitalization `COMPOUND_AT_PERIOD_END` | Interest joins the base at each period's end; `baseRounding` `PER_PERIOD` rounds the base at each period end, `NONE` rounds only the result. | `parseCapitalization` |
+| Redemption `MATURITY_ONLY` | Paid at maturity only. | `parseRedemption` |
+| Redemption `ON_DEMAND` | May be redeemed from `purchaseDate + earliestDaysAfterPurchase + 1` (the sale day is not counted) to `latestDaysBeforeMaturity` days before maturity, outside the blackouts. | `parseRedemption` |
+| Blackout `RECORD_DAY_BEFORE_COUPON` | No request on the n-th business day before a coupon date; only with capitalization `NONE`. | `parseRedemption`, `assertConsistent` |
+| Penalty `FIXED_FEE_PER_UNIT` | A fee per bond, taken from the value. | `parseRedemption` |
+| Penalty `FORFEIT_ACCRUED_SINCE_LAST_PAYMENT` | The interest accrued since the period start is not paid. | `parseRedemption` |
+| `proceedsFloor` `FACE_VALUE` | Net proceeds are at least the principal, in `ALL_PERIODS` or the `FIRST_PERIOD`. | `parseRedemption` |
+| `rounding` | `moneyDecimals` 0 to 4 and `mode` `HALF_UP`, `HALF_EVEN` or `DOWN` (an unknown mode is `UNSUPPORTED_PRIMITIVE`); every figure is rounded per bond and then multiplied by the quantity (INV-BOND-003). | `parseBondTerms` |
+| `source` | `provider`, `url`, `document`: where the terms came from. | `parseBondTerms` |
+
+Derived outputs, all from the same terms, in `backend/src/bonds/engine/`: the valuation of a lot (`valueBondLot`: status, current period, the rate schedule with each rate's `rateSource` `TERMS`, `ANNOUNCED`, `DERIVED` or `PROJECTED`, principal, accrued interest, gross value, the early redemption value or its refusal, known and projected cash flows with a null amount for an unknown one, `valuationComplete`), the same for many days (`valueBondLotSeries`, `grossValueSeries`, the daily price), interest attribution per period (`attributeInterest`), scenarios under an assumed benchmark value (`backend/src/bonds/bond-scenarios.ts`, `assume=` on the valuation and the offer), the redemption split (`redemptionSplit`: returned principal and interest, INV-BOND-009) and the offer's projection of one bond bought today (`annualizedReturn`, `backend/src/bonds/domain/annualized-return.ts`).
+
+## 4. Data only, or a new primitive
+
+A product is **data only** when its terms document can be written in the vocabulary above and the engine's result equals what the issuer publishes. Write the terms by hand for one series and check the engine against the issuer's own examples before anything else; if every published figure comes out, the product is a template.
+
+A product needs a **new primitive** when some published figure cannot be produced: a rate formula the rules above do not compute, an accrual or compounding step that differs, a window or penalty measured in a unit the terms lack, a principal that moves, a rounding the terms cannot express. Do not bend an existing primitive to an approximate result, and never put a country's rule in the engine.
+
+Adding a primitive, in its own commit before the adapter that needs it:
+
+1. Write the spec first (`docs/specs/<name>.md`): the official source and paragraph, the construction, a numerical example computed from the issuer's formula (not from the implementation), the missing-data policy.
+2. Add the union member in `backend/src/bonds/domain/bond-terms.ts`, with a comment on its meaning.
+3. Add the parser case: the `type` in the `primitive(...)` list of its `parse*` function, its fields in `object(...)` (an unknown field is refused), a cross-primitive rule in `assertConsistent` when it is only valid beside another.
+4. Add the case to every exhaustive switch; `assertNever` makes `tsc` list them (`engine/accrual.ts`, `engine/rate-resolution.ts`, `engine/redemption.ts`, `engine/bond-engine.ts`, `benchmarkRuleOf` and `scheduleMonthsOf` in the terms module). Then grep the consumers that are not exhaustive: `historySeriesOf` and `projectionOf` in `bond-offer.service.ts`, `bond-valuation.service.ts`, `bond-scenarios.ts`, the frontend `BondRateRule` type and `rateRuleLines` (section 8).
+5. Write the engine arithmetic in `ExactDecimal`; `country-agnostic.guard.spec.ts` fails `Number(`, `parseFloat(` and `Math.` in `domain/` and `engine/`, an adapter import, and a country, currency, publisher or product literal in the domain, the engine or a shared service under `backend/src/bonds/`.
+6. Tests: the parser (`domain/bond-terms.spec.ts`: valid, an unknown field, a number instead of a string, the refusal of an inconsistent combination), the engine (a spec per primitive, the known/projected/unknown cases, `redemptionSplit`), and a golden case from the issuer's example.
+7. Update the terms block in `docs/specs/polish-retail-bonds.md` section 2.1 and the catalogue in section 3 of this guide in the same commit.
+
+## 5. Rules the machine holds
+
+Nothing here is an agreement to remember; each is a guard that fails.
+
+- **No bond data without a person (INV-BOND-008).** `backend/src/bonds/no-automatic-bonds.guard.spec.ts` runs over every installed adapter without being edited: the boot seed stores programs only and calls no fetch; the benchmark refresh fetches nothing while no stored series reads a benchmark; the daily series cron fetches nothing while no security has `bond_auto_fetch` on; every adapter has `templates/*.template.json` and none carries a per-series key (`seriesCode`, `firstPeriodRate`, `annualRate`, `margin`, `spread`, `saleWindow`, `amount`, `source`, `publishedAt`, `letter`); `BondAdapter` has no series catalog. `backend/test/integration/no-automatic-bonds.integration.spec.ts` repeats it against PostgreSQL. A country is fetched only by a person's Refresh, a fetch from the purchase form, an administrator's entry, or the cron for a program a person followed.
+- **The network has one door.** An adapter never calls `fetch`; it uses the `BondFetch` it is given. Every bond request, a series and a benchmark alike, goes through `SeriesHttp.gated` (`backend/src/bonds/series-http.ts`): the provider's circuit breaker before any socket (`assertAvailable`), `recordSuccess` only once the whole body has arrived, `redirect: "manual"`, a 30 s `AbortSignal.timeout`, and a body read as a stream with a 5 MB cap. A series request has no `FetchPolicy`: a 3xx comes back as its status and the adapter refuses it. A benchmark request carries the policy `{ allowedHosts: series.hosts }` (`BenchmarkRefreshService`): the door refuses, before a socket is opened, an address that is not https on a declared host (default port, no credentials), follows a redirect only when its target passes the same test, at most `FETCH_MAX_REDIRECTS` (3) hops, and throws `FetchRefusedError` otherwise (not counted against the breaker). A fetcher that requests another host, such as a CSV served from a CDN, must declare it in `hosts`. `backend/src/provider-health/provider-call.guard.spec.ts` names the one file allowed to call `fetch`. The adapter refuses what the door lets through: a status other than 200, a host that is not the issuer's, a landing URL elsewhere (`getFromIssuer`).
+- **A country is not installed without its spec.** `backend/src/bonds/adapter-docs.guard.spec.ts` runs over every adapter in `INSTALLED_BOND_ADAPTERS` without being edited: `specDoc` is a markdown file directly under `docs/specs/` that exists, and it mentions every program code, every benchmark code and the country code as whole words, and links at least one official `https://` source. Its failure says what to add.
+- **Fetched data is cross-checked and refused before any write (INV-BOND-006).** A person who is not an administrator supplies only a country and a series code (`FetchBondSeriesDto`). An adapter reads every field from the official source, checks each one against the product's bounds and, where the source states it twice, against itself (the Polish page against its letter): a field it cannot read is `SOURCE_FORMAT_CHANGED`, a disagreement or an out-of-bounds value is `SOURCE_INCONSISTENT`, a sale month before the template's `validFrom` is `TEMPLATE_NOT_VALIDATED`; then the filled template goes through `parseBondTerms`. The store (`BondSeriesService.store`, `BondCatalogService.storeEntry`) runs under an advisory lock on the instrument; a read that differs from the stored version 1 is `SERIES_TERMS_CONFLICT` and writes nothing. `params` of a refusal carry short machine values, never free text from the source.
+- **Stored terms never change (INV-BOND-001).** A fetch returns `termsVersion` 1; a correction is a new version, published deliberately. The database trigger refuses an update or a delete of a program, an instrument, a terms version and a period rate.
+- **A linked security is never priced by a quote provider (INV-BOND-005).** Every path that asks a provider about a security calls `isPricedByQuoteProvider`; `provider-priced.guard.spec.ts` fails a new path that does not. An adapter has nothing to add; a new code path must not ask a provider about a linked security.
+- **State that decides something is a row, not a field.** `backend/src/common/process-local-state.guard.spec.ts` fails a `Map` or `Set` field on a class. The refresh limits and their progress are `fetch_sync` rows (`FetchSyncService.claim`, `reportProgress`); keep an adapter a plain object with no state that outlives a call.
+- **Refusals are codes, translated.** Every `SeriesFetchErrorCode`, `BondEngineErrorCode` and bond data code has an English fallback in `SERIES_ERROR_FALLBACKS` or `BOND_ERROR_FALLBACKS` (typed as a record over the code union, so `tsc` fails a code without one) and an `errors.bonds.<code>` message in `backend/src/i18n/locales/en/errors.json`; write English first, run `npm run i18n:pseudo`, and translate the other locales as the final commit. The client is told a code and `params`, never an English sentence.
+
+## 6. Checklist, from nothing to merged
+
+1. **Propose first** (`CONTRIBUTING.md`): a discussion with the approach agreed, one country per PR.
+2. **Spec** in `docs/specs/<country>-<product>.md` (the adapter's `specDoc`; `adapter-docs.guard.spec.ts` checks it names the country code, every program, every benchmark and an official https source), committed before the code it guides (`docs/financial-calculation-contract.md` section 9): every rule with its official source (URL, paragraph, the day you read it); the terms document of each product in this vocabulary; numerical examples computed from the issuer's formulas; the missing-data policy; the test matrix; a list of what you could not verify, marked "to verify".
+3. **Primitives**, if section 4 says so, one commit each with its parser, engine case, tests and the spec.
+4. **Adapter** in `backend/src/bonds/adapters/<cc>/`: the `specDoc`, the calendar, the benchmarks (with their `hosts`) and their fetchers, the templates (`templates/*.template.json`, structure only), the programs with `infoUrl` and `faceValue`, the series fetch if the issuer's source is readable and stable (otherwise only `manualSeries`), `seriesCodeFor` when the series codes follow from a sale date, `index.ts` exporting the adapter. Add its provider ids to `TRACKED_PROVIDERS`. Add it to `INSTALLED_BOND_ADAPTERS`. Add the country's literals (currency, publishers, product codes) to the `FORBIDDEN` pattern of `country-agnostic.guard.spec.ts`: a stricter guard needs no agreement, a looser one does.
+5. **Golden tests** from the issuer's own published examples: `<product>-cases.json` read by a `golden.spec.ts` beside the adapter (the `adapters/pl/golden.spec.ts` pattern: a terms fixture, a lot, an `asOf`, the expected figures with their source), computed from the official formula and never copied from the engine's output; a redemption-split golden for a product that pays early.
+6. **Fetch tests** on saved fixtures: the issuer's pages and documents under `series/fixtures/` (`adapters/pl/series/fetch-series.spec.ts`, `page-parser.spec.ts`, `letter-parser.spec.ts`, `current-offer.spec.ts`), a fake `BondFetch` over them, the refusals (another host, a redirect, a non-200, a missing field, a disagreement, a template not validated) each with its code. No test touches the network.
+7. **Adapter specs**: shape (`pl-adapter.spec.ts`), calendar, fetchers, templates parse once filled (`series/templates.spec.ts`).
+8. **Integration** (PostgreSQL): the store path with a fake fetch over the fixtures (`backend/test/integration/bond-series-fetch.integration.spec.ts`), the catalog and offer reads; `no-automatic-bonds.integration.spec.ts` already covers the new adapter.
+9. **i18n**: the program, issuer and benchmark labels (`securityDetail.bond.programs`, `.issuers`, `.benchmarks` in the frontend's `securityDetail.json`) and any new `errors.bonds.<code>`, English first, then `npm run i18n:pseudo`; every other locale as the final commit.
+10. **Docs**: the spec; this guide if a primitive or a member was added; `docs/external-side-effects.md` (a provider) and `docs/system-invariants.md` for any invariant the change touches; `docs/cron-jobs.md` only if a cron changed.
+11. **Run**, from `backend/`: `npm run lint && npx tsc --noEmit && npm run typecheck`, `npm run test:unit -- bonds`, `npm run test:changed`, `npm run build && npm run test:integration` (the store path and the reads), `npm run i18n:pseudo && npm run i18n:check`; from the root `node scripts/check-docs-manifests.mjs`. Stage new files (`git add -N`) before the guards that walk `git ls-files`. When the UI changed, from `frontend/`: `npm run lint && npm run type-check && npm run i18n:check`, `npm run test:changed`, `npm run build`.
+
+## 7. Worked example: the United States (design only, no code)
+
+Facts below were read on 2026-10-12 from the TreasuryDirect pages named; anything not on those pages is marked "to verify" and must be confirmed before the US spec is written.
+
+### 7.1 Verified facts
+
+| Fact | Source |
+|---|---|
+| Treasury bills mature in 4, 6, 8, 13, 17, 26 and 52 weeks; sold at a discount or at par; paid at face value at maturity; "interest" is the face value less the price paid, paid at maturity; the rate is fixed at auction; minimum purchase 100 USD in increments of 100 USD | https://www.treasurydirect.gov/marketable-securities/treasury-bills/ |
+| The price of a bill is `Face value x (1 - discount rate x days / 360)` (26-week 1,000 USD bill at 0.145%: 999.27 USD) | https://www.treasurydirect.gov/marketable-securities/understanding-pricing/ (linked from the bills page) |
+| An I bond earns a composite rate from a fixed rate and an inflation rate; the fixed rate never changes; the inflation rate and so the composite rate reset every 6 months | https://www.treasurydirect.gov/savings-bonds/i-bonds/ |
+| Composite rate = `fixed + 2 x semiannual inflation + fixed x semiannual inflation`, rounded to 4 decimals (0.0090, 0.0167: 0.0426, 4.26%); a rate that would go below zero stops at zero; the rate changes every 6 months from the bond's issue month (a January bond on 1 July and 1 January); the inflation rate is set each 1 May and 1 November from the non-seasonally adjusted CPI-U, all items; interest is earned from the first day of the month of purchase | https://www.treasurydirect.gov/savings-bonds/i-bonds/i-bonds-interest-rates/ |
+| I bond: interest monthly, compounded semiannually; earns up to 30 years; redeemable after 12 months; redeemed before 5 years it loses the last 3 months of interest; 25 USD minimum "or any amount above that to the penny" (for example 36.73 USD) | https://www.treasurydirect.gov/savings-bonds/i-bonds/ |
+| EE bond: a fixed rate set at purchase for the first 20 years (bonds from May 2005), guaranteed to double in value in 20 years "even if we have to add money at 20 years"; Treasury may adjust the rate or the way it earns interest after 20 years; monthly interest compounded semiannually; 30 years; redeemable after 12 months; before 5 years it loses the last 3 months of interest; 25 USD minimum | https://www.treasurydirect.gov/savings-bonds/ee-bonds/ |
+
+To verify: which CPI-U months make the semiannual inflation rate, and that a period's rate is the announcement in force on its first day (an inference from the change-date table); the monthly accrual formula and the per-unit rounding of a savings bond (31 CFR 359.39 and 359.55, cited by the plan, not read for this guide); a bill's issue date against its auction date, the precision of the auction price per 100 USD (six decimals in the owner's example) and a machine-readable source of auction results (the bills page points to "Results of recent Bill auctions"); how a series of bills is coded.
+
+### 7.2 Treasury bills: data only
+
+A bill is `ZERO_COUPON_DISCOUNT` with an `ISSUE_DATE` schedule (`docs/specs/bond-redemption-interest.md` section 3). Program `BILL` of issuer `US_TREASURY`, currency `USD`. Per series: `faceValue` 100 (a unit is 100 USD, the purchase increment), `issuePrice` the auction price per 100 USD, `schedule` `{ anchor: ISSUE_DATE, issueDate, maturityDate, periodCount: 1, calendarId }`, capitalization `NONE`, redemption `MATURITY_ONLY`, `principalRule` `FIXED_NOMINAL`. The issue price comes from the auction result, so a series is fetched and never typed by a person (INV-BOND-006). The adapter registers a calendar (a weekday calendar is enough to satisfy the schedule's `calendarId`; US holidays are not needed for the value), declares no benchmark, and gives bills a code grammar of letters and digits (at most 16, the series-code limit) from which `programOf` answers `BILL`, for example the term in weeks and the issue date; a CUSIP alone does not say it is a bill.
+
+Decision for the US spec, not taken here: the engine rounds each bond to `moneyDecimals` (at most 4) and multiplies by the quantity, while a Treasury auction prices a unit to six decimals and rounds the holding. With a unit of 100 USD and `moneyDecimals` 4 a holding differs from the cash by cents (`bond-redemption-interest.md` section 3.1, the 240-unit row); the alternative is a rounding basis per holding (section 7.3, last row). The offer measures an `ISSUE_DATE` schedule in actual days: `lengthDays` and an `annualizedReturn` over days / 365 on the issue price (`docs/specs/bond-offer-and-history.md` section 2); `periodMonths` stays the whole months, for display.
+
+### 7.3 I bonds and EE bonds: new primitives
+
+I bonds and EE bonds do not map onto the existing ones. Each row is one new union member (section 4) with a one-line definition.
+
+| New primitive | Definition | Needed by |
+|---|---|---|
+| Rate rule `FIXED_PLUS_INFLATION_COMPOSITE` | `fixed + 2 x I + fixed x I`, I the semiannual inflation rate of a benchmark, rounded to 4 decimals and not below zero; `INFLATION_PLUS_MARGIN_AS_RATE` only adds. | I bond |
+| Observation `STEP_VALUE_IN_FORCE_ON_PERIOD_START` | Reads a `STEP` benchmark at the value in force on the first day of the period (the existing step rule counts business days before the start month and needs at least 1); the benchmark is the announced rate, effective each 1 May and 1 November (to verify). | I bond |
+| Schedule roll `FIRST_OF_PURCHASE_MONTH` | Periods of 6 months starting on the first day of the month of purchase, 60 of them for 30 years; a second `rollDay` beside `ANCHOR_DAY_CLAMPED`. | I bond, EE bond |
+| Accrual `WHOLE_MONTHS_IN_PERIOD` | Interest accrues per whole month inside a period and compounds at the period's end, `PV (1 + CR/2)^(m/6)` (to verify); the existing accrual is by days. | I bond, EE bond |
+| Window by months `earliestMonthsAfterPurchase` | The 12-month minimum holding; `earliestDaysAfterPurchase` counts days. | I bond, EE bond |
+| Penalty `FORFEIT_N_MONTHS_INTEREST` | The last N months of interest (3) are not paid when redeemed before M months after purchase (60); `FORFEIT_ACCRUED_SINCE_LAST_PAYMENT` forfeits a period, with no end. | I bond, EE bond |
+| Fractional holding with a rounding basis `PER_HOLDING` | A purchase is any amount from 25 USD to the penny, so a lot's quantity is an exact decimal amount and money is rounded on the holding, not per whole bond; today a quantity is a whole number of bonds (`ParseBondQuantityPipe`, the lot fold). | I bond, EE bond, and the bill rounding of section 7.2 |
+| Value floor at a date (`GUARANTEED_VALUE_AT_MONTHS`) | At M months after purchase (240) the value is at least a multiple (2) of the principal. | EE bond |
+| A rate known for the first N periods only | `FIXED` gains a validity of 40 periods; later periods are unknown (INV-BOND-002), never the same rate carried on, because Treasury may change the rate after 20 years. | EE bond |
+
+The adapter itself is the usual set: `adapters/us/` with its calendar, the benchmark of announced inflation rates and its fetcher, the three templates, the programs `BILL`, `I` and `EE` with `infoUrl` (the TreasuryDirect pages above), a provider id for TreasuryDirect in `TRACKED_PROVIDERS`, and a series source for each product (to verify).
+
+## 8. Outside the backend: what still assumes Poland
+
+Check each when a country is added; they are not guarded.
+
+- `frontend/src/lib/bond-offer.ts` `BOND_OFFER_COUNTRY` (`PL`) is requested only by the Breakdown card and the Documents tab until the valuation names the program's own country; the On sale card, the Terms history tab and the program card read `issuerCountryCode`, and the purchase form's fetch action reads `GET /bonds/securities/:securityId/expected-series`, so no Polish series-code grammar is left in the client.
+- The program, issuer and benchmark names are labels in the frontend catalog; a code with no label is shown as the code.
+- The three crons run at fixed Europe/Warsaw times (`docs/cron-jobs.md`); each adapter's `timezone` decides its freshness, not the trigger time.

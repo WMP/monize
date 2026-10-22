@@ -1,9 +1,11 @@
 import { Inject, Injectable, Logger, forwardRef } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { SecurityPriceService } from "../securities/security-price.service";
+import { SecuritiesService } from "../securities/securities.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { roundMoney } from "../common/round.util";
 import { LEDGER_MOVEMENT_PREDICATE } from "../common/ledger-balance.sql";
@@ -35,12 +37,15 @@ export class ImportPostProcessingService {
     private securityPriceService: SecurityPriceService,
     @Inject(forwardRef(() => ExchangeRateService))
     private exchangeRateService: ExchangeRateService,
+    @Inject(forwardRef(() => SecuritiesService))
+    private securitiesService: SecuritiesService,
   ) {}
 
   async run(
     userId: string,
     isInvestment: boolean,
     affectedAccountIds: Set<string>,
+    settledScheduleIds: ReadonlySet<string> = new Set(),
   ): Promise<void> {
     // Recalculate current_balance for all affected accounts so that
     // future-dated transactions are excluded. During import,
@@ -133,6 +138,20 @@ export class ImportPostProcessingService {
           `Post-import transaction price backfill failed: ${err.message}`,
         );
       }
+
+      // The imported trades changed the lots of any bond-linked security they
+      // touch, so its engine prices are recomputed (after the transaction-derived
+      // backfill: the engine's row wins its days either way). Logged, not thrown.
+      try {
+        await this.securitiesService.recomputeBondPricesOfAccounts(
+          userId,
+          Array.from(affectedAccountIds),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Post-import bond price recompute failed: ${err.message}`,
+        );
+      }
     }
 
     try {
@@ -157,5 +176,10 @@ export class ImportPostProcessingService {
           ),
         );
     }
+
+    // A settlement rule claimed a scheduled occurrence during the import: the
+    // schedule's next installment is priced on the ledger the import left,
+    // in its own transaction after the commit (INV-CACHE-001).
+    await repriceSettledLoanTemplates(this.dataSource, settledScheduleIds);
   }
 }

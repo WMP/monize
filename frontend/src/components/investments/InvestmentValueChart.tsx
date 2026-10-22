@@ -49,8 +49,38 @@ import {
 } from './portfolio-change-baseline';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
+import { IncompleteDataDetails } from '@/components/reports/IncompleteDataDetails';
 import { preferredCurrency } from '@/lib/default-currency';
 import { investedValue } from '@/lib/invested-value';
+import {
+  foldIncompleteData,
+  hasIncompleteData,
+  type IncompleteDataCauses,
+} from '@/lib/incomplete-data-ranges';
+
+const NO_INCOMPLETE_DATA: IncompleteDataCauses = { prices: [], rates: [], cash: [] };
+
+/**
+ * The causes behind the withheld points, folded into runs. A cash account with
+ * no balance is left out: the chart plots the securities alone, so it names
+ * nothing the reader could repair to bring a point back.
+ */
+function investedCauses(points: Parameters<typeof foldIncompleteData>[0]): IncompleteDataCauses {
+  return { ...foldIncompleteData(points), cash: [] };
+}
+
+/**
+ * Whether a point's INVESTED value is one the server could work out. The chart
+ * plots the securities alone, so a cash account with no balance for the day
+ * (`cashComplete`) cannot make it wrong and is not read. Absent flags are no
+ * information, which is why both reads are `=== false`.
+ */
+function isInvestedPointComplete(point: {
+  pricesComplete?: boolean;
+  fxComplete?: boolean;
+}): boolean {
+  return point.pricesComplete !== false && point.fxComplete !== false;
+}
 
 const logger = createLogger('InvestmentChart');
 
@@ -63,6 +93,30 @@ const DAILY_RANGES = new Set(['1w', 'mtd', '1m', '3m', 'ytd', '1y', '2y']);
 export const INVESTMENT_CHART_REFRESH_EVENT = 'monize:investment-chart-refresh';
 
 const RANGE_STORAGE_KEY = 'monize-investments-chart-range';
+
+interface InvestmentValueTooltipProps {
+  active?: boolean;
+  payload?: Array<{ value: number | null; payload: { name: string } }>;
+  portfolioLabel: string;
+  formatValue: (value: number) => string;
+  unavailableLabel: string;
+}
+
+function InvestmentValueTooltip({ active, payload, portfolioLabel, formatValue, unavailableLabel }: InvestmentValueTooltipProps) {
+  if (active && payload && payload.length) {
+    const data = payload[0]?.payload;
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+        <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">{data?.name}</p>
+        <p className="text-sm text-emerald-600 dark:text-emerald-400">
+          {portfolioLabel}{' '}
+          {payload[0].value === null ? unavailableLabel : formatValue(payload[0].value)}
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
 
 interface InvestmentValueChartProps {
   accountIds?: string[];
@@ -83,15 +137,28 @@ interface InvestmentValueChartProps {
 export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix, refreshKey = 0 }: InvestmentValueChartProps) {
   const t = useTranslations('investments');
   const tc = useTranslations('common');
+  const tReports = useTranslations('reports');
   const { formatCurrency, formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatSignedPercent } = useNumberFormat();
   const formatChartDate = useChartDateFormat();
   const { defaultCurrency } = useExchangeRates();
   const isMobile = useIsMobile();
   // `iso` is the point's own date/timestamp, kept beside the display label so
   // the opening point can be dated by its session once the server names it.
+  //
+  // `Value` is NULL on a point the server could not price or convert: its
+  // `value` is then the subtotal of what it could, and a subtotal plotted on a
+  // value axis is indistinguishable from a measured dip. The area breaks there
+  // (`connectNulls={false}`), and `complete` keeps the fact for the extremes.
   const [loadedPoints, setLoadedPoints] = useState<
-    Array<{ name: string; Value: number; iso: string }>
+    Array<{ name: string; Value: number | null; iso: string; complete: boolean }>
   >([]);
+  // What the withheld points are waiting for, folded into ranges per cause. Only
+  // the daily and sampled series carry the per-point lists to fold; an intraday
+  // series reports completeness without dates, which is no information about
+  // WHICH bars, so it names nothing rather than guessing.
+  const [incompleteCauses, setIncompleteCauses] =
+    useState<IncompleteDataCauses>(NO_INCOMPLETE_DATA);
+  const [securityNames, setSecurityNames] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   // High/low value bubbles the user has temporarily dismissed, keyed by the
   // value they marked so a later data change with a new extreme shows the
@@ -196,12 +263,17 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
         const data = await netWorthApi.getInvestmentsDaily(params);
         if (loadSeqRef.current !== seq) return;
         setLoadedPoints(
-          data.map((d) => ({
-            name: formatChartDate(d.date, 'MMM d, yyyy'),
-            Value: investedValue(d),
-            iso: d.date,
-          })),
+          data.map((d) => {
+            const complete = isInvestedPointComplete(d);
+            return {
+              name: formatChartDate(d.date, 'MMM d, yyyy'),
+              Value: complete ? investedValue(d) : null,
+              iso: d.date,
+              complete,
+            };
+          }),
         );
+        setIncompleteCauses(investedCauses(data));
       } else {
         // A long range is the same daily valuation sampled at each month-end,
         // opening and closing on the closes the figures beside it are
@@ -213,109 +285,134 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
         });
         if (loadSeqRef.current !== seq) return;
         setLoadedPoints(
-          data.map((d, index) => ({
-            name: sampledPointLabel(d.date, index, data.length, formatChartDate),
-            Value: investedValue(d),
-            iso: d.date,
-          })),
+          data.map((d, index) => {
+            const complete = isInvestedPointComplete(d);
+            return {
+              name: sampledPointLabel(d.date, index, data.length, formatChartDate),
+              Value: complete ? investedValue(d) : null,
+              iso: d.date,
+              complete,
+            };
+          }),
         );
+        setIncompleteCauses(investedCauses(data));
       }
     },
     [chartWindow, accountIds, foreignCurrency, useDaily, isIntraday, formatChartDate],
   );
 
-  const loadData = useCallback(
-    async (opts: { skipCache?: boolean } = {}) => {
+  // The fetch alone. Whoever starts it has already put the view into its
+  // loading state: `loadData` for a refresh, the render below for a change of
+  // range, accounts or currency.
+  const fetchData = useCallback(
+    (opts: { skipCache?: boolean } = {}) => {
       const seq = ++loadSeqRef.current;
-      setIsLoading(true);
-      setIntradayUnavailable(null);
-      setIntradayFallbackNotice(null);
-      try {
-        if (intradayRange) {
-          const cacheKey = buildIntradayCacheKey(
-            dateRange,
-            accountIds,
-            effectiveCurrency,
-          );
-          const cached = !opts.skipCache ? readIntradayCache(cacheKey) : null;
-
-          // Hydrate from cache immediately so the chart appears even before
-          // the network round-trip resolves.
-          if (cached && !cached.fallbackToDaily) {
-            setLoadedPoints(
-              cached.points.map((p) => ({
-                name: formatIntradayLabel(p.timestamp, dateRange),
-                Value: investedValue(p),
-                iso: p.timestamp,
-              })),
+      // The writes live in the inner function so they run after the request,
+      // not during the effect that starts it.
+      const run = async () => {
+        try {
+          if (intradayRange) {
+            const cacheKey = buildIntradayCacheKey(
+              dateRange,
+              accountIds,
+              effectiveCurrency,
             );
-            setIsLoading(false);
-          }
-
-          let response;
-          try {
-            response = await investmentsApi.getIntradayValue({
-              range: intradayRange,
-              accountIds: accountIds?.length ? accountIds.join(',') : undefined,
-              displayCurrency: foreignCurrency || undefined,
-            });
-          } catch (error) {
-            logger.error('Failed to load intraday data:', error);
+            // The cache is read a microtask later, so hydrating from it never
+            // sets state synchronously inside the effect that starts the load.
+            await Promise.resolve();
             if (loadSeqRef.current !== seq) return;
-            // Intraday fetch failed -- silently fall back to the
-            // daily-snapshot endpoint so the user still sees a chart.
-            await loadDailyOrMonthly(seq);
-            return;
-          }
+            const cached = !opts.skipCache ? readIntradayCache(cacheKey) : null;
 
-          if (loadSeqRef.current !== seq) return;
-
-          writeIntradayCache(cacheKey, {
-            fetchedAt: Date.now(),
-            points: response.points,
-            interval: response.interval,
-            currency: response.currency,
-            fallbackToDaily: response.fallbackToDaily,
-            skippedSymbols: response.skippedSymbols,
-            failedSymbols: response.failedSymbols ?? [],
-          });
-
-          if (response.fallbackToDaily) {
-            // Some holdings (typically MSN-tracked) lack intraday support.
-            if (dateRange === '1d') {
-              // No sensible daily-resolution fallback for a single day.
-              setLoadedPoints([]);
-              setIntradayUnavailable({ skipped: response.skippedSymbols });
+            // Hydrate from cache immediately so the chart appears even before
+            // the network round-trip resolves.
+            if (cached && !cached.fallbackToDaily) {
+              setLoadedPoints(
+                cached.points.map((p) => {
+                  const complete = isInvestedPointComplete(p);
+                  return {
+                    name: formatIntradayLabel(p.timestamp, dateRange),
+                    Value: complete ? investedValue(p) : null,
+                    iso: p.timestamp,
+                    complete,
+                  };
+                }),
+              );
+              setIncompleteCauses(NO_INCOMPLETE_DATA);
               setIsLoading(false);
+            }
+
+            let response;
+            try {
+              response = await investmentsApi.getIntradayValue({
+                range: intradayRange,
+                accountIds: accountIds?.length ? accountIds.join(',') : undefined,
+                displayCurrency: foreignCurrency || undefined,
+              });
+            } catch (error) {
+              logger.error('Failed to load intraday data:', error);
+              if (loadSeqRef.current !== seq) return;
+              // Intraday fetch failed -- silently fall back to the
+              // daily-snapshot endpoint so the user still sees a chart.
+              await loadDailyOrMonthly(seq);
               return;
             }
-            // 1W / MTD / 1M: silently fall back to the daily-snapshot endpoint and
-            // flag the title with a small warning icon so the user knows the
-            // chart is at daily resolution rather than the requested intraday
-            // resolution.
-            setIntradayUnavailable(null);
-            setIntradayFallbackNotice({ skipped: response.skippedSymbols });
-            await loadDailyOrMonthly(seq);
-            return;
-          }
 
-          setLoadedPoints(
-            response.points.map((p) => ({
-              name: formatIntradayLabel(p.timestamp, dateRange),
-              Value: investedValue(p),
-              iso: p.timestamp,
-            })),
-          );
-        } else {
-          await loadDailyOrMonthly(seq);
+            if (loadSeqRef.current !== seq) return;
+
+            writeIntradayCache(cacheKey, {
+              fetchedAt: Date.now(),
+              points: response.points,
+              interval: response.interval,
+              currency: response.currency,
+              fallbackToDaily: response.fallbackToDaily,
+              skippedSymbols: response.skippedSymbols,
+              failedSymbols: response.failedSymbols ?? [],
+            });
+
+            if (response.fallbackToDaily) {
+              // Some holdings (typically MSN-tracked) lack intraday support.
+              if (dateRange === '1d') {
+                // No sensible daily-resolution fallback for a single day.
+                setLoadedPoints([]);
+                setIncompleteCauses(NO_INCOMPLETE_DATA);
+                setIntradayUnavailable({ skipped: response.skippedSymbols });
+                setIsLoading(false);
+                return;
+              }
+              // 1W / MTD / 1M: silently fall back to the daily-snapshot endpoint and
+              // flag the title with a small warning icon so the user knows the
+              // chart is at daily resolution rather than the requested intraday
+              // resolution.
+              setIntradayUnavailable(null);
+              setIntradayFallbackNotice({ skipped: response.skippedSymbols });
+              await loadDailyOrMonthly(seq);
+              return;
+            }
+
+            setLoadedPoints(
+              response.points.map((p) => {
+                const complete = isInvestedPointComplete(p);
+                return {
+                  name: formatIntradayLabel(p.timestamp, dateRange),
+                  Value: complete ? investedValue(p) : null,
+                  iso: p.timestamp,
+                  complete,
+                };
+              }),
+            );
+            setIncompleteCauses(NO_INCOMPLETE_DATA);
+          } else {
+            await loadDailyOrMonthly(seq);
+          }
+        } catch (error) {
+          logger.error('Failed to load investment data:', error);
+        } finally {
+          if (loadSeqRef.current === seq) {
+            setIsLoading(false);
+          }
         }
-      } catch (error) {
-        logger.error('Failed to load investment data:', error);
-      } finally {
-        if (loadSeqRef.current === seq) {
-          setIsLoading(false);
-        }
-      }
+      };
+      return run();
     },
     [
       intradayRange,
@@ -328,11 +425,45 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
     ],
   );
 
+  const loadData = useCallback(
+    (opts: { skipCache?: boolean } = {}) => {
+      setIsLoading(true);
+      setIntradayUnavailable(null);
+      setIntradayFallbackNotice(null);
+      return fetchData(opts);
+    },
+    [fetchData],
+  );
+
+  // A new range, account set or currency is a new request: show it loading
+  // from the render that asks for it (the "info from previous render" pattern,
+  // not a setState in the effect that fetches it). An invalid range asks for
+  // nothing, so it leaves the view as it is.
+  const requestKey = isValid
+    ? [
+        dateRange,
+        accountIds?.join(',') ?? '',
+        effectiveCurrency,
+        foreignCurrency ?? '',
+        chartWindow.start,
+        chartWindow.end,
+      ].join('|')
+    : null;
+  const [loadingKey, setLoadingKey] = useState(requestKey);
+  if (loadingKey !== requestKey) {
+    setLoadingKey(requestKey);
+    if (requestKey !== null) {
+      setIsLoading(true);
+      setIntradayUnavailable(null);
+      setIntradayFallbackNotice(null);
+    }
+  }
+
   useEffect(() => {
     if (isValid) {
-      void loadData();
+      void fetchData();
     }
-  }, [isValid, loadData]);
+  }, [isValid, fetchData]);
 
   // Listen for the page-level Refresh button. When the user is on an intraday
   // range, drop the sessionStorage entry and re-fetch only this chart's data.
@@ -433,16 +564,55 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
       ? t('investmentValueChart.notAvailable')
       : `${value >= 0 ? '+' : ''}${fmtFull(value)}`;
 
+  // Highest and lowest are claims about EVERY point, and a point the server
+  // could not finish is a subtotal that can sit anywhere in the ordering: the
+  // real high or low may be the day that is missing a component. One incomplete
+  // point therefore leaves BOTH unknown rather than ranking a partial figure
+  // against whole ones (the Portfolio Value report's rule). An empty series has
+  // nothing to rank, which is unknown too -- never a measured zero.
+  const valuesIncomplete = useMemo(
+    () => chartPoints.some((p) => p.complete === false),
+    [chartPoints],
+  );
   const summary = useMemo(() => {
-    if (chartPoints.length === 0) {
-      return { highest: 0, lowest: 0 };
+    const values = chartPoints
+      .map((p) => p.Value)
+      .filter((v): v is number => v !== null);
+    if (valuesIncomplete || values.length === 0) {
+      return { highest: null as number | null, lowest: null as number | null };
     }
-    const values = chartPoints.map((p) => p.Value);
     return {
       highest: Math.max(...values),
       lowest: Math.min(...values),
     };
-  }, [chartPoints]);
+  }, [chartPoints, valuesIncomplete]);
+
+  // Names for the ids in the diagnostics, loaded only once something is
+  // missing and including inactive securities: the holding whose history is
+  // missing is often one the reader deactivated after selling it.
+  const needsSecurityNames = incompleteCauses.prices.length > 0;
+  useEffect(() => {
+    if (!needsSecurityNames) return;
+    let cancelled = false;
+    investmentsApi
+      .getSecurities(true)
+      .then((securities) => {
+        if (cancelled) return;
+        setSecurityNames(new Map(securities.map((s) => [s.id, s.symbol || s.name])));
+      })
+      .catch((error) => {
+        // A failed lookup is not an empty portfolio: the fallback label stands in.
+        logger.error('Failed to load securities for the incomplete-data list:', error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsSecurityNames]);
+  const securityLabel = useCallback(
+    (securityId: string) =>
+      securityNames.get(securityId) ?? tReports('portfolioValue.incompleteUnknownSecurity'),
+    [securityNames, tReports],
+  );
 
   const xAxisTicks = useMemo(() => {
     if (!isIntraday && !useDaily) return monthEndAxisTicks(chartPoints);
@@ -460,7 +630,9 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
   );
 
   const yAxisDomain = useMemo(
-    () => computeTightYAxisDomain(chartPoints.map((d) => d.Value)),
+    () => computeTightYAxisDomain(
+      chartPoints.map((d) => d.Value).filter((v): v is number => v !== null),
+    ),
     [chartPoints],
   );
 
@@ -469,34 +641,22 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
   // -- two stacked bubbles at the same point would just be visual noise.
   const highestIndex = useMemo(
     () =>
-      chartPoints.length === 0
+      chartPoints.length === 0 || summary.highest === null
         ? -1
         : chartPoints.findIndex((p) => p.Value === summary.highest),
     [chartPoints, summary.highest],
   );
   const lowestIndex = useMemo(
     () =>
-      chartPoints.length === 0
+      chartPoints.length === 0 || summary.lowest === null
         ? -1
         : chartPoints.findIndex((p) => p.Value === summary.lowest),
     [chartPoints, summary.lowest],
   );
-  const showFlags = summary.highest !== summary.lowest;
-
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ value: number; payload: { name: string } }> }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0]?.payload;
-      return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">{data?.name}</p>
-          <p className="text-sm text-emerald-600 dark:text-emerald-400">
-            {t('investmentValueChart.portfolioLabel')} {fmtVal(payload[0].value)}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
+  const showFlags =
+    summary.highest !== null &&
+    summary.lowest !== null &&
+    summary.highest !== summary.lowest;
 
   // Only show the full-card skeleton on the very first load. Subsequent
   // range / filter changes keep the previous chart on screen so Recharts can
@@ -603,15 +763,37 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
         <div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">{t('investmentValueChart.highestValue')}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+            {t('investmentValueChart.highestValue')}
+            {valuesIncomplete && (
+              <InfoTooltip placement="top" text={t('investmentValueChart.incompleteTooltip')} />
+            )}
+          </div>
           <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
-            {fmtFull(summary.highest)}
+            {summary.highest === null ? (
+              <span className="text-gray-400 dark:text-gray-500 text-sm font-normal">
+                {t('investmentValueChart.notAvailable')}
+              </span>
+            ) : (
+              fmtFull(summary.highest)
+            )}
           </div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">{t('investmentValueChart.lowestValue')}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+            {t('investmentValueChart.lowestValue')}
+            {valuesIncomplete && (
+              <InfoTooltip placement="top" text={t('investmentValueChart.incompleteTooltip')} />
+            )}
+          </div>
           <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
-            {fmtFull(summary.lowest)}
+            {summary.lowest === null ? (
+              <span className="text-gray-400 dark:text-gray-500 text-sm font-normal">
+                {t('investmentValueChart.notAvailable')}
+              </span>
+            ) : (
+              fmtFull(summary.lowest)
+            )}
           </div>
         </div>
         {/* The securities line's own change: its last point less its first.
@@ -687,6 +869,18 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
         </div>
       </div>
 
+      {/* What the withheld points are waiting for, named and dated, beside the
+          cards rather than inside a tooltip (the report's own treatment). */}
+      {hasIncompleteData(incompleteCauses) && (
+        <div className="mb-4">
+          <IncompleteDataDetails
+            causes={incompleteCauses}
+            securityLabel={securityLabel}
+            accountLabel={() => tReports('portfolioValue.incompleteUnknownAccount')}
+          />
+        </div>
+      )}
+
       {/* Chart */}
       {intradayUnavailable ? (
         <EmptyState
@@ -759,12 +953,21 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
                 tick={{ fontSize: 12 }}
                 width={isMobile ? 44 : undefined}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip
+                content={
+                  <InvestmentValueTooltip
+                    portfolioLabel={t('investmentValueChart.portfolioLabel')}
+                    formatValue={fmtVal}
+                    unavailableLabel={t('investmentValueChart.notAvailable')}
+                  />
+                }
+              />
               <Area
                 type="monotone"
                 dataKey="Value"
                 stroke={chartColors.income}
                 strokeWidth={2}
+                connectNulls={false}
                 fillOpacity={1}
                 fill="url(#colorInvestments)"
                 name="Portfolio Value"
@@ -781,6 +984,9 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
                     return <circle key={`dot-${index}`} cx={cx} cy={cy} r={0} fill="none" />;
                   }
                   const value = isHighest ? summary.highest : summary.lowest;
+                  if (value === null) {
+                    return <circle key={`dot-${index}`} cx={cx} cy={cy} r={0} fill="none" />;
+                  }
                   const isLeftHalf = index < chartPoints.length / 2;
                   return renderChartFlagDot({
                     cx,

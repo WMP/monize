@@ -91,18 +91,28 @@ export function StoredBackupsSubsection({
     action: 'download' | 'restore';
   } | null>(null);
 
-  const load = useCallback(async () => {
+  // The writes live in the inner `run`, so they happen after the request, not
+  // during the effect; the mount read starts from the loading state already.
+  const load = useCallback(() => {
+    const run = async () => {
+      try {
+        setReport(await backupApi.listStoredBackups());
+      } catch (error) {
+        setReport(null);
+        setLoadError(getErrorMessage(error, t('loadFailed')));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
+  }, [t]);
+
+  // Every read after the first shows the spinner and drops the old failure.
+  const reload = useCallback(() => {
     setIsLoading(true);
     setLoadError(null);
-    try {
-      setReport(await backupApi.listStoredBackups());
-    } catch (error) {
-      setReport(null);
-      setLoadError(getErrorMessage(error, t('loadFailed')));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
+    return load();
+  }, [load]);
 
   useEffect(() => {
     load();
@@ -120,7 +130,7 @@ export function StoredBackupsSubsection({
     // Re-read on every expand: the schedule writes and retention deletes while
     // this page is open, and a list that is wrong about which artifacts exist
     // is worse than one that takes a moment to arrive.
-    if (next) load();
+    if (next) reload();
   };
 
   // The inner off-site disclosure. Controlled the same way and for the same
@@ -256,7 +266,7 @@ export function StoredBackupsSubsection({
               <p className="text-sm text-red-600 dark:text-red-400">
                 {loadError}
               </p>
-              <Button variant="outline" size="sm" onClick={load}>
+              <Button variant="outline" size="sm" onClick={reload}>
                 {t('retryButton')}
               </Button>
             </div>

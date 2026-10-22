@@ -50,6 +50,12 @@ export interface QifTransaction {
    * the original amount was lost in the export. Never set by CSV imports.
    */
   voidedByExport?: boolean;
+  /**
+   * The bank's own id for the row (OFX `FITID`). Set only by the OFX parser,
+   * and absent when the row carries none; the import stores it as the row's
+   * `externalId` (`ofx-external-id.ts`).
+   */
+  fitId?: string;
   category: string;
   tagNames?: string[];
   isTransfer: boolean;
@@ -95,10 +101,7 @@ export interface QifParseResult {
 }
 
 export type DateFormat =
-  | "MM/DD/YYYY"
-  | "DD/MM/YYYY"
-  | "YYYY-MM-DD"
-  | "YYYY-DD-MM";
+  "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD" | "YYYY-DD-MM";
 
 // Strip HTML angle brackets to prevent stored XSS from QIF content.
 function stripHtml(value: string): string {

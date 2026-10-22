@@ -13,6 +13,14 @@
     "modalTitleNew": "Yeni Para Birimi",
     "loading": "Para birimleri yükleniyor...",
     "count": "{count, plural, one {# para birimi} other {# para birimi}}",
+    "providers": {
+      "line": "Kurlar: {providers}",
+      "separator": ", ardından ",
+      "names": {
+        "frankfurter": "Frankfurter (ECB referans kurları)",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "Para birimleri yüklenemedi",
       "updated": "Para birimi başarıyla güncellendi",
@@ -24,6 +32,7 @@
       "statusFailed": "Para birimi durumu güncellenemedi",
       "ratesRefreshed": "Döviz kurları yenilendi: {updated} çift güncellendi",
       "ratesRefreshedWithFailed": "Döviz kurları yenilendi: {updated} güncellendi, {failed} başarısız",
+      "ratesAllFailed": "Hiçbir döviz kuru alınamadı; sağlayıcı yanıt vermedi",
       "ratesFailed": "Döviz kurları yenilenemedi"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter (ECB)",
         "mnyImport": "Money içe aktarımı",
         "unknown": "Bilinmiyor"
       }

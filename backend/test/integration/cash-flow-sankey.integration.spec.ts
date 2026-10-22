@@ -27,7 +27,7 @@ import {
 
 /**
  * The Cash Flow Sankey against real PostgreSQL: the design's numerical example
- * (`docs/future-plans/sankey-cash-flow.md` section 8), with and without the
+ * (`docs/specs/sankey-cash-flow.md` section 8), with and without the
  * USD rate, and the scope widening that turns a transfer internal.
  *
  * The unit specs mock `manager.query` and can only assert the SQL's text; which

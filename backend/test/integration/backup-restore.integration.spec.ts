@@ -9,6 +9,27 @@ import {
   BackupPasswordRequiredError,
   RESTORABLE_TABLES,
 } from "@/backup/backup.service";
+import { BondPriceService } from "@/bonds/bond-price.service";
+import { BondSeriesService } from "@/bonds/bond-series.service";
+import { BenchmarkRefreshService } from "@/bonds/benchmark-refresh.service";
+import { BondFetch } from "@/bonds/bond-adapter";
+import { SeriesHttp } from "@/bonds/series-http";
+import {
+  fakeFetch,
+  fakePdfText,
+  SLUGS,
+  seriesRoutes,
+} from "@/bonds/adapters/pl/series/fixture-helpers";
+import { extractPdfText } from "@/bonds/adapters/pl/series/pdf-text";
+import { AuthAttemptCounterService } from "@/auth/auth-attempt-counter.service";
+import { CurrenciesService } from "@/currencies/currencies.service";
+import { FxProviderChain } from "@/currencies/providers/fx-provider-chain";
+import { ProviderHealthService } from "@/provider-health/provider-health.service";
+import { BackupBondSeriesRecoveryService } from "@/backup/backup-bond-series-recovery.service";
+import { BondValuationService } from "@/bonds/bond-valuation.service";
+import { FetchSyncService } from "@/common/jobs/fetch-sync.service";
+import { BondCatalogService } from "@/bonds/bond-catalog.service";
+import { bondInstrumentId, bondProgramId } from "@/bonds/bond-instrument-id";
 import { BackupExportService } from "@/backup/backup-export.service";
 import { BackupRestoreService } from "@/backup/backup-restore.service";
 import { BackupAttachmentTransferService } from "@/backup/backup-attachment-transfer.service";
@@ -22,9 +43,16 @@ import { UserMaintenanceService } from "@/common/jobs/user-maintenance.service";
 import {
   attachmentStorageProviders,
   createTestUserDirect,
+  storeFixtureSeries,
 } from "../helpers/integration-setup";
 import { applyRlsPolicies } from "../helpers/rls-setup";
 import { withUserContext } from "@/common/db/with-context";
+
+// The issuer's letter is read as text: the fake PDF is the magic plus the saved
+// letter text, so the real adapter parses the real fixture without pdfjs.
+jest.mock("@/bonds/adapters/pl/series/pdf-text", () => ({
+  extractPdfText: jest.fn(),
+}));
 
 /**
  * Full backup -> restore round-trip against a real PostgreSQL database.
@@ -46,6 +74,9 @@ describe("Backup export/restore round-trip (integration)", () => {
   let service: BackupService;
   let netWorth: NetWorthService;
   let dataSource: DataSource;
+  // The one network door the restore's series recovery reaches: a fake over the
+  // saved issuer pages and letters, swapped per test. Never the network.
+  let door: jest.MockedFunction<BondFetch>;
 
   // The shared login password createTestUserDirect bakes into every user; the
   // restore flow re-verifies it before touching any data.
@@ -100,6 +131,41 @@ describe("Backup export/restore round-trip (integration)", () => {
         // reinstate a pre-#1242 derived snapshot and that the lazy rebuild
         // (ensurePopulated) recomputes it under the corrected algorithm.
         NetWorthService,
+        // Real: the restore recomputes the engine prices of a restored bond link
+        // (R33), and the case below proves the engine's price replaces the file's.
+        BondPriceService,
+        BondValuationService,
+        FetchSyncService,
+        // Real: the restore fetches the bond series its file references and this
+        // catalog lacks, through the real service and the real Polish adapter.
+        // Only the HTTP door is faked, so what is stored is what an adapter
+        // parsed, and the catalog's own store, lock and immutability run.
+        BackupBondSeriesRecoveryService,
+        BondSeriesService,
+        BondCatalogService,
+        CurrenciesService,
+        // The bond catalog only ensures a currency row; it never asks the FX chain.
+        { provide: FxProviderChain, useValue: {} },
+        ProviderHealthService,
+        {
+          provide: SeriesHttp,
+          useValue: {
+            gated:
+              () =>
+              (...args: Parameters<BondFetch>) =>
+                door(...args),
+          },
+        },
+        // The first-fetch benchmark refresh and the explicit-fetch allowance are
+        // their own suites' subjects.
+        {
+          provide: BenchmarkRefreshService,
+          useValue: { refreshNeverFetched: async () => undefined },
+        },
+        {
+          provide: AuthAttemptCounterService,
+          useValue: { increment: async () => ({ count: 1 }) },
+        },
         // The REAL re-authentication service, not a double: it is the thing that
         // refuses a restore without a valid artifact, and a mock here would let a
         // future change remove that check with this suite still green. Local-auth
@@ -140,6 +206,10 @@ describe("Backup export/restore round-trip (integration)", () => {
   });
 
   beforeEach(async () => {
+    (extractPdfText as jest.Mock).mockImplementation(async (b: Uint8Array) =>
+      fakePdfText(b),
+    );
+    door = fakeFetch({});
     await dataSource.query(`
       TRUNCATE transaction_tags, transaction_splits, transactions, tags,
         payees, accounts, institutions, categories, user_preferences,
@@ -707,7 +777,7 @@ describe("Backup export/restore round-trip (integration)", () => {
     },
   );
   /**
-   * A scan pair (`docs/future-plans/document-scanner.md`): the enhanced image a
+   * A scan pair (`docs/specs/document-scanner.md`): the enhanced image a
    * user sees, and the original photo it came from, linked by
    * `transaction_attachments.original_of_attachment_id` -- an immediate
    * self-referential FK, like `accounts.linked_loan_account_id` before it.
@@ -966,6 +1036,542 @@ describe("Backup export/restore round-trip (integration)", () => {
         body: "Rent moved to the 15th",
       },
     ]);
+  });
+
+  it("keeps a security's bond link where this deployment's catalog has the program and restores it unlinked elsewhere, with the series of its transactions", async () => {
+    // bond_programs and bond_instruments are reference data a backup does not
+    // carry, so a link survives only where the target's catalog holds the same
+    // program or series (their ids are derived from the codes, hence the same
+    // on every deployment), and a restore never fails on the foreign key for
+    // one it lacks.
+    const userA = await createTestUserDirect(dataSource, {
+      email: "bond-a@example.com",
+    });
+    const userB = await createTestUserDirect(dataSource, {
+      email: "bond-b@example.com",
+    });
+    await dataSource.query(
+      `INSERT INTO currencies (code, name, symbol, decimal_places, is_active)
+       VALUES ('PLN', 'Zloty', 'zl', 2, true) ON CONFLICT (code) DO NOTHING`,
+    );
+    const programId = bondProgramId("PL", "PL_MF", "TOS");
+    const instrumentId = bondInstrumentId("PL", "PL_MF", "TOS1029");
+    await dataSource.query(
+      `INSERT INTO bond_programs (id, issuer_country_code, issuer_code, program_code, currency_code)
+       VALUES ($1, 'PL', 'PL_MF', 'TOS', 'PLN') ON CONFLICT DO NOTHING`,
+      [programId],
+    );
+    await dataSource.query(
+      `INSERT INTO bond_instruments (id, issuer_country_code, issuer_code, program_code, bond_program_id, series_code, currency_code, marketability)
+       VALUES ($1, 'PL', 'PL_MF', 'TOS', $2, 'TOS1029', 'PLN', 'RETAIL_REDEEMABLE')`,
+      [instrumentId, programId],
+    );
+    const insert = (symbol: string, currency: string) =>
+      dataSource.query(
+        `INSERT INTO securities (user_id, symbol, name, security_type, currency_code, bond_program_id)
+         VALUES ($1, $2, $2, 'BOND', $3, $4)`,
+        [userA.id, symbol, currency, programId],
+      );
+    await insert("LINKED", "PLN");
+    await insert("UNKNOWN-SERIES", "PLN");
+    await insert("WRONG-CCY", "PLN");
+    // The series of each transaction rides along: LINKED's purchase names a
+    // series this catalog holds and one it does not; the others name the series
+    // of a program they are restored unlinked from.
+    const [{ id: brokerage }] = await dataSource.query(
+      `INSERT INTO accounts (user_id, account_type, account_sub_type, name,
+                             currency_code, current_balance, opening_balance)
+       VALUES ($1, 'INVESTMENT', 'INVESTMENT_BROKERAGE', 'Brokerage', 'PLN', 0, 0)
+       RETURNING id`,
+      [userA.id],
+    );
+    const trade = (symbol: string, date: string) =>
+      dataSource.query(
+        `INSERT INTO investment_transactions
+           (user_id, account_id, security_id, bond_instrument_id, action, transaction_date, quantity, price, total_amount, status)
+         SELECT $1, $2, id, $4, 'BUY', $5::date, 10, 100, 1000, 'UNRECONCILED'
+           FROM securities WHERE user_id = $1 AND symbol = $3`,
+        [userA.id, brokerage, symbol, instrumentId, date],
+      );
+    await trade("LINKED", "2026-10-05");
+    await trade("LINKED", "2026-10-06");
+    await trade("UNKNOWN-SERIES", "2026-10-05");
+    // The engine's price rows ride along in the file; one is also a manual price.
+    await dataSource.query(
+      `INSERT INTO security_prices (security_id, price_date, close_price, source)
+       SELECT id, DATE '2026-09-01', 100, 'bond_engine' FROM securities WHERE user_id = $1
+       UNION ALL
+       SELECT id, DATE '2026-09-02', 101, 'manual' FROM securities WHERE user_id = $1 AND symbol = 'UNKNOWN-SERIES'`,
+      [userA.id],
+    );
+
+    const { buffer } = await withUserContext(userA.id, () =>
+      service.exportToBuffer(userA.id),
+    );
+    const exported = JSON.parse(gunzipSync(buffer).toString("utf-8"));
+    expect(
+      exported.securities.map(
+        (r: { symbol: string; bond_program_id: string }) => [
+          r.symbol,
+          r.bond_program_id,
+        ],
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        ["LINKED", programId],
+        ["UNKNOWN-SERIES", programId],
+      ]),
+    );
+
+    // The file as another deployment's export would read: one program and one
+    // series this catalog has never seeded, and one pair a crafted file could hold.
+    const absent = randomUUID();
+    for (const row of exported.securities) {
+      if (row.symbol === "UNKNOWN-SERIES") row.bond_program_id = absent;
+      if (row.symbol === "WRONG-CCY") row.currency_code = "USD";
+    }
+    const linkedId = exported.securities.find(
+      (r: { symbol: string }) => r.symbol === "LINKED",
+    ).id;
+    const absentSeries = randomUUID();
+    const linkedTrades = exported.investment_transactions.filter(
+      (r: { security_id: string }) => r.security_id === linkedId,
+    );
+    expect(linkedTrades).toHaveLength(2);
+    linkedTrades[1].bond_instrument_id = absentSeries;
+    await dataSource.query(
+      `INSERT INTO currencies (code, name, symbol, decimal_places, is_active)
+       VALUES ('USD', 'US Dollar', '$', 2, true) ON CONFLICT (code) DO NOTHING`,
+    );
+    const edited = gzipSync(Buffer.from(JSON.stringify(exported)));
+
+    const result = await withUserContext(userB.id, () =>
+      service.restoreData(userB.id, {
+        compressedData: edited,
+        password: PASSWORD,
+      }),
+    );
+    // The restore succeeds and says how many bond links it had to drop, and which.
+    expect(result.unlinkedBondSecurities?.count).toBe(2);
+    expect([...(result.unlinkedBondSecurities?.symbols ?? [])].sort()).toEqual([
+      "UNKNOWN-SERIES",
+      "WRONG-CCY",
+    ]);
+    // One of LINKED's purchases named a series this catalog lacks.
+    expect(result.unlinkedBondSeries?.count).toBe(1);
+    expect(Object.keys(result.restored)).not.toContain(
+      "unlinkedBondSecurities",
+    );
+    expect(Object.keys(result.restored)).not.toContain("unlinkedBondSeries");
+
+    const restored = await dataSource.query(
+      `SELECT symbol, bond_program_id, bond_auto_fetch FROM securities WHERE user_id = $1 ORDER BY symbol`,
+      [userB.id],
+    );
+    expect(restored).toEqual([
+      { symbol: "LINKED", bond_program_id: programId, bond_auto_fetch: false },
+      {
+        symbol: "UNKNOWN-SERIES",
+        bond_program_id: null,
+        bond_auto_fetch: false,
+      },
+      { symbol: "WRONG-CCY", bond_program_id: null, bond_auto_fetch: false },
+    ]);
+    // A transaction keeps the series only of its own security's program: the
+    // catalog's series survives for LINKED, the missing one and every series of
+    // an unlinked security are NULL (INV-BOND-007).
+    const series = await dataSource.query(
+      `SELECT s.symbol, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') AS d, t.bond_instrument_id
+         FROM investment_transactions t JOIN securities s ON s.id = t.security_id
+        WHERE t.user_id = $1 ORDER BY s.symbol, t.transaction_date`,
+      [userB.id],
+    );
+    expect(series).toEqual([
+      { symbol: "LINKED", d: "2026-10-05", bond_instrument_id: instrumentId },
+      { symbol: "LINKED", d: "2026-10-06", bond_instrument_id: null },
+      { symbol: "UNKNOWN-SERIES", d: "2026-10-05", bond_instrument_id: null },
+    ]);
+
+    // An unlinked security keeps no engine price (nothing would ever refresh or
+    // remove it); its manual price and the linked security's engine price stay.
+    const prices = await dataSource.query(
+      `SELECT s.symbol, p.source FROM security_prices p
+         JOIN securities s ON s.id = p.security_id
+        WHERE s.user_id = $1 ORDER BY s.symbol, p.source`,
+      [userB.id],
+    );
+    expect(prices).toEqual([
+      { symbol: "LINKED", source: "bond_engine" },
+      { symbol: "UNKNOWN-SERIES", source: "manual" },
+    ]);
+  });
+
+  describe("bond series recovery (INV-BOND-008: a restore of the person's own backup)", () => {
+    const CODE = "EDO1036";
+    const SERIES_ID = bondInstrumentId("PL", "PL_MF", CODE);
+    const PROGRAM_ID = bondProgramId("PL", "PL_MF", "EDO");
+
+    /**
+     * User A holds an EDO security linked to its program and two purchases of
+     * `EDO1036`, on a deployment whose catalog holds the series; the backup is
+     * taken, then the catalog is emptied the way a fresh deployment's is
+     * (INV-BOND-008: nothing is stored until a person asks), so the restore into
+     * user B meets a catalog that lacks the series.
+     */
+    async function backupThenEmptyCatalog(email: string) {
+      const userA = await createTestUserDirect(dataSource, { email });
+      const userB = await createTestUserDirect(dataSource, {
+        email: `restore-${email}`,
+      });
+      await dataSource.query(
+        `INSERT INTO currencies (code, name, symbol, decimal_places, is_active)
+         VALUES ('PLN', 'Zloty', 'zl', 2, true) ON CONFLICT (code) DO NOTHING`,
+      );
+      await dataSource.query(
+        `INSERT INTO bond_programs (id, issuer_country_code, issuer_code, program_code, currency_code)
+         VALUES ($1, 'PL', 'PL_MF', 'EDO', 'PLN')`,
+        [PROGRAM_ID],
+      );
+      await dataSource.query(
+        `INSERT INTO bond_instruments (id, issuer_country_code, issuer_code, program_code, bond_program_id, series_code, currency_code, marketability)
+         VALUES ($1, 'PL', 'PL_MF', 'EDO', $2, $3, 'PLN', 'RETAIL_REDEEMABLE')`,
+        [SERIES_ID, PROGRAM_ID, CODE],
+      );
+      const [{ id: accountId }] = await dataSource.query(
+        `INSERT INTO accounts (user_id, account_type, account_sub_type, name,
+                               currency_code, current_balance, opening_balance)
+         VALUES ($1, 'INVESTMENT', 'INVESTMENT_BROKERAGE', 'Brokerage', 'PLN', 0, 0)
+         RETURNING id`,
+        [userA.id],
+      );
+      const [{ id: securityId }] = await dataSource.query(
+        `INSERT INTO securities (user_id, symbol, name, security_type, currency_code, bond_program_id)
+         VALUES ($1, 'EDO', 'EDO', 'BOND', 'PLN', $2) RETURNING id`,
+        [userA.id, PROGRAM_ID],
+      );
+      for (const [action, date] of [
+        ["BUY", "2026-10-05"],
+        ["ADD_SHARES", "2026-10-06"],
+      ]) {
+        await dataSource.query(
+          `INSERT INTO investment_transactions
+             (user_id, account_id, security_id, bond_instrument_id, action, transaction_date, quantity, price, total_amount, status)
+           VALUES ($1, $2, $3, $4, $5, $6::date, 10, 100, 1000, 'UNRECONCILED')`,
+          [userA.id, accountId, securityId, SERIES_ID, action, date],
+        );
+      }
+
+      const { buffer } = await withUserContext(userA.id, () =>
+        service.exportToBuffer(userA.id),
+      );
+      // The catalog of a fresh deployment: the programs the adapter seeds at
+      // boot, and no series (INV-BOND-008). (CASCADE also removes user A's rows
+      // that referenced the series, which the backup holds.)
+      await dataSource.query(
+        `TRUNCATE bond_instruments, benchmark_series CASCADE`,
+      );
+      return { userB, buffer };
+    }
+
+    const restoredSeries = (userId: string) =>
+      dataSource.query(
+        `SELECT t.action, t.bond_instrument_id
+           FROM investment_transactions t WHERE t.user_id = $1
+          ORDER BY t.transaction_date`,
+        [userId],
+      );
+
+    it("carries the identity of the referenced series in the backup, and no terms", async () => {
+      const { buffer } = await backupThenEmptyCatalog("identity-a@example.com");
+      const exported = JSON.parse(gunzipSync(buffer).toString("utf-8"));
+      expect(exported.bondCatalog).toEqual({
+        series: [
+          {
+            bondInstrumentId: SERIES_ID,
+            issuerCountryCode: "PL",
+            issuerCode: "PL_MF",
+            programCode: "EDO",
+            seriesCode: CODE,
+          },
+        ],
+      });
+      expect(JSON.stringify(exported.bondCatalog)).not.toMatch(
+        /rate|margin|terms/i,
+      );
+    });
+
+    it("fetches the series the catalog lacks, once, and gives the rows their series back", async () => {
+      const { userB, buffer } = await backupThenEmptyCatalog(
+        "recover-a@example.com",
+      );
+      door = fakeFetch(seriesRoutes(CODE, SLUGS.EDO));
+
+      const result = await withUserContext(userB.id, () =>
+        service.restoreData(userB.id, {
+          compressedData: buffer,
+          password: PASSWORD,
+        }),
+      );
+
+      expect(result.unrecoveredBondSeries).toBeUndefined();
+      expect(result.unlinkedBondSeries).toBeUndefined();
+      expect(result.unlinkedBondSecurities).toBeUndefined();
+      // Two rows, one series: the issuer's documents were each read once.
+      const urls = door.mock.calls.map(([url]) => url);
+      expect(urls.length).toBeGreaterThan(0);
+      expect(new Set(urls).size).toBe(urls.length);
+      // The series is in the catalog now, from the official source.
+      const stored = await dataSource.query(
+        `SELECT i.id, v.terms -> 'source' ->> 'provider' AS provider
+           FROM bond_instruments i JOIN bond_terms_versions v ON v.bond_instrument_id = i.id`,
+      );
+      expect(stored).toEqual([
+        { id: SERIES_ID, provider: "obligacjeskarbowe.pl" },
+      ]);
+      // Including an ADD_SHARES row, whose series nothing could re-infer.
+      expect(await restoredSeries(userB.id)).toEqual([
+        { action: "BUY", bond_instrument_id: SERIES_ID },
+        { action: "ADD_SHARES", bond_instrument_id: SERIES_ID },
+      ]);
+      const linked = await dataSource.query(
+        `SELECT bond_program_id FROM securities WHERE user_id = $1`,
+        [userB.id],
+      );
+      expect(linked).toEqual([{ bond_program_id: PROGRAM_ID }]);
+    });
+
+    it("restores the rows without the series and reports it when the official source cannot supply it", async () => {
+      const { userB, buffer } = await backupThenEmptyCatalog(
+        "refused-a@example.com",
+      );
+      // Nothing is served: every request the adapter makes fails.
+      door = fakeFetch({});
+
+      const result = await withUserContext(userB.id, () =>
+        service.restoreData(userB.id, {
+          compressedData: buffer,
+          password: PASSWORD,
+        }),
+      );
+
+      expect(result.unrecoveredBondSeries?.count).toBe(1);
+      expect(result.unrecoveredBondSeries?.series[0]).toMatchObject({
+        issuerCountryCode: "PL",
+        seriesCode: CODE,
+      });
+      expect(result.unlinkedBondSeries?.count).toBe(2);
+      expect(await restoredSeries(userB.id)).toEqual([
+        { action: "BUY", bond_instrument_id: null },
+        { action: "ADD_SHARES", bond_instrument_id: null },
+      ]);
+      // The restore itself succeeded and nothing was stored.
+      expect(
+        await dataSource.query(`SELECT 1 FROM bond_instruments`),
+      ).toHaveLength(0);
+    });
+
+    it("restores a backup without the catalog-identity member exactly as before, fetching nothing", async () => {
+      const { userB, buffer } = await backupThenEmptyCatalog(
+        "legacy-a@example.com",
+      );
+      const legacy = JSON.parse(gunzipSync(buffer).toString("utf-8"));
+      delete legacy.bondCatalog;
+      door = fakeFetch(seriesRoutes(CODE, SLUGS.EDO));
+
+      const result = await withUserContext(userB.id, () =>
+        service.restoreData(userB.id, {
+          compressedData: gzipSync(Buffer.from(JSON.stringify(legacy))),
+          password: PASSWORD,
+        }),
+      );
+
+      expect(door).not.toHaveBeenCalled();
+      expect(result.unrecoveredBondSeries).toBeUndefined();
+      expect(result.unlinkedBondSeries?.count).toBe(2);
+      expect(await restoredSeries(userB.id)).toEqual([
+        { action: "BUY", bond_instrument_id: null },
+        { action: "ADD_SHARES", bond_instrument_id: null },
+      ]);
+    });
+  });
+
+  it("recomputes the engine prices of a security whose bond link survived, replacing the file's rows (R33)", async () => {
+    const userA = await createTestUserDirect(dataSource, {
+      email: "bond-recompute-a@example.com",
+    });
+    const userB = await createTestUserDirect(dataSource, {
+      email: "bond-recompute-b@example.com",
+    });
+    await dataSource.query(
+      `INSERT INTO currencies (code, name, symbol, decimal_places, is_active)
+       VALUES ('PLN', 'Zloty', 'zl', 2, true) ON CONFLICT (code) DO NOTHING`,
+    );
+    // The series a person had fetched: instruments, terms and benchmark series.
+    await storeFixtureSeries(
+      dataSource,
+      new BondCatalogService(dataSource, {
+        ensureCatalogCurrency: async () => undefined,
+      }),
+    );
+    const [{ id: accountId }] = await dataSource.query(
+      `INSERT INTO accounts (user_id, account_type, account_sub_type, name,
+                             currency_code, current_balance, opening_balance)
+       VALUES ($1, 'INVESTMENT', 'INVESTMENT_BROKERAGE', 'Brokerage', 'PLN', 0, 0)
+       RETURNING id`,
+      [userA.id],
+    );
+    const [{ id: securityId }] = await dataSource.query(
+      `INSERT INTO securities (user_id, symbol, name, security_type, currency_code, bond_program_id)
+       VALUES ($1, 'TOS1029', 'TOS1029', 'BOND', 'PLN', $2) RETURNING id`,
+      [userA.id, bondProgramId("PL", "PL_MF", "TOS")],
+    );
+    await dataSource.query(
+      `INSERT INTO investment_transactions
+         (user_id, account_id, security_id, bond_instrument_id, action, transaction_date, quantity, price, total_amount, status)
+       VALUES ($1, $2, $3, $4, 'BUY', '2026-10-05', 10, 100, 1000, 'UNRECONCILED')`,
+      [
+        userA.id,
+        accountId,
+        securityId,
+        bondInstrumentId("PL", "PL_MF", "TOS1029"),
+      ],
+    );
+    // A price another deployment's engine wrote, nowhere near what this one computes.
+    await dataSource.query(
+      `INSERT INTO security_prices (security_id, price_date, close_price, source)
+       VALUES ($1, DATE '2026-10-06', 123.45, 'bond_engine')`,
+      [securityId],
+    );
+
+    const { buffer } = await withUserContext(userA.id, () =>
+      service.exportToBuffer(userA.id),
+    );
+    const result = await withUserContext(userB.id, () =>
+      service.restoreData(userB.id, {
+        compressedData: buffer,
+        password: PASSWORD,
+      }),
+    );
+    expect(result.unlinkedBondSecurities).toBeUndefined();
+
+    const rows: Array<{ d: string; p: number; source: string }> =
+      await dataSource.query(
+        `SELECT TO_CHAR(p.price_date, 'YYYY-MM-DD') AS d, p.close_price::float AS p, p.source
+           FROM security_prices p JOIN securities s ON s.id = p.security_id
+          WHERE s.user_id = $1 ORDER BY p.price_date`,
+        [userB.id],
+      );
+    const sixth = rows.find((r) => r.d === "2026-10-06");
+    expect(sixth?.source).toBe("bond_engine");
+    expect(sixth!.p).toBeGreaterThan(100);
+    expect(sixth!.p).toBeLessThan(101);
+    // Priced from the purchase day, not only on the file's one day.
+    expect(rows.some((r) => r.d === "2026-10-05")).toBe(true);
+  });
+
+  it("round-trips a rule's settlement claim with its references remapped", async () => {
+    // docs/specs/loan-installment-settlement.md section 5.2: a `rule` claim names
+    // the transaction it settled and the rule that settled it, and the loan
+    // names its payment-matching rule (5.4). All three are references into the
+    // file, so a restore must point them at the rows it inserted, never at the
+    // exporting user's.
+    const userA = await createTestUserDirect(dataSource, {
+      email: "claim-a@example.com",
+    });
+    const userB = await createTestUserDirect(dataSource, {
+      email: "claim-b@example.com",
+    });
+    const ids = await seedUserData(userA.id);
+
+    const ruleId = randomUUID();
+    const scheduleId = randomUUID();
+    await dataSource.query(
+      `INSERT INTO transaction_rules (id, user_id, name, position)
+       VALUES ($1, $2, 'Settle the mortgage', 0)`,
+      [ruleId, userA.id],
+    );
+    await dataSource.query(
+      `UPDATE accounts SET payment_matching_rule_id = $1 WHERE id = $2`,
+      [ruleId, ids.accountId],
+    );
+    await dataSource.query(
+      `INSERT INTO scheduled_transactions (id, user_id, account_id, name, amount,
+         currency_code, frequency, next_due_date, start_date)
+       VALUES ($1, $2, $3, 'Mortgage', -50, 'USD', 'MONTHLY',
+               '2026-02-15', '2026-01-15')`,
+      [scheduleId, userA.id, ids.accountId],
+    );
+    const pricing = { version: 1, dueDate: "2026-01-15", paid: "50.00" };
+    await dataSource.query(
+      `INSERT INTO scheduled_transaction_postings
+         (scheduled_transaction_id, original_due_date, posted_date,
+          transaction_id, source, rule_id, pricing)
+       VALUES ($1, '2026-01-15', '2026-01-15', $2, 'rule', $3, $4)`,
+      [scheduleId, ids.expenseTxId, ruleId, JSON.stringify(pricing)],
+    );
+
+    const { buffer: backup } = await withUserContext(userA.id, () =>
+      service.exportToBuffer(userA.id),
+    );
+    await withUserContext(userB.id, () =>
+      service.restoreData(userB.id, {
+        compressedData: backup,
+        password: PASSWORD,
+      }),
+    );
+
+    const claims: Array<{
+      source: string;
+      transaction_id: string;
+      transaction_user: string;
+      description: string;
+      rule_id: string;
+      rule_user: string;
+      rule_name: string;
+      pricing: unknown;
+    }> = await dataSource.query(
+      `SELECT stp.source, stp.transaction_id, t.user_id AS transaction_user,
+              t.description, stp.rule_id, r.user_id AS rule_user,
+              r.name AS rule_name, stp.pricing
+         FROM scheduled_transaction_postings stp
+         JOIN scheduled_transactions st ON st.id = stp.scheduled_transaction_id
+         LEFT JOIN transactions t ON t.id = stp.transaction_id
+         LEFT JOIN transaction_rules r ON r.id = stp.rule_id
+        WHERE st.user_id = $1`,
+      [userB.id],
+    );
+    expect(claims).toHaveLength(1);
+    const [claim] = claims;
+    expect(claim).toMatchObject({
+      source: "rule",
+      transaction_user: userB.id,
+      description: "Weekly shop",
+      rule_user: userB.id,
+      rule_name: "Settle the mortgage",
+      pricing,
+    });
+    expect(claim.transaction_id).not.toBe(ids.expenseTxId);
+    expect(claim.rule_id).not.toBe(ruleId);
+
+    const [loan]: Array<{ payment_matching_rule_id: string }> =
+      await dataSource.query(
+        `SELECT payment_matching_rule_id FROM accounts
+          WHERE user_id = $1 AND name = 'Checking'`,
+        [userB.id],
+      );
+    expect(loan.payment_matching_rule_id).toBe(claim.rule_id);
+
+    // The exporting user's rows are untouched.
+    const [original]: Array<{ transaction_id: string; rule_id: string }> =
+      await dataSource.query(
+        `SELECT transaction_id, rule_id FROM scheduled_transaction_postings
+          WHERE scheduled_transaction_id = $1`,
+        [scheduleId],
+      );
+    expect(original).toEqual({
+      transaction_id: ids.expenseTxId,
+      rule_id: ruleId,
+    });
   });
 
   it("restores every mortgage of a backup taken before the type was required with its type", async () => {
@@ -1490,5 +2096,216 @@ describe("Backup export/restore round-trip (integration)", () => {
     // 120 shares * $120 accepted close = $14,400, not the stale $7,320.
     const latest = history[history.length - 1];
     expect(latest?.assets).toBe(14400);
+  });
+
+  /**
+   * A26-S06-04: a migration that changes what a stored value means backfills the
+   * rows it finds once; a restore of an older artifact brings the old meaning
+   * back in. `skip_price_updates` used to be overridden by a provider and is now
+   * the user's own switch (20261012131846), so a pre-1.19 `true` on a security
+   * that has a provider would never refresh again.
+   */
+  describe("semantic backfills for rows from an older artifact", () => {
+    const AT_MIGRATION =
+      "20261012131846_securities_skip_price_updates_user_switch.sql";
+
+    /** Exports user A with four securities and returns the parsed document. */
+    async function exportedDocument(userId: string): Promise<{
+      doc: Record<string, unknown>;
+      symbols: Record<string, string>;
+    }> {
+      await seedUserData(userId);
+      const add = async (
+        symbol: string,
+        skip: boolean,
+        provider: string | null,
+        msn: string | null,
+      ) => {
+        await dataSource.query(
+          `INSERT INTO securities (user_id, symbol, name, currency_code,
+                                   skip_price_updates, quote_provider,
+                                   msn_instrument_id)
+           VALUES ($1, $2, $2, 'USD', $3, $4, $5)`,
+          [userId, symbol, skip, provider, msn],
+        );
+      };
+      await add("SKIPPROV", true, "yahoo", null);
+      await add("SKIPMSN", true, null, "msn-1");
+      await add("SKIPNONE", true, null, null);
+      await add("LIVEPROV", false, "yahoo", null);
+      const { buffer } = await withUserContext(userId, () =>
+        service.exportToBuffer(userId),
+      );
+      return {
+        doc: JSON.parse(gunzipSync(buffer).toString("utf-8")),
+        symbols: {},
+      };
+    }
+
+    /** Restores `doc` into a new user and answers symbol -> skip_price_updates. */
+    async function restoredFlags(
+      doc: Record<string, unknown>,
+    ): Promise<Record<string, boolean>> {
+      const target = await createTestUserDirect(dataSource, {
+        email: `backfill-${randomUUID()}@example.com`,
+      });
+      await withUserContext(target.id, () =>
+        service.restoreData(target.id, {
+          compressedData: gzipSync(Buffer.from(JSON.stringify(doc))),
+          password: PASSWORD,
+        }),
+      );
+      const rows: Array<{ symbol: string; skip_price_updates: boolean }> =
+        await dataSource.query(
+          `SELECT symbol, skip_price_updates FROM securities WHERE user_id = $1`,
+          [target.id],
+        );
+      return Object.fromEntries(
+        rows.map((r) => [r.symbol, r.skip_price_updates]),
+      );
+    }
+
+    /** The artifact as a pre-1.19 release wrote it: no marker, no new column. */
+    const asPreMarker = (doc: Record<string, unknown>) => {
+      const { producedBy: _producedBy, ...rest } = doc;
+      return {
+        ...rest,
+        user_preferences: (
+          doc.user_preferences as Record<string, unknown>[]
+        ).map(({ hidden_table_columns: _h, ...row }) => row),
+      };
+    };
+
+    it("clears the old meaning on a marker-less artifact without hidden_table_columns", async () => {
+      const user = await createTestUserDirect(dataSource, {
+        email: "backfill-source@example.com",
+      });
+      const { doc } = await exportedDocument(user.id);
+      const old = asPreMarker(doc);
+      expect(
+        (old.user_preferences as Record<string, unknown>[])[0],
+      ).not.toHaveProperty("hidden_table_columns");
+
+      const flags = await restoredFlags(old);
+
+      // A provider or an MSN id used to override the flag: the row refreshed, so
+      // it must still refresh. A flag with neither was always a real "skip".
+      expect(flags.SKIPPROV).toBe(false);
+      expect(flags.SKIPMSN).toBe(false);
+      expect(flags.SKIPNONE).toBe(true);
+      expect(flags.LIVEPROV).toBe(false);
+    });
+
+    it.each([
+      ["at the migration", AT_MIGRATION],
+      [
+        "after the migration",
+        "20261012133629_user_preferences_hidden_table_columns.sql",
+      ],
+    ])(
+      "keeps a deliberate switch when the marker is %s",
+      async (_l, marker) => {
+        const user = await createTestUserDirect(dataSource, {
+          email: "backfill-marker@example.com",
+        });
+        const { doc } = await exportedDocument(user.id);
+        // Even with the evidence column removed: the marker decides.
+        const flags = await restoredFlags({
+          ...asPreMarker(doc),
+          producedBy: { schemaMigration: marker },
+        });
+
+        expect(flags.SKIPPROV).toBe(true);
+        expect(flags.SKIPMSN).toBe(true);
+        expect(flags.SKIPNONE).toBe(true);
+        expect(flags.LIVEPROV).toBe(false);
+      },
+    );
+
+    it("clears the old meaning when the marker is before the migration", async () => {
+      const user = await createTestUserDirect(dataSource, {
+        email: "backfill-before@example.com",
+      });
+      const { doc } = await exportedDocument(user.id);
+      const flags = await restoredFlags({
+        ...doc,
+        producedBy: { schemaMigration: "20261012131845_before.sql" },
+      });
+      expect(flags.SKIPPROV).toBe(false);
+      expect(flags.SKIPNONE).toBe(true);
+    });
+
+    it("keeps the flag on a marker-less artifact that carries hidden_table_columns (1.19.0)", async () => {
+      const user = await createTestUserDirect(dataSource, {
+        email: "backfill-119@example.com",
+      });
+      const { doc } = await exportedDocument(user.id);
+      const { producedBy: _p, ...markerless } = doc;
+      expect(
+        (markerless.user_preferences as Record<string, unknown>[])[0],
+      ).toHaveProperty("hidden_table_columns");
+
+      const flags = await restoredFlags(markerless);
+
+      expect(flags.SKIPPROV).toBe(true);
+      expect(flags.SKIPMSN).toBe(true);
+      expect(flags.SKIPNONE).toBe(true);
+    });
+
+    it("does not normalize a marker-less artifact with no preference rows", async () => {
+      const user = await createTestUserDirect(dataSource, {
+        email: "backfill-nopref@example.com",
+      });
+      const { doc } = await exportedDocument(user.id);
+      const { producedBy: _p, ...markerless } = doc;
+      const flags = await restoredFlags({
+        ...markerless,
+        user_preferences: [],
+      });
+
+      expect(flags.SKIPPROV).toBe(true);
+      expect(flags.SKIPNONE).toBe(true);
+    });
+
+    it("writes the newest applied migration into the artifact, and restores one without it", async () => {
+      // The entity-built schema has no ledger; create one the way the migration
+      // runner does. Dropped again so no other case sees it.
+      await dataSource.query(
+        `CREATE TABLE IF NOT EXISTS schema_migrations (
+           filename VARCHAR(255) PRIMARY KEY,
+           applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+         )`,
+      );
+      try {
+        await dataSource.query(
+          `INSERT INTO schema_migrations (filename) VALUES
+             ('191_payee_lookup_ai_enabled.sql'),
+             ($1),
+             ('20261012133629_user_preferences_hidden_table_columns.sql')`,
+          [AT_MIGRATION],
+        );
+        const user = await createTestUserDirect(dataSource, {
+          email: "backfill-marker-written@example.com",
+        });
+        const { doc } = await exportedDocument(user.id);
+        expect(doc.producedBy).toEqual({
+          schemaMigration:
+            "20261012133629_user_preferences_hidden_table_columns.sql",
+        });
+        // And a restore of a marked artifact is unaffected by the extra member.
+        const flags = await restoredFlags(doc);
+        expect(flags.SKIPPROV).toBe(true);
+      } finally {
+        await dataSource.query(`DROP TABLE IF EXISTS schema_migrations`);
+      }
+    });
+
+    it("writes a null marker when the ledger does not exist", async () => {
+      const user = await createTestUserDirect(dataSource, {
+        email: "backfill-no-ledger@example.com",
+      });
+      const { doc } = await exportedDocument(user.id);
+      expect(doc.producedBy).toEqual({ schemaMigration: null });
+    });
   });
 });

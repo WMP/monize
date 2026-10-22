@@ -1,8 +1,10 @@
 import { Account } from '@/types/account';
-import { Transaction, TransactionSplit } from '@/types/transaction';
+import { Transaction, TransactionSplit, TransactionStatus } from '@/types/transaction';
 import { LoanProjectionAnchor } from '@/types/scheduled-transaction';
 import { parseLocalDate } from '@/lib/utils';
 import { financialTodayYmd } from '@/lib/financial-today';
+import { isDebtOutstanding } from '@/lib/loan-frequency';
+import { roundToCents } from '@/lib/format';
 import { transactionsApi } from '@/lib/transactions';
 import {
   LoanScheduleInput,
@@ -108,10 +110,20 @@ export function deriveLoanPaymentHistory(
   // interest). Falls back to a recorded split, then to zero, when none is
   // paired.
   interestTransactions: Transaction[] = [],
+  // The user's calendar day (`useFinancialToday()` / `financialTodayYmd`). The
+  // history is what the ledger has moved BY today: a VOID row moved no balance
+  // and a future-dated one has not happened yet, so neither is a payment made,
+  // principal repaid or interest paid (A26-M28, A26-S15-03). Required, so a
+  // caller cannot forget which day it is asking on.
+  todayYmd: string,
 ): LoanHistoryResult {
   const loanAccountId = account.id;
 
-  const sortedTransactions = [...transactions].sort(
+  const movedByToday = (tx: Transaction) =>
+    tx.status !== TransactionStatus.VOID &&
+    tx.transactionDate.split('T')[0] <= todayYmd;
+
+  const sortedTransactions = transactions.filter(movedByToday).sort(
     (a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime(),
   );
 
@@ -153,11 +165,13 @@ export function deriveLoanPaymentHistory(
     sortedTransactions.length > 0
       ? sortedTransactions[sortedTransactions.length - 1].transactionDate.split('T')[0]
       : null;
-  const loanPaidOff = currentBalance <= 0.01;
-  const scopedInterestTransactions = interestTransactions.filter((tx) => {
-    if (!loanPaidOff || !lastTransactionDate) return true;
-    return tx.transactionDate.split('T')[0] <= lastTransactionDate;
-  });
+  const loanPaidOff = !isDebtOutstanding(currentBalance);
+  const scopedInterestTransactions = interestTransactions
+    .filter(movedByToday)
+    .filter((tx) => {
+      if (!loanPaidOff || !lastTransactionDate) return true;
+      return tx.transactionDate.split('T')[0] <= lastTransactionDate;
+    });
 
   // A source-account payment covering multiple loan transfers (e.g. regular +
   // extra principal) carries one interest split; count it once.
@@ -256,7 +270,7 @@ export function deriveLoanPaymentHistory(
   const orphanEvents: LoanPaymentEvent[] = orphanInterest.map((tx) => ({
     date: tx.transactionDate,
     principal: 0,
-    interest: Math.round(Math.abs(Number(tx.amount)) * 100) / 100,
+    interest: roundToCents(signedInterest(tx)),
     balance: 0,
     cumulativePrincipal: 0,
     cumulativeInterest: 0,
@@ -354,9 +368,14 @@ export interface ObservedInstallment {
 export function observedInstallment(
   history: LoanHistoryResult,
 ): ObservedInstallment | null {
+  // A refund-only row (negative interest, no principal) is a credit from the
+  // lender, not an installment, so it never stands in for one.
   const lastRegular = [...history.events]
     .reverse()
-    .find((event) => event.type === 'REGULAR');
+    .find(
+      (event) =>
+        event.type === 'REGULAR' && !(event.interest < 0 && event.principal === 0),
+    );
   if (!lastRegular) return null;
   const amount =
     Math.round((lastRegular.principal + lastRegular.interest) * 100) / 100;
@@ -790,7 +809,7 @@ export function buildLoanProjectionInput(
  * is a SEPARATE, separately-fixable cause, so the surface can tell the user
  * which one applies instead of hiding the panel with no explanation:
  *
- * - `paid-off` -- nothing outstanding to amortize (balance <= 0.01).
+ * - `paid-off` -- nothing outstanding to amortize (balance below 0.01).
  * - `no-frequency` -- the account has no payment frequency set.
  * - `no-rate` -- no rate recorded anywhere (neither `account.interestRate` nor
  *   an applicable rate-change row). A per-row rate reconstructed from the
@@ -884,7 +903,7 @@ function evaluateLoanProjection(
   // the pre-payoff balance and print an Est. Payoff years away. Today's
   // balance is what says the loan is finished, and it kept saying so before
   // the anchor existed.
-  if (startingDebt <= 0.01 || history.currentBalance <= 0.01) {
+  if (!isDebtOutstanding(startingDebt) || !isDebtOutstanding(history.currentBalance)) {
     return { input: null, reason: 'paid-off' };
   }
   if (!account.paymentFrequency) {
@@ -1002,9 +1021,11 @@ function classifyPayment(
   const takeSeparateInterest = (): number | null => {
     if (usedInterestDates.has(dateKey)) return null;
     const amount = separateInterestByDate.get(dateKey);
-    if (amount == null || amount <= 0) return null;
+    // A date whose expenses net to a refund (negative) is real interest too: it
+    // lowers the total rather than vanishing. Only an exact zero is no figure.
+    if (amount == null || amount === 0) return null;
     usedInterestDates.add(dateKey);
-    return Math.round(amount * 100) / 100;
+    return roundToCents(amount);
   };
 
   if (
@@ -1243,8 +1264,10 @@ function readRecordedInterest(
   processedParentIds.add(linkedTx.id);
 
   const cents = (value: number) => Math.round(Math.abs(value) * 100) / 100;
+  // Signed, so a refund line (+50) nets against a charge (-200): the lines sum
+  // first and are rounded once (A26-S15-05).
   const sumCents = (lines: TransactionSplit[]) =>
-    cents(lines.reduce((total, s) => total + Math.abs(Number(s.amount)), 0));
+    roundToCents(lines.reduce((total, s) => total - Number(s.amount), 0));
 
   // Never a transfer: interest is paid to the lender, so it is an expense. A
   // transfer leg moves money between the user's own accounts -- the principal
@@ -1310,7 +1333,7 @@ function pairSeparateInterestByDate(
   const tolerance = paymentIntervalToleranceDays(sortedDates);
   for (const tx of interestTransactions) {
     if (tx.isTransfer) continue; // interest is never a transfer to the loan
-    const amount = Math.abs(Number(tx.amount));
+    const amount = signedInterest(tx);
     // Skip only a non-numeric amount, never an exact zero. A zero-value row is
     // a REAL recorded event -- a payment holiday ("rata zawieszona") posts a
     // 0 against the interest category -- and a measured zero is not absence
@@ -1332,6 +1355,15 @@ function pairSeparateInterestByDate(
     }
   }
   return { byDate, orphans };
+}
+
+/**
+ * The interest a separate expense on the source account represents, signed and
+ * unrounded: an expense (-200) is 200 of interest and a refund (+50) is -50 of
+ * it. Sums of these are rounded once, where they are used.
+ */
+function signedInterest(tx: Transaction): number {
+  return 0 - Number(tx.amount);
 }
 
 /** Half the median gap between payment dates (min 15 days) -- the window within

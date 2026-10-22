@@ -3,7 +3,7 @@ import { blankComments } from '@/test/blank-comments';
 
 /**
  * Guards for the calendar's half of design invariants I1 and I6
- * (`docs/future-plans/calendar-view.md`): every figure a calendar prints is
+ * (`docs/specs/calendar-view.md`): every figure a calendar prints is
  * the server's, and every colour it paints comes from an existing mapping.
  *
  * These are scans rather than paragraphs because each mistake they ban is

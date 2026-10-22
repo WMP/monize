@@ -38,6 +38,14 @@
     "scheduleRecurring": "设为定期计划",
     "more": "更多操作"
   },
+  "columns": {
+    "button": "列",
+    "buttonWithHidden": "列，已隐藏 {count} 个",
+    "menuLabel": "显示或隐藏列",
+    "showAll": "全部显示",
+    "hideColumn": "隐藏列",
+    "sheetSubtitle": "可在“列”菜单中重新显示。"
+  },
   "loading": "加载中...",
   "pagination": {
     "showing": "显示",
@@ -262,5 +270,8 @@
     "normal": "正常",
     "compact": "紧凑",
     "dense": "密集"
+  },
+  "scheduledOverdue": {
+    "included": "包含 {count, plural, one {# 笔} other {# 笔}}逾期定期交易"
   }
 }

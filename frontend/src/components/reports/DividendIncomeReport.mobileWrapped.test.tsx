@@ -15,6 +15,7 @@ vi.mock('@/hooks/useNumberFormat', async () => {
 
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
+    convert: (amount: number) => amount,
     convertToDefault: (amount: number) => amount,
     defaultCurrency: 'CAD',
   }),
@@ -86,6 +87,7 @@ const TXNS = [
     security: { symbol: 'LONG', name: LONG_NAME },
     accountId: 'acc-1',
     totalAmount: 120,
+    amountCurrencyCode: 'CAD',
     transactionDate: '2024-06-15',
   },
   {
@@ -95,6 +97,7 @@ const TXNS = [
     security: { symbol: 'LONG', name: LONG_NAME },
     accountId: 'acc-1',
     totalAmount: 30,
+    amountCurrencyCode: 'CAD',
     transactionDate: '2024-07-20',
   },
 ];

@@ -330,7 +330,7 @@ export class OpenAiProvider implements AiProvider {
           tc.type === "function",
       )
       .map((tc) => {
-        let input: Record<string, unknown> = {};
+        let input: Record<string, unknown>;
         try {
           input = JSON.parse(tc.function.arguments) as Record<string, unknown>;
         } catch {
@@ -437,7 +437,7 @@ export class OpenAiProvider implements AiProvider {
     }
 
     const toolCalls = Array.from(toolBuffers.values()).map((buf) => {
-      let input: Record<string, unknown> = {};
+      let input: Record<string, unknown>;
       try {
         input = buf.argsBuffer
           ? (JSON.parse(buf.argsBuffer) as Record<string, unknown>)

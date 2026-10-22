@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import apiClient from './api';
-import { exchangeRatesApi } from './exchange-rates';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { exchangeRatesApi, FX_PROVIDER_NAMES, isFxProviderName } from './exchange-rates';
 import { scheduledTransactionsApi } from './scheduled-transactions';
-import { invalidateCache } from './apiCache';
+import { invalidateCache, setCache, getCached, clearAllCache } from './apiCache';
 
 vi.mock('./api', () => ({
   default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -209,6 +211,22 @@ describe('exchangeRatesApi', () => {
 
       await exchangeRatesApi.getLatestRates();
       expect(apiClient.get).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getRateStatus', () => {
+    it('fetches /currencies/exchange-rates/status with the providers in order', async () => {
+      const status = {
+        lastUpdated: '2026-10-12T00:00:00.000Z',
+        providers: [
+          { name: 'frankfurter', source: 'frankfurter' },
+          { name: 'yahoo', source: 'yahoo_finance' },
+        ],
+      };
+      vi.mocked(apiClient.get).mockResolvedValue({ data: status });
+      const result = await exchangeRatesApi.getRateStatus();
+      expect(apiClient.get).toHaveBeenCalledWith('/currencies/exchange-rates/status');
+      expect(result).toEqual(status);
     });
   });
 
@@ -445,5 +463,69 @@ describe('exchangeRatesApi', () => {
       const result = await exchangeRatesApi.getCurrencyUsage();
       expect(result).toEqual({});
     });
+  });
+});
+
+/**
+ * The provider names are a hand-written copy of the backend's
+ * `FX_PROVIDER_NAMES`, and nothing compiles the two against each other. A name
+ * the server can configure but the client does not know would show as a bare
+ * token on the Currencies page, so this reads the backend file and compares.
+ */
+describe('FX_PROVIDER_NAMES', () => {
+  const BACKEND_PROVIDERS = resolve(
+    __dirname,
+    '../../../backend/src/currencies/providers/fx-provider.interface.ts',
+  );
+
+  function parseBackendNames(): string[] {
+    const source = readFileSync(BACKEND_PROVIDERS, 'utf8');
+    const list = source.match(/export const FX_PROVIDER_NAMES = \[([^\]]*)\] as const/);
+    if (!list) {
+      throw new Error(
+        'FX_PROVIDER_NAMES not found in the backend source -- this guard has lost its subject',
+      );
+    }
+    return [...list[1].matchAll(/["']([a-z0-9_-]+)["']/g)].map((m) => m[1]);
+  }
+
+  it('parses the backend list it is checked against', () => {
+    expect(parseBackendNames().length).toBeGreaterThan(0);
+  });
+
+  it('names exactly the providers the backend declares', () => {
+    expect([...FX_PROVIDER_NAMES].sort()).toEqual(parseBackendNames().sort());
+  });
+
+  it('isFxProviderName admits the mirrored names only', () => {
+    expect(isFxProviderName('frankfurter')).toBe(true);
+    expect(isFxProviderName('yahoo')).toBe(true);
+    expect(isFxProviderName('yahoo_finance')).toBe(false);
+  });
+});
+
+describe('exchangeRatesApi valuation caches (INV-CACHE-001)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearAllCache();
+    setCache('investments:summary:all', { totalPortfolioValue: 1 });
+    setCache('accounts:all:false', [{ id: 'a' }]);
+  });
+
+  const expectDropped = () => {
+    expect(getCached('investments:summary:all')).toBeUndefined();
+    expect(getCached('accounts:all:false')).toBeUndefined();
+  };
+
+  it('refreshRates drops the converted totals', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: {} });
+    await exchangeRatesApi.refreshRates();
+    expectDropped();
+  });
+
+  it('fillRateGaps drops the converted totals', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: {} });
+    await exchangeRatesApi.fillRateGaps('EUR');
+    expectDropped();
   });
 });

@@ -13,6 +13,14 @@
     "modalTitleNew": "Nowa waluta",
     "loading": "Wczytywanie walut...",
     "count": "{count, plural, one {# waluta} few {# waluty} many {# walut} other {# waluty}}",
+    "providers": {
+      "line": "Kursy z: {providers}",
+      "separator": ", następnie ",
+      "names": {
+        "frankfurter": "Frankfurter (kursy referencyjne EBC)",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "Nie udało się wczytać walut",
       "updated": "Waluta została zaktualizowana",
@@ -24,6 +32,7 @@
       "statusFailed": "Nie udało się zmienić statusu waluty",
       "ratesRefreshed": "Kursy walut odświeżone: zaktualizowano {updated} par",
       "ratesRefreshedWithFailed": "Kursy walut odświeżone: zaktualizowano {updated}, nieudane {failed}",
+      "ratesAllFailed": "Nie udało się pobrać żadnych kursów walut; dostawca nie odpowiedział",
       "ratesFailed": "Nie udało się odświeżyć kursów walut"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter (EBC)",
         "mnyImport": "Import z Money",
         "unknown": "Nieznane"
       }

@@ -53,7 +53,8 @@
     "totalOfAccounts": "Gesamt aller Konten",
     "legendAriaLabel": "Prognoselinien",
     "tooltipTransactionForAccount": "{name} ({account})",
-    "unavailableMissingRates": "Diese Prognose kann nicht in {displayCurrency} angezeigt werden: Für {currencies} ist kein Wechselkurs verfügbar, und ein prognostizierter Saldo baut auf jedem vorherigen Tag auf. Fügen Sie einen Kurs hinzu, oder wählen Sie ein Konto mit nur einer Währung."
+    "unavailableMissingRates": "Diese Prognose kann nicht in {displayCurrency} angezeigt werden: Für {currencies} ist kein Wechselkurs verfügbar, und ein prognostizierter Saldo baut auf jedem vorherigen Tag auf. Fügen Sie einen Kurs hinzu, oder wählen Sie ein Konto mit nur einer Währung.",
+    "untitledTransaction": "Buchung"
   },
   "calendar": {
     "days": {

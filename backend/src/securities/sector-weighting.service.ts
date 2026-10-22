@@ -11,8 +11,11 @@ import {
 } from "./portfolio-calculation.service";
 import { roundMoney, sumMoney } from "../common/round.util";
 import {
+  ASSET_CLASS_LABELS,
+  AssetClassKey,
   EXCHANGE_TO_COUNTRY,
   assetClassForSecurityType,
+  canonicalAssetClassKey,
   isOtherAllocationName,
 } from "./security-enums";
 
@@ -54,7 +57,16 @@ export interface CountryWeightingResult {
 }
 
 export interface AssetClassWeightingItem {
+  /**
+   * The class's display name: the English name of a canonical class, or the
+   * user's own spelling of a class that maps to none.
+   */
   assetClass: string;
+  /**
+   * The canonical class this bucket is, for the UI to translate; null for a
+   * name the user typed that maps to no canonical class.
+   */
+  assetClassKey: AssetClassKey | null;
   directValue: number;
   etfValue: number;
   totalValue: number;
@@ -75,16 +87,18 @@ export interface AssetClassWeightingResult {
 }
 
 /** One bucket of a look-through rollup, before it is named country/assetClass. */
-interface LookThroughItem {
+interface LookThroughItem<K extends string> {
   name: string;
+  /** The canonical bucket this is, when the dimension has a vocabulary. */
+  key: K | null;
   directValue: number;
   etfValue: number;
   totalValue: number;
   percentage: number;
 }
 
-interface LookThroughResult {
-  items: LookThroughItem[];
+interface LookThroughResult<K extends string> {
+  items: LookThroughItem<K>[];
   totalPortfolioValue: number;
   totalDirectValue: number;
   totalEtfValue: number;
@@ -369,6 +383,12 @@ export class SectorWeightingService {
     // 3. Get latest prices
     const uniqueSecurityIds = [...new Set(holdings.map((h) => h.securityId))];
     const priceMap = await this.getLatestPrices(uniqueSecurityIds);
+    // A bond-linked holding is its own account's lots, not quantity x the
+    // program-wide blend (bond-program-securities.md 2.4).
+    const bondValues = await this.portfolioCalculationService.valueBondHoldings(
+      userId,
+      holdings,
+    );
 
     // 4. Ensure sector data is cached
     const securities = holdings.map((h) => h.security);
@@ -392,14 +412,20 @@ export class SectorWeightingService {
     for (const holding of holdings) {
       const quantity = Number(holding.quantity);
       const price = priceMap.get(holding.securityId);
-      if (price == null) continue;
+      const own = holding.security.bondProgramId
+        ? bondValues.get(`${holding.accountId}:${holding.securityId}`)
+        : undefined;
+      // Unpriced is skipped, as for a security with no price; a linked one
+      // never falls back to the blend.
+      if (holding.security.bondProgramId ? !own : price == null) continue;
+      const nativeValue = own ? own.marketValue : quantity * (price as number);
 
       // `null` means no rate exists for the pair. A sector weighting is a share
       // of a total, so counting an unconverted foreign value would misstate
       // this sector's share and every other sector's with it (audit P5-009).
       // Skipping is the honest option; the conversion logs the missing pair.
       const converted = await this.portfolioCalculationService.convertToDefault(
-        quantity * price,
+        nativeValue,
         holding.security.currencyCode,
         defaultCurrency,
         rateCache,
@@ -505,7 +531,7 @@ export class SectorWeightingService {
     );
     return {
       ...result,
-      items: result.items.map(({ name, ...rest }) => ({
+      items: result.items.map(({ name, key, ...rest }) => ({
         country: name,
         ...rest,
       })),
@@ -522,8 +548,10 @@ export class SectorWeightingService {
    * weightings, and securities whose type says nothing definite (a fund with no
    * breakdown, options, GICs), fall into `unclassifiedValue` ("Other").
    *
-   * Class names are the user's own free text, so they are merged
-   * case-insensitively under the first spelling seen.
+   * Every name is read through `canonicalAssetClassKey` before buckets merge,
+   * so a stock's type default and a fund's "Stocks" slice are one `equity`
+   * bucket. A name that maps to no canonical class is the user's own and is
+   * merged case-insensitively under the first spelling seen.
    */
   async getAssetClassWeightings(
     userId: string,
@@ -542,11 +570,16 @@ export class SectorWeightingService {
         }
         return { direct: assetClassForSecurityType(sec.securityType) };
       },
+      (name) => {
+        const key = canonicalAssetClassKey(name);
+        return key ? { key, label: ASSET_CLASS_LABELS[key] } : null;
+      },
     );
     return {
       ...result,
-      items: result.items.map(({ name, ...rest }) => ({
+      items: result.items.map(({ name, key, ...rest }) => ({
         assetClass: name,
+        assetClassKey: key,
         ...rest,
       })),
     };
@@ -560,10 +593,13 @@ export class SectorWeightingService {
    * single `direct` bucket inferred from the security itself. Returning neither
    * -- or a null `direct` -- sends the whole position to `unclassifiedValue`.
    *
-   * Buckets are keyed case-insensitively and reported under the first spelling
-   * seen, so free-text names that differ only in case are one row.
+   * `canonical`, when the dimension has a vocabulary, names the canonical
+   * bucket a name stands for; every name it recognises merges into that one
+   * bucket under its label, whatever the spelling. Any other name is keyed
+   * case-insensitively and reported under the first spelling seen, so
+   * free-text names that differ only in case are one row.
    */
-  private async computeLookThrough(
+  private async computeLookThrough<K extends string = never>(
     userId: string,
     accountIds: string[] | undefined,
     securityIds: string[] | undefined,
@@ -571,7 +607,8 @@ export class SectorWeightingService {
       slices?: { name: string; weight: number }[];
       direct?: string | null;
     },
-  ): Promise<LookThroughResult> {
+    canonical?: (name: string) => { key: K; label: string } | null,
+  ): Promise<LookThroughResult<K>> {
     let investmentAccounts: Account[];
     if (accountIds && accountIds.length > 0) {
       investmentAccounts = await withScopedDb(this.dataSource, (m) =>
@@ -623,6 +660,12 @@ export class SectorWeightingService {
 
     const uniqueSecurityIds = [...new Set(holdings.map((h) => h.securityId))];
     const priceMap = await this.getLatestPrices(uniqueSecurityIds);
+    // A bond-linked holding is its own account's lots, not quantity x the
+    // program-wide blend (bond-program-securities.md 2.4).
+    const bondValues = await this.portfolioCalculationService.valueBondHoldings(
+      userId,
+      holdings,
+    );
 
     const rateCache: FxRateCache = new Map();
     const defaultCurrency =
@@ -630,20 +673,22 @@ export class SectorWeightingService {
         ? investmentAccounts[0].currencyCode
         : "CAD";
 
-    // key (lower-cased) -> { name (first spelling seen), value }
-    const directMap = new Map<string, { name: string; value: number }>();
-    const etfMap = new Map<string, { name: string; value: number }>();
+    type Bucket = { name: string; key: K | null; value: number };
+    // "canonical:<key>" for a recognised name, "text:<lower-cased name>" for
+    // any other, so a typed name can never collide with a canonical bucket.
+    const directMap = new Map<string, Bucket>();
+    const etfMap = new Map<string, Bucket>();
     let unclassifiedValue = 0;
 
-    const add = (
-      map: Map<string, { name: string; value: number }>,
-      name: string,
-      value: number,
-    ) => {
-      const key = name.trim().toLowerCase();
-      const existing = map.get(key);
-      map.set(key, {
-        name: existing?.name ?? name.trim(),
+    const add = (map: Map<string, Bucket>, name: string, value: number) => {
+      const match = canonical?.(name) ?? null;
+      const mapKey = match
+        ? `canonical:${match.key}`
+        : `text:${name.trim().toLowerCase()}`;
+      const existing = map.get(mapKey);
+      map.set(mapKey, {
+        name: match?.label ?? existing?.name ?? name.trim(),
+        key: match?.key ?? null,
         value: (existing?.value ?? 0) + value,
       });
     };
@@ -651,12 +696,18 @@ export class SectorWeightingService {
     for (const holding of holdings) {
       const quantity = Number(holding.quantity);
       const price = priceMap.get(holding.securityId);
-      if (price == null) continue;
+      const own = holding.security.bondProgramId
+        ? bondValues.get(`${holding.accountId}:${holding.securityId}`)
+        : undefined;
+      // Unpriced is skipped, as for a security with no price; a linked one
+      // never falls back to the blend.
+      if (holding.security.bondProgramId ? !own : price == null) continue;
+      const nativeValue = own ? own.marketValue : quantity * (price as number);
 
       // See the note above: an unconvertible holding is skipped, not counted
       // at its face value in the wrong currency.
       const converted = await this.portfolioCalculationService.convertToDefault(
-        quantity * price,
+        nativeValue,
         holding.security.currencyCode,
         defaultCurrency,
         rateCache,
@@ -688,17 +739,17 @@ export class SectorWeightingService {
     }
 
     const allKeys = new Set([...directMap.keys(), ...etfMap.keys()]);
-    const items: LookThroughItem[] = [];
-    for (const key of allKeys) {
-      const direct = directMap.get(key);
-      const etf = etfMap.get(key);
+    const items: LookThroughItem<K>[] = [];
+    for (const mapKey of allKeys) {
+      const direct = directMap.get(mapKey);
+      const etf = etfMap.get(mapKey);
       const dv = direct?.value || 0;
       const ev = etf?.value || 0;
       items.push({
-        // The manual breakdown's spelling wins over an inferred default, so a
-        // user who writes "equity" doesn't get a second "Equity" row from the
-        // security-type fallback.
-        name: etf?.name ?? direct?.name ?? key,
+        // For a typed name, the manual breakdown's spelling wins over an
+        // inferred default's; a canonical bucket carries its label either way.
+        name: etf?.name ?? direct?.name ?? mapKey,
+        key: etf?.key ?? direct?.key ?? null,
         directValue: roundMoney(dv),
         etfValue: roundMoney(ev),
         totalValue: roundMoney(dv + ev),

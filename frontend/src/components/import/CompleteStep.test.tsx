@@ -148,7 +148,7 @@ describe('CompleteStep', () => {
     expect(screen.getByText(/test\.qif/)).toBeInTheDocument();
     expect(screen.getByText('My Chequing')).toBeInTheDocument();
     expect(screen.getByText(/10 transactions/)).toBeInTheDocument();
-    expect(screen.getByText(/2 duplicate transfers/)).toBeInTheDocument();
+    expect(screen.getByText(/2 transactions/)).toBeInTheDocument();
   });
 
   it('shows error messages when present in single import', () => {
@@ -161,6 +161,57 @@ describe('CompleteStep', () => {
     expect(screen.getAllByText('Errors:').length).toBeGreaterThan(0);
     expect(screen.getByText('Row 5: Invalid date')).toBeInTheDocument();
     expect(screen.getByText('Row 12: Missing payee')).toBeInTheDocument();
+  });
+
+  it('lists the skipped rows of a single import', () => {
+    const result = {
+      ...defaultProps.importResult!,
+      skipped: 1,
+      skippedRows: [
+        {
+          date: '2026-01-15',
+          amount: -50,
+          currencyCode: 'USD',
+          payee: 'Store',
+          reason: 'alreadyImported' as const,
+        },
+      ],
+    };
+    render(
+      <CompleteStep {...defaultProps} importResult={result} />,
+    );
+    expect(screen.getByText('Skipped rows:')).toBeInTheDocument();
+    expect(screen.getByText(/-\$50\.00, Store \(already imported\)/)).toBeInTheDocument();
+  });
+
+  it('lists each file\'s first skipped rows in a bulk import', () => {
+    const skippedRows = Array.from({ length: 4 }, (_, i) => ({
+      date: '2026-01-15',
+      amount: -(i + 1),
+      currencyCode: 'USD',
+      payee: `Payee ${i + 1}`,
+      reason: 'alreadyImported' as const,
+    }));
+    render(
+      <CompleteStep
+        {...defaultProps}
+        importResult={null}
+        isBulkImport
+        bulkImportResult={{
+          totalImported: 0, totalSkipped: 4, totalErrors: 0,
+          categoriesCreated: 0, accountsCreated: 0, payeesCreated: 0, securitiesCreated: 0,
+          fileResults: [
+            {
+              fileName: 'checking.ofx', accountName: 'My Chequing',
+              imported: 0, skipped: 4, skippedRows, errors: 0, errorMessages: [],
+            },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText(/Payee 3/)).toBeInTheDocument();
+    expect(screen.queryByText(/Payee 4/)).not.toBeInTheDocument();
+    expect(screen.getByText('...and 1 more skipped rows')).toBeInTheDocument();
   });
 
   it('shows "View Investments" for investment files', () => {
@@ -344,7 +395,7 @@ describe('CompleteStep', () => {
     );
     expect(screen.getByText('Overall Summary')).toBeInTheDocument();
     expect(screen.getByText(/50 transactions/)).toBeInTheDocument();
-    expect(screen.getByText(/5 duplicate transfers/)).toBeInTheDocument();
+    expect(screen.getByText(/5 transactions/)).toBeInTheDocument();
     expect(screen.getByText('Per-File Results')).toBeInTheDocument();
     expect(screen.getByText('checking.qif')).toBeInTheDocument();
     expect(screen.getByText('savings.qif')).toBeInTheDocument();
@@ -479,7 +530,32 @@ describe('CompleteStep', () => {
     render(<CompleteStep {...defaultProps} />);
     expect(screen.getByText(/test\.qif/)).toBeInTheDocument();
     expect(screen.getByText(/10 transactions/)).toBeInTheDocument();
-    expect(screen.getByText(/2 duplicate transfers/)).toBeInTheDocument();
+    expect(screen.getByText(/2 transactions/)).toBeInTheDocument();
+  });
+
+  it('shows how many bond purchases were imported without a series', () => {
+    render(
+      <CompleteStep
+        {...defaultProps}
+        importResult={{ ...defaultProps.importResult!, bondRowsWithoutSeries: 2 }}
+      />,
+    );
+    expect(
+      screen.getByText(/2 bond purchases were imported without a series/),
+    ).toBeInTheDocument();
+  });
+
+  it('shows no bond series line when the count is absent or zero', () => {
+    const { unmount } = render(<CompleteStep {...defaultProps} />);
+    expect(screen.queryByText(/imported without a series/)).not.toBeInTheDocument();
+    unmount();
+    render(
+      <CompleteStep
+        {...defaultProps}
+        importResult={{ ...defaultProps.importResult!, bondRowsWithoutSeries: 0 }}
+      />,
+    );
+    expect(screen.queryByText(/imported without a series/)).not.toBeInTheDocument();
   });
 
   it('shows loan accounts needing setup when present in importResult', () => {

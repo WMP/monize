@@ -11,6 +11,7 @@ import {
   SpendingAnomaliesResponse,
   TaxSummaryResponse,
   RecurringExpensesResponse,
+  RecurringExpenseRange,
   BillPaymentHistoryResponse,
   UncategorizedTransactionsResponse,
   DuplicateTransactionsResponse,
@@ -146,10 +147,11 @@ export const builtInReportsApi = {
 
   getRecurringExpenses: async (
     minOccurrences: number = 3,
+    range?: RecurringExpenseRange,
   ): Promise<RecurringExpensesResponse> => {
     const response = await apiClient.get<RecurringExpensesResponse>(
       '/built-in-reports/recurring-expenses',
-      { params: { minOccurrences } },
+      { params: range ? { minOccurrences, range } : { minOccurrences } },
     );
     return response.data;
   },

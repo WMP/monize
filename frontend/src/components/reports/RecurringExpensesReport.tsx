@@ -35,6 +35,9 @@ import type {
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
+import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { isComplete, reportTotal, type ConvertedTotal } from '@/lib/currency-total';
 
 type RecurringSortField = 'payee' | 'category' | 'frequency' | 'count' | 'average' | 'total' | 'lastPaid';
 
@@ -205,10 +208,43 @@ function frequencyRank(frequency: string): number {
     : RECURRING_EXPENSE_FREQUENCIES.length;
 }
 
+interface RecurringExpenseTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: RecurringExpenseItem & { color: string } }>;
+  formatCurrency: (value: number) => string;
+  frequencyLabel: (frequency: string) => string;
+  t: ReturnType<typeof useTranslations<'reports'>>;
+}
+
+function RecurringExpenseTooltip({ active, payload, formatCurrency, frequencyLabel, t }: RecurringExpenseTooltipProps) {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+        <p className="font-medium text-gray-900 dark:text-gray-100">{data.payeeName}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          {t('recurringExpenses.tooltipTransactions', {
+            count: data.occurrences,
+            frequency: frequencyLabel(data.frequency),
+          })}
+        </p>
+        <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+          {t('recurringExpenses.tooltipTotal', { amount: formatCurrency(data.totalAmount) })}
+        </p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          {t('recurringExpenses.tooltipAvg', { amount: formatCurrency(data.averageAmount) })}
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
+
 export function RecurringExpensesReport() {
   const t = useTranslations('reports');
   const router = useRouter();
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, defaultCurrency } = useNumberFormat();
+  const tCommon = useTranslations('common');
   const { formatDate, formatDateWithoutYear } = useDateFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [minOccurrences, setMinOccurrences] = useState(3);
@@ -221,6 +257,17 @@ export function RecurringExpensesReport() {
     () => builtInReportsApi.getRecurringExpenses(minOccurrences),
     [minOccurrences],
   );
+
+  // The server withholds a summary total (`null`) when a row could not be
+  // converted and sends the part that did as `known*`. What is shown is that
+  // part, marked as a subtotal -- never a null drawn as 0.
+  const summary = recurringData?.summary;
+  const recurringTotal = reportTotal(summary?.totalRecurring ?? summary?.knownTotalRecurring ?? 0, recurringData);
+  const monthlyEstimate = reportTotal(summary?.monthlyEstimate ?? summary?.knownMonthlyEstimate ?? 0, recurringData);
+  const reportingCurrency = recurringData?.currency ?? defaultCurrency;
+  // A figure in a file has no tooltip, so the label itself carries the marker.
+  const exportLabel = (label: string, total: ConvertedTotal) =>
+    isComplete(total) ? label : `${label} ${tCommon('partialTotal.srSuffix')}`;
 
   // A code this build does not know has no catalogue entry either, and asking
   // for one renders the raw `reports.recurringExpenses.frequency.<code>` key
@@ -372,8 +419,8 @@ export function RecurringExpensesReport() {
       subtitle: t('recurringExpenses.pdfSubtitle', { count: recurringData.summary.uniquePayees }),
       summaryCards: [
         { label: t('recurringExpenses.recurringExpenses'), value: String(recurringData.summary.uniquePayees), color: '#111827' },
-        { label: t('recurringExpenses.sixMonthTotal'), value: formatCurrency(recurringData.summary.totalRecurring), color: '#dc2626' },
-        { label: t('recurringExpenses.monthlyEstimate'), value: formatCurrency(recurringData.summary.monthlyEstimate), color: '#ea580c' },
+        { label: exportLabel(t('recurringExpenses.sixMonthTotal'), recurringTotal), value: formatCurrency(recurringTotal.value), color: '#dc2626' },
+        { label: exportLabel(t('recurringExpenses.monthlyEstimate'), monthlyEstimate), value: formatCurrency(monthlyEstimate.value), color: '#ea580c' },
       ],
       chartContainer: chartRef.current,
       chartLegend: chartData.map((item) => ({
@@ -389,30 +436,6 @@ export function RecurringExpensesReport() {
     if (payeeId) {
       router.push(`/transactions?payeeId=${payeeId}`);
     }
-  };
-
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: RecurringExpenseItem & { color: string } }> }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 dark:text-gray-100">{data.payeeName}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {t('recurringExpenses.tooltipTransactions', {
-              count: data.occurrences,
-              frequency: frequencyLabel(data.frequency),
-            })}
-          </p>
-          <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
-            {t('recurringExpenses.tooltipTotal', { amount: formatCurrency(data.totalAmount) })}
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {t('recurringExpenses.tooltipAvg', { amount: formatCurrency(data.averageAmount) })}
-          </p>
-        </div>
-      );
-    }
-    return null;
   };
 
   if (error) {
@@ -454,16 +477,25 @@ export function RecurringExpensesReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('recurringExpenses.sixMonthTotal')}</div>
           <div className="text-xl font-bold text-red-600 dark:text-red-400">
-            {formatCurrency(recurringData.summary.totalRecurring)}
+            <PartialTotal total={recurringTotal} displayCurrency={reportingCurrency}>
+              {formatCurrency(recurringTotal.value)}
+            </PartialTotal>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('recurringExpenses.monthlyEstimate')}</div>
           <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
-            {formatCurrency(recurringData.summary.monthlyEstimate)}
+            <PartialTotal total={monthlyEstimate} displayCurrency={reportingCurrency}>
+              {formatCurrency(monthlyEstimate.value)}
+            </PartialTotal>
           </div>
         </div>
       </div>
+      <PartialDataNotice
+        missingCurrencies={recurringData.missingCurrencies ?? []}
+        excludedCount={recurringData.excludedCount ?? 0}
+        displayCurrency={reportingCurrency}
+      />
 
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
@@ -523,13 +555,23 @@ export function RecurringExpensesReport() {
                     paddingAngle={2}
                     dataKey="totalAmount"
                     cursor="pointer"
-                    onClick={(data) => handlePayeeClick(data.payeeId)}
+                    onClick={(data) =>
+                      handlePayeeClick((data as typeof data & { payeeId: string | null }).payeeId)
+                    }
                   >
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip
+                    content={
+                      <RecurringExpenseTooltip
+                        formatCurrency={formatCurrency}
+                        frequencyLabel={frequencyLabel}
+                        t={t}
+                      />
+                    }
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>

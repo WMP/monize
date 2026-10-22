@@ -68,21 +68,25 @@ function AdminNotificationsContent() {
     }
   }, [currentUser, router]);
 
-  const loadConfig = useCallback(async () => {
-    try {
-      const data = await adminNotificationsApi.getChannels();
-      setConfig(data);
-      setLoadFailed(false);
-    } catch (error) {
-      logger.error('Failed to load notification channels:', error);
-      // A failed read is not an instance with push switched off. Rendering the
-      // panel from a null config would show an operator a state the server
-      // never reported.
-      setLoadFailed(true);
-      toast.error(getErrorMessage(error, t('toasts.loadFailed')));
-    } finally {
-      setIsLoading(false);
-    }
+  const loadConfig = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const data = await adminNotificationsApi.getChannels();
+        setConfig(data);
+        setLoadFailed(false);
+      } catch (error) {
+        logger.error('Failed to load notification channels:', error);
+        // A failed read is not an instance with push switched off. Rendering the
+        // panel from a null config would show an operator a state the server
+        // never reported.
+        setLoadFailed(true);
+        toast.error(getErrorMessage(error, t('toasts.loadFailed')));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [t]);
 
   useEffect(() => {

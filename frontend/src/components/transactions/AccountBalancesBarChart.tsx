@@ -19,6 +19,7 @@ import {
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { ChartDownloadButton } from '@/components/ui/ChartDownloadButton';
+import { ChartCollapseButton } from '@/components/transactions/ChartCollapseControls';
 
 
 // When the largest bar is at least this many times taller than the smallest,
@@ -74,6 +75,8 @@ interface AccountBalancesBarChartProps {
   isLoading: boolean;
   currencyCode?: string;
   onAccountClick?: (accountId: string) => void;
+  /** Offer the header button that folds the chart away (the Transactions page). */
+  onCollapse?: () => void;
 }
 
 interface ChartDataPoint {
@@ -117,6 +120,7 @@ export function AccountBalancesBarChart({
   isLoading,
   currencyCode,
   onAccountClick,
+  onCollapse,
 }: AccountBalancesBarChartProps) {
   const t = useTranslations('transactions');
   const chartTitle = t('charts.accountBalances.title');
@@ -181,9 +185,12 @@ export function AccountBalancesBarChart({
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 mb-6 min-h-[420px]">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          {chartTitle}
-        </h3>
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            {chartTitle}
+          </h3>
+          {onCollapse && <ChartCollapseButton onCollapse={onCollapse} />}
+        </div>
         <div className="h-72 flex items-center justify-center">
           <Skeleton className="w-full h-full" />
         </div>
@@ -194,9 +201,12 @@ export function AccountBalancesBarChart({
   if (chartData.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 mb-6 min-h-[420px]">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          {chartTitle}
-        </h3>
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            {chartTitle}
+          </h3>
+          {onCollapse && <ChartCollapseButton onCollapse={onCollapse} />}
+        </div>
         <div className="h-72 flex items-center justify-center text-gray-500 dark:text-gray-400">
           <p>{t('charts.accountBalances.noData')}</p>
         </div>
@@ -235,6 +245,7 @@ export function AccountBalancesBarChart({
             })}
           </div>
           <ChartDownloadButton chartRef={chartRef} filename={chartTitle} />
+          {onCollapse && <ChartCollapseButton onCollapse={onCollapse} />}
         </div>
       </div>
 

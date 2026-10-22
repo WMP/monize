@@ -119,6 +119,23 @@ describe('CategoryPayeeBarChart', () => {
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
+  it('offers the fold button in every state, only where the page asks for it', () => {
+    const onCollapse = vi.fn();
+    const data = buildMonths(3);
+    const { rerender } = render(<CategoryPayeeBarChart data={data} isLoading={false} />);
+    expect(screen.queryByRole('button', { name: 'Hide chart' })).not.toBeInTheDocument();
+
+    for (const props of [
+      { data: [], isLoading: true },
+      { data: [], isLoading: false },
+      { data, isLoading: false },
+    ]) {
+      rerender(<CategoryPayeeBarChart {...props} onCollapse={onCollapse} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Hide chart' }));
+    }
+    expect(onCollapse).toHaveBeenCalledTimes(3);
+  });
+
   it('shows empty state when no data', () => {
     render(<CategoryPayeeBarChart data={[]} isLoading={false} />);
     expect(screen.getByText('No transaction data available')).toBeInTheDocument();

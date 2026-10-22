@@ -27,8 +27,15 @@ import { transferDirection } from '@/lib/transfer-label';
 import { usePayeeDisplay } from '@/hooks/usePayeeDisplay';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useLocalizedAmount } from '@/hooks/useLocalizedAmount';
-import type { StaleUnreconciledReason } from '@/lib/stale-reconciliation';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
+import { ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { WarrantyBadge, rowHasWarranties } from '@/components/transactions/WarrantyBadge';
+
+/**
+ * The default for `hidden`: nothing hidden. A module constant so a caller
+ * that omits the prop hands the memoised row the same reference every render.
+ */
+const NO_HIDDEN_COLUMNS: ReadonlySet<string> = new Set();
 
 const INVESTMENT_ACTION_LABELS: Record<string, string> = {
   BUY: 'Buy',
@@ -42,6 +49,7 @@ const INVESTMENT_ACTION_LABELS: Record<string, string> = {
   REINVEST: 'Reinvest',
   ADD_SHARES: 'Add Shares',
   REMOVE_SHARES: 'Remove Shares',
+  RETURN_OF_CAPITAL: 'Return of Capital',
 };
 
 function describeInvestmentSplit(split: TransactionSplit, uncategorizedLabel: string): string {
@@ -74,10 +82,25 @@ function AttachmentBadge({ count }: { count: number }) {
   );
 }
 
-function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
+/**
+ * Every pointer event a control inside a row must keep from the row: the row
+ * opens the editor on click and the action sheet on a long press or a
+ * right-click, and the dropdown below is portalled, so React still bubbles its
+ * events up to the row's handlers.
+ */
+const STOP_ROW_PRESS = {
+  onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
+  onTouchStart: (e: React.TouchEvent) => e.stopPropagation(),
+  onContextMenu: (e: React.MouseEvent) => e.stopPropagation(),
+};
+
+function CopyDropdown({ density, onDuplicate, onScheduleRecurring, onAddWarranty, onViewWarranties }: {
   density: DensityLevel;
   onDuplicate?: () => void;
   onScheduleRecurring?: () => void;
+  /** At most one of the two warranty actions is passed, chosen by the row's count. */
+  onAddWarranty?: () => void;
+  onViewWarranties?: () => void;
 }) {
   const t = useTranslations('transactions');
   const [isOpen, setIsOpen] = useState(false);
@@ -102,8 +125,10 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
     return () => window.removeEventListener('scroll', handleScroll, true);
   }, [isOpen, updatePosition]);
 
+  const warrantyAction = onViewWarranties ?? onAddWarranty;
+
   // If only one action is available, render a simple button
-  if (onDuplicate && !onScheduleRecurring) {
+  if (onDuplicate && !onScheduleRecurring && !warrantyAction) {
     return (
       <button
         onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
@@ -164,6 +189,16 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
               {t('row.copyOptions.scheduleRecurring')}
             </button>
           )}
+          {warrantyAction && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsOpen(false); warrantyAction(); }}
+              {...STOP_ROW_PRESS}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 whitespace-nowrap"
+            >
+              <ShieldCheckIcon className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+              {onViewWarranties ? t('row.copyOptions.viewWarranties') : t('row.copyOptions.addWarranty')}
+            </button>
+          )}
         </div>,
         document.body
       )}
@@ -218,6 +253,13 @@ export interface TransactionRowProps {
   onEdit?: (transaction: Transaction) => void;
   onDuplicate?: (transaction: Transaction) => void;
   onScheduleRecurring?: (transaction: Transaction) => void;
+  /**
+   * Warranties: the Copy menu offers "Add warranty" on a row with none and
+   * "View warranties" on a row with some. The list leaves both out on a joint
+   * row; a linked investment row has no Copy menu.
+   */
+  onAddWarranty?: (transaction: Transaction) => void;
+  onViewWarranties?: (transaction: Transaction) => void;
   onDeleteClick: (transaction: Transaction) => void;
   isSelected?: boolean;
   selectionMode?: boolean;
@@ -232,12 +274,15 @@ export interface TransactionRowProps {
   /** Render the foreign-currency columns (paid currency, paid amount, fee paid). */
   showFxColumns?: boolean;
   /**
-   * Why this row is overdue for reconciliation, from `classifyStaleRow`.
-   * Undefined means either "not stale" or "no information" -- the caller only
-   * supplies it for accounts the user actually reconciles, and a page that
-   * could not load that context supplies it for none.
+   * The register's hidden columns (`useHiddenColumns('transactions').hidden`,
+   * read once by the list and passed down as the set itself, which keeps its
+   * reference while the preference is unchanged so this memoised row is not
+   * re-rendered by a fresh callback). A hidden column's cell is absent from
+   * the DOM at every width -- never hidden by a class -- in the tier row and
+   * the phone card alike; the width tiers go on deciding whether what is left
+   * fits. Omitted means nothing hidden.
    */
-  staleReason?: StaleUnreconciledReason;
+  hidden?: ReadonlySet<string>;
 }
 
 export const TransactionRow = memo(function TransactionRow({
@@ -271,6 +316,8 @@ export const TransactionRow = memo(function TransactionRow({
   onEdit,
   onDuplicate,
   onScheduleRecurring,
+  onAddWarranty,
+  onViewWarranties,
   onDeleteClick,
   isSelected,
   selectionMode,
@@ -281,19 +328,21 @@ export const TransactionRow = memo(function TransactionRow({
   isFuture,
   isHighlighted,
   showFxColumns = false,
-  staleReason,
+  hidden = NO_HIDDEN_COLUMNS,
 }: TransactionRowProps) {
   const compactPadding = registerDateColumnPadding(compactDates);
+  // True for every column not hidden, structural ones included; the register
+  // column guard reads the `isVisible('<id>') &&` gates out of this file.
+  const isVisible = (id: string) => !hidden.has(id);
   const payeeLayout = registerPayeeLayout(density);
   const t = useTranslations('transactions');
   const tc = useTranslations('common');
-  // The reconciliation chips live in the reconcile catalog so the register and
-  // the reconcile table say the same thing about the same row.
-  const tr = useTranslations('reconcile');
   const { formatCurrency, formatPercent } = useNumberFormat();
   // Read-only amounts, grouped in the user's number locale (en-US unchanged).
   const formatAmountLocal = useLocalizedAmount();
   const isVoid = transaction.status === TransactionStatus.VOID;
+  const hasWarranties = rowHasWarranties(transaction);
+  const onWarrantyAction = hasWarranties ? onViewWarranties : onAddWarranty;
 
   // When this row is the deep-link target, scroll it into view once it mounts
   // so the user lands on it rather than hunting through the page.
@@ -369,20 +418,6 @@ export const TransactionRow = memo(function TransactionRow({
                 ) : (
                   formatDate(transaction.transactionDate)
                 )}
-                {staleReason && (
-                  <span
-                    data-testid="stale-reconciliation-chip"
-                    data-stale={staleReason}
-                    className="inline-flex items-center rounded-full bg-amber-200 dark:bg-amber-800 px-1.5 py-0.5 text-[10px] font-medium text-amber-900 dark:text-amber-100"
-                    title={
-                      staleReason === 'missed'
-                        ? tr('stale.missedTooltip')
-                        : tr('stale.overdueTooltip')
-                    }
-                  >
-                    {staleReason === 'missed' ? tr('stale.missedChip') : tr('stale.overdueChip')}
-                  </span>
-                )}
               </span>
             </div>
             <div className="min-w-0">
@@ -444,13 +479,20 @@ export const TransactionRow = memo(function TransactionRow({
                   {transaction.account?.name || '-'}
                 </span>
               )}
-              {/* Attachments sit left of the category, as the tier table's
-                  column does. A row with none renders nothing here -- not the
-                  tier cell's dash, and no empty element either -- so the
-                  category stays flush to the card's left edge. */}
-              {transaction.attachmentCount && transaction.attachmentCount > 0 ? (
-                <AttachmentBadge count={transaction.attachmentCount} />
-              ) : null}
+              {/* Attachments, and the warranty shield beside them, sit left
+                  of the category, as the tier table's column does (both under
+                  the Attachments column's gate). A row with neither renders
+                  nothing here -- not the tier cell's dash, and no empty
+                  element either -- so the category stays flush to the card's
+                  left edge. */}
+              {isVisible('attachments') && (
+                <>
+                  {transaction.attachmentCount && transaction.attachmentCount > 0 ? (
+                    <AttachmentBadge count={transaction.attachmentCount} />
+                  ) : null}
+                  {hasWarranties ? <WarrantyBadge count={transaction.warrantyCount!} /> : null}
+                </>
+              )}
               {transaction.linkedInvestmentTransactionId ? (
                 // No `title` here, unlike the tier cell: a hover tooltip is
                 // unreachable on a phone, and the pill's own label already
@@ -532,11 +574,13 @@ export const TransactionRow = memo(function TransactionRow({
               <span className="ml-auto flex items-center gap-2">
                 {/* StatusCellButton stops the click itself, so it needs no
                     wrapper here -- the tier branch mounts it bare too. */}
-                <StatusCellButton
-                  status={transaction.status}
-                  dense={false}
-                  onCycle={() => onCycleStatus(transaction)}
-                />
+                {isVisible('status') && (
+                  <StatusCellButton
+                    status={transaction.status}
+                    dense={false}
+                    onCycle={() => onCycleStatus(transaction)}
+                  />
+                )}
                 {showRunningBalance && (
                   <span className="text-right whitespace-nowrap text-sm font-medium">
                     <span className="block text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 leading-tight">
@@ -555,7 +599,7 @@ export const TransactionRow = memo(function TransactionRow({
                 own, so the card grew a line anyway -- with the pills and the
                 figures interleaved. On their own line the tags wrap among
                 themselves and line 2 keeps its shape. */}
-            {transaction.tags && transaction.tags.length > 0 && (
+            {isVisible('tags') && transaction.tags && transaction.tags.length > 0 && (
               <div className="col-span-3 flex flex-wrap items-center gap-1.5">
                 {transaction.tags.map((tag) => onTagClick ? (
                   <button
@@ -635,20 +679,6 @@ export const TransactionRow = memo(function TransactionRow({
             </span>
           ) : (
             formatDate(transaction.transactionDate)
-          )}
-          {staleReason && (
-            <span
-              data-testid="stale-reconciliation-chip"
-              data-stale={staleReason}
-              className="inline-flex items-center rounded-full bg-amber-200 dark:bg-amber-800 px-1.5 py-0.5 text-[10px] font-medium text-amber-900 dark:text-amber-100"
-              title={
-                staleReason === 'missed'
-                  ? tr('stale.missedTooltip')
-                  : tr('stale.overdueTooltip')
-              }
-            >
-              {staleReason === 'missed' ? tr('stale.missedChip') : tr('stale.overdueChip')}
-            </span>
           )}
         </span>
       </td>
@@ -849,26 +879,31 @@ export const TransactionRow = memo(function TransactionRow({
       {/* The column that yields: it takes whatever width the content-sized
           columns leave and shrinks first when there is none, so its arrival
           can never push Status off the visible edge of the register. */}
-      <td className={`${cellPadding} text-sm text-gray-500 dark:text-gray-400 ${registerColumnClass('description')} ${REGISTER_DESCRIPTION_CELL_FLEX}`}>
-        <div
-          className={`truncate ${isVoid ? 'line-through' : ''}`}
-          title={transaction.description || undefined}
-        >
-          {transaction.description ? (
-            <LinkifiedText text={transaction.description} />
-          ) : (
-            '-'
-          )}
-        </div>
-      </td>
-      <td className={`${cellPadding} text-sm text-gray-500 dark:text-gray-400 ${registerColumnClass('refNumber')}`}>
-        <div
-          className={`truncate max-w-[160px] ${isVoid ? 'line-through' : ''}`}
-          title={transaction.referenceNumber || undefined}
-        >
-          {transaction.referenceNumber || '-'}
-        </div>
-      </td>
+      {isVisible('description') && (
+        <td className={`${cellPadding} text-sm text-gray-500 dark:text-gray-400 ${registerColumnClass('description')} ${REGISTER_DESCRIPTION_CELL_FLEX}`}>
+          <div
+            className={`truncate ${isVoid ? 'line-through' : ''}`}
+            title={transaction.description || undefined}
+          >
+            {transaction.description ? (
+              <LinkifiedText text={transaction.description} />
+            ) : (
+              '-'
+            )}
+          </div>
+        </td>
+      )}
+      {isVisible('refNumber') && (
+        <td className={`${cellPadding} text-sm text-gray-500 dark:text-gray-400 ${registerColumnClass('refNumber')}`}>
+          <div
+            className={`truncate max-w-[160px] ${isVoid ? 'line-through' : ''}`}
+            title={transaction.referenceNumber || undefined}
+          >
+            {transaction.referenceNumber || '-'}
+          </div>
+        </td>
+      )}
+      {isVisible('tags') && (
       <td className={`${cellPadding} text-sm ${registerColumnClass('tags')}`}>
         {transaction.tags && transaction.tags.length > 0 ? (
           <div className="flex flex-wrap gap-1">
@@ -913,13 +948,23 @@ export const TransactionRow = memo(function TransactionRow({
           <span className="text-gray-400 dark:text-gray-500">-</span>
         )}
       </td>
-      <td className={`${cellPadding} whitespace-nowrap text-center text-sm ${registerColumnClass('attachments')}`}>
-        {transaction.attachmentCount && transaction.attachmentCount > 0 ? (
-          <AttachmentBadge count={transaction.attachmentCount} />
-        ) : (
-          <span className="text-gray-400 dark:text-gray-500">-</span>
-        )}
-      </td>
+      )}
+      {isVisible('attachments') && (
+        <td className={`${cellPadding} whitespace-nowrap text-center text-sm ${registerColumnClass('attachments')}`}>
+          {hasWarranties ? (
+            <span className="inline-flex items-center gap-2">
+              {transaction.attachmentCount && transaction.attachmentCount > 0 ? (
+                <AttachmentBadge count={transaction.attachmentCount} />
+              ) : null}
+              <WarrantyBadge count={transaction.warrantyCount!} />
+            </span>
+          ) : transaction.attachmentCount && transaction.attachmentCount > 0 ? (
+            <AttachmentBadge count={transaction.attachmentCount} />
+          ) : (
+            <span className="text-gray-400 dark:text-gray-500">-</span>
+          )}
+        </td>
+      )}
       <td className={`${cellPadding} whitespace-nowrap text-sm font-medium text-right ${isVoid ? 'line-through' : ''}`}>
         {displayAmount !== undefined ? (
           <span
@@ -975,13 +1020,15 @@ export const TransactionRow = memo(function TransactionRow({
             : '-'}
         </td>
       )}
-      <td className={`${cellPadding} whitespace-nowrap text-center ${registerColumnClass('status')}`}>
-        <StatusCellButton
-          status={transaction.status}
-          dense={density === 'dense'}
-          onCycle={() => onCycleStatus(transaction)}
-        />
-      </td>
+      {isVisible('status') && (
+        <td className={`${cellPadding} whitespace-nowrap text-center ${registerColumnClass('status')}`}>
+          <StatusCellButton
+            status={transaction.status}
+            dense={density === 'dense'}
+            onCycle={() => onCycleStatus(transaction)}
+          />
+        </td>
+      )}
       <td className={`${cellPadding} whitespace-nowrap text-right text-sm font-medium space-x-2 ${registerColumnClass('actions')} sticky right-0 ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : density !== 'normal' && index % 2 === 1 ? 'bg-gray-50 dark:bg-table-stripe-dark' : 'bg-white dark:bg-gray-900'} group-hover:bg-gray-100 dark:group-hover:bg-gray-800 ${isHighlighted ? HIGHLIGHT_FLASH_CELL : ''}`}>
         {onEdit && (
           <button
@@ -997,11 +1044,13 @@ export const TransactionRow = memo(function TransactionRow({
               : (density === 'dense' ? '\u270E' : tc('edit'))}
           </button>
         )}
-        {!transaction.linkedInvestmentTransactionId && (onDuplicate || onScheduleRecurring) && (
+        {!transaction.linkedInvestmentTransactionId && (onDuplicate || onScheduleRecurring || onWarrantyAction) && (
           <CopyDropdown
             density={density}
             onDuplicate={onDuplicate ? () => onDuplicate(transaction) : undefined}
             onScheduleRecurring={onScheduleRecurring ? () => onScheduleRecurring(transaction) : undefined}
+            onAddWarranty={!hasWarranties && onAddWarranty ? () => onAddWarranty(transaction) : undefined}
+            onViewWarranties={hasWarranties && onViewWarranties ? () => onViewWarranties(transaction) : undefined}
           />
         )}
         {!transaction.linkedInvestmentTransactionId && !hideDelete && (

@@ -32,6 +32,12 @@ import { RowActions } from '@/components/ui/row-actions/RowActions';
 import { RowActionSheet } from '@/components/ui/row-actions/RowActionSheet';
 import { DensityToggle } from '@/components/ui/DensityToggle';
 import { ListTopToolbar } from '@/components/ui/ListTopToolbar';
+import { ColumnChooserMenu, type ColumnChooserItem } from '@/components/ui/ColumnChooserMenu';
+import { useHiddenColumns } from '@/hooks/useHiddenColumns';
+import { useColumnHeaderActions } from '@/hooks/useColumnHeaderActions';
+import type { HideableColumn } from '@/lib/hidden-columns';
+
+type BrokerageColumn = HideableColumn<'investmentRegister'>;
 
 export interface TransactionFilters {
   symbol?: string;
@@ -108,6 +114,12 @@ interface InvestmentTransactionRowProps {
   onCycleStatus: (tx: InvestmentTransaction) => void;
   hasActions: boolean;
   /**
+   * The stored `investmentRegister` set, read once by the list. A hidden
+   * column is absent from both layouts: its tier cell and its place on the
+   * card.
+   */
+  hidden: ReadonlySet<BrokerageColumn>;
+  /**
    * Render the row as a wrapped card instead of the tier table's cells. The
    * list sets it for phones at Normal density only (Model B: on a phone the
    * density toggle picks the layout); every other width and every other
@@ -178,6 +190,7 @@ const InvestmentTransactionRow = memo(function InvestmentTransactionRow({
   onDeleteClick,
   onCycleStatus,
   hasActions,
+  hidden,
   wrapped = false,
 }: InvestmentTransactionRowProps) {
   const tc = useTranslations('common');
@@ -192,6 +205,9 @@ const InvestmentTransactionRow = memo(function InvestmentTransactionRow({
 
   // Same treatment as the cash register: a VOID row is struck through and
   // dimmed, because it records something that did not happen.
+  // True for every column not hidden, structural ones included.
+  const isVisible = (id: string) => !(hidden as ReadonlySet<string>).has(id);
+
   const isVoid = tx.status === TransactionStatus.VOID;
   const voidText = isVoid ? 'line-through' : '';
 
@@ -232,6 +248,7 @@ const InvestmentTransactionRow = memo(function InvestmentTransactionRow({
               actionInfo={actionInfo}
               onCycleStatus={onCycleStatus}
               voidText={voidText}
+              hidden={hidden}
             />
           </div>
         </td>
@@ -265,16 +282,20 @@ const InvestmentTransactionRow = memo(function InvestmentTransactionRow({
           </div>
         )}
       </td>
-      <td className={`${cellPadding} whitespace-nowrap text-right text-sm text-gray-900 dark:text-gray-100 hidden sm:table-cell ${voidText}`}>
-        <InvestmentSharesValue tx={tx} formatQuantity={formatQuantity} />
-      </td>
-      <td className={`${cellPadding} whitespace-nowrap text-right text-sm text-gray-900 dark:text-gray-100 hidden md:table-cell ${voidText}`}>
-        <InvestmentPriceValue
-          tx={tx}
-          formatCurrency={formatCurrency}
-          defaultCurrency={defaultCurrency}
-        />
-      </td>
+      {isVisible('shares') && (
+        <td className={`${cellPadding} whitespace-nowrap text-right text-sm text-gray-900 dark:text-gray-100 hidden sm:table-cell ${voidText}`}>
+          <InvestmentSharesValue tx={tx} formatQuantity={formatQuantity} />
+        </td>
+      )}
+      {isVisible('price') && (
+        <td className={`${cellPadding} whitespace-nowrap text-right text-sm text-gray-900 dark:text-gray-100 hidden md:table-cell ${voidText}`}>
+          <InvestmentPriceValue
+            tx={tx}
+            formatCurrency={formatCurrency}
+            defaultCurrency={defaultCurrency}
+          />
+        </td>
+      )}
       <td className={`${cellPadding} whitespace-nowrap text-right text-sm font-medium text-gray-900 dark:text-gray-100 ${voidText}`}>
         <InvestmentTotalValue
           tx={tx}
@@ -282,13 +303,15 @@ const InvestmentTransactionRow = memo(function InvestmentTransactionRow({
           defaultCurrency={defaultCurrency}
         />
       </td>
-      <td className={`${cellPadding} whitespace-nowrap text-center hidden lg:table-cell`}>
-        <StatusCellButton
-          status={tx.status}
-          dense={density === 'dense'}
-          onCycle={() => onCycleStatus(tx)}
-        />
-      </td>
+      {isVisible('status') && (
+        <td className={`${cellPadding} whitespace-nowrap text-center hidden lg:table-cell`}>
+          <StatusCellButton
+            status={tx.status}
+            dense={density === 'dense'}
+            onCycle={() => onCycleStatus(tx)}
+          />
+        </td>
+      )}
       {hasActions && (
         <td className={`${cellPadding} whitespace-nowrap text-right text-sm hidden min-[480px]:table-cell sticky right-0 ${density !== 'normal' && index % 2 === 1 ? 'bg-gray-50 dark:bg-table-stripe-dark' : 'bg-white dark:bg-gray-900'} group-hover:bg-gray-100 dark:group-hover:bg-gray-800`} onClick={(e) => e.stopPropagation()}>
           <RowActions actions={actions} density={density} />
@@ -344,6 +367,7 @@ export function InvestmentTransactionList({
     { value: 'CAPITAL_GAIN_SHORT', label: t('transactionList.actionCapitalGainShort') },
     { value: 'CAPITAL_GAIN_LONG', label: t('transactionList.actionCapitalGainLong') },
     { value: 'REDEEM', label: t('transactionList.actionRedeem') },
+    { value: 'RETURN_OF_CAPITAL', label: t('transactionList.actionReturnOfCapital') },
   ];
   // "All actions" always stands, and so does whatever is currently selected --
   // a filter set before the rows changed must stay visible in the control that
@@ -455,9 +479,47 @@ export function InvestmentTransactionList({
   const isMobile = useIsMobile();
   const wrapped = isMobile && density === 'normal';
 
-  // Eight data columns, plus Actions when this surface offers any. Loop
-  // invariant, so it is resolved once rather than per row.
-  const colCount = 8 + (onDelete || onEdit ? 1 : 0);
+  // The stored `investmentRegister` set (one per table kind), so the
+  // Investments page and the account detail page's register panel follow the
+  // same choice. A hidden column is absent from the DOM at every width, the
+  // phone card included; the viewport classes on the cells that remain still
+  // decide whether they fit.
+  const {
+    hidden: hiddenColumns,
+    isVisible,
+    hide: hideColumn,
+    show: showColumn,
+    showAll: showAllColumns,
+    hideable,
+  } = useHiddenColumns('investmentRegister');
+  const hideableColumns = useMemo<ColumnChooserItem<BrokerageColumn>[]>(() => {
+    const labels: Record<BrokerageColumn, string> = {
+      shares: t('transactionList.sharesColumn'),
+      price: t('transactionList.priceColumn'),
+      status: tStatus('list.header.status'),
+    };
+    return hideable.map((id) => ({ id, label: labels[id] }));
+  }, [hideable, t, tStatus]);
+  // The headers do not sort (the server orders this register), so a plain
+  // click on one does nothing; a long-press or right-click opens the "Hide
+  // column" sheet.
+  const { headerHandlers, sheet: columnHeaderSheet } = useColumnHeaderActions({
+    columns: hideableColumns,
+    onHide: hideColumn,
+  });
+  const columnChooser = (
+    <ColumnChooserMenu
+      columns={hideableColumns}
+      hidden={hiddenColumns}
+      onHide={hideColumn}
+      onShow={showColumn}
+      onShowAll={showAllColumns}
+    />
+  );
+
+  // Eight data columns less the hidden ones, plus Actions when this surface
+  // offers any. Loop invariant, so it is resolved once rather than per row.
+  const colCount = 8 - hiddenColumns.size + (onDelete || onEdit ? 1 : 0);
 
   if (isLoading) {
     return (
@@ -572,7 +634,10 @@ export function InvestmentTransactionList({
           </button>
         )}
         {!ownsPaging && (
-          <DensityToggle view={densityView} size="md" className="ml-auto" />
+          <div className="ml-auto flex items-center gap-2">
+            {columnChooser}
+            <DensityToggle view={densityView} size="md" />
+          </div>
         )}
         </div>
       </div>
@@ -666,6 +731,7 @@ export function InvestmentTransactionList({
           pageSize={pageSize}
           onPageChange={onPageChange}
           itemName={t('transactionList.itemNamePlural')}
+          actions={columnChooser}
         />
       )}
 
@@ -696,18 +762,24 @@ export function InvestmentTransactionList({
               <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
                 {t('transactionList.symbolColumn')}
               </th>
-              <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
-                {t('transactionList.sharesColumn')}
-              </th>
-              <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell`}>
-                {t('transactionList.priceColumn')}
-              </th>
+              {isVisible('shares') && (
+                <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`} {...headerHandlers('shares')}>
+                  {t('transactionList.sharesColumn')}
+                </th>
+              )}
+              {isVisible('price') && (
+                <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell`} {...headerHandlers('price')}>
+                  {t('transactionList.priceColumn')}
+                </th>
+              )}
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
                 {t('transactionList.totalColumn')}
               </th>
-              <th className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell`}>
-                {tStatus('list.header.status')}
-              </th>
+              {isVisible('status') && (
+                <th className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell`} {...headerHandlers('status')}>
+                  {tStatus('list.header.status')}
+                </th>
+              )}
               {(onDelete || onEdit) && (
                 <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden min-[480px]:table-cell sticky right-0 bg-gray-50 dark:bg-gray-800`}>
                   {t('transactionList.actionsColumn')}
@@ -721,13 +793,11 @@ export function InvestmentTransactionList({
               <tr>
                 {/* Both of this table's spanning rows span ONE column in the
                     wrapped layout, because every body row there is a single
-                    card cell. The tier count stays the literal it has always
-                    been rather than `colCount`: the two disagree only for a
-                    caller passing neither `onDelete` nor `onEdit`, which
-                    neither mounting surface does, and the tier DOM is pinned
-                    byte-identical (the mismatch is logged as a follow-up
-                    instead). */}
-                <td colSpan={wrapped ? 1 : 9} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                    card cell. The tier count is `colCount`, so it follows the
+                    hidden columns; both mounting surfaces pass `onEdit` and
+                    `onDelete`, so with nothing hidden it is the nine it has
+                    always been. */}
+                <td colSpan={wrapped ? 1 : colCount} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                   {t('transactionList.noTransactionsFiltered')}
                 </td>
               </tr>
@@ -760,6 +830,7 @@ export function InvestmentTransactionList({
                     onDeleteClick={handleDeleteClick}
                     onCycleStatus={handleCycleStatus}
                     hasActions={!!(onDelete || onEdit)}
+                    hidden={hiddenColumns}
                     wrapped={wrapped}
                   />
                 </Fragment>
@@ -799,6 +870,8 @@ export function InvestmentTransactionList({
           : []}
         onClose={() => setContextTx(null)}
       />
+
+      {columnHeaderSheet}
     </div>
   );
 }

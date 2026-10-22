@@ -61,9 +61,25 @@ the other two.
 Three providers behind one interface (`save`/`load`/`delete`), selected by
 deployment.
 
+**An attachment's parent is a transaction or a warranty, never both and never
+neither** (INV-WTY-003): `transaction_attachments` carries `transaction_id` and
+`warranty_id` under `chk_attachment_one_parent`, and `AttachmentsService.create`
+and `findAllFor` take an `AttachmentParent` (`backend/src/attachments/attachment-parent.ts`)
+rather than an id. Ownership is the row's own `user_id` whichever parent it has,
+so everything below -- the upload intent, the tombstone trigger, the orphan
+sweep, the provider relocation -- is keyed by attachment id and knows nothing
+about the parent. The per-parent cap is counted under the parent's row lock
+(`lockTransactionRow` or `lockWarrantyRow`, one doctrine), and both halves of a
+scan pair carry the same parent and `document_kind` (a kind change,
+`AttachmentsService.updateDocumentKind`, writes both in one statement). One
+parent is not one reader: a transaction's attachments are its own rows plus the
+documents of every warranty linked to it, reached through
+`warranties.transaction_id` by the fragment in `attachment-parent.ts`
+(INV-WTY-003); nothing below depends on it, because none of it reads the parent.
+
 **One upload can write two objects.** A scanned document is stored as a pair --
 the enhanced image the user sees and the original photo it came from
-(`docs/future-plans/document-scanner.md`) -- written by one `create` call in one
+(`docs/specs/document-scanner.md`) -- written by one `create` call in one
 transaction. That changes the quantity below, not the mechanism: each object
 gets its own upload intent committed before any byte is written, each intent is
 cleared inside the metadata transaction, and the compensation path deletes
@@ -182,7 +198,7 @@ cascading `ai_relay_attachment_blobs` row, not through
 `ATTACHMENT_STORAGE_PROVIDER` -- the provider's `database` implementation writes
 `attachment_blobs`, whose primary key is a foreign key to
 `transaction_attachments` and whose policy reads the owner from that row, so a
-relay attachment (which has no transaction) cannot be stored there at all, and
+relay attachment (which has no parent) cannot be stored there at all, and
 branching on the bound provider's name would put a deployment-shaped decision
 inside the relay. The consequence is that this one path has no external side
 effect: bytes and metadata commit or roll back together on every provider, and
@@ -234,10 +250,13 @@ leaves the machine (INV-BACKUP-002).
 `local` and as a key prefix on `s3`, because automatic backup filenames carry
 only a tier and a date. A flat folder gave every user the same name for the same
 day, so whoever's cron ran last overwrote the rest and one user's retention pass
-deleted another's files. `enforceRetention` still sweeps the old flat layout for
-files written before the fix -- a `local`-only concept, since the `s3` store has
-never had a layout without an owner in the key, and one the listing marks
-`legacy` so nothing downloadable is served from it. The folder browse and
+deleted another's files. Files written to the old flat layout before the fix are
+listed as `legacy` -- a `local`-only concept, since the `s3` store has never had a
+layout without an owner in the key -- and are never served, never counted against
+a user's retention and never deleted by any user's pass: a flat name carries no
+owner, so sweeping it could take another user's only pre-upgrade recovery point
+(A26-M07). `enforceRetention` skips them and logs how many remain;
+`LocalBackupStorageTarget.remove` refuses one. They are the operator's to remove. The folder browse and
 validate endpoints are admin-gated at the controller, and under an `s3` store
 they answer a typed refusal rather than walking a filesystem that has nothing to
 do with where the bytes are.
@@ -285,6 +304,17 @@ restoring user, every backup id is remapped to a fresh UUID so a backup restored
 into a different account cannot collide with that account's rows, and every table
 and column is checked against an allowlist. What it lacks is integrity
 verification of the payload, per EXT-002 above.
+
+Restore is also the **third writer of the object-intent protocol**, beside
+`AttachmentsService.create` and the storage migrator. For `local` and `s3`, staging
+writes the carried bytes before the restore transaction, so each staged key takes
+an upload intent first (`recordObjectIntent`, lease
+`RESTORE_STAGING_INTENT_LEASE_MS`), the transaction clears them all with the
+fenced `clearObjectIntent`, and a discard drops an intent only after its delete
+succeeded. A process death between staging and commit therefore leaves
+tombstones the orphan sweeper reclaims once the leases expire, where it used to
+leave bytes nothing could enumerate (A26-S06-03).
+`docs/backup-restore-contract.md` section 4 has the protocol.
 
 ### Off-machine copies
 
@@ -394,7 +424,7 @@ The subscription itself is instance-bound state, not portable user data: see
 ## 4b. The web-share stash is the device's, not the server's
 
 The Web Share Target stores the files the OS hands over in a Cache API store on
-the device (`docs/future-plans/pwa-web-share-target.md`). It is in this document
+the device (`docs/frontend/pwa-push-share.md`). It is in this document
 because it looks like an external side effect and is worth being explicit about
 *not* being one:
 
@@ -467,6 +497,31 @@ satisfied exactly, and it is the cheapest form of idempotency available: the
 uniqueness is a property of the data, so no key has to be invented or
 remembered.
 
+**Which provider an FX row came from is part of the row.** Every provider
+question `ExchangeRateService` asks goes through `FxProviderChain`
+(`backend/src/currencies/providers/fx-provider-chain.ts`), which asks the
+adapters in `FX_PROVIDERS` order and hands back each observation with its
+provider's `source` slug; the upserts above write that slug, dated by the
+observation, so a repeated refresh converges on the row the first-configured
+provider answered and a reader can tell one provider's rate from another's.
+Nothing is undone at a provider -- the calls are reads -- and what a failure
+leaves is decided by the chain's two outcomes: a window the carrying providers
+answered with nothing may be remembered as empty for thirty minutes, a window
+a carrying provider never answered never is, because the provider that fell
+silent may hold what the others do not (INV-FX-005).
+
+**No FX provider call inside someone else's transaction.** A rate fetch is an
+HTTP round trip, and inside a caller's open transaction it holds that
+transaction's row locks and pooled connection for the provider's response time,
+while the window it persists commits or rolls back with work it has nothing to
+do with. `InvestmentTransactionsService.previewCreateInvestmentTransaction`
+therefore reads only stored rates (`getRateForDate(..., { fetchMissing: false })`)
+when it runs under an ambient scoped manager (`getActiveScopedManager()`), which
+is how the email-receipt pipeline builds a trade card while it holds the
+receipt's row lock: a missing rate is refused by name and the card waits for the
+rate cron. A request-scoped preview (the assistant, MCP) still fetches
+(A26-L18).
+
 Failures propagate as `null`, deliberately. `getRateForDate`'s own comment says
 it "returns null when no rate can be determined (so the caller can reject or flag
 the operation rather than silently assuming 1.0)". The provider layer is
@@ -507,6 +562,55 @@ than kept. Ordering is at
 least correct on failure: the provider is called and the response parsed before
 anything is saved, so a failed call leaves no partial rows, and a total provider
 failure throws rather than fabricating a result.
+
+### Bond reference data (NBP, GUS)
+
+`BenchmarkRefreshService` reads the NBP reference rate and the GUS year-on-year
+CPI and writes them to `benchmark_values`; it has no effect at the publisher to
+undo. Each outbound call is gated by the `nbp` or `gus` circuit breaker
+(`ProviderHealthService`) through `SeriesHttp.gated`, limited to the https hosts
+the adapter declares (no other host, no redirect off them), with a 30 s timeout
+and a 5 MB streaming cap, and the whole body is read before the breaker records
+a success. The fetch and parse finish before anything is written, so a failed or
+unparseable document leaves no partial rows, and one series failing does not
+stop the other. The write is one transaction per series: the observations
+(`ON CONFLICT (benchmark_code, observation_date) DO UPDATE ... WHERE value IS
+DISTINCT FROM EXCLUDED.value`, so a revision corrects a row and a repeat
+converges) then `covered_through = GREATEST(...)`, which only moves forward. The
+lease `bond-benchmarks` stops N replicas fetching at once and is not what keeps
+the data correct. `BondCatalogService` seeds the adapters' programs with
+`ON CONFLICT DO NOTHING` and stores a fetched or entered series the same way; a
+stored terms version is never rewritten (INV-BOND-001), so an entry whose
+content differs from the stored one is refused as a conflict, and a correction
+is a new `termsVersion`. The refresh fetches only benchmarks a stored series
+reads, and once after a series is stored for a benchmark never fetched.
+
+A series read from its issuer (`BondSeriesService`, through `SeriesHttp.gated`:
+the `obligacjeskarbowe` breaker, no redirect followed, a 30 s timeout, a 5 MB
+cap) is fetched, cross-checked and parsed before the one write transaction that
+stores it, so a refused or failed read leaves no row, and there is nothing at the
+issuer to undo.
+
+### Bank sync
+
+A bank sync reads from the provider and writes only to PostgreSQL, so the
+external call has no effect to undo; what it has to get right is the order
+(`docs/specs/bank-sync.md` section 7). Every provider call runs outside any
+transaction: the fetch first, then one `withScopedDb` write that inserts the
+ledger row (`ON CONFLICT DO NOTHING RETURNING`, INV-BANKSYNC-001) before each
+transaction row. A process that dies between the fetch and the write has
+written nothing, and the next sync fetches again. The per-account lease
+(`JobClaimType.BankSyncAccount`) is released in a `finally`; it saves the
+bank's unattended-read allowance, and the ledger, not the lease, is what keeps
+a race correct.
+
+Two calls do have an effect at the provider. Starting an authorization is
+preceded by durable state (the connection row with the state hash, EXT-001),
+so an authorization that the user never completes is a `pending` row, not an
+orphan. Disconnecting asks the provider to delete the session before the
+local delete, and does not block on the answer: a session the provider kept
+expires with its consent. The previous session after a re-authorization is
+revoked the same way.
 
 ### Payee contact enrichment
 
@@ -583,6 +687,35 @@ JavaScript where the browser sets the header, and this key never leaves the
 server -- so an IP restriction is the one that actually constrains it. The header
 is sent because a deployment with no stable egress address cannot use an IP
 restriction at all.
+
+### Mailbox OAuth token endpoints (Google, Microsoft 365)
+
+The email receipts mailbox can sign in with OAuth2 instead of a password
+(`docs/future-plans/email-receipts.md` section 3a). Two calls leave the process,
+both from `backend/src/email-receipts/oauth/oauth-token.client.ts` and nowhere
+else: the code exchange that connects a mailbox and the refresh that obtains an
+access token for each IMAP connection. Neither writes anything the provider must
+later undo; what a failure leaves is decided by the caller:
+
+- **The secrets travel in the form body, never in a header**, so the platform
+  cannot quote one in a `TypeError` for an unsendable header value (the failure
+  `isSendableApiKey` exists for in `docs/backend/ai-and-payees.md`). The request
+  uses `redirect: "error"` and a 15 second `AbortSignal.timeout`.
+- **An error message is the code and the HTTP status** (`invalid_grant`,
+  `invalid_client`, `rejected`, `unavailable`, `invalid_response`) plus
+  `describeFetchFailure`'s socket line with every request-body value redacted:
+  never the authorization code, a token, the client secret or the provider's
+  `error_description`.
+- **A refusal of the grant (`invalid_grant`) deletes the stored refresh token**
+  with a conditional `UPDATE ... WHERE oauth_refresh_token_enc = <ciphertext read>`;
+  the mailbox keeps its row and receipts, the poll skips it, and its `last_error`
+  says to connect again. A rotated refresh token is stored the same way, before
+  the access token is used. Any other failure keeps the token and is an ordinary
+  poll failure: the next poll asks again.
+- **The call runs outside any database transaction**; `withScopedDb` is entered
+  only to write the rotated or deleted token. The one-time `state` nonce is
+  claimed in its own transaction before the exchange, so a failed exchange leaves
+  it spent and the user starts the flow again (INV-RECEIPT-007).
 
 ## 7. There is no shared lifecycle, and one workflow shows what it would look like
 

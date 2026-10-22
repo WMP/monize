@@ -53,7 +53,8 @@
     "totalOfAccounts": "Total of Accounts",
     "legendAriaLabel": "Forecast lines",
     "tooltipTransactionForAccount": "{name} ({account})",
-    "unavailableMissingRates": "This forecast cannot be shown in {displayCurrency}: no exchange rate is available for {currencies}, and a projected balance builds on every day before it. Add a rate, or pick a single-currency account."
+    "unavailableMissingRates": "This forecast cannot be shown in {displayCurrency}: no exchange rate is available for {currencies}, and a projected balance builds on every day before it. Add a rate, or pick a single-currency account.",
+    "untitledTransaction": "Transaction"
   },
   "calendar": {
     "days": {

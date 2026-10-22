@@ -469,7 +469,7 @@ Notes on sizing and behaviour:
 the backend keeps rate-limit counters and cross-replica wake-ups in its own
 process, which is correct for one replica and wrong for two; at `multi` both
 live in PostgreSQL. Nothing else is added -- there is no second datastore to
-run, back up or secure. `docs/future-plans/horizontal-scaling.md` has the
+run, back up or secure. `docs/specs/horizontal-scaling.md` has the
 design.
 
 Two things the chart cannot verify, and the backend refuses to boot without:
@@ -583,8 +583,8 @@ claims the chart creates, not `volumeClaimTemplates`, and they carry
 
 RLS is an optional defense-in-depth layer that enforces per-user data isolation
 in the database itself. It is **off by default**; the standard single-role setup
-needs no changes here. See `docs/future-plans/row-level-security.md` (design) and
-the runbook for the phased rollout.
+needs no changes here. See `docs/specs/row-level-security.md` (design) and
+`docs/rls-runbook.md` for the phased rollout.
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|

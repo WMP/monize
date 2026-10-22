@@ -181,6 +181,7 @@ export async function seedLoans(api: ApiClient): Promise<void> {
       paymentFrequency: 'MONTHLY',
       paymentStartDate: nextDayOfMonth(today, 15),
       sourceAccountId: need(lookups.accounts, 'Primary Chequing', 'account').id,
+      interestCategoryId: need(lookups.categories, 'Loan Interest', 'category').id,
     });
   }
 

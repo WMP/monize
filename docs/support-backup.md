@@ -19,7 +19,15 @@ Starting from the same rows the normal export produces, the support backup:
   notes, memos, reference numbers, account numbers, institution logos/websites,
   the AI provider configs table (encrypted API keys), and the last-client
   timezone. Dropping descriptions also removes real figures banks paste into
-  them (e.g. `ODSETKI: 388,14`).
+  them (e.g. `ODSETKI: 388,14`). A security's bond link
+  (`securities.bond_program_id`) and its transactions' series
+  (`investment_transactions.bond_instrument_id`) are dropped too: their ids name
+  the exact program and series the masked symbol hides, and the copy's share quantities are scaled by a
+  non-integer `M`, which the bond engine refuses (a quantity must be a whole
+  number of bonds). The copy is therefore not valued by the engine; any
+  `bond_engine` price rows it carries stay as static prices. The auto-fetch flag
+  (`securities.bond_auto_fetch`) is kept: it is a boolean that re-identifies
+  nobody.
 - **Scales** every private amount by a single multiplier `M` (a non-integer > 1)
   while leaving **public reference values untouched** — exchange rates, security
   prices, per-unit costs and interest rates. Scaling a private amount but not a

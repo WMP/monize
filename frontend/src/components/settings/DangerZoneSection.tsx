@@ -10,6 +10,7 @@ import { userSettingsApi, DeleteDataOptions } from '@/lib/user-settings';
 import { useAuthStore } from '@/store/authStore';
 import { getErrorMessage } from '@/lib/errors';
 import { releasePushForSignOut } from '@/lib/push';
+import { beginSignOut, endSignOut } from '@/lib/logout-state';
 import { User } from '@/types/auth';
 import { takeOidcReauthArtifact } from '@/lib/stepUpToken';
 
@@ -86,6 +87,10 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
       } else {
         authData = { password: deleteAccountPassword };
       }
+      // Once the account is gone, the page still mounted here keeps polling and
+      // gets 401s; without this, the interceptor's hard replace to /login
+      // aborts the router.push below.
+      beginSignOut();
       const res = await userSettingsApi.deleteAccount(authData);
       if (res.downgraded) {
         toast.success(t('deleteAccount.toasts.downgraded'), {
@@ -103,6 +108,7 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
       logout();
       router.push('/login');
     } catch (error) {
+      endSignOut();
       toast.error(getErrorMessage(error, t('deleteAccount.toasts.failed')));
       setIsDeleting(false);
     }

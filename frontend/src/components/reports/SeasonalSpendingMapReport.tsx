@@ -82,13 +82,10 @@ export function SeasonalSpendingMapReport() {
 
   // Build heatmap grid data: categories x months
   const { gridData, globalMax } = useMemo(() => {
-    let max = 0;
     const grid = (patterns ?? []).map((pattern) => {
       const monthValues = MONTH_LABELS.map((_, idx) => {
         const monthData = pattern.monthlyAverages.find((m) => m.month === idx + 1);
-        const value = monthData?.average ?? 0;
-        if (value > max) max = value;
-        return value;
+        return monthData?.average ?? 0;
       });
       return {
         categoryId: pattern.categoryId,
@@ -98,6 +95,12 @@ export function SeasonalSpendingMapReport() {
         typical: pattern.typicalMonthlySpend,
       };
     });
+    let max = 0;
+    for (const row of grid) {
+      for (const value of row.values) {
+        if (value > max) max = value;
+      }
+    }
     return { gridData: grid, globalMax: max };
   }, [patterns, MONTH_LABELS]);
 

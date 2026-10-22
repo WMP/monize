@@ -1,5 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAuthStore } from './authStore';
+import { beginSignOut, isSigningOut } from '@/lib/logout-state';
+import {
+  buildIntradayCacheKey,
+  readIntradayCache,
+  writeIntradayCache,
+  type IntradayCachePayload,
+} from '@/components/investments/portfolio-chart-utils';
+import { LAST_TRANSACTION_CURRENCY_KEY } from '@/lib/lastTransactionCurrency';
+import {
+  LAST_TRANSACTION_DATE_KEY,
+  LAST_INVESTMENT_TRANSACTION_DATE_KEY,
+} from '@/lib/lastTransactionDate';
 
 // A single top-level mock for @/lib/auth -- the rehydration tests each
 // reconfigure rehydrateGetProfileMock to control how getProfile
@@ -86,6 +98,12 @@ describe('authStore', () => {
       expect(state.error).toBeNull();
       expect(state.isLoading).toBe(false);
     });
+
+    it('ends an earlier sign-out so 401 recovery applies again', () => {
+      beginSignOut();
+      useAuthStore.getState().login(mockUser, 'httpOnly');
+      expect(isSigningOut()).toBe(false);
+    });
   });
 
   describe('logout', () => {
@@ -126,6 +144,63 @@ describe('authStore', () => {
       // The store reaches the module through a dynamic import, so the call
       // lands a microtask later.
       await vi.waitFor(() => expect(clearShareInboxMock).toHaveBeenCalled());
+    });
+  });
+
+  // INV-SHARE-003: a cache one identity wrote is never drawn for the next.
+  describe('identity-scoped session storage', () => {
+    const payload: IntradayCachePayload = {
+      fetchedAt: 1,
+      points: [{ timestamp: '2026-01-01T10:00:00Z', value: 1000 }],
+      interval: '5m',
+      currency: 'USD',
+      fallbackToDaily: false,
+      skippedSymbols: [],
+      failedSymbols: [],
+    };
+
+    it('clears the intraday portfolio cache on logout', () => {
+      useAuthStore.getState().login(mockUser, 'httpOnly');
+      const key = buildIntradayCacheKey('1d', ['a1'], 'USD');
+      writeIntradayCache(key, payload);
+      expect(readIntradayCache(key)).not.toBeNull();
+
+      useAuthStore.getState().logout();
+
+      expect(window.sessionStorage.getItem(key)).toBeNull();
+    });
+
+    it('clears the remembered transaction date and currency on logout', () => {
+      for (const k of [
+        LAST_TRANSACTION_DATE_KEY,
+        LAST_INVESTMENT_TRANSACTION_DATE_KEY,
+        LAST_TRANSACTION_CURRENCY_KEY,
+      ]) {
+        window.sessionStorage.setItem(k, '{"savedAt":1}');
+      }
+
+      useAuthStore.getState().logout();
+
+      expect(window.sessionStorage.getItem(LAST_TRANSACTION_DATE_KEY)).toBeNull();
+      expect(
+        window.sessionStorage.getItem(LAST_INVESTMENT_TRANSACTION_DATE_KEY),
+      ).toBeNull();
+      expect(
+        window.sessionStorage.getItem(LAST_TRANSACTION_CURRENCY_KEY),
+      ).toBeNull();
+    });
+
+    it('leaves an entry written by user A unreadable once user B signs in', () => {
+      useAuthStore.getState().login(mockUser, 'httpOnly');
+      const keyA = buildIntradayCacheKey('1d', ['a1'], 'USD');
+      writeIntradayCache(keyA, payload);
+
+      // No logout: the same tab, a second identity.
+      useAuthStore.setState({ user: { ...mockUser, id: 'user-2' } });
+      const keyB = buildIntradayCacheKey('1d', ['a1'], 'USD');
+
+      expect(keyB).not.toBe(keyA);
+      expect(readIntradayCache(keyB)).toBeNull();
     });
   });
 

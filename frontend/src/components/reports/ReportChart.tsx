@@ -57,6 +57,35 @@ function getColumnMap(
   };
 }
 
+interface ReportChartTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: AggregatedDataPoint & { color: string } }>;
+  total: number;
+  formatCurrency: (value: number) => string;
+  formatPercent: (value: number, decimals?: number) => string;
+}
+
+function ReportChartTooltip({ active, payload, total, formatCurrency, formatPercent }: ReportChartTooltipProps) {
+  if (active && payload && payload.length) {
+    const item = payload[0].payload;
+    const percentage = total > 0 ? (item.value / total) * 100 : 0;
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+        <p className="font-medium text-gray-900 dark:text-gray-100">{item.label}</p>
+        <p className="text-gray-600 dark:text-gray-400">
+          {formatCurrency(item.value)} ({formatPercent(percentage, 1)})
+        </p>
+        {item.count !== undefined && (
+          <p className="text-sm text-gray-500 dark:text-gray-500">
+            {item.count} transaction{item.count !== 1 ? 's' : ''}
+          </p>
+        )}
+      </div>
+    );
+  }
+  return null;
+}
+
 export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableColumns, exportFilename, reportTitle, reportSubtitle }: ReportChartProps) {
   const { formatCurrency, formatNumber, formatPercent } = useNumberFormat();
   const { formatDate } = useDateFormat();
@@ -111,33 +140,6 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
     });
   };
 
-  const CustomTooltip = ({
-    active,
-    payload,
-  }: {
-    active?: boolean;
-    payload?: Array<{ payload: AggregatedDataPoint & { color: string } }>;
-  }) => {
-    if (active && payload && payload.length) {
-      const item = payload[0].payload;
-      const percentage = total > 0 ? (item.value / total) * 100 : 0;
-      return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 dark:text-gray-100">{item.label}</p>
-          <p className="text-gray-600 dark:text-gray-400">
-            {formatCurrency(item.value)} ({formatPercent(percentage, 1)})
-          </p>
-          {item.count !== undefined && (
-            <p className="text-sm text-gray-500 dark:text-gray-500">
-              {item.count} transaction{item.count !== 1 ? 's' : ''}
-            </p>
-          )}
-        </div>
-      );
-    }
-    return null;
-  };
-
   const isTimeBased = groupBy === GroupByType.MONTH || groupBy === GroupByType.WEEK || groupBy === GroupByType.DAY;
 
   const exportBar = (
@@ -163,13 +165,16 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
                   paddingAngle={2}
                   dataKey="value"
                   cursor={onDataPointClick ? 'pointer' : 'default'}
-                  onClick={(entry) => entry.id && onDataPointClick?.(entry.id)}
+                  onClick={(entry) => {
+                    const { id } = entry as typeof entry & { id?: string };
+                    if (id) onDataPointClick?.(id);
+                  }}
                 >
                   {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<ReportChartTooltip total={total} formatCurrency={formatCurrency} formatPercent={formatPercent} />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -198,7 +203,7 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
                   tickFormatter={(value) => formatNumber(value, 0)}
                   className="text-gray-600 dark:text-gray-400"
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<ReportChartTooltip total={total} formatCurrency={formatCurrency} formatPercent={formatPercent} />} />
                 <Bar
                   dataKey="value"
                   cursor={onDataPointClick ? 'pointer' : 'default'}
@@ -236,7 +241,7 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
                   tickFormatter={(value) => formatNumber(value, 0)}
                   className="text-gray-600 dark:text-gray-400"
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<ReportChartTooltip total={total} formatCurrency={formatCurrency} formatPercent={formatPercent} />} />
                 <Line
                   type="monotone"
                   dataKey="value"

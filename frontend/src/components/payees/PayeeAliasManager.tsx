@@ -19,22 +19,35 @@ export function PayeeAliasManager({ payeeId, onPendingAliasesChange }: PayeeAlia
   const [aliases, setAliases] = useState<PayeeAlias[]>([]);
   const [pendingAliases, setPendingAliases] = useState<string[]>([]);
   const [newAlias, setNewAlias] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
-
   const isLocalMode = !payeeId;
 
-  const loadAliases = useCallback(async () => {
-    if (isLocalMode) return;
-    setIsLoading(true);
-    try {
-      const data = await payeesApi.getAliases(payeeId);
-      setAliases(data);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('aliases.toasts.loadFailed')));
-    } finally {
-      setIsLoading(false);
-    }
+  const [isLoading, setIsLoading] = useState(!isLocalMode);
+  const [isAdding, setIsAdding] = useState(false);
+
+  // A different payee is a new request: it shows as loading from the render
+  // that asks for it (the "info from previous render" pattern), not from a
+  // setState in the effect that fetches it.
+  const [loadingFor, setLoadingFor] = useState(payeeId);
+  if (loadingFor !== payeeId) {
+    setLoadingFor(payeeId);
+    if (payeeId) setIsLoading(true);
+  }
+
+  const loadAliases = useCallback(() => {
+    if (isLocalMode) return Promise.resolve();
+    // The writes live in the inner function so they run after the request,
+    // not during the effect that starts it.
+    const run = async () => {
+      try {
+        const data = await payeesApi.getAliases(payeeId);
+        setAliases(data);
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('aliases.toasts.loadFailed')));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [payeeId, isLocalMode, t]);
 
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { ImportRegularProcessorService } from "./import-regular-processor.service";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { ImportContext } from "./import-context";
 import { ImportResultDto } from "./dto/import.dto";
 import { AccountType } from "../accounts/entities/account.entity";
@@ -73,9 +74,11 @@ describe("ImportRegularProcessorService import rules", () => {
     importStartTime: new Date(),
     dateCounters: new Map(),
     affectedAccountIds: new Set(),
+    settledScheduleIds: new Set(),
     importResult: {
       imported: 0,
       skipped: 0,
+      skippedRows: [],
       errors: 0,
       errorMessages: [],
       categoriesCreated: 0,
@@ -84,6 +87,7 @@ describe("ImportRegularProcessorService import rules", () => {
       securitiesCreated: 0,
     } as ImportResultDto,
     transferDupCounts: new Map(),
+    heldExternalIds: new Map(),
     importRules: rules,
     ...over,
   });
@@ -96,7 +100,12 @@ describe("ImportRegularProcessorService import rules", () => {
     }) as unknown as RuleEffects;
 
   const applied = (changes: object): AppliedRuleRow[] => [
-    { transactionId: "saved-tx", effects: effectsWith(changes) },
+    {
+      transactionId: "saved-tx",
+      effects: effectsWith(changes),
+      affectedAccountIds: [],
+      settledScheduleIds: [],
+    },
   ];
 
   beforeEach(() => {
@@ -109,6 +118,7 @@ describe("ImportRegularProcessorService import rules", () => {
     };
     service = new ImportRegularProcessorService(
       applier as unknown as TransactionRulesApplierService,
+      {} as ExchangeRateService,
     );
   });
 
@@ -221,6 +231,34 @@ describe("ImportRegularProcessorService import rules", () => {
     await service.processTransaction(ctx, { date: "2025-01-17", amount: -3 });
     expect(ctx.importResult.transactionsChangedByRules).toBe(2);
     expect(ctx.importResult.imported).toBe(3);
+  });
+
+  it("adds the accounts a structural action moved to the import's affected accounts", async () => {
+    const ctx = makeContext();
+    applier.applyToNew.mockResolvedValueOnce([
+      {
+        transactionId: "saved-tx",
+        effects: effectsWith({}),
+        affectedAccountIds: ["loan-account"],
+        settledScheduleIds: [],
+      },
+    ]);
+    await service.processTransaction(ctx, { date: "2025-01-15", amount: -1 });
+    expect(ctx.affectedAccountIds.has("loan-account")).toBe(true);
+  });
+
+  it("adds the schedules a settlement claimed on to the import's settled schedules, for the post-commit reprice", async () => {
+    const ctx = makeContext();
+    applier.applyToNew.mockResolvedValueOnce([
+      {
+        transactionId: "saved-tx",
+        effects: effectsWith({}),
+        affectedAccountIds: ["loan-account"],
+        settledScheduleIds: ["st-loan"],
+      },
+    ]);
+    await service.processTransaction(ctx, { date: "2025-01-15", amount: -1 });
+    expect(ctx.settledScheduleIds).toEqual(new Set(["st-loan"]));
   });
 
   it("leaves the counter absent when no rule changed a row", async () => {

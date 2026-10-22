@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
@@ -67,26 +67,35 @@ function PayeesContent() {
   const [mergePayee, setMergePayee] = useState<Payee | null>(null);
   const { showForm, editingItem, openCreate, openEdit, close, isEditing, modalProps, setFormDirty, unsavedChangesDialog, formSubmitRef } = useFormModal<Payee>();
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [payeesData, categoriesData] = await Promise.all([
-        payeesApi.getAll('all'),
-        categoriesApi.getAll(),
-      ]);
-      setPayees(payeesData);
-      setCategories(categoriesData);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('page.toasts.loadFailed')));
-      logger.error(error);
-    } finally {
-      setIsLoading(false);
-    }
+  // The mount load: the state already says loading.
+  const fetchData = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const [payeesData, categoriesData] = await Promise.all([
+          payeesApi.getAll('all'),
+          categoriesApi.getAll(),
+        ]);
+        setPayees(payeesData);
+        setCategories(categoriesData);
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('page.toasts.loadFailed')));
+        logger.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [t]);
 
+  const loadData = useCallback(() => {
+    setIsLoading(true);
+    return fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    fetchData();
+  }, [fetchData]);
 
   useOnUndoRedo(loadData);
   // Refresh after the AI assistant creates or edits a payee from the chat.
@@ -256,9 +265,21 @@ function PayeesContent() {
     setCurrentPage(1);
   }, [sortField, setSortField, setSortDirection]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, statusFilter, categoryFilter]);
+  // A new search or filter starts again from the first page.
+  const handleSearchChange = (query: string) => {
+    if (query !== searchQuery) setCurrentPage(1);
+    setSearchQuery(query);
+  };
+
+  const handleStatusFilterChange = (status: PayeeStatusFilter) => {
+    if (status !== statusFilter) setCurrentPage(1);
+    setStatusFilter(status);
+  };
+
+  const handleCategoryFilterChange = (filter: PayeeCategoryFilter) => {
+    if (filter !== categoryFilter) setCurrentPage(1);
+    setCategoryFilter(filter);
+  };
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -268,19 +289,17 @@ function PayeesContent() {
 
   // Deep link to a specific payee (e.g. the AI chat "View payees" link): once
   // the list has loaded, jump to the client-side page that contains it so the
-  // row can flash and scroll into view. Runs once per arrival.
+  // row can flash and scroll into view. Runs once per arrival, during render
+  // rather than in an effect.
   const highlightId = useHighlightParam();
-  const highlightJumpedRef = useRef(false);
-  useEffect(() => {
-    if (!highlightId || highlightJumpedRef.current || sortedPayees.length === 0) {
-      return;
-    }
+  const [highlightJumped, setHighlightJumped] = useState(false);
+  if (highlightId && !highlightJumped && sortedPayees.length > 0) {
     const index = sortedPayees.findIndex((p) => p.id === highlightId);
     if (index >= 0) {
-      highlightJumpedRef.current = true;
+      setHighlightJumped(true);
       setCurrentPage(Math.floor(index / PAGE_SIZE) + 1);
     }
-  }, [highlightId, sortedPayees]);
+  }
 
   // Summary counts
   const activeCount = payees.filter(p => p.isActive).length;
@@ -372,14 +391,14 @@ function PayeesContent() {
             type="text"
             placeholder={t('page.searchPlaceholder')}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="block w-full sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
           />
           <div className="flex rounded-md shadow-sm">
             {(['all', 'active', 'inactive'] as PayeeStatusFilter[]).map((status) => (
               <button
                 key={status}
-                onClick={() => setStatusFilter(status)}
+                onClick={() => handleStatusFilterChange(status)}
                 className={`px-4 py-2 text-sm font-medium border ${
                   statusFilter === status
                     ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'
@@ -402,7 +421,7 @@ function PayeesContent() {
             {(['all', 'noDefaultCategory', 'uncategorizedTransactions'] as PayeeCategoryFilter[]).map((filter) => (
               <button
                 key={filter}
-                onClick={() => setCategoryFilter(filter)}
+                onClick={() => handleCategoryFilterChange(filter)}
                 className={`px-4 py-2 text-sm font-medium border ${
                   categoryFilter === filter
                     ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'

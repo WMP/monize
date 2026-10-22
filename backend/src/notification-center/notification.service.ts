@@ -17,6 +17,8 @@ import {
 import { DismissNotificationsQueryDto } from "./dto/dismiss-notifications-query.dto";
 
 import {
+  STATE_KEYED_DEDUPE_PREFIXES,
+  STATE_KEYED_FORGET_DAYS,
   boundedTitle,
   boundedDedupeKey,
   boundedTarget,
@@ -322,13 +324,25 @@ export class NotificationService {
     try {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - RETENTION_DAYS);
+      // A state-keyed bond row is the only memory that its event was raised, so
+      // it outlives the window and goes only once dismissed and this old.
+      const forgetCutoff = new Date();
+      forgetCutoff.setDate(forgetCutoff.getDate() - STATE_KEYED_FORGET_DAYS);
+      // Matched with starts_with, not LIKE: a prefix is literal text, and a
+      // LIKE pattern would read its `_` as a wildcard.
+      const stateKeyed = [...STATE_KEYED_DEDUPE_PREFIXES];
 
       // Cross-user bulk purge, so it runs under a system context (task C2).
       const { dismissed, read } = await withSystemContext(async () => {
         const dismissedResult = await withScopedDb(this.dataSource, (manager) =>
-          manager.query(`DELETE FROM notifications WHERE dismissed_at < $1`, [
-            cutoff,
-          ]),
+          manager.query(
+            `DELETE FROM notifications
+              WHERE (dismissed_at < $1
+                     AND NOT EXISTS (SELECT 1 FROM unnest($2::text[]) AS p(prefix)
+                                     WHERE starts_with(COALESCE(dedupe_key, ''), p.prefix)))
+                 OR dismissed_at < $3`,
+            [cutoff, stateKeyed, forgetCutoff],
+          ),
         );
         // A read-but-not-dismissed row that an ACTIVE reminder nags about is
         // kept: the FK is ON DELETE SET NULL and the reminder cron's sweep
@@ -342,12 +356,14 @@ export class NotificationService {
               WHERE n.is_read = true
                 AND n.dismissed_at IS NULL
                 AND n.created_at < $1
+                AND NOT EXISTS (SELECT 1 FROM unnest($2::text[]) AS p(prefix)
+                                 WHERE starts_with(COALESCE(n.dedupe_key, ''), p.prefix))
                 AND NOT EXISTS (
                   SELECT 1 FROM notification_reminders r
                    WHERE r.source_notification_id = n.id
                      AND r.stopped_at IS NULL
                 )`,
-            [cutoff],
+            [cutoff, stateKeyed],
           ),
         );
         return {

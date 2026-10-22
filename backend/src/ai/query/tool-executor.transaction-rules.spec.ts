@@ -22,6 +22,9 @@ import { AttachmentToolPrepService } from "../../attachments/attachment-tool-pre
 import { RelayAttachmentStore } from "../relay/relay-attachment.store";
 import { ExchangeRateService } from "../../currencies/exchange-rate.service";
 import { AiReviewWorkService } from "../../ai-review/ai-review-work.service";
+import { EmailReceiptParserToolsService } from "../../email-receipts/parsers/email-receipt-parser-tools.service";
+import { BondSeriesService } from "../../bonds/bond-series.service";
+import { WarrantiesService } from "../../warranties/warranties.service";
 import { TransactionRuleToolPrepService } from "../../transaction-rules/rule-tool-prep.service";
 
 const USER = "user-1";
@@ -40,6 +43,8 @@ const rule = {
   enabled: true,
   triggers: ["create", "import"] as ("create" | "import")[],
   stopProcessing: false,
+  activeFrom: null,
+  activeTo: null,
   condition: { field: "payeeId", op: "eq", value: "p1" } as const,
   actions: [{ type: "set_category", categoryId: CAT, onlyIfEmpty: true }],
 };
@@ -136,6 +141,9 @@ describe("ToolExecutorService transaction rule tools", () => {
         AiActionBuilderService,
         { provide: AiActionSigningService, useValue: signing },
         { provide: AiReviewWorkService, useValue: {} },
+        { provide: EmailReceiptParserToolsService, useValue: {} },
+        { provide: BondSeriesService, useValue: {} },
+        { provide: WarrantiesService, useValue: {} },
         { provide: TransactionRuleToolPrepService, useValue: prep },
         ...unused,
       ],
@@ -241,6 +249,30 @@ describe("ToolExecutorService transaction rule tools", () => {
           endDate: "2026-02-01",
           limit: 20,
         },
+      );
+    });
+
+    it("hands the active window to the preparation, for a draft test as for a write", async () => {
+      await service.execute(USER, "manage_transaction_rules", {
+        operation: "create",
+        name: "Mortgage",
+        activeFrom: "2026-10-01",
+        activeTo: "",
+        ...draft,
+      });
+      expect(prep.prepareCreate).toHaveBeenCalledWith(
+        USER,
+        expect.objectContaining({ activeFrom: "2026-10-01", activeTo: "" }),
+      );
+      await service.execute(USER, "manage_transaction_rules", {
+        operation: "test",
+        activeFrom: "2026-10-01",
+        ...draft,
+      });
+      expect(prep.prepareTest).toHaveBeenCalledWith(
+        USER,
+        expect.objectContaining({ activeFrom: "2026-10-01" }),
+        expect.anything(),
       );
     });
 

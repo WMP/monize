@@ -1,11 +1,25 @@
 import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { ArrayContains, EntityManager, In } from "typeorm";
+import { Account } from "../accounts/entities/account.entity";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { PayeesService } from "../payees/payees.service";
+import { AccountsService } from "../accounts/accounts.service";
+import { convertRowToTransfer } from "../transactions/convert-to-transfer";
+import { CreateTransactionSplitDto } from "../transactions/dto/create-transaction-split.dto";
+import { TransactionSplitService } from "../transactions/transaction-split.service";
 import { Tag } from "../tags/entities/tag.entity";
 import { TransactionTag } from "../tags/entities/transaction-tag.entity";
+import { ensureYMD } from "../common/recurrence";
+import {
+  ClaimedLoanOccurrence,
+  claimLoanOccurrence,
+} from "../loan-installments/claim-loan-occurrence";
 import { AiReviewRequestsService } from "../ai-review/ai-review-requests.service";
+import {
+  AiReviewRequest,
+  OPEN_AI_REVIEW_STATUSES,
+} from "../ai-review/ai-review-request.entity";
 import { TagsService } from "../tags/tags.service";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import {
@@ -26,6 +40,21 @@ import {
   buildRuleFacts,
   loadCategoryChains,
 } from "./rule-facts";
+import { RuleStructurePlan, SplitStructurePlan } from "./rule-structure";
+import { loadRuleTargetAccounts } from "./rule-target-accounts";
+import {
+  LoanFactsSource,
+  answerLoanFactsLookups,
+  newLoanFactsSource,
+} from "./rule-loan-facts";
+import { RuleFacts } from "./rule-condition.types";
+import { loadRuleLabels, mergeRuleLabels } from "./rule-labels";
+import {
+  ListedRule,
+  RuleRowExplanation,
+  assembleExplainedRules,
+  explainedIds,
+} from "./rule-row-explain";
 import { toRuleResponses } from "./transaction-rule-view";
 import {
   RuleApplicationSource,
@@ -38,6 +67,20 @@ import { RuleTrigger } from "./rule-trigger.types";
 export interface AppliedRuleRow {
   readonly transactionId: string;
   readonly effects: RuleEffects;
+  /**
+   * The accounts whose balance a structural action moved (the target of a
+   * conversion, the transfer parts of a split). Empty for every other rule.
+   * The caller dispatches the net-worth recompute for them after its commit
+   * (INV-CACHE-001); the applier never does.
+   */
+  readonly affectedAccountIds: readonly string[];
+  /**
+   * The scheduled payments a `settle_loan_installment` claimed an occurrence
+   * of (at most one per row). The caller reprices each one's template
+   * (`rewriteLoanTemplate`) after its commit, never inside the transaction
+   * (INV-CACHE-001, `docs/specs/loan-installment-settlement.md` section 12.8).
+   */
+  readonly settledScheduleIds: readonly string[];
 }
 
 /** The two stored legs of a transfer just written, and who owns each. */
@@ -56,6 +99,18 @@ export interface ApplyToNewOptions {
    * named here falls back to its stored `payee_name`.
    */
   readonly payeeTextById?: ReadonlyMap<string, string | null>;
+  /**
+   * The rows were written by an actor who is not the owner (a joint-account member, or a delegate acting as the owner):
+   * structural actions are skipped (`structural_not_allowed_for_actor`).
+   */
+  readonly structuralNotAllowed?: boolean;
+  /**
+   * The rows are a bill `post()` just created. Set by that path only, never
+   * from a request: a `settle_loan_installment` refuses them
+   * (`row_from_scheduled_posting`), because the occurrence they pay is the
+   * one `post()` claimed.
+   */
+  readonly fromScheduledPosting?: boolean;
 }
 
 /**
@@ -63,6 +118,8 @@ export interface ApplyToNewOptions {
  * payee, a tag and a rule by name and never an id.
  */
 export interface RuleEffectsLabels {
+  /** Account names of the targets a structural action's plan names. */
+  readonly accounts: Readonly<Record<string, string>>;
   readonly categories: Readonly<Record<string, string>>;
   readonly payees: Readonly<Record<string, string>>;
   readonly tags: Readonly<Record<string, string>>;
@@ -83,6 +140,69 @@ export type RuleRowInput = Omit<RuleFactsInput, "categoryAncestorIds"> & {
   readonly payeeName?: string | null;
 };
 
+/** What the planner may be told besides the row: the transfer's owner and who wants to watch the evaluation. */
+export type RulePlanOptions = PlanRowContext;
+
+/**
+ * The columns of a row that a rule's facts are built from, as the row stores
+ * them. `amount` is what the column holds: a number, or the decimal string the
+ * driver returns for a `decimal(20,4)`. A row not stored yet may not know its
+ * amount or date (null): the facts then treat each as unknown.
+ */
+export type StoredRuleRow = Pick<
+  Transaction,
+  | "accountId"
+  | "currencyCode"
+  | "payeeId"
+  | "payeeName"
+  | "categoryId"
+  | "description"
+  | "isSplit"
+  | "isTransfer"
+  | "referenceNumber"
+  | "status"
+> & {
+  readonly amount: number | string | null;
+  readonly transactionDate: string | null;
+};
+
+/** What the caller knows about a stored row beyond its columns. */
+export interface StoredRuleRowExtras {
+  readonly tagIds: readonly string[];
+  /** The raw payee text of the source; the stored `payeeName` when the source has none. */
+  readonly payeeText: string | null;
+  readonly fromAccountId?: string | null;
+  readonly toAccountId?: string | null;
+}
+
+/**
+ * The input the rules are planned over for a row as it is stored. The one
+ * builder: the writer's `applyToNew` reads each stored row through it, and the
+ * import preview builds the row it would store and reads it through the same
+ * function, so the two cannot hand the rules different facts.
+ */
+export function ruleRowInputFromStored(
+  row: StoredRuleRow,
+  extras: StoredRuleRowExtras,
+): RuleRowInput {
+  return {
+    accountId: row.accountId,
+    currencyCode: row.currencyCode,
+    amount: row.amount,
+    isTransfer: row.isTransfer,
+    fromAccountId: extras.fromAccountId ?? null,
+    toAccountId: extras.toAccountId ?? null,
+    payeeId: row.payeeId,
+    payeeText: extras.payeeText,
+    payeeName: row.payeeName,
+    categoryId: row.categoryId,
+    description: row.description,
+    tagIds: extras.tagIds,
+    hasSplits: row.isSplit,
+    ...storedRowFacts(row),
+  };
+}
+
 /**
  * The X3 facts of a row this applier has just been handed: reference number,
  * date and status from the stored row. A row written in this transaction has
@@ -91,7 +211,9 @@ export type RuleRowInput = Omit<RuleFactsInput, "categoryAncestorIds"> & {
  * is not stored.
  */
 function storedRowFacts(
-  row: Pick<Transaction, "referenceNumber" | "transactionDate" | "status">,
+  row: Pick<Transaction, "referenceNumber" | "status"> & {
+    readonly transactionDate: string | null;
+  },
 ): Pick<
   RuleFactsInput,
   "referenceNumber" | "transactionDate" | "status" | "hasAttachment"
@@ -104,6 +226,23 @@ function storedRowFacts(
   };
 }
 
+/**
+ * What a caller knows about the row besides its facts: transfer ownership, the
+ * target accounts, the row's id, the loan facts and the settlements planned
+ * earlier in the pass, and who wants to watch the evaluation.
+ */
+export type PlanRowContext = Pick<
+  RulePlanContext,
+  | "crossOwnerTransferLeg"
+  | "accounts"
+  | "structuralNotAllowed"
+  | "onEvaluate"
+  | "transactionId"
+  | "fromScheduledPosting"
+  | "loanFacts"
+  | "priorSettlements"
+>;
+
 /** Payee lookups made while planning; share one across the rows of a call. */
 export type PayeeLookupCache = Map<string, PayeeResolution | null>;
 
@@ -112,6 +251,38 @@ export type PayeeLookupCache = Map<string, PayeeResolution | null>;
  * plan needed and plans again; a rule list needs one or two.
  */
 const MAX_PAYEE_LOOKUP_ROUNDS = 12;
+
+/**
+ * Planning rounds for loan facts. The loader answers a loan's schedule, slots,
+ * claims and slot debts in one read, so a row needs one round; a second widens
+ * a read whose window did not cover the row, and the bound stops a plan that
+ * keeps asking.
+ */
+export const MAX_LOAN_FACTS_ROUNDS = 3;
+
+/**
+ * The rows of one `applyToNew` call oldest first: by date, then by the order
+ * they were written (`created_at`, which an import spaces by file position),
+ * then by id so two rows written in one statement order the same way twice.
+ * A settlement written for an earlier row is in the ledger when the next row
+ * plans, so the fold runs forward through time whatever order the caller
+ * listed the ids in (INV-RULE-005). The same three legs, as a query, are
+ * `applyRegisterOrder(..., "ASC")`.
+ */
+function chronological(rows: readonly Transaction[]): Transaction[] {
+  const writtenAt = (row: Transaction): number =>
+    row.createdAt instanceof Date ? row.createdAt.getTime() : 0;
+  return [...rows].sort(
+    (a, b) =>
+      (a.transactionDate < b.transactionDate
+        ? -1
+        : a.transactionDate > b.transactionDate
+          ? 1
+          : 0) ||
+      writtenAt(a) - writtenAt(b) ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  );
+}
 
 /**
  * Applies a user's transaction rules to rows in the caller's transaction
@@ -130,6 +301,11 @@ export class TransactionRulesApplierService {
     // forwardRef: PayeesModule reaches this module back through TransactionsModule.
     @Inject(forwardRef(() => PayeesService))
     private readonly payeesService: PayeesService,
+    // forwardRef: the transactions module reaches this one (create's rules step).
+    @Inject(forwardRef(() => AccountsService))
+    private readonly accountsService: AccountsService,
+    @Inject(forwardRef(() => TransactionSplitService))
+    private readonly splitService: TransactionSplitService,
   ) {}
 
   /**
@@ -147,9 +323,18 @@ export class TransactionRulesApplierService {
       order: { position: "ASC" },
     });
     if (rules.length === 0) return [];
+    const invalid = await this.invalidRuleIds(m, userId, rules);
+    return rules.filter((rule) => !invalid.has(rule.id));
+  }
+
+  /** The ids among `rules` whose definition no longer validates or names an id that is gone. */
+  private async invalidRuleIds(
+    m: EntityManager,
+    userId: string,
+    rules: readonly TransactionRule[],
+  ): Promise<Set<string>> {
     const views = await toRuleResponses(m, userId, rules);
-    const usable = new Set(views.filter((v) => !v.invalid).map((v) => v.id));
-    return rules.filter((rule) => usable.has(rule.id));
+    return new Set(views.filter((v) => v.invalid).map((v) => v.id));
   }
 
   /**
@@ -162,11 +347,24 @@ export class TransactionRulesApplierService {
     userId: string,
     input: RuleRowInput,
     rules: readonly TransactionRule[],
-    context: Pick<RulePlanContext, "crossOwnerTransferLeg"> = {},
+    context: PlanRowContext = {},
   ): Promise<RuleEffects> {
     if (rules.length === 0) return planRuleEffects(buildRuleFacts(input), []);
     const chains = await this.chainsFor(m, userId, rules, [input.categoryId]);
-    return this.planResolved(userId, input, rules, chains, context);
+    const accounts = await loadRuleTargetAccounts(m, userId, rules);
+    return this.planResolved(
+      userId,
+      input,
+      rules,
+      chains,
+      { ...context, accounts },
+      new Map(),
+      // A plan for a row that may never be written reads unlocked.
+      newLoanFactsSource(m, userId, {
+        dates: [input.transactionDate],
+        lock: false,
+      }),
+    );
   }
 
   /**
@@ -178,31 +376,57 @@ export class TransactionRulesApplierService {
    * preview never creates a payee; a name nobody has stays a
    * `payeeCreated` note on the plan. `cache` is shared by the rows of one
    * call so a batch looks each name up once.
+   *
+   * A `settle_loan_installment` asks for its loan's facts the same way
+   * (`loanFactsLookups`): `loans` reads them in the caller's transaction and
+   * keeps them for the rows of the call, by loan account id. Without a source
+   * the plan uses `context.loanFacts` as it is.
    */
   async planResolved(
     userId: string,
     input: RuleRowInput,
     rules: readonly PlannableRule[],
     chains: ReadonlyMap<string, readonly string[]>,
-    context: Pick<RulePlanContext, "crossOwnerTransferLeg">,
+    context: PlanRowContext,
     cache: PayeeLookupCache = new Map(),
+    loans?: LoanFactsSource,
   ): Promise<RuleEffects> {
-    let effects = this.planWithChains(input, rules, chains, context, cache);
-    for (
-      let round = 0;
-      round < MAX_PAYEE_LOOKUP_ROUNDS && effects.payeeLookups !== undefined;
-      round++
-    ) {
-      const missing = effects.payeeLookups.filter(
-        (name) => !cache.has(payeeLookupKey(name)),
-      );
-      if (missing.length === 0) break;
-      for (const name of missing) {
-        cache.set(payeeLookupKey(name), await this.lookUpPayee(userId, name));
+    const withLoans: PlanRowContext =
+      loans === undefined ? context : { ...context, loanFacts: loans.entries };
+    const plan = () =>
+      this.planWithChains(input, rules, chains, withLoans, cache);
+    let effects = plan();
+    let payeeRounds = 0;
+    let loanRounds = 0;
+    for (;;) {
+      let answered = false;
+      if (
+        payeeRounds < MAX_PAYEE_LOOKUP_ROUNDS &&
+        effects.payeeLookups !== undefined
+      ) {
+        const missing = effects.payeeLookups.filter(
+          (name) => !cache.has(payeeLookupKey(name)),
+        );
+        for (const name of missing) {
+          cache.set(payeeLookupKey(name), await this.lookUpPayee(userId, name));
+        }
+        if (missing.length > 0) {
+          payeeRounds += 1;
+          answered = true;
+        }
       }
-      effects = this.planWithChains(input, rules, chains, context, cache);
+      if (
+        loans !== undefined &&
+        loanRounds < MAX_LOAN_FACTS_ROUNDS &&
+        effects.loanFactsLookups !== undefined &&
+        (await answerLoanFactsLookups(loans, effects.loanFactsLookups))
+      ) {
+        loanRounds += 1;
+        answered = true;
+      }
+      if (!answered) return effects;
+      effects = plan();
     }
-    return effects;
   }
 
   private async lookUpPayee(
@@ -234,6 +458,77 @@ export class TransactionRulesApplierService {
     };
   }
 
+  /**
+   * Why each of the user's rules for a trigger did or did not apply to one
+   * row, in the order the rules run. Read-only: it writes nothing and queues
+   * nothing.
+   *
+   * The effects are `planForRow`'s own, over the rules `loadRulesFor` would
+   * return (enabled and valid), so what is explained is what the writer does.
+   * Only the condition of each rule is added: the planner reports the facts it
+   * evaluated each condition against (`onEvaluate`, the row as the rules
+   * before it left it) and `explainRuleCondition` explains the tree over
+   * exactly those. A disabled or invalid rule is listed with the reason it was
+   * skipped; a rule after one that stopped the pass is listed as not
+   * evaluated.
+   */
+  async explainRow(
+    m: EntityManager,
+    userId: string,
+    input: RuleRowInput,
+    trigger: RuleTrigger,
+  ): Promise<RuleRowExplanation> {
+    const stored = await m.getRepository(TransactionRule).find({
+      where: { userId, triggers: ArrayContains([trigger]) },
+      order: { position: "ASC" },
+    });
+    const invalid =
+      stored.length === 0
+        ? new Set<string>()
+        : await this.invalidRuleIds(m, userId, stored);
+    const usable = stored.filter(
+      (rule) => rule.enabled && !invalid.has(rule.id),
+    );
+
+    // One pass over the rules is one run of the planner; a payee lookup the
+    // plan asks for plans again, and the facts of the last pass are the ones
+    // behind the trace it returned. A rule seen twice is a new pass.
+    let observed = new Map<string, RuleFacts>();
+    const effects = await this.planForRow(m, userId, input, usable, {
+      onEvaluate: (ruleId, facts) => {
+        if (observed.has(ruleId)) observed = new Map();
+        observed.set(ruleId, facts);
+      },
+    });
+
+    const listed: ListedRule[] = stored.map((rule) => ({
+      id: rule.id,
+      name: rule.name,
+      enabled: rule.enabled,
+      position: rule.position,
+      condition: rule.condition,
+      invalid: invalid.has(rule.id),
+    }));
+    const rules = assembleExplainedRules(listed, effects.trace, observed);
+
+    // Names for the effects (`labelsFor`), and the qualified names of every id
+    // a condition or an effect mentions; the qualified name wins.
+    const effectLabels = await this.labelsFor(m, userId, effects, usable);
+    const named = await loadRuleLabels(m, userId, explainedIds(rules));
+    return {
+      rules,
+      labels: mergeRuleLabels(
+        {
+          accounts: {},
+          payees: effectLabels.payees,
+          categories: effectLabels.categories,
+          tags: effectLabels.tags,
+        },
+        named,
+      ),
+    };
+  }
+
   /** Names for the ids the effects and their traces mention (public: the manual run labels a whole batch). */
   async labelsFor(
     m: EntityManager,
@@ -243,10 +538,26 @@ export class TransactionRulesApplierService {
   ): Promise<RuleEffectsLabels> {
     const categoryIds = new Set<string>();
     const payeeIds = new Set<string>();
+    const accountIds = new Set<string>();
     const tagIds = new Set<string>([
       ...effects.changes.addTagIds,
       ...effects.changes.removeTagIds,
     ]);
+    const structures = [
+      effects.changes.structure,
+      ...effects.trace.map((entry) => entry.changes.structure?.after),
+    ];
+    for (const structure of structures) {
+      if (!structure) continue;
+      if (structure.kind === "transfer") accountIds.add(structure.accountId);
+      else {
+        for (const part of structure.parts) {
+          if (part.categoryId) categoryIds.add(part.categoryId);
+          if (part.transferAccountId) accountIds.add(part.transferAccountId);
+          if (part.payeeId) payeeIds.add(part.payeeId);
+        }
+      }
+    }
     for (const entry of effects.trace) {
       const { categoryId, payeeId, tagIds: tags } = entry.changes;
       for (const id of [categoryId?.before, categoryId?.after])
@@ -257,7 +568,7 @@ export class TransactionRulesApplierService {
         tagIds.add(id);
     }
     const names = async (
-      entity: typeof Category | typeof Payee | typeof Tag,
+      entity: typeof Account | typeof Category | typeof Payee | typeof Tag,
       ids: Set<string>,
     ): Promise<Record<string, string>> => {
       if (ids.size === 0) return {};
@@ -268,6 +579,7 @@ export class TransactionRulesApplierService {
       return Object.fromEntries(found.map((row) => [row.id, row.name]));
     };
     return {
+      accounts: await names(Account, accountIds),
       categories: await names(Category, categoryIds),
       payees: await names(Payee, payeeIds),
       tags: await names(Tag, tagIds),
@@ -304,7 +616,9 @@ export class TransactionRulesApplierService {
       ));
     if (rules.length === 0) return [];
 
-    const rows = await m.find(Transaction, { where: { id: In(ids), userId } });
+    const rows = chronological(
+      await m.find(Transaction, { where: { id: In(ids), userId } }),
+    );
     const tagsByRow = await this.loadTagIds(m, ids);
     const chains = await this.chainsFor(
       m,
@@ -313,8 +627,17 @@ export class TransactionRulesApplierService {
       rows.map((row) => row.categoryId),
     );
 
+    const accounts = await loadRuleTargetAccounts(m, userId, rules);
     const applied: AppliedRuleRow[] = [];
     const lookups: PayeeLookupCache = new Map();
+    // This path writes: the loan's facts are read under the schedule row and
+    // account locks (spec section 13), so the claims and the debt each plan is
+    // made from are the ones its write acts on.
+    const loans = newLoanFactsSource(m, userId, {
+      rowIds: rows.map((row) => row.id),
+      dates: rows.map((row) => row.transactionDate),
+      lock: true,
+    });
     for (const row of rows) {
       const { input, context } = await this.inputFromRow(
         m,
@@ -328,19 +651,50 @@ export class TransactionRulesApplierService {
         input,
         rules,
         chains,
-        context,
+        {
+          ...context,
+          accounts,
+          ...(options.structuralNotAllowed
+            ? { structuralNotAllowed: true }
+            : {}),
+          ...(options.fromScheduledPosting
+            ? { fromScheduledPosting: true }
+            : {}),
+        },
         lookups,
+        loans,
       );
+      const affected = new Set<string>();
+      const settled = new Set<string>();
       const effects = await this.writeEffects(
         m,
         userId,
         row.id,
         planned,
         source,
+        affected,
+        settled,
       );
       // A payee this row created answers the lookups of the rows after it.
       if (planned.changes.createPayee !== undefined) lookups.clear();
-      applied.push({ transactionId: row.id, effects });
+      // A settlement this row wrote is a claim and a counterpart leg the rows
+      // after it must see: the loan's cached facts are dropped, so the next
+      // row that asks reads the claims and the debts the write left (spec
+      // section 7.2), rather than planning the same slot again on the debt
+      // before it. A plan made on the stale facts would reach the claim's
+      // backstop conflict, which throws.
+      if (
+        effects.changes.settlementClaim !== undefined &&
+        effects.changes.loanSettlement !== undefined
+      ) {
+        loans.entries.delete(effects.changes.loanSettlement.loanAccountId);
+      }
+      applied.push({
+        transactionId: row.id,
+        effects,
+        affectedAccountIds: [...affected],
+        settledScheduleIds: [...settled],
+      });
     }
     return this.queueAiReviews(m, userId, applied);
   }
@@ -404,17 +758,32 @@ export class TransactionRulesApplierService {
         },
         rules,
         chains,
-        { crossOwnerTransferLeg: !sameOwner },
+        {
+          crossOwnerTransferLeg: !sameOwner,
+          accounts: await loadRuleTargetAccounts(m, ownerId, rules),
+        },
       );
       // A payee the rules create is created once, for both legs.
       const effects = await this.resolveCreatedPayee(m, ownerId, planned);
       // One review request per transfer, on the outgoing leg (`primary`).
       const [queued] = await this.queueAiReviews(m, ownerId, [
-        { transactionId: primary.id, effects },
+        {
+          transactionId: primary.id,
+          effects,
+          affectedAccountIds: [],
+          settledScheduleIds: [],
+        },
       ]);
+      // A structural action is always refused on a transfer leg (the planner
+      // reports `row_is_transfer_leg`), so nothing here moves a balance.
       for (const row of rows) {
         await this.writeEffects(m, ownerId, row.id, effects, "create");
-        applied.push({ transactionId: row.id, effects: queued.effects });
+        applied.push({
+          transactionId: row.id,
+          effects: queued.effects,
+          affectedAccountIds: [],
+          settledScheduleIds: [],
+        });
       }
     }
     return applied;
@@ -455,17 +824,46 @@ export class TransactionRulesApplierService {
       return skipped.size === 0
         ? row
         : {
-            transactionId: row.transactionId,
+            ...row,
             effects: recordAiReviewAlreadyQueued(row.effects, skipped),
           };
     });
+  }
+
+  /**
+   * The transactions among `transactionIds` that already hold an open request
+   * from `ruleId`: the rows `queueAiReviews` would skip (the enqueue's dedupe
+   * covers exactly `OPEN_AI_REVIEW_STATUSES`), so a preview counts only the
+   * requests a run would really add.
+   */
+  async openAiReviewTransactionIds(
+    m: EntityManager,
+    userId: string,
+    ruleId: string,
+    transactionIds: readonly string[],
+  ): Promise<Set<string>> {
+    if (transactionIds.length === 0) return new Set();
+    const open = await m.getRepository(AiReviewRequest).find({
+      select: { transactionId: true },
+      where: {
+        userId,
+        ruleId,
+        transactionId: In([...transactionIds]),
+        status: In([...OPEN_AI_REVIEW_STATUSES]),
+      },
+    });
+    return new Set(
+      open
+        .map((r) => r.transactionId)
+        .filter((id): id is string => id !== null),
+    );
   }
 
   planWithChains(
     input: RuleRowInput,
     rules: readonly PlannableRule[],
     chains: ReadonlyMap<string, readonly string[]>,
-    context: Pick<RulePlanContext, "crossOwnerTransferLeg">,
+    context: PlanRowContext,
     payeeResolutions?: PayeeResolutions,
   ): RuleEffects {
     const facts = buildRuleFacts({
@@ -534,7 +932,7 @@ export class TransactionRulesApplierService {
     payeeTextById: ReadonlyMap<string, string | null> | undefined,
   ): Promise<{
     input: RuleRowInput;
-    context: Pick<RulePlanContext, "crossOwnerTransferLeg">;
+    context: PlanRowContext;
   }> {
     let fromAccountId: string | null = null;
     let toAccountId: string | null = null;
@@ -551,25 +949,15 @@ export class TransactionRulesApplierService {
       toAccountId = outgoing ? (partner?.accountId ?? null) : row.accountId;
     }
     return {
-      input: {
-        accountId: row.accountId,
-        currencyCode: row.currencyCode,
-        amount: row.amount,
-        isTransfer: row.isTransfer,
-        fromAccountId,
-        toAccountId,
-        payeeId: row.payeeId,
+      input: ruleRowInputFromStored(row, {
+        tagIds,
         payeeText: payeeTextById?.has(row.id)
           ? (payeeTextById.get(row.id) ?? null)
           : row.payeeName,
-        payeeName: row.payeeName,
-        categoryId: row.categoryId,
-        description: row.description,
-        tagIds,
-        hasSplits: row.isSplit,
-        ...storedRowFacts(row),
-      },
-      context: { crossOwnerTransferLeg },
+        fromAccountId,
+        toAccountId,
+      }),
+      context: { crossOwnerTransferLeg, transactionId: row.id },
     };
   }
 
@@ -625,8 +1013,23 @@ export class TransactionRulesApplierService {
 
   /**
    * Category, payee and description through the manager's parameterized
-   * UPDATE, tags through TagsService, one trace row per rule. Returns the
-   * effects as written (a payee the rules created now has its id).
+   * UPDATE, tags through TagsService, then the structure a structural action
+   * planned (a transfer counterpart or split lines, on the row as the patch
+   * left it), then, for a `settle_loan_installment`, the occurrence claim the
+   * split accounts for (`claimLoanOccurrence`: the claim, and the cursor
+   * advance when the slot is the bill's next due date), one trace row per
+   * rule. Returns the effects as written: a payee the rules created now has
+   * its id, the structure carries the ids of the counterpart legs it created,
+   * and a settlement carries its claim (`settlementClaim`).
+   *
+   * `affectedAccountIds` collects the accounts a structural write moved, and
+   * `settledScheduleIds` the schedules a settlement claimed on, for the caller
+   * to invalidate and reprice after its commit (INV-CACHE-001); nothing is
+   * recalculated or triggered in here. The claim's conflict is the one throw
+   * on this path (`docs/specs/loan-installment-settlement.md` decision 17):
+   * the planner refuses a taken slot before any write from the claims read
+   * under the locks, so the conflict is the database's backstop against a
+   * plan made on stale facts, and the caller's transaction rolls back.
    */
   async writeEffects(
     m: EntityManager,
@@ -634,9 +1037,11 @@ export class TransactionRulesApplierService {
     transactionId: string,
     planned: RuleEffects,
     source: RuleApplicationSource,
+    affectedAccountIds?: Set<string>,
+    settledScheduleIds?: Set<string>,
   ): Promise<RuleEffects> {
-    const effects = await this.resolveCreatedPayee(m, userId, planned);
-    const { changes } = effects;
+    const resolved = await this.resolveCreatedPayee(m, userId, planned);
+    const { changes } = resolved;
     const patch: Partial<
       Pick<Transaction, "categoryId" | "payeeId" | "payeeName" | "description">
     > = {
@@ -680,6 +1085,37 @@ export class TransactionRulesApplierService {
         changes.removeTagIds,
       );
     }
+    let effects = resolved;
+    if (changes.structure !== undefined) {
+      const written = await this.writeStructure(
+        m,
+        userId,
+        transactionId,
+        changes.structure,
+      );
+      for (const id of written.affectedAccountIds) affectedAccountIds?.add(id);
+      effects = withWrittenStructure(resolved, written.structure);
+      if (changes.loanSettlement !== undefined) {
+        // Only one rule can restructure a row (a later one sees the split),
+        // so the one entry carrying the settlement is the planning rule.
+        const planner = effects.trace.find(
+          (entry) => entry.changes.loanSettlement !== undefined,
+        );
+        if (planner === undefined || written.rowDate === undefined) {
+          throw new Error(
+            `writeEffects: settlement of ${transactionId} has no planning rule or no split row`,
+          );
+        }
+        const claim = await claimLoanOccurrence(m, userId, {
+          plan: changes.loanSettlement,
+          transactionId,
+          ruleId: planner.ruleId,
+          postedDate: written.rowDate,
+        });
+        settledScheduleIds?.add(claim.scheduledTransactionId);
+        effects = withWrittenClaim(effects, claim);
+      }
+    }
     const traceRows = effects.trace
       .filter((entry) => Object.keys(entry.changes).length > 0)
       .map((entry) => ({
@@ -694,4 +1130,200 @@ export class TransactionRulesApplierService {
     }
     return effects;
   }
+
+  /**
+   * Write the planned structure on the row as it stands (the field patch is
+   * already in): a transfer counterpart through `convertRowToTransfer`, or the
+   * split lines through the split service's `validateSplits` / `createSplits`
+   * (the path `PUT /transactions/:id/splits` uses), joined to the caller's
+   * transaction. Same-currency only (the planner refuses the rest), so no
+   * provider is called. Returns the structure with the counterpart ids and the
+   * accounts whose balance moved.
+   */
+  private async writeStructure(
+    m: EntityManager,
+    userId: string,
+    transactionId: string,
+    structure: RuleStructurePlan,
+  ): Promise<{
+    structure: RuleStructurePlan;
+    affectedAccountIds: readonly string[];
+    /** The row's date as a split read it; a settlement's claim is posted on it. */
+    rowDate?: string;
+  }> {
+    if (structure.kind === "transfer") {
+      const result = await convertRowToTransfer(
+        m,
+        this.accountsService,
+        userId,
+        transactionId,
+        structure.accountId,
+        {
+          clearCategory: structure.clearCategory,
+          expectedCounterpartAmount: structure.amount,
+        },
+      );
+      return {
+        structure: { ...structure, counterpartIds: [result.counterpartId] },
+        affectedAccountIds: result.affectedAccountIds,
+      };
+    }
+    return this.writeSplit(m, userId, transactionId, structure);
+  }
+
+  private async writeSplit(
+    m: EntityManager,
+    userId: string,
+    transactionId: string,
+    structure: SplitStructurePlan,
+  ): Promise<{
+    structure: RuleStructurePlan;
+    affectedAccountIds: readonly string[];
+    rowDate: string;
+  }> {
+    const row = await m.findOne(Transaction, {
+      where: { id: transactionId, userId },
+    });
+    if (!row) {
+      throw new Error(`Transaction ${transactionId} vanished mid-write`);
+    }
+    const parts: CreateTransactionSplitDto[] = structure.parts.map((part) => ({
+      amount: part.amount,
+      ...(part.categoryId !== null ? { categoryId: part.categoryId } : {}),
+      ...(part.transferAccountId !== null
+        ? { transferAccountId: part.transferAccountId }
+        : {}),
+      ...(part.memo !== null ? { memo: part.memo } : {}),
+    }));
+    this.splitService.validateSplits(parts, Number(row.amount));
+    const affected = new Set<string>();
+    const created = await this.splitService.createSplits(
+      row.id,
+      parts,
+      userId,
+      row.accountId,
+      new Date(row.transactionDate),
+      row.payeeName,
+      row.payeeId,
+      { parentStatus: row.status },
+      affected,
+    );
+    await m.update(
+      Transaction,
+      { id: row.id, userId },
+      { isSplit: true, categoryId: null },
+    );
+
+    // A transfer part's payee is the payee of its counterpart leg (a split
+    // line has no payee column of its own).
+    const counterpartIds: string[] = [];
+    const wantedPayees = new Set(
+      structure.parts
+        .map((part) => part.payeeId)
+        .filter((id): id is string => id !== null),
+    );
+    const payees =
+      wantedPayees.size === 0
+        ? []
+        : await m.find(Payee, {
+            where: { id: In([...wantedPayees]), userId },
+            select: { id: true, name: true },
+          });
+    const payeeNames = new Map(payees.map((payee) => [payee.id, payee.name]));
+    for (const [i, part] of structure.parts.entries()) {
+      if (part.transferAccountId === null) continue;
+      const counterpartId = created[i]?.linkedTransactionId;
+      if (!counterpartId) continue;
+      counterpartIds.push(counterpartId);
+      const name =
+        part.payeeId === null ? undefined : payeeNames.get(part.payeeId);
+      if (part.payeeId !== null && name !== undefined) {
+        await m.update(
+          Transaction,
+          { id: counterpartId, userId },
+          { payeeId: part.payeeId, payeeName: name },
+        );
+      }
+    }
+    return {
+      structure: {
+        ...structure,
+        counterpartIds,
+        lineIds: created.map((line) => line.id),
+      },
+      affectedAccountIds: [...affected],
+      rowDate: ensureYMD(row.transactionDate),
+    };
+  }
+}
+
+/**
+ * The effects with the claim a settlement wrote: on the net changes
+ * (`settlementClaim`, for the run snapshot) and on the trace entry that
+ * planned the settlement (`claimId`, `cursorAdvanced` and the cursor before
+ * and after, for the stored application row; spec section 12.2). The
+ * planned fields of the entry are unchanged, so the fingerprint of a stored
+ * trace is the plan's.
+ */
+function withWrittenClaim(
+  effects: RuleEffects,
+  claim: ClaimedLoanOccurrence,
+): RuleEffects {
+  return {
+    ...effects,
+    changes: { ...effects.changes, settlementClaim: claim },
+    trace: effects.trace.map((entry) => {
+      const planned = entry.changes.loanSettlement;
+      if (planned === undefined || planned.after === null) return entry;
+      return {
+        ...entry,
+        changes: {
+          ...entry.changes,
+          loanSettlement: {
+            before: planned.before,
+            after: {
+              ...planned.after,
+              claimId: claim.claimId,
+              cursorAdvanced: claim.cursorAdvanced,
+              ...(claim.cursor !== undefined
+                ? {
+                    cursor: {
+                      before: claim.cursor.before,
+                      after: claim.cursor.after,
+                    },
+                  }
+                : {}),
+            },
+          },
+        },
+      };
+    }),
+  };
+}
+
+/**
+ * The effects with the written structure (it carries the counterpart ids) in
+ * place of the planned one, in the net changes and in the trace entry that
+ * planned it, so the stored application row shows what was created.
+ */
+function withWrittenStructure(
+  effects: RuleEffects,
+  written: RuleStructurePlan,
+): RuleEffects {
+  const planned = effects.changes.structure;
+  return {
+    ...effects,
+    changes: { ...effects.changes, structure: written },
+    trace: effects.trace.map((entry) =>
+      entry.changes.structure?.after === planned
+        ? {
+            ...entry,
+            changes: {
+              ...entry.changes,
+              structure: { before: null, after: written },
+            },
+          }
+        : entry,
+    ),
+  };
 }

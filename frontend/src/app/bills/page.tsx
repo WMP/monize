@@ -21,12 +21,11 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
-import { transactionsApi } from '@/lib/transactions';
 import { categoriesApi } from '@/lib/categories';
 import { createCategoryFromInput } from '@/lib/category-create';
 import { buildCategoryColorMap } from '@/lib/categoryUtils';
 import { accountsApi } from '@/lib/accounts';
-import { ScheduledTransaction, ScheduledTransactionOverride } from '@/types/scheduled-transaction';
+import { SelectedLoanOccurrence, ScheduledTransaction, ScheduledTransactionOverride } from '@/types/scheduled-transaction';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
 import { useBillsFilters } from '@/hooks/useBillsFilters';
@@ -41,6 +40,7 @@ import { occurrenceKind } from '@/lib/scheduled-kind';
 import { scheduleEffectiveAmount } from '@/lib/scheduled-effective-amount';
 import { monthlyEquivalent } from '@/lib/frequency';
 import type { FutureTransaction } from '@/lib/forecast';
+import { loadFutureTransactions } from '@/lib/future-transactions';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { combineTotals, isComplete, sumConverted } from '@/lib/currency-total';
@@ -64,6 +64,9 @@ interface OverrideEditorState {
   existingOverride: ScheduledTransactionOverride | null;
   // When set (post-reconciliation flow), seeds the Amount field with this value.
   prefillAmount: number | null;
+  // A loan bill's occurrence as the server priced it at its own due date: the
+  // editor opens on its amount and lines rather than the template's.
+  loanOccurrence: SelectedLoanOccurrence | null;
 }
 
 /**
@@ -127,6 +130,7 @@ function BillsContent() {
     date: '',
     existingOverride: null,
     prefillAmount: null,
+    loanOccurrence: null,
   });
   // Prefill state for a new transfer schedule created from the reconcile flow.
   const [createPrefill, setCreatePrefill] = useState<{
@@ -160,53 +164,48 @@ function BillsContent() {
   // wins".
   const loadGenerationRef = useRef(0);
 
-  const loadData = useCallback(async () => {
-    const generation = ++loadGenerationRef.current;
-    setIsLoading(true);
-    try {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
-
-      const [transactionsData, categoriesData, accountsData, futureData] = await Promise.all([
-        scheduledTransactionsApi.getAll(),
-        categoriesApi.getAll(),
-        accountsApi.getAll(),
-        transactionsApi.getAll({ startDate: tomorrowStr, limit: 200 }),
-      ]);
-      // A newer load started while this one was awaiting: discard this result
-      // so it cannot overwrite the fresher state.
-      if (generation !== loadGenerationRef.current) return;
-      setScheduledTransactions(transactionsData);
-      setCategories(categoriesData);
-      setAccounts(accountsData);
-      setFutureTransactions(
-        futureData.data
-          .filter(t => t.status !== 'VOID')
-          .map(t => ({
-            id: t.id,
-            accountId: t.accountId,
-            name: t.payeeName || t.payee?.name || t.description || 'Transaction',
-            amount: Number(t.amount),
-            date: t.transactionDate.split('T')[0],
-          }))
-      );
-    } catch (error) {
-      // A superseded request must not surface an obsolete failure over a newer
-      // load that has already succeeded.
-      if (generation !== loadGenerationRef.current) return;
-      toast.error(getErrorMessage(error, t('toasts.loadFailed')));
-      logger.error(error);
-    } finally {
-      if (generation === loadGenerationRef.current) {
-        setIsLoading(false);
+  // The mount load: the state already says loading.
+  const fetchData = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      const generation = ++loadGenerationRef.current;
+      try {
+        const [transactionsData, categoriesData, accountsData, futureData] = await Promise.all([
+          scheduledTransactionsApi.getAll(),
+          categoriesApi.getAll(),
+          accountsApi.getAll(),
+          loadFutureTransactions(t('forecast.untitledTransaction')),
+        ]);
+        // A newer load started while this one was awaiting: discard this result
+        // so it cannot overwrite the fresher state.
+        if (generation !== loadGenerationRef.current) return;
+        setScheduledTransactions(transactionsData);
+        setCategories(categoriesData);
+        setAccounts(accountsData);
+        setFutureTransactions(futureData);
+      } catch (error) {
+        // A superseded request must not surface an obsolete failure over a newer
+        // load that has already succeeded.
+        if (generation !== loadGenerationRef.current) return;
+        toast.error(getErrorMessage(error, t('toasts.loadFailed')));
+        logger.error(error);
+      } finally {
+        if (generation === loadGenerationRef.current) {
+          setIsLoading(false);
+        }
       }
-    }
+    };
+    return run();
   }, [t]);
 
+  const loadData = useCallback(() => {
+    setIsLoading(true);
+    return fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    fetchData();
+  }, [fetchData]);
 
   useOnUndoRedo(loadData);
   // Refresh on AI chat-bubble writes (the forecast depends on transactions).
@@ -316,6 +315,7 @@ function BillsContent() {
       date,
       existingOverride,
       prefillAmount: prefillAmount ?? null,
+      loanOccurrence: null,
     });
   };
 
@@ -336,7 +336,7 @@ function BillsContent() {
     });
   };
 
-  const handleDatePickerSelect = async (date: string) => {
+  const handleDatePickerSelect = async (date: string, loanOccurrence?: SelectedLoanOccurrence) => {
     const transaction = datePicker.transaction;
     if (!transaction) return;
 
@@ -371,6 +371,7 @@ function BillsContent() {
         date: overrideByOverrideDate?.originalDate || date, // Use original date if this was an override
         existingOverride,
         prefillAmount: null,
+        loanOccurrence: loanOccurrence ?? null,
       });
     } catch (error) {
       logger.error('Failed to check for existing override:', error);
@@ -381,6 +382,7 @@ function BillsContent() {
         date,
         existingOverride: null,
         prefillAmount: null,
+        loanOccurrence: loanOccurrence ?? null,
       });
     }
   };
@@ -419,6 +421,7 @@ function BillsContent() {
       date: '',
       existingOverride: null,
       prefillAmount: null,
+      loanOccurrence: null,
     });
     if (wasReconcileDeepLink) {
       clearReconcileParams();
@@ -879,6 +882,7 @@ function BillsContent() {
           accounts={accounts}
           existingOverride={overrideEditor.existingOverride}
           prefillAmount={overrideEditor.prefillAmount}
+          loanOccurrence={overrideEditor.loanOccurrence}
           onClose={handleOverrideEditorClose}
           onSave={handleOverrideEditorSave}
           onCreateCategory={createCategoryFromTypedName}

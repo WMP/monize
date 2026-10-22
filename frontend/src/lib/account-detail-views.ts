@@ -1,4 +1,5 @@
 import type { AccountType } from '@/types/account';
+import type { AccountOpenTarget } from '@/lib/view-defaults';
 
 /**
  * Which per-type detail view an account opens on `/accounts/<id>`.
@@ -55,4 +56,17 @@ export function hasAccountDetailView(
   type: AccountType | undefined | null,
 ): boolean {
   return type != null && resolveAccountDetailView(type) !== null;
+}
+
+/**
+ * Whether clicking an account opens its detail page (its dashboard) rather
+ * than the surface's usual register: the reader chose the dashboard (the
+ * `accountOpenTarget` view default) and the type has one. A type without a
+ * detail page opens the register whatever the choice.
+ */
+export function opensAccountDashboard(
+  type: AccountType | undefined | null,
+  target: AccountOpenTarget,
+): boolean {
+  return target === 'dashboard' && hasAccountDetailView(type);
 }

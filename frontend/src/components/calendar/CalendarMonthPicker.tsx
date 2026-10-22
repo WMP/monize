@@ -78,7 +78,6 @@ export function CalendarMonthPicker({
     if (spaceBelow < PANEL_HEIGHT + gap + 8 && rect.top > spaceBelow) {
       top = Math.max(8, rect.top - PANEL_HEIGHT - gap);
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time position derived from the mounted anchor's DOM rect
     setPosition({ top, left });
   }, [anchorRef]);
 

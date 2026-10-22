@@ -498,6 +498,63 @@ describe("OFX Parser", () => {
       const result = parseOfx(ofx);
       expect(result.transactions[0].number).toBe("");
     });
+
+    it("reads each row's FITID, trimmed, and leaves it absent on a row without one", () => {
+      const ofx = `<OFX>
+<BANKMSGSRSV1>
+<STMTTRNRS>
+<STMTRS>
+<BANKTRANLIST>
+<STMTTRN>
+<TRNTYPE>DEBIT
+<DTPOSTED>20260115
+<TRNAMT>-50.00
+<FITID> 20260115-001
+<NAME>Store
+</STMTTRN>
+<STMTTRN>
+<TRNTYPE>DEBIT
+<DTPOSTED>20260116
+<TRNAMT>-20.00
+<NAME>Cafe
+</STMTTRN>
+<STMTTRN>
+<TRNTYPE>DEBIT
+<DTPOSTED>20260117
+<TRNAMT>-5.00
+<FITID>
+<NAME>Kiosk
+</STMTTRN>
+</BANKTRANLIST>
+</STMTRS>
+</STMTTRNRS>
+</BANKMSGSRSV1>
+</OFX>`;
+      const [first, second, third] = parseOfx(ofx).transactions;
+      expect(first.fitId).toBe("20260115-001");
+      expect(second).not.toHaveProperty("fitId");
+      expect(third).not.toHaveProperty("fitId");
+    });
+
+    it("reads the FITID of an XML-style row with closing tags", () => {
+      const ofx = `<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>
+<STMTTRN><TRNTYPE>CREDIT</TRNTYPE><DTPOSTED>20260115</DTPOSTED><TRNAMT>10.00</TRNAMT><FITID>abc-1</FITID><NAME>Refund</NAME></STMTTRN>
+</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>`;
+      expect(parseOfx(ofx).transactions[0].fitId).toBe("abc-1");
+    });
+
+    it("drops a FITID that two rows of the file share, and keeps the others", () => {
+      const row = (fitId: string, amount: string) =>
+        `<STMTTRN><TRNTYPE>DEBIT</TRNTYPE><DTPOSTED>20260115</DTPOSTED><TRNAMT>${amount}</TRNAMT><FITID>${fitId}</FITID><NAME>Store</NAME></STMTTRN>`;
+      const ofx = `<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>
+${row("0", "-5.00")}${row("U-1", "-6.00")}${row("0", "-7.00")}
+</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>`;
+
+      const [first, unique, repeat] = parseOfx(ofx).transactions;
+      expect(first).not.toHaveProperty("fitId");
+      expect(unique.fitId).toBe("U-1");
+      expect(repeat).not.toHaveProperty("fitId");
+    });
   });
 
   describe("parseOfx - amount parsing", () => {

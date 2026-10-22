@@ -14,6 +14,7 @@ import {
   AiWebSearchResponse,
   ModelVerificationResult,
 } from "./ai-provider.interface";
+import { anthropicTemperatureField } from "./anthropic-sampling.util";
 import { contentToPlainText, isContentBlocks } from "./content-blocks.util";
 import { providerFetch } from "./long-running-fetch";
 import { unverifiedModelReason } from "./model-verification.util";
@@ -191,9 +192,7 @@ export class AnthropicProvider implements AiProvider {
       max_tokens: request.maxTokens || 1024,
       system: this.toCachedSystem(request.systemPrompt),
       messages: this.toSimpleMessages(request.messages),
-      ...(request.temperature !== undefined && {
-        temperature: request.temperature,
-      }),
+      ...anthropicTemperatureField(this.modelId, request.temperature),
     });
 
     const textContent = response.content
@@ -246,9 +245,7 @@ export class AnthropicProvider implements AiProvider {
         system: this.toCachedSystem(request.systemPrompt),
         messages: turns,
         ...serverToolsField(anthropicWebSearchTool(variant, search)),
-        ...(request.temperature !== undefined && {
-          temperature: request.temperature,
-        }),
+        ...anthropicTemperatureField(this.modelId, request.temperature),
       });
 
     let response: Anthropic.Message;
@@ -308,9 +305,7 @@ export class AnthropicProvider implements AiProvider {
           max_tokens: request.maxTokens || 1024,
           system: this.toCachedSystem(request.systemPrompt),
           messages: this.toSimpleMessages(request.messages),
-          ...(request.temperature !== undefined && {
-            temperature: request.temperature,
-          }),
+          ...anthropicTemperatureField(this.modelId, request.temperature),
         },
         { signal: controller.signal },
       );
@@ -344,9 +339,7 @@ export class AnthropicProvider implements AiProvider {
         description: tool.description,
         input_schema: tool.inputSchema as Anthropic.Tool.InputSchema,
       })),
-      ...(request.temperature !== undefined && {
-        temperature: request.temperature,
-      }),
+      ...anthropicTemperatureField(this.modelId, request.temperature),
     });
 
     const textContent = response.content
@@ -406,9 +399,7 @@ export class AnthropicProvider implements AiProvider {
           description: tool.description,
           input_schema: tool.inputSchema as Anthropic.Tool.InputSchema,
         })),
-        ...(request.temperature !== undefined && {
-          temperature: request.temperature,
-        }),
+        ...anthropicTemperatureField(this.modelId, request.temperature),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

@@ -95,13 +95,30 @@ export class CategoryDetailService {
         [categoryId],
       );
 
-      const [stats, accounts, largestTransaction, defaultCategoryForPayees] =
-        await Promise.all([
-          this.getStats(m, userId, subtreeIds, category, accountScope),
-          this.getAccountBreakdown(m, userId, subtreeIds, accountScope),
-          this.getLargestTransaction(m, userId, subtreeIds, accountScope),
-          this.getDefaultCategoryPayees(m, userId, categoryId),
-        ]);
+      const stats = await this.getStats(
+        m,
+        userId,
+        subtreeIds,
+        category,
+        accountScope,
+      );
+      const accounts = await this.getAccountBreakdown(
+        m,
+        userId,
+        subtreeIds,
+        accountScope,
+      );
+      const largestTransaction = await this.getLargestTransaction(
+        m,
+        userId,
+        subtreeIds,
+        accountScope,
+      );
+      const defaultCategoryForPayees = await this.getDefaultCategoryPayees(
+        m,
+        userId,
+        categoryId,
+      );
 
       return {
         category,

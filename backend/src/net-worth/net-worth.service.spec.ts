@@ -130,6 +130,7 @@ describe("NetWorthService", () => {
     originalPrincipal: null,
     scheduledTransactionId: null,
     scheduledTransaction: null,
+    paymentMatchingRuleId: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
     transactions: [],
@@ -1707,6 +1708,89 @@ describe("NetWorthService", () => {
       expect(result[0].netWorth).toBe(7000 - 201500);
     });
 
+    it("splits each month by account type, liabilities negated, summing to net worth", async () => {
+      mabRepository.count.mockResolvedValue(5);
+      prefRepository.findOne.mockResolvedValue({
+        defaultCurrency: "USD",
+      });
+      const row = (
+        account_id: string,
+        account_type: AccountType,
+        balance: number,
+        extra: Record<string, unknown> = {},
+      ) => ({
+        month: "2024-01-01",
+        balance,
+        market_value: null,
+        account_id,
+        account_type,
+        account_sub_type: null,
+        currency_code: "USD",
+        ...extra,
+      });
+
+      reportQuery
+        .mockResolvedValueOnce([
+          row("chq-1", AccountType.CHEQUING, 3000),
+          row("chq-2", AccountType.CHEQUING, 2000),
+          row("sav", AccountType.SAVINGS, 4000),
+          row("brokerage", AccountType.INVESTMENT, 100, {
+            account_sub_type: "INVESTMENT_BROKERAGE",
+            market_value: 15000,
+          }),
+          row("cc", AccountType.CREDIT_CARD, -1500),
+          // A credit balance on a liability still counts as owed, as the
+          // liabilities figure has it.
+          row("loc", AccountType.LINE_OF_CREDIT, 250),
+        ])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getMonthlyNetWorth("user-1");
+
+      expect(result[0].byAccountType).toEqual({
+        [AccountType.CHEQUING]: 5000,
+        [AccountType.SAVINGS]: 4000,
+        [AccountType.INVESTMENT]: 15000,
+        [AccountType.CREDIT_CARD]: -1500,
+        [AccountType.LINE_OF_CREDIT]: -250,
+      });
+      const sum = Object.values(result[0].byAccountType).reduce(
+        (acc, v) => acc + (v ?? 0),
+        0,
+      );
+      expect(sum).toBe(result[0].netWorth);
+    });
+
+    it("leaves the per-type split out of the LLM history", async () => {
+      const spy = jest.spyOn(service, "getMonthlyNetWorth").mockResolvedValue([
+        {
+          month: "2024-01-01",
+          assets: 10,
+          liabilities: 0,
+          netWorth: 10,
+          fxComplete: true,
+          missingRatePairs: [],
+          assetsFxComplete: true,
+          liabilitiesFxComplete: true,
+          byAccountType: { [AccountType.CHEQUING]: 10 },
+        },
+      ]);
+
+      const history = await service.getLlmHistory("user-1");
+
+      expect(history).toEqual([
+        {
+          month: "2024-01-01",
+          assets: 10,
+          liabilities: 0,
+          netWorth: 10,
+          fxComplete: true,
+          missingRatePairs: [],
+        },
+      ]);
+      spy.mockRestore();
+    });
+
     it("uses market_value for INVESTMENT_BROKERAGE accounts", async () => {
       mabRepository.count.mockResolvedValue(5);
       prefRepository.findOne.mockResolvedValue({
@@ -1909,6 +1993,9 @@ describe("NetWorthService", () => {
       // The unconvertible component is excluded from the subtotal rather than
       // entered at face value.
       expect(result[0].assets).toBe(0);
+      // Which side is short: the assets, not the liabilities.
+      expect(result[0].assetsFxComplete).toBe(false);
+      expect(result[0].liabilitiesFxComplete).toBe(true);
     });
 
     it("a zero balance in an unrated currency is a settled zero, not a gap", async () => {
@@ -2198,6 +2285,10 @@ describe("NetWorthService", () => {
         assets: 5000,
         liabilities: 1500,
         netWorth: 3500,
+        fxComplete: true,
+        missingRatePairs: [],
+        assetsFxComplete: true,
+        liabilitiesFxComplete: true,
       });
       // The month range is bounded to the latest month so the snapshot query
       // does not replay the whole history.
@@ -2208,6 +2299,46 @@ describe("NetWorthService", () => {
         "2024-03-01",
         [],
       ]);
+    });
+
+    it("carries the completeness flags of the latest month (subtotals, not totals)", async () => {
+      mabRepository.count.mockResolvedValue(5);
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+      reportQuery
+        .mockResolvedValueOnce([{ month: "2024-03-01" }])
+        .mockResolvedValueOnce([
+          {
+            month: "2024-03-01",
+            balance: 1000,
+            market_value: null,
+            account_id: "checking",
+            account_type: AccountType.CHEQUING,
+            account_sub_type: null,
+            currency_code: "USD",
+          },
+          {
+            month: "2024-03-01",
+            balance: 1000000,
+            market_value: null,
+            account_id: "zzz",
+            account_type: AccountType.CHEQUING,
+            account_sub_type: null,
+            currency_code: "ZZZ",
+          },
+        ])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getLatestNetWorth("user-1");
+
+      expect(result).toEqual({
+        assets: 1000,
+        liabilities: 0,
+        netWorth: 1000,
+        fxComplete: false,
+        missingRatePairs: ["ZZZ->USD"],
+        assetsFxComplete: false,
+        liabilitiesFxComplete: true,
+      });
     });
 
     it("returns null when there are no snapshots", async () => {

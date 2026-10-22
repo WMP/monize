@@ -1,6 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@/test/render';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { act, cleanup, render, screen, fireEvent, waitFor, within } from '@/test/render';
+import { usePreferencesStore } from '@/store/preferencesStore';
+import { useHiddenColumnsStore } from '@/store/hiddenColumnsStore';
 import { GroupedHoldingsList } from './GroupedHoldingsList';
+
+// The account preference write. Hiding a column saves to this browser only
+// (`useHiddenColumnsStore`), so the hidden-column tests assert it is never called.
+const mockUpdatePreferences = vi.fn();
+vi.mock('@/lib/user-settings', () => ({
+  userSettingsApi: {
+    updatePreferences: (...args: unknown[]) => mockUpdatePreferences(...args),
+  },
+}));
 
 vi.mock('@heroicons/react/24/outline', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -476,6 +487,64 @@ describe('GroupedHoldingsList', () => {
     ).toBeInTheDocument();
   });
 
+  it("marks an incomplete account's gain as over its priced holdings only (A26-M38)", () => {
+    const accounts = [
+      {
+        accountId: 'a1',
+        accountName: 'Mixed Brokerage',
+        currencyCode: 'CAD',
+        cashAccountId: null,
+        cashBalance: 0,
+        holdings: [
+          {
+            id: 'h1', securityId: 'sec-1', symbol: 'AAA', name: 'Alpha',
+            securityType: 'STOCK', currencyCode: 'CAD', quantity: 1000,
+            averageCost: 80, costBasis: 80000, costBasisAccountCurrency: 80000,
+            currentPrice: 100, marketValue: 100000, gainLoss: 20000,
+            gainLossPercent: 25,
+          },
+          {
+            id: 'h2', securityId: 'sec-2', symbol: 'BBB', name: 'Bravo',
+            securityType: 'STOCK', currencyCode: 'CAD', quantity: 500,
+            averageCost: 100, costBasis: 50000, costBasisAccountCurrency: 50000,
+            currentPrice: null, marketValue: null, gainLoss: null,
+            gainLossPercent: null,
+          },
+        ],
+        totalCostBasis: 130000,
+        gainCostBasis: 80000,
+        unpricedCostBasis: 50000,
+        totalMarketValue: 100000,
+        unpricedHoldingsCount: 1,
+        totalGainLoss: 20000,
+        totalGainLossPercent: 25,
+        netInvested: 0,
+        fxComplete: true,
+        missingRatePairs: [],
+        pricesComplete: false,
+        unpricedSecurityIds: ['sec-2'],
+        valuationComplete: false,
+      },
+    ];
+
+    render(
+      <GroupedHoldingsList
+        holdingsByAccount={accounts as never}
+        isLoading={false}
+        totalPortfolioValue={100000}
+        valuationComplete={false}
+      />,
+    );
+
+    expect(screen.queryByText(/-\$30000\.00/)).not.toBeInTheDocument();
+    // The header's gain figure and the account-total row's gain and return are
+    // all marked. (The AAA row's own gain is a single priced holding's, unmarked.)
+    const header = screen.getByText(/\$20000\.00 \(\+25\.00%\)/);
+    expect(header.closest('[data-testid="partial-total"]')).not.toBeNull();
+    expect(screen.getAllByTestId('partial-total')).toHaveLength(3);
+    expect(screen.getAllByText('Over priced holdings only').length).toBeGreaterThan(0);
+  });
+
   it("says nothing for an account whose own totals are complete", () => {
     const accounts = [
       {
@@ -767,5 +836,145 @@ describe('GroupedHoldingsList', () => {
       expect(portCell.textContent).toContain('-');
       expect(portCell.textContent).not.toMatch(/\d/);
     });
+  });
+});
+
+describe('GroupedHoldingsList hidden columns', () => {
+  // The stored `hiddenTableColumns.investmentHoldings` set (one per table kind,
+  // read on the Investments page and the investment detail view alike) removes
+  // a figure column from the DOM at every width: no header, no cell in any of
+  // the three row kinds, no phone-card caption, and the account-total label
+  // spans one column less for each hidden per-share column.
+  const holdingsByAccount = [
+    {
+      accountId: 'a1', accountName: 'RRSP', currencyCode: 'CAD',
+      totalMarketValue: 5000, totalCostBasis: 4000, totalGainLoss: 1000,
+      totalGainLossPercent: 25, cashBalance: 500, cashAccountId: 'cash1', holdings: [
+        { id: 'h1', securityId: 's1', symbol: 'XEQT', name: 'iShares Equity', quantity: 100, averageCost: 40, currentPrice: 50, costBasis: 4000, costBasisAccountCurrency: 4000, marketValue: 5000, gainLoss: 1000, gainLossPercent: 25, currencyCode: 'CAD' },
+      ],
+    },
+  ] as any[];
+
+  const ALL = ['shares', 'avgCost', 'price', 'costBasis', 'mktValue', 'gainLoss', 'portfolioPercent'];
+  const CAPTIONS = ['Shares', 'Avg Cost', 'Price', 'Cost Basis', 'Mkt Value', 'Gain/Loss', '% Port'];
+
+  const seed = (investmentHoldings: string[] | undefined) =>
+    usePreferencesStore.setState({
+      preferences: (investmentHoldings
+        ? { hiddenTableColumns: { investmentHoldings } }
+        : { hiddenTableColumns: {} }) as any,
+    });
+
+  const renderList = () =>
+    render(
+      <GroupedHoldingsList holdingsByAccount={holdingsByAccount} isLoading={false} totalPortfolioValue={5500} />,
+    );
+
+  const rowWith = (text: string) =>
+    screen.getAllByRole('row').find((row) => row.textContent?.includes(text))!;
+  const headerLabels = () => screen.getAllByRole('columnheader').map((th) => th.textContent);
+  const totalLabelSpan = () =>
+    Number(screen.getByText('Account Total').closest('td')!.getAttribute('colspan'));
+
+  beforeEach(() => {
+    mockUpdatePreferences.mockReset();
+    mockUpdatePreferences.mockImplementation(async (patch: Record<string, unknown>) => patch);
+  });
+
+  afterEach(() => {
+    // Unmount first, so resetting the store re-renders nothing outside act().
+    cleanup();
+    usePreferencesStore.setState({ preferences: null });
+  });
+
+  it('renders every column with the default empty set, as before', () => {
+    seed(undefined);
+    renderList();
+    expect(headerLabels()).toEqual(['Symbol', ...CAPTIONS]);
+    expect(totalLabelSpan()).toBe(4);
+    expect(within(rowWith('XEQT')).getAllByRole('cell')).toHaveLength(8);
+    expect(within(rowWith('Available Balance')).getAllByRole('cell')).toHaveLength(8);
+    expect(within(rowWith('Account Total')).getAllByRole('cell')).toHaveLength(5);
+    expect(screen.getByRole('button', { name: 'Columns' })).toBeInTheDocument();
+  });
+
+  it('removes a hidden Avg Cost from the header, every row, the captions and the label span', () => {
+    seed(['avgCost']);
+    renderList();
+
+    expect(headerLabels()).toEqual(['Symbol', 'Shares', 'Price', 'Cost Basis', 'Mkt Value', 'Gain/Loss', '% Port']);
+    for (const row of [rowWith('XEQT'), rowWith('Available Balance')]) {
+      expect(row.textContent).not.toContain('Avg Cost');
+      expect(within(row).getAllByRole('cell')).toHaveLength(7);
+    }
+    // The average cost itself ($40.00) is gone; the price ($50.00) stays.
+    expect(rowWith('XEQT').textContent).not.toContain('$40.00');
+    expect(rowWith('XEQT').textContent).toContain('$50.00');
+    // Symbol, Shares and Price: the label spans three columns, not four.
+    expect(totalLabelSpan()).toBe(3);
+    // The phone card closes the gap: Price moves into Avg Cost's place.
+    const priceCell = within(rowWith('XEQT'))
+      .getAllByRole('cell')
+      .find((cell) => cell.textContent?.startsWith('Price'))!;
+    expect(priceCell.className).toContain('col-start-2 row-start-2');
+    expect(screen.getByRole('button', { name: 'Columns, 1 hidden' })).toBeInTheDocument();
+  });
+
+  it('hides every figure column and keeps Symbol alone', () => {
+    seed(ALL);
+    renderList();
+
+    expect(headerLabels()).toEqual(['Symbol']);
+    expect(within(rowWith('XEQT')).getAllByRole('cell')).toHaveLength(1);
+    expect(within(rowWith('Available Balance')).getAllByRole('cell')).toHaveLength(1);
+    expect(within(rowWith('Account Total')).getAllByRole('cell')).toHaveLength(1);
+    expect(totalLabelSpan()).toBe(1);
+    // No caption and no figure: the card is the symbol and the name.
+    expect(rowWith('XEQT').textContent).toBe('XEQTiShares Equity');
+    // The account header above the table still carries the account's figures.
+    expect(screen.getByRole('button', { name: /RRSP/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Columns, 7 hidden' })).toBeInTheDocument();
+  });
+
+  it('hides a column from the menu in the heading block and shows it again from there', async () => {
+    seed(undefined);
+    renderList();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Columns' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Gain/Loss' }));
+    });
+    await waitFor(() => {
+      expect(useHiddenColumnsStore.getState().columns).toEqual({ investmentHoldings: ['gainLoss'] });
+    });
+    expect(screen.queryByRole('columnheader', { name: 'Gain/Loss' })).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Gain/Loss' }));
+    });
+    await waitFor(() => {
+      expect(useHiddenColumnsStore.getState().columns).toEqual({ investmentHoldings: [] });
+    });
+    expect(mockUpdatePreferences).not.toHaveBeenCalled();
+    expect(screen.getByRole('columnheader', { name: 'Gain/Loss' })).toBeInTheDocument();
+  });
+
+  it('hides a column from its header by right-click, and Symbol offers no sheet', async () => {
+    seed(undefined);
+    renderList();
+
+    fireEvent.contextMenu(screen.getByRole('columnheader', { name: 'Symbol' }));
+    expect(screen.queryByRole('button', { name: /hide column/i })).not.toBeInTheDocument();
+
+    fireEvent.contextMenu(screen.getByRole('columnheader', { name: 'Shares' }));
+    const hide = await screen.findByRole('button', { name: /hide column/i });
+    await act(async () => {
+      fireEvent.click(hide);
+    });
+    await waitFor(() => {
+      expect(useHiddenColumnsStore.getState().columns).toEqual({ investmentHoldings: ['shares'] });
+    });
+    expect(screen.queryByRole('columnheader', { name: 'Shares' })).not.toBeInTheDocument();
+    expect(totalLabelSpan()).toBe(3);
   });
 });

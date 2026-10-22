@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { useLoanBillAutoPost } from '@/components/rules/use-loan-bill-auto-post';
 import { useRuleErrorMessage } from '@/components/rules/use-rule-error-message';
 import { Button } from '@/components/ui/Button';
 import { ruleInvalidReasonKeys } from '@/lib/rule-summary';
@@ -40,12 +41,14 @@ interface RuleEditorBannersProps {
   unplaced: readonly RuleErrorEntry[];
   /** A refusal that carried no per-card entries, in the server's own words. */
   message: string | null;
+  /** The linked bill of the loan a settlement action names (`settlementScheduleId`); null for none. */
+  loanScheduleId?: string | null;
 }
 
 /**
  * Everything the editor says above the form: why a stored rule cannot run,
- * what had to be repaired to open it, a revision conflict, and what the server
- * refused. Errors that belong to a card are shown on the card, not here.
+ * what had to be repaired to open it, a revision conflict, what the server
+ * refused, and a loan bill that would pay the installment a settlement pays. Errors that belong to a card are shown on the card, not here.
  */
 export function RuleEditorBanners({
   rule,
@@ -55,8 +58,10 @@ export function RuleEditorBanners({
   refused,
   unplaced,
   message,
+  loanScheduleId = null,
 }: RuleEditorBannersProps) {
   const t = useTranslations('rules');
+  const billAutoPosts = useLoanBillAutoPost(loanScheduleId);
   const format = useFormatter();
   const errorMessage = useRuleErrorMessage();
 
@@ -85,6 +90,11 @@ export function RuleEditorBanners({
           <Button type="button" size="sm" variant="outline" onClick={onReload}>
             {t('editor.conflict.reload')}
           </Button>
+        </Banner>
+      )}
+      {billAutoPosts && (
+        <Banner tone="amber" title={t('editor.action.loan.autoPostTitle')}>
+          <p>{t('editor.action.loan.autoPostBody')}</p>
         </Banner>
       )}
       {(refused || message !== null) && (

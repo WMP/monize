@@ -5,10 +5,27 @@ import {
   Logger,
 } from "@nestjs/common";
 import { tr } from "../i18n/translate";
+import { ModuleRef } from "@nestjs/core";
 import { DataSource, EntityManager } from "typeorm";
 import { Cron } from "@nestjs/schedule";
+import { BondPriceService } from "../bonds/bond-price.service";
+import type { HoldingsService } from "../securities/holdings.service";
+import {
+  clearForeignSeries,
+  restoredSeries,
+} from "../bonds/bond-series-resolver";
+import { beginBondWriteGuard } from "../bonds/bond-write-guard";
+import { findBondLinkProblem } from "../securities/bond-link.util";
 import { ActionHistory } from "./entities/action-history.entity";
-import { RULE_RUN_ENTITY_TYPE, undoRuleRun } from "./rule-run-undo";
+import {
+  RULE_RUN_ENTITY_TYPE,
+  assertRuleRunRedoable,
+  undoRuleRun,
+} from "./rule-run-undo";
+import {
+  LegBalanceWriter,
+  removeLockedTransactionLeg,
+} from "../transactions/remove-transaction-leg";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { assertReconciledRowsMutable } from "../transactions/reconciled-lock.util";
@@ -18,24 +35,107 @@ import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { Tag } from "../tags/entities/tag.entity";
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
-import {
-  acquisitionCost,
-  applyActionToQuantity,
-  isQuantityOnlyAction,
-  INVESTMENT_REPLAY_ORDER_SQL,
-} from "../securities/investment-replay.util";
 import { Security } from "../securities/entities/security.entity";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { Budget } from "../budgets/entities/budget.entity";
 import { CustomReport } from "../reports/entities/custom-report.entity";
+import { acquireAdvisoryLock, LockScope } from "../common/db/locks";
 import { withSystemContext } from "../common/db/with-context";
 import { withScopedDb } from "../common/db/scoped-db";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 import {
+  LockedTransactionRow,
   lockAccountsForBalanceWrite,
-  lockHoldingScope,
+  lockTransactionRows,
 } from "../common/db/locks";
 import { LEDGER_MOVEMENT_PREDICATE } from "../common/ledger-balance.sql";
 import { invalidatePortfolioSummary } from "../securities/portfolio-summary-memo";
+
+/**
+ * A create whose snapshot links the row to a counterpart leg (a transfer leg,
+ * or a split line with a linked leg) cannot be redone: the undo deleted the
+ * leg, and re-inserting the row would point at a row that is gone.
+ */
+function assertTransactionCreateRedoable(action: ActionHistory): void {
+  const after = action.afterData;
+  const splits: unknown[] = Array.isArray(after?.splits) ? after.splits : [];
+  const hasLegs =
+    (after?.isTransfer === true && !!after?.linkedTransactionId) ||
+    splits.some(
+      (split) =>
+        !!(split as { linkedTransactionId?: string | null })
+          ?.linkedTransactionId,
+    );
+  if (!hasLegs) return;
+  throw new ConflictException({
+    message: tr(
+      "errors.actionHistory.redoCreateWithLegs",
+      "This transaction created entries in other accounts, so it cannot be redone. Create it again instead",
+    ),
+    errorCode: "REDO_CREATE_WITH_LEGS",
+  });
+}
+
+/**
+ * Account columns an undo or redo never writes back from a snapshot.
+ *
+ * `current_balance` is derived from the ledger: restoring the edit-time figure
+ * erased every movement no action recorded since (the due-balance cron, a
+ * bank sync, a grantee's posting), leaving chequing at 5,000.00 beside a
+ * ledger of 4,800.00 (A26-H06). The rest are lifecycle and pairing state the
+ * account edit does not change; close, reopen and pairing have their own
+ * paths with their own checks.
+ */
+const ACCOUNT_UNDO_DERIVED_FIELDS = [
+  "currentBalance",
+  "isClosed",
+  "closedDate",
+  "linkedAccountId",
+] as const;
+
+/**
+ * A loan's columns that `AccountsService.update` couples to its payment
+ * template: a change to any of them reprices the template or relinks its
+ * interest line in the same transaction (INV-LOAN-007, INV-LOAN-010). A
+ * snapshot restore replays the column and not the coupling, so the bill kept
+ * the other method's installment, or the template stopped being managed.
+ */
+const LOAN_TEMPLATE_FIELDS = [
+  "mortgageType",
+  "prepaymentMode",
+  "amortizationMonths",
+  "originalPrincipal",
+  "paymentAmount",
+  "paymentFrequency",
+  "interestCategoryId",
+  "sourceAccountId",
+  "scheduledTransactionId",
+  "paymentMatchingRuleId",
+] as const;
+
+/**
+ * Refuses, before anything is written, the undo or redo of an account edit
+ * that changed a template-coupled column of a loan with a schedule: the user
+ * edits the loan back, which runs the reprice and relink.
+ */
+function assertAccountEditUndoable(action: ActionHistory): void {
+  const before = action.beforeData ?? {};
+  const after = action.afterData ?? {};
+  if (!(before.scheduledTransactionId ?? after.scheduledTransactionId)) return;
+  const changed = LOAN_TEMPLATE_FIELDS.some(
+    (field) =>
+      JSON.stringify(before[field] ?? null) !==
+      JSON.stringify(after[field] ?? null),
+  );
+  if (!changed) return;
+  throw new ConflictException({
+    message: tr(
+      "errors.actionHistory.loanEditNotUndoable",
+      "This loan change cannot be undone automatically. Edit the loan to change it back.",
+    ),
+    errorCode: "LOAN_EDIT_NOT_UNDOABLE",
+  });
+}
 
 export interface RecordActionParams {
   entityType: string;
@@ -60,6 +160,30 @@ export interface UndoRedoResult {
   action: ActionHistory;
   description: string;
 }
+
+/**
+ * What an undo leaves for after its commit: the scheduled payments whose
+ * occurrence claim a rule-run undo released, repriced once the transaction
+ * has committed (INV-CACHE-001; `docs/specs/loan-installment-settlement.md`
+ * section 12.6). Empty for every other entry.
+ */
+interface UndoAfterCommit {
+  readonly settledScheduleIds: readonly string[];
+  /**
+   * Accounts whose derived state changed because the undo deleted a security's
+   * bond-engine prices (its link was restored to something else); published
+   * after the commit (INV-CACHE-001).
+   */
+  readonly bondClearedAccountIds?: readonly string[];
+  /**
+   * Securities whose bond-engine prices are recomputed after the commit: a
+   * restored link, or a ledger row an undo or redo created, changed or removed
+   * (a security that is not linked is ignored).
+   */
+  readonly bondRecomputeSecurityIds?: readonly string[];
+}
+
+const NOTHING_AFTER_COMMIT: UndoAfterCommit = { settledScheduleIds: [] };
 
 const MAX_HISTORY_PER_USER = 100;
 export const MAX_JSONB_SIZE_BYTES = 512 * 1024; // 500 KB
@@ -137,6 +261,7 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
     "amortization_months",
     "original_principal",
     "scheduled_transaction_id",
+    "payment_matching_rule_id",
     "created_at",
     "updated_at",
   ]),
@@ -178,6 +303,8 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
     "currency_code",
     "is_active",
     "skip_price_updates",
+    "bond_program_id",
+    "bond_auto_fetch",
     "sector",
     "industry",
     "sector_weightings",
@@ -198,6 +325,7 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
     "price",
     "commission",
     "total_amount",
+    "bond_instrument_id",
     "description",
     "created_at",
     "updated_at",
@@ -290,7 +418,30 @@ function trackHistoryWrite<T>(work: Promise<T>): Promise<T> {
 export class ActionHistoryService {
   private readonly logger = new Logger(ActionHistoryService.name);
 
-  constructor(private dataSource: DataSource) {}
+  constructor(
+    private dataSource: DataSource,
+    // Resolved lazily (`bondPrices`): the bond layer reaches this module back
+    // through the securities module, so a constructor edge would be a cycle.
+    private moduleRef: ModuleRef,
+  ) {}
+
+  private bondPrices(): BondPriceService {
+    return this.moduleRef.get(BondPriceService, { strict: false });
+  }
+
+  /**
+   * Resolved lazily, like `bondPrices`, and its class loaded at the call: the
+   * securities layer reaches this file back through its imports, so a
+   * top-level value import of `HoldingsService` is a load-time cycle that
+   * leaves a provider undefined when SecuritiesModule is built.
+   */
+  private holdings(): HoldingsService {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const loaded = require("../securities/holdings.service") as {
+      HoldingsService: typeof HoldingsService;
+    };
+    return this.moduleRef.get(loaded.HoldingsService, { strict: false });
+  }
 
   /**
    * Record an undo entry. Callers do not await this -- see `pendingHistoryWrites`
@@ -420,17 +571,25 @@ export class ActionHistoryService {
       );
     }
 
-    await withScopedDb(this.dataSource, async (manager) => {
-      await this.executeUndo(action, manager);
+    const afterCommit = await withScopedDb(this.dataSource, async (manager) => {
+      const effects = await this.executeUndo(action, manager);
       await manager.update(ActionHistory, action.id, {
         isUndone: true,
       });
+      return effects;
     });
 
     // After the commit, like every other derived-state invalidation here: a
     // replay that rolled back must not have dropped the memo that still
     // describes the committed state.
     invalidatePortfolioSummary(userId);
+    // A released settlement leaves its schedule's template priced on a debt
+    // the undo has since changed: repriced after the commit, never inside it.
+    await repriceSettledLoanTemplates(
+      this.dataSource,
+      afterCommit.settledScheduleIds,
+    );
+    await this.publishBondEffects(userId, afterCommit);
 
     return { action, description: `Undone: ${action.description}` };
   }
@@ -449,14 +608,16 @@ export class ActionHistoryService {
       );
     }
 
-    await withScopedDb(this.dataSource, async (manager) => {
-      await this.executeRedo(action, manager);
+    const afterCommit = await withScopedDb(this.dataSource, async (manager) => {
+      const effects = await this.executeRedo(action, manager);
       await manager.update(ActionHistory, action.id, {
         isUndone: false,
       });
+      return effects;
     });
 
     invalidatePortfolioSummary(userId);
+    await this.publishBondEffects(userId, afterCommit);
 
     return { action, description: `Redone: ${action.description}` };
   }
@@ -464,7 +625,7 @@ export class ActionHistoryService {
   private async executeUndo(
     action: ActionHistory,
     manager: EntityManager,
-  ): Promise<void> {
+  ): Promise<UndoAfterCommit> {
     switch (action.entityType) {
       case "transaction":
         await this.undoTransaction(action, manager);
@@ -482,7 +643,7 @@ export class ActionHistoryService {
         await this.undoSimpleEntity(action, manager, Tag, "tags");
         break;
       case "account":
-        await this.undoSimpleEntity(action, manager, Account, "accounts");
+        await this.undoAccount(action, manager);
         break;
       case "scheduled_transaction":
         await this.undoSimpleEntity(
@@ -492,12 +653,18 @@ export class ActionHistoryService {
           "scheduled_transactions",
         );
         break;
-      case "security":
+      case "security": {
+        const bond = await this.guardSecurityLinkRestore(action, manager);
         await this.undoSimpleEntity(action, manager, Security, "securities");
-        break;
+        return { ...NOTHING_AFTER_COMMIT, ...bond };
+      }
       case "investment_transaction":
         await this.undoInvestmentTransaction(action, manager);
-        break;
+        // The ledger the engine reads changed: a linked security is repriced.
+        return {
+          ...NOTHING_AFTER_COMMIT,
+          bondRecomputeSecurityIds: this.investmentSecurityIds(action),
+        };
       case "budget":
         await this.undoSimpleEntity(action, manager, Budget, "budgets");
         break;
@@ -512,9 +679,14 @@ export class ActionHistoryService {
       case "bulk_transaction":
         await this.undoBulkTransaction(action, manager);
         break;
-      case RULE_RUN_ENTITY_TYPE:
-        await undoRuleRun(action, manager);
-        break;
+      case RULE_RUN_ENTITY_TYPE: {
+        const undone = await undoRuleRun(
+          action,
+          manager,
+          this.legBalances(manager, action),
+        );
+        return { settledScheduleIds: [...undone.settledScheduleIds] };
+      }
       default:
         throw new ConflictException(
           tr(
@@ -524,12 +696,24 @@ export class ActionHistoryService {
           ),
         );
     }
+    return NOTHING_AFTER_COMMIT;
   }
 
   private async executeRedo(
     action: ActionHistory,
     manager: EntityManager,
-  ): Promise<void> {
+  ): Promise<UndoAfterCommit> {
+    // A run that restructured rows cannot be replayed from its snapshot.
+    if (action.entityType === RULE_RUN_ENTITY_TYPE) {
+      assertRuleRunRedoable(action);
+    }
+    // Redo of a create replays the row from its stored snapshot, which names
+    // the legs the undo deleted (a rule's transfer counterpart, transfer split
+    // lines): they cannot be replayed, so a create that had any is refused
+    // before anything is written, as a structural rule run's redo is.
+    if (action.entityType === "transaction" && action.action === "create") {
+      assertTransactionCreateRedoable(action);
+    }
     // Redo is the inverse of undo: swap before/after and flip the action
     const invertedAction: ActionHistory = {
       ...action,
@@ -537,7 +721,7 @@ export class ActionHistoryService {
       afterData: action.beforeData,
       action: this.invertAction(action.action),
     };
-    await this.executeUndo(invertedAction, manager);
+    return this.executeUndo(invertedAction, manager);
   }
 
   private invertAction(action: string): string {
@@ -590,11 +774,70 @@ export class ActionHistoryService {
   ): Promise<void> {
     if (!action.entityId) return;
 
+    const peek = await manager.findOne(Transaction, {
+      where: { id: action.entityId, userId: action.userId },
+    });
+    if (!peek) return;
+
+    // A create can leave legs in other accounts: the counterpart of a rule's
+    // `convert_to_transfer`, and the linked leg of every transfer split line
+    // (a rule's `split` or a person's). They are part of what the create wrote,
+    // so the undo removes them with their balance, `deletionBalanceEffect` per
+    // leg like the undo of a rule run. Locks: the row with a transfer
+    // counterpart in one ascending batch, then the split legs after their
+    // parent (`common/db/locks.ts`); the reconciled check runs on all of them
+    // before the first write, so a refusal changes nothing.
+    const locked = await lockTransactionRows(
+      manager,
+      [
+        peek.id,
+        ...(peek.isTransfer && peek.linkedTransactionId
+          ? [peek.linkedTransactionId]
+          : []),
+      ],
+      action.userId,
+    );
+    const parent = locked.get(peek.id);
+    if (!parent) return;
+
     const transaction = await manager.findOne(Transaction, {
       where: { id: action.entityId, userId: action.userId },
       relations: ["splits"],
     });
     if (!transaction) return;
+
+    const legs = new Map<string, LockedTransactionRow>();
+    if (parent.linkedTransactionId) {
+      const transferLeg =
+        locked.get(parent.linkedTransactionId) ??
+        (
+          await lockTransactionRows(
+            manager,
+            [parent.linkedTransactionId],
+            action.userId,
+          )
+        ).get(parent.linkedTransactionId);
+      if (transferLeg) legs.set(transferLeg.id, transferLeg);
+    }
+    const splitLegIds = (transaction.splits ?? [])
+      .map((split) => split.linkedTransactionId)
+      .filter((id): id is string => !!id && !legs.has(id));
+    for (const leg of (
+      await lockTransactionRows(manager, splitLegIds, action.userId)
+    ).values()) {
+      legs.set(leg.id, leg);
+    }
+    await assertReconciledRowsMutable(manager, action.userId, [
+      parent,
+      ...legs.values(),
+    ]);
+
+    const balances = this.legBalances(manager, action);
+    for (const leg of legs.values()) {
+      // A leg linked elsewhere is not this create's to remove.
+      if (leg.linkedTransactionId !== transaction.id) continue;
+      await removeLockedTransactionLeg(manager, leg, action.userId, balances);
+    }
 
     // Delete splits first
     if (transaction.splits && transaction.splits.length > 0) {
@@ -955,8 +1198,7 @@ export class ActionHistoryService {
   ): Promise<void> {
     const before = action.beforeData;
     const linkedBefore = before?.linkedTransferLeg as
-      | Record<string, any>
-      | undefined;
+      Record<string, any> | undefined;
 
     // Only linked security-transfer edits capture both legs' pre-edit state,
     // which is what we need to reverse. Regular investment edits remain
@@ -971,21 +1213,48 @@ export class ActionHistoryService {
       );
     }
 
+    // The legs as they are now, read before either is rewritten: their current
+    // accounts join the holdings rebuild, their current securities the bond
+    // guard's before-state.
+    const legs = [before, linkedBefore];
+    const currentLegs = new Map<string, InvestmentTransaction | null>();
+    for (const legBefore of legs) {
+      currentLegs.set(
+        legBefore.id,
+        await manager.findOne(InvestmentTransaction, {
+          where: { id: legBefore.id, userId: action.userId },
+        }),
+      );
+    }
+    const bondGuard = await beginBondWriteGuard(manager, action.userId, [
+      ...legs.map((leg) => leg.securityId),
+      ...[...currentLegs.values()].map((leg) => leg?.securityId),
+    ]);
+
     const accountIds = new Set<string>();
-    for (const legBefore of [before, linkedBefore]) {
+    for (const legBefore of legs) {
       // Capture the leg's current (post-edit) account before we overwrite it so
       // holdings are rebuilt for both the old and the new account.
-      const current = await manager.findOne(InvestmentTransaction, {
-        where: { id: legBefore.id, userId: action.userId },
-      });
+      const current = currentLegs.get(legBefore.id);
       if (current) accountIds.add(current.accountId);
 
+      // INV-BOND-007: the snapshot's series goes back exactly as it was, never
+      // inferred (an undo must not fail for a series the row already had, or
+      // never had). One that names a series outside the security's current
+      // program is stored as NULL and the ledger reports the row.
+      const bondInstrumentId = await restoredSeries(
+        manager,
+        action.userId,
+        legBefore.securityId,
+        legBefore.bondInstrumentId,
+      );
       await manager.update(
         InvestmentTransaction,
         { id: legBefore.id, userId: action.userId },
         {
           accountId: legBefore.accountId,
           securityId: legBefore.securityId ?? null,
+          bondInstrumentId,
           action: legBefore.action,
           transactionDate: legBefore.transactionDate,
           quantity: legBefore.quantity ?? 0,
@@ -1003,6 +1272,10 @@ export class ActionHistoryService {
     for (const accountId of accountIds) {
       await this.rebuildHoldings(action.userId, accountId, manager);
     }
+
+    // A restore that leaves a removal the account cannot cover is refused here,
+    // and the transaction of the undo rolls back with it.
+    await bondGuard.verify(legs.map((leg) => leg.id));
   }
 
   private async undoInvestmentCreate(
@@ -1026,6 +1299,14 @@ export class ActionHistoryService {
 
     const legs = linkedTx ? [invTx, linkedTx] : [invTx];
     const accountIds = new Set<string>();
+
+    // Undoing a create deletes the rows: refused when that leaves a removal of
+    // a program-linked security uncovered (INV-BOND-007).
+    const bondGuard = await beginBondWriteGuard(
+      manager,
+      action.userId,
+      legs.map((leg) => leg.securityId),
+    );
 
     for (const leg of legs) {
       accountIds.add(leg.accountId);
@@ -1069,6 +1350,8 @@ export class ActionHistoryService {
     for (const accountId of accountIds) {
       await this.rebuildHoldings(action.userId, accountId, manager);
     }
+
+    await bondGuard.verify();
   }
 
   private async undoInvestmentDelete(
@@ -1085,8 +1368,12 @@ export class ActionHistoryService {
       ? { ...raw.transferOut, linkedTransferLeg: raw.transferIn }
       : raw;
     const linkedLeg = before.linkedTransferLeg as
-      | Record<string, any>
-      | undefined;
+      Record<string, any> | undefined;
+
+    const bondGuard = await beginBondWriteGuard(manager, action.userId, [
+      before.securityId,
+      linkedLeg?.securityId,
+    ]);
 
     // Re-insert linked cash transaction first (investment_transactions.transaction_id references it)
     if (before.linkedCashTransaction) {
@@ -1148,6 +1435,8 @@ export class ActionHistoryService {
     for (const accountId of accountIds) {
       await this.rebuildHoldings(action.userId, accountId, manager);
     }
+
+    await bondGuard.verify(linkedLeg ? [before.id, linkedLeg.id] : [before.id]);
   }
 
   private async reinsertInvestmentTransaction(
@@ -1156,6 +1445,14 @@ export class ActionHistoryService {
     data: Record<string, any>,
     transactionId: string | null,
   ): Promise<void> {
+    // INV-BOND-007: the snapshot's series goes back as it was, never inferred;
+    // one outside the security's current program is stored as NULL.
+    const bondInstrumentId = await restoredSeries(
+      manager,
+      userId,
+      data.securityId,
+      data.bondInstrumentId,
+    );
     // linked_transaction_id is intentionally not set here; for a transfer it is
     // restored by the caller once both legs exist, and for a single leg the
     // original delete already nulled the survivor's pointer.
@@ -1166,8 +1463,9 @@ export class ActionHistoryService {
     // undeleting a foreign-currency transaction doesn't reset its rate to 1.
     await manager.query(
       `INSERT INTO investment_transactions (id, user_id, account_id, transaction_id, security_id,
-        funding_account_id, action, transaction_date, quantity, price, commission, total_amount, exchange_rate, description, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        funding_account_id, action, transaction_date, quantity, price, commission, total_amount, exchange_rate, description, created_at,
+        bond_instrument_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        ON CONFLICT (id) DO NOTHING`,
       [
         data.id,
@@ -1185,6 +1483,7 @@ export class ActionHistoryService {
         data.exchangeRate ?? 1,
         data.description ?? null,
         data.createdAt ?? new Date(),
+        bondInstrumentId,
       ],
     );
   }
@@ -1304,7 +1603,7 @@ export class ActionHistoryService {
 
       // Restore split-line categories if captured (bulk recategorization).
       // transaction_splits has no user_id, so the write is scoped through its
-      // parent transaction (invariant I3, docs/future-plans/split-bulk-update.md).
+      // parent transaction (invariant I3, docs/specs/split-bulk-update.md).
       if (Array.isArray(txData.splits)) {
         for (const split of txData.splits) {
           await manager.query(
@@ -1325,6 +1624,201 @@ export class ActionHistoryService {
 
     for (const accountId of accountIds) {
       await this.recalculateBalance(action.userId, accountId, manager);
+    }
+  }
+
+  // --- Bond links and the engine's prices ---
+
+  /**
+   * The securities an investment-transaction entry touched, from its snapshots
+   * (the row, and the other leg of a transfer).
+   */
+  private investmentSecurityIds(action: ActionHistory): string[] {
+    const ids = new Set<string>();
+    for (const snapshot of [action.beforeData, action.afterData]) {
+      if (!snapshot) continue;
+      for (const row of [snapshot, snapshot.linkedTransferLeg]) {
+        const id = (row as Record<string, unknown> | undefined)?.securityId;
+        if (typeof id === "string") ids.add(id);
+      }
+    }
+    return [...ids];
+  }
+
+  /**
+   * Before an undo or redo of a security edit (or of its deletion) writes the
+   * recorded state back, the bond link in that state is held to the rules of a
+   * normal edit: the instrument exists, the security is of type BOND and in the
+   * instrument's currency (`findBondLinkProblem`, the check `SecuritiesService`
+   * runs). A state that is no longer valid refuses the undo with a code and
+   * writes nothing. A link that changes also deletes the engine's prices of the
+   * old one, inside this transaction under the recompute lock; the new link is
+   * priced after the commit.
+   */
+  private async guardSecurityLinkRestore(
+    action: ActionHistory,
+    manager: EntityManager,
+  ): Promise<UndoAfterCommit> {
+    const target = action.beforeData as Record<string, any> | null;
+    if (!target || !action.entityId) return NOTHING_AFTER_COMMIT;
+    const lower = (v: unknown) =>
+      typeof v === "string" ? v.toLowerCase() : (v ?? null);
+
+    if (action.action === "delete") {
+      // Re-inserting a deleted security: its recorded link is checked as is.
+      const link = lower(target.bondProgramId) as string | null;
+      if (!link) return NOTHING_AFTER_COMMIT;
+      await this.assertRestorableLink(manager, link, target);
+      return {
+        settledScheduleIds: [],
+        bondRecomputeSecurityIds: [action.entityId],
+      };
+    }
+    if (action.action !== "update") return NOTHING_AFTER_COMMIT;
+    // A snapshot that names none of the three fields a link depends on cannot
+    // change whether the link is valid.
+    if (
+      !["bondProgramId", "securityType", "currencyCode"].some(
+        (k) => k in target,
+      )
+    ) {
+      return NOTHING_AFTER_COMMIT;
+    }
+
+    // A restored link may delete the engine's rows under the recompute lock
+    // (`clearEnginePrices`): that advisory lock comes before the row lock, the
+    // order every writer uses (`common/db/locks.ts`).
+    if ("bondProgramId" in target) {
+      await acquireAdvisoryLock(
+        manager,
+        LockScope.BondPriceRecompute,
+        action.entityId,
+      );
+    }
+    const rows: Array<{
+      bond_program_id: string | null;
+      security_type: string | null;
+      currency_code: string;
+    }> = await manager.query(
+      `SELECT bond_program_id, security_type, currency_code
+         FROM securities
+        WHERE id = $1 AND user_id = $2
+        FOR UPDATE`,
+      [action.entityId, action.userId],
+    );
+    const current = rows[0];
+    if (!current) return NOTHING_AFTER_COMMIT;
+
+    const has = (key: string) => key in target && target[key] !== undefined;
+    const link = has("bondProgramId")
+      ? (lower(target.bondProgramId) as string | null)
+      : (lower(current.bond_program_id) as string | null);
+    const securityType = has("securityType")
+      ? (target.securityType ?? null)
+      : current.security_type;
+    const currencyCode = has("currencyCode")
+      ? target.currencyCode
+      : current.currency_code;
+    const linkChanged =
+      link !== (lower(current.bond_program_id) as string | null);
+
+    if (
+      link &&
+      (linkChanged ||
+        securityType !== current.security_type ||
+        currencyCode !== current.currency_code)
+    ) {
+      await this.assertRestorableLink(manager, link, {
+        securityType,
+        currencyCode,
+      });
+    }
+    if (!linkChanged) return NOTHING_AFTER_COMMIT;
+
+    const { accountIds } = await this.bondPrices().clearEnginePrices(
+      manager,
+      action.userId,
+      action.entityId,
+    );
+    // INV-BOND-007: the restored link owns the series its rows name.
+    await clearForeignSeries(manager, action.userId, action.entityId, link);
+    return {
+      settledScheduleIds: [],
+      bondClearedAccountIds: accountIds,
+      bondRecomputeSecurityIds: link ? [action.entityId] : [],
+    };
+  }
+
+  private async assertRestorableLink(
+    manager: EntityManager,
+    bondProgramId: string,
+    state: Record<string, any>,
+  ): Promise<void> {
+    const problem = await findBondLinkProblem(manager, {
+      bondProgramId,
+      currencyCode: state.currencyCode,
+      securityType: state.securityType,
+    });
+    if (problem) {
+      throw new ConflictException(
+        tr(
+          "errors.bonds.UNDO_LINK_INVALID",
+          "This change cannot be undone because the bond link it would restore is no longer valid",
+        ),
+      );
+    }
+  }
+
+  /** After the commit of an undo or redo (INV-CACHE-001): never inside it. */
+  private async publishBondEffects(
+    userId: string,
+    effects: UndoAfterCommit,
+  ): Promise<void> {
+    const cleared = effects.bondClearedAccountIds ?? [];
+    const ids = effects.bondRecomputeSecurityIds ?? [];
+    if (cleared.length === 0 && ids.length === 0) return;
+    try {
+      const bond = this.bondPrices();
+      if (cleared.length > 0) bond.publishClearedPrices(userId, cleared);
+      if (ids.length > 0) await bond.recomputeLinkedSecurities(userId, ids);
+    } catch (error) {
+      this.logger.warn(
+        `Bond price recompute after an undo failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  /**
+   * An account edit's undo or redo restores what the user edited and never
+   * what is derived (A26-H06): the derived and lifecycle columns are left out,
+   * a restored opening balance recomputes `current_balance` from the ledger
+   * under the balance-write lock, and a loan's template-coupled change is
+   * refused rather than restored without its reprice and relink.
+   */
+  private async undoAccount(
+    action: ActionHistory,
+    manager: EntityManager,
+  ): Promise<void> {
+    if (action.action !== "update") {
+      await this.undoSimpleEntity(action, manager, Account, "accounts");
+      return;
+    }
+    assertAccountEditUndoable(action);
+    const beforeData = { ...(action.beforeData ?? {}) };
+    for (const field of ACCOUNT_UNDO_DERIVED_FIELDS) delete beforeData[field];
+    await this.undoSimpleEntity(
+      { ...action, beforeData },
+      manager,
+      Account,
+      "accounts",
+    );
+    const openingRestored =
+      JSON.stringify(action.beforeData?.openingBalance ?? null) !==
+      JSON.stringify(action.afterData?.openingBalance ?? null);
+    if (action.entityId && openingRestored) {
+      await this.recalculateBalance(action.userId, action.entityId, manager);
     }
   }
 
@@ -1409,6 +1903,29 @@ export class ActionHistoryService {
       : { ...snapshot };
   }
 
+  /**
+   * The two balance operations `removeLockedTransactionLeg` needs, on the
+   * undo's own manager and scoped to the action's user: an atomic delta (the
+   * statement every delta writer uses, `docs/concurrency-and-idempotency.md`
+   * section 2) and the locked absolute recomputation.
+   */
+  private legBalances(
+    manager: EntityManager,
+    action: ActionHistory,
+  ): LegBalanceWriter {
+    return {
+      updateBalance: (accountId, amount) =>
+        manager.query(
+          `UPDATE accounts
+              SET current_balance = ROUND(CAST(current_balance AS numeric) + $1, 4)
+            WHERE id = $2 AND user_id = $3`,
+          [amount, accountId, action.userId],
+        ),
+      recalculateCurrentBalance: (userId, accountId) =>
+        this.recalculateBalance(userId, accountId, manager),
+    };
+  }
+
   private async recalculateBalance(
     userId: string,
     accountId: string,
@@ -1454,110 +1971,25 @@ export class ActionHistoryService {
     }
   }
 
+  /**
+   * Re-derive an account's holdings from its ledger after an undo or redo
+   * moved an investment row, through the one fold every other ledger write
+   * uses (`HoldingsService.rebuildAccountsFromTransactions`, inside this
+   * transaction, under the same holdings lock).
+   *
+   * This used to be a second fold over every non-VOID row: a DIVIDEND entered
+   * with a quantity added its total to the basis, and the average was stored at
+   * 6 decimals where the canonical writers store 10, so the boot drift report
+   * flagged what an undo had just written (A26-L21, INV-HOLDING-001).
+   */
   private async rebuildHoldings(
     userId: string,
     accountId: string,
     manager: EntityManager,
   ): Promise<void> {
-    // Same lock namespace every holdings writer takes, before the ledger is
-    // read. A rebuild replays investment_transactions and replaces the holdings
-    // derived from them, so what it must not lose is a *trade* -- an insert no
-    // holdings row locks (audit P4-006).
-    await lockHoldingScope(manager, [accountId]);
-
-    // Delete existing holdings for this account
-    await manager.query(`DELETE FROM holdings WHERE account_id = $1`, [
-      accountId,
-    ]);
-
-    // Rebuild from investment transactions
-    const invTransactions = await manager.query(
-      `SELECT * FROM investment_transactions
-       WHERE account_id = $1 AND user_id = $2 AND transaction_date <= CURRENT_DATE
-         AND status != 'VOID'
-       ORDER BY ${INVESTMENT_REPLAY_ORDER_SQL}`,
-      [accountId, userId],
-    );
-
-    const holdings = new Map<string, { quantity: number; totalCost: number }>();
-
-    for (const tx of invTransactions) {
-      const securityId = tx.security_id;
-      if (!securityId) continue;
-
-      const current = holdings.get(securityId) || {
-        quantity: 0,
-        totalCost: 0,
-      };
-      const qty = Number(tx.quantity || 0);
-
-      // Quantity folds through the shared reducer so an undo cannot rebuild a
-      // different position than the canonical holdings rebuild would. This copy
-      // multiplied by a SPLIT ratio without the `> 0` guard, so a ratio of 0
-      // silently destroyed the position; and it left the acquisition commission
-      // out of the basis, so undoing an action could also change the cost basis
-      // the holdings page reports.
-      // Basis treatment mirrors `computeHoldingsMap` exactly, over-sells
-      // included: the canonical fold carries an over-sold position as
-      // NEGATIVE (its own comment calls an over-sell "history"), so a clamp
-      // here made an undo rebuild a different position than the next
-      // canonical rebuild restores -- BUY 10, SELL 15, BUY 10 stores 5 shares
-      // canonically and stored 10 through this fold.
-      const quantityChange =
-        applyActionToQuantity(0, tx.action, qty) < 0 ? -qty : qty;
-      if (tx.action === "SPLIT") {
-        // Total basis is preserved across a split.
-      } else if (isQuantityOnlyAction(tx.action)) {
-        // ADD_SHARES / REMOVE_SHARES: quantity only, no cost basis change.
-      } else if (quantityChange > 0) {
-        // Raw select: commission comes back as a string, and the row is
-        // denominated in the security's currency like the rest of this fold.
-        const cost = acquisitionCost({
-          quantity: tx.quantity,
-          price: tx.price,
-          commission: tx.commission,
-          // Snake_case: this is the raw row, not the entity.
-          totalAmount: tx.total_amount,
-        });
-        if (cost !== null) current.totalCost += cost;
-      } else if (current.quantity > 0) {
-        const avgCost = current.totalCost / current.quantity;
-        const relieved = Math.min(Math.abs(quantityChange), current.quantity);
-        current.totalCost -= relieved * avgCost;
-      }
-
-      current.quantity = applyActionToQuantity(
-        current.quantity,
-        tx.action,
-        qty,
-      );
-
-      // Snap near-zero to exactly zero, as the canonical fold does.
-      if (Math.abs(current.quantity) < 0.0001) {
-        current.quantity = 0;
-        current.totalCost = 0;
-      }
-
-      holdings.set(securityId, current);
-    }
-
-    // Insert rebuilt holdings. Negative (over-sold) positions are written as
-    // the canonical rebuild writes them; only a genuinely empty position is
-    // skipped.
-    for (const [securityId, data] of holdings) {
-      if (Math.abs(data.quantity) < 0.00000001) continue;
-      const avgCost =
-        data.quantity > 0
-          ? Math.round((data.totalCost / data.quantity) * 1000000) / 1000000
-          : 0;
-
-      await manager.query(
-        `INSERT INTO holdings (id, account_id, security_id, quantity, average_cost)
-         VALUES (uuid_generate_v4(), $1, $2, $3, $4)
-         ON CONFLICT (account_id, security_id) DO UPDATE SET quantity = $3, average_cost = $4`,
-        [accountId, securityId, data.quantity, avgCost],
-      );
-    }
+    await (
+      await this.holdings()
+    ).rebuildAccountsFromTransactions(userId, [accountId], manager);
   }
 
   private async reinsertEntity(

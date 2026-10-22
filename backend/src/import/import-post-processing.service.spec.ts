@@ -4,9 +4,11 @@ import { Logger } from "@nestjs/common";
 import { ImportPostProcessingService } from "./import-post-processing.service";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { SecurityPriceService } from "../securities/security-price.service";
+import { SecuritiesService } from "../securities/securities.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
+import { repriceSettledLoanTemplates } from "../loan-installments/reprice-template";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -15,6 +17,9 @@ jest.mock("../common/db/scoped-db", () =>
 jest.mock("../common/db/locks", () =>
   jest.requireActual("../test-helpers/locks-testing").locksMockModule(),
 );
+jest.mock("../loan-installments/reprice-template", () => ({
+  repriceSettledLoanTemplates: jest.fn().mockResolvedValue(undefined),
+}));
 
 const lockAccounts = lockAccountsForBalanceWrite as jest.MockedFunction<
   typeof lockAccountsForBalanceWrite
@@ -41,6 +46,7 @@ describe("ImportPostProcessingService", () => {
     backfillTransactionPrices: jest.Mock;
   };
   let rates: { backfillHistoricalRates: jest.Mock };
+  let securities: { recomputeBondPricesOfAccounts: jest.Mock };
   let errorSpy: jest.SpyInstance;
   let warnSpy: jest.SpyInstance;
 
@@ -57,6 +63,9 @@ describe("ImportPostProcessingService", () => {
       backfillTransactionPrices: jest.fn().mockResolvedValue(undefined),
     };
     rates = { backfillHistoricalRates: jest.fn().mockResolvedValue(undefined) };
+    securities = {
+      recomputeBondPricesOfAccounts: jest.fn().mockResolvedValue(undefined),
+    };
 
     errorSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
     warnSpy = jest.spyOn(Logger.prototype, "warn").mockImplementation();
@@ -69,6 +78,7 @@ describe("ImportPostProcessingService", () => {
         { provide: NetWorthService, useValue: netWorth },
         { provide: SecurityPriceService, useValue: prices },
         { provide: ExchangeRateService, useValue: rates },
+        { provide: SecuritiesService, useValue: securities },
       ],
     }).compile();
 
@@ -207,6 +217,36 @@ describe("ImportPostProcessingService", () => {
       expect(prices.backfillTransactionPrices).toHaveBeenCalled();
     });
 
+    it("recomputes the bond-engine prices of the imported accounts' linked securities, after the price backfills, for an investment import only", async () => {
+      await service.run(userId, false, new Set([accountA]));
+      expect(securities.recomputeBondPricesOfAccounts).not.toHaveBeenCalled();
+
+      await service.run(userId, true, new Set([accountA]));
+      expect(securities.recomputeBondPricesOfAccounts).toHaveBeenCalledWith(
+        userId,
+        [accountA],
+      );
+      expect(
+        prices.backfillTransactionPrices.mock.invocationCallOrder[0],
+      ).toBeLessThan(
+        securities.recomputeBondPricesOfAccounts.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("a failing bond recompute is a warning, never a failed import", async () => {
+      securities.recomputeBondPricesOfAccounts.mockRejectedValue(
+        new Error("boom"),
+      );
+      await expect(
+        service.run(userId, true, new Set([accountA])),
+      ).resolves.toBeUndefined();
+      expect(
+        warnSpy.mock.calls.some((c) =>
+          String(c[0]).includes("bond price recompute failed"),
+        ),
+      ).toBe(true);
+    });
+
     it("warns rather than errors when a provider is down", async () => {
       // The opposite half of the distinction above: the rows this import wrote
       // are correct, so a quote provider outage must not read as data damage.
@@ -231,6 +271,41 @@ describe("ImportPostProcessingService", () => {
       await expect(
         service.run(userId, false, new Set([accountA])),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  describe("settled loan schedules", () => {
+    it("reprices each schedule a settlement rule claimed on, after the net-worth dispatch (INV-CACHE-001)", async () => {
+      const order: string[] = [];
+      netWorth.recalculateAccount.mockImplementation(async () => {
+        order.push("net-worth");
+      });
+      (repriceSettledLoanTemplates as jest.Mock).mockImplementation(
+        async () => {
+          order.push("reprice");
+        },
+      );
+
+      await service.run(
+        userId,
+        false,
+        new Set([accountA]),
+        new Set(["st-loan"]),
+      );
+
+      expect(repriceSettledLoanTemplates).toHaveBeenCalledWith(
+        expect.anything(),
+        new Set(["st-loan"]),
+      );
+      expect(order).toEqual(["net-worth", "reprice"]);
+    });
+
+    it("reprices nothing by default", async () => {
+      await service.run(userId, false, new Set([accountA]));
+      expect(repriceSettledLoanTemplates).toHaveBeenCalledWith(
+        expect.anything(),
+        new Set(),
+      );
     });
   });
 });

@@ -308,6 +308,87 @@
     "priceMovement": {
       "title": "कीमत में बदलाव का अलर्ट: {{ symbol }} ({{ percent }}%)",
       "message": "{{ symbol }}: पिछले उपलब्ध कारोबारी सत्र की तुलना में {{ percent }}%।"
+    },
+    "bankSync": {
+      "expiringTitleToday": "{{ institution }}: बैंक पहुंच आज समाप्त हो रही है",
+      "expiringTitleOneDay": "{{ institution }}: बैंक पहुंच 1 दिन के भीतर समाप्त हो रही है",
+      "expiringTitleDays": "{{ institution }}: बैंक पहुंच {{ days }} दिनों के भीतर समाप्त हो रही है",
+      "expiringMessage": "{{ institution }} को पढ़ने के लिए Monize को दी गई आपकी सहमति {{ date }} को समाप्त हो रही है। सिंक जारी रखने के लिए Monize में कनेक्शन का नवीनीकरण करें।",
+      "expiredTitle": "{{ institution }}: बैंक पहुंच समाप्त हो गई है",
+      "expiredMessage": "{{ institution }} को पढ़ने के लिए Monize को दी गई आपकी सहमति समाप्त हो गई है। सिंक फिर शुरू करने के लिए Monize में कनेक्शन का नवीनीकरण करें।",
+      "failedTitle": "{{ institution }}: सिंक विफल रहा",
+      "failedMessage": "{{ institution }} का दैनिक सिंक इन खातों के लिए विफल रहा: {{ accounts }}। कारण देखने के लिए बैंक सिंक सेटिंग्स खोलें।",
+      "failedCredentialsMessage": "{{ institution }} का दैनिक सिंक शुरू नहीं हो सका, क्योंकि बैंक सिंक के क्रेडेंशियल मौजूद नहीं हैं या अस्वीकार कर दिए गए थे। उन्हें बैंक सिंक सेटिंग्स में जांचें।",
+      "unnamedAccount": "एक खाता",
+      "importedTitle": "{{ institution }}: नए लेन-देन आयात हुए",
+      "importedMessage": "दैनिक सिंक द्वारा {{ institution }} से आयात किए गए लेन-देन: {{ imported }}।",
+      "importedNoneTitle": "{{ institution }}: कोई नया लेन-देन नहीं",
+      "importedNoneMessage": "{{ institution }} के दैनिक सिंक में कोई नया लेन-देन नहीं मिला।"
+    },
+    "bond": {
+      "maturitySoonTitle": "{{ series }} की परिपक्वता {{ date }} को है",
+      "maturitySoonMessage": "{{ quantity }} × {{ series }} {{ date }} को परिपक्व होंगे। {{ payout }}",
+      "interestTitle": "{{ series }}: {{ date }} को ब्याज भुगतान",
+      "interestMessage": "{{ quantity }} × {{ series }} पर {{ date }} को {{ amount }} का ब्याज मिलेगा। अगर यह अभी आपके खाते में नहीं है, तो इसे सिक्योरिटी पेज पर दर्ज करें।",
+      "interestMessageUnknown": "{{ quantity }} × {{ series }} पर {{ date }} को ब्याज मिलेगा। राशि अभी ज्ञात नहीं है: जिस दर पर यह निर्भर है, वह प्रकाशित नहीं हुई है।",
+      "rateResetTitle": "{{ series }}: नई ब्याज अवधि",
+      "rateResetMessage": "{{ series }}: {{ date }} से अवधि {{ period }}, वार्षिक दर {{ rate }}।",
+      "unbookedTitle": "{{ series }}: परिपक्व हो चुका, मोचन दर्ज नहीं",
+      "unbookedMessage": "{{ quantity }} × {{ series }} {{ date }} को परिपक्व हो चुके हैं और कोई मोचन दर्ज नहीं है। {{ payout }} सिक्योरिटी पेज पर मोचन दर्ज करें।",
+      "payoutKnown": "भुगतान राशि {{ payout }} है।",
+      "payoutUnknown": "भुगतान राशि अभी ज्ञात नहीं है: {{ reason }}।",
+      "reason": {
+        "RATE_UNKNOWN": "जिस दर पर यह निर्भर है, वह अभी प्रकाशित नहीं हुई है",
+        "TERMS_INCOMPLETE": "सीरीज़ की शर्तें अधूरी हैं",
+        "PURCHASE_OUTSIDE_SALE_WINDOW": "खरीद की तारीख सीरीज़ की बिक्री अवधि से बाहर है",
+        "other": "संग्रहीत डेटा से इसकी गणना नहीं हो सकती"
+      },
+      "benchmarkTitle": "{{ benchmark }}: नया अवलोकन {{ observation }}",
+      "benchmarkMessage": "{{ publisher }} ने {{ observation }} के लिए {{ benchmark }} प्रकाशित किया: {{ value }}। इसका उपयोग करने वाली सीरीज़: {{ series }}।",
+      "benchmarkMessageMore": "{{ publisher }} ने {{ observation }} के लिए {{ benchmark }} प्रकाशित किया: {{ value }}। इसका उपयोग करने वाली सीरीज़: {{ series }} और {{ more }} अन्य।",
+      "missingTitle": "बॉन्ड के आँकड़े अभी ज्ञात नहीं हैं",
+      "missingMessage": "बॉन्ड के कुछ आँकड़ों की गणना नहीं हो सकती: {{ causes }}।",
+      "benchmarks": {
+        "PL_CPI_GUS_YOY": "सीपीआई, 12 महीने (GUS)",
+        "PL_NBP_REFERENCE": "एनबीपी संदर्भ दर"
+      },
+      "cause": {
+        "observation": "{{ benchmark }} ({{ publisher }}) का {{ observation }} का अवलोकन संग्रहीत नहीं है: वह अभी प्रकाशित नहीं हुआ है, या उसके बाद फ़ीड प्राप्त नहीं की गई; बॉन्ड पेज पर रीफ़्रेश करें",
+        "observationNoPublisher": "{{ benchmark }} का {{ observation }} का अवलोकन संग्रहीत नहीं है: वह अभी प्रकाशित नहीं हुआ है, या उसके बाद फ़ीड प्राप्त नहीं की गई; बॉन्ड पेज पर रीफ़्रेश करें",
+        "terms": "{{ series }} की शर्तें अधूरी हैं; बॉन्ड पेज पर सीरीज़ रीफ़्रेश करें",
+        "purchase": "{{ date }} को {{ series }} की खरीद उसकी बिक्री अवधि ({{ from }} से {{ to }}) से बाहर है; खरीद की तारीख सुधारें",
+        "lots": "बही से लॉट निकाले नहीं जा सकते ({{ code }}); बही सुधारें",
+        "lotsRow": "{{ action }} ({{ date }}): लॉट निकाले नहीं जा सकते ({{ code }}); लेनदेन सुधारें",
+        "lotsRowSeries": "{{ action }} ({{ date }}): किसी सीरीज़ से जुड़ा नहीं है ({{ code }}); उस लेनदेन में सीरीज़ चुनें",
+        "lotsRowRemoval": "{{ action }} ({{ date }}): खाते में उस सीरीज़ की जितनी मात्रा है, उससे अधिक हटाया जा रहा है ({{ code }}); लेनदेन सुधारें"
+      },
+      "action": {
+        "BUY": "खरीद",
+        "SELL": "बिक्री",
+        "REINVEST": "पुनर्निवेश",
+        "ADD_SHARES": "शेयर जोड़ना",
+        "REMOVE_SHARES": "शेयर हटाना",
+        "SPLIT": "स्प्लिट",
+        "TRANSFER_IN": "आने वाला ट्रांसफ़र",
+        "TRANSFER_OUT": "जाने वाला ट्रांसफ़र",
+        "other": "लेनदेन"
+      }
+    },
+    "emailReceiptsAttention": {
+      "title": "ईमेल रसीदों को ध्यान की आवश्यकता है",
+      "message": "आपके रसीद इनबॉक्स में {{ noParser }} बिना प्रोफ़ाइल के और {{ parseFailed }} जो उनकी प्रोफ़ाइल ने मान्यता नहीं दी है। समीक्षा के लिए खोलें।"
+    },
+    "aiReview": {
+      "readyTitle": "AI समीक्षा प्रस्ताव आपकी प्रतीक्षा में हैं",
+      "readyMessage": "आपके निर्णय की प्रतीक्षा में प्रस्ताव: {{ count }}। पिछली सूचना के बाद नए: {{ added }}। समीक्षा के लिए खोलें।",
+      "expiringTitle": "AI समीक्षा प्रस्ताव जल्द समाप्त होंगे",
+      "expiringMessage": "3 दिनों के भीतर समाप्त होने वाले प्रस्ताव: {{ count }}। पहला प्रस्ताव {{ date }} को समाप्त होता है। समीक्षा के लिए खोलें।"
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: वारंटी जल्द समाप्त होगी",
+      "expiringMessage": "{{ name }} की वारंटी {{ date }} को समाप्त हो रही है। इसके दस्तावेज़ देखने या दावा दर्ज करने के लिए इसे खोलें।",
+      "todayTitle": "{{ name }}: वारंटी आज समाप्त हो रही है",
+      "todayMessage": "{{ name }} की वारंटी आज, {{ date }} को समाप्त हो रही है। इसके दस्तावेज़ देखने या दावा दर्ज करने के लिए इसे खोलें।"
     }
   },
   "backupOffsite": {

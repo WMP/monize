@@ -49,6 +49,11 @@
     "nextMonth": "Mois suivant",
     "emptyAll": "Aucune facture, aucun dépôt ni virement actif planifié."
   },
+  "cashFlowForecast": {
+    "title": "Prévision de trésorerie",
+    "period": "Période de prévision",
+    "loadFailed": "Impossible de charger les transactions déjà datées après aujourd'hui, la prévision ne peut donc pas être affichée. Rechargez le tableau de bord pour réessayer."
+  },
   "gettingStarted": {
     "title": "Démarrage",
     "subtitle": "Configurez votre compte en quelques étapes rapides",
@@ -88,6 +93,11 @@
     "viewAll": "Voir toutes les analyses",
     "activeCount": "{count} actif(s)"
   },
+  "warrantiesExpiring": {
+    "title": "Garanties bientôt expirées",
+    "empty": "Rien n'expire dans les 30 prochains jours",
+    "loadFailed": "Impossible de charger vos garanties qui expirent. Rechargez le tableau de bord pour réessayer."
+  },
   "topMovers": {
     "title": "Plus fortes variations",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "Valeur nette",
     "empty": "Aucune donnée de valeur nette disponible pour l'instant.",
-    "past12Months": "12 derniers mois",
-    "viewReport": "Voir le rapport complet"
+    "barStyle": "Style des barres",
+    "barStyleNetWorth": "Valeur nette",
+    "barStyleAccountType": "Par type de compte",
+    "loadFailed": "Impossible de charger l'historique de votre valeur nette. Rechargez le tableau de bord pour réessayer."
   },
   "assetsVsLiabilities": {
     "title": "Actifs et passifs",
@@ -135,7 +147,10 @@
     "current": "Actuel",
     "netWorthLabel": "Valeur nette",
     "assets": "Actifs",
-    "liabilities": "Passifs"
+    "liabilities": "Passifs",
+    "partialName": "{name} (partiel)",
+    "viewCallouts": "Étiquettes",
+    "viewLegend": "Légende"
   },
   "expensesPieChart": {
     "title": "Dépenses par catégorie",
@@ -145,7 +160,9 @@
     "other": "Autre",
     "insideOther": "{count, plural, one {# catégorie dans Autres} other {# catégories dans Autres}}",
     "topLevelOnly": "Catégories de premier niveau",
-    "topLevelOnlyHint": "Compter les sous-catégories dans leur catégorie parente"
+    "topLevelOnlyHint": "Compter les sous-catégories dans leur catégorie parente",
+    "viewCallouts": "Étiquettes",
+    "viewLegend": "Légende"
   },
   "incomeExpenses": {
     "title": "Revenus et dépenses",
@@ -183,6 +200,7 @@
     "accounts": "Comptes",
     "chartType": "Type de graphique",
     "view": "Vue",
+    "viewCalloutsHint": "Les étiquettes nécessitent un écran plus large. Là où elles ne tiennent pas, la légende s'affiche.",
     "displayName": "Nom d'affichage",
     "description": "Description",
     "descriptionPlaceholder": "Ajoutez une description facultative",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "Tout",
       "1w": "1S",
@@ -204,7 +223,7 @@
     "empty": "Aucun historique d'investissement à afficher pour l'instant.",
     "refresh": "Actualiser la valeur actuelle",
     "investmentResult": "Résultat de l'investissement",
-    "periodBreakdownInvestedTooltip": "La valeur des titres a varié de {valueChange} sur cette période. Sur ce montant, {netInvested} a été investi, net des ventes, et ils ont versé {income} en dividendes et intérêts. Le montant ci-dessus est ce que les investissements ont rapporté par eux-mêmes, hors liquidités non investies.",
+    "periodBreakdownInvestedTooltip": "La valeur des titres a varié de {valueChange} sur cette période. Sur ce montant, {netInvested} a été investi, net des ventes, et ils ont versé {income} en dividendes et intérêts. Une distribution réinvestie en parts compte dans les deux montants. Le montant ci-dessus est ce que les investissements ont rapporté par eux-mêmes, hors liquidités non investies.",
     "notAvailable": "N/D"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "Occurrences minimales",
     "minOccurrencesOption": "{count} ou plus",
     "occurrences": "{count} occurrences",
-    "monthlyEstimate": "Estimation mensuelle"
+    "monthlyEstimate": "Estimation mensuelle",
+    "viewCallouts": "Étiquettes",
+    "viewLegend": "Légende"
   },
   "weekendVsWeekday": {
     "title": "Dépenses week-end vs semaine",

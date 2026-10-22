@@ -14,7 +14,15 @@ import { Modal } from '@/components/ui/Modal';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows } from '@/components/transactions/SplitEditor';
 import { toOverrideSplits } from './splitSerialization';
-import { ScheduledTransaction, ScheduledTransactionOverride } from '@/types/scheduled-transaction';
+import { bookSplitRowsAtMinorUnit } from '@/lib/minor-unit-booking';
+import {
+  LoanOccurrenceMissing,
+  ScheduledTransaction,
+  ScheduledTransactionOverride,
+  SelectedLoanOccurrence,
+} from '@/types/scheduled-transaction';
+import { loanOccurrenceLines } from '@/lib/loan-occurrence';
+import { useLoanOccurrenceMissingText } from './useLoanOccurrenceMissingText';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
@@ -42,6 +50,13 @@ interface OverrideEditorDialogProps {
   // the post-reconciliation flow to prefill a liability payment with the
   // reconciled balance.
   prefillAmount?: number | null;
+  /**
+   * For a loan bill, the occurrence as the server priced it at its own due
+   * date (INV-LOAN-009): the dialog opens on its amount and its principal,
+   * interest and extra principal lines, never the template's. An override
+   * with lines of its own keeps them; `prefillAmount` outranks it.
+   */
+  loanOccurrence?: SelectedLoanOccurrence | null;
   onClose: () => void;
   onSave: () => void;
   /**
@@ -61,6 +76,7 @@ export function OverrideEditorDialog({
   accounts,
   existingOverride,
   prefillAmount,
+  loanOccurrence,
   onClose,
   onSave,
   onCreateCategory,
@@ -72,6 +88,15 @@ export function OverrideEditorDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(overrideDate);
   const [amount, setAmount] = useState<number>(0);
+  // True while a loan occurrence's amount is unknown and the user has not
+  // entered one: the field is empty rather than holding the template's amount.
+  const [amountUnknown, setAmountUnknown] = useState(false);
+  // Why a loan occurrence's amount, or only its lines, could not be seeded.
+  const [loanSeedGap, setLoanSeedGap] = useState<{
+    part: 'amount' | 'lines';
+    missing: LoanOccurrenceMissing | null;
+  } | null>(null);
+  const missingText = useLoanOccurrenceMissingText();
   const [categoryId, setCategoryId] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [isSplit, setIsSplit] = useState(false);
@@ -128,10 +153,42 @@ export function OverrideEditorDialog({
   const isInvestmentAmountOnly =
     isInvestmentKind &&
     investmentAction != null &&
-    ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN'].includes(baseInvestmentAction(investmentAction));
+    ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN', 'RETURN_OF_CAPITAL'].includes(baseInvestmentAction(investmentAction));
 
-  // Initialize form with base transaction or existing override values
-  useEffect(() => {
+  // Initialize form with base transaction or existing override values, again
+  // whenever the dialog opens or what it edits changes. The "info from previous
+  // render" pattern rather than a setState in an effect.
+  const initInputs = [
+    isOpen,
+    existingOverride,
+    scheduledTransaction,
+    overrideDate,
+    prefillAmount,
+    loanOccurrence,
+    isInvestmentKind,
+  ] as const;
+  const [initializedFor, setInitializedFor] = useState<typeof initInputs | null>(null);
+  if (
+    initializedFor === null ||
+    initInputs.some((value, index) => !Object.is(value, initializedFor[index]))
+  ) {
+    setInitializedFor(initInputs);
+    // Split lines are booked in the currency's smallest unit under a parent in
+    // the same unit, the rounding difference on the loan's principal line:
+    // a cents parent over a template's 4dp lines is what the server refused
+    // (issue #1581).
+    const initSplits = (rows: SplitRow[] | null, parentAmount: number, fallbackAmount: number) => {
+      const booked =
+        rows && !scheduledTransaction.isTransfer
+          ? bookSplitRowsAtMinorUnit(rows, parentAmount, scheduledTransaction.currencyCode, scheduledTransaction.splits)
+          : null;
+      if (booked) {
+        setSplits(booked.rows);
+        setAmount(booked.parentAmount);
+      } else {
+        setSplits(rows ?? createEmptySplits(fallbackAmount));
+      }
+    };
     if (isOpen) {
       if (existingOverride) {
         // Use the existing override's date (which may differ from the original calculated date)
@@ -149,16 +206,18 @@ export function OverrideEditorDialog({
         setCategoryId(existingOverride.categoryId ?? scheduledTransaction.categoryId ?? '');
         setDescription(existingOverride.description ?? scheduledTransaction.description ?? '');
         setIsSplit(existingOverride.isSplit ?? scheduledTransaction.isSplit);
-        if (existingOverride.isSplit && existingOverride.splits) {
-          setSplits(toSplitRows(existingOverride.splits.map((s, i) => ({
-            id: `override-${i}`,
-            ...s,
-          }))));
-        } else if (scheduledTransaction.isSplit && scheduledTransaction.splits) {
-          setSplits(toSplitRows(scheduledTransaction.splits));
-        } else {
-          setSplits(createEmptySplits(amt));
-        }
+        initSplits(
+          existingOverride.isSplit && existingOverride.splits
+            ? toSplitRows(existingOverride.splits.map((s, i) => ({
+                id: `override-${i}`,
+                ...s,
+              })))
+            : scheduledTransaction.isSplit && scheduledTransaction.splits
+              ? toSplitRows(scheduledTransaction.splits)
+              : null,
+          Number(prefillAmount ?? existingOverride.amount ?? scheduledTransaction.amount),
+          amt,
+        );
       } else {
         // Use base transaction values (absolute value for transfers - sign is applied on save)
         const rawAmt = roundToCents(scheduledTransaction.amount);
@@ -167,10 +226,47 @@ export function OverrideEditorDialog({
         setCategoryId(scheduledTransaction.categoryId ?? '');
         setDescription(scheduledTransaction.description ?? '');
         setIsSplit(scheduledTransaction.isSplit);
-        if (scheduledTransaction.isSplit && scheduledTransaction.splits) {
-          setSplits(toSplitRows(scheduledTransaction.splits));
+        initSplits(
+          scheduledTransaction.isSplit && scheduledTransaction.splits
+            ? toSplitRows(scheduledTransaction.splits)
+            : null,
+          Number(prefillAmount ?? scheduledTransaction.amount),
+          amt,
+        );
+      }
+
+      // A loan bill's occurrence opens on the figures the server priced for
+      // it at its own due date, not the template's (INV-LOAN-009). An
+      // override's own lines stand as the user wrote them.
+      setAmountUnknown(false);
+      setLoanSeedGap(null);
+      const overrideHasOwnLines = !!(existingOverride?.isSplit && existingOverride.splits);
+      if (loanOccurrence && !isInvestmentKind && prefillAmount == null && !overrideHasOwnLines) {
+        const { occurrence, loanAccountId } = loanOccurrence;
+        // Direction only: the projection's money is unsigned, and the bill
+        // moves it the way the template does.
+        const sign: 1 | -1 = Number(scheduledTransaction.amount) < 0 ? -1 : 1;
+        const templateRows =
+          scheduledTransaction.isSplit && scheduledTransaction.splits
+            ? toSplitRows(scheduledTransaction.splits)
+            : null;
+        if (occurrence.amount === null) {
+          setAmount(0);
+          setAmountUnknown(true);
+          setLoanSeedGap({ part: 'amount', missing: occurrence.missing });
+          if (templateRows) setSplits(templateRows.map((row) => ({ ...row, amount: 0 })));
         } else {
-          setSplits(createEmptySplits(amt));
+          const parent = scheduledTransaction.isTransfer
+            ? Math.abs(occurrence.amount)
+            : sign * occurrence.amount;
+          const lines = templateRows
+            ? loanOccurrenceLines(templateRows, occurrence, loanAccountId, sign)
+            : null;
+          if (templateRows && !lines) {
+            setLoanSeedGap({ part: 'lines', missing: occurrence.missing });
+          }
+          setAmount(roundToCents(parent));
+          if (lines ?? templateRows) initSplits(lines ?? templateRows, parent, parent);
         }
       }
 
@@ -223,7 +319,7 @@ export function OverrideEditorDialog({
       setMarketPriceDate(null);
       setPriceHistoryEmpty(false);
     }
-  }, [isOpen, existingOverride, scheduledTransaction, overrideDate, prefillAmount]);
+  }
 
   // Fetch the most recent close price for the security so we can auto-fill
   // the Price field (matching the new-scheduled-transaction form behaviour).
@@ -232,9 +328,9 @@ export function OverrideEditorDialog({
     const securityId = scheduledTransaction.investmentSecurityId;
     if (!securityId) return;
     let cancelled = false;
-    // Reset while the request is in flight: "no price history" is a
-    // completed-empty result, not the loading window and not a failed lookup.
-    setPriceHistoryEmpty(false);
+    // "No price history" is a completed-empty result, not the loading window and
+    // not a failed lookup: every input this request depends on also re-runs the
+    // initialization above, which has already cleared it for this request.
     investmentsApi
       .getSecurityPrices(securityId, { limit: 1 })
       .then((prices) => {
@@ -425,6 +521,11 @@ export function OverrideEditorDialog({
       }
     }
 
+    if (!isInvestmentKind && amountUnknown) {
+      toast.error(t('loanOccurrence.amountRequired'));
+      return;
+    }
+
     setIsLoading(true);
     try {
       // For transfers, negate the amount (user enters positive, stored as negative)
@@ -504,6 +605,7 @@ export function OverrideEditorDialog({
   // Handler for SplitEditor to update amount
   const handleAmountChange = (newAmount: number) => {
     setAmount(roundToCents(newAmount));
+    setAmountUnknown(false);
   };
 
   const currentCategory = categoryId ? categories.find(c => c.id === categoryId) : null;
@@ -655,10 +757,23 @@ export function OverrideEditorDialog({
           <CurrencyInput
             label={t('overrideEditor.amountLabel')}
             prefix={getCurrencySymbol(scheduledTransaction.currencyCode)}
-            value={amount}
-            onChange={(value) => setAmount(value ?? 0)}
+            value={amountUnknown ? undefined : amount}
+            onChange={(value) => {
+              setAmount(value ?? 0);
+              setAmountUnknown(false);
+            }}
             allowSignToggle
           />
+        )}
+        {!isInvestmentKind && loanSeedGap && (
+          <p className="-mt-2 text-xs text-amber-700 dark:text-amber-300" role="note">
+            {t(
+              loanSeedGap.part === 'amount'
+                ? 'loanOccurrence.editorUnknown'
+                : 'loanOccurrence.editorLinesUnknown',
+              { reason: missingText(loanSeedGap.missing) },
+            )}
+          </p>
         )}
 
         {/* Transfer indicator - shown instead of category for transfers */}
@@ -712,6 +827,7 @@ export function OverrideEditorDialog({
                 onTransactionAmountChange={handleAmountChange}
                 currencyCode={scheduledTransaction.currencyCode}
                 onCreateCategory={onCreateCategory}
+                transactionDate={selectedDate}
               />
             ) : (
               <div>

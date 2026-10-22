@@ -5,6 +5,7 @@ import {
   STORED_RATE_ROW_CAP,
 } from "@/currencies/exchange-rate-history.service";
 import { ExchangeRateService } from "@/currencies/exchange-rate.service";
+import { FxProviderChain } from "@/currencies/providers/fx-provider-chain";
 import { UserPreference } from "@/users/entities/user-preference.entity";
 import { withUserContext } from "@/common/db/with-context";
 import {
@@ -34,6 +35,12 @@ describe("ExchangeRateHistoryService reads (integration)", () => {
     fillRateWindow: jest.fn(),
   } as unknown as ExchangeRateService;
 
+  /** A chain that is only ever asked to describe itself. */
+  const chainOf = (...sources: string[]): FxProviderChain =>
+    ({
+      describe: () => sources.map((source) => ({ name: source, source })),
+    }) as unknown as FxProviderChain;
+
   const insertRate = (
     from: string,
     to: string,
@@ -49,7 +56,11 @@ describe("ExchangeRateHistoryService reads (integration)", () => {
   beforeAll(async () => {
     module = await createIntegrationModule([]);
     dataSource = module.get(DataSource);
-    service = new ExchangeRateHistoryService(dataSource, exchangeRateService);
+    service = new ExchangeRateHistoryService(
+      dataSource,
+      exchangeRateService,
+      chainOf("frankfurter", "yahoo_finance"),
+    );
   });
 
   afterAll(async () => {
@@ -58,6 +69,7 @@ describe("ExchangeRateHistoryService reads (integration)", () => {
 
   beforeEach(async () => {
     await cleanTables(dataSource, [
+      "exchange_rate_coverage",
       "exchange_rates",
       "user_preferences",
       "users",
@@ -195,6 +207,166 @@ describe("ExchangeRateHistoryService reads (integration)", () => {
         rates: [],
         truncated: false,
         limit: STORED_RATE_ROW_CAP,
+      });
+    });
+  });
+
+  /**
+   * The coverage upsert's merge is SQL, so only a real database can show that
+   * it ratchets within one provider chain and resets across two.
+   */
+  describe("pair coverage across provider chains", () => {
+    interface Coverage {
+      earliestAvailableDate: string | null;
+      firstGapDate: string | null;
+      probedFrom: string | null;
+    }
+    interface CoverageDoor {
+      readPairCoverage(from: string, to: string): Promise<Coverage>;
+      recordPairCoverage(
+        from: string,
+        to: string,
+        coverage: Coverage,
+      ): Promise<void>;
+    }
+
+    const under = (...sources: string[]): CoverageDoor =>
+      new ExchangeRateHistoryService(
+        dataSource,
+        exchangeRateService,
+        chainOf(...sources),
+      ) as unknown as CoverageDoor;
+
+    const storedRow = async () =>
+      (
+        await dataSource.query(
+          `SELECT TO_CHAR(earliest_available_date, 'YYYY-MM-DD') AS earliest,
+                  TO_CHAR(first_gap_date, 'YYYY-MM-DD') AS first_gap,
+                  TO_CHAR(probed_from, 'YYYY-MM-DD') AS probed_from,
+                  providers
+             FROM exchange_rate_coverage
+            WHERE from_currency = 'EUR' AND to_currency = 'PLN'`,
+        )
+      )[0];
+
+    const yahooEra: Coverage = {
+      earliestAvailableDate: "2003-09-01",
+      firstGapDate: "2026-10-12",
+      probedFrom: "1996-09-16",
+    };
+
+    it("keeps the forward-only merge within one chain", async () => {
+      const door = under("yahoo_finance");
+      await withUserContext(userId, () =>
+        door.recordPairCoverage("EUR", "PLN", yahooEra),
+      );
+      await withUserContext(userId, () =>
+        door.recordPairCoverage("EUR", "PLN", {
+          earliestAvailableDate: "1999-01-04",
+          firstGapDate: "2010-01-01",
+          probedFrom: "2001-01-01",
+        }),
+      );
+
+      expect(await storedRow()).toEqual({
+        earliest: "2003-09-01",
+        first_gap: "2026-10-12",
+        probed_from: "1996-09-16",
+        providers: "yahoo_finance",
+      });
+      expect(
+        await withUserContext(userId, () =>
+          door.readPairCoverage("PLN", "EUR"),
+        ),
+      ).toEqual(yahooEra);
+    });
+
+    it("reads a row recorded under another chain as unestablished", async () => {
+      await withUserContext(userId, () =>
+        under("yahoo_finance").recordPairCoverage("EUR", "PLN", yahooEra),
+      );
+
+      expect(
+        await withUserContext(userId, () =>
+          under("frankfurter", "yahoo_finance").readPairCoverage("EUR", "PLN"),
+        ),
+      ).toEqual({
+        earliestAvailableDate: null,
+        firstGapDate: null,
+        probedFrom: null,
+      });
+    });
+
+    it("reads a row with no recorded chain as unestablished", async () => {
+      await dataSource.query(
+        `INSERT INTO exchange_rate_coverage
+                (from_currency, to_currency, earliest_available_date,
+                 first_gap_date, probed_from)
+         VALUES ('EUR', 'PLN', '2003-09-01', '2026-10-12', '1996-09-16')`,
+      );
+
+      expect(
+        await withUserContext(userId, () =>
+          under("frankfurter", "yahoo_finance").readPairCoverage("EUR", "PLN"),
+        ),
+      ).toEqual({
+        earliestAvailableDate: null,
+        firstGapDate: null,
+        probedFrom: null,
+      });
+    });
+
+    it("replaces all three dates when the chain changes, rather than merging", async () => {
+      await withUserContext(userId, () =>
+        under("yahoo_finance").recordPairCoverage("EUR", "PLN", yahooEra),
+      );
+      const current = under("frankfurter", "yahoo_finance");
+      await withUserContext(userId, () =>
+        current.recordPairCoverage("EUR", "PLN", {
+          earliestAvailableDate: null,
+          firstGapDate: "2001-01-01",
+          probedFrom: "1998-01-02",
+        }),
+      );
+
+      // GREATEST/LEAST would have kept 2003-09-01, 2026-10-12 and 1996-09-16.
+      expect(await storedRow()).toEqual({
+        earliest: null,
+        first_gap: "2001-01-01",
+        probed_from: "1998-01-02",
+        providers: "frankfurter,yahoo_finance",
+      });
+      expect(
+        await withUserContext(userId, () =>
+          current.readPairCoverage("EUR", "PLN"),
+        ),
+      ).toEqual({
+        earliestAvailableDate: null,
+        firstGapDate: "2001-01-01",
+        probedFrom: "1998-01-02",
+      });
+    });
+
+    it("replaces the dates of a row with no recorded chain", async () => {
+      await dataSource.query(
+        `INSERT INTO exchange_rate_coverage
+                (from_currency, to_currency, earliest_available_date,
+                 first_gap_date, probed_from)
+         VALUES ('EUR', 'PLN', '2003-09-01', '2026-10-12', '1996-09-16')`,
+      );
+      await withUserContext(userId, () =>
+        under("frankfurter", "yahoo_finance").recordPairCoverage("EUR", "PLN", {
+          earliestAvailableDate: "1999-01-04",
+          firstGapDate: "2001-01-01",
+          probedFrom: "1998-01-02",
+        }),
+      );
+
+      expect(await storedRow()).toEqual({
+        earliest: "1999-01-04",
+        first_gap: "2001-01-01",
+        probed_from: "1998-01-02",
+        providers: "frankfurter,yahoo_finance",
       });
     });
   });

@@ -80,6 +80,10 @@ const e2eConfig = JSON.parse(
   readFileSync(join(BACKEND_DIR, "test", "jest-e2e.json"), "utf8"),
 ) as JestConfig;
 
+const integrationConfig = JSON.parse(
+  readFileSync(join(BACKEND_DIR, "test", "jest-integration.json"), "utf8"),
+) as JestConfig;
+
 /**
  * A guard that models a runner is only as good as the model, so the separator
  * handling is the model's, not the host's: every path is compared in POSIX form
@@ -326,6 +330,38 @@ describeTree("jest configuration", () => {
     // get a database per worker; nothing else makes them safe to parallelize.
     expect(e2eConfig.maxWorkers).toBe(1);
   });
+
+  /**
+   * `test:integration` takes its discovery from `test/jest-integration.json`,
+   * not from a `--testPathPatterns` on the script: Jest ORs every path pattern
+   * it is given, so a script pattern for the whole directory turned
+   * `npm run test:integration -- <file>` into a run of every suite. With the
+   * discovery in the config, a positional pattern narrows it.
+   */
+  it("owns exactly the integration specs in the integration config", () => {
+    const integrationSpecs = specs("test/integration");
+    expect(integrationSpecs.length).toBeGreaterThan(30);
+    const testDir = virtual("backend/test");
+    expect(
+      integrationSpecs.filter(
+        (file) => !discovers(integrationConfig, testDir, virtual(file)),
+      ),
+    ).toEqual([]);
+    expect(
+      specs("test")
+        .filter((file) => !file.startsWith("backend/test/integration/"))
+        .filter((file) => discovers(integrationConfig, testDir, virtual(file))),
+    ).toEqual([]);
+    expect(integrationConfig.maxWorkers).toBe(1);
+  });
+
+  it("keeps the integration config identical to the e2e config but for discovery", () => {
+    // Two copies of one transform and one mapper drift apart one edit at a
+    // time; the only difference allowed is which files they find.
+    const { testRegex: _integration, ...integrationRest } = integrationConfig;
+    const { testRegex: _e2e, ...e2eRest } = e2eConfig;
+    expect(integrationRest).toEqual(e2eRest);
+  });
 });
 
 /**
@@ -464,7 +500,12 @@ describeTree("test scripts", () => {
     expect(withArguments.stderr).toContain("npm test takes no arguments");
 
     expect(packageJson.scripts["test:integration"]).toContain(
-      "--config ./test/jest-e2e.json",
+      "--config ./test/jest-integration.json",
+    );
+    // Discovery stays in the config: a script-level path pattern is ORed with
+    // the caller's filter and silently widens a filtered run to every suite.
+    expect(packageJson.scripts["test:integration"]).not.toContain(
+      "--testPathPatterns",
     );
   });
 
@@ -565,6 +606,7 @@ describeTree("zero-discovery flags", () => {
         '"*package.json"',
         '"*jest.config.*"',
         '"*jest-e2e.json"',
+        '"*jest-integration.json"',
         '"*vitest.config.*"',
         '"*playwright.config.*"',
         '".github/workflows/*"',
@@ -578,6 +620,7 @@ describeTree("zero-discovery flags", () => {
       expect.arrayContaining([
         "backend/package.json",
         "backend/test/jest-e2e.json",
+        "backend/test/jest-integration.json",
         "frontend/vitest.config.ts",
         ".github/workflows/ci.yml",
       ]),

@@ -50,6 +50,15 @@ import { CreateCurrencyDto } from "./dto/create-currency.dto";
 import { UpdateCurrencyDto } from "./dto/update-currency.dto";
 import { FillRateGapsDto } from "./dto/fill-rate-gaps.dto";
 import { tr } from "../i18n/translate";
+import {
+  FxProviderChain,
+  FxProviderDescription,
+} from "./providers/fx-provider-chain";
+
+export interface ExchangeRateStatus {
+  lastUpdated: Date | null;
+  providers: FxProviderDescription[];
+}
 
 @ApiTags("Currencies")
 @ApiBearerAuth()
@@ -60,6 +69,7 @@ export class CurrenciesController {
     private readonly exchangeRateService: ExchangeRateService,
     private readonly exchangeRateHistoryService: ExchangeRateHistoryService,
     private readonly currenciesService: CurrenciesService,
+    private readonly fxProviders: FxProviderChain,
   ) {}
 
   // ── Currency list ───────────────────────────────────────────────
@@ -126,10 +136,16 @@ export class CurrenciesController {
 
   @Get("exchange-rates")
   @AllowDelegate()
-  @ApiOperation({ summary: "Get latest exchange rates" })
+  @ApiOperation({
+    summary: "Get latest exchange rates",
+    description:
+      "One row per currency pair: the newest stored observation of either direction, " +
+      "no older than 45 days. A pair whose newest observation is older is omitted, " +
+      "because its rate is unknown rather than the last one on file.",
+  })
   @ApiResponse({
     status: 200,
-    description: "Latest exchange rates per currency pair",
+    description: "Latest exchange rate per currency pair, one row per pair",
     type: [ExchangeRate],
   })
   getLatestRates(): Promise<ExchangeRate[]> {
@@ -291,10 +307,14 @@ export class CurrenciesController {
   @Get("exchange-rates/status")
   @AllowDelegate()
   @ApiOperation({ summary: "Get exchange rate update status" })
-  @ApiResponse({ status: 200, description: "Last update time" })
-  async getRateStatus(): Promise<{ lastUpdated: Date | null }> {
+  @ApiResponse({
+    status: 200,
+    description:
+      "Last update time and the configured FX providers, in the order they are tried; `source` is the slug stored on each rate row, `name` identifies the provider itself.",
+  })
+  async getRateStatus(): Promise<ExchangeRateStatus> {
     const lastUpdated = await this.exchangeRateService.getLastUpdateTime();
-    return { lastUpdated };
+    return { lastUpdated, providers: this.fxProviders.describe() };
   }
 
   /**

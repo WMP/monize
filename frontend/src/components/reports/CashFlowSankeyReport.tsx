@@ -126,8 +126,10 @@ export function CashFlowSankeyReport() {
   const { labelFor, colorOfNode } = useSankeyNodePresentation(categories);
 
   // The answer, once there is one to draw: nothing in the window is an empty
-  // state, not an empty diagram.
-  const data = response && response.nodes.length > 0 ? response : null;
+  // state, not an empty diagram. The previous answer is not this selection's
+  // while the new request is pending or failed (the hook keeps it), so neither
+  // the cards, the diagram nor an export read it then.
+  const data = !isLoading && !error && response && response.nodes.length > 0 ? response : null;
 
   const reportingCurrency = response?.currency ?? defaultCurrency;
 

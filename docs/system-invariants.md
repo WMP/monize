@@ -57,19 +57,26 @@ implied.
 | ID | Invariant | Status |
 | --- | --- | --- |
 | INV-IMPORT-001 | At most one pending or running MNY import per user | enforced |
-| INV-IMPORT-002 | A retry never double-imports | enforced |
-| INV-IMPORT-003 | A category collision does not abort an import | unenforced |
-| INV-BALANCE-001 | `current_balance` equals opening balance plus included ledger rows | enforced |
+| INV-IMPORT-002 | A retry never double-imports | partial |
+| INV-IMPORT-003 | A category collision does not abort an import | enforced |
+| INV-BANKSYNC-001 | A bank transaction is imported into a Monize account at most once | partial |
+| INV-BANKSYNC-002 | A bank sync provider private key never leaves the server | enforced |
+| INV-BANKSYNC-003 | A synced row is written in the Monize account's currency or not at all | enforced |
+| INV-BANKSYNC-004 | Nothing imports a bank account awaiting its first preview except the confirmed single-account sync | enforced |
+| INV-API-001 | An API create carrying an `externalId` produces at most one row per account and key | partial |
+| INV-BALANCE-001 | `current_balance` equals opening balance plus included ledger rows | partial |
 | INV-HOLDING-001 | A holding equals a deterministic replay of the investment ledger | enforced |
 | INV-HOLDING-002 | Every view replays the ledger the same way | enforced |
 | INV-TRANSFER-001 | A transfer's two legs share the VOID boundary and one balance decision | enforced |
 | INV-REGISTER-001 | A row's running balance is the same figure whichever way the date register runs, and no balance is shown under any other order | enforced |
 | INV-REDEEM-001 | A redemption's accrued interest moves cash once and is income once | enforced |
 | INV-RECONCILE-001 | While the strict lock is on, a reconciled transaction is not altered | enforced |
+| INV-DELEGATION-001 | A grantee's write is authorized in the transaction that writes it, and a revoke is final | partial |
 | INV-FX-001 | An unavailable rate never becomes 1:1, a rate from after the date, or an unboundedly old one | partial |
 | INV-FX-002 | A row that carries its own exchange rate is converted at that rate on every surface | enforced |
 | INV-FX-003 | A currency pair is stored in one orientation | partial |
 | INV-FX-004 | A user-supplied rate never replaces a global exchange-rate observation | enforced |
+| INV-FX-005 | A provider-written rate names its provider, every provider question goes through the chain, and an outage is never remembered as an empty answer | enforced |
 | INV-TRADE-001 | The executed total is the fact; the per-share price is derived from it | enforced |
 | INV-PRICE-001 | A stored price is in the currency the security is recorded in | partial |
 | INV-PORTRESULT-001 | A period change is not a return: value change, external flows and investment result are three figures | enforced |
@@ -79,6 +86,7 @@ implied.
 | INV-REPORT-001 | A report's account scope is investment linkage, not account type | enforced |
 | INV-REPORT-002 | A chart's down-sampling never reaches a count, a total or an export | enforced |
 | INV-REPORT-003 | A transfer leg appears in a report only as a named flow, never inside income, expenses or net | enforced |
+| INV-REPORT-004 | A category's cost is its signed sum within the category, on every report surface | partial |
 | INV-SANKEY-001 | The Cash Flow Sankey closes: income + inflows + deficit = expenses + outflows + unspent | enforced |
 | INV-SANKEY-002 | A Sankey transfer leg is counted at most once, by its own account's scope and its counterpart's class | enforced |
 | INV-SANKEY-003 | Investment linkage and VOID are excluded on every Sankey branch | enforced |
@@ -91,7 +99,25 @@ implied.
 | INV-LOAN-005 | The first payment date is payment number 1 | enforced |
 | INV-LOAN-006 | A scheduled loan installment prices the ledger debt, the rate, and the remaining count through its own due date | enforced |
 | INV-LOAN-007 | One amortization method per mortgage type, from preview to pricing to projection | enforced |
+| INV-LOAN-008 | One settlement per scheduled occurrence, and the claim commits with the split | enforced |
+| INV-LOAN-009 | An annuity installment's payment is the one stated for its own due date | enforced |
+| INV-LOAN-010 | A loan's interest category and its managed payment template's interest line change together | enforced |
 | INV-LOAN-HISTORY-001 | Historical loan interest counted as paid is ledger-backed | partial |
+| INV-BOND-001 | A bond's published terms, period rates, instruments and programs are immutable | enforced |
+| INV-BOND-002 | A missing bond rate is unknown, never substituted | enforced |
+| INV-BOND-003 | Bond money is exact until the issue document rounds it | enforced |
+| INV-BOND-004 | Known and projected bond values never mix | enforced |
+| INV-BOND-005 | A linked security's automatic price comes only from the bond engine; the engine replaces every non-manual row and never a manual one | enforced |
+| INV-BOND-006 | Bond terms enter the catalog only from an adapter's fetch of its official source or an administrator's manual entry on the adapter's template; a person who is not an administrator supplies only a country and a series code | enforced |
+| INV-BOND-007 | A program-linked security's acquisitions with a date of their own are inferred, TRANSFER_IN and ADD_SHARES name their series, a removal the account cannot cover is refused at write time, and an import may store NULL which the lots name | enforced |
+| INV-BOND-008 | No country's bond data (series, terms version, benchmark observation) is fetched or stored without a person's action | enforced |
+| INV-BOND-009 | A bond redemption's cash splits into returned principal and interest, never into a capital gain | enforced |
+| INV-BOND-010 | A bond-linked holding's current value is its own account's lots' value, never quantity times the security's blended price | partial |
+| INV-BONDNOTIFY-001 | The bond notification producer reads stored terms, observations and the ledger, fetches nothing and writes nothing but notification rows | enforced |
+| INV-BONDNOTIFY-002 | Each bond notification event has one row per person: a re-run, a second replica or a restart raises nothing new, and a state-keyed event is raised once while its state lasts | enforced |
+| INV-BONDNOTIFY-003 | Every amount, rate and date in a bond notification is the engine's | enforced |
+| INV-BONDNOTIFY-004 | A bond amount the engine cannot work out is null in a notification and its copy says it is not known and why, never zero | enforced |
+| INV-BONDNOTIFY-005 | The bond notification producer names no country, program, publisher or benchmark | enforced |
 | INV-OCCURRENCE-001 | One scheduled occurrence has at most one financial effect | enforced |
 | INV-OCCURRENCE-002 | A stored override price survives reopening | enforced |
 | INV-OCCURRENCE-003 | Every surface reports the effective occurrence: its current amount and currency, its direction, on the date it falls | enforced |
@@ -103,12 +129,13 @@ implied.
 | INV-AUTH-005 | A replaced password ends every credential issued on the old one | enforced |
 | INV-ACTIVITY-001 | Activity is attributed to whoever acted, not to whoever was acted for | enforced |
 | INV-PROFILE-001 | A user-profile response is an allowlist | enforced |
-| INV-DISPLAY-001 | A figure addressed to a person is rendered in that person's number locale | enforced |
+| INV-DISPLAY-001 | A figure addressed to a person is rendered in that person's number locale | partial |
+| INV-DISPLAY-002 | A partial figure is relabelled where it is shown: a scalar total is null with its known subtotal named, a series point is plotted as unknown | partial |
 | INV-MCP-001 | Identity comes from the credential on the request | enforced |
 | INV-MCP-002 | An MCP request is answered by the MCP transport, never by the app shell | enforced |
 | INV-MCP-003 | A write confirmation is bound to one credential and one change | enforced |
 | INV-MCP-004 | A write happens only on the round a human answered | enforced |
-| INV-CURRENCY-001 | A shared currency is deleted only by its creator, on a global count | enforced |
+| INV-CURRENCY-001 | A shared currency is deleted only by its creator, on a global count; a user's action never creates or leaves one offered to every user | partial |
 | INV-ATTACHMENT-001 | Available metadata resolves to committed bytes | enforced |
 | INV-ATTACHMENT-002 | A scanned document and its original are one attachment | enforced |
 | INV-ATTACHMENT-003 | An attachment's bytes are read from the backend that holds them, and a provider switch moves them | enforced |
@@ -136,6 +163,7 @@ implied.
 | INV-PUSH-008 | A subscription's transport gates its delivery: the `push` and `unifiedpush` channels reach only their own wire's devices | enforced |
 | INV-PUSH-009 | A channel a category does not expose is forced off at resolution, whatever the stored row says | enforced |
 | INV-PUSH-010 | A UnifiedPush endpoint is validated as a server-outbound URL, and its transport is bounded to one list held equal across DTO, schema and client | enforced |
+| INV-PUSH-011 | A held device receives nothing until its own account resumes it | enforced |
 | INV-CRON-001 | One logical cron effect per schedule tick, across replicas | partial |
 | INV-PROVIDER-001 | An unreachable provider stops being called, and produces at most one alert pair per outage | enforced |
 | INV-ALERT-001 | A system alert row lands at most once per (recipient, dedupe key), and only the insert winner emails | enforced |
@@ -147,7 +175,7 @@ implied.
 | INV-PORTMOVE-007 | A portfolio movement's external flow is converted at the date each amount crossed the boundary | enforced |
 | INV-PORTMOVE-008 | A late close restates a portfolio movement's baseline instead of being booked as the period's move, and a carried close never withholds it | enforced |
 | INV-RLS-001 | Enforced mode refuses to run on a role that can bypass RLS | enforced |
-| INV-CACHE-001 | A money-moving write invalidates every derived cache | enforced |
+| INV-CACHE-001 | A money-moving write invalidates every derived cache | partial |
 | INV-DAYNOTE-001 | A calendar date is covered by at most one of a user's notes, and a save never reads first | enforced |
 | INV-PAYEE-001 | A contact lookup never overwrites a value the user entered, and the automatic one runs at most once per payee | enforced |
 | INV-PAYEE-002 | Google Places requests in one Pacific calendar month never exceed the cap for the key's owner | enforced |
@@ -158,8 +186,31 @@ implied.
 | INV-HA-003 | A single-use artifact is consumed at most once across every replica | enforced |
 | INV-HA-004 | One deployment publishes one OIDC signing key set, stable across restarts | enforced |
 | INV-HA-005 | A relay prompt is claimed by exactly one agent poll and answered at most once | enforced |
-| INV-RULE-001 | A transaction rule never moves a balance | enforced |
+| INV-RULE-001 | A transaction rule never changes the matched row's amount, account, date or status; the only balance it moves is a structural action's counterpart | partial |
 | INV-RULE-002 | A transaction rule applies inside the transaction that inserts the row, on every creation path | partial |
+| INV-RULE-003 | The preview, the draft test and the commit of a transaction rule are one planner, and a run commits only the plan the person previewed | partial |
+| INV-RULE-004 | A transaction rule is evaluated only for a row whose date is known and inside the rule's active window | partial |
+| INV-RULE-005 | A rule pass that settles loan installments folds chronologically, and its preview and commit fold the same | enforced |
+| INV-RECEIPT-001 | A receipt mailbox is read, never written | enforced |
+| INV-RECEIPT-002 | A receipt email is stored once, and the poll cursor moves with the rows it covers | enforced |
+| INV-RECEIPT-003 | A receipt changes the ledger only through the review card and the confirm path, and never moves money (a trade confirmation is INV-RECEIPT-008) | enforced |
+| INV-RECEIPT-004 | A receipt mailbox connection reaches only a public address unless the owner is an admin or the operator allowed the host | enforced |
+| INV-RECEIPT-005 | A mailbox password or OAuth token is encrypted at rest and never returned | enforced |
+| INV-RECEIPT-006 | One poll per mailbox at a time across replicas | enforced |
+| INV-RECEIPT-007 | An OAuth callback completes only the flow the same user started, once | enforced |
+| INV-RECEIPT-008 | A trade confirmation creates an investment transaction only through the review card and the confirm path | enforced |
+| INV-SEARCH-001 | A transaction search string has one door: one parser, one clause builder, escaped once | partial |
+| INV-SEARCH-002 | A single bare search term finds exactly what it found before the search syntax | enforced |
+| INV-SEARCH-003 | Every term of a search holds on the row the query counts; every call site searches at split grain | enforced |
+| INV-SEARCH-004 | Matching a search never multiplies a counted row | enforced |
+| INV-SEARCH-005 | The assistant's totals and rows read the search string alike | enforced |
+| INV-WTY-001 | A warranty never writes a ledger row, a balance or a holding | partial |
+| INV-WTY-002 | Every warranty status a surface prints is the server's, from one function | partial |
+| INV-WTY-003 | An attachment has exactly one parent, a transaction or a warranty; a transaction's attachments are its own rows plus the documents of warranties linked to it, through one fragment | enforced |
+| INV-WTY-004 | Each warranty reminder threshold notifies once per (warranty, expiry date, threshold), across replicas | enforced |
+| INV-WTY-005 | A warranty or claim write naming a row the caller does not own is refused before the write | enforced |
+| INV-WTY-006 | A warranty import's preview and commit are one computation | enforced |
+| INV-WTY-007 | A delegate never learns a transaction outside their readable accounts through a warranty | enforced |
 
 ## Imports
 
@@ -197,10 +248,11 @@ could also reach the destructive wipe.
 ### INV-IMPORT-002 -- a retry never double-imports
 
 ```text
-Statement           Retrying a failed import must not insert a second copy of
-                    rows a previous attempt may have committed.
-Source of truth     import_jobs.data_committed and import_jobs.attempt_token,
-                    written in writeAll's own transaction
+Statement           Retrying a failed import, starting a new one over the same
+                    staged file, or importing a re-upload of the same bytes must
+                    not insert a second copy of rows a previous attempt committed.
+Source of truth     import_jobs.data_committed, import_jobs.content_sha256 and
+                    import_jobs.attempt_token, written in writeAll's own transaction
 Enforcement         A durable commit checkpoint claimed under an attempt fence.
                     import_jobs.data_committed (migration 140) is set by
                     markDataCommitted as the LAST statement of writeAll's
@@ -212,34 +264,70 @@ Enforcement         A durable commit checkpoint claimed under an attempt fence.
                     migration 145's reject_unfenced_import_checkpoint trigger
                     refuses a false->true data_committed on a non-running job from
                     either binary during a rolling deploy. fail() ANDs the caller's
-                    retryable with data_committed = false, and the reaper marks a
-                    committed stalled job non-retryable, so a committed run is
-                    finalized rather than replayed.
-Concurrency scope   per user, per attempt
+                    retryable with data_committed = false and switches error_key to
+                    mnyImportFailedAfterCommit on it; the reaper does the same with
+                    mnyJobStalledAfterCommit; the job DTO carries dataCommitted and
+                    the wizard's copy follows it. The same checkpoint statement
+                    copies the staged file's sha256 into content_sha256, held by
+                    the partial unique index idx_import_jobs_committed_content
+                    (user_id, content_sha256) WHERE content_sha256 IS NOT NULL
+                    (migration 20261022061534, schema.sql, ImportJob entity):
+                    MnyImportJobService.create refuses a start over bytes a job of
+                    this user holds, under LockScope.UserImport and before its row
+                    is inserted, and the index makes a second commit of the same
+                    bytes abort its import transaction (MnyAlreadyImportedError,
+                    non-retryable). A start with wipeExistingData is exempt and
+                    releases the keys after its wipe succeeded
+                    (releaseCommittedContent).
+Concurrency scope   per user, per attempt, per file content
 Retry semantics     Safe. A failure inside writeAll rolled everything back; a
                     committed run is recognised by data_committed and refused a
-                    replay.
-Crash semantics     A crash after writeAll commits leaves data_committed=true, so
-                    the reaper finalizes rather than re-runs; a crash before it
-                    leaves nothing, since the checkpoint is the transaction's last
-                    statement.
-Failure response    reconcile -- finalize the committed run rather than replay it.
+                    replay; a new start over the same bytes is refused with a 409
+                    naming the earlier import.
+Crash semantics     A crash after writeAll commits leaves data_committed=true and
+                    content_sha256 set, so the reaper finalizes rather than
+                    re-runs and the next start over the file is refused; a crash
+                    before it leaves nothing, since the checkpoint is the
+                    transaction's last statement.
+Failure response    reconcile -- finalize the committed run rather than replay it;
+                    409 on a start over committed bytes.
 Required tests      Failpoint present: backend/test/integration/mny-import-job.integration.spec.ts
                     commits writeAll then fails before terminal completion, retries,
                     and asserts the checkpoint is refused after a reap, the whole
                     transaction rolls back so nothing is doubled, a legacy
                     previous-release checkpoint is refused, and a retry claims a
-                    fresh token while the stale worker is fenced.
-Status              enforced
+                    fresh token while the stale worker is fenced; "a run that
+                    committed before it failed" asserts the committed key and
+                    retryable=false from fail() and the reaper on real rows, the
+                    start-time refusal, and the index refusing a second commit with
+                    its rows rolled back. mny-import.integration.spec.ts "a
+                    committed import" runs the real job on sample-cd-redemption.mny
+                    with a failpoint after the commit and asserts the balances stay
+                    5000.00 / 4061.00 / 1000 shares across a second start and a
+                    re-upload.
+Status              partial
 ```
+
+Residual (why `partial`): the key is the exact bytes. A Money file saved again
+between two exports differs byte for byte and is not recognised, so its second
+import still duplicates (no source-record key exists on an imported row, DR-S09-04);
+a "delete my data" from Settings removes the rows but not the keys, so the file is
+refused until the person imports it with "replace existing data"; and committed
+jobs from before migration 20261022061534 are keyed only where their staged file
+still existed when it ran. A post-commit failure is reported, not repaired: the
+post-processing recompute it interrupted is not re-dispatched (maintainer decision
+named in A26-H08).
 
 This entry was itself marked `enforced` in an earlier revision on the strength of
 a source comment ("The whole write is one transaction, so a failure leaves nothing
 behind and Retry cannot double-import") that was true of `writeAll` alone and not
-of the import, which was not finished when `writeAll` committed. It is now
-genuinely enforced, by the mechanism above rather than the comment -- and it
-remains the catalog's cautionary tale that a status copied from a comment is not a
-verified status. `docs/concurrency-and-idempotency.md` CONC-007 is the rule that a
+of the import, which was not finished when `writeAll` committed. It was marked
+`enforced` a second time on the strength of the fence, which covered a retry of the
+same job but not a new start over the same file: the 2026-10 audit (A26-H08) doubled
+every balance through that path, behind copy that said "Nothing was saved". It
+remains the catalog's cautionary tale that a status copied from a comment, or from
+a mechanism that covers a narrower scope than the statement, is not a verified
+status. `docs/concurrency-and-idempotency.md` CONC-007 is the rule that a
 named mechanism has to cover the scope claimed; the "Deciding a worker is dead"
 section of `docs/backend/cron-and-background-work.md` has the fence in full.
 
@@ -248,26 +336,233 @@ section of `docs/backend/cron-and-background-work.md` has the fence in full.
 ```text
 Statement           A category the import needs, created concurrently by the same
                     user, must not fail the import.
-Source of truth     categories
-Enforcement         None. import.service.ts does findOne then create/save. A
-                    concurrent manual create raises a unique violation that
-                    aborts the whole import transaction.
+Source of truth     categories, UNIQUE(user_id, name, parent_id)
+Enforcement         Every import path that creates a category inserts it with
+                    INSERT ... ON CONFLICT DO NOTHING RETURNING id and adopts the
+                    existing row when the insert loses:
+                    insertCategoryIfAbsent (backend/src/import/insert-category-if-absent.ts)
+                    from the MNY writer (writeCategories, writers/write-reference.ts)
+                    and the QIF importer (ImportService.findOrCreateCategoryDef,
+                    import.service.ts), and ImportEntityCreatorService's own
+                    insertCategoryIfAbsent on the CSV path. The insert still waits
+                    for a concurrent uncommitted insert of the same key; only the
+                    abort is removed.
 Concurrency scope   per user
-Retry semantics     The user must restart the entire import.
-Failure response    Currently a 500 losing the whole import; should be adopting
-                    the winner's row.
-Required tests      Two-connection: manual category create interleaved with an
-                    import needing the same category.
-Status              unenforced
+Retry semantics     None needed: the import adopts the winner's row.
+Failure response    The import continues with the category the other writer
+                    created.
+Required tests      Two-connection: backend/test/integration/import-category-collision.integration.spec.ts
+                    holds an INSERT of "Auto:Fuel" open on a second connection,
+                    runs the MNY writer and a QIF import that need it, commits,
+                    and asserts both adopt that row.
+Status              enforced
 ```
 
-The cost is disproportionate to the cause: an entire `.mny` import is lost
-because one category already existed. `INSERT ... ON CONFLICT DO NOTHING
-RETURNING id` plus adopting the winner's row is the fix, and per
-`docs/financial-calculation-contract.md` section 6 the conflict path must then
-re-read rather than reuse the pre-insert snapshot. Note that no unique index
-currently covers top-level categories (`parent_id IS NULL`), so closing this
-properly needs the index too.
+Residual: the constraint does not cover top-level categories (`parent_id` is NULL,
+and NULL never equals NULL), so a top-level category created concurrently is not a
+collision at all; the import does not abort, and two rows of that name can exist.
+Closing it needs a `COALESCE`-style unique index, a separate schema proposal.
+Payees carry no unique constraint, so a payee created concurrently cannot abort an
+import either.
+
+The conflict path re-reads the winner in a new statement rather than reusing the
+pre-insert snapshot (`docs/financial-calculation-contract.md` section 6). This
+entry named only `import.service.ts` while it was `unenforced`; the 2026-10 audit
+(A26-L15) found the MNY writer had the same gap after the CSV path was fixed, so
+the enforcement above lists every path.
+
+## Bank sync
+
+The specification is `docs/specs/bank-sync.md`.
+
+### INV-BANKSYNC-001 -- a bank transaction is imported into a Monize account at most once
+
+```text
+Statement           For one Monize account, a provider transaction (identified
+                    by its external key, docs/specs/bank-sync.md section 6)
+                    produces at most one transaction row, across every sync,
+                    replica, reconnection and re-authorization.
+Source of truth     bank_sync_imported_transactions(account_id, external_key)
+Enforcement         Unique index on (account_id, external_key), over a key that
+                    is a function of the bank row alone: the entry reference
+                    with the date and signed amount, or the content hash
+                    (keyFor, bank-transaction-planner.ts), never a function of
+                    the other rows of the fetch. Under the link and account row
+                    locks the writer skips a row the ledger already holds under
+                    its key or a key written before A26-H09's fix
+                    (findHeldRows, bank-sync-plan-fingerprint.ts, which the
+                    preview reads too), then inserts every other row's ledger
+                    row with ON CONFLICT DO NOTHING RETURNING before the
+                    transaction row, in the same withScopedDb transaction; no
+                    returned row means nothing else is written for that
+                    provider row. The ledger is keyed on the Monize account, so
+                    a new connection does not re-import.
+Concurrency scope   Monize account
+Retry semantics     A retry re-fetches and re-plans; every already-imported row
+                    hits the index and is skipped. The per-account lease
+                    (JobClaimType.BankSyncAccount) only saves provider quota.
+Crash semantics     Before commit: nothing written. After commit: the ledger and
+                    the rows exist together; the next sync skips them.
+Failure response    skipped (counted in the result), never an error
+Required tests      Integration against real PostgreSQL: a second sync of the
+                    same rows imports nothing; two concurrent syncs import each
+                    row once; an entry reference the bank repeats on a later
+                    day neither re-imports the earlier row nor drops the new
+                    one, alone or in two concurrent writes, and keys written
+                    before the fix still hold their rows
+                    (backend/test/integration/bank-sync.integration.spec.ts).
+Status              partial -- the index holds one row per external key, and
+                    the key no longer depends on the fetch (A26-H09 closed). A
+                    bank transaction keeps one key only while the bank keeps
+                    its entry reference, date and amount: a bank that sends no
+                    entry reference on one fetch and one on a later fetch
+                    changes the key from hash: to ref:, and a bank that
+                    rewrites a booked row's amount or booking date gives it a
+                    new key; either row is imported twice. A ledger row written
+                    before the fix under a bare ref: key recorded no amount, so
+                    it holds every row of its reference and booking date, and a
+                    second same-day transaction under that reference is not
+                    imported. BS10 verifies the provider's behaviour against a
+                    sandbox.
+```
+
+A deleted transaction keeps its ledger row with `transaction_id` NULL, so a
+deleted row is not brought back by the next sync. The ledger is not in the
+backup yet (docs/future-plans/bank-sync-tasks.md BS11); the link form's
+default cut-off date is the mitigation after a restore.
+
+### INV-BANKSYNC-002 -- a bank sync provider private key never leaves the server
+
+```text
+Statement           The RSA private key a user stores for a bank sync provider
+                    is never returned by any route, logged, or written to a
+                    backup.
+Source of truth     bank_sync_credentials.private_key_enc
+Enforcement         Encrypted with EncryptionService (AES-256-GCM). The view type
+                    has privateKeySet: boolean and no field for the key; the
+                    table is in INTENTIONALLY_EXCLUDED_TABLES; the column is not
+                    named api_key_enc, so the backup key transport ignores it.
+Concurrency scope   user
+Retry semantics     --
+Crash semantics     --
+Failure response    --
+Required tests      Unit: the credentials view and every controller answer carry
+                    no key material (bank-sync-credentials.service.spec.ts).
+Status              enforced
+```
+
+### INV-BANKSYNC-003 -- a synced row is written in the Monize account's currency or not at all
+
+```text
+Statement           A provider transaction whose currency differs from the
+                    linked Monize account's currency is refused and counted; it
+                    is never converted, and never written with the foreign
+                    amount in the account's currency.
+Source of truth     accounts.currency_code
+Enforcement         planBankImport refuses the row (currency_mismatch); the
+                    writer derives currency_code from the locked account row
+                    (assertTransactionCurrencyMatchesAccount). Linking refuses
+                    an account whose currency differs from the bank account's
+                    known currency.
+Concurrency scope   Monize account
+Retry semantics     A refused row is refused again on every sync.
+Crash semantics     --
+Failure response    refused (counted per reason in the sync result)
+Required tests      Unit: planner truth table; integration: a mismatched row
+                    writes nothing.
+Status              enforced
+```
+
+### INV-BANKSYNC-004 -- nothing imports an unconfirmed bank account
+
+```text
+Statement           A bank account that needs its preview (linked, and
+                    last_success_at NULL after a link or cut-off change) is
+                    imported only by the single-account sync the user confirms
+                    from the preview; the daily sync and the sync-all route skip
+                    it.
+Source of truth     bank_sync_accounts.account_id, sync_from_date,
+                    last_success_at
+Enforcement         One predicate, bankAccountNeedsPreview, read by the account
+                    view, BankSyncService.syncConnection and the daily cron;
+                    linkAccount clears last_success_at on every link or cut-off
+                    change.
+Concurrency scope   bank account
+Retry semantics     A skipped account stays skipped until the user confirms.
+Crash semantics     --
+Failure response    needs_preview entry in the sync-all answer; a log line in
+                    the cron
+Required tests      Unit (predicate, sync-all) and integration (the cron does not
+                    import a needs-preview account).
+Status              enforced
+```
+
+## API writes
+
+### INV-API-001 -- an API create with an externalId makes at most one row
+
+```text
+Statement           For one account, a create (POST /transactions, POST
+                    /transactions/transfer, or a row of POST
+                    /transactions/bulk) carrying an externalId produces at most
+                    one transaction row holding that key, however often and
+                    however concurrently it is sent. A repeat returns the row
+                    that holds the key and writes nothing, moves no balance and
+                    records no history, for as long as that row still holds
+                    the key in that account (see Status).
+Source of truth     transactions(account_id, external_id)
+Enforcement         Partial unique index idx_transactions_account_external_id
+                    on (account_id, external_id) WHERE external_id IS NOT NULL.
+                    The lookup before the insert is advisory; a create whose
+                    insert the index refuses catches the violation by the
+                    index's name (isExternalIdConflict) and answers with the
+                    committed row. A transfer keeps the key on its source leg,
+                    and a retry from the caller's own source account is
+                    answered before the transfer is validated or its rate
+                    resolved (findOwnTransferByExternalId). An OFX import
+                    writes the same column (ofx:<FITID>, ofxExternalId) and
+                    skips a row whose key the account holds on a row of the
+                    same date and amount; a keyed transfer row takes its key
+                    over on a recorded transfer of its signature that has
+                    none (a conditional update on external_id IS NULL) and is
+                    skipped as that transfer; an insert the index refuses
+                    rolls back to the row's savepoint and counts as skipped.
+Concurrency scope   account
+Retry semantics     Safe to repeat whole: a create, a transfer or a bulk batch
+                    sent again returns the committed rows as existing. The key
+                    must be the caller's stable id for the row; a fresh key per
+                    attempt is a new row (docs/concurrency-and-idempotency.md
+                    section 6).
+Crash semantics     Each create is one withScopedDb transaction: before commit
+                    nothing is written, after commit the row holds the key and a
+                    retry finds it. A bulk batch commits row by row, so a crash
+                    mid-batch leaves the rows before it committed and a resend
+                    finishes the rest.
+Failure response    the existing row with 200 (201 for a new one; a bulk row
+                    says existing); 409 when a transfer's key is held by a row
+                    that is not a transfer to the same destination; 409 when an
+                    edit moves a keyed row into an account that already holds
+                    its key.
+Required tests      Integration against real PostgreSQL: the index refuses a
+                    second row by name, two concurrent creates end as one row
+                    and one balance movement, a resent batch duplicates nothing
+                    (backend/test/integration/transaction-external-id.integration.spec.ts);
+                    unit: the lookup, the race path and the transfer refusals
+                    (backend/src/transactions/transactions.service.spec.ts);
+                    the OFX import's skip, key takeover and race path
+                    against real PostgreSQL
+                    (backend/test/integration/ofx-import-fitid.integration.spec.ts).
+Status              partial -- the index holds one row per account and key,
+                    but two paths take a key away from the account it was
+                    created in, and a retry there then makes a second row:
+                    an undo of a delete restores the row without its key (the
+                    undo snapshot is an explicit column list), and an edit
+                    that moves a keyed row to another account takes the key
+                    with it. A plain create also answers with whatever row
+                    holds the key, a transfer leg included, because a
+                    convert_to_transfer rule makes the row a plain create
+                    wrote into one.
+```
 
 ## Ledger and derived values
 
@@ -287,6 +582,32 @@ Enforcement         Every absolute recompute takes the account lock before readi
                     read and its write. The atomic delta path (updateBalance) is
                     unchanged. A VOID transfer moves neither balance
                     (transaction-transfer.service.ts skips both updateBalance calls).
+                    A deletion removes every row it would orphan: the bulk delete
+                    expands a selected split-transfer leg (whose link names its
+                    split parent, not a mirror) to the parent and every sibling
+                    leg, locks the parents before the legs and reverses each
+                    locked row through deletionBalanceEffect, as the single
+                    delete does (A26-H05).
+                    A transfer edit derives every delta from rows locked inside
+                    its own transaction and refuses with 409 when they differ
+                    from what the edit was built on: both legs ascending
+                    (same-owner and connected cross-owner, each under its own
+                    owner), and for a split-transfer leg the parent and then the
+                    leg (A26-H03). derived-state-writers.guard.spec.ts fails an
+                    update/remove/delete/bulk method that moves a balance
+                    without taking a lock itself, not only a file.
+                    Undo and redo of an account edit never write
+                    current_balance (nor is_closed, closed_date,
+                    linked_account_id) from the snapshot; a restored opening
+                    balance recomputes current_balance from the ledger under
+                    lockAccountsForBalanceWrite (A26-H06).
+                    No whole-entity save writes a snapshot's current_balance:
+                    the investment-pair rename and re-currency, and the account
+                    delete's unlink, update only the changed columns of the
+                    other half; an imported opening balance is
+                    applyOpeningBalanceChange (accounts.service.ts), a 4dp
+                    delta of new - old read under lockAccountsForBalanceWrite
+                    (A26-M13).
 Concurrency scope   per account
 Retry semantics     A recompute is idempotent against another recompute and, under
                     the lock, against a concurrent delta.
@@ -295,8 +616,26 @@ Required tests      Source scan: common/db/derived-state-writers.guard.spec.ts -
                     only sanctioned services write current_balance, and each reads
                     under a lock. Two-connection (delta interleaved with a recompute,
                     the delta must survive): backend/test/integration/balance-delta-recompute.integration.spec.ts.
-Status              enforced
+                    Bulk delete of a split-transfer leg, parent, both legs and a
+                    cross-owner leg, on the schema's ON DELETE actions:
+                    backend/test/integration/bulk-delete-split-leg.integration.spec.ts.
+                    Two concurrent transfer edits, same and different values, on a
+                    split-transfer leg and a connected cross-owner pair:
+                    backend/test/integration/transfer-edit-race.integration.spec.ts.
+                    Undo of a rename after an unrecorded movement, redo, and an
+                    opening-balance undo:
+                    backend/test/integration/account-undo.integration.spec.ts.
+                    A pair rename with a posting in its window, and an imported
+                    4dp opening balance beside a concurrent movement:
+                    backend/test/integration/investment-pair-stale-balance.integration.spec.ts,
+                    backend/test/integration/import-balance-delta.integration.spec.ts.
+Status              partial
 ```
+
+Open breach found by the 2026-10 audit, outside the ledger remediation stream: an
+investment transaction edited twice at once, or while it is deleted, duplicates or
+orphans its cash leg (A26-H04, task T10 of the securities stream). The status stays
+`partial` until that lands.
 
 See `docs/concurrency-and-idempotency.md` CONC-003. The former secondary breach --
 transfers created as `VOID` moving both balances -- is closed on the create path
@@ -397,12 +736,45 @@ Enforcement         No path writes the columns incrementally. Every ledger write
                     investment_transactions inserts that no holdings row-lock
                     covers -- so a concurrent trade cannot be replaced by a
                     projection that never saw it.
+                    update() and remove() then row-lock the investment row they
+                    read (and remove() its transfer leg) through
+                    lockUnchangedInvestmentRow
+                    (securities/investment-row-lock.util.ts) and refuse, before
+                    any write, a row that is gone (404) or no longer the one
+                    read (409): the cash row a reversal deletes and the values a
+                    save writes back are the locked row's, so a double-submitted
+                    edit cannot post its cash twice and a delete behind an edit
+                    cannot orphan the edit's cash row (A26-H04). The
+                    security-transfer edit (updateLinkedTransfer) takes the same
+                    holdings lock on every account the pair leaves or joins as its
+                    first statement and locks both legs the same way, so it
+                    validates an oversell seeing a concurrent trade (A26-L19).
+                    Undo and redo re-derive through the same fold
+                    (HoldingsService.rebuildAccountsFromTransactions); the copy in
+                    action-history.service.ts, which added a DIVIDEND's total to the
+                    basis and stored 6 decimals, is gone (A26-L21).
+                    A transfer is not a purchase: the fold hands a TRANSFER_IN the
+                    basis its paired TRANSFER_OUT relieved (orderTransferOutBeforeIn
+                    puts the OUT leg first when the two share an instant), and
+                    transferSecurity and updateLinkedTransfer write both legs'
+                    price from HoldingsService.releasedBasisPerShare inside their
+                    transaction -- the source's basis at the transfer's own place
+                    in the replay, never today's stored average and never a
+                    client price -- so a rebuild of the destination alone, which
+                    cannot see the OUT leg, falls back to the right figure
+                    (A26-M22). Residual: an IN leg's stored price is refreshed only
+                    when its transfer is written; a later back-dated change to the
+                    source's earlier rows reaches the destination at its next
+                    full or paired rebuild.
                     UNIQUE(account_id, security_id) still prevents duplicate rows.
                     A scope the ledger has no rows for projects to "no holding":
                     the row is deleted. Every writer takes that decision, and
                     the average cost a short position stores, through
                     projectedHoldingRow. An imported opening position is an
-                    ADD_SHARES row, not a holding with nothing behind it.
+                    ADD_SHARES row, not a holding with nothing behind it. The fold
+                    snaps a position to zero only below the stored scale
+                    (HOLDING_QUANTITY_EPSILON, 1e-8), never at 0.0001 per step, so
+                    purchases under 0.0001 shares form a holding (A26-M23).
 Concurrency scope   per (account, security)
 Retry semantics     Serialized by the lock; a lost update cannot occur.
 Failure response    the stored holding equals a deterministic replay of the ledger.
@@ -432,25 +804,26 @@ Known gap           an unpriced acquisition (acquisitionCost returns null) adds
                     partial figure with nothing marking it as one. The column has
                     no completeness flag; the surfaces that need one derive it
                     from the ledger (docs/financial-calculation-contract.md).
-                    Four narrower risks are open and unclosed, recorded here
-                    rather than fixed in passing: action-history.service.ts keeps
-                    a second fold over the ledger that does not filter by
-                    SHARE_MOVING_ACTIONS, so its undo/redo rebuild and
-                    computeHoldingsMap can disagree about a non-share-moving
-                    action; transferSecurity reads the source position's carried
-                    cost before the transaction it writes in, so a concurrent
-                    trade can move the basis between the read and the write;
-                    update() and remove() derive the scopes they will rebuild
-                    from a snapshot loaded before the transaction, without
-                    lockInvestmentTransactionRow, so a row that moved account or
-                    security in between is rebuilt on the old pair; and a
-                    security recorded in GBX normalizes to GBP for the provider
+                    One narrower risk is open and unclosed, recorded here rather
+                    than fixed in passing: a security recorded in GBX normalizes to GBP for the provider
                     currency check (quote-currency.util.ts) while currency_code
                     stays GBX, so every reader of that column sees a unit the
                     prices are not in.
 Required tests      Two-connection (concurrent trades on one holding, the stored
                     row compared against the replay):
                     backend/test/integration/holding-concurrent-trades.integration.spec.ts.
+                    Two-connection edit/edit and edit/delete of one BUY, the
+                    funding account's cash rows and balance against its ledger:
+                    backend/test/integration/investment-edit-race.integration.spec.ts.
+                    A back-dated transfer carries the source's basis on its date,
+                    follows a date edit, and ignores a client price:
+                    backend/test/integration/security-transfer-basis.integration.spec.ts.
+                    Two BUYs of 0.00005 hold 0.0001:
+                    backend/test/integration/holding-fractional.integration.spec.ts.
+                    A SELL racing a transfer edit cannot oversell:
+                    backend/test/integration/security-transfer-edit-race.integration.spec.ts.
+                    An undo stores the canonical average:
+                    backend/test/integration/holding-undo-fold.integration.spec.ts.
                     Out-of-order entry through the real service, stored row
                     compared against the replay:
                     backend/test/integration/holding-ledger-projection.integration.spec.ts.
@@ -546,11 +919,30 @@ Enforcement         The balance decision is made once per pair, keyed on VOID.
                     state is per-ledger. Guards: deletion-balance.guard.spec.ts,
                     investment-void-classification.guard.spec.ts,
                     void-status-transition.util.ts.
+                    The crossing is decided on the LOCKED status, never on a read
+                    taken before the row lock (A26-M09): the bulk status update
+                    discovers its lock set structurally (every mirror leg and every
+                    leg of a selected split parent, whatever its status), takes the
+                    holdings advisory lock, locks the split parents and then the
+                    rest, and only then expands the crossing; a row the locked
+                    expansion names outside that set is refused with 409. addSplit
+                    and updateSplits write the new counterparts with the locked
+                    parent's status, not the caller's copy.
+                    An account delete counts its rows again inside the deleting
+                    transaction, after lockAccountsForBalanceWrite on the account
+                    (the lock a row writer's balance update and FK check conflict
+                    with), so a sync or import that wrote a transfer leg into it
+                    is refused rather than cascaded away, leaving the other leg
+                    one-sided (A26-M19):
+                    backend/test/integration/account-delete-race.integration.spec.ts.
 Concurrency scope   per transfer pair
 Failure response    consistent balances across the pair on every VOID transition.
 Required tests      Per status-changing path, both legs' balances stay consistent
                     across a VOID transition, including the split-transfer variant
                     that links through the split parent rather than a mirror leg.
+                    Two connections, a status change committing between the
+                    caller's read and the row lock (bulk VOID of a pair, addSplit,
+                    updateSplits): backend/test/integration/void-crossing-lock.integration.spec.ts.
 Status              enforced
 ```
 
@@ -585,6 +977,45 @@ Required tests      docs/specs/redemption-accrued-interest.md section 6.
 Status              enforced
 ```
 
+### INV-DELEGATION-001 -- a grantee's write is authorized where it is written
+
+```text
+Statement           A write made on another owner's ledger by a grantee (a
+                    cross-owner transfer, a joint-register row) commits only if
+                    the grant that authorizes it is still held when it commits;
+                    once a revoke has committed, nothing the grantee started
+                    lands, and a revoked delegation is never re-instated by a
+                    settings save.
+Source of truth     account_delegates and account_delegate_grants.
+Enforcement         CrossOwnerAccessService.assertAccessStillHeld, on the
+                    write's own manager under the system bypass, after its row
+                    locks and before its first write: FOR SHARE on the
+                    delegation and grant rows, so a revoke (a DELETE of the
+                    delegation) waits for the write or the write sees the grant
+                    gone and refuses with the first check's 404 / 403. Called
+                    from writeTransferLegs, the connected cross-owner edit and
+                    delete, and the joint register's create, update, remove and
+                    cleared toggle (through the beforeWrite hook of the
+                    TransactionsService operation it reuses; update, remove and
+                    the toggle also refuse a row the owner moved out of the
+                    joint account). Delegation section and capability flags are
+                    one conditional UPDATE keyed on the owner (A26-M05);
+                    createDelegate's link reads the login FOR UPDATE.
+Concurrency scope   per delegation
+Failure response    404 / 403, nothing written.
+Required tests      Under the unprivileged role with RLS enforced, the owner's
+                    change committed between the grantee's authorization and the
+                    write: backend/test/integration/delegated-write-recheck.integration.spec.ts.
+Status              partial
+```
+
+Open, by design of the 2026-10 remediation split: the joint category create
+(`JointCategoriesService.create`) still writes under the bypass with no
+in-transaction re-check, since `CategoriesService.create` has no hook yet; and
+`resetDelegatePassword` still checks "no other owner" in one transaction and writes
+the credential in another (its write half is changed by the auth stream; the link
+side of the serialization, `createDelegate` locking the login, is in place).
+
 ### INV-RECONCILE-001 -- while the strict lock is on, a reconciled transaction is not altered
 
 ```text
@@ -612,7 +1043,15 @@ Enforcement         assertReconciledRowsMutable / assertReconciledIdsMutable
                     resolver behind clear / reconcile / unreconcile and
                     PATCH :id/status) and its bulkReconcile,
                     TransactionTransferService.removeTransfer /
-                    updateTransfer, TransactionBulkUpdateService.bulkUpdate /
+                    updateTransfer and each branch they hand off to, scanned on
+                    its own (updateSplitTransferLeg,
+                    updateConnectedCrossOwnerTransfer, updateFrozenTransferLeg,
+                    removeCrossOwnerTransfer,
+                    removeTransferFromSplitInTransaction; an assertion in one
+                    branch no longer satisfies the whole route, A26-M11). A
+                    cross-owner leg is asked under its own owner's setting,
+                    since each owner reconciles their own statement.
+                    TransactionBulkUpdateService.bulkUpdate /
                     bulkDelete, TransactionSplitService.updateSplits / addSplit /
                     removeSplit, ActionHistoryService.undoTransactionUpdate (undo
                     and redo of a transaction edit) and
@@ -720,67 +1159,102 @@ Enforcement         The 1:1 half is enforced. Consumers return null on an absent
                     stored nothing, failed, or fell outside the bound leaves the
                     pair missing and the figure withheld; it never becomes 1:1
                     (docs/time-series-contract.md section 2.2).
-                    The mislabelling half is NOT enforced on the built-in report
-                    path: see Known gap below.
-Known gap           **An unconverted amount still reaches a report under the
-                    default currency's label.**
-                    built-in-reports/report-currency.service.ts convertAmount()
-                    is typed `number`, so when convertWithRateLookup returns null
-                    it logs a warning and returns the amount UNCONVERTED, and
-                    built-in-reports/data-quality-reports.service.ts then labels
-                    that figure `currencyCode: defaultCurrency` -- an unconverted
-                    amount under the target currency's label, which is the second
-                    clause of the statement above. Ten report services share that
-                    signature. The scan sees it (it is the one entry in
-                    fx-fallback.guard.spec.ts's RETURNS_ITS_INPUT_UNCONVERTED,
-                    with its reason) but does not fail it, so the gap is reviewed
-                    rather than invisible.
-                    What closes it: convertAmount returning `number | null`, each
-                    caller choosing between FxAggregate and its own withheld
-                    total, and every affected DTO carrying a completeness field
-                    a consumer branches on -- one specified change per report
-                    family, not a guard edit. Until then this entry is `partial`.
-                    Two families are done, by that route rather than around it:
-                    Spending by Category and Income vs Expenses take the nullable
-                    `tryConvertAmount` beside convertAmount, exclude a row they
-                    cannot convert, accumulate through FxAggregate, and answer
-                    with `currency`, `missingCurrencies` and `excludedCount`
-                    beside a total that is null when anything was left out. The
-                    report and the dashboard widget drawing each of them mark the
-                    same subtotal through PartialTotal. The remaining callers of
-                    A third surface is done on the investment side: Investment
-                    Transaction History no longer labels a row's amount with the
-                    account's currency (price, commission and total_amount are
-                    the SECURITY's, which the row now states in
-                    amountCurrencyCode / priceCurrencyCode /
-                    commissionCurrencyCode) and no longer sums across currencies
-                    on the client. A row that names no security carries the
-                    investment account's currency there, the one the write path
-                    denominated it in; calling it unknown withheld the card over
-                    one cash INTEREST posting. Its KPIs come from
-                    investment-reports/investment-transaction-summary.service.ts,
-                    which converts each row at its own transaction date and
-                    accumulates through FxAggregate, answering with total,
-                    knownSubtotal, missingPairs, excludedCount and fxComplete.
-                    The remaining callers of
-                    convertAmount are Income by Source, Spending by Payee,
-                    Monthly Spending Trend, Monthly Category Breakdown, and the
-                    anomaly, comparison, tax/recurring and data-quality families;
-                    data-quality is the one that also mislabels, and is where the
-                    second clause of the statement still fails.
+                    A latest provider quote is not taken at face value either:
+                    Yahoo rounds it to four decimals, so a quote below 1 is
+                    checked against its inverse symbol and one below
+                    MIN_PRECISE_QUOTED_RATE either way is not stored
+                    (currencies/quoted-rate.util.ts chooseFxQuote, inside the
+                    Yahoo adapter currencies/providers/yahoo-fx.provider.ts for
+                    the refresh's and the live rate's quotes alike;
+                    quoted-rate.util.spec.ts and yahoo-fx.provider.spec.ts).
+                    The latest-rate readers are on the same rule (A26-H11):
+                    ExchangeRateService.getLatestRates answers one row per
+                    directionless pair, the newer stored direction inside
+                    FX_MAX_RATE_AGE_DAYS of today (a tie to the canonical row),
+                    so the built-in reports' rate map and GET
+                    /currencies/exchange-rates no longer carry a frozen
+                    pre-1.17 mirror row or a rate of any age; getLatestRate's
+                    bound defaults to FX_MAX_RATE_AGE_DAYS instead of none; and
+                    InvestmentTransactionsService.resolveCashExchangeRateOrNull
+                    asks getRateForDate for the trade date (today when there is
+                    none) with no latest-rate fallback, so a back-dated trade
+                    with no admissible rate is refused (posting) or unknown
+                    (forecast). On the client, useExchangeRates leaves a row
+                    older than FX_MAX_RATE_AGE_DAYS out of its conversion map
+                    (frontend/src/lib/fx-rate-age.ts, held to the backend
+                    constant by fx-rate-age.contract.test.ts) and keeps the
+                    newer orientation of a pair; InvestmentTransactionForm and
+                    the embedded InvestmentSplitFields prefill the rate from
+                    getRateForDate for the trade date and ask again when the
+                    date changes, unless the person typed a rate.
+                    The mislabelling half is enforced on the built-in report
+                    path as well: ReportCurrencyService.convertAmount, the
+                    pass-through that returned the unconverted amount, is
+                    deleted, and every report converts through the nullable
+                    tryConvertAmount. A row whose currency has no rate is left
+                    out of every figure and recorded in a ConversionGaps
+                    (built-in-reports/report-currency.service.ts); each response
+                    carries `currency`, `missingCurrencies` and `excludedCount`,
+                    and a headline total is null beside a `known*` subtotal
+                    while anything is excluded. A transaction row in the
+                    Uncategorized list that cannot be converted keeps its own
+                    amount under its own currency code. The frontend renders the
+                    subtotal through PartialTotal. The scan's
+                    RETURNS_ITS_INPUT_UNCONVERTED list is empty, a further scan
+                    fails any call to convertAmount under built-in-reports/, and
+                    the rate-1 scan matches a rate-named identifier anywhere on
+                    the line (`exchangeRate ?? 1`, `spotRate.get(k) ?? 1`), not
+                    only a word starting with `rate`; its
+                    STORED_RATE_DEFAULTS_OWNED_ELSEWHERE list holds, with exact
+                    counts, the reads of a stored `exchange_rate` column
+                    (NOT NULL DEFAULT 1) in files other remediation streams own.
+                    convertWithRateLookup answers null for an empty currency
+                    code rather than treating it as the target currency.
+Known gap           The built-in reports convert a past period at the current
+                    rate (a flat latest-rate map), which is the look-ahead clause
+                    of the statement for every historical bucket; that is a
+                    policy the maintainer has to state.
+                    Convert before summing (A26-H12) is closed on three paths:
+                    the custom report engine (reports/reports.service.ts,
+                    tryConvertAmount per row, FxAggregate, `summary.total` null
+                    beside `knownTotal`), the AI/MCP transaction analytics
+                    (TransactionAnalyticsService LLM methods, each row at its own
+                    date, `totalsCurrency` / `fxComplete` / `missingRatePairs`)
+                    and budget actuals in budgets/budget-spending.util.ts
+                    queryCategorySpending (each row at its own date into the
+                    budget's currency, per-key completeness,
+                    resolveCategorySpentOrNull). It is still open where the
+                    callers have not been moved: budgets.service.ts,
+                    budget-alert.service.ts, budget-period.service.ts and the
+                    budget report and generator services still read
+                    resolveCategorySpent, the converted part, so a category with
+                    a missing rate shows a subtotal as its spent figure and
+                    alerts on it; computeActualIncome sums currencies unconverted;
+                    getLlmInvestmentTransactions totals, the ai/insights
+                    aggregator and getTransfersByAccount's roll-ups still add
+                    currencies.
 Concurrency scope   --
 Failure response    null or an explicitly partial figure, per
                     docs/financial-calculation-contract.md section 1. On the
-                    path named in Known gap above: a warning in the log and a
-                    wrong number on screen.
-Required tests      Present: common/fx-fallback.guard.spec.ts (the two source
-                    scans above) plus the FxAggregate accumulator
-                    (common/fx-aggregate.ts) that names each unresolvable pair
-                    rather than absorbing it.
-                    Owed: a unit test per report family asserting the response is
-                    withheld (not passed through) for a pair with no rate. There
-                    is none today, which is why the defect survived a guard
-                    written for it.
+                    paths named in Known gap above: a complete-looking figure
+                    that is wrong.
+Required tests      Present: common/fx-fallback.guard.spec.ts (the source scans
+                    above, each with a self-test of the shapes it bans) plus the
+                    FxAggregate accumulator (common/fx-aggregate.ts) that names
+                    each unresolvable pair rather than absorbing it; a unit case
+                    per built-in report family asserting the headline total is
+                    null, the known subtotal set and the currency named for a
+                    pair with no rate (A26-H10); portfolio.service.spec.ts
+                    asserts the intraday resolver's no-series, no-spot branch is
+                    unknown rather than 1 (A26-L05).
+                    test/integration/fx-latest-rates.integration.spec.ts: a
+                    stale mirror row beside a fresh canonical row lists one row
+                    carrying the fresh rate, a 324-day-old pair is absent,
+                    Spending by Payee converts 1,000.00 USD to 1,400.00 CAD, and
+                    a 1990 trade with only today's rate is refused with no row
+                    written; the client cases are in useExchangeRates.test.ts,
+                    InvestmentTransactionForm.test.tsx and
+                    InvestmentSplitFields.test.tsx.
 Status              partial
 ```
 
@@ -796,8 +1270,9 @@ at the end of a line, `: 1` beside a rate) rather than from the rule -- so
 written from a diff certifies the diff. Read a status of `enforced` here as a
 claim to check against the scan, and read the scan for what it actually matches.
 `docs/verification-contract.md` section 6 still describes both load-bearing FX
-scans as having landed "with the fix, so no exception list"; that is now true of
-the first scan only.
+scans as having landed "with the fix, so no exception list"; the
+returned-input scan's list is empty again, and the rate-1 scan carries the
+stored-rate list described above.
 
 ### INV-FX-002 -- a row's own rate converts it on every surface
 
@@ -828,11 +1303,21 @@ Enforcement         portfolio-calculation.service.ts has always multiplied
                     prints the line under the KPIs, so the reader is told which
                     rate answered. A row with no usable rate of its own falls
                     back to the rate on its own date, under INV-FX-001.
+                    An edit keeps the row's rate: update() re-resolves only when
+                    the account, funding account or security changes, and the
+                    AI/MCP edit preview (previewUpdateInvestmentTransaction, read
+                    by the MCP single and bulk edits and the assistant's signed
+                    confirmation, which commit the rate it returns) carries the
+                    stored rate unless the edit names one or another security
+                    (A26-M20).
 Test                investment-transaction-summary.service.spec.ts: a sale of
                     820.91 USD settled at 3.7287 reads 3,060.9271 PLN and asks
                     for no market rate; a row without a rate is converted at the
                     market rate and counted; a stored 1 across two currencies is
                     ignored; a third settlement currency is carried onward.
+                    investment-transactions.service.spec.ts "the row's own exchange
+                    rate": a description-only edit previews the stored 1.40, not
+                    today's 1.37.
 Status              enforced
 ```
 
@@ -863,7 +1348,12 @@ Enforcement         Every writer routes through canonicalRateRow: saveRate and
                     use. currencies/exchange-rate-orientation.guard.spec.ts is
                     the scan: an INSERT INTO exchange_rates in a third file, or
                     in one of those two without the helper, fails it.
-                    On the read side getLatestRate now resolves either stored
+                    On the read side getLatestRates lists one row per pair, the
+                    newer direction inside the age bound (a database upgraded
+                    from before the expand release still holds the mirror row,
+                    and a direct-first reader of a list carrying both took it),
+                    and the client rate map keeps the newer orientation.
+                    getLatestRate now resolves either stored
                     direction through resolveFxRate (INV-FX-001's door) rather
                     than reading one orientation, the backfill coverage probe
                     counts a pair held either way as covered, and
@@ -945,6 +1435,74 @@ Status              enforced -- the conflict action is the mechanism, and the
                     every user resolves through the Money rate.
 ```
 
+### INV-FX-005 -- a stored rate names its provider; an outage is not an empty answer
+
+```text
+Statement           Every exchange_rates row a provider writes carries that
+                    provider's source slug. Every provider question passes
+                    through FxProviderChain in the order FX_PROVIDERS names.
+                    "The provider answered with nothing" and "no provider
+                    answered" are kept apart per provider, so an outage at one
+                    provider is never remembered as an empty window: a window
+                    the first provider never answered may hold history the
+                    second does not carry, and recording it as empty would stop
+                    the gap fill from ever asking again. What a fill learned
+                    about a pair's history (exchange_rate_coverage) is scoped to
+                    the chain that learned it: a row recorded under another
+                    ordered set of providers says nothing about this one.
+Source of truth     FX_PROVIDERS (the configured order, parsed against
+                    FX_PROVIDER_NAMES) and FxRateProvider.source (the slug each
+                    adapter writes).
+Enforcement         backend/src/currencies/providers/fx-provider-chain.ts asks
+                    the providers in FX_PROVIDERS order and gates every call on
+                    carries. ExchangeRateService asks the chain for every rate
+                    question (the refresh per base, the backfill and
+                    fillRateWindow per window, getRateForDate's provider step,
+                    getLiveRate) and writes the source the chain attached to
+                    each observation, dated by the observation, through
+                    canonicalRateRow; fx-provider-source.guard.spec.ts fails on
+                    a quoted source slug under backend/src/currencies/ outside
+                    the providers directory and on an import of
+                    yahoo-finance.service there outside the Yahoo adapter.
+                    The currency lookup and verification in
+                    currencies/currencies.service.ts ask the chain too
+                    (carriesAny, verifyCurrency, searchCurrency; task B5), and
+                    provider-call.guard.spec.ts scans the whole currencies
+                    directory for a fetch outside the breaker. The Frankfurter
+                    adapter (currencies/providers/frankfurter-fx.provider.ts)
+                    exists and answers null only for a non-answer, but nothing
+                    asks it until an operator names it in FX_PROVIDERS (the
+                    default changes at task R1).
+                    exchange_rate_coverage.providers records the ordered source
+                    slugs of the chain that wrote each row;
+                    ExchangeRateHistoryService reads a row under any other
+                    value (NULL included) as unestablished, and its upsert
+                    replaces the three dates rather than merging them when the
+                    stored value differs (IS DISTINCT FROM in the ON CONFLICT
+                    clause).
+Test                The section 5 truth table of
+                    docs/specs/exchange-rate-providers.md as named cases
+                    in fx-provider-chain.spec.ts (in particular: first provider
+                    did not answer, second answered empty -> answered false);
+                    exchange-rate.service.spec.ts with the chain faked (the
+                    source and the date taken from the observation, the three
+                    refresh reports kept apart, an unanswered window never
+                    remembered); currencies.service.spec.ts with the chain
+                    faked (no global fetch reached by the lookup);
+                    fx-provider-source.guard.spec.ts;
+                    provider-call.guard.spec.ts over currencies;
+                    exchange-rate-history.service.spec.ts ("a coverage row is
+                    scoped to the provider chain that wrote it") and
+                    fx-rate-coverage.integration.spec.ts over the real upsert.
+Status              enforced -- the chain, the service on it, the source
+                    guard and the currency lookup on the chain are on main
+                    (tasks B1, B2 and B5 of
+                    docs/specs/exchange-rate-providers.md), the
+                    default order is frankfurter,yahoo (task R1), and the
+                    section 5 truth table cases are named in
+                    fx-provider-chain.spec.ts.
+```
+
 ### INV-TRADE-001 -- the executed total is the fact, the price is derived
 
 ```text
@@ -970,11 +1528,16 @@ Enforcement         securities/investment-amount.util.ts is the one door:
                     InvestmentTransactionForm makes the total an editable field:
                     the last edited of total and price wins, the same pattern it
                     already uses between the converted amount and the rate.
+                    A trade email that states only a price proposes the total of
+                    the price as written (ParsedTrade.priceUnits8, 1e-8 units),
+                    not of the 4-decimal card price: tradeExecutedTotalUnits in
+                    email-receipts/parsing/parse-trade.ts (A26-L17).
 Test                investment-amount.util.spec.ts (both directions and the
                     refusals); investment-transactions.service.spec.ts -- a SELL
                     of 141 shares supplied as 820.91 stores 820.9100 and
                     5.8220567376, a resent description-only edit keeps the stored
-                    total, a quantity change re-derives it.
+                    total, a quantity change re-derives it. parse-trade.spec.ts:
+                    10,000 x 1.23456789 proposes 12,345.6789, not 12,346.0000.
 Status              enforced
 ```
 
@@ -1012,6 +1575,11 @@ Enforcement         securities/providers/quote-currency.util.ts decides it once:
                     The provider contract carries the currency because
                     fetchHistoricalSeries returns a HistoricalSeries bundle; a
                     bare HistoricalPrice[] cannot state what its numbers are in.
+                    fillPriceWindow remembers a month as empty only when every
+                    routed provider answered it with no bars: a provider that
+                    failed, was refused, or answered about another currency
+                    (refuseForeignCurrency) leaves the month to be asked again
+                    (A26-L20).
 Known gap           **Unverifiable is accepted, not refused.** A provider that
                     reports no currency (MSN's chart series routinely does not,
                     and its Quotes endpoint only sometimes does), or a security
@@ -1058,6 +1626,19 @@ A GBP listing stored against a USD-configured security understates every close
 by the GBP/USD rate -- 23 to 35 per cent over the range in issue #1393 -- and
 nothing in the stored series says so, because the series is numbers and the
 currency is on another table's row.
+
+The transaction-derived writer (`upsertTransactionPrice` /
+`backfillTransactionPrices`) copies an investment row's average trade price into
+`security_prices`, so a trade price stored in another currency is the same defect
+by another path. The Money import stored a foreign-quoted trade's price and total
+in the account's currency at rate 1 until the 2026-10 audit (A26-M24): `mapInvestments`
+now converts them into the security's currency with the file's own rate for that
+date (`resolveFxRate` over the file's `CRNC_EXCHG` rows) and carries the rate as
+`exchange_rate`. Where the file has no rate near the date the row is still stored
+in the account's currency at rate 1, with a `crossCurrencyTradeUnconverted`
+warning. The guard that would keep such a row out of `security_prices` (average
+only rows whose rate is not 1 or whose account currency is the security's) belongs
+in `security-price.service.ts` and is left to the securities stream.
 
 ### INV-PORTRESULT-001 -- a period change is not a return
 
@@ -1698,7 +2279,7 @@ Statement           A transfer leg appears in a report only as a NAMED FLOW, and
                       accounts", or an inflow "From savings & investments",
                       "Borrowed" or "From other accounts", decided by the
                       counterpart account's type
-                      (docs/future-plans/sankey-cash-flow.md sections 3-5).
+                      (docs/specs/sankey-cash-flow.md sections 3-5).
                     Each leg counts once, by its own account and its own sign.
                     Without one of those two, a report excludes transfers
                     exactly as before. Transfers never enter income, expenses or
@@ -1734,7 +2315,7 @@ expenses, never as one of them.
 
 ### INV-SANKEY-001 -- the Cash Flow Sankey closes
 
-The design (`docs/future-plans/sankey-cash-flow.md`) names these five SANKEY-001
+The design (`docs/specs/sankey-cash-flow.md`) names these five SANKEY-001
 to SANKEY-005; the catalog prefixes them like every other entry.
 
 ```text
@@ -1798,6 +2379,41 @@ Required tests      cash-flow-sankey.integration.spec.ts (widening the scope to
                     or not at all, from the ledger); truth table B in
                     cash-flow-sankey.service.spec.ts.
 Status              enforced
+```
+
+### INV-REPORT-004 -- a category's cost is its signed sum within the category
+
+```text
+Statement           A category's figure in a report is the signed sum of its
+                    rows of both signs, netted within that one category and
+                    never across two: a refund lowers the category's cost, and a
+                    category whose credits meet its debits is not spending.
+                    Transfers are not a category and are not netted.
+Source of truth     The signed amounts on transactions and transaction_splits.
+Enforcement         Built-in reports: NET_SPEND_AMOUNT / isNetSpending
+                    (backend/src/built-in-reports/spending-reports.service.ts);
+                    client summaries: netEntityTotal. Custom report engine
+                    (backend/src/reports/reports.service.ts): each line lands in
+                    a (group, category) cell, signed; a cell is kept only when
+                    its net is in the report's direction (EXPENSES_ONLY:
+                    isNetSpending of the negated net; INCOME_ONLY: a positive
+                    net; BOTH: the magnitude of the net), and a group is the sum
+                    of its kept cells (audit A26-M33). The metric NONE list keeps
+                    its row-level direction filter.
+                    The loan history's Interest Paid
+                    (frontend/src/lib/loan-history.ts) sums each interest row
+                    signed, so a lender's refund nets (A26-S15-05).
+Concurrency scope   --
+Failure response    --
+Required tests      Integration:
+                    backend/test/integration/report-custom-net-and-search.integration.spec.ts
+                    (Groceries -100 and +30: 70 under EXPENSES_ONLY and BOTH, by
+                    category and by month) and the reports.service.spec.ts cases;
+                    frontend/src/lib/loan-history.test.ts "nets an interest
+                    refund".
+Known gap           No source scan holds the rule: a new aggregator summing
+                    Math.abs per row passes every guard.
+Status              partial
 ```
 
 ### INV-SANKEY-003 -- investment linkage and VOID are out of every branch
@@ -2170,6 +2786,13 @@ Required tests      Present: "final payment and lifetime interest" in
                     line before payment N) and, on the frontend,
                     loan-schedule-methods.test.ts (318 payments ending
                     2050-06-01; the bullet on payment N).
+                    One minor unit is owed, less is a residue (isDebtRetired,
+                    price-installment.ts, shared by the posting, the planner
+                    and the projection; isDebtOutstanding on the frontend): a
+                    debt of exactly 0.01 posts 0.01 and retires the loan
+                    (audit A26-L23; scheduled-loan-one-cent.integration.spec.ts,
+                    price-installment.spec.ts, plan-loan-settlement.spec.ts,
+                    loan-schedule.test.ts 1,000 / 999.99 -> two rows).
 Status              enforced
 ```
 
@@ -2248,8 +2871,10 @@ Statement           The interest of a scheduled loan installment is
                     and never accounts.interest_rate alone, which a recorded
                     rate change deliberately does not write. The next
                     scheduled bill, the amounts an occurrence actually posts,
-                    and the amortization report's first projected row all price
-                    that one balance (issue #1253).
+                    the amortization report's first projected row, and a
+                    settle_loan_installment rule's priced installment for the
+                    matched occurrence (INV-LOAN-008) all price that one
+                    balance (issue #1253).
                     The principal of a mortgage whose method is not ANNUITY
                     (INV-LOAN-007) is dated the same way: a LOWER_INSTALLMENT
                     LINEAR principal is roundMoney(debt / remaining), and an
@@ -2260,13 +2885,31 @@ Statement           The interest of a scheduled loan installment is
                     postings: a skipped occurrence or an extra manual payment
                     does not move the term end, and a due date moved off the
                     calendar counts the calendar dates before it
-                    (docs/specs/mortgage-types.md sections 2 and 6.2).
+                    (docs/specs/mortgage-types.md sections 2 and 6.2). The
+                    ANNUITY and CANADIAN_FIXED payment beside this rate is
+                    dated the same way: INV-LOAN-009.
+                    An installment below that interest does not drop the rest:
+                    a scheduled bill (every purpose but a rule's settlement)
+                    books the whole accrued interest and a NEGATIVE principal
+                    line of the shortfall, so the unpaid interest is added to
+                    the debt the next installment is priced on (negative
+                    amortization; allocateLoanPayment with
+                    capitalizeUnpaidInterest, reported as unpaidInterest on the
+                    allocation and on the loan occurrence projection). 400,000
+                    at 6 % with a 1,500 installment books 2,000 interest and
+                    -500 principal, debt 400,500, then 2,002.50 / -502.50, debt
+                    401,002.50 (audit A26-M29). A settlement keeps the spec's
+                    shortfall policy (refuse, or interest_first with the
+                    interest capped at the amount paid).
 Source of truth     The transactions ledger plus accounts.opening_balance
                     (INV-BALANCE-001's source) for the debt, and
                     loan_rate_changes for the rate, both bounded by the
                     installment's own date.
-Enforcement         ScheduledTransactionLoanService.resolveInstallment is the
-                    one pricing path: datedLoanDebt runs the canonical as-of
+Enforcement         resolveInstallmentCore and the pure priceInstallment
+                    (backend/src/loan-installments/price-installment.ts) are
+                    the one pricing path, and
+                    ScheduledTransactionLoanService.resolveInstallment delegates
+                    to them: datedLoanDebt runs the canonical as-of
                     ledger sum, the periodic-rate rules (the mortgage type's
                     compounding, CANADIAN_FIXED's semi-annual included) are
                     unchanged, and allocateLoanPayment stays the shared
@@ -2278,6 +2921,13 @@ Enforcement         ScheduledTransactionLoanService.resolveInstallment is the
                     split is a template/read model, so a principal movement
                     committed between occurrences reaches the amounts actually
                     posted without any mutation path having to invalidate it.
+                    planLoanSettlement (backend/src/loan-installments/plan-loan-settlement.ts)
+                    is the fourth consumer, called by settle_loan_installment
+                    with the matched slot's own date and the debt the fold of
+                    INV-RULE-005 derives (docs/specs/scheduled-loan-installment-pricing.md
+                    section 2); it shares priceInstallment with the three
+                    above and answers the same way with a different caller's
+                    missing-data rule.
                     The amortization report anchors its projection on
                     GET /scheduled-transactions/loan-anchor/:accountId (the same
                     due-date-bounded debt) through buildLoanProjectionInput's
@@ -2348,6 +2998,17 @@ Required tests      Present: scheduled-transaction-loan.service.spec.ts (prior
                     LOWER_INSTALLMENT mortgage on a real ledger, including the
                     moved due date); frontend loan-schedule-methods.test.ts
                     ("the calendar: k(d), remaining(d) and the next due date").
+                    The below-interest installment:
+                    scheduled-loan-below-interest.integration.spec.ts (R3
+                    through the real post(), two postings and the projection)
+                    and loan-payment-waterfall.util.spec.ts.
+                    A source account in another currency than the loan is
+                    refused by loan payment setup and both loan/mortgage
+                    create paths before any write (loan-source-currency.util.ts,
+                    errors.accounts.loanSourceCurrencyMismatch), and
+                    ScheduledTransactionsService.create refuses a currencyCode
+                    other than its account's (assertTransactionCurrencyMatchesAccount),
+                    so no bill is written that could never post (audit A26-M30).
                     A LINE OF CREDIT is exempt from the paid-off deactivation:
                     it is revolving, so owing nothing this period does not
                     finish it.
@@ -2379,7 +3040,7 @@ Scope               MANAGED templates: a principal transfer, one identifiable
                     a defined share.
 Known gaps          The PAYMENT is not part of this invariant: a rate change
                     reaches the schedule's payment through
-                    LoanRateChangesService.syncScheduledTransaction, which the
+                    LoanRateChangesService.applyScheduledPaymentSync, which the
                     user is asked to approve, so a declined sync leaves the
                     bill at the old installment by the user's own decision.
                     Interest is unaffected -- it is debt x rate.
@@ -2464,6 +3125,287 @@ Required tests      Present: mortgage-type.util.spec.ts, the CHECK and parity
 Status              enforced
 ```
 
+### INV-LOAN-008 -- one settlement per occurrence, the claim commits with the split
+
+```text
+Statement           A scheduled occurrence (schedule, original due date) has at
+                    most one claim, whether post() or a settle_loan_installment
+                    rule wrote it; a transaction settles at most one
+                    occurrence; a rule's claim is written and rolled back
+                    with the split it books, and released when the settling
+                    transaction is deleted; and post() and a settlement claim
+                    one installment under one key, because the slot calendar
+                    always holds next_due_date. The undo of a run that settled
+                    is last in, first out per schedule.
+                    docs/specs/loan-installment-settlement.md is the
+                    authority.
+Source of truth     scheduled_transaction_postings (one row per claimed
+                    occurrence; transaction_id, source, rule_id and pricing
+                    once B1 lands), the settled transaction and its split
+                    lines.
+Enforcement         The write path (B5), the chronological fold and the
+                    import ordering (B6), and the rule creation on the
+                    mortgage and loan-setup paths (B7) are all built
+                    (docs/specs/loan-installment-settlement.md).
+                    The mechanism: idx_stp_occurrence,
+                    claimed with INSERT ... ON CONFLICT DO NOTHING RETURNING id
+                    by post() and by claimLoanOccurrence
+                    (backend/src/loan-installments/claim-loan-occurrence.ts)
+                    alike (one claim per occurrence), under one key because
+                    the slot calendar is built around next_due_date
+                    (occurrence-slots.ts) and a claim off the calendar
+                    occupies the period it paid; a partial unique index on
+                    transaction_id (one occurrence per transaction); the
+                    split (createSplits, its counterpart legs), then the claim
+                    INSERT, then the cursor advance (advanceScheduleCursor,
+                    the function post() calls) on one EntityManager in the
+                    caller's withScopedDb transaction
+                    (TransactionRulesApplierService.writeEffects), so a
+                    rollback drops all three; the planner refuses a taken slot
+                    (occurrence_already_posted) before any write from the
+                    claims the facts loader reads under the schedule row lock,
+                    and a write-time conflict is the throwing backstop
+                    (ConflictException, spec decision 17), never a split
+                    without its claim; transaction_id REFERENCES transactions
+                    ON DELETE CASCADE, so deleting the settling transaction
+                    releases the claim in the same statement (B1), and post()
+                    records its own transaction on its claim too; and the run
+                    undo's RULE_RUN_UNDO_LATER_SETTLEMENT refusal, decided
+                    under the schedule row lock before any write, when the
+                    schedule holds a later claim the run did not write, then
+                    the claim released and the cursor advance rewound
+                    (rewindScheduleCursor) in reverse run order
+                    (backend/src/action-history/rule-run-undo.ts).
+Concurrency scope   per (schedule, occurrence); the schedule row lock, then
+                    lockAccountsForBalanceWrite(source, loan), as post() takes
+                    them, with the unique index as the backstop
+Retry semantics     Safe: a re-run or a re-import finds the slot claimed (or
+                    the row already a split) and skips; nothing is written
+                    twice.
+Crash semantics     The claim and the split share a transaction: before commit
+                    neither exists, after commit both do.
+Failure response    occurrence_already_posted (a skipped action) on a claimed
+                    slot; RULE_RUN_UNDO_LATER_SETTLEMENT (409) on an undo out
+                    of order.
+Required tests      Present: claim-loan-occurrence.spec.ts (the INSERT, the
+                    backstop, the cursor), transaction-rules-applier.settlement-write.spec.ts
+                    (split then claim, the conflict thrown and unreachable when
+                    the planner saw the claim, the loan re-read after a
+                    settlement), rule-run-undo.spec.ts (the LIFO refusal, the
+                    release, the rewind in reverse order), and
+                    loan-settlement-claim.integration.spec.ts (real
+                    PostgreSQL: the split, the counterpart, the claim and the
+                    cursor in one transaction and rolled back together; a
+                    second row for the slot refused with nothing written;
+                    delete releasing the claim, void keeping it; a bill post
+                    and a settlement of one slot on two connections leaving
+                    one claim; the template repriced after the commit). Owed:
+                    the fold cases of B6.
+Known gaps          On the import paths the source account is held before the
+                    settlement takes the schedule row, the reverse of post(),
+                    so a bill posted by hand during an import that settles the
+                    same schedule can deadlock; PostgreSQL aborts one
+                    transaction and the index still allows one claim. Editing
+                    a settled row down to one line un-splits it and the claim
+                    stays; deleting one settling transaction while later
+                    settlements exist is allowed and leaves their interest
+                    priced on the older debt; a cursor moved back into a paid
+                    period lets post() pay it again (spec section 15).
+Status              enforced
+```
+
+### INV-LOAN-009 -- an annuity installment's payment is the one stated for its own due date
+
+```text
+Statement           The configured payment of an annuity installment (LOAN,
+                    and the ANNUITY and CANADIAN_FIXED mortgage types) due on
+                    D is the new_payment_amount of the latest loan_rate_changes
+                    row effective on or before D that states one, else
+                    accounts.payment_amount; a manual or inferred row states
+                    the base installment and the standing extra rides on top.
+                    The template advancement takes it exactly when the row is
+                    not an initial row and is dated after the slot before D
+                    (it newly applies to this installment), else
+                    max(template, dated payment); posting
+                    re-divides the bill shown; the settlement prices it at the
+                    matched slot; the rate-change sync prices the template at
+                    its own next_due_date and writes it only on confirmation;
+                    the occurrence projection prices every listed occurrence
+                    by the same rule. No rate-change path writes
+                    accounts.payment_amount. LINEAR and INTEREST_ONLY
+                    installments are derived per date (INV-LOAN-007) and read
+                    no payment. The rate beside it is INV-LOAN-006's.
+                    docs/specs/scheduled-loan-installment-pricing.md sections
+                    7 and 8 are the authority.
+Source of truth     loan_rate_changes (new_payment_amount, effective_date,
+                    source) bounded by the installment's own date, then
+                    accounts.payment_amount; the schedule's slot calendar for
+                    the slot before D.
+Enforcement         The core and the advancement (B1, issue #1639):
+                    datedAnnuityPayment beside datedAnnualRate in
+                    backend/src/loan-installments/price-installment.ts, read
+                    by datedPaymentAmount and by resolveInstallmentCore from
+                    the one read of the timeline that also dates the rate,
+                    with priceInstallment taking the dated payment as an
+                    input so no purpose but reconfigure (which targets the
+                    column a type change re-levels, by decision) reads
+                    accounts.payment_amount around the rule; newly(D) from
+                    precedingSlotDate on the schedule's slot calendar
+                    (occurrence-slots.ts) in the template purpose; the
+                    settlement prices through the same function (settlement
+                    spec decision 12). The rate-change sync (B2, issue
+                    #1640): one plan function for the preview and the apply
+                    (LoanRateChangesService.buildScheduledUpdate over
+                    planLoanTemplateRewrite, purpose sync), priced at the
+                    template's next_due_date and written in the same
+                    transaction through applyLoanTemplateRewrite, which
+                    writes nothing on the account; create, update and delete
+                    return the preview and apply nothing; a source scan in
+                    loan-rate-changes.service.spec.ts refuses any reference
+                    to ScheduledTransactionsService from the rate-change
+                    module. The occurrence projection (B3, issue #1641):
+                    projectLoanOccurrences in
+                    backend/src/loan-installments/project-loan-occurrences.ts,
+                    a pure fold over priceInstallment at each listed
+                    occurrence's own due date, exposed by
+                    GET /scheduled-transactions/:id/loan-occurrences; the
+                    picker, the override editor and the Post dialog read it
+                    for a loan bill (F2, issue #1643; the dialog's preview,
+                    audit A26-L26) instead of repeating
+                    scheduledTransaction.amount, and the rate-change dialogs
+                    confirm on edit and delete and name the due date the bill
+                    changes at (F1, issue #1642).
+Concurrency scope   per schedule: rewriteLoanTemplate takes the schedule row
+                    lock (pessimistic_write) before it reads the template, as
+                    the advancement does today; the projection is a read
+Retry semantics     Safe: the advancement and the sync are recomputed from the
+                    ledger and the timeline, so a repeat writes the same
+                    template; the projection writes nothing.
+Crash semantics     The template rewrite is one withScopedDb transaction:
+                    before commit the old template stands, after commit the new
+                    one does.
+Failure response    The projection answers 503
+                    (errors.scheduled.loanLedgerUnreadable) on an unreadable
+                    ledger and
+                    complete: false with a null amount from the first
+                    occurrence without a rate; the settlement refuses
+                    loan_not_configured with missing payment (unchanged).
+Required tests      Met (B1): every row of the spec's table 7.4, its
+                    settlement rows and table 5.3 as named unit cases
+                    (price-installment.spec.ts, plan-loan-settlement.spec.ts,
+                    scheduled-transaction-loan.service.spec.ts); the PG
+                    integration case for the advancement across a stated
+                    change (dated-loan-payment.integration.spec.ts). Met
+                    (B2): every row of table 7.5 and the account row
+                    untouched on every path
+                    (loan-rate-changes.service.spec.ts), the PG case for the
+                    sync at the template's own due date leaving
+                    accounts.payment_amount unchanged
+                    (dated-loan-payment.integration.spec.ts), the source scan.
+                    Met (B3): every example of spec 8.6 and every row of 8.4
+                    as named unit cases (project-loan-occurrences.spec.ts),
+                    the first occurrence matched against
+                    ScheduledOccurrenceService and resolvePostingAllocation
+                    on the same ledger, the count bound refused by the DTO
+                    (loan-occurrences-query.dto.spec.ts). Met (F1, F2): the
+                    confirmation on edit and delete naming the due date
+                    (useLoanRateEditing.test.ts), the picker and editor
+                    pricing a loan bill per occurrence
+                    (OccurrenceDatePicker.loan.test.tsx,
+                    OverrideEditorDialog.loan.test.tsx). Met (F3): the
+                    occurrence contract pricing a loan bill's later
+                    occurrences through the projection
+                    (scheduled-occurrence.service.spec.ts).
+Known gaps          A cursor moved without an advancement (skip, an edit of
+                    next_due_date) can miss the step into a lower payment; an
+                    initial row outranks a later edit of the account's payment;
+                    a method change re-levels the column, not the timeline; an
+                    override with an amount and no lines posts over the
+                    template's lines (spec 7.6); a loan occurrence due more
+                    than a year ahead keeps the template's amount on the
+                    occurrence contract (spec 8.7); the client cash-flow
+                    forecast (lib/forecast.ts) still projects a loan bill's
+                    later occurrences from the schedule-level amount.
+Status              enforced
+```
+
+### INV-LOAN-010 -- a loan's interest category and its template's interest line change together
+
+```text
+Statement           A loan's payment template is priced per installment only
+                    while identifyLoanTemplate manages it: one principal
+                    transfer, one interest line carrying
+                    accounts.interest_category_id, optionally an
+                    extra-principal transfer. So every path that writes the
+                    template's interest line names an interest category the
+                    caller owns, and a change of the account's category moves
+                    that line with it: a template managed before a successful
+                    update is managed after it. No line is guessed: an
+                    escrow, insurance or tax line is never marked as interest.
+Source of truth     accounts.interest_category_id and the template's
+                    scheduled_transaction_splits, read under the schedule
+                    row lock.
+Enforcement         Creation: createLoanAccount, createMortgageAccount
+                    (loan-mortgage-account.service.ts) and setupLoanPayments
+                    (loan-payment-setup.service.ts) refuse a missing category
+                    (errors.accounts.loanRequiresInterestCategory /
+                    mortgageRequiresInterestCategory) and one the caller does
+                    not own (assertLoanInterestCategory,
+                    backend/src/accounts/loan-interest-category.ts) before
+                    anything is written; there is no default lookup. The
+                    account form and the payment setup dialog require the
+                    field. Change: AccountsService.update, on a value
+                    difference only, runs assertLoanInterestCategory and
+                    planLoanInterestRelink before the account save and
+                    applyLoanInterestRelink after it, in the update's
+                    withScopedDb transaction. The plan relinks exactly one
+                    candidate (a category line with no transfer whose
+                    category is NULL or the previous one, or the line a
+                    managed template prices as interest) when
+                    identifyLoanTemplate reports the relinked template
+                    managed; it is a no-op (logged) for a cleared category, no
+                    schedule, or an ambiguous or already-unmanaged template.
+                    Undo and redo: ActionHistoryService refuses (409
+                    errors.actionHistory.loanEditNotUndoable), before any
+                    write, the undo or redo of an account edit that changed a
+                    template-coupled column (method, prepayment mode,
+                    amortization, original principal, payment, frequency,
+                    interest category, source account, schedule or matching
+                    rule) of a loan with a schedule; the column restore alone
+                    left the template unmanaged or priced for the other method
+                    (A26-H06). backend/test/integration/account-undo.integration.spec.ts.
+Concurrency scope   per loan: the update holds the account row lock, then the
+                    plan takes the schedule row lock (pessimistic_write), the
+                    order reassignLoanSourceAccount and the template
+                    repricing take.
+Retry semantics     Safe: a repeat is a resend of the stored value, which is
+                    no value difference and touches nothing.
+Crash semantics     One withScopedDb transaction: the account and the line
+                    commit together or not at all.
+Failure response    400 errors.accounts.invalidInterestCategory for a category
+                    that is unknown or another user's; 400
+                    errors.accounts.interestCategoryBreaksTemplate when a
+                    managed template would stop being managed (defensive: the
+                    candidate rule makes it unreachable); nothing written in
+                    either case.
+Required tests      Met: loan-interest-category.spec.ts (relink from NULL and
+                    from A to B, cleared, no schedule, the three escrow
+                    cases, the forced refusal writing nothing),
+                    accounts.service.spec.ts (runs on a value change only,
+                    account saved before the line, refusal before any save),
+                    the create and setup refusals in
+                    loan-mortgage-account.service.spec.ts and
+                    loan-payment-setup.service.spec.ts, and the PG cases in
+                    loan-interest-relink.integration.spec.ts.
+Known gaps          Templates that drifted before this invariant are repaired
+                    only by a later category change or by hand; interest lines
+                    in per-occurrence overrides
+                    (scheduled_transaction_overrides.splits) are not relinked;
+                    a 0% loan set up through setupLoanPayments has no interest
+                    line, so its template is unmanaged regardless.
+Status              enforced
+```
+
 ### INV-LOAN-HISTORY-001 -- historical loan interest counted as paid is ledger-backed
 
 ```text
@@ -2497,6 +3439,15 @@ Statement           Interest attributed to a historical loan payment is a
                     A forward PROJECTION may estimate -- that is its job, and
                     its rows are labelled projected. The prohibition is on a
                     historical row.
+                    A historical row is a row the ledger moved by today: a VOID
+                    payment or interest expense moved nothing and a future-dated
+                    one has not happened, so neither is history
+                    (deriveLoanPaymentHistory's required `todayYmd`, audit
+                    A26-M28). Interest is the signed sum of its rows, so a
+                    refund from the lender lowers Interest Paid (INV-REPORT-004,
+                    A26-S15-05). A loan whose repayments recorded no interest at
+                    a non-zero rate has an unknown interest saving, never the
+                    whole of it as saved (loan-past-impact.ts, A26-L34).
 Source of truth     transaction_splits (the payment's recorded interest leg,
                     identified by accounts.interest_category_id) and the
                     interest-category expenses on the loan's configured source
@@ -2567,10 +3518,12 @@ Known gap           **Standalone interest is attributed by `(interest category,
                     `pairSeparateInterestByDate` sums both onto whichever
                     payment date matches. The source comment has always said to
                     give each loan its own category; what makes the state normal
-                    rather than exceptional is the DEFAULT --
-                    `LoanPaymentSetupService` falls back to
-                    `CategoriesService.findLoanCategories`, which resolves one
-                    user-level `Loan -> Loan Interest` category for every loan.
+                    rather than exceptional was the DEFAULT -- the setup and
+                    create paths used to fall back to one user-level
+                    `Loan -> Loan Interest` category for every loan. They now
+                    require the user to choose a category per loan
+                    (INV-LOAN-010), so a shared category is a user's choice,
+                    not a default; the merge still happens when one is chosen.
                     Worked example: Loan A pays 800 principal + 200 interest and
                     Loan B pays 500 + 100 on the same date from the same
                     chequing account; A's history reports 300 of interest and an
@@ -2578,7 +3531,7 @@ Known gap           **Standalone interest is attributed by `(interest category,
                     Closing it needs a durable provenance link (the loan account
                     id, or the principal payment / scheduled occurrence, recorded
                     on the interest transaction) plus a decision about existing
-                    data and about the setup default. Both are schema/product
+                    data. That is a schema/product
                     decisions, so the status is `partial` and says so rather than
                     the catalogue claiming a guarantee the code does not give.
                     A second, smaller gap: `accounts.interest_booking_mode`
@@ -2610,6 +3563,831 @@ payment in effect that value is authoritative even when it does not amortize
 (`INV-LOAN-HISTORY-001` covers the interest; the payment's authority ordering is
 documented in `docs/frontend/financial-figures.md`).
 
+## Sovereign bonds
+
+The bond engine is country-agnostic (`docs/specs/polish-retail-bonds.md`
+section 2.0); these invariants hold for every adapter.
+
+### INV-BOND-001 -- published terms, period rates, instruments and programs are immutable
+
+```text
+Statement           A stored bond terms version, a stored announced period
+                    rate, a stored bond instrument (series) and a stored bond
+                    program are never updated or deleted; a correction is a
+                    new terms version.
+Source of truth     bond_terms_versions, bond_period_rates, bond_instruments,
+                    bond_programs
+Enforcement         bond_reject_mutation(), a row-level BEFORE UPDATE OR DELETE
+                    trigger on all four tables (the first two: migration
+                    20261010170817_bond_reference_tables.sql; bond_instruments
+                    and bond_programs: migration
+                    20261011090000_bond_instruments_immutable.sql paired with database/schema.sql);
+                    ON DELETE RESTRICT from the first two to bond_instruments,
+                    from bond_instruments to bond_programs, from
+                    securities.bond_program_id to bond_programs and from
+                    investment_transactions.bond_instrument_id to
+                    bond_instruments. TRUNCATE is not
+                    covered: no application path issues it, and the
+                    integration test reset relies on it.
+                    The catalog's writers (BondCatalogService: the boot seed
+                    of the programs, and storeEntry for a series) are not
+                    refused by the trigger, they never reach it: they insert
+                    with INSERT ... ON CONFLICT (bond_instrument_id, version)
+                    DO NOTHING (and the equivalent on the instrument and
+                    program keys), so the trigger, which fires only on UPDATE
+                    and DELETE, never sees a second writer.
+                    A series is stored in its own transaction
+                    (BondSeriesService.store) and the seed stores each program
+                    in its own, so one failing statement rolls back that one
+                    only.
+Concurrency scope   global (per instrument)
+Retry semantics     A retried or concurrent insert of the same (instrument,
+                    version) or (instrument, period) inserts nothing and
+                    raises nothing (ON CONFLICT DO NOTHING on the primary key
+                    makes the second writer a no-op; it never overwrites).
+                    storeEntry then compares the stored content_hash with the
+                    entry's: the same hash is unchanged, a differing one is a
+                    conflict (SERIES_TERMS_CONFLICT) and nothing is written:
+                    changed terms are not applied until they are a new version.
+Crash semantics     Single-row inserts; nothing partial to recover. A failure
+                    of one series' or program's transaction loses that one
+                    only.
+Failure response    refuse an UPDATE or DELETE (the statement raises); an entry
+                    whose content differs from the stored version is refused
+                    as a conflict and logged
+Required tests      bond-reference-tables.integration.spec.ts: update and delete
+                    of all four tables raise and leave the row unchanged;
+                    bond-catalog.service.spec.ts: a version stored again with
+                    differing content is a conflict and inserts no second one;
+                    one failing program does not roll back the others.
+Status              enforced
+```
+
+### INV-BOND-002 -- a missing rate is unknown, never substituted
+
+```text
+Statement           A period that has started and whose rate is neither in the
+                    terms, announced, nor derivable from the stored observation
+                    for its own month or day has no rate. Nothing substitutes
+                    another month's observation, the latest value, 0 or the
+                    first-period rate. A period that has not started is
+                    PROJECTED from a named assumption (supplied, else the
+                    newest stored observation), labelled as such, never KNOWN.
+Source of truth     benchmark_values, benchmark_series.covered_through,
+                    bond_period_rates
+Enforcement         resolvePeriodRates (backend/src/bonds/engine/rate-resolution.ts):
+                    a started period without a rate yields null values, a
+                    `missing` entry naming the benchmark, the observation and
+                    its publisher, and referenceDataComplete = false (every
+                    such null also makes valuationComplete false); a future
+                    period is PROJECTED from a named assumption, structured as
+                    { benchmarkId, value, basis, observation }.
+Concurrency scope   --
+Retry semantics     -- (computed on read)
+Crash semantics     -- (nothing stored)
+Failure response    null with the missing observation named; a future cash
+                    flow whose amount is unknown is emitted with status UNKNOWN
+                    and amount null, never dropped; a benchmark with neither an
+                    observation nor an assumption is listed in
+                    projectionMissing { benchmarkId, publisher | null }. A
+                    STEP benchmark (NBP) whose archive cannot prove that no
+                    decision is missing is covered only up to the archive's
+                    newest date (coveredThrough); a later day is unknown, not
+                    derived from an older rate. Each benchmark's coveredThrough
+                    and lastFetchedAt are returned as benchmarkCoverage.
+Required tests      bond-engine.spec.ts truth-table rows (spec section 4), the
+                    STEP coverage rule, the UNKNOWN cash flow and
+                    projectionMissing cases, and the NBP coverage cases.
+Status              enforced (engine, read by bond-valuation.service.ts and by
+                    the bond_engine price sync in bond-price.service.ts, which
+                    writes no price for a day whose lots lack a gross value)
+```
+
+### INV-BOND-003 -- money is exact until the issue document rounds it
+
+```text
+Statement           Bond amounts and rates are computed in exact rational
+                    arithmetic and rounded only where the issue document
+                    rounds, per bond, then multiplied by the quantity.
+Source of truth     the terms document (rounding, capitalization.baseRounding)
+Enforcement         ExactDecimal (backend/src/bonds/domain/exact-decimal.ts)
+                    parses only decimal strings; the engine's formulas take
+                    and return ExactDecimal. Golden tests E1 to E16 pin the
+                    rounding points. country-agnostic.guard.spec.ts fails
+                    parseFloat, Number( or Math. in domain/ or engine/ outside
+                    the calendar-date module.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    --
+Required tests      unit (golden fixtures) and the source scan above.
+Status              enforced
+```
+
+### INV-BOND-004 -- known and projected never mix
+
+```text
+Statement           A bond cash flow or maturity value is KNOWN only when every
+                    rate it depends on comes from the terms, an announcement or
+                    a stored observation; otherwise it is PROJECTED and the
+                    valuation lists the assumption.
+Source of truth     the resolved period rates of one valuation
+Enforcement         valueBondLot (backend/src/bonds/engine/bond-engine.ts):
+                    maturityValueKnown is null while any rate it needs is
+                    projected; each cash flow carries its status (KNOWN,
+                    PROJECTED, or UNKNOWN with amount null).
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    the figure moves to the projected fields
+Required tests      bond-engine.spec.ts known/projected cases.
+Status              enforced
+```
+
+### INV-BOND-005 -- a linked security's automatic price is the bond engine's; it replaces every non-manual row and never a manual one
+
+```text
+Statement           A security linked to a bond program
+                    (securities.bond_program_id, allowed only on a security
+                    of type BOND) is priced automatically by the bond engine
+                    and by no quote provider; the engine's unit price is
+                    blended over the lots of every series the security holds,
+                    each lot valued by its own series' terms
+                    (docs/specs/bond-program-securities.md section 2.4). For a linked security the engine
+                    row replaces every non-manual row on its days (provider
+                    rows and transaction-derived rows: a transaction price is
+                    one lot's trade price, not the holding's value); a
+                    transaction-derived price never replaces a bond_engine
+                    row; a manual price always wins and the engine never
+                    replaces it. An engine row stores adjusted_close NULL
+                    (coupons are recorded as INTEREST income, the close is the
+                    value), and a manual price written over an engine row does
+                    not inherit the engine's adjusted_close. An unchanged day
+                    is not rewritten.
+Source of truth     securities.bond_program_id; security_prices.source
+Enforcement         Three mechanisms.
+                    1. One predicate, isPricedByQuoteProvider
+                       (backend/src/securities/provider-priced.util.ts), read by
+                       every path that asks a provider about a security:
+                       isRefreshEligible (the quote refresh, the selected
+                       refresh, the settlement, the historical backfill and the
+                       on-demand fill), fetchAndStoreRange (every backfill, even
+                       a forced one), backfillSecurityHoldingPeriod and the
+                       intraday chart. provider-priced.guard.spec.ts fails when
+                       a method that reaches a provider stops consulting it. The
+                       "refresh price" of a linked security first fetches its
+                       program's current offer and a bounded piece of its
+                       history (INV-BOND-008), then recomputes the engine
+                       prices instead of reporting 0 updated.
+                    2. BondPriceService.upsertPrices
+                       (backend/src/bonds/bond-price.service.ts): one
+                       INSERT ... ON CONFLICT (security_id, price_date) DO UPDATE
+                       whose WHERE admits every source except 'manual' AND a
+                       close or source that differs, and writes
+                       adjusted_close NULL; the same constant
+                       BOND_ENGINE_PRICE_SOURCE is bound by the delete of days
+                       that no longer get a price (it deletes only
+                       bond_engine rows). The transaction-price upsert's
+                       replaceable-source list (TRANSACTION_SOURCES)
+                       does not contain bond_engine for a linked security, and
+                       the manual-price write sets adjusted_close from its own
+                       input, never from the row it replaces.
+                    3. The link and its edits, all in the write's own
+                       transaction (SecuritiesService assertBondLink, shared
+                       by update, the AI/MCP update_security preview and the
+                       undo of a security edit): the program must exist, be
+                       priced in the security's currency (INV-PRICE-001) and
+                       the security's type must be BOND (code
+                       LINK_REQUIRES_BOND_TYPE; changing the type of a linked
+                       security away from BOND is refused unless the same
+                       request unlinks it); the link is refused (code
+                       LINK_QUANTITY_NOT_BONDS) when the link is being set
+                       and the security has priced acquisitions (BUY,
+                       REINVEST and its variants, not void) whose price is
+                       not within [0.5, 2] x the face value of the row's own
+                       series
+                       (its stored series, or the one on sale on its date)
+                       per bond, because the quantity is then not a number of
+                       bonds. The same band is the rule of every WRITE of a
+                       linked security, not only of the link:
+                       BondWriteGuard.verify (backend/src/bonds/
+                       bond-write-guard.ts), in the transaction of every
+                       write path (create, update, updateLinkedTransfer,
+                       transferSecurity, an embedded split row, remove, void,
+                       undo, redo and once per file in the imports), reads the
+                       stored price and series of the rows just written
+                       (findQuantitiesNotBonds, backend/src/securities/
+                       bond-link.util.ts) and refuses a BUY or REINVEST*
+                       priced outside the band with errorCode
+                       QUANTITY_NOT_BONDS before anything commits. Only
+                       acquisitions are read: a SELL or REDEEM of a long-held
+                       bond may be worth more than twice its face value, and a
+                       removal counted in currency units is refused by the lot
+                       derivation. The face value is the row's series' (newest
+                       terms version, instrument.faceValue) and, for a row with
+                       no series of the program, the program's product
+                       template's (BondProgramDefinition.faceValue,
+                       templateFaceValueOf, backend/src/bonds/
+                       bond-adapters.ts): an empty catalog is never a way past
+                       the band. A row already outside the band when the guard
+                       began does not block an unrelated write or a delete.
+                       After the commit of a split parent's create, edit, void
+                       or delete, the embedded rows' securities are repriced
+                       (recomputeBondPricesAfterWrite via
+                       TransactionSplitService, never inside the transaction;
+                       INV-CACHE-001) on every route: TransactionsService
+                       create/update/remove, updateSplits/removeSplit, the
+                       reconciliation status endpoints and the bulk status
+                       update; bondProgramId is canonicalized to lowercase
+                       before comparing and storing; a link that changes
+                       (unlink, another program) also clears, in the same
+                       transaction, the series its transactions name outside
+                       the new program (INV-BOND-007);
+                       linkChanged is decided inside the update transaction from
+                       the row locked FOR UPDATE. Undo and redo snapshots carry
+                       bond_program_id and are applied through the same
+                       validation and the same engine-price cleanup and
+                       post-commit recompute; a restored state that fails them
+                       is refused (code UNDO_LINK_INVALID).
+                       fk_securities_bond_program is ON DELETE RESTRICT.
+Concurrency scope   per security; recomputes and unlink cleanups of one security
+                    are serialized by a transaction-scoped advisory lock
+                    (LockScope.BondPriceRecompute in common/db/locks.ts, keyed
+                    on the security id; first statement of the transaction,
+                    before the account locks of lockAccountsForBalanceWrite),
+                    and the recompute reads the link after taking it. Unlinking
+                    deletes that security's bond_engine rows in the same
+                    transaction. A manual price wins over a bond_engine row
+                    whatever the write order: the engine upsert's WHERE never
+                    admits source = 'manual', and the manual write replaces the
+                    engine row. A provider write inserts only WHERE the
+                    security has no bond link at write time, so an in-flight
+                    refresh cannot price a just-linked security.
+                    Every creation, edit, void or delete of an investment
+                    transaction of a linked security (UI service, bulk, AI
+                    action, MCP, import) dispatches that security's recompute
+                    after the commit, as does a restore (every linked security
+                    of the restoring user). The request recompute and the cron
+                    use one definition of "today", the user's financial today.
+                    A series of days is valued from one resolution of each
+                    lot's schedule and period rates (the engine's series API,
+                    exact because a period that has started on a day has the
+                    same rate or the same "missing" whether resolved then or
+                    now), so a recompute costs O(days + lots x periods).
+Lots                Lots are derived per account and per series (spec section
+                    12.2 and bond-program-securities.md 2.3): an acquisition's
+                    lot carries the series its row names; a removal that names
+                    a series takes first-in first-out from that series' lots of
+                    the row's own account (REMOVAL_EXCEEDS_SERIES when it holds
+                    less), one that names none takes first-in first-out across
+                    the account's series; a paired TRANSFER_OUT/TRANSFER_IN
+                    moves the quantity FIFO from the source account's lots to
+                    the destination account keeping purchase dates and series;
+                    an unpaired leg is a removal / a new dated lot as before. A
+                    row without a stored series (written before the link) is
+                    read as a write would resolve it, from its date, and when
+                    that is not determined the lots are unknown
+                    (SERIES_NOT_DETERMINED). The security's price is the blend
+                    over all accounts and all series. A lot whose purchase
+                    date is outside terms.saleWindow gets no valuation:
+                    status REFUSED, refusal PURCHASE_OUTSIDE_SALE_WINDOW, every
+                    figure null, valuationComplete false (a null saleWindow is
+                    no restriction), and its day gets no price row.
+Retry semantics     A retried recompute writes nothing it already wrote
+                    (written = 0, deleted = 0).
+Crash semantics     Reads, the upsert, the delete and the account updated_at
+                    marker share one transaction; the portfolio memo and the
+                    net-worth recompute are dispatched after the commit
+                    (INV-CACHE-001), and a lost debounce is recovered from the
+                    marker by sweepStaleSnapshots.
+Failure response    refuse a link the instrument cannot honour (400, nothing
+                    written); a day whose lots have no gross value gets no row
+                    (INV-BOND-002); lots that cannot be derived (a split, a
+                    fractional or over-removed quantity) price nothing and the
+                    valuation names why. A valuation or scenarios request with
+                    asOf after today is refused (code AS_OF_IN_FUTURE; a future
+                    projection is the scenarios' job, with assumptions).
+                    A support backup stores bond_program_id and the
+                    transactions' bond_instrument_id as NULL. A user restore
+                    whose catalog lacks the program restores the link as NULL
+                    and reports unlinkedBondSecurities { count, symbols }
+                    (symbols capped at 50); a transaction whose series the
+                    catalog lacks is restored without it and counted in
+                    unlinkedBondSeries { count }.
+                    Surfaces that rank or date market moves (Top Movers and the
+                    daily-change boards, the global "last price update" marker)
+                    exclude bond-linked securities and bond_engine rows; the
+                    price source bond_engine is shown by a translated label.
+Required tests      bond-prices.integration.spec.ts (real PostgreSQL: a manual
+                    price survives; a provider and a transaction-derived price
+                    on a linked security's day are replaced by the engine row
+                    and a transaction price never replaces an engine row; an
+                    engine row has adjusted_close NULL and a manual write over
+                    one does not inherit it; an unchanged day is not rewritten;
+                    stale rows are deleted; every refresh path skips a linked
+                    security with an explicit provider override; another user's
+                    security answers 404; a transaction write, a bulk, AI, MCP
+                    and import write each dispatch the recompute);
+                    bond-price.service.spec.ts (including the 10-year EDO lot
+                    series bound and the blend over two series),
+                    bond-lots.spec.ts (per-account and per-series FIFO and the
+                    paired transfer), securities.service.spec.ts (link
+                    refusals: type, quantity, currency, uppercase UUID, undo),
+                    action-history undo spec, provider-priced.guard.spec.ts,
+                    backup specs (support backup drops the link; restore
+                    names and recomputes). A benchmark observation stored or
+                    corrected outside the 06:25 run (the boot warm-up, the refresh
+                    after a stored series) dispatches the recompute of the series
+                    reading that code after its run, outside the lease
+                    (BenchmarkRefreshService.recomputeAfterChange, A26-L22):
+                    benchmark-refresh.service.spec.ts "the recompute after a store".
+Status              enforced
+```
+
+### INV-BOND-006 -- terms enter the catalog from the official source or an administrator, never from a user's numbers
+
+```text
+Statement           A bond terms version is stored only from one of two
+                    origins: the adapter's fetch of its official source, or an
+                    administrator's manual entry built on the adapter's product
+                    template (an adapter ships no series of its own,
+                    INV-BOND-008). A request from a
+                    person who is not an administrator carries only a country
+                    and a series code, never a rate, a margin, a fee or a date.
+                    Every stored version names its origin in source.provider
+                    (the official host the fetch read, or manual). Terms are
+                    inserted once and never changed (INV-BOND-001): a series already stored is
+                    returned and nothing is fetched or written, and a read
+                    whose content differs from the stored version 1 is refused
+                    and logged, never stored over it. A refused fetch leaves no
+                    row.
+Source of truth     bond_terms_versions.terms ->> 'source' (provider, url,
+                    document) and bond_terms_versions.source_url; the series
+                    code and country on bond_instruments
+Enforcement         Three mechanisms.
+                    1. The entry points take no terms from a person.
+                       FetchBondSeriesDto (backend/src/bonds/dto/) has exactly
+                       two bounded fields under whitelist and
+                       forbidNonWhitelisted, so POST /bonds/instruments/fetch
+                       (throttled to 10 a minute per user), the Refresh of a
+                       linked security (no input but the security; it fetches
+                       the codes the adapter's own listing and series-code
+                       grammar name, bounded per program), the fetch_bond_series
+                       AI and MCP tool (the same two fields in
+                       fetchBondSeriesSchema) and the daily cron
+                       (BondSeriesService.scheduledCurrentOffer, which takes the
+                       codes from the adapter's own listing of the offer, only
+                       for the programs a security has switched auto-fetch on
+                       for) cannot
+                       carry a value. Values enter only through POST
+                       /bonds/instruments/manual behind RolesGuard with
+                       Roles("admin"), and the MCP tool
+                       enter_bond_series_manually, which refuses a caller that
+                       BondSeriesService.isAdministrator does not find with the
+                       admin role, validates the values before asking, and
+                       confirms with the user before it stores. Both build the
+                       entry through the adapter's manualSeries: the same
+                       template, bounds and strict parseBondTerms as a fetch.
+                    2. Every check runs before the write. The adapter reads its
+                       host only (getFromIssuer refuses another host, a final
+                       url elsewhere, a status other than 200 and an oversized
+                       body), SeriesHttp makes the request with
+                       redirect: "manual", a 30 s timeout and a 5 MB streaming
+                       cap behind the obligacjeskarbowe circuit breaker (the
+                       NBP and GUS benchmark fetches use the same door, limited
+                       to the https hosts their adapter declares), and the
+                       series page and the issue letter are cross-checked field
+                       by field before the template is filled and parsed. A
+                       refusal is a SeriesFetchError thrown before
+                       BondSeriesService opens the write transaction.
+                    3. One store path. BondSeriesService.store runs
+                       BondCatalogService.storeEntry
+                       in one withScopedDb transaction whose first statement is
+                       pg_advisory_xact_lock(LockScope.BondSeriesFetch, 8,
+                       keyed on the deterministic instrument id). storeEntry
+                       reads inside the lock: the instrument row and version 1
+                       are inserted ON CONFLICT DO NOTHING, and a stored
+                       version is compared by content_hash. A differing hash,
+                       or an instrument row that disagrees, throws
+                       SERIES_TERMS_CONFLICT inside the transaction, which rolls
+                       back. The immutability trigger of INV-BOND-001 is the
+                       last backstop.
+                    Not enforced: the content of an adapter's product template
+                    beyond the strict parser (it is reviewed code), and the truth of an
+                    administrator's manual values within the adapter's bounds
+                    (the role is the control; the card says the terms were
+                    entered by hand).
+Concurrency scope   per instrument (the advisory lock); the network read is
+                    outside it
+Retry semantics     A repeat of a stored series answers created: false and
+                    fetches nothing. Two concurrent first fetches of one series
+                    queue on the lock: the first inserts, the second finds the
+                    same content hash and writes nothing. A differing repeat is
+                    a conflict, retried never.
+Crash semantics     One transaction; a crash leaves no instrument or version
+                    row. The cron's lease (fetch_sync job bond-series) is a
+                    cost control: the store is idempotent however many replicas
+                    run.
+Failure response    SeriesFetchError codes, each with errors.bonds.<code> in
+                    every locale: SERIES_CODE_INVALID and
+                    SERIES_FETCH_UNSUPPORTED 400, SERIES_NOT_PUBLISHED 404,
+                    SOURCE_UNAVAILABLE 503, SOURCE_FORMAT_CHANGED 502 (422 for
+                    a manual entry), SOURCE_INCONSISTENT and
+                    TEMPLATE_NOT_VALIDATED 422, SERIES_TERMS_CONFLICT 409.
+Required tests      bond-series-fetch.integration.spec.ts (real PostgreSQL, a
+                    fake BondFetch over the saved fixtures, never the network: a
+                    fetch inserts one instrument and version 1; a repeat writes
+                    nothing; a differing repeat is SERIES_TERMS_CONFLICT; a
+                    refused fetch leaves no row; two concurrent fetches insert
+                    once; a manual entry is stored with provider manual and an
+                    out-of-bounds one leaves no row);
+                    bond-series.service.spec.ts, series-http.spec.ts,
+                    bonds.controller.spec.ts (DTO bounds, throttle, admin
+                    guard, error mapping), the fetch_bond_series and
+                    enter_bond_series_manually tool specs,
+                    provider-call.guard.spec.ts (the fetch goes through the
+                    breaker) and country-agnostic.guard.spec.ts (the service
+                    names no country).
+Status              enforced
+```
+
+### INV-BOND-008 -- no country's bond data is fetched or stored without a person's action
+
+```text
+Statement           No series, terms version or benchmark observation of any
+                    country is fetched or stored unless a person asked for it:
+                    a series fetch or manual entry, the current-offer fetch, a
+                    program switched to auto-fetch (bond_auto_fetch), a
+                    restore of the person's own backup (only the series that
+                    backup's rows reference), or a stored series that reads
+                    the benchmark. An adapter ships
+                    product templates and programs only; the boot seed stores
+                    programs and makes no network call.
+Why                 A deployment follows the bonds its people chose (Polish
+                    bonds for a person in Poland, Canadian ones for a person in
+                    Canada); default fetching would send every deployment's
+                    traffic to every country's issuer and statistics office and
+                    fill its catalog with data nobody holds.
+Mechanism           The BondAdapter type carries no series catalog; the boot
+                    seed stores programs only; the series cron and backfill
+                    read the auto-fetch programs first; the benchmark refresh
+                    reads the benchmarks of stored series first.
+Enforcement         backend/src/bonds/no-automatic-bonds.guard.spec.ts (every
+                    installed adapter: boot, crons, templates, type) and
+                    backend/test/integration/no-automatic-bonds.integration.spec.ts
+                    (real database, a fetch that throws if called).
+Status              enforced
+```
+
+### INV-BOND-007 -- a program-linked security's rows name a series of its program, or the ledger says which does not
+
+```text
+Statement           A security linked to a bond program
+                    (securities.bond_program_id) holds the program's series
+                    (the product, e.g. one security for all of EDO). Every
+                    share-moving row of such a security stores the series it
+                    acts on in investment_transactions.bond_instrument_id, and
+                    that series belongs to the security's program.
+                    - A BUY or REINVEST has a purchase date of its own: its
+                      series is the one named or, when none is, the program's
+                      series whose newest terms version's saleWindow contains
+                      the transaction date; the server resolves and stores it,
+                      and a series a client names is checked against the
+                      program, never trusted.
+                    - ADD_SHARES and an unpaired TRANSFER_IN have no purchase
+                      date of their own (the date is the transfer's or the
+                      grant's): they name the series explicitly
+                      (SERIES_REQUIRED), never inferred. A paired transfer
+                      moves the source's lots with their series.
+                    - A removal (SELL, REDEEM, REMOVE_SHARES, an unpaired
+                      TRANSFER_OUT) may name a series (absent: first-in
+                      first-out across series). It is checked at write time:
+                      a write after which the account does not hold enough
+                      (of the named series, REMOVAL_EXCEEDS_SERIES; at all,
+                      OVER_REMOVAL) is refused and nothing commits.
+                    - A file import (QIF/OFX, Money) names no series: a BUY or
+                      REINVEST takes the series on sale on its date, any other
+                      acquisition, or one with none on sale, is stored with
+                      NULL and counted (bondRowsWithoutSeries); the lots then
+                      refuse with SERIES_NOT_DETERMINED, naming the row,
+                      instead of the import dropping it.
+                    A security that is not program-linked never has the column
+                    set. The series-naming refusals (SERIES_NOT_IN_PROGRAM,
+                    SERIES_NOT_DETERMINED, SERIES_REQUIRED,
+                    SERIES_NOT_ALLOWED) run in the write's own transaction
+                    before anything is written.
+Source of truth     investment_transactions.bond_instrument_id;
+                    bond_instruments.bond_program_id;
+                    securities.bond_program_id
+Enforcement         One resolver, resolveTransactionSeries
+                    (backend/src/bonds/bond-series-resolver.ts), called by
+                    every path that writes the column, inside its transaction
+                    and before the first write: InvestmentTransactionsService
+                    create (also reached by bulk, the AI action executor, the
+                    MCP tools and the scheduled-transaction post), update,
+                    updateLinkedTransfer, transferSecurity and
+                    createEmbeddedForSplit; and the AI and MCP previews through
+                    previewCreateInvestmentTransaction, so a card never shows
+                    what the commit would refuse. The file imports use
+                    resolveImportedSeries (the program looked up once per
+                    security per run); undo and redo use restoredSeries, which
+                    puts the snapshot's series back exactly, never inferred (a
+                    series outside the security's current program is stored as
+                    NULL). A form resends the stored series on every save, so on
+                    update only a series that differs from the stored one is a
+                    request, and an edit that changes neither the series, the
+                    security, the action nor the date keeps the stored value,
+                    NULL included (keepStored). A split parent's edit recreates
+                    its embedded rows: a recreated row that names no series
+                    keeps its predecessor's (readEmbeddedSeriesCarry,
+                    takeCarriedSeries; matched on security, action, quantity and
+                    date, since a split stores no position). The write guard
+                    (BondWriteGuard, bond-write-guard.ts) runs in the same
+                    transaction, after the mutation, in create, update,
+                    updateLinkedTransfer, transferSecurity,
+                    createEmbeddedForSplit, remove (so bulk, AI and MCP
+                    deletes), updateStatus (void), reverseAndRemoveEmbedded and
+                    applyParentStatusToEmbeddedRows (a split parent's delete,
+                    void, and, through deleteSplitSideEffects, replacement),
+                    undo and redo, and once per file in the imports. A split
+                    parent's delete is guarded once over all its embedded rows,
+                    so a parent holding a BUY and the SELL it covers is not
+                    refused half way; a replacement of the splits tracks one
+                    guard before the teardown and verifies it after the
+                    successors are written. The guard derives the lots over the
+                    security's whole
+                    ledger (bondLotsFromTransactions over loadBondLedger, the
+                    derivation the valuation reads) and throws when OVER_REMOVAL
+                    or REMOVAL_EXCEEDS_SERIES refuses it now and it was
+                    derivable before the write, or the refusal names a written
+                    row; a refusal that already existed about another row does
+                    not block an unrelated edit. GET
+                    /bonds/securities/:id/series-on-sale and /series-holdings
+                    answer the form with the same code (seriesOnSaleSql, the
+                    lot derivation). The link follows the rows:
+                    clearForeignSeries (securities update and the undo of a link
+                    change) clears the series outside the new program in the
+                    link's transaction, hasQuantitiesThatAreNotBonds reads a
+                    row of another program as the series it will be read as
+                    under the new one, and clearForeignSeriesOfUser does the
+                    same after a restore, whatever the file said. A BUY or
+                    REINVEST written before the link, or by a path that
+                    predates the column, is read by loadBondLedger as a write
+                    would resolve it (the same seriesOnSaleSql), never guessed
+                    when two series were on sale; an ADD_SHARES or unpaired
+                    TRANSFER_IN without a series is never inferred. Not enforced
+                    by the database: a CHECK cannot compare a row's series
+                    program with its security's program across tables; the ON
+                    DELETE RESTRICT foreign keys keep the named series and
+                    program in the catalog.
+Concurrency scope   per row; the security's link is read without a lock, so a
+                    link changed concurrently with a trade is repaired by
+                    clearForeignSeries at the link's commit and by the lots'
+                    inference of a row without a series
+Retry semantics     The resolution is a function of the row, the program and
+                    the stored terms: repeating a write resolves the same
+                    series.
+Crash semantics     The series is a column of the row; nothing partial to
+                    recover. A series stored after a row was written (a fetch,
+                    the offer, the cron, the backfill) changes how a BUY or
+                    REINVEST without one is read: the engine prices of the
+                    program's securities are recomputed after that commit
+                    (BondPriceService.recomputeLinkedSecuritiesOfSeries,
+                    INV-CACHE-001).
+Failure response    400 with errors.bonds.SERIES_NOT_IN_PROGRAM (names the
+                    series and the program), SERIES_NOT_DETERMINED (names the
+                    date and the program, says to fetch the series),
+                    SERIES_REQUIRED, SERIES_NOT_ALLOWED, REMOVAL_EXCEEDS_SERIES
+                    or OVER_REMOVAL (errorCode is the code, the message names
+                    the removal's date and quantity), in every locale; nothing
+                    written. A bulk row that is refused is skipped with the same
+                    message; an import is refused as a whole before anything is
+                    kept when a removal is not covered. A read of lots that
+                    cannot be derived (series-holdings) is 422 with the
+                    refusal code as errorCode.
+Required tests      bond-series-resolver.spec.ts (every branch: inferred,
+                    named, foreign program, none on sale, two on sale, a code
+                    reference, removal, unlinked, cash action, stored series
+                    kept or dropped, keepStored, SERIES_REQUIRED, restored
+                    series, imported series, clearing);
+                    bond-write-guard.spec.ts; investment-transactions
+                    .service.spec.ts ("the bond series of a share-moving row":
+                    create, update, transferSecurity, an embedded split and
+                    the preview, each refusing before a write);
+                    embedded-series-carry.spec.ts;
+                    import-investment-processor.service.spec.ts,
+                    write-investments.spec.ts, action-history.service.spec.ts
+                    (undo and redo), the AI and MCP tool specs (the series
+                    reaches the descriptor and the commit), bond-lots.spec.ts
+                    (per-series lots), bond-holdings.service.spec.ts,
+                    bond-valuation.service.spec.ts (two series),
+                    bond-series-write.integration.spec.ts,
+                    bond-prices.integration.spec.ts and
+                    bond-valuation.integration.spec.ts (real PostgreSQL),
+                    backup-restore.integration.spec.ts (the series follow the
+                    program).
+Status              enforced
+```
+
+### INV-BOND-009 -- a redemption's cash is returned principal plus interest
+
+```text
+Statement           The split of a bond-linked redemption satisfies
+                    payout = principalReturned + interest exactly, interest >= 0
+                    and principalReturned <= principal; at maturity the
+                    deduction is 0. What a bond pays above the principal it was
+                    bought at is interest (a discount instrument's discount
+                    included), net of an early-redemption deduction taken from
+                    it, never a capital gain.
+Source of truth     the lot's terms, rates and redemption date, through the same
+                    schedule, rate, penalty, floor and rounding code as the
+                    valuation (spec docs/specs/bond-redemption-interest.md
+                    sections 2 and 3)
+Enforcement         redemptionSplit (backend/src/bonds/engine/bond-engine.ts,
+                    redemption-split.ts): every figure is rounded per bond by
+                    the terms and then multiplied by the quantity, so the three
+                    sums hold to the last digit; interest is
+                    max(0, grossInterest - deduction) and principalReturned is
+                    payout - interest. A refused day or an unknown rate gives a
+                    refusal and null figures, never 0.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    a refusal (NOT_REDEEMABLE, TOO_EARLY, TOO_LATE, RECORD_DAY,
+                    TERMS_INCOMPLETE, RATE_UNKNOWN, PURCHASE_OUTSIDE_SALE_WINDOW)
+                    and null figures
+Required tests      backend/src/bonds/engine/redemption-split.spec.ts (the
+                    table of the spec, a day-by-day sweep of the identity for a
+                    compounding bond, a coupon bond and a discount bill, refusals,
+                    unknown rates, per-bond rounding) and
+                    backend/src/bonds/adapters/pl/redemption-split.golden.spec.ts
+                    (the maturity value of EDO0423 stated by the Ministry, early
+                    redemptions of EDO and COI worked by hand from the letters).
+                    The endpoint (GET /bonds/securities/:id/redemption-split,
+                    BondHoldingsService.redemptionSplit), which splits the lots
+                    the write guard's own derivation removes, is covered by
+                    bond-holdings.service.spec.ts, bonds.controller.spec.ts and
+                    bond-series-write.integration.spec.ts (first in first out
+                    across two purchase dates, a quantity above the series held
+                    refused, the row being edited not counted, another user's
+                    security 404); the form that fills the price and the accrued
+                    interest from it by
+                    InvestmentTransactionForm.bondRedemption.test.tsx.
+Status              enforced
+```
+
+### INV-BOND-010 -- a bond holding's current value is its own account's lots
+
+```text
+Statement           The current market value of a bond-linked holding (one
+                    account, one security) is the sum of the engine's grossValue
+                    of that account's open and matured lots on the person's
+                    financial today, never quantity x the security's daily
+                    bond_engine price, which blends the lots of every account.
+                    An unknown lot makes the holding unpriced (marketValue null,
+                    pricesComplete false), never the blend.
+Source of truth     the account's lots (bondLotsAsOf over the ledger) valued by
+                    the engine (BondValuationService.valueByAccount)
+Enforcement         PortfolioCalculationService.valueBondHoldings, used by
+                    calculateHoldingsWithValues and getAccountMarketValues; the
+                    account balances report (valuePositions), sector weightings
+                    and GEM positions call valueByAccount once per linked
+                    security. Not enforced for historical per-account series
+                    (net worth by account, an account's value chart): they
+                    still read the daily blend, so their per-account split is
+                    approximate for a security held in several accounts while
+                    their total is exact (spec
+                    docs/specs/bond-program-securities.md 2.4).
+                    A blend reader (a series that multiplies a quantity by a
+                    stored close) values a linked security through
+                    valuationClosePointOn (securities/bond-valuation-close.util.ts):
+                    the engine's row of that day only, so a day the engine refused
+                    (no row; INV-BOND-002) is unknown, never the previous engine
+                    close carried over it and never one lot's trade price
+                    (INV-BOND-005). The daily movement (DailyMovementService) reads
+                    it (A26-M26).
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    the holding is unpriced and named in unpricedSecurityIds
+Required tests      backend/src/securities/portfolio-calculation.service.spec.ts
+                    (two accounts holding different series of one program, an
+                    unknown lot, a valuation that throws);
+                    backend/test/integration/bond-holding-value.integration.spec.ts
+Status              partial. Still reading positionCloseAsOf (a carried engine
+                    close, or a trade price) over a refused day, and to be moved
+                    to valuationClosePointOn with the refusal carried as an
+                    unknown component: net worth daily and monthly
+                    (net-worth.service.ts loadDailyInvestments,
+                    recalculateBrokerageAccount; loadTxPriceSeries reads trade
+                    prices of linked securities), and through them latest net
+                    worth, the account summary totals, the period result and the
+                    investment report. Still reading the daily blend per account
+                    (A26-S14-02): Monte Carlo getHoldingStats, the investment
+                    report holdings, net worth by account for the current month;
+                    valueBondHoldings is the per-account answer. And the historical
+                    per-account series named above.
+```
+
+### INV-BONDNOTIFY-001 -- the bond notification producer fetches nothing
+
+```text
+Statement           BondNotificationService (backend/src/bonds/) reads stored
+                    terms, observations and the ledger through
+                    BondValuationService and BondHoldingsService, and writes
+                    nothing but notification rows, through
+                    NotificationDispatchService.notify after every read has
+                    committed. It never fetches a series, a benchmark or an
+                    offer.
+Why                 A notification cron that fetched would send every
+                    deployment's traffic to every issuer daily (INV-BOND-008),
+                    and a push or email fan-out inside a read transaction holds
+                    a connection across an external call.
+Mechanism           The service injects no fetching collaborator; dispatch runs
+                    after the reads, outside any transaction.
+Enforcement         backend/src/bonds/no-automatic-bonds.guard.spec.ts (the
+                    producer's source names none of BondSeriesService,
+                    BenchmarkRefreshService, SeriesHttp, BondOfferService and
+                    makes no request) and bond-notification.service.spec.ts
+                    (dispatch outside the transaction).
+Status              enforced
+```
+
+### INV-BONDNOTIFY-002 -- one row per event, and a state-keyed event once
+
+```text
+Statement           Each event has a dedupe key (docs/specs/bond-notifications.md
+                    section 4) and NotificationService.create refuses a second
+                    row with the same key per user. The two state-keyed events
+                    (bond:unbooked:*, item 4, and bond:missing:*, item 6) are
+                    raised once while their state lasts: the nightly purge
+                    keeps their rows, read or dismissed, and forgets one only
+                    when it was dismissed more than 365 days ago. Items 2 and 3
+                    look back 3 days with date-scoped keys, so a skipped day is
+                    caught up without a duplicate.
+Why                 The dedupe row is the only memory that an event was
+                    raised; purging it at 30 days raised the same state again
+                    every month.
+Mechanism           INSERT ... ON CONFLICT DO NOTHING against the unique
+                    idx_notifications_dedupe; STATE_KEYED_DEDUPE_PREFIXES
+                    (backend/src/notification-center/notification-bounds.ts)
+                    excluded from both DELETEs of NotificationService.purgeOld
+                    by a parameterized LIKE ANY.
+Enforcement         notification.service.spec.ts (the purge SQL),
+                    bond-notification-events.spec.ts (dedupe keys, window
+                    edges), backend/test/integration/bond-notifications.integration.spec.ts
+                    (real database: a row dismissed 31 days ago survives the
+                    purge and the next run raises nothing; one dismissed 366
+                    days ago is forgotten).
+Status              enforced
+```
+
+### INV-BONDNOTIFY-003 -- the engine's figures
+
+```text
+Statement           Every amount, rate and date in a bond notification is
+                    BondValuationService.valueSecurity's (lot figures) or
+                    BondHoldingsService.redemptionSplit's (a payout), so the
+                    notification and the security page cannot disagree.
+Mechanism           The event rules (bond-notification-events.ts) are pure over
+                    the valuation; nothing is recomputed. An affected series of
+                    item 5 carries its rate source, and a projected rate is
+                    worded as projected.
+Enforcement         bond-notification-events.spec.ts,
+                    bond-notification.service.spec.ts,
+                    frontend/src/hooks/useNotificationCopy.test.ts
+Status              partial: the copy of both layers is held by unit tests,
+                    there is no guard scanning the rules for a recomputed figure
+```
+
+### INV-BONDNOTIFY-004 -- unknown is said, never zero
+
+```text
+Statement           A figure the engine cannot work out (a payout, a coupon
+                    whose rate is not published) is null in the row's data, and
+                    both copies say it is not known and why; a refused ledger
+                    names the row (action, date) and what to do.
+Mechanism           payoutOf / unknownPayout, sumExact (null when any flow is
+                    unknown), missingDataNotification (causes carry the
+                    refusal's action, date and row id; the dedupe hash covers
+                    the code, row and date, never a translated text).
+Enforcement         bond-notification-events.spec.ts,
+                    notification-email-copy.spec.ts,
+                    frontend/src/hooks/useNotificationCopy.test.ts
+Status              enforced
+```
+
+### INV-BONDNOTIFY-005 -- country-agnostic
+
+```text
+Statement           The producer holds no country, program, publisher or
+                    benchmark literal.
+Mechanism           Every such value arrives in the valuation or the stored
+                    benchmark row.
+Enforcement         backend/src/bonds/country-agnostic.guard.spec.ts
+Status              enforced
+```
+
 ## Scheduled occurrences
 
 ### INV-OCCURRENCE-001 -- one occurrence, one effect
@@ -2631,26 +4409,75 @@ Enforcement         A durable occurrence key claimed atomically.
                     database-level backstop, so exactly-once holds regardless of
                     replica count; the cron treats the ConflictException as
                     "claimed by another replica".
+                    The two human entry points carry the occurrence the person
+                    saw: POST /scheduled-transactions/:id/post and /:id/skip
+                    require expectedOccurrenceDate (the date the occurrence falls
+                    on, nextOccurrenceDueDate on the client) and
+                    expectedOverrideId (the override shown, or null), and post()
+                    and skip() compare them, before the lock and again under it,
+                    with the cursor and the override at the cursor slot
+                    (occurrence-pin.ts assertOccurrencePin). A stale view is
+                    refused with 409 before anything is written, so it can
+                    neither post the next occurrence under the old one's date
+                    nor skip it. skip() takes the same row lock. Both refuse a
+                    schedule with no occurrence left (occurrences_remaining 0,
+                    or the cursor past end_date), so an exhausted schedule posts
+                    nothing more by any route.
+                    The cursor steps past every claimed slot on or after it on
+                    every advance (schedule-cursor.ts claimedSlotsFrom, read in
+                    the posting transaction after the claim), so a slot a
+                    settlement rule claimed ahead of the cursor (INV-LOAN-008)
+                    is never where the cursor stops.
 Concurrency scope   per (scheduled transaction, occurrence date)
-Retry semantics     Safe: a re-post is refused by the occurrence claim.
-Crash semantics     A crash between claim and advance leaves the claim row, so the
-                    next tick is refused rather than reposting.
+Retry semantics     Safe: a re-post is refused by the occurrence claim, and a
+                    manual retry by the pin once the cursor has moved.
+Crash semantics     The claim, the money, the override removal and the cursor
+                    advance commit or roll back together in one withScopedDb
+                    transaction: a crash before the commit leaves no claim, no
+                    row and no advance; after it, all of them.
 Failure response    the losing claim gets ConflictException, having posted nothing.
                     A replica whose selection went stale (the winner already
                     advanced next_due_date) is refused by expectedDueDate; without
                     it, post() re-read the row and posted the NEXT occurrence under
-                    a fresh claim key, once per extra replica.
+                    a fresh claim key, once per extra replica. A stale browser
+                    view is refused the same way by its pin (audit A26-H07).
+                    A failure AFTER the posting commit (completeTransfer, the
+                    loan template recalculation) is logged by post()'s
+                    afterPostCommit and the post is reported as done: the cron
+                    raises no SCHEDULED_POST_FAILED alert for a posted
+                    occurrence and an HTTP caller receives the posted schedule,
+                    so neither is invited to post it again (audit A26-M14;
+                    scheduled-post-commit-failure.integration.spec.ts).
 Required tests      Present (unit): scheduled-transactions.service.spec.ts, a cron
-                    whose post() re-reads an advanced next_due_date posts nothing.
-                    The unique index gives DB-level exactly-once; a two-instance
-                    "two replicas, one posting" integration test is still owed as
-                    the gold-standard proof.
+                    whose post() re-reads an advanced next_due_date posts nothing,
+                    and post() recording its transaction on the claim.
+                    Present (integration, real post() against PostgreSQL):
+                    scheduled-posting.integration.spec.ts (two cron replicas
+                    under a barrier post once) and
+                    scheduled-post-occurrence-pin.integration.spec.ts (a stale
+                    post, skip and exhausted-schedule post are refused 409 with
+                    the ledger unchanged; a cron tick racing a pinned manual
+                    post has one effect; a rule claim ahead of the cursor is
+                    stepped over by post() and skip()).
 Status              enforced
 ```
 
 This was `docs/concurrency-and-idempotency.md` CONC-004's canonical case -- the
 logical operation key `(scheduledTransactionId, occurrenceDate)` that simply was
 not persisted -- and it now is, as scheduled_transaction_postings.
+
+A second writer of the same key, and release on delete (B5 of
+`docs/specs/loan-installment-settlement.md`, spec section 4.6):
+a `settle_loan_installment` rule claims an occurrence a bank row paid through
+the same `INSERT ... ON CONFLICT DO NOTHING RETURNING id` (INV-LOAN-008), so a
+bill post and a settlement of one slot cannot both succeed. And `post()` now
+records the transaction it created on its claim (`transaction_id`, `ON DELETE
+CASCADE`), for every schedule: deleting a posted bill's transaction, or undoing
+its create, deletes the claim in the same statement. The occurrence then has no
+effect, and the cursor is not rewound, so the auto-post cron (which reads the
+cursor) does not re-post it; a person who moves `next_due_date` back onto that
+date can post it again, where before the claim outlived its transaction and
+`post()` answered "already posted". An investment post records no transaction.
 
 ### INV-OCCURRENCE-002 -- a stored override price survives
 
@@ -2680,7 +4507,15 @@ Statement           Every surface that presents or aggregates a scheduled
                     amount as unavailable when it cannot be determined. The
                     persisted amount is never substituted, and the recurrence
                     slot is never reported as the due date when an override moved
-                    the occurrence off it.
+                    the occurrence off it. For a loan bill, an occurrence other
+                    than the next one is priced the same way, by the dated
+                    payment and rate (INV-LOAN-009) rather than repeated from the
+                    next occurrence or the template: the occurrence picker and
+                    the override editor read the loan occurrence projection, one
+                    GET per loan schedule, and this service prices a loan bill's
+                    occurrences after the next, through one year ahead, by the
+                    same projection (spec scheduled-loan-installment-pricing.md
+                    8.7); one due later keeps the template's amount.
 Source of truth     Two files, and only two:
                     common/scheduled-occurrences.ts (expandOccurrenceSlots) owns
                     occurrence IDENTITY -- walking a recurrence over a window and
@@ -2889,6 +4724,43 @@ Cumulative series   A projected balance is cumulative, so an occurrence nobody c
                     applies no rate -- so the destination's projection reports it
                     rather than adding a foreign number (INV-FX-001's rule applied
                     to a projection).
+Overdue             An occurrence dated before a projection's first day that the
+                    expansion still returns was neither posted nor skipped -- both
+                    advance next_due_date, and the walk starts there -- so it is
+                    owed, and both projections apply it on their first day
+                    instead of dropping it (discussion #1784). The cash-flow
+                    forecast (lib/forecast.ts, generateOccurrences with
+                    carryOverdue) lands it on today, its first point, tagged
+                    overdueOriginalDate; the tooltip counts them through
+                    countOverdueOccurrences, keyed on schedule and slot so the two
+                    legs of a transfer count once. The account balance forecast
+                    expands from overdueCarryFrom(today) and places each occurrence
+                    through forecastLanding (accounts/balance-forecast.util.ts): today's
+                    point is the posted balance, so the first projected day is
+                    tomorrow; a bill due today lands there too but is not overdue.
+                    BalanceForecastResult.overdue {date, count, amount} names
+                    them, null when there are none or the series is withheld; the
+                    detail chart marks the day (useOverdueForecastMarkers) and the
+                    projected-balance note says how many. Which date decides is
+                    the date the occurrence falls, so an override that moves an
+                    overdue slot into the window applies it there, unmarked, and
+                    one that moves an occurrence into the past makes it overdue.
+                    Overdue occurrences spend occurrencesRemaining and stop at
+                    endDate like any other, an unpriceable one withholds the
+                    series like any other, and both walks stop after 2000 steps
+                    (OCCURRENCE_WALK_GUARD, MAX_OCCURRENCE_STEPS). Only the last
+                    OVERDUE_CARRY_DAYS (31) are carried, the same constant on both
+                    sides: an older occurrence is read as a forgotten schedule and
+                    dropped. BudgetsService.getUpcomingBills counts from the same
+                    day. getForecastSummary's startingBalance is the first point
+                    less what it carried, so it matches the account's balance.
+                    The calendar's daily totals carry them unannotated.
+                    getProjectedBalanceAtDate, the posting dialog's balance
+                    before, does not carry them. Pinned by forecast.test.ts
+                    (`overdue occurrences`), balance-forecast.util.spec.ts
+                    (forecastLanding), balance-forecast.service.spec.ts
+                    (`occurrences already due and still unposted`) and
+                    budgets.service.spec.ts (getUpcomingBills).
 Known scope         Two client-side expansions remain, both named in the frontend
                     guard's exemption list with their reasons: `lib/forecast.ts`
                     (the cash-flow forecast, which resolves each occurrence
@@ -2933,27 +4805,57 @@ Status              enforced
 ### INV-AUTH-001 -- refresh rotation
 
 ```text
-Statement           A presented refresh token rotates once; a second presentation
-                    revokes the family.
+Statement           A presented refresh token rotates once; presenting it again
+                    revokes the family, except that the immediate predecessor of a
+                    successor minted within the rotation grace is answered with an
+                    access token only.
 Source of truth     refresh_tokens.is_revoked, per family_id
-Enforcement         Pessimistic write lock on the RefreshToken row by tokenHash,
-                    plus family revocation on a token already revoked. The loser
-                    blocks on the lock, sees the winner's committed isRevoked,
-                    and takes the reuse-detection branch.
+Enforcement         TokenService.refreshTokens takes lockTokenFamily, then a
+                    pessimistic write lock on the RefreshToken row by tokenHash.
+                    A token already revoked is reuse: the family UPDATE commits and
+                    the 401 is raised after withScopedDb resolves (a throw inside
+                    the callback rolled the revocation back until A26-H01). The
+                    expired-token mark and the inactive-user family revoke commit
+                    the same way. The one exception is the grace
+                    (TokenService.ROTATION_GRACE_SECONDS, 10 s): when the presented
+                    token's replaced_by_hash names a successor that is still live
+                    and whose created_at is inside the window, the answer is an
+                    access token with no refresh token, nothing is revoked or
+                    minted, and the controller leaves the refresh cookie the first
+                    response set. A predecessor whose successor has itself rotated,
+                    or one presented after the window, is reuse. The browser
+                    client serializes refreshes across tabs with the Web Locks API
+                    (frontend/src/lib/api.ts, monize-token-refresh), so the grace
+                    is the fallback rather than the common path.
 Concurrency scope   per token family
-Retry semantics     A retried rotation of the same token is reuse, not a retry,
-                    and is treated as such by design.
+Retry semantics     A retried rotation of the same token inside the grace gets an
+                    access token; outside it, it is reuse by design.
 Crash semantics     A crash before commit leaves the presented token valid; a
                     crash after leaves the successor valid. Both are consistent.
-Failure response    401, family revoked.
-Required tests      Two-connection: two concurrent rotations of one token; assert
-                    the family ends revoked rather than two live successors.
+Failure response    401 after the family revocation has committed.
+Required tests      Real database: test/integration/refresh-reuse-revokes-family.integration.spec.ts
+                    rotates and re-presents a token past the grace and after a
+                    second rotation (family ends with zero live rows, successor
+                    refused), the grace answer (no revocation, successor still
+                    rotates), two concurrent refreshes of one token (exactly one
+                    live successor), and the durable expired and inactive-user
+                    branches. Unit (supporting): token.service.spec.ts records
+                    whether each refusing transaction committed.
+                    Still owed: a two-page Playwright test that both tabs stay
+                    signed in when the access cookie expires (e2e/ has no fixture
+                    that expires it).
+Known limit         The nightly purge deletes revoked rows, so a token reused more
+                    than a day after its rotation is "invalid", not "reused", and
+                    revokes nothing (D-S03-04). Inside the grace a thief presenting
+                    the predecessor is not detected; it receives one access token
+                    and no refresh token.
 Status              enforced
 ```
 
-Recorded as enforced because the mechanism is real and correct -- and because it
-is subtle enough that a future refactor could remove the lock without any test
-noticing.
+Recorded as enforced because the mechanism is real and a real-database test now
+holds it. It was recorded as enforced before the reuse branch's revocation was
+found to roll back with its own exception (A26-H01): the mock-based unit test
+asserted the `update` call, which a rolled-back update also satisfies.
 
 ### INV-AUTH-004 -- a logout reports only what it achieved
 
@@ -3005,15 +4907,21 @@ Enforcement         An atomic CTE increments in the database. recordFailedLogin
                     lock expired more than 24 hours ago, so a stranger who knows
                     the address cannot extend a lockout without limit. A password
                     reset (email, admin, owner of a delegate, emergency claim)
-                    clears the counter and the lock. The success-path reset writes
-                    a fixed absolute value and was always safe.
+                    clears the counter and the lock. The success path resets the
+                    counter and the lock in SQL and then writes only last_login
+                    (AuthService.recordLastLogin); it used to save the entity read
+                    before bcrypt, which wrote the old count back over the reset
+                    (A26-M01, CONC-008).
 Concurrency scope   per account
 Failure response    the counter equals the number of failures; lockout is not
                     delayed.
 Required tests      Two connections: test/integration/login-lockout.integration.spec.ts
                     runs N concurrent failures on two pools and asserts the counter
                     equals N, and proves the cap and the decay against real
-                    PostgreSQL. Unit: login-lockout.spec.ts pins the parameters;
+                    PostgreSQL. test/integration/credential-writes-atomic.integration.spec.ts
+                    drives AuthService.login with four prior failures (plain and
+                    trusted-device 2FA) and asserts the counter is 0 and one later
+                    failure does not lock. Unit: login-lockout.spec.ts pins the parameters;
                     auth.service.spec.ts asserts the login emits the single
                     incrementing statement; auth-email.service.spec.ts asserts a
                     reset clears the lock.
@@ -3035,8 +4943,16 @@ Enforcement         backend/src/auth/credential-revocation.ts.
                     revokeStandingCredentials revokes PATs and deletes trusted
                     devices inside the password write's own withScopedDb
                     transaction, so a refused reset revokes nothing and a committed
-                    one leaves neither live. After the commit, refresh tokens go
-                    through each path's existing revocation and
+                    one leaves neither live; on every path, the admin reset and
+                    disable and the owner-of-delegate reset included (A26-L07).
+                    After the commit, refresh sessions go through the converging
+                    revocation under the family locks
+                    (TokenService.revokeAllUserRefreshTokens, or
+                    revokeRefreshSessionsAfterCommit where TokenService cannot be
+                    injected: change password, admin reset, disable and delete,
+                    owner-of-delegate reset); an in-transaction blanket UPDATE is
+                    a first pass only, since it misses a successor a concurrent
+                    rotation inserts after its snapshot (A26-M02, CONC-009).
                     revokeOAuthGrantsAfterCommit calls
                     OAuthProviderService.revokeAllForUser; a failure there is logged
                     at error with the account id and rethrown, never reported as a
@@ -3052,8 +4968,17 @@ Required tests      Unit: auth-email.service.spec.ts, users.service.spec.ts,
                     (confirmOidcLink) assert each path revokes PATs, trusted devices
                     and OAuth grants; credential-revocation.spec.ts covers the
                     helper's error path; pat.controller.spec.ts asserts the step-up
-                    metadata. Still owed: a real-database test that a PAT minted
-                    before a reset is refused by the bearer guard after it.
+                    metadata. Real database:
+                    test/integration/credential-writes-atomic.integration.spec.ts
+                    forces a rotation to commit while each path's revoking UPDATE
+                    waits on its row lock and asserts no refresh token is live
+                    afterwards (change password, admin reset, admin disable,
+                    owner-of-delegate reset), and installs a statement-level
+                    BEFORE UPDATE trigger on personal_access_tokens to assert a
+                    failed PAT revocation leaves the admin and delegate resets'
+                    password, and the disable, unchanged. Still owed: a
+                    real-database test that a PAT minted before a reset is refused
+                    by the bearer guard after it.
 Status              enforced
 ```
 
@@ -3174,6 +5099,16 @@ Enforcement         Client: every figure goes through useNumberFormat(); a pure
                     exists to override) -- with a classified allowlist and a
                     comment stripper so the prose that has to NAME the banned
                     patterns does not trip its own scan.
+                    A fifth scan fails a `.toFixed(` in UI code (components,
+                    app, hooks): a classified list names the machine-read sites
+                    (CSV rows, an API fraction string, a numeric table value)
+                    and a shrink-only baseline names the readouts not yet
+                    migrated, each with an exact count, so a new site and a
+                    stale entry both fail. ui-conventions.test.ts fails a UI
+                    import of the English-only formatRelativeTime (use
+                    useRelativeTime). The PDF header's generation time is
+                    formatted by the reader's date, time and timezone
+                    preferences and labelled from the catalog (pdf-export.ts).
                     The percentage scan is keyed on the literal '%' rather than
                     on `toFixed`: written from the diff it matched only the
                     shapes the migration had just removed and reported clean over
@@ -3260,7 +5195,10 @@ Required tests      Present: useNumberFormat.test.ts (share quantity at 8dp unde
                     expectation with the same helper the component renders
                     through -- SecurityList.test.tsx did, which is why the defect
                     shipped green.
-Status              enforced
+Status              partial: the toFixed baseline in number-locale.guard.test.ts
+                    still lists readouts in SavingsRateReport,
+                    MonteCarloReport, CurrencyExposureReport, LoanSummaryCards,
+                    CurrencyList and InvestmentTransactionListParts.
 ```
 
 The number locale is a SEPARATE preference from the language, and that is the
@@ -3271,6 +5209,60 @@ Localizing the figure while leaving the sentence in English is right in one plac
 and wrong in another: it is right inside a stored English FALLBACK a client
 overrides, and wrong as a substitute for putting the copy in a catalogue. Both
 halves are decided per surface, and the classification is what the guard holds.
+
+### INV-DISPLAY-002 -- a partial figure is relabelled where it is shown
+
+```text
+Statement           A figure shown under a total's caption -- net worth, total
+                    assets and liabilities, a portfolio's or an account's market
+                    value, a report's headline -- is either complete or marked as
+                    the subtotal it is, on every surface that shows it: the app,
+                    a PDF or CSV export, the assistant's summary line and the MCP
+                    payload. A response carries one flag per cause (fxComplete,
+                    pricesComplete) and one valuationComplete meaning every
+                    component of every total is known. A scalar total is null
+                    while a component is unknown, with the partial sum in its own
+                    known* field and the missing pairs and securities named. A
+                    series point keeps its numeric subtotal beside its flags
+                    (stage 1 of docs/specs/fx-conversion-completeness.md), and a
+                    consumer plots an incomplete point as null and never ranks it
+                    as a period's high or low. The client reads each flag as
+                    `=== false` (absent is no information) from the same
+                    aggregate that produced the number on screen.
+Source of truth     backend/src/accounts/accounts.service.ts NetWorthTotals
+                    (getSummary, getLlmAccounts and through them the MCP
+                    financial-summary resource and both list_accounts tools);
+                    NetWorthService.getLatestNetWorth and getMonthlyNetWorth
+                    (fxComplete, assetsFxComplete, liabilitiesFxComplete);
+                    PortfolioService.getAccountMarketValues (AccountMarketValue)
+                    and the intraday point and response flags;
+                    MonthlyComparisonService.buildNetWorth. On the client
+                    PartialTotal, UnknownAmount and PartialDataNotice, with
+                    lib/net-worth-completeness.ts and lib/logical-accounts.ts
+                    holdingsValuationIncomplete as the shared predicates.
+Enforcement         Server: accounts.service.spec.ts, portfolio.service.spec.ts,
+                    net-worth.service.spec.ts, monthly-comparison.service.spec.ts,
+                    tool-executor.service.spec.ts and
+                    test/integration/net-worth-completeness.integration.spec.ts
+                    (a USD account of 1,000 beside 1,000,000 of a currency with
+                    no rate: netWorth null, knownNetWorthSubtotal 1000, the pair
+                    named, on the summary and the LLM shape). Client: one
+                    component case per surface fed a partial month, a partial
+                    account or an incomplete point (NetWorthReport, NetWorthChart,
+                    AssetsVsLiabilities, the accounts page, AccountList,
+                    logical-accounts, MonthlyComparisonReport, the portfolio
+                    widget and charts, the report exports).
+Status              partial
+```
+
+Partial, and why. The monthly snapshot (`monthly_account_balances`) stores one
+converted figure per account and month, so a past month's `fxComplete` cannot
+see an unpriced position or a gap between a security's currency and its
+account's; the latest month is qualified from the live per-account valuation,
+earlier months are not, and closing that needs a completeness column and a
+migration (`docs/specs/fx-conversion-completeness.md` section 5). The
+look-through and allocation totals (`sector-weighting.service.ts`) carry no
+flags yet. Series values stay numeric subtotals until stage 2 of the FX spec.
 
 ### INV-MCP-001 -- identity comes from the credential on the request
 
@@ -3436,6 +5428,18 @@ Enforcement         Creator-only, on a genuinely global count, under a lock.
                     function currency_code_in_use_globally (migration 137) which
                     covers every FK including budgets and both exchange_rates
                     columns -- not the caller's tenant-scoped count.
+                    No user action creates a currency offered to every user:
+                    a request path calls ensureCurrencyForUser, which writes a
+                    known ISO code as an inactive reference row and any other
+                    code as the user's own, and activates only that user's
+                    user_currency_preferences row; it runs inside the
+                    transaction that writes the reference, before it (the
+                    non-deferrable user_preferences.default_currency FK). A
+                    user's self-delete locks the currencies they created and
+                    removes the unreferenced ones after the user row goes; the
+                    trigger currencies_creator_cleared_deactivate (migration
+                    20261022133443) deactivates every currency whose creator is
+                    cleared, on every deletion path (A26-M17, A26-M25).
 Concurrency scope   global -- cross-tenant
 Failure response    non-creator deactivates without deleting; 409 while referenced.
 Required tests      Present: currency-references.spec.ts derives the reference list
@@ -3443,7 +5447,17 @@ Required tests      Present: currency-references.spec.ts derives the reference l
                     forgotten; currencies.service.spec.ts asserts a non-creator's
                     remove deletes only the preference and never the currency row.
                     A two-connection delete-versus-use test is still owed.
-Status              enforced
+                    currency-ownership.integration.spec.ts: a first default of
+                    PLN saves on a fresh instance and is offered to nobody else;
+                    a non-ISO code is its user's own; deleting the creator
+                    removes an unreferenced custom currency and deactivates a
+                    referenced one, also on a direct DELETE FROM users.
+Status              partial -- rows written before migration 20261022133443 are
+                    not repaired: an active system currency an earlier import,
+                    preference or deletion created stays offered to every user,
+                    and the admin delete path (admin.service.ts) deactivates a
+                    deleted user's currencies but does not remove the
+                    unreferenced ones.
 ```
 
 The global count is a SECURITY DEFINER function precisely so that under
@@ -3467,7 +5481,12 @@ Enforcement         Ordered so a failure leaves recoverable bytes, never a row
                     exists: attachment-orphan-sweeper.service.ts (hourly, under
                     withSystemContext) claims tombstones and deletes leased-past
                     orphaned bytes. Local writes are crash-atomic
-                    (local-storage.provider.ts writeFileAtomic). "No bytes without
+                    (local-storage.provider.ts writeFileAtomic). A restore
+                    stages its objects under the same protocol
+                    (backup-attachment-transfer.service.ts: an intent with a
+                    two-hour lease before each put, cleared in the restore
+                    transaction, kept when a discard's delete fails; A26-L10;
+                    backup-restore-staging.integration.spec.ts). "No bytes without
                     metadata" holds eventually rather than instantaneously, which
                     is what the invariant asks.
 Concurrency scope   per attachment
@@ -3651,6 +5670,14 @@ Crash semantics     Expiry is a property of the stored timestamp, not of a timer
                     bundle's life beyond the next purge by either door.
 Status              enforced
 ```
+
+The same device-sharing threat applies to `sessionStorage`, which a sign-out
+and a delegate context-switch reload both leave in place (A26-M36): the
+intraday portfolio series is keyed by user and acting context, and
+`clearIdentityScopedSessionStorage` (`frontend/src/lib/identity-session-storage.ts`)
+drops it and the remembered entry date and currency on `logout` and before the
+switch's reload; `frontend/src/lib/session-storage.guard.test.ts` lists every
+`sessionStorage` writer with whether it is identity-neutral or identity-scoped.
 
 ### INV-SHARE-004 -- a share never dead-ends
 
@@ -3916,9 +5943,15 @@ Enforcement         Namespacing: userFolderPath uses shardedSegments(userId) for
 Concurrency scope   per user
 Crash semantics     A kill or ENOSPC mid-write leaves the temp file, never a
                     truncated final name -- the rename is the publish.
+                    A legacy flat-folder artifact names no owner, so retention
+                    never deletes it and the local target's remove refuses it
+                    (A26-M07).
 Required tests      Present: atomic-file.spec.ts and auto-backup.service.spec.ts
                     use a real mkdtemp; backup.service.spec.ts asserts restore
-                    honours the artifact's own completeness claim.
+                    honours the artifact's own completeness claim;
+                    auto-backup.service.spec.ts asserts a legacy flat file
+                    survives any user's retention while the user's own sharded
+                    files are still pruned.
 Status              enforced
 ```
 
@@ -4053,7 +6086,7 @@ Enforcement         Two independent layers, and only one of them is code.
                     (2) Operator, documentation only: the s3:PutObject +
                     s3:AbortMultipartUpload token on a versioned, object-locked
                     bucket is described in docs/specs/backup-off-machine.md
-                    section 4 and docs/future-plans/backup-off-machine.md, and
+                    section 4 and docs/specs/backup-off-machine.md, and
                     nothing in this repository can observe the policy a
                     deployment actually issued. That half is why this entry is
                     partial rather than enforced.
@@ -4310,7 +6343,10 @@ Enforcement         Per job, and now mostly a durable cross-replica claim.
                     (ON CONFLICT (budget_id, period_start) DO NOTHING RETURNING with
                     the loser re-reading the winner), AI insight generation
                     (claimLease with the cooldown re-read under it, not a
-                    process-local Set), demo reset (claimOnce
+                    process-local Set; the lease outlasts the provider call,
+                    PROVIDER_CALL_BUDGET_MS plus a margin, is renewed by
+                    JobClaimService.whileLeaseHeld while it runs, and the save
+                    is fenced by holdsLease on the token, A26-L13), demo reset (claimOnce
                     keyed by the UTC day).
                     The MNY reaper's conditional CAS and the price/FX refreshes'
                     natural-key ON CONFLICT were already real.
@@ -4360,10 +6396,14 @@ Retry semantics     Safe: a repeat subscribe from the same browser refreshes the
                     one row rather than adding a device.
 Failure response    409, having written nothing. Not a dead end: the client
                     unsubscribes and subscribes again for a fresh endpoint
-                    (enablePushOnThisDevice, exactly one retry), and logout
-                    releases the endpoint the same way
-                    (releaseLocalPushSubscription), so the ordinary
-                    shared-browser case never reaches the refusal.
+                    (enablePushOnThisDevice, exactly one retry). Logout HOLDS
+                    the departing account's row (INV-PUSH-011) and keeps the
+                    browser subscription only once the server confirms the
+                    hold; release is the fallback whenever it is not confirmed
+                    (holdPushForSignOut -> releaseLocalPushSubscription). A
+                    second account enabling push in that browser then takes
+                    this 409 path, and the first account's held row stays
+                    theirs, undeliverable, until the hold sweep removes it.
                     Both refusals on the subscribe path -- the channel being off,
                     and a superseded applicationServerKey -- are decided from a
                     read taken INSIDE the transaction that writes. Read outside
@@ -4810,6 +6850,57 @@ Why it exists       An endpoint is a URL the server will POST to (CWE-918), and
 Status              enforced
 ```
 
+### INV-PUSH-011 -- a held device receives nothing until its own account resumes it
+
+```text
+Statement           A device whose account signed out of its browser from the
+                    header is HELD: no push is sent to it, and none is queued,
+                    until the same account signs in on that browser again. Only
+                    that account can lift the hold.
+Source of truth     push_subscriptions.held_at (NULL = deliverable)
+Enforcement         Delivery: sendToUser and sendTest select
+                    `held_at IS NULL` beside `disabled_at IS NULL`, so a held
+                    row is never attempted (and so never counted as failing,
+                    INV-PUSH-004). Hold: PushSubscriptionService.hold is one
+                    UPDATE bound to `id AND user_id AND disabled_at IS NULL`,
+                    404 on no row. Resume: only the subscribe upsert clears
+                    held_at, on its DO UPDATE arm, whose
+                    `WHERE push_subscriptions.user_id = EXCLUDED.user_id` is the
+                    INV-PUSH-001 guard -- another account's subscribe on the
+                    endpoint is a 409 that leaves the hold in place. Client:
+                    holdPushForSignOut keeps the browser subscription only when
+                    the hold request resolved; any refusal, a missing row, an
+                    older backend's 404, a delegate's 403 or an elapsed bound
+                    releases the subscription instead, so a signed-out browser
+                    never keeps one whose row still delivers.
+                    resumePushAfterSignIn acts only on a marker flagged held
+                    that names the signed-in user.
+Concurrency scope   per row. A fan-out that read the row before the hold
+                    committed still delivers that one push: the same window as
+                    the delete the hold replaced.
+Retry semantics     Safe: holding a held row only moves held_at; resuming is a
+                    re-registration and idempotent.
+Failure response    Hold: 404 on a foreign, missing or retired row, and the
+                    client releases. Resume: a server refusal releases the
+                    browser subscription; no answer leaves the hold for the next
+                    page load. A hold nobody resumes is deleted by
+                    purgeRetiredDevices after HELD_DEVICE_RETENTION_DAYS (15).
+Required tests      push-subscription.service.spec.ts (hold binds id and
+                    user_id and 404s; the upsert clears held_at on its guarded
+                    arm; both fan-outs query heldAt IsNull; sendTest over held
+                    devices alone is noDevices; the sweep's cutoff);
+                    push-hold.integration.spec.ts (under RLS enforcement:
+                    another account cannot hold or lift the hold, the owner's
+                    subscribe resumes it, the fan-out skips it, the sweep
+                    removes a backdated hold); push.test.ts (the
+                    holdPushForSignOut and resumePushAfterSignIn truth tables).
+Why it exists       Signing out used to throw the subscription away, so push
+                    stayed off on that browser after the same person signed back
+                    in. The bell already holds every notification, so a skipped
+                    push loses nothing the reader cannot see on return.
+Status              enforced
+```
+
 ### INV-DISPATCH-001 -- the dispatch seam never writes a row
 
 ```text
@@ -5025,14 +7116,37 @@ cross-user lookups (a candidate below) and whether `db-init` / `db-migrate` are
 serialized across replicas -- `common/db/advisory-locks.ts` now exists and that
 sub-point warrants its own re-check.
 
+A refusing role is only half the containment; the policies have to refuse too.
+The `account_delegates` and `account_delegate_grants` `WITH CHECK` repeated
+their `USING` read arms until migration `20261022142820`, so a delegate-side
+session could issue itself a delegation from any owner and read that owner's
+ledger through the joint read arms (A26-M06). They now admit a write only from
+the owner's own session and a grant only over the owner's own account
+(`docs/row-level-security-contract.md` section 5). The status above stays
+`enforced`: it covers the role check, which this did not change. The joint
+read arms still trust any active delegation whose delegate is the real user
+while that user acts for a different owner (D-S04-01, not closed here).
+
 ### INV-CACHE-001 -- a money-moving write invalidates its caches
 
 ```text
 Statement           A write that changes money invalidates every client cache
-                    family derived from transactions.
+                    family derived from transactions, and so does a write that
+                    changes what those figures are derived from without being a
+                    ledger row: a recategorisation (category reassign, payee
+                    category backfill), a stored price, a security's currency,
+                    an exchange rate, the reporting currency or timezone, an
+                    import. A read in flight across the write never writes its
+                    pre-write answer back.
 Enforcement         invalidateBalanceCaches (frontend lib/apiCache.ts) drops the
                     accounts:, investments: AND budgets: prefixes -- every
-                    transaction-derived family. The cache layer is mostly
+                    transaction-derived family. The valuation-input and
+                    recategorising writes call it too; a reporting-currency or
+                    timezone change and every import call clearAllCache. Every
+                    cached read goes through dedupe, whose per-key generation
+                    refuses a result that raced an invalidation; getCached and
+                    setCache are for tests, and patchCached is the one in-place
+                    rewrite. The cache layer is mostly
                     frontend, which is why the function name does not appear in
                     backend/src. The server holds one derived cache of its own,
                     the portfolio-summary memo
@@ -5061,7 +7175,13 @@ Required tests      Present: frontend cache-prefix-classification.guard.test.ts
                     requires every cache prefix to declare itself transaction-
                     derived (and be dropped) or reference-data (and be kept), so a
                     new family cannot default to stale; balance-cache.guard.test.ts
-                    requires every balance-writing API method to invalidate;
+                    requires every balance-writing API method to invalidate
+                    (its route list names the reassign, the category backfill
+                    and the price routes); the same classification guard fails
+                    a getCached or setCache call outside apiCache.ts; one lib
+                    case per channel (categories, payees, tags, investments,
+                    exchange-rates, user-settings, import, import-mny) and a
+                    race case in investments and budgets;
                     backend portfolio-summary-memo.spec.ts and the memo cases in
                     portfolio.service.spec.ts require an invalidated user to
                     recompute while another user's entry survives;
@@ -5071,7 +7191,10 @@ Required tests      Present: frontend cache-prefix-classification.guard.test.ts
                     drop standing. The cross-replica hop itself is proved by the
                     CLUSTER_MODE=multi E2E shard, where the write and the read
                     land on different replicas.
-Status              enforced
+Status              partial: the balance-cache guard is a route list, so a new
+                    recategorising or valuation-input route is held only once it
+                    is added there, and the preference and rate-refresh drops
+                    are held by unit tests, not a scan.
 ```
 
 ### INV-DAYNOTE-001 -- one note per day, written without reading first
@@ -5207,6 +7330,17 @@ carry an earlier prefix and replay first on a fresh install. A migration must
 not depend on the ordering of another in-flight migration; nothing checks that
 beyond review.
 
+
+Adjacent, and not claimed by this entry: expand before contract. A migration
+that drops, renames or retypes a column, or adds `SET NOT NULL`, breaks the
+previous release's pods for the length of a rolling update unless that release
+no longer uses the old shape (`20260908120000_remove_notification_browser.sql`
+did not wait, A26-L09). The migration lint now refuses such a statement
+(`contract-without-expand`) unless its file carries `-- contract-after: X.Y.Z`;
+the files before the rule are frozen by name in
+`GRANDFATHERED_CONTRACT_MIGRATIONS`. The marker is a claim, not a proof: only
+running the previous release against the new schema proves it, and no CI job
+does (`docs/database-migrations.md`).
 ### INV-HA-001 -- a replica serves only while what it shares is reachable
 
 ```text
@@ -5459,49 +7593,382 @@ Status              enforced
 
 Design: `docs/future-plans/transaction-rules.md` (invariants I1 and I2 there).
 
-### INV-RULE-001 -- a transaction rule never moves a balance
+### INV-RULE-001 -- a rule never changes the matched row's amount, account, date or status; it moves only a structural action's counterpart
 
 ```text
-Statement           Running a rule never changes an amount, an account, a date,
-                    a status, a split or a link, and so never moves a balance.
-                    A rule may change only a row's category, payee (with its
-                    payee_name), description and tags, or queue a request for a
-                    human-approved AI review that does not touch the row.
-Source of truth     the transactions row and transaction_tags; the rule's stored
-                    action list in transaction_rules.actions
+Statement           Running a rule never changes the matched row's amount,
+                    account, date or status, and never deletes or relinks a row
+                    that exists, so the matched row's own account balance never
+                    moves. The only balance a rule moves is the one a structural
+                    action creates: the counterpart leg of convert_to_transfer,
+                    the counterpart legs of the transfer parts of split, and
+                    the counterpart legs settle_loan_installment plans as a
+                    split (the loan's principal, its extra principal, and the
+                    interest expense), each by exactly the counterpart's
+                    amount, written in the transaction that inserts the row or
+                    commits the run. Every
+                    other action changes only a row's category, payee (with its
+                    payee_name), description and tags, or queues a request for a
+                    human-approved AI review that does not touch the row. A
+                    structural action never runs on a row a joint-account member
+                    creates in the owner's account (it would move a balance, and
+                    show an account, the member cannot read). Whatever a create
+                    or a run wrote in another account is removed with its
+                    balance by the undo that removes what wrote it, and an undo
+                    that can no longer do so exactly refuses before any write.
+Source of truth     the transactions row, its counterpart legs and split lines,
+                    and transaction_tags; the rule's stored action list in
+                    transaction_rules.actions
 Enforcement         The action list is a closed union: RULE_ACTION_TYPES and
                     RuleAction in backend/src/transaction-rules/rule-action.types.ts
                     (add_tags, remove_tags, set_category, set_payee,
-                    set_payee_from_text, set_description, request_ai_review),
-                    so an action that writes anything else is not
-                    representable, and rule-validation.ts refuses a stored or
-                    submitted action outside it. The applier
+                    set_payee_from_text, set_description, request_ai_review,
+                    convert_to_transfer, split, settle_loan_installment), so
+                    an action that writes
+                    anything else is not representable, and rule-validation.ts
+                    refuses a stored or submitted action outside it. The pure
+                    planner (planRuleEffects) decides every structural refusal
+                    before any write. The applier
                     (TransactionRulesApplierService.writeEffects) writes one
                     UPDATE limited to categoryId, payeeId, payeeName and
-                    description, tag rows through TagsService, and its own
-                    trace rows in
-                    transaction_rule_applications; it assigns no other column.
-                    A rule therefore never calls the balance helpers, and a rule
-                    application needs no balance recompute.
+                    description, tag rows through TagsService, its own trace rows
+                    in transaction_rule_applications, and then the structure on
+                    the caller's EntityManager: convertRowToTransfer
+                    (backend/src/transactions/convert-to-transfer.ts) for a
+                    conversion, TransactionSplitService.validateSplits and
+                    createSplits for a split or for the split
+                    settle_loan_installment plans, followed in the same
+                    EntityManager transaction by its occurrence claim and
+                    cursor advance (INV-LOAN-008). The only columns it sets on the
+                    matched row besides the patch are isTransfer,
+                    linkedTransactionId, isSplit and categoryId; it never
+                    assigns amount, account, date or status. The target
+                    account's balance moves through AccountsService.updateBalance
+                    (recalculateCurrentBalance for a future-dated row), by the
+                    counterpart's amount, never by a hand-rolled sum. The write
+                    returns the accounts it moved (affectedAccountIds) and the
+                    callers dispatch the net-worth recompute after the commit
+                    (INV-CACHE-001). The run takes the row-lock of every target
+                    account of its plan in one ascending-id statement
+                    (lockAccountsForBalanceWrite) before its first write. Undo of
+                    a manual run removes the counterpart legs with
+                    deletionBalanceEffect and restores the row from its snapshot
+                    (backend/src/action-history/rule-run-undo.ts); before any
+                    write it refuses with RULE_RUN_UNDO_STRUCTURE_CHANGED when a
+                    row now carries a split line, or a link to a leg, that the
+                    run did not write (the snapshot records the written line and
+                    leg ids), so a leg of a line a person added since is never
+                    orphaned with its balance. Undo of the "Created transaction"
+                    entry of a row a rule restructured
+                    (ActionHistoryService.undoTransactionCreate) locks the row
+                    with its transfer counterpart, then the legs of its split
+                    lines, checks the reconciled lock on all of them, and removes
+                    each leg through removeLockedTransactionLeg
+                    (deletionBalanceEffect); redo of such a create is refused
+                    (REDO_CREATE_WITH_LEGS) because the legs cannot be replayed.
+                    A create by an actor who is not the owner
+                    (JointRegisterService.create, the acting
+                    POST /transactions and the acting scheduled post pass
+                    actorIsNotOwner, set from the joint grant or
+                    req.user.isActing and never from the request) plans with
+                    RulePlanContext.structuralNotAllowed, so convert_to_transfer
+                    and split are skipped with
+                    structural_not_allowed_for_actor while category, payee,
+                    description and tag actions still apply.
 Concurrency scope   per transaction row, inside the transaction that already
-                    holds the row's write
+                    holds the row's write; the target account's balance is an
+                    atomic SQL delta
 Retry semantics     Re-running a rule re-derives the same category, payee and tag
-                    set; it adds no ledger effect.
+                    set; a row that has already become a transfer or a split is
+                    refused (row_is_transfer_leg, row_has_splits), so a second run
+                    adds no second counterpart. Redo of a run that restructured
+                    rows is refused (RULE_RUN_REDO_STRUCTURAL), and so is redo of
+                    a create that wrote a leg in another account
+                    (REDO_CREATE_WITH_LEGS).
 Crash semantics     Before commit, no rule effect exists; the rule step shares the
-                    insert's transaction, so a rollback drops both.
+                    insert's (or the run's) transaction, so a rollback drops the
+                    row, the counterpart and the balance change together.
 Failure response    A submitted action outside the union is refused by
                     rule-validation.ts before any write. loadRulesFor drops a
-                    stored rule whose view is invalid, so it is never applied.
+                    stored rule whose view is invalid, so it is never applied. A
+                    refused structural action is a skipped action with a reason
+                    and never throws on a create or import path. Known gap: a
+                    target account closed between the plan and the write makes
+                    the counterpart create fail and the surrounding transaction
+                    roll back, instead of a skipped action. Known gap (accepted):
+                    the auto-post cron posts a schedule as its owner without
+                    actorIsNotOwner, so a schedule an acting delegate (bills
+                    section) created or edited still runs the owner's structural
+                    rules when it auto-posts, and can move an owner account the
+                    delegate holds no grant on. The money stays between the
+                    owner's own accounts, by the owner's own rules.
 Required tests      Present: rule-effects.spec.ts ("changes only category, payee
-                    and tags: never amount, account, date, status or a link") and
-                    transaction-rules-applier.service.spec.ts ("never updates
-                    amount, account, date, status or links") assert the written
-                    columns; rule-validation.actions.spec.ts and
-                    rule-validation.spec.ts assert the union is closed. These are
-                    unit specs over the applier's write, so they prove the
-                    columns written, not a balance on real rows. Missing: none
-                    owed for the union itself; the integration specs under
-                    INV-RULE-002 read balances after a rule ran.
+                    and tags: never amount, account, date, status or a link (I1)")
+                    and transaction-rules-applier.service.spec.ts ("never updates
+                    amount, account, date, status or links" and "writes only
+                    category, payee, payee name and description for every ledger
+                    action, never amount, account, date, status or links") assert
+                    the columns written by the non-structural actions;
+                    rule-validation.actions.spec.ts, rule-validation.spec.ts and
+                    rule-validation.structural.spec.ts assert the union and the
+                    combination rules; rule-effects.structural.spec.ts and
+                    rule-effects.structural.acceptance.spec.ts assert the
+                    planner's refusals and the worked example;
+                    convert-to-transfer.spec.ts ("moves only the target's balance,
+                    by the counterpart's amount (expense)", "recalculates the
+                    target for a future-dated row, with no delta") and
+                    transaction-rules-applier.structure-write.spec.ts ("creates
+                    the counterpart, moves only the target, and reports it")
+                    assert the write; transaction-rules-run.structure-commit.spec.ts
+                    asserts the recompute after the write and the undo record;
+                    backend/test/integration/transaction-rules-structural.integration.spec.ts
+                    runs the acceptance case on real PostgreSQL ("books each
+                    instalment as the rules say, and moves the loan balance by
+                    the principal only", "a rolled-back create leaves no
+                    counterpart and no balance movement", and the manual run with
+                    undo; "undo of the create that a rule restructured" removes
+                    the conversion's counterpart and a split's legs and puts the
+                    loan balance back, and refuses redo; "a split run undone
+                    after the lines were replaced" refuses with
+                    RULE_RUN_UNDO_STRUCTURE_CHANGED and changes nothing);
+                    action-history.service.spec.ts ("a create that wrote legs in
+                    other accounts", "redo of a create that wrote legs in other
+                    accounts") and rule-run-undo.spec.ts ("when the row's
+                    structure is no longer the run's", "a transfer whose link
+                    changed since the run") assert the undo of the create and of
+                    the run; rule-effects.structural.spec.ts
+                    ("structuralNotAllowed") and the "the owner's structural
+                    rules on a grantee's create" block of
+                    backend/test/integration/joint-accounts.integration.spec.ts
+                    assert that a member's create gets no counterpart, no owner
+                    balance change and no owner account in the response.
+                    Missing: a two-connection test of the run's account-lock
+                    order (transaction-rules-run.structure-commit.spec.ts asserts
+                    only that the locks are taken once, before the first write);
+                    no net-worth recompute is dispatched after
+                    the undo of a structural run, so the net-worth series can lag
+                    until the next recompute; a test for the target account
+                    closed between plan and write.
+Status              partial
+```
+
+Status is `partial` because the undo of a structural run (and of a create that a
+rule restructured) reverses the counterpart balance but does not dispatch the
+net-worth recompute for the accounts it moved (INV-CACHE-001), and the
+closed-target-account race rolls the create back instead of skipping the action.
+It becomes `enforced` when both are closed with tests.
+
+Lock order, stated as the code has it: a run takes its transaction-row locks
+(`lockTransactionRows`, ascending id), then every target account at once in
+ascending id order, before its first write. That is the order the other
+transaction writers use (a row, then the account whose balance it moves), and it
+is not the "accounts before transactions" of `docs/concurrency-and-idempotency.md`
+section 5 rule 1, which no existing writer follows. The create path still locks
+a conversion's target account as its balance delta runs, after its own insert and
+before the source account's delta, the order the pre-existing transfer-split
+create path has.
+
+### INV-RULE-003 -- the preview, the draft test and the commit of a rule are one planner, and a run commits only the plan that was previewed
+
+```text
+Statement           What a rule would do to a row is decided by one pure planner
+                    (planRuleEffects). The create path, the import, the
+                    confirmation preview, the preview and the draft test of a
+                    manual run and the commit of that run all call it, so no
+                    surface can show an effect the commit does not write or
+                    write one it did not show. A manual run commits only the plan
+                    that was previewed: the commit re-plans inside its own
+                    transaction, under the rule's share lock and the candidate
+                    rows' locks, and refuses with 409 PREVIEW_CHANGED, before any
+                    write, when the fingerprint of the new plan differs from the
+                    preview's. The structural plan (a split's parts and signed
+                    amounts, a conversion's target account, clearCategory and
+                    counterpart amount) is part of the planned changes and of
+                    the fingerprint.
+Source of truth     transaction_rules (the rule and its revision), the matched
+                    rows as they are under the commit's locks
+Enforcement         planRuleEffects (backend/src/transaction-rules/rule-effects.ts)
+                    is the only evaluator; the applier reaches it through
+                    planForRow / planResolved / planWithChains (applyToNew,
+                    previewForRow) and the run service through the same
+                    planWithChains (TransactionRulesRunService.plan, used by
+                    previewRun, previewDraft and run). planFingerprint
+                    (rule-run-fingerprint.ts) hashes the rule revision and each
+                    row's canonical changes including changes.structure, so a
+                    changed part, target or counterpart amount changes the
+                    digest. convertRowToTransfer additionally refuses, under the
+                    row's lock, a row whose amount is no longer the planned
+                    counterpart amount (CONVERT_TO_TRANSFER_REFUSED), so the
+                    create path, which has no fingerprint, cannot write a sum the
+                    plan did not describe.
+Concurrency scope   the run: the rule row FOR SHARE, then the candidate rows
+                    ascending by id, then the target accounts ascending by id
+Retry semantics     A refused commit writes nothing; the client previews again
+                    and commits the new fingerprint.
+Crash semantics     The re-plan, the comparison and the writes share one
+                    transaction.
+Failure response    409 PREVIEW_CHANGED with the new fingerprint; a conversion
+                    whose row amount moved since the plan is refused and rolls
+                    the transaction back.
+Required tests      Present: rule-run-fingerprint.spec.ts;
+                    transaction-rules-run.structural.spec.ts (the preview lists
+                    the parts and the conversion with its amount, the
+                    fingerprint changes with them);
+                    transaction-rules-run.structure-commit.spec.ts ("refuses with
+                    PREVIEW_CHANGED when a converted row's amount changed since
+                    the preview", "dispatches nothing when the write is refused
+                    before it (stale preview)"); convert-to-transfer.spec.ts
+                    ("writes nothing when the row's amount is no longer the
+                    planned one"); backend/test/integration/transaction-rules-structural.integration.spec.ts
+                    ("refuses a commit when the row's amount changed since the
+                    preview").
+                    Missing: no source-scanning guard fails a second evaluator of
+                    a rule's condition or actions outside rule-effects.ts; the
+                    fingerprint does not cover the target account's open or
+                    closed state, which is read again at the write (a target
+                    closed in between rolls the create or run back, see
+                    INV-RULE-001).
+Status              partial
+```
+
+The status is `partial` because "one planner" is held by the call structure and
+the tests above, not by a guard that fails on a second evaluator, and because the
+fingerprint is not over the target accounts' state.
+
+### INV-RULE-004 -- a rule is evaluated only for a row dated inside its active window
+
+```text
+Statement           A rule with an active window (activeFrom, activeTo, either
+                    side optional) is evaluated only for a transaction whose
+                    calendar date is known and inside the window, inclusive at
+                    both ends. Outside it, or for a row with an unknown date, the
+                    rule is traced as skippedRule "outside_active_window" and
+                    contributes nothing: no effect, no stop-processing, no AI
+                    review request. A manual run's startDate and endDate only
+                    narrow what is scanned and never widen the window.
+Source of truth     transaction_rules.active_from and active_to (DATE, with a
+                    CHECK that active_from <= active_to); the transaction's own
+                    calendar date
+Enforcement         The pure planner decides it, before the condition
+                    (planRuleEffects in
+                    backend/src/transaction-rules/rule-effects.ts), so the
+                    create path, the import, the preview, the draft test and the
+                    manual run give one answer. Dates compare as YYYY-MM-DD
+                    strings, never through a Date. The run service intersects its
+                    scan filters with the window
+                    (TransactionRulesRunService), and the window is part of the
+                    rule revision and so of the run fingerprint. The DTOs refuse
+                    a non-calendar date and an inverted window, and the database
+                    CHECK ck_transaction_rules_active_window (declared on the
+                    TransactionRule entity as well as in the migration and
+                    schema.sql) refuses an inverted window the DTO missed. The
+                    draft test (previewDraft) runs the window it is sent: it
+                    takes activeFrom and activeTo from the request body and
+                    treats a blank side as open, exactly as a save does, so it is
+                    enforced only through the window fields the client sends.
+                    The client's Test panel must send them; the guard for that is
+                    frontend/src/components/rules/RuleEditor.test.tsx (the case
+                    "sends the draft window with the test, and marks the result
+                    out of date when the window moves").
+                    A client that omitted the fields would test the rule over
+                    rows its saved window excludes.
+Concurrency scope   per evaluated row; the window is read with the rule
+Retry semantics     Idempotent: the same row and the same window give the same
+                    skip.
+Crash semantics     No state of its own; a skipped rule writes nothing.
+Failure response    An inverted or non-calendar window is refused before any
+                    write (DTO validation, and for a draft before the scan).
+Required tests      Present: rule-effects.active-window.spec.ts (both sides, an
+                    open side, an unknown date, decided before the condition, no
+                    AI review from an outside rule);
+                    transaction-rules-run.active-window.spec.ts (nothing written
+                    outside the window, the scan narrowed and never widened, the
+                    fingerprint changes with the window, a draft honours it);
+                    transaction-rules.service.active-window.spec.ts; and
+                    backend/test/integration/transaction-rules-active-window.integration.spec.ts
+                    on real PostgreSQL (create outside and inside the window, a
+                    manual run, a draft test given a window, an inverted window
+                    refused by the service, and by the database CHECK itself).
+                    Missing: the server cannot tell a draft test that should
+                    have carried the window from one that deliberately has
+                    none, so the Test panel's behaviour is held only by the
+                    frontend test named above.
+Status              partial
+```
+
+### INV-RULE-005 -- a pass that settles folds chronologically
+
+```text
+Statement           A rule pass (a manual run's preview or commit, or
+                    applyToNew over several rows) that contains a
+                    settle_loan_installment action plans its rows oldest first,
+                    and prices each settlement on the debt the ledger will hold
+                    at its slot once every settlement planned earlier in the
+                    pass is written: datedLoanDebt at the slot, less the
+                    principal and extra principal of the earlier planned,
+                    not yet written settlements on the same loan whose rows are
+                    dated on or before the slot. A slot planned earlier in the
+                    pass is claimed for every later row. The preview and the
+                    commit fold through the same code, and the imports insert
+                    rows in date order before rules run.
+Source of truth     the transactions ledger (datedLoanDebt) and the pass's own
+                    plan; docs/specs/loan-installment-settlement.md sections 7.2
+                    and 9.4.
+Enforcement         Built (B6 of
+                    docs/specs/loan-installment-settlement.md):
+                    loadCandidateUnits takes direction "ASC" when a rule of
+                    the run carries the action and "DESC" otherwise
+                    (TransactionRulesRunService.plan, rule-run-candidates.ts),
+                    and the preview reports scanOrder; plan() threads
+                    priorSettlements, the settlements planned so far in the
+                    pass and none of them written, into the pure planner, so
+                    each row is priced on datedLoanDebt at its slot less the
+                    principal of the earlier planned rows dated on or before
+                    it, in the preview and the commit alike; a row the strict
+                    reconciled lock keeps is not folded. changes.loanSettlement
+                    (with debtBefore) is in canonicalChanges
+                    (rule-run-fingerprint.ts), so a commit whose fold differs
+                    from its preview refuses with PREVIEW_CHANGED
+                    (INV-RULE-003). applyToNew orders its rows by
+                    (transaction_date, created_at, id), writes each settlement
+                    before the next row plans and drops the loan's cached
+                    facts after each write
+                    (transaction-rules-applier.service.ts), so the next row
+                    reads the claim and the debt the write left and
+                    priorSettlements stays empty there: a written settlement
+                    is never subtracted twice. Every import path orders its
+                    rows by date, stable within a date, through
+                    orderByDateStable (backend/src/common/date-order.util.ts):
+                    the QIF, OFX and CSV loops of ImportService,
+                    eligibleImportRuleIds for a Money file, and the rules
+                    batches of BankSyncWriterService, which also returns the
+                    accounts a rule moved for the after-commit recompute
+                    (INV-CACHE-001). The rules editor's action card and run
+                    preview (F1), the rule creation on the mortgage and
+                    loan-setup paths (B7), the Loan Details Payment matching
+                    panel (F3) and the assistant/MCP name form (B8) are all
+                    built, with every locale carrying the action's strings
+                    (Q).
+Concurrency scope   the run (its locks, INV-RULE-003); per import transaction
+Retry semantics     A re-run plans the same fold from the same ledger; rows
+                    already settled are splits and are skipped.
+Crash semantics     -- (a planning rule; the writes are INV-LOAN-008's)
+Failure response    409 PREVIEW_CHANGED when the commit's fold differs from the
+                    preview's.
+Required tests      transaction-rules-run.loan-settlement.spec.ts (ASC only
+                    with the action, DESC without; three rows chained through
+                    preview and commit with one fingerprint; a payment landing
+                    between two rows after the preview refused);
+                    transaction-rules-applier.settlement-write.spec.ts (rows
+                    oldest first whatever order they were listed, a written
+                    settlement not folded twice); rule-run-candidates.spec.ts;
+                    import.service.spec.ts, apply-import-rules.spec.ts,
+                    bank-sync-writer.service.spec.ts and
+                    bank-sync.service.spec.ts (the stable date sort on each
+                    path, the affected accounts dispatched); PostgreSQL:
+                    transaction-rules-loan-fold.integration.spec.ts (a file
+                    listed newest first settles three months in a chain, and
+                    the same rows settled by one run store the same price).
 Status              enforced
 ```
 
@@ -5572,6 +8039,695 @@ unevaluated by decision (Q2), and the exemption list is a reviewed decision, not
 a proof that no exempt path should ever apply rules. It becomes `enforced` when
 Q2 is decided and those legs either call the applier or move to a per-site
 exemption the guard can check.
+
+## Email receipts
+
+Design: `docs/future-plans/email-receipts.md` (section 7). Arithmetic:
+`docs/specs/email-receipt-matching.md`.
+
+### INV-RECEIPT-001 -- a receipt mailbox is read, never written
+
+```text
+Statement           Monize never sets a flag on, moves, copies, deletes or appends
+                    to a message in a receipt mailbox, whichever way it logged in.
+Source of truth     the IMAP server's folder
+Enforcement         backend/src/email-receipts/imap/imap-mailbox-client.ts is the
+                    only importer of imapflow; it opens the folder with
+                    readOnly: true (EXAMINE) and fetches with source: true, which
+                    imapflow sends as BODY.PEEK[]. imap-source-scan.spec.ts fails
+                    on a write call anywhere under backend/src/email-receipts/,
+                    on an open without readOnly: true, and on a second importer.
+Concurrency scope   mailbox
+Retry semantics     a read repeated is a read
+Crash semantics     nothing on the server to undo
+Failure response    --
+Required tests      Present: imap-mailbox-client.spec.ts (options),
+                    imap-source-scan.spec.ts. Missing: a run against a real IMAP
+                    server asserting \Seen stays unset (task E1).
+Status              enforced
+```
+
+### INV-RECEIPT-002 -- a receipt email is stored once, and the cursor moves with the rows
+
+```text
+Statement           A message (mailbox, UIDVALIDITY, UID) is one email_receipts
+                    row however many polls read it, and the stored UID cursor
+                    never passes a message that was not stored.
+Source of truth     email_receipts, email_receipt_mailboxes.last_uid
+Enforcement         UNIQUE (mailbox_id, uid_validity, uid) with INSERT ... ON
+                    CONFLICT DO NOTHING; the cursor is advanced by a conditional
+                    UPDATE (it only rises on one UIDVALIDITY) in the transaction
+                    that inserts the rows (email-receipt-poll.service.ts). The
+                    archive import stores under (mailbox_id, 0, hash uid) with
+                    the same ON CONFLICT and never moves the cursor
+                    (email-receipt-import.service.ts).
+Concurrency scope   mailbox
+Retry semantics     a failed poll leaves the cursor where it was; the next poll
+                    re-reads and the unique key drops what was stored
+Crash semantics     before commit: neither rows nor cursor; after: both
+Failure response    the mailbox's last_error, shown on the settings screen
+Required tests      Present: email-receipts-pipeline.integration.spec.ts (the
+                    same UID twice gives one row), poll service unit spec.
+Status              enforced
+```
+
+### INV-RECEIPT-003 -- a receipt changes the ledger only through the review card
+
+```text
+Statement           Nothing a receipt carries is written to a transaction except
+                    by /ai/actions/confirm with the signed card built for it, and
+                    the card never carries an amount, a date, an account or a
+                    status change. A profile's tag and the categories the AI
+                    chose are part of the card (tags are added, never removed;
+                    an AI category is display-only and a person approves it).
+                    Auto-apply, when the user turned it on, calls the same
+                    confirm with the card it built, never for a forward (the
+                    sender of a forward is a claim of its text; only the
+                    owner's own forward is read as the shop's at all,
+                    A26-H02); the daily AI write limit
+                    is exempted for a profile's proposal only by the user's own
+                    stored mailbox switch, decided on the server.
+Source of truth     ai_review_requests (kind email_receipt), transactions
+Enforcement         The proposal is AiReviewProposalInput (splits, category,
+                    payee, description, tagNames); AiReviewWorkService.submit validates it
+                    (exact split sum, owned categories, no transfer) and signs the
+                    card; confirm marks the request applied in the write's own
+                    transaction (markApplied). The auto-apply gate is a pure
+                    function with a table test (email-receipt-pipeline.service.spec.ts).
+                    A parser draft (kind email_parser_draft) never reaches a
+                    transaction: submit refuses the kind, and the only write is a
+                    disabled parser through EmailReceiptParserToolsService.
+Concurrency scope   transaction row
+Retry semantics     a second confirm of the same card is refused by the
+                    single-use claim and by markApplied
+Crash semantics     the request stays proposed until the write commits
+Failure response    409 when the request is no longer proposed; the proposal
+                    stays in the inbox when auto-apply is refused
+Required tests      Present: email-receipts-pipeline.integration.spec.ts (a
+                    proposal applied end to end), ai-review-requests integration,
+                    email-receipts-forwarded-sender.integration.spec.ts (an
+                    outside sender's pasted forward block is not the shop's;
+                    the owner's forward is never auto-applied).
+Status              enforced
+```
+
+### INV-RECEIPT-004 -- a mailbox connection reaches only a public address
+
+```text
+Statement           The IMAP socket of a non-admin's mailbox connects to a public
+                    address unless the operator listed the host (or host:port)
+                    in EMAIL_RECEIPTS_PRIVATE_HOST_ALLOWLIST.
+Source of truth     DNS at connect time
+Enforcement         mailbox-host-policy.ts: on save, an IP literal, a blocked
+                    name and a name that resolves privately are refused; at
+                    connect, an IP literal is refused and publicOnlyLookup is the
+                    socket's lookup, so the address checked is the address
+                    connected to. An OAuth mailbox connects to the provider's
+                    fixed host only.
+Concurrency scope   connection
+Retry semantics     --
+Crash semantics     --
+Failure response    400 on save; the poll records the refusal as last_error
+Required tests      Present: mailbox-host-policy.spec.ts,
+                    imap-mailbox-client.spec.ts (lookup passed, literal refused).
+Status              enforced
+```
+
+### INV-RECEIPT-005 -- a mailbox secret is encrypted and never returned
+
+```text
+Statement           The mailbox password and the OAuth refresh token are stored
+                    only as EncryptionService ciphertext, an access token only in
+                    memory, and none of them is returned by the API, written to a
+                    log line or stored in last_error.
+Source of truth     email_receipt_mailboxes.password_enc, oauth_refresh_token_enc
+Enforcement         the view carries passwordSet / oauthConnected booleans; the
+                    entity column is select: false; the table is excluded from
+                    backups; mailbox-failure.util.ts redacts the password, the
+                    tokens and the SASL PLAIN / XOAUTH2 strings; the OAuth token
+                    client redacts every request-body value from a transport
+                    error.
+Concurrency scope   mailbox
+Retry semantics     --
+Crash semantics     --
+Failure response    --
+Required tests      Present: email-receipt-mailbox.integration.spec.ts
+                    (ciphertext stored, no secret in any stored error),
+                    mailbox-failure.util.spec.ts, oauth-token.client.spec.ts.
+Status              enforced
+```
+
+### INV-RECEIPT-006 -- one poll per mailbox at a time
+
+```text
+Statement           Two replicas, or the cron and "Poll now", never read one
+                    mailbox at the same time.
+Source of truth     job_claims (email_receipt_poll, user, mailbox)
+Enforcement         JobClaimService.claimLease around the whole poll, released by
+                    token in finally and renewed while the poll runs
+                    (whileLeaseHeld); withUserContext wraps the lease. The TTL
+                    (POLL_LEASE_MS) is the 8-minute work budget plus the slowest
+                    provider call (PROVIDER_CALL_BUDGET_MS) plus 2 minutes, and no
+                    provider call starts past the budget. An automatic parser
+                    draft holds its own per-sender claim
+                    (email_receipt_parser_draft, user, domain) with a
+                    token-fenced save, so a poll that outran a retaken lease does
+                    not draft a sender twice (A26-L13).
+Concurrency scope   mailbox
+Retry semantics     a lost lease expires POLL_LEASE_MS after its last renewal;
+                    the poll starts no new work after 8 minutes
+Crash semantics     the lease expires; INV-RECEIPT-002 makes a repeated read safe
+Failure response    "Poll now" answers busy
+Required tests      Present: rls-context-smoke.spec.ts (real lease), poll service
+                    unit spec, provider-lease-overrun.integration.spec.ts (a
+                    second poll after the first's lease was expired mid-draft:
+                    one provider call, one draft). Missing: a two-instance cron
+                    test.
+Status              enforced
+```
+
+### INV-RECEIPT-007 -- an OAuth callback completes only its own flow, once
+
+```text
+Statement           A code posted to oauth/complete is exchanged only for the user
+                    who started the flow, within 10 minutes, and only once.
+Source of truth     the encrypted state envelope, single_use_tokens
+Enforcement         oauth-state.ts: the state is EncryptionService ciphertext of
+                    the user id, provider, PKCE verifier, nonce and expiry; the
+                    user id is compared with the JWT's before the nonce is claimed
+                    with SingleUseTokenService.
+Concurrency scope   OAuth flow
+Retry semantics     a failed exchange spends the state; the user starts again
+Crash semantics     --
+Failure response    400
+Required tests      Present: oauth-state.spec.ts, email-receipt-mailbox
+                    integration (replay and foreign user against the real table).
+Status              enforced
+```
+
+### INV-RECEIPT-008 -- a trade confirmation creates a transaction only through the review card
+
+```text
+Statement           A brokerage trade-confirmation email (a profile with a
+                    `trade` section, or an agent's answer to "Recognize as a
+                    trade") creates an investment transaction only by
+                    /ai/actions/confirm with the signed create_investment_transaction
+                    card built for it. This is the one way a receipt moves money
+                    (INV-RECEIPT-003 excludes it), and it is bounded the same way:
+                    the card is signed, single-use and expires, and the
+                    email_trade request is marked applied in the write's own
+                    transaction. The executed total is the fact and is signed on
+                    the card and stored as given (INV-TRADE-001); the security is
+                    the user's own and active, found by ticker without guessing
+                    (an exact symbol beside a listing in another currency is
+                    decided by the one the account already trades, else refused),
+                    and an email whose amounts name another currency than the
+                    security's is refused. A trade the ledger already holds is
+                    not booked again: a matching row no other email accounts for
+                    (email_receipts.investment_transaction_id) makes the email
+                    `trade_exists`, refuses an agent's or the inbox's card, and
+                    refuses the confirm itself; a matching row another email
+                    accounts for is a second identical fill, proposed but never
+                    auto-applied. Auto-apply, when the user turned it on, calls the
+                    same confirm and only for an approved profile, a complete
+                    reading whose price agrees with its shares and total, no
+                    matching row at all, a card that built, and an email that
+                    is no forward. A forwarded header block re-identifies an
+                    email (and so chooses the profile) only when the outer
+                    From is the owner's own address (the mailbox login or the
+                    verified account email); anybody else's pasted block is
+                    text (A26-H02). No automatic pass
+                    (the poll's rematch, a bulk run) replaces a trade proposal:
+                    one waiting for approval, or dismissed, stays as it is. A
+                    trade that pays a scheduled bill or deposit posts that
+                    occurrence instead of creating a second row (the due date is
+                    signed, the occurrence is the schedule's next one within less
+                    than half its cycle of the trade's day, and the card is
+                    previewed with the schedule's funding account); a card whose
+                    occurrence was posted or moved since it was proposed is not
+                    approvable. Linking a trade email to a transaction already in
+                    the ledger records that row on the email, once, and marks the
+                    schedule paid with no money written.
+Source of truth     ai_review_requests (kind email_trade), investment_transactions,
+                    email_receipts.investment_transaction_id
+Enforcement         EmailReceiptTradeService queues the request claimed by the
+                    receipts key and AiReviewWorkService.submitTrade builds and
+                    stores the card (AiReviewRequestsService.enqueueTrade, one open
+                    request per email by uq_ai_review_requests_trade_open); an
+                    agent's answer goes through the same buildTradeCard. Every
+                    "already booked" question is findTradeInLedger
+                    (ai-review/trade-ledger.ts). Confirm passes create() (or the
+                    schedule's post()) a beforeWrite hook that runs
+                    AiReviewRequestsService.markTradeApplied and findTradeInLedger
+                    under the holdings lock, before any row is written, and an
+                    afterWrite hook that records the row on the email in the same
+                    transaction. The pipeline returns unchanged under
+                    onlyWhenStatusIn for an email whose request is an open or
+                    dismissed email_trade one, and selectRematch never selects one.
+                    resolveForwardedIdentity (imap/forwarded-receipt.ts) honours
+                    a forwarded block only for an outer From in loadOwnAddresses
+                    (poll/own-addresses.ts), at ingestion and in the pipeline's
+                    heal; both auto-apply gates read isForwardedReceipt.
+Concurrency scope   email_receipts row (pipeline, link), holdings scope (confirm)
+Retry semantics     a second confirm of the same card is refused by the
+                    single-use claim and by markTradeApplied; a person's reprocess
+                    closes the email's open request and queues a new one; an
+                    email that accounts for a row is not reprocessed or relinked
+Crash semantics     the request stays proposed until the write commits
+Failure response    409 when the request is no longer proposed or has expired, or
+                    the trade is already booked; the proposal stays in the inbox
+                    when auto-apply is refused
+Required tests      Present: email-receipt-trade.service.spec.ts,
+                    ai-review-work.service.spec.ts, ai-actions.service.spec.ts,
+                    investment-transactions.service.spec.ts,
+                    email-receipt-trade-link.service.spec.ts,
+                    email-receipt-pipeline.service.spec.ts,
+                    email-receipts-forwarded-sender.integration.spec.ts (real
+                    PostgreSQL under RLS: the poll, the card and confirm; an
+                    outside sender's forward books nothing, the cash stays
+                    10 000.00; the owner's forward waits for a person).
+                    Absent: the two-connection race of two confirms, or of a
+                    link and a confirm, against real PostgreSQL.
+Status              enforced
+```
+
+## Transaction search
+
+Design: `docs/specs/advanced-search.md` (sections 4 and 5). The
+syntax is one string read the same way by the register, its totals, bulk
+update and the AI tools.
+
+### INV-SEARCH-001 -- a search string has one door
+
+```text
+Statement           Every surface that takes a transaction search string reads
+                    it through one parser and one clause builder, and escapes it
+                    exactly once, inside the builder.
+Source of truth     backend/src/transactions/apply-transaction-search.ts
+                    (applyTransactionSearch, or resolveTransactionSearch plus
+                    applyParsedSearch where one parse feeds several queries).
+Enforcement         transaction-search.guard.spec.ts fails an import of the
+                    parser or the builder outside the door's three files, and a
+                    hand-built `%${...search...}%` pattern in the
+                    transactions and reports modules. The custom report's text
+                    filters (the legacy searchText and the filter-group `text`
+                    condition) go through the door at split grain (audit
+                    A26-L12); before, they were a second LIKE door with `%` and
+                    `_` unescaped. The pattern scan is narrow: it catches
+                    a template literal whose interpolation names a search
+                    value, not a concatenated `'%' + q + '%'` or a template
+                    over a differently named variable; those are left to
+                    review.
+                    The controller reads `search` through one searchParam
+                    (string check, cut at MAX_SEARCH_LENGTH) on every endpoint.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    A non-string `search` is a 400; more than 12 terms is a 400
+                    (errors.transactions.searchTooManyTerms).
+Required tests      Source scan (the guard); unit cases for the controller cap.
+Status              partial
+```
+
+Status is `partial` because the import ban holds the door and the pattern scan
+does not hold every spelling of a hand-built pattern. It becomes `enforced` when
+the scan matches any `%` wrapped around a non-literal in a query parameter
+outside the builder.
+
+### INV-SEARCH-002 -- a single bare term finds what it always found
+
+```text
+Statement           A search of one bare word, with no qualifier, quote or
+                    operator, matches exactly the rows the single-term search
+                    matched before the syntax existed, on every surface.
+Source of truth     The `any` arm of buildTransactionSearchWhere, which is the
+                    former single-term clause's arms, moved.
+Enforcement         test/integration/transaction-search.integration.spec.ts:
+                    sixteen terms (LIKE metacharacters, signed and locale
+                    amounts, a date) with their match sets recorded on
+                    2026-10-12 against the former clause while both existed.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    --
+Required tests      PG integration.
+Status              enforced
+```
+
+### INV-SEARCH-003 -- a term is evaluated against the row the query counts
+
+```text
+Statement           Every term of a search must hold on the same row the query
+                    counts. Every call site searches at split grain: a split
+                    transaction matches line by line, the register draws only
+                    the matching lines with a filtered total, and a negated term
+                    drops only the lines it matches. Bulk update selects the
+                    transactions the register lists; which lines of a selected
+                    split a category change rewrites is decided by the category
+                    filter (resolveCategoryRestriction), not by the search.
+Source of truth     The `grain` each call passes to the builder, correlated to
+                    the split alias that call site already joins.
+Enforcement         SearchClauseOptions.grain is required, so no call site can
+                    omit it; the integration spec runs both truth tables of the
+                    plan at both grains and the register, analytics and
+                    bulk-update call sites at split grain.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    --
+Required tests      PG integration.
+Status              enforced
+```
+
+### INV-SEARCH-004 -- search never inflates an aggregate
+
+```text
+Statement           Matching a search never multiplies a counted row: a
+                    transaction with two matching tags, categories or payee
+                    names is counted once.
+Source of truth     The builder: every relational arm is an EXISTS subquery and
+                    every split condition of a term is one correlated subquery,
+                    never a join.
+Enforcement         Integration case: a transaction carrying two tags that both
+                    match is one row in the register and one transaction, at its
+                    own amount, in the assistant's totals.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    --
+Required tests      PG integration.
+Status              enforced
+```
+
+### INV-SEARCH-005 -- the assistant's totals and rows read the search alike
+
+```text
+Statement           The AI and MCP list and query tools compute their totals
+                    and their rows from the same reading of the search string,
+                    including one holding `%`, `_` or `\`.
+Source of truth     INV-SEARCH-001's door: the totals path (getSummary through
+                    createFilteredAnalyticsQuery, and getLlmGroupedBreakdown)
+                    and the rows path (findAll) both pass the raw string.
+Enforcement         The pre-escaping sanitizeLikePattern was deleted and the
+                    guard bans a hand-built pattern; integration case: a search
+                    for `50%` gives a total equal to its single matching row.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    --
+Required tests      Source scan; PG integration.
+Status              enforced
+```
+
+## Warranties
+
+Design: `docs/future-plans/warranty-tracker.md` (section 5), where these seven
+are WTY-001 to WTY-007. The code, its specs and the other contract documents
+cite that short form, which is the tail of each ID here, so a search for either
+finds both.
+
+### INV-WTY-001 -- a warranty never moves money
+
+```text
+Statement           A warranty never writes a ledger row, a balance or a
+                    holding. Its purchase price is for reference: nothing sums
+                    it, and the module reads a transaction and a payee only to
+                    link them.
+Source of truth     warranties, warranty_claims; transactions, accounts and
+                    holdings are never written from backend/src/warranties/
+Enforcement         warranties.guard.spec.ts walks every non-spec source under
+                    backend/src/warranties/, subdirectories included, and
+                    fails an import of TransactionsService or its module, of
+                    a transaction writer (split, transfer, bulk create, bulk
+                    update, reconciliation, remove-transaction-leg,
+                    convert-to-transfer), of AccountsService or its module,
+                    HoldingsService, InvestmentTransactionsService or
+                    SecuritiesModule, and any mention of those four service
+                    names; the failure message names WTY-001. The service
+                    reaches a purchase and a payee through their entities, by
+                    read only (assertOwnedTransaction in
+                    warranties.service.ts, loadLinkedTransactions in
+                    warranty-linked-transaction.ts).
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    --
+Required tests      Source scan: the guard, with planted offences as its
+                    negative control.
+Status              partial
+```
+
+Status is `partial` because the scan holds the writer services' door and not a
+write through an entity the module may import: a save on
+`getRepository(Transaction)`, or raw SQL writing `transactions`, `accounts` or
+`holdings` from inside `backend/src/warranties/`, would pass it. There is none
+(read on 2026-10-21: the module's two uses of the `Transaction` repository are a
+`findOne` and a select). It becomes `enforced` when the scan also fails a write
+call on those entities' repositories and an `INSERT`, `UPDATE` or `DELETE` that
+names one of those tables.
+
+### INV-WTY-002 -- every warranty status is the server's
+
+```text
+Statement           The status and days left a surface prints for a warranty
+                    (the list and its summary strip, the detail page, the
+                    dashboard widget, the reminder, the AI tool) are the
+                    server's, from one function.
+Source of truth     warrantyStatus(expiresOn, isLifetime, today, windowDays)
+                    in backend/src/warranties/warranty-status.util.ts, with
+                    today the user's date: todayYMD inside a request, the
+                    user's timezone in the reminder cron
+Enforcement         On the server, warrantyStatus holds the only date
+                    comparison. The list's status filter and the summary's
+                    counts select rows through warrantyStatusBounds in the same
+                    file, which warranty-status.util.spec.ts holds equal to
+                    warrantyStatus on every day either side of each boundary;
+                    the reminder cron takes days left from warrantyStatus;
+                    getLlmWarranties reads through findAll. Every view carries
+                    today, status and daysLeft. On the client,
+                    WarrantyStatusBadge, WarrantyList, WarrantyDetailCard and
+                    WarrantiesExpiringWidget print status and daysLeft, and
+                    their unit tests pin that. No source scan forbids a date
+                    comparison in those components.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    A dated warranty without expires_on (which
+                    chk_warranty_expiry makes impossible) throws rather than
+                    being given a status.
+Required tests      Present: warranty-status.util.spec.ts (truth table A,
+                    example 1, the bounds agreement),
+                    WarrantyStatusBadge.test.tsx,
+                    WarrantiesExpiringWidget.test.tsx. Missing: a source scan
+                    over the warranty components and the widget.
+Status              partial
+```
+
+Status is `partial` because the client half holds by unit tests and review, not
+by a scan: a component that compared `expiresOn` with today to pick a colour or
+a sort group would pass every test above. A read on 2026-10-21 found no `Date`
+built in those components; the form's duration helper (`warrantyTermEndDate`
+in `frontend/src/lib/warranties.ts`) turns a term into a date and decides no
+status. It becomes `enforced` when a scan fails a comparison of `expiresOn`, a
+`new Date` or a financial-today read in `frontend/src/components/warranties/`
+and the widget.
+
+### INV-WTY-003 -- an attachment has exactly one parent
+
+```text
+Statement           Every transaction_attachments row belongs to exactly one
+                    parent, a transaction or a warranty; a transaction's
+                    attachments are its own rows plus the documents of every
+                    warranty linked to it, archived or not, reached through
+                    warranties.transaction_id by one fragment.
+Source of truth     transaction_attachments.transaction_id and warranty_id
+Enforcement         chk_attachment_one_parent,
+                    ((transaction_id IS NOT NULL)::int +
+                     (warranty_id IS NOT NULL)::int) = 1, added by
+                    20261022001322_attachment_parent.sql and declared in
+                    database/schema.sql (in SQL only; the entity does not
+                    carry it). AttachmentsService.create and findAllFor take
+                    an AttachmentParent union (attachment-parent.ts), never
+                    two ids, and the controller has one route per parent; both
+                    halves of a scan pair carry the parent, and the cap of ten
+                    is counted per parent under lockTransactionRow or
+                    lockWarrantyRow. The reach is written once,
+                    attachmentReachableFromTransactionSql and
+                    reachedTransactionIdSql in attachment-parent.ts, used by
+                    the transaction's attachment list (each row carrying
+                    warrantyName), the register's paperclip count and
+                    hasAttachments filter, has:attachment and the rule
+                    engine's attachment fact; attachment-parent.guard.spec.ts
+                    fails a transaction_attachments query in
+                    transactions.service.ts, transaction-search.util.ts or
+                    rule-facts.ts that does not call one of them, so a count
+                    of own rows alone, or a reach into warranty_id that skips
+                    warranties.transaction_id, cannot come back; its failure
+                    message names WTY-003 and the maintainer's ruling.
+Concurrency scope   the parent row (the cap)
+Retry semantics     --
+Crash semantics     --
+Failure response    the CHECK refuses the INSERT or UPDATE; an eleventh
+                    document on one parent is a 400
+Required tests      Present: warranty-attachments.integration.spec.ts (no
+                    parent and two parents refused, a second parent added
+                    later refused, a scan pair stored under the warranty
+                    alone and listed on the transaction with its warranty's
+                    name, its presence in attachmentCount, has:attachment
+                    and the rule facts whether or not the warranty is
+                    archived, an unlinked warranty's document in none of them,
+                    the warranty's delete cascading its documents, tombstoning
+                    their bytes and dropping the transaction's count, a kind
+                    change reaching both halves of a scan pair),
+                    attachments.service.spec.ts (both parents, the cap per
+                    parent, the list's reach and order, the kind change),
+                    the guard.
+Status              enforced
+```
+
+### INV-WTY-004 -- one reminder per threshold, across replicas
+
+```text
+Statement           Each reminder threshold (30, 7 and 0 days before
+                    expires_on) notifies a warranty's owner at most once per
+                    (warranty, expires_on, threshold), however many replicas
+                    run the tick; a missed day never fires a burst, and
+                    nothing fires after the day of expiry.
+Source of truth     notifications.dedupe_key
+Enforcement         warrantyExpiryDedupeKey (warranty-notifications.ts) builds
+                    "wty:exp:<warrantyId>:<expiresOn>:<threshold>" and the row
+                    is written through NotificationDispatchService.notify into
+                    NotificationService.create (INV-NOTIFY-001), an INSERT ...
+                    ON CONFLICT DO NOTHING RETURNING over
+                    idx_notifications_dedupe: the insert winner fans the row
+                    out, the loser gets null and sends nothing.
+                    warrantyReminderThreshold picks the smallest mark at or
+                    above days left, so a missed run moves to a smaller mark
+                    and never fires the skipped ones. The date is part of the
+                    key, so a changed expires_on fires again.
+Concurrency scope   (warranty, expires_on, threshold)
+Retry semantics     a re-run of the tick, on any replica, finds the key taken
+Crash semantics     the row and its key commit together; a crash before the
+                    commit leaves nothing and the next tick writes it
+Failure response    one warranty's or one user's failure is logged and the
+                    loop continues
+Required tests      Present: warranty-notifications.spec.ts and
+                    warranty-expiry-reminder.service.spec.ts (truth table B,
+                    examples 3 and 4); warranty-expiry-reminders.integration.spec.ts
+                    (two evaluations at the same instant, every day from 45
+                    days out to the day after expiry, write exactly three
+                    rows with three winners; a changed expires_on re-fires;
+                    archived and lifetime warranties are not candidates; days
+                    counted in the user's timezone).
+Status              enforced
+```
+
+### INV-WTY-005 -- a refusal happens before the write
+
+```text
+Statement           A warranty or claim write that names a transaction, a
+                    payee, a currency or a parent warranty the caller does not
+                    own (or that does not exist) is refused before anything is
+                    written.
+Source of truth     transactions, payees, currencies, warranties, read by
+                    (id, user_id)
+Enforcement         WarrantiesService.createRow (behind create) and update
+                    read the named transaction and payee by (id, userId), and
+                    the currency by code, inside the withScopedDb transaction
+                    that writes (assertOwnedTransaction, assertOwnedPayee,
+                    assertKnownCurrency), and a miss is a NotFoundException
+                    before the INSERT or UPDATE. Every claim write reads its
+                    warranty by (id, userId) under lockWarrantyRow in the same
+                    transaction (warranty-claims.service.ts). The CSV import
+                    writes each row through WarrantiesService.createRow on the
+                    manager of its one transaction, so a refused row writes
+                    nothing.
+Concurrency scope   the write's own transaction
+Retry semantics     a refused write wrote nothing, so a retry starts clean
+Crash semantics     --
+Failure response    404
+Required tests      Present: warranties.integration.spec.ts (another user's or
+                    an unknown transaction or payee: a 404 and no row, with
+                    the positive control; another user's warranty neither
+                    readable nor writable), rls-context-smoke.spec.ts (the
+                    refusal reads share the write's transaction).
+Status              enforced
+```
+
+### INV-WTY-006 -- an import's preview and commit are one computation
+
+```text
+Statement           The preview of a warranty CSV and its commit read the file
+                    through the same code, so the commit creates exactly the
+                    rows the preview called valid, and nothing at all while a
+                    row is invalid unless the caller chose to skip it.
+Source of truth     WarrantyImportService.run(userId, content, { dryRun,
+                    skipInvalid })
+Enforcement         Both paths parse with parseCsvRows and map and validate
+                    every row with mapWarrantyCsv inside one withScopedDb
+                    transaction; dryRun returns before any write, and the
+                    commit refuses a file with an invalid row unless
+                    skipInvalid is set. The import dialog sends the file it
+                    previewed. The file is refused above 1 MiB or 1000 data
+                    rows, before it is read.
+Concurrency scope   the import's own transaction
+Retry semantics     a commit that failed wrote nothing; a second commit of the
+                    same file creates its rows again (there is no import key)
+Crash semantics     before commit nothing is written; after it, every row
+Failure response    400 naming the invalid-row count, a missing column or the
+                    row limit; 413 for a file over 1 MiB
+Required tests      Present: warranty-import.service.spec.ts (writes exactly
+                    what the dry run previewed), warranty-csv.spec.ts (the
+                    Warracker column map and the invalid-row cases),
+                    warranties.integration.spec.ts (a clean file's commit
+                    creates the preview's valid rows; one invalid row writes
+                    nothing unless skipped).
+Status              enforced
+```
+
+### INV-WTY-007 -- a delegate learns no transaction through a warranty
+
+```text
+Statement           A delegate with the warranties section sees every
+                    warranty, its documents and its claims, and the linked
+                    purchase only when its account is one they may read;
+                    otherwise linkedTransaction is null, transactionId is
+                    omitted, and nothing in the response identifies the
+                    purchase.
+Source of truth     account_delegates.warranties_can_read and the delegation's
+                    per-account READ grants
+Enforcement         The read routes carry @AllowDelegate() and
+                    @DelegateRequiresSection("warranties"); every write route
+                    is owner-only. WarrantiesController resolves
+                    delegateReadableAccountScope once per request and passes
+                    it as accountScope; loadLinkedTransactions
+                    (warranty-linked-transaction.ts) is the one read of a warranty's purchase and narrows it
+                    with restrictToAccountScope (an empty scope reads nothing).
+                    transactionId is set only for the owner or with the
+                    purchase itself; linkedTransactionHidden says only that a
+                    hidden purchase exists. getLlmWarranties reads through
+                    findAll, so linkedTransactionId is null under the same
+                    rule. The list's transactionId filter
+                    (GET /warranties?transactionId=) is narrowed by the same
+                    scope: for a delegate, WarrantiesService.findAll first
+                    checks the purchase's account through
+                    restrictToAccountScope, and an id outside the scope
+                    answers the empty page an unknown id answers.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    403 for a delegate without the section, or on a write
+Required tests      Present: warranties.integration.spec.ts (truth table C,
+                    one case per row; every write route refused to a delegate
+                    with the section; and "delegate filtering the list by a
+                    purchase id: matches only a purchase in a granted
+                    account", where the ungranted purchase's id answers the
+                    same empty page as an unknown id and the granted one finds
+                    its row), warranties.service.spec.ts (the transactionId
+                    filter for a delegate), warranties.controller.spec.ts,
+                    rls-context-smoke.spec.ts.
+Status              enforced
+```
 
 ## Candidates not yet admitted
 

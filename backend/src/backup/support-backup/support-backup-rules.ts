@@ -8,6 +8,7 @@ import {
   scaleQty,
 } from "./support-backup-rule-kinds";
 import { PLANNING_RULES } from "./support-backup-rules.planning";
+import { WARRANTY_RULES } from "./support-backup-rules.warranties";
 
 /**
  * Per-column de-identification rules for the support backup. This registry is
@@ -97,6 +98,8 @@ export const RULES: Record<string, TableRules> = {
     favourite_report_ids: keep,
     dashboard_widgets: keep,
     dashboard_widget_config: keep,
+    hidden_table_columns: keep,
+    view_defaults: keep,
     show_created_at: keep,
     time_format: keep,
     preferred_exchanges: keep,
@@ -130,6 +133,7 @@ export const RULES: Record<string, TableRules> = {
     icon: keep,
     color: keep,
     is_income: keep,
+    auto_sign: keep,
     is_system: keep,
     created_at: keep,
   },
@@ -227,6 +231,7 @@ export const RULES: Record<string, TableRules> = {
     term_end_date: keep,
     amortization_months: keep,
     original_principal: scale,
+    payment_matching_rule_id: keep,
     created_at: keep,
     updated_at: keep,
   },
@@ -254,6 +259,31 @@ export const RULES: Record<string, TableRules> = {
     condition: konst({}),
     actions: konst([]),
     stop_processing: keep,
+    active_from: keep, // a date, the first day the rule applies to
+    active_to: keep, // a date, the last day the rule applies to
+    revision: keep,
+    created_at: keep,
+    updated_at: keep,
+  },
+  // A parser is the user's own extraction recipe for a merchant's emails: its
+  // name, the sender domains and subject words it matches, and the patterns
+  // (which quote the merchant's wording) are all free text about what the user
+  // buys and from whom. The payee id, the state and the dates are structure.
+  // `konst`, not `drop`, on the three NOT NULL columns, with values their own
+  // CHECKs accept (from_domains needs one entry); a parser restored from a
+  // support backup has an empty definition, which the reader treats as invalid
+  // and never evaluates.
+  email_receipt_parsers: {
+    id: keep,
+    user_id: keep,
+    name: mask,
+    payee_id: keep,
+    from_domains: konst(["example.invalid"]),
+    subject_contains: konst([]),
+    definition: konst({}),
+    status: keep,
+    source: keep,
+    approved_at: keep,
     revision: keep,
     created_at: keep,
     updated_at: keep,
@@ -279,6 +309,7 @@ export const RULES: Record<string, TableRules> = {
     parent_transaction_id: keep,
     is_transfer: keep,
     linked_transaction_id: keep,
+    external_id: drop, // the API caller's key, often a bank's own row id
     created_at: keep,
     updated_at: keep,
   },
@@ -372,14 +403,22 @@ export const RULES: Record<string, TableRules> = {
     updated_at: keep,
   },
   scheduled_transaction_postings: {
-    // Every column is structure or a date: which occurrence of which schedule
-    // was posted, and when. Nothing here names a payee, an amount or free text,
-    // so there is nothing to mask or drop.
+    // Structure and dates: which occurrence of which schedule was posted, when,
+    // by whom (the bill or a rule) and through which transaction. Nothing here
+    // names a payee or free text, so there is nothing to mask.
     id: keep,
     scheduled_transaction_id: keep,
     original_due_date: keep,
     posted_date: keep,
     created_at: keep,
+    transaction_id: keep,
+    source: keep, // 'post' | 'rule'
+    rule_id: keep,
+    // The settlement's pricing record carries the loan's debt and the
+    // installment's principal and interest as unscaled money strings; kept,
+    // it would disclose the magnitudes every scaled amount column hides.
+    // Nullable, and nothing reads it back but the settled-installments list.
+    pricing: drop,
   },
   scheduled_transaction_split_tags: {
     scheduled_transaction_split_id: keep,
@@ -416,6 +455,12 @@ export const RULES: Record<string, TableRules> = {
     ir_website: drop,
     msn_instrument_id: drop, // would identify a masked ticker
     historical_backfill_attempted_at: keep,
+    // The id is derived from the program, so keeping it would name the bond the
+    // masked symbol hides, and the copy's quantities are scaled by a fractional
+    // multiplier, which the bond engine refuses. The copy is not valued by the
+    // engine; any bond_engine price rows it carries stay as static prices.
+    bond_program_id: drop,
+    bond_auto_fetch: keep, // a flag, like is_favourite: it re-identifies nobody
     created_at: keep,
     updated_at: keep,
   },
@@ -475,6 +520,9 @@ export const RULES: Record<string, TableRules> = {
     // support backup that dropped it could not reproduce a VOID row's
     // exclusion from holdings and balances.
     status: keep,
+    // Derived from the series code, so keeping it would name the bond the masked
+    // symbol hides (the same reason securities.bond_program_id is dropped).
+    bond_instrument_id: drop,
     created_at: keep,
     updated_at: keep,
   },
@@ -709,6 +757,8 @@ export const RULES: Record<string, TableRules> = {
   // their own file (a separate area from the account core above), merged here
   // so every import site and the golden test still read one RULES map.
   ...PLANNING_RULES,
+  // The warranty tables, likewise in their own file.
+  ...WARRANTY_RULES,
 };
 
 /**

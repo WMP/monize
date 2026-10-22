@@ -111,3 +111,157 @@ describe("retired browser notification preference", () => {
     },
   );
 });
+
+async function hiddenColumnsErrors(payload: Record<string, unknown>) {
+  const dto = plainToInstance(UpdatePreferencesDto, payload);
+  return validate(dto, { whitelist: true, forbidNonWhitelisted: true });
+}
+
+describe("UpdatePreferencesDto hiddenTableColumns validation", () => {
+  it.each<[string, Record<string, unknown>]>([
+    ["omitted", {}],
+    ["an empty map", { hiddenTableColumns: {} }],
+    [
+      "transactions with its full list",
+      {
+        hiddenTableColumns: {
+          transactions: [
+            "description",
+            "refNumber",
+            "tags",
+            "attachments",
+            "status",
+          ],
+        },
+      },
+    ],
+    [
+      "investmentHoldings with its full list",
+      {
+        hiddenTableColumns: {
+          investmentHoldings: [
+            "shares",
+            "avgCost",
+            "price",
+            "costBasis",
+            "mktValue",
+            "gainLoss",
+            "portfolioPercent",
+          ],
+        },
+      },
+    ],
+    [
+      "investmentRegister with its full list",
+      {
+        hiddenTableColumns: {
+          investmentRegister: ["shares", "price", "status"],
+        },
+      },
+    ],
+  ])("accepts %s", async (_label, payload) => {
+    expect(await hiddenColumnsErrors(payload)).toEqual([]);
+  });
+
+  it.each<[string, unknown]>([
+    ["an unknown kind", { budgets: ["status"] }],
+    ["an unknown id", { transactions: ["amount"] }],
+    ["a duplicate id", { transactions: ["tags", "tags"] }],
+    ["a non-array value", { transactions: "status" }],
+    ["an array at the top level", ["transactions"]],
+    // A real own key, as a JSON body carries it; class-transformer alone would
+    // skip it and leave `{}`.
+    ["a __proto__ key", JSON.parse('{"__proto__": ["status"]}')],
+  ])("refuses %s with an error naming the field", async (_label, value) => {
+    const errors = await hiddenColumnsErrors({ hiddenTableColumns: value });
+    expect(errors).toHaveLength(1);
+    expect(errors[0].property).toBe("hiddenTableColumns");
+    expect(Object.values(errors[0].constraints ?? {}).join(" ")).toContain(
+      "hiddenTableColumns",
+    );
+  });
+
+  it("still refuses an unknown field beside it", async () => {
+    const errors = await hiddenColumnsErrors({
+      hiddenTableColumns: { transactions: ["status"] },
+      hiddenColumns: { transactions: ["status"] },
+    });
+    expect(errors).toHaveLength(1);
+    expect(errors[0].property).toBe("hiddenColumns");
+    expect(errors[0].constraints).toHaveProperty("whitelistValidation");
+  });
+});
+
+async function viewDefaultsErrors(payload: Record<string, unknown>) {
+  const dto = plainToInstance(UpdatePreferencesDto, payload);
+  return validate(dto, { whitelist: true, forbidNonWhitelisted: true });
+}
+
+describe("UpdatePreferencesDto viewDefaults validation", () => {
+  it.each<[string, Record<string, unknown>]>([
+    ["omitted", {}],
+    ["an empty map", { viewDefaults: {} }],
+    [
+      "every key set",
+      {
+        viewDefaults: {
+          density: "dense",
+          hideRegisterYear: true,
+          widgetsCollapsed: false,
+          chartCollapsed: true,
+          accountOpenTarget: "dashboard",
+        },
+      },
+    ],
+  ])("accepts %s", async (_label, payload) => {
+    expect(await viewDefaultsErrors(payload)).toEqual([]);
+  });
+
+  it.each<[string, unknown]>([
+    ["an unknown key", { rowHeight: "dense" }],
+    ["an unknown density", { density: "tiny" }],
+    ["a string where a flag belongs", { chartCollapsed: "true" }],
+    ["an array at the top level", ["density"]],
+    // The column is NOT NULL: a null that passed would be a 500, not a 400.
+    ["null", null],
+    // A real own key, as a JSON body carries it; class-transformer alone would
+    // skip it and leave `{}`.
+    ["a __proto__ key", JSON.parse('{"__proto__": true}')],
+  ])("refuses %s with an error naming the field", async (_label, value) => {
+    const errors = await viewDefaultsErrors({ viewDefaults: value });
+    expect(errors).toHaveLength(1);
+    expect(errors[0].property).toBe("viewDefaults");
+    expect(Object.values(errors[0].constraints ?? {}).join(" ")).toContain(
+      "viewDefaults",
+    );
+  });
+});
+
+async function defaultCurrencyResult(defaultCurrency: unknown) {
+  const dto = plainToInstance(UpdatePreferencesDto, { defaultCurrency });
+  const errors = await validate(dto);
+  return {
+    error: errors.find((e) => e.property === "defaultCurrency"),
+    value: dto.defaultCurrency,
+  };
+}
+
+describe("UpdatePreferencesDto defaultCurrency validation", () => {
+  it.each(["q#!", "", "US", "USDD", "U5D", 123])(
+    "rejects %p",
+    async (value) => {
+      expect((await defaultCurrencyResult(value)).error).toBeDefined();
+    },
+  );
+
+  it("accepts a code and upper-cases a lower-case one", async () => {
+    expect((await defaultCurrencyResult("USD")).error).toBeUndefined();
+    const lower = await defaultCurrencyResult("pln");
+    expect(lower.error).toBeUndefined();
+    expect(lower.value).toBe("PLN");
+  });
+
+  it("accepts an omitted value (optional)", async () => {
+    expect((await defaultCurrencyResult(undefined)).error).toBeUndefined();
+  });
+});

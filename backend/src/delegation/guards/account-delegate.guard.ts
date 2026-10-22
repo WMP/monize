@@ -16,6 +16,7 @@ import {
   DELEGATED_TRANSFER_BODY_KEY,
   DELEGATED_TRANSFER_PARAM_KEY,
   DELEGATED_SCHEDULED_PARAM_KEY,
+  DELEGATED_SCHEDULED_READS_EVERY_ACCOUNT_KEY,
   DELEGATE_OPERATION_KEY,
   DELEGATE_CAPABILITY_KEY,
   DELEGATE_SECTION_KEY,
@@ -27,6 +28,7 @@ import {
 import { DelegationService } from "../delegation.service";
 import { CrossOwnerAccessService } from "../cross-owner-access.service";
 import { withDelegateContext } from "../../common/db/with-context";
+import { isAccessTokenPayload } from "../../auth/access-token";
 
 const SECTION_LABELS: Record<DelegateSection, string> = {
   bills: "Bills & Deposits",
@@ -34,6 +36,7 @@ const SECTION_LABELS: Record<DelegateSection, string> = {
   budgets: "Budgets",
   reports: "Reports",
   ai: "AI Assistant",
+  warranties: "Warranties",
 };
 
 const RESOURCE_LABELS: Record<DelegateCapabilityReq["resource"], string> = {
@@ -106,7 +109,9 @@ export class AccountDelegateGuard implements CanActivate {
       return true; // AuthGuard('jwt') will reject it
     }
 
-    if (payload?.type === "2fa_pending") return true;
+    // Only an access token is checked here; JwtStrategy refuses every other
+    // type (`access-token.ts`), so AuthGuard('jwt') rejects it after this.
+    if (!isAccessTokenPayload(payload)) return true;
     if (!payload?.actingAsUserId || !payload?.delegationId) {
       return true; // acting as self / normal user
     }
@@ -240,9 +245,18 @@ export class AccountDelegateGuard implements CanActivate {
         // counterpart is masked by the interceptor, not blocked. WRITES must
         // hold the op on EVERY account the schedule posts into -- transfer
         // leg, funding account, split and override-split transfer accounts
-        // (no moving money via a hidden account).
+        // (no moving money via a hidden account). So must a read that
+        // answers a counterpart's own figures, which no mask hides
+        // (@DelegateReadsEveryScheduledAccount).
+        const readsEveryAccount =
+          this.reflector.getAllAndOverride<boolean>(
+            DELEGATED_SCHEDULED_READS_EVERY_ACCOUNT_KEY,
+            [context.getHandler(), context.getClass()],
+          ) === true;
         const gated =
-          operation === "read" ? accountIds.slice(0, 1) : accountIds;
+          operation === "read" && !readsEveryAccount
+            ? accountIds.slice(0, 1)
+            : accountIds;
         for (const accountId of gated) {
           // Reads keep the strict check (the primary account is always the
           // owner's); scheduled WRITES get the cross-owner relaxation so a

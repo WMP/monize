@@ -62,7 +62,7 @@ export function FanChartTooltip({
   events,
 }: {
   active?: boolean;
-  payload?: Array<{ payload?: Record<string, number> }>;
+  payload?: ReadonlyArray<{ payload?: Record<string, number> }>;
   label?: string;
   fmt: (v: number) => string;
   events?: CashFlowEvent[];

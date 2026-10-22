@@ -16,6 +16,9 @@ import { McpBudgetsTools } from "./tools/budgets.tool";
 import { McpRelayTools } from "./tools/relay.tool";
 import { McpRulesTools } from "./tools/rules.tool";
 import { McpAiReviewTools } from "./tools/ai-review.tool";
+import { McpEmailReceiptParserTools } from "./tools/email-receipt-parsers.tool";
+import { McpBondSeriesTools } from "./tools/bond-series.tool";
+import { McpWarrantiesTools } from "./tools/warranties.tool";
 import { McpAccountListResource } from "./resources/account-list.resource";
 import { McpCategoryTreeResource } from "./resources/category-tree.resource";
 import { McpRecentTransactionsResource } from "./resources/recent-transactions.resource";
@@ -53,6 +56,9 @@ export class McpServerService {
     private readonly budgetsTools: McpBudgetsTools,
     private readonly rulesTools: McpRulesTools,
     private readonly aiReviewTools: McpAiReviewTools,
+    private readonly receiptParserTools: McpEmailReceiptParserTools,
+    private readonly bondSeriesTools: McpBondSeriesTools,
+    private readonly warrantiesTools: McpWarrantiesTools,
     private readonly relayTools: McpRelayTools,
     private readonly relayService: AiRelayService,
     private readonly requestStateCodec: McpRequestStateCodec,
@@ -98,7 +104,7 @@ export class McpServerService {
           "- Never do arithmetic yourself: use calculate, and present a value a tool already computed as it stands.",
           "",
           "## Writing",
-          "- manage_transactions, manage_payees, manage_securities and manage_investment_transactions each take operation = create/update/delete and 1-25 items.",
+          "- manage_transactions, manage_payees, manage_securities and manage_investment_transactions each take operation = create/update/delete and 1-25 items (manage_securities also takes list with an accountName).",
           "- Every write is confirmed by the user before it is saved. By default 6 or more items are confirmed as one batch and 1-5 one at a time; approvalMode 'individual' forces one each. dryRun previews without saving.",
           "",
           "## Choosing a tool",
@@ -170,6 +176,9 @@ export class McpServerService {
     this.budgetsTools.register(server);
     this.rulesTools.register(server);
     this.aiReviewTools.register(server);
+    this.receiptParserTools.register(server);
+    this.bondSeriesTools.register(server);
+    this.warrantiesTools.register(server);
     this.relayTools.register(server);
 
     this.accountListResource.register(server);

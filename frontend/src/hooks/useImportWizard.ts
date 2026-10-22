@@ -266,10 +266,11 @@ export function useImportWizard() {
     }
   }, [step]);
 
-  // Auto-select best matching account when on selectAccount step with no selection
-  useEffect(() => {
-    if (step !== 'selectAccount' || selectedAccountId || accounts.length === 0) return;
-
+  // Auto-select best matching account when on selectAccount step with no selection.
+  // Applied during render, not in an effect: the selection it writes is what
+  // ends the condition, so it settles in one extra render pass. Without a file
+  // there is no row to write it to, and the condition would never end.
+  if (step === 'selectAccount' && !selectedAccountId && accounts.length > 0 && importFiles.length > 0) {
     const qifType = parsedData?.accountType;
     const isQifInvestment = qifType === 'INVESTMENT';
     const compatibleAccounts = accounts.filter((a) => {
@@ -287,38 +288,42 @@ export function useImportWizard() {
         setSelectedAccountId(compatibleAccounts[0].id, 'none');
       }
     }
-  }, [step, selectedAccountId, accounts, parsedData, setSelectedAccountId]);
+  }
 
-  // Re-match account mappings when entering mapAccounts step
-  useEffect(() => {
-    if (step !== 'mapAccounts' || accountMappings.length === 0) return;
+  // Re-match account mappings when entering mapAccounts step, or when the
+  // accounts change while on it. Keyed on the step and the accounts list from
+  // the previous render, so a mapping the user changes afterwards is left alone.
+  const [accountRematchKey, setAccountRematchKey] = useState({ step, accounts });
+  if (accountRematchKey.step !== step || accountRematchKey.accounts !== accounts) {
+    setAccountRematchKey({ step, accounts });
+    if (step === 'mapAccounts' && accountMappings.length > 0) {
+      setAccountMappings(prev => prev.map(mapping => {
+        if (mapping.accountId) return mapping;
 
-    setAccountMappings(prev => prev.map(mapping => {
-      if (mapping.accountId) return mapping;
-
-      const accLower = mapping.originalName.toLowerCase();
-      const accWithSlash = accLower.replace(/-/g, '/');
-      const existingAcc = accounts.find((a) => {
-        const aName = a.name.toLowerCase();
-        return aName === accLower || aName === accWithSlash;
-      });
-      if (existingAcc) {
-        const targetId = existingAcc.accountSubType === 'INVESTMENT_BROKERAGE' && existingAcc.linkedAccountId
-          ? existingAcc.linkedAccountId
-          : existingAcc.id;
-        return { originalName: mapping.originalName, accountId: targetId };
-      }
-      const investmentCashAcc = accounts.find((a) => {
-        const aName = a.name.toLowerCase();
-        return (aName === `${accLower} - cash` || aName === `${accWithSlash} - cash`)
-          && a.accountSubType === 'INVESTMENT_CASH';
-      });
-      if (investmentCashAcc) {
-        return { originalName: mapping.originalName, accountId: investmentCashAcc.id };
-      }
-      return mapping;
-    }));
-  }, [step, accounts]); // eslint-disable-line react-hooks/exhaustive-deps
+        const accLower = mapping.originalName.toLowerCase();
+        const accWithSlash = accLower.replace(/-/g, '/');
+        const existingAcc = accounts.find((a) => {
+          const aName = a.name.toLowerCase();
+          return aName === accLower || aName === accWithSlash;
+        });
+        if (existingAcc) {
+          const targetId = existingAcc.accountSubType === 'INVESTMENT_BROKERAGE' && existingAcc.linkedAccountId
+            ? existingAcc.linkedAccountId
+            : existingAcc.id;
+          return { originalName: mapping.originalName, accountId: targetId };
+        }
+        const investmentCashAcc = accounts.find((a) => {
+          const aName = a.name.toLowerCase();
+          return (aName === `${accLower} - cash` || aName === `${accWithSlash} - cash`)
+            && a.accountSubType === 'INVESTMENT_CASH';
+        });
+        if (investmentCashAcc) {
+          return { originalName: mapping.originalName, accountId: investmentCashAcc.id };
+        }
+        return mapping;
+      }));
+    }
+  }
 
   // Run bulk security lookup when entering mapSecurities step
   useEffect(() => {
@@ -996,6 +1001,7 @@ export function useImportWizard() {
               accountName: targetAccount?.name || 'Unknown',
               imported: result.imported,
               skipped: result.skipped,
+              skippedRows: result.skippedRows,
               errors: result.errors,
               errorMessages: result.errorMessages,
               loanAccountsNeedingSetup: result.loanAccountsNeedingSetup,

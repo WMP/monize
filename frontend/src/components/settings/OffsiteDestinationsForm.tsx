@@ -104,18 +104,28 @@ export function OffsiteDestinationsForm() {
     setEmailTo(storedText(next.emailTo));
   }, []);
 
-  const load = useCallback(async () => {
+  // The writes live in the inner `run`, so they happen after the request, not
+  // during the effect; the mount read starts from the loading state already.
+  const load = useCallback(() => {
+    const run = async () => {
+      try {
+        applyView(await backupApi.getOffsiteSettings());
+      } catch (error) {
+        setView(null);
+        setLoadError(getErrorMessage(error, t('loadFailed')));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
+  }, [applyView, t]);
+
+  // A retry shows the spinner and clears the old failure, as the first read does.
+  const reload = useCallback(() => {
     setIsLoading(true);
     setLoadError(null);
-    try {
-      applyView(await backupApi.getOffsiteSettings());
-    } catch (error) {
-      setView(null);
-      setLoadError(getErrorMessage(error, t('loadFailed')));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [applyView, t]);
+    return load();
+  }, [load]);
 
   useEffect(() => {
     load();
@@ -204,7 +214,7 @@ export function OffsiteDestinationsForm() {
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {loadError}
           </p>
-          <Button variant="outline" size="sm" onClick={load}>
+          <Button variant="outline" size="sm" onClick={reload}>
             {t('retryButton')}
           </Button>
         </div>

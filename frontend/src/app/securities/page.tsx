@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
@@ -22,6 +22,7 @@ import { CARD_CLASS } from '@/components/ui/Card';
 import { SecurityList, type SecurityHoldings, type SecurityTransactions, type SecuritySortField, type SortDirection } from '@/components/securities/SecurityList';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { usePriceRefresh } from '@/hooks/usePriceRefresh';
+import { BondRefreshProgress } from '@/components/securities/BondRefreshProgress';
 import { RefreshPricesButton } from '@/components/investments/RefreshPricesButton';
 import { securityPositionValue, compareSecurityValues } from '@/lib/security-value';
 import { createLogger } from '@/lib/logger';
@@ -66,52 +67,67 @@ function SecuritiesContent() {
   const [sortField, setSortField] = useLocalStorage<SecuritySortField>('monize-securities-sort-field', 'symbol');
   const [sortDirection, setSortDirection] = useLocalStorage<SortDirection>('monize-securities-sort-dir', 'asc');
   const [lastPriceUpdate, setLastPriceUpdate] = useState<string | null>(null);
+  // The program whose post-save refresh is running; null hides the progress bar.
+  const [bondRefreshProgramId, setBondRefreshProgramId] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [data, holdingsData, usedIds] = await Promise.all([
-        investmentsApi.getSecurities(true),
-        investmentsApi.getHoldings(),
-        investmentsApi.getUsedSecurityIds(),
-      ]);
-      setAllSecurities(data);
-      setTransactionSecurityIds(new Set(usedIds));
+  // The mount load: the state already says loading.
+  const fetchData = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const [data, holdingsData, usedIds] = await Promise.all([
+          investmentsApi.getSecurities(true),
+          investmentsApi.getHoldings(),
+          investmentsApi.getUsedSecurityIds(),
+        ]);
+        setAllSecurities(data);
+        setTransactionSecurityIds(new Set(usedIds));
 
-      // Aggregate holdings by securityId, filtering out negligible quantities
-      const holdingsMap: SecurityHoldings = {};
-      holdingsData.forEach((h: Holding) => {
-        const currentQty = holdingsMap[h.securityId] || 0;
-        // Convert quantity to number in case it's returned as a string from the API
-        const quantity = typeof h.quantity === 'string' ? parseFloat(h.quantity) : h.quantity;
-        const newQty = currentQty + quantity;
-        // Only include if quantity is meaningful (not just rounding errors)
-        if (Math.abs(newQty) > 0.00000001) {
-          holdingsMap[h.securityId] = newQty;
-        } else {
-          // Remove if it rounds to zero
-          delete holdingsMap[h.securityId];
-        }
-      });
+        // Aggregate holdings by securityId, filtering out negligible quantities
+        const holdingsMap: SecurityHoldings = {};
+        holdingsData.forEach((h: Holding) => {
+          const currentQty = holdingsMap[h.securityId] || 0;
+          // Convert quantity to number in case it's returned as a string from the API
+          const quantity = typeof h.quantity === 'string' ? parseFloat(h.quantity) : h.quantity;
+          const newQty = currentQty + quantity;
+          // Only include if quantity is meaningful (not just rounding errors)
+          if (Math.abs(newQty) > 0.00000001) {
+            holdingsMap[h.securityId] = newQty;
+          } else {
+            // Remove if it rounds to zero
+            delete holdingsMap[h.securityId];
+          }
+        });
 
-      setHoldings(holdingsMap);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('page.toasts.loadFailed')));
-      logger.error(error);
-    } finally {
-      setIsLoading(false);
-    }
+        setHoldings(holdingsMap);
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('page.toasts.loadFailed')));
+        logger.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [t]);
 
-  const loadPriceStatus = useCallback(async () => {
-    try {
-      const status = await investmentsApi.getPriceStatus();
-      setLastPriceUpdate(status.lastUpdated);
-    } catch (error) {
-      // The age of the last refresh is decoration beside the list; failing to
-      // read it must not take the page's own error handling with it.
-      logger.error(error);
-    }
+  const loadData = useCallback(() => {
+    setIsLoading(true);
+    return fetchData();
+  }, [fetchData]);
+
+  const loadPriceStatus = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const status = await investmentsApi.getPriceStatus();
+        setLastPriceUpdate(status.lastUpdated);
+      } catch (error) {
+        // The age of the last refresh is decoration beside the list; failing to
+        // read it must not take the page's own error handling with it.
+        logger.error(error);
+      }
+    };
+    return run();
   }, []);
 
   // The same control the Investments page carries, doing the same work through
@@ -152,8 +168,8 @@ function SecuritiesContent() {
   }, [allSecurities, statusFilter]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
     loadPriceStatus();
@@ -178,15 +194,40 @@ function SecuritiesContent() {
 
   const handleFormSubmit = async (data: CreateSecurityData) => {
     try {
+      // A linked bond with auto-fetch on gets its data through the list's own
+      // Refresh: the server fetches the program's current offer, then recomputes.
+      let refreshId: string | null = null;
+      let refreshProgramId: string | null = null;
       if (editingSecurity) {
         await investmentsApi.updateSecurity(editingSecurity.id, data);
         toast.success(t('page.toasts.updated'));
+        // The form omits link fields that did not change, so an absent field
+        // keeps the stored value; only a present, different program is a change.
+        const programId = data.bondProgramId !== undefined ? data.bondProgramId : editingSecurity.bondProgramId;
+        const autoFetch = data.bondAutoFetch !== undefined ? data.bondAutoFetch : editingSecurity.bondAutoFetch;
+        const wasOn = !!editingSecurity.bondProgramId && editingSecurity.bondAutoFetch === true;
+        const isOn = !!programId && autoFetch === true;
+        const programChanged = data.bondProgramId !== undefined && data.bondProgramId !== editingSecurity.bondProgramId;
+        if (isOn && (!wasOn || programChanged)) {
+          refreshId = editingSecurity.id;
+          refreshProgramId = programId ?? null;
+        }
       } else {
-        await investmentsApi.createSecurity(data);
+        const created = await investmentsApi.createSecurity(data);
         toast.success(t('page.toasts.created'));
+        if (data.bondProgramId && data.bondAutoFetch === true) {
+          refreshId = created.id;
+          refreshProgramId = data.bondProgramId;
+        }
       }
       close();
       loadData();
+      if (refreshId && refreshProgramId) {
+        setBondRefreshProgramId(refreshProgramId);
+        void triggerManualRefresh([refreshId]).finally(() => setBondRefreshProgramId(null));
+      } else if (refreshId) {
+        void triggerManualRefresh([refreshId]);
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, editingSecurity ? t('page.toasts.updateFailed') : t('page.toasts.createFailed')));
       throw error;
@@ -299,9 +340,15 @@ function SecuritiesContent() {
   }, [sortedSecurities, currentPage]);
 
   // Reset to page 1 when search or filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, statusFilter]);
+  const handleSearchChange = (query: string) => {
+    if (query !== searchQuery) setCurrentPage(1);
+    setSearchQuery(query);
+  };
+
+  const handleStatusFilterChange = (status: 'all' | 'active' | 'inactive') => {
+    if (status !== statusFilter) setCurrentPage(1);
+    setStatusFilter(status);
+  };
 
   const handleSort = useCallback((field: SecuritySortField) => {
     if (sortField === field) {
@@ -321,19 +368,17 @@ function SecuritiesContent() {
 
   // Deep link to a specific security (e.g. the AI chat "View securities" link):
   // jump to the client-side page that contains it once the list has loaded, so
-  // the row can flash and scroll into view. Runs once per arrival.
+  // the row can flash and scroll into view. Runs once per arrival, during render
+  // rather than in an effect.
   const highlightId = useHighlightParam();
-  const highlightJumpedRef = useRef(false);
-  useEffect(() => {
-    if (!highlightId || highlightJumpedRef.current || sortedSecurities.length === 0) {
-      return;
-    }
+  const [highlightJumped, setHighlightJumped] = useState(false);
+  if (highlightId && !highlightJumped && sortedSecurities.length > 0) {
     const index = sortedSecurities.findIndex((s) => s.id === highlightId);
     if (index >= 0) {
-      highlightJumpedRef.current = true;
+      setHighlightJumped(true);
       setCurrentPage(Math.floor(index / PAGE_SIZE) + 1);
     }
-  }, [highlightId, sortedSecurities]);
+  }
 
   const activeCount = allSecurities.filter((s) => s.isActive).length;
   const inactiveCount = allSecurities.filter((s) => !s.isActive).length;
@@ -351,6 +396,10 @@ function SecuritiesContent() {
           helpUrl="https://github.com/kenlasko/monize/wiki/Investments"
           actions={<Button onClick={handleCreateNew}>{t('page.newSecurity')}</Button>}
         />
+        <BondRefreshProgress
+          programId={bondRefreshProgramId}
+          active={bondRefreshProgramId !== null}
+        />
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
           <SummaryCard label={t('summary.totalSecurities')} value={allSecurities.length} icon={SummaryIcons.barChart} />
@@ -365,14 +414,14 @@ function SecuritiesContent() {
             type="text"
             placeholder={t('page.searchPlaceholder')}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="block w-full sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
           />
           <div className="flex rounded-md shadow-sm">
             {(['all', 'active', 'inactive'] as const).map((status) => (
               <button
                 key={status}
-                onClick={() => setStatusFilter(status)}
+                onClick={() => handleStatusFilterChange(status)}
                 className={`px-4 py-2 text-sm font-medium border ${
                   statusFilter === status
                     ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'

@@ -52,10 +52,10 @@ vi.mock('recharts', () => ({
       const C = content.type;
       return (
         <div data-testid="tooltip">
-          <C active={true} payload={[{ payload: { label: 'Groceries', value: 500, count: 20, color: '#000' } }]} />
-          <C active={true} payload={[{ payload: { label: 'Single', value: 100, count: 1, color: '#000' } }]} />
-          <C active={true} payload={[{ payload: { label: 'NoCount', value: 0, color: '#000' } }]} />
-          <C active={false} payload={[]} />
+          <C {...content.props} active={true} payload={[{ payload: { label: 'Groceries', value: 500, count: 20, color: '#000' } }]} />
+          <C {...content.props} active={true} payload={[{ payload: { label: 'Single', value: 100, count: 1, color: '#000' } }]} />
+          <C {...content.props} active={true} payload={[{ payload: { label: 'NoCount', value: 0, color: '#000' } }]} />
+          <C {...content.props} active={false} payload={[]} />
         </div>
       );
     }

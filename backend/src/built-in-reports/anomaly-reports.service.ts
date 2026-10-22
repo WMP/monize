@@ -2,7 +2,10 @@ import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { Category } from "../categories/entities/category.entity";
-import { ReportCurrencyService } from "./report-currency.service";
+import {
+  ConversionGaps,
+  ReportCurrencyService,
+} from "./report-currency.service";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { NumberT, numberFormatterFor } from "../common/number-locale.util";
 import {
@@ -27,6 +30,27 @@ const INVESTMENT_EXCLUSION = investmentExclusionSql({
   splitAlias: "ts",
 });
 
+interface RawExpense {
+  id: string;
+  transaction_date: Date;
+  payee_id: string | null;
+  payee_name: string | null;
+  currency_code: string;
+  category_id: string | null;
+  amount: string;
+}
+
+/** A raw expense with its amount already in the reporting currency. */
+interface ConvertedExpense extends RawExpense {
+  converted: number;
+}
+
+/** The z-score above which a transaction is unusual: the Reports page's default. */
+export const SPENDING_ANOMALY_DEFAULT_THRESHOLD = 2;
+
+/** Months of history the analysis reads unless a caller names a window. */
+export const SPENDING_ANOMALY_DEFAULT_MONTHS = 6;
+
 @Injectable()
 export class AnomalyReportsService {
   constructor(
@@ -34,9 +58,16 @@ export class AnomalyReportsService {
     private currencyService: ReportCurrencyService,
   ) {}
 
+  /**
+   * @param threshold the z-score a transaction must exceed for its category.
+   * @param months the window of history read, ending today. Two numbers of
+   *   different meaning in adjacent positions: the AI and MCP adapters once
+   *   passed the months as the threshold (audit A26-M34).
+   */
   async getSpendingAnomalies(
     userId: string,
-    threshold: number = 2,
+    threshold: number = SPENDING_ANOMALY_DEFAULT_THRESHOLD,
+    months: number = SPENDING_ANOMALY_DEFAULT_MONTHS,
   ): Promise<SpendingAnomaliesResponse> {
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
@@ -49,9 +80,9 @@ export class AnomalyReportsService {
     const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
 
     const now = new Date();
-    const sixMonthsAgo = new Date(now);
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const startDate = formatDateYMD(sixMonthsAgo);
+    const windowStart = new Date(now);
+    windowStart.setMonth(windowStart.getMonth() - months);
+    const startDate = formatDateYMD(windowStart);
     const endDate = formatDateYMD(now);
 
     const query = `
@@ -78,25 +109,42 @@ export class AnomalyReportsService {
       ORDER BY t.transaction_date
     `;
 
-    interface RawExpense {
-      id: string;
-      transaction_date: Date;
-      payee_id: string | null;
-      payee_name: string | null;
-      currency_code: string;
-      category_id: string | null;
-      amount: string;
-    }
-
     const rawResults: RawExpense[] = await withScopedDb(this.dataSource, (m) =>
       m.query(query, [userId, startDate, endDate]),
     );
 
-    if (rawResults.length < 10) {
+    // A transaction with no rate into the reporting currency is unknown, never
+    // its unconverted figure (INV-FX-001): it takes no part in the mean, the
+    // z-scores, a category total or a payee total, and its currency is named.
+    // Each row is converted once and the rest of the analysis reads only the
+    // rows that converted.
+    const gaps = new ConversionGaps();
+    const converted: ConvertedExpense[] = [];
+    for (const row of rawResults) {
+      const amount = this.currencyService.tryConvertAmount(
+        toMoneyNumber(row.amount),
+        row.currency_code,
+        defaultCurrency,
+        rateMap,
+      );
+      if (amount === null) {
+        gaps.record(row.currency_code);
+        continue;
+      }
+      converted.push({ ...row, converted: amount });
+    }
+    const gapFields = {
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
+    };
+
+    if (converted.length < 10) {
       return {
         statistics: { mean: 0, stdDev: 0 },
         anomalies: [],
         counts: { high: 0, medium: 0, low: 0 },
+        ...gapFields,
       };
     }
 
@@ -107,14 +155,7 @@ export class AnomalyReportsService {
     );
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-    const amounts = rawResults.map((r) =>
-      this.currencyService.convertAmount(
-        toMoneyNumber(r.amount),
-        r.currency_code,
-        defaultCurrency,
-        rateMap,
-      ),
-    );
+    const amounts = converted.map((r) => r.converted);
     const mean = sumMoney(amounts) / amounts.length;
     const variance =
       amounts.reduce((sum, a) => sum + Math.pow(a - mean, 2), 0) /
@@ -124,13 +165,8 @@ export class AnomalyReportsService {
     const anomalies: SpendingAnomaly[] = [];
 
     // 1. Large single transactions
-    rawResults.forEach((row) => {
-      const amount = this.currencyService.convertAmount(
-        toMoneyNumber(row.amount),
-        row.currency_code,
-        defaultCurrency,
-        rateMap,
-      );
+    converted.forEach((row) => {
+      const amount = row.converted;
       const zScore = (amount - mean) / stdDev;
 
       if (zScore > threshold) {
@@ -155,18 +191,10 @@ export class AnomalyReportsService {
     });
 
     // 2. Category spending spikes (current month vs previous month)
-    this.detectCategorySpikes(
-      rawResults,
-      now,
-      defaultCurrency,
-      rateMap,
-      categoryMap,
-      anomalies,
-      n,
-    );
+    this.detectCategorySpikes(converted, now, categoryMap, anomalies, n);
 
     // 3. New payees with significant spending
-    this.detectNewPayees(rawResults, now, defaultCurrency, rateMap, anomalies);
+    this.detectNewPayees(converted, now, anomalies);
 
     // Sort by severity and amount
     const severityOrder: Record<AnomalySeverity, number> = {
@@ -192,19 +220,17 @@ export class AnomalyReportsService {
         medium: anomalies.filter((a) => a.severity === "medium").length,
         low: anomalies.filter((a) => a.severity === "low").length,
       },
+      ...gapFields,
     };
   }
 
   private detectCategorySpikes(
-    rawResults: {
+    rows: {
       transaction_date: Date;
-      currency_code: string;
       category_id: string | null;
-      amount: string;
+      converted: number;
     }[],
     now: Date,
-    defaultCurrency: string,
-    rateMap: Map<string, number>,
     categoryMap: Map<string, Category>,
     anomalies: SpendingAnomaly[],
     n: NumberT,
@@ -216,14 +242,9 @@ export class AnomalyReportsService {
     const currentMonthByCategory = new Map<string, number>();
     const previousMonthByCategory = new Map<string, number>();
 
-    rawResults.forEach((row) => {
+    rows.forEach((row) => {
       const txDate = new Date(row.transaction_date);
-      const amount = this.currencyService.convertAmount(
-        toMoneyNumber(row.amount),
-        row.currency_code,
-        defaultCurrency,
-        rateMap,
-      );
+      const amount = row.converted;
       const categoryId = row.category_id || "uncategorized";
 
       if (txDate >= currentMonthStart) {
@@ -267,16 +288,13 @@ export class AnomalyReportsService {
   }
 
   private detectNewPayees(
-    rawResults: {
+    rows: {
       id: string;
       transaction_date: Date;
       payee_name: string | null;
-      currency_code: string;
-      amount: string;
+      converted: number;
     }[],
     now: Date,
-    defaultCurrency: string,
-    rateMap: Map<string, number>,
     anomalies: SpendingAnomaly[],
   ): void {
     const oneMonthAgo = new Date(now);
@@ -288,7 +306,7 @@ export class AnomalyReportsService {
       { name: string; total: number; count: number; txId: string }
     >();
 
-    rawResults.forEach((row) => {
+    rows.forEach((row) => {
       const payeeName = (row.payee_name || "").toLowerCase().trim();
       if (!payeeName) return;
 
@@ -304,22 +322,12 @@ export class AnomalyReportsService {
       if (txDate >= oneMonthAgo) {
         const existing = payeeRecentSpending.get(payeeName);
         if (existing) {
-          existing.total += this.currencyService.convertAmount(
-            toMoneyNumber(row.amount),
-            row.currency_code,
-            defaultCurrency,
-            rateMap,
-          );
+          existing.total += row.converted;
           existing.count++;
         } else {
           payeeRecentSpending.set(payeeName, {
             name: row.payee_name || "Unknown",
-            total: this.currencyService.convertAmount(
-              toMoneyNumber(row.amount),
-              row.currency_code,
-              defaultCurrency,
-              rateMap,
-            ),
+            total: row.converted,
             count: 1,
             txId: row.id,
           });

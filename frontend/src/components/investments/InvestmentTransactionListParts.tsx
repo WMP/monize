@@ -12,6 +12,7 @@ import {
 import { rowAmountCurrency, rowPriceCurrency } from '@/lib/investment-row-currency';
 import { priceDecimals, TRADE_PRICE_DISPLAY_DECIMALS } from '@/lib/security-detail';
 import type { RowAction } from '@/components/ui/row-actions/rowAction';
+import type { HideableColumn } from '@/lib/hidden-columns';
 
 /**
  * The fingerprint-free pieces of `InvestmentTransactionList`: the action
@@ -112,6 +113,7 @@ export const ACTION_COLORS: Record<string, string> = {
   CAPITAL_GAIN_SHORT: 'text-purple-600 dark:text-purple-400',
   CAPITAL_GAIN_LONG: 'text-purple-600 dark:text-purple-400',
   REDEEM: 'text-red-600 dark:text-red-400',
+  RETURN_OF_CAPITAL: 'text-cyan-600 dark:text-cyan-400',
 };
 
 export interface InvestmentActionInfo {
@@ -146,6 +148,7 @@ export function useInvestmentActionInfo(): (action: string) => InvestmentActionI
     CAPITAL_GAIN_SHORT: { label: t('transactionList.actionCapitalGainShort'), shortLabel: 'SCap', color: ACTION_COLORS.CAPITAL_GAIN_SHORT },
     CAPITAL_GAIN_LONG: { label: t('transactionList.actionCapitalGainLong'), shortLabel: 'LCap', color: ACTION_COLORS.CAPITAL_GAIN_LONG },
     REDEEM: { label: t('transactionList.actionRedeem'), shortLabel: 'Rdm', color: ACTION_COLORS.REDEEM },
+    RETURN_OF_CAPITAL: { label: t('transactionList.actionReturnOfCapital'), shortLabel: 'RoC', color: ACTION_COLORS.RETURN_OF_CAPITAL },
   };
   return (action: string) =>
     labels[action] || {
@@ -267,6 +270,8 @@ interface InvestmentTransactionCardBodyProps {
   onCycleStatus: (tx: InvestmentTransaction) => void;
   /** `line-through` for a VOID row, exactly as the tier cells carry it. */
   voidText: string;
+  /** The register's hidden columns; each is absent from the card as from the tier row. */
+  hidden: ReadonlySet<HideableColumn<'investmentRegister'>>;
 }
 
 /**
@@ -278,6 +283,9 @@ interface InvestmentTransactionCardBodyProps {
  * the date, the action label in its own colour, the symbol, the security name
  * that hangs under the symbol cell at Normal density, Shares, Price, the
  * Total, the Account and the status button. Nothing is recomputed here.
+ * A hidden column is omitted: line 2 carries whichever of Shares and Price
+ * remain and does not exist when both are hidden; a hidden Status drops the
+ * status button, and with it the row's status cycle.
  */
 export function InvestmentTransactionCardBody({
   tx,
@@ -289,8 +297,10 @@ export function InvestmentTransactionCardBody({
   actionInfo,
   onCycleStatus,
   voidText,
+  hidden,
 }: InvestmentTransactionCardBodyProps) {
   const t = useTranslations('investments');
+  const isVisible = (id: string) => !(hidden as ReadonlySet<string>).has(id);
 
   return (
     // A grid, not a flex row, and `minmax(0,1fr)` rather than a plain `1fr`: a
@@ -386,25 +396,33 @@ export function InvestmentTransactionCardBody({
           captioned value in one starves the track beside it -- and a caption
           is a locale-sized width input. Both of these columns are ones a phone
           cannot see at all in the tier table (Shares below `sm`, Price below
-          `md`), which is what the card is for. */}
-      <div className="col-span-2 grid grid-cols-2 items-start gap-x-4">
-        <div>
-          <CellLabel>{t('transactionList.sharesColumn')}</CellLabel>
-          <div className={`text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap ${voidText}`}>
-            <InvestmentSharesValue tx={tx} formatQuantity={formatQuantity} />
-          </div>
+          `md`), which is what the card is for. A hidden one is absent,
+          so the other takes the first track at the same half width; with
+          both hidden the line is omitted. */}
+      {(isVisible('shares') || isVisible('price')) && (
+        <div className="col-span-2 grid grid-cols-2 items-start gap-x-4">
+          {isVisible('shares') && (
+            <div>
+              <CellLabel>{t('transactionList.sharesColumn')}</CellLabel>
+              <div className={`text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap ${voidText}`}>
+                <InvestmentSharesValue tx={tx} formatQuantity={formatQuantity} />
+              </div>
+            </div>
+          )}
+          {isVisible('price') && (
+            <div>
+              <CellLabel>{t('transactionList.priceColumn')}</CellLabel>
+              <div className={`text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap ${voidText}`}>
+                <InvestmentPriceValue
+                  tx={tx}
+                  formatCurrency={formatCurrency}
+                  defaultCurrency={defaultCurrency}
+                />
+              </div>
+            </div>
+          )}
         </div>
-        <div>
-          <CellLabel>{t('transactionList.priceColumn')}</CellLabel>
-          <div className={`text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap ${voidText}`}>
-            <InvestmentPriceValue
-              tx={tx}
-              formatCurrency={formatCurrency}
-              defaultCurrency={defaultCurrency}
-            />
-          </div>
-        </div>
-      </div>
+      )}
       {/* Line 3: the account (captioned, and the only value on the card that
           may truncate once the symbol and the name have) beside the status
           button. The button is the `auto` track because its content is bounded
@@ -423,11 +441,13 @@ export function InvestmentTransactionCardBody({
         </div>
         {/* StatusCellButton stops the click itself, so it needs no wrapper
             here -- the tier branch mounts it bare too. */}
-        <StatusCellButton
-          status={tx.status}
-          dense={false}
-          onCycle={() => onCycleStatus(tx)}
-        />
+        {isVisible('status') && (
+          <StatusCellButton
+            status={tx.status}
+            dense={false}
+            onCycle={() => onCycleStatus(tx)}
+          />
+        )}
       </div>
     </div>
   );

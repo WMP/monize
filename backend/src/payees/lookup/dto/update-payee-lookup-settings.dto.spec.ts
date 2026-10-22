@@ -20,8 +20,7 @@ import {
  * are exercised in the order a request would.
  */
 type KeyDto =
-  | typeof UpdatePayeeLookupSettingsDto
-  | typeof TestPayeeLookupKeyDto;
+  typeof UpdatePayeeLookupSettingsDto | typeof TestPayeeLookupKeyDto;
 
 /** Written as escapes rather than pasted: a literal one is invisible here. */
 const ctrl = (code: number) => String.fromCharCode(code);

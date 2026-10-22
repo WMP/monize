@@ -119,6 +119,8 @@
     "currencyLabel": "Mata Uang",
     "currencyNotConfigured": "{code} — tidak ada di mata uang Anda",
     "quoteProviderLabel": "Penyedia Kutipan",
+    "skipPriceUpdatesLabel": "Nonaktifkan pembaruan harga otomatis",
+    "skipPriceUpdatesHelp": "Monize tidak akan mengambil harga untuk sekuritas ini. Gunakan ini untuk sekuritas yang tidak dapat diberi harga oleh penyedia mana pun; harga yang Anda masukkan sendiri tetap dihitung. Memilih penyedia kuotasi atau ID Instrumen MSN yang berbeda akan mengaktifkan kembali pembaruan.",
     "msnIdLabel": "ID Instrumen MSN (lanjutan)",
     "lookupProviderAriaLabel": "Cari penyedia",
     "lookupButton": "Cari",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "Mesin obligasi"
     },
     "types": {
       "select": "Pilih jenis...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "Hapus",
       "deleteSuccess": "Kelas aset \"{name}\" dihapus",
       "deleteFailed": "Tidak dapat menghapus kelas aset \"{name}\""
-    }
+    },
+    "bondFetchAction": "Ambil {code} dari sumber resmi",
+    "bondFetching": "Mengambil {code} dari penerbit beserta suku bunga acuannya. Ini bisa memakan waktu hingga satu menit.",
+    "bondFetchFailed": "Seri tidak dapat diambil.",
+    "bondCurrencyLocked": "Sekuritas ini ditautkan ke jenis obligasi dalam {linkedCurrency}. Kembalikan mata uang ke {linkedCurrency} atau lepas tautan jenis obligasi terlebih dahulu (melepas tautan menghapus harga yang dihitung).",
+    "bondProgramLabel": "Jenis obligasi",
+    "bondProgramNone": "Tidak ditautkan",
+    "bondProgramCurrent": "Jenis obligasi tertaut",
+    "bondProgramLoading": "Memuat jenis obligasi...",
+    "bondProgramLoadFailed": "Jenis obligasi tidak dapat dimuat, sehingga jenis obligasi belum dapat ditautkan.",
+    "bondProgramRetry": "Coba lagi",
+    "bondNoPrograms": "Katalog obligasi belum memiliki jenis obligasi.",
+    "bondAutoFetchLabel": "Ambil seri baru jenis obligasi ini secara otomatis",
+    "bondAutoFetchHelp": "Jika aktif, Monize membaca setiap seri baru jenis obligasi ini dari sumber resmi setiap hari, sehingga Anda dapat mencatat pembelian tanpa mengambil seri terlebih dahulu.",
+    "bondCountryLabel": "Negara",
+    "bondCountryOther": "Lainnya",
+    "bondCountryOtherInfo": "Dukungan untuk obligasi negara lain dapat diminta di <link>GitHub proyek</link>."
   },
   "priceForm": {
     "dateLabel": "Tanggal",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinvestasi Keuntungan Modal Jangka Panjang",
       "CAPITAL_GAIN_SHORT": "Keuntungan Modal Jangka Pendek",
       "CAPITAL_GAIN_LONG": "Keuntungan Modal Jangka Panjang",
-      "REDEEM": "Pencairan CD/Obligasi"
+      "REDEEM": "Pencairan CD/Obligasi",
+      "RETURN_OF_CAPITAL": "Pengembalian Modal"
     },
     "toasts": {
       "loadHistoryFailed": "Gagal memuat riwayat",
@@ -340,6 +360,7 @@
     "nameRequired": "Nama wajib diisi",
     "nameMax": "Nama harus 255 karakter atau kurang",
     "currencyRequired": "Mata uang wajib diisi",
+    "bondProgramRequired": "Jenis obligasi wajib diisi",
     "descriptionMax": "Keterangan tidak boleh lebih dari 5000 karakter"
   },
   "priceValidation": {

@@ -7,6 +7,7 @@ import {
   looksLikeInvestmentCsv,
   classifyCsvActionValue,
 } from './import';
+import { setCache, getCached, clearAllCache } from './apiCache';
 
 vi.mock('./api', () => ({
   default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
@@ -376,5 +377,21 @@ describe('classifyCsvActionValue', () => {
     expect(classifyCsvActionValue('Journal')).toBeNull();
     expect(classifyCsvActionValue('')).toBeNull();
     expect(classifyCsvActionValue('   ')).toBeNull();
+  });
+});
+
+describe('importApi creates reference data (INV-CACHE-001)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearAllCache();
+    setCache('categories:all', [{ id: 'c' }]);
+    setCache('payees:all', [{ id: 'p' }]);
+  });
+
+  it.each(['importQif', 'importQifMultiAccount', 'importOfx', 'importCsv'] as const)('%s drops the category and payee caches', async (method) => {
+    vi.mocked(api.post).mockResolvedValue({ data: { imported: 1 } });
+    await (importApi[method] as (d: any) => Promise<unknown>)({} as any);
+    expect(getCached('categories:all')).toBeUndefined();
+    expect(getCached('payees:all')).toBeUndefined();
   });
 });

@@ -6,6 +6,7 @@ import { CurrenciesController } from "./currencies.controller";
 import { ExchangeRateService } from "./exchange-rate.service";
 import { ExchangeRateHistoryService } from "./exchange-rate-history.service";
 import { CurrenciesService } from "./currencies.service";
+import { FxProviderChain } from "./providers/fx-provider-chain";
 
 describe("CurrenciesController", () => {
   let controller: CurrenciesController;
@@ -18,6 +19,7 @@ describe("CurrenciesController", () => {
   let mockCurrenciesService: Partial<
     Record<keyof CurrenciesService, jest.Mock>
   >;
+  let mockFxProviders: Partial<Record<keyof FxProviderChain, jest.Mock>>;
   const mockReq = { user: { id: "user-1" } };
 
   beforeEach(async () => {
@@ -50,6 +52,10 @@ describe("CurrenciesController", () => {
       getCatalog: jest.fn(),
     };
 
+    mockFxProviders = {
+      describe: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CurrenciesController],
       providers: [
@@ -64,6 +70,10 @@ describe("CurrenciesController", () => {
         {
           provide: CurrenciesService,
           useValue: mockCurrenciesService,
+        },
+        {
+          provide: FxProviderChain,
+          useValue: mockFxProviders,
         },
       ],
     }).compile();
@@ -469,6 +479,42 @@ describe("CurrenciesController", () => {
         "user-1",
         "EUR",
       );
+    });
+  });
+
+  describe("getRateStatus()", () => {
+    it("returns lastUpdated and the configured providers in chain order", async () => {
+      const lastUpdated = new Date("2026-07-20T00:00:00Z");
+      mockExchangeRateService.getLastUpdateTime!.mockResolvedValue(lastUpdated);
+      mockFxProviders.describe!.mockReturnValue([
+        { name: "frankfurter", source: "frankfurter" },
+        { name: "yahoo", source: "yahoo_finance" },
+      ]);
+
+      await expect(controller.getRateStatus()).resolves.toEqual({
+        lastUpdated,
+        providers: [
+          { name: "frankfurter", source: "frankfurter" },
+          { name: "yahoo", source: "yahoo_finance" },
+        ],
+      });
+      expect(mockFxProviders.describe).toHaveBeenCalledWith();
+    });
+
+    it("returns providers in whatever order the chain describes them", async () => {
+      mockExchangeRateService.getLastUpdateTime!.mockResolvedValue(null);
+      mockFxProviders.describe!.mockReturnValue([
+        { name: "yahoo", source: "yahoo_finance" },
+        { name: "frankfurter", source: "frankfurter" },
+      ]);
+
+      await expect(controller.getRateStatus()).resolves.toEqual({
+        lastUpdated: null,
+        providers: [
+          { name: "yahoo", source: "yahoo_finance" },
+          { name: "frankfurter", source: "frankfurter" },
+        ],
+      });
     });
   });
 });

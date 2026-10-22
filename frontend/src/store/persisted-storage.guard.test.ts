@@ -26,6 +26,8 @@ const PERSISTED_STORE_KEYS: Record<string, string> = {
     'authenticated only: written after login, removed by logout() so conversations do not cross accounts.',
   'monize-density':
     'authenticated only: the store is imported by the list components, none of which the login page renders. One of three row-density levels -- a fact about the screen, not the account, so it survives logout deliberately.',
+  'monize-hidden-columns':
+    'authenticated only: the store is imported by the list components and Settings, none of which the login page renders. Hideable column ids per table kind -- a fact about the screen, not the account, so it survives logout deliberately. It names columns, never their contents.',
   'monize-register-date-display':
     'authenticated only: imported by the transaction register, which the login page never renders. A single boolean (drop the year from register dates on phone widths) -- a fact about the screen, not the account, so it survives logout deliberately.',
   'monize-settings-sections':

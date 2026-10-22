@@ -183,16 +183,29 @@ export function SecuritySection({ user, preferences, force2fa, onPreferencesUpda
     }
   };
 
-  const loadTrustedDevices = async () => {
-    setIsLoadingDevices(true);
-    try {
-      const devices = await authApi.getTrustedDevices();
-      setTrustedDevices(devices);
-    } catch {
-      // silently fail - devices section just won't show data
-    } finally {
-      setIsLoadingDevices(false);
-    }
+  // Each time the devices are (re)read below, they show as loading from this
+  // render on ("info from previous render"), not from inside the effect.
+  const canLoadDevices = twoFactorEnabled && user.hasPassword && user.authProvider !== 'oidc';
+  const devicesKey = `${twoFactorEnabled}|${user.hasPassword}|${user.authProvider}`;
+  const [devicesLoadKey, setDevicesLoadKey] = useState<string | null>(null);
+  if (devicesLoadKey !== devicesKey) {
+    setDevicesLoadKey(devicesKey);
+    if (canLoadDevices) setIsLoadingDevices(true);
+  }
+
+  // The writes live in the inner `run`, so they happen after the request, not during the effect.
+  const loadTrustedDevices = () => {
+    const run = async () => {
+      try {
+        const devices = await authApi.getTrustedDevices();
+        setTrustedDevices(devices);
+      } catch {
+        // silently fail - devices section just won't show data
+      } finally {
+        setIsLoadingDevices(false);
+      }
+    };
+    return run();
   };
 
   useEffect(() => {

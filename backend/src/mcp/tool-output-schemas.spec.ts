@@ -109,6 +109,10 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
       defaultCurrency: "USD",
       missingRatePairs: ["CAD->USD"],
       totalAccounts: 1,
+      // The totals are subtotals while any flag is false.
+      fxComplete: false,
+      pricesComplete: true,
+      valuationComplete: false,
     },
   },
   {
@@ -118,6 +122,9 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
       totalIncome: 0,
       totalExpenses: 5,
       netCashFlow: -5,
+      totalsCurrency: "USD",
+      fxComplete: true,
+      missingRatePairs: [],
       transactionCount: 1,
       byCurrency: {
         USD: {
@@ -141,6 +148,9 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
       totalIncome: 0,
       totalExpenses: 0,
       netCashFlow: 0,
+      totalsCurrency: "USD",
+      fxComplete: true,
+      missingRatePairs: [],
       transactionCount: 2,
       groupedBy: "none",
       transfers: {
@@ -168,6 +178,9 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
       totalIncome: 0,
       totalExpenses: 5,
       netCashFlow: -5,
+      totalsCurrency: "USD",
+      fxComplete: true,
+      missingRatePairs: [],
       transactionCount: 1,
       groupedBy: "none",
       transactions: [
@@ -193,6 +206,9 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
       period2: { start: "2026-01-01", end: "2026-01-31", total: 5 },
       totalChange: 5,
       totalChangePercent: NaN,
+      totalsCurrency: "USD",
+      fxComplete: true,
+      missingRatePairs: [],
       comparison: [
         {
           label: "Food",
@@ -202,6 +218,46 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
           changePercent: NaN,
         },
       ],
+    },
+  },
+  {
+    name: "listTransactionsOutput (totals withheld, a pair has no rate)",
+    schema: schemas.listTransactionsOutput,
+    raw: {
+      totalIncome: null,
+      totalExpenses: null,
+      netCashFlow: null,
+      knownIncomeSubtotal: 0,
+      knownExpensesSubtotal: 4000,
+      totalsCurrency: "PLN",
+      fxComplete: false,
+      missingRatePairs: ["USD->PLN"],
+      transactionCount: 2,
+      groupedBy: "none",
+    },
+  },
+  {
+    name: "comparePeriodsOutput (totals withheld, a pair has no rate)",
+    schema: schemas.comparePeriodsOutput,
+    raw: {
+      period1: {
+        start: "2026-08-01",
+        end: "2026-08-31",
+        total: 400,
+        knownSubtotal: 400,
+      },
+      period2: {
+        start: "2026-09-01",
+        end: "2026-09-30",
+        total: null,
+        knownSubtotal: 4000,
+      },
+      totalChange: null,
+      totalChangePercent: null,
+      totalsCurrency: "PLN",
+      fxComplete: false,
+      missingRatePairs: ["USD->PLN"],
+      comparison: [],
     },
   },
   {
@@ -471,6 +527,24 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
     },
   },
   {
+    // A total withheld for a missing rate (INV-FX-001): null, with the part that
+    // converted and the gap named beside it, carried by the loose object.
+    name: "generateReportOutput (aggregation type with a withheld total)",
+    schema: schemas.generateReportOutput,
+    raw: {
+      data: [
+        { categoryId: "c1", categoryName: "Food", color: null, total: 50 },
+      ],
+      totalSpending: null,
+      knownSpending: 50,
+      totalIncome: null,
+      knownIncome: 50,
+      currency: "USD",
+      missingCurrencies: ["JPY"],
+      excludedCount: 1,
+    },
+  },
+  {
     name: "generateReportOutput (month_comparison type)",
     schema: schemas.generateReportOutput,
     raw: {
@@ -600,6 +674,7 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
       transactionCount: 1,
       totalAmount: 100,
       totalCommission: 0,
+      incomeByCurrency: {},
       totalQuantity: 1,
       actionCounts: { BUY: 1 },
       groupedBy: null,
@@ -615,6 +690,8 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
           price: 100,
           commission: 0,
           totalAmount: 100,
+          incomeAmount: 0,
+          incomeCurrency: "USD",
           currency: "USD",
           description: null,
           status: "CLEARED",
@@ -849,6 +926,56 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
       request: { id: "q1", status: "proposed" },
       proposal: { splits: [{ categoryName: "Books", amount: -30 }] },
       message: "Proposal stored.",
+    },
+  },
+  {
+    name: "aiReviewRequestsOutput (claim of a parser draft request)",
+    schema: schemas.aiReviewRequestsOutput,
+    raw: {
+      request: { id: "q1", status: "claimed", kind: "email_parser_draft" },
+      emailReceipts: [{ id: "r1", subject: "Order", text: "Total 5" }],
+      message: "Use email_receipt_parsers.",
+    },
+  },
+  // email_receipt_parsers: categories, test (valid and invalid), save_draft.
+  {
+    name: "emailReceiptParsersOutput (categories)",
+    schema: schemas.emailReceiptParsersOutput,
+    raw: {
+      categories: [{ id: "c1", name: "Books" }],
+      totalCount: 1,
+      truncated: false,
+    },
+  },
+  {
+    name: "emailReceiptParsersOutput (test)",
+    schema: schemas.emailReceiptParsersOutput,
+    raw: {
+      valid: true,
+      errors: [],
+      unknownCategoryIds: [],
+      emails: [{ receiptId: "r1", parsed: { total: 15, complete: true } }],
+      allComplete: true,
+    },
+  },
+  {
+    name: "emailReceiptParsersOutput (test, invalid definition)",
+    schema: schemas.emailReceiptParsersOutput,
+    raw: {
+      valid: false,
+      errors: [{ path: "total[0]", code: "capture_missing" }],
+      emails: [],
+      allComplete: false,
+    },
+  },
+  {
+    name: "emailReceiptParsersOutput (save_draft)",
+    schema: schemas.emailReceiptParsersOutput,
+    raw: {
+      parserId: "p1",
+      status: "draft",
+      requestProposed: true,
+      message: "Draft saved.",
     },
   },
   {

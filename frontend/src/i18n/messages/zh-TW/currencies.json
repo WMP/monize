@@ -13,6 +13,14 @@
     "modalTitleNew": "新增貨幣",
     "loading": "正在載入貨幣...",
     "count": "{count, plural, one {# 種貨幣} other {# 種貨幣}}",
+    "providers": {
+      "line": "匯率來源：{providers}",
+      "separator": "，其次 ",
+      "names": {
+        "frankfurter": "Frankfurter（歐洲央行參考匯率）",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "載入貨幣失敗",
       "updated": "貨幣更新成功",
@@ -24,6 +32,7 @@
       "statusFailed": "更新貨幣狀態失敗",
       "ratesRefreshed": "匯率已更新：{updated} 組匯率已更新",
       "ratesRefreshedWithFailed": "匯率已更新：{updated} 組成功，{failed} 組失敗",
+      "ratesAllFailed": "無法取得任何匯率；提供者未回應",
       "ratesFailed": "更新匯率失敗"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter（歐洲央行）",
         "mnyImport": "Money 匯入",
         "unknown": "未知"
       }

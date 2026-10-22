@@ -53,7 +53,8 @@
     "totalOfAccounts": "Suma kont",
     "legendAriaLabel": "Linie prognozy",
     "tooltipTransactionForAccount": "{name} ({account})",
-    "unavailableMissingRates": "Tej prognozy nie można pokazać w {displayCurrency}: brak kursu wymiany dla {currencies}, a prognozowane saldo opiera się na każdym wcześniejszym dniu. Dodaj kurs lub wybierz konto jednowalutowe."
+    "unavailableMissingRates": "Tej prognozy nie można pokazać w {displayCurrency}: brak kursu wymiany dla {currencies}, a prognozowane saldo opiera się na każdym wcześniejszym dniu. Dodaj kurs lub wybierz konto jednowalutowe.",
+    "untitledTransaction": "Transakcja"
   },
   "calendar": {
     "days": {

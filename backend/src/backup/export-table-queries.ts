@@ -111,6 +111,12 @@ export const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   "auto_backup_policy",
   "exchange_rates", // global shared reference data, not per-user
   "exchange_rate_coverage", // provider coverage bookkeeping for the above
+  "bond_programs", // global bond reference data, refetched by the deployment
+  "bond_instruments", // global bond reference data, refetched by the deployment
+  "bond_terms_versions", // global bond reference data, refetched by the deployment
+  "bond_period_rates", // global bond reference data, refetched by the deployment
+  "benchmark_series", // global benchmark series metadata and fetch bookkeeping, refetched by the deployment
+  "benchmark_values", // global benchmark observations (policy rates, CPI), refetched by the deployment
   "market_index_prices", // global market reference data, refetched from the provider
   "market_index_sync", // provider fetch bookkeeping for the above
   "provider_health", // deployment-wide provider availability + alert bookkeeping
@@ -138,6 +144,18 @@ export const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   // suppress a reminder that was never sent to that account, which is the one
   // failure this table exists to prevent.
   "job_claims",
+  // Bank sync (docs/specs/bank-sync.md section 4). Credentials hold the user's
+  // provider application key encrypted under THIS instance's ENCRYPTION_KEY, so
+  // a restore elsewhere could not read it and a backup must never carry it
+  // (INV-BANKSYNC-002); connections are provider sessions bound to this
+  // instance's redirect URL and consent; bank accounts are re-created by a new
+  // connection. The ledger is excluded in the first release too (task BS11
+  // exports it): after a restore the link form defaults the cut-off date to the
+  // day after the newest transaction so history is not re-imported.
+  "bank_sync_credentials",
+  "bank_sync_connections",
+  "bank_sync_accounts",
+  "bank_sync_imported_transactions",
   // Reclamation bookkeeping for objects in *this* instance's storage provider,
   // keyed by (provider, storage_key). Those keys name nothing on the machine a
   // backup is restored onto, and a future sweeper reading a restored row could
@@ -225,6 +243,27 @@ export const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   // (`transaction_rules`) are exported and ask again as they run. It cascades
   // from the user and the transaction, so a restore's deletes clear it.
   "ai_review_requests",
+  // The user's IMAP mailbox login: host, username and a password encrypted
+  // under THIS instance's ENCRYPTION_KEY, so restored elsewhere it is an
+  // unreadable ciphertext, and decrypted into the file it would be a mailbox
+  // credential in an artifact that can be mailed around. Same category as
+  // `backup_offsite_settings`: re-entered on the new instance, never carried.
+  // Its cursor (uid_validity, last_uid) names messages in a mailbox that the new
+  // instance has not read, so it is meaningless there too. The parsers that read
+  // the mail (`email_receipt_parsers`) are exported.
+  "email_receipt_mailboxes",
+  // A stored copy of mail the user can re-read from their own mailbox: subject,
+  // sender and body text of order confirmations, which a backup of the ledger
+  // has no business multiplying. Each row also names a transaction id that a
+  // restore re-mints and a mailbox row this table cascades from, so a restored
+  // receipt would point at rows that no longer exist under those ids. The
+  // receipts rebuild from the mailbox on the next poll.
+  "email_receipts",
+  // One row per part of a settlement email (a repayment), naming the purchase
+  // email it joined. It cascades from `email_receipts`, which is not exported,
+  // and both of its receipt ids would name rows that a restore never brings
+  // back; the rows rebuild when the receipts are read again.
+  "email_receipt_links",
 ]);
 
 export function buildExportTableQueries(
@@ -332,6 +371,15 @@ export function buildExportTableQueries(
       sql: "SELECT * FROM transaction_rules WHERE user_id = $1 ORDER BY position",
     },
     {
+      // The user's email-receipt parsers (their own work, or an AI draft they
+      // approved). The payee is a real foreign key, remapped like every other
+      // reference; the category ids a definition names are inside its JSONB,
+      // which the restore's id remap rewrites, so the parsers keep pointing at
+      // the restored rows. Ordered by creation so the file reads stably.
+      key: "email_receipt_parsers",
+      sql: "SELECT * FROM email_receipt_parsers WHERE user_id = $1 ORDER BY created_at, id",
+    },
+    {
       key: "transactions",
       sql: "SELECT * FROM transactions WHERE user_id = $1 ORDER BY transaction_date, created_at",
     },
@@ -340,6 +388,17 @@ export function buildExportTableQueries(
       sql: `SELECT ts.* FROM transaction_splits ts
             JOIN transactions t ON ts.transaction_id = t.id
             WHERE t.user_id = $1`,
+    },
+    {
+      // Warranties link to a transaction and a payee (both ON DELETE SET NULL)
+      // and never move money. Restored after both, and before
+      // transaction_attachments, whose rows can name a warranty as their parent.
+      key: "warranties",
+      sql: "SELECT * FROM warranties WHERE user_id = $1 ORDER BY purchase_date, created_at, id",
+    },
+    {
+      key: "warranty_claims",
+      sql: "SELECT * FROM warranty_claims WHERE user_id = $1 ORDER BY claim_date, created_at, id",
     },
     {
       // Attachment metadata. Restored after transactions (FK) and before

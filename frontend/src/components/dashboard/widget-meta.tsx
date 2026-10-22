@@ -14,6 +14,7 @@ import {
   BuildingOffice2Icon,
   CalendarDaysIcon,
   CalendarIcon,
+  ChartBarSquareIcon,
   ChartBarIcon,
   ChartPieIcon,
   ClipboardDocumentCheckIcon,
@@ -23,6 +24,7 @@ import {
   PresentationChartLineIcon,
   RectangleGroupIcon,
   ScaleIcon,
+  ShieldCheckIcon,
   StarIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
@@ -43,6 +45,7 @@ type WidgetIconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 export const WIDGET_ICONS: Record<DashboardWidgetId, WidgetIconComponent> = {
   'favourite-accounts': BuildingLibraryIcon,
   'upcoming-bills': CalendarDaysIcon,
+  'cash-flow-forecast': ChartBarSquareIcon,
   'top-movers': ArrowTrendingUpIcon,
   'favourite-securities': StarIcon,
   'portfolio-value': PresentationChartLineIcon,
@@ -64,6 +67,7 @@ export const WIDGET_ICONS: Record<DashboardWidgetId, WidgetIconComponent> = {
   'recurring-expenses': ArrowPathIcon,
   'weekend-weekday': CalendarIcon,
   'cash-flow-sankey': ArrowsRightLeftIcon,
+  'warranties-expiring': ShieldCheckIcon,
 };
 
 /**

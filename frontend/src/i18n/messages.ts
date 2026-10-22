@@ -28,12 +28,14 @@ const NAMESPACES = [
   "ai",
   "aiReview",
   "bills",
+  "bonds",
   "budgets",
   "calendar",
   "categories",
   "categoryDetail",
   "currencies",
   "dashboard",
+  "emailReceipts",
   "emergencyAccess",
   "import",
   "insights",
@@ -54,6 +56,7 @@ const NAMESPACES = [
   "tags",
   "tours",
   "transactions",
+  "warranties",
 ] as const;
 
 type Namespace = (typeof NAMESPACES)[number];

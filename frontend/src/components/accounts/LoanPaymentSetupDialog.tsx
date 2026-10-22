@@ -10,6 +10,7 @@ import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { NumericInput } from '@/components/ui/NumericInput';
 import { Combobox } from '@/components/ui/Combobox';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { PaymentMatchingFields } from './PaymentMatchingFields';
 import {
   Account,
   DetectedLoanPayment,
@@ -100,6 +101,15 @@ export function LoanPaymentSetupDialog({
   // Use detected split ratio from imported transactions
   const [useDetectedSplit, setUseDetectedSplit] = useState(false);
 
+  // Payment matching: settle the bank's own debit of this payment against
+  // each installment instead of posting the bill separately
+  // (docs/specs/loan-installment-settlement.md decision 5). While on, the
+  // bill's own auto-post is forced off below -- both posting the bill and
+  // settling a matching debit would otherwise pay the same installment twice.
+  const [paymentMatchingEnabled, setPaymentMatchingEnabled] = useState(false);
+  const [paymentMatchingPayeePattern, setPaymentMatchingPayeePattern] = useState('');
+  const [paymentMatchingDescriptionPattern, setPaymentMatchingDescriptionPattern] = useState('');
+
   const allPaymentFrequencyOptions = [
     { value: 'WEEKLY', label: t('loanPaymentSetup.frequencyOptions.weekly') },
     { value: 'BIWEEKLY', label: t('loanPaymentSetup.frequencyOptions.biweekly') },
@@ -152,6 +162,12 @@ export function LoanPaymentSetupDialog({
       ['CHEQUING', 'SAVINGS', 'CASH'].includes(a.accountType),
     (a) => a.name,
   );
+
+  // Payment matching forces auto-post off: derived, not synced through an
+  // effect, so the checkbox's own history (what the person last chose) is
+  // never lost, only overridden while matching is on.
+  const effectiveAutoPost = paymentMatchingEnabled ? false : autoPost;
+  const sourceAccountName = accounts.find((a) => a.id === sourceAccountId)?.name;
 
   const categoryOptions = getCategorySelectOptions(categories);
 
@@ -325,8 +341,12 @@ export function LoanPaymentSetupDialog({
   }, [t]);
 
   const handleSubmit = useCallback(async () => {
-    if (!submittedPaymentAmount || !sourceAccountId || !nextDueDate) {
+    if (!submittedPaymentAmount || !sourceAccountId || !nextDueDate || !interestCategoryId) {
       toast.error(t('loanPaymentSetup.fillRequiredFields'));
+      return;
+    }
+    if (paymentMatchingEnabled && !paymentMatchingPayeePattern.trim().includes('*')) {
+      toast.error(t('loanPaymentSetup.paymentMatching.payeePatternRequired'));
       return;
     }
 
@@ -342,14 +362,23 @@ export function LoanPaymentSetupDialog({
         sourceAccountId,
         nextDueDate,
         interestRate,
-        interestCategoryId: interestCategoryId || undefined,
+        interestCategoryId,
         payeeId: selectedPayeeId || undefined,
         payeeName: payeeName || undefined,
-        autoPost,
+        // The checkbox's displayed value: forced off while payment matching
+        // is on, so the two never settle the same installment.
+        autoPost: effectiveAutoPost,
       };
 
       if (includeExtraPrincipal && extraPrincipal > 0) {
         data.extraPrincipal = extraPrincipal;
+      }
+
+      if (paymentMatchingEnabled) {
+        data.paymentMatching = {
+          payeePattern: paymentMatchingPayeePattern.trim(),
+          descriptionPattern: paymentMatchingDescriptionPattern.trim() || undefined,
+        };
       }
 
       // A derived installment is split by its method; the server ignores a
@@ -365,8 +394,15 @@ export function LoanPaymentSetupDialog({
         data.termMonths = termMonths;
       }
 
-      await accountsApi.setupLoanPayments(loanAccount.accountId, data);
+      const result = await accountsApi.setupLoanPayments(loanAccount.accountId, data);
       toast.success(t('loanPaymentSetup.toasts.setupComplete', { account: loanAccount.accountName }));
+      // The schedule is saved either way (docs/specs/loan-installment-settlement.md
+      // decision 5): a rule the server could not create is reported here, never
+      // thrown, so the schedule-created toast above still fires and this is a
+      // second, separate warning rather than a replacement for it.
+      if (paymentMatchingEnabled && result.paymentMatchingError) {
+        toast.error(result.paymentMatchingError.message);
+      }
       onSetupComplete?.();
       onClose();
     } catch (error: any) {
@@ -378,8 +414,9 @@ export function LoanPaymentSetupDialog({
     }
   }, [
     submittedPaymentAmount, effectivePaymentFrequency, sourceAccountId, nextDueDate,
-    interestRate, interestCategoryId, selectedPayeeId, payeeName, autoPost,
+    interestRate, interestCategoryId, selectedPayeeId, payeeName, effectiveAutoPost,
     includeExtraPrincipal, extraPrincipal, useDetectedSplit, detected,
+    paymentMatchingEnabled, paymentMatchingPayeePattern, paymentMatchingDescriptionPattern,
     derivesInstallment, isMortgage, mortgageType, prepaymentMode,
     amortizationMonths, termMonths, loanAccount, onSetupComplete, onClose, t,
   ]);
@@ -424,12 +461,12 @@ export function LoanPaymentSetupDialog({
                 </p>
                 {hasDetectedSplit && (
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    {t('loanPaymentSetup.lastSplit', { currency: currencySymbol, principal: detected.lastPrincipalAmount?.toFixed(2) ?? '', interest: detected.lastInterestAmount?.toFixed(2) ?? '' })}
+                    {t('loanPaymentSetup.lastSplit', { principal: detected.lastPrincipalAmount != null ? formatCurrency(detected.lastPrincipalAmount, loanAccount.currencyCode) : '', interest: detected.lastInterestAmount != null ? formatCurrency(detected.lastInterestAmount, loanAccount.currencyCode) : '' })}
                   </p>
                 )}
                 {detected.extraPrincipalCount > 0 && (
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                    {t('loanPaymentSetup.extraPayments', { count: detected.extraPrincipalCount, currency: currencySymbol, avg: detected.averageExtraPrincipal.toFixed(2) })}
+                    {t('loanPaymentSetup.extraPayments', { count: detected.extraPrincipalCount, avg: formatCurrency(detected.averageExtraPrincipal, loanAccount.currencyCode) })}
                   </p>
                 )}
                 <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
@@ -502,7 +539,7 @@ export function LoanPaymentSetupDialog({
                     />
                     {!derivesInstallment && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {t('loanPaymentSetup.totalPayment', { currency: currencySymbol, amount: totalPaymentAmount.toFixed(2) })}
+                        {t('loanPaymentSetup.totalPayment', { amount: formatCurrency(totalPaymentAmount, loanAccount.currencyCode) })}
                       </p>
                     )}
                   </div>
@@ -526,7 +563,7 @@ export function LoanPaymentSetupDialog({
                   </label>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
                     {useDetectedSplit
-                      ? t('loanPaymentSetup.useDetectedSplitDesc', { currency: currencySymbol, interest: detected!.lastInterestAmount!.toFixed(2) })
+                      ? t('loanPaymentSetup.useDetectedSplitDesc', { interest: formatCurrency(detected!.lastInterestAmount!, loanAccount.currencyCode) })
                       : t('loanPaymentSetup.calculateFromRate')}
                   </p>
                 </div>
@@ -591,7 +628,7 @@ export function LoanPaymentSetupDialog({
               {/* Interest Category */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('loanPaymentSetup.interestExpenseCategory')}
+                  {t('loanPaymentSetup.interestExpenseCategoryRequired')}
                 </label>
                 <Combobox
                   value={interestCategoryId}
@@ -706,18 +743,39 @@ export function LoanPaymentSetupDialog({
                 </div>
               )}
 
+              {/* Payment matching: settle the bank's own debit of this
+                  payment against each installment instead of posting the
+                  bill separately (docs/specs/loan-installment-settlement.md
+                  decision 5). */}
+              <PaymentMatchingFields
+                enabled={paymentMatchingEnabled}
+                onToggle={setPaymentMatchingEnabled}
+                payeePattern={paymentMatchingPayeePattern}
+                onPayeePatternChange={setPaymentMatchingPayeePattern}
+                descriptionPattern={paymentMatchingDescriptionPattern}
+                onDescriptionPatternChange={setPaymentMatchingDescriptionPattern}
+                sourceAccountName={sourceAccountName}
+                kind={isMortgage ? 'mortgage' : 'loan'}
+              />
+
               {/* Auto-post */}
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={autoPost}
+                  checked={effectiveAutoPost}
+                  disabled={paymentMatchingEnabled}
                   onChange={(e) => setAutoPost(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   {t('loanPaymentSetup.autoPost')}
                 </span>
               </label>
+              {paymentMatchingEnabled && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+                  {t('loanPaymentSetup.paymentMatching.autoPostDisabled')}
+                </p>
+              )}
             </div>
 
             {/* Actions */}

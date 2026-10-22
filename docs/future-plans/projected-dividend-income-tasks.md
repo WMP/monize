@@ -125,4 +125,4 @@ Every locale for `investments`, `securities`, `dashboard` and the backend keys. 
 
 ### M2 -- Calendar layer (phase 2)
 
-**Files:** `frontend/src/store/viewModeStore.ts` (`SURFACE_LAYERS.investments` gains `dividends`), `frontend/src/components/calendar/InvestmentCalendarView.tsx` + tests, `frontend/src/store/persisted-storage.guard.test.ts` (the pinned shape changes). Its own small proposal under `docs/future-plans/calendar-view.md`'s decisions.
+**Files:** `frontend/src/store/viewModeStore.ts` (`SURFACE_LAYERS.investments` gains `dividends`), `frontend/src/components/calendar/InvestmentCalendarView.tsx` + tests, `frontend/src/store/persisted-storage.guard.test.ts` (the pinned shape changes). Its own small proposal under `docs/specs/calendar-view.md`'s decisions.

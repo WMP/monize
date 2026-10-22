@@ -29,7 +29,7 @@
 
 import { roundMoney, roundToCents, roundToDecimals } from "@/lib/format";
 import {
-  PAYOFF_EPSILON,
+  isDebtOutstanding,
   advanceDate,
   getPeriodicRate,
   getPeriodsPerYear,
@@ -145,7 +145,7 @@ export function generateMethodSchedule(
   let currentDate = new Date(firstPaymentDate);
   let paymentNumber = 0;
 
-  while (balance > PAYOFF_EPSILON && paymentNumber < maxPayments) {
+  while (isDebtOutstanding(balance) && paymentNumber < maxPayments) {
     const rowDate = isoDay(currentDate);
     while (
       rateChangeIndex < rateChanges.length &&
@@ -242,7 +242,7 @@ export function generateMethodSchedule(
     currentDate = advanceDate(currentDate, frequency);
   }
 
-  const paidOff = balance <= PAYOFF_EPSILON;
+  const paidOff = !isDebtOutstanding(balance);
   return {
     rows,
     payoffDate: paidOff && rows.length > 0 ? rows[rows.length - 1].date : null,

@@ -36,6 +36,8 @@ function createCategory(overrides: Partial<Category> = {}): Category {
     color: null,
     effectiveColor: null,
     effectiveIcon: null,
+    autoSign: null,
+    effectiveAutoSign: true,
     isIncome: false,
     isSystem: false,
     createdAt: '2024-01-01T00:00:00Z',
@@ -138,7 +140,7 @@ describe('TransactionFilterPanel', () => {
     render(<TransactionFilterPanel {...defaultProps} />);
 
     expect(screen.getByText('Filters')).toBeInTheDocument();
-    expect(screen.getByText('Show')).toBeInTheDocument();
+    expect(screen.getByText('Show filters')).toBeInTheDocument();
   });
 
   it('displays Hide when filters are expanded', () => {
@@ -265,13 +267,13 @@ describe('TransactionFilterPanel', () => {
     it('shows Show label when collapsed and Hide label when expanded', () => {
       const { rerender } = render(<TransactionFilterPanel {...defaultProps} filtersExpanded={false} />);
 
-      expect(screen.getByText('Show')).toBeInTheDocument();
+      expect(screen.getByText('Show filters')).toBeInTheDocument();
       expect(screen.queryByText('Hide')).not.toBeInTheDocument();
 
       rerender(<TransactionFilterPanel {...defaultProps} filtersExpanded={true} />);
 
       expect(screen.getByText('Hide')).toBeInTheDocument();
-      expect(screen.queryByText('Show')).not.toBeInTheDocument();
+      expect(screen.queryByText('Show filters')).not.toBeInTheDocument();
     });
   });
 
@@ -773,7 +775,7 @@ describe('TransactionFilterPanel', () => {
     it('shows the search placeholder text', () => {
       render(<TransactionFilterPanel {...defaultProps} filtersExpanded={true} />);
 
-      const searchInput = screen.getByPlaceholderText('Search payee, category, amount, tag, description, reference #...');
+      const searchInput = screen.getByPlaceholderText('Search, or try #10 or payee:costco');
       expect(searchInput).toBeInTheDocument();
     });
   });

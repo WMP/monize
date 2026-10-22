@@ -119,6 +119,8 @@
     "currencyLabel": "Moeda",
     "currencyNotConfigured": "{code} — não está nas suas moedas",
     "quoteProviderLabel": "Fornecedor de Cotações",
+    "skipPriceUpdatesLabel": "Desativar as atualizações automáticas de preços",
+    "skipPriceUpdatesHelp": "O Monize não irá obter preços para este título. Utilize esta opção para um título que nenhum fornecedor consiga cotar; os preços que introduzir continuam a contar. Escolher outro fornecedor de cotações ou outro ID de instrumento MSN volta a ativar as atualizações.",
     "msnIdLabel": "ID de Instrumento MSN (avançado)",
     "lookupProviderAriaLabel": "Pesquisar fornecedor",
     "lookupButton": "Pesquisar",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "Motor de obrigações"
     },
     "types": {
       "select": "Selecionar tipo...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "Eliminar",
       "deleteSuccess": "Classe de ativos «{name}» eliminada",
       "deleteFailed": "Não foi possível eliminar a classe de ativos «{name}»"
-    }
+    },
+    "bondFetchAction": "Obter {code} da fonte oficial",
+    "bondFetching": "A obter {code} junto do emitente e as respetivas taxas de referência. Isto pode demorar até um minuto.",
+    "bondFetchFailed": "Não foi possível obter a série.",
+    "bondCurrencyLocked": "Este título está associado a um tipo de obrigação em {linkedCurrency}. Volte a definir a moeda como {linkedCurrency} ou desassocie primeiro o tipo de obrigação (desassociar remove os seus preços calculados).",
+    "bondProgramLabel": "Tipo de obrigação",
+    "bondProgramNone": "Sem ligação",
+    "bondProgramCurrent": "Tipo de obrigação associado",
+    "bondProgramLoading": "A carregar os tipos de obrigações...",
+    "bondProgramLoadFailed": "Não foi possível carregar os tipos de obrigações, por isso ainda não é possível associar um tipo de obrigação.",
+    "bondProgramRetry": "Tentar novamente",
+    "bondNoPrograms": "O catálogo de obrigações ainda não tem nenhum tipo de obrigação.",
+    "bondAutoFetchLabel": "Obter automaticamente as novas séries deste tipo de obrigação",
+    "bondAutoFetchHelp": "Quando ativado, o Monize lê todos os dias as novas séries deste tipo de obrigação a partir da fonte oficial, para que possa registar uma compra sem obter primeiro a série.",
+    "bondCountryLabel": "País",
+    "bondCountryOther": "Outro",
+    "bondCountryOtherInfo": "O suporte para obrigações de outros países pode ser pedido no <link>GitHub do projeto</link>."
   },
   "priceForm": {
     "dateLabel": "Data",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinvestimento de rendimento de longo prazo",
       "CAPITAL_GAIN_SHORT": "Rendimento de capital de curto prazo",
       "CAPITAL_GAIN_LONG": "Rendimento de capital de longo prazo",
-      "REDEEM": "Resgate de CD/obrigação"
+      "REDEEM": "Resgate de CD/obrigação",
+      "RETURN_OF_CAPITAL": "Devolução de capital"
     },
     "toasts": {
       "loadHistoryFailed": "Falha ao carregar histórico",
@@ -340,6 +360,7 @@
     "nameRequired": "O nome é obrigatório",
     "nameMax": "O nome não pode ter mais de 255 caracteres",
     "currencyRequired": "A moeda é obrigatória",
+    "bondProgramRequired": "O tipo de obrigação é obrigatório",
     "descriptionMax": "A descrição não pode exceder 5000 caracteres"
   },
   "priceValidation": {

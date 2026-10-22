@@ -138,7 +138,7 @@ failure mode this decision exists to avoid, so the key is derived from
 ## Addendum, 2026-09-18: a 2025-era session is pinned to its replica
 
 This ADR said the new revision gets "no sticky sessions"; it did not say what the
-old one gets. Horizontal scaling (`docs/future-plans/horizontal-scaling.md`, WP6)
+old one gets. Horizontal scaling (`docs/specs/horizontal-scaling.md`, WP6)
 asked the question directly: persist `session_id -> user_id` and rebuild the
 transport on any replica, or document sticky routing. The instruction was to
 decide by reading the SDK.

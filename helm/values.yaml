@@ -326,7 +326,7 @@ backend:
     DATABASE_NAME: ""
 
   # -- Row-Level Security (defense-in-depth). Off by default -- leave as-is for
-  # the standard single-role setup. See docs/future-plans/row-level-security.md
+  # the standard single-role setup. See docs/specs/row-level-security.md
   # and the runbook before changing RLS_MODE.
   # RLS_MODE and DATABASE_APP_USER are rendered into the backend ConfigMap.
   # NOTE: DATABASE_APP_PASSWORD is a secret -- supply it alongside
@@ -620,7 +620,7 @@ mcp:
 #
 # What the backend needs before a second replica of it is correct. Everything
 # shared lives in PostgreSQL, so this adds no dependency -- see
-# docs/future-plans/horizontal-scaling.md.
+# docs/specs/horizontal-scaling.md.
 cluster:
   # -- CLUSTER_MODE: single (one backend replica) or multi (several)
   #

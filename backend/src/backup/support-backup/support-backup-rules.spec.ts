@@ -35,6 +35,15 @@ describe("support backup rules registry", () => {
     }
   });
 
+  it("drops the bond links: they name the masked program and series, and the copy's scaled quantities are not whole bonds", () => {
+    expect(RULES.securities.bond_program_id?.t).toBe("drop");
+    expect(RULES.investment_transactions.bond_instrument_id?.t).toBe("drop");
+  });
+
+  it("keeps the auto-fetch flag: it re-identifies nobody", () => {
+    expect(RULES.securities.bond_auto_fetch?.t).toBe("keep");
+  });
+
   it("keeps the structural columns a restored GEM signal is read by", () => {
     // RULES is an allowlist, so an unclassified column is dropped -- and for
     // these two that is not a safe default but a change of meaning. A signal

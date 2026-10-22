@@ -93,6 +93,14 @@ describe('builtInReportsApi', () => {
     });
   });
 
+  it('getRecurringExpenses sends the range when one is given', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
+    await builtInReportsApi.getRecurringExpenses(4, '5y');
+    expect(apiClient.get).toHaveBeenCalledWith('/built-in-reports/recurring-expenses', {
+      params: { minOccurrences: 4, range: '5y' },
+    });
+  });
+
   it('getBillPaymentHistory fetches with params', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
     await builtInReportsApi.getBillPaymentHistory(params);

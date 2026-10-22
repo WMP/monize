@@ -101,6 +101,12 @@ export const TOUR_ANCHORS = {
   ruleEditorThen: 'rule-editor-then',
   ruleEditorTest: 'rule-editor-test',
   aiReviewInbox: 'ai-review-inbox',
+
+  // Email receipts (the hub's tabs, the profiles tab) and AI settings
+  aiProviderList: 'ai-provider-list',
+  emailReceiptsTabs: 'email-receipts-tabs',
+  emailReceiptsUncovered: 'email-receipts-uncovered',
+  emailReceiptsProfiles: 'email-receipts-profiles',
 } as const;
 
 export type TourAnchorId = (typeof TOUR_ANCHORS)[keyof typeof TOUR_ANCHORS];

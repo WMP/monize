@@ -23,11 +23,14 @@ import { SortIcon } from '@/components/ui/SortIcon';
 import { MultiSelect, MultiSelectOption } from '@/components/ui/MultiSelect';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { formatAccountType } from '@/lib/account-utils';
-import { buildLogicalAccounts, type LogicalAccount } from '@/lib/logical-accounts';
+import { buildLogicalAccounts, holdingsValuationIncomplete, type LogicalAccount } from '@/lib/logical-accounts';
 import { useMainAccountName } from '@/hooks/useMainAccountName';
 import { DensityToggleBar } from '@/components/ui/DensityToggle';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useViewDefault } from '@/hooks/useViewDefault';
+import { opensAccountDashboard } from '@/lib/account-detail-views';
+import { BUILT_IN_VIEW_DEFAULTS } from '@/lib/view-defaults';
 
 type SortField = 'name' | 'type' | 'balance' | 'status';
 type SortDirection = 'asc' | 'desc';
@@ -95,6 +98,12 @@ interface AccountListProps {
    * than showing the cash it does know.
    */
   unpricedHoldingCounts?: Map<string, number>;
+  /**
+   * Holdings account ids whose valuation is a subtotal for any cause, a missing
+   * exchange rate included -- which `unpricedHoldingCounts` cannot see. Such an
+   * account's row shows no total, like an unpriced one.
+   */
+  incompleteHoldingAccountIds?: ReadonlySet<string>;
   /**
    * True when the portfolio-summary request failed, so every brokerage market
    * value is unknown rather than a real zero. Group totals exclude and mark
@@ -201,7 +210,7 @@ const EMPTY_CONVERTED_TOTAL: ConvertedTotal = {
   excludedCount: 0,
 };
 
-export function AccountList({ accounts, institutions, brokerageMarketValues, unpricedHoldingCounts, portfolioFailed, defaultCurrency, convertToDefault, onEdit, onRefresh }: AccountListProps) {
+export function AccountList({ accounts, institutions, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds, portfolioFailed, defaultCurrency, convertToDefault, onEdit, onRefresh }: AccountListProps) {
   const t = useTranslations('accounts');
   const tc = useTranslations('common');
   const stripAccountName = useMainAccountName();
@@ -325,14 +334,21 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
   // /investments matches its `accountId` query against, the filter is silently
   // dropped and the user lands on whatever selection was already stored. The
   // full portfolio view stays one click away, from the row's View Transactions
-  // action and from the detail page's own link.
+  // action and from the detail page's own link. A reader who chose the
+  // dashboard in Settings (`accountOpenTarget`) gets every account's detail
+  // page, its register still one click away from the same action.
+  const accountOpenTarget =
+    useViewDefault('accountOpenTarget') ?? BUILT_IN_VIEW_DEFAULTS.accountOpenTarget;
   const handleRowClick = useCallback((account: Account) => {
-    if (account.accountSubType === 'INVESTMENT_BROKERAGE') {
+    if (
+      account.accountSubType === 'INVESTMENT_BROKERAGE' ||
+      opensAccountDashboard(account.accountType, accountOpenTarget)
+    ) {
       router.push(`/accounts/${account.id}`);
     } else {
       router.push(`/transactions?accountId=${account.id}`);
     }
-  }, [router]);
+  }, [router, accountOpenTarget]);
 
   const { getRowHandlers } = useLongPress<Account>({
     onLongPress: setContextAccount,
@@ -374,8 +390,9 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
     return buildLogicalAccounts(withOverrides, stripAccountName, {
       marketValues: brokerageMarketValues ?? new Map(),
       unpricedCounts: unpricedHoldingCounts ?? new Map(),
+      incompleteAccountIds: incompleteHoldingAccountIds,
     });
-  }, [accounts, favOverrides, stripAccountName, brokerageMarketValues, unpricedHoldingCounts]);
+  }, [accounts, favOverrides, stripAccountName, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds]);
 
   // Keyed on the primary id, which is the id every row action carries.
   const logicalById = useMemo(
@@ -526,7 +543,8 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
       // folded in as a fabricated 0.
       const isUnknownBrokerage = (account: Account) =>
         account.accountSubType === 'INVESTMENT_BROKERAGE' &&
-        (portfolioFailed === true || (unpricedHoldingCounts?.get(account.id) ?? 0) > 0);
+        (portfolioFailed === true ||
+          holdingsValuationIncomplete(account.id, unpricedHoldingCounts, incompleteHoldingAccountIds));
       const known = members.filter((account) => !isUnknownBrokerage(account));
       const unknownCount = members.length - known.length;
       const converted = sumConverted(
@@ -545,7 +563,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
       });
     }
     return totals;
-  }, [groupedAccounts, brokerageMarketValues, unpricedHoldingCounts, portfolioFailed, convertToDefault]);
+  }, [groupedAccounts, brokerageMarketValues, unpricedHoldingCounts, incompleteHoldingAccountIds, portfolioFailed, convertToDefault]);
 
   // Flatten groups into a sequence of header / row entries with stable striping
   // indices so AccountRow alternation continues to look right across groups.
@@ -583,11 +601,9 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
   );
 
   // Clear the net worth filter if no accounts are excluded (e.g. user toggled the flag off)
-  useEffect(() => {
-    if (!hasExcludedAccounts && filterNetWorth) {
-      setFilterNetWorth('');
-    }
-  }, [hasExcludedAccounts, filterNetWorth]);
+  if (!hasExcludedAccounts && filterNetWorth) {
+    setFilterNetWorth('');
+  }
 
   // Only show the joint filter when at least one account is shared to the
   // caller; clear it when the last joint account disappears (revoke).
@@ -595,11 +611,9 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
     () => accounts.some((a) => a.isJoint),
     [accounts],
   );
-  useEffect(() => {
-    if (!hasJointAccounts && filterJoint) {
-      setFilterJoint('');
-    }
-  }, [hasJointAccounts, filterJoint]);
+  if (!hasJointAccounts && filterJoint) {
+    setFilterJoint('');
+  }
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -1066,6 +1080,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, unp
                   institution={item.logical.primary.institutionId ? institutionsById.get(item.logical.primary.institutionId) : undefined}
                   brokerageMarketValue={item.logical.holdingsAccountId ? brokerageMarketValues?.get(item.logical.holdingsAccountId) : undefined}
                   unpricedHoldingsCount={item.logical.holdingsAccountId ? unpricedHoldingCounts?.get(item.logical.holdingsAccountId) : undefined}
+                  valuationIncomplete={item.logical.holdingsAccountId ? incompleteHoldingAccountIds?.has(item.logical.holdingsAccountId) === true : false}
                   defaultCurrency={defaultCurrency}
                   formatCurrencyBase={formatCurrencyBase}
                   convertToDefault={convertToDefault}

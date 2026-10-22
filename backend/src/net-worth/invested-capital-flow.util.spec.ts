@@ -1,9 +1,11 @@
 import { RateIndex } from "../common/time-series/rate-index.util";
+import { REINVESTED_INCOME_ACTIONS } from "../securities/investment-replay.util";
 import {
   ShareLegClose,
   foldInvestedFlows,
   investedCapitalFlowSql,
   loadInvestedCapitalFlowRows,
+  shareLegSecurityIds,
 } from "./invested-capital-flow.util";
 
 const logger = { warn: jest.fn() };
@@ -22,7 +24,13 @@ describe("investedCapitalFlowSql", () => {
     // mocked-query spec can see -- the lesson the mixed-split count taught.
     const named = [...sql.matchAll(/\$(\d+)/g)].map((m) => Number(m[1]));
 
-    expect([...new Set(named)].sort((a, b) => a - b)).toEqual([1, 2, 3, 4]);
+    expect([...new Set(named)].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("returns each reinvestment as its own row, so its own price values it", () => {
+    // Grouped with another reinvest of the same security and day, MAX(price)
+    // would value both at one of their prices.
+    expect(sql).toContain("CASE WHEN it.action = ANY($5) THEN it.id END");
   });
 
   it("reads rows as effects: a VOID investment row moved no value", () => {
@@ -64,6 +72,7 @@ describe("loadInvestedCapitalFlowRows", () => {
       "2026-01-02",
       "2026-06-01",
       ["acct-1", "acct-2"],
+      REINVESTED_INCOME_ACTIONS,
     ]);
   });
 
@@ -90,6 +99,18 @@ describe("loadInvestedCapitalFlowRows", () => {
         security_id: "sec-1",
         total: "8000.0000",
         quantity: "80.00000000",
+        price: "100.0000000000",
+        commission: "9.9900",
+      },
+      {
+        date: "2026-02-03",
+        currency: "USD",
+        action: "SPLIT",
+        security_id: "sec-1",
+        total: "0.0000",
+        quantity: "2.00000000",
+        price: null,
+        commission: null,
       },
     ]);
 
@@ -108,6 +129,18 @@ describe("loadInvestedCapitalFlowRows", () => {
         securityId: "sec-1",
         total: 8000,
         quantity: 80,
+        price: 100,
+        commission: 9.99,
+      },
+      {
+        date: "2026-02-03",
+        currency: "USD",
+        action: "SPLIT",
+        securityId: "sec-1",
+        total: 0,
+        quantity: 2,
+        price: null,
+        commission: 0,
       },
     ]);
   });
@@ -122,6 +155,8 @@ describe("foldInvestedFlows", () => {
       securityId: "sec-1",
       total: 8000,
       quantity: 80,
+      price: 100,
+      commission: 0,
       ...partial,
     });
 
@@ -132,6 +167,8 @@ describe("foldInvestedFlows", () => {
     securityId: string | null;
     total: number;
     quantity: number;
+    price: number | null;
+    commission: number;
   }) {
     return r;
   }
@@ -159,20 +196,16 @@ describe("foldInvestedFlows", () => {
       capitalIn: 8000,
       capitalOut: 9000,
       income: 100,
+      reinvestedIncome: 0,
       complete: true,
       missingPairs: [],
       unpricedSecurityIds: [],
     });
   });
 
-  it("counts a split and a reinvestment as neither: they move no value in", () => {
-    // A reinvested distribution never landed as cash; its shares simply appear
-    // in IV, and counting it as capital would subtract the return it was.
+  it("counts a split as nothing: a ratio moves no value", () => {
     const { byDay } = foldInvestedFlows(
-      [
-        row({ action: "SPLIT", total: 0, quantity: 200 }),
-        row({ action: "REINVEST", total: 0, quantity: 500 }),
-      ],
+      [row({ action: "SPLIT", total: 0, quantity: 2 })],
       "CAD",
       new Map(),
       logger,
@@ -180,6 +213,94 @@ describe("foldInvestedFlows", () => {
     );
 
     expect(byDay.size).toBe(0);
+  });
+
+  it("keeps a reinvestment apart from capital and income, at its own price, not the close", () => {
+    // Discussion #1670. A reinvested distribution is income the invested part
+    // put straight back into shares. The surface adds it to both the income
+    // and the capital figure; the TWR chain reads neither, because its shares
+    // are already in IV. Valued at the cost its shares entered the basis at:
+    // a reinvest created in the app stores no total.
+    const close = jest.fn(() => 100);
+    const { byDay } = foldInvestedFlows(
+      [
+        row({ action: "REINVEST", total: 0, quantity: 5, price: 20 }),
+        row({
+          action: "REINVEST_INTEREST",
+          total: 0,
+          quantity: 1,
+          price: 9,
+          commission: 1,
+        }),
+        // An imported reinvest keeps the file's total, which is the fact.
+        row({
+          action: "REINVEST_CAPITAL_GAIN_LONG",
+          total: 50.5,
+          quantity: 2,
+          price: 25,
+        }),
+      ],
+      "CAD",
+      new Map(),
+      logger,
+      close,
+    );
+
+    expect(byDay.get("2026-02-02")).toEqual({
+      capitalIn: 0,
+      capitalOut: 0,
+      income: 0,
+      reinvestedIncome: 160.5,
+      complete: true,
+      missingPairs: [],
+      unpricedSecurityIds: [],
+    });
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it("leaves out a legacy reinvest with neither a total nor a price, as the basis does", () => {
+    const { byDay } = foldInvestedFlows(
+      [row({ action: "REINVEST", total: 0, quantity: 5, price: null })],
+      "CAD",
+      new Map(),
+      logger,
+      closeAt(100),
+    );
+
+    expect(byDay.size).toBe(0);
+  });
+
+  it("converts a reinvestment at its own day's rate, and names a missing one", () => {
+    const { byDay } = foldInvestedFlows(
+      [
+        row({
+          action: "REINVEST",
+          currency: "USD",
+          total: 0,
+          quantity: 4,
+          price: 25,
+        }),
+        row({
+          date: "2026-03-02",
+          action: "REINVEST",
+          currency: "EUR",
+          total: 0,
+          quantity: 4,
+          price: 25,
+        }),
+      ],
+      "CAD",
+      index("USD->CAD", "2026-02-02", 1.25),
+      logger,
+      closeAt(100),
+    );
+
+    expect(byDay.get("2026-02-02")?.reinvestedIncome).toBe(125);
+    expect(byDay.get("2026-03-02")).toMatchObject({
+      reinvestedIncome: 0,
+      complete: false,
+      missingPairs: ["EUR->CAD"],
+    });
   });
 
   it("values a share-moving leg at the day's close, not at the basis it carries", () => {
@@ -267,5 +388,28 @@ describe("foldInvestedFlows", () => {
     expect(gaps).toEqual([
       { date: "2026-02-02", missingRatePairs: ["EUR->CAD"] },
     ]);
+  });
+});
+
+describe("shareLegSecurityIds", () => {
+  const base = {
+    date: "2026-02-02",
+    currency: "CAD",
+    total: 0,
+    quantity: 5,
+    price: null,
+    commission: 0,
+  };
+
+  it("asks for closes only for share-moving legs without a total", () => {
+    expect(
+      shareLegSecurityIds([
+        { ...base, action: "TRANSFER_IN", securityId: "sec-leg" },
+        { ...base, action: "BUY", securityId: "sec-buy", total: 100 },
+        { ...base, action: "SPLIT", securityId: "sec-split" },
+        // Valued from its own price, so it needs no close.
+        { ...base, action: "REINVEST", securityId: "sec-drip", price: 20 },
+      ]),
+    ).toEqual(["sec-leg"]);
   });
 });

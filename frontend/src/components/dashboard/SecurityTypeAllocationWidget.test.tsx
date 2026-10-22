@@ -94,8 +94,8 @@ describe('SecurityTypeAllocationWidget', () => {
     getPortfolioSummary.mockResolvedValue({ holdings: [], holdingsByAccount: [] });
     getAssetClassWeightings.mockResolvedValue({
       items: [
-        { assetClass: 'Equity', directValue: 600, etfValue: 100, totalValue: 700, percentage: 70 },
-        { assetClass: 'Fixed Income', directValue: 0, etfValue: 200, totalValue: 200, percentage: 20 },
+        { assetClass: 'Equity', assetClassKey: 'equity', directValue: 600, etfValue: 100, totalValue: 700, percentage: 70 },
+        { assetClass: 'Fixed Income', assetClassKey: 'fixedIncome', directValue: 0, etfValue: 200, totalValue: 200, percentage: 20 },
       ],
       totalPortfolioValue: 1000,
       totalDirectValue: 600,
@@ -105,7 +105,9 @@ describe('SecurityTypeAllocationWidget', () => {
     await renderWidget();
     // A fund's holdings are placed by what is inside it, not filed whole under
     // ETF, and the value the backend could not classify is its own slice.
-    expect(screen.getByText('Equity')).toBeInTheDocument();
+    // A canonical class is named by its translation key, not the server's text.
+    expect(screen.getByText('Equities')).toBeInTheDocument();
+    expect(screen.queryByText('Equity')).not.toBeInTheDocument();
     expect(screen.getByText('Fixed Income')).toBeInTheDocument();
     expect(screen.getByText('Other')).toBeInTheDocument();
     expect(screen.queryByText('Stocks')).not.toBeInTheDocument();

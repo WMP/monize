@@ -59,6 +59,7 @@ const mockPreferences: UserPreferences = {
   favouriteReportIds: [],
   dashboardWidgets: [],
   dashboardWidgetConfig: {},
+  hiddenTableColumns: {},
   preferredExchanges: [],
     defaultQuoteProvider: 'yahoo' as const,
     recentTransactionsLimit: 5,

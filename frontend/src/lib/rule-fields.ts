@@ -9,6 +9,8 @@
  * and fails when the two differ; change the backend first and mirror it here.
  */
 import type {
+  LoanSettlementExcessPolicy,
+  LoanSettlementShortfallPolicy,
   RuleActionType,
   RuleField,
   RuleOperator,
@@ -27,7 +29,8 @@ export type RuleValueKind =
   | 'enum'
   | 'currency'
   | 'boolean'
-  | 'dayOfMonth';
+  | 'dayOfMonth'
+  | 'date';
 
 export const RULE_OPERATORS = [
   'eq',
@@ -117,6 +120,7 @@ export const RULE_CONDITION_FIELDS: Readonly<Record<RuleField, RuleFieldSpec>> =
   weekday: { kind: 'enum', operators: ['eq', 'in'], enumValues: RULE_WEEKDAYS },
   status: { kind: 'enum', operators: ['eq', 'neq', 'in'], enumValues: RULE_TRANSACTION_STATUSES },
   hasAttachment: { kind: 'boolean', operators: ['eq'] },
+  date: { kind: 'date', operators: ['eq', 'lt', 'lte', 'gt', 'gte', 'between'] },
 };
 
 export const RULE_FIELDS = Object.keys(RULE_CONDITION_FIELDS) as RuleField[];
@@ -137,7 +141,42 @@ export const RULE_ACTION_TYPES = [
   'request_ai_review',
   'set_payee_from_text',
   'set_description',
+  'convert_to_transfer',
+  'split',
 ] as const satisfies readonly RuleActionType[];
+
+/**
+ * The action that settles a bank debit against a scheduled loan installment.
+ * The server accepts it on every save path but keeps it off its mirrored
+ * `RULE_ACTION_TYPES` until the assistant and MCP name form lands, so the
+ * editor lists it beside that list (`ACCEPTED_RULE_ACTION_TYPES`).
+ */
+export const SETTLE_LOAN_INSTALLMENT = 'settle_loan_installment' as const satisfies RuleActionType;
+
+/** Every action type a stored rule may carry: the mirrored list plus the loan settlement. */
+export const ACCEPTED_RULE_ACTION_TYPES = [
+  ...RULE_ACTION_TYPES,
+  SETTLE_LOAN_INSTALLMENT,
+] as const satisfies readonly RuleActionType[];
+
+/** What a settlement does with a row that paid more than the priced installment. */
+export const LOAN_SETTLEMENT_EXCESS_POLICIES = ['extra_principal', 'refuse'] as const satisfies readonly LoanSettlementExcessPolicy[];
+/** What a settlement does with a row that paid less than the base installment. */
+export const LOAN_SETTLEMENT_SHORTFALL_POLICIES = ['refuse', 'interest_first'] as const satisfies readonly LoanSettlementShortfallPolicy[];
+
+/** The inputs a `loan_not_configured` refusal can name as missing (`LoanSettlementMissingInput`). */
+export const LOAN_SETTLEMENT_MISSING_INPUTS = [
+  'scheduledPayment',
+  'managedTemplate',
+  'scheduleCalendar',
+  'interestCategory',
+  'amortizationMonths',
+  'paymentStartDate',
+  'paymentFrequency',
+  'originalPrincipal',
+  'rate',
+  'payment',
+] as const;
 
 export const RULE_TRIGGERS = ['create', 'import'] as const satisfies readonly RuleTrigger[];
 
@@ -151,13 +190,20 @@ export const MAX_RULE_TAG_IDS = 20;
 export const MIN_RULE_AI_INSTRUCTION_LENGTH = 1;
 export const MAX_RULE_AI_INSTRUCTION_LENGTH = 1000;
 export const MAX_RULE_AI_REVIEW_ACTIONS = 1;
+export const MAX_RULE_STRUCTURAL_ACTIONS = 1;
 export const MIN_RULE_TEMPLATE_LENGTH = 1;
 export const MAX_RULE_PAYEE_TEMPLATE_LENGTH = 200;
 export const MAX_RULE_DESCRIPTION_TEMPLATE_LENGTH = 500;
+export const MIN_RULE_SPLIT_PARTS = 2;
+export const MAX_RULE_SPLIT_PARTS = 10;
+export const MIN_RULE_SPLIT_DESCRIPTION_LENGTH = 1;
+export const MAX_RULE_SPLIT_DESCRIPTION_LENGTH = 200;
 export const MAX_RULE_TEXT_LENGTH = 500;
 export const MAX_RULE_VALUE_LIST = 50;
 export const MIN_RULE_NAME_LENGTH = 1;
 export const MAX_RULE_NAME_LENGTH = 100;
+// `transaction-rules.limits.ts`: either side of a settlement's due-date window.
+export const MAX_LOAN_SETTLEMENT_WINDOW_DAYS = 31;
 
 export const RULE_VALIDATION_CODES = [
   'INVALID_SHAPE',
@@ -183,6 +229,7 @@ export const RULE_VALIDATION_CODES = [
   'NO_ACTIONS',
   'TOO_MANY_ACTIONS',
   'DUPLICATE_ACTION',
+  'CONFLICTING_ACTIONS',
   'INVALID_CAPTURE',
   'TOO_MANY_CAPTURES',
   'DUPLICATE_CAPTURE',
@@ -203,5 +250,5 @@ export function isRuleOperator(value: unknown): value is RuleOperator {
 }
 
 export function isRuleActionType(value: unknown): value is RuleActionType {
-  return typeof value === 'string' && (RULE_ACTION_TYPES as readonly string[]).includes(value);
+  return typeof value === 'string' && (ACCEPTED_RULE_ACTION_TYPES as readonly string[]).includes(value);
 }

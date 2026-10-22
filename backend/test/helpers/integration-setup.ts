@@ -1,20 +1,18 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { Global, Module } from "@nestjs/common";
-import type { Provider } from "@nestjs/common";
+import type { Provider, Type } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule } from "@nestjs/config";
 import { I18nService } from "nestjs-i18n";
 import { DataSource } from "typeorm";
+import { POLISH_BOND_ADAPTER } from "@/bonds/adapters/pl/index";
+import { FIXTURE_CATALOG } from "@/bonds/adapters/pl/pl-test-input";
+import type { BondCatalogService } from "@/bonds/bond-catalog.service";
+import { bondProgramId } from "@/bonds/bond-instrument-id";
+import { withScopedDb } from "@/common/db/scoped-db";
+import { withSystemContext } from "@/common/db/with-context";
 import { User } from "@/users/entities/user.entity";
 import { NetWorthService } from "@/net-worth/net-worth.service";
-import { ScheduledTransactionsModule } from "@/scheduled-transactions/scheduled-transactions.module";
-import { ScheduledTransaction } from "@/scheduled-transactions/entities/scheduled-transaction.entity";
-import { ScheduledTransactionSplit } from "@/scheduled-transactions/entities/scheduled-transaction-split.entity";
-import { ScheduledTransactionOverride } from "@/scheduled-transactions/entities/scheduled-transaction-override.entity";
-import { Account } from "@/accounts/entities/account.entity";
-import { ScheduledTransactionsService } from "@/scheduled-transactions/scheduled-transactions.service";
-import { ScheduledTransactionOverrideService } from "@/scheduled-transactions/scheduled-transaction-override.service";
-import { ScheduledTransactionLoanService } from "@/scheduled-transactions/scheduled-transaction-loan.service";
 import type { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import * as bcrypt from "bcryptjs";
 import {
@@ -24,7 +22,9 @@ import {
 } from "./rls-setup";
 import { settlePendingPriceWrites } from "@/securities/security-price.service";
 import { settlePendingHistoryWrites } from "@/action-history/action-history.service";
+import { settlePendingAccountRecalcs } from "@/net-worth/net-worth.service";
 import { DatabaseStorageProvider } from "@/attachments/storage/database-storage.provider";
+import type { AttachmentStorageProvider } from "@/attachments/storage/attachment-storage.interface";
 import { ATTACHMENT_STORAGE_PROVIDER } from "@/attachments/storage/attachment-storage.interface";
 import { AttachmentStorageRegistry } from "@/attachments/storage/attachment-storage.registry";
 import { CLUSTER_MODE } from "@/common/cluster/cluster-mode";
@@ -109,35 +109,17 @@ class TestI18nModule {}
 class TestClusterModule {}
 
 /**
- * What the real `ScheduledTransactionsModule` lets other modules inject, read
- * off its own metadata rather than restated here.
- *
- * The stub below stands in for that module, so its export list is a claim about
- * the real one -- and a hand-written copy of a list only fails when a consumer
- * appears. Issue #1247 added `ScheduledEffectiveAmountService` and
- * `ScheduledOccurrenceService` to those exports and gave
- * `NotificationsModule`/`BudgetsModule` a dependency on them; the stub went on
- * compiling until those consumers were reached, and then eighteen suites failed
- * with "argument ScheduledOccurrenceService at index [5] is available in the
- * NotificationsModule module". Derived, a new export is stubbed the day it
- * exists.
- */
-const SCHEDULED_TRANSACTIONS_EXPORTS: unknown[] =
-  Reflect.getMetadata("exports", ScheduledTransactionsModule) ?? [];
-
-/** Stubbed but deliberately not exported: internal collaborators the real module keeps to itself. */
-const SCHEDULED_TRANSACTIONS_INTERNALS: unknown[] = [
-  ScheduledTransactionOverrideService,
-  ScheduledTransactionLoanService,
-];
-
-/**
  * Creates a NestJS TestingModule wired to a real PostgreSQL database.
  * Uses `synchronize: true` and `dropSchema: true` so each test suite
  * starts with a clean schema derived from entity metadata.
  *
- * Replaces ScheduledTransactionsModule with a stub to break the
- * circular dependency (Transactions -> Accounts -> ScheduledTransactions -> Transactions).
+ * The module graph is the production one: `ScheduledTransactionsModule` is the
+ * real module wherever a suite's imports reach it, resolved through the same
+ * `forwardRef` edges the app uses (Transactions -> Accounts ->
+ * ScheduledTransactions -> Transactions). It used to be replaced by a stub
+ * whose services were empty objects, so the real `post()`, the auto-post cron
+ * and every consumer of the occurrence services could not run in any suite
+ * (A26-M42).
  *
  * NetWorthService.triggerDebouncedRecalc is mocked to a no-op to prevent
  * timer leaks in tests.
@@ -163,15 +145,7 @@ export async function createIntegrationModule(
   modules: any[],
   { typeOrmOptions = {}, applyRls = true }: IntegrationModuleOptions = {},
 ): Promise<TestingModule> {
-  if (!SCHEDULED_TRANSACTIONS_EXPORTS.includes(ScheduledTransactionsService)) {
-    // A floor on the derivation: an empty or unrecognisable metadata read would
-    // otherwise produce a stub that exports nothing and blame every consumer.
-    throw new Error(
-      "could not read ScheduledTransactionsModule's exports -- the integration stub would export nothing",
-    );
-  }
-
-  const moduleBuilder = Test.createTestingModule({
+  const module = await Test.createTestingModule({
     imports: [
       ConfigModule.forRoot({ isGlobal: true }),
       TestI18nModule,
@@ -182,31 +156,7 @@ export async function createIntegrationModule(
       } as never),
       ...modules,
     ],
-  })
-    // Replace ScheduledTransactionsModule to break circular dependency.
-    // AccountsModule imports ScheduledTransactionsModule (forwardRef),
-    // which imports TransactionsModule (forwardRef), causing undefined
-    // in the circular chain. We stub it with just the entity registrations
-    // and mock services.
-    .overrideModule(ScheduledTransactionsModule)
-    .useModule({
-      module: class StubScheduledTransactionsModule {},
-      imports: [
-        TypeOrmModule.forFeature([
-          ScheduledTransaction,
-          ScheduledTransactionSplit,
-          ScheduledTransactionOverride,
-          Account,
-        ]),
-      ],
-      providers: [
-        ...SCHEDULED_TRANSACTIONS_EXPORTS,
-        ...SCHEDULED_TRANSACTIONS_INTERNALS,
-      ].map((token) => ({ provide: token as never, useValue: {} })),
-      exports: SCHEDULED_TRANSACTIONS_EXPORTS as never[],
-    });
-
-  const module = await moduleBuilder.compile();
+  }).compile();
 
   // Bring the synchronize-built schema up to the real database's shape: runtime
   // role + grants, RLS helper functions and policies, updated_at triggers (T1).
@@ -223,7 +173,7 @@ export async function createIntegrationModule(
   // than returning undefined. The catch is narrow on purpose: a
   // NetWorthService that is present resolves, so this only swallows the
   // "nobody asked for it" case and never a broken provider.
-  let netWorthService: NetWorthService | null = null;
+  let netWorthService: NetWorthService | null;
   try {
     netWorthService = module.get(NetWorthService, { strict: false });
   } catch {
@@ -262,8 +212,111 @@ export async function cleanTables(
   // callers, so a history INSERT can be in flight against the `users` row
   // this truncate is about to remove.
   await settlePendingHistoryWrites();
+  // And for account recomputes: the post-import pass starts one per account
+  // without awaiting it, and its reads of `transactions` deadlocked against
+  // this truncate (ofx-import-fitid, "deadlock detected" in cleanTables).
+  await settlePendingAccountRecalcs();
   const tables = tableNames.join(", ");
   await dataSource.query(`TRUNCATE ${tables} CASCADE`);
+}
+
+/**
+ * Runs a DELETE on `bond_instruments` with its immutability trigger disabled,
+ * for a test that has to prove another guard (a foreign key) or tidy a row it
+ * created. The trigger is always re-enabled, whether or not the DELETE fails.
+ * Sequential suites only: DISABLE TRIGGER takes a table lock and the setting is
+ * visible to every connection while it lasts.
+ */
+export async function deleteBondInstrumentBypassingImmutability(
+  dataSource: DataSource,
+  deleteSql: string,
+  params: unknown[],
+): Promise<void> {
+  await dataSource.query(
+    `ALTER TABLE bond_instruments DISABLE TRIGGER trg_bond_instruments_immutable`,
+  );
+  try {
+    await dataSource.query(deleteSql, params);
+  } finally {
+    await dataSource.query(
+      `ALTER TABLE bond_instruments ENABLE TRIGGER trg_bond_instruments_immutable`,
+    );
+  }
+}
+
+/**
+ * Stores the curated October 2026 series (the unit tests' fixture terms, which
+ * the adapter no longer ships: spec bond-program-securities.md 2.6) through the
+ * catalog's `storeEntry`, as a fetch would, with the benchmark rows they read.
+ * `seriesCodes` limits it to those series; absent, all eight. The program's
+ * currency must exist or is created inactive by the catalog.
+ */
+export async function storeFixtureSeries(
+  dataSource: DataSource,
+  catalog: BondCatalogService,
+  seriesCodes?: readonly string[],
+): Promise<void> {
+  await withSystemContext(() =>
+    withScopedDb(dataSource, async (m) => {
+      for (const entry of FIXTURE_CATALOG) {
+        const code = (entry.terms as { instrument: { seriesCode: string } })
+          .instrument.seriesCode;
+        if (seriesCodes && !seriesCodes.includes(code)) continue;
+        const outcome = await catalog.storeEntry(m, entry);
+        if (outcome.kind !== "inserted" && outcome.kind !== "unchanged") {
+          throw new Error(
+            `Fixture series ${code} was not stored: ${outcome.kind}`,
+          );
+        }
+      }
+      await catalog.seedBenchmarkSeries([POLISH_BOND_ADAPTER]);
+    }),
+  );
+}
+
+/**
+ * Inserts a bond program (the product a series belongs to) under its
+ * deterministic id and returns the id, for a test that inserts a bond
+ * instrument by hand: `bond_instruments.bond_program_id` is NOT NULL. A program
+ * already there is left as it is (`bond_programs` is insert only). The currency
+ * must exist.
+ */
+export async function insertBondProgram(
+  dataSource: DataSource,
+  programCode = "EDO",
+  currencyCode = "PLN",
+  issuerCountryCode = "PL",
+  issuerCode = "PL_MF",
+): Promise<string> {
+  const id = bondProgramId(issuerCountryCode, issuerCode, programCode);
+  await dataSource.query(
+    `INSERT INTO bond_programs (id, issuer_country_code, issuer_code, program_code, currency_code)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (issuer_country_code, issuer_code, program_code) DO NOTHING`,
+    [id, issuerCountryCode, issuerCode, programCode, currencyCode],
+  );
+  return id;
+}
+
+/**
+ * Runs a DELETE on `bond_programs` with its immutability trigger disabled, as
+ * `deleteBondInstrumentBypassingImmutability` does for instruments.
+ */
+export async function deleteBondProgramBypassingImmutability(
+  dataSource: DataSource,
+  deleteSql: string,
+  params: unknown[],
+): Promise<void> {
+  await dataSource.query(
+    `ALTER TABLE bond_programs DISABLE TRIGGER trg_bond_programs_immutable`,
+  );
+  try {
+    await dataSource.query(deleteSql, params);
+  } finally {
+    await dataSource.query(
+      `ALTER TABLE bond_programs ENABLE TRIGGER trg_bond_programs_immutable`,
+    );
+  }
 }
 
 /**
@@ -394,18 +447,24 @@ function restoreRlsMode(previous: string | undefined): void {
  * class over that one provider, so a row naming any other backend resolves to
  * `null` here exactly as it would in a deployment that has not configured it.
  */
-export function attachmentStorageProviders(): Provider[] {
+export function attachmentStorageProviders(
+  options: { provider?: Type<AttachmentStorageProvider> } = {},
+): Provider[] {
+  // A suite whose subject is an external provider (`local` over a real
+  // directory) names the class here, so the token and the registry still come
+  // from this one list rather than a second copy in the suite.
+  const bound = options.provider ?? DatabaseStorageProvider;
   return [
-    DatabaseStorageProvider,
+    bound,
     {
       provide: ATTACHMENT_STORAGE_PROVIDER,
-      useExisting: DatabaseStorageProvider,
+      useExisting: bound,
     },
     {
       provide: AttachmentStorageRegistry,
-      useFactory: (database: DatabaseStorageProvider) =>
-        new AttachmentStorageRegistry(database, [database]),
-      inject: [DatabaseStorageProvider],
+      useFactory: (provider: AttachmentStorageProvider) =>
+        new AttachmentStorageRegistry(provider, [provider]),
+      inject: [bound],
     },
   ];
 }

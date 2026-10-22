@@ -119,6 +119,8 @@
     "currencyLabel": "Valuta",
     "currencyNotConfigured": "{code} — non è tra le tue valute",
     "quoteProviderLabel": "Fornitore quotazioni",
+    "skipPriceUpdatesLabel": "Disattiva gli aggiornamenti automatici dei prezzi",
+    "skipPriceUpdatesHelp": "Monize non recupererà i prezzi per questo titolo. Usalo per un titolo che nessun fornitore può quotare; i prezzi inseriti da te continuano a contare. Scegliere un altro fornitore di quotazioni o un altro ID strumento MSN riattiva gli aggiornamenti.",
     "msnIdLabel": "ID strumento MSN (avanzato)",
     "lookupProviderAriaLabel": "Cerca fornitore",
     "lookupButton": "Cerca",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "Motore obbligazionario"
     },
     "types": {
       "select": "Seleziona tipo...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "Elimina",
       "deleteSuccess": "Classe di attivo «{name}» eliminata",
       "deleteFailed": "Impossibile eliminare la classe di attivo «{name}»"
-    }
+    },
+    "bondFetchAction": "Recupera {code} dalla fonte ufficiale",
+    "bondFetching": "Recupero di {code} dall'emittente e dei relativi tassi di riferimento. Può richiedere fino a un minuto.",
+    "bondFetchFailed": "Impossibile recuperare la serie.",
+    "bondCurrencyLocked": "Questo titolo è collegato a un tipo di obbligazione in {linkedCurrency}. Reimposta la valuta su {linkedCurrency} oppure scollega prima il tipo di obbligazione (scollegare rimuove i suoi prezzi calcolati).",
+    "bondProgramLabel": "Tipo di obbligazione",
+    "bondProgramNone": "Non collegata",
+    "bondProgramCurrent": "Tipo di obbligazione collegato",
+    "bondProgramLoading": "Caricamento dei tipi di obbligazione...",
+    "bondProgramLoadFailed": "Impossibile caricare i tipi di obbligazione, quindi non si può ancora collegare un tipo di obbligazione.",
+    "bondProgramRetry": "Riprova",
+    "bondNoPrograms": "Il catalogo obbligazioni non contiene ancora alcun tipo di obbligazione.",
+    "bondAutoFetchLabel": "Recupera automaticamente le nuove serie di questo tipo di obbligazione",
+    "bondAutoFetchHelp": "Se attivo, Monize legge ogni giorno dalla fonte ufficiale le nuove serie di questo tipo di obbligazione, così puoi registrare un acquisto senza recuperare prima la serie.",
+    "bondCountryLabel": "Paese",
+    "bondCountryOther": "Altro",
+    "bondCountryOtherInfo": "Il supporto per le obbligazioni di altri Paesi può essere richiesto sul <link>GitHub del progetto</link>."
   },
   "priceForm": {
     "dateLabel": "Data",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinvestimento plusvalenza a lungo termine",
       "CAPITAL_GAIN_SHORT": "Plusvalenza a breve termine",
       "CAPITAL_GAIN_LONG": "Plusvalenza a lungo termine",
-      "REDEEM": "Rimborso CD/obbligazione"
+      "REDEEM": "Rimborso CD/obbligazione",
+      "RETURN_OF_CAPITAL": "Rimborso di capitale"
     },
     "toasts": {
       "loadHistoryFailed": "Caricamento storico non riuscito",
@@ -340,6 +360,7 @@
     "nameRequired": "Il nome è obbligatorio",
     "nameMax": "Il nome deve avere al massimo 255 caratteri",
     "currencyRequired": "La valuta è obbligatoria",
+    "bondProgramRequired": "Il tipo di obbligazione è obbligatorio",
     "descriptionMax": "La descrizione non può superare i 5000 caratteri"
   },
   "priceValidation": {

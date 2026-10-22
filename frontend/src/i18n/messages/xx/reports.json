@@ -316,6 +316,7 @@
     "totalInflows": "[XX-Total Inflows-XX]",
     "totalOutflows": "[XX-Total Outflows-XX]",
     "netCashFlow": "[XX-Net Cash Flow-XX]",
+    "notAvailable": "[XX-N/A-XX]",
     "monthlyCashFlow": "[XX-Monthly Cash Flow-XX]",
     "inflowsByCategory": "[XX-Inflows by Category-XX]",
     "outflowsByCategory": "[XX-Outflows by Category-XX]",
@@ -764,6 +765,7 @@
     "totalValue": "[XX-Total Value-XX]",
     "costBasis": "[XX-Cost Basis-XX]",
     "totalGainLoss": "[XX-Total Gain/Loss-XX]",
+    "gainPartialCaption": "[XX-Over priced holdings only-XX]",
     "return": "[XX-Return-XX]",
     "viewHoldings": "[XX-Holdings-XX]",
     "viewAllocation": "[XX-Allocation-XX]",
@@ -821,6 +823,7 @@
     "actionCapitalGainShort": "[XX-Short-Term Capital Gain-XX]",
     "actionCapitalGainLong": "[XX-Long-Term Capital Gain-XX]",
     "actionRedeem": "[XX-Redeem CD/Bond-XX]",
+    "actionReturnOfCapital": "[XX-Return of Capital-XX]",
     "colCommission": "[XX-Commission-XX]",
     "colPriceCurrency": "[XX-Price Currency-XX]",
     "colAmountCurrency": "[XX-Amount Currency-XX]",
@@ -1146,6 +1149,11 @@
     "vsMonth": "[XX-vs {month}-XX]",
     "inMonth": "[XX-{amount} in {month}-XX]",
     "netWorthTotal": "[XX-Total: {amount}-XX]",
+    "netWorthSummaryPartial": "[XX-Your net worth in {currentMonth} was <strong>{netWorth}</strong>. The change compared to {previousMonth} cannot be worked out because no exchange rate is available for {pairs}; add one on the Currencies page.-XX]",
+    "pdfPartialSuffix": "[XX-{amount} (partial)-XX]",
+    "pdfNote": "[XX-Note-XX]",
+    "pdfNotAvailable": "[XX-N/A-XX]",
+    "pdfPartialNote": "[XX-Partial total: no exchange rate for {pairs}.-XX]",
     "netWorthSummary": "[XX-Your net worth in {currentMonth} was <strong>{netWorth}</strong>, which was <delta>{changeAmount}</delta> compared to {previousMonth}.-XX]",
     "pdfTitle": "[XX-Monthly Comparison-XX]",
     "pdfSubtitle": "[XX-{current} vs {previous}-XX]",
@@ -1190,7 +1198,15 @@
     "colMonth": "[XX-Month-XX]",
     "colAssets": "[XX-Assets-XX]",
     "colLiabilities": "[XX-Liabilities-XX]",
-    "colNetWorth": "[XX-Net Worth-XX]"
+    "colNetWorth": "[XX-Net Worth-XX]",
+    "barStyle": "[XX-Bar style-XX]",
+    "barStyleNetWorth": "[XX-Net worth-XX]",
+    "barStyleAccountType": "[XX-By account type-XX]",
+    "notAvailable": "[XX-N/A-XX]",
+    "colNote": "[XX-Note-XX]",
+    "partialMonthNote": "[XX-Partial: no exchange rate for {pairs}-XX]",
+    "pdfPartialNote": "[XX-Partial total: no exchange rate for {pairs}. Add one on the Currencies page.-XX]",
+    "partialMonth": "[XX-Not shown: some amounts in this month could not be converted, so its net worth is unknown.-XX]"
   },
   "portfolioValue": {
     "highestValue": "[XX-Highest Value-XX]",
@@ -1198,10 +1214,10 @@
     "valueChange": "[XX-Value Change-XX]",
     "investedValueChangeTooltip": "[XX-What the securities are worth at the end of the period, less what they were worth at the start: the last point on the chart less the first. Uninvested cash is left out.-XX]",
     "netInvested": "[XX-Net Invested-XX]",
-    "netInvestedTooltip": "[XX-What was paid into the securities over the period, less what came out of them through sales and transfers of shares. Cash deposited or withdrawn is not counted.-XX]",
+    "netInvestedTooltip": "[XX-What was paid into the securities over the period, less what came out of them through sales and transfers of shares. Distributions reinvested in shares count as paid in. Cash deposited or withdrawn is not counted.-XX]",
     "investmentIncome": "[XX-Dividends and Interest-XX]",
     "investmentIncomeLine": "[XX-Dividends and interest {amount}-XX]",
-    "investmentIncomeTooltip": "[XX-Dividends, interest and capital-gain distributions the securities paid over the period. Value Change, less Net Invested, plus these, is the Investment Result.-XX]",
+    "investmentIncomeTooltip": "[XX-Dividends, interest and capital-gain distributions the securities paid over the period. Distributions reinvested in shares count here as cash ones do. Value Change, less Net Invested, plus these, is the Investment Result.-XX]",
     "investmentResult": "[XX-Investment Result-XX]",
     "investmentReturn": "[XX-Investment Return-XX]",
     "investmentResultTooltip": "[XX-What your investments earned: the change in what the securities are worth, with purchases, sales, deposits, withdrawals and uninvested cash taken out, and dividends and interest counted in.-XX]",
@@ -1276,6 +1292,7 @@
     "colDate": "[XX-Date-XX]",
     "colShares": "[XX-Shares-XX]",
     "colPrice": "[XX-Price-XX]",
+    "returnOfCapitalRow": "[XX-Return of capital beyond cost basis-XX]",
     "pdfTitle": "[XX-Realized Gains Report-XX]",
     "pdfSubtitle": "[XX-{count} securities | Net gain: {gain}-XX]",
     "csvColSecurity": "[XX-Security-XX]",
@@ -1848,6 +1865,13 @@
   "foreignCurrencyFees": {
     "noEligibleAccounts": "[XX-No accounts have a foreign-transaction fee configured. Set a fee percentage on an account to track its foreign currency fees here.-XX]"
   },
+  "partialData": {
+    "notice": "[XX-Some figures are partial: {count, plural, one {# amount could not be converted into {displayCurrency} and is} other {# amounts could not be converted into {displayCurrency} and are}} left out. No rate is available for {currencies}; add one on the Currencies page.-XX]",
+    "noticeExcluded": "[XX-Some figures are partial: {count, plural, one {# amount could not be worked out and is} other {# amounts could not be worked out and are}} left out.-XX]",
+    "pdfNote": "[XX-Partial total: no exchange rate for {currencies}-XX]",
+    "pdfNoteExcluded": "[XX-Partial total: {count, plural, one {# amount} other {# amounts}} left out-XX]",
+    "pdfSuffix": "[XX-(partial)-XX]"
+  },
   "sankey": {
     "help": "[XX-Money that came in flows through the middle into what it was spent on, what was saved or invested, and what paid down debt. By default the report covers your open chequing, savings, cash, credit card and line of credit accounts, and a transfer between two of them is not shown. Leave a savings account out of the account filter to see what you moved into it. A credit card payment is never a debt payment: the purchases it settles are already counted as expenses.-XX]",
     "depthLabel": "[XX-Detail-XX]",
@@ -1894,5 +1918,8 @@
       "residualDeficit": "[XX-Drawn from balances-XX]",
       "unlinkedAccount": "[XX-(unlinked account)-XX]"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "[XX-Generated: {timestamp}-XX]"
   }
 }

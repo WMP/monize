@@ -53,25 +53,35 @@ export class McpFinancialSummaryResource {
           );
           const endDate = todayYMD();
 
-          const [accountSummary, monthSummary] = await Promise.all([
-            this.accountsService.getSummary(user.userId),
-            // Exclude investment-linked cash transactions so the MCP
-            // financial snapshot's income/expense totals reflect real
-            // spending -- not BUY/SELL/DIVIDEND cash movements that
-            // live in the linked cash account.
-            this.analyticsService.getSummary(
-              user.userId,
-              undefined,
-              startOfMonth,
-              endDate,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              true,
-            ),
-          ]);
+          const [accountSummary, monthSummary, monthTotals] = await Promise.all(
+            [
+              this.accountsService.getSummary(user.userId),
+              // Exclude investment-linked cash transactions so the MCP
+              // financial snapshot's income/expense totals reflect real
+              // spending -- not BUY/SELL/DIVIDEND cash movements that
+              // live in the linked cash account.
+              this.analyticsService.getSummary(
+                user.userId,
+                undefined,
+                startOfMonth,
+                endDate,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                true,
+              ),
+              // `getSummary` adds each currency's numbers as they stand; these
+              // are the same rows converted into the default currency at their
+              // own dates, withheld (null) while a pair has no rate.
+              this.analyticsService.getLlmFlowTotals(user.userId, {
+                startDate: startOfMonth,
+                endDate,
+                excludeTransfers: false,
+              }),
+            ],
+          );
 
           return {
             contents: [
@@ -84,6 +94,7 @@ export class McpFinancialSummaryResource {
                     currentMonth: {
                       period: { startDate: startOfMonth, endDate },
                       ...monthSummary,
+                      ...monthTotals,
                     },
                   },
                   null,

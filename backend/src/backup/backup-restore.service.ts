@@ -44,15 +44,21 @@ import {
   BackupData,
   BackupPasswordRequiredError,
   backupTables,
+  MAX_UNLINKED_BOND_SYMBOLS,
+  MAX_UNRECOVERED_BOND_SERIES,
   parseArtifactCompleteness,
   renameLegacyTableKeys,
   RestoreBackupInput,
   RestoreResult,
 } from "./backup-format";
+import { applyLegacyNormalizations } from "./restore-legacy-normalizations";
 import { restoreAiProviderKey } from "./ai-provider-key-transport";
 import { keyBearingExportTables } from "./export-table-queries";
 import { BackupAttachmentTransferService } from "./backup-attachment-transfer.service";
 import { BackupRestoreDatabaseService } from "./backup-restore-database.service";
+import { BackupBondSeriesRecoveryService } from "./backup-bond-series-recovery.service";
+import { BondPriceService } from "../bonds/bond-price.service";
+import { clearForeignSeriesOfUser } from "../bonds/bond-series-resolver";
 import { invalidatePortfolioSummary } from "../securities/portfolio-summary-memo";
 
 const gunzipAsync = promisify(gunzip);
@@ -80,6 +86,8 @@ export class BackupRestoreService {
     private readonly attachments: BackupAttachmentTransferService,
     private readonly db: BackupRestoreDatabaseService,
     private readonly maintenance: UserMaintenanceService,
+    private readonly bondPrices: BondPriceService,
+    private readonly bondSeries: BackupBondSeriesRecoveryService,
   ) {}
 
   /**
@@ -205,6 +213,13 @@ export class BackupRestoreService {
 
         this.warnIfArtifactIncomplete(userId, rawData);
 
+        // The bond series the file's rows reference and this catalog lacks are
+        // fetched from the official source now, before anything is deleted or
+        // staged: an external effect that cannot roll back, and a network wait
+        // that does not belong in the transaction (INV-BOND-008, "a restore of
+        // the person's own backup"). A refused fetch is recorded, never fatal.
+        const recovery = await this.bondSeries.recover(userId, references.data);
+
         // Remap every primary key in the backup to a fresh UUID (and rewrite all
         // references to those keys, including ids embedded in JSONB columns) so the
         // restore behaves as if the backup came from an entirely separate system.
@@ -218,8 +233,8 @@ export class BackupRestoreService {
         // form, or a reference to a row the file does not carry, passed through
         // untouched. `resolveRestoreReferences` above is what closes both, and
         // the Phase-3 UPDATEs are additionally scoped to this user's rows.
-        const idRemap = this.buildBackupIdRemap(references.data);
-        const data = this.remapBackupIds(references.data, idRemap);
+        const idRemap = this.buildBackupIdRemap(recovery.data);
+        const data = this.remapBackupIds(recovery.data, idRemap);
         this.rehashGemSignalFingerprints(data, idRemap);
 
         this.logger.log(`Starting backup restore for user ${userId}`);
@@ -302,6 +317,26 @@ export class BackupRestoreService {
                 // restoring the tables with FK references to currencies(code).
                 await this.db.ensureCurrenciesExist(manager, data, userId);
 
+                // Phase 2a': a security's bond link survives only where this
+                // deployment's catalog holds the instrument; else it is restored
+                // unlinked (the table is reference data, not part of a backup).
+                const { counts: severedCatalogLinks, severed } =
+                  await this.db.severUnavailableCatalogLinks(manager, data);
+                const unlinkedCount =
+                  severedCatalogLinks["securities.bond_program_id"] ?? 0;
+                // Transactions whose series this deployment's catalog lacks are
+                // restored without one (their lots are inferred from the date).
+                const unlinkedSeriesCount =
+                  severedCatalogLinks[
+                    "investment_transactions.bond_instrument_id"
+                  ] ?? 0;
+                const unlinkedSymbols = (
+                  severed["securities.bond_program_id"] ?? []
+                )
+                  .map((row) => row.symbol)
+                  .filter((symbol): symbol is string => symbol !== null)
+                  .slice(0, MAX_UNLINKED_BOND_SYMBOLS);
+
                 // Phase 2b: insert every backed-up table in FK-safe order. The order,
                 // the row-count key and whether user_id is forced live in
                 // RESTORE_PLAN, which restore-plan.spec.ts checks against the schema's
@@ -330,23 +365,61 @@ export class BackupRestoreService {
                   );
                 }
 
+                // Phase 2c: rows from an artifact older than a migration that
+                // changed what a value means get that migration's backfill; the
+                // migration itself ran once, long before these rows arrived.
+                await applyLegacyNormalizations(manager, userId, data);
+
                 // Phase 3: Restore deferred FK columns that were stripped during insert
                 // to avoid circular/forward reference violations.
                 await this.db.restoreDeferredFkColumns(manager, data, userId);
 
+                // INV-BOND-007: whatever the file said, a row keeps a series
+                // only of its own security's program.
+                await clearForeignSeriesOfUser(manager, userId);
+
+                // The staged objects now have their metadata rows: drop their
+                // upload intents in the same transaction, so both commit or both
+                // roll back. Throws if the sweeper claimed one first.
+                await this.attachments.clearStagingIntents(manager, stagedKeys);
+
                 this.logger.log(`Backup restore completed for user ${userId}`);
-                // `skippedAttachments` and `unusableAiProviderKeys` are reported
-                // beside `restored`, never inside it: the client sums `restored`'s
-                // values to show a row total, and neither a count of rows that were
-                // deliberately not written nor a count of rows whose contents did not
-                // survive belongs in that sum. Both are omitted at zero so "no field"
-                // and "nothing to report" are the same answer.
+                // `skippedAttachments`, `unusableAiProviderKeys`,
+                // `unlinkedBondSecurities` and `unrecoveredBondSeries` are
+                // reported beside `restored`, never
+                // inside it: the client sums `restored`'s values to show a row
+                // total, and neither a count of rows that were deliberately not
+                // written, a count of rows whose contents did not survive nor a
+                // count of links dropped belongs in that sum. All are omitted at
+                // zero so "no field" and "nothing to report" are the same answer.
                 return {
                   message: "Backup restored successfully",
                   restored,
                   ...(skippedAttachments > 0 ? { skippedAttachments } : {}),
                   ...(unusableAiProviderKeys > 0
                     ? { unusableAiProviderKeys }
+                    : {}),
+                  ...(unlinkedCount > 0
+                    ? {
+                        unlinkedBondSecurities: {
+                          count: unlinkedCount,
+                          symbols: unlinkedSymbols,
+                        },
+                      }
+                    : {}),
+                  ...(unlinkedSeriesCount > 0
+                    ? { unlinkedBondSeries: { count: unlinkedSeriesCount } }
+                    : {}),
+                  ...(recovery.unrecovered.length > 0
+                    ? {
+                        unrecoveredBondSeries: {
+                          count: recovery.unrecovered.length,
+                          series: recovery.unrecovered.slice(
+                            0,
+                            MAX_UNRECOVERED_BOND_SERIES,
+                          ),
+                        },
+                      }
                     : {}),
                 };
               }),
@@ -362,6 +435,15 @@ export class BackupRestoreService {
             // A restore replaces the accounts, holdings and prices the memoized
             // portfolio valuation was computed from.
             invalidatePortfolioSummary(userId);
+            // The file's bond_engine price rows were computed by another
+            // deployment's catalog and engine; price every linked security
+            // here from this one rather than trusting them until the cron.
+            await this.bondPrices.recomputeLinkedSecurities(
+              userId,
+              (backupTables(data).securities ?? []).map((row) =>
+                typeof row.id === "string" ? row.id : null,
+              ),
+            );
             return result;
           })
           .catch(async (error) => {

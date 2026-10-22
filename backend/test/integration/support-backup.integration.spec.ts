@@ -3,11 +3,13 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule } from "@nestjs/config";
 import { DataSource } from "typeorm";
 import { randomUUID } from "crypto";
+import { BondPriceService } from "@/bonds/bond-price.service";
 import { BackupService } from "@/backup/backup.service";
 import { BackupExportService } from "@/backup/backup-export.service";
 import { BackupRestoreService } from "@/backup/backup-restore.service";
 import { BackupAttachmentTransferService } from "@/backup/backup-attachment-transfer.service";
 import { BackupRestoreDatabaseService } from "@/backup/backup-restore-database.service";
+import { BackupBondSeriesRecoveryService } from "@/backup/backup-bond-series-recovery.service";
 import { SupportBackupService } from "@/backup/support-backup/support-backup.service";
 import {
   ALWAYS_EXCLUDED_TABLES,
@@ -57,6 +59,24 @@ describe("Support backup (integration)", () => {
         // wiring is the thing under test.
         BackupExportService,
         BackupRestoreService,
+        // The restore's bond price recompute is not under test here.
+        {
+          provide: BondPriceService,
+          useValue: {
+            recomputeSecurity: async () => ({}),
+            recomputeLinkedSecurities: async () => undefined,
+          },
+        },
+        // The restore's bond series recovery finds nothing to recover here.
+        {
+          provide: BackupBondSeriesRecoveryService,
+          useValue: {
+            recover: async (_userId: string, data: unknown) => ({
+              data,
+              unrecovered: [],
+            }),
+          },
+        },
         BackupAttachmentTransferService,
         BackupRestoreDatabaseService,
         // Real, not doubles: the restore takes a maintenance lease against the

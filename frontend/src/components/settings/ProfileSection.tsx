@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -52,7 +52,7 @@ export function ProfileSection({ user, onUserUpdated }: ProfileSectionProps) {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     formState: { errors },
   } = useForm<ProfileFormData>({
@@ -65,7 +65,7 @@ export function ProfileSection({ user, onUserUpdated }: ProfileSectionProps) {
     },
   });
 
-  const watchedEmail = watch('email');
+  const watchedEmail = useWatch({ control, name: 'email' });
   const isEmailChanged = watchedEmail !== user.email;
 
   const onSubmit = async (formData: ProfileFormData) => {

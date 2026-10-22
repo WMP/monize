@@ -77,6 +77,47 @@ interface PayoffScheduleItem {
  */
 type SchedulePoint = Omit<PayoffScheduleItem, 'axisKey'>;
 
+interface DebtPayoffTooltipProps {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; color: string; dataKey: string }>;
+  label?: string;
+  payoffSchedule: PayoffScheduleItem[];
+  formatCurrency: (value: number) => string;
+  t: ReturnType<typeof useTranslations<'reports'>>;
+}
+
+function DebtPayoffTooltip({ active, payload, label, payoffSchedule, formatCurrency, t }: DebtPayoffTooltipProps) {
+  if (active && payload && payload.length) {
+    // Check if this point is projected. `label` is the axis KEY recharts was
+    // given, so the lookup is on that; the heading prints the month back.
+    const chartData = payoffSchedule.find((item) => item.axisKey === label);
+    const isProjected = chartData?.isProjected ?? false;
+    // Deduplicate entries that overlap at the transition point
+    const seen = new Set<string>();
+    const deduped = payload.filter((entry) => {
+      if (entry.value === undefined || entry.value === null) return false;
+      const key = entry.name;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+        <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">
+          {label === undefined ? '' : axisTickLabel(label)}{' '}
+          {isProjected && <span className="text-xs text-blue-500 dark:text-blue-400">{t('debtPayoff.projected')}</span>}
+        </p>
+        {deduped.map((entry, index) => (
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            {entry.name}: {formatCurrency(entry.value)}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
+
 const ACCOUNT_STORAGE_KEY = 'monize-reports-debt-payoff-timeline-account';
 
 export function DebtPayoffTimelineReport() {
@@ -227,9 +268,10 @@ export function DebtPayoffTimelineReport() {
             transactions,
             rateChanges,
             interestTransactions,
+            todayYmd,
           )
         : null,
-    [selectedAccount, transactions, rateChanges, interestTransactions],
+    [selectedAccount, transactions, rateChanges, interestTransactions, todayYmd],
   );
 
   // The count of payments the borrower actually made. Derived from the payment
@@ -533,38 +575,6 @@ export function DebtPayoffTimelineReport() {
     [distributionData],
   );
 
-  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string; dataKey: string }>; label?: string }) => {
-    if (active && payload && payload.length) {
-      // Check if this point is projected. `label` is the axis KEY recharts was
-      // given, so the lookup is on that; the heading prints the month back.
-      const chartData = payoffSchedule.find((item) => item.axisKey === label);
-      const isProjected = chartData?.isProjected ?? false;
-      // Deduplicate entries that overlap at the transition point
-      const seen = new Set<string>();
-      const deduped = payload.filter((entry) => {
-        if (entry.value === undefined || entry.value === null) return false;
-        const key = entry.name;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-      return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-            {label === undefined ? '' : axisTickLabel(label)}{' '}
-            {isProjected && <span className="text-xs text-blue-500 dark:text-blue-400">{t('debtPayoff.projected')}</span>}
-          </p>
-          {deduped.map((entry, index) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {formatCurrency(entry.value)}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
     // The table's fifth column held the installment amount under a "Payments
@@ -779,7 +789,15 @@ export function DebtPayoffTimelineReport() {
                       tickFormatter={formatCurrencyAxis}
                       tick={{ fontSize: 12 }}
                     />
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip
+                      content={
+                        <DebtPayoffTooltip
+                          payoffSchedule={payoffSchedule}
+                          formatCurrency={formatCurrency}
+                          t={t}
+                        />
+                      }
+                    />
                     <Area
                       type="monotone"
                       dataKey="historicalBalance"
@@ -837,7 +855,15 @@ export function DebtPayoffTimelineReport() {
                       tickFormatter={formatCurrencyAxis}
                       tick={{ fontSize: 12 }}
                     />
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip
+                      content={
+                        <DebtPayoffTooltip
+                          payoffSchedule={payoffSchedule}
+                          formatCurrency={formatCurrency}
+                          t={t}
+                        />
+                      }
+                    />
                     <Legend />
                     <Bar
                       dataKey="cumulativePrincipal"

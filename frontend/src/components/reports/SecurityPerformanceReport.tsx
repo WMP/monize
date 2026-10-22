@@ -4,7 +4,12 @@ import { useState, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useMainAccountName } from '@/hooks/useMainAccountName';
 import { gainLossColor, sumMoney } from '@/lib/format';
-import { baseInvestmentAction } from '@/lib/investment-actions';
+import {
+  baseInvestmentAction,
+  incomeBaseKind,
+  investmentIncomeAmount,
+  investmentRowHasEffect,
+} from '@/lib/investment-actions';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
@@ -114,11 +119,12 @@ interface PriceChartPoint {
  * expression coerced it only because `Math.abs` does, so a later edit taking
  * the abs off for a signed total would have started concatenating strings.
  *
- * Every row is a known amount here (`totalAmount` is non-nullable on a dividend
- * row), so this is a total and not a subtotal.
+ * Each row's dividend is `investmentIncomeAmount`: a cash dividend's total, or
+ * a reinvested one's share cost, since a reinvest created in the app stores no
+ * total. Every row is a known amount, so this is a total and not a subtotal.
  */
 function sumDividends(rows: InvestmentTransaction[]): number {
-  return sumMoney(rows.map((tx) => Math.abs(Number(tx.totalAmount))));
+  return sumMoney(rows.map((tx) => investmentIncomeAmount(tx)));
 }
 
 export function SecurityPerformanceReport() {
@@ -161,6 +167,9 @@ export function SecurityPerformanceReport() {
   // Bumped on a manual price refresh so the comparison chart re-fetches its
   // (separately loaded) per-security price history.
   const [allRefreshKey, setAllRefreshKey] = useState(0);
+  // Whether the comparison chart (which owns its own request) holds the
+  // current selection's answer; it reports it, the toolbar below reads it.
+  const [comparisonExportable, setComparisonExportable] = useState(false);
   // The region rows in the index picker are grouping, not instruments:
   // `MultiSelect` adds a group's own value to the selection once all its
   // children are chosen, and sending `region:EUROPE` to the API would be
@@ -287,6 +296,7 @@ export function SecurityPerformanceReport() {
   const {
     data: detailData,
     isLoading: isLoadingDetail,
+    error: detailError,
     reload: reloadDetail,
   } = useReportData(
     async () => {
@@ -437,8 +447,11 @@ export function SecurityPerformanceReport() {
 
   // Dividend history
   const dividendTx = useMemo(() => {
+    // Every dividend, paid in cash or reinvested. A reinvested interest or
+    // capital-gain distribution is not a dividend, as its cash twin is not, and
+    // a VOID row paid nothing.
     const list = transactions.filter(
-      (tx) => baseInvestmentAction(tx.action) === 'DIVIDEND' || baseInvestmentAction(tx.action) === 'REINVEST',
+      (tx) => incomeBaseKind(tx.action) === 'DIVIDEND' && investmentRowHasEffect(tx),
     );
     list.sort((a, b) => {
       let comparison = 0;
@@ -456,7 +469,7 @@ export function SecurityPerformanceReport() {
           comparison = compareValues(a.action, b.action);
           break;
         case 'amount':
-          comparison = compareValues(Math.abs(a.totalAmount), Math.abs(b.totalAmount));
+          comparison = compareValues(investmentIncomeAmount(a), investmentIncomeAmount(b));
           break;
       }
       return dividendSort.sortDirection === 'asc' ? comparison : -comparison;
@@ -525,6 +538,15 @@ export function SecurityPerformanceReport() {
   };
   const dividendSortColumns: readonly DividendSortColumn[] = Object.values(dividendColumns);
 
+  // Every request feeding the export has to have answered without error: the
+  // hook keeps the previous payload through a pending or failed reload, so a
+  // document taken then would carry another selection's figures.
+  const exportUnavailable =
+    (!isSingle && !isComparison) ||
+    isLoading ||
+    !!error ||
+    (isComparison ? !comparisonExportable : isLoadingDetail || !!detailError);
+
   const handleExportPdf = async () => {
     if (isComparison) {
       await comparisonExportRef.current?.exportPdf();
@@ -584,7 +606,7 @@ export function SecurityPerformanceReport() {
           formatDate(tx.transactionDate),
           accountNameById.get(tx.accountId) || '-',
           tx.action,
-          formatCurrencyFull(Math.abs(tx.totalAmount), displayCurrency),
+          formatCurrencyFull(investmentIncomeAmount(tx), displayCurrency),
         ]),
         totalRow: [t('securityPerformance.pdfTotalDividends'), '', '', formatCurrencyFull(totalDividends, displayCurrency)],
       };
@@ -671,7 +693,7 @@ export function SecurityPerformanceReport() {
           <ReportToolbarActions
             onRefreshComplete={() => { reloadBase(); reloadDetail(); setAllRefreshKey((k) => k + 1); }}
             onExportPdf={handleExportPdf}
-            disabled={!isSingle && !isComparison}
+            disabled={exportUnavailable}
           />
         </div>
 
@@ -723,6 +745,7 @@ export function SecurityPerformanceReport() {
           endDate={resolvedRange.end}
           reloadKey={allRefreshKey}
           exportRef={comparisonExportRef}
+          onExportableChange={setComparisonExportable}
         />
       ) : isLoadingDetail ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
@@ -1128,7 +1151,7 @@ export function SecurityPerformanceReport() {
                           {/* Amount: the headline figure, beside the date. */}
                           <td role="cell" className={`col-start-2 row-start-1 font-medium text-green-600 dark:text-green-400 ${MONEY_CELL}`}>
                             <CellLabel className={CAPTION_CLASS}>{dividendColumns.amount.label}</CellLabel>
-                            {formatCurrencyFull(Math.abs(tx.totalAmount), displayCurrency)}
+                            {formatCurrencyFull(investmentIncomeAmount(tx), displayCurrency)}
                           </td>
                         </tr>
                       ))}

@@ -82,6 +82,7 @@
     "newCategory": "新類別",
     "currentCategory": "目前類別",
     "description": "描述",
+    "referenceNumber": "參考 #",
     "name": "名稱",
     "website": "網站",
     "address": "地址",
@@ -111,6 +112,13 @@
     "commission": "手續費",
     "total": "合計",
     "cashImpact": "現金影響",
+    "bondSeries": "系列",
+    "marksPaid": "標記為已付款",
+    "accruedInterest": "應計利息",
+    "redemptionSplit": "贖回拆分",
+    "redemptionSplitValue": "本金 {principal} + 利息 {interest} = 支付 {payout}",
+    "redemptionDeduction": "已扣除提前贖回費用",
+    "redemptionSplitDiffers": "價格和應計利息與本次贖回的支付金額不同（見拆分）。核准前請核對。",
     "createTransactionsTitle": "建立這些交易？",
     "createInvestmentTransactionsTitle": "建立這些投資交易？",
     "approveAll": "全部核准",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "長期資本利得再投資",
       "CAPITAL_GAIN_SHORT": "短期資本利得",
       "CAPITAL_GAIN_LONG": "長期資本利得",
-      "REDEEM": "贖回定存單/債券"
+      "REDEEM": "贖回定存單/債券",
+      "RETURN_OF_CAPITAL": "資本返還"
     },
     "createSecurityTitle": "建立此證券？",
     "createdSecurity": "證券已建立",
@@ -224,7 +233,11 @@
       "category": "將分類設定為 {name}",
       "payee": "將收款對象設定為 {name}",
       "aiReview": "{count, plural, other {將 # 個 AI 審核請求加入佇列}}"
-    }
+    },
+    "aiCategory": "AI 建議",
+    "tags": "標籤",
+    "newTag": "(新標籤)",
+    "marksPaidDue": "{name}（到期日 {date}）"
   },
   "table": {
     "downloadTitle": "下載表格為 CSV",

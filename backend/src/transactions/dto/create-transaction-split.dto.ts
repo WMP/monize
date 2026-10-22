@@ -6,11 +6,12 @@ import {
   IsArray,
   IsEnum,
   ValidateNested,
+  ValidateIf,
   MaxLength,
   Min,
   Max,
 } from "class-validator";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { InvestmentAction } from "../../securities/entities/investment-transaction.entity";
@@ -82,6 +83,19 @@ export class InvestmentSplitDto {
   @MaxLength(TRANSACTION_NOTE_MAX_LENGTH)
   @SanitizeHtml()
   description?: string;
+
+  @ApiPropertyOptional({
+    format: "uuid",
+    description:
+      "The bond series (bond instrument id) of a program-linked security; inferred from the parent date when omitted for an acquisition.",
+  })
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.toLowerCase() : value,
+  )
+  @IsOptional()
+  @ValidateIf((_o, value) => value !== null && value !== undefined)
+  @IsUUID()
+  bondInstrumentId?: string | null;
 }
 
 export class CreateTransactionSplitDto {

@@ -52,9 +52,7 @@ export interface AiToolResultMessage {
 }
 
 export type AiMessage =
-  | AiUserMessage
-  | AiAssistantMessage
-  | AiToolResultMessage;
+  AiUserMessage | AiAssistantMessage | AiToolResultMessage;
 
 export interface AiCompletionRequest {
   systemPrompt: string;
@@ -207,5 +205,4 @@ export interface AiProvider {
 }
 
 export type ModelVerificationResult =
-  | { ok: true; model: string }
-  | { ok: false; model: string; reason: string };
+  { ok: true; model: string } | { ok: false; model: string; reason: string };

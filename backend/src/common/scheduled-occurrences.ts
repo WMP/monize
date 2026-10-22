@@ -1,3 +1,4 @@
+import { addDaysYMD } from "./date-utils";
 import { FrequencyType, calculateNextDueDate, ensureYMD } from "./recurrence";
 
 /**
@@ -7,6 +8,25 @@ import { FrequencyType, calculateNextDueDate, ensureYMD } from "./recurrence";
  * already caught by the monotonicity check) rather than a product limit.
  */
 export const OCCURRENCE_WALK_GUARD = 2000;
+
+/**
+ * How many days before today an occurrence that was neither posted nor skipped
+ * still counts as owed (discussion #1784). Posting and skipping both advance
+ * `next_due_date`, so nothing but the user's own record tells a bill that is
+ * late apart from one paid by a plain transaction with its occurrence left
+ * unposted. Past this window it is read as forgotten and left out, as every
+ * projection did before, so a stale schedule moves a forecast by at most one
+ * window's worth of occurrences instead of every slot since it went stale,
+ * however long ago that was or wherever the walk guard stops. The cash-flow
+ * forecast (`OVERDUE_CARRY_DAYS` in `frontend/src/lib/forecast.ts`) uses the
+ * same window.
+ */
+export const OVERDUE_CARRY_DAYS = 31;
+
+/** The earliest due date a projection anchored at `today` still treats as owed. */
+export function overdueCarryFrom(today: string): string {
+  return addDaysYMD(today, -OVERDUE_CARRY_DAYS);
+}
 
 /** A window bound is a calendar date, because that is what it is compared as. */
 const YMD = /^\d{4}-\d{2}-\d{2}$/;

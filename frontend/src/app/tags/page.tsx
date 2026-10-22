@@ -50,26 +50,35 @@ function TagsContent() {
   const [deleteTransactionCount, setDeleteTransactionCount] = useState<number>(0);
   const { showForm, editingItem, openCreate, openEdit, close, isEditing, modalProps, setFormDirty, unsavedChangesDialog, formSubmitRef } = useFormModal<Tag>();
 
-  const loadTags = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [data, counts] = await Promise.all([
-        tagsApi.getAll(),
-        tagsApi.getAllTransactionCounts(),
-      ]);
-      setTags(data);
-      setTransactionCounts(counts);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('page.toasts.loadFailed')));
-      logger.error(error);
-    } finally {
-      setIsLoading(false);
-    }
+  // The mount load: the state already says loading.
+  const fetchTags = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const [data, counts] = await Promise.all([
+          tagsApi.getAll(),
+          tagsApi.getAllTransactionCounts(),
+        ]);
+        setTags(data);
+        setTransactionCounts(counts);
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('page.toasts.loadFailed')));
+        logger.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [t]);
 
+  const loadTags = useCallback(() => {
+    setIsLoading(true);
+    return fetchTags();
+  }, [fetchTags]);
+
   useEffect(() => {
-    loadTags();
-  }, [loadTags]);
+    fetchTags();
+  }, [fetchTags]);
 
   useOnUndoRedo(loadTags);
   // Refresh on AI chat-bubble writes the same way as undo/redo.

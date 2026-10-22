@@ -13,6 +13,14 @@
     "modalTitleNew": "Nouvelle devise",
     "loading": "Chargement des devises...",
     "count": "{count, plural, one {# devise} other {# devises}}",
+    "providers": {
+      "line": "Taux fournis par {providers}",
+      "separator": ", puis ",
+      "names": {
+        "frankfurter": "Frankfurter (taux de référence de la BCE)",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "Échec du chargement des devises",
       "updated": "Devise mise à jour avec succès",
@@ -24,6 +32,7 @@
       "statusFailed": "Échec de la mise à jour du statut de la devise",
       "ratesRefreshed": "Taux de change actualisés : {updated} paires mises à jour",
       "ratesRefreshedWithFailed": "Taux de change actualisés : {updated} mis à jour, {failed} échoués",
+      "ratesAllFailed": "Aucun taux de change n'a pu être récupéré ; le fournisseur n'a pas répondu",
       "ratesFailed": "Échec de l'actualisation des taux de change"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter (BCE)",
         "mnyImport": "Import Money",
         "unknown": "Inconnu"
       }

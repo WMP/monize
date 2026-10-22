@@ -213,6 +213,25 @@ export function nextOccurrenceDueDate(st: ScheduledTransaction): string {
 }
 
 /**
+ * The occurrence a person is looking at, as the server's Post and Skip routes
+ * take it: the date shown (the override's, else the slot -- `nextOccurrenceDueDate`)
+ * and the id of the override that moved it, `null` when there is none. The server
+ * refuses with 409 once that is no longer the occurrence it would act on, so a
+ * stale tab cannot post the next occurrence early or pay an exhausted schedule
+ * again (audit A26-S08-01). Build it from the row as the user saw it, never from a
+ * re-read, and never from `nextDueDate` or `amount` directly.
+ */
+export function occurrencePin(st: ScheduledTransaction): {
+  expectedOccurrenceDate: string;
+  expectedOverrideId: string | null;
+} {
+  return {
+    expectedOccurrenceDate: nextOccurrenceDueDate(st),
+    expectedOverrideId: st.nextOverride?.id ?? null,
+  };
+}
+
+/**
  * Convert and total a bucket of effective occurrence amounts into one currency.
  *
  * This exists instead of a currency-blind adder. The predecessor took the same

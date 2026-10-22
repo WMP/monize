@@ -49,7 +49,7 @@ through the surfaces that exist today.
 | Tools menu | `TOOLS_LINKS`, `NAV_ICONS` (`frontend/src/lib/nav-links.ts`) | Delegates see only capability-mapped links; a goal is owner-only in v1. |
 | Cron and claims | `JobClaimService.claimOnce` (`backend/src/common/jobs/job-claim.service.ts`), `withSystemContext` / `withUserContext` (`backend/src/common/db/with-context.ts`) | `docs/cron-jobs.md` needs a row; `WITH_CONTEXT_ALLOWLIST` needs the file. |
 | Backup classification | `buildExportTableQueries` (`backend/src/backup/export-table-queries.ts`), `RESTORE_PLAN` (`backend/src/backup/restore-plan.ts`), `RULES` (`backend/src/backup/support-backup/support-backup-rules.ts`) | A new table is exported or excluded, never neither. |
-| No goal concept today | `docs/future-plans/mny-import.md` ("savings goals (no Monize entity)") | Confirmed by grep: the only hits are a demo seed description and the loan "goal seek". |
+| No goal concept today | `docs/specs/mny-import.md` ("savings goals (no Monize entity)") | Confirmed by grep: the only hits are a demo seed description and the loan "goal seek". |
 
 ## 3. Product decisions
 

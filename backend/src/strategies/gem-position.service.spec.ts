@@ -123,6 +123,7 @@ describe("GemPositionService", () => {
   let exchangeRates: { getLatestRate: jest.Mock };
   let portfolioCalculation: {
     calculateCostBasisLotsInAccountCurrency: jest.Mock;
+    valueBondHoldings: jest.Mock;
   };
 
   const build = (overrides: Record<string, unknown> = {}) =>
@@ -191,6 +192,7 @@ describe("GemPositionService", () => {
       calculateCostBasisLotsInAccountCurrency: jest
         .fn()
         .mockResolvedValue(new Map([["acct-1:sec-spy", lot(51, 18281.46)]])),
+      valueBondHoldings: jest.fn().mockResolvedValue(new Map()),
     };
     service = new GemPositionService(
       mocks.dataSource as never,
@@ -1166,5 +1168,54 @@ describe("GemPositionService", () => {
     expect(result.position?.current).toBeNull();
     expect(result.position?.exactTargetPercent).toBeNull();
     expect(result.action?.required).toBe(true);
+  });
+  describe("a bond-linked holding is its own accounts' lots", () => {
+    beforeEach(() => {
+      holdingRows = [
+        {
+          security_id: "sec-bond",
+          symbol: "EDO",
+          name: "Bond program",
+          cost_basis: "2000",
+          currency_code: "USD",
+          bond_program_id: "prog-1",
+          account_quantities: { "acct-1": "10", "acct-2": "10" },
+        },
+      ];
+      // The blend over every account's lots: what quantity x price would use.
+      priceService.latestPrices.mockResolvedValue(
+        new Map([["sec-bond", 117.74]]),
+      );
+    });
+
+    it("sums the lots of the strategy's accounts, not quantity x the blend", async () => {
+      portfolioCalculation.valueBondHoldings.mockResolvedValue(
+        new Map([
+          ["acct-1:sec-bond", { marketValue: 1354, unitPrice: 135.4 }],
+          ["acct-2:sec-bond", { marketValue: 1000.8, unitPrice: 100.08 }],
+        ]),
+      );
+
+      const result = await build({ targetRole: null });
+
+      expect(
+        result.position?.holdings.find((h) => h.symbol === "EDO")?.marketValue,
+      ).toBe(2354.8);
+    });
+
+    it("is unknown when one account's lots are unpriced, never the blend", async () => {
+      portfolioCalculation.valueBondHoldings.mockResolvedValue(
+        new Map([
+          ["acct-1:sec-bond", null],
+          ["acct-2:sec-bond", { marketValue: 1000.8, unitPrice: 100.08 }],
+        ]),
+      );
+
+      const result = await build({ targetRole: null });
+
+      expect(
+        result.position?.holdings.find((h) => h.symbol === "EDO")?.marketValue,
+      ).toBeNull();
+    });
   });
 });

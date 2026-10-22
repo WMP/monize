@@ -38,6 +38,14 @@
     "scheduleRecurring": "Wiederkehrend machen",
     "more": "Weitere Aktionen"
   },
+  "columns": {
+    "button": "Spalten",
+    "buttonWithHidden": "Spalten, {count} ausgeblendet",
+    "menuLabel": "Spalten ein- oder ausblenden",
+    "showAll": "Alle einblenden",
+    "hideColumn": "Spalte ausblenden",
+    "sheetSubtitle": "Über das Spaltenmenü wieder einblenden."
+  },
   "loading": "Wird geladen...",
   "pagination": {
     "showing": "Angezeigt",
@@ -262,5 +270,8 @@
     "normal": "Normal",
     "compact": "Kompakt",
     "dense": "Dicht"
+  },
+  "scheduledOverdue": {
+    "included": "Enthält {count, plural, one {# überfällige terminierte Buchung} other {# überfällige terminierte Buchungen}}"
   }
 }

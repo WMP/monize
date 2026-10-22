@@ -27,7 +27,9 @@ export class TransactionSplit {
   @Column({ type: "uuid", name: "transaction_id" })
   transactionId: string;
 
-  @ManyToOne(() => Transaction)
+  // `database/schema.sql` declares ON DELETE CASCADE; stated here so the
+  // entity-built integration schema deletes a parent the way production does.
+  @ManyToOne(() => Transaction, { onDelete: "CASCADE" })
   @JoinColumn({ name: "transaction_id" })
   transaction: Transaction;
 

@@ -41,6 +41,9 @@
     "instructions": "選取一個或多個檔案進行匯入。支援格式：QIF、OFX/QFX、CSV 和 Microsoft Money (.mny)。\n您可以選取多個相同類型的檔案以進行批次匯入。請一次匯入一個 Microsoft Money 檔案——一個 .mny 檔案包含完整的帳務資料。",
     "importingTo": "匯入至：",
     "clickToSelect": "點擊以選取檔案",
+    "orDragAndDrop": "或將檔案拖放到此處",
+    "dropToImport": "放開以匯入",
+    "unsupportedDrop": "無法匯入下列檔案：{names}。請使用 QIF、OFX、QFX、CSV 或 Microsoft Money (.mny) 檔案。",
     "processing": "處理中...",
     "acceptedFormats": "QIF、OFX、QFX、CSV 或 Microsoft Money (.mny)",
     "mnyFailedHeading": "無法開啟這個 Microsoft Money 檔案",
@@ -287,7 +290,7 @@
     "totalImported": "總匯入數：",
     "totalImportedSuffix": "筆交易",
     "totalSkipped": "總略過數：",
-    "totalSkippedSuffix": "筆重複轉帳",
+    "totalSkippedSuffix": "筆交易",
     "totalErrors": "總錯誤數：",
     "categoriesCreated": "已建立的類別：",
     "accountsCreated": "已建立的科目：",
@@ -299,17 +302,24 @@
     "imported": "已匯入：",
     "importedSuffix": "筆交易",
     "skipped": "已略過：",
-    "skippedSuffix": "筆重複轉帳",
+    "skippedSuffix": "筆交易",
     "errors": "錯誤：",
     "errorsLabel": "錯誤：",
     "andMoreErrors": "...以及另外 {count} 個錯誤",
+    "skippedRowsHeading": "已略過的列：",
+    "skippedRow": "{date}：{amount}，{payee}（{reason}）",
+    "skippedRowNoPayee": "{date}：{amount}（{reason}）",
+    "skipReasonAlreadyImported": "已匯入",
+    "skipReasonDuplicateTransfer": "轉帳已記錄",
+    "andMoreSkipped": "...以及另外 {count} 列已略過",
     "loanSetupHeading": "設定定期還款",
     "loanSetupDescription": "以下貸款/抵押貸款科目已匯入但尚未設定排程還款。請設定定期還款以繼續追蹤您的貸款進度。",
     "setUpPayments": "設定還款",
     "scheduledPaymentsConfigured": "已為 {count} 個科目{plural}設定排程還款。",
     "viewInvestments": "查看投資",
     "viewTransactions": "查看交易",
-    "importMoreFiles": "匯入更多檔案"
+    "importMoreFiles": "匯入更多檔案",
+    "bondRowsWithoutSeries": "{count, plural, other {有 # 筆債券買入在沒有系列的情況下匯入。請在該證券的債券批次中選擇系列。}}"
   },
   "multiAccountReview": {
     "heading": "多科目 QIF 匯入",
@@ -492,7 +502,8 @@
     },
     "warningsHeading": "關於本次匯入的說明",
     "downloadReport": "下載報告",
-    "done": "完成"
+    "done": "完成",
+    "bondRowsWithoutSeries": "{count, plural, other {有 # 筆債券買入在沒有系列的情況下匯入。請在該證券的債券批次中選擇系列。}}"
   },
   "mnyWarnings": {
     "missingTable": "此 Money 版本缺少匯入所需的 {count, plural, other {# 個表格}}。",
@@ -521,6 +532,8 @@
     "unusableBill": "{count, plural, other {# 個定期帳單}}沒有帳戶、可用日期或可辨識的重複週期，已略過。",
     "billFrequencyApproximated": "{count, plural, other {# 個定期帳單}}使用了 Monize 無法精確表達的重複間隔，因此採用了最接近的較短間隔。",
     "loanInterestCategoryUnclear": "{count, plural, other {# 筆貸款還款}}包含了本金以外的多個類別，因此貸款的利息類別未設定。請檢查還款是否包含代管款項（escrow），並在匯入後設定利息類別。",
+    "transferAmountMismatch": "{count, plural, other {# 筆轉入投資帳戶的轉帳}}在投資一側記錄的金額與銀行一側不同。投資一側已依記錄的金額匯入。",
+    "crossCurrencyTradeUnconverted": "{count, plural, other {# 筆以其他貨幣計價的證券交易}}已依帳戶貨幣儲存，因為檔案中沒有該貨幣對在交易日期前後的匯率。請新增匯率，然後更正每筆交易的價格。",
     "showTransactions": "顯示{count, plural, other {# 筆交易}}",
     "hideTransactions": "隱藏交易",
     "reviewInMoney": "請在 Microsoft Money 中開啟這些交易進行核對或更正，然後重新匯出並匯入。",
@@ -539,6 +552,8 @@
     "mnyImportFailed": "匯入過程中發生問題。沒有儲存任何內容 -- 您可以重試。",
     "mnyJobStalled": "匯入已停止回應，很可能是伺服器重新啟動所致。您上傳的檔案仍在，重試是安全的。",
     "mnyJobStalledAfterCommit": "匯入在已儲存您的資料之後停止回應，很可能是伺服器重新啟動所致。匯入的記錄已在您的帳戶中，再次匯入同一檔案會造成重複。請先檢查帳戶，再匯入其他檔案。",
+    "mnyImportFailedAfterCommit": "匯入已儲存您的資料,但之後的一個步驟失敗了。匯入的紀錄已在您的帳戶中,再次匯入同一檔案會造成重複。在匯入其他內容之前,請先檢查您的帳戶。",
+    "mnyAlreadyImported": "此檔案已匯入您的帳戶,再次匯入會使其紀錄重複。如需取代,請重新開始並選擇取代現有資料。",
     "mnyStagedFileMissing": "上傳的 Money 檔案已無法使用，請重新上傳。",
     "mnyFileTruncated": "這個 Money 檔案似乎不完整，上傳可能被中斷。",
     "mnyNotAMoneyFile": "這個檔案不是 Microsoft Money (.mny) 檔案。",
@@ -546,5 +561,80 @@
     "mnyPasswordRequired": "這個 Money 檔案受密碼保護。",
     "mnyPasswordIncorrect": "這個密碼無法開啟 Money 檔案。",
     "mnyUnreadableDatabase": "這個 Money 檔案已解密，但無法讀取其內容，檔案可能已損壞。"
+  },
+  "preview": {
+    "choice": {
+      "legend": "{payee} 不匯入時如何處理",
+      "skip": "暫時略過",
+      "except": "加入例外"
+    },
+    "payeeTip": {
+      "name": "來自銀行：{original}。對應：{name}",
+      "alias": "來自銀行：{original}。對應：{name}（別名「{pattern}」）",
+      "aliasNoPattern": "來自銀行：{original}。對應：{name}（別名）",
+      "new": "來自銀行：{original}。對應：{name}（新收款人）",
+      "rule": "來自銀行：{original}。對應：{name}（由規則設定）",
+      "ruleNone": "來自銀行：{original}。對應：無收款人（由規則設定）"
+    },
+    "expand": {
+      "show": "顯示 {payee} 的詳細資料",
+      "hide": "隱藏 {payee} 的詳細資料"
+    },
+    "rules": {
+      "heading": "匯入規則",
+      "none": "沒有匯入規則符合這筆交易。",
+      "skipped": "{action}：已略過（{reason}）",
+      "stopped": "停止其後的規則。",
+      "applied": "已套用：{actions}",
+      "openNewTab": "在新分頁中開啟規則 {name}"
+    },
+    "ruleTest": {
+      "loading": "正在載入規則測試結果",
+      "error": "無法載入規則測試結果。",
+      "retry": "重試",
+      "noRules": "您沒有匯入規則，因此沒有可測試的內容。",
+      "showNotMatched": "顯示未符合的規則（{count}）",
+      "hideNotMatched": "隱藏未符合的規則（{count}）",
+      "noChanges": "已符合，但不會變更這筆交易的任何內容。",
+      "badge": {
+        "matched": "已符合",
+        "notMatched": "未符合",
+        "notEvaluated": "未評估"
+      },
+      "notEvaluated": {
+        "afterStop": "未評估：前面的規則已停止後續規則。",
+        "disabled": "未評估：規則已關閉。",
+        "invalid": "未評估：規則無效。請開啟它進行修復。",
+        "outside_active_window": "未評估：該列的日期不在規則的生效日期內。"
+      },
+      "condition": {
+        "met": "條件已滿足",
+        "notMet": "條件未滿足",
+        "actual": "這筆交易中的值：{value}",
+        "noValue": "無",
+        "noTags": "無標籤",
+        "capture": "{name} = {value}",
+        "omitted": "條件的這一部分的詳細資訊未顯示。"
+      },
+      "skipReasons": {
+        "already_set": "它已有值，而規則只填寫空值",
+        "no_change": "它已是規則要設定的內容",
+        "payee_unresolved": "無法查詢規則產生的收款人"
+      }
+    },
+    "payee": {
+      "heading": "收款人",
+      "unknown": "這筆交易沒有收款人資訊。",
+      "original": "銀行文字：{original}",
+      "name": "與您現有的收款人 {name} 相符。",
+      "alias": "透過別名「{pattern}」對應到 {name}。",
+      "aliasNoPattern": "透過別名對應到 {name}。",
+      "new": "還沒有收款人使用此名稱，因此將建立 {name}。",
+      "rule": "匯入規則設定收款人：{name}。",
+      "ruleNone": "匯入規則清除收款人。",
+      "none": "銀行沒有提供交易對象，因此這筆交易沒有收款人。",
+      "openAliases": "開啟收款人的別名",
+      "openAliasesNewTab": "在新分頁中開啟收款人的別名"
+    }
   }
 }

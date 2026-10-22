@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { assertedClientAddress } from '@/lib/client-address';
+import { createLogger } from '@/lib/logger';
 import {
   DEFAULT_LOCALE,
   LOCALE_COOKIE,
@@ -8,6 +9,8 @@ import {
   isSupportedLocale,
   matchAcceptLanguage,
 } from '@/i18n/config';
+
+const logger = createLogger('BackendForward');
 
 /**
  * What every path to the backend shares: the proxy (`src/proxy.ts`) and the
@@ -76,11 +79,44 @@ export function backendRequestHeaders(
   return headers;
 }
 
+/**
+ * The backend connection dying after headers were already read (the backend
+ * restarting, a reset connection) surfaces as `response.body` erroring while
+ * Next pipes it to the client. By then the 200 is already committed, so there
+ * is no turning this into the 502 a pre-flight `fetch()` failure gets; left
+ * alone, the rejection reaches Next's own `pipeToNodeResponse`, which logs it
+ * as an opaque, alarming-looking "failed to pipe response" with none of this
+ * context. Reading it here instead turns that into a clean end of the stream,
+ * logged with the real cause.
+ */
+function guardBackendStream(body: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+  const reader = body.getReader();
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          controller.close();
+          return;
+        }
+        controller.enqueue(value);
+      } catch (error) {
+        logger.error('Backend connection lost while streaming a response:', error);
+        controller.close();
+      }
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
+}
+
 /** The backend's response, streamed back as it arrives. */
 export function responseFromBackend(response: Response): NextResponse {
   const responseHeaders = new Headers(response.headers);
   responseHeaders.delete('transfer-encoding');
-  return new NextResponse(response.body, {
+  const body = response.body ? guardBackendStream(response.body) : response.body;
+  return new NextResponse(body, {
     status: response.status,
     statusText: response.statusText,
     headers: responseHeaders,

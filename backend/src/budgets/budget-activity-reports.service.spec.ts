@@ -41,6 +41,7 @@ describe("BudgetActivityReportsService", () => {
     icon: null,
     color: null,
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-01"),
   };
@@ -56,6 +57,7 @@ describe("BudgetActivityReportsService", () => {
     icon: null,
     color: null,
     isIncome: false,
+    autoSign: null,
     isSystem: false,
     createdAt: new Date("2025-01-01"),
   };
@@ -320,6 +322,26 @@ describe("BudgetActivityReportsService", () => {
       expect(periodsRepository.findOne).toHaveBeenCalledWith({
         where: { budgetId: "budget-1", status: PeriodStatus.OPEN },
       });
+    });
+
+    it("should leave the budget's excluded accounts out of the daily queries", async () => {
+      budgetsService.findOne.mockResolvedValueOnce({
+        ...mockBudget,
+        config: { excludedAccountIds: ["acc-x"] },
+      });
+      const directQb = createMockQueryBuilder();
+      const splitQb = createMockQueryBuilder();
+      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
+      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
+
+      await service.getDailySpending("user-1", "budget-1");
+
+      for (const qb of [directQb, splitQb]) {
+        expect(qb.andWhere).toHaveBeenCalledWith(
+          "t.account_id NOT IN (:...excludedAccountIds)",
+          { excludedAccountIds: ["acc-x"] },
+        );
+      }
     });
 
     it("should fall back to budget periodStart when no open period exists", async () => {

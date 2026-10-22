@@ -1,6 +1,7 @@
 import { Tag } from './tag';
 import { TransactionStatus } from './transaction';
 import type { PeriodResultReason } from './net-worth';
+import type { AssetClassKey } from '@/lib/asset-classes';
 
 export type InvestmentAction =
   | 'BUY'
@@ -23,7 +24,11 @@ export type InvestmentAction =
   | 'REINVEST_CAPITAL_GAIN_LONG'
   | 'CAPITAL_GAIN_SHORT'
   | 'CAPITAL_GAIN_LONG'
-  | 'REDEEM';
+  | 'REDEEM'
+  // Return of capital (issue #1800): a base action of its own. Its cash arrives
+  // like a dividend's and no shares move, but it is not income -- it pays back
+  // part of the cost, so the server takes it off the position's cost basis.
+  | 'RETURN_OF_CAPITAL';
 
 export type QuoteProviderName = 'yahoo' | 'msn' | 'lse' | 'deutsche_boerse';
 
@@ -55,6 +60,16 @@ export interface Security {
   irWebsite: string | null;
   quoteProvider: QuoteProviderName | null;
   msnInstrumentId: string | null;
+  /**
+   * The bond program (`GET /bonds/programs`) this security is linked to, or
+   * null. A linked security is priced by the bond engine only; its currency
+   * equals the program's. Optional for the rolling-deploy reason `lastPrice`
+   * is: a backend that predates the column sends nothing, and absent means
+   * "not linked" to every reader.
+   */
+  bondProgramId?: string | null;
+  /** Fetch every new series of the linked program automatically; absent means off. */
+  bondAutoFetch?: boolean;
   /**
    * Where and when the instrument trades, as reported by the provider. The
    * session times are local to `marketTimezone` ("HH:mm:ss"). All three are
@@ -116,7 +131,10 @@ export interface CountryWeightingResult {
 }
 
 export interface AssetClassWeightingItem {
+  /** English name of a canonical class, or the user's own spelling. */
   assetClass: string;
+  /** The canonical class, translated by `useAssetClassLabel`; null for a typed name. */
+  assetClassKey: AssetClassKey | null;
   directValue: number;
   etfValue: number;
   totalValue: number;
@@ -216,8 +234,22 @@ export interface AccountHoldings {
    * so any total built on it is unknown too (see `buildLogicalAccounts`).
    */
   unpricedHoldingsCount: number;
+  /**
+   * Value less cost over the holdings that have a value (`gainCostBasis` is
+   * their cost), so the cost of an unpriced holding is not charged against a
+   * value that never included it. A partial figure while `valuationComplete`
+   * is `false`.
+   */
   totalGainLoss: number;
+  /** Over `gainCostBasis`; 0 when that is 0. */
   totalGainLossPercent: number;
+  /**
+   * Cost of the holdings `totalGainLoss` is over. Optional for the
+   * rolling-deploy reason `fxComplete` gives: absent is no information.
+   */
+  gainCostBasis?: number;
+  /** Cost of the holdings the gain leaves out because they have no value. */
+  unpricedCostBasis?: number;
   netInvested: number;
   /**
    * Whether every component of *this account's* totals is known. The totals above
@@ -293,8 +325,17 @@ export interface PortfolioSummary {
   totalCostBasis: number;
   totalNetInvested: number;
   totalPortfolioValue: number;
+  /**
+   * Value less cost over the holdings that have a value; a partial figure while
+   * `valuationComplete` is `false`, which `PartialTotal` marks.
+   */
   totalGainLoss: number;
+  /** Over `gainCostBasis`; 0 when that is 0. */
   totalGainLossPercent: number;
+  /** Cost of the holdings `totalGainLoss` is over. Optional: absent is no information. */
+  gainCostBasis?: number;
+  /** Cost of the holdings the gain leaves out because they have no value. */
+  unpricedCostBasis?: number;
   /**
    * The invested part's time-weighted return since the portfolio's first
    * transaction, from the same server measure "Portfolio performance" reports
@@ -442,6 +483,9 @@ export interface InvestmentTransaction {
   status: TransactionStatus;
   // Set on security-transfer legs; points at the paired TRANSFER_IN/OUT leg.
   linkedTransactionId: string | null;
+  // The series (`GET /bonds/instruments` id) a share-moving row of a
+  // program-linked security acts on; null when the row names none.
+  bondInstrumentId?: string | null;
   // Set when this row is embedded inside a split transaction. The parent
   // split transaction owns the row's status; the form disables the status
   // field and the backend refuses a direct change.
@@ -717,6 +761,12 @@ export interface CreateInvestmentTransactionData {
   /** REDEEM only. Recorded as a linked INTEREST transaction, not a second cash entry. */
   accruedInterest?: number;
   exchangeRate?: number;
+  /**
+   * The bond series a share-moving row of a program-linked security acts on.
+   * Null (or omitted) lets the server infer it from the date (an acquisition)
+   * or take the oldest lots first (a removal).
+   */
+  bondInstrumentId?: string | null;
   description?: string;
   status?: TransactionStatus;
 }
@@ -800,7 +850,8 @@ export interface CreateSecurityData {
   symbol: string;
   name: string;
   securityType?: string;
-  exchange?: string;
+  /** `null` clears a stored exchange (the backend's IsOptional lets it through). */
+  exchange?: string | null;
   currencyCode: string;
   description?: string;
   /** Empty string clears the stored address; the backend normalises the rest. */
@@ -809,9 +860,15 @@ export interface CreateSecurityData {
   tagIds?: string[];
   quoteProvider?: QuoteProviderName | null;
   msnInstrumentId?: string;
+  /** A bond program id, or null to unlink; the currency must match the program's. */
+  bondProgramId?: string | null;
+  /** Fetch every new series of the linked program automatically. */
+  bondAutoFetch?: boolean;
   isFavourite?: boolean;
   priceAlertPercent?: number | null;
   priceChartEnabled?: boolean;
+  /** Turns off automatic price fetching; omitted means "leave as stored". */
+  skipPriceUpdates?: boolean;
   /** Manual ETF/fund country breakdown; weight is a decimal 0-1 (like sectorWeightings). */
   countryWeightings?: { name: string; weight: number }[];
   /** Manual ETF/fund asset-class breakdown (free-text names); weight is a decimal 0-1. */
@@ -877,6 +934,12 @@ export interface RealizedGainEntry {
   symbol: string | null;
   securityName: string | null;
   securityCurrencyCode: string | null;
+  /**
+   * The row that realized the gain. A RETURN_OF_CAPITAL realizes what it paid
+   * beyond the cost basis with no shares sold, so its `quantity` and `price`
+   * are 0 and mean nothing (issue #1800).
+   */
+  action: InvestmentAction;
   quantity: number;
   price: number;
   commission: number;

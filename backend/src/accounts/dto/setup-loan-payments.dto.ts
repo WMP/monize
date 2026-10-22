@@ -10,7 +10,10 @@ import {
   Min,
   Max,
   MaxLength,
+  IsPositive,
+  ValidateNested,
 } from "class-validator";
+import { Type } from "class-transformer";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import {
   MORTGAGE_TYPES,
@@ -18,6 +21,10 @@ import {
   PREPAYMENT_MODES,
   PrepaymentMode,
 } from "../mortgage-type.util";
+import {
+  PaymentMatchingDto,
+  PaymentMatchingFailureDto,
+} from "./payment-matching.dto";
 
 export class SetupLoanPaymentsDto {
   @ApiProperty({
@@ -60,12 +67,12 @@ export class SetupLoanPaymentsDto {
   @Max(100)
   interestRate?: number;
 
-  @ApiPropertyOptional({
-    description: "Interest expense category ID",
+  @ApiProperty({
+    description:
+      "Interest expense category ID; one of the caller's own categories",
   })
-  @IsOptional()
   @IsUUID()
-  interestCategoryId?: string;
+  interestCategoryId: string;
 
   @ApiPropertyOptional({
     description: "Payee ID for the scheduled transaction",
@@ -152,6 +159,27 @@ export class SetupLoanPaymentsDto {
   @Min(0)
   @Max(999999999999)
   detectedInterestAmount?: number;
+
+  @ApiPropertyOptional({
+    example: 300000,
+    description:
+      "The amount originally borrowed, stored apart from the opening balance (the debt where this ledger starts); a LINEAR mortgage's constant principal is priced from it. When absent a mortgage without one stores its opening balance",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @IsPositive()
+  @Max(999999999999)
+  originalPrincipal?: number;
+
+  @ApiPropertyOptional({
+    type: () => PaymentMatchingDto,
+    description:
+      "Mortgages and loans: create the rule that settles the bank debits of this payment against each installment (docs/specs/loan-installment-settlement.md decision 5) and leave the bill's auto-post off. A rule the server cannot create is reported as paymentMatchingError, and the schedule stays",
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PaymentMatchingDto)
+  paymentMatching?: PaymentMatchingDto;
 }
 
 /**
@@ -225,6 +253,17 @@ export class PreviewLoanPaymentSetupDto {
   @Min(0)
   @Max(999999999999)
   extraPrincipal?: number;
+
+  @ApiPropertyOptional({
+    example: 300000,
+    description:
+      "The amount originally borrowed the setup would store; the account's when absent",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @IsPositive()
+  @Max(999999999999)
+  originalPrincipal?: number;
 }
 
 export class PreviewLoanPaymentSetupResponseDto {
@@ -342,4 +381,19 @@ export class SetupLoanPaymentsResponseDto {
 
   @ApiProperty({ description: "Next due date of the scheduled transaction" })
   nextDueDate: string;
+
+  @ApiProperty({
+    nullable: true,
+    description:
+      "The payment matching rule the setup created; null when none was asked for or it could not be created",
+  })
+  paymentMatchingRuleId: string | null;
+
+  @ApiProperty({
+    nullable: true,
+    type: () => PaymentMatchingFailureDto,
+    description:
+      "Why the payment matching rule asked for could not be created; null otherwise. The schedule stays either way",
+  })
+  paymentMatchingError: PaymentMatchingFailureDto | null;
 }

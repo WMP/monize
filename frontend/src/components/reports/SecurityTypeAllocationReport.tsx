@@ -486,6 +486,7 @@ export function SecurityTypeAllocationReport() {
           <ReportToolbarActions
             onRefreshComplete={loadData}
             onExportPdf={handleExportPdf}
+            disabled={isLoading || !!error}
           />
         </div>
       </div>
@@ -783,7 +784,15 @@ export function SecurityTypeAllocationReport() {
                 </td>
                 <td role="cell" className={`${CELL_PLACEMENT.totalValue} font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                   <CellLabel className={CAPTION_CLASS}>{columns.totalValue.label}</CellLabel>
-                  {formatCurrencyFull(totalPortfolioValue, defaultCurrency)}
+                  {/* The same subtotal the summary card above prints, so the
+                      same marker: a total's caption over a figure that leaves
+                      holdings out is what the card was already fixed for. */}
+                  <PartialTotal
+                    total={{ value: totalPortfolioValue, ...allocationGaps }}
+                    displayCurrency={defaultCurrency}
+                  >
+                    {formatCurrencyFull(totalPortfolioValue, defaultCurrency)}
+                  </PartialTotal>
                 </td>
                 <td role="cell" className={`${CELL_PLACEMENT.percentage} font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                   <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>

@@ -44,23 +44,42 @@ export function InstitutionAccountsManager({
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [filterStatus, setFilterStatus] = useState<'active' | 'closed' | ''>('');
 
-  const load = useCallback(async () => {
-    if (!institution) return;
-    setIsLoading(true);
-    try {
-      const [assignedData, all] = await Promise.all([
-        institutionsApi.getAccounts(institution.id),
-        accountsApi.getAll(true),
-      ]);
-      setAssigned(assignedData);
-      setAllAccounts(all);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('accountsManager.loadFailed')));
-      logger.error(error);
-    } finally {
-      setIsLoading(false);
-    }
+  // Opening the manager for an institution starts a read: show it as loading
+  // from this render on ("info from previous render"), not from the effect.
+  const requestFor = isOpen ? institution : null;
+  const [loadingFor, setLoadingFor] = useState<Institution | null>(null);
+  if (loadingFor !== requestFor) {
+    setLoadingFor(requestFor);
+    if (requestFor) setIsLoading(true);
+  }
+
+  // The writes live in the inner `run`, so they happen after the request, not during the effect.
+  const load = useCallback(() => {
+    const run = async () => {
+      if (!institution) return;
+      try {
+        const [assignedData, all] = await Promise.all([
+          institutionsApi.getAccounts(institution.id),
+          accountsApi.getAll(true),
+        ]);
+        setAssigned(assignedData);
+        setAllAccounts(all);
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('accountsManager.loadFailed')));
+        logger.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [institution, t]);
+
+  // Every read after a change shows the spinner, as the first one does.
+  const reload = useCallback(() => {
+    if (!institution) return Promise.resolve();
+    setIsLoading(true);
+    return load();
+  }, [institution, load]);
 
   useEffect(() => {
     if (isOpen && institution) {
@@ -116,7 +135,7 @@ export function InstitutionAccountsManager({
     try {
       await institutionsApi.assignAccount(institution.id, accountId);
       setSelectedAccountId('');
-      await load();
+      await reload();
       onChanged?.();
       toast.success(t('accountsManager.added'));
     } catch (error) {
@@ -131,7 +150,7 @@ export function InstitutionAccountsManager({
     setBusyId(accountId);
     try {
       await institutionsApi.unassignAccount(institution.id, accountId);
-      await load();
+      await reload();
       onChanged?.();
       toast.success(t('accountsManager.removed'));
     } catch (error) {

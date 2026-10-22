@@ -49,6 +49,11 @@
     "nextMonth": "Next month",
     "emptyAll": "No active bills, deposits, or transfers scheduled."
   },
+  "cashFlowForecast": {
+    "title": "Cash Flow Forecast",
+    "period": "Forecast period",
+    "loadFailed": "Couldn't load the transactions already dated after today, so the forecast can't be shown. Reload the dashboard to try again."
+  },
   "gettingStarted": {
     "title": "Getting Started",
     "subtitle": "Set up your account in a few quick steps",
@@ -88,6 +93,11 @@
     "viewAll": "View all insights",
     "activeCount": "{count} active"
   },
+  "warrantiesExpiring": {
+    "title": "Warranties expiring soon",
+    "empty": "Nothing expires in the next 30 days",
+    "loadFailed": "Couldn't load your expiring warranties. Reload the dashboard to try again."
+  },
   "topMovers": {
     "title": "Top Movers",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "Net Worth",
     "empty": "No net worth data available yet.",
-    "past12Months": "Past 12 months",
-    "viewReport": "View full report"
+    "barStyle": "Bar style",
+    "barStyleNetWorth": "Net worth",
+    "barStyleAccountType": "By account type",
+    "loadFailed": "Couldn't load your net worth history. Reload the dashboard to try again."
   },
   "assetsVsLiabilities": {
     "title": "Assets vs Liabilities",
@@ -135,7 +147,10 @@
     "current": "Current",
     "netWorthLabel": "Net Worth",
     "assets": "Assets",
-    "liabilities": "Liabilities"
+    "liabilities": "Liabilities",
+    "partialName": "{name} (partial)",
+    "viewCallouts": "Labels",
+    "viewLegend": "Legend"
   },
   "expensesPieChart": {
     "title": "Expenses by Category",
@@ -145,7 +160,9 @@
     "other": "Other",
     "insideOther": "{count, plural, one {# category in Other} other {# categories in Other}}",
     "topLevelOnly": "Top level categories",
-    "topLevelOnlyHint": "Count subcategories against their parent"
+    "topLevelOnlyHint": "Count subcategories against their parent",
+    "viewCallouts": "Labels",
+    "viewLegend": "Legend"
   },
   "incomeExpenses": {
     "title": "Income vs Expenses",
@@ -183,6 +200,7 @@
     "accounts": "Accounts",
     "chartType": "Chart type",
     "view": "View",
+    "viewCalloutsHint": "Labels need a wider screen. Where they don't fit, the legend is shown.",
     "displayName": "Display name",
     "description": "Description",
     "descriptionPlaceholder": "Add an optional description",
@@ -195,6 +213,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "All"
     }
@@ -204,7 +223,7 @@
     "empty": "No investment history to show yet.",
     "refresh": "Refresh current value",
     "investmentResult": "Investment result",
-    "periodBreakdownInvestedTooltip": "The securities moved {valueChange} in value over this window. Of that, {netInvested} was paid in, net of sales, and they paid out {income} in dividends and interest. The figure above is what the investments themselves earned, with uninvested cash left out.",
+    "periodBreakdownInvestedTooltip": "The securities moved {valueChange} in value over this window. Of that, {netInvested} was paid in, net of sales, and they paid out {income} in dividends and interest. A distribution reinvested in shares counts in both. The figure above is what the investments themselves earned, with uninvested cash left out.",
     "notAvailable": "N/A"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "Minimum occurrences",
     "minOccurrencesOption": "{count} or more",
     "occurrences": "{count} occurrences",
-    "monthlyEstimate": "Monthly estimate"
+    "monthlyEstimate": "Monthly estimate",
+    "viewCallouts": "Labels",
+    "viewLegend": "Legend"
   },
   "weekendVsWeekday": {
     "title": "Weekend vs Weekday Spending",

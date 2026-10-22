@@ -6,6 +6,7 @@ import {
   planRuleEffects,
   recordAiReviewAlreadyQueued,
   recordAiReviewQueued,
+  ruleConditionMatches,
 } from "./rule-effects";
 import { RuleFactsInput, buildRuleFacts } from "./rule-facts";
 
@@ -462,5 +463,88 @@ describe("planRuleEffects: purity", () => {
     expect(planRuleEffects(facts(), rules)).toEqual(
       planRuleEffects(facts(), rules),
     );
+  });
+});
+
+describe("planRuleEffects: onEvaluate", () => {
+  const observe = (rules: PlannableRule[], f = facts()) => {
+    const seen: Array<{ ruleId: string; facts: RuleFacts }> = [];
+    const plan = planRuleEffects(f, rules, {
+      onEvaluate: (ruleId, evaluated) =>
+        seen.push({ ruleId, facts: evaluated }),
+    });
+    return { seen, plan };
+  };
+
+  it("reports each rule reached, in order, with the facts it was evaluated against", () => {
+    const first = rule([setCategory(CAT), addTags(TAG_A)]);
+    const second = rule([addTags(TAG_B)]);
+    const { seen } = observe([first, second]);
+
+    expect(seen.map((s) => s.ruleId)).toEqual([first.id, second.id]);
+    expect(seen[0].facts.categoryId).toBeNull();
+    // The second rule sees what the first one changed.
+    expect(seen[1].facts.categoryId).toBe(CAT);
+    expect(seen[1].facts.tagIds).toEqual([TAG_A]);
+  });
+
+  it("does not report a disabled or invalid rule, nor a rule after a stop", () => {
+    const disabled = rule([addTags(TAG_A)], { enabled: false });
+    const invalid = rule([], {});
+    const stop = rule([addTags(TAG_B)], { stopProcessing: true });
+    const after = rule([addTags(TAG_C)]);
+    const { seen } = observe([disabled, invalid, stop, after]);
+
+    expect(seen.map((s) => s.ruleId)).toEqual([stop.id]);
+  });
+
+  it("reports a rule whose condition does not hold, and changes nothing about the plan", () => {
+    const misses = rule([addTags(TAG_A)], {
+      condition: { field: "type", op: "eq", value: "INCOME" },
+    });
+    const { seen, plan } = observe([misses]);
+    expect(seen.map((s) => s.ruleId)).toEqual([misses.id]);
+    expect(plan).toEqual(planRuleEffects(facts(), [misses]));
+  });
+});
+
+describe("ruleConditionMatches", () => {
+  const coffee: RuleConditionNode = {
+    field: "payeeText",
+    op: "contains",
+    value: "biedronka",
+  };
+  const dated = (transactionDate: string | null) => facts({ transactionDate });
+
+  it("answers the condition alone, with no action to plan", () => {
+    expect(ruleConditionMatches({ condition: coffee }, facts())).toBe(true);
+    expect(
+      ruleConditionMatches(
+        { condition: { ...coffee, value: "lidl" } },
+        facts(),
+      ),
+    ).toBe(false);
+  });
+
+  it("agrees with the planner's trace on the same rule and row", () => {
+    for (const condition of [coffee, { ...coffee, value: "lidl" }]) {
+      const planned = rule([addTags(TAG_A)], { condition });
+      expect(ruleConditionMatches(planned, facts())).toBe(
+        planRuleEffects(facts(), [planned]).trace[0].matched,
+      );
+    }
+  });
+
+  it("is false outside the active window, inclusive at both ends, and for an unknown date", () => {
+    const windowed = {
+      condition: coffee,
+      activeFrom: "2026-10-01",
+      activeTo: "2026-10-31",
+    };
+    expect(ruleConditionMatches(windowed, dated("2026-09-30"))).toBe(false);
+    expect(ruleConditionMatches(windowed, dated("2026-10-01"))).toBe(true);
+    expect(ruleConditionMatches(windowed, dated("2026-10-31"))).toBe(true);
+    expect(ruleConditionMatches(windowed, dated("2026-11-01"))).toBe(false);
+    expect(ruleConditionMatches(windowed, dated(null))).toBe(false);
   });
 });

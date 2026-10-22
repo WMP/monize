@@ -9,6 +9,7 @@ import { Account } from '@/types/account';
 import { ImportFileData, BulkImportResult } from '@/app/import/import-utils';
 import { LoanPaymentSetupDialog } from '@/components/accounts/LoanPaymentSetupDialog';
 import { mortgageTypeOf } from '@/lib/mortgage-type';
+import { SkippedRowsList } from './SkippedRowsList';
 
 interface CompleteStepProps {
   importFiles: ImportFileData[];
@@ -199,6 +200,7 @@ export function CompleteStep({
                       {'\u2192'} {result.accountName}: {result.imported} {t('complete.importedSuffix')}, {result.skipped} {t('complete.totalSkippedSuffix')}
                       {result.errors > 0 && <span className="text-red-600 dark:text-red-400">, {result.errors} {t('complete.errorsLabel')}</span>}
                     </p>
+                    <SkippedRowsList rows={result.skippedRows} total={result.skipped} limit={3} />
                     {result.errorMessages.length > 0 && (
                       <ul className="text-xs text-red-500 dark:text-red-400 mt-1">
                         {result.errorMessages.slice(0, 3).map((msg, i) => (
@@ -248,6 +250,12 @@ export function CompleteStep({
                 <strong>{t('complete.securitiesCreated')}</strong> {importResult.securitiesCreated}
               </li>
             </ul>
+            <SkippedRowsList rows={importResult.skippedRows} total={importResult.skipped} />
+            {(importResult.bondRowsWithoutSeries ?? 0) > 0 && (
+              <p className="mt-4 text-sm text-amber-800 dark:text-amber-300">
+                {t('complete.bondRowsWithoutSeries', { count: importResult.bondRowsWithoutSeries ?? 0 })}
+              </p>
+            )}
             {importResult.errorMessages.length > 0 && (
               <div className="mt-4">
                 <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">

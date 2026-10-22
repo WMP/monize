@@ -119,6 +119,8 @@
     "currencyLabel": "Divisa",
     "currencyNotConfigured": "{code} — no está en tus divisas",
     "quoteProviderLabel": "Proveedor de cotizaciones",
+    "skipPriceUpdatesLabel": "Desactivar las actualizaciones automáticas de precios",
+    "skipPriceUpdatesHelp": "Monize no obtendrá precios para este valor. Úselo para un valor que ningún proveedor pueda cotizar; los precios que introduzca usted mismo siguen contando. Elegir otro proveedor de cotizaciones u otro ID de instrumento de MSN vuelve a activar las actualizaciones.",
     "msnIdLabel": "ID de instrumento MSN (avanzado)",
     "lookupProviderAriaLabel": "Buscar proveedor",
     "lookupButton": "Buscar",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "Motor de bonos"
     },
     "types": {
       "select": "Seleccionar tipo...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "Eliminar",
       "deleteSuccess": "Clase de activo «{name}» eliminada",
       "deleteFailed": "No se pudo eliminar la clase de activo «{name}»"
-    }
+    },
+    "bondFetchAction": "Obtener {code} de la fuente oficial",
+    "bondFetching": "Obteniendo {code} del emisor y sus tasas de referencia. Esto puede tardar hasta un minuto.",
+    "bondFetchFailed": "No se pudo obtener la serie.",
+    "bondCurrencyLocked": "Este valor está vinculado a un tipo de bono en {linkedCurrency}. Vuelva a poner la moneda en {linkedCurrency} o desvincule antes el tipo de bono (al desvincular se eliminan sus precios calculados).",
+    "bondProgramLabel": "Tipo de bono",
+    "bondProgramNone": "Sin vincular",
+    "bondProgramCurrent": "Tipo de bono vinculado",
+    "bondProgramLoading": "Cargando los tipos de bono...",
+    "bondProgramLoadFailed": "No se pudieron cargar los tipos de bono, por lo que aún no se puede vincular un tipo de bono.",
+    "bondProgramRetry": "Reintentar",
+    "bondNoPrograms": "El catálogo de bonos aún no contiene ningún tipo de bono.",
+    "bondAutoFetchLabel": "Obtener automáticamente las nuevas series de este tipo de bono",
+    "bondAutoFetchHelp": "Si está activado, Monize lee cada día las nuevas series de este tipo de bono desde la fuente oficial, de modo que pueda registrar una compra sin obtener antes la serie.",
+    "bondCountryLabel": "País",
+    "bondCountryOther": "Otro",
+    "bondCountryOtherInfo": "Puede solicitar la compatibilidad con bonos de otros países en el <link>GitHub del proyecto</link>."
   },
   "priceForm": {
     "dateLabel": "Fecha",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinversión de ganancias a largo plazo",
       "CAPITAL_GAIN_SHORT": "Ganancia de capital a corto plazo",
       "CAPITAL_GAIN_LONG": "Ganancia de capital a largo plazo",
-      "REDEEM": "Rescate de CD/bono"
+      "REDEEM": "Rescate de CD/bono",
+      "RETURN_OF_CAPITAL": "Devolución de capital"
     },
     "toasts": {
       "loadHistoryFailed": "Error al cargar el historial",
@@ -340,6 +360,7 @@
     "nameRequired": "El nombre es obligatorio",
     "nameMax": "El nombre debe tener 255 caracteres o menos",
     "currencyRequired": "La divisa es obligatoria",
+    "bondProgramRequired": "El tipo de bono es obligatorio",
     "descriptionMax": "La descripción no puede superar los 5000 caracteres"
   },
   "priceValidation": {

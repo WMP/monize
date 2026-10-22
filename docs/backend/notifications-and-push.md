@@ -42,8 +42,17 @@ the second account subscribing in the same browser is *refused*, never allowed
 to take the row over. An endpoint is a string the caller supplied; deleting
 somebody else's row on the strength of it is a cross-tenant write no ownership
 check covers. The client answers the 409 by
-unsubscribing and subscribing again for a fresh endpoint, and logout releases
-the endpoint the same way (`releaseLocalPushSubscription`).
+unsubscribing and subscribing again for a fresh endpoint.
+
+**A header sign-out holds the row rather than deleting it** (INV-PUSH-011):
+`PushSubscriptionService.hold` sets `held_at`, `sendToUser` and `sendTest` skip a
+held row (skipped, not queued: the bell already has every notification), and the
+same account's next subscribe clears it on the upsert's `DO UPDATE` arm, under
+the same `user_id` guard as every refresh. Held rows still count against
+`MAX_LIVE_DEVICES_PER_USER`, and `purgeRetiredDevices` deletes a hold older than
+`HELD_DEVICE_RETENTION_DAYS`. The client keeps the browser subscription only
+once the hold is confirmed and otherwise releases the endpoint as before
+(`releaseLocalPushSubscription`); account deletion always releases.
 
 ## The notifications table has one writer
 
@@ -91,6 +100,11 @@ The HTTP surface lives in its own module (`notification-api.module.ts`) because
 it is the one part that needs a producer: bill reminders are materialized when
 the list is read. Put that edge on `NotificationCenterModule` and every producer
 of a notification lands on a require cycle with budgets.
+
+## A push's chart token lives as long as the push, and a movement alert is written before its baseline
+
+- **The chart token outlives nothing it rides on (A26-L27).** `CHART_TOKEN_TTL_MS` (`src/push/push-chart-artifact.service.ts`) is `PUSH_TTL_SECONDS * 1000`, because a push held for a phone in Doze shows its image URL hours later. `CHART_ARTIFACT_LIMIT` is unchanged and now binds sooner; at the cap `issue` returns `null` and the push goes without a chart. The spec pins the relation.
+- **Do the thing, then write down what happened (A26-L28).** `PortfolioMovementAlertService` calls `notify` first and stores the new baseline after it returns. A failed `notify` leaves the old baseline, so the next run measures the same movement; the per-day dedupe key (`portmove:<currency>:<day>`) makes the retry harmless. A `null` from `notify` means another replica wrote today's alert, and the baseline still moves.
 
 ## Copy composed outside a request is rendered in the recipient's locale
 

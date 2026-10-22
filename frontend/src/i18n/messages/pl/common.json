@@ -38,6 +38,14 @@
     "scheduleRecurring": "Ustaw jako cykliczne",
     "more": "Więcej akcji"
   },
+  "columns": {
+    "button": "Kolumny",
+    "buttonWithHidden": "Kolumny, ukryte: {count}",
+    "menuLabel": "Pokaż lub ukryj kolumny",
+    "showAll": "Pokaż wszystkie",
+    "hideColumn": "Ukryj kolumnę",
+    "sheetSubtitle": "Przywrócisz ją z menu Kolumny."
+  },
   "loading": "Wczytywanie...",
   "pagination": {
     "showing": "Wyświetlanie",
@@ -262,5 +270,8 @@
     "normal": "Normalna",
     "compact": "Kompaktowa",
     "dense": "Gęsta"
+  },
+  "scheduledOverdue": {
+    "included": "Zawiera {count, plural, one {# zaległą zaplanowaną transakcję} few {# zaległe zaplanowane transakcje} many {# zaległych zaplanowanych transakcji} other {# zaległej zaplanowanej transakcji}}"
   }
 }

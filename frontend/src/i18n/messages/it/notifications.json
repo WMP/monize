@@ -68,6 +68,58 @@
     "riskOn": "risk-on",
     "riskOff": "risk-off"
   },
+  "bond": {
+    "maturitySoonTitle": "{series} scade il {date}",
+    "maturitySoonMessage": "{quantity} × {series} scadono il {date}. {payout}",
+    "interestTitle": "{series}: pagamento di interessi il {date}",
+    "interestMessage": "{quantity} × {series} pagano {amount} di interessi il {date}. Registrali nella pagina del titolo se non sono ancora nel tuo conto.",
+    "interestMessageUnknown": "{quantity} × {series} pagano interessi il {date}. L'importo non è ancora noto: un tasso da cui dipende non è pubblicato.",
+    "rateResetTitle": "{series}: nuovo periodo di interessi",
+    "rateResetMessage": "{series} è entrata nel periodo {period} il {date} con un tasso annuo di {rate}.",
+    "unbookedTitle": "{series}: scaduta, rimborso non registrato",
+    "unbookedMessage": "{quantity} × {series} sono scadute il {date} e non risulta registrato alcun rimborso. {payout} Registra il rimborso nella pagina del titolo.",
+    "payoutKnown": "L'importo da incassare è {payout}.",
+    "payoutUnknown": "L'importo da incassare non è ancora noto: {reason}.",
+    "reason": {
+      "RATE_UNKNOWN": "un tasso da cui dipende non è ancora pubblicato",
+      "TERMS_INCOMPLETE": "le condizioni della serie sono incomplete",
+      "PURCHASE_OUTSIDE_SALE_WINDOW": "una data di acquisto è fuori dal periodo di vendita della serie",
+      "other": "non può essere calcolato dai dati memorizzati"
+    },
+    "benchmarkTitle": "{benchmark}: nuova rilevazione {observation}",
+    "benchmarkIntro": "{publisher} ha pubblicato {benchmark} per {observation}: {value}.",
+    "benchmarkSeries": "{series}: periodo dal {date} con un tasso annuo di {rate}.",
+    "benchmarkSeriesProjected": "{series}: periodo dal {date} con un tasso annuo previsto di {rate}.",
+    "benchmarkSeriesUnknown": "{series}: periodo dal {date}, il tasso non è ancora noto.",
+    "benchmarkMore": "E altre {more}.",
+    "missingTitle": "Dati sulle obbligazioni non ancora noti",
+    "missingMessage": "Alcuni dati sulle obbligazioni non possono essere calcolati. {causes}",
+    "cause": {
+      "observation": "La rilevazione {observation} di {benchmark} ({publisher}) non è memorizzata: non è ancora pubblicata o il feed non è stato scaricato da allora. Aggiorna nella pagina dell'obbligazione.",
+      "observationNoPublisher": "La rilevazione {observation} di {benchmark} non è memorizzata: non è ancora pubblicata o il feed non è stato scaricato da allora. Aggiorna nella pagina dell'obbligazione.",
+      "terms": "Le condizioni di {series} sono incomplete. Aggiorna la serie nella pagina dell'obbligazione.",
+      "purchase": "Un acquisto di {series} del {date} è fuori dal suo periodo di vendita (dal {from} al {to}). Correggi la data di acquisto.",
+      "lots": "I lotti non possono essere ricavati dal registro ({code}). Correggi il registro.",
+      "lotsRow": "{action} del {date}: i lotti non possono essere ricavati ({code}). Correggi la transazione.",
+      "lotsRowSeries": "{action} del {date}: nessuna serie assegnata ({code}). Scegli la serie in quella transazione.",
+      "lotsRowRemoval": "{action} del {date}: rimuove più di quanto il conto detiene di quella serie ({code}). Correggi la transazione."
+    },
+    "action": {
+      "BUY": "Acquisto",
+      "SELL": "Vendita",
+      "REINVEST": "Reinvestimento",
+      "ADD_SHARES": "Aggiunta di quote",
+      "REMOVE_SHARES": "Rimozione di quote",
+      "SPLIT": "Split",
+      "TRANSFER_IN": "Trasferimento in entrata",
+      "TRANSFER_OUT": "Trasferimento in uscita",
+      "other": "Transazione"
+    },
+    "benchmarks": {
+      "PL_CPI_GUS_YOY": "Inflazione IPC, 12 mesi (GUS)",
+      "PL_NBP_REFERENCE": "Tasso di riferimento NBP"
+    }
+  },
   "portfolioMovement": {
     "titleUp": "Investimenti in rialzo del {percent}%",
     "titleDown": "Investimenti in ribasso del {percent}%",
@@ -119,5 +171,37 @@
   "priceMovement": {
     "title": "Avviso variazione prezzo: {symbol} ({percent}%)",
     "message": "{symbol}: {percent}% rispetto alla precedente seduta disponibile."
+  },
+  "bankSync": {
+    "expiringTitleToday": "{institution}: l'accesso bancario termina oggi",
+    "expiringTitleOneDay": "{institution}: l'accesso bancario termina entro 1 giorno",
+    "expiringTitleDays": "{institution}: l'accesso bancario termina entro {days} giorni",
+    "expiringMessage": "Il tuo consenso a Monize per leggere {institution} termina il {date}. Rinnova il collegamento in Monize per continuare a sincronizzare.",
+    "expiredTitle": "{institution}: l'accesso bancario è terminato",
+    "expiredMessage": "Il tuo consenso a Monize per leggere {institution} è terminato. Rinnova il collegamento in Monize per riprendere la sincronizzazione.",
+    "failedTitle": "{institution}: sincronizzazione non riuscita",
+    "failedMessage": "La sincronizzazione giornaliera di {institution} non è riuscita per: {accounts}. Apri le impostazioni della sincronizzazione bancaria per vedere il motivo.",
+    "failedCredentialsMessage": "La sincronizzazione giornaliera di {institution} non ha potuto avviarsi perché le credenziali della sincronizzazione bancaria mancano o sono state rifiutate. Controllale nelle impostazioni della sincronizzazione bancaria.",
+    "unnamedAccount": "un conto",
+    "importedTitle": "{institution}: nuove transazioni importate",
+    "importedMessage": "Transazioni importate da {institution} dalla sincronizzazione giornaliera: {imported}.",
+    "importedNoneTitle": "{institution}: nessuna nuova transazione",
+    "importedNoneMessage": "La sincronizzazione giornaliera di {institution} non ha trovato nuove transazioni."
+  },
+  "emailReceiptsAttention": {
+    "title": "Le ricevute email richiedono attenzione",
+    "message": "La cartella ricevute contiene {noParser} senza profilo e {parseFailed} che il loro profilo non ha riconosciuto. Apri per rivedere."
+  },
+  "aiReview": {
+    "readyTitle": "Proposte IA in attesa di approvazione",
+    "readyMessage": "{count, plural, one {# proposta IA attende} other {# proposte IA attendono}} la tua approvazione, di cui {added} nuove. Apri la casella di revisione IA per approvarle o rifiutarle.",
+    "expiringTitle": "Proposte IA in scadenza",
+    "expiringMessage": "{count, plural, one {# proposta IA scade} other {# proposte IA scadono}} a breve. La prima scade il {date}. Apri la casella di revisione IA per approvarle o rifiutarle."
+  },
+  "warranty": {
+    "expiringTitle": "{name}: la garanzia scade entro {days, plural, one {# giorno} other {# giorni}}",
+    "expiringMessage": "La garanzia di {name} scade il {date}. Aprila per controllare i documenti o registrare una richiesta di assistenza.",
+    "todayTitle": "{name}: la garanzia scade oggi",
+    "todayMessage": "La garanzia di {name} scade oggi, {date}. Aprila per controllare i documenti o registrare una richiesta di assistenza."
   }
 }

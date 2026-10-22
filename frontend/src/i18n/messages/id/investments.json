@@ -51,6 +51,7 @@
     "costBasisTooltip": "Biaya perolehan posisi Anda saat ini, direkonstruksi dari riwayat transaksi: harga beli plus komisi yang dibebankan pada setiap pembelian, masing-masing dikonversi dengan kurs transaksi yang membayarnya. Ditampilkan dalam mata uang tampilan Anda. Digunakan untuk menghitung untung dan rugi.",
     "gainLoss": "Untung/Rugi",
     "gainLossTooltip": "Untung atau rugi yang belum terealisasi atas posisi saat ini: nilai pasar pada harga hari ini dikurangi dasar biaya di atas. Tidak termasuk keuntungan terealisasi dari penjualan sebelumnya, atau dividen dan bunga yang diterima.",
+    "gainPartialCaption": "Hanya atas kepemilikan yang memiliki harga",
     "returns": "Imbal Hasil",
     "simpleReturn": "Imbal Hasil Sederhana",
     "simpleReturnTooltip": "Keuntungan atau kerugian terhadap apa yang Anda bayarkan: (Nilai Pasar − Dasar Biaya) ÷ Dasar Biaya. Ini mengabaikan kapan uang tersebut masuk, sehingga melonjak pada setiap pembelian: posisi 1.000 yang naik 20% menunjukkan +20%; beli lagi 1.000 dan akan menunjukkan +10% (200 ÷ 2.000) meskipun tidak ada yang hilang. TWR dan MWR tidak memiliki lonjakan ini.",
@@ -88,6 +89,14 @@
       "assetClass": "Menurut kelas aset"
     }
   },
+  "assetClasses": {
+    "equity": "Saham",
+    "fixedIncome": "Pendapatan tetap",
+    "cash": "Tunai",
+    "preferred": "Saham preferen",
+    "convertible": "Konvertibel",
+    "crypto": "Kripto"
+  },
   "holdingsList": {
     "title": "Kepemilikan",
     "noHoldings": "Tidak ada kepemilikan dalam portofolio ini.",
@@ -102,6 +111,7 @@
     "title": "Kepemilikan berdasarkan Akun",
     "noHoldings": "Tidak ada kepemilikan dalam portofolio Anda.",
     "accountIncomplete": "Sebagian: total akun ini tidak mencakup kepemilikan yang tidak dapat dinilai dalam {currency}.",
+    "gainPartialCaption": "Hanya atas kepemilikan yang memiliki harga",
     "accountSummary": "{accounts} akun{accountsPlural} dengan {positions} posisi{positionsPlural}",
     "positionsWithCash": "{count} posisi{plural} + Tunai",
     "positions": "{count} posisi{plural}",
@@ -129,6 +139,7 @@
     "intradayUnavailableDescription": "Satu atau lebih kepemilikan menggunakan penyedia kutipan (MSN Money) yang tidak mengekspos data intraday. Beralih ke rentang yang lebih panjang untuk melihat snapshot harian.",
     "noDataForPeriod": "Tidak ada data investasi untuk periode ini.",
     "highestValue": "Nilai Tertinggi",
+    "incompleteTooltip": "Beberapa titik dalam rentang ini tidak memiliki harga atau kurs, sehingga nilai tertinggi dan terendah tidak ditampilkan.",
     "lowestValue": "Nilai Terendah",
     "valueChange": "Perubahan Nilai",
     "valueChangeTooltip": "Nilai sekuritas di akhir periode, dikurangi nilainya di awal periode: titik terakhir pada grafik dikurangi titik pertama. Kas yang tidak diinvestasikan tidak dihitung.",
@@ -190,6 +201,7 @@
     "actionCapitalGainShort": "Keuntungan Modal Jangka Pendek",
     "actionCapitalGainLong": "Keuntungan Modal Jangka Panjang",
     "actionRedeem": "Pencairan CD/Obligasi",
+    "actionReturnOfCapital": "Pengembalian Modal",
     "allActions": "Semua Tindakan"
   },
   "transactionForm": {
@@ -210,6 +222,7 @@
     "actionCapitalGainShort": "Keuntungan Modal Jangka Pendek",
     "actionCapitalGainLong": "Keuntungan Modal Jangka Panjang",
     "actionRedeem": "Pencairan CD/Obligasi",
+    "actionReturnOfCapital": "Pengembalian Modal",
     "actionTransfer": "Transfer",
     "brokerageAccount": "Akun Perantara",
     "fromAccount": "Dari Akun",
@@ -253,7 +266,8 @@
     "sourceHolds": "Sumber memegang",
     "sharesAt": "lembar @",
     "avgCostSuffix": "biaya rata-rata.",
-    "transferCostNote": "Biaya per lembar (diisi otomatis dari akun sumber) dibawa ke tujuan agar laporan keuntungan dan laba Anda tetap benar. Ini hanya memindahkan lembar -- tidak ada perubahan tunai.",
+    "transferCostNote": "Biaya per saham adalah harga saham tersebut di akun sumber pada tanggal transfer. Biaya ini dihitung saat Anda menyimpan dan dibawa ke akun tujuan, sehingga laporan keuntungan dan laba Anda tetap benar. Ini hanya memindahkan saham; tidak ada uang tunai yang berpindah tangan.",
+    "returnOfCapitalNote": "Pengembalian modal bukan pendapatan. Ini mengembalikan sebagian dari biaya perolehan saham, sehingga menurunkan dasar biaya kepemilikan Anda sebesar jumlah ini. Jumlah yang melebihi sisa dasar biaya dilaporkan sebagai keuntungan modal yang direalisasi.",
     "totalAmount": "Total Jumlah ({currency})",
     "sharesAtPrice": "{shares} lembar @ {symbol}{price}",
     "commissionSuffix": "komisi",
@@ -288,7 +302,30 @@
     "toastSaveFailed": "Gagal menyimpan transaksi",
     "exchangeRateUnresolved": "Tidak ada kurs {from} ke {to}. Masukkan satu, atau total terkonversi, sebelum menyimpan.",
     "toastExchangeRateRequired": "Masukkan nilai tukar sebelum menyimpan perdagangan lintas mata uang.",
-    "notAvailable": "Tidak tersedia"
+    "notAvailable": "Tidak tersedia",
+    "bondSeries": {
+      "label": "Seri obligasi",
+      "fromDate": "Ditentukan dari tanggal",
+      "oldestFirst": "Yang terlama lebih dulu",
+      "loading": "Memuat seri...",
+      "loadFailed": "Seri tidak dapat dimuat.",
+      "retry": "Coba lagi",
+      "fromDateCode": "Dari tanggal: {code}",
+      "noneOnSale": "Tidak ada seri yang dijual pada tanggal ini",
+      "choose": "Pilih seri",
+      "required": "Pilih seri dari saham ini.",
+      "heldOption": "{code} ({quantity} dimiliki)",
+      "noLongerHeld": "{code} (tidak lagi dimiliki pada tanggal ini)",
+      "noLongerHeldUnknown": "Seri tersimpan (tidak lagi dimiliki pada tanggal ini)",
+      "storedSeries": "Seri tersimpan",
+      "seriesOnSaleMonth": "{code} — dijual {month}",
+      "seriesOnSaleRange": "{code} — dijual {from} sampai {to}"
+    },
+    "bondRedemption": {
+      "summary": "Bunga {interest}, potongan pelunasan dipercepat {deduction}, pembayaran {payout}",
+      "outsideSaleWindow": "Satu lot seri ini dibeli di luar periode penjualannya, sehingga pelunasan tidak dapat dirinci.",
+      "failed": "Rincian pelunasan tidak dapat dihitung."
+    }
   },
   "newTransactionButton": {
     "label": "+ Transaksi Baru",

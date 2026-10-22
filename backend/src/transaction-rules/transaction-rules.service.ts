@@ -23,9 +23,18 @@ import {
   checkReferences,
   withActionDefaults,
 } from "./rule-references";
-import { RuleDefinition, validateRuleDefinition } from "./rule-validation";
+import type { RuleConditionNode } from "./rule-condition.types";
+import {
+  RuleDefinition,
+  validateRuleCondition,
+  validateRuleDefinition,
+} from "./rule-validation";
 import { toRuleResponse, toRuleResponses } from "./transaction-rule-view";
 import { MAX_TRANSACTION_RULES_PER_USER } from "./transaction-rules.limits";
+
+/** A blank or absent date clears a side of the window. */
+const blankToNull = (value: string | null | undefined): string | null =>
+  value === undefined || value === null || value === "" ? null : value;
 
 @Injectable()
 export class TransactionRulesService {
@@ -72,6 +81,9 @@ export class TransactionRulesService {
           errorCode: "RULE_LIMIT_REACHED",
         });
       }
+      const activeFrom = blankToNull(dto.activeFrom);
+      const activeTo = blankToNull(dto.activeTo);
+      this.assertActiveWindow(activeFrom, activeTo);
       const definition = await this.checkedDefinition(
         m,
         userId,
@@ -88,6 +100,8 @@ export class TransactionRulesService {
           condition: definition.condition,
           actions: [...definition.actions],
           stopProcessing: dto.stopProcessing ?? false,
+          activeFrom,
+          activeTo,
         }),
       );
       // Just validated in this transaction, so it is not invalid.
@@ -112,6 +126,12 @@ export class TransactionRulesService {
       if (Object.keys(changes).length === 0) {
         return (await toRuleResponses(m, userId, [rule]))[0];
       }
+      // The window as it will be stored: a side the request leaves out keeps
+      // its stored value, so moving one side cannot invert the other.
+      this.assertActiveWindow(
+        changes.activeFrom === undefined ? rule.activeFrom : changes.activeFrom,
+        changes.activeTo === undefined ? rule.activeTo : changes.activeTo,
+      );
       const definition = await this.checkedDefinition(
         m,
         userId,
@@ -181,6 +201,19 @@ export class TransactionRulesService {
         );
         if (rule.revision !== expectedRevision) throw this.revisionConflict();
       }
+      // The rule's open review requests go with it. `rule_id` is ON DELETE SET
+      // NULL, so left open they would read as rule-less requests, which the
+      // receipt dedupe treats as a review already in progress, and they would
+      // keep being offered for a rule that is gone (A26-L16). Closed before
+      // the delete, in its transaction, so a refused delete closes nothing.
+      await m.query(
+        `UPDATE ai_review_requests
+            SET status = 'expired', updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $1
+            AND rule_id = $2
+            AND status IN ('pending', 'claimed', 'proposed')`,
+        [userId, id],
+      );
       const result = await m
         .getRepository(TransactionRule)
         .delete({ id, userId });
@@ -320,6 +353,8 @@ export class TransactionRulesService {
       | "condition"
       | "actions"
       | "stopProcessing"
+      | "activeFrom"
+      | "activeTo"
     >
   > {
     const next = {
@@ -328,9 +363,13 @@ export class TransactionRulesService {
       triggers: dto.triggers,
       condition: dto.condition as TransactionRule["condition"] | undefined,
       actions: withActionDefaults(dto.actions) as
-        | TransactionRule["actions"]
-        | undefined,
+        TransactionRule["actions"] | undefined,
       stopProcessing: dto.stopProcessing,
+      // A blank or null clears the side; an absent key leaves it alone.
+      activeFrom:
+        dto.activeFrom === undefined ? undefined : blankToNull(dto.activeFrom),
+      activeTo:
+        dto.activeTo === undefined ? undefined : blankToNull(dto.activeTo),
     };
     const changes: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(next)) {
@@ -367,6 +406,65 @@ export class TransactionRulesService {
     const missing = await checkReferences(m, userId, definition);
     if (missing.length > 0) throw this.invalidDefinition(missing);
     return definition;
+  }
+
+  /**
+   * `checkedDefinition` for a condition alone, with the same 400: the shape,
+   * then that every id it names is the caller's. No authoring advice, because
+   * a match only reads; the save and the Test still give it.
+   */
+  async checkedCondition(
+    m: EntityManager,
+    userId: string,
+    condition: unknown,
+  ): Promise<RuleConditionNode> {
+    const shapeErrors = validateRuleCondition(condition);
+    if (shapeErrors.length > 0) throw this.invalidDefinition(shapeErrors);
+    const checked = condition as RuleConditionNode;
+    const missing = await checkReferences(m, userId, {
+      condition: checked,
+      actions: [],
+    });
+    if (missing.length > 0) throw this.invalidDefinition(missing);
+    return checked;
+  }
+
+  /**
+   * The shape half of `checkedDefinition` (no database read), with the same
+   * 400. For a caller that writes something of its own before it creates the
+   * rule (the mortgage create, the loan-payment setup), so a definition the
+   * create would refuse is refused before that first write.
+   */
+  assertDefinitionShape(condition: unknown, actions: unknown): void {
+    const shapeErrors = validateRuleDefinition(
+      { condition, actions: withActionDefaults(actions) },
+      { authoring: true },
+    );
+    if (shapeErrors.length > 0) throw this.invalidDefinition(shapeErrors);
+  }
+
+  /**
+   * An empty window (from after to) could never match a row; refused before
+   * anything is written. `YYYY-MM-DD` strings compare in date order.
+   */
+  private assertActiveWindow(
+    activeFrom: string | null,
+    activeTo: string | null,
+  ): void {
+    if (activeFrom !== null && activeTo !== null && activeFrom > activeTo) {
+      throw this.activeWindowInvalid();
+    }
+  }
+
+  /** The refusal for a window whose first day is after its last. */
+  activeWindowInvalid(): BadRequestException {
+    return new BadRequestException({
+      message: tr(
+        "errors.transactionRules.activeWindowInvalid",
+        "The first active date must not be after the last active date",
+      ),
+      errorCode: "ACTIVE_WINDOW_INVALID",
+    });
   }
 
   private invalidDefinition(

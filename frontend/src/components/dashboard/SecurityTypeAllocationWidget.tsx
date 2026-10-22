@@ -10,6 +10,7 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useReportData } from '@/hooks/useReportData';
 import { useWidgetConfig } from '@/hooks/useWidgetConfig';
+import { useAssetClassLabel } from '@/hooks/useAssetClassLabel';
 import { chartColors, CHART_SERIES, chartSeriesColor } from '@/lib/chart-colors';
 import { aggregateHoldingsBySecurity } from '@/lib/aggregate-holdings';
 import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
@@ -50,6 +51,7 @@ export function SecurityTypeAllocationWidget({
   isLoading,
 }: SecurityTypeAllocationWidgetProps) {
   const t = useTranslations('dashboard');
+  const assetClassLabel = useAssetClassLabel();
   const { formatCurrency, formatPercent } = useNumberFormat();
   const { convertToDefault } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<SecurityTypeAllocationConfig>(
@@ -100,7 +102,7 @@ export function SecurityTypeAllocationWidget({
     return collapseLookThrough(
       {
         items: assetClasses.items.map((item) => ({
-          name: item.assetClass,
+          name: assetClassLabel(item),
           totalValue: item.totalValue,
           percentage: item.percentage,
         })),
@@ -115,7 +117,7 @@ export function SecurityTypeAllocationWidget({
       percentage: slice.percentage,
       color: slice.isOther ? chartColors.axis : chartSeriesColor(index),
     }));
-  }, [assetClasses, t]);
+  }, [assetClasses, assetClassLabel, t]);
 
   const typeData = useMemo<TypeAllocation[]>(() => {
     const aggregated = aggregateHoldingsBySecurity(holdings);

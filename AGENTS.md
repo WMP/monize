@@ -45,14 +45,15 @@ scripts/verify-schema.sh                                  # migrations replay as
 
 ## Required before you push
 
-Mirrors `.github/workflows/ci.yml`. Run the focused test while developing; run the gate for each layer you touched once, before pushing, and quote the result.
+Mirrors `.github/workflows/ci.yml`. While developing run `npm run test:changed` (changed specs plus every guard, failures only); the coverage gate is CI's, run it locally only when asked.
 
-- `backend/`: the three lint/typecheck commands, `TZ=UTC npm run test:unit -- --coverage`, plus `migration:lint` when a migration changed and `npm run build && npm run test:integration` when a query, an entity, a migration or an RLS context changed.
-- `frontend/`: `lint`, `type-check`, `i18n:check`, `test:cov`, `build`.
+- `backend/`: the three lint/typecheck commands, `npm run test:changed`, plus `migration:lint` when a migration changed and `npm run build && npm run test:integration` when a query, an entity, a migration or an RLS context changed.
+- `frontend/`: `lint`, `type-check`, `i18n:check`, `test:changed`, `build`.
 - A migration or `database/schema.sql`: `migration:lint`, `scripts/verify-schema.sh`, `node scripts/check-migration-prefixes.mjs`.
 - An env var, a documented path or a Helm default: the two `scripts/check-*.mjs` above.
 - A control an E2E spec drives was renamed or removed: grep `e2e/` for its accessible name; no unit suite loads those specs.
 - **Stage new files first.** The guards that walk the tree with `git ls-files` cannot see an untracked file (`git add -N` is enough); green before staging and red in CI is not a flake.
+- CI pulls images from `mirror.gcr.io` or `ghcr.io`, never Docker Hub (`ci-images.guard.spec.ts`).
 - CI runs in UTC with one worker. The backend's database-backed suites rebuild one shared `monize_test` and never run in parallel with anything, including each other. `docs/verification-contract.md` section 7 explains the rest.
 - The pre-commit hook (husky + lint-staged) runs `eslint --max-warnings=0 --fix` and prettier on staged files, which is stricter than CI's `lint`: a warning blocks the commit.
 

@@ -13,6 +13,14 @@
     "modalTitleNew": "Новая валюта",
     "loading": "Загрузка валют...",
     "count": "{count, plural, one {# валюта} other {# валют}}",
+    "providers": {
+      "line": "Курсы от {providers}",
+      "separator": ", затем ",
+      "names": {
+        "frankfurter": "Frankfurter (справочные курсы ЕЦБ)",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "Не удалось загрузить валюты",
       "updated": "Валюта успешно обновлена",
@@ -24,6 +32,7 @@
       "statusFailed": "Не удалось обновить статус валюты",
       "ratesRefreshed": "Курсы обновлены: обновлено {updated} пар",
       "ratesRefreshedWithFailed": "Курсы обновлены: обновлено {updated}, ошибок {failed}",
+      "ratesAllFailed": "Не удалось получить ни одного курса валют; поставщик не ответил",
       "ratesFailed": "Не удалось обновить курсы валют"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter (ЕЦБ)",
         "mnyImport": "Импорт из Money",
         "unknown": "Неизвестно"
       }

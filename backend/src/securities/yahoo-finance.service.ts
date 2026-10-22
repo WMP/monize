@@ -39,8 +39,11 @@ export type {
   EtfSectorWeighting,
 } from "./providers/quote-provider.interface";
 
-interface YahooSearchResult {
+/** One item as the search endpoint's `quotes[]` carries it. */
+export interface YahooSearchResult {
   symbol: string;
+  /** `EQUITY`, `ETF`, `CURRENCY`, ...; the machine-readable sibling of `typeDisp`. */
+  quoteType?: string;
   shortname?: string;
   longname?: string;
   exchDisp?: string;
@@ -581,8 +584,7 @@ export class YahooFinanceService implements QuoteProvider {
         // the first non-null open in the indicators series (today's open
         // for range=1d&interval=1d).
         const openSeries = result.indicators?.quote?.[0]?.open as
-          | (number | null | undefined)[]
-          | undefined;
+          (number | null | undefined)[] | undefined;
         const openFromSeries = openSeries?.find(
           (v): v is number => v != null && !Number.isNaN(v),
         );
@@ -1020,6 +1022,47 @@ export class YahooFinanceService implements QuoteProvider {
   ): Promise<SecurityLookupResult | null> {
     const all = await this.lookupSecurityMany(query, preferredExchanges);
     return all[0] || null;
+  }
+
+  /**
+   * The quotes Yahoo's search endpoint answers for free text, unread beyond
+   * the array, through `throttledFetch` (the breaker, the throttle and the
+   * retry stay in front of it). `null` when Yahoo did not answer: refused by
+   * the breaker, a transport failure, a non-2xx or an unreadable body. `[]`
+   * when it answered with no quotes.
+   */
+  async searchQuotes(
+    query: string,
+    count: number,
+  ): Promise<YahooSearchResult[] | null> {
+    try {
+      const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=${count}&newsCount=0`;
+
+      const response = await this.throttledFetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+      });
+
+      if (!response.ok) {
+        this.logger.warn(
+          `Yahoo Finance search API returned ${response.status} for query: ${query}`,
+        );
+        return null;
+      }
+
+      const data = await this.readBody<any>(response);
+      const quotes: unknown = data?.quotes;
+      if (!Array.isArray(quotes)) return [];
+      return quotes.filter(
+        (quote): quote is YahooSearchResult =>
+          typeof quote?.symbol === "string",
+      );
+    } catch (error) {
+      this.health.logFailure(this.logger, HEALTH_PROVIDER_ID, "search", error);
+      return null;
+    }
   }
 
   async lookupSecurityMany(

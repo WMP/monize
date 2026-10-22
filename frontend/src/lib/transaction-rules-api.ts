@@ -5,11 +5,14 @@ import type {
   TransactionRule,
   UpdateTransactionRuleData,
 } from '@/types/transaction-rule';
+import type { ExplainRowRequest, RuleRowExplanation } from '@/types/transaction-rule-explain';
 import type {
+  MatchDraftRuleData,
   PreviewDraftRuleData,
   RuleApplication,
   RuleRunFilters,
   RuleRunPreview,
+  RuleMatchPage,
   RuleRunResult,
 } from '@/types/transaction-rule-run';
 
@@ -97,6 +100,27 @@ export const transactionRulesApi = {
   /** Tests an unsaved rule against existing transactions. Writes nothing. */
   previewDraft: async (data: PreviewDraftRuleData): Promise<RuleRunPreview> => {
     const response = await apiClient.post<RuleRunPreview>('/transaction-rules/preview-draft', data);
+    return response.data;
+  },
+
+  /**
+   * One page of the existing transactions an unsaved condition matches, in the
+   * register's shape. Writes nothing and is never cached: the answer follows the
+   * ledger as it is now.
+   */
+  matchDraft: async (data: MatchDraftRuleData): Promise<RuleMatchPage> => {
+    const response = await apiClient.post<RuleMatchPage>('/transaction-rules/match-draft', data);
+    return response.data;
+  },
+
+  /**
+   * Why each rule of a trigger did or did not apply to one row that is not
+   * stored (an import preview's): its condition explained node by node and the
+   * effects planned. Writes nothing and is never cached: the answer follows the
+   * rules as they are now.
+   */
+  explainRow: async (data: ExplainRowRequest): Promise<RuleRowExplanation> => {
+    const response = await apiClient.post<RuleRowExplanation>('/transaction-rules/explain-row', data);
     return response.data;
   },
 

@@ -774,6 +774,32 @@ export class AiService {
     };
   }
 
+  /**
+   * Whether an in-app completion can be answered RIGHT NOW: a provider is
+   * configured and, when the user's top provider is the MCP relay (their own
+   * agent), that agent is connected (`listening` or `busy`, not `offline`). The
+   * server-side twin of the frontend's `assistantCanAnswerNow`
+   * (`lib/assistant-ready.ts`), so a background job decides as the page does. A
+   * read that fails is "no", never "yes": the caller then takes its
+   * "wait for an agent" path.
+   */
+  async canAnswerNow(userId: string): Promise<boolean> {
+    let status: AiStatusResponse;
+    try {
+      status = await this.getStatus(userId);
+    } catch {
+      return false;
+    }
+    if (!status.configured) return false;
+    if (!status.relayActive) return true;
+    try {
+      const tunnel = await this.relayService.getStatus(userId);
+      return tunnel.state === "listening" || tunnel.state === "busy";
+    } catch {
+      return false;
+    }
+  }
+
   async getToolUseProvider(userId: string): Promise<AiProvider> {
     return (await this.resolveToolUseProvider(userId)).provider;
   }

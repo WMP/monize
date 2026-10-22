@@ -15,6 +15,8 @@ import { CreateTagDto } from "./dto/create-tag.dto";
 import { UpdateTagDto } from "./dto/update-tag.dto";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { withScopedDb } from "../common/db/scoped-db";
+import { LEDGER_EXCLUDES_VOID } from "../common/ledger-balance.sql";
+import { todayYMD } from "../common/date-utils";
 
 /** Upper bounds for one additive/removal call (design 6.2). */
 export const MAX_TAGS_PER_CALL = 100;
@@ -26,6 +28,12 @@ export const MAX_TRANSACTIONS_PER_CALL = 1000;
  * (200000 parameters) is written in batches, all on the caller's transaction.
  */
 export const TAG_LINK_INSERT_BATCH = 5000;
+
+/** One tag's use on non-void transactions: latest date (YYYY-MM-DD) and number of uses. */
+export interface TagUsage {
+  lastUsed: string;
+  count: number;
+}
 
 @Injectable()
 export class TagsService {
@@ -218,6 +226,77 @@ export class TagsService {
   }
 
   /**
+   * How each of the user's tags has been used, for ordering the pickers that
+   * apply tags to a transaction: the latest date of a non-void transaction
+   * carrying it (on the transaction or on one of its splits) and how many
+   * times it was applied. A tag never used, or used only on void rows, is
+   * absent.
+   *
+   * - A row dated after today does not count until its date arrives, so a
+   *   mistyped year cannot hold a tag at the top of the picker.
+   * - One use is one movement: tagging a transfer writes a link on both legs,
+   *   and a split transfer tags the split and its counterpart, so the legs
+   *   collapse to one `use_id` (the smaller leg id, or the split's id).
+   * - `accountScope` is an acting delegate's READ-granted accounts
+   *   (`delegateReadableAccountScope`); `undefined` means every account, and
+   *   an empty scope reports nothing.
+   */
+  async getUsage(
+    userId: string,
+    accountScope?: readonly string[],
+  ): Promise<Record<string, TagUsage>> {
+    if (accountScope !== undefined && accountScope.length === 0) return {};
+    const params: unknown[] = [userId, todayYMD()];
+    let scopeClause = "";
+    if (accountScope !== undefined) {
+      params.push([...accountScope]);
+      scopeClause = "AND t.account_id = ANY($3::uuid[])";
+    }
+    // The owner filter sits inside each branch so the scan starts from the
+    // user's tags (idx_transaction_tags_tag / idx_transaction_split_tags_tag)
+    // rather than from every user's links.
+    const rowFilter = `${LEDGER_EXCLUDES_VOID}
+                  AND t.transaction_date <= $2::date
+                  ${scopeClause}`;
+    const rows: Array<{ tag_id: string; last_used: string; count: string }> =
+      await withScopedDb(this.dataSource, (m) =>
+        m.query(
+          `SELECT u.tag_id,
+                  TO_CHAR(MAX(u.transaction_date), 'YYYY-MM-DD') AS last_used,
+                  COUNT(DISTINCT u.use_id) AS count
+             FROM (
+               SELECT tt.tag_id, t.transaction_date,
+                      COALESCE(
+                        cs.id,
+                        LEAST(t.id, COALESCE(t.linked_transaction_id, t.id))
+                      ) AS use_id
+                 FROM transaction_tags tt
+                 JOIN tags g ON g.id = tt.tag_id AND g.user_id = $1
+                 JOIN transactions t ON t.id = tt.transaction_id
+                 LEFT JOIN transaction_splits cs
+                        ON cs.linked_transaction_id = t.id
+                WHERE ${rowFilter}
+               UNION ALL
+               SELECT st.tag_id, t.transaction_date, s.id AS use_id
+                 FROM transaction_split_tags st
+                 JOIN tags g ON g.id = st.tag_id AND g.user_id = $1
+                 JOIN transaction_splits s ON s.id = st.transaction_split_id
+                 JOIN transactions t ON t.id = s.transaction_id
+                WHERE ${rowFilter}
+             ) u
+            GROUP BY u.tag_id`,
+          params,
+        ),
+      );
+
+    const usage: Record<string, TagUsage> = {};
+    for (const row of rows) {
+      usage[row.tag_id] = { lastUsed: row.last_used, count: Number(row.count) };
+    }
+    return usage;
+  }
+
+  /**
    * Run `fn` against the caller's QueryRunner transaction when one is passed
    * (the transactions module's flows still manage their own QueryRunner until
    * task R2), otherwise inside a `withScopedDb` of our own.
@@ -400,6 +479,73 @@ export class TagsService {
         .orIgnore()
         .execute();
     }
+  }
+
+  /**
+   * The user's tags whose names equal `names` case-insensitively, on the
+   * caller's manager (read only). A name the user has no tag for is absent from
+   * the result. Used to preview which tag names a proposal would create.
+   */
+  async findByNames(
+    m: EntityManager,
+    userId: string,
+    names: readonly string[],
+  ): Promise<Tag[]> {
+    const lowered = [...new Set(names.map((n) => n.trim().toLowerCase()))];
+    if (lowered.length === 0) return [];
+    return m
+      .getRepository(Tag)
+      .createQueryBuilder("tag")
+      .where("tag.userId = :userId", { userId })
+      .andWhere("LOWER(tag.name) IN (:...lowered)", { lowered })
+      .getMany();
+  }
+
+  /**
+   * Find the user's tag for each name (case-insensitively) or create it, on the
+   * caller's manager, and return them in the order of `names`, each once. The
+   * insert is guarded by `WHERE NOT EXISTS` and by `ON CONFLICT DO NOTHING` against
+   * the unique index `idx_tags_user_name`, so two writers racing for one name leave
+   * one tag and neither fails; the select that follows reads what is there. The tag is
+   * written in the caller's transaction, so a rollback drops a tag it created.
+   * Blank names are skipped; at most `MAX_TAGS_PER_CALL` are taken.
+   */
+  async findOrCreateByNames(
+    m: EntityManager,
+    userId: string,
+    names: readonly string[],
+  ): Promise<Tag[]> {
+    const wanted: string[] = [];
+    const seen = new Set<string>();
+    for (const raw of names) {
+      const name = raw.trim();
+      const key = name.toLowerCase();
+      if (name === "" || seen.has(key)) continue;
+      seen.add(key);
+      wanted.push(name);
+      if (wanted.length >= MAX_TAGS_PER_CALL) break;
+    }
+    for (const name of wanted) {
+      // The WHERE NOT EXISTS makes the common case a no-op; the unique index
+      // `idx_tags_user_name` (user_id, LOWER(name)) is the backstop for two
+      // writers racing for one name, and a target-less ON CONFLICT DO NOTHING
+      // turns that loss into "the other one's tag", which the select below reads.
+      await m.query(
+        `INSERT INTO tags (user_id, name)
+         SELECT $1::uuid, $2::varchar
+          WHERE NOT EXISTS (
+                  SELECT 1 FROM tags
+                   WHERE user_id = $1::uuid AND LOWER(name) = LOWER($2::varchar))
+         ON CONFLICT DO NOTHING`,
+        [userId, name],
+      );
+    }
+    const found = await this.findByNames(m, userId, wanted);
+    const byKey = new Map(found.map((tag) => [tag.name.toLowerCase(), tag]));
+    return wanted.flatMap((name) => {
+      const tag = byKey.get(name.toLowerCase());
+      return tag ? [tag] : [];
+    });
   }
 
   /** Remove exactly the named (transaction, tag) links; other tags stay. */

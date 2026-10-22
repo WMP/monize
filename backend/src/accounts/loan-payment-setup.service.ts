@@ -16,7 +16,7 @@ import {
   SetupLoanPaymentsResponseDto,
 } from "./dto/setup-loan-payments.dto";
 import { roundMoney } from "../common/round.util";
-import { CategoriesService } from "../categories/categories.service";
+import { assertLoanInterestCategory } from "./loan-interest-category";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import {
   calculatePaymentSplit,
@@ -35,6 +35,7 @@ import {
 } from "./payment-frequency.util";
 import { localDateForColumn } from "../common/date-utils";
 import { allocateLoanPayment } from "./loan-payment-waterfall.util";
+import { assertLoanSourceCurrency } from "./loan-source-currency.util";
 import { FrequencyType as FrequencyTypeDto } from "../scheduled-transactions/dto/create-scheduled-transaction.dto";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -52,6 +53,7 @@ import {
   nonAnnuityInstallment,
 } from "./mortgage-installment.util";
 import { datedLoanDebt } from "./dated-loan-debt.util";
+import { LoanPaymentMatchingService } from "./loan-payment-matching.service";
 
 @Injectable()
 export class LoanPaymentSetupService {
@@ -59,10 +61,9 @@ export class LoanPaymentSetupService {
 
   constructor(
     private dataSource: DataSource,
-    @Inject(forwardRef(() => CategoriesService))
-    private categoriesService: CategoriesService,
     @Inject(forwardRef(() => ScheduledTransactionsService))
     private scheduledTransactionsService: ScheduledTransactionsService,
+    private loanPaymentMatchingService: LoanPaymentMatchingService,
   ) {}
 
   /**
@@ -137,12 +138,14 @@ export class LoanPaymentSetupService {
       nextDueDate: string;
       paymentFrequency: string;
       amortizationMonths?: number;
+      originalPrincipal?: number;
     },
     interestRate: number,
   ): Promise<{ principal: number; interest: number; debt: number }> {
     const terms: MortgageMethodTerms = {
       prepaymentMode,
-      originalPrincipal: account.originalPrincipal,
+      // The amount this setup stores (spec section 14.3), else the account's.
+      originalPrincipal: dto.originalPrincipal ?? account.originalPrincipal,
       openingBalance: account.openingBalance,
       amortizationMonths: dto.amortizationMonths ?? account.amortizationMonths,
       paymentStartDate: dto.nextDueDate,
@@ -231,16 +234,42 @@ export class LoanPaymentSetupService {
         tr("errors.accounts.sourceNotFound", "Source account not found"),
       );
     }
+    // The bill is written in the loan's currency on this account; refused
+    // here, before any write, rather than at every posting (A26-S15-10).
+    assertLoanSourceCurrency(sourceAccount.currencyCode, account.currencyCode);
 
-    // Resolve interest category
-    let interestCategoryId = dto.interestCategoryId || null;
-    if (!interestCategoryId) {
-      const { interestCategory } =
-        await this.categoriesService.findLoanCategories(userId);
-      if (interestCategory) {
-        interestCategoryId = interestCategory.id;
+    // Payment matching settles mortgages and loans only (spec decision 4),
+    // and a pattern the rule create would refuse is refused here, before the
+    // schedule is written.
+    if (dto.paymentMatching) {
+      if (account.accountType === AccountType.LINE_OF_CREDIT) {
+        throw new BadRequestException(
+          tr(
+            "errors.accounts.paymentMatchingLoanOnly",
+            "Payment matching applies to mortgages and loans only",
+          ),
+        );
       }
+      this.loanPaymentMatchingService.assertDefinable(
+        dto.sourceAccountId,
+        dto.paymentMatching,
+      );
     }
+
+    // Required by the DTO and checked again here: an undefined id in a
+    // TypeORM `where` matches any row. Owned by the caller, before any write.
+    const interestCategoryId = dto.interestCategoryId;
+    if (!interestCategoryId) {
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.loanRequiresInterestCategory",
+          "Loan accounts require an interest category",
+        ),
+      );
+    }
+    await withScopedDb(this.dataSource, (m) =>
+      assertLoanInterestCategory(m, userId, interestCategoryId),
+    );
 
     // The type this request leaves the mortgage with: its own type, else the
     // stored type. Null for any other account type.
@@ -438,7 +467,7 @@ export class LoanPaymentSetupService {
 
     if (interestPayment > 0) {
       splits.push({
-        categoryId: interestCategoryId || undefined,
+        categoryId: interestCategoryId,
         amount: -interestPayment,
         memo: "Interest",
       });
@@ -471,7 +500,9 @@ export class LoanPaymentSetupService {
         nextDueDate: dto.nextDueDate,
         startDate: dto.nextDueDate,
         isActive: true,
-        autoPost: dto.autoPost ?? false,
+        // The bank row pays each installment once payment matching is on
+        // (spec decision 5), so the bill never posts on its own.
+        autoPost: dto.paymentMatching ? false : (dto.autoPost ?? false),
         splits,
       },
     );
@@ -518,9 +549,14 @@ export class LoanPaymentSetupService {
           dto.termMonths,
         );
       }
-      if (!account.originalPrincipal) {
+      if (dto.originalPrincipal === undefined && !account.originalPrincipal) {
         updateData.originalPrincipal = Math.abs(Number(account.openingBalance));
       }
+    }
+    // The amount originally borrowed, apart from the opening balance (spec
+    // section 14.3), for a loan as for a mortgage.
+    if (dto.originalPrincipal !== undefined) {
+      updateData.originalPrincipal = dto.originalPrincipal;
     }
 
     await withScopedDb(this.dataSource, (m) =>
@@ -535,6 +571,16 @@ export class LoanPaymentSetupService {
           : ""),
     );
 
+    // After the account points at its schedule. The schedule is committed
+    // already (spec section 15 item 6), so a refusal is reported, not thrown.
+    const matching = dto.paymentMatching
+      ? await this.loanPaymentMatchingService.createMatchingRuleReported(
+          userId,
+          accountId,
+          dto.paymentMatching,
+        )
+      : { ruleId: null, error: null };
+
     return {
       scheduledTransactionId: scheduledTransaction.id,
       accountId,
@@ -542,6 +588,8 @@ export class LoanPaymentSetupService {
       firstInstallmentAmount: parentAmount,
       paymentFrequency: dto.paymentFrequency,
       nextDueDate: dto.nextDueDate,
+      paymentMatchingRuleId: matching.ruleId,
+      paymentMatchingError: matching.error,
     };
   }
 }

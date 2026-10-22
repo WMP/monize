@@ -3,7 +3,7 @@
  * worker. Plain data only: everything here has to survive `postMessage`, so
  * there are no class instances, no functions and no OpenCV types.
  *
- * See `docs/future-plans/document-scanner.md`.
+ * See `docs/specs/document-scanner.md`.
  */
 
 /** One corner of a detected document, in source-image pixels. */

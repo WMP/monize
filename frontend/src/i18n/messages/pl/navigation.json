@@ -11,6 +11,8 @@
   "institutions": "Instytucje",
   "tags": "Tagi",
   "rules": "Reguły",
+  "warranties": "Gwarancje",
+  "emailReceipts": "Paragony z e-maili",
   "securities": "Papiery wartościowe",
   "currencies": "Waluty",
   "import": "Import transakcji",

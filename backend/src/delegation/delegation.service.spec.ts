@@ -52,6 +52,7 @@ describe("DelegationService", () => {
   let emailService: Record<string, jest.Mock>;
   let configService: Record<string, jest.Mock>;
   let dataSource: Record<string, jest.Mock>;
+  let scopedManager: Record<string, jest.Mock>;
 
   beforeEach(() => {
     delegatesRepo = {
@@ -59,6 +60,8 @@ describe("DelegationService", () => {
       find: jest.fn(),
       save: jest.fn(),
       count: jest.fn().mockResolvedValue(0),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      exists: jest.fn().mockResolvedValue(true),
     };
     grantsRepo = { findOne: jest.fn(), find: jest.fn(), count: jest.fn() };
     usersRepo = { findOne: jest.fn(), find: jest.fn(), save: jest.fn() };
@@ -99,6 +102,8 @@ describe("DelegationService", () => {
     ]);
     // `repo.manager` is the transaction's manager, as on a real repository.
     (refreshRepo as Record<string, unknown>).manager = scoped.manager;
+    scopedManager = scoped.manager as unknown as Record<string, jest.Mock>;
+    scopedManager.query.mockResolvedValue([]);
     dataSource = scoped.dataSource as unknown as Record<string, jest.Mock>;
 
     const i18nStub = {
@@ -758,6 +763,7 @@ describe("DelegationService", () => {
         ["budgetsCanRead"],
         ["reportsCanRead"],
         ["aiCanRead"],
+        ["warrantiesCanRead"],
       ])("keeps the owner context when %s is granted", async (field) => {
         arrangeGrantee({ [field]: true });
         grantsRepo.find.mockResolvedValue([
@@ -935,6 +941,7 @@ describe("DelegationService", () => {
           budgets: false,
           reports: false,
           ai: false,
+          warranties: false,
         },
       });
     });
@@ -959,6 +966,7 @@ describe("DelegationService", () => {
         budgets: false,
         reports: true,
         ai: false,
+        warranties: false,
       });
     });
 
@@ -1045,35 +1053,34 @@ describe("DelegationService", () => {
   });
 
   describe("setCapabilities", () => {
-    it("throws when the delegation is not owned by the caller", async () => {
-      delegatesRepo.findOne.mockResolvedValue(null);
+    it("throws when the delegation is not owned by the caller (or was revoked)", async () => {
+      delegatesRepo.update.mockResolvedValue({ affected: 0 });
       await expect(
         service.setCapabilities(OWNER_ID, "g1", { payeesCanCreate: true }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it("updates only the provided flags", async () => {
-      const delegation = {
-        id: "g1",
-        ownerUserId: OWNER_ID,
-        payeesCanCreate: false,
-        payeesCanEdit: false,
-        categoriesCanEdit: true,
-        tagsCanDelete: false,
-      };
-      delegatesRepo.findOne.mockResolvedValue(delegation);
-      delegatesRepo.save.mockResolvedValue(delegation);
-
+    it("updates only the provided flags, conditionally on the owner, never by save (A26-M05)", async () => {
       await service.setCapabilities(OWNER_ID, "g1", {
         payeesCanCreate: true,
         tagsCanDelete: true,
+        payeesCanEdit: undefined,
       });
 
-      expect(delegation.payeesCanCreate).toBe(true);
-      expect(delegation.tagsCanDelete).toBe(true);
-      expect(delegation.payeesCanEdit).toBe(false); // unchanged
-      expect(delegation.categoriesCanEdit).toBe(true); // unchanged
-      expect(delegatesRepo.save).toHaveBeenCalledWith(delegation);
+      expect(delegatesRepo.update).toHaveBeenCalledWith(
+        { id: "g1", ownerUserId: OWNER_ID },
+        { payeesCanCreate: true, tagsCanDelete: true },
+      );
+      // A save of a stale entity re-INSERTs a delegation a revoke deleted.
+      expect(delegatesRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("404s an empty patch on a delegation that does not exist", async () => {
+      delegatesRepo.exists.mockResolvedValue(false);
+      await expect(
+        service.setCapabilities(OWNER_ID, "g1", {}),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(delegatesRepo.update).not.toHaveBeenCalled();
     });
   });
 
@@ -1088,6 +1095,7 @@ describe("DelegationService", () => {
         billsCanRead: true,
         investmentsCanRead: false,
         budgetsCanRead: true,
+        warrantiesCanRead: true,
       });
       await expect(service.hasSection("g1", "bills")).resolves.toBe(true);
       await expect(service.hasSection("g1", "investments")).resolves.toBe(
@@ -1095,6 +1103,7 @@ describe("DelegationService", () => {
       );
       await expect(service.hasSection("g1", "budgets")).resolves.toBe(true);
       await expect(service.hasSection("g1", "ai")).resolves.toBe(false);
+      await expect(service.hasSection("g1", "warranties")).resolves.toBe(true);
     });
   });
 
@@ -1106,11 +1115,21 @@ describe("DelegationService", () => {
       budgetsCanRead: true,
       reportsCanRead: true,
       aiCanRead: true,
+      warrantiesCanRead: true,
     };
 
     it("is false when there is no active delegation", async () => {
       delegatesRepo.findOne.mockResolvedValue(null);
       await expect(service.grantsWholeLedger("g1")).resolves.toBe(false);
+    });
+
+    it("is false while the warranties section is withheld: the assistant's tools read warranties too", async () => {
+      delegatesRepo.findOne.mockResolvedValue({
+        ...allSections,
+        warrantiesCanRead: false,
+      });
+      await expect(service.grantsWholeLedger("g1")).resolves.toBe(false);
+      expect(accountsRepo.count).not.toHaveBeenCalled();
     });
 
     it("is false when any section is withheld, without counting accounts", async () => {
@@ -1161,6 +1180,7 @@ describe("DelegationService", () => {
         budgetsCanRead: false,
         reportsCanRead: true,
         aiCanRead: true,
+        warrantiesCanRead: true,
       });
       await expect(service.getSections("g1")).resolves.toEqual({
         bills: true,
@@ -1168,6 +1188,7 @@ describe("DelegationService", () => {
         budgets: false,
         reports: true,
         ai: true,
+        warranties: true,
       });
     });
 
@@ -1179,38 +1200,30 @@ describe("DelegationService", () => {
         budgets: false,
         reports: false,
         ai: false,
+        warranties: false,
       });
     });
   });
 
   describe("setSectionGrants", () => {
-    it("throws when the delegation is not owned by the caller", async () => {
-      delegatesRepo.findOne.mockResolvedValue(null);
+    it("throws when the delegation is not owned by the caller (or was revoked)", async () => {
+      delegatesRepo.update.mockResolvedValue({ affected: 0 });
       await expect(
         service.setSectionGrants(OWNER_ID, "g1", { billsCanRead: true }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it("updates only the provided sections", async () => {
-      const delegation = {
-        id: "g1",
-        ownerUserId: OWNER_ID,
-        billsCanRead: false,
-        investmentsCanRead: true,
-        reportsCanRead: false,
-      };
-      delegatesRepo.findOne.mockResolvedValue(delegation);
-      delegatesRepo.save.mockResolvedValue(delegation);
-
+    it("updates only the provided sections, conditionally on the owner (A26-M05)", async () => {
       await service.setSectionGrants(OWNER_ID, "g1", {
         billsCanRead: true,
         reportsCanRead: true,
       });
 
-      expect(delegation.billsCanRead).toBe(true);
-      expect(delegation.reportsCanRead).toBe(true);
-      expect(delegation.investmentsCanRead).toBe(true); // unchanged
-      expect(delegatesRepo.save).toHaveBeenCalledWith(delegation);
+      expect(delegatesRepo.update).toHaveBeenCalledWith(
+        { id: "g1", ownerUserId: OWNER_ID },
+        { billsCanRead: true, reportsCanRead: true },
+      );
+      expect(delegatesRepo.save).not.toHaveBeenCalled();
     });
   });
 
@@ -1425,6 +1438,19 @@ describe("DelegationService", () => {
       };
       usersRepo.findOne.mockResolvedValue(delegate);
       usersRepo.save.mockResolvedValue(delegate);
+      // One live family left after the commit, so the converging revoke runs a
+      // pass under its lock and stops when the next pass changes nothing.
+      scopedManager.query.mockImplementation((sql: string) =>
+        Promise.resolve(
+          sql.includes("SELECT DISTINCT family_id")
+            ? [{ family_id: "fam-1" }]
+            : [],
+        ),
+      );
+      refreshRepo.update
+        .mockResolvedValueOnce({ affected: 1 })
+        .mockResolvedValueOnce({ affected: 1 })
+        .mockResolvedValue({ affected: 0 });
       const res = await service.resetDelegatePassword(OWNER_ID, "g1");
       expect(res.temporaryPassword).toBeTruthy();
       expect((delegate as any).mustChangePassword).toBe(true);
@@ -1435,6 +1461,13 @@ describe("DelegationService", () => {
         { userId: DELEGATE_ID, isRevoked: false },
         { isRevoked: true },
       );
+      // After the commit: the captured family, re-revoked under its lock, so a
+      // successor a concurrent rotation inserted is covered (A26-M02).
+      expect(refreshRepo.update).toHaveBeenCalledWith(
+        { userId: DELEGATE_ID, familyId: In(["fam-1"]), isRevoked: false },
+        { isRevoked: true },
+      );
+      expect(refreshRepo.update).toHaveBeenCalledTimes(3);
     });
 
     it("revokes the delegate's PATs, trusted devices and OAuth grants", async () => {

@@ -234,3 +234,40 @@ test.describe('Register sorting', () => {
     expect(await rowText(newer)).toBe(newerDescending);
   });
 });
+
+// Hideable columns (issue #1708): the register's "Columns" menu hides a
+// column from the DOM at every width and this browser remembers the choice
+// across a reload; the menu is also the one way to bring it back.
+test.describe('Hideable columns', () => {
+  test('hides a register column through the menu, keeps it hidden across a reload, and restores it', async ({
+    authedPage: page,
+    api,
+  }) => {
+    const account = await createAccount(api, { name: `Hideable Register ${uniqueId()}` });
+    await createTransaction(api, {
+      accountId: account.id,
+      payeeName: `Hideable Row ${uniqueId()}`,
+    });
+
+    await page.goto(`/transactions?accountIds=${account.id}`);
+
+    const statusHeader = page.getByRole('columnheader', { name: /^status$/i });
+    await expect(statusHeader).toBeVisible();
+
+    await page.getByRole('button', { name: /^columns\b/i }).click();
+    const menu = page.getByRole('menu', { name: /show or hide columns/i });
+    // The choice is saved to this browser's localStorage synchronously
+    // (useHiddenColumnsStore), so the reload below reads it back.
+    await menu.getByRole('menuitemcheckbox', { name: /^status$/i }).click();
+
+    await expect(statusHeader).toHaveCount(0);
+
+    await page.reload();
+    await expect(statusHeader).toHaveCount(0);
+
+    await page.getByRole('button', { name: /^columns\b/i }).click();
+    await menu.getByRole('menuitemcheckbox', { name: /^status$/i }).click();
+
+    await expect(statusHeader).toBeVisible();
+  });
+});

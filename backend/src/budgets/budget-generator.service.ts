@@ -511,9 +511,13 @@ export class BudgetGeneratorService {
     // transfer_account_id -- or a savings habit recorded inside a split
     // paycheque never surfaces as a suggested budget (review #1131).
     const window = { userId, periodStart: startDate, periodEnd: endDate };
-    const [parentRows, splitRows] = await withScopedDb(this.dataSource, (m) =>
-      Promise.all([
-        outgoingParentTransfers(m.getRepository(Transaction), window)
+    const [parentRows, splitRows] = await withScopedDb(
+      this.dataSource,
+      async (m) => {
+        const parents = await outgoingParentTransfers(
+          m.getRepository(Transaction),
+          window,
+        )
           .innerJoin("lt.account", "a")
           .select("a.id", "accountId")
           .addSelect("a.name", "accountName")
@@ -526,8 +530,11 @@ export class BudgetGeneratorService {
           .addGroupBy("a.account_type")
           .addGroupBy("EXTRACT(YEAR FROM t.transaction_date)")
           .addGroupBy("EXTRACT(MONTH FROM t.transaction_date)")
-          .getRawMany(),
-        outgoingSplitTransfers(m.getRepository(TransactionSplit), window)
+          .getRawMany();
+        const splits = await outgoingSplitTransfers(
+          m.getRepository(TransactionSplit),
+          window,
+        )
           .innerJoin("s.transferAccount", "a")
           .select("a.id", "accountId")
           .addSelect("a.name", "accountName")
@@ -540,8 +547,9 @@ export class BudgetGeneratorService {
           .addGroupBy("a.account_type")
           .addGroupBy("EXTRACT(YEAR FROM t.transaction_date)")
           .addGroupBy("EXTRACT(MONTH FROM t.transaction_date)")
-          .getRawMany(),
-      ]),
+          .getRawMany();
+        return [parents, splits] as const;
+      },
     );
     const rows = [...parentRows, ...splitRows];
 

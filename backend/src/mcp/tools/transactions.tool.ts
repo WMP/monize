@@ -79,6 +79,7 @@ import {
   itemsArray,
 } from "./schema-fragments";
 import { TRANSACTION_NOTE_MAX_LENGTH } from "../../common/transaction-note";
+import { SEARCH_SYNTAX_SUMMARY } from "../../transactions/transaction-search-query.util";
 
 type ManageOperation = "create" | "update" | "delete";
 
@@ -147,19 +148,17 @@ export class McpTransactionsTools {
         title: "List transactions",
         annotations: READ_ONLY,
         description:
-          "Totals and breakdowns over cash transactions: income, expenses, net, " +
-          "per-currency totals, an optional grouped breakdown and an optional " +
-          "per-account transfer rollup. The summary alone answers most " +
-          "spending and income questions; set includeTransactions only when the " +
-          "user wants the individual rows, which costs many tokens. Transfers " +
-          "between the user's own accounts are excluded from the income and " +
-          "expense totals -- use transfersOnly to see them.",
+          "Income, expense and net totals over cash transactions, with an " +
+          "optional grouped breakdown and transfer rollup per account. The " +
+          "totals answer most questions; includeTransactions adds the rows " +
+          "(costly). Transfers between own accounts are not in the " +
+          "totals; transfersOnly shows them.",
         inputSchema: z.object({
           searchText: z
             .string()
             .max(200)
             .optional()
-            .describe("Substring of a payee name or description."),
+            .describe(SEARCH_SYNTAX_SUMMARY),
           startDate: z
             .string()
             .max(10)
@@ -206,7 +205,7 @@ export class McpTransactionsTools {
             .optional()
             .default(false)
             .describe(
-              "Add the raw rows. Costs many tokens; the summary usually suffices. A foreign-currency row carries read-only originalAmount, originalCurrencyCode and exchangeRate beside the account-currency amount.",
+              "A foreign-currency row carries read-only originalAmount, originalCurrencyCode and exchangeRate beside the account-currency amount.",
             ),
           limit: numberArg(z.number().int().min(1).max(100))
             .optional()
@@ -300,30 +299,14 @@ export class McpTransactionsTools {
         title: "Compare periods",
         annotations: READ_ONLY,
         description:
-          "Compare spending or income across two periods, with the absolute and " +
-          "percentage change per group. Omitting any of the four dates " +
-          "defaults to last full month against this month to date.",
+          "Compare spending or income across two periods, with the change per " +
+          "group. Omitted dates default to last full month against this month " +
+          "to date.",
         inputSchema: z.object({
-          period1Start: z
-            .string()
-            .max(10)
-            .optional()
-            .describe("Defaults to the start of last month."),
-          period1End: z
-            .string()
-            .max(10)
-            .optional()
-            .describe("Defaults to the end of last month."),
-          period2Start: z
-            .string()
-            .max(10)
-            .optional()
-            .describe("Defaults to the start of this month."),
-          period2End: z
-            .string()
-            .max(10)
-            .optional()
-            .describe("Defaults to today."),
+          period1Start: z.string().max(10).optional(),
+          period1End: z.string().max(10).optional(),
+          period2Start: z.string().max(10).optional(),
+          period2End: z.string().max(10).optional(),
           groupBy: z
             .enum(["category", "payee"])
             .optional()
@@ -668,7 +651,7 @@ export class McpTransactionsTools {
       if (unresolved.length > 0) {
         // Best-effort suggestion: a lookup failure must not mask the
         // "unknown payee" error, so fall back to no hint.
-        let suggestion = "";
+        let suggestion: string;
         try {
           const matches = await this.payeesService.search(
             userId,
@@ -1048,11 +1031,15 @@ export class McpTransactionsTools {
     for (const dto of dtos) {
       const buffer = Buffer.from(dto.data, "base64");
       const attachment = await withUserContext(userId, () =>
-        this.attachmentsService.create(userId, transactionId, {
-          originalname: dto.filename,
-          buffer,
-          size: buffer.length,
-        }),
+        this.attachmentsService.create(
+          userId,
+          { kind: "transaction", id: transactionId },
+          {
+            originalname: dto.filename,
+            buffer,
+            size: buffer.length,
+          },
+        ),
       );
       created.push({ id: attachment.id, filename: attachment.filename });
     }

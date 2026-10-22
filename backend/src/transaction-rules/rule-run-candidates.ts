@@ -4,6 +4,7 @@ import { applyInvestmentTransactionFilters } from "../common/investment-filter.u
 import { applyRegisterOrder } from "../transactions/register-order";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { RuleRunFilters } from "./rule-run.types";
+import type { RuleRowInput } from "./transaction-rules-applier.service";
 import {
   DEFAULT_RULE_RUN_LIMIT,
   MAX_RULE_RUN_LIMIT,
@@ -34,11 +35,14 @@ export interface CandidateSet {
   readonly truncated: boolean;
 }
 
-/** The limit a caller asked for, inside 1..MAX. */
-export function effectiveRunLimit(limit: number | undefined): number {
+/** The limit a caller asked for, inside 1..max (the run's ceiling unless the caller names its own). */
+export function effectiveRunLimit(
+  limit: number | undefined,
+  max: number = MAX_RULE_RUN_LIMIT,
+): number {
   return Math.min(
     Math.max(Math.trunc(limit ?? DEFAULT_RULE_RUN_LIMIT), 1),
-    MAX_RULE_RUN_LIMIT,
+    max,
   );
 }
 
@@ -95,21 +99,35 @@ function unitFor(
   };
 }
 
+/** Which end of the register a run scans from. */
+export type CandidateDirection = "ASC" | "DESC";
+
 /**
- * The caller's non-investment transactions in range, newest first (register
- * order), grouped into evaluation units. Two queries however many rows: the
+ * The caller's non-investment transactions in range, in register order,
+ * grouped into evaluation units. Two queries however many rows: the
  * candidates, then the transfer partners the filters did not select. With
  * `lock`, every leg is row-locked (ascending by id, docs/concurrency-and-
  * idempotency.md section 5) and read again, so the facts the plan is built on
  * are the ones the write replaces.
+ *
+ * `direction` defaults to `"DESC"`, newest first, the order every run has
+ * scanned in. A run that settles loan installments asks for `"ASC"`, oldest
+ * first, so its fold prices each row on the debt the rows before it leave
+ * (INV-RULE-005); the cap then keeps the oldest rows and `truncated` says the
+ * newer ones wait for the next page.
  */
 export async function loadCandidateUnits(
   m: EntityManager,
   userId: string,
   filters: RuleRunFilters,
-  options: { lock: boolean },
+  options: {
+    lock: boolean;
+    direction?: CandidateDirection;
+    /** A ceiling other than the run's, for a read that writes nothing (the match). */
+    maxLimit?: number;
+  },
 ): Promise<CandidateSet> {
-  const limit = effectiveRunLimit(filters.limit);
+  const limit = effectiveRunLimit(filters.limit, options.maxLimit);
   const qb = m
     .getRepository(Transaction)
     .createQueryBuilder("transaction")
@@ -133,7 +151,9 @@ export async function loadCandidateUnits(
       endDate: filters.endDate,
     });
   }
-  applyRegisterOrder(qb, "transaction", "DESC").take(limit + 1);
+  applyRegisterOrder(qb, "transaction", options.direction ?? "DESC").take(
+    limit + 1,
+  );
   const found = await qb.getMany();
   const truncated = found.length > limit;
   const rows = found.slice(0, limit);
@@ -185,4 +205,35 @@ export async function loadCandidateUnits(
     units.push(unit);
   }
   return { units, truncated };
+}
+
+/**
+ * The facts input of a unit, read from its primary row. One spelling for the
+ * run's plan and the match, so the two can never evaluate a row differently.
+ */
+export function unitRowInput(
+  unit: CandidateUnit,
+  tagsByRow: ReadonlyMap<string, readonly string[]>,
+  attached: ReadonlySet<string>,
+): RuleRowInput {
+  const { primary } = unit;
+  return {
+    accountId: primary.accountId,
+    currencyCode: primary.currencyCode,
+    amount: primary.amount,
+    isTransfer: unit.isTransfer,
+    fromAccountId: unit.fromAccountId,
+    toAccountId: unit.toAccountId,
+    payeeId: primary.payeeId,
+    payeeText: primary.payeeName,
+    payeeName: primary.payeeName,
+    categoryId: primary.categoryId,
+    description: primary.description,
+    tagIds: tagsByRow.get(primary.id) ?? [],
+    hasSplits: primary.isSplit,
+    referenceNumber: primary.referenceNumber,
+    transactionDate: primary.transactionDate,
+    status: primary.status,
+    hasAttachment: attached.has(primary.id),
+  };
 }

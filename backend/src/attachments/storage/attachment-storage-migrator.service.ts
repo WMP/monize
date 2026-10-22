@@ -434,7 +434,7 @@ export class AttachmentStorageMigrator implements OnApplicationBootstrap {
       RELOCATION_LEASE_MS,
     );
     let wroteObject = false;
-    let outcome: RelocationTally = "failed";
+    let outcome: RelocationTally;
     try {
       outcome = await withScopedDb(this.dataSource, async (m) => {
         const locked = await this.lockRow(m, row.id, source.name);

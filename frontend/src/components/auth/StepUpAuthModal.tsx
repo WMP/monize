@@ -122,12 +122,20 @@ export function StepUpAuthModal({
   });
   const totpRef = totpForm.register('totpCode');
 
+  // Clear the local status when the modal closes ("info from previous render").
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen);
+    if (!isOpen) {
+      setServerError(null);
+      setSubmitting(false);
+    }
+  }
+
   useEffect(() => {
     if (!isOpen) {
       passwordForm.reset({ password: '' });
       totpForm.reset({ totpCode: '' });
-      setServerError(null);
-      setSubmitting(false);
     }
   }, [isOpen, passwordForm, totpForm]);
 

@@ -89,6 +89,6 @@ describe("notification delegate policy", () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
   it("discovers every current notification, reminder, preference and device route", () => {
-    expect(routes).toHaveLength(17);
+    expect(routes).toHaveLength(18);
   });
 });

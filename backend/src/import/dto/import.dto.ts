@@ -316,12 +316,55 @@ export class ParsedQifResponseDto {
   investmentSummary?: CsvInvestmentSummary;
 }
 
+/**
+ * Why an import left a row of the file out: `alreadyImported` when the account
+ * already holds the row's bank id (OFX `FITID`), `duplicateTransfer` when the
+ * transfer is already recorded between the same two accounts.
+ */
+export const IMPORT_SKIP_REASONS = [
+  "alreadyImported",
+  "duplicateTransfer",
+] as const;
+
+export type ImportSkipReason = (typeof IMPORT_SKIP_REASONS)[number];
+
+export class ImportSkippedRowDto {
+  @ApiProperty({ description: "The row's date, YYYY-MM-DD" })
+  date: string;
+
+  @ApiProperty({ description: "The row's amount as the file gave it" })
+  amount: number;
+
+  @ApiProperty({
+    description: "The currency of the account the row was imported into",
+  })
+  currencyCode: string;
+
+  @ApiProperty({ description: "The row's payee text, empty when it has none" })
+  payee: string;
+
+  @ApiProperty({ enum: IMPORT_SKIP_REASONS })
+  reason: ImportSkipReason;
+}
+
+/**
+ * How many skipped rows the result names. `skipped` keeps the full count; the
+ * import screen shows at most this many and counts the rest.
+ */
+export const SKIPPED_ROWS_LIMIT = 50;
+
 export class ImportResultDto {
   @ApiProperty()
   imported: number;
 
   @ApiProperty()
   skipped: number;
+
+  @ApiProperty({
+    type: [ImportSkippedRowDto],
+    description: `The first ${SKIPPED_ROWS_LIMIT} rows counted in \`skipped\`, in the order the import reached them, so a person can see which rows of the file were not written and why. \`skipped\` keeps the full count.`,
+  })
+  skippedRows: ImportSkippedRowDto[];
 
   @ApiProperty()
   errors: number;
@@ -362,6 +405,12 @@ export class ImportResultDto {
     accountType: string;
     currencyCode: string;
   }>;
+
+  @ApiPropertyOptional({
+    description:
+      "Number of imported share acquisitions of a bond-program security stored without a series (the file names none and none was on sale on the date, or the action has no purchase date): the bond lots report such a row until its series is chosen. Absent when zero.",
+  })
+  bondRowsWithoutSeries?: number;
 
   @ApiPropertyOptional({
     description:

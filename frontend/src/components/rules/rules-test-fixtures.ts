@@ -17,6 +17,8 @@ export function makeRule(overrides: Partial<TransactionRule> = {}): TransactionR
       { type: 'set_payee', payeeId: 'payee-1', onlyIfEmpty: true },
     ],
     stopProcessing: false,
+    activeFrom: null,
+    activeTo: null,
     revision: 1,
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-01T00:00:00.000Z',
@@ -28,6 +30,7 @@ export function makeRule(overrides: Partial<TransactionRule> = {}): TransactionR
 
 export const ACCOUNT_ID = '11111111-1111-4111-8111-111111111111';
 export const JOINT_ACCOUNT_ID = '11111111-1111-4111-8111-222222222222';
+export const LOAN_ID = '11111111-1111-4111-8111-333333333333';
 export const PAYEE_ID = '22222222-2222-4222-8222-222222222222';
 export const FOOD_ID = '33333333-3333-4333-8333-333333333333';
 export const COFFEE_ID = '33333333-3333-4333-8333-444444444444';
@@ -78,11 +81,13 @@ export function makePreview(overrides: Partial<RuleRunPreview> = {}): RuleRunPre
     truncated: false,
     fingerprint: 'a'.repeat(64),
     labels: {
+      accounts: { [ACCOUNT_ID]: 'Chequing' },
       categories: { [COFFEE_ID]: 'Food: Coffee' },
       payees: { [PAYEE_ID]: 'Corner Cafe' },
       tags: { [TAG_ID]: 'Coffee run' },
       rules: {},
     },
+    aiReviewRequests: 0,
     ...overrides,
   };
 }

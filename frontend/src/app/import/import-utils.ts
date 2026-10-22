@@ -1,4 +1,4 @@
-import { ParsedQifResponse } from '@/lib/import';
+import { ImportSkippedRow, ParsedQifResponse } from '@/lib/import';
 export { formatAccountType, isInvestmentBrokerageAccount } from '@/lib/account-utils';
 
 /**
@@ -33,6 +33,7 @@ export interface BulkImportResult {
     accountName: string;
     imported: number;
     skipped: number;
+    skippedRows?: ImportSkippedRow[];
     errors: number;
     errorMessages: string[];
     loanAccountsNeedingSetup?: Array<{

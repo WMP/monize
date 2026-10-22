@@ -13,6 +13,14 @@
     "modalTitleNew": "新規通貨",
     "loading": "通貨を読み込み中...",
     "count": "{count, plural, one {# 通貨} other {# 通貨}}",
+    "providers": {
+      "line": "為替レートの取得元: {providers}",
+      "separator": "、次に ",
+      "names": {
+        "frankfurter": "Frankfurter（ECB 参照レート）",
+        "yahoo": "Yahoo Finance"
+      }
+    },
     "toasts": {
       "loadFailed": "通貨の読み込みに失敗しました",
       "updated": "通貨を更新しました",
@@ -24,6 +32,7 @@
       "statusFailed": "通貨のステータス更新に失敗しました",
       "ratesRefreshed": "為替レートを更新しました：{updated} ペアを更新",
       "ratesRefreshedWithFailed": "為替レートを更新しました：{updated} 件更新、{failed} 件失敗",
+      "ratesAllFailed": "為替レートを取得できませんでした。プロバイダーが応答しませんでした",
       "ratesFailed": "為替レートの更新に失敗しました"
     },
     "summary": {
@@ -138,6 +147,7 @@
       },
       "sources": {
         "yahooFinance": "Yahoo Finance",
+        "frankfurter": "Frankfurter（ECB）",
         "mnyImport": "Money インポート",
         "unknown": "不明"
       }

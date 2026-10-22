@@ -427,5 +427,42 @@
         }
       }
     }
+  },
+  "emailReceipts": {
+    "basics": {
+      "title": "E-postadan makbuzlar",
+      "steps": {
+        "welcome": {
+          "title": "Makbuzlar neden e-postadan okunur",
+          "body": "Banka işlemi ne kadar ve ne zaman ödediğinizi gösterir. Ne satın aldığınızı göstermez. Bunu sipariş onayı e-postası gösterir. Monize bu e-postaları okur, her birinin ödediği işlemi bulur ve bir açıklama, bir alıcı ve her satır için bir kategori içeren kalem kalem bir bölünme önerir. Her öneriyi, bir işlemi değiştirmeden önce siz onaylarsınız."
+        },
+        "aiRequired": {
+          "title": "Pratikte bir yapay zekâ sağlayıcısı gerekir",
+          "body": "Monize bir e-postayı **profil** ile okur: tek bir gönderen alan adı, örneğin bir mağaza için bir desen kümesi. Profili elle yazabilirsiniz, ancak her desen o mağazanın e-postalarındaki satırlarla birebir eşleşmelidir, bu yüzden pratikte onu bir yapay zekâ yazar. Yapay zekâ profili birkaç örnek e-postadan yalnızca bir kez yazar. Siz onayladıktan sonra profil, o mağazadan gelen her yeni e-postayı yapay zekâ olmadan okur."
+        },
+        "aiProviders": {
+          "title": "Önce bir yapay zekâ sağlayıcısı ayarlayın",
+          "body": "Buraya bir sağlayıcı ekleyin ve bağlantıyı sınayın. Sağlayıcı yoksa profil sihirbazı profil yazamaz ve profili olmayan bir mağazanın e-postaları okunmadan kalır."
+        },
+        "tabs": {
+          "title": "Kullanım sırasına göre dört sekme",
+          "body": "**Genel bakış** Monize'nin neleri okuduğunu gösterir. **Posta kutusu** sekmesinde yalnızca sipariş onayları içeren bir posta kutusu bağlayın. Monize onu yalnızca okur: hiçbir iletiyi taşımaz, işaretlemez veya silmez. **Profiller** her mağaza için bir profil içerir. **E-postalar** her e-postayı ve durumunu listeler."
+        },
+        "uncovered": {
+          "title": "Profili olmayan mağazalar",
+          "body": "Bu kutu, henüz hiçbir profilin okuyamadığı gönderen alan adlarını listeler. Sihirbazı başlatmak için birini seçin. E-postalarından en fazla beşini seçin ve her birini ödediği banka işlemiyle eşleştirin. Yapay zekâ bir profil yazar ve bu çiftler üzerinde sınar. Sonra o mağazanın tüm e-postaları için bir önizleme görürsünüz ve profili kabul edersiniz ya da kısa bir notla değişiklik istersiniz.",
+          "fallbackBody": "Henüz profili olmayan bir mağazadan e-postanız yok. Posta kutusunu bağladıktan sonra her gönderen alan adı burada bir etiket olarak görünür, örneğin **shop.example (12)**: alan adı ve e-postalarının sayısı. Sihirbazı başlatmak için etiketi seçin. E-postalarından en fazla beşini seçin ve her birini ödediği banka işlemiyle eşleştirin. Yapay zekâ bir profil yazar ve bu çiftler üzerinde sınar. Sonra o mağazanın tüm e-postaları için bir önizleme görürsünüz ve profili kabul edersiniz ya da kısa bir notla değişiklik istersiniz."
+        },
+        "profiles": {
+          "title": "Profilleriniz",
+          "body": "Her satır, onaylı veya taslak bir profildir. **Yeni profili elle oluştur** elle yazılan bir profilin düzenleyicisini açar. Yapay zekânın taslağındaki küçük bir ayrıntıyı düzeltmek için kullanın. Bir profili onayladığınızda Monize, alan adındaki e-postaları hemen okur.",
+          "fallbackBody": "Henüz profiliniz yok. Kabul ettiğiniz her profil burada bir satır olarak görünür, örneğin **Shop Example**, alan adı **shop.example**, durum **Onaylandı**. **Yeni profili elle oluştur** elle yazılan bir profilin düzenleyicisini açar. Yalnızca yapay zekânın taslağındaki küçük bir ayrıntıyı düzeltmek için kullanın. Bir profili onayladığınızda Monize, alan adındaki e-postaları hemen okur."
+        },
+        "reviews": {
+          "title": "Önerileri onaylayın",
+          "body": "Bir işlemle eşleşen her e-posta, **YZ** menüsündeki **Yapay zekâ inceleme kutusu**nda bir öneri olur. Bir öneri, örneğin bir siparişin kalemlerini ve her satır için bir kategoriyi gösterir. Öneriyi orada onaylayana kadar işlemlerinizde hiçbir şey değişmez."
+        }
+      }
+    }
   }
 }

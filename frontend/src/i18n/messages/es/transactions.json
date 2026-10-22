@@ -135,6 +135,7 @@
       "toggleTitle": "Quitar el año de las fechas para que se vea más del beneficiario"
     },
     "attachmentsCount": "{count, plural, one {# adjunto} other {# adjuntos}}",
+    "warrantiesCount": "{count, plural, one {# garantía} other {# garantías}}",
     "today": "Hoy",
     "export": {
       "button": "Exportar",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Duplicar transacción",
       "copy": "Copiar",
       "duplicate": "Duplicar",
-      "scheduleRecurring": "Programar como recurrente"
+      "scheduleRecurring": "Programar como recurrente",
+      "addWarranty": "Añadir garantía",
+      "viewWarranties": "Ver garantías"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Editar",
     "duplicate": "Duplicar",
     "scheduleRecurring": "Programar como recurrente",
+    "addWarranty": "Añadir garantía",
+    "viewWarranties": "Ver garantías",
     "delete": "Eliminar"
   },
   "filter": {
@@ -219,7 +224,7 @@
       "title": "Filtros",
       "clear": "Limpiar",
       "hide": "Ocultar",
-      "show": "Mostrar"
+      "show": "Mostrar filtros"
     },
     "accounts": {
       "label": "Mostrar cuentas:",
@@ -258,7 +263,7 @@
       "statuses": "Todos los estados",
       "amountMin": "Mín",
       "amountMax": "Máx",
-      "search": "Buscar beneficiario, categoría, cantidad, etiqueta, descripción, referencia #...",
+      "search": "Buscar, o prueba #10 o payee:costco",
       "tagKeyValue": "p. ej. usa"
     },
     "tagKeyNone": "Cualquiera (sin filtro de clave)",
@@ -431,6 +436,7 @@
       "destinationRequired": "Selecciona una cuenta destino",
       "sameAccount": "Las cuentas origen y destino deben ser diferentes",
       "negativeTransfer": "La cantidad de la transferencia no debe ser negativa",
+      "convertToTransferUnsupported": "Una transacción existente no se puede convertir aquí en una transferencia. Elimínala y crea la transferencia en su lugar.",
       "payeeCreated": "Beneficiario \"{name}\" creado",
       "payeeCreateFailed": "Error al crear el beneficiario",
       "payeeReactivated": "Beneficiario \"{name}\" reactivado",
@@ -465,7 +471,14 @@
       },
       "feeCaption": "Incluye una comisión por transacción en el extranjero del {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Solo el propietario puede gestionar transacciones divididas en una cuenta compartida"
+    "jointSplitDisabled": "Solo el propietario puede gestionar transacciones divididas en una cuenta compartida",
+    "warranties": {
+      "title": "Garantías",
+      "add": "Añadir garantía",
+      "expires": "Vence el {date}",
+      "loading": "Cargando garantías",
+      "loadError": "No se pudieron cargar las garantías de esta transacción."
+    }
   },
   "splitEditor": {
     "header": "Detalles del desglose",
@@ -582,6 +595,11 @@
       "log": "Log",
       "autoTitle": "Auto ({scale})",
       "scaleTitle": "Escala {label}"
+    },
+    "collapse": {
+      "hide": "Ocultar gráfico",
+      "show": "Mostrar gráfico",
+      "hidden": "Gráfico oculto"
     }
   },
   "toasts": {
@@ -604,5 +622,71 @@
     "title": "Gastos por {key}",
     "other": "Otros",
     "noData": "No hay gastos etiquetados para desglosar con esta clave."
+  },
+  "searchSyntax": {
+    "open": "Sintaxis de búsqueda",
+    "title": "Sintaxis de búsqueda",
+    "fields": "Campos: payee, memo, cat, tag, account, ref, amount, date, status, is, has. Elige un ejemplo para ponerlo en el cuadro de búsqueda.",
+    "examples": {
+      "allWords": "Cada palabra aparece en algún sitio",
+      "phrase": "Esta frase exacta",
+      "exclude": "Excluir todo lo que coincida con refund",
+      "fieldContains": "El beneficiario contiene costco",
+      "fieldExact": "El beneficiario es exactamente Costco",
+      "reference": "Número de cheque o referencia exactamente 10",
+      "wildcard": "La referencia empieza por 10",
+      "amountOver": "Importe superior a 100",
+      "amountRange": "Importe de 50 a 100",
+      "datePeriod": "Cualquier día de marzo de 2026",
+      "isSplit": "Transacciones divididas",
+      "hasAttachment": "Tiene un adjunto",
+      "hasWarranty": "Tiene una garantía"
+    }
+  },
+  "searchInterpretation": {
+    "label": "Buscando:",
+    "negated": "no {phrase}",
+    "malformed": "{raw} (no se entendió, se buscó como texto)",
+    "empty": "{raw} (vacío, ignorado)",
+    "status": "Estado es {value}",
+    "any": "«{value}» en cualquier campo",
+    "fields": {
+      "payee": "Beneficiario",
+      "memo": "Nota",
+      "cat": "Categoría",
+      "tag": "Etiqueta",
+      "account": "Cuenta",
+      "ref": "Referencia",
+      "amount": "Importe",
+      "date": "Fecha",
+      "status": "Estado",
+      "is": "Tipo",
+      "has": "Tiene"
+    },
+    "ops": {
+      "contains": "{field} contiene «{value}»",
+      "exact": "{field} es «{value}»",
+      "glob": "{field} coincide con «{value}»",
+      "eq": "{field} es {value}",
+      "gt": "{field} superior a {value}",
+      "gte": "{field} {value} o más",
+      "lt": "{field} inferior a {value}",
+      "lte": "{field} {value} o menos",
+      "between": "{field} de {value} a {valueTo}"
+    },
+    "enum": {
+      "is": {
+        "transfer": "Transferencias",
+        "split": "Transacciones divididas",
+        "uncategorized": "Sin categoría"
+      },
+      "has": {
+        "attachment": "Tiene un adjunto",
+        "warranty": "Tiene una garantía",
+        "ref": "Tiene un número de referencia",
+        "memo": "Tiene una nota",
+        "tag": "Tiene una etiqueta"
+      }
+    }
   }
 }

@@ -27,6 +27,7 @@ import { APPLICATION_NAME } from "./common/cluster/instance-id";
 import { DemoModeModule } from "./common/demo-mode.module";
 import { EventBusModule } from "./common/events/event-bus.module";
 import { JobClaimModule } from "./common/jobs/job-claim.module";
+import { BankSyncModule } from "./bank-sync/bank-sync.module";
 
 import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
@@ -59,10 +60,12 @@ import { McpModule } from "./mcp/mcp.module";
 import { OAuthModule } from "./oauth/oauth.module";
 import { BudgetsModule } from "./budgets/budgets.module";
 import { CalendarModule } from "./calendar/calendar.module";
+import { WarrantiesModule } from "./warranties/warranties.module";
 import { TagsModule } from "./tags/tags.module";
 import { TransactionRulesModule } from "./transaction-rules/transaction-rules.module";
 import { AiReviewModule } from "./ai-review/ai-review.module";
 import { AiReviewQueueModule } from "./ai-review/ai-review-queue.module";
+import { EmailReceiptsModule } from "./email-receipts/email-receipts.module";
 import { LoanScenariosModule } from "./loan-scenarios/loan-scenarios.module";
 import { LoanRateChangesModule } from "./loan-rate-changes/loan-rate-changes.module";
 import { BackupModule } from "./backup/backup.module";
@@ -72,6 +75,7 @@ import { MonteCarloModule } from "./monte-carlo/monte-carlo.module";
 import { StrategiesModule } from "./strategies/strategies.module";
 import { DelegationModule } from "./delegation/delegation.module";
 import { EmergencyAccessModule } from "./emergency-access/emergency-access.module";
+import { BondsModule } from "./bonds/bonds.module";
 import { I18nModule } from "./i18n/i18n.module";
 
 @Module({
@@ -205,10 +209,12 @@ import { I18nModule } from "./i18n/i18n.module";
     OAuthModule,
     BudgetsModule,
     CalendarModule,
+    WarrantiesModule,
     TagsModule,
     TransactionRulesModule,
     AiReviewModule,
     AiReviewQueueModule,
+    EmailReceiptsModule,
     LoanScenariosModule,
     LoanRateChangesModule,
     BackupModule,
@@ -218,6 +224,8 @@ import { I18nModule } from "./i18n/i18n.module";
     StrategiesModule,
     DelegationModule,
     EmergencyAccessModule,
+    BankSyncModule,
+    BondsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

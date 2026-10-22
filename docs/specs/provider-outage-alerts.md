@@ -122,14 +122,18 @@ administrator at all does nothing.
 
 ## Not yet adopted
 
-The same shape applies to the other outbound callers -- `CurrenciesService` (FX),
-the AI providers, `UpdatesService`, `favicon.service`, `password-breach.service`.
-They are not wired to the breaker in this change, and
-`provider-call.guard.spec.ts` scopes its scan to `src/securities/` and
-`src/payees/lookup/google-places/` (which adopted the breaker with the payee
-contact lookup, and whose rejected-key 4xx is recorded as a SUCCESS -- the host
-answered, and one user's bad key must not open a deployment-wide breaker) for that
-reason. Adopting one is: pick an id in `TRACKED_PROVIDERS`, call `assertAvailable` (or
+The same shape applies to the other outbound callers -- the AI providers,
+`UpdatesService`, `favicon.service`, `password-breach.service`. They are not
+wired to the breaker in this change, and `provider-call.guard.spec.ts` scopes
+its scan to `src/securities/`, `src/payees/lookup/google-places/` (which adopted
+the breaker with the payee contact lookup, and whose rejected-key 4xx is
+recorded as a SUCCESS -- the host answered, and one user's bad key must not open
+a deployment-wide breaker), `src/bank-sync/providers/enable-banking/` and
+`src/currencies/` (the exchange rate adapters, where Frankfurter adopted the
+breaker as `frankfurter`, with a 404 recorded as a success for the same reason
+and a 429 or 5xx logged but not counted; and the currency lookup and
+verification in `CurrenciesService`, which ask the exchange rate provider chain
+rather than calling a host) for that reason. Adopting one is: pick an id in `TRACKED_PROVIDERS`, call `assertAvailable` (or
 `tryRequest`, where the caller's contract is a `null` rather than a throw)
 before the request, `recordSuccess` on any response, `recordFailure` on a
 rejection, and `logFailure` in the catch. Both gates take the exclusive

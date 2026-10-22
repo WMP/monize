@@ -82,6 +82,7 @@
     "newCategory": "新分类",
     "currentCategory": "当前分类",
     "description": "描述",
+    "referenceNumber": "参考编号",
     "name": "名称",
     "website": "网站",
     "address": "地址",
@@ -111,6 +112,13 @@
     "commission": "佣金",
     "total": "合计",
     "cashImpact": "现金影响",
+    "bondSeries": "系列",
+    "marksPaid": "标记为已付款",
+    "accruedInterest": "应计利息",
+    "redemptionSplit": "赎回拆分",
+    "redemptionSplitValue": "本金 {principal} + 利息 {interest} = 支付 {payout}",
+    "redemptionDeduction": "已扣除提前赎回费用",
+    "redemptionSplitDiffers": "价格和应计利息与本次赎回的支付金额不同（见拆分）。批准前请核对。",
     "createTransactionsTitle": "创建这些交易？",
     "createInvestmentTransactionsTitle": "创建这些投资交易？",
     "approveAll": "全部批准",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "长期资本收益再投资",
       "CAPITAL_GAIN_SHORT": "短期资本收益",
       "CAPITAL_GAIN_LONG": "长期资本收益",
-      "REDEEM": "赎回存单/债券"
+      "REDEEM": "赎回存单/债券",
+      "RETURN_OF_CAPITAL": "资本返还"
     },
     "createSecurityTitle": "创建此证券？",
     "createdSecurity": "证券已创建",
@@ -224,7 +233,11 @@
       "category": "将分类设置为 {name}",
       "payee": "将收款方设置为 {name}",
       "aiReview": "{count, plural, other {将 # 个 AI 审核请求加入队列}}"
-    }
+    },
+    "aiCategory": "AI 建议",
+    "tags": "标签",
+    "newTag": "(新标签)",
+    "marksPaidDue": "{name}（到期日 {date}）"
   },
   "table": {
     "downloadTitle": "将表格下载为 CSV",

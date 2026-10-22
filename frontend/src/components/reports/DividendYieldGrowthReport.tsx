@@ -16,6 +16,8 @@ import {
 } from 'recharts';
 import { subYears } from 'date-fns';
 import { investmentsApi } from '@/lib/investments';
+import { investmentIncomeAmount, investmentRowHasEffect } from '@/lib/investment-actions';
+import { convertRowAmount, rowAmountCurrency } from '@/lib/investment-row-currency';
 import { InvestmentTransaction, HoldingWithMarketValue } from '@/types/investment';
 import { Account } from '@/types/account';
 import { parseLocalDate } from '@/lib/utils';
@@ -98,7 +100,7 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-dividend-yield-growth-accounts';
 export function DividendYieldGrowthReport() {
   const t = useTranslations('reports');
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatSignedPercent, formatPercent } = useNumberFormat();
-  const { defaultCurrency, convertToDefault } = useExchangeRates();
+  const { defaultCurrency, convert } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   // Persisted so the report opens on the accounts the user last chose.
@@ -133,16 +135,34 @@ export function DividendYieldGrowthReport() {
   const displayCurrency = selectedAccount?.currencyCode || defaultCurrency;
 
   /**
-   * A transaction's amount in the display currency, or `null` when the pair has
-   * no rate. Yield is income over value, so an amount that cannot be converted
-   * has to leave both sides of the ratio rather than being added at face value.
+   * A transaction's dividend in the display currency, or `null` when it cannot
+   * be converted. Yield is income over value, so an amount that cannot be
+   * converted has to leave both sides of the ratio rather than being added at
+   * face value. The dividend is in the row's own (security) currency and reaches
+   * the display currency at the row's settlement rate where it has one. A
+   * reinvest created in the app stores no total; the dividend it records is the
+   * cost of the shares it bought.
    */
-  const getTxAmount = useCallback((tx: InvestmentTransaction): number | null => {
-    const amount = Math.abs(tx.totalAmount);
-    if (isSingleAccount) return amount;
-    const txCurrency = accountCurrencyMap.get(tx.accountId) || defaultCurrency;
-    return convertToDefault(amount, txCurrency);
-  }, [isSingleAccount, accountCurrencyMap, defaultCurrency, convertToDefault]);
+  const getTxAmount = useCallback(
+    (tx: InvestmentTransaction): number | null =>
+      convertRowAmount(
+        tx,
+        investmentIncomeAmount(tx),
+        accountCurrencyMap.get(tx.accountId),
+        displayCurrency,
+        convert,
+      ),
+    [accountCurrencyMap, displayCurrency, convert],
+  );
+
+  /**
+   * A holding's market value in the same display currency as the dividends, so
+   * the yield divides one currency by itself.
+   */
+  const toDisplay = useCallback(
+    (amount: number, currency: string): number | null => convert(amount, currency, displayCurrency),
+    [convert, displayCurrency],
+  );
 
   const fmtValue = useCallback((value: number): string => {
     const isForeign = displayCurrency !== defaultCurrency;
@@ -200,12 +220,16 @@ export function DividendYieldGrowthReport() {
         investmentsApi.getPortfolioSummary(
           selectedAccountIds.length > 0 ? selectedAccountIds : undefined,
         ),
+        // Every action whose income is a dividend, paid in cash or reinvested.
+        // The interest and capital-gain refinements of REINVEST are not
+        // dividends, as their cash twins are not.
         fetchAllPages('DIVIDEND'),
         fetchAllPages('REINVEST'),
       ]);
 
       return {
-        transactions: [...dividendTx, ...reinvestTx],
+        // A VOID row is listed by the endpoint as a record; it paid nothing.
+        transactions: [...dividendTx, ...reinvestTx].filter(investmentRowHasEffect),
         holdings: summaryData.holdings,
       };
     },
@@ -238,10 +262,10 @@ export function DividendYieldGrowthReport() {
         // An unpriced holding and an unconvertible one both leave the
         // denominator: `?? 0` would shrink it and inflate the yield.
         if (h.marketValue === null || h.marketValue === undefined) return sum;
-        const converted = convertToDefault(h.marketValue, h.currencyCode);
+        const converted = toDisplay(h.marketValue, h.currencyCode);
         return converted === null ? sum : sum + converted;
       }, 0),
-    [holdings, convertToDefault],
+    [holdings, toDisplay],
   );
 
   const portfolioYield = totalPortfolioValue > 0 ? (trailing12mTotal / totalPortfolioValue) * 100 : 0;
@@ -258,7 +282,7 @@ export function DividendYieldGrowthReport() {
         excludedCount += 1;
         continue;
       }
-      if (convertToDefault(h.marketValue, h.currencyCode) === null) {
+      if (toDisplay(h.marketValue, h.currencyCode) === null) {
         missing.add(h.currencyCode);
         excludedCount += 1;
       }
@@ -267,12 +291,15 @@ export function DividendYieldGrowthReport() {
     for (const tx of transactions) {
       if (parseLocalDate(tx.transactionDate) < cutoff) continue;
       if (getTxAmount(tx) === null) {
-        missing.add(accountCurrencyMap.get(tx.accountId) || defaultCurrency);
+        // The row's own currency is what had no rate; one the row cannot name
+        // is still an exclusion, but names no pair to add.
+        const currency = rowAmountCurrency(tx);
+        if (currency !== null) missing.add(currency);
         excludedCount += 1;
       }
     }
     return { missingCurrencies: [...missing], excludedCount };
-  }, [holdings, transactions, getTxAmount, convertToDefault, accountCurrencyMap, defaultCurrency]);
+  }, [holdings, transactions, getTxAmount, toDisplay]);
 
   // Per-security yield
   const securityYields = useMemo((): SecurityYield[] => {
@@ -298,7 +325,7 @@ export function DividendYieldGrowthReport() {
     const holdingMap = new Map<string, { symbol: string; name: string; marketValue: number }>();
     holdings.forEach((h) => {
       if (h.marketValue === null || h.marketValue === undefined) return;
-      const mv = convertToDefault(h.marketValue, h.currencyCode);
+      const mv = toDisplay(h.marketValue, h.currencyCode);
       if (mv === null) return;
       const existing = holdingMap.get(h.securityId);
       if (existing) {
@@ -324,7 +351,7 @@ export function DividendYieldGrowthReport() {
 
     return results;
      
-  }, [transactions, holdings, getTxAmount, convertToDefault, detectFrequency]);
+  }, [transactions, holdings, getTxAmount, toDisplay, detectFrequency]);
 
   const sortedSecurityYields = useMemo(() => {
     const sorted = [...securityYields];
@@ -602,6 +629,7 @@ export function DividendYieldGrowthReport() {
           <ReportToolbarActions
             onRefreshComplete={reload}
             onExportPdf={handleExportPdf}
+            disabled={isLoading || !!error}
           />
         </div>
       </div>

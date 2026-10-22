@@ -68,6 +68,58 @@
     "riskOn": "risk-on",
     "riskOff": "risk-off"
   },
+  "bond": {
+    "maturitySoonTitle": "{series}: погашение {date}",
+    "maturitySoonMessage": "{quantity} × {series} будут погашены {date}. {payout}",
+    "interestTitle": "{series}: выплата процентов {date}",
+    "interestMessage": "{quantity} × {series}: {date} выплата процентов в размере {amount}. Если их ещё нет на вашем счёте, проведите их на странице ценной бумаги.",
+    "interestMessageUnknown": "{quantity} × {series}: {date} выплата процентов. Сумма пока неизвестна: ставка, от которой она зависит, не опубликована.",
+    "rateResetTitle": "{series}: новый процентный период",
+    "rateResetMessage": "{series}: с {date} идёт период {period} со ставкой {rate} годовых.",
+    "unbookedTitle": "{series}: погашена, погашение не проведено",
+    "unbookedMessage": "{quantity} × {series} погашены {date}, но погашение не проведено. {payout} Проведите погашение на странице ценной бумаги.",
+    "payoutKnown": "Сумма выплаты: {payout}.",
+    "payoutUnknown": "Сумма выплаты пока неизвестна: {reason}.",
+    "reason": {
+      "RATE_UNKNOWN": "ставка, от которой она зависит, ещё не опубликована",
+      "TERMS_INCOMPLETE": "условия серии неполные",
+      "PURCHASE_OUTSIDE_SALE_WINDOW": "дата покупки выходит за период продажи серии",
+      "other": "её нельзя рассчитать по сохранённым данным"
+    },
+    "benchmarkTitle": "{benchmark}: новое значение за {observation}",
+    "benchmarkIntro": "Опубликовано {benchmark} за {observation}: {value} (источник: {publisher}).",
+    "benchmarkSeries": "{series}: период с {date} со ставкой {rate} годовых.",
+    "benchmarkSeriesProjected": "{series}: период с {date} с прогнозной ставкой {rate} годовых.",
+    "benchmarkSeriesUnknown": "{series}: период с {date}, ставка пока неизвестна.",
+    "benchmarkMore": "И ещё {more}.",
+    "missingTitle": "Показатели по облигациям пока неизвестны",
+    "missingMessage": "Некоторые показатели по облигациям не удаётся рассчитать. {causes}",
+    "cause": {
+      "observation": "Значение {benchmark} за {observation} ({publisher}) не сохранено: оно ещё не опубликовано или поток данных не загружался с тех пор. Обновите данные на странице облигации.",
+      "observationNoPublisher": "Значение {benchmark} за {observation} не сохранено: оно ещё не опубликовано или поток данных не загружался с тех пор. Обновите данные на странице облигации.",
+      "terms": "Условия {series} неполные. Обновите серию на странице облигации.",
+      "purchase": "Покупка {series} от {date} выходит за период продажи ({from} – {to}). Исправьте дату покупки.",
+      "lots": "Партии не удаётся определить по журналу операций ({code}). Исправьте журнал.",
+      "lotsRow": "{action} от {date}: партии не удаётся определить ({code}). Исправьте операцию.",
+      "lotsRowSeries": "{action} от {date}: серия не указана ({code}). Выберите серию в этой операции.",
+      "lotsRowRemoval": "{action} от {date}: количество превышает остаток этой серии на счёте ({code}). Исправьте операцию."
+    },
+    "action": {
+      "BUY": "Покупка",
+      "SELL": "Продажа",
+      "REINVEST": "Реинвестирование",
+      "ADD_SHARES": "Зачисление бумаг",
+      "REMOVE_SHARES": "Списание бумаг",
+      "SPLIT": "Сплит",
+      "TRANSFER_IN": "Входящий перевод",
+      "TRANSFER_OUT": "Исходящий перевод",
+      "other": "Операция"
+    },
+    "benchmarks": {
+      "PL_CPI_GUS_YOY": "Инфляция ИПЦ, 12 месяцев (GUS)",
+      "PL_NBP_REFERENCE": "Ориентировочная ставка NBP"
+    }
+  },
   "portfolioMovement": {
     "titleUp": "Инвестиции выросли на {percent}%",
     "titleDown": "Инвестиции упали на {percent}%",
@@ -119,5 +171,37 @@
   "priceMovement": {
     "title": "Уведомление об изменении цены: {symbol} ({percent}%)",
     "message": "{symbol}: {percent}% относительно предыдущей доступной сессии."
+  },
+  "bankSync": {
+    "expiringTitleToday": "{institution}: доступ к банку заканчивается сегодня",
+    "expiringTitleOneDay": "{institution}: доступ к банку заканчивается в течение 1 дня",
+    "expiringTitleDays": "{institution}: доступ к банку заканчивается в течение {days} дн.",
+    "expiringMessage": "Ваше согласие на чтение {institution} в Monize заканчивается {date}. Продлите подключение в Monize, чтобы синхронизация продолжалась.",
+    "expiredTitle": "{institution}: доступ к банку закончился",
+    "expiredMessage": "Ваше согласие на чтение {institution} в Monize закончилось. Продлите подключение в Monize, чтобы возобновить синхронизацию.",
+    "failedTitle": "{institution}: сбой синхронизации",
+    "failedMessage": "Ежедневная синхронизация {institution} не удалась для счетов: {accounts}. Откройте настройки банковской синхронизации, чтобы узнать причину.",
+    "failedCredentialsMessage": "Ежедневную синхронизацию {institution} не удалось запустить: учётные данные банковской синхронизации отсутствуют или были отклонены. Проверьте их в настройках банковской синхронизации.",
+    "unnamedAccount": "счёт без названия",
+    "importedTitle": "{institution}: импортированы новые проводки",
+    "importedMessage": "Проводки, импортированные из {institution} ежедневной синхронизацией: {imported}.",
+    "importedNoneTitle": "{institution}: новых проводок нет",
+    "importedNoneMessage": "Ежедневная синхронизация {institution} не нашла новых проводок."
+  },
+  "emailReceiptsAttention": {
+    "title": "Письма-квитанции требуют внимания",
+    "message": "Ваша папка квитанций содержит {noParser} без профиля и {parseFailed}, которые профиль не распознал. Откройте для проверки."
+  },
+  "aiReview": {
+    "readyTitle": "Предложения ИИ ожидают вашего подтверждения",
+    "readyMessage": "{count, plural, one {# предложение ИИ ожидает} few {# предложения ИИ ожидают} many {# предложений ИИ ожидают} other {# предложения ИИ ожидают}} вашего подтверждения, из них новых: {added}. Откройте входящие проверки ИИ, чтобы подтвердить или отклонить их.",
+    "expiringTitle": "Срок предложений ИИ скоро истекает",
+    "expiringMessage": "{count, plural, one {# предложение ИИ скоро истекает} few {# предложения ИИ скоро истекают} many {# предложений ИИ скоро истекают} other {# предложения ИИ скоро истекают}}. Первое истекает {date}. Откройте входящие проверки ИИ, чтобы подтвердить или отклонить их."
+  },
+  "warranty": {
+    "expiringTitle": "{name}: гарантия истекает в течение {days, plural, one {# дня} few {# дней} many {# дней} other {# дня}}",
+    "expiringMessage": "Гарантия на {name} истекает {date}. Откройте её, чтобы просмотреть документы или зарегистрировать обращение.",
+    "todayTitle": "{name}: гарантия истекает сегодня",
+    "todayMessage": "Гарантия на {name} истекает сегодня, {date}. Откройте её, чтобы просмотреть документы или зарегистрировать обращение."
   }
 }

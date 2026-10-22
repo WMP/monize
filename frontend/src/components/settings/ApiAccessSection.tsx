@@ -135,15 +135,19 @@ export function ApiAccessSection() {
     ? `${window.location.origin}${MCP_PATH}`
     : MCP_PATH;
 
-  const loadTokens = useCallback(async () => {
-    try {
-      const data = await authApi.getTokens();
-      setTokens(data);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('toasts.loadFailed')));
-    } finally {
-      setIsLoading(false);
-    }
+  // The writes live in the inner `run`, so they happen after the request, not during the effect.
+  const loadTokens = useCallback(() => {
+    const run = async () => {
+      try {
+        const data = await authApi.getTokens();
+        setTokens(data);
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('toasts.loadFailed')));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [t]);
 
   useEffect(() => {

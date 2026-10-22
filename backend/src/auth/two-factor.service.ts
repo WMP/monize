@@ -270,8 +270,33 @@ export class TwoFactorService {
       );
     }
 
+    // Reserve this attempt on both budgets before the code is checked. The
+    // peek above is an advisory early refusal; a burst of concurrent requests
+    // all read the same count there, so the bound is the count each
+    // reservation's single statement committed (A26-L08).
+    // "sliding", because that is what the `Map` entries this replaced did:
+    // each failure wrote `expiresAt: Date.now() + ATTEMPT_WINDOW_MS`, so a run
+    // of failures only lapsed after a full quiet window. Under a fixed window
+    // an attacker spacing attempts one per window never accumulates, and the
+    // tenth failure that locks the account below is never reached.
+    const { count: tokenCount } = await this.attemptCounters.increment(
+      TWO_FACTOR_TOKEN_SCOPE,
+      tokenCounterKey,
+      this.ATTEMPT_WINDOW_MS,
+      "sliding",
+    );
+    if (tokenCount > this.MAX_2FA_ATTEMPTS) {
+      throw new UnauthorizedException(
+        tr(
+          "errors.auth.tooManyAttemptsLoginAgain",
+          "Too many verification attempts. Please log in again.",
+        ),
+      );
+    }
+
     // Per-user rate limiting: prevents brute-force multiplication via multiple tempTokens
-    if (await this.userTotpBudgetSpent(payload.sub)) {
+    const userCount = await this.reserveUserTotpAttempt(payload.sub);
+    if (userCount > this.MAX_USER_2FA_ATTEMPTS) {
       this.logger.warn(
         `2FA verification blocked: too many attempts for user ${payload.sub}`,
       );
@@ -328,21 +353,8 @@ export class TwoFactorService {
     }
 
     if (!isValid) {
-      // Track failed attempt per-token
-      // "sliding", because that is what the `Map` entries this replaced did:
-      // each failure wrote `expiresAt: Date.now() + ATTEMPT_WINDOW_MS`, so a run
-      // of failures only lapsed after a full quiet window. Under a fixed window
-      // an attacker spacing attempts one per window never accumulates, and the
-      // tenth failure that locks the account below is never reached.
-      await this.attemptCounters.increment(
-        TWO_FACTOR_TOKEN_SCOPE,
-        tokenCounterKey,
-        this.ATTEMPT_WINDOW_MS,
-        "sliding",
-      );
-
-      // Track failed attempt per-user, locking the account at the threshold
-      await this.recordUserTotpFailure(user.id);
+      // Both budgets already counted this attempt; lock at the threshold.
+      await this.lockIfUserTotpBudgetSpent(user.id, userCount);
 
       this.logger.warn(
         `2FA verification failed: invalid code for user ${user.id}`,
@@ -402,37 +414,45 @@ export class TwoFactorService {
   }
 
   /**
-   * Whether `userId`'s per-user TOTP budget is spent.
+   * Reserve one attempt on `userId`'s per-user TOTP budget and return the
+   * committed count; the caller refuses a count over `MAX_USER_2FA_ATTEMPTS`
+   * before it checks the code.
    *
    * One budget per secret, shared by every path that checks a code against it:
-   * the login verification and the two authenticated management endpoints
-   * (`disable2FA`, `generateBackupCodes`). Guessing through a stolen session is
-   * guessing the same six digits, so it draws from the same allowance -- a
-   * separate counter per endpoint would multiply what an attacker gets. Keyed
-   * by user rather than by client address, so no forwarded header moves it.
+   * the login verification and the authenticated management endpoints
+   * (`disable2FA`, `reset2FA`, `generateBackupCodes`). Guessing through a stolen
+   * session is guessing the same six digits, so it draws from the same
+   * allowance -- a separate counter per endpoint would multiply what an
+   * attacker gets. Keyed by user rather than by client address, so no forwarded
+   * header moves it.
+   *
+   * Reserved before the check, never peeked: a peek lets K concurrent guesses
+   * read the same count before any of them is recorded, so all K are checked
+   * (A26-L08). The increment is one statement, so K reservations get K
+   * distinct counts. A success resets it. "sliding", because that is what the
+   * `Map` entries this replaced did: each failure pushed the expiry out, so a
+   * run of failures only lapses after a full quiet window. Under a fixed window
+   * an attacker spacing attempts one per window never accumulates (see
+   * `AttemptWindow`).
    */
-  private async userTotpBudgetSpent(userId: string): Promise<boolean> {
-    const attempts = await this.attemptCounters.peek(
-      TWO_FACTOR_USER_SCOPE,
-      userId,
-    );
-    return attempts >= this.MAX_USER_2FA_ATTEMPTS;
-  }
-
-  /**
-   * Count one wrong code against `userId` and lock the account when the count
-   * reaches the threshold. "sliding", because that is what the `Map` entries
-   * this replaced did: each failure pushed the expiry out, so a run of failures
-   * only lapses after a full quiet window. Under a fixed window an attacker
-   * spacing attempts one per window never accumulates (see `AttemptWindow`).
-   */
-  private async recordUserTotpFailure(userId: string): Promise<void> {
+  private async reserveUserTotpAttempt(userId: string): Promise<number> {
     const { count } = await this.attemptCounters.increment(
       TWO_FACTOR_USER_SCOPE,
       userId,
       this.ATTEMPT_WINDOW_MS,
       "sliding",
     );
+    return count;
+  }
+
+  /**
+   * A reserved attempt failed: lock the account when its reservation reached
+   * the threshold.
+   */
+  private async lockIfUserTotpBudgetSpent(
+    userId: string,
+    count: number,
+  ): Promise<void> {
     if (count >= this.MAX_USER_2FA_ATTEMPTS) {
       await this.scoped(User, (repo) =>
         repo
@@ -449,12 +469,15 @@ export class TwoFactorService {
   }
 
   /**
-   * Refuse an authenticated 2FA-management request whose user has spent the
-   * TOTP budget. 429 rather than 401: the session is valid, and a 401 would
-   * send the client into its refresh-and-sign-out path.
+   * Reserve an attempt for an authenticated 2FA-management request and refuse
+   * it when its user has spent the TOTP budget. 429 rather than 401: the
+   * session is valid, and a 401 would send the client into its
+   * refresh-and-sign-out path. Returns the reservation's count for
+   * `lockIfUserTotpBudgetSpent` on a wrong code.
    */
-  private async assertManagementTotpBudget(userId: string): Promise<void> {
-    if (await this.userTotpBudgetSpent(userId)) {
+  private async reserveManagementTotpAttempt(userId: string): Promise<number> {
+    const count = await this.reserveUserTotpAttempt(userId);
+    if (count > this.MAX_USER_2FA_ATTEMPTS) {
       this.logger.warn(
         `2FA management blocked: too many attempts for user ${userId}`,
       );
@@ -466,6 +489,7 @@ export class TwoFactorService {
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
+    return count;
   }
 
   /**
@@ -655,7 +679,7 @@ export class TwoFactorService {
       );
     }
 
-    await this.assertManagementTotpBudget(userId);
+    const reserved = await this.reserveManagementTotpAttempt(userId);
 
     const outcome = await withScopedDb(
       this.dataSource,
@@ -705,7 +729,7 @@ export class TwoFactorService {
     );
 
     if (outcome === "refused") {
-      await this.recordUserTotpFailure(userId);
+      await this.lockIfUserTotpBudgetSpent(userId, reserved);
       throw new BadRequestException(
         tr("errors.auth.invalidVerificationCode", "Invalid verification code"),
       );
@@ -741,12 +765,13 @@ export class TwoFactorService {
    * A user with neither needs the administrator reset.
    *
    * Every failure, password or code, draws on the same per-user TOTP budget as
-   * sign-in and the other management endpoints (`assertManagementTotpBudget`),
+   * sign-in and the other management endpoints (`reserveManagementTotpAttempt`),
    * so a stolen session cannot guess either through this route. The checks run
    * inside the transaction that clears the secret, against the row locked for
    * update, so a refused request has written nothing and a concurrent enrolment
-   * cannot interleave; the failure is counted after that transaction, because a
-   * counter joined to it would roll back with the refusal.
+   * cannot interleave; the attempt is reserved before that transaction, on the
+   * counter's own connection, because a counter joined to it would roll back
+   * with the refusal.
    *
    * Only the refresh-token families other than `currentRefreshToken`'s are
    * revoked, after the commit (`TokenService.revokeAllUserRefreshTokens`
@@ -762,7 +787,7 @@ export class TwoFactorService {
     code: string,
     currentRefreshToken?: string,
   ): Promise<{ message: string }> {
-    await this.assertManagementTotpBudget(userId);
+    const reserved = await this.reserveManagementTotpAttempt(userId);
 
     const refusal = await withScopedDb(
       this.dataSource,
@@ -840,7 +865,7 @@ export class TwoFactorService {
 
     if (refusal) {
       const { subject, error } = RESET_REFUSALS[refusal];
-      await this.recordUserTotpFailure(userId);
+      await this.lockIfUserTotpBudgetSpent(userId, reserved);
       this.logger.warn(
         `2FA reset refused: wrong ${subject} for user ${userId}`,
       );
@@ -878,13 +903,13 @@ export class TwoFactorService {
       );
     }
 
-    await this.assertManagementTotpBudget(user.id);
+    const reserved = await this.reserveManagementTotpAttempt(user.id);
 
     // TOTP only, as before; an undecryptable secret is a wrong code, not a 500.
     const isValid = this.checkTotpCode(user, code).valid;
 
     if (!isValid) {
-      await this.recordUserTotpFailure(user.id);
+      await this.lockIfUserTotpBudgetSpent(user.id, reserved);
       throw new BadRequestException(
         tr("errors.auth.invalidVerificationCode", "Invalid verification code"),
       );

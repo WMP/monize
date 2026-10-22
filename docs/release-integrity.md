@@ -49,7 +49,7 @@ silently becoming three. Only an explicit inventory catches partial loss.
 `backend/package.json` runs integration tests as:
 
 ```json
-"test:integration": "jest --config ./test/jest-e2e.json --testPathPatterns=\"test/integration/.*\\.spec\\.ts$\" --runInBand",
+"test:integration": "jest --config ./test/jest-integration.json --runInBand",
 ```
 
 It previously carried an unconditional `--passWithNoTests` under 21 suites --
@@ -73,10 +73,10 @@ to one the pipeline enforces. No runner carries such a flag today either:
 fails by default when it discovers no spec files.
 
 REL-002 is still owed. The same guard asserts that the 35 suites tracked under
-`backend/test/integration/` are all discoverable by `test/jest-e2e.json`, which
+`backend/test/integration/` are all discoverable by `test/jest-integration.json`, which
 catches a config that stops matching a class of specs; it does not assert what
-the runner actually executed, and the CLI `--testPathPatterns` filter sits
-outside the model. A shrinking suite that is genuinely deleted still passes.
+the runner actually executed. The script carries no `--testPathPatterns` any
+more, so no filter sits outside the model. A shrinking suite that is genuinely deleted still passes.
 
 ## 2. The tested revision and the released revision must be the same
 

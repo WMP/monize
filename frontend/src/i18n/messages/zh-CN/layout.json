@@ -85,7 +85,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "长期资本收益再投资",
       "CAPITAL_GAIN_SHORT": "短期资本收益",
       "CAPITAL_GAIN_LONG": "长期资本收益",
-      "REDEEM": "赎回存单/债券"
+      "REDEEM": "赎回存单/债券",
+      "RETURN_OF_CAPITAL": "资本返还"
     },
     "descriptions": {
       "createdAccount": "已创建账户\"{name}\"",

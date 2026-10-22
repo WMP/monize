@@ -21,6 +21,7 @@ import {
   type BalanceForecastState,
 } from '../shared/balance-forecast-state';
 import { BalanceForecastUnavailable } from '@/components/accounts/shared/BalanceForecastUnavailable';
+import { useOverdueForecastMarkers } from '@/components/accounts/shared/useOverdueForecastMarkers';
 import type { GroupedTotal, MonthlyTotal } from '@/types/transaction';
 
 const logger = createLogger('BankingDetailView');
@@ -170,6 +171,10 @@ export function BankingDetailView({ account }: BankingDetailViewProps) {
     [historicalBalances, forecast.points],
   );
 
+  // The overdue occurrences the projection applies on its first day, marked on the
+  // line so that day's drop has a cause (discussion #1784).
+  const overdueMarkers = useOverdueForecastMarkers(forecast);
+
   // Both from the same `withheld`, so the panel and the figure cannot disagree.
   const projectedBalance = projectedBalanceFrom(
     forecast,
@@ -197,6 +202,7 @@ export function BankingDetailView({ account }: BankingDetailViewProps) {
       <BankingSummaryCards
         account={account}
         projectedBalance={projectedBalance}
+        overdue={forecast.overdue}
         moneyIn={moneyIn}
         moneyOut={moneyOut}
         interestEarnedYtd={interestEarnedYtd}
@@ -242,6 +248,8 @@ export function BankingDetailView({ account }: BankingDetailViewProps) {
               currencyCode={currency}
               accountName={account.name}
               hideTitle
+              markers={overdueMarkers}
+              markerSnap="later"
             />
           )}
         </div>

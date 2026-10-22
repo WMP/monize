@@ -36,9 +36,9 @@ vi.mock('recharts', () => ({
       const C = content.type;
       return (
         <div data-testid="tooltip">
-          <C active={true} payload={[{ name: 'V', value: 100, color: '#000', payload: { name: 'Equities', symbol: 'VFV', marketValue: 100, gainLoss: 10, gainLossPercent: 5, currencyCode: 'CAD', value: 100, percentage: 50 } }]} />
-          <C active={false} payload={[]} />
-          <C active={true} payload={[{ name: 'X', value: 50, color: '#000', payload: { name: 'Bonds', symbol: 'XIC', marketValue: -50, gainLoss: -10, gainLossPercent: -5, currencyCode: 'USD', value: 50, percentage: 25 } }]} />
+          <C {...content.props} active={true} payload={[{ name: 'V', value: 100, color: '#000', payload: { name: 'Equities', symbol: 'VFV', marketValue: 100, gainLoss: 10, gainLossPercent: 5, currencyCode: 'CAD', value: 100, percentage: 50 } }]} />
+          <C {...content.props} active={false} payload={[]} />
+          <C {...content.props} active={true} payload={[{ name: 'X', value: 50, color: '#000', payload: { name: 'Bonds', symbol: 'XIC', marketValue: -50, gainLoss: -10, gainLossPercent: -5, currencyCode: 'USD', value: 50, percentage: 25 } }]} />
         </div>
       );
     }
@@ -361,6 +361,126 @@ describe('InvestmentPerformanceReport', () => {
       expect(
         window.localStorage.getItem('monize-reports-investment-performance-accounts'),
       ).toBe(JSON.stringify(['acc-1']));
+    });
+  });
+  describe('gain over the priced holdings (A26-M38)', () => {
+    // Priced A: value 100,000, cost 80,000. Unpriced B: cost 50,000. The server's
+    // gain is +20,000 / +25% over A. Value less every cost is -30,000.
+    const incompleteAccount = {
+      accountId: 'acc-1',
+      accountName: 'TFSA',
+      currencyCode: 'CAD',
+      totalMarketValue: 100000,
+      cashBalance: 0,
+      totalCostBasis: 130000,
+      gainCostBasis: 80000,
+      unpricedCostBasis: 50000,
+      totalGainLoss: 20000,
+      totalGainLossPercent: 25,
+      unpricedHoldingsCount: 1,
+      fxComplete: true,
+      missingRatePairs: [],
+      pricesComplete: false,
+      unpricedSecurityIds: ['sec-xic'],
+      valuationComplete: false,
+    };
+    const incompletePortfolio = {
+      ...fullPortfolio,
+      holdingsByAccount: [incompleteAccount],
+      totalPortfolioValue: 100000,
+      totalCostBasis: 130000,
+      gainCostBasis: 80000,
+      unpricedCostBasis: 50000,
+      totalGainLoss: 20000,
+      totalGainLossPercent: 25,
+      fxComplete: true,
+      missingRatePairs: [],
+      pricesComplete: false,
+      unpricedSecurityIds: ['sec-xic'],
+      valuationComplete: false,
+    };
+
+    it('marks the all-accounts gain and return as partial and never prints -30,000', async () => {
+      mockGetPortfolioSummary.mockResolvedValue(incompletePortfolio);
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+      render(<InvestmentPerformanceReport />);
+      await waitFor(() => {
+        expect(screen.getByText('Total Gain/Loss')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('-$30000.00')).not.toBeInTheDocument();
+      expect(screen.queryByText('$-30000.00')).not.toBeInTheDocument();
+      const gain = screen.getByText('+$20000.00');
+      expect(gain.closest('[data-testid="partial-total"]')).not.toBeNull();
+      const ret = screen.getByText('+25.00%');
+      expect(ret.closest('[data-testid="partial-total"]')).not.toBeNull();
+    });
+
+    it('reads the server per-account gain when a single account is selected', async () => {
+      window.localStorage.setItem(
+        'monize-reports-investment-performance-accounts',
+        JSON.stringify(['acc-1']),
+      );
+      mockGetPortfolioSummary.mockResolvedValue(incompletePortfolio);
+      mockGetInvestmentAccounts.mockResolvedValue([
+        { id: 'acc-1', name: 'TFSA', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
+      ]);
+      render(<InvestmentPerformanceReport />);
+      await waitFor(() => {
+        expect(screen.getByText('Total Gain/Loss')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('-$30000.00')).not.toBeInTheDocument();
+      expect(screen.queryByText('$-30000.00')).not.toBeInTheDocument();
+      const gain = screen.getByText('+$20000.00');
+      expect(gain.closest('[data-testid="partial-total"]')).not.toBeNull();
+      expect(screen.getByText('+25.00%')).toBeInTheDocument();
+      window.localStorage.removeItem('monize-reports-investment-performance-accounts');
+    });
+
+    it('marks the Total Value card partial, and the Cost Basis card only when a cost had no rate', async () => {
+      const cardFigure = (label: string) =>
+        screen.getByText(label).parentElement!.querySelector('[data-testid="partial-total"]');
+
+      mockGetPortfolioSummary.mockResolvedValue(incompletePortfolio);
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+      const { unmount } = render(<InvestmentPerformanceReport />);
+      await waitFor(() => {
+        expect(screen.getByText('Total Value')).toBeInTheDocument();
+      });
+      // An unpriced holding is missing from the value; every cost is counted.
+      expect(cardFigure('Total Value')).not.toBeNull();
+      expect(cardFigure('Cost Basis')).toBeNull();
+      unmount();
+
+      mockGetPortfolioSummary.mockResolvedValue({
+        ...incompletePortfolio,
+        fxComplete: false,
+        missingRatePairs: ['EUR->CAD'],
+      });
+      render(<InvestmentPerformanceReport />);
+      await waitFor(() => {
+        expect(screen.getByText('Cost Basis')).toBeInTheDocument();
+      });
+      expect(cardFigure('Cost Basis')).not.toBeNull();
+    });
+
+    it('leaves a complete portfolio unmarked', async () => {
+      mockGetPortfolioSummary.mockResolvedValue({
+        ...fullPortfolio,
+        fxComplete: true,
+        pricesComplete: true,
+        valuationComplete: true,
+        unpricedSecurityIds: [],
+        missingRatePairs: [],
+      });
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+      render(<InvestmentPerformanceReport />);
+      await waitFor(() => {
+        expect(screen.getByText('Total Gain/Loss')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('partial-total')).not.toBeInTheDocument();
     });
   });
 });

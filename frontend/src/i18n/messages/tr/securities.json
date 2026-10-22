@@ -119,6 +119,8 @@
     "currencyLabel": "Para Birimi",
     "currencyNotConfigured": "{code} — para birimlerinizde yok",
     "quoteProviderLabel": "Fiyat Teklifi Sağlayıcısı",
+    "skipPriceUpdatesLabel": "Otomatik fiyat güncellemelerini devre dışı bırak",
+    "skipPriceUpdatesHelp": "Monize bu menkul kıymet için fiyat almayacak. Hiçbir sağlayıcının fiyatlayamadığı bir menkul kıymet için bunu kullanın; kendi girdiğiniz fiyatlar yine de sayılır. Farklı bir fiyat sağlayıcısı veya MSN Enstrüman Kimliği seçmek güncellemeleri yeniden açar.",
     "msnIdLabel": "MSN Araç ID'si (gelişmiş)",
     "lookupProviderAriaLabel": "Sağlayıcıyı ara",
     "lookupButton": "Ara",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "Tahvil motoru"
     },
     "types": {
       "select": "Tür seçin...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "Sil",
       "deleteSuccess": "\"{name}\" varlık sınıfı silindi",
       "deleteFailed": "\"{name}\" varlık sınıfı silinemedi"
-    }
+    },
+    "bondFetchAction": "{code} serisini resmi kaynaktan getir",
+    "bondFetching": "{code} ihraççıdan ve referans oranlarıyla birlikte getiriliyor. Bu işlem bir dakikaya kadar sürebilir.",
+    "bondFetchFailed": "Seri getirilemedi.",
+    "bondCurrencyLocked": "Bu menkul kıymet {linkedCurrency} cinsinden bir tahvil türüne bağlı. Para birimini tekrar {linkedCurrency} yapın veya önce tahvil türünün bağlantısını kaldırın (bağlantıyı kaldırmak hesaplanan fiyatları siler).",
+    "bondProgramLabel": "Tahvil türü",
+    "bondProgramNone": "Bağlı değil",
+    "bondProgramCurrent": "Bağlı tahvil türü",
+    "bondProgramLoading": "Tahvil türleri yükleniyor...",
+    "bondProgramLoadFailed": "Tahvil türleri yüklenemedi, bu yüzden henüz bir tahvil türü bağlanamıyor.",
+    "bondProgramRetry": "Yeniden dene",
+    "bondNoPrograms": "Tahvil kataloğunda henüz hiç tahvil türü yok.",
+    "bondAutoFetchLabel": "Bu tahvil türünün yeni serilerini otomatik getir",
+    "bondAutoFetchHelp": "Açıkken Monize her gün bu tahvil türünün yeni serilerini resmi kaynaktan okur; böylece seriyi önceden getirmeden bir alımı kaydedebilirsiniz.",
+    "bondCountryLabel": "Ülke",
+    "bondCountryOther": "Diğer",
+    "bondCountryOtherInfo": "Diğer ülkelerin tahvilleri için destek, projenin <link>GitHub</link> sayfasından talep edilebilir."
   },
   "priceForm": {
     "dateLabel": "Tarih",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Uzun Vadeli Kazancı Yeniden Yatır",
       "CAPITAL_GAIN_SHORT": "Kısa Vadeli Sermaye Kazancı",
       "CAPITAL_GAIN_LONG": "Uzun Vadeli Sermaye Kazancı",
-      "REDEEM": "CD/Tahvil İtfası"
+      "REDEEM": "CD/Tahvil İtfası",
+      "RETURN_OF_CAPITAL": "Sermaye İadesi"
     },
     "toasts": {
       "loadHistoryFailed": "Geçmiş yüklenemedi",
@@ -340,6 +360,7 @@
     "nameRequired": "Ad zorunludur",
     "nameMax": "Ad 255 karakter veya daha az olmalıdır",
     "currencyRequired": "Para birimi zorunludur",
+    "bondProgramRequired": "Tahvil türü zorunludur",
     "descriptionMax": "Açıklama en fazla 5000 karakter olabilir"
   },
   "priceValidation": {

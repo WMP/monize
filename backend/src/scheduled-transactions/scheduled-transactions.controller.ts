@@ -28,7 +28,12 @@ import { ScheduledTransactionsService } from "./scheduled-transactions.service";
 import { CreateScheduledTransactionDto } from "./dto/create-scheduled-transaction.dto";
 import { UpdateScheduledTransactionDto } from "./dto/update-scheduled-transaction.dto";
 import { PostScheduledTransactionDto } from "./dto/post-scheduled-transaction.dto";
+import { SkipScheduledTransactionDto } from "./dto/skip-scheduled-transaction.dto";
 import { ScheduledOccurrencesQueryDto } from "./dto/scheduled-occurrences-query.dto";
+import {
+  LOAN_OCCURRENCES_DEFAULT_COUNT,
+  LoanOccurrencesQueryDto,
+} from "./dto/loan-occurrences-query.dto";
 import {
   CreateScheduledTransactionOverrideDto,
   UpdateScheduledTransactionOverrideDto,
@@ -38,6 +43,7 @@ import {
   DelegatedBodyAccounts,
   DelegatedTransferBody,
   DelegatedScheduledParam,
+  DelegateReadsEveryScheduledAccount,
   DelegateRequires,
   DelegateRequiresSection,
 } from "../delegation/decorators/delegate-access.decorator";
@@ -327,6 +333,10 @@ export class ScheduledTransactionsController {
   })
   @ApiParam({ name: "id", description: "Scheduled transaction UUID" })
   @ApiResponse({ status: 200, description: "Transaction posted successfully" })
+  @ApiResponse({
+    status: 409,
+    description: "The occurrence is no longer the due one",
+  })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
   @AllowDelegate()
@@ -339,7 +349,16 @@ export class ScheduledTransactionsController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() postDto: PostScheduledTransactionDto,
   ) {
-    return this.scheduledTransactionsService.post(req.user.id, id, postDto);
+    // A delegate acting as the owner posts the owner's bill but is not the
+    // owner: the owner's structural rules must not run on the posted row.
+    return this.scheduledTransactionsService.post(req.user.id, id, postDto, {
+      actorIsNotOwner: req.user.isActing === true,
+      // The occurrence the person was looking at (A26-S08-01); the DTO requires it.
+      occurrencePin: {
+        occurrenceDate: postDto.expectedOccurrenceDate as string,
+        overrideId: postDto.expectedOverrideId || null,
+      },
+    });
   }
 
   @Post(":id/skip")
@@ -348,17 +367,66 @@ export class ScheduledTransactionsController {
   })
   @ApiParam({ name: "id", description: "Scheduled transaction UUID" })
   @ApiResponse({ status: 200, description: "Occurrence skipped successfully" })
+  @ApiResponse({
+    status: 409,
+    description: "The occurrence is no longer the due one",
+  })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
   @AllowDelegate()
   @DelegateRequiresSection("bills")
   @DelegatedScheduledParam("id")
   @DelegateRequires("edit")
-  skip(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
-    return this.scheduledTransactionsService.skip(req.user.id, id);
+  skip(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SkipScheduledTransactionDto,
+  ) {
+    return this.scheduledTransactionsService.skip(req.user.id, id, {
+      occurrenceDate: dto.expectedOccurrenceDate,
+      overrideId: dto.expectedOverrideId || null,
+    });
   }
 
   // ==================== Override Endpoints ====================
+
+  @Get(":id/loan-occurrences")
+  @ApiOperation({
+    summary:
+      "Project the next occurrences of a loan bill, each priced at its own due date",
+    description:
+      "Each occurrence is priced through the same path the posting prices " +
+      "it with, on the ledger debt the earlier projected occurrences leave " +
+      "and at the rate and payment the loan's timeline dates to it " +
+      "(INV-LOAN-006, INV-LOAN-009). A bill that transfers to no loan, or " +
+      "whose shape the pricing declines, answers its status and no rows.",
+  })
+  @ApiParam({ name: "id", description: "Scheduled transaction UUID" })
+  @ApiResponse({ status: 200, description: "Projected occurrences" })
+  @ApiResponse({ status: 400, description: "Bad request" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
+  @ApiResponse({
+    status: 503,
+    description: "The loan's ledger balance could not be read",
+  })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
+  // The answer is the loan's own dated debt and rate, which the transfer
+  // mask does not hide: READ on the loan, not only on the paying account.
+  @DelegateReadsEveryScheduledAccount()
+  projectLoanOccurrences(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query() query: LoanOccurrencesQueryDto,
+  ) {
+    return this.scheduledTransactionsService.projectLoanOccurrences(
+      req.user.id,
+      id,
+      query.count ?? LOAN_OCCURRENCES_DEFAULT_COUNT,
+    );
+  }
 
   @Get(":id/overrides")
   @ApiOperation({ summary: "Get all overrides for a scheduled transaction" })

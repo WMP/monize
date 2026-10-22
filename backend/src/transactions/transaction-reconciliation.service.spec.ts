@@ -179,6 +179,8 @@ describe("TransactionReconciliationService", () => {
       // Takes the holdings advisory lock for the parent's embedded investment
       // rows; the real method resolves to nothing.
       lockEmbeddedInvestmentScopes: jest.fn().mockResolvedValue(undefined),
+      // The post-commit bond price recompute (INV-BOND-005).
+      recomputeBondPricesAfterWrite: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -432,6 +434,19 @@ describe("TransactionReconciliationService", () => {
         makeTransaction({ status: TransactionStatus.VOID, isSplit: true }),
       );
 
+      splitService.applyParentStatusToTransferCounterparts.mockImplementationOnce(
+        async (
+          _m: unknown,
+          _id: string,
+          _u: string,
+          _s: unknown,
+          touched: Set<string>,
+        ) => {
+          touched.add("sec-1");
+          return new Set<string>();
+        },
+      );
+
       await service.updateStatus(
         userId,
         transaction.id,
@@ -447,6 +462,13 @@ describe("TransactionReconciliationService", () => {
         transaction.id,
         userId,
         TransactionStatus.VOID,
+        expect.any(Set),
+      );
+      // Dispatched after the commit, with the securities the pass reported
+      // (INV-BOND-005, INV-CACHE-001).
+      expect(splitService.recomputeBondPricesAfterWrite).toHaveBeenCalledWith(
+        userId,
+        new Set(["sec-1"]),
       );
     });
 

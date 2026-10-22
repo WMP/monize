@@ -3,6 +3,7 @@ import { DataSource } from "typeorm";
 import { AccountsModule } from "@/accounts/accounts.module";
 import { Account } from "@/accounts/entities/account.entity";
 import { updateAccountBalance } from "@/import/import-context";
+import { ImportEntityCreatorService } from "@/import/import-entity-creator.service";
 import { withScopedDb } from "@/common/db/scoped-db";
 import { withUserContext } from "@/common/db/with-context";
 import {
@@ -132,6 +133,42 @@ describe("import balance writes (integration, CONC-001)", () => {
     await Promise.all([firstDone, secondDone]);
 
     expect(await storedBalance()).toBe(OPENING + 24.75);
+  });
+
+  it("applies a file's opening balance as a 4dp delta that keeps a concurrent movement (A26-M13, A26-S10-05)", async () => {
+    // The import reads the account in its own transaction, before the row
+    // writes; a -100.00 posting commits on another connection after that read.
+    const snapshot = await dataSource.manager.findOneOrFail(Account, {
+      where: { id: accountId },
+    });
+    await dataSource.query(
+      `INSERT INTO transactions (user_id, account_id, transaction_date, amount,
+                                 currency_code, status)
+       VALUES ($1, $2, CURRENT_DATE, -100, 'USD', 'UNRECONCILED')`,
+      [userId, accountId],
+    );
+    await dataSource.query(
+      `UPDATE accounts SET current_balance = current_balance - 100 WHERE id = $1`,
+      [accountId],
+    );
+
+    await withUserContext(userId, () =>
+      withScopedDb(dataSource, (m) =>
+        new ImportEntityCreatorService().applyOpeningBalance(
+          m,
+          accountId,
+          snapshot,
+          100.1234,
+        ),
+      ),
+    );
+
+    const account = await dataSource.manager.findOneOrFail(Account, {
+      where: { id: accountId },
+    });
+    expect(Number(account.openingBalance)).toBe(100.1234);
+    // Opening 100.1234 plus the ledger's -100.00.
+    expect(Number(account.currentBalance)).toBe(0.1234);
   });
 
   /**

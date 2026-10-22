@@ -119,6 +119,8 @@
     "currencyLabel": "Tiền tệ",
     "currencyNotConfigured": "{code} — không có trong tiền tệ của bạn",
     "quoteProviderLabel": "Nhà cung cấp báo giá",
+    "skipPriceUpdatesLabel": "Tắt cập nhật giá tự động",
+    "skipPriceUpdatesHelp": "Monize sẽ không lấy giá cho chứng khoán này. Dùng tùy chọn này cho chứng khoán mà không nhà cung cấp nào định giá được; giá bạn tự nhập vẫn được tính. Chọn một nhà cung cấp báo giá hoặc ID công cụ MSN khác sẽ bật lại cập nhật.",
     "msnIdLabel": "ID công cụ MSN (nâng cao)",
     "lookupProviderAriaLabel": "Tra cứu nhà cung cấp",
     "lookupButton": "Tra cứu",
@@ -144,7 +146,8 @@
       "yahoo": "Yahoo",
       "msn": "MSN",
       "lse": "LSE",
-      "deutsche_boerse": "Deutsche Börse"
+      "deutsche_boerse": "Deutsche Börse",
+      "bond_engine": "Bộ máy trái phiếu"
     },
     "types": {
       "select": "Chọn loại...",
@@ -194,7 +197,23 @@
       "deleteConfirm": "Xóa",
       "deleteSuccess": "Đã xóa loại tài sản \"{name}\"",
       "deleteFailed": "Không thể xóa loại tài sản \"{name}\""
-    }
+    },
+    "bondFetchAction": "Lấy {code} từ nguồn chính thức",
+    "bondFetching": "Đang lấy {code} từ tổ chức phát hành cùng các lãi suất tham chiếu. Việc này có thể mất tới một phút.",
+    "bondFetchFailed": "Không thể lấy chuỗi này.",
+    "bondCurrencyLocked": "Chứng khoán này được liên kết với một loại trái phiếu bằng {linkedCurrency}. Hãy đặt lại tiền tệ là {linkedCurrency} hoặc hủy liên kết loại trái phiếu trước (hủy liên kết sẽ xóa giá đã tính).",
+    "bondProgramLabel": "Loại trái phiếu",
+    "bondProgramNone": "Chưa liên kết",
+    "bondProgramCurrent": "Loại trái phiếu đã liên kết",
+    "bondProgramLoading": "Đang tải các loại trái phiếu...",
+    "bondProgramLoadFailed": "Không thể tải các loại trái phiếu nên chưa thể liên kết loại trái phiếu.",
+    "bondProgramRetry": "Thử lại",
+    "bondNoPrograms": "Danh mục trái phiếu chưa có loại trái phiếu nào.",
+    "bondAutoFetchLabel": "Tự động lấy các đợt phát hành mới của loại trái phiếu này",
+    "bondAutoFetchHelp": "Khi bật, Monize đọc các đợt phát hành mới của loại trái phiếu này từ nguồn chính thức mỗi ngày, nên bạn có thể ghi nhận giao dịch mua mà không cần lấy đợt phát hành trước.",
+    "bondCountryLabel": "Quốc gia",
+    "bondCountryOther": "Khác",
+    "bondCountryOtherInfo": "Có thể yêu cầu hỗ trợ trái phiếu của các quốc gia khác trên <link>GitHub của dự án</link>."
   },
   "priceForm": {
     "dateLabel": "Ngày",
@@ -291,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Tái đầu tư lãi vốn dài hạn",
       "CAPITAL_GAIN_SHORT": "Lãi vốn ngắn hạn",
       "CAPITAL_GAIN_LONG": "Lãi vốn dài hạn",
-      "REDEEM": "Đáo hạn CD/trái phiếu"
+      "REDEEM": "Đáo hạn CD/trái phiếu",
+      "RETURN_OF_CAPITAL": "Hoàn vốn"
     },
     "toasts": {
       "loadHistoryFailed": "Không thể tải lịch sử",
@@ -340,6 +360,7 @@
     "nameRequired": "Tên là bắt buộc",
     "nameMax": "Tên phải có tối đa 255 ký tự",
     "currencyRequired": "Tiền tệ là bắt buộc",
+    "bondProgramRequired": "Loại trái phiếu là bắt buộc",
     "descriptionMax": "Mô tả không được vượt quá 5000 ký tự"
   },
   "priceValidation": {

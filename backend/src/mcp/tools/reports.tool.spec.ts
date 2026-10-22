@@ -74,6 +74,30 @@ describe("McpReportsTools", () => {
       expect(result.isError).toBeUndefined();
     });
 
+    it("should pass a withheld total and its gap through unchanged (INV-FX-001)", async () => {
+      ctx.setUser({ userId: "u1", scopes: "read" });
+      const report = {
+        data: [],
+        totalSpending: null,
+        knownSpending: 50,
+        currency: "USD",
+        missingCurrencies: ["JPY"],
+        excludedCount: 1,
+      };
+      reportsService.getSpendingByCategory.mockResolvedValue(report);
+
+      const result = await handlers["generate_report"](
+        {
+          type: "spending_by_category",
+          startDate: "2025-01-01",
+          endDate: "2025-01-31",
+        },
+        ctx,
+      );
+
+      expect(result.structuredContent).toEqual(report);
+    });
+
     it("should run spending_by_payee report", async () => {
       ctx.setUser({ userId: "u1", scopes: "read" });
       reportsService.getSpendingByPayee.mockResolvedValue({ data: [] });
@@ -217,7 +241,7 @@ describe("McpReportsTools", () => {
     });
 
     describe("type: spending_anomalies", () => {
-      it("detects anomalies with default months", async () => {
+      it("detects anomalies over the default window at the default threshold", async () => {
         ctx.setUser({ userId: "u1", scopes: "read" });
         reportsService.getSpendingAnomalies.mockResolvedValue([]);
 
@@ -225,9 +249,12 @@ describe("McpReportsTools", () => {
           { type: "spending_anomalies" },
           ctx,
         );
+        // The report's own six-month window at the Reports page's threshold;
+        // the months were once passed as the threshold (A26-M34).
         expect(reportsService.getSpendingAnomalies).toHaveBeenCalledWith(
           "u1",
-          3,
+          2,
+          6,
         );
         expect(result.isError).toBeUndefined();
       });
@@ -237,12 +264,13 @@ describe("McpReportsTools", () => {
         reportsService.getSpendingAnomalies.mockResolvedValue([]);
 
         await handlers["generate_report"](
-          { type: "spending_anomalies", months: 6 },
+          { type: "spending_anomalies", months: 12 },
           ctx,
         );
         expect(reportsService.getSpendingAnomalies).toHaveBeenCalledWith(
           "u1",
-          6,
+          2,
+          12,
         );
       });
     });

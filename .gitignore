@@ -20,6 +20,7 @@ build/
 .next/
 out/
 *.tsbuildinfo
+frontend/next-env.d.ts
 
 # IDE
 .vscode/
@@ -78,6 +79,7 @@ secrets/
 credentials/
 *.docx
 *.pdf
+!backend/src/bonds/adapters/pl/series/fixtures/*.pdf
 *.mny
 !backend/src/import/mny/__fixtures__/sample*.mny
 

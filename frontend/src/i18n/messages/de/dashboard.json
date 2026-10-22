@@ -49,6 +49,11 @@
     "nextMonth": "Nächster Monat",
     "emptyAll": "Keine aktiven Rechnungen, Einzahlungen oder Überweisungen geplant."
   },
+  "cashFlowForecast": {
+    "title": "Cashflow-Prognose",
+    "period": "Prognosezeitraum",
+    "loadFailed": "Die bereits nach heute datierten Buchungen konnten nicht geladen werden, daher kann die Prognose nicht angezeigt werden. Laden Sie das Dashboard neu, um es erneut zu versuchen."
+  },
   "gettingStarted": {
     "title": "Erste Schritte",
     "subtitle": "Richten Sie Ihr Konto in wenigen Schritten ein",
@@ -88,6 +93,11 @@
     "viewAll": "Alle Einblicke anzeigen",
     "activeCount": "{count} aktiv"
   },
+  "warrantiesExpiring": {
+    "title": "Bald ablaufende Garantien",
+    "empty": "In den nächsten 30 Tagen läuft nichts ab",
+    "loadFailed": "Ihre ablaufenden Garantien konnten nicht geladen werden. Laden Sie das Dashboard neu, um es erneut zu versuchen."
+  },
   "topMovers": {
     "title": "Top-Beweger",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "Reinvermögen",
     "empty": "Noch keine Reinvermögensdaten verfügbar.",
-    "past12Months": "Letzte 12 Monate",
-    "viewReport": "Vollständigen Bericht anzeigen"
+    "barStyle": "Balkenstil",
+    "barStyleNetWorth": "Reinvermögen",
+    "barStyleAccountType": "Nach Kontotyp",
+    "loadFailed": "Der Verlauf Ihres Reinvermögens konnte nicht geladen werden. Laden Sie das Dashboard neu, um es erneut zu versuchen."
   },
   "assetsVsLiabilities": {
     "title": "Aktiva vs. Verbindlichkeiten",
@@ -135,7 +147,10 @@
     "current": "Aktuell",
     "netWorthLabel": "Reinvermögen",
     "assets": "Aktiva",
-    "liabilities": "Verbindlichkeiten"
+    "liabilities": "Verbindlichkeiten",
+    "partialName": "{name} (unvollständig)",
+    "viewCallouts": "Beschriftungen",
+    "viewLegend": "Legende"
   },
   "expensesPieChart": {
     "title": "Ausgaben nach Kategorie",
@@ -145,7 +160,9 @@
     "other": "Sonstiges",
     "insideOther": "{count, plural, one {# Kategorie unter Sonstige} other {# Kategorien unter Sonstige}}",
     "topLevelOnly": "Oberkategorien",
-    "topLevelOnlyHint": "Unterkategorien der Oberkategorie zurechnen"
+    "topLevelOnlyHint": "Unterkategorien der Oberkategorie zurechnen",
+    "viewCallouts": "Beschriftungen",
+    "viewLegend": "Legende"
   },
   "incomeExpenses": {
     "title": "Einnahmen vs. Ausgaben",
@@ -183,6 +200,7 @@
     "accounts": "Konten",
     "chartType": "Diagrammtyp",
     "view": "Ansicht",
+    "viewCalloutsHint": "Beschriftungen brauchen einen breiteren Bildschirm. Wo sie nicht passen, wird die Legende angezeigt.",
     "displayName": "Anzeigename",
     "description": "Beschreibung",
     "descriptionPlaceholder": "Optionale Beschreibung hinzufügen",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "Alle",
       "1w": "1W",
@@ -204,7 +223,7 @@
     "empty": "Noch keine Anlagehistorie vorhanden.",
     "refresh": "Aktuellen Wert aktualisieren",
     "investmentResult": "Anlageergebnis",
-    "periodBreakdownInvestedTooltip": "Der Wert der Wertpapiere hat sich in diesem Zeitraum um {valueChange} verändert. Davon wurden {netInvested} eingezahlt, abzüglich Verkäufen, und sie haben {income} an Dividenden und Zinsen ausgeschüttet. Der Betrag oben ist das, was die Anlagen selbst erwirtschaftet haben, ohne nicht investiertes Bargeld.",
+    "periodBreakdownInvestedTooltip": "Der Wert der Wertpapiere hat sich in diesem Zeitraum um {valueChange} verändert. Davon wurden {netInvested} eingezahlt, abzüglich Verkäufen, und sie haben {income} an Dividenden und Zinsen ausgeschüttet. Eine in Anteilen wieder angelegte Ausschüttung zählt in beiden Beträgen. Der Betrag oben ist das, was die Anlagen selbst erwirtschaftet haben, ohne nicht investiertes Bargeld.",
     "notAvailable": "N/A"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "Mindestanzahl Vorkommen",
     "minOccurrencesOption": "{count} oder mehr",
     "occurrences": "{count} Vorkommen",
-    "monthlyEstimate": "Monatliche Schätzung"
+    "monthlyEstimate": "Monatliche Schätzung",
+    "viewCallouts": "Beschriftungen",
+    "viewLegend": "Legende"
   },
   "weekendVsWeekday": {
     "title": "Wochenend- vs. Wochentagsausgaben",

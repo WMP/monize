@@ -173,6 +173,7 @@ export function useLoanProjection(account: Account, refreshKey = 0): LoanProject
       data.transactions,
       data.rateChanges,
       data.interestTransactions,
+      todayYmd,
     );
     const currentTerms = resolveCurrentLoanTerms(
       account,

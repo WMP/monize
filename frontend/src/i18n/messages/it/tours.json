@@ -427,5 +427,42 @@
         }
       }
     }
+  },
+  "emailReceipts": {
+    "basics": {
+      "title": "Ricevute dalle email",
+      "steps": {
+        "welcome": {
+          "title": "Perché leggere le ricevute dalle email",
+          "body": "Una transazione bancaria indica quanto hai pagato e quando. Non indica cosa hai comprato. L'email di conferma dell'ordine invece sì. Monize legge queste email, trova la transazione che ciascuna ha pagato e propone una descrizione, un beneficiario e una suddivisione per voce, con una categoria per ogni riga. Approvi ogni proposta prima che modifichi una transazione."
+        },
+        "aiRequired": {
+          "title": "In pratica serve un provider IA",
+          "body": "Monize legge un'email con un **profilo**: un insieme di pattern per un dominio mittente, ad esempio un negozio. Puoi scrivere un profilo a mano, ma ogni pattern deve corrispondere alle righe esatte delle email di quel negozio, quindi in pratica lo scrive un'IA. L'IA scrive il profilo una sola volta, a partire da alcune email di esempio. Dopo la tua approvazione, il profilo legge ogni nuova email di quel negozio senza l'IA."
+        },
+        "aiProviders": {
+          "title": "Configura prima un provider IA",
+          "body": "Aggiungi qui un provider e verifica la connessione. Senza un provider, la procedura guidata dei profili non può scrivere un profilo e le email di un negozio senza profilo restano non lette."
+        },
+        "tabs": {
+          "title": "Quattro schede, nell'ordine in cui le usi",
+          "body": "**Panoramica** mostra cosa ha letto Monize. In **Casella di posta**, collega una casella che contiene solo conferme d'ordine. Monize la legge soltanto: non sposta, non contrassegna e non elimina mai un messaggio. **Profili** contiene un profilo per ogni negozio. **Email** elenca ogni email e il suo stato."
+        },
+        "uncovered": {
+          "title": "Negozi senza profilo",
+          "body": "Questo riquadro elenca i domini mittente che nessun profilo sa ancora leggere. Scegline uno per avviare la procedura guidata. Seleziona fino a cinque delle sue email e abbina ciascuna alla transazione bancaria che ha pagato. L'IA scrive un profilo e lo verifica su queste coppie. Poi vedi un'anteprima di tutte le email di quel negozio e accetti il profilo oppure chiedi una modifica con una breve nota.",
+          "fallbackBody": "Non hai ancora email di un negozio senza profilo. Dopo aver collegato la casella, ogni dominio mittente compare qui come etichetta, ad esempio **shop.example (12)**: il dominio e il numero delle sue email. Scegli l'etichetta per avviare la procedura guidata. Seleziona fino a cinque delle sue email e abbina ciascuna alla transazione bancaria che ha pagato. L'IA scrive un profilo e lo verifica su queste coppie. Poi vedi un'anteprima di tutte le email di quel negozio e accetti il profilo oppure chiedi una modifica con una breve nota."
+        },
+        "profiles": {
+          "title": "I tuoi profili",
+          "body": "Ogni riga è un profilo, approvato o bozza. **Crea un nuovo profilo manualmente** apre l'editor per un profilo scritto a mano. Usalo per correggere un piccolo dettaglio in una bozza dell'IA. Quando approvi un profilo, Monize legge subito le email del suo dominio.",
+          "fallbackBody": "Non hai ancora profili. Ogni profilo che accetti compare qui come una riga, ad esempio **Shop Example**, dominio **shop.example**, stato **Approvato**. **Crea un nuovo profilo manualmente** apre l'editor per un profilo scritto a mano. Usalo solo per correggere un piccolo dettaglio in una bozza dell'IA. Quando approvi un profilo, Monize legge subito le email del suo dominio."
+        },
+        "reviews": {
+          "title": "Approva le proposte",
+          "body": "Ogni email che corrisponde a una transazione diventa una proposta nella **Posta di revisione IA**, nel menu **AI**. Una proposta mostra, ad esempio, le voci di un ordine con una categoria per ogni riga. Nelle tue transazioni non cambia nulla finché non approvi la proposta lì."
+        }
+      }
+    }
   }
 }

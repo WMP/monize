@@ -51,6 +51,7 @@
     "costBasisTooltip": "Wat uw huidige posities bij aanschaf hebben gekost, gereconstrueerd uit uw transactiegeschiedenis: aankoopprijzen plus de bij elke aankoop berekende commissie, elk omgerekend tegen de koers van de transactie die ervoor betaalde. Getoond in uw weergavevaluta. Gebruikt om winsten en verliezen te berekenen.",
     "gainLoss": "Winst/verlies",
     "gainLossTooltip": "Ongerealiseerde winst of verlies op uw huidige posities: marktwaarde tegen de prijzen van vandaag minus de kostprijs hierboven. Bevat geen gerealiseerde winsten uit eerdere verkopen, noch ontvangen dividend en rente.",
+    "gainPartialCaption": "Alleen over posities met een koers",
     "returns": "Rendement",
     "simpleReturn": "Eenvoudig rendement",
     "simpleReturnTooltip": "Winst of verlies ten opzichte van wat je betaalde: (marktwaarde − kostprijs) ÷ kostprijs. Houdt geen rekening met wanneer het geld binnenkwam, dus het springt bij elke aankoop: een positie van 1.000 die 20% stijgt toont +20%; koop er nog 1.000 bij en het toont +10% (200 ÷ 2.000) hoewel er niets verloren is. TWR en MWR hebben deze sprong niet.",
@@ -88,6 +89,14 @@
       "assetClass": "Op beleggingscategorie"
     }
   },
+  "assetClasses": {
+    "equity": "Aandelen",
+    "fixedIncome": "Vastrentende waarden",
+    "cash": "Kas",
+    "preferred": "Preferente aandelen",
+    "convertible": "Converteerbare obligaties",
+    "crypto": "Crypto"
+  },
   "holdingsList": {
     "title": "Posities",
     "noHoldings": "Geen posities in deze portefeuille.",
@@ -102,6 +111,7 @@
     "title": "Posities per rekening",
     "noHoldings": "Geen posities in jouw portefeuille.",
     "accountIncomplete": "Gedeeltelijk: de totalen van deze rekening laten posities weg die niet in {currency} gewaardeerd konden worden.",
+    "gainPartialCaption": "Alleen over posities met een koers",
     "accountSummary": "{accounts} rekening{accountsPlural} met {positions} positie{positionsPlural}",
     "positionsWithCash": "{count} positie{plural} + kas",
     "positions": "{count} positie{plural}",
@@ -129,6 +139,7 @@
     "intradayUnavailableDescription": "Een of meer posities gebruiken een koersaanbieder (MSN Money) die geen intradaggegevens beschikbaar stelt. Schakel over naar een langere periode voor dagelijkse momentopnamen.",
     "noDataForPeriod": "Geen beleggingsgegevens voor deze periode.",
     "highestValue": "Hoogste waarde",
+    "incompleteTooltip": "Voor sommige punten in deze periode ontbreekt een koers of wisselkoers, dus het hoogste en laagste punt worden niet getoond.",
     "lowestValue": "Laagste waarde",
     "valueChange": "Waardeverandering",
     "valueChangeTooltip": "Wat de effecten aan het einde van de periode waard zijn, min wat ze aan het begin waard waren: het laatste punt in de grafiek min het eerste. Niet-belegd geld telt niet mee.",
@@ -190,6 +201,7 @@
     "actionCapitalGainShort": "Kortetermijnkapitaalwinst",
     "actionCapitalGainLong": "Langetermijnkapitaalwinst",
     "actionRedeem": "CD/obligatie aflossen",
+    "actionReturnOfCapital": "Kapitaalterugbetaling",
     "allActions": "Alle acties"
   },
   "transactionForm": {
@@ -210,6 +222,7 @@
     "actionCapitalGainShort": "Kortetermijnkapitaalwinst",
     "actionCapitalGainLong": "Langetermijnkapitaalwinst",
     "actionRedeem": "CD/obligatie aflossen",
+    "actionReturnOfCapital": "Kapitaalterugbetaling",
     "actionTransfer": "Overboeken",
     "brokerageAccount": "Effectenrekening",
     "fromAccount": "Van rekening",
@@ -253,7 +266,8 @@
     "sourceHolds": "Bron heeft",
     "sharesAt": "aandelen @",
     "avgCostSuffix": "gem. kostprijs.",
-    "transferCostNote": "De kostprijs per aandeel (vooraf ingevuld vanuit de bronrekening) wordt meegenomen naar de doelrekening zodat jouw winst- en verliesrapportages correct blijven. Dit verplaatst alleen aandelen — er wisselt geen geld van eigenaar.",
+    "transferCostNote": "De kosten per aandeel zijn wat de aandelen op de overboekingsdatum in de bronrekening hebben gekost. Ze worden bij het opslaan berekend en naar de doelrekening overgedragen, zodat uw winst- en rendementsrapporten kloppen. Er worden alleen aandelen verplaatst; er wisselt geen geld van eigenaar.",
+    "returnOfCapitalNote": "Een kapitaalterugbetaling is geen inkomen. Ze betaalt een deel terug van wat de aandelen hebben gekost en verlaagt dus de kostprijs van uw positie met dit bedrag. Wat de resterende kostprijs overschrijdt, wordt gerapporteerd als gerealiseerde koerswinst.",
     "totalAmount": "Totaalbedrag ({currency})",
     "sharesAtPrice": "{shares} aandelen @ {symbol}{price}",
     "commissionSuffix": "commissie",
@@ -288,7 +302,30 @@
     "toastSaveFailed": "Opslaan van transactie mislukt",
     "exchangeRateUnresolved": "Geen koers van {from} naar {to} beschikbaar. Voer er een in, of het omgerekende totaal, voordat u opslaat.",
     "toastExchangeRateRequired": "Voer een wisselkoers in voordat u een transactie tussen valuta's opslaat.",
-    "notAvailable": "Niet beschikbaar"
+    "notAvailable": "Niet beschikbaar",
+    "bondSeries": {
+      "label": "Obligatieserie",
+      "fromDate": "Bepaald op basis van de datum",
+      "oldestFirst": "Oudste eerst",
+      "loading": "Series laden...",
+      "loadFailed": "De series konden niet worden geladen.",
+      "retry": "Opnieuw proberen",
+      "fromDateCode": "Op basis van de datum: {code}",
+      "noneOnSale": "Geen serie te koop op deze datum",
+      "choose": "Kies een serie",
+      "required": "Kies de serie van deze stukken.",
+      "heldOption": "{code} ({quantity} aangehouden)",
+      "noLongerHeld": "{code} (op deze datum niet meer aangehouden)",
+      "noLongerHeldUnknown": "Opgeslagen serie (op deze datum niet meer aangehouden)",
+      "storedSeries": "Opgeslagen serie",
+      "seriesOnSaleMonth": "{code} — te koop {month}",
+      "seriesOnSaleRange": "{code} — te koop van {from} tot {to}"
+    },
+    "bondRedemption": {
+      "summary": "Rente {interest}, aftrek bij vervroegde aflossing {deduction}, uitbetaling {payout}",
+      "outsideSaleWindow": "Een lot van deze serie is buiten de verkoopperiode gekocht, dus de aflossing kan niet worden opgesplitst.",
+      "failed": "De opsplitsing van de aflossing kon niet worden berekend."
+    }
   },
   "newTransactionButton": {
     "label": "+ Nieuwe transactie",

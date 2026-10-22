@@ -17,7 +17,11 @@ vi.mock('@/hooks/useNumberFormat', async () => {
     useNumberFormat: () => ({ ...numberFormatMockDefaults(), formatCurrency: (a: number) => `$${a.toFixed(2)}` }),
   };
 });vi.mock('@/components/transactions/BalanceHistoryChart', () => ({
-  BalanceHistoryChart: () => <div data-testid="balance-history-chart" />,
+  // The markers are serialised so a test can read what the view asked the
+  // chart to mark (the overdue marker, discussion #1784).
+  BalanceHistoryChart: ({ markers }: { markers?: unknown[] }) => (
+    <div data-testid="balance-history-chart" data-markers={JSON.stringify(markers ?? [])} />
+  ),
 }));
 
 const mockGetDailyBalances = vi.fn();
@@ -327,5 +331,40 @@ describe('BankingDetailView', () => {
     expect(mockPush).toHaveBeenCalledWith(
       expect.stringMatching(/accountId=chq-1&categoryIds=int-1&startDate=\d{4}-01-01&endDate=/),
     );
+  });
+
+  // ---- Overdue occurrences (discussion #1784) ----
+
+  it('marks the overdue occurrences on the chart and under the projection', async () => {
+    mockGetBalanceForecast.mockResolvedValue({
+      accountId: 'chq-1',
+      currencyCode: 'CAD',
+      points: [
+        { date: '2026-06-15', balance: 1500 },
+        { date: '2026-06-16', balance: 1200 },
+      ],
+      complete: true,
+      gaps: [],
+      overdue: { date: '2026-06-16', count: 2, amount: -300 },
+    });
+    await renderView();
+    await waitFor(() =>
+      expect(screen.getByText('Includes 2 overdue scheduled transactions')).toBeInTheDocument(),
+    );
+    const markers = JSON.parse(
+      screen.getByTestId('balance-history-chart').getAttribute('data-markers') as string,
+    );
+    expect(markers).toEqual([
+      { date: '2026-06-16', direction: 'out', label: 'Includes 2 overdue scheduled transactions' },
+    ]);
+  });
+
+  it('marks nothing when the forecast reports nothing overdue', async () => {
+    await renderView();
+    await waitFor(() => expect(mockGetBalanceForecast).toHaveBeenCalled());
+    expect(
+      screen.getByTestId('balance-history-chart').getAttribute('data-markers'),
+    ).toBe('[]');
+    expect(screen.queryByText(/overdue/)).not.toBeInTheDocument();
   });
 });

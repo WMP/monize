@@ -20,6 +20,7 @@ vi.mock('@/hooks/useNumberFormat', async () => {
 });
 vi.mock('@/hooks/useExchangeRates', () => ({
   useExchangeRates: () => ({
+    convert: (amount: number) => amount,
     convertToDefault: (amount: number) => amount,
     defaultCurrency: 'CAD',
   }),
@@ -138,6 +139,7 @@ describe('DividendYieldGrowthReport', () => {
           transactionDate: '2025-06-15',
           action: 'DIVIDEND',
           totalAmount: 100,
+          amountCurrencyCode: 'CAD',
           accountId: 'acc-1',
           securityId: 's-1',
           security: { symbol: 'VFV', name: 'Vanguard S&P 500' },
@@ -178,6 +180,7 @@ describe('DividendYieldGrowthReport', () => {
           transactionDate: '2025-09-15',
           action: 'DIVIDEND',
           totalAmount: 150,
+          amountCurrencyCode: 'CAD',
           accountId: 'acc-1',
           securityId: 's-1',
           security: { symbol: 'VFV', name: 'Vanguard S&P 500' },
@@ -201,6 +204,7 @@ describe('DividendYieldGrowthReport', () => {
           transactionDate: '2024-06-15',
           action: 'DIVIDEND',
           totalAmount: 100,
+          amountCurrencyCode: 'CAD',
           accountId: 'acc-1',
           securityId: 's-1',
           security: { symbol: 'VFV', name: 'Vanguard S&P 500' },
@@ -229,6 +233,7 @@ describe('DividendYieldGrowthReport', () => {
           transactionDate: '2025-06-15',
           action: 'DIVIDEND',
           totalAmount: 100,
+          amountCurrencyCode: 'CAD',
           accountId: 'acc-1',
           securityId: 's-1',
           security: { symbol: 'VFV', name: 'Vanguard S&P 500' },
@@ -261,6 +266,7 @@ describe('DividendYieldGrowthReport', () => {
               transactionDate: '2025-09-15',
               action: 'DIVIDEND',
               totalAmount: 100,
+              amountCurrencyCode: 'CAD',
               accountId: 'acc-1',
               securityId: 's-1',
               security: { symbol: 'VFV', name: 'Vanguard S&P 500' },
@@ -289,6 +295,85 @@ describe('DividendYieldGrowthReport', () => {
     expect(screen.queryByText('2.00%')).not.toBeInTheDocument();
   });
 
+  it('counts a reinvested dividend the app wrote, with no total, at its shares\' cost', async () => {
+    // Discussion #1670: a reinvest created in the app stores totalAmount 0, so
+    // reading the total made a DRIP holding yield nothing.
+    mockGetTransactions.mockImplementation(async ({ action }: { action: string }) => {
+      if (action === 'REINVEST') {
+        return {
+          data: [
+            {
+              id: 'tx-1',
+              transactionDate: '2025-09-15',
+              action: 'REINVEST',
+              quantity: 2,
+              price: 50,
+              commission: 0,
+              totalAmount: 0,
+              amountCurrencyCode: 'CAD',
+              accountId: 'acc-1',
+              securityId: 's-1',
+              security: { symbol: 'VFV', name: 'Vanguard S&P 500' },
+            },
+          ],
+          pagination: { hasMore: false },
+        };
+      }
+      return { data: [], pagination: { hasMore: false } };
+    });
+    mockGetInvestmentAccounts.mockResolvedValue([]);
+    mockGetPortfolioSummary.mockResolvedValue({ holdings: mockHoldings });
+    render(<DividendYieldGrowthReport />);
+    await waitFor(() => {
+      expect(screen.getByText('Per-Security Dividend Yield (Trailing 12 Months)')).toBeInTheDocument();
+    });
+    // Yield = 100 / 5000 * 100 = 2.00%.
+    expect(screen.getAllByText('2.00%').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('leaves a VOID dividend out of the yield: it paid nothing', async () => {
+    mockGetTransactions.mockImplementation(async ({ action }: { action: string }) => {
+      if (action === 'DIVIDEND') {
+        return {
+          data: [
+            {
+              id: 'tx-1',
+              transactionDate: '2025-09-15',
+              action: 'DIVIDEND',
+              totalAmount: 100,
+              amountCurrencyCode: 'CAD',
+              accountId: 'acc-1',
+              securityId: 's-1',
+              security: { symbol: 'VFV', name: 'Vanguard S&P 500' },
+            },
+            {
+              id: 'tx-2',
+              transactionDate: '2025-10-15',
+              action: 'DIVIDEND',
+              status: 'VOID',
+              totalAmount: 100,
+              amountCurrencyCode: 'CAD',
+              accountId: 'acc-1',
+              securityId: 's-1',
+              security: { symbol: 'VFV', name: 'Vanguard S&P 500' },
+            },
+          ],
+          pagination: { hasMore: false },
+        };
+      }
+      return { data: [], pagination: { hasMore: false } };
+    });
+    mockGetInvestmentAccounts.mockResolvedValue([]);
+    mockGetPortfolioSummary.mockResolvedValue({ holdings: mockHoldings });
+    render(<DividendYieldGrowthReport />);
+    await waitFor(() => {
+      expect(screen.getByText('Per-Security Dividend Yield (Trailing 12 Months)')).toBeInTheDocument();
+    });
+    // 100 / 5000 = 2.00%; counting the void row too would read 4.00%.
+    expect(screen.getAllByText('2.00%').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('4.00%')).not.toBeInTheDocument();
+  });
+
   it('excludes dividends for securities with no matching holding', async () => {
     mockGetTransactions.mockImplementation(async ({ action }: { action: string }) => {
       if (action === 'DIVIDEND') {
@@ -299,6 +384,7 @@ describe('DividendYieldGrowthReport', () => {
               transactionDate: '2025-09-15',
               action: 'DIVIDEND',
               totalAmount: 50,
+              amountCurrencyCode: 'CAD',
               accountId: 'acc-1',
               securityId: 's-ghost',
               security: null,
@@ -308,6 +394,7 @@ describe('DividendYieldGrowthReport', () => {
               transactionDate: '2025-09-20',
               action: 'DIVIDEND',
               totalAmount: 100,
+              amountCurrencyCode: 'CAD',
               accountId: 'acc-1',
               securityId: 's-1',
               security: { symbol: 'VFV', name: 'Vanguard S&P 500' },
@@ -343,6 +430,7 @@ describe('DividendYieldGrowthReport', () => {
               transactionDate: '2025-09-15',
               action: 'DIVIDEND',
               totalAmount: 25,
+              amountCurrencyCode: 'CAD',
               accountId: 'acc-1',
               securityId: null,
               security: null,
@@ -352,6 +440,7 @@ describe('DividendYieldGrowthReport', () => {
               transactionDate: '2025-09-20',
               action: 'DIVIDEND',
               totalAmount: 100,
+              amountCurrencyCode: 'CAD',
               accountId: 'acc-1',
               securityId: 's-1',
               security: { symbol: 'VFV', name: 'Vanguard S&P 500' },
@@ -381,8 +470,8 @@ describe('DividendYieldGrowthReport', () => {
       if (action === 'DIVIDEND') {
         return {
           data: [
-            { id: 'tx-1', transactionDate: '2025-03-15', action: 'DIVIDEND', totalAmount: 200, accountId: 'acc-1', securityId: 's-1' },
-            { id: 'tx-2', transactionDate: '2026-01-15', action: 'DIVIDEND', totalAmount: 300, accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-1', transactionDate: '2025-03-15', action: 'DIVIDEND', totalAmount: 200, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-2', transactionDate: '2026-01-15', action: 'DIVIDEND', totalAmount: 300, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
           ],
           pagination: { hasMore: false },
         };
@@ -410,7 +499,7 @@ describe('DividendYieldGrowthReport', () => {
       if (action === 'DIVIDEND') {
         return {
           data: [
-            { id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
           ],
           pagination: { hasMore: false },
         };
@@ -436,9 +525,9 @@ describe('DividendYieldGrowthReport', () => {
       if (action === 'DIVIDEND') {
         return {
           data: [
-            { id: 'tx-1', transactionDate: '2023-06-15', action: 'DIVIDEND', totalAmount: 200, accountId: 'acc-1', securityId: 's-1' },
-            { id: 'tx-2', transactionDate: '2024-06-15', action: 'DIVIDEND', totalAmount: 300, accountId: 'acc-1', securityId: 's-1' },
-            { id: 'tx-3', transactionDate: '2025-06-15', action: 'DIVIDEND', totalAmount: 150, accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-1', transactionDate: '2023-06-15', action: 'DIVIDEND', totalAmount: 200, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-2', transactionDate: '2024-06-15', action: 'DIVIDEND', totalAmount: 300, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-3', transactionDate: '2025-06-15', action: 'DIVIDEND', totalAmount: 150, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
           ],
           pagination: { hasMore: false },
         };
@@ -468,10 +557,10 @@ describe('DividendYieldGrowthReport', () => {
       if (action === 'DIVIDEND') {
         return {
           data: [
-            { id: 'tx-1', transactionDate: '2025-03-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' },
-            { id: 'tx-2', transactionDate: '2025-06-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' },
-            { id: 'tx-3', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' },
-            { id: 'tx-4', transactionDate: '2025-12-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-1', transactionDate: '2025-03-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-2', transactionDate: '2025-06-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-3', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-4', transactionDate: '2025-12-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
           ],
           pagination: { hasMore: false },
         };
@@ -499,12 +588,12 @@ describe('DividendYieldGrowthReport', () => {
       callCount++;
       if (page === 1) {
         return {
-          data: [{ id: 'tx-p1', transactionDate: '2025-06-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' }],
+          data: [{ id: 'tx-p1', transactionDate: '2025-06-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' }],
           pagination: { hasMore: true },
         };
       }
       return {
-        data: [{ id: 'tx-p2', transactionDate: '2025-07-15', action: 'DIVIDEND', totalAmount: 50, accountId: 'acc-1', securityId: 's-1' }],
+        data: [{ id: 'tx-p2', transactionDate: '2025-07-15', action: 'DIVIDEND', totalAmount: 50, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' }],
         pagination: { hasMore: false },
       };
     });
@@ -557,7 +646,7 @@ describe('DividendYieldGrowthReport', () => {
     mockGetTransactions.mockImplementation(async ({ action }: { action: string }) => {
       if (action === 'DIVIDEND') {
         return {
-          data: [{ id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' }],
+          data: [{ id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' }],
           pagination: { hasMore: false },
         };
       }
@@ -583,7 +672,7 @@ describe('DividendYieldGrowthReport', () => {
     mockGetTransactions.mockImplementation(async ({ action }: { action: string }) => {
       if (action === 'DIVIDEND') {
         return {
-          data: [{ id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' }],
+          data: [{ id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' }],
           pagination: { hasMore: false },
         };
       }
@@ -614,9 +703,9 @@ describe('DividendYieldGrowthReport', () => {
       if (action === 'DIVIDEND') {
         return {
           data: [
-            { id: 'tx-1', transactionDate: '2025-03-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' },
-            { id: 'tx-2', transactionDate: '2025-06-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' },
-            { id: 'tx-3', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-1', transactionDate: '2025-03-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-2', transactionDate: '2025-06-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-3', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
           ],
           pagination: { hasMore: false },
         };
@@ -643,7 +732,7 @@ describe('DividendYieldGrowthReport', () => {
 
   it('shows portfolio yield as 0 when portfolio value is zero', async () => {
     mockGetTransactions.mockResolvedValue({
-      data: [{ id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' }],
+      data: [{ id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' }],
       pagination: { hasMore: false },
     });
     mockGetInvestmentAccounts.mockResolvedValue([]);
@@ -662,7 +751,7 @@ describe('DividendYieldGrowthReport', () => {
     mockGetTransactions.mockImplementation(async ({ action }: { action: string }) => {
       if (action === 'DIVIDEND') {
         return {
-          data: [{ id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 200, accountId: 'acc-1', securityId: 's-1' }],
+          data: [{ id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 200, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' }],
           pagination: { hasMore: false },
         };
       }
@@ -692,6 +781,7 @@ describe('DividendYieldGrowthReport', () => {
       transactionDate: new Date(now.getFullYear(), now.getMonth() - i, 15).toISOString().slice(0, 10),
       action: 'DIVIDEND',
       totalAmount: 50,
+      amountCurrencyCode: 'CAD',
       accountId: 'acc-1',
       securityId: 's-1',
     }));
@@ -720,8 +810,8 @@ describe('DividendYieldGrowthReport', () => {
       if (action === 'DIVIDEND') {
         return {
           data: [
-            { id: 'tx-1', transactionDate: ymd(older), action: 'DIVIDEND', totalAmount: 300, accountId: 'acc-1', securityId: 's-1' },
-            { id: 'tx-2', transactionDate: ymd(recent), action: 'DIVIDEND', totalAmount: 300, accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-1', transactionDate: ymd(older), action: 'DIVIDEND', totalAmount: 300, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-2', transactionDate: ymd(recent), action: 'DIVIDEND', totalAmount: 300, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
           ],
           pagination: { hasMore: false },
         };
@@ -743,8 +833,8 @@ describe('DividendYieldGrowthReport', () => {
       if (action === 'DIVIDEND') {
         return {
           data: [
-            { id: 'tx-1', transactionDate: '2025-08-15', action: 'DIVIDEND', totalAmount: 200, accountId: 'acc-1', securityId: 's-1' },
-            { id: 'tx-2', transactionDate: '2026-02-15', action: 'DIVIDEND', totalAmount: 200, accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-1', transactionDate: '2025-08-15', action: 'DIVIDEND', totalAmount: 200, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-2', transactionDate: '2026-02-15', action: 'DIVIDEND', totalAmount: 200, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
           ],
           pagination: { hasMore: false },
         };
@@ -766,7 +856,7 @@ describe('DividendYieldGrowthReport', () => {
       if (action === 'DIVIDEND') {
         return {
           data: [
-            { id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' },
+            { id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' },
           ],
           pagination: { hasMore: false },
         };
@@ -786,7 +876,7 @@ describe('DividendYieldGrowthReport', () => {
     mockGetTransactions.mockImplementation(async ({ action }: { action: string }) => {
       if (action === 'DIVIDEND') {
         return {
-          data: [{ id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' }],
+          data: [{ id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' }],
           pagination: { hasMore: false },
         };
       }
@@ -808,7 +898,7 @@ describe('DividendYieldGrowthReport', () => {
     mockGetTransactions.mockImplementation(async ({ action }: { action: string }) => {
       if (action === 'DIVIDEND') {
         return {
-          data: [{ id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, accountId: 'acc-1', securityId: 's-1' }],
+          data: [{ id: 'tx-1', transactionDate: '2025-09-15', action: 'DIVIDEND', totalAmount: 100, amountCurrencyCode: 'CAD', accountId: 'acc-1', securityId: 's-1' }],
           pagination: { hasMore: false },
         };
       }
@@ -850,6 +940,7 @@ describe('DividendYieldGrowthReport', () => {
           security: { symbol: 'AAA', name: 'Alpha' },
           transactionDate: recentDate(m),
           totalAmount: 100,
+          amountCurrencyCode: 'CAD',
           action: 'DIVIDEND' as const,
         })),
         // sec-2: Quarterly cadence
@@ -860,6 +951,7 @@ describe('DividendYieldGrowthReport', () => {
           security: { symbol: 'BBB', name: 'Bravo' },
           transactionDate: recentDate(m),
           totalAmount: 50,
+          amountCurrencyCode: 'CAD',
           action: 'DIVIDEND' as const,
         })),
       ],

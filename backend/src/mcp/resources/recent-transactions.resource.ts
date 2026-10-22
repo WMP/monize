@@ -51,7 +51,7 @@ export class McpRecentTransactionsResource {
           startDate.setDate(startDate.getDate() - 30);
           const startDateStr = formatDateYMD(startDate);
 
-          const [result, summary] = await Promise.all([
+          const [result, summary, totals] = await Promise.all([
             this.transactionsService.findAll(
               user.userId,
               undefined,
@@ -77,6 +77,14 @@ export class McpRecentTransactionsResource {
               undefined,
               true,
             ),
+            // The summary's totals add each currency's numbers as they stand;
+            // these are converted into the default currency at each row's own
+            // date, withheld (null) while a pair has no rate.
+            this.analyticsService.getLlmFlowTotals(user.userId, {
+              startDate: startDateStr,
+              endDate,
+              excludeTransfers: false,
+            }),
           ]);
 
           return {
@@ -87,7 +95,7 @@ export class McpRecentTransactionsResource {
                 text: JSON.stringify(
                   {
                     period: { startDate: startDateStr, endDate },
-                    summary,
+                    summary: { ...summary, ...totals },
                     // Expand split transactions so each split appears as its
                     // own row with its real category. Split parents have
                     // categoryId NULL by design; returning the parent would

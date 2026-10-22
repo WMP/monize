@@ -28,6 +28,7 @@ import { PersonalAccessToken } from "../auth/entities/personal-access-token.enti
 import {
   revokeOAuthGrantsAfterCommit,
   revokeStandingCredentials,
+  revokeRefreshSessionsAfterCommit,
 } from "../auth/credential-revocation";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdatePreferencesDto } from "./dto/update-preferences.dto";
@@ -330,11 +331,55 @@ export class UsersService {
       async (manager) => {
         await ensureUserPreferencesRow(manager, userId);
         const repo = manager.getRepository(UserPreference);
-        const before = await repo.findOne({ where: { userId } });
+        // viewDefaults and hiddenTableColumns merge into the stored map (by
+        // key, and by table kind) rather than replacing it, so a save from a
+        // Settings screen opened before another device changed a different
+        // default keeps that default. The merge reads the stored map, so the
+        // row is locked for it: two concurrent saves of different keys then
+        // both land.
+        const merges =
+          dto.viewDefaults !== undefined ||
+          dto.hiddenTableColumns !== undefined;
+        const before = await repo.findOne({
+          where: { userId },
+          ...(merges && {
+            lock: { mode: "pessimistic_write" as const },
+          }),
+        });
+        if (dto.viewDefaults !== undefined) {
+          // A JSONB map, cast for the same reason as dashboardWidgetConfig above.
+          patch.viewDefaults = {
+            ...(before?.viewDefaults ?? {}),
+            ...dto.viewDefaults,
+          } as UserPreference["viewDefaults"];
+        }
+        if (dto.hiddenTableColumns !== undefined) {
+          // A JSONB map, cast for the same reason as dashboardWidgetConfig above.
+          patch.hiddenTableColumns = {
+            ...(before?.hiddenTableColumns ?? {}),
+            ...dto.hiddenTableColumns,
+          } as UserPreference["hiddenTableColumns"];
+        }
         // Copy the value out now, not after the write: reading it from `before`
         // later would depend on that object not having been touched by the
         // update in between.
         const previousDefaultCurrency = before?.defaultCurrency;
+        // The chosen currency's row must exist before the preference that points
+        // at it is written (a foreign key), so it is ensured here, in this
+        // transaction, and for this user only: a fresh instance holds just USD.
+        // No catch -- a failure fails the request, as the foreign key would.
+        if (
+          dto.defaultCurrency != null &&
+          dto.defaultCurrency !== previousDefaultCurrency
+        ) {
+          const currenciesService = this.moduleRef.get(CurrenciesService, {
+            strict: false,
+          });
+          await currenciesService.ensureCurrencyForUser(
+            userId,
+            dto.defaultCurrency,
+          );
+        }
         // The update is written out rather than delegated to
         // `patchUserPreferences`, which looks like duplication and is not: that
         // helper materializes the row itself, and this method has to read
@@ -367,19 +412,6 @@ export class UsersService {
       dto.defaultCurrency !== undefined &&
       dto.defaultCurrency !== previousDefaultCurrency
     ) {
-      // Currencies are created on demand rather than seeded up front, so make
-      // sure the newly chosen default currency exists (with a proper symbol)
-      // before anything tries to display or convert it.
-      try {
-        const currenciesService = this.moduleRef.get(CurrenciesService, {
-          strict: false,
-        });
-        await currenciesService.ensureSystemCurrency(dto.defaultCurrency);
-      } catch (err) {
-        this.logger.warn(
-          `Could not ensure default currency ${dto.defaultCurrency} exists: ${err.message}`,
-        );
-      }
       try {
         const exchangeRateService = this.moduleRef.get(ExchangeRateService, {
           strict: false,
@@ -456,6 +488,14 @@ export class UsersService {
         .update({ userId, isRevoked: false }, { isRevoked: true });
       await revokeStandingCredentials(manager, userId);
     });
+    // The blanket UPDATE above is a first pass: blocked on a row a concurrent
+    // rotation holds, it resumes with its old snapshot and misses the successor
+    // that rotation inserted. Converge after the commit, under the family locks.
+    await revokeRefreshSessionsAfterCommit(
+      this.dataSource,
+      userId,
+      this.logger,
+    );
 
     // Re-wrap the backup key under the new login password so automatic
     // backups written from now on open with it (earlier ones keep opening with
@@ -613,7 +653,19 @@ export class UsersService {
       await refreshTokens.delete({ actingAsUserId: userId });
       await manager.getRepository(PersonalAccessToken).delete({ userId });
       await manager.getRepository(UserPreference).delete({ userId });
+      // The user's custom currencies lose their creator when the row goes
+      // (ON DELETE SET NULL, and a trigger deactivates them): lock them first,
+      // then drop the ones nothing references, so none lingers as a system
+      // currency nobody can edit or delete.
+      const currencies = this.moduleRef.get(CurrenciesService, {
+        strict: false,
+      });
+      const createdCodes = await currencies.lockCurrenciesCreatedBy(
+        manager,
+        userId,
+      );
       await manager.getRepository(User).remove(user);
+      await currencies.removeUnreferencedCurrencies(manager, createdCodes);
     });
     return { downgraded: false };
   }
@@ -713,13 +765,13 @@ export class UsersService {
     deleted.securityPrices = result[1] ?? 0;
 
     // Scheduled transactions (before securities: they reference investment_security_id)
-    result = await manager.query(
+    await manager.query(
       `DELETE FROM scheduled_transaction_overrides WHERE scheduled_transaction_id IN
          (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
       [userId],
     );
 
-    result = await manager.query(
+    await manager.query(
       `DELETE FROM scheduled_transaction_splits WHERE scheduled_transaction_id IN
          (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
       [userId],
@@ -797,7 +849,7 @@ export class UsersService {
     deleted.budgets = result[1] ?? 0;
 
     // Transaction tags
-    result = await manager.query(
+    await manager.query(
       `DELETE FROM transaction_split_tags WHERE transaction_split_id IN
          (SELECT ts.id FROM transaction_splits ts
           JOIN transactions t ON ts.transaction_id = t.id
@@ -805,7 +857,7 @@ export class UsersService {
       [userId],
     );
 
-    result = await manager.query(
+    await manager.query(
       `DELETE FROM transaction_tags WHERE transaction_id IN
          (SELECT id FROM transactions WHERE user_id = $1)`,
       [userId],
@@ -818,6 +870,22 @@ export class UsersService {
       [userId],
     );
     deleted.transactionSplits = result[1] ?? 0;
+
+    // Warranties and their claims. The transaction link is ON DELETE SET NULL
+    // and the account survives this flow, so neither the transactions delete
+    // below nor a users(id) CASCADE reaches them: left here, every warranty the
+    // user recorded would outlive "delete my data". Claims first, for order's
+    // sake (they would cascade from the warranty anyway).
+    result = await manager.query(
+      "DELETE FROM warranty_claims WHERE user_id = $1",
+      [userId],
+    );
+    deleted.warrantyClaims = result[1] ?? 0;
+
+    result = await manager.query("DELETE FROM warranties WHERE user_id = $1", [
+      userId,
+    ]);
+    deleted.warranties = result[1] ?? 0;
 
     // Transactions
     result = await manager.query(
@@ -859,18 +927,16 @@ export class UsersService {
     ]);
     deleted.aiInsights = result[1] ?? 0;
 
-    result = await manager.query(
-      "DELETE FROM ai_usage_logs WHERE user_id = $1",
-      [userId],
-    );
+    await manager.query("DELETE FROM ai_usage_logs WHERE user_id = $1", [
+      userId,
+    ]);
 
     // Optional: delete payees (before accounts, since payee default_category_id
     // references categories, and accounts may reference payee-related data)
     if (opts.deletePayees) {
-      result = await manager.query(
-        "DELETE FROM payee_aliases WHERE user_id = $1",
-        [userId],
-      );
+      await manager.query("DELETE FROM payee_aliases WHERE user_id = $1", [
+        userId,
+      ]);
       result = await manager.query("DELETE FROM payees WHERE user_id = $1", [
         userId,
       ]);

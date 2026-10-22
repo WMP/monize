@@ -5,6 +5,10 @@ import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { SecurityPriceService } from "../securities/security-price.service";
+import {
+  BondValuationService,
+  SecurityValueByAccount,
+} from "../bonds/bond-valuation.service";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -34,6 +38,8 @@ interface Fixture {
     close_price: string;
   }>;
   securities?: Array<{ id: string; currency_code: string }>;
+  /** The held securities a bond program links (the `bond_program_id` read). */
+  linkedSecurities?: Array<{ id: string }>;
   firstActivity?: Array<{ id: string; first_activity: string | null }>;
   rates?: Array<{
     from_currency: string;
@@ -92,6 +98,7 @@ describe("AccountBalancesReportService", () => {
   let preferencesRepo: { findOne: jest.Mock };
   let exchangeRates: { ensureRatesForDate: jest.Mock };
   let securityPrices: { ensurePricesForDate: jest.Mock };
+  let bondValuation: { valueByAccount: jest.Mock };
 
   const program = (fixture: Fixture) => {
     query.mockImplementation(async (sql: string, params: any[] = []) => {
@@ -147,6 +154,9 @@ describe("AccountBalancesReportService", () => {
       if (sql.includes("FROM security_prices")) {
         return fixture.prices ?? [];
       }
+      if (sql.includes("bond_program_id IS NOT NULL")) {
+        return fixture.linkedSecurities ?? [];
+      }
       if (sql.includes("FROM securities")) {
         return fixture.securities ?? [];
       }
@@ -169,6 +179,7 @@ describe("AccountBalancesReportService", () => {
     // asserting what happens when nobody can.
     exchangeRates = { ensureRatesForDate: jest.fn().mockResolvedValue(0) };
     securityPrices = { ensurePricesForDate: jest.fn().mockResolvedValue(0) };
+    bondValuation = { valueByAccount: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -176,6 +187,7 @@ describe("AccountBalancesReportService", () => {
         { provide: DataSource, useValue: mocks.dataSource },
         { provide: ExchangeRateService, useValue: exchangeRates },
         { provide: SecurityPriceService, useValue: securityPrices },
+        { provide: BondValuationService, useValue: bondValuation },
       ],
     }).compile();
 
@@ -433,6 +445,93 @@ describe("AccountBalancesReportService", () => {
    * Inception is `date_acquired` for an asset that carries one, and otherwise
    * the first movement on either ledger.
    */
+  describe("a bond-linked position is its own account's lots", () => {
+    const second = { ...brokerage, id: "acc-b2" };
+    const buy = (accountId: string) => ({
+      account_id: accountId,
+      security_id: "sec-1",
+      action: "BUY",
+      quantity: "10",
+    });
+    const fixture = (): Fixture => ({
+      accounts: [brokerage, second],
+      balances: [
+        { id: "acc-b", balance: "0" },
+        { id: "acc-b2", balance: "0" },
+      ],
+      investmentTransactions: [buy("acc-b"), buy("acc-b2")],
+      // The blend over every account's lots: what quantity x price would use.
+      prices: [
+        {
+          security_id: "sec-1",
+          price_date: "2026-02-27",
+          close_price: "117.74",
+        },
+      ],
+      securities: [{ id: "sec-1", currency_code: "CAD" }],
+      linkedSecurities: [{ id: "sec-1" }],
+    });
+    const lots = (
+      a: string | null,
+      b: string | null,
+    ): SecurityValueByAccount => ({
+      asOf: "2026-03-01",
+      accounts: new Map([
+        ["acc-b", { quantity: 10, grossValue: a }],
+        ["acc-b2", { quantity: 10, grossValue: b }],
+      ]),
+    });
+
+    it("values each account by its own lots at the report's date", async () => {
+      program(fixture());
+      bondValuation.valueByAccount.mockResolvedValue(
+        lots("1354.00", "1000.80"),
+      );
+
+      const result = await service.getBalancesAsOf("user-1", "2026-03-01");
+
+      expect(result.accounts[0]).toMatchObject({
+        marketValue: 1354,
+        valuationComplete: true,
+      });
+      expect(result.accounts[1]).toMatchObject({
+        marketValue: 1000.8,
+        valuationComplete: true,
+      });
+      // One valuation per linked security, on the report's date.
+      expect(bondValuation.valueByAccount).toHaveBeenCalledTimes(1);
+      expect(bondValuation.valueByAccount).toHaveBeenCalledWith(
+        "user-1",
+        "sec-1",
+        "2026-03-01",
+      );
+    });
+
+    it("leaves an account with an unknown lot unpriced, never the blend", async () => {
+      program(fixture());
+      bondValuation.valueByAccount.mockResolvedValue(lots(null, "1000.80"));
+
+      const result = await service.getBalancesAsOf("user-1", "2026-03-01");
+
+      expect(result.accounts[0]).toMatchObject({
+        marketValue: null,
+        unpricedHoldingsCount: 1,
+        pricesComplete: false,
+        valuationComplete: false,
+      });
+      expect(result.accounts[1].marketValue).toBe(1000.8);
+    });
+
+    it("leaves the positions unpriced when the valuation throws", async () => {
+      program(fixture());
+      bondValuation.valueByAccount.mockRejectedValue(new Error("boom"));
+
+      const result = await service.getBalancesAsOf("user-1", "2026-03-01");
+
+      expect(result.accounts.map((a) => a.marketValue)).toEqual([null, null]);
+    });
+  });
+
   describe("a date before the account existed", () => {
     const asset = {
       id: "acc-asset",

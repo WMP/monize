@@ -133,9 +133,10 @@ vi.mock('@/lib/apiCache', () => ({
   invalidateCache: vi.fn(),
 }));
 
+const mockGetMonthly = vi.fn().mockResolvedValue([]);
 vi.mock('@/lib/net-worth', () => ({
   netWorthApi: {
-    getMonthly: vi.fn().mockResolvedValue([]),
+    getMonthly: (...args: any[]) => mockGetMonthly(...args),
   },
 }));
 
@@ -171,7 +172,9 @@ vi.mock('@/components/dashboard/NetWorthChart', () => ({
 }));
 
 vi.mock('@/components/dashboard/AssetsVsLiabilities', () => ({
-  AssetsVsLiabilities: () => <div data-testid="assets-vs-liabilities">AssetsVsLiabilities</div>,
+  AssetsVsLiabilities: ({ error }: any) => (
+    <div data-testid="assets-vs-liabilities" data-error={String(error === true)}>AssetsVsLiabilities</div>
+  ),
 }));
 
 vi.mock('@/components/dashboard/FavouriteSecurities', () => ({
@@ -223,6 +226,7 @@ describe('DashboardPage', () => {
     mockGetFavouriteSecurities.mockResolvedValue([]);
     mockGetSecurities.mockResolvedValue([{ id: 'sec-1', symbol: 'AAPL' }]);
     mockGetPortfolioSummary.mockResolvedValue(null);
+    mockGetMonthly.mockResolvedValue([]);
     authState.current.actingAsUserId = null;
     authState.current.delegateSections = null;
     prefsState.current = {
@@ -383,6 +387,25 @@ describe('DashboardPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('assets-vs-liabilities')).toBeInTheDocument();
       expect(screen.getByTestId('favourite-securities')).toBeInTheDocument();
+    });
+  });
+
+  it('tells the assets widget when the net worth request failed, instead of handing it an empty series', async () => {
+    prefsState.current.dashboardWidgets = ['assets-liabilities'];
+    mockGetMonthly.mockRejectedValue(new Error('500'));
+    render(<DashboardPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('assets-vs-liabilities')).toHaveAttribute('data-error', 'true');
+    });
+  });
+
+  it('does not flag the assets widget when the net worth answer is a successful empty one', async () => {
+    prefsState.current.dashboardWidgets = ['assets-liabilities'];
+    mockGetMonthly.mockResolvedValue([]);
+    render(<DashboardPage />);
+    await waitFor(() => {
+      expect(mockGetMonthly).toHaveBeenCalled();
+      expect(screen.getByTestId('assets-vs-liabilities')).toHaveAttribute('data-error', 'false');
     });
   });
 

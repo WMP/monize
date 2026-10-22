@@ -43,17 +43,19 @@ import {
   promisesPendingAction,
 } from "./continuation";
 
+/** Per-run limits on what the assistant may call. */
+export interface QueryRunOptions {
+  /** Tool names withdrawn from this run: not offered, and refused if called anyway. */
+  excludeTools?: readonly string[];
+}
+
 /**
  * Why the tool-calling loop stopped without the model having answered. Four of
  * these are budgets; `stalled` is the model itself, ending turn after turn
  * promising work it cannot do once the turn is over.
  */
 export type QueryCutoffReason =
-  | "iterations"
-  | "toolCalls"
-  | "tokens"
-  | "timeout"
-  | "stalled";
+  "iterations" | "toolCalls" | "tokens" | "timeout" | "stalled";
 
 /**
  * The note prefixed to a synthesized answer, one per budget. Each says which
@@ -157,6 +159,7 @@ export class AiQueryService {
       content: string;
     }>,
     attachments?: AttachmentDto[],
+    options?: QueryRunOptions,
   ): Promise<QueryResult> {
     const events: StreamEvent[] = [];
     for await (const event of this.executeQueryStream(
@@ -164,6 +167,7 @@ export class AiQueryService {
       query,
       conversationHistory,
       attachments,
+      options,
     )) {
       events.push(event);
     }
@@ -215,8 +219,15 @@ export class AiQueryService {
       content: string;
     }>,
     attachments?: AttachmentDto[],
+    options?: QueryRunOptions,
   ): AsyncGenerator<StreamEvent> {
     yield { type: "thinking", message: "Analyzing your question..." };
+
+    const excluded = new Set(options?.excludeTools ?? []);
+    const offeredTools: AiToolDefinition[] =
+      excluded.size > 0
+        ? FINANCIAL_TOOLS.filter((t) => !excluded.has(t.name))
+        : FINANCIAL_TOOLS;
 
     const startTime = Date.now();
     this.logger.log(`Query start user=${userId} queryLen=${query.length}`);
@@ -397,7 +408,7 @@ export class AiQueryService {
               maxTokens: 4096,
               temperature: 0.1,
             },
-            FINANCIAL_TOOLS,
+            offeredTools,
           )) {
             if (chunk.type === "text") {
               if (firstChunkAt === null) {
@@ -427,7 +438,7 @@ export class AiQueryService {
               maxTokens: 4096,
               temperature: 0.1,
             },
-            FINANCIAL_TOOLS,
+            offeredTools,
           );
           iterationContent = response.content;
           iterationToolCalls = response.toolCalls;
@@ -609,12 +620,23 @@ export class AiQueryService {
           input: toolCall.input,
         };
 
-        const result = await this.toolExecutor.execute(
-          userId,
-          toolCall.name,
-          toolCall.input,
-          { attachments },
-        );
+        // A tool withdrawn from this run is refused even when the model names
+        // it anyway (it was never offered, so the call is hallucinated or
+        // injected).
+        const result: Awaited<ReturnType<ToolExecutorService["execute"]>> =
+          excluded.has(toolCall.name)
+            ? {
+                data: { error: "This tool is not available in this run." },
+                summary: `Tool not available: ${toolCall.name}`,
+                sources: [],
+                isError: true,
+              }
+            : await this.toolExecutor.execute(
+                userId,
+                toolCall.name,
+                toolCall.input,
+                { attachments },
+              );
 
         this.logger.log(
           `Tool call done user=${userId} tool=${toolCall.name} ms=${Date.now() - toolStart} sources=${result.sources.length}`,

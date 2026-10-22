@@ -68,6 +68,58 @@
     "riskOn": "risk-on",
     "riskOff": "risk-off"
   },
+  "bond": {
+    "maturitySoonTitle": "{series} için vade {date} tarihinde doluyor",
+    "maturitySoonMessage": "{quantity} × {series} için vade {date} tarihinde doluyor. {payout}",
+    "interestTitle": "{series}: {date} tarihinde faiz ödemesi",
+    "interestMessage": "{quantity} × {series} için {date} tarihinde {amount} faiz ödenecek. Henüz hesabınızda değilse menkul kıymet sayfasında kaydedin.",
+    "interestMessageUnknown": "{quantity} × {series} için {date} tarihinde faiz ödenecek. Tutar henüz bilinmiyor: bağlı olduğu oran henüz yayımlanmadı.",
+    "rateResetTitle": "{series}: yeni faiz dönemi",
+    "rateResetMessage": "{series}: {date} tarihinde başlayan dönem {period}, yıllık oran {rate}.",
+    "unbookedTitle": "{series}: vadesi doldu, itfa kaydedilmedi",
+    "unbookedMessage": "{quantity} × {series} için vade {date} tarihinde doldu ve kayıtlı bir itfa yok. {payout} İtfayı menkul kıymet sayfasında kaydedin.",
+    "payoutKnown": "Ödeme tutarı {payout}.",
+    "payoutUnknown": "Ödeme tutarı henüz bilinmiyor: {reason}.",
+    "reason": {
+      "RATE_UNKNOWN": "bağlı olduğu oran henüz yayımlanmadı",
+      "TERMS_INCOMPLETE": "serinin koşulları eksik",
+      "PURCHASE_OUTSIDE_SALE_WINDOW": "bir alış tarihi serinin satış döneminin dışında",
+      "other": "kayıtlı verilerden hesaplanamıyor"
+    },
+    "benchmarkTitle": "{benchmark}: yeni gözlem {observation}",
+    "benchmarkIntro": "{publisher}, {observation} için {benchmark} değerini yayımladı: {value}.",
+    "benchmarkSeries": "{series}: {date} tarihinden başlayan dönem, yıllık oran {rate}.",
+    "benchmarkSeriesProjected": "{series}: {date} tarihinden başlayan dönem, öngörülen yıllık oran {rate}.",
+    "benchmarkSeriesUnknown": "{series}: {date} tarihinden başlayan dönem, oran henüz bilinmiyor.",
+    "benchmarkMore": "Ve {more} diğeri.",
+    "missingTitle": "Tahvil rakamları henüz bilinmiyor",
+    "missingMessage": "Bazı tahvil rakamları hesaplanamıyor. {causes}",
+    "cause": {
+      "observation": "{benchmark} ({publisher}) için {observation} gözlemi kayıtlı değil: henüz yayımlanmadı veya veri akışı o zamandan beri alınmadı. Tahvil sayfasında yenileyin.",
+      "observationNoPublisher": "{benchmark} için {observation} gözlemi kayıtlı değil: henüz yayımlanmadı veya veri akışı o zamandan beri alınmadı. Tahvil sayfasında yenileyin.",
+      "terms": "{series} koşulları eksik. Seriyi tahvil sayfasında yenileyin.",
+      "purchase": "{series} için {date} tarihli alış, satış döneminin ({from} – {to}) dışında. Alış tarihini düzeltin.",
+      "lots": "Lotlar defterden türetilemiyor ({code}). Defteri düzeltin.",
+      "lotsRow": "{action} ({date}): lotlar türetilemiyor ({code}). İşlemi düzeltin.",
+      "lotsRowSeries": "{action} ({date}): bir seriye atanmamış ({code}). Bu işlemde seriyi seçin.",
+      "lotsRowRemoval": "{action} ({date}): hesapta bulunandan fazlasını o seriden çıkarıyor ({code}). İşlemi düzeltin."
+    },
+    "action": {
+      "BUY": "Alım",
+      "SELL": "Satım",
+      "REINVEST": "Yeniden yatırım",
+      "ADD_SHARES": "Pay ekleme",
+      "REMOVE_SHARES": "Pay çıkarma",
+      "SPLIT": "Bölünme (split)",
+      "TRANSFER_IN": "Gelen transfer",
+      "TRANSFER_OUT": "Giden transfer",
+      "other": "İşlem"
+    },
+    "benchmarks": {
+      "PL_CPI_GUS_YOY": "TÜFE, 12 ay (GUS)",
+      "PL_NBP_REFERENCE": "NBP referans faizi"
+    }
+  },
   "portfolioMovement": {
     "titleUp": "Yatırımlar %{percent} arttı",
     "titleDown": "Yatırımlar %{percent} azaldı",
@@ -119,5 +171,37 @@
   "priceMovement": {
     "title": "Fiyat değişimi uyarısı: {symbol} ({percent}%)",
     "message": "{symbol}: önceki mevcut seansa göre %{percent}."
+  },
+  "bankSync": {
+    "expiringTitleToday": "{institution}: banka erişimi bugün sona eriyor",
+    "expiringTitleOneDay": "{institution}: banka erişimi 1 gün içinde sona eriyor",
+    "expiringTitleDays": "{institution}: banka erişimi {days} gün içinde sona eriyor",
+    "expiringMessage": "Monize'in {institution} kaydını okumasına verdiğiniz onay {date} tarihinde sona eriyor. Senkronizasyonu sürdürmek için Monize'de bağlantıyı yenileyin.",
+    "expiredTitle": "{institution}: banka erişimi sona erdi",
+    "expiredMessage": "Monize'in {institution} kaydını okumasına verdiğiniz onay sona erdi. Senkronizasyonu yeniden başlatmak için Monize'de bağlantıyı yenileyin.",
+    "failedTitle": "{institution}: senkronizasyon başarısız",
+    "failedMessage": "{institution} günlük senkronizasyonu şu hesaplar için başarısız oldu: {accounts}. Nedenini görmek için banka senkronizasyonu ayarlarını açın.",
+    "failedCredentialsMessage": "Banka senkronizasyonu kimlik bilgileri eksik olduğu veya reddedildiği için {institution} günlük senkronizasyonu başlatılamadı. Bunları banka senkronizasyonu ayarlarında kontrol edin.",
+    "unnamedAccount": "bir hesap",
+    "importedTitle": "{institution}: yeni işlemler içe aktarıldı",
+    "importedMessage": "Günlük senkronizasyonla {institution} kaynağından içe aktarılan işlemler: {imported}.",
+    "importedNoneTitle": "{institution}: yeni işlem yok",
+    "importedNoneMessage": "{institution} günlük senkronizasyonu yeni işlem bulamadı."
+  },
+  "emailReceiptsAttention": {
+    "title": "E-posta makbuzları ilgilenilmesi gerekiyor",
+    "message": "Makbuz gelen kutunuz {noParser} profil olmadan ve {parseFailed} ki profili tanımadığı içeriyor. Gözden geçirmek için açın."
+  },
+  "aiReview": {
+    "readyTitle": "Yapay zeka önerileri onayınızı bekliyor",
+    "readyMessage": "{count, plural, one {# yapay zeka önerisi} other {# yapay zeka önerisi}} onayınızı bekliyor, bunların {added} tanesi yeni. Onaylamak veya reddetmek için yapay zeka inceleme gelen kutusunu açın.",
+    "expiringTitle": "Yapay zeka önerilerinin süresi yakında doluyor",
+    "expiringMessage": "{count, plural, one {# yapay zeka önerisinin} other {# yapay zeka önerisinin}} süresi yakında doluyor. İlkinin süresi {date} tarihinde doluyor. Onaylamak veya reddetmek için yapay zeka inceleme gelen kutusunu açın."
+  },
+  "warranty": {
+    "expiringTitle": "{name}: garantinin süresi {days, plural, other {# gün}} içinde doluyor",
+    "expiringMessage": "{name} garantisinin süresi {date} tarihinde doluyor. Belgelerini incelemek veya bir talep kaydetmek için açın.",
+    "todayTitle": "{name}: garantinin süresi bugün doluyor",
+    "todayMessage": "{name} garantisinin süresi bugün, {date} tarihinde doluyor. Belgelerini incelemek veya bir talep kaydetmek için açın."
   }
 }

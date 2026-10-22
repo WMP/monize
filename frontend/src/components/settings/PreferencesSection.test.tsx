@@ -63,6 +63,7 @@ const mockPreferences: UserPreferences = {
   favouriteReportIds: [],
   dashboardWidgets: [],
   dashboardWidgetConfig: {},
+  hiddenTableColumns: {},
   preferredExchanges: [],
     defaultQuoteProvider: 'yahoo' as const,
     recentTransactionsLimit: 5,
@@ -755,7 +756,7 @@ describe('PreferencesSection', () => {
       expect(readRenderedOrder(container)).toEqual(EXPECTED_ORDER);
     });
 
-    it('renders the six group headings as headings, in order', async () => {
+    it('renders the seven group headings as headings, in order', async () => {
       const { container } = render(
         <PreferencesSection
           preferences={mockPreferences}
@@ -776,6 +777,7 @@ describe('PreferencesSection', () => {
         'Dates & Numbers',
         'Investments',
         'Transactions',
+        'Default Views',
         'Application',
       ]);
     });
@@ -796,7 +798,7 @@ describe('PreferencesSection', () => {
       // opens the card, where a rule would read as a second heading under
       // "Preferences"; every group after it is separated by one.
       const wrappers = Array.from(container.querySelectorAll('h3')).map((h) => h.parentElement!);
-      expect(wrappers).toHaveLength(6);
+      expect(wrappers).toHaveLength(7);
       expect(wrappers[0].className).not.toMatch(/border-t/);
       for (const wrapper of wrappers.slice(1)) {
         expect(wrapper.className).toMatch(/border-t/);

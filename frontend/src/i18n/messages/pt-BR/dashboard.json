@@ -49,6 +49,11 @@
     "nextMonth": "Próximo mês",
     "emptyAll": "Não há contas, depósitos ou transferências ativas agendadas."
   },
+  "cashFlowForecast": {
+    "title": "Previsão de fluxo de caixa",
+    "period": "Período de previsão",
+    "loadFailed": "Não foi possível carregar as transações já datadas depois de hoje, então a previsão não pode ser exibida. Recarregue o painel para tentar novamente."
+  },
   "gettingStarted": {
     "title": "Primeiros Passos",
     "subtitle": "Configure a sua conta em alguns passos rápidos",
@@ -88,6 +93,11 @@
     "viewAll": "Ver todas as análises",
     "activeCount": "{count} ativas"
   },
+  "warrantiesExpiring": {
+    "title": "Garantias expirando em breve",
+    "empty": "Nada expira nos próximos 30 dias",
+    "loadFailed": "Não foi possível carregar as garantias que estão expirando. Recarregue o painel para tentar novamente."
+  },
   "topMovers": {
     "title": "Maiores Variações",
     "empty": {
@@ -126,8 +136,10 @@
   "netWorth": {
     "title": "Patrimônio Líquido",
     "empty": "Ainda não existem dados de patrimônio líquido disponíveis.",
-    "past12Months": "Últimos 12 meses",
-    "viewReport": "Ver relatório completo"
+    "barStyle": "Estilo das barras",
+    "barStyleNetWorth": "Patrimônio líquido",
+    "barStyleAccountType": "Por tipo de conta",
+    "loadFailed": "Não foi possível carregar o histórico do seu patrimônio líquido. Recarregue o painel para tentar novamente."
   },
   "assetsVsLiabilities": {
     "title": "Ativos vs Passivos",
@@ -135,7 +147,10 @@
     "current": "Atual",
     "netWorthLabel": "Patrimônio Líquido",
     "assets": "Ativos",
-    "liabilities": "Passivos"
+    "liabilities": "Passivos",
+    "partialName": "{name} (parcial)",
+    "viewCallouts": "Rótulos",
+    "viewLegend": "Legenda"
   },
   "expensesPieChart": {
     "title": "Despesas por Categoria",
@@ -145,7 +160,9 @@
     "other": "Outros",
     "insideOther": "{count, plural, one {# categoria em Outros} other {# categorias em Outros}}",
     "topLevelOnly": "Categorias principais",
-    "topLevelOnlyHint": "Contar as subcategorias na categoria principal"
+    "topLevelOnlyHint": "Contar as subcategorias na categoria principal",
+    "viewCallouts": "Rótulos",
+    "viewLegend": "Legenda"
   },
   "incomeExpenses": {
     "title": "Receitas vs Despesas",
@@ -183,6 +200,7 @@
     "accounts": "Contas",
     "chartType": "Tipo de gráfico",
     "view": "Visualização",
+    "viewCalloutsHint": "Os rótulos precisam de uma tela mais larga. Onde não cabem, a legenda é exibida.",
     "displayName": "Nome de exibição",
     "description": "Descrição",
     "descriptionPlaceholder": "Adicione uma descrição opcional",
@@ -193,6 +211,7 @@
       "1y": "1Y",
       "2y": "2Y",
       "5y": "5Y",
+      "10y": "10Y",
       "ytd": "YTD",
       "all": "Tudo",
       "1w": "1S",
@@ -204,7 +223,7 @@
     "empty": "Ainda não há histórico de investimentos para mostrar.",
     "refresh": "Atualizar valor atual",
     "investmentResult": "Resultado do Investimento",
-    "periodBreakdownInvestedTooltip": "O valor dos títulos variou {valueChange} neste período. Desse total, {netInvested} foi aplicado, descontadas as vendas, e os títulos pagaram {income} em dividendos e juros. O valor acima é o que os investimentos renderam por si mesmos, sem contar o dinheiro não investido.",
+    "periodBreakdownInvestedTooltip": "O valor dos títulos variou {valueChange} neste período. Desse total, {netInvested} foi aplicado, descontadas as vendas, e os títulos pagaram {income} em dividendos e juros. Uma distribuição reinvestida em ações conta nos dois valores. O valor acima é o que os investimentos renderam por si mesmos, sem contar o dinheiro não investido.",
     "notAvailable": "N/D"
   },
   "spendingByPayee": {
@@ -271,7 +290,9 @@
     "minOccurrences": "Ocorrências mínimas",
     "minOccurrencesOption": "{count} ou mais",
     "occurrences": "{count} ocorrências",
-    "monthlyEstimate": "Estimativa Mensal"
+    "monthlyEstimate": "Estimativa Mensal",
+    "viewCallouts": "Rótulos",
+    "viewLegend": "Legenda"
   },
   "weekendVsWeekday": {
     "title": "Despesas: Fim de Semana vs Dia de Semana",

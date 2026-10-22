@@ -12,8 +12,13 @@ import {
   ArrayMaxSize,
   Matches,
   IsIn,
+  ValidateIf,
 } from "class-validator";
+import { Transform } from "class-transformer";
+import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
 import { IsDashboardWidgetConfig } from "../validators/is-dashboard-widget-config.validator";
+import { IsHiddenTableColumns } from "../validators/is-hidden-table-columns.validator";
+import { IsViewDefaults } from "../validators/is-view-defaults.validator";
 import { IsNumberLocale } from "../../common/validators/is-number-locale.validator";
 import {
   QUOTE_PROVIDER_NAMES,
@@ -45,8 +50,10 @@ export class UpdatePreferencesDto {
     example: "USD",
   })
   @IsOptional()
-  @IsString()
-  @MaxLength(3)
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.toUpperCase() : value,
+  )
+  @IsCurrencyCode()
   defaultCurrency?: string;
 
   @ApiPropertyOptional({
@@ -238,6 +245,44 @@ export class UpdatePreferencesDto {
   @IsObject()
   @IsDashboardWidgetConfig()
   dashboardWidgetConfig?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    description:
+      "Hidden column ids keyed by table kind (transactions, investmentHoldings, investmentRegister); an unknown kind, an unknown id or a duplicate is refused",
+    example: {
+      transactions: ["refNumber", "attachments"],
+      investmentHoldings: [],
+      investmentRegister: ["status"],
+    },
+  })
+  // The raw body value: class-transformer silently skips a `__proto__` key
+  // when it copies a plain object, which would store `{}` in place of
+  // refusing the payload.
+  @Transform(({ obj, key }) => obj[key])
+  @IsOptional()
+  @IsObject()
+  @IsHiddenTableColumns()
+  hiddenTableColumns?: Record<string, string[]>;
+
+  @ApiPropertyOptional({
+    description:
+      "Account-level defaults for the browser-local view settings, applied only where the browser has saved nothing: density (normal, compact, dense), hideRegisterYear, widgetsCollapsed, chartCollapsed (booleans), and accountOpenTarget (register, dashboard). Merged into the stored map, so a key not sent keeps its value. An unknown key or value, or null, is refused",
+    example: {
+      density: "compact",
+      hideRegisterYear: true,
+      widgetsCollapsed: false,
+      chartCollapsed: true,
+      accountOpenTarget: "register",
+    },
+  })
+  // The raw body value, for the `__proto__` reason given on hiddenTableColumns.
+  @Transform(({ obj, key }) => obj[key])
+  // Validated unless absent: `@IsOptional()` would let `null` through to the
+  // NOT NULL column, a 500 in place of a 400.
+  @ValidateIf((_o, value) => value !== undefined)
+  @IsObject()
+  @IsViewDefaults()
+  viewDefaults?: Record<string, string | boolean>;
 
   @ApiPropertyOptional({
     description: "Show the Created At field in transaction forms",

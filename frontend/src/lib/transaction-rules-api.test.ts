@@ -113,6 +113,37 @@ describe('transactionRulesApi', () => {
       expect(preview.fingerprint).toBe('f');
     });
 
+    it('matchDraft posts the condition, the window and the page', async () => {
+      const answer = { data: [], pagination: { page: 2, limit: 10, total: 0, totalPages: 0, hasMore: false }, scanned: 0, truncated: false };
+      vi.mocked(apiClient.post).mockResolvedValue({ data: answer });
+      const body = { condition: { all: [] }, activeFrom: '2026-10-01', page: 2, limit: 10 };
+      await expect(transactionRulesApi.matchDraft(body)).resolves.toEqual(answer);
+      expect(apiClient.post).toHaveBeenCalledWith('/transaction-rules/match-draft', body);
+    });
+
+    it('explainRow posts the row and the trigger, caches nothing and drops no cache', async () => {
+      const answer = { rules: [], labels: { accounts: {}, payees: {}, categories: {}, tags: {} } };
+      vi.mocked(apiClient.post).mockResolvedValue({ data: answer });
+      const input = {
+        accountId: 'a-1',
+        currencyCode: 'PLN',
+        amount: '-1.0000',
+        isTransfer: false,
+        payeeId: null,
+        payeeText: 'Shop',
+        categoryId: null,
+        description: null,
+        tagIds: [],
+        hasSplits: false,
+      };
+      const first = await transactionRulesApi.explainRow({ trigger: 'import', input });
+      await transactionRulesApi.explainRow({ trigger: 'import', input });
+      expect(apiClient.post).toHaveBeenCalledWith('/transaction-rules/explain-row', { trigger: 'import', input });
+      expect(apiClient.post).toHaveBeenCalledTimes(2);
+      expect(first).toBe(answer);
+      expect(cacheSpy.clearAllCache).not.toHaveBeenCalled();
+    });
+
     it('previewRun posts the filters to the rule', async () => {
       vi.mocked(apiClient.post).mockResolvedValue({ data: { matched: [] } });
       await transactionRulesApi.previewRun('r-1', filters);

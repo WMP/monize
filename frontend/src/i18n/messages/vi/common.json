@@ -38,6 +38,14 @@
     "scheduleRecurring": "Lên lịch định kỳ",
     "more": "Thêm thao tác"
   },
+  "columns": {
+    "button": "Cột",
+    "buttonWithHidden": "Cột, {count} đã ẩn",
+    "menuLabel": "Hiện hoặc ẩn cột",
+    "showAll": "Hiện tất cả",
+    "hideColumn": "Ẩn cột",
+    "sheetSubtitle": "Hiện lại cột từ menu Cột."
+  },
   "loading": "Đang tải...",
   "pagination": {
     "showing": "Hiển thị",
@@ -262,5 +270,8 @@
     "normal": "Bình thường",
     "compact": "Thu gọn",
     "dense": "Dày đặc"
+  },
+  "scheduledOverdue": {
+    "included": "Bao gồm {count, plural, one {# giao dịch theo lịch quá hạn} other {# giao dịch theo lịch quá hạn}}"
   }
 }

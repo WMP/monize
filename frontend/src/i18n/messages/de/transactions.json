@@ -135,6 +135,7 @@
       "toggleTitle": "Das Jahr aus den Datumsangaben entfernen, damit mehr vom Zahlungsempfänger sichtbar ist"
     },
     "attachmentsCount": "{count, plural, one {# Anhang} other {# Anhänge}}",
+    "warrantiesCount": "{count, plural, one {# Garantie} other {# Garantien}}",
     "today": "Heute",
     "export": {
       "button": "Exportieren",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Buchung duplizieren",
       "copy": "Kopieren",
       "duplicate": "Duplizieren",
-      "scheduleRecurring": "Als wiederkehrend planen"
+      "scheduleRecurring": "Als wiederkehrend planen",
+      "addWarranty": "Garantie hinzufügen",
+      "viewWarranties": "Garantien anzeigen"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Bearbeiten",
     "duplicate": "Duplizieren",
     "scheduleRecurring": "Als wiederkehrend planen",
+    "addWarranty": "Garantie hinzufügen",
+    "viewWarranties": "Garantien anzeigen",
     "delete": "Löschen"
   },
   "filter": {
@@ -219,7 +224,7 @@
       "title": "Filter",
       "clear": "Zurücksetzen",
       "hide": "Ausblenden",
-      "show": "Anzeigen"
+      "show": "Filter anzeigen"
     },
     "accounts": {
       "label": "Konten anzeigen:",
@@ -258,7 +263,7 @@
       "statuses": "Alle Status",
       "amountMin": "Min.",
       "amountMax": "Max.",
-      "search": "Zahlungsempfänger, Kategorie, Betrag, Tag, Beschreibung, Referenz-Nr. suchen...",
+      "search": "Suchen, oder #10 bzw. payee:costco versuchen",
       "tagKeyValue": "z. B. usa"
     },
     "tagKeyNone": "Beliebig (kein Schlüsselfilter)",
@@ -431,6 +436,7 @@
       "destinationRequired": "Bitte wählen Sie ein Zielkonto aus",
       "sameAccount": "Quell- und Zielkonto müssen verschieden sein",
       "negativeTransfer": "Überweisungsbetrag darf nicht negativ sein",
+      "convertToTransferUnsupported": "Eine bestehende Buchung kann hier nicht in eine Überweisung umgewandelt werden. Löschen Sie sie und erstellen Sie stattdessen die Überweisung.",
       "payeeCreated": "Zahlungsempfänger „{name}” erstellt",
       "payeeCreateFailed": "Zahlungsempfänger konnte nicht erstellt werden",
       "payeeReactivated": "Zahlungsempfänger „{name}” reaktiviert",
@@ -465,7 +471,14 @@
       },
       "feeCaption": "Enthält eine Fremdwährungsgebühr von {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Splitbuchungen in einem geteilten Konto kann nur der Eigentümer verwalten"
+    "jointSplitDisabled": "Splitbuchungen in einem geteilten Konto kann nur der Eigentümer verwalten",
+    "warranties": {
+      "title": "Garantien",
+      "add": "Garantie hinzufügen",
+      "expires": "Läuft ab am {date}",
+      "loading": "Garantien werden geladen",
+      "loadError": "Die Garantien zu dieser Buchung konnten nicht geladen werden."
+    }
   },
   "splitEditor": {
     "header": "Details der Buchungsteile",
@@ -582,6 +595,11 @@
       "log": "Logarithmisch",
       "autoTitle": "Automatisch ({scale})",
       "scaleTitle": "{label}-Skalierung"
+    },
+    "collapse": {
+      "hide": "Diagramm ausblenden",
+      "show": "Diagramm anzeigen",
+      "hidden": "Diagramm ausgeblendet"
     }
   },
   "toasts": {
@@ -604,5 +622,71 @@
     "title": "Ausgaben nach {key}",
     "other": "Sonstige",
     "noData": "Keine getaggten Ausgaben für diesen Schlüssel."
+  },
+  "searchSyntax": {
+    "open": "Suchsyntax",
+    "title": "Suchsyntax",
+    "fields": "Felder: payee, memo, cat, tag, account, ref, amount, date, status, is, has. Wählen Sie ein Beispiel, um es in das Suchfeld zu übernehmen.",
+    "examples": {
+      "allWords": "Jedes Wort kommt irgendwo vor",
+      "phrase": "Genau diese Wortfolge",
+      "exclude": "Alles mit refund ausschließen",
+      "fieldContains": "Empfänger enthält costco",
+      "fieldExact": "Empfänger ist genau Costco",
+      "reference": "Scheck- oder Referenznummer genau 10",
+      "wildcard": "Referenz beginnt mit 10",
+      "amountOver": "Betrag über 100",
+      "amountRange": "Betrag von 50 bis 100",
+      "datePeriod": "Jeder Tag im März 2026",
+      "isSplit": "Aufgeteilte Buchungen",
+      "hasAttachment": "Hat einen Anhang",
+      "hasWarranty": "Hat eine Garantie"
+    }
+  },
+  "searchInterpretation": {
+    "label": "Suche:",
+    "negated": "nicht {phrase}",
+    "malformed": "{raw} (nicht verstanden, als Text gesucht)",
+    "empty": "{raw} (leer, ignoriert)",
+    "status": "Status ist {value}",
+    "any": "„{value}“ überall",
+    "fields": {
+      "payee": "Empfänger",
+      "memo": "Notiz",
+      "cat": "Kategorie",
+      "tag": "Tag",
+      "account": "Konto",
+      "ref": "Referenz",
+      "amount": "Betrag",
+      "date": "Datum",
+      "status": "Status",
+      "is": "Typ",
+      "has": "Hat"
+    },
+    "ops": {
+      "contains": "{field} enthält „{value}“",
+      "exact": "{field} ist „{value}“",
+      "glob": "{field} entspricht „{value}“",
+      "eq": "{field} ist {value}",
+      "gt": "{field} über {value}",
+      "gte": "{field} {value} oder mehr",
+      "lt": "{field} unter {value}",
+      "lte": "{field} {value} oder weniger",
+      "between": "{field} von {value} bis {valueTo}"
+    },
+    "enum": {
+      "is": {
+        "transfer": "Umbuchungen",
+        "split": "Aufgeteilte Buchungen",
+        "uncategorized": "Ohne Kategorie"
+      },
+      "has": {
+        "attachment": "Hat einen Anhang",
+        "warranty": "Hat eine Garantie",
+        "ref": "Hat eine Referenznummer",
+        "memo": "Hat eine Notiz",
+        "tag": "Hat einen Tag"
+      }
+    }
   }
 }

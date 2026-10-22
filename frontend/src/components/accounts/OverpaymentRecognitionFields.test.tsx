@@ -87,6 +87,17 @@ describe('OverpaymentRecognitionFields', () => {
     expect(screen.getAllByRole('option', { name: 'Loan Overpayment' }).length).toBeGreaterThanOrEqual(1);
   });
 
+  it('labels the interest category as required only when asked to', async () => {
+    await renderFields({ interestCategoryRequired: true });
+    expect(screen.getByLabelText('Interest Category (required)')).toBeInTheDocument();
+  });
+
+  it('labels the interest category as optional by default (an edit keeps it)', async () => {
+    await renderFields();
+    expect(screen.getByLabelText('Interest Category')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Interest Category (required)')).not.toBeInTheDocument();
+  });
+
   it('reports the chosen payee', async () => {
     const props = await renderFields();
     await waitFor(() =>

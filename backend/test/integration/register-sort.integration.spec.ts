@@ -68,6 +68,15 @@ function rowAmountCents(row: Transaction): number {
 }
 
 describe("register sorting (integration)", () => {
+  // Each case rebuilds the fixture through the service (seven writes, each
+  // with its own un-awaited undo-entry chain) and then pages the listing both
+  // directions. That is ~2s of real work with no margin against a slow CI
+  // runner: issue #1749 timed a passing run out at the default 30000ms on
+  // nothing more than ordinary scheduling jitter, the same reason
+  // `joint-accounts.integration.spec.ts` and the other suites that repeat a
+  // service-level fixture already raise this.
+  jest.setTimeout(60000);
+
   let module: TestingModule;
   let service: TransactionsService;
   let dataSource: DataSource;

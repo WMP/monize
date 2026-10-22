@@ -38,6 +38,14 @@
     "scheduleRecurring": "Jadwalkan sebagai Berulang",
     "more": "Tindakan Lainnya"
   },
+  "columns": {
+    "button": "Kolom",
+    "buttonWithHidden": "Kolom, {count} disembunyikan",
+    "menuLabel": "Tampilkan atau sembunyikan kolom",
+    "showAll": "Tampilkan semua",
+    "hideColumn": "Sembunyikan kolom",
+    "sheetSubtitle": "Tampilkan kembali dari menu Kolom."
+  },
   "loading": "Memuat...",
   "pagination": {
     "showing": "Menampilkan",
@@ -262,5 +270,8 @@
     "normal": "Normal",
     "compact": "Kompak",
     "dense": "Padat"
+  },
+  "scheduledOverdue": {
+    "included": "Termasuk {count, plural, one {# transaksi terjadwal lewat jatuh tempo} other {# transaksi terjadwal lewat jatuh tempo}}"
   }
 }

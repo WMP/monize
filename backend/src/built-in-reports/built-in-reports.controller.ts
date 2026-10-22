@@ -33,6 +33,8 @@ import {
   MonthlyCategoryBreakdownResponse,
   CashFlowSankeyQueryDto,
   CashFlowSankeyResponse,
+  DEFAULT_RECURRING_EXPENSE_RANGE,
+  isRecurringExpenseRange,
 } from "./dto";
 
 @ApiTags("Built-in Reports")
@@ -214,14 +216,20 @@ export class BuiltInReportsController {
   getRecurringExpenses(
     @Request() req,
     @Query("minOccurrences") minOccurrences: string = "3",
+    @Query("range") range?: string,
   ): Promise<RecurringExpensesResponse> {
     const safeMinOccurrences = Math.min(
       Math.max(parseInt(minOccurrences, 10) || 3, 1),
       100,
     );
+    // Lenient like minOccurrences: anything but a known preset is the default.
+    const safeRange = isRecurringExpenseRange(range)
+      ? range
+      : DEFAULT_RECURRING_EXPENSE_RANGE;
     return this.reportsService.getRecurringExpenses(
       req.user.id,
       safeMinOccurrences,
+      safeRange,
     );
   }
 

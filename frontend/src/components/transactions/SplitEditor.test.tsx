@@ -1392,6 +1392,42 @@ describe('SplitEditor — desktop layout interactions', () => {
     expect(newSplits[0].tagIds).toContain('tag-1');
   });
 
+  it('orders a line\'s tag picker recent-first from tagUsage, and A-Z without it', () => {
+    const splits: SplitRow[] = [createSplitRow({ id: 'split-1', amount: -50 })];
+    const optionOrder = () => {
+      fireEvent.click(screen.getAllByText('Tags...')[0]);
+      const essential = screen.getByText('Essential');
+      const discretionary = screen.getByText('Discretionary');
+      return essential.compareDocumentPosition(discretionary) & Node.DOCUMENT_POSITION_FOLLOWING
+        ? ['Essential', 'Discretionary']
+        : ['Discretionary', 'Essential'];
+    };
+
+    const { unmount } = render(
+      <SplitEditor
+        splits={splits}
+        onChange={mockOnChange}
+        categories={mockCategories}
+        tags={mockTags}
+        tagUsage={{ 'tag-1': { lastUsed: '2026-10-01', count: 1 } }}
+        transactionAmount={-50}
+      />
+    );
+    expect(optionOrder()).toEqual(['Essential', 'Discretionary']);
+    unmount();
+
+    render(
+      <SplitEditor
+        splits={splits}
+        onChange={mockOnChange}
+        categories={mockCategories}
+        tags={mockTags}
+        transactionAmount={-50}
+      />
+    );
+    expect(optionOrder()).toEqual(['Discretionary', 'Essential']);
+  });
+
   it('add remaining button in desktop layout adds remaining amount to split', () => {
     const splits: SplitRow[] = [
       createSplitRow({ id: 'split-1', amount: -30 }),

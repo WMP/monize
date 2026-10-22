@@ -2,6 +2,7 @@ import { BadRequestException } from "@nestjs/common";
 import { tr } from "../i18n/translate";
 import { canonicalUuid } from "./backup-id-remap.util";
 import { BackupData, backupTables, BackupTables } from "./backup-format";
+import { dropSeveredBondData } from "./restore-engine-prices";
 import { RESTORE_PLAN } from "./restore-plan";
 
 /**
@@ -45,6 +46,7 @@ export const RESTORE_REFERENCE_COLUMNS: Readonly<
   categories: { parent_id: "categories" },
   payees: { default_category_id: "categories" },
   payee_aliases: { payee_id: "payees" },
+  email_receipt_parsers: { payee_id: "payees" },
   accounts: {
     linked_account_id: "accounts",
     source_account_id: "accounts",
@@ -56,6 +58,7 @@ export const RESTORE_REFERENCE_COLUMNS: Readonly<
     scheduled_transaction_id: "scheduled_transactions",
     asset_category_id: "categories",
     linked_loan_account_id: "accounts",
+    payment_matching_rule_id: "transaction_rules",
   },
   scheduled_transactions: {
     account_id: "accounts",
@@ -77,6 +80,8 @@ export const RESTORE_REFERENCE_COLUMNS: Readonly<
   },
   scheduled_transaction_postings: {
     scheduled_transaction_id: "scheduled_transactions",
+    transaction_id: "transactions",
+    rule_id: "transaction_rules",
   },
   scheduled_transaction_split_tags: {
     scheduled_transaction_split_id: "scheduled_transaction_splits",
@@ -99,8 +104,11 @@ export const RESTORE_REFERENCE_COLUMNS: Readonly<
     transfer_account_id: "accounts",
     linked_transaction_id: "transactions",
   },
+  warranties: { payee_id: "payees", transaction_id: "transactions" },
+  warranty_claims: { warranty_id: "warranties" },
   transaction_attachments: {
     transaction_id: "transactions",
+    warranty_id: "warranties",
     original_of_attachment_id: "transaction_attachments",
   },
   attachment_blobs: { attachment_id: "transaction_attachments" },
@@ -151,6 +159,53 @@ export const RESTORE_REFERENCE_COLUMNS: Readonly<
     target_security_id: "securities",
   },
 };
+
+/**
+ * Foreign-key columns of restored tables that point at reference data a backup
+ * does not carry, as `table -> column -> referenced table`. Neither a row of
+ * the file (so not a `RESTORE_REFERENCE_COLUMNS` entry: nothing to resolve
+ * inside the file) nor a table the restore may leave unchecked.
+ *
+ * The rule: the value is canonicalised here, and the restore keeps it only when
+ * the target deployment's own catalog holds that row (and, for a bond link, in
+ * the security's currency); otherwise it is written as NULL and logged
+ * (`BackupRestoreDatabaseService.severUnavailableCatalogLinks`, which iterates this
+ * list, so an entry added here is checked there). A restore never
+ * fails because a deployment has not seeded an instrument, and never links a
+ * security to a row it cannot vouch for. `restore-references.spec.ts` checks
+ * this list against `database/schema.sql`.
+ */
+export const CATALOG_REFERENCE_COLUMNS: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  securities: { bond_program_id: "bond_programs" },
+  investment_transactions: { bond_instrument_id: "bond_instruments" },
+};
+
+/**
+ * The `table.column` entries above whose referenced row must also be in the
+ * referencing row's own currency, or the reference is dropped: a bond link to a
+ * program in another currency would price the security in the wrong currency
+ * (INV-PRICE-001). Both rows carry a `currency_code`. A transaction's series has
+ * no currency of its own to compare (its security's program is).
+ */
+export const CATALOG_CURRENCY_MATCHED_COLUMNS: ReadonlySet<string> = new Set([
+  "securities.bond_program_id",
+]);
+
+/**
+ * What else a restore must not keep once a `table.column` entry above has been
+ * written NULL, keyed `table.column` and called with the document and the ids of
+ * the rows that lost the reference: the engine's price rows of a security that is
+ * no longer program-linked (INV-BOND-005) and the series of its transactions
+ * (INV-BOND-007). Declared beside the column list so a severed link and its
+ * consequences are one reviewed fact, not a branch inside the generic loop
+ * (`BackupRestoreDatabaseService.severUnavailableCatalogLinks`).
+ */
+export const CATALOG_ON_SEVERED: ReadonlyMap<
+  string,
+  (data: BackupData, severedRowIds: ReadonlySet<string>) => void
+> = new Map([["securities.bond_program_id", dropSeveredBondData]]);
 
 /**
  * The references a genuine export can carry without the row they name, keyed
@@ -289,12 +344,25 @@ export function resolveRestoreReferences(
   for (const [table, rows] of withCanonicalIds) {
     const references = RESTORE_REFERENCE_COLUMNS[table] ?? {};
     const columns = Object.entries(references);
+    const catalogColumns = Object.keys(CATALOG_REFERENCE_COLUMNS[table] ?? {});
     result[table] =
-      columns.length === 0
+      columns.length === 0 && catalogColumns.length === 0
         ? rows
         : rows.map((row) => {
             if (!isRow(row)) return row;
             let next = row;
+            // A catalog reference names a row of the deployment, not of the
+            // file: only its spelling is settled here, its existence is the
+            // restore transaction's question.
+            for (const column of catalogColumns) {
+              const value = row[column];
+              if (value === null || value === undefined) continue;
+              const canonical = canonicalUuid(value);
+              if (canonical === null) {
+                throw invalidIdentifier(table, column, value);
+              }
+              if (canonical !== value) next = { ...next, [column]: canonical };
+            }
             for (const [column, referencedTable] of columns) {
               const value = row[column];
               if (value === null || value === undefined) continue;

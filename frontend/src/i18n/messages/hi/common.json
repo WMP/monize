@@ -38,6 +38,14 @@
     "scheduleRecurring": "आवर्ती के रूप में शेड्यूल करें",
     "more": "अधिक क्रियाएं"
   },
+  "columns": {
+    "button": "कॉलम",
+    "buttonWithHidden": "कॉलम, छिपे हुए: {count}",
+    "menuLabel": "कॉलम दिखाएँ या छिपाएँ",
+    "showAll": "सभी दिखाएँ",
+    "hideColumn": "कॉलम छिपाएँ",
+    "sheetSubtitle": "इसे कॉलम मेनू से वापस लाएँ।"
+  },
   "loading": "लोड हो रहा है...",
   "pagination": {
     "showing": "दिखाया जा रहा है",
@@ -262,5 +270,8 @@
     "normal": "सामान्य",
     "compact": "संक्षिप्त",
     "dense": "घना"
+  },
+  "scheduledOverdue": {
+    "included": "{count, plural, one {# अतिदेय निर्धारित लेनदेन} other {# अतिदेय निर्धारित लेनदेन}} शामिल"
   }
 }

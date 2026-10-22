@@ -13,7 +13,7 @@ import { Pagination } from '@/components/ui/Pagination';
 import { CARD_CLASS } from '@/components/ui/Card';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import dynamic from 'next/dynamic';
-import { exchangeRatesApi, CurrencyInfo, CreateCurrencyData, CurrencyUsage } from '@/lib/exchange-rates';
+import { exchangeRatesApi, CurrencyInfo, CreateCurrencyData, CurrencyUsage, FxProviderDescription, isFxProviderName } from '@/lib/exchange-rates';
 const CurrencyForm = dynamic(() => import('@/components/currencies/CurrencyForm').then(m => m.CurrencyForm), { ssr: false });
 import { CurrencyList, type CurrencySortField, type SortDirection } from '@/components/currencies/CurrencyList';
 import { RateHistoryCoverage } from '@/components/currencies/RateHistoryCoverage';
@@ -53,29 +53,64 @@ function CurrenciesContent() {
   const [sortField, setSortField] = useLocalStorage<CurrencySortField>('monize-currencies-sort-field', 'code');
   const [sortDirection, setSortDirection] = useLocalStorage<SortDirection>('monize-currencies-sort-dir', 'asc');
 
+  // The configured FX providers in the order the server asks them; empty until
+  // the status answers, and left empty if it does not (the line is omitted).
+  const [fxProviders, setFxProviders] = useState<FxProviderDescription[]>([]);
+
   const { defaultCurrency, getRate, refresh: refreshRates } = useExchangeRates();
 
+  useEffect(() => {
+    let cancelled = false;
+    exchangeRatesApi
+      .getRateStatus()
+      .then((status) => {
+        if (!cancelled) setFxProviders(status?.providers ?? []);
+      })
+      .catch((error) => logger.error(error));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // A name this client has no label for still shows, as the server's token.
+  const fxProviderLine = fxProviders.length
+    ? t('page.providers.line', {
+        providers: fxProviders
+          .map((p) => (isFxProviderName(p.name) ? t(`page.providers.names.${p.name}`) : p.name))
+          .join(t('page.providers.separator')),
+      })
+    : null;
+
   // Always fetch all currencies so summary cards show correct totals
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [currenciesData, usageData] = await Promise.all([
-        exchangeRatesApi.getCurrencies(true),
-        exchangeRatesApi.getCurrencyUsage(),
-      ]);
-      setAllCurrencies(currenciesData);
-      setUsage(usageData);
-    } catch (error) {
-      toast.error(t('page.toasts.loadFailed'));
-      logger.error(error);
-    } finally {
-      setIsLoading(false);
-    }
+  // The mount load: the state already says loading.
+  const fetchData = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const [currenciesData, usageData] = await Promise.all([
+          exchangeRatesApi.getCurrencies(true),
+          exchangeRatesApi.getCurrencyUsage(),
+        ]);
+        setAllCurrencies(currenciesData);
+        setUsage(usageData);
+      } catch (error) {
+        toast.error(t('page.toasts.loadFailed'));
+        logger.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [t]);
 
+  const loadData = useCallback(() => {
+    setIsLoading(true);
+    return fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    fetchData();
+  }, [fetchData]);
 
   useOnUndoRedo(loadData);
   // Refresh on AI chat-bubble writes the same way as undo/redo.
@@ -137,7 +172,10 @@ function CurrenciesContent() {
       const summary = await exchangeRatesApi.refreshRates();
       const updated = summary?.updated ?? 0;
       const failed = summary?.failed ?? 0;
-      if (failed > 0) {
+      if (updated === 0 && failed > 0) {
+        // Every pair failed: nothing was refreshed, so this is not a success.
+        toast.error(t('page.toasts.ratesAllFailed'));
+      } else if (failed > 0) {
         toast.success(t('page.toasts.ratesRefreshedWithFailed', { updated, failed }));
       } else {
         toast.success(t('page.toasts.ratesRefreshed', { updated }));
@@ -200,9 +238,16 @@ function CurrenciesContent() {
     return sortedCurrencies.slice(start, start + PAGE_SIZE);
   }, [sortedCurrencies, currentPage]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, statusFilter]);
+  // A new search or status filter starts again from the first page.
+  const handleSearchChange = (query: string) => {
+    if (query !== searchQuery) setCurrentPage(1);
+    setSearchQuery(query);
+  };
+
+  const handleStatusFilterChange = (status: 'all' | 'active' | 'inactive') => {
+    if (status !== statusFilter) setCurrentPage(1);
+    setStatusFilter(status);
+  };
 
   const handleSort = useCallback((field: CurrencySortField) => {
     if (sortField === field) {
@@ -245,6 +290,12 @@ function CurrenciesContent() {
           }
         />
 
+        {fxProviderLine && (
+          <p data-testid="fx-provider-line" className="-mt-4 mb-6 text-sm text-gray-500 dark:text-gray-400">
+            {fxProviderLine}
+          </p>
+        )}
+
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
           <SummaryCard label={t('page.summary.totalCurrencies')} value={allCurrencies.length} icon={SummaryIcons.barChart} />
@@ -258,14 +309,14 @@ function CurrenciesContent() {
             type="text"
             placeholder={t('page.searchPlaceholder')}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="block w-full sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
           />
           <div className="flex rounded-md shadow-sm">
             {(['all', 'active', 'inactive'] as const).map((status) => (
               <button
                 key={status}
-                onClick={() => setStatusFilter(status)}
+                onClick={() => handleStatusFilterChange(status)}
                 className={`px-4 py-2 text-sm font-medium border ${
                   statusFilter === status
                     ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'

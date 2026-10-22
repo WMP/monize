@@ -11,6 +11,11 @@ interface DonutCenterTotalProps {
    * itself -- it only positions one.
    */
   value: ReactNode;
+  /**
+   * Width in pixels the caption and figure may take, for a chart that knows
+   * its hole's size; they wrap inside it rather than running onto the ring.
+   */
+  maxWidth?: number;
   className?: string;
 }
 
@@ -36,15 +41,17 @@ interface DonutCenterTotalProps {
  * person reads is localized by the caller's `useNumberFormat`, here as
  * everywhere.
  */
-export function DonutCenterTotal({ label, value, className }: DonutCenterTotalProps) {
+export function DonutCenterTotal({ label, value, maxWidth, className }: DonutCenterTotalProps) {
   return (
     <div
       className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center ${className ?? ''}`}
     >
-      <span className="text-xs text-gray-500 dark:text-gray-400">{label}</span>
-      <span className="pointer-events-auto mt-0.5 inline-flex max-w-full flex-wrap items-center justify-center text-base font-semibold text-gray-900 dark:text-gray-100 sm:text-lg">
-        {value}
-      </span>
+      <div className="flex max-w-full flex-col items-center" style={maxWidth === undefined ? undefined : { maxWidth }}>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{label}</span>
+        <span className="pointer-events-auto mt-0.5 inline-flex max-w-full flex-wrap items-center justify-center text-base font-semibold text-gray-900 dark:text-gray-100 sm:text-lg">
+          {value}
+        </span>
+      </div>
     </div>
   );
 }

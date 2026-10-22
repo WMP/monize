@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
@@ -82,14 +82,16 @@ export function CategoryAutoAssignDialog({
   }, [minTransactions, minPercentage, onlyWithoutCategory, t]);
 
   // Reset state when dialog opens
-  useEffect(() => {
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen);
     if (isOpen) {
       setSuggestions([]);
       setSelectedIds(new Set());
       setBackfillTransactions(false);
       setHasPreviewLoaded(false);
     }
-  }, [isOpen]);
+  }
 
   // Total uncategorized transactions across the selected payees -- the scope of
   // the optional backfill, shown in its label.

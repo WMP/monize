@@ -122,7 +122,11 @@ const mockGetForecastSummary = vi.fn().mockReturnValue({
   goesNegative: false,
 });
 
-vi.mock('@/lib/forecast', () => ({
+// The builders are mocked; the tooltip's overdue count is the real helper, so
+// a point the mocks hand over is counted the way the chart counts it.
+vi.mock('@/lib/forecast', async (importOriginal) => ({
+  countOverdueOccurrences: (await importOriginal<typeof import('@/lib/forecast')>())
+    .countOverdueOccurrences,
   buildForecast: (...args: any[]) => mockBuildForecast(...args),
   buildMultiAccountForecast: (...args: any[]) => mockBuildMultiAccountForecast(...args),
   getForecastSummary: (...args: any[]) => mockGetForecastSummary(...args),
@@ -827,6 +831,60 @@ describe('CashFlowForecastChart', () => {
       expect(
         within(screen.getByTestId('tooltip')).getByText('Bill (Checking)'),
       ).toBeInTheDocument();
+    });
+
+    // Discussion #1784: overdue occurrences land on the first day, and the
+    // tooltip says how many, so the drop has a visible cause.
+    describe('overdue occurrences on the hovered day', () => {
+      const overduePoint = (transactions: any[]) => ({
+        date: '2025-01-15',
+        balance: 1300,
+        balances: { a1: 800, a2: 500 },
+        transactions,
+      });
+
+      it('says one overdue scheduled transaction, in the singular', () => {
+        charts.tooltipPoint = overduePoint([
+          { name: 'Rent', amount: -200, accountId: 'a1', scheduledTransactionId: 's1', overdueOriginalDate: '2025-01-10' },
+          { name: 'Pay', amount: 300, accountId: 'a1', scheduledTransactionId: 's2' },
+        ]);
+        renderWithBothSelected();
+        expect(
+          within(screen.getByTestId('tooltip')).getByText('Includes 1 overdue scheduled transaction'),
+        ).toBeInTheDocument();
+      });
+
+      it('counts each overdue occurrence, in the plural', () => {
+        charts.tooltipPoint = overduePoint([
+          { name: 'Rent', amount: -200, accountId: 'a1', scheduledTransactionId: 's1', overdueOriginalDate: '2025-01-01' },
+          { name: 'Rent', amount: -200, accountId: 'a1', scheduledTransactionId: 's1', overdueOriginalDate: '2025-01-08' },
+        ]);
+        renderWithBothSelected();
+        expect(
+          within(screen.getByTestId('tooltip')).getByText('Includes 2 overdue scheduled transactions'),
+        ).toBeInTheDocument();
+      });
+
+      it('counts an overdue transfer between two selected accounts once', () => {
+        charts.tooltipPoint = overduePoint([
+          { name: 'Move', amount: -100, accountId: 'a1', scheduledTransactionId: 't1', overdueOriginalDate: '2025-01-10' },
+          { name: 'Move', amount: 100, accountId: 'a2', scheduledTransactionId: 't1', overdueOriginalDate: '2025-01-10' },
+        ]);
+        renderWithBothSelected();
+        expect(
+          within(screen.getByTestId('tooltip')).getByText('Includes 1 overdue scheduled transaction'),
+        ).toBeInTheDocument();
+      });
+
+      it('says nothing when no hovered transaction is overdue', () => {
+        charts.tooltipPoint = overduePoint([
+          { name: 'Bill', amount: -200, accountId: 'a1', scheduledTransactionId: 's1' },
+        ]);
+        renderWithBothSelected();
+        expect(
+          within(screen.getByTestId('tooltip')).queryByText(/overdue/),
+        ).not.toBeInTheDocument();
+      });
     });
 
     it('builds the forecast from the picker order, not the click order', () => {

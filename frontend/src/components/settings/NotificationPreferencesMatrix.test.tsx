@@ -120,6 +120,72 @@ describe('NotificationPreferencesMatrix', () => {
     );
   });
 
+  it('renders the bank sync rows with no report email and the defaults the server sends', async () => {
+    // What needs the user's action defaults to immediate email and push; what
+    // only reports stays in the bell (docs/specs/bank-sync-notifications.md
+    // section 2). The server resolves the defaults, so the grid just shows them.
+    const bankSyncChannels = {
+      email: false,
+      emailNotification: true,
+      push: true,
+      unifiedpush: true,
+    };
+    list.mockResolvedValue([
+      { category: 'BANK_SYNC', email: true, emailNotification: true, push: true, unifiedpush: false, throttleMinutes: 0, supportedChannels: bankSyncChannels },
+      { category: 'BANK_SYNC_ACTIVITY', email: true, emailNotification: false, push: false, unifiedpush: false, throttleMinutes: 0, supportedChannels: bankSyncChannels },
+    ]);
+    await renderMatrix();
+
+    expect(screen.getByText('Bank connections')).toBeInTheDocument();
+    expect(screen.getByText('Bank sync results')).toBeInTheDocument();
+    // The report-email cell of each row is not a control.
+    expect(
+      screen.getAllByText('Not applicable for this notification type'),
+    ).toHaveLength(2);
+    // Immediate email, push and UnifiedPush for each row.
+    const switches = screen.getAllByRole('switch');
+    expect(switches).toHaveLength(6);
+    expect(switches.map((control) => control.getAttribute('aria-checked'))).toEqual([
+      'true',
+      'true',
+      'false',
+      'false',
+      'false',
+      'false',
+    ]);
+    await act(async () => fireEvent.click(switches[1]));
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith('BANK_SYNC', { push: false }),
+    );
+  });
+
+  it('renders the BONDS row with all four channels', async () => {
+    list.mockResolvedValue([
+      { category: 'BONDS', email: true, emailNotification: true, push: true, unifiedpush: false, throttleMinutes: 0, supportedChannels: allChannels },
+    ]);
+    await renderMatrix();
+    expect(screen.getByText('Bonds')).toBeInTheDocument();
+    expect(screen.getAllByRole('switch')).toHaveLength(4);
+    expect(screen.queryByText('Not applicable for this notification type')).toBeNull();
+    await act(async () => fireEvent.click(screen.getAllByRole('switch')[2]));
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith('BONDS', { push: false }),
+    );
+  });
+
+  it('renders the AI_REVIEW row with all four channels', async () => {
+    list.mockResolvedValue([
+      { category: 'AI_REVIEW', email: true, emailNotification: true, push: true, unifiedpush: false, throttleMinutes: 0, supportedChannels: allChannels },
+    ]);
+    await renderMatrix();
+    expect(screen.getByText('AI review proposals')).toBeInTheDocument();
+    expect(screen.getAllByRole('switch')).toHaveLength(4);
+    await act(async () => fireEvent.click(screen.getAllByRole('switch')[2]));
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith('AI_REVIEW', { push: false }),
+    );
+  });
+
   it('enables the UnifiedPush column only when a UnifiedPush device is live', async () => {
     listDevices.mockResolvedValue([liveDevice, liveUnifiedDevice]);
     await renderMatrix();
@@ -207,6 +273,22 @@ describe('NotificationPreferencesMatrix', () => {
         'No device is registered for push, so this channel cannot deliver.',
       ),
     ).toBeInTheDocument();
+  });
+
+  // A held device (its account signed out of that browser) resumes on the next
+  // sign-in there, so its preferences still decide what it will receive.
+  it('keeps the push column when the only live device is held', async () => {
+    listDevices.mockResolvedValue([
+      { ...liveDevice, heldAt: '2026-10-09T08:00:00Z' },
+      disabledDevice,
+    ]);
+    await renderMatrix();
+    expect(screen.getAllByRole('switch')[2]).not.toBeDisabled(); // PAYMENTS push
+    expect(
+      screen.queryByText(
+        'No device is registered for push, so this channel cannot deliver.',
+      ),
+    ).toBeNull();
   });
 
   // The regression this section was missing: the matrix could say the push

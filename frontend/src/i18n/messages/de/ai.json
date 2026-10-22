@@ -82,6 +82,7 @@
     "newCategory": "Neue Kategorie",
     "currentCategory": "Aktuelle Kategorie",
     "description": "Beschreibung",
+    "referenceNumber": "Ref.-Nr.",
     "name": "Name",
     "website": "Webseite",
     "address": "Adresse",
@@ -111,6 +112,13 @@
     "commission": "Provision",
     "total": "Gesamt",
     "cashImpact": "Auswirkung auf Barbestand",
+    "bondSeries": "Serie",
+    "marksPaid": "Markiert als bezahlt",
+    "accruedInterest": "Aufgelaufene Zinsen",
+    "redemptionSplit": "Aufteilung der Rückzahlung",
+    "redemptionSplitValue": "Kapital {principal} + Zinsen {interest} = Auszahlung {payout}",
+    "redemptionDeduction": "Gebühr für vorzeitige Rückzahlung abgezogen",
+    "redemptionSplitDiffers": "Preis und aufgelaufene Zinsen weichen von dem ab, was diese Rückzahlung auszahlt (siehe Aufteilung). Prüfe sie vor der Genehmigung.",
     "createTransactionsTitle": "Diese Transaktionen erstellen?",
     "createInvestmentTransactionsTitle": "Diese Anlagetransaktionen erstellen?",
     "approveAll": "Alle bestätigen",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Wiederanlage langfristiger Kapitalerträge",
       "CAPITAL_GAIN_SHORT": "Kurzfristiger Kapitalertrag",
       "CAPITAL_GAIN_LONG": "Langfristiger Kapitalertrag",
-      "REDEEM": "CD/Anleihe einlösen"
+      "REDEEM": "CD/Anleihe einlösen",
+      "RETURN_OF_CAPITAL": "Kapitalrückzahlung"
     },
     "createSecurityTitle": "Dieses Wertpapier erstellen?",
     "createdSecurity": "Wertpapier erstellt",
@@ -224,7 +233,11 @@
       "category": "Kategorie festlegen auf {name}",
       "payee": "Zahlungsempfänger festlegen auf {name}",
       "aiReview": "{count, plural, one {# KI-Prüfanfrage einreihen} other {# KI-Prüfanfragen einreihen}}"
-    }
+    },
+    "aiCategory": "von der KI vorgeschlagen",
+    "tags": "Tags",
+    "newTag": "(neuer Tag)",
+    "marksPaidDue": "{name} (fällig am {date})"
   },
   "table": {
     "downloadTitle": "Tabelle als CSV herunterladen",

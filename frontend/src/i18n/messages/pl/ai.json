@@ -82,6 +82,7 @@
     "newCategory": "Nowa kategoria",
     "currentCategory": "Bieżąca kategoria",
     "description": "Opis",
+    "referenceNumber": "Nr ref.",
     "name": "Nazwa",
     "website": "Strona internetowa",
     "address": "Adres",
@@ -111,6 +112,13 @@
     "commission": "Prowizja",
     "total": "Suma",
     "cashImpact": "Wpływ na gotówkę",
+    "bondSeries": "Seria",
+    "marksPaid": "Oznacza jako zapłacone",
+    "accruedInterest": "Naliczone odsetki",
+    "redemptionSplit": "Rozkład wykupu",
+    "redemptionSplitValue": "Kapitał {principal} + odsetki {interest} = wypłata {payout}",
+    "redemptionDeduction": "Potrącono opłatę za wcześniejszy wykup",
+    "redemptionSplitDiffers": "Cena i naliczone odsetki różnią się od kwoty wypłacanej przy tym wykupie (zob. rozkład). Sprawdź je przed zatwierdzeniem.",
     "createTransactionsTitle": "Utworzyć te transakcje?",
     "createInvestmentTransactionsTitle": "Utworzyć te transakcje inwestycyjne?",
     "approveAll": "Zatwierdź wszystko",
@@ -138,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinwestycja długoterminowych zysków kapitałowych",
       "CAPITAL_GAIN_SHORT": "Krótkoterminowy zysk kapitałowy",
       "CAPITAL_GAIN_LONG": "Długoterminowy zysk kapitałowy",
-      "REDEEM": "Wykup CD/obligacji"
+      "REDEEM": "Wykup CD/obligacji",
+      "RETURN_OF_CAPITAL": "Zwrot kapitału"
     },
     "createSecurityTitle": "Utworzyć ten papier wartościowy?",
     "createdSecurity": "Utworzono papier wartościowy",
@@ -224,7 +233,11 @@
       "category": "Ustaw kategorię na {name}",
       "payee": "Ustaw odbiorcę na {name}",
       "aiReview": "{count, plural, one {Dodaj do kolejki # prośbę o przegląd AI} few {Dodaj do kolejki # prośby o przegląd AI} many {Dodaj do kolejki # próśb o przegląd AI} other {Dodaj do kolejki # prośby o przegląd AI}}"
-    }
+    },
+    "aiCategory": "zaproponowana przez AI",
+    "tags": "Tagi",
+    "newTag": "(nowy tag)",
+    "marksPaidDue": "{name} (termin {date})"
   },
   "table": {
     "downloadTitle": "Pobierz tabelę jako CSV",

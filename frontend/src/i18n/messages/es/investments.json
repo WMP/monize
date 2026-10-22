@@ -51,6 +51,7 @@
     "costBasisTooltip": "Lo que costó adquirir tus posiciones actuales, reconstruido desde tu historial de transacciones: precios de compra más la comisión cobrada en cada compra, cada uno convertido al tipo de la operación que lo pagó. Se muestra en tu moneda de visualización. Se usa para calcular ganancias y pérdidas.",
     "gainLoss": "Ganancia/Pérdida",
     "gainLossTooltip": "Ganancia o pérdida no realizada de tus posiciones actuales: valor de mercado a precios de hoy menos la base de costo de arriba. No incluye ganancias realizadas de ventas pasadas, ni dividendos e intereses recibidos.",
+    "gainPartialCaption": "Solo sobre posiciones con precio",
     "returns": "Rendimientos",
     "simpleReturn": "Rendimiento Simple",
     "simpleReturnTooltip": "Ganancia o pérdida sobre lo que pagaste: (Valor de Mercado − Base de Costo) ÷ Base de Costo. No tiene en cuenta cuándo llegó el dinero, por lo que salta con cada compra: una posición de 1.000 que sube un 20% muestra +20%; compra otros 1.000 y mostrará +10% (200 ÷ 2.000) aunque no se haya perdido nada. TWR y MWR no tienen este salto.",
@@ -88,6 +89,14 @@
       "assetClass": "Por clase de activo"
     }
   },
+  "assetClasses": {
+    "equity": "Renta variable",
+    "fixedIncome": "Renta fija",
+    "cash": "Efectivo",
+    "preferred": "Acciones preferentes",
+    "convertible": "Convertibles",
+    "crypto": "Cripto"
+  },
   "holdingsList": {
     "title": "Posiciones",
     "noHoldings": "No hay posiciones en esta cartera.",
@@ -102,6 +111,7 @@
     "title": "Posiciones por Cuenta",
     "noHoldings": "No hay posiciones en tu cartera.",
     "accountIncomplete": "Parcial: los totales de esta cuenta omiten posiciones que no se pudieron valorar en {currency}.",
+    "gainPartialCaption": "Solo sobre posiciones con precio",
     "accountSummary": "{accounts} cuenta{accountsPlural} con {positions} posición{positionsPlural}",
     "positionsWithCash": "{count} posición{plural} + Efectivo",
     "positions": "{count} posición{plural}",
@@ -129,6 +139,7 @@
     "intradayUnavailableDescription": "Una o más posiciones usan un proveedor de cotizaciones (MSN Money) que no expone datos intradía. Cambia a un rango más largo para ver instantáneas diarias.",
     "noDataForPeriod": "No hay datos de inversión para este período.",
     "highestValue": "Valor Más Alto",
+    "incompleteTooltip": "A algunos puntos de este periodo les falta un precio o un tipo de cambio, por lo que no se muestran el máximo ni el mínimo.",
     "lowestValue": "Valor Más Bajo",
     "valueChange": "Cambio de valor",
     "valueChangeTooltip": "Lo que valen los valores al final del período, menos lo que valían al inicio: el último punto del gráfico menos el primero. El efectivo no invertido queda fuera.",
@@ -190,6 +201,7 @@
     "actionCapitalGainShort": "Ganancia de capital a corto plazo",
     "actionCapitalGainLong": "Ganancia de capital a largo plazo",
     "actionRedeem": "Rescate de CD/bono",
+    "actionReturnOfCapital": "Devolución de capital",
     "allActions": "Todas las Acciones"
   },
   "transactionForm": {
@@ -210,6 +222,7 @@
     "actionCapitalGainShort": "Ganancia de capital a corto plazo",
     "actionCapitalGainLong": "Ganancia de capital a largo plazo",
     "actionRedeem": "Rescate de CD/bono",
+    "actionReturnOfCapital": "Devolución de capital",
     "actionTransfer": "Transferencia",
     "brokerageAccount": "Cuenta de Corretaje",
     "fromAccount": "Cuenta de Origen",
@@ -253,7 +266,8 @@
     "sourceHolds": "El origen tiene",
     "sharesAt": "acciones @",
     "avgCostSuffix": "costo prom.",
-    "transferCostNote": "El costo por acción (precargado desde la cuenta de origen) se traslada al destino para que tus informes de ganancias sean correctos. Solo mueve acciones — no hay movimiento de efectivo.",
+    "transferCostNote": "El costo por acción es lo que costaron las acciones en la cuenta de origen en la fecha de la transferencia. Se calcula al guardar y se traslada a la cuenta de destino para que sus informes de ganancias y beneficios sigan siendo correctos. Solo se mueven acciones; no cambia de manos ningún efectivo.",
+    "returnOfCapitalNote": "Una devolución de capital no es un ingreso. Reembolsa parte de lo que costaron las acciones, por lo que reduce la base de costo de su posición en este importe. Lo que supere la base de costo restante se registra como ganancia de capital realizada.",
     "totalAmount": "Cantidad Total ({currency})",
     "sharesAtPrice": "{shares} acciones @ {symbol}{price}",
     "commissionSuffix": "comisión",
@@ -288,7 +302,30 @@
     "toastSaveFailed": "Error al guardar la transacción",
     "exchangeRateUnresolved": "No hay tipo de {from} a {to} disponible. Introduce uno, o el total convertido, antes de guardar.",
     "toastExchangeRateRequired": "Introduce un tipo de cambio antes de guardar una operación entre monedas.",
-    "notAvailable": "No disponible"
+    "notAvailable": "No disponible",
+    "bondSeries": {
+      "label": "Serie de bonos",
+      "fromDate": "Determinada según la fecha",
+      "oldestFirst": "Las más antiguas primero",
+      "loading": "Cargando las series...",
+      "loadFailed": "No se pudieron cargar las series.",
+      "retry": "Reintentar",
+      "fromDateCode": "Según la fecha: {code}",
+      "noneOnSale": "Ninguna serie a la venta en esta fecha",
+      "choose": "Elige una serie",
+      "required": "Elige la serie de estos títulos.",
+      "heldOption": "{code} ({quantity} en cartera)",
+      "noLongerHeld": "{code} (ya no se posee en esta fecha)",
+      "noLongerHeldUnknown": "Serie guardada (ya no se posee en esta fecha)",
+      "storedSeries": "Serie guardada",
+      "seriesOnSaleMonth": "{code} — a la venta en {month}",
+      "seriesOnSaleRange": "{code} — a la venta del {from} al {to}"
+    },
+    "bondRedemption": {
+      "summary": "Intereses {interest}, deducción por amortización anticipada {deduction}, pago {payout}",
+      "outsideSaleWindow": "Un lote de esta serie se compró fuera de su periodo de venta, por lo que no se puede desglosar el reembolso.",
+      "failed": "No se pudo calcular el desglose del reembolso."
+    }
   },
   "newTransactionButton": {
     "label": "+ Nueva Transacción",

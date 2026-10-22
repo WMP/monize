@@ -470,7 +470,8 @@ currency.
   the two halves the return needs:
   - `capitalIn(d)`: BUY (and REDEEM's opposite, i.e. none), TRANSFER_IN,
     ADD_SHARES.
-  - `capitalOut(d)`: SELL / REDEEM, TRANSFER_OUT, REMOVE_SHARES.
+  - `capitalOut(d)`: SELL / REDEEM, TRANSFER_OUT, REMOVE_SHARES,
+    RETURN_OF_CAPITAL (cost paid back, not earned; `docs/specs/return-of-capital.md`).
   - `K(d) = capitalIn(d) - capitalOut(d)`.
 
   A row's value is its **executed total** where it carries one -- BUY and SELL
@@ -485,10 +486,20 @@ currency.
   set (DIVIDEND, INTEREST, CAPITAL_GAIN and the short/long refinements), at
   `total_amount`, converted at day `d`'s rate. Income is RETURN: it leaves the
   invested part as cash but the invested part earned it.
-- **Neither capital nor income:** SPLIT (a ratio, no value crosses anything) and
-  REINVEST (and its refinements). A reinvested distribution never lands as cash;
-  its shares simply appear in `IV`, and counting it as a capital inflow would
-  subtract the distribution the reader actually earned.
+- **`R(d)`** -- distributions reinvested on day `d`: REINVEST and its
+  refinements (`reinvestedIncome` in `INVESTED_FLOW_KIND_BY_BASE_ACTION`), each
+  valued by `reinvestedIncomeAmount` (the stored total, otherwise quantity x
+  price + commission, because a reinvest created in the app stores no total),
+  converted at day `d`'s rate.
+  A reinvestment is the DIVIDEND and the BUY it stands for in one row, so it is
+  income AND capital: `R` is added to both printed figures below and nets out
+  of the P&L. Its shares are already in `IV(d)` and no value crossed the
+  boundary, so neither return chain reads it. (Until Discussion #1670 it was
+  printed in neither figure, which left a reinvested dividend out of every
+  income number while the P&L, unchanged by this, already held it.) A legacy
+  row with neither a total nor a price is in no cost basis and in neither
+  figure.
+- **Neither capital nor income:** SPLIT (a ratio, no value crosses anything).
 - **`investmentPnl(b, e) = IV(e) - IV(b) - sum K(d) + sum I(d)`** over
   `d` in `(b, e]`. The lower bound is exclusive for the same reason section 2
   gives: `IV(b)` is a close and already holds everything dated `b`.
@@ -502,10 +513,12 @@ currency.
   investmentPnl = investedValueChange - investmentCapitalFlows + investmentIncome
   ```
 
-  where `investmentCapitalFlows = sum K(d)` and `investmentIncome = sum I(d)`
-  over the same days. A surface that prints the three beside the result
-  therefore prints figures that add up, which the account-level
-  `valueChange` / `netExternalFlows` pair beside an invested result did not.
+  where `investmentCapitalFlows = sum (K(d) + R(d))` and
+  `investmentIncome = sum (I(d) + R(d))` over the same days. `R` is in both and
+  cancels, so the P&L is the `IV(e) - IV(b) - sum K(d) + sum I(d)` above. A
+  surface that prints the three beside the result therefore prints figures
+  that add up, which the account-level `valueChange` / `netExternalFlows` pair
+  beside an invested result did not.
 - **`investmentReturnPercent(b, e)`** -- a true time-weighted return, chained
   daily over `(b, e]`:
 
@@ -894,14 +907,15 @@ the same `IV`, `K` and `I` of section 10.2, not one component more:
 | --- | --- | --- |
 | `b` | `-IV(b)` | what was already invested is a purchase made on day one |
 | each `d` in `(b, e]` | `-capitalIn(d)` | a buy, a share transfer in, an ADD_SHARES |
-| each `d` in `(b, e]` | `+capitalOut(d)` | a sale, a share transfer out, a REMOVE_SHARES |
+| each `d` in `(b, e]` | `+capitalOut(d)` | a sale, a share transfer out, a REMOVE_SHARES, a return of capital |
 | each `d` in `(b, e]` | `+I(d)` | a dividend, interest, a capital-gain distribution |
 | `e` | `+IV(e)` | the position is notionally liquidated at the end |
 
 Deposits, withdrawals, idle cash and a transfer between the reader's own
 accounts are in none of them, exactly as for the TWR (INV-PORTRESULT-002): they
-are not flows of the invested part. A SPLIT and a REINVEST are neither capital
-nor income here for the same reason section 10.2 gives.
+are not flows of the invested part. A SPLIT is neither capital nor income here
+for the same reason section 10.2 gives, and a REINVEST's `-R(d)` and `+R(d)`
+fall on the same day and cancel, so the schedule leaves it out.
 
 The day-`e` flows and `+IV(e)` carry the same date and are therefore one term;
 so are the day-`b` flows -- there are none, because the window is `(b, e]` and

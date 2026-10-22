@@ -20,8 +20,13 @@ vi.mock('@/hooks/useNumberFormat', async () => {
 };
 });
 let mockIsValid = true;
+// The selection the mocked range hook reports; a test moves it and re-renders.
+const mockRange = { end: "2025-01-01" };
 vi.mock("@/hooks/useDateRange", () => {
-  const resolvedRange = { start: "2024-01-01", end: "2025-01-01" };
+  const resolvedRange = {
+    start: "2024-01-01",
+    get end() { return mockRange.end; },
+  };
   return {
     useDateRange: () => ({
       dateRange: "1y",
@@ -55,11 +60,11 @@ vi.mock("@/components/ui/ChartViewToggle", () => ({
 }));
 
 vi.mock("@/components/ui/ExportDropdown", () => ({
-  ExportDropdown: ({ onExportPdf, onExportCsv }: any) => (
+  ExportDropdown: ({ onExportPdf, onExportCsv, disabled }: any) => (
     <div data-testid="export-dropdown">
-      <button data-testid="export-pdf" onClick={onExportPdf}>PDF</button>
+      <button data-testid="export-pdf" onClick={onExportPdf} data-disabled={String(disabled === true)}>PDF</button>
       {onExportCsv && (
-        <button data-testid="export-csv" onClick={onExportCsv}>CSV</button>
+        <button data-testid="export-csv" onClick={onExportCsv} data-disabled={String(disabled === true)}>CSV</button>
       )}
     </div>
   ),
@@ -111,6 +116,7 @@ describe("IncomeBySourceReport", () => {
     vi.clearAllMocks();
     mockPush.mockClear();
     mockIsValid = true;
+    mockRange.end = "2025-01-01";
   });
 
   it("shows loading state initially", async () => {
@@ -464,5 +470,64 @@ describe("IncomeBySourceReport", () => {
     fireEvent.keyDown(clickable, { key: 'a' });
     fireEvent.keyDown(inert, { key: 'Enter' });
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("marks the total a subtotal and shows no 0.00 when an income row was left out", async () => {
+    mockGetIncomeBySource.mockResolvedValue({
+      data: [{ categoryId: "cat-1", categoryName: "Salary", total: 50, color: "" }],
+      totalIncome: null,
+      knownIncome: 50,
+      currency: "CAD",
+      missingCurrencies: ["JPY"],
+      excludedCount: 1,
+    });
+    render(<IncomeBySourceReport />);
+    expect(await screen.findByTestId("partial-total")).toBeInTheDocument();
+    expect(screen.getByTestId("partial-total")).toHaveTextContent("$50.00");
+    expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("toggle-table"));
+    expect(await screen.findByTestId("partial-total")).toHaveTextContent("$50.00");
+    expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+  });
+});
+
+describe("IncomeBySourceReport: a reload is not the previous answer", () => {
+  const answer = { data: [{ categoryId: "cat-1", categoryName: "Salary", total: 5000, color: "#00ff00" }], totalIncome: 5000 };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRange.end = "2025-01-01";
+  });
+
+  async function loadThenChangeRange(next: () => unknown) {
+    mockGetIncomeBySource.mockResolvedValue(answer);
+    let view!: ReturnType<typeof render>;
+    await act(async () => {
+      view = render(<IncomeBySourceReport />);
+    });
+    expect(screen.getByTestId("export-pdf")).toHaveAttribute("data-disabled", "false");
+
+    mockGetIncomeBySource.mockImplementation(next);
+    mockRange.end = "2025-02-28";
+    await act(async () => {
+      view.rerender(<IncomeBySourceReport />);
+    });
+    await waitFor(() =>
+      expect(mockGetIncomeBySource).toHaveBeenLastCalledWith(
+        expect.objectContaining({ endDate: "2025-02-28" }),
+      ),
+    );
+  }
+
+  it("disables the export while the next request has failed", async () => {
+    await loadThenChangeRange(() => Promise.reject(new Error("500")));
+    expect(screen.getByTestId("export-pdf")).toHaveAttribute("data-disabled", "true");
+    expect(screen.getByTestId("export-csv")).toHaveAttribute("data-disabled", "true");
+  });
+
+  it("disables the export while the next request is pending", async () => {
+    await loadThenChangeRange(() => new Promise(() => {}));
+    expect(screen.getByTestId("export-pdf")).toHaveAttribute("data-disabled", "true");
+    expect(screen.getByTestId("export-csv")).toHaveAttribute("data-disabled", "true");
   });
 });

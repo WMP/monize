@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@/test/render';
+import { render, screen, fireEvent, within } from '@/test/render';
 import { BulkConfirmationCard } from './BulkConfirmationCard';
 import type { PendingAction } from '@/types/ai';
 
@@ -131,6 +131,44 @@ describe('BulkConfirmationCard', () => {
       screen.getByText('Create these investment transactions?'),
     ).toBeInTheDocument();
     expect(screen.getByText(/Buy AAPL/)).toBeInTheDocument();
+  });
+
+  it('names the bond series and the accrued interest of a redemption row, and flags a difference from the split', () => {
+    render(
+      <BulkConfirmationCard
+        action={makeAction({
+          type: 'create_investment_transactions',
+          preview: {
+            rows: [
+              {
+                status: 'ok',
+                investmentAction: 'REDEEM',
+                symbol: 'EDO',
+                transactionDate: '2023-04-01',
+                quantity: 10,
+                price: 100,
+                totalAmount: 1000,
+                accruedInterest: 470.5,
+                securityCurrency: 'PLN',
+                bondSeriesCode: 'EDO0423',
+                bondRedemptionSplit: {
+                  principal: 1000,
+                  interest: 470.5,
+                  deduction: 0,
+                  payout: 1470.5,
+                  outcome: 'differs',
+                },
+              },
+            ],
+          },
+        })}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Series EDO0423/)).toBeInTheDocument();
+    expect(screen.getByText(/Accrued interest/)).toBeInTheDocument();
+    expect(screen.getByText(/Check them before approving/)).toBeInTheDocument();
   });
 
   describe('batch_actions envelope', () => {
@@ -633,5 +671,68 @@ describe('BulkConfirmationCard', () => {
     expect(
       screen.getByText('This confirmation expired. Ask again to retry.'),
     ).toBeInTheDocument();
+  });
+
+  describe('rule effects on a created row', () => {
+    const ruleEffects = (structure: unknown) => ({
+      changes: { addTagIds: [], removeTagIds: [], structure },
+      aiReviewRequests: [],
+      labels: { categories: { 'cat-1': 'Loans: Interest' }, payees: {}, tags: {}, rules: {}, accounts: { loan: 'Loan account' } },
+    });
+    const okRow = (effects?: unknown) => ({
+      status: 'ok' as const,
+      accountName: 'Checking',
+      amount: -640.15,
+      currencyCode: 'USD',
+      transactionDate: '2026-10-05',
+      payeeName: 'Bank',
+      ...(effects ? { ruleEffects: effects } : {}),
+    });
+
+    it('lists the transfer or split a rule will write, per row, so the card shows the balance it moves', () => {
+      render(
+        <BulkConfirmationCard
+          action={makeAction({
+            preview: {
+              rows: [
+                okRow(ruleEffects({ kind: 'transfer', accountId: 'loan', clearCategory: true })),
+                okRow(
+                  ruleEffects({
+                    kind: 'split',
+                    parts: [
+                      { amount: -400.15, transferAccountId: 'loan', categoryId: null, payeeId: null, memo: null },
+                      { amount: -240, transferAccountId: null, categoryId: 'cat-1', payeeId: null, memo: null },
+                    ],
+                  }),
+                ),
+                okRow(),
+              ],
+            } as never,
+          })}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      const blocks = screen.getAllByTestId('rule-effects');
+      expect(blocks).toHaveLength(2);
+      expect(within(blocks[0]).getByText('Becomes a transfer with Loan account')).toBeInTheDocument();
+      expect(within(blocks[1]).getByText('Will be split into 2 parts')).toBeInTheDocument();
+      expect(within(blocks[1]).getByText('Part 1: -$400.15 to Loan account')).toBeInTheDocument();
+    });
+
+    it('shows nothing for a flagged row, which is never created', () => {
+      render(
+        <BulkConfirmationCard
+          action={makeAction({
+            preview: {
+              rows: [{ ...okRow(ruleEffects({ kind: 'transfer', accountId: 'loan', clearCategory: true })), status: 'error', error: 'Unknown account' }],
+            } as never,
+          })}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(screen.queryByTestId('rule-effects')).toBeNull();
+    });
   });
 });

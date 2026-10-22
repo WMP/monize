@@ -316,6 +316,7 @@
     "totalInflows": "Tổng dòng tiền vào",
     "totalOutflows": "Tổng dòng tiền ra",
     "netCashFlow": "Lưu chuyển tiền thuần",
+    "notAvailable": "N/A",
     "monthlyCashFlow": "Lưu chuyển tiền hàng tháng",
     "inflowsByCategory": "Dòng tiền vào theo danh mục",
     "outflowsByCategory": "Dòng tiền ra theo danh mục",
@@ -764,6 +765,7 @@
     "totalValue": "Tổng giá trị",
     "costBasis": "Cơ sở chi phí",
     "totalGainLoss": "Tổng lãi/lỗ",
+    "gainPartialCaption": "Chỉ tính trên các khoản nắm giữ có giá",
     "return": "Lợi nhuận",
     "viewHoldings": "Vị thế",
     "viewAllocation": "Phân bổ",
@@ -821,6 +823,7 @@
     "actionCapitalGainShort": "Lãi vốn ngắn hạn",
     "actionCapitalGainLong": "Lãi vốn dài hạn",
     "actionRedeem": "Đáo hạn CD/trái phiếu",
+    "actionReturnOfCapital": "Hoàn vốn",
     "colCommission": "Hoa Hồng",
     "colPriceCurrency": "Đơn Vị Tiền Tệ Giá",
     "colAmountCurrency": "Đơn Vị Tiền Tệ Số Tiền",
@@ -1146,6 +1149,11 @@
     "vsMonth": "so với {month}",
     "inMonth": "{amount} trong {month}",
     "netWorthTotal": "Tổng: {amount}",
+    "netWorthSummaryPartial": "Giá trị ròng của bạn trong {currentMonth} là <strong>{netWorth}</strong>. Không thể tính mức thay đổi so với {previousMonth} vì không có tỷ giá cho {pairs}; hãy thêm trên trang Tiền tệ.",
+    "pdfPartialSuffix": "{amount} (chưa đầy đủ)",
+    "pdfNote": "Ghi chú",
+    "pdfNotAvailable": "N/A",
+    "pdfPartialNote": "Tổng chưa đầy đủ: không có tỷ giá cho {pairs}.",
     "netWorthSummary": "Giá trị ròng của bạn trong {currentMonth} là <strong>{netWorth}</strong>, thay đổi <delta>{changeAmount}</delta> so với {previousMonth}.",
     "pdfTitle": "So sánh hàng tháng",
     "pdfSubtitle": "{current} so với {previous}",
@@ -1190,7 +1198,15 @@
     "colMonth": "Tháng",
     "colAssets": "Tài sản",
     "colLiabilities": "Nợ",
-    "colNetWorth": "Giá trị ròng"
+    "colNetWorth": "Giá trị ròng",
+    "barStyle": "Kiểu cột",
+    "barStyleNetWorth": "Tài sản ròng",
+    "barStyleAccountType": "Theo loại tài khoản",
+    "notAvailable": "N/A",
+    "colNote": "Ghi chú",
+    "partialMonthNote": "Chưa đầy đủ: không có tỷ giá cho {pairs}",
+    "pdfPartialNote": "Tổng chưa đầy đủ: không có tỷ giá cho {pairs}. Hãy thêm trên trang Tiền tệ.",
+    "partialMonth": "Không hiển thị: một số khoản tiền trong tháng này không thể quy đổi, nên giá trị ròng không xác định."
   },
   "portfolioValue": {
     "highestValue": "Giá trị cao nhất",
@@ -1198,10 +1214,10 @@
     "valueChange": "Thay đổi giá trị",
     "investedValueChangeTooltip": "Giá trị chứng khoán vào cuối kỳ trừ đi giá trị vào đầu kỳ: điểm cuối cùng trên biểu đồ trừ điểm đầu tiên. Tiền mặt chưa đầu tư không được tính.",
     "netInvested": "Đầu tư ròng",
-    "netInvestedTooltip": "Số tiền đã đưa vào chứng khoán trong kỳ, trừ đi số tiền rút ra qua việc bán và chuyển nhượng cổ phần. Tiền mặt nạp vào hoặc rút ra không được tính.",
+    "netInvestedTooltip": "Số tiền đã đưa vào chứng khoán trong kỳ, trừ đi số tiền rút ra qua việc bán và chuyển nhượng cổ phần. Các khoản phân phối được tái đầu tư vào cổ phần được tính là tiền đưa vào. Tiền mặt nạp vào hoặc rút ra không được tính.",
     "investmentIncome": "Cổ tức và lãi",
     "investmentIncomeLine": "Cổ tức và lãi {amount}",
-    "investmentIncomeTooltip": "Cổ tức, tiền lãi và phân phối lãi vốn mà chứng khoán đã trả trong kỳ. Thay đổi giá trị, trừ Đầu tư ròng, cộng các khoản này, là Kết quả đầu tư.",
+    "investmentIncomeTooltip": "Cổ tức, tiền lãi và phân phối lãi vốn mà chứng khoán đã trả trong kỳ. Các khoản phân phối được tái đầu tư vào cổ phần được tính như khoản trả bằng tiền mặt. Thay đổi giá trị, trừ Đầu tư ròng, cộng các khoản này, là Kết quả đầu tư.",
     "investmentResult": "Kết quả đầu tư",
     "investmentReturn": "Lợi nhuận đầu tư",
     "investmentResultTooltip": "Số tiền khoản đầu tư của bạn kiếm được: thay đổi giá trị của chứng khoán, đã trừ đi mua, bán, nạp, rút và tiền mặt chưa đầu tư, và cộng thêm cổ tức cùng lãi.",
@@ -1276,6 +1292,7 @@
     "colDate": "Ngày",
     "colShares": "Cổ phiếu",
     "colPrice": "Giá",
+    "returnOfCapitalRow": "Hoàn vốn vượt quá cơ sở chi phí",
     "pdfTitle": "Báo cáo lãi đã thực hiện",
     "pdfSubtitle": "{count} chứng khoán | Lãi ròng: {gain}",
     "csvColSecurity": "Chứng khoán",
@@ -1848,6 +1865,13 @@
   "foreignCurrencyFees": {
     "noEligibleAccounts": "Không có tài khoản nào được cấu hình phí giao dịch nước ngoài. Đặt tỷ lệ phí phần trăm cho một tài khoản để theo dõi phí ngoại tệ của tài khoản đó tại đây."
   },
+  "partialData": {
+    "notice": "Một số số liệu chưa đầy đủ: {count, plural, other {# khoản tiền không thể quy đổi sang {displayCurrency} và}} đã bị loại ra. Không có tỷ giá cho {currencies}; hãy thêm trên trang Tiền tệ.",
+    "noticeExcluded": "Một số số liệu chưa đầy đủ: {count, plural, other {# khoản tiền không thể tính được và}} đã bị loại ra.",
+    "pdfNote": "Tổng chưa đầy đủ: không có tỷ giá cho {currencies}",
+    "pdfNoteExcluded": "Tổng chưa đầy đủ: đã loại ra {count, plural, other {# khoản tiền}}",
+    "pdfSuffix": "(chưa đầy đủ)"
+  },
   "sankey": {
     "help": "Tiền vào chảy qua phần giữa tới những gì đã chi tiêu, phần đã tiết kiệm hoặc đầu tư và phần đã trả nợ. Theo mặc định, báo cáo bao gồm các tài khoản thanh toán, tiết kiệm, tiền mặt, thẻ tín dụng và hạn mức tín dụng đang mở của bạn, và chuyển khoản giữa hai tài khoản trong số đó không được hiển thị. Hãy bỏ một tài khoản tiết kiệm khỏi bộ lọc tài khoản để xem bạn đã chuyển bao nhiêu vào đó. Thanh toán thẻ tín dụng không bao giờ là trả nợ: các giao dịch mua mà nó tất toán đã được tính là chi tiêu.",
     "depthLabel": "Mức chi tiết",
@@ -1894,5 +1918,8 @@
       "residualDeficit": "Rút từ số dư",
       "unlinkedAccount": "(tài khoản chưa liên kết)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Đã tạo: {timestamp}"
   }
 }

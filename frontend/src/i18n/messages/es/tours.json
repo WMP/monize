@@ -427,5 +427,42 @@
         }
       }
     }
+  },
+  "emailReceipts": {
+    "basics": {
+      "title": "Recibos por correo",
+      "steps": {
+        "welcome": {
+          "title": "Por qué leer recibos por correo",
+          "body": "Una transacción bancaria indica cuánto pagó y cuándo. No indica qué compró. El correo de confirmación del pedido sí. Monize lee estos correos, encuentra la transacción que pagó cada uno y propone una descripción, un beneficiario y un desglose por línea con una categoría para cada línea. Usted aprueba cada propuesta antes de que modifique una transacción."
+        },
+        "aiRequired": {
+          "title": "En la práctica, necesita un proveedor de IA",
+          "body": "Monize lee un correo con un **perfil**: un conjunto de patrones para un dominio de remitente, por ejemplo una tienda. Puede escribir un perfil a mano, pero cada patrón debe coincidir con las líneas exactas de los correos de esa tienda, así que en la práctica lo escribe una IA. La IA escribe el perfil una sola vez, a partir de unos pocos correos de muestra. Después de que lo apruebe, el perfil lee cada correo nuevo de esa tienda sin la IA."
+        },
+        "aiProviders": {
+          "title": "Configure primero un proveedor de IA",
+          "body": "Añada aquí un proveedor y pruebe la conexión. Sin un proveedor, el asistente de perfiles no puede escribir un perfil y los correos de una tienda sin perfil quedan sin leer."
+        },
+        "tabs": {
+          "title": "Cuatro pestañas, en el orden en que se usan",
+          "body": "**Resumen** muestra lo que Monize ha leído. En **Buzón**, conecte un buzón que contenga solo confirmaciones de pedidos. Monize solo lo lee: nunca mueve, marca ni elimina un mensaje. **Perfiles** contiene un perfil por tienda. **Correos** enumera cada correo y su estado."
+        },
+        "uncovered": {
+          "title": "Tiendas sin perfil",
+          "body": "Este cuadro enumera los dominios de remitente que ningún perfil puede leer todavía. Elija uno para iniciar el asistente. Seleccione hasta cinco de sus correos y empareje cada uno con la transacción bancaria que pagó. La IA escribe un perfil y lo prueba con estos pares. Después verá una vista previa de todos los correos de esa tienda, y acepta el perfil o pide un cambio con una nota breve.",
+          "fallbackBody": "Todavía no tiene correos de una tienda sin perfil. Cuando conecte el buzón, cada dominio de remitente aparecerá aquí como una etiqueta, por ejemplo **shop.example (12)**: el dominio y el número de sus correos. Elija la etiqueta para iniciar el asistente. Seleccione hasta cinco de sus correos y empareje cada uno con la transacción bancaria que pagó. La IA escribe un perfil y lo prueba con estos pares. Después verá una vista previa de todos los correos de esa tienda, y acepta el perfil o pide un cambio con una nota breve."
+        },
+        "profiles": {
+          "title": "Sus perfiles",
+          "body": "Cada fila es un perfil, aprobado o borrador. **Crear un perfil nuevo manualmente** abre el editor de un perfil escrito a mano. Úselo para corregir un detalle pequeño en un borrador de la IA. Cuando aprueba un perfil, Monize lee de inmediato los correos de su dominio.",
+          "fallbackBody": "Todavía no tiene perfiles. Cada perfil que acepte aparecerá aquí como una fila, por ejemplo **Shop Example**, dominio **shop.example**, estado **Aprobado**. **Crear un perfil nuevo manualmente** abre el editor de un perfil escrito a mano. Úselo solo para corregir un detalle pequeño en un borrador de la IA. Cuando aprueba un perfil, Monize lee de inmediato los correos de su dominio."
+        },
+        "reviews": {
+          "title": "Apruebe las propuestas",
+          "body": "Cada correo que coincide con una transacción se convierte en una propuesta en la **Bandeja de revisión de IA**, en el menú **AI**. Una propuesta muestra, por ejemplo, las líneas de un pedido con una categoría para cada línea. Nada cambia en sus transacciones hasta que apruebe la propuesta allí."
+        }
+      }
+    }
   }
 }

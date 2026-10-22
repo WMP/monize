@@ -51,6 +51,7 @@
     "costBasisTooltip": "Quanto è costato acquisire le posizioni attuali, ricostruito dalla cronologia delle transazioni: prezzi di acquisto più la commissione addebitata su ogni acquisto, ciascuno convertito al tasso dell'operazione che l'ha pagato. Mostrato nella tua valuta di visualizzazione. Usato per calcolare guadagni e perdite.",
     "gainLoss": "Guadagno/Perdita",
     "gainLossTooltip": "Guadagno o perdita non realizzati sulle posizioni attuali: valore di mercato ai prezzi odierni meno il costo di acquisto qui sopra. Non include i guadagni realizzati da vendite passate, né dividendi e interessi ricevuti.",
+    "gainPartialCaption": "Solo sulle posizioni con prezzo",
     "returns": "Rendimenti",
     "simpleReturn": "Rendimento semplice",
     "simpleReturnTooltip": "Guadagno o perdita rispetto a quanto pagato: (Valore di mercato − Costo di acquisto) ÷ Costo di acquisto. Non tiene conto di quando è arrivato il denaro, quindi salta a ogni acquisto: una posizione di 1.000 in rialzo del 20% mostra +20%; acquistane un'altra da 1.000 e mostrerà +10% (200 ÷ 2.000) anche se non si è perso nulla. TWR e MWR non hanno questo salto.",
@@ -88,6 +89,14 @@
       "assetClass": "Per classe di attivo"
     }
   },
+  "assetClasses": {
+    "equity": "Azioni",
+    "fixedIncome": "Reddito fisso",
+    "cash": "Cassa",
+    "preferred": "Azioni privilegiate",
+    "convertible": "Convertibili",
+    "crypto": "Cripto"
+  },
   "holdingsList": {
     "title": "Posizioni",
     "noHoldings": "Nessuna posizione in questo portafoglio.",
@@ -102,6 +111,7 @@
     "title": "Posizioni per conto",
     "noHoldings": "Nessuna posizione nel portafoglio.",
     "accountIncomplete": "Parziale: i totali di questo conto escludono posizioni che non è stato possibile valorizzare in {currency}.",
+    "gainPartialCaption": "Solo sulle posizioni con prezzo",
     "accountSummary": "{accounts} conto{accountsPlural} con {positions} posizion{positionsPlural}",
     "positionsWithCash": "{count} posizion{plural} + Liquidità",
     "positions": "{count} posizion{plural}",
@@ -129,6 +139,7 @@
     "intradayUnavailableDescription": "Una o più posizioni usano un fornitore di quotazioni (MSN Money) che non espone dati intraday. Passa a un intervallo più lungo per vedere le istantanee giornaliere.",
     "noDataForPeriod": "Nessun dato di investimento per questo periodo.",
     "highestValue": "Valore massimo",
+    "incompleteTooltip": "Ad alcuni punti di questo intervallo manca un prezzo o un tasso di cambio, quindi il massimo e il minimo non sono mostrati.",
     "lowestValue": "Valore minimo",
     "valueChange": "Variazione di valore",
     "valueChangeTooltip": "Il valore dei titoli alla fine del periodo, meno il loro valore all'inizio: l'ultimo punto del grafico meno il primo. La liquidità non investita è esclusa.",
@@ -190,6 +201,7 @@
     "actionCapitalGainShort": "Plusvalenza a breve termine",
     "actionCapitalGainLong": "Plusvalenza a lungo termine",
     "actionRedeem": "Rimborso CD/obbligazione",
+    "actionReturnOfCapital": "Rimborso di capitale",
     "allActions": "Tutte le azioni"
   },
   "transactionForm": {
@@ -210,6 +222,7 @@
     "actionCapitalGainShort": "Plusvalenza a breve termine",
     "actionCapitalGainLong": "Plusvalenza a lungo termine",
     "actionRedeem": "Rimborso CD/obbligazione",
+    "actionReturnOfCapital": "Rimborso di capitale",
     "actionTransfer": "Trasferimento",
     "brokerageAccount": "Conto di intermediazione",
     "fromAccount": "Conto di origine",
@@ -253,7 +266,8 @@
     "sourceHolds": "L'origine detiene",
     "sharesAt": "azioni @",
     "avgCostSuffix": "costo medio.",
-    "transferCostNote": "Il costo per azione (precompilato dal conto di origine) viene trasferito alla destinazione in modo che i report su guadagni e profitti rimangano corretti. Questo sposta solo le azioni -- non vengono trasferiti contanti.",
+    "transferCostNote": "Il costo per quota è quanto le quote sono costate nel conto di origine alla data del trasferimento. Viene calcolato al salvataggio e riportato sul conto di destinazione, così i report su plusvalenze e profitti restano corretti. Vengono spostate solo quote; nessun contante cambia di mano.",
+    "returnOfCapitalNote": "Un rimborso di capitale non è un reddito. Restituisce parte di quanto sono costate le azioni, quindi riduce di questo importo il costo di acquisto della posizione. L'eventuale eccedenza rispetto al costo di acquisto residuo viene registrata come plusvalenza realizzata.",
     "totalAmount": "Importo totale ({currency})",
     "sharesAtPrice": "{shares} azioni @ {symbol}{price}",
     "commissionSuffix": "commissione",
@@ -288,7 +302,30 @@
     "toastSaveFailed": "Salvataggio transazione non riuscito",
     "exchangeRateUnresolved": "Nessun tasso da {from} a {to} disponibile. Inseriscine uno, o il totale convertito, prima di salvare.",
     "toastExchangeRateRequired": "Inserisci un tasso di cambio prima di salvare un'operazione tra valute.",
-    "notAvailable": "Non disponibile"
+    "notAvailable": "Non disponibile",
+    "bondSeries": {
+      "label": "Serie obbligazionaria",
+      "fromDate": "Determinata in base alla data",
+      "oldestFirst": "Prima le più vecchie",
+      "loading": "Caricamento delle serie...",
+      "loadFailed": "Impossibile caricare le serie.",
+      "retry": "Riprova",
+      "fromDateCode": "Dalla data: {code}",
+      "noneOnSale": "Nessuna serie in vendita a questa data",
+      "choose": "Scegli una serie",
+      "required": "Scegli la serie di questi titoli.",
+      "heldOption": "{code} ({quantity} detenuti)",
+      "noLongerHeld": "{code} (non più detenuta a questa data)",
+      "noLongerHeldUnknown": "Serie memorizzata (non più detenuta a questa data)",
+      "storedSeries": "Serie memorizzata",
+      "seriesOnSaleMonth": "{code} — in vendita {month}",
+      "seriesOnSaleRange": "{code} — in vendita dal {from} al {to}"
+    },
+    "bondRedemption": {
+      "summary": "Interessi {interest}, trattenuta per rimborso anticipato {deduction}, importo erogato {payout}",
+      "outsideSaleWindow": "Un lotto di questa serie è stato acquistato fuori dal suo periodo di vendita, quindi il rimborso non può essere suddiviso.",
+      "failed": "Non è stato possibile calcolare la suddivisione del rimborso."
+    }
   },
   "newTransactionButton": {
     "label": "+ Nuova transazione",

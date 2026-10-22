@@ -17,6 +17,7 @@ import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
 import { useTranslations } from 'next-intl';
+import { quoteSearchValue } from '@/lib/search-query';
 
 export function DuplicateTransactionReport() {
   const t = useTranslations('reports');
@@ -38,7 +39,9 @@ export function DuplicateTransactionReport() {
   );
 
   const handleTransactionClick = (tx: DuplicateTransactionItem) => {
-    router.push(`/transactions?search=${encodeURIComponent(tx.payeeName || '')}`);
+    // An exact payee term, so "Costco" does not also open "Costco Gas Bar".
+    const search = tx.payeeName ? quoteSearchValue('payee', tx.payeeName) : '';
+    router.push(`/transactions?search=${encodeURIComponent(search)}`);
   };
 
   const getConfidenceStyles = (confidence: DuplicateGroup['confidence']) => {

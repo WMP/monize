@@ -238,8 +238,7 @@ describe("EmergencyAccessMonitorService", () => {
         for (const result of settingsRepo.find.mock.results) {
           if (result.type !== "return") continue;
           const rows = (await result.value) as
-            | { ownerUserId?: string }[]
-            | undefined;
+            { ownerUserId?: string }[] | undefined;
           const hit = rows?.find(
             (row) => wanted === undefined || row.ownerUserId === wanted,
           );
@@ -280,8 +279,7 @@ describe("EmergencyAccessMonitorService", () => {
             for (const result of settingsRepo.find.mock.results) {
               if (result.type !== "return") continue;
               const rows = (await result.value) as
-                | Record<string, unknown>[]
-                | undefined;
+                Record<string, unknown>[] | undefined;
               for (const row of rows ?? []) {
                 if (requireGranted && row.grantedAt == null) continue;
                 affected += 1;

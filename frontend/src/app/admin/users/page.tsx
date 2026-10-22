@@ -72,31 +72,39 @@ export default function AdminUsersPage() {
     }
   }, [currentUser, router]);
 
-  const loadUsers = useCallback(async () => {
-    try {
-      const data = await adminApi.getUsers();
-      setUsers(data);
-    } catch (error) {
-      logger.error('Failed to load users:', error);
-      toast.error(getErrorMessage(error, t('usersPage.toasts.loadFailed')));
-    } finally {
-      setIsLoading(false);
-    }
+  const loadUsers = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const data = await adminApi.getUsers();
+        setUsers(data);
+      } catch (error) {
+        logger.error('Failed to load users:', error);
+        toast.error(getErrorMessage(error, t('usersPage.toasts.loadFailed')));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [t]);
 
-  const loadStorage = useCallback(async () => {
-    try {
-      const rows = await adminApi.getUserStorage();
-      setStorage({
-        status: 'ready',
-        byUser: new Map(rows.map((row) => [row.userId, row])),
-      });
-    } catch (error) {
-      // No toast: the two columns say what is missing and what to do about it,
-      // where the reader is already looking, and the rest of the page works.
-      logger.error('Failed to load storage usage:', error);
-      setStorage({ status: 'error' });
-    }
+  const loadStorage = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const rows = await adminApi.getUserStorage();
+        setStorage({
+          status: 'ready',
+          byUser: new Map(rows.map((row) => [row.userId, row])),
+        });
+      } catch (error) {
+        // No toast: the two columns say what is missing and what to do about it,
+        // where the reader is already looking, and the rest of the page works.
+        logger.error('Failed to load storage usage:', error);
+        setStorage({ status: 'error' });
+      }
+    };
+    return run();
   }, []);
 
   useEffect(() => {

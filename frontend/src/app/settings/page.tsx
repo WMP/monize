@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { CARD_CLASS, HOVER_ROW_ON_CARD } from '@/components/ui/Card';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ProfileSection } from '@/components/settings/ProfileSection';
 import { PreferencesSection } from '@/components/settings/PreferencesSection';
@@ -39,6 +40,8 @@ const SETTINGS_SECTION_IDS = [
   { id: 'emergency-access', navKey: 'emergencyAccess', href: '/settings/emergency-access', demoVisible: false },
   { id: 'api-access', navKey: 'apiAccess', demoVisible: false },
   { id: 'ai-settings', navKey: 'aiSettings', href: '/settings/ai', demoVisible: false },
+  { id: 'bank-sync', navKey: 'bankSync', href: '/settings/bank-sync', demoVisible: false },
+  { id: 'email-receipts', navKey: 'emailReceipts', href: '/email-receipts', demoVisible: false },
   { id: 'payee-lookup', navKey: 'payeeLookup', demoVisible: false },
   // Manual export/restore for the current user's own data. Automatic-backup
   // configuration is a deployment/operator concern and lives on its own
@@ -196,26 +199,30 @@ function OwnerSettingsView() {
 
   const [activeSection, setActiveSection] = useScrollSpy(sectionIds, { enabled: !isLoading });
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [userData, prefsData, smtpStatus, authMethods] = await Promise.all([
-        userSettingsApi.getProfile(),
-        userSettingsApi.getPreferences(),
-        userSettingsApi.getSmtpStatus().catch(() => ({ configured: false })),
-        authApi.getAuthMethods().catch(() => ({ local: true, oidc: false, registration: true, smtp: false, force2fa: false, demo: false })),
-      ]);
-      setUser(userData);
-      setPreferences(prefsData);
-      setSmtpConfigured(smtpStatus.configured);
-      setForce2fa(authMethods.force2fa);
-      useDemoStore.getState().setDemoMode(authMethods.demo ?? false);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t('toasts.loadFailed')));
-      logger.error(error);
-    } finally {
-      setIsLoading(false);
-    }
+  // The only load is the mount one, and the state already says loading.
+  const loadData = useCallback(() => {
+    // Writes live in `run` so they land after the request, not during the effect.
+    const run = async () => {
+      try {
+        const [userData, prefsData, smtpStatus, authMethods] = await Promise.all([
+          userSettingsApi.getProfile(),
+          userSettingsApi.getPreferences(),
+          userSettingsApi.getSmtpStatus().catch(() => ({ configured: false })),
+          authApi.getAuthMethods().catch(() => ({ local: true, oidc: false, registration: true, smtp: false, force2fa: false, demo: false })),
+        ]);
+        setUser(userData);
+        setPreferences(prefsData);
+        setSmtpConfigured(smtpStatus.configured);
+        setForce2fa(authMethods.force2fa);
+        useDemoStore.getState().setDemoMode(authMethods.demo ?? false);
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('toasts.loadFailed')));
+        logger.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
   }, [t]);
 
   useEffect(() => {
@@ -372,6 +379,38 @@ function OwnerSettingsView() {
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {t('aiSettingsCard.description')}
+                  </p>
+                </Link>
+              </div>
+            )}
+
+            {!isDemoMode && (
+              <div id="bank-sync" className="scroll-mt-32 lg:scroll-mt-22">
+                <Link
+                  href="/settings/bank-sync"
+                  className="block bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                    {t('bankSyncCard.title')}
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {t('bankSyncCard.description')}
+                  </p>
+                </Link>
+              </div>
+            )}
+
+            {!isDemoMode && (
+              <div id="email-receipts" className="scroll-mt-32 lg:scroll-mt-22">
+                <Link
+                  href="/email-receipts"
+                  className={`block ${CARD_CLASS} p-6 mb-6 ${HOVER_ROW_ON_CARD}`}
+                >
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                    {t('emailReceiptsCard.title')}
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {t('emailReceiptsCard.description')}
                   </p>
                 </Link>
               </div>

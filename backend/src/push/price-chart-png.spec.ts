@@ -13,7 +13,7 @@ describe("price chart PNG", () => {
     expect(png.readUInt32BE(16)).toBe(CHART_WIDTH);
     expect(png.readUInt32BE(20)).toBe(CHART_HEIGHT);
     const parts: Buffer[] = [];
-    for (let i = 8; i < png.length; ) {
+    for (let i = 8; i < png.length;) {
       const length = png.readUInt32BE(i),
         type = png.toString("ascii", i + 4, i + 8);
       if (type === "IDAT") parts.push(png.subarray(i + 8, i + 8 + length));

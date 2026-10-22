@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Banner } from '@/components/rules/RuleEditorBanners';
 import { RuleRunFilterFields } from '@/components/rules/RuleRunFilterFields';
-import { RuleRunPreviewTable, RuleRunSkippedList } from '@/components/rules/RuleRunPreviewTable';
+import { RuleRunAiReviewOutcome, RuleRunPreviewTable, RuleRunSkippedList } from '@/components/rules/RuleRunPreviewTable';
 import type { RuleOption } from '@/components/rules/use-rule-options';
 import { useRuleRunErrorMessage } from '@/components/rules/use-rule-run-error';
 import { useRunAccountOptions } from '@/components/rules/use-run-account-options';
@@ -39,6 +39,24 @@ interface RunRuleDialogProps {
   /** The accounts a run can be limited to; loaded here when the caller has none. */
   accountOptions?: readonly RuleOption[];
   onClose: () => void;
+}
+
+/** A run is worth confirming when it changes a row or queues a row for AI review. */
+const hasRunWork = (preview: RuleRunPreview): boolean => preview.matched.length > 0 || preview.aiReviewRequests > 0;
+
+/**
+ * The toast after a run. The undo promise belongs only to a run that wrote an
+ * action-history entry (`historyId`); a run that only queued reviews, or found
+ * every review already open, says what happened instead.
+ */
+function runToastMessage(result: RuleRunResult, t: ReturnType<typeof useTranslations>): string {
+  if (result.historyId !== null) return t('toast.done', { count: result.changed });
+  if (result.changed > 0) return t('toast.changedNoUndo', { count: result.changed });
+  if (result.aiReviewsQueued > 0) return t('toast.aiReviewsQueued', { count: result.aiReviewsQueued });
+  if (result.aiReviewsAlreadyQueued > 0) {
+    return t('toast.aiReviewsAlreadyQueued', { count: result.aiReviewsAlreadyQueued });
+  }
+  return t('toast.noChanges');
 }
 
 type PreviewState =
@@ -93,15 +111,15 @@ function RunRuleBody({ rule, accountOptions, onClose }: RunRuleDialogProps & { r
   };
 
   const confirm = async () => {
-    // Only a fresh preview with something to change may be confirmed.
-    if (preview.status !== 'ready' || preview.key !== key || preview.preview.matched.length === 0) return;
+    // Only a fresh preview with something to change or to queue for review may be confirmed.
+    if (preview.status !== 'ready' || preview.key !== key || !hasRunWork(preview.preview)) return;
     const sent = filters;
     setRun({ status: 'running' });
     setNotice(null);
     try {
       const result = await transactionRulesApi.run(rule.id, filtersToRequest(sent), preview.preview.fingerprint);
       setRun({ status: 'done', result });
-      toast.success(t('toast.done', { count: result.changed }));
+      toast.success(runToastMessage(result, t));
       // The action history panel and any open list reload on this signal.
       notifyUndoRedo();
     } catch (error) {
@@ -119,7 +137,7 @@ function RunRuleBody({ rule, accountOptions, onClose }: RunRuleDialogProps & { r
   };
 
   const canConfirm =
-    preview.status === 'ready' && !stale && preview.preview.matched.length > 0 && !running && !hasBackwardsRange(filters);
+    preview.status === 'ready' && !stale && hasRunWork(preview.preview) && !running && !hasBackwardsRange(filters);
 
   const footer = finished ? (
     <Button type="button" onClick={onClose}>
@@ -170,7 +188,9 @@ function RunRuleBody({ rule, accountOptions, onClose }: RunRuleDialogProps & { r
       {finished ? (
         <div className="space-y-2" aria-live="polite">
           <p className="text-sm text-gray-900 dark:text-gray-100">{t('done.summary', { count: run.result.changed })}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-300">{t('done.undo')}</p>
+          <RuleRunAiReviewOutcome result={run.result} />
+          {/* A run that only queued reviews wrote no undo entry. */}
+          {run.result.changed > 0 && <p className="text-sm text-gray-600 dark:text-gray-300">{t('done.undo')}</p>}
           <RuleRunSkippedList skipped={run.result.skipped} />
         </div>
       ) : (
