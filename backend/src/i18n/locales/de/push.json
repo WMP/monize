@@ -47,6 +47,10 @@
     "ai_review": {
       "title": "KI-Prüfvorschläge",
       "body": "Einige KI-Prüfvorschläge warten auf Ihre Entscheidung. Öffnen Sie Monize für die Details."
+    },
+    "warranties": {
+      "title": "Garantie-Erinnerung",
+      "body": "Eine Ihrer Garantien läuft bald ab. Öffnen Sie Monize für die Details."
     }
   },
   "actions": {

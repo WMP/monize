@@ -58,9 +58,11 @@ import { buildCategoryTree, signAmountByCategory } from '@/lib/categoryUtils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { useAuthStore } from '@/store/authStore';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import { AttachmentsSection } from './AttachmentsSection';
+import { TransactionWarrantiesLine } from './TransactionWarrantiesLine';
 import { attachmentsApi } from '@/lib/attachments';
 import type { StagedAttachment } from '@/types/attachment';
 import { optionalUuid, optionalString } from '@/lib/zod-helpers';
@@ -148,6 +150,21 @@ interface TransactionFormProps {
    * so each becomes a `StagedAttachment` carrying only `file`.
    */
   initialStagedFiles?: File[];
+  /**
+   * The Warranties line's "Add warranty": the host closes this form through
+   * its own close path (which asks about unsaved edits) and then opens the
+   * Warranties page's form prefilled from the transaction. Leave it off and
+   * the line offers no Add.
+   */
+  onAddWarranty?: (transaction: Transaction) => void;
+  /**
+   * Opens one linked warranty's page from the Warranties line, through the
+   * same close-then-navigate as `onAddWarranty`. A plain link cannot do it:
+   * this form sits in a `pushHistory` Modal, and the Modal's unmount pops its
+   * history entry, which undoes the link's navigation. Leave it off and the
+   * line lists the warranties without links.
+   */
+  onOpenWarranty?: (warrantyId: string) => void;
 }
 
 interface TransactionFormFieldsProps extends TransactionFormProps {
@@ -158,8 +175,11 @@ interface TransactionFormFieldsProps extends TransactionFormProps {
 // Transaction mode type
 type TransactionMode = 'normal' | 'split' | 'transfer';
 
-function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, defaultDate, onSuccess, onCancel, onDirtyChange, submitRef, onCreateAnother, initialStagedFiles }: TransactionFormFieldsProps) {
+function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, defaultDate, onSuccess, onCancel, onDirtyChange, submitRef, onCreateAnother, initialStagedFiles, onAddWarranty, onOpenWarranty }: TransactionFormFieldsProps) {
   const t = useTranslations('transactions');
+  // An acting delegate never sees the Warranties line: a warranty is the
+  // owner's to add, and the same rule makes the Warranties page read-only.
+  const actingAsDelegate = useAuthStore((s) => s.actingAsUserId) !== null;
   const { defaultCurrency, formatCurrency, formatNumber } = useNumberFormat();
   const showCreatedAt = usePreferencesStore((s) => s.preferences?.showCreatedAt ?? false);
   const timeFormat = usePreferencesStore((s) => s.preferences?.timeFormat ?? '24h');
@@ -1174,7 +1194,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
         // Both halves of a scan pair go in ONE request: the server writes them
         // in one transaction, so uploading the original separately would leave
         // a window where the pair is half stored.
-        await attachmentsApi.upload(newTransactionId, file, original);
+        await attachmentsApi.upload({ transactionId: newTransactionId }, file, original);
       } catch (error) {
         failed += 1;
         logger.error('Failed to upload staged attachment:', error);
@@ -1773,6 +1793,18 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
         <AttachmentsSection
           stagedFiles={stagedAttachments}
           onStagedFilesChange={setStagedAttachments}
+        />
+      )}
+
+      {/* Warranties linked to this purchase, and Add warranty. A saved row
+          only (a warranty links to a transaction that exists), not on a joint
+          account's row (a warranty is the reader's own, as attachments are),
+          and not for an acting delegate. */}
+      {transaction && !selectedIsJoint && !actingAsDelegate && (
+        <TransactionWarrantiesLine
+          transaction={transaction}
+          onAddWarranty={onAddWarranty ? () => onAddWarranty(transaction) : undefined}
+          onOpenWarranty={onOpenWarranty}
         />
       )}
 

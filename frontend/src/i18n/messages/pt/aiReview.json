@@ -48,6 +48,7 @@
       "tradeChat": "Pediu para reconhecer a confirmação de negociação em anexo: proponha a transação de investimento que reporta, uma compra, uma venda, um dividendo em dinheiro ou um dividendo reinvestido."
     },
     "emailReceipt": "Recibo por e-mail: {subject} de {sender}",
+    "emailReceiptForwarded": "Recibo por e-mail: {subject} de {sender}, reencaminhado por {forwarder}",
     "emailReceiptMissing": "Recibo por e-mail (o e-mail foi eliminado)",
     "parserDraft": "Rascunho de perfil de {count, plural, one {# e-mail} other {# e-mails}} ({domain})",
     "viewEmailReceipts": "Ver recibos por e-mail",

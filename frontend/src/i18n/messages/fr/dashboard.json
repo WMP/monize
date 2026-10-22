@@ -93,6 +93,11 @@
     "viewAll": "Voir toutes les analyses",
     "activeCount": "{count} actif(s)"
   },
+  "warrantiesExpiring": {
+    "title": "Garanties bientôt expirées",
+    "empty": "Rien n'expire dans les 30 prochains jours",
+    "loadFailed": "Impossible de charger vos garanties qui expirent. Rechargez le tableau de bord pour réessayer."
+  },
   "topMovers": {
     "title": "Plus fortes variations",
     "empty": {

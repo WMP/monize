@@ -1,9 +1,10 @@
 import { Logger } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
-import { EntityManager } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 
 import { PersonalAccessToken } from "./entities/personal-access-token.entity";
 import { TrustedDevice } from "../users/entities/trusted-device.entity";
+import { revokeUserRefreshFamilies } from "./refresh-revocation";
 
 /**
  * Injection token for the OAuth provider's "revoke everything for this user".
@@ -36,9 +37,11 @@ export interface OAuthGrantRevoker {
  *    personal access tokens and trusted devices. They are ordinary rows under
  *    `withScopedDb`, so they commit or roll back with the new password -- a
  *    refused reset revokes nothing, and a committed one cannot leave them live.
- * 2. **After that commit**: refresh tokens, through each path's existing
- *    mechanism (`TokenService.revokeAllUserRefreshTokens` converges across
- *    several transactions and must not be nested), and the OAuth provider's
+ * 2. **After that commit**: refresh tokens, through the converging revocation
+ *    (`TokenService.revokeAllUserRefreshTokens`, or
+ *    `revokeRefreshSessionsAfterCommit` below where `TokenService` cannot be
+ *    injected; both run several transactions and must not be nested), and the
+ *    OAuth provider's
  *    grants and tokens (`revokeOAuthGrantsAfterCommit`), which live in the
  *    provider's own store and are reached only through
  *    `OAuthProviderService.revokeAllForUser`. A failure there is logged at
@@ -83,6 +86,35 @@ export async function revokeOAuthGrantsAfterCommit(
       `Credentials for account ${userId} were replaced, but revoking its OAuth ` +
         `grants failed; connected MCP clients may still have access and need ` +
         `revoking by hand`,
+      error instanceof Error ? error.stack : String(error),
+    );
+    throw error;
+  }
+}
+
+/**
+ * End every refresh session `userId` had open, after the credential write
+ * committed, converging against a concurrent rotation
+ * (`revokeUserRefreshFamilies`). For the paths that cannot inject
+ * `TokenService`; the in-transaction blanket UPDATE those paths keep is a
+ * first pass only, since it misses a successor inserted after its snapshot.
+ *
+ * Same failure contract as `revokeOAuthGrantsAfterCommit`: the password has
+ * already changed, so a failure is logged at `error` with the account id and
+ * rethrown, never reported as a clean reset.
+ */
+export async function revokeRefreshSessionsAfterCommit(
+  dataSource: DataSource,
+  userId: string,
+  logger: Logger,
+): Promise<void> {
+  try {
+    await revokeUserRefreshFamilies(dataSource, userId, logger);
+  } catch (error) {
+    logger.error(
+      `Credentials for account ${userId} were replaced, but revoking its ` +
+        `refresh sessions failed; signed-in browsers may still have access and ` +
+        `need revoking by hand`,
       error instanceof Error ? error.stack : String(error),
     );
     throw error;

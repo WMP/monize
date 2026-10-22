@@ -383,6 +383,12 @@
       "readyMessage": "Kararınızı bekleyen öneri sayısı: {{ count }}. Son bildirimden bu yana yeni: {{ added }}. İncelemek için açın.",
       "expiringTitle": "Yapay zeka inceleme önerilerinin süresi yakında doluyor",
       "expiringMessage": "3 gün içinde süresi dolacak öneri sayısı: {{ count }}. İlkinin süresi {{ date }} tarihinde doluyor. İncelemek için açın."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: garantinin süresi yakında doluyor",
+      "expiringMessage": "{{ name }} garantisinin süresi {{ date }} tarihinde doluyor. Belgelerini incelemek veya bir talep kaydetmek için açın.",
+      "todayTitle": "{{ name }}: garantinin süresi bugün doluyor",
+      "todayMessage": "{{ name }} garantisinin süresi bugün, {{ date }} tarihinde doluyor. Belgelerini incelemek veya bir talep kaydetmek için açın."
     }
   },
   "backupOffsite": {

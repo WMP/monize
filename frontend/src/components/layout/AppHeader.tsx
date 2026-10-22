@@ -118,8 +118,9 @@ export function AppHeader() {
   const visibleAiLinks = isDelegateView
     ? aiLinks.filter((l) => !l.ownerOnly)
     : aiLinks;
-  // A delegate sees only the Tools sections they were granted manage
-  // capability for (payees/categories/tags). Everyone else sees all.
+  // A delegate sees a Tools entry when either its manage capability
+  // (payees/categories/tags) or its READ section (warranties) was granted.
+  // Everyone else sees all.
   const toolsCapabilityByHref: Record<
     string,
     'payees' | 'categories' | 'tags'
@@ -128,8 +129,13 @@ export function AppHeader() {
     '/payees': 'payees',
     '/tags': 'tags',
   };
+  const toolsSectionByHref: Record<string, 'warranties'> = {
+    '/warranties': 'warranties',
+  };
   const visibleToolsLinks = isDelegateView
     ? toolsLinks.filter((l) => {
+        const sec = toolsSectionByHref[l.href];
+        if (sec && delegateSections?.[sec]) return true;
         const cap = toolsCapabilityByHref[l.href];
         if (!cap) return false;
         const r = delegateCapabilities?.[cap];

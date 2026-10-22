@@ -48,6 +48,7 @@
       "tradeChat": "添付の取引確認の認識を依頼されました:報告されている投資取引 (購入、売却、現金配当、または配当再投資) を提案してください。"
     },
     "emailReceipt": "メールレシート: {subject} ({sender})",
+    "emailReceiptForwarded": "メールレシート: {subject} ({sender})、転送した人 {forwarder}",
     "emailReceiptMissing": "メールレシート (メールは削除されました)",
     "parserDraft": "{count, plural, one {# 通のメール} other {# 通のメール}}からのプロフィールの下書き ({domain})",
     "viewEmailReceipts": "メールレシートを表示",

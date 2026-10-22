@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "Resultados da sincronização bancária",
         "EMAIL_RECEIPTS": "Recibos de e-mail",
         "BONDS": "Obrigações",
-        "AI_REVIEW": "Propostas de revisão de IA"
+        "AI_REVIEW": "Propostas de revisão de IA",
+        "WARRANTIES": "Lembretes de garantia"
       },
       "channelNotApplicable": "Não aplicável a este tipo de notificação",
       "emailToggleLabel": "Email (relatório) para {category}",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "Conceda acesso só de leitura a secções inteiras da aplicação. Os dados no âmbito de conta ainda necessitam de acesso por conta.",
-      "aiRequiresFullAccess": "O Assistente de IA lê todas as contas e secções, pelo que só responde a este delegado quando este puder ler todas as suas contas e todas as outras secções."
+      "aiRequiresFullAccess": "O Assistente de IA lê todas as contas e secções, pelo que só responde a este delegado quando este puder ler todas as suas contas e todas as outras secções.",
+      "warranties": {
+        "label": "Garantias",
+        "description": "Garantias, os respetivos documentos e reclamações. Uma compra associada só é mostrada se estiver numa conta que o delegado possa ler."
+      }
     },
     "accounts": {
       "noAccounts": "Sem contas para conceder.",

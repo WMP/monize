@@ -48,6 +48,7 @@
       "tradeChat": "[XX-You asked for the attached trade confirmation to be recognized: propose the investment transaction it reports, a buy, a sell, a cash dividend or a reinvested dividend.-XX]"
     },
     "emailReceipt": "[XX-Email receipt: {subject} from {sender}-XX]",
+    "emailReceiptForwarded": "[XX-Email receipt: {subject} from {sender}, forwarded by {forwarder}-XX]",
     "emailReceiptMissing": "[XX-Email receipt (the email was deleted)-XX]",
     "parserDraft": "[XX-Profile draft from {count, plural, one {# email} other {# emails}} ({domain})-XX]",
     "viewEmailReceipts": "[XX-View email receipts-XX]",

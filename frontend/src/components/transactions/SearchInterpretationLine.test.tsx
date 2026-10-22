@@ -49,6 +49,7 @@ describe('SearchInterpretationLine', () => {
     [term({ field: 'status', op: 'eq', value: 'cleared' }), 'Status is Cleared'],
     [term({ field: 'is', op: 'eq', value: 'split' }), 'Split transactions'],
     [term({ field: 'has', op: 'eq', value: 'attachment' }), 'Has an attachment'],
+    [term({ field: 'has', op: 'eq', value: 'warranty' }), 'Has a warranty'],
     [
       term({ field: 'cat', op: 'contains', value: 'transfer', negated: true }),
       'not Category contains “transfer”',

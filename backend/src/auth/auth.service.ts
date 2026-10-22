@@ -130,6 +130,19 @@ export class AuthService {
   }
 
   /**
+   * Stamp `last_login` and nothing else. A whole-entity `save` of the snapshot
+   * read before bcrypt wrote its stale `failed_login_attempts` back over the
+   * SQL reset, leaving an account that had just proven its password one typo
+   * from a lockout (A26-M01).
+   */
+  private async recordLastLogin(user: User): Promise<void> {
+    user.lastLogin = new Date();
+    await this.scoped(User, (repo) =>
+      repo.update({ id: user.id }, { lastLogin: user.lastLogin }),
+    );
+  }
+
+  /**
    * Record one failed login. The statement, its lockout arithmetic (bounded, and
    * forgotten a day after the lock expires) and the once-per-lockout `justLocked`
    * are `recordFailedLogin` in `./login-lockout`; this only gives it a scoped
@@ -480,6 +493,9 @@ export class AuthService {
         [user.id],
       ),
     );
+    // Keep the snapshot in step: sanitizeUser and generateTokenPair read it.
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
 
     // Hard email-verification gate: a local account that self-registered while
     // SMTP was enabled must confirm its email before it can sign in. The
@@ -507,8 +523,7 @@ export class AuthService {
           userAgent,
         );
         if (isTrusted) {
-          user.lastLogin = new Date();
-          await this.scoped(User, (repo) => repo.save(user));
+          await this.recordLastLogin(user);
           const { accessToken, refreshToken } =
             await this.tokenService.generateTokenPair(user, rememberMe);
           this.logger.log(
@@ -533,9 +548,7 @@ export class AuthService {
       return { requires2FA: true, tempToken };
     }
 
-    // Update last login
-    user.lastLogin = new Date();
-    await this.scoped(User, (repo) => repo.save(user));
+    await this.recordLastLogin(user);
 
     const { accessToken, refreshToken } =
       await this.tokenService.generateTokenPair(user, rememberMe);

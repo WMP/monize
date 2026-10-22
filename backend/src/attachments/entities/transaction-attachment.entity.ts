@@ -11,9 +11,22 @@ import {
 import { ApiProperty } from "@nestjs/swagger";
 import { User } from "../../users/entities/user.entity";
 import { Transaction } from "../../transactions/entities/transaction.entity";
+import { Warranty } from "../../warranties/entities/warranty.entity";
+import {
+  DEFAULT_DOCUMENT_KIND,
+  DOCUMENT_KINDS,
+  DocumentKind,
+} from "../attachment-parent";
 
 /**
- * Metadata for a file attached to a transaction (receipt, invoice, document).
+ * Metadata for a file attached to a transaction (receipt, invoice, document)
+ * or to a warranty (receipt, manual, photo).
+ *
+ * Exactly one of `transactionId` and `warrantyId` is set (WTY-003,
+ * `chk_attachment_one_parent` in database/schema.sql). That CHECK is declared
+ * in SQL only, as the warranty entity's cross-column rules are: the RLS spec's
+ * generic row seeder leaves every nullable, non-ownership foreign key NULL and
+ * could not satisfy it. The table keeps its historical name.
  *
  * Provider-agnostic: the bytes themselves live wherever `storageProvider` points
  * -- the built-in "database" provider keeps them in `attachment_blobs`, keyed by
@@ -22,6 +35,7 @@ import { Transaction } from "../../transactions/entities/transaction.entity";
  */
 @Entity("transaction_attachments")
 @Index(["transactionId"])
+@Index(["warrantyId"])
 // Declared here as well as in the migration, because the database-backed suites
 // build their schema from the entities: without them a scan pair's integrity is
 // a property of production alone, and the suites that exist to prove it would
@@ -33,6 +47,10 @@ import { Transaction } from "../../transactions/entities/transaction.entity";
 @Check(
   "chk_attachment_not_own_original",
   "original_of_attachment_id IS NULL OR original_of_attachment_id <> id",
+)
+@Check(
+  "chk_attachment_document_kind",
+  "document_kind IN ('receipt', 'manual', 'photo', 'warranty', 'other')",
 )
 export class TransactionAttachment {
   @ApiProperty({ example: "c5f5d5f0-1234-4567-890a-123456789abc" })
@@ -47,13 +65,39 @@ export class TransactionAttachment {
   @JoinColumn({ name: "user_id" })
   user?: User;
 
-  @ApiProperty({ example: "transaction-uuid" })
-  @Column({ type: "uuid", name: "transaction_id" })
-  transactionId: string;
+  /** The parent transaction; null when the parent is a warranty. */
+  @ApiProperty({ example: "transaction-uuid", nullable: true })
+  @Column({ type: "uuid", name: "transaction_id", nullable: true })
+  transactionId: string | null;
 
-  @ManyToOne(() => Transaction, { onDelete: "CASCADE" })
+  @ManyToOne(() => Transaction, { onDelete: "CASCADE", nullable: true })
   @JoinColumn({ name: "transaction_id" })
-  transaction?: Transaction;
+  transaction?: Transaction | null;
+
+  /** The parent warranty; null when the parent is a transaction. */
+  @ApiProperty({ example: "warranty-uuid", nullable: true })
+  @Column({ type: "uuid", name: "warranty_id", nullable: true })
+  warrantyId: string | null;
+
+  @ManyToOne(() => Warranty, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "warranty_id" })
+  warranty?: Warranty | null;
+
+  /**
+   * What a warranty's document is. A transaction's attachments always carry
+   * the default: the register offers no picker (design question W4).
+   */
+  @ApiProperty({
+    example: "receipt",
+    enum: DOCUMENT_KINDS,
+  })
+  @Column({
+    type: "varchar",
+    name: "document_kind",
+    length: 20,
+    default: DEFAULT_DOCUMENT_KIND,
+  })
+  documentKind: DocumentKind;
 
   @ApiProperty({ example: "grocery-receipt.jpg" })
   @Column({ type: "varchar", length: 255 })

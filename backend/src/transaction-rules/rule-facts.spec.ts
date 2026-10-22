@@ -4,6 +4,11 @@ import {
   loadAttachmentPresence,
   loadCategoryChains,
 } from "./rule-facts";
+import {
+  reachedTransactionIdSql,
+  reachingWarrantyJoinSql,
+} from "../attachments/attachment-parent";
+import { Warranty } from "../warranties/entities/warranty.entity";
 
 const base = {
   accountId: "acc-1",
@@ -162,13 +167,23 @@ describe("loadCategoryChains", () => {
 describe("loadAttachmentPresence", () => {
   const builder = (rows: Array<{ transactionId: string }>) => {
     const qb: Record<string, jest.Mock> = {};
-    for (const name of ["select", "distinct", "where", "andWhere"] as const) {
+    for (const name of [
+      "leftJoin",
+      "select",
+      "distinct",
+      "where",
+      "andWhere",
+    ] as const) {
       qb[name] = jest.fn().mockReturnValue(qb);
     }
     qb.getRawMany = jest.fn().mockResolvedValue(rows);
     return qb;
   };
 
+  // A document of a warranty linked to the row is one of the row's
+  // attachments (the maintainer's ruling, attachment-parent.ts), so the read
+  // keys each attachment by the transaction it is reached from, own or
+  // through its warranty, with the shared fragments.
   it("asks once for the ids, the owner and visible attachments only (a scan pair counts once)", async () => {
     const qb = builder([{ transactionId: "t1" }]);
     const m = {
@@ -186,10 +201,16 @@ describe("loadAttachmentPresence", () => {
     expect(qb.where).toHaveBeenCalledWith("ta.userId = :userId", {
       userId: "u1",
     });
-    expect(qb.andWhere).toHaveBeenCalledWith(
-      "ta.transactionId IN (:...wanted)",
-      { wanted: ["t1", "t2"] },
+    const reachedFrom = reachedTransactionIdSql("ta", "w");
+    expect(qb.leftJoin).toHaveBeenCalledWith(
+      Warranty,
+      "w",
+      reachingWarrantyJoinSql("ta", "w"),
     );
+    expect(qb.select).toHaveBeenCalledWith(reachedFrom, "transactionId");
+    expect(qb.andWhere).toHaveBeenCalledWith(`${reachedFrom} IN (:...wanted)`, {
+      wanted: ["t1", "t2"],
+    });
     expect(qb.andWhere).toHaveBeenCalledWith(
       "ta.original_of_attachment_id IS NULL",
     );

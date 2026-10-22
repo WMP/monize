@@ -144,7 +144,7 @@ export function PostTransactionDialog({
     (investmentAction === 'ADD_SHARES' || investmentAction === 'REMOVE_SHARES' || investmentAction === 'SPLIT');
   const isInvestmentAmountOnly = isInvestmentKind &&
     investmentAction != null &&
-    ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN'].includes(baseInvestmentAction(investmentAction));
+    ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN', 'RETURN_OF_CAPITAL'].includes(baseInvestmentAction(investmentAction));
 
   const todayStr = useMemo(() => getLocalDateString(), []);
 

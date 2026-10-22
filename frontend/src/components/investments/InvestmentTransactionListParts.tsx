@@ -113,6 +113,7 @@ export const ACTION_COLORS: Record<string, string> = {
   CAPITAL_GAIN_SHORT: 'text-purple-600 dark:text-purple-400',
   CAPITAL_GAIN_LONG: 'text-purple-600 dark:text-purple-400',
   REDEEM: 'text-red-600 dark:text-red-400',
+  RETURN_OF_CAPITAL: 'text-cyan-600 dark:text-cyan-400',
 };
 
 export interface InvestmentActionInfo {
@@ -147,6 +148,7 @@ export function useInvestmentActionInfo(): (action: string) => InvestmentActionI
     CAPITAL_GAIN_SHORT: { label: t('transactionList.actionCapitalGainShort'), shortLabel: 'SCap', color: ACTION_COLORS.CAPITAL_GAIN_SHORT },
     CAPITAL_GAIN_LONG: { label: t('transactionList.actionCapitalGainLong'), shortLabel: 'LCap', color: ACTION_COLORS.CAPITAL_GAIN_LONG },
     REDEEM: { label: t('transactionList.actionRedeem'), shortLabel: 'Rdm', color: ACTION_COLORS.REDEEM },
+    RETURN_OF_CAPITAL: { label: t('transactionList.actionReturnOfCapital'), shortLabel: 'RoC', color: ACTION_COLORS.RETURN_OF_CAPITAL },
   };
   return (action: string) =>
     labels[action] || {

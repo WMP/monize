@@ -1,12 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Select } from '@/components/ui/Select';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { getErrorMessage } from '@/lib/errors';
+import { createLogger } from '@/lib/logger';
+import { cn } from '@/lib/utils';
 import { attachmentsApi, attachmentDownloadUrl } from '@/lib/attachments';
 import { AttachmentPreviewDialog, type PreviewTarget } from './AttachmentPreviewDialog';
 import { DocumentScanDialog, type ScanOutcome } from './DocumentScanDialog';
@@ -14,31 +18,56 @@ import { ScanDocumentControl } from './ScanDocumentControl';
 import {
   StagedAttachment,
   Attachment,
+  AttachmentParent,
   ACCEPTED_ATTACHMENT_TYPES,
+  DOCUMENT_KINDS,
+  DocumentKind,
   MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS_PER_TRANSACTION,
 } from '@/types/attachment';
 
+const logger = createLogger('AttachmentsSection');
+
 /**
  * Saved mode: manages the attachments of an existing transaction directly
- * against the server. Staged mode: holds files client-side for a transaction
- * that does not exist yet (the New Transaction window); the parent form uploads
- * them once the transaction has been created.
+ * against the server. Warranty mode: the same saved list for a warranty's
+ * documents, each row carrying its document kind; a new document is stored
+ * as `other` and the reader sets its kind on its row. Staged mode: holds files
+ * client-side for a transaction that does not exist yet (the New Transaction
+ * window, or the New Warranty window with `stagedFor: 'warranty'`); the parent
+ * form uploads them once the transaction or warranty has been created.
  */
 type AttachmentsSectionProps =
   | { transactionId: string }
   | {
+      warrantyId: string;
+      /**
+       * List and preview only: no upload, scan, kind picker or delete. An
+       * acting delegate reads a warranty's documents but never changes them.
+       */
+      readOnly?: boolean;
+    }
+  | {
       stagedFiles: StagedAttachment[];
       onStagedFilesChange: (files: StagedAttachment[]) => void;
+      /**
+       * The row the files will be uploaded to once it exists. A warranty's
+       * staged files are its Documents, and say so; the default is a
+       * transaction's attachments.
+       */
+      stagedFor?: SavedParentKind;
     };
+
+type SavedParentKind = 'transaction' | 'warranty';
 
 
 /**
  * Validate a freshly selected file against the shared limits. Returns a
  * translated error message when the file is rejected, or null when it is
  * acceptable. `currentCount` is the number of attachments already present
- * (existing + pending) so the per-transaction cap is enforced consistently in
- * both modes.
+ * (existing + pending) so the per-parent cap is enforced consistently in
+ * both modes; `tooManyMessage` names the parent (a transaction's attachments
+ * or a warranty's documents).
  */
 function validateSelection(
   file: File,
@@ -47,9 +76,10 @@ function validateSelection(
   // A pure function cannot call the hook, so the component hands its formatter
   // down -- the `NumberFormatters` pattern, for one formatter.
   formatBytes: (bytes: number) => string,
+  tooManyMessage: string,
 ): string | null {
   if (currentCount >= MAX_ATTACHMENTS_PER_TRANSACTION) {
-    return t('tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION });
+    return tooManyMessage;
   }
   if (!ACCEPTED_ATTACHMENT_TYPES.includes(file.type)) {
     return t('unsupported');
@@ -70,16 +100,36 @@ function validateSelection(
  * is `display: none` and takes no cell. From `sm` up the title and the
  * buttons sit on one line as before.
  */
-function AttachmentsHeader({ children }: { children: React.ReactNode }) {
+function AttachmentsHeader({
+  children,
+  heading,
+  label,
+}: {
+  children: React.ReactNode;
+  /**
+   * A section heading in place of the "Attachments" label, for a page where
+   * the list is a section of its own (a warranty's Documents) rather than a
+   * field of a form.
+   */
+  heading?: string;
+  /** A field label in place of "Attachments", for a form that is not a transaction's. */
+  label?: string;
+}) {
   const t = useTranslations('attachments');
   return (
     <div
       data-testid="attachments-header"
       className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
     >
-      <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-        {t('title')}
-      </span>
+      {heading ? (
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          {heading}
+        </h2>
+      ) : (
+        <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          {label ?? t('title')}
+        </span>
+      )}
       <div
         data-testid="attachments-actions"
         className="grid grid-cols-2 gap-2 sm:flex sm:items-center"
@@ -135,12 +185,89 @@ function UploadControl({
 }
 
 /**
- * Lists, uploads, and deletes the file attachments for a saved transaction.
+ * The documents of one linked warranty, as a transaction's list carries them
+ * after its own rows.
  */
-function SavedAttachments({ transactionId }: { transactionId: string }) {
+interface WarrantyDocumentGroup {
+  warrantyId: string;
+  warrantyName: string | null;
+  attachments: Attachment[];
+}
+
+/**
+ * Splits a transaction's list into its own rows and the documents of each
+ * linked warranty, in the order the server sent them. A warranty's own list
+ * is all its own rows.
+ */
+function splitByOwner(
+  list: Attachment[],
+  isWarranty: boolean,
+): { own: Attachment[]; groups: WarrantyDocumentGroup[] } {
+  if (isWarranty) return { own: list, groups: [] };
+  const own: Attachment[] = [];
+  const groups: WarrantyDocumentGroup[] = [];
+  for (const attachment of list) {
+    if (attachment.warrantyId === null) {
+      own.push(attachment);
+      continue;
+    }
+    let group = groups.find((g) => g.warrantyId === attachment.warrantyId);
+    if (!group) {
+      group = {
+        warrantyId: attachment.warrantyId,
+        warrantyName: attachment.warrantyName ?? null,
+        attachments: [],
+      };
+      groups.push(group);
+    }
+    group.attachments.push(attachment);
+  }
+  return { own, groups };
+}
+
+/**
+ * Lists, uploads, and deletes the saved attachments of one parent: a
+ * transaction, or a warranty (whose rows also say what kind of document each
+ * one is, and let the owner change it).
+ *
+ * A transaction's list also carries the documents of every warranty linked to
+ * it, after its own rows and grouped under the warranty's name: previewed and
+ * deleted the same way, with their kind shown but not edited here (that is the
+ * warranty page's), and never counted against the per-transaction cap, which
+ * is the transaction's own rows only. The register's paperclip count comes
+ * from the same server rule, so the two agree.
+ */
+function SavedAttachments({
+  parentKind,
+  parentId,
+  readOnly = false,
+}: {
+  parentKind: SavedParentKind;
+  parentId: string;
+  readOnly?: boolean;
+}) {
   const t = useTranslations('attachments');
+  const tw = useTranslations('warranties');
+  const tc = useTranslations('common');
   const { formatBytes } = useNumberFormat();
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const groupIdPrefix = useId();
+  const isWarranty = parentKind === 'warranty';
+  const tooManyMessage = isWarranty
+    ? tw('documents.tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION })
+    : t('tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION });
+  const parent = useMemo<AttachmentParent>(
+    () =>
+      parentKind === 'warranty'
+        ? { warrantyId: parentId }
+        : { transactionId: parentId },
+    [parentKind, parentId],
+  );
+  // `null` until a list has loaded; a failed load is `loadFailed`, never an
+  // empty list, so neither "No documents yet" nor the cap check can be drawn
+  // from a list nobody has seen.
+  const [attachments, setAttachments] = useState<Attachment[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const latestLoad = useRef(0);
   const [uploading, setUploading] = useState(false);
   const [erroredImages, setErroredImages] = useState<Record<string, boolean>>(
     {},
@@ -161,23 +288,38 @@ function SavedAttachments({ transactionId }: { transactionId: string }) {
   const load = useCallback(() => {
     // The writes live in the inner function so they run after the request,
     // not during the effect that starts it.
+    const request = ++latestLoad.current;
     const run = async () => {
       try {
-        const list = await attachmentsApi.list(transactionId);
+        const list = await attachmentsApi.list(parent);
+        if (latestLoad.current !== request) return;
         setAttachments(list);
+        setLoadFailed(false);
       } catch (error) {
-        toast.error(getErrorMessage(error, t('loadFailed')));
+        if (latestLoad.current !== request) return;
+        logger.error('Failed to load attachments:', error);
+        setLoadFailed(true);
       }
     };
     return run();
-  }, [transactionId, t]);
+  }, [parent]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  /** The list the cap is checked against: only one that loaded. */
+  const known = loadFailed ? null : attachments;
+  const split = useMemo(
+    () => (known === null ? null : splitByOwner(known, isWarranty)),
+    [known, isWarranty],
+  );
+  /** The rows the cap counts: this parent's own, never a warranty's documents. */
+  const ownCount = split === null ? null : split.own.length;
+
   const handleFileSelected = async (file: File) => {
-    const error = validateSelection(file, attachments.length, t, formatBytes);
+    if (ownCount === null) return;
+    const error = validateSelection(file, ownCount, t, formatBytes, tooManyMessage);
     if (error) {
       toast.error(error);
       return;
@@ -188,7 +330,10 @@ function SavedAttachments({ transactionId }: { transactionId: string }) {
   const upload = async (file: File, original?: File) => {
     setUploading(true);
     try {
-      await attachmentsApi.upload(transactionId, file, original);
+      // No kind is sent: a transaction's route takes none (W4), and a
+      // warranty's new document is stored as `other` until the reader sets
+      // its kind on its row.
+      await attachmentsApi.upload(parent, file, original);
       toast.success(t('uploaded'));
       await load();
     } catch (err) {
@@ -210,8 +355,9 @@ function SavedAttachments({ transactionId }: { transactionId: string }) {
    * path unreachable outside its unit test.
    */
   const handleScanSelected = (file: File) => {
-    if (attachments.length >= MAX_ATTACHMENTS_PER_TRANSACTION) {
-      toast.error(t('tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION }));
+    if (ownCount === null) return;
+    if (ownCount >= MAX_ATTACHMENTS_PER_TRANSACTION) {
+      toast.error(tooManyMessage);
       return;
     }
     setScanning(file);
@@ -249,92 +395,231 @@ function SavedAttachments({ transactionId }: { transactionId: string }) {
     }
   };
 
-  const atLimit = attachments.length >= MAX_ATTACHMENTS_PER_TRANSACTION;
+  /**
+   * A warranty document's kind, changed on the spot and put back if the
+   * server refuses. Each write touches only a row still showing the kind this
+   * change set, so a quicker second change is never overwritten by the
+   * first one's answer.
+   */
+  const handleKindChange = async (attachment: Attachment, kind: DocumentKind) => {
+    const previous = attachment.documentKind;
+    if (kind === previous) return;
+    const setKindIf = (expected: DocumentKind, next: DocumentKind) =>
+      setAttachments((prev) =>
+        prev === null
+          ? prev
+          : prev.map((row) =>
+              row.id === attachment.id && row.documentKind === expected
+                ? { ...row, documentKind: next }
+                : row,
+            ),
+      );
+    setKindIf(previous, kind);
+    try {
+      const updated = await attachmentsApi.updateDocumentKind(attachment.id, kind);
+      setKindIf(kind, updated.documentKind);
+    } catch (error) {
+      setKindIf(kind, previous);
+      toast.error(getErrorMessage(error, tw('documents.kindUpdateFailed')));
+    }
+  };
+
+  const atLimit = ownCount !== null && ownCount >= MAX_ATTACHMENTS_PER_TRANSACTION;
+
+  /**
+   * One saved row. The kind is a picker on the owner's view of a warranty's
+   * documents, a badge on the delegate's and on a warranty document seen from
+   * its transaction, and absent on a transaction's own row (always `other`).
+   */
+  const renderRow = (attachment: Attachment) => {
+    const isImage = attachment.contentType.startsWith('image/');
+    const showThumb = isImage && !erroredImages[attachment.id];
+    const isWarrantyDocument = isWarranty || attachment.warrantyId !== null;
+    const kindEditable = isWarranty && !readOnly;
+    // With the kind picker beside it the name had little room on a phone, so
+    // there the name takes its own line and the picker and Delete wrap below.
+    return (
+      <li
+        key={attachment.id}
+        className={cn(
+          'flex items-center gap-3 rounded-md border border-gray-200 dark:border-gray-700 p-2',
+          kindEditable && 'flex-wrap sm:flex-nowrap',
+        )}
+      >
+        {/* The row is the preview trigger: thumbnail, name and size
+            in one button, with the filename as its accessible name.
+            Delete stays a sibling -- a control inside a button is
+            a control nobody can reach. */}
+        <button
+          type="button"
+          onClick={() => setPreview({ kind: 'saved', attachment })}
+          aria-label={t('preview.open', { name: attachment.filename })}
+          className={cn(
+            'flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+            kindEditable && 'basis-full sm:basis-auto',
+          )}
+        >
+          {showThumb ? (
+            // Served from our own backend; next/image adds no value and
+            // cannot follow the onError fallback.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={attachmentDownloadUrl(attachment.id)}
+              alt=""
+              loading="lazy"
+              className="h-10 w-10 shrink-0 rounded object-cover"
+              onError={() =>
+                setErroredImages((prev) => ({
+                  ...prev,
+                  [attachment.id]: true,
+                }))
+              }
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-gray-100 dark:bg-gray-700 text-lg"
+            >
+              {attachment.contentType === 'application/pdf' ? '📄' : '📎'}
+            </span>
+          )}
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm text-blue-600 dark:text-blue-400 hover:underline">
+              {attachment.filename}
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {formatBytes(attachment.byteSize)}
+            </span>
+          </span>
+        </button>
+        {kindEditable && (
+          <div className="min-w-0 flex-1 sm:w-40 sm:flex-none sm:shrink-0">
+            <Select
+              id={`document-kind-select-${attachment.id}`}
+              aria-label={tw('documents.kindFor', { name: attachment.filename })}
+              value={attachment.documentKind}
+              className="py-1 text-xs"
+              options={DOCUMENT_KINDS.map((kind) => ({
+                value: kind,
+                label: tw(`documents.kinds.${kind}`),
+              }))}
+              onChange={(event) =>
+                void handleKindChange(attachment, event.target.value as DocumentKind)
+              }
+            />
+          </div>
+        )}
+        {isWarrantyDocument && !kindEditable && (
+          <Badge
+            variant="gray"
+            data-testid={`document-kind-${attachment.id}`}
+            className="shrink-0"
+          >
+            {tw(`documents.kinds.${attachment.documentKind}`)}
+          </Badge>
+        )}
+        {!readOnly && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={t('delete')}
+            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+            onClick={() => setDeleteTarget(attachment)}
+          >
+            {t('delete')}
+          </Button>
+        )}
+      </li>
+    );
+  };
+
+  let body;
+  if (loadFailed) {
+    body = (
+      <div role="alert" className="py-4 text-center space-y-3">
+        <p className="text-sm text-red-700 dark:text-red-300">{t('loadFailed')}</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setLoadFailed(false);
+            void load();
+          }}
+        >
+          {t('retry')}
+        </Button>
+      </div>
+    );
+  } else if (known === null) {
+    body = (
+      <p className="text-sm text-gray-500 dark:text-gray-400" role="status">
+        {tc('loading')}
+      </p>
+    );
+  } else if (known.length === 0) {
+    body = (
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        {isWarranty ? tw('documents.empty') : t('empty')}
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-2">
-      <AttachmentsHeader>
-        <ScanDocumentControl
-          onFileSelected={handleScanSelected}
-          onReady={rememberScanPicker}
-          disabled={uploading || atLimit}
-        />
-        <UploadControl
-          onFileSelected={handleFileSelected}
-          loading={uploading}
-          disabled={uploading || atLimit}
-        />
+      <AttachmentsHeader
+        heading={isWarranty ? tw('documents.title') : undefined}
+      >
+        {/* Hidden until a list has loaded: the cap is checked against it. */}
+        {!readOnly && known !== null && (
+          <>
+            <ScanDocumentControl
+              onFileSelected={handleScanSelected}
+              onReady={rememberScanPicker}
+              disabled={uploading || atLimit}
+            />
+            <UploadControl
+              onFileSelected={handleFileSelected}
+              loading={uploading}
+              disabled={uploading || atLimit}
+            />
+          </>
+        )}
       </AttachmentsHeader>
 
-      {attachments.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">{t('empty')}</p>
-      ) : (
-        <ul className="space-y-2">
-          {attachments.map((attachment) => {
-            const isImage = attachment.contentType.startsWith('image/');
-            const showThumb = isImage && !erroredImages[attachment.id];
+      {body ?? (
+        <>
+          {split !== null && split.own.length > 0 && (
+            <ul className="space-y-2">
+              {split.own.map((attachment) => renderRow(attachment))}
+            </ul>
+          )}
+          {split?.groups.map((group) => {
+            const headingId = `${groupIdPrefix}-warranty-${group.warrantyId}`;
             return (
-              <li
-                key={attachment.id}
-                className="flex items-center gap-3 rounded-md border border-gray-200 dark:border-gray-700 p-2"
+              <div
+                key={group.warrantyId}
+                role="group"
+                aria-labelledby={headingId}
+                data-testid={`warranty-documents-${group.warrantyId}`}
+                className="space-y-2"
               >
-                {/* The row is the preview trigger: thumbnail, name and size
-                    in one button, with the filename as its accessible name.
-                    Delete stays a sibling -- a control inside a button is
-                    a control nobody can reach. */}
-                <button
-                  type="button"
-                  onClick={() => setPreview({ kind: 'saved', attachment })}
-                  aria-label={t('preview.open', { name: attachment.filename })}
-                  className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                <h3
+                  id={headingId}
+                  className="pt-1 text-xs font-medium text-gray-500 dark:text-gray-400"
                 >
-                  {showThumb ? (
-                    // Served from our own backend; next/image adds no value and
-                    // cannot follow the onError fallback.
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={attachmentDownloadUrl(attachment.id)}
-                      alt=""
-                      loading="lazy"
-                      className="h-10 w-10 shrink-0 rounded object-cover"
-                      onError={() =>
-                        setErroredImages((prev) => ({
-                          ...prev,
-                          [attachment.id]: true,
-                        }))
-                      }
-                    />
-                  ) : (
-                    <span
-                      aria-hidden="true"
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-gray-100 dark:bg-gray-700 text-lg"
-                    >
-                      {attachment.contentType === 'application/pdf' ? '📄' : '📎'}
-                    </span>
-                  )}
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                      {attachment.filename}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatBytes(attachment.byteSize)}
-                    </span>
-                  </span>
-                </button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-label={t('delete')}
-                  className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                  onClick={() => setDeleteTarget(attachment)}
-                >
-                  {t('delete')}
-                </Button>
-              </li>
+                  {group.warrantyName !== null
+                    ? t('fromWarranty', { name: group.warrantyName })
+                    : t('fromLinkedWarranty')}
+                </h3>
+                <ul className="space-y-2">
+                  {group.attachments.map((attachment) => renderRow(attachment))}
+                </ul>
+              </div>
             );
           })}
-        </ul>
+        </>
       )}
 
       <DocumentScanDialog
@@ -368,18 +653,25 @@ function SavedAttachments({ transactionId }: { transactionId: string }) {
 }
 
 /**
- * Holds files client-side for a transaction that does not exist yet. Selected
- * files are validated the same way as saved uploads and previewed locally; the
- * parent form uploads them once it has created the transaction.
+ * Holds files client-side for a transaction or warranty that does not exist
+ * yet. Selected files are validated the same way as saved uploads and
+ * previewed locally; the parent form uploads them once it has created the row.
  */
 function StagedAttachments({
   files,
   onChange,
+  stagedFor,
 }: {
   files: StagedAttachment[];
   onChange: (files: StagedAttachment[]) => void;
+  stagedFor: SavedParentKind;
 }) {
   const t = useTranslations('attachments');
+  const tw = useTranslations('warranties');
+  const isWarranty = stagedFor === 'warranty';
+  const tooManyMessage = isWarranty
+    ? tw('documents.tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION })
+    : t('tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION });
   const { formatBytes } = useNumberFormat();
   const [scanning, setScanning] = useState<File | null>(null);
   /** The staged entry open in the preview, or null when it is closed. */
@@ -410,7 +702,7 @@ function StagedAttachments({
   );
 
   const handleFileSelected = (file: File) => {
-    const error = validateSelection(file, files.length, t, formatBytes);
+    const error = validateSelection(file, files.length, t, formatBytes, tooManyMessage);
     if (error) {
       toast.error(error);
       return;
@@ -421,7 +713,7 @@ function StagedAttachments({
   /** Same admission as the saved list: the cap, and nothing about the photo. */
   const handleScanSelected = (file: File) => {
     if (files.length >= MAX_ATTACHMENTS_PER_TRANSACTION) {
-      toast.error(t('tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION }));
+      toast.error(tooManyMessage);
       return;
     }
     setScanning(file);
@@ -454,7 +746,7 @@ function StagedAttachments({
 
   return (
     <div className="space-y-2">
-      <AttachmentsHeader>
+      <AttachmentsHeader label={isWarranty ? tw('documents.title') : undefined}>
         <ScanDocumentControl
           onFileSelected={handleScanSelected}
           onReady={rememberScanPicker}
@@ -467,7 +759,9 @@ function StagedAttachments({
       </AttachmentsHeader>
 
       {files.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">{t('empty')}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {isWarranty ? tw('documents.empty') : t('empty')}
+        </p>
       ) : (
         <>
           <ul className="space-y-2">
@@ -525,7 +819,7 @@ function StagedAttachments({
             })}
           </ul>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {t('pendingHint')}
+            {isWarranty ? tw('documents.pendingHint') : t('pendingHint')}
           </p>
         </>
       )}
@@ -548,18 +842,38 @@ function StagedAttachments({
 }
 
 /**
- * Attachment manager for a transaction. Renders in saved mode when a
- * transaction id is supplied, or in staged mode (client-side only) when given a
- * pending file list and change handler.
+ * Attachment manager for a transaction or a warranty. Renders in saved mode
+ * when a transaction or warranty id is supplied, or in staged mode
+ * (client-side only) when given a pending file list and change handler.
+ *
+ * A warranty's documents are this component with a warranty parent, never a
+ * second uploader: the limits, the scan pair and the preview are the same.
  */
 export function AttachmentsSection(props: AttachmentsSectionProps) {
   if ('transactionId' in props) {
-    return <SavedAttachments transactionId={props.transactionId} />;
+    return (
+      <SavedAttachments
+        key={`transaction:${props.transactionId}`}
+        parentKind="transaction"
+        parentId={props.transactionId}
+      />
+    );
+  }
+  if ('warrantyId' in props) {
+    return (
+      <SavedAttachments
+        key={`warranty:${props.warrantyId}`}
+        parentKind="warranty"
+        parentId={props.warrantyId}
+        readOnly={props.readOnly}
+      />
+    );
   }
   return (
     <StagedAttachments
       files={props.stagedFiles}
       onChange={props.onStagedFilesChange}
+      stagedFor={props.stagedFor ?? 'transaction'}
     />
   );
 }

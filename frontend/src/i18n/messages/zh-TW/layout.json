@@ -85,7 +85,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "長期資本利得再投資",
       "CAPITAL_GAIN_SHORT": "短期資本利得",
       "CAPITAL_GAIN_LONG": "長期資本利得",
-      "REDEEM": "贖回定存單/債券"
+      "REDEEM": "贖回定存單/債券",
+      "RETURN_OF_CAPITAL": "資本返還"
     },
     "descriptions": {
       "createdAccount": "已建立科目「{name}」",

@@ -135,6 +135,7 @@
       "toggleTitle": "Прибрати рік із дат, щоб вмістилося більше імені одержувача"
     },
     "attachmentsCount": "{count, plural, one {# вкладення} few {# вкладення} many {# вкладень} other {# вкладення}}",
+    "warrantiesCount": "{count, plural, one {# гарантія} few {# гарантії} many {# гарантій} other {# гарантії}}",
     "today": "Сьогодні",
     "export": {
       "button": "Експорт",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Дублювати транзакцію",
       "copy": "Копіювати",
       "duplicate": "Дублювати",
-      "scheduleRecurring": "Запланувати як повторювану"
+      "scheduleRecurring": "Запланувати як повторювану",
+      "addWarranty": "Додати гарантію",
+      "viewWarranties": "Переглянути гарантії"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Редагувати",
     "duplicate": "Дублювати",
     "scheduleRecurring": "Запланувати як повторювану",
+    "addWarranty": "Додати гарантію",
+    "viewWarranties": "Переглянути гарантії",
     "delete": "Видалити"
   },
   "filter": {
@@ -465,7 +470,14 @@
       },
       "feeCaption": "Включає комісію за закордонну операцію {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Розділеними транзакціями на спільному рахунку може керувати лише власник"
+    "jointSplitDisabled": "Розділеними транзакціями на спільному рахунку може керувати лише власник",
+    "warranties": {
+      "title": "Гарантії",
+      "add": "Додати гарантію",
+      "expires": "Закінчується {date}",
+      "loading": "Завантаження гарантій",
+      "loadError": "Не вдалося завантажити гарантії для цієї транзакції."
+    }
   },
   "splitEditor": {
     "header": "Деталі розподілу",
@@ -626,7 +638,8 @@
       "amountRange": "Сума від 50 до 100",
       "datePeriod": "Будь-який день березня 2026",
       "isSplit": "Розділені операції",
-      "hasAttachment": "Має вкладення"
+      "hasAttachment": "Має вкладення",
+      "hasWarranty": "Має гарантію"
     }
   },
   "searchInterpretation": {
@@ -668,6 +681,7 @@
       },
       "has": {
         "attachment": "Має вкладення",
+        "warranty": "Має гарантію",
         "ref": "Має номер посилання",
         "memo": "Має нотатку",
         "tag": "Має мітку"

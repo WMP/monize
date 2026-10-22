@@ -255,6 +255,10 @@ describe("parseTransactionSearch", () => {
         "has:attachment",
         [{ field: "has", op: "eq", value: "attachment", negated: false }],
       ],
+      [
+        "has:warranty",
+        [{ field: "has", op: "eq", value: "warranty", negated: false }],
+      ],
       ["has:ref", [{ field: "has", op: "eq", value: "ref", negated: false }]],
       ["has:memo", [{ field: "has", op: "eq", value: "memo", negated: false }]],
       ["has:tag", [{ field: "has", op: "eq", value: "tag", negated: false }]],

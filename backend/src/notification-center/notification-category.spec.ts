@@ -26,6 +26,7 @@ import {
   NotificationType,
   STRATEGY_NOTIFICATION_TYPES,
   SYSTEM_NOTIFICATION_TYPES,
+  WARRANTY_NOTIFICATION_TYPES,
   notificationCategoryOf,
 } from "./entities/notification.entity";
 import {
@@ -167,6 +168,16 @@ describe("notification type partition", () => {
     expect(byCategory[NotificationCategory.AI_REVIEW].sort()).toEqual(
       [...AI_REVIEW_NOTIFICATION_TYPES].sort(),
     );
+    // Warranty reminders: the 30- and 7-day marks, and the day of expiry.
+    expect(byCategory[NotificationCategory.WARRANTIES].sort()).toEqual(
+      [
+        NotificationType.WARRANTY_EXPIRING,
+        NotificationType.WARRANTY_EXPIRES_TODAY,
+      ].sort(),
+    );
+    expect(byCategory[NotificationCategory.WARRANTIES].sort()).toEqual(
+      [...WARRANTY_NOTIFICATION_TYPES].sort(),
+    );
     // BUDGETS is the remainder: everything not in one of the explicit sets
     // above -- never a second list, so this arm proves the partition is total.
     expect(byCategory[NotificationCategory.BUDGETS].sort()).toEqual(
@@ -182,7 +193,8 @@ describe("notification type partition", () => {
           !BANK_SYNC_ACTIVITY_NOTIFICATION_TYPES.includes(t) &&
           !EMAIL_RECEIPT_NOTIFICATION_TYPES.includes(t) &&
           !BOND_NOTIFICATION_TYPES.includes(t) &&
-          !AI_REVIEW_NOTIFICATION_TYPES.includes(t),
+          !AI_REVIEW_NOTIFICATION_TYPES.includes(t) &&
+          !WARRANTY_NOTIFICATION_TYPES.includes(t),
       ).sort(),
     );
   });
