@@ -13,6 +13,8 @@ import {
   applyActionToQuantity,
   baseInvestmentAction,
   CASH_INCOME_ACTIONS,
+  applyReturnOfCapital,
+  returnOfCapitalAmount,
   INVESTMENT_REPLAY_ORDER,
   reinvestedIncomeAmount,
 } from "../securities/investment-replay.util";
@@ -719,6 +721,17 @@ export class InvestmentReportDataService {
       case InvestmentAction.CAPITAL_GAIN:
         state.income += totalAmount;
         break;
+      case InvestmentAction.RETURN_OF_CAPITAL: {
+        // Not income: it pays back cost, so it comes off the basis, and only
+        // what the basis could not absorb is a realized gain.
+        const amount = returnOfCapitalAmount({ totalAmount: tx.totalAmount });
+        if (amount !== null) {
+          const effect = applyReturnOfCapital(state.costBasis, amount);
+          state.costBasis = effect.costBasis;
+          state.realizedGains += effect.realizedGain;
+        }
+        break;
+      }
       default:
         state.quantity = applyActionToQuantity(
           state.quantity,
@@ -809,12 +822,17 @@ export class InvestmentReportDataService {
   }
 
   /**
-   * Cash income (dividends/interest/capital gains) received in (after, upto].
+   * Cash distributions (dividends/interest/capital gains, and capital
+   * returned) received in (after, upto].
    *
    * Cash only, unlike the Income column: a period return compares the market
    * value, which already holds any shares a reinvestment bought, against the
    * window's starting value, which holds none of their cost. Adding the
    * reinvested distribution as well would count it twice.
+   *
+   * A return of capital is not income, but it is in a total return: the price
+   * falls by what was paid back, so leaving the cash out would read the
+   * distribution as a loss.
    */
   private incomeBetween(
     group: GroupRecord,
@@ -824,7 +842,10 @@ export class InvestmentReportDataService {
     let income = 0;
     for (const tx of group.txs) {
       if (tx.transactionDate <= after || tx.transactionDate > upto) continue;
-      if (CASH_INCOME_ACTIONS.includes(tx.action)) {
+      if (
+        CASH_INCOME_ACTIONS.includes(tx.action) ||
+        tx.action === InvestmentAction.RETURN_OF_CAPITAL
+      ) {
         income += Number(tx.totalAmount) || 0;
       }
     }

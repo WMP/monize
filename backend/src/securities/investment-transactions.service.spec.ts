@@ -780,6 +780,39 @@ describe("InvestmentTransactionsService", () => {
       );
     });
 
+    it("creates a positive cash transaction for RETURN_OF_CAPITAL (#1800)", async () => {
+      const rocDto = {
+        accountId,
+        securityId,
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        transactionDate: "2025-03-15",
+        totalAmount: 40,
+      };
+
+      const savedTx = {
+        ...mockDividendTransaction,
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        quantity: 0,
+        price: 40,
+        totalAmount: 40,
+      };
+      investmentTransactionsRepository.save.mockResolvedValue(savedTx);
+
+      const findOneQB = createMockQueryBuilder(savedTx);
+      investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+        findOneQB,
+      );
+
+      await service.create(userId, rocDto);
+
+      expect(investmentTransactionsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ totalAmount: 40 }),
+      );
+      expect(transactionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 40 }),
+      );
+    });
+
     it("creates an INTEREST transaction with a positive cash transaction", async () => {
       const interestDto = {
         accountId,
@@ -1304,6 +1337,19 @@ describe("InvestmentTransactionsService", () => {
 
       await expect(service.create(userId, noSecDto)).rejects.toThrow(
         BadRequestException,
+      );
+    });
+
+    it("requires a securityId for RETURN_OF_CAPITAL: it reduces one security's basis", async () => {
+      const noSecDto = {
+        accountId,
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        transactionDate: "2025-03-15",
+        totalAmount: 40,
+      };
+
+      await expect(service.create(userId, noSecDto)).rejects.toThrow(
+        "Security ID is required for RETURN_OF_CAPITAL transactions",
       );
     });
 

@@ -226,7 +226,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Реинвестирование долгосрочного прироста капитала",
       "CAPITAL_GAIN_SHORT": "Краткосрочный прирост капитала",
       "CAPITAL_GAIN_LONG": "Долгосрочный прирост капитала",
-      "REDEEM": "Погашение CD/облигации"
+      "REDEEM": "Погашение CD/облигации",
+      "RETURN_OF_CAPITAL": "Возврат капитала"
     },
     "submitCreate": "Создать",
     "submitUpdate": "Обновить",

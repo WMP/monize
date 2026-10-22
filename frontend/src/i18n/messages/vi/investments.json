@@ -198,6 +198,7 @@
     "actionCapitalGainShort": "Lãi vốn ngắn hạn",
     "actionCapitalGainLong": "Lãi vốn dài hạn",
     "actionRedeem": "Đáo hạn CD/trái phiếu",
+    "actionReturnOfCapital": "Hoàn vốn",
     "allActions": "Tất cả hành động"
   },
   "transactionForm": {
@@ -218,6 +219,7 @@
     "actionCapitalGainShort": "Lãi vốn ngắn hạn",
     "actionCapitalGainLong": "Lãi vốn dài hạn",
     "actionRedeem": "Đáo hạn CD/trái phiếu",
+    "actionReturnOfCapital": "Hoàn vốn",
     "actionTransfer": "Chuyển khoản",
     "brokerageAccount": "Tài khoản môi giới",
     "fromAccount": "Tài khoản nguồn",
@@ -262,6 +264,7 @@
     "sharesAt": "cổ phiếu @",
     "avgCostSuffix": "giá TB.",
     "transferCostNote": "Giá vốn mỗi cổ phần là chi phí của cổ phần đó tại tài khoản nguồn vào ngày chuyển. Giá vốn được tính khi bạn lưu và chuyển sang tài khoản đích, để báo cáo lãi và lợi nhuận của bạn luôn chính xác. Thao tác này chỉ chuyển cổ phần; không có tiền mặt nào được trao tay.",
+    "returnOfCapitalNote": "Hoàn vốn không phải là thu nhập. Khoản này trả lại một phần chi phí mua cổ phiếu, vì vậy nó làm giảm cơ sở chi phí của khoản nắm giữ theo số tiền này. Phần vượt quá cơ sở chi phí còn lại được ghi nhận là lãi vốn đã thực hiện.",
     "totalAmount": "Tổng số tiền ({currency})",
     "sharesAtPrice": "{shares} cổ phiếu @ {symbol}{price}",
     "commissionSuffix": "hoa hồng",

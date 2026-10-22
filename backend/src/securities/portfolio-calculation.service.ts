@@ -42,6 +42,8 @@ import {
   HOLDING_QUANTITY_EPSILON,
   INVESTMENT_REPLAY_ORDER,
   orderTransferOutBeforeIn,
+  applyReturnOfCapital,
+  returnOfCapitalAmount,
 } from "./investment-replay.util";
 import { stripBrokerageSuffix } from "../accounts/account-name.util";
 
@@ -138,6 +140,12 @@ export interface RealizedGainEntry {
   symbol: string | null;
   securityName: string | null;
   securityCurrencyCode: string | null;
+  /**
+   * The row that realized the gain: a SELL or REDEEM disposes of `quantity`
+   * shares, and a RETURN_OF_CAPITAL realizes what it paid beyond the basis
+   * with no shares sold (`quantity` and `price` are 0).
+   */
+  action: InvestmentAction;
   quantity: number;
   price: number;
   commission: number;
@@ -148,7 +156,8 @@ export interface RealizedGainEntry {
 
 /**
  * Per-(account, security, month) capital-gain breakdown including both the
- * realized portion (from SELLs in the month) and the unrealized mark-to-market
+ * realized portion (from SELLs in the month, and any return of capital
+ * beyond the basis) and the unrealized mark-to-market
  * change on the position. All monetary values are denominated in the holding
  * account's currency. The decomposition uses:
  *
@@ -342,6 +351,18 @@ function applyTxToState(
         state.quantity > 0 ? state.costBasis / state.quantity : 0;
       state.costBasis -= sellQty * avgCostPerShare;
       state.quantity -= sellQty;
+      break;
+    }
+    case InvestmentAction.RETURN_OF_CAPITAL: {
+      // Pays back cost, never below zero; a row whose rate cannot convert it
+      // leaves the basis unknown rather than unreduced.
+      const amount = returnOfCapitalAmount(tx);
+      if (amount === null) state.basisKnown = false;
+      else
+        state.costBasis = applyReturnOfCapital(
+          state.costBasis,
+          amount,
+        ).costBasis;
       break;
     }
     default:
@@ -832,7 +853,13 @@ export class PortfolioCalculationService {
           // A CD/bond redemption's proceeds are a sale's; the term'd gain
           // distributions are income. Lists come from the shared constants so
           // a future refinement cannot fall out of this aggregate silently.
-          [InvestmentAction.SELL, InvestmentAction.REDEEM],
+          // A return of capital is capital coming back out, as a sale's
+          // proceeds are: it is cash in the sleeve that no deposit put there.
+          [
+            InvestmentAction.SELL,
+            InvestmentAction.REDEEM,
+            InvestmentAction.RETURN_OF_CAPITAL,
+          ],
           CASH_INCOME_ACTIONS,
         ],
       ),
@@ -1141,6 +1168,29 @@ export class PortfolioCalculationService {
             quantity,
           );
           break;
+        case InvestmentAction.RETURN_OF_CAPITAL: {
+          // Pays back cost, never below zero. The converted amount is in the
+          // currency it settled in, so it can come off the basis only when
+          // that is the basis's currency -- the same test an acquisition
+          // passes to join it.
+          const amount = returnOfCapitalAmount(tx);
+          const settledIn = tx.fundingAccountId
+            ? basisCurrencyByAccount.own.get(tx.fundingAccountId)
+            : basisCurrencyByAccount.brokerage.get(tx.accountId);
+          if (
+            amount === null ||
+            settledIn === undefined ||
+            (entry.currencyCode !== null && entry.currencyCode !== settledIn)
+          ) {
+            entry.basisGap ??= "mixed_basis_currency";
+            break;
+          }
+          entry.costBasis = applyReturnOfCapital(
+            entry.costBasis,
+            amount,
+          ).costBasis;
+          break;
+        }
         // DIVIDEND / INTEREST / CAPITAL_GAIN: cash only, no impact on cost basis
       }
 
@@ -1442,6 +1492,7 @@ export class PortfolioCalculationService {
                 symbol: tx.security?.symbol ?? null,
                 securityName: tx.security?.name ?? null,
                 securityCurrencyCode: tx.security?.currencyCode ?? null,
+                action: tx.action,
                 quantity: Math.abs(quantity),
                 price,
                 commission: Number(tx.commission) || 0,
@@ -1450,6 +1501,46 @@ export class PortfolioCalculationService {
                 realizedGain: roundMoney(realizedGain),
               });
             }
+          }
+          break;
+        }
+        case InvestmentAction.RETURN_OF_CAPITAL: {
+          // Comes off the basis; only what the basis could not absorb is a
+          // gain, realized on the distribution's date with no shares sold.
+          // The row's own rate puts it in the holding account's currency. It
+          // is the raw stored rate, not `exchangeRate` above: that one has
+          // already turned a stored 0 into 1, and a rate that cannot convert
+          // is unknown, never par. An unknown amount leaves the basis as it
+          // was, as an unpriced acquisition leaves it in this replay.
+          const amount = returnOfCapitalAmount({
+            totalAmount: tx.totalAmount,
+            exchangeRate: tx.exchangeRate,
+          });
+          if (amount === null) break;
+          const effect = applyReturnOfCapital(entry.costBasis, amount);
+          entry.costBasis = effect.costBasis;
+          if (
+            effect.realizedGain > 0 &&
+            (!startDate || tx.transactionDate >= startDate)
+          ) {
+            results.push({
+              transactionId: tx.id,
+              transactionDate: tx.transactionDate,
+              accountId: tx.accountId,
+              accountName: tx.account?.name ?? null,
+              accountCurrencyCode: tx.account?.currencyCode ?? null,
+              securityId: tx.securityId,
+              symbol: tx.security?.symbol ?? null,
+              securityName: tx.security?.name ?? null,
+              securityCurrencyCode: tx.security?.currencyCode ?? null,
+              action: tx.action,
+              quantity: 0,
+              price: 0,
+              commission: Number(tx.commission) || 0,
+              proceeds: roundMoney(amount),
+              costBasis: roundMoney(effect.basisReturned),
+              realizedGain: roundMoney(effect.realizedGain),
+            });
           }
           break;
         }
@@ -1767,6 +1858,31 @@ export class PortfolioCalculationService {
                 // A basis carrying an unknown lot cannot price what was sold.
                 if (!state.basisKnown) realizedKnown = false;
               }
+              break;
+            }
+            case InvestmentAction.RETURN_OF_CAPITAL: {
+              // Capital coming back out: the price falls by what was paid,
+              // so it nets against the value change as a sale's proceeds do,
+              // and only what exceeds the basis is realized. The raw stored
+              // rate, as `applyTxToState` reads it before the window: a 0 is
+              // unknown, and `exchangeRate` above would have made it 1.
+              const amount = returnOfCapitalAmount({
+                totalAmount: tx.totalAmount,
+                exchangeRate: tx.exchangeRate,
+              });
+              if (amount === null) {
+                // Neither the cash nor the basis it returned is known, so
+                // the period's capital movement is not either.
+                buysComplete = false;
+                realizedKnown = false;
+                state.basisKnown = false;
+                break;
+              }
+              const effect = applyReturnOfCapital(state.costBasis, amount);
+              state.costBasis = effect.costBasis;
+              sells += amount;
+              realizedGain += effect.realizedGain;
+              if (!state.basisKnown) realizedKnown = false;
               break;
             }
             default:

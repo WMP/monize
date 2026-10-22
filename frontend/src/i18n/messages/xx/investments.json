@@ -231,6 +231,7 @@
     "actionCapitalGainShort": "[XX-Short-Term Capital Gain-XX]",
     "actionCapitalGainLong": "[XX-Long-Term Capital Gain-XX]",
     "actionRedeem": "[XX-Redeem CD/Bond-XX]",
+    "actionReturnOfCapital": "[XX-Return of Capital-XX]",
     "allActions": "[XX-All Actions-XX]"
   },
   "transactionForm": {
@@ -251,6 +252,7 @@
     "actionCapitalGainShort": "[XX-Short-Term Capital Gain-XX]",
     "actionCapitalGainLong": "[XX-Long-Term Capital Gain-XX]",
     "actionRedeem": "[XX-Redeem CD/Bond-XX]",
+    "actionReturnOfCapital": "[XX-Return of Capital-XX]",
     "actionTransfer": "[XX-Transfer-XX]",
     "brokerageAccount": "[XX-Brokerage Account-XX]",
     "fromAccount": "[XX-From Account-XX]",
@@ -295,6 +297,7 @@
     "sharesAt": "[XX-shares @-XX]",
     "avgCostSuffix": "[XX-avg cost.-XX]",
     "transferCostNote": "[XX-The cost per share is what the shares cost in the source account on the transfer date. It is worked out when you save and carried to the destination, so your gain and profit reports stay correct. This moves shares only; no cash changes hands.-XX]",
+    "returnOfCapitalNote": "[XX-A return of capital is not income. It pays back part of what the shares cost, so it lowers the cost basis of your holding by this amount. Anything beyond the remaining cost basis is reported as a realized capital gain.-XX]",
     "totalAmount": "[XX-Total Amount ({currency})-XX]",
     "sharesAtPrice": "[XX-{shares} shares @ {symbol}{price}-XX]",
     "commissionSuffix": "[XX-commission-XX]",

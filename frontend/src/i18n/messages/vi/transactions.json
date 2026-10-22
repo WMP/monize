@@ -436,6 +436,7 @@
       "destinationRequired": "Vui lòng chọn tài khoản đích",
       "sameAccount": "Tài khoản nguồn và đích phải khác nhau",
       "negativeTransfer": "Số tiền chuyển không được là âm",
+      "convertToTransferUnsupported": "Không thể chuyển một giao dịch hiện có thành chuyển khoản tại đây. Hãy xóa giao dịch đó và tạo chuyển khoản thay thế.",
       "payeeCreated": "Người nhận \"{name}\" đã được tạo",
       "payeeCreateFailed": "Không thể tạo người nhận",
       "payeeReactivated": "Người nhận \"{name}\" đã được kích hoạt lại",

@@ -470,7 +470,8 @@ currency.
   the two halves the return needs:
   - `capitalIn(d)`: BUY (and REDEEM's opposite, i.e. none), TRANSFER_IN,
     ADD_SHARES.
-  - `capitalOut(d)`: SELL / REDEEM, TRANSFER_OUT, REMOVE_SHARES.
+  - `capitalOut(d)`: SELL / REDEEM, TRANSFER_OUT, REMOVE_SHARES,
+    RETURN_OF_CAPITAL (cost paid back, not earned; `docs/specs/return-of-capital.md`).
   - `K(d) = capitalIn(d) - capitalOut(d)`.
 
   A row's value is its **executed total** where it carries one -- BUY and SELL
@@ -906,7 +907,7 @@ the same `IV`, `K` and `I` of section 10.2, not one component more:
 | --- | --- | --- |
 | `b` | `-IV(b)` | what was already invested is a purchase made on day one |
 | each `d` in `(b, e]` | `-capitalIn(d)` | a buy, a share transfer in, an ADD_SHARES |
-| each `d` in `(b, e]` | `+capitalOut(d)` | a sale, a share transfer out, a REMOVE_SHARES |
+| each `d` in `(b, e]` | `+capitalOut(d)` | a sale, a share transfer out, a REMOVE_SHARES, a return of capital |
 | each `d` in `(b, e]` | `+I(d)` | a dividend, interest, a capital-gain distribution |
 | `e` | `+IV(e)` | the position is notionally liquidated at the end |
 
