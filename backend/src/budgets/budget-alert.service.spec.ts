@@ -1106,6 +1106,37 @@ describe("BudgetAlertService", () => {
     });
   });
 
+  describe("deduplicateAlerts -- flex groups", () => {
+    const flexCandidate = (group: string) => ({
+      budgetId: "budget-1",
+      budgetCategoryId: null,
+      type: NotificationType.FLEX_GROUP_WARNING,
+      severity: NotificationSeverity.WARNING,
+      title: `${group} group warning`,
+      message: `${group} group message`,
+      data: { flexGroup: group },
+    });
+
+    it("keeps a flex-group warning for another group and drops one for the same group", () => {
+      const existing = [
+        makeAlert({
+          type: NotificationType.FLEX_GROUP_WARNING,
+          severity: NotificationSeverity.WARNING,
+          budgetCategoryId: null,
+          data: { flexGroup: "Fun" },
+        }),
+      ];
+
+      const result = service.deduplicateAlerts(
+        [flexCandidate("Dining"), flexCandidate("Fun")],
+        existing,
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].data).toEqual({ flexGroup: "Dining" });
+    });
+  });
+
   describe("processAlerts", () => {
     it("returns zero alerts when budget has no categories", async () => {
       const budget = makeBudget({ categories: [] });

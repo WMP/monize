@@ -31,6 +31,18 @@ jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
 
+/**
+ * `queryCategorySpending` reads raw rows that carry a currency and a date. Every
+ * row here is in the budget's currency, which needs no rate, so each number is
+ * the one the unconverted query returned.
+ */
+const spendingRow = (key: string, total: string) => ({
+  key,
+  currencyCode: "USD",
+  txDate: "2026-01-10",
+  total,
+});
+
 describe("Budget Period Lifecycle Integration", () => {
   let scopedManager: ManagerMock;
   let scopedDataSource: DataSourceMock;
@@ -130,6 +142,7 @@ describe("Budget Period Lifecycle Integration", () => {
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
     groupBy: jest.fn().mockReturnThis(),
+    addGroupBy: jest.fn().mockReturnThis(),
     getMany: jest.fn().mockResolvedValue([]),
     getRawMany: jest.fn().mockResolvedValue([]),
     ...overrides,
@@ -169,9 +182,12 @@ describe("Budget Period Lifecycle Integration", () => {
       })),
     };
 
+    // `queryCategorySpending` reads the budget's currency and config, and the
+    // rate index, through the repository's own manager: the close transaction's.
     transactionsRepository = {
+      manager: undefined,
       createQueryBuilder: jest.fn(() => createMockQueryBuilder()),
-    };
+    } as unknown as Record<string, jest.Mock>;
 
     splitsRepository = {
       createQueryBuilder: jest.fn(() => createMockQueryBuilder()),
@@ -226,12 +242,17 @@ describe("Budget Period Lifecycle Integration", () => {
           insertedPeriodRows.push(lastInserted);
           return [{ id: lastInserted.id }];
         }
+        // The actuals query names the budget's currency; every row is in it.
+        if (typeof sql === "string" && sql.includes("FROM budgets")) {
+          return [{ currency_code: "USD", config: {} }];
+        }
         return [];
       },
     );
     periodsRepository.findOneOrFail.mockImplementation(
       async () => lastInserted,
     );
+    (transactionsRepository as { manager?: unknown }).manager = scopedManager;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -471,12 +492,14 @@ describe("Budget Period Lifecycle Integration", () => {
       periodsRepository.save.mockImplementation((data) => data);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { categoryId: "cat-groceries", total: "-450" },
-          { categoryId: "cat-rent", total: "-1500" },
-          { categoryId: "cat-travel", total: "-50" },
-          { categoryId: "cat-income", total: "5200" },
-        ]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([
+            spendingRow("cat-groceries", "-450"),
+            spendingRow("cat-rent", "-1500"),
+            spendingRow("cat-travel", "-50"),
+            spendingRow("cat-income", "5200"),
+          ]),
       });
       transactionsRepository.createQueryBuilder.mockReturnValue(directQb);
       splitsRepository.createQueryBuilder.mockReturnValue(
@@ -518,6 +541,19 @@ describe("Budget Period Lifecycle Integration", () => {
       // insert for the period plus one batch save for its categories.
       expect(insertedPeriodRows).toHaveLength(1);
       expect(periodCategoriesRepository.save).toHaveBeenCalledTimes(1);
+      // The period categories are loaded with their budget line, which carries
+      // the rollover type `computeRollover` reads.
+      expect(periodsRepository.findOne.mock.calls[1][0].relations).toContain(
+        "periodCategories.budgetCategory",
+      );
+      // The next period is the month after the closed one (this one ends on
+      // 2026-01-31), not the current calendar month.
+      expect(insertedPeriodRows[0]).toEqual(
+        expect.objectContaining({
+          periodStart: "2026-02-01",
+          periodEnd: "2026-02-28",
+        }),
+      );
     });
 
     it("respects rollover cap when computing rollover", () => {
@@ -670,7 +706,7 @@ describe("Budget Period Lifecycle Integration", () => {
       const directQb = createMockQueryBuilder({
         getRawMany: jest
           .fn()
-          .mockResolvedValue([{ categoryId: "cat-groceries", total: "-400" }]),
+          .mockResolvedValue([spendingRow("cat-groceries", "-400")]),
       });
       transactionsRepository.createQueryBuilder.mockReturnValue(directQb);
       splitsRepository.createQueryBuilder.mockReturnValue(
@@ -924,12 +960,12 @@ describe("Budget Period Lifecycle Integration", () => {
       const directQb = createMockQueryBuilder({
         getRawMany: jest
           .fn()
-          .mockResolvedValue([{ categoryId: "cat-groceries", total: "-300" }]),
+          .mockResolvedValue([spendingRow("cat-groceries", "-300")]),
       });
       const splitQb = createMockQueryBuilder({
         getRawMany: jest
           .fn()
-          .mockResolvedValue([{ categoryId: "cat-groceries", total: "-100" }]),
+          .mockResolvedValue([spendingRow("cat-groceries", "-100")]),
       });
 
       transactionsRepository.createQueryBuilder.mockReturnValue(directQb);

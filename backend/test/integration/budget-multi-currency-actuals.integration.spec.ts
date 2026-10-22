@@ -16,6 +16,7 @@ import {
   TransactionStatus,
 } from "@/transactions/entities/transaction.entity";
 import { TransactionSplit } from "@/transactions/entities/transaction-split.entity";
+import { SplitKind } from "@/transactions/entities/split-kind.enum";
 import { withScopedDb } from "@/common/db/scoped-db";
 import { withUserContext } from "@/common/db/with-context";
 import {
@@ -273,6 +274,8 @@ describe("budget actuals across currencies (integration)", () => {
       } as Partial<TransactionSplit>),
       dataSource.manager.create(TransactionSplit, {
         transactionId: parent.id,
+        // A transfer line is kind TRANSFER (chk_split_kind_exclusive).
+        kind: SplitKind.TRANSFER,
         transferAccountId: savingsId,
         linkedTransactionId: counterpart.id,
         amount: -2000,

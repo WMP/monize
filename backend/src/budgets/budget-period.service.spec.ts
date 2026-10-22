@@ -23,6 +23,18 @@ jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
 
+/**
+ * `queryCategorySpending` reads raw rows that carry a currency and a date. Every
+ * row here is in the budget's currency, which needs no rate, so each number is
+ * the one the unconverted query returned.
+ */
+const spendingRow = (key: string, total: string) => ({
+  key,
+  currencyCode: "USD",
+  txDate: "2026-02-10",
+  total,
+});
+
 describe("BudgetPeriodService", () => {
   let scopedManager: ManagerMock;
   let scopedDataSource: DataSourceMock;
@@ -117,6 +129,7 @@ describe("BudgetPeriodService", () => {
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
     groupBy: jest.fn().mockReturnThis(),
+    addGroupBy: jest.fn().mockReturnThis(),
     getMany: jest.fn().mockResolvedValue([]),
     getRawMany: jest.fn().mockResolvedValue([]),
     ...overrides,
@@ -145,9 +158,12 @@ describe("BudgetPeriodService", () => {
         .mockImplementation((data) => ({ ...data, id: data.id || "new-bpc" })),
     };
 
+    // `queryCategorySpending` reads the budget's currency and config, and the
+    // rate index, through the repository's own manager: the close transaction's.
     transactionsRepository = {
+      manager: undefined,
       createQueryBuilder: jest.fn(() => createMockQueryBuilder()),
-    };
+    } as unknown as Record<string, jest.Mock>;
 
     splitsRepository = {
       createQueryBuilder: jest.fn(() => createMockQueryBuilder()),
@@ -172,11 +188,18 @@ describe("BudgetPeriodService", () => {
     // The period insert is now `INSERT ... ON CONFLICT DO NOTHING RETURNING id`
     // so a lost race is a no-op instead of a transaction-aborting 23505. Default
     // to winning; the loser path is asserted explicitly.
-    scopedManager.query.mockImplementation(async (sql: string) =>
-      typeof sql === "string" && sql.includes("INSERT INTO budget_periods")
-        ? [{ id: "new-period" }]
-        : [],
-    );
+    scopedManager.query.mockImplementation(async (sql: string) => {
+      if (typeof sql !== "string") return [];
+      if (sql.includes("INSERT INTO budget_periods")) {
+        return [{ id: "new-period" }];
+      }
+      // The actuals query names the budget's currency; every row below is in it.
+      if (sql.includes("FROM budgets")) {
+        return [{ currency_code: "USD", config: {} }];
+      }
+      return [];
+    });
+    (transactionsRepository as { manager?: unknown }).manager = scopedManager;
     periodsRepository.findOneOrFail.mockImplementation(async () => ({
       id: "new-period",
     }));
@@ -343,9 +366,7 @@ describe("BudgetPeriodService", () => {
       periodsRepository.save.mockImplementation((data) => data);
 
       const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "350" }]),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "350")]),
       });
       transactionsRepository.createQueryBuilder.mockReturnValue(directQb);
       splitsRepository.createQueryBuilder.mockReturnValue(
@@ -355,6 +376,21 @@ describe("BudgetPeriodService", () => {
       const result = await service.closePeriod("user-1", "budget-1");
 
       expect(result.status).toBe(PeriodStatus.CLOSED);
+      // The period categories are loaded with their budget line, which carries
+      // the rollover type `computeRollover` reads.
+      expect(periodsRepository.findOne.mock.calls[1][0].relations).toContain(
+        "periodCategories.budgetCategory",
+      );
+      // The next period is the month after the closed one (mockPeriod ends on
+      // 2026-02-28), not the current calendar month.
+      const nextInsert = scopedManager.query.mock.calls.find(
+        (call: unknown[]) =>
+          String(call[0]).includes("INSERT INTO budget_periods"),
+      )!;
+      expect((nextInsert[1] as unknown[]).slice(1, 3)).toEqual([
+        "2026-03-01",
+        "2026-03-31",
+      ]);
       // closePeriod writes through the scoped transaction's EntityManager.
       expect(scopedDataSource.transaction).toHaveBeenCalled();
       expect(scopedManager.save).toHaveBeenCalled();
@@ -404,23 +440,22 @@ describe("BudgetPeriodService", () => {
         createMockQueryBuilder({
           getRawMany: jest
             .fn()
-            .mockResolvedValue([
-              { destinationAccountId: "acct-savings", total: "100" },
-            ]),
+            .mockResolvedValue([spendingRow("acct-savings", "100")]),
         }),
       );
       splitsRepository.createQueryBuilder.mockReturnValue(
         createMockQueryBuilder({
           getRawMany: jest
             .fn()
-            .mockResolvedValue([
-              { destinationAccountId: "acct-savings", total: "50" },
-            ]),
+            .mockResolvedValue([spendingRow("acct-savings", "50")]),
         }),
       );
 
       await service.closePeriod("user-1", "budget-1");
 
+      expect(periodsRepository.findOne.mock.calls[1][0].relations).toContain(
+        "periodCategories.budgetCategory",
+      );
       expect(scopedManager.save).toHaveBeenCalledWith(
         BudgetPeriodCategory,
         expect.objectContaining({

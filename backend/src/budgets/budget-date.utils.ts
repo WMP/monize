@@ -51,6 +51,22 @@ export function getPreviousMonthPeriodDates(): PeriodDateRange {
 }
 
 /**
+ * The calendar month after the one `periodEnd` (YYYY-MM-DD) falls in: the
+ * period that follows a closed one. Derived from the closed period, never from
+ * the wall clock, so a close before the period ends (or a cron that runs late)
+ * still opens the next month rather than colliding with the month it closed
+ * (audit A26-L38).
+ */
+export function getFollowingMonthPeriodDates(
+  periodEnd: string,
+): PeriodDateRange {
+  const [year, month] = periodEnd.split("-").map(Number);
+  // `month` is 1-based, so as a zero-based index it already names the next one.
+  const next = new Date(Date.UTC(year, month, 1));
+  return getMonthPeriodDates(next.getUTCFullYear(), next.getUTCMonth());
+}
+
+/**
  * Parses a YYYY-MM string and returns the corresponding period dates.
  * Returns null if the format is invalid.
  */
