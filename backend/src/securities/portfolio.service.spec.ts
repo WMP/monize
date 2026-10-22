@@ -14,6 +14,7 @@ import {
 } from "../accounts/entities/account.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import { requestContextStorage } from "../common/request-context";
 import { PortfolioPeriodResultService } from "../net-worth/portfolio-period-result.service";
 import {
   NetWorthService,
@@ -5628,6 +5629,54 @@ describe("PortfolioService", () => {
           expect.objectContaining({
             startDate: "2026-09-20",
             endDate: "2026-09-28",
+          }),
+        );
+      });
+
+      it("dates the window by the user's calendar, not UTC's, in the evening west of Greenwich", async () => {
+        // 22:30 on Wednesday 21 October in Toronto is already the 22nd in UTC.
+        // The caption reads the user's day, so 1W opens on the 14th and is
+        // measured from Tuesday the 13th's close. A UTC "today" measured it
+        // from the 14th and cut the 14th's bars out of the window.
+        jest.setSystemTime(new Date("2026-10-22T02:30:00.000Z"));
+        netWorthService.getDailyInvestmentPositions.mockResolvedValue(
+          ledgerOf([day("2026-10-13", 400), day("2026-10-14", 410)], [xgro]),
+        );
+        netWorthService.getLastPricedDays.mockResolvedValue(
+          new Map([["2026-10-13", "2026-10-13"]]),
+        );
+        seriesBySymbol({
+          "XGRO.TO": [
+            bar("2026-10-13T19:55:00.000Z", 40),
+            bar("2026-10-14T13:30:00.000Z", 40.5),
+            bar("2026-10-14T19:55:00.000Z", 41),
+          ],
+        });
+
+        const result = await requestContextStorage.run(
+          { timezone: "America/Toronto" },
+          () => service.getIntradayValueSeries(userId, { range: "1w" }),
+        );
+
+        expect(result.points.map((p) => p.timestamp)).toEqual([
+          "2026-10-13T20:00:00.000Z",
+          "2026-10-14T13:30:00.000Z",
+          "2026-10-14T19:55:00.000Z",
+          "2026-10-14T20:00:00.000Z",
+        ]);
+        expect(result.points[0].value).toBe(400);
+        expect(netWorthService.getLastPricedDays).toHaveBeenCalledWith(
+          userId,
+          ["2026-10-13"],
+          undefined,
+        );
+        expect(
+          netWorthService.getDailyInvestmentPositions,
+        ).toHaveBeenCalledWith(
+          userId,
+          expect.objectContaining({
+            startDate: "2026-10-13",
+            endDate: "2026-10-21",
           }),
         );
       });

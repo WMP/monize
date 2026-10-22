@@ -383,6 +383,12 @@
       "readyMessage": "等待您決定的提案：{{ count }} 項。自上次通知以來新增：{{ added }} 項。開啟以審核。",
       "expiringTitle": "AI 審核提案即將到期",
       "expiringMessage": "3 天內到期的提案：{{ count }} 項。最早的一項於 {{ date }} 到期。開啟以審核。"
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}：保固即將到期",
+      "expiringMessage": "{{ name }} 的保固將於 {{ date }} 到期。開啟即可檢視其文件或記錄保固申請。",
+      "todayTitle": "{{ name }}：保固今天到期",
+      "todayMessage": "{{ name }} 的保固於今天（{{ date }}）到期。開啟即可檢視其文件或記錄保固申請。"
     }
   },
   "backupOffsite": {

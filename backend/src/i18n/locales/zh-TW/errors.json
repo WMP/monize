@@ -29,7 +29,10 @@
     "unsupportedType": "不支援的檔案類型。允許的類型：{{ types }}",
     "tooMany": "此交易已達到最多 {{ max }} 個附件的上限",
     "swept": "上傳耗時過長，其儲存空間已被回收。請重試。",
-    "pairRequiresImages": "掃描的文件及其原圖都必須是圖片"
+    "pairRequiresImages": "掃描的文件及其原圖都必須是圖片",
+    "warrantyNotFound": "找不到保固",
+    "tooManyForWarranty": "此保固已達到最多 {{ max }} 個附件的上限",
+    "documentKindNotForTransaction": "文件類型僅適用於保固的文件"
   },
   "accounts": {
     "accountWithIdNotFound": "找不到 ID 為 {{ id }} 的科目",
@@ -875,5 +878,47 @@
     "selectionNotNew": "所選的某筆交易不是銀行資料中的新紀錄。未匯入任何內容；請重新預覽。",
     "selectionOverlap": "一筆交易不能同時被匯入並加入例外清單。",
     "nothingToUpdate": "請傳送 autoSync, notifySuccess 或 tagOperationType 以變更銀行連線。"
+  },
+  "warranties": {
+    "notFound": "找不到 ID 為 {{ id }} 的保固",
+    "transactionNotFound": "找不到 ID 為 {{ id }} 的交易",
+    "transactionIsSplitLine": "保固連結的是整筆購買，而不是其中某一分割列",
+    "payeeNotFound": "找不到 ID 為 {{ id }} 的收款人",
+    "invalidTerm": "保固期間必須大於零",
+    "expiryRequired": "非終身保固需要到期日期或期間",
+    "expiresBeforePurchase": "保固不能在購買日期之前到期",
+    "priceNeedsCurrency": "購買價格與貨幣必須同時設定，或都不設定",
+    "claimNotFound": "找不到 ID 為 {{ id }} 的保固申請",
+    "claimResolvedOnNeedsOutcome": "只有狀態為已解決或已拒絕的保固申請才能設定結案日期",
+    "claimResolvedBeforeClaimDate": "保固申請的結案日期不能早於申請日期",
+    "import": {
+      "noFile": "請選擇要匯入的 CSV 檔案",
+      "notCsv": "檔案必須是 CSV 檔案",
+      "fileTooLarge": "匯入檔案不能超過 1 MiB",
+      "emptyFile": "檔案必須包含一個標題列與至少一個資料列",
+      "tooManyRows": "匯入檔案有 {{ count }} 列；最多允許 {{ max }} 列",
+      "missingColumns": "檔案的標題列中沒有 {{ columns }} 欄位",
+      "invalidRows": "{{ count }} 列無效，因此未匯入任何內容；請修正或略過這些列",
+      "nameRequired": "ProductName 為必填",
+      "purchaseDateRequired": "PurchaseDate 為必填",
+      "tooLong": "{{ column }} 最多 {{ max }} 個字元",
+      "invalidDate": "{{ column }} 必須是 YYYY-MM-DD 格式的日期",
+      "invalidDuration": "{{ column }} 必須是 0 到 {{ max }} 之間的整數",
+      "invalidLifetime": "IsLifetime 必須是 true、false、yes、no、1 或 0",
+      "noExpirySource": "請填寫 ExpirationDate、某個 WarrantyDuration 欄位或 IsLifetime",
+      "lifetimeWithExpiry": "IsLifetime 為 true，但該列也提供了 ExpirationDate 或 WarrantyDuration；請只填寫其中一項",
+      "durationIgnored": "已使用 ExpirationDate；旁邊的 WarrantyDuration 欄位已略過",
+      "durationDisagrees": "已使用 ExpirationDate {{ expiresOn }}；WarrantyDuration 欄位算出的是 {{ derived }}，兩者不一致",
+      "negativePrice": "PurchasePrice 不能是負數",
+      "invalidPrice": "PurchasePrice 必須是 0 到 {{ max }} 之間的數字，且最多 4 位小數",
+      "currencyWithoutPrice": "已設定 Currency，但 PurchasePrice 是空白的",
+      "unknownCurrency": "無法辨識貨幣「{{ value }}」；已使用 {{ currency }}",
+      "unknownWarrantyType": "WarrantyType「{{ value }}」不是 manufacturer、extended、store 或 other；已以 other 匯入",
+      "invalidSerialJson": "SerialNumber 以 [ 開頭，但不是文字的 JSON 陣列",
+      "tooManySerials": "SerialNumber 包含 {{ count }} 個值；最多允許 {{ max }} 個",
+      "serialTooLong": "每個序號最多 {{ max }} 個字元",
+      "invalidUrl": "ProductURL 必須是 http 或 https 網址",
+      "invalidField": "{{ field }} 無效"
+    }
   }
 }

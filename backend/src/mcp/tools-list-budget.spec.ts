@@ -98,6 +98,12 @@ import { McpServerService } from "./mcp-server.service";
 // language guide explains it). `email_receipt_parsers` 2,730 -> 3,023 bytes
 // measured (+293); cap 2,740 -> 3,030 and total 63,170 -> 63,460 (63,451
 // measured); no other cap moved.
+//
+// Added, as a reviewed decision (warranty tracker, design decision 11): the
+// read-only `list_warranties` (1,135 bytes: a status, a search and a limit in;
+// `today`, the rows and `total` out). Total 63,460 -> 64,595 = exactly the
+// new tool's measured bytes (64,586 measured, the previous 9-byte margin
+// kept); no existing cap moved.
 const TOOL_BYTE_BUDGET: Record<string, number> = {
   list_accounts: 2500,
   list_transactions: 3550,
@@ -121,12 +127,13 @@ const TOOL_BYTE_BUDGET: Record<string, number> = {
   email_receipt_parsers: 3030,
   fetch_bond_series: 1000,
   enter_bond_series_manually: 1690,
+  list_warranties: 1140,
   get_next_prompt: 1400,
   post_response: 1050,
   report_progress: 1250,
 };
 
-const TOTAL_BYTE_BUDGET = 63_460;
+const TOTAL_BYTE_BUDGET = 64_595;
 const INSTRUCTIONS_BYTE_BUDGET = 2_600;
 
 /**
@@ -158,6 +165,7 @@ const EXPECTED_TOOL_ORDER = [
   "email_receipt_parsers",
   "fetch_bond_series",
   "enter_bond_series_manually",
+  "list_warranties",
   "get_next_prompt",
   "post_response",
   "report_progress",
@@ -369,6 +377,7 @@ describe("tools/list payload budget", () => {
     // provider doubles are enough to read them back off the server.
     const noopProvider = { register: () => {} } as any;
     const service = new McpServerService(
+      noopProvider,
       noopProvider,
       noopProvider,
       noopProvider,

@@ -107,4 +107,12 @@ describe('PageHeader', () => {
     const actionsContainer = container.querySelector('.flex.flex-wrap');
     expect(actionsContainer).toBeNull();
   });
+
+  it('draws an adornment on the title line, outside the heading', () => {
+    render(<PageHeader title="Laptop" titleAdornment={<span>Active</span>} />);
+    const heading = screen.getByRole('heading', { name: 'Laptop' });
+    const pill = screen.getByText('Active');
+    expect(heading).not.toContainElement(pill);
+    expect(heading.parentElement).toContainElement(pill);
+  });
 });

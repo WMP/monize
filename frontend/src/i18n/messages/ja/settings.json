@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "銀行同期の結果",
         "EMAIL_RECEIPTS": "メール領収書",
         "BONDS": "債券",
-        "AI_REVIEW": "AIレビュー提案"
+        "AI_REVIEW": "AIレビュー提案",
+        "WARRANTIES": "保証のリマインダー"
       },
       "channelNotApplicable": "この通知タイプには適用されません",
       "emailToggleLabel": "{category} のレポートメール",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "アプリセクション全体への読み取り専用アクセスを付与します。口座スコープのデータには口座ごとのアクセスも必要です。",
-      "aiRequiresFullAccess": "AI アシスタントはすべての口座とセクションを横断して読み取るため、このデリゲートがすべての口座と他のすべてのセクションを閲覧できる場合にのみ回答します。"
+      "aiRequiresFullAccess": "AI アシスタントはすべての口座とセクションを横断して読み取るため、このデリゲートがすべての口座と他のすべてのセクションを閲覧できる場合にのみ回答します。",
+      "warranties": {
+        "label": "保証",
+        "description": "保証とその書類、保証請求。リンクされた購入は、このデリゲートが閲覧できる口座のものだけが表示されます。"
+      }
     },
     "accounts": {
       "noAccounts": "付与する口座がありません。",

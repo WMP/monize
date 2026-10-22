@@ -36,6 +36,7 @@ const SECTION_LABELS: Record<DelegateSection, string> = {
   budgets: "Budgets",
   reports: "Reports",
   ai: "AI Assistant",
+  warranties: "Warranties",
 };
 
 const RESOURCE_LABELS: Record<DelegateCapabilityReq["resource"], string> = {

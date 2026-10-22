@@ -29,7 +29,10 @@
     "unsupportedType": "Loại tệp không được hỗ trợ. Các loại được phép: {{ types }}",
     "tooMany": "Giao tác này đã có tối đa {{ max }} tệp đính kèm",
     "swept": "Quá trình tải lên mất quá nhiều thời gian và bộ nhớ của nó đã được thu hồi. Vui lòng thử lại.",
-    "pairRequiresImages": "Tài liệu đã quét và ảnh gốc của nó đều phải là hình ảnh"
+    "pairRequiresImages": "Tài liệu đã quét và ảnh gốc của nó đều phải là hình ảnh",
+    "warrantyNotFound": "Không tìm thấy bảo hành",
+    "tooManyForWarranty": "Bảo hành này đã có tối đa {{ max }} tệp đính kèm",
+    "documentKindNotForTransaction": "Loại tài liệu chỉ áp dụng cho tài liệu của bảo hành"
   },
   "accounts": {
     "accountWithIdNotFound": "Không tìm thấy tài khoản với ID {{ id }}",
@@ -875,5 +878,47 @@
     "selectionNotNew": "Một giao dịch đã chọn không phải là dòng mới trong dữ liệu của ngân hàng. Chưa có gì được nhập; hãy xem trước lại.",
     "selectionOverlap": "Một giao dịch không thể vừa được nhập vừa được thêm vào danh sách ngoại lệ.",
     "nothingToUpdate": "Hãy gửi autoSync, notifySuccess hoặc tagOperationType để thay đổi một kết nối ngân hàng."
+  },
+  "warranties": {
+    "notFound": "Không tìm thấy bảo hành với ID {{ id }}",
+    "transactionNotFound": "Không tìm thấy giao dịch với ID {{ id }}",
+    "transactionIsSplitLine": "Bảo hành liên kết với toàn bộ giao dịch mua, không phải với một dòng tách của nó",
+    "payeeNotFound": "Không tìm thấy người nhận với ID {{ id }}",
+    "invalidTerm": "Thời hạn bảo hành phải lớn hơn 0",
+    "expiryRequired": "Bảo hành không phải trọn đời cần có ngày hết hạn hoặc thời hạn",
+    "expiresBeforePurchase": "Bảo hành không thể hết hạn trước ngày mua",
+    "priceNeedsCurrency": "Giá mua và đơn vị tiền tệ của nó phải được đặt cùng nhau hoặc không đặt cả hai",
+    "claimNotFound": "Không tìm thấy yêu cầu bảo hành với ID {{ id }}",
+    "claimResolvedOnNeedsOutcome": "Ngày đóng của yêu cầu bảo hành chỉ áp dụng khi trạng thái là đã giải quyết hoặc bị từ chối",
+    "claimResolvedBeforeClaimDate": "Yêu cầu bảo hành không thể đóng trước ngày yêu cầu",
+    "import": {
+      "noFile": "Chọn một tệp CSV để nhập",
+      "notCsv": "Tệp phải là tệp CSV",
+      "fileTooLarge": "Tệp nhập không được vượt quá 1 MiB",
+      "emptyFile": "Tệp phải có một hàng tiêu đề và ít nhất một hàng dữ liệu",
+      "tooManyRows": "Tệp nhập có {{ count }} hàng; chỉ cho phép tối đa {{ max }} hàng",
+      "missingColumns": "Hàng tiêu đề của tệp không có cột {{ columns }}",
+      "invalidRows": "{{ count }} hàng không hợp lệ nên không có gì được nhập; hãy sửa hoặc bỏ qua chúng",
+      "nameRequired": "ProductName là bắt buộc",
+      "purchaseDateRequired": "PurchaseDate là bắt buộc",
+      "tooLong": "{{ column }} chỉ được có tối đa {{ max }} ký tự",
+      "invalidDate": "{{ column }} phải là ngày theo dạng YYYY-MM-DD",
+      "invalidDuration": "{{ column }} phải là số nguyên từ 0 đến {{ max }}",
+      "invalidLifetime": "IsLifetime phải là true, false, yes, no, 1 hoặc 0",
+      "noExpirySource": "Điền ExpirationDate, một cột WarrantyDuration hoặc IsLifetime",
+      "lifetimeWithExpiry": "IsLifetime là true, nhưng hàng cũng có ExpirationDate hoặc WarrantyDuration; chỉ điền một trong số đó",
+      "durationIgnored": "Đã dùng ExpirationDate; các cột WarrantyDuration bên cạnh đã bị bỏ qua",
+      "durationDisagrees": "Đã dùng ExpirationDate {{ expiresOn }}; các cột WarrantyDuration cho ra {{ derived }}, không khớp",
+      "negativePrice": "PurchasePrice không được âm",
+      "invalidPrice": "PurchasePrice phải là số từ 0 đến {{ max }} với tối đa 4 chữ số thập phân",
+      "currencyWithoutPrice": "Đã đặt Currency nhưng PurchasePrice đang trống",
+      "unknownCurrency": "Không nhận ra đơn vị tiền tệ \"{{ value }}\"; đã dùng {{ currency }}",
+      "unknownWarrantyType": "WarrantyType \"{{ value }}\" không phải manufacturer, extended, store hay other; đã nhập là other",
+      "invalidSerialJson": "SerialNumber bắt đầu bằng [ nhưng không phải là mảng JSON chứa văn bản",
+      "tooManySerials": "SerialNumber chứa {{ count }} giá trị; chỉ cho phép tối đa {{ max }}",
+      "serialTooLong": "Mỗi số sê-ri chỉ được có tối đa {{ max }} ký tự",
+      "invalidUrl": "ProductURL phải là địa chỉ http hoặc https",
+      "invalidField": "{{ field }} không hợp lệ"
+    }
   }
 }

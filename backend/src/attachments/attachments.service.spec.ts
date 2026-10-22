@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   NotFoundException,
   PayloadTooLargeException,
   ServiceUnavailableException,
@@ -26,7 +27,13 @@ import {
 } from "./attachments.service";
 import { AttachmentStorageProvider } from "./storage/attachment-storage.interface";
 import { AttachmentOrphanSweeper } from "./attachment-orphan-sweeper.service";
-import { lockTransactionRow } from "../common/db/locks";
+import { lockTransactionRow, lockWarrantyRow } from "../common/db/locks";
+import {
+  AttachmentParent,
+  reachedTransactionIdSql,
+  reachingWarrantyJoinSql,
+} from "./attachment-parent";
+import { Warranty } from "../warranties/entities/warranty.entity";
 import { requestContextStorage } from "../common/request-context";
 import {
   lockedTransactionRow,
@@ -57,6 +64,11 @@ const PDF_BYTES = Buffer.from("%PDF-1.7\n...", "ascii");
 const JPEG_BYTES = Buffer.from([
   0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46,
 ]);
+
+/** The parent every transaction-side spec uploads under. */
+const TXN: AttachmentParent = { kind: "transaction", id: "txn-1" };
+/** The other parent (WTY-003); its row is present unless a spec clears it. */
+const WTY: AttachmentParent = { kind: "warranty", id: "wty-1" };
 
 function pngFile(
   overrides: Partial<UploadedAttachmentFile> = {},
@@ -114,6 +126,10 @@ describe("AttachmentsService", () => {
       },
       lockedParent ? [lockedParent] : [],
     );
+    (lockWarrantyRow as jest.Mock).mockImplementation(
+      async (_m, id: string, userId: string) =>
+        id === WTY.id && userId === "user-1" ? { id } : null,
+    );
     // The list read is a query builder (it LEFT JOINs each visible row to its
     // original), so the double is a chainable builder whose terminal call is
     // `getRawAndEntities`. Every step returns the builder, which is what lets a
@@ -131,6 +147,7 @@ describe("AttachmentsService", () => {
         return qb;
       }),
       orderBy: jest.fn(() => qb),
+      addOrderBy: jest.fn(() => qb),
       getRawAndEntities: jest.fn().mockResolvedValue({ entities: [], raw: [] }),
     };
     attRepo = {
@@ -235,11 +252,16 @@ describe("AttachmentsService", () => {
 
   describe("create", () => {
     it("stores metadata and bytes, sniffing the real MIME type", async () => {
-      const result = await service.create("user-1", "txn-1", pngFile());
+      const result = await service.create("user-1", TXN, pngFile());
 
       expect(result.contentType).toBe("image/png");
       expect(result.userId).toBe("user-1");
       expect(result.transactionId).toBe("txn-1");
+      // The other parent column is written as null, not left undefined, so
+      // the row the CHECK sees names exactly one parent; and a transaction's
+      // attachment takes the default kind (W4).
+      expect(result.warrantyId).toBeNull();
+      expect(result.documentKind).toBe("other");
       expect(result.byteSize).toBe(PNG_BYTES.length);
       expect(result.sha256).toBe(
         createHash("sha256").update(PNG_BYTES).digest("hex"),
@@ -250,10 +272,19 @@ describe("AttachmentsService", () => {
       expect(storage.save).toHaveBeenCalledWith(result.id, PNG_BYTES);
     });
 
+    it("refuses a non-default document kind under a transaction, before any write", async () => {
+      await expect(
+        service.create("user-1", TXN, pngFile(), undefined, "receipt"),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      // Refused before the upload intent: no transaction was opened at all.
+      expect(mockedTenantTx).not.toHaveBeenCalled();
+      expect(storage.save).not.toHaveBeenCalled();
+    });
+
     it("accepts PDFs", async () => {
       const result = await service.create(
         "user-1",
-        "txn-1",
+        TXN,
         pngFile({
           originalname: "invoice.pdf",
           buffer: PDF_BYTES,
@@ -265,14 +296,14 @@ describe("AttachmentsService", () => {
 
     it("rejects an empty file", async () => {
       await expect(
-        service.create("user-1", "txn-1", pngFile({ buffer: Buffer.alloc(0) })),
+        service.create("user-1", TXN, pngFile({ buffer: Buffer.alloc(0) })),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(storage.save).not.toHaveBeenCalled();
     });
 
     it("rejects a missing file", async () => {
       await expect(
-        service.create("user-1", "txn-1", undefined),
+        service.create("user-1", TXN, undefined),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
@@ -284,7 +315,7 @@ describe("AttachmentsService", () => {
       await expect(
         service.create(
           "user-1",
-          "txn-1",
+          TXN,
           pngFile({ buffer: big, size: big.length }),
         ),
       ).rejects.toBeInstanceOf(PayloadTooLargeException);
@@ -295,7 +326,7 @@ describe("AttachmentsService", () => {
       await expect(
         service.create(
           "user-1",
-          "txn-1",
+          TXN,
           pngFile({ buffer: junk, size: junk.length }),
         ),
       ).rejects.toBeInstanceOf(UnsupportedMediaTypeException);
@@ -305,7 +336,7 @@ describe("AttachmentsService", () => {
       lockedParent = null;
       (lockTransactionRow as jest.Mock).mockResolvedValue(null);
       await expect(
-        service.create("user-1", "txn-1", pngFile()),
+        service.create("user-1", TXN, pngFile()),
       ).rejects.toBeInstanceOf(NotFoundException);
       expect(storage.save).not.toHaveBeenCalled();
     });
@@ -313,7 +344,7 @@ describe("AttachmentsService", () => {
     it("rejects when the per-transaction cap is reached", async () => {
       attRepo.count.mockResolvedValue(MAX_ATTACHMENTS_PER_TRANSACTION);
       await expect(
-        service.create("user-1", "txn-1", pngFile()),
+        service.create("user-1", TXN, pngFile()),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(storage.save).not.toHaveBeenCalled();
     });
@@ -322,7 +353,7 @@ describe("AttachmentsService", () => {
       // The regression guard for P4-017: the count is only a cap if every
       // uploader queues behind the same row first. Two uploads that both counted
       // 9 both passed `< 10` and the transaction ended with 11.
-      await service.create("user-1", "txn-1", pngFile());
+      await service.create("user-1", TXN, pngFile());
 
       expect(lockTransactionRow).toHaveBeenCalledWith(
         expect.anything(),
@@ -334,6 +365,89 @@ describe("AttachmentsService", () => {
       expect(lockOrder).toBeLessThan(attRepo.count.mock.invocationCallOrder[0]);
     });
 
+    // The second parent (WTY-003). Same checks, same cap, same lock doctrine;
+    // what differs is which row is locked and which column the count and the
+    // insert name.
+    describe("under a warranty", () => {
+      it("locks the warranty row, not a transaction, before counting", async () => {
+        await service.create("user-1", WTY, pngFile());
+
+        expect(lockWarrantyRow).toHaveBeenCalledWith(
+          expect.anything(),
+          "wty-1",
+          "user-1",
+        );
+        expect(lockTransactionRow).not.toHaveBeenCalled();
+        const lockOrder = (lockWarrantyRow as jest.Mock).mock
+          .invocationCallOrder[0];
+        expect(lockOrder).toBeLessThan(
+          attRepo.count.mock.invocationCallOrder[0],
+        );
+      });
+
+      it("rejects when the warranty is not owned by the user", async () => {
+        await expect(
+          service.create("user-2", WTY, pngFile()),
+        ).rejects.toBeInstanceOf(NotFoundException);
+        expect(attRepo.save).not.toHaveBeenCalled();
+        expect(storage.save).not.toHaveBeenCalled();
+      });
+
+      it("counts the cap under the warranty column alone", async () => {
+        await service.create("user-1", WTY, pngFile());
+
+        const where = attRepo.count.mock.calls[0][0].where;
+        expect(where).toMatchObject({ warrantyId: "wty-1", userId: "user-1" });
+        expect(where).not.toHaveProperty("transactionId");
+        expect(where.originalOfAttachmentId).toBeDefined();
+      });
+
+      it("rejects when the warranty's cap is reached", async () => {
+        attRepo.count.mockResolvedValue(MAX_ATTACHMENTS_PER_TRANSACTION);
+        await expect(
+          service.create("user-1", WTY, pngFile()),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(storage.save).not.toHaveBeenCalled();
+      });
+
+      it("stores the warranty as the parent with the document kind", async () => {
+        const result = await service.create(
+          "user-1",
+          WTY,
+          pngFile(),
+          undefined,
+          "manual",
+        );
+
+        expect(result.warrantyId).toBe("wty-1");
+        expect(result.transactionId).toBeNull();
+        expect(result.documentKind).toBe("manual");
+      });
+
+      it("gives both halves of a scan pair the parent and the kind", async () => {
+        await service.create(
+          "user-1",
+          WTY,
+          pngFile({ originalname: "scan.png" }),
+          pngFile({
+            originalname: "orig.jpg",
+            buffer: JPEG_BYTES,
+            size: JPEG_BYTES.length,
+          }),
+          "receipt",
+        );
+
+        expect(attRepo.save).toHaveBeenCalledTimes(2);
+        for (const [row] of attRepo.save.mock.calls) {
+          expect(row).toMatchObject({
+            warrantyId: "wty-1",
+            transactionId: null,
+            documentKind: "receipt",
+          });
+        }
+      });
+    });
+
     it("removes the stored object when the transaction rolls back", async () => {
       // An external provider's put cannot roll back with PostgreSQL, so the bytes
       // have to be cleaned up explicitly -- there is no metadata row left to
@@ -341,9 +455,9 @@ describe("AttachmentsService", () => {
       externalStorage();
       attRepo.save.mockRejectedValue(new Error("commit failed"));
 
-      await expect(
-        service.create("user-1", "txn-1", pngFile()),
-      ).rejects.toThrow("commit failed");
+      await expect(service.create("user-1", TXN, pngFile())).rejects.toThrow(
+        "commit failed",
+      );
 
       // save() threw before the object was written, so nothing to clean up.
       expect(storage.delete).not.toHaveBeenCalled();
@@ -372,9 +486,9 @@ describe("AttachmentsService", () => {
           throw new Error("commit failed");
         });
 
-      await expect(
-        service.create("user-1", "txn-1", pngFile()),
-      ).rejects.toThrow("commit failed");
+      await expect(service.create("user-1", TXN, pngFile())).rejects.toThrow(
+        "commit failed",
+      );
 
       expect(storage.delete).toHaveBeenCalledWith(capturedId);
     });
@@ -402,12 +516,7 @@ describe("AttachmentsService", () => {
         pngFile({ originalname: "receipt.jpg", buffer: JPEG_BYTES });
 
       it("writes both rows and both objects, linking the original to the visible row", async () => {
-        const result = await service.create(
-          "user-1",
-          "txn-1",
-          scan(),
-          original(),
-        );
+        const result = await service.create("user-1", TXN, scan(), original());
 
         // The visible row is what the caller gets back, and it carries no link:
         // the link lives on the original, pointing here.
@@ -432,12 +541,7 @@ describe("AttachmentsService", () => {
       // The foreign key is immediate, so the row being referenced has to exist
       // before the row referencing it. Order is the whole of that guarantee.
       it("saves the visible row before the original that references it", async () => {
-        const result = await service.create(
-          "user-1",
-          "txn-1",
-          scan(),
-          original(),
-        );
+        const result = await service.create("user-1", TXN, scan(), original());
 
         const savedIds = attRepo.save.mock.calls.map((c) => c[0].id);
         expect(savedIds[0]).toBe(result.id);
@@ -445,7 +549,7 @@ describe("AttachmentsService", () => {
       });
 
       it("counts the pair as one attachment against the cap", async () => {
-        await service.create("user-1", "txn-1", scan(), original());
+        await service.create("user-1", TXN, scan(), original());
 
         // Primaries only -- an original consuming a slot would let ten scans
         // fill a twenty-attachment transaction the user sees ten rows in.
@@ -463,7 +567,7 @@ describe("AttachmentsService", () => {
         await expect(
           service.create(
             "user-1",
-            "txn-1",
+            TXN,
             pngFile({ originalname: "invoice.pdf", buffer: PDF_BYTES }),
             original(),
           ),
@@ -476,7 +580,7 @@ describe("AttachmentsService", () => {
         await expect(
           service.create(
             "user-1",
-            "txn-1",
+            TXN,
             scan(),
             pngFile({ originalname: "scan.pdf", buffer: PDF_BYTES }),
           ),
@@ -494,7 +598,7 @@ describe("AttachmentsService", () => {
         await expect(
           service.create(
             "user-1",
-            "txn-1",
+            TXN,
             scan(),
             pngFile({ buffer: huge, size: huge.length }),
           ),
@@ -505,7 +609,7 @@ describe("AttachmentsService", () => {
       it("commits an upload intent for each object before writing either", async () => {
         externalStorage();
 
-        await service.create("user-1", "txn-1", scan(), original());
+        await service.create("user-1", TXN, scan(), original());
 
         const inserts = managerQuery.mock.calls.filter(([sql]) =>
           String(sql).includes("INSERT INTO attachment_blob_tombstones"),
@@ -525,7 +629,7 @@ describe("AttachmentsService", () => {
           .mockRejectedValueOnce(new Error("s3 down"));
 
         await expect(
-          service.create("user-1", "txn-1", scan(), original()),
+          service.create("user-1", TXN, scan(), original()),
         ).rejects.toThrow("s3 down");
 
         const writtenId = storage.save.mock.calls[0][0];
@@ -548,7 +652,7 @@ describe("AttachmentsService", () => {
           });
 
         await expect(
-          service.create("user-1", "txn-1", scan(), original()),
+          service.create("user-1", TXN, scan(), original()),
         ).rejects.toThrow("commit failed");
 
         expect(storage.delete).toHaveBeenCalledTimes(2);
@@ -573,7 +677,7 @@ describe("AttachmentsService", () => {
           queriesBeforePut = intentInserts().length;
         });
 
-        await service.create("user-1", "txn-1", pngFile());
+        await service.create("user-1", TXN, pngFile());
 
         expect(queriesBeforePut).toBe(1);
         const [sql, params] = intentInserts()[0];
@@ -592,7 +696,7 @@ describe("AttachmentsService", () => {
       it("is cleared inside the transaction that commits the metadata row", async () => {
         externalStorage();
 
-        const saved = await service.create("user-1", "txn-1", pngFile());
+        const saved = await service.create("user-1", TXN, pngFile());
 
         // Same transaction as the metadata row, so the pair is atomic: a rollback
         // after this point keeps the intent and the sweeper finds the object. And
@@ -615,7 +719,7 @@ describe("AttachmentsService", () => {
         intentStillOurs = false;
 
         await expect(
-          service.create("user-1", "txn-1", pngFile()),
+          service.create("user-1", TXN, pngFile()),
         ).rejects.toBeInstanceOf(AttachmentObjectSweptError);
       });
 
@@ -631,7 +735,7 @@ describe("AttachmentsService", () => {
         );
 
         await expect(
-          service.create("user-1", "txn-1", pngFile()),
+          service.create("user-1", TXN, pngFile()),
         ).rejects.toBeInstanceOf(AttachmentObjectSweptError);
       });
 
@@ -645,7 +749,7 @@ describe("AttachmentsService", () => {
         keyIsFree = false;
 
         await expect(
-          service.create("user-1", "txn-1", pngFile()),
+          service.create("user-1", TXN, pngFile()),
         ).rejects.toBeInstanceOf(AttachmentObjectSweptError);
         // And nothing was written, so there is nothing to compensate for.
         expect(storage.save).not.toHaveBeenCalled();
@@ -654,7 +758,7 @@ describe("AttachmentsService", () => {
       it("does not clear an existing claim when it takes the key", async () => {
         externalStorage();
 
-        await service.create("user-1", "txn-1", pngFile());
+        await service.create("user-1", TXN, pngFile());
 
         const [sql] = intentInserts()[0];
         expect(String(sql)).toContain("swept_at IS NULL");
@@ -664,7 +768,7 @@ describe("AttachmentsService", () => {
       it("is not recorded at all for the database provider", async () => {
         // Its blob write joins the transaction and genuinely rolls back with the
         // metadata row, so there is nothing to compensate for.
-        await service.create("user-1", "txn-1", pngFile());
+        await service.create("user-1", TXN, pngFile());
 
         expect(intentInserts()).toEqual([]);
       });
@@ -680,9 +784,9 @@ describe("AttachmentsService", () => {
             throw new Error("commit failed");
           });
 
-        await expect(
-          service.create("user-1", "txn-1", pngFile()),
-        ).rejects.toThrow("commit failed");
+        await expect(service.create("user-1", TXN, pngFile())).rejects.toThrow(
+          "commit failed",
+        );
 
         // Nothing else ran, so the intent recorded before the put is the only
         // remaining pointer to the object -- and it is still there.
@@ -691,26 +795,50 @@ describe("AttachmentsService", () => {
     });
   });
 
-  describe("findAllForTransaction", () => {
-    it("lists metadata scoped to the user and transaction", async () => {
-      const rows = [{ id: "a1" }] as TransactionAttachment[];
+  describe("findAllFor", () => {
+    // A transaction's attachments are its own rows plus the documents of
+    // every warranty linked to it (the maintainer's ruling,
+    // attachment-parent.ts): the read keys each row by the transaction it is
+    // reached from, and names the warranty a document hangs off.
+    it("lists the transaction's own rows and its linked warranties' documents, scoped to the user", async () => {
+      const rows = [{ id: "a1" }, { id: "d1" }] as TransactionAttachment[];
       qb.getRawAndEntities.mockResolvedValue({
         entities: rows,
-        raw: [{ orig_id: null }],
+        raw: [
+          { orig_id: null, warranty_name: null },
+          { orig_id: null, warranty_name: "Dishwasher" },
+        ],
       });
 
-      const result = await service.findAllForTransaction("user-1", "txn-1");
+      const result = await service.findAllFor("user-1", TXN);
 
-      expect(result).toEqual([{ id: "a1", originalAttachmentId: null }]);
+      expect(result).toEqual([
+        { id: "a1", originalAttachmentId: null, warrantyName: null },
+        { id: "d1", originalAttachmentId: null, warrantyName: "Dishwasher" },
+      ]);
+      expect(qb.leftJoin).toHaveBeenCalledWith(
+        Warranty,
+        "w",
+        reachingWarrantyJoinSql("ta", "w"),
+      );
+      expect(qb.addSelect).toHaveBeenCalledWith("w.name", "warranty_name");
       expect(qb.where).toHaveBeenCalledWith(
-        "ta.transaction_id = :transactionId",
-        {
-          transactionId: "txn-1",
-        },
+        `${reachedTransactionIdSql("ta", "w")} = :parentId`,
+        { parentId: "txn-1" },
       );
       expect(qb.andWhere).toHaveBeenCalledWith("ta.user_id = :userId", {
         userId: "user-1",
       });
+    });
+
+    it("orders the transaction's own rows before its warranties' documents", async () => {
+      await service.findAllFor("user-1", TXN);
+
+      expect(qb.orderBy).toHaveBeenCalledWith(
+        "ta.warranty_id IS NOT NULL",
+        "ASC",
+      );
+      expect(qb.addOrderBy).toHaveBeenCalledWith("ta.created_at", "ASC");
     });
 
     // The list is what the user sees, and a scan pair is one attachment: the
@@ -721,18 +849,121 @@ describe("AttachmentsService", () => {
           { id: "scan-1" },
           { id: "plain-1" },
         ] as TransactionAttachment[],
-        raw: [{ orig_id: "orig-1" }, { orig_id: null }],
+        raw: [
+          { orig_id: "orig-1", warranty_name: null },
+          { orig_id: null, warranty_name: null },
+        ],
       });
 
-      const result = await service.findAllForTransaction("user-1", "txn-1");
+      const result = await service.findAllFor("user-1", TXN);
 
       expect(result).toEqual([
-        { id: "scan-1", originalAttachmentId: "orig-1" },
-        { id: "plain-1", originalAttachmentId: null },
+        { id: "scan-1", originalAttachmentId: "orig-1", warrantyName: null },
+        { id: "plain-1", originalAttachmentId: null, warrantyName: null },
       ]);
       // Not spelled out here: the shared predicate is the only place it is
       // written, and `primary-attachment.guard.spec.ts` fails a second copy.
       expect(qbConditions).toContain("ta.original_of_attachment_id IS NULL");
+    });
+  });
+
+  describe("findAllFor a warranty", () => {
+    it("lists under the warranty column alone, scoped to the user", async () => {
+      qb.getRawAndEntities.mockResolvedValue({
+        entities: [{ id: "a1" }] as TransactionAttachment[],
+        raw: [{ orig_id: null, warranty_name: "Dishwasher" }],
+      });
+
+      const result = await service.findAllFor("user-1", WTY);
+
+      expect(result).toEqual([
+        { id: "a1", originalAttachmentId: null, warrantyName: "Dishwasher" },
+      ]);
+      expect(qb.where).toHaveBeenCalledWith("ta.warranty_id = :parentId", {
+        parentId: "wty-1",
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith("ta.user_id = :userId", {
+        userId: "user-1",
+      });
+      expect(qbConditions).toContain("ta.original_of_attachment_id IS NULL");
+    });
+  });
+
+  describe("updateDocumentKind", () => {
+    const document = {
+      id: "doc-1",
+      userId: "user-1",
+      transactionId: null,
+      warrantyId: "wty-1",
+      documentKind: "other",
+    } as TransactionAttachment;
+
+    it("changes the kind of the row and its scan original in one statement, and answers the list row", async () => {
+      attRepo.findOne.mockResolvedValue(document);
+      qb.getRawAndEntities.mockResolvedValue({
+        entities: [{ ...document, documentKind: "manual" }],
+        raw: [{ orig_id: "orig-1", warranty_name: "Dishwasher" }],
+      });
+
+      const result = await service.updateDocumentKind(
+        "user-1",
+        "doc-1",
+        "manual",
+      );
+
+      expect(attRepo.findOne).toHaveBeenCalledWith({
+        where: { id: "doc-1", userId: "user-1" },
+      });
+      // The pair is one document: the hidden original takes the kind in the
+      // same UPDATE as its visible row, under the owner's id.
+      const update = managerQuery.mock.calls.find(([sql]) =>
+        String(sql).includes("UPDATE transaction_attachments"),
+      );
+      expect(update).toBeDefined();
+      expect(String(update?.[0]).replace(/\s+/g, " ")).toContain(
+        "SET document_kind = $1 WHERE (id = $2 OR original_of_attachment_id = $2) AND user_id = $3",
+      );
+      expect(update?.[1]).toEqual(["manual", "doc-1", "user-1"]);
+      expect(result).toEqual({
+        ...document,
+        documentKind: "manual",
+        originalAttachmentId: "orig-1",
+        warrantyName: "Dishwasher",
+      });
+      expect(qb.where).toHaveBeenCalledWith("ta.id = :id", { id: "doc-1" });
+      expect(qb.andWhere).toHaveBeenCalledWith("ta.user_id = :userId", {
+        userId: "user-1",
+      });
+    });
+
+    it("refuses a row the caller does not own as not found, writing nothing", async () => {
+      attRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateDocumentKind("user-1", "doc-1", "manual"),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(
+        managerQuery.mock.calls.some(([sql]) => String(sql).includes("UPDATE")),
+      ).toBe(false);
+    });
+
+    // A transaction's attachment has no kind (W4): the refusal is the one
+    // `create` gives a kind on a transaction parent, and nothing is written.
+    it("refuses a transaction's attachment with a 400, writing nothing", async () => {
+      attRepo.findOne.mockResolvedValue({
+        ...document,
+        transactionId: "txn-1",
+        warrantyId: null,
+      });
+
+      await expect(
+        service.updateDocumentKind("user-1", "doc-1", "receipt"),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(
+        managerQuery.mock.calls.some(([sql]) => String(sql).includes("UPDATE")),
+      ).toBe(false);
     });
   });
 
@@ -846,6 +1077,60 @@ describe("AttachmentsService", () => {
         service.getForDownload("user-1", "a1"),
       ).rejects.toBeInstanceOf(NotFoundException);
       expect(storage.load).not.toHaveBeenCalled();
+    });
+
+    describe("for an acting delegate (design decision 9)", () => {
+      const row = {
+        id: "a1",
+        contentType: "image/png",
+        filename: "r.png",
+        byteSize: 10,
+        storageProvider: "database",
+        storageKey: "a1",
+      };
+
+      it("serves a warranty's document: the section admitted them to the route", async () => {
+        attRepo.findOne.mockResolvedValue({
+          ...row,
+          transactionId: null,
+          warrantyId: "wty-1",
+        });
+        storage.load.mockResolvedValue(PNG_BYTES);
+
+        const result = await service.getForDownload("user-1", "a1", {
+          isDelegate: true,
+        });
+
+        expect(result.data).toBe(PNG_BYTES);
+      });
+
+      it("refuses a transaction's attachment before reading a byte: that parent keeps its owner-only rule", async () => {
+        attRepo.findOne.mockResolvedValue({
+          ...row,
+          transactionId: "tx-1",
+          warrantyId: null,
+        });
+
+        await expect(
+          service.getForDownload("user-1", "a1", { isDelegate: true }),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(storage.load).not.toHaveBeenCalled();
+      });
+
+      it("serves the owner a transaction's attachment as before", async () => {
+        attRepo.findOne.mockResolvedValue({
+          ...row,
+          transactionId: "tx-1",
+          warrantyId: null,
+        });
+        storage.load.mockResolvedValue(PNG_BYTES);
+
+        const result = await service.getForDownload("user-1", "a1", {
+          isDelegate: false,
+        });
+
+        expect(result.data).toBe(PNG_BYTES);
+      });
     });
 
     it("reads from the backend the row names, not the active one", async () => {
