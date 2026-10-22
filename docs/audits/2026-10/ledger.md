@@ -45,7 +45,7 @@ before auditing.
 | S20 | done | 2026-10-21 | 2026-10-22 | c7a3707 | 0/1/3/4 | `20-frontend-figures.md` (child session_01VSrfzDF4F63zWMJY2giCfB); verdict REQUEST CHANGES; budgets, strategies, bonds, receipts, tours UI sampled by grep only |
 | S21 | done | 2026-10-21 | 2026-10-22 | 8ea9316 | 0/0/4/3 | `21-tests-ci-release.md` (child session_01Xmf7H997Adk6ipvAx74awQ); verdict APPROVE; program-wide mutation table in its section 6.2, known-wrong tests in 10.1 |
 | S22 | done | 2026-10-22 | 2026-10-22 | 59a1440 | 0/0/0/0 | `22-delta-review.md` (child session_014uWBGZjh8U2E8eYrTBBQUi); `MAIN_SHA` = `AUDIT_BASELINE_SHA`, empty delta; 8 re-check runs green |
-| S23 | in-progress | 2026-10-22 | | | | `23-final-report.md`, `remediation-tasks.md` (child session_011YqjmH3T7NPt3FPS97otNP, claude-opus-5-5) |
+| S23 | done | 2026-10-22 | 2026-10-22 | 0810ecd | canonical 0/15/42/39 | `23-final-report.md` (96 canonical findings from 143 session findings; verdict REQUEST CHANGES), `remediation-tasks.md` (58 tasks) (child session_011YqjmH3T7NPt3FPS97otNP) |
 
 Status values: `open`, `in-progress` (resume it first), `done`, `split` (see `sessions.md` for
 the two halves).
@@ -68,6 +68,8 @@ Filled by S01. Later sessions read it instead of re-discovering it.
 | `node scripts/check-migration-prefixes.mjs` | OK (S05, after `git fetch --unshallow`) | |
 
 ## Running counts
+
+**Program complete (S23, 2026-10-22).** Canonical findings after deduplication by root cause: BLOCKER 0, HIGH 15, MEDIUM 42, LOW 39, total 96, absorbing 143 session findings. Program verdict: REQUEST CHANGES. `main` unchanged at `72c59ec4` through S23. The per-session raw counts below are kept as the audit trail.
 
 | Severity | Confirmed `A26-*` findings so far |
 | --- | --- |
