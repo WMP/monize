@@ -136,10 +136,16 @@ export class CurrenciesController {
 
   @Get("exchange-rates")
   @AllowDelegate()
-  @ApiOperation({ summary: "Get latest exchange rates" })
+  @ApiOperation({
+    summary: "Get latest exchange rates",
+    description:
+      "One row per currency pair: the newest stored observation of either direction, " +
+      "no older than 45 days. A pair whose newest observation is older is omitted, " +
+      "because its rate is unknown rather than the last one on file.",
+  })
   @ApiResponse({
     status: 200,
-    description: "Latest exchange rates per currency pair",
+    description: "Latest exchange rate per currency pair, one row per pair",
     type: [ExchangeRate],
   })
   getLatestRates(): Promise<ExchangeRate[]> {

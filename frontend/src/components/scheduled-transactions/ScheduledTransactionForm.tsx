@@ -321,6 +321,7 @@ export function ScheduledTransactionForm({
   const watchedFrequency = useWatch({ control, name: 'frequency' });
   const watchedCurrencyCode = useWatch({ control, name: 'currencyCode' });
   const watchedIsActive = useWatch({ control, name: 'isActive' });
+  const watchedNextDueDate = useWatch({ control, name: 'nextDueDate' });
   const watchedAutoPost = useWatch({ control, name: 'autoPost' });
 
   // Auto-set currencyCode from the selected account
@@ -1696,6 +1697,7 @@ export function ScheduledTransactionForm({
               currencyCode={watchedCurrencyCode || defaultCurrency}
               onConvertToRegular={handleConvertToRegular}
               onCreateCategory={createCategoryFromTypedName}
+              transactionDate={watchedNextDueDate}
             />
           </div>
 

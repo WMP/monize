@@ -14,6 +14,12 @@ import {
 } from '@/types/scheduled-transaction';
 import { dedupe, invalidateBalanceCaches, invalidateCache } from './apiCache';
 
+/** The occurrence a Post or Skip acts on (`occurrencePin` builds it). */
+type OccurrencePinData = Pick<
+  PostScheduledTransactionData,
+  'expectedOccurrenceDate' | 'expectedOverrideId'
+>;
+
 /** The most occurrences one loan projection prices (spec 8.5; the server's DTO bound). */
 export const LOAN_OCCURRENCES_MAX_COUNT = 60;
 
@@ -135,10 +141,10 @@ export const scheduledTransactionsApi = {
   // Post scheduled transaction (create actual transaction and advance).
   // Returns null when the scheduled transaction was a one-time entry and was
   // deleted as part of the post.
-  post: async (id: string, data?: PostScheduledTransactionData): Promise<ScheduledTransaction | null> => {
+  post: async (id: string, data: PostScheduledTransactionData): Promise<ScheduledTransaction | null> => {
     const response = await apiClient.post<ScheduledTransaction | null>(
       `/scheduled-transactions/${id}/post`,
-      data || {},
+      data,
     );
     invalidateCache('scheduled:');
     // Posting writes a real transaction, so every balance derived from it is
@@ -148,10 +154,12 @@ export const scheduledTransactionsApi = {
     return response.data;
   },
 
-  // Skip this occurrence and advance to next due date
-  skip: async (id: string): Promise<ScheduledTransaction> => {
+  // Skip this occurrence and advance to next due date. `pin` is the occurrence
+  // the user is skipping (`occurrencePin`); the server refuses a stale one.
+  skip: async (id: string, pin: OccurrencePinData): Promise<ScheduledTransaction> => {
     const response = await apiClient.post<ScheduledTransaction>(
       `/scheduled-transactions/${id}/skip`,
+      pin,
     );
     invalidateCache('scheduled:');
     return response.data;

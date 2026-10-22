@@ -118,6 +118,9 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
       totalIncome: 0,
       totalExpenses: 5,
       netCashFlow: -5,
+      totalsCurrency: "USD",
+      fxComplete: true,
+      missingRatePairs: [],
       transactionCount: 1,
       byCurrency: {
         USD: {
@@ -141,6 +144,9 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
       totalIncome: 0,
       totalExpenses: 0,
       netCashFlow: 0,
+      totalsCurrency: "USD",
+      fxComplete: true,
+      missingRatePairs: [],
       transactionCount: 2,
       groupedBy: "none",
       transfers: {
@@ -168,6 +174,9 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
       totalIncome: 0,
       totalExpenses: 5,
       netCashFlow: -5,
+      totalsCurrency: "USD",
+      fxComplete: true,
+      missingRatePairs: [],
       transactionCount: 1,
       groupedBy: "none",
       transactions: [
@@ -193,6 +202,9 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
       period2: { start: "2026-01-01", end: "2026-01-31", total: 5 },
       totalChange: 5,
       totalChangePercent: NaN,
+      totalsCurrency: "USD",
+      fxComplete: true,
+      missingRatePairs: [],
       comparison: [
         {
           label: "Food",
@@ -202,6 +214,46 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
           changePercent: NaN,
         },
       ],
+    },
+  },
+  {
+    name: "listTransactionsOutput (totals withheld, a pair has no rate)",
+    schema: schemas.listTransactionsOutput,
+    raw: {
+      totalIncome: null,
+      totalExpenses: null,
+      netCashFlow: null,
+      knownIncomeSubtotal: 0,
+      knownExpensesSubtotal: 4000,
+      totalsCurrency: "PLN",
+      fxComplete: false,
+      missingRatePairs: ["USD->PLN"],
+      transactionCount: 2,
+      groupedBy: "none",
+    },
+  },
+  {
+    name: "comparePeriodsOutput (totals withheld, a pair has no rate)",
+    schema: schemas.comparePeriodsOutput,
+    raw: {
+      period1: {
+        start: "2026-08-01",
+        end: "2026-08-31",
+        total: 400,
+        knownSubtotal: 400,
+      },
+      period2: {
+        start: "2026-09-01",
+        end: "2026-09-30",
+        total: null,
+        knownSubtotal: 4000,
+      },
+      totalChange: null,
+      totalChangePercent: null,
+      totalsCurrency: "PLN",
+      fxComplete: false,
+      missingRatePairs: ["USD->PLN"],
+      comparison: [],
     },
   },
   {
@@ -468,6 +520,24 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
     raw: {
       data: [{ categoryId: "c1", categoryName: "Food", color: null, total: 5 }],
       totalSpending: 5,
+    },
+  },
+  {
+    // A total withheld for a missing rate (INV-FX-001): null, with the part that
+    // converted and the gap named beside it, carried by the loose object.
+    name: "generateReportOutput (aggregation type with a withheld total)",
+    schema: schemas.generateReportOutput,
+    raw: {
+      data: [
+        { categoryId: "c1", categoryName: "Food", color: null, total: 50 },
+      ],
+      totalSpending: null,
+      knownSpending: 50,
+      totalIncome: null,
+      knownIncome: 50,
+      currency: "USD",
+      missingCurrencies: ["JPY"],
+      excludedCount: 1,
     },
   },
   {

@@ -263,7 +263,7 @@
     "sourceHolds": "L'origine detiene",
     "sharesAt": "azioni @",
     "avgCostSuffix": "costo medio.",
-    "transferCostNote": "Il costo per azione (precompilato dal conto di origine) viene trasferito alla destinazione in modo che i report su guadagni e profitti rimangano corretti. Questo sposta solo le azioni -- non vengono trasferiti contanti.",
+    "transferCostNote": "Il costo per quota è quanto le quote sono costate nel conto di origine alla data del trasferimento. Viene calcolato al salvataggio e riportato sul conto di destinazione, così i report su plusvalenze e profitti restano corretti. Vengono spostate solo quote; nessun contante cambia di mano.",
     "returnOfCapitalNote": "Un rimborso di capitale non è un reddito. Restituisce parte di quanto sono costate le azioni, quindi riduce di questo importo il costo di acquisto della posizione. L'eventuale eccedenza rispetto al costo di acquisto residuo viene registrata come plusvalenza realizzata.",
     "totalAmount": "Importo totale ({currency})",
     "sharesAtPrice": "{shares} azioni @ {symbol}{price}",

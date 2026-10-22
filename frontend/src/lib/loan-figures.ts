@@ -1,9 +1,9 @@
 import type { LoanScheduleInput, LoanScheduleResult } from '@/lib/loan-schedule-types';
-import { firstPeriodInterest } from '@/lib/loan-frequency';
+import { firstPeriodInterest, isDebtOutstanding } from '@/lib/loan-frequency';
 import { amortizationMethodFor } from '@/lib/mortgage-type';
 
 /**
- * A debt whose outstanding magnitude is at or below this is settled. It matches
+ * A debt whose outstanding magnitude is below this (less than one minor unit) is settled; one whole unit is owed. It matches
  * the threshold `buildLoanProjectionInput` refuses to project below, so the two
  * never disagree about whether a loan is finished: below it there is no
  * projection, and every figure derived from one is a known end state rather
@@ -20,7 +20,7 @@ export const SETTLED_DEBT_EPSILON = 0.01;
  * payoff of a finished loan as unknown.
  */
 export function isDebtSettled(signedBalance: number): boolean {
-  return -(Number(signedBalance) || 0) <= SETTLED_DEBT_EPSILON;
+  return !isDebtOutstanding(-(Number(signedBalance) || 0));
 }
 
 export interface LoanFigureInput {

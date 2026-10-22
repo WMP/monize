@@ -131,6 +131,11 @@ describe("ToolExecutorService", () => {
         totalIncome: 5000,
         totalExpenses: 3000,
         netCashFlow: 2000,
+        knownIncomeSubtotal: 5000,
+        knownExpensesSubtotal: 3000,
+        totalsCurrency: "USD",
+        fxComplete: true,
+        missingRatePairs: [],
         transactionCount: 45,
         groupedBy: "none",
         groups: null,
@@ -138,10 +143,23 @@ describe("ToolExecutorService", () => {
         perCurrency: [],
       }),
       getLlmPeriodComparison: jest.fn().mockResolvedValue({
-        period1: { start: "2025-12-01", end: "2025-12-31", total: 3000 },
-        period2: { start: "2026-01-01", end: "2026-01-31", total: 3500 },
+        period1: {
+          start: "2025-12-01",
+          end: "2025-12-31",
+          total: 3000,
+          knownSubtotal: 3000,
+        },
+        period2: {
+          start: "2026-01-01",
+          end: "2026-01-31",
+          total: 3500,
+          knownSubtotal: 3500,
+        },
         totalChange: 500,
         totalChangePercent: 16.67,
+        totalsCurrency: "USD",
+        fxComplete: true,
+        missingRatePairs: [],
         comparison: [],
       }),
       resolveLlmCategoryIds: jest
@@ -770,6 +788,11 @@ describe("ToolExecutorService", () => {
         totalIncome: 0,
         totalExpenses: 0,
         netCashFlow: 0,
+        knownIncomeSubtotal: 0,
+        knownExpensesSubtotal: 0,
+        totalsCurrency: "USD",
+        fxComplete: true,
+        missingRatePairs: [],
         transactionCount: 2,
         groupedBy: "none",
         groups: null,
@@ -990,6 +1013,110 @@ describe("ToolExecutorService", () => {
         direction: "expenses",
       });
       expect(result.sources[0].type).toBe("comparison");
+    });
+
+    it("list_transactions names the currency of its totals", async () => {
+      analytics.getLlmListTransactions.mockResolvedValueOnce({
+        totalIncome: 0,
+        totalExpenses: 7650,
+        netCashFlow: -7650,
+        knownIncomeSubtotal: 0,
+        knownExpensesSubtotal: 7650,
+        totalsCurrency: "PLN",
+        fxComplete: true,
+        missingRatePairs: [],
+        transactionCount: 2,
+        groupedBy: "none",
+      });
+
+      const result = await service.execute(userId, "list_transactions", {});
+
+      expect(result.summary).toContain("Expenses: 7650.00 PLN");
+      expect(result.summary).not.toContain("withheld");
+    });
+
+    it("list_transactions says the totals are withheld, naming the pair and the fix", async () => {
+      analytics.getLlmListTransactions.mockResolvedValueOnce({
+        totalIncome: null,
+        totalExpenses: null,
+        netCashFlow: null,
+        knownIncomeSubtotal: 0,
+        knownExpensesSubtotal: 4000,
+        totalsCurrency: "PLN",
+        fxComplete: false,
+        missingRatePairs: ["USD->PLN"],
+        transactionCount: 2,
+        groupedBy: "none",
+      });
+
+      const result = await service.execute(userId, "list_transactions", {});
+
+      expect(result.summary).toContain(
+        "Totals withheld: no exchange rate for USD->PLN; add it under Currencies.",
+      );
+      expect(result.summary).toContain("expenses 4000.00 PLN");
+      expect(result.summary).not.toContain("Expenses: ");
+    });
+
+    it("compare_periods names the currency of its totals", async () => {
+      analytics.getLlmPeriodComparison.mockResolvedValueOnce({
+        period1: {
+          start: "2026-08-01",
+          end: "2026-08-31",
+          total: 400,
+          knownSubtotal: 400,
+        },
+        period2: {
+          start: "2026-09-01",
+          end: "2026-09-30",
+          total: 7650,
+          knownSubtotal: 7650,
+        },
+        totalChange: 7250,
+        totalChangePercent: 1812.5,
+        totalsCurrency: "PLN",
+        fxComplete: true,
+        missingRatePairs: [],
+        comparison: [],
+      });
+
+      const result = await service.execute(userId, "compare_periods", {});
+
+      expect(result.summary).toContain("400.00 PLN");
+      expect(result.summary).toContain("7650.00 PLN");
+      expect(result.summary).toContain("Change: +7250.00 PLN (+1812.5%)");
+    });
+
+    it("compare_periods says the totals are withheld, naming the pair and the fix", async () => {
+      analytics.getLlmPeriodComparison.mockResolvedValueOnce({
+        period1: {
+          start: "2026-08-01",
+          end: "2026-08-31",
+          total: 400,
+          knownSubtotal: 400,
+        },
+        period2: {
+          start: "2026-09-01",
+          end: "2026-09-30",
+          total: null,
+          knownSubtotal: 4000,
+        },
+        totalChange: null,
+        totalChangePercent: null,
+        totalsCurrency: "PLN",
+        fxComplete: false,
+        missingRatePairs: ["USD->PLN"],
+        comparison: [],
+      });
+
+      const result = await service.execute(userId, "compare_periods", {});
+
+      expect(result.summary).toContain(
+        "Totals withheld: no exchange rate for USD->PLN; add it under Currencies.",
+      );
+      expect(result.summary).toContain("4000.00 PLN");
+      expect(result.summary).not.toContain("Change:");
+      expect(result.summary).not.toContain("null");
     });
 
     it("compare_periods fills in all four dates when omitted", async () => {
@@ -1390,6 +1517,66 @@ describe("ToolExecutorService", () => {
       );
       expect(result.sources[0].type).toBe("report");
       expect(result.summary).toContain("spending_by_category");
+    });
+
+    it("generate_report names the missing rate and where to fix it in the summary (INV-FX-001)", async () => {
+      builtInReports.getSpendingByCategory.mockResolvedValueOnce({
+        data: [],
+        totalSpending: null,
+        knownSpending: 50,
+        currency: "USD",
+        missingCurrencies: ["JPY", "CHF"],
+        excludedCount: 2,
+      });
+
+      const result = await service.execute(userId, "generate_report", {
+        type: "spending_by_category",
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+      });
+
+      expect(result.summary).toContain(
+        "Total withheld: no exchange rate for JPY->USD, CHF->USD; add it under Currencies.",
+      );
+      // The payload is the report's own, untouched (MCP parity).
+      expect(
+        (result.data as { totalSpending: unknown }).totalSpending,
+      ).toBeNull();
+    });
+
+    it("generate_report adds no withheld clause when every row converted", async () => {
+      builtInReports.getSpendingByCategory.mockResolvedValueOnce({
+        data: [],
+        totalSpending: 0,
+        currency: "USD",
+        missingCurrencies: [],
+        excludedCount: 0,
+      });
+
+      const result = await service.execute(userId, "generate_report", {
+        type: "spending_by_category",
+      });
+
+      expect(result.summary).not.toContain("withheld");
+    });
+
+    it("generate_report spending_anomalies names the currencies it left out", async () => {
+      builtInReports.getSpendingAnomalies.mockResolvedValueOnce({
+        statistics: {},
+        anomalies: [],
+        counts: {},
+        currency: "USD",
+        missingCurrencies: ["JPY"],
+        excludedCount: 3,
+      });
+
+      const result = await service.execute(userId, "generate_report", {
+        type: "spending_anomalies",
+      });
+
+      expect(result.summary).toContain(
+        "Transactions in those currencies were left out of the analysis: no exchange rate for JPY->USD; add it under Currencies.",
+      );
     });
 
     it("generate_report type spending_anomalies delegates to getSpendingAnomalies", async () => {

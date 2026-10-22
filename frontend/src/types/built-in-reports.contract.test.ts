@@ -71,24 +71,45 @@ describe('recurring-expenses API contract', () => {
 
 describe('uncategorized-transactions money contract', () => {
   it('carries a currency code beside every transaction amount in both layers', () => {
-    expect(uncategorizedBackendDtoSource()).toMatch(
-      /class UncategorizedTransactionItem\s*\{[^}]*amount:\s*number;[^}]*currencyCode:\s*string;/,
+    // The class body is read whole: the backend decorates each field with an
+    // `@ApiProperty({ ... })` whose braces a `[^}]*` scan cannot cross.
+    const backend = withoutComments(uncategorizedBackendDtoSource()).match(
+      /class UncategorizedTransactionItem\s*\{([\s\S]*?)\n\}/,
     );
-    expect(frontendTypesSource()).toMatch(
-      /interface UncategorizedTransactionItem\s*\{[^}]*amount:\s*number;[^}]*currencyCode:\s*string;/,
+    const frontend = withoutComments(frontendTypesSource()).match(
+      /interface UncategorizedTransactionItem\s*\{([\s\S]*?)\n\}/,
     );
+    expect(backend, 'backend item class not found').toBeTruthy();
+    expect(frontend, 'frontend item type not found').toBeTruthy();
+
+    for (const body of [backend![1], frontend![1]]) {
+      expect(body).toMatch(/amount:\s*number;[\s\S]*currencyCode:\s*string;/);
+    }
   });
 
   it('couples every converted summary amount to its destination currency', () => {
-    const backend = uncategorizedBackendDtoSource();
-    const frontend = frontendTypesSource();
+    const backend = withoutComments(uncategorizedBackendDtoSource());
+    const frontend = withoutComments(frontendTypesSource());
 
-    expect(backend).toMatch(
-      /class UncategorizedTransactionsSummary\s*\{[^}]*expenseTotal:\s*number;[^}]*incomeTotal:\s*number;[^}]*currencyCode:\s*string;/,
+    // A summary total is `null` when a row could not be converted, so the
+    // contract is the pair: the (nullable) total, its `known*` subtotal, and the
+    // currency both are in -- on both layers.
+    const backendShape = backend.match(
+      /class UncategorizedTransactionsSummary\s*\{([\s\S]*?)\n\}/,
     );
-    expect(frontend).toMatch(
-      /interface UncategorizedTransactionsResponse\s*\{[^}]*summary:\s*\{[^}]*expenseTotal:\s*number;[^}]*incomeTotal:\s*number;[^}]*currencyCode:\s*string;/,
+    const frontendShape = frontend.match(
+      /interface UncategorizedTransactionsResponse\s*\{[\s\S]*?summary:\s*\{([\s\S]*?)\n  \};/,
     );
+    expect(backendShape, 'backend summary class not found').toBeTruthy();
+    expect(frontendShape, 'frontend summary type not found').toBeTruthy();
+
+    for (const body of [backendShape![1], frontendShape![1]]) {
+      expect(body).toMatch(/expenseTotal:\s*number\s*\|\s*null;/);
+      expect(body).toMatch(/knownExpenseTotal:\s*number;/);
+      expect(body).toMatch(/incomeTotal:\s*number\s*\|\s*null;/);
+      expect(body).toMatch(/knownIncomeTotal:\s*number;/);
+      expect(body).toMatch(/currencyCode:\s*string;/);
+    }
   });
 });
 

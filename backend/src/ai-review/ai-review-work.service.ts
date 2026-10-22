@@ -1048,8 +1048,7 @@ export class AiReviewWorkService {
       const stored =
         request.proposal as Partial<StoredAiReviewTradeProposal> | null;
       const before = stored?.action?.descriptor as
-        | Partial<CreateInvestmentTransactionDescriptor>
-        | undefined;
+        Partial<CreateInvestmentTransactionDescriptor> | undefined;
       const after = action.descriptor as CreateInvestmentTransactionDescriptor;
       if (
         typeof before?.scheduledTransactionId === "string" &&

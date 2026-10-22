@@ -503,6 +503,9 @@ export function parseTradeLinesTraced(
     quantity: quantity?.value ?? null,
     total: total?.value ?? null,
     price: price?.value ?? null,
+    // The price as written: the total a price-only email implies is derived
+    // from it, never from the 4-decimal card price (A26-L17, INV-TRADE-001).
+    priceUnits8: price ? price.units8.toString() : null,
     commission: commission?.value ?? null,
     currency,
     currencySource,
@@ -560,8 +563,14 @@ export function tradeExecutedTotalUnits(trade: ParsedTrade): number | null {
   if (trade.total !== null) return trade.total;
   if (trade.price === null || trade.quantity === null) return null;
   const quantity8 = BigInt(Math.round(trade.quantity * 1e8));
+  // From the price as written when the reading carries it: quantity (1e-8) x
+  // price (1e-8) is 1e-16, money is 1e-4, so divide by 1e12, half up. A
+  // reading stored before `priceUnits8` existed keeps the card price.
   const gross =
-    (quantity8 * BigInt(trade.price) + 50_000_000n) / QUANTITY_UNITS;
+    trade.priceUnits8 !== undefined && trade.priceUnits8 !== null
+      ? (quantity8 * BigInt(trade.priceUnits8) + 500_000_000_000n) /
+        1_000_000_000_000n
+      : (quantity8 * BigInt(trade.price) + 50_000_000n) / QUANTITY_UNITS;
   const commission = BigInt(trade.commission ?? 0);
   const total =
     trade.action === null || commissionIsAdded(trade.action)

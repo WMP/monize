@@ -306,4 +306,26 @@ describe('RecurringExpensesWidget', () => {
       expect(updateConfig).toHaveBeenCalledWith({ view: 'legend' });
     });
   });
+
+  it('marks the monthly estimate a subtotal when a row was left out', async () => {
+    getRecurringExpenses.mockResolvedValue({
+      data: [item('Netflix', 'p1', 90)],
+      summary: {
+        totalRecurring: null,
+        knownTotalRecurring: 50,
+        monthlyEstimate: null,
+        knownMonthlyEstimate: 50,
+        monthCount: 6,
+        uniquePayees: 1,
+      },
+      currency: 'CAD',
+      missingCurrencies: ['JPY'],
+      excludedCount: 1,
+    });
+    await renderWidget();
+    const markers = screen.getAllByTestId('partial-total');
+    expect(markers.length).toBeGreaterThan(0);
+    markers.forEach((marker) => expect(marker).toHaveTextContent('$50'));
+    expect(screen.queryByText('$0')).not.toBeInTheDocument();
+  });
 });

@@ -956,22 +956,7 @@ export class DelegationService {
       >
     >,
   ): Promise<void> {
-    const delegation = await this.scoped(AccountDelegate, (repo) =>
-      repo.findOne({
-        where: { id: delegationId, ownerUserId },
-      }),
-    );
-    if (!delegation) {
-      throw new NotFoundException(
-        tr("errors.delegation.delegateNotFound", "Delegate not found"),
-      );
-    }
-    for (const [key, value] of Object.entries(sections)) {
-      if (value !== undefined) {
-        (delegation as unknown as Record<string, boolean>)[key] = value;
-      }
-    }
-    await this.scoped(AccountDelegate, (repo) => repo.save(delegation));
+    await this.writeDelegationFlags(ownerUserId, delegationId, sections);
   }
 
   async setCapabilities(
@@ -992,22 +977,38 @@ export class DelegationService {
       >
     >,
   ): Promise<void> {
-    const delegation = await this.scoped(AccountDelegate, (repo) =>
-      repo.findOne({
-        where: { id: delegationId, ownerUserId },
-      }),
+    await this.writeDelegationFlags(ownerUserId, delegationId, caps);
+  }
+
+  /**
+   * Write only the flags given, by one conditional `UPDATE` keyed on the
+   * owner, and 404 when it matches nothing.
+   *
+   * Reading the entity in one transaction and `save`-ing it in another wrote
+   * every column back from a stale copy, and when a revoke had deleted the row
+   * in between, `save` found nothing by id and INSERTed it: the same
+   * delegation back as `active` with its flags (A26-M05). Two settings saves
+   * also overwrote each other's columns.
+   */
+  private async writeDelegationFlags(
+    ownerUserId: string,
+    delegationId: string,
+    flags: Partial<Record<string, boolean>>,
+  ): Promise<void> {
+    const patch = Object.fromEntries(
+      Object.entries(flags).filter(([, value]) => value !== undefined),
+    ) as Partial<AccountDelegate>;
+    const matched = await this.scoped(AccountDelegate, async (repo) =>
+      Object.keys(patch).length > 0
+        ? ((await repo.update({ id: delegationId, ownerUserId }, patch))
+            .affected ?? 0) > 0
+        : repo.exists({ where: { id: delegationId, ownerUserId } }),
     );
-    if (!delegation) {
+    if (!matched) {
       throw new NotFoundException(
         tr("errors.delegation.delegateNotFound", "Delegate not found"),
       );
     }
-    for (const [key, value] of Object.entries(caps)) {
-      if (value !== undefined) {
-        (delegation as unknown as Record<string, boolean>)[key] = value;
-      }
-    }
-    await this.scoped(AccountDelegate, (repo) => repo.save(delegation));
   }
 
   /**
@@ -1113,7 +1114,13 @@ export class DelegationService {
     let inviteToken: string | undefined;
 
     return withScopedDb(this.dataSource, async (manager) => {
-      let delegateUser = await manager.findOne(User, { where: { email } });
+      // Locked: linking an existing login to a second owner is the event that
+      // takes away the first owner's right to reset its password, so the link
+      // and a reset of the same login serialize on this row (A26-M05).
+      let delegateUser = await manager.findOne(User, {
+        where: { email },
+        lock: { mode: "pessimistic_write" },
+      });
       const isNew = !delegateUser;
 
       if (delegateUser && delegateUser.id === ownerUserId) {

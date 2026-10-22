@@ -137,7 +137,7 @@ describe("TaxRecurringReportsService", () => {
     currencyService = {
       getDefaultCurrency: jest.fn().mockResolvedValue("USD"),
       buildRateMap: jest.fn().mockResolvedValue(new Map()),
-      convertAmount: jest.fn().mockImplementation((amount) => amount),
+      tryConvertAmount: jest.fn().mockImplementation((amount) => amount),
     };
 
     ({ manager: scopedManager, dataSource: scopedDataSource } =
@@ -187,6 +187,9 @@ describe("TaxRecurringReportsService", () => {
         income: 0,
         expenses: 0,
         deductible: 0,
+        knownIncome: 0,
+        knownExpenses: 0,
+        knownDeductible: 0,
       });
     });
 
@@ -294,7 +297,7 @@ describe("TaxRecurringReportsService", () => {
     });
 
     it("converts foreign currency amounts", async () => {
-      currencyService.convertAmount.mockImplementation(
+      currencyService.tryConvertAmount.mockImplementation(
         (amount: number, fromCurrency: string) => {
           if (fromCurrency === "EUR") return amount * 1.1;
           return amount;
@@ -462,7 +465,9 @@ describe("TaxRecurringReportsService", () => {
       expect(result.data).toEqual([]);
       expect(result.summary).toEqual({
         totalRecurring: 0,
+        knownTotalRecurring: 0,
         monthlyEstimate: 0,
+        knownMonthlyEstimate: 0,
         monthCount: 6,
         uniquePayees: 0,
       });
@@ -562,7 +567,7 @@ describe("TaxRecurringReportsService", () => {
       const lastDate1 = new Date("2025-06-15");
       const lastDate2 = new Date("2025-07-15");
 
-      currencyService.convertAmount.mockImplementation(
+      currencyService.tryConvertAmount.mockImplementation(
         (amount: number, fromCurrency: string) => {
           if (fromCurrency === "EUR") return amount * 1.1;
           return amount;
@@ -916,9 +921,11 @@ describe("TaxRecurringReportsService", () => {
       expect(result.monthlyTotals).toEqual([]);
       expect(result.summary).toEqual({
         totalPaid: 0,
+        knownTotalPaid: 0,
         totalPayments: 0,
         uniqueBills: 0,
         monthlyAverage: 0,
+        knownMonthlyAverage: 0,
       });
     });
 
@@ -1332,7 +1339,7 @@ describe("TaxRecurringReportsService", () => {
     });
 
     it("converts foreign currency amounts", async () => {
-      currencyService.convertAmount.mockImplementation(
+      currencyService.tryConvertAmount.mockImplementation(
         (amount: number, fromCurrency: string) => {
           if (fromCurrency === "EUR") return amount * 1.1;
           return amount;
@@ -1453,6 +1460,163 @@ describe("TaxRecurringReportsService", () => {
 
       expect(result.billPayments[0].totalPaid).toBe(100);
       expect(result.billPayments[0].averagePayment).toBe(33.3333);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // A missing exchange rate is unknown, never 1:1 (INV-FX-001)
+  // ---------------------------------------------------------------------------
+  describe("a currency that has no rate", () => {
+    beforeEach(() => {
+      currencyService.tryConvertAmount.mockImplementation(
+        (amount: number, from: string) => (from === "JPY" ? null : amount),
+      );
+    });
+
+    it("getTaxSummary withholds every total and leaves the JPY row out of every figure", async () => {
+      scopedManager.query.mockResolvedValue([
+        { category_id: null, currency_code: "USD", amount: "-50.00" },
+        { category_id: null, currency_code: "JPY", amount: "-100000" },
+      ]);
+      categoriesRepository.find.mockResolvedValue([]);
+
+      const result = await service.getTaxSummary(mockUserId, 2025);
+
+      expect(result.totals.expenses).toBeNull();
+      expect(result.totals.income).toBeNull();
+      expect(result.totals.deductible).toBeNull();
+      expect(result.totals.knownExpenses).toBe(50);
+      expect(result.totals.knownIncome).toBe(0);
+      expect(result.totals.knownDeductible).toBe(0);
+      expect(result.currency).toBe("USD");
+      expect(result.missingCurrencies).toEqual(["JPY"]);
+      expect(result.excludedCount).toBe(1);
+      expect(result.allExpenses).toEqual([
+        { name: "Uncategorized", total: 50 },
+      ]);
+      expect(JSON.stringify(result)).not.toContain("100000");
+    });
+
+    it("getTaxSummary withholds the income total for an unconverted income row", async () => {
+      scopedManager.query.mockResolvedValue([
+        { category_id: null, currency_code: "USD", amount: "50.00" },
+        { category_id: null, currency_code: "JPY", amount: "100000" },
+      ]);
+      categoriesRepository.find.mockResolvedValue([]);
+
+      const result = await service.getTaxSummary(mockUserId, 2025);
+
+      expect(result.totals.income).toBeNull();
+      expect(result.totals.knownIncome).toBe(50);
+      expect(result.incomeBySource).toEqual([
+        { name: "Uncategorized", total: 50 },
+      ]);
+    });
+
+    it("getRecurringExpenses withholds the recurring total and the monthly estimate", async () => {
+      const lastDate = new Date();
+      scopedManager.query.mockResolvedValue([
+        {
+          payee_id: "payee-1",
+          payee_name_normalized: "netflix",
+          payee_name: "Netflix",
+          category_name: null,
+          currency_code: "USD",
+          occurrences: 6,
+          total_amount: "60.00",
+          last_transaction_date: lastDate,
+          history_start: null,
+        },
+        {
+          payee_id: "payee-2",
+          payee_name_normalized: "tokyo gym",
+          payee_name: "Tokyo Gym",
+          category_name: null,
+          currency_code: "JPY",
+          occurrences: 6,
+          total_amount: "100000",
+          last_transaction_date: lastDate,
+          history_start: null,
+        },
+      ]);
+
+      const result = await service.getRecurringExpenses(mockUserId);
+
+      expect(result.summary.totalRecurring).toBeNull();
+      expect(result.summary.monthlyEstimate).toBeNull();
+      expect(result.summary.knownTotalRecurring).toBe(60);
+      expect(result.summary.knownMonthlyEstimate).toBe(10);
+      expect(result.summary.uniquePayees).toBe(1);
+      expect(result.currency).toBe("USD");
+      expect(result.missingCurrencies).toEqual(["JPY"]);
+      expect(result.excludedCount).toBe(1);
+      expect(result.data).toHaveLength(1);
+      expect(JSON.stringify(result)).not.toContain("100000");
+    });
+
+    it("getBillPaymentHistory withholds the paid total and excludes the unconverted payment", async () => {
+      scopedManager.query.mockResolvedValueOnce([
+        {
+          id: "st-1",
+          name: "Rent",
+          amount: "-50.00",
+          payee_name: "Landlord",
+        },
+        {
+          id: "st-2",
+          name: "Tokyo Bill",
+          amount: "-100000",
+          payee_name: "Tokyo Utility",
+        },
+      ]);
+      scopedManager.query.mockResolvedValueOnce([
+        {
+          id: "tx-1",
+          transaction_date: new Date("2025-01-15"),
+          currency_code: "USD",
+          amount: "50.00",
+          payee_name_normalized: "landlord",
+        },
+        {
+          id: "tx-2",
+          transaction_date: new Date("2025-01-20"),
+          currency_code: "JPY",
+          amount: "100000",
+          payee_name_normalized: "tokyo utility",
+        },
+      ]);
+
+      const result = await service.getBillPaymentHistory(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      expect(result.summary.totalPaid).toBeNull();
+      expect(result.summary.monthlyAverage).toBeNull();
+      expect(result.summary.knownTotalPaid).toBe(50);
+      expect(result.summary.knownMonthlyAverage).toBe(50);
+      expect(result.billPayments).toHaveLength(1);
+      expect(result.monthlyTotals).toEqual([{ month: "2025-01", total: 50 }]);
+      expect(result.currency).toBe("USD");
+      expect(result.missingCurrencies).toEqual(["JPY"]);
+      expect(result.excludedCount).toBe(1);
+      expect(JSON.stringify(result)).not.toContain("100000");
+    });
+
+    it("getBillPaymentHistory answers zero, not null, when there are no bills", async () => {
+      scopedManager.query.mockResolvedValueOnce([]);
+
+      const result = await service.getBillPaymentHistory(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      expect(result.summary.totalPaid).toBe(0);
+      expect(result.summary.knownTotalPaid).toBe(0);
+      expect(result.missingCurrencies).toEqual([]);
+      expect(result.excludedCount).toBe(0);
     });
   });
 });

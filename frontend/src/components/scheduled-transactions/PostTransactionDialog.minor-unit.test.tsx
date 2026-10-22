@@ -15,7 +15,13 @@ vi.mock('react-hot-toast', () => ({
 
 const mockPostApi = vi.fn().mockResolvedValue({});
 vi.mock('@/lib/scheduled-transactions', () => ({
-  scheduledTransactionsApi: { post: (...args: any[]) => mockPostApi(...args) },
+  scheduledTransactionsApi: {
+    post: (...args: any[]) => mockPostApi(...args),
+    // The loan projection that previews the post is still pending: these cases
+    // are about the template's own pre-fill. PostTransactionDialog.loan.test.tsx
+    // covers the priced preview.
+    getLoanOccurrences: () => new Promise(() => {}),
+  },
 }));
 
 vi.mock('@/lib/investments', () => ({

@@ -184,6 +184,8 @@ describe("TransactionTransferService", () => {
     // Default: both accounts owned by user-1, mirroring the old owner-scoped
     // findOne. Cross-owner tests override per account id.
     crossOwnerAccess = {
+      // The in-transaction re-check (A26-M04): the grant still held.
+      assertAccessStillHeld: jest.fn().mockResolvedValue(undefined),
       accountAccessFor: jest
         .fn()
         .mockImplementation(async (realUserId: string, accountId: string) => {

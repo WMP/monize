@@ -2,6 +2,7 @@ import { EntityManager } from "typeorm";
 import {
   PrunedScheduleOverride,
   advanceScheduleCursor,
+  claimedSlotsFrom,
   rewindScheduleCursor,
 } from "./schedule-cursor";
 import { ScheduledTransaction } from "./entities/scheduled-transaction.entity";
@@ -78,6 +79,31 @@ describe("advanceScheduleCursor", () => {
     const written = manager.update.mock.calls[0][2];
     expect(written).not.toHaveProperty("occurrencesRemaining");
     expect(written).not.toHaveProperty("isActive");
+  });
+
+  it("leaves last_posted_date alone when asked not to stamp it (a skip posts nothing)", async () => {
+    const result = await advanceScheduleCursor(
+      m(),
+      schedule(),
+      new Set(["2025-02-15"]),
+      { stampLastPosted: false },
+    );
+
+    expect(result.nextDueDate).toBe("2025-03-15");
+    expect(manager.update).toHaveBeenCalledWith(ScheduledTransaction, "st-1", {
+      nextDueDate: "2025-03-15",
+    });
+    expect(manager.update.mock.calls[0][2]).not.toHaveProperty(
+      "lastPostedDate",
+    );
+  });
+
+  it("stamps last_posted_date when the option is explicitly true", async () => {
+    await advanceScheduleCursor(m(), schedule(), new Set(["2025-02-15"]), {
+      stampLastPosted: true,
+    });
+
+    expect(manager.update.mock.calls[0][2]).toHaveProperty("lastPostedDate");
   });
 
   it("steps past every consecutive claimed slot, consuming an occurrence for each", async () => {
@@ -313,5 +339,51 @@ describe("rewindScheduleCursor", () => {
 
     expect(rewound).toBe(false);
     expect(insertChain.insert).not.toHaveBeenCalled();
+  });
+});
+
+describe("claimedSlotsFrom", () => {
+  it("returns the YYYY-MM-DD slot of every claim on or after the date, parameterized", async () => {
+    const manager = createScopedDbMocks().manager;
+    manager.query.mockResolvedValue([{ d: "2025-02-15" }, { d: "2025-04-15" }]);
+
+    const slots = await claimedSlotsFrom(
+      manager as unknown as EntityManager,
+      "st-1",
+      "2025-02-15",
+    );
+
+    expect(slots).toEqual(new Set(["2025-02-15", "2025-04-15"]));
+    const [sql, params] = manager.query.mock.calls[0];
+    expect(sql).toContain("TO_CHAR(original_due_date, 'YYYY-MM-DD')");
+    expect(sql).toContain("scheduled_transaction_id = $1");
+    expect(sql).toContain("original_due_date >= $2");
+    expect(params).toEqual(["st-1", "2025-02-15"]);
+  });
+
+  it("reads the driver's [rows, count] tuple as well as bare rows", async () => {
+    const manager = createScopedDbMocks().manager;
+    manager.query.mockResolvedValue([[{ d: "2025-03-15" }], 1]);
+
+    const slots = await claimedSlotsFrom(
+      manager as unknown as EntityManager,
+      "st-1",
+      "2025-03-15",
+    );
+
+    expect(slots).toEqual(new Set(["2025-03-15"]));
+  });
+
+  it("is an empty set when nothing is claimed", async () => {
+    const manager = createScopedDbMocks().manager;
+    manager.query.mockResolvedValue([]);
+
+    expect(
+      await claimedSlotsFrom(
+        manager as unknown as EntityManager,
+        "st-1",
+        "2025-03-15",
+      ),
+    ).toEqual(new Set());
   });
 });

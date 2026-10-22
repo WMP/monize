@@ -10,6 +10,7 @@ import { ActionHistory } from "./entities/action-history.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { BondPriceService } from "../bonds/bond-price.service";
+import { HoldingsService } from "../securities/holdings.service";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -20,6 +21,7 @@ describe("ActionHistoryService", () => {
   let mockRepository: Record<string, jest.Mock>;
   let mockQueryRunner: Record<string, any>;
   let mockDataSource: Record<string, any>;
+  let holdings: { rebuildAccountsFromTransactions: jest.Mock };
   let bondPrices: {
     clearEnginePrices: jest.Mock;
     publishClearedPrices: jest.Mock;
@@ -101,6 +103,9 @@ describe("ActionHistoryService", () => {
     };
     mockDataSource = scoped.dataSource;
 
+    holdings = {
+      rebuildAccountsFromTransactions: jest.fn().mockResolvedValue(undefined),
+    };
     bondPrices = {
       clearEnginePrices: jest
         .fn()
@@ -117,6 +122,7 @@ describe("ActionHistoryService", () => {
           useValue: mockDataSource,
         },
         { provide: BondPriceService, useValue: bondPrices },
+        { provide: HoldingsService, useValue: holdings },
       ],
     }).compile();
 
@@ -1788,70 +1794,15 @@ describe("ActionHistoryService", () => {
       expect(invInsertCall[1][3]).toBe("cash-1");
     });
 
-    it("should use correct table name 'holdings' in rebuildHoldings", async () => {
-      const invAction = {
-        ...mockAction,
-        entityType: "investment_transaction",
-        action: "create",
-        entityId: "inv-1",
-        afterData: { id: "inv-1" },
-      };
-      mockRepository.findOne.mockResolvedValue(invAction);
-
-      const mockInvTx = {
-        id: "inv-1",
-        userId,
-        accountId: "acc-1",
-        transactionId: null,
-      };
-      mockQueryRunner.manager.findOne.mockResolvedValueOnce(mockInvTx);
-      mockQueryRunner.manager.remove.mockResolvedValue(undefined);
-      mockQueryRunner.manager.update.mockResolvedValue({ affected: 1 });
-      // rebuildHoldings takes the shared holdings lock first -- a rebuild replays
-      // investment_transactions and replaces what it derives from them, so the
-      // trade it must not lose is an insert no holdings row locks (P4-006).
-      mockQueryRunner.query
-        .mockResolvedValueOnce([]) // pg_advisory_xact_lock
-        .mockResolvedValueOnce(undefined) // DELETE FROM holdings
-        .mockResolvedValueOnce([
-          {
-            security_id: "sec-1",
-            action: "BUY",
-            quantity: "10",
-            price: "100",
-          },
-        ]) // SELECT investment_transactions
-        .mockResolvedValueOnce(undefined); // INSERT INTO holdings
-
-      await service.undo(userId);
-
-      const deleteCalls = mockQueryRunner.query.mock.calls.filter(
-        (call: any[]) =>
-          typeof call[0] === "string" &&
-          call[0].includes("DELETE FROM holdings"),
-      );
-      expect(deleteCalls.length).toBe(1);
-      const insertCalls = mockQueryRunner.query.mock.calls.filter(
-        (call: any[]) =>
-          typeof call[0] === "string" &&
-          call[0].includes("INSERT INTO holdings"),
-      );
-      expect(insertCalls.length).toBe(1);
-      // Verify no references to the wrong table name
-      const wrongTableCalls = mockQueryRunner.query.mock.calls.filter(
-        (call: any[]) =>
-          typeof call[0] === "string" &&
-          call[0].includes("investment_holdings"),
-      );
-      expect(wrongTableCalls.length).toBe(0);
-    });
-
-    it("carries an over-sold position as negative, agreeing with the canonical rebuild", async () => {
-      // BUY 10, SELL 15, BUY 10: computeHoldingsMap carries the over-sell as
-      // -5 (its own comment calls an over-sell "history") and stores 5 shares.
-      // The undo rebuild used to clamp the -5 to 0 and store 10 -- so undoing
-      // any unrelated action rewrote holdings to a position the next canonical
-      // rebuild flipped back.
+    /**
+     * A26-L21: the undo re-derives the account through the canonical fold on
+     * the undo's own manager, not a second copy of it (which added a
+     * DIVIDEND's total to the basis and stored the average at 6 decimals).
+     * The fold's own arithmetic -- over-sells carried as negative included --
+     * is holdings.service.spec.ts's; holding-undo-fold.integration.spec.ts
+     * proves the stored row against the drift report.
+     */
+    it("re-derives the account's holdings through HoldingsService on the undo's manager", async () => {
       const invAction = {
         ...mockAction,
         entityType: "investment_transaction",
@@ -1869,116 +1820,20 @@ describe("ActionHistoryService", () => {
       });
       mockQueryRunner.manager.remove.mockResolvedValue(undefined);
       mockQueryRunner.manager.update.mockResolvedValue({ affected: 1 });
-      mockQueryRunner.query
-        .mockResolvedValueOnce([]) // pg_advisory_xact_lock
-        .mockResolvedValueOnce(undefined) // DELETE FROM holdings
-        .mockResolvedValueOnce([
-          {
-            security_id: "sec-1",
-            action: "BUY",
-            quantity: "10",
-            price: "100",
-          },
-          {
-            security_id: "sec-1",
-            action: "SELL",
-            quantity: "15",
-            price: "100",
-          },
-          {
-            security_id: "sec-1",
-            action: "BUY",
-            quantity: "10",
-            price: "100",
-          },
-        ]) // SELECT investment_transactions
-        .mockResolvedValueOnce(undefined); // INSERT INTO holdings
 
       await service.undo(userId);
 
-      const insertCall = mockQueryRunner.query.mock.calls.find(
-        (call: any[]) =>
-          typeof call[0] === "string" &&
-          call[0].includes("INSERT INTO holdings"),
-      );
-      expect(insertCall).toBeDefined();
-      // Params: [accountId, securityId, quantity, avgCost] -- 5 shares, not 10.
-      expect(insertCall[1][2]).toBe(5);
-    });
-
-    it("takes a return of capital off the basis, as the canonical rebuild does (#1800)", async () => {
-      // The undo rebuild is a hand-written copy of computeHoldingsMap: BUY 10
-      // at 100 then 250 of capital returned is 750 over the same 10 shares
-      // there, so it must be here too -- and a return beyond the basis stops
-      // at zero rather than going negative.
-      const invAction = {
-        ...mockAction,
-        entityType: "investment_transaction",
-        action: "create",
-        entityId: "inv-1",
-        afterData: { id: "inv-1" },
-      };
-      mockRepository.findOne.mockResolvedValue(invAction);
-
-      mockQueryRunner.manager.findOne.mockResolvedValueOnce({
-        id: "inv-1",
+      expect(holdings.rebuildAccountsFromTransactions).toHaveBeenCalledWith(
         userId,
-        accountId: "acc-1",
-        transactionId: null,
-      });
-      mockQueryRunner.manager.remove.mockResolvedValue(undefined);
-      mockQueryRunner.manager.update.mockResolvedValue({ affected: 1 });
-      mockQueryRunner.query
-        .mockResolvedValueOnce([]) // pg_advisory_xact_lock
-        .mockResolvedValueOnce(undefined) // DELETE FROM holdings
-        .mockResolvedValueOnce([
-          {
-            security_id: "sec-1",
-            action: "BUY",
-            quantity: "10",
-            price: "100",
-            total_amount: "1000",
-          },
-          {
-            security_id: "sec-1",
-            action: "RETURN_OF_CAPITAL",
-            quantity: null,
-            price: null,
-            total_amount: "250",
-          },
-          {
-            security_id: "sec-2",
-            action: "BUY",
-            quantity: "5",
-            price: "10",
-            total_amount: "50",
-          },
-          {
-            security_id: "sec-2",
-            action: "RETURN_OF_CAPITAL",
-            quantity: null,
-            price: null,
-            total_amount: "80",
-          },
-        ]) // SELECT investment_transactions
-        .mockResolvedValue(undefined); // INSERT INTO holdings
-
-      await service.undo(userId);
-
-      const inserts = mockQueryRunner.query.mock.calls.filter(
+        ["acc-1"],
+        mockQueryRunner.manager,
+      );
+      const handRolled = mockQueryRunner.query.mock.calls.filter(
         (call: any[]) =>
           typeof call[0] === "string" &&
-          call[0].includes("INSERT INTO holdings"),
+          /(DELETE FROM|INSERT INTO) holdings/.test(call[0]),
       );
-      // Params: [accountId, securityId, quantity, avgCost].
-      const bySecurity = new Map<string, unknown[]>(
-        inserts.map((call: any[]): [string, unknown[]] => [
-          call[1][1],
-          call[1],
-        ]),
-      );
-      expect(bySecurity.get("sec-1")?.slice(2)).toEqual([10, 75]);
-      expect(bySecurity.get("sec-2")?.slice(2)).toEqual([5, 0]);
+      expect(handRolled).toEqual([]);
     });
   });
 
@@ -2212,6 +2067,89 @@ describe("ActionHistoryService", () => {
       expect(result.description).toContain("Undone");
       expect(mockQueryRunner.manager.delete).toHaveBeenCalled();
     });
+
+    it("undoes an account edit without writing derived or lifecycle columns back (A26-H06)", async () => {
+      const action = {
+        ...mockAction,
+        entityType: "account",
+        action: "update",
+        entityId: "acc-1",
+        beforeData: {
+          id: "acc-1",
+          name: "Chequing",
+          openingBalance: 5000,
+          currentBalance: 5000,
+          isClosed: false,
+          closedDate: null,
+          linkedAccountId: null,
+        },
+        afterData: {
+          id: "acc-1",
+          name: "Renamed",
+          openingBalance: 5000,
+          currentBalance: 5000,
+          isClosed: false,
+          closedDate: null,
+          linkedAccountId: null,
+        },
+      };
+      mockRepository.findOne.mockResolvedValue(action);
+      mockQueryRunner.manager.update.mockResolvedValue({ affected: 1 });
+
+      await service.undo(userId);
+
+      const accountUpdate = mockQueryRunner.manager.update.mock.calls.find(
+        (call: unknown[]) => call[1] === "acc-1",
+      );
+      expect(accountUpdate[2]).toEqual({
+        name: "Chequing",
+        openingBalance: 5000,
+      });
+      // The opening balance did not change, so nothing is recomputed.
+      expect(mockQueryRunner.query).not.toHaveBeenCalledWith(
+        expect.stringContaining("SET current_balance"),
+        expect.anything(),
+      );
+    });
+
+    it.each([
+      [
+        "a method change",
+        { mortgageType: "ANNUITY" },
+        { mortgageType: "LINEAR" },
+      ],
+      [
+        "an interest-category change",
+        { interestCategoryId: "cat-a" },
+        { interestCategoryId: "cat-b" },
+      ],
+    ])(
+      "refuses undo of %s on a loan with a schedule, writing nothing (A26-H06)",
+      async (_label, beforeLoan, afterLoan) => {
+        const action = {
+          ...mockAction,
+          entityType: "account",
+          action: "update",
+          entityId: "loan-1",
+          beforeData: {
+            id: "loan-1",
+            scheduledTransactionId: "st-1",
+            ...beforeLoan,
+          },
+          afterData: {
+            id: "loan-1",
+            scheduledTransactionId: "st-1",
+            ...afterLoan,
+          },
+        };
+        mockRepository.findOne.mockResolvedValue(action);
+
+        await expect(service.undo(userId)).rejects.toBeInstanceOf(
+          ConflictException,
+        );
+        expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      },
+    );
 
     it("should undo scheduled_transaction delete", async () => {
       const action = {

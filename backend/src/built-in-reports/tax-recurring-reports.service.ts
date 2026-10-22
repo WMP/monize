@@ -2,7 +2,11 @@ import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { Category } from "../categories/entities/category.entity";
-import { ReportCurrencyService } from "./report-currency.service";
+import {
+  ConversionGaps,
+  ReportCurrencyService,
+} from "./report-currency.service";
+import { FxAggregate } from "../common/fx-aggregate";
 import {
   TaxSummaryResponse,
   RecurringExpensesResponse,
@@ -195,16 +199,25 @@ export class TaxRecurringReportsService {
     const incomeBySource = new Map<string, number>();
     const deductibleExpenses = new Map<string, number>();
     const allExpensesByCategory = new Map<string, number>();
-    let totalIncome = 0;
-    let totalExpenses = 0;
+    const totalIncome = new FxAggregate();
+    const totalExpenses = new FxAggregate();
+    // A row with no rate into the reporting currency is unknown, never its
+    // unconverted figure (INV-FX-001): it is in no category list and no total,
+    // and its currency is named. A tax figure is withheld rather than shown
+    // short.
+    const gaps = new ConversionGaps();
 
     rawResults.forEach((row) => {
-      const amount = this.currencyService.convertAmount(
+      const amount = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.amount),
         row.currency_code,
         defaultCurrency,
         rateMap,
       );
+      if (amount === null) {
+        gaps.record(row.currency_code);
+        return;
+      }
       const category = row.category_id
         ? categoryMap.get(row.category_id)
         : null;
@@ -214,14 +227,14 @@ export class TaxRecurringReportsService {
       const catName = parentCategory?.name || category?.name || "Uncategorized";
 
       if (amount > 0) {
-        totalIncome += amount;
+        totalIncome.addConverted(amount);
         incomeBySource.set(
           catName,
           (incomeBySource.get(catName) || 0) + amount,
         );
       } else {
         const expenseAmt = Math.abs(amount);
-        totalExpenses += expenseAmt;
+        totalExpenses.addConverted(expenseAmt);
         allExpensesByCategory.set(
           catName,
           (allExpensesByCategory.get(catName) || 0) + expenseAmt,
@@ -236,7 +249,11 @@ export class TaxRecurringReportsService {
       }
     });
 
-    const totalDeductible = sumMoney(Array.from(deductibleExpenses.values()));
+    const knownIncome = roundMoney(totalIncome.knownSubtotal);
+    const knownExpenses = roundMoney(totalExpenses.knownSubtotal);
+    const knownDeductible = roundMoney(
+      sumMoney(Array.from(deductibleExpenses.values())),
+    );
 
     return {
       incomeBySource: Array.from(incomeBySource.entries())
@@ -258,10 +275,16 @@ export class TaxRecurringReportsService {
         }))
         .sort((a, b) => b.total - a.total),
       totals: {
-        income: roundMoney(totalIncome),
-        expenses: roundMoney(totalExpenses),
-        deductible: roundMoney(totalDeductible),
+        income: gaps.headline(knownIncome),
+        expenses: gaps.headline(knownExpenses),
+        deductible: gaps.headline(knownDeductible),
+        knownIncome,
+        knownExpenses,
+        knownDeductible,
       },
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
     };
   }
 
@@ -356,13 +379,23 @@ export class TaxRecurringReportsService {
       }
     >();
 
+    // A row with no rate into the reporting currency is unknown, never its
+    // unconverted figure (INV-FX-001): it is in no payee total and no summary,
+    // and its currency is named. A payee that also paid in a converted currency
+    // keeps that part only.
+    const gaps = new ConversionGaps();
+
     for (const row of rawResults) {
-      const totalAmount = this.currencyService.convertAmount(
+      const totalAmount = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.total_amount),
         row.currency_code,
         defaultCurrency,
         rateMap,
       );
+      if (totalAmount === null) {
+        gaps.record(row.currency_code);
+        continue;
+      }
       const key = row.payee_name_normalized;
       const existing = payeeMerged.get(key);
       if (existing) {
@@ -421,16 +454,24 @@ export class TaxRecurringReportsService {
       },
     );
 
-    const totalRecurring = sumMoney(data.map((item) => item.totalAmount));
+    const knownTotalRecurring = roundMoney(
+      sumMoney(data.map((item) => item.totalAmount)),
+    );
+    const knownMonthlyEstimate = roundMoney(knownTotalRecurring / monthCount);
 
     return {
       data,
       summary: {
-        totalRecurring: roundMoney(totalRecurring),
-        monthlyEstimate: roundMoney(totalRecurring / monthCount),
+        totalRecurring: gaps.headline(knownTotalRecurring),
+        knownTotalRecurring,
+        monthlyEstimate: gaps.headline(knownMonthlyEstimate),
+        knownMonthlyEstimate,
         monthCount,
         uniquePayees: data.length,
       },
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
     };
   }
 
@@ -473,10 +514,15 @@ export class TaxRecurringReportsService {
         monthlyTotals: [],
         summary: {
           totalPaid: 0,
+          knownTotalPaid: 0,
           totalPayments: 0,
           uniqueBills: 0,
           monthlyAverage: 0,
+          knownMonthlyAverage: 0,
         },
+        currency: defaultCurrency,
+        missingCurrencies: [],
+        excludedCount: 0,
       };
     }
 
@@ -547,17 +593,27 @@ export class TaxRecurringReportsService {
       }
     >();
 
+    // A payment with no rate into the reporting currency cannot be compared
+    // with the bill's amount, so it is neither matched nor missed (INV-FX-001):
+    // it is in no bill, month or total, and its currency is named. Only payments
+    // to a scheduled payee are counted: any other is not in this report at all.
+    const gaps = new ConversionGaps();
+
     transactions.forEach((tx) => {
       if (!tx.payee_name_normalized) return;
       const scheduled = payeeToScheduled.get(tx.payee_name_normalized);
       if (!scheduled) return;
 
-      const txAmount = this.currencyService.convertAmount(
+      const txAmount = this.currencyService.tryConvertAmount(
         toMoneyNumber(tx.amount),
         tx.currency_code,
         defaultCurrency,
         rateMap,
       );
+      if (txAmount === null) {
+        gaps.record(tx.currency_code);
+        return;
+      }
       if (
         txAmount >= scheduled.amount * 0.8 &&
         txAmount <= scheduled.amount * 1.2
@@ -623,7 +679,9 @@ export class TaxRecurringReportsService {
       }))
       .sort((a, b) => a.month.localeCompare(b.month));
 
-    const totalPaid = sumMoney(billPayments.map((bp) => bp.totalPaid));
+    const knownTotalPaid = roundMoney(
+      sumMoney(billPayments.map((bp) => bp.totalPaid)),
+    );
     const totalPayments = billPayments.reduce(
       (sum, bp) => sum + bp.paymentCount,
       0,
@@ -634,11 +692,16 @@ export class TaxRecurringReportsService {
       billPayments,
       monthlyTotals,
       summary: {
-        totalPaid: roundMoney(totalPaid),
+        totalPaid: gaps.headline(knownTotalPaid),
+        knownTotalPaid,
         totalPayments,
         uniqueBills: billPayments.length,
-        monthlyAverage: roundMoney(totalPaid / monthCount),
+        monthlyAverage: gaps.headline(roundMoney(knownTotalPaid / monthCount)),
+        knownMonthlyAverage: roundMoney(knownTotalPaid / monthCount),
       },
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
     };
   }
 }

@@ -359,6 +359,12 @@ export interface LoanOccurrence {
   principal: number | null;
   interest: number | null;
   extraPrincipal: number | null;
+  /**
+   * The accrued interest the bill does not cover: capitalized into the debt
+   * through a negative `principal`. 0 when covered, null when unknown; absent
+   * from an older server's answer.
+   */
+  unpaidInterest?: number | null;
   annualRate: number | null;
   debtBefore: number | null;
   complete: boolean;
@@ -385,6 +391,10 @@ export interface SelectedLoanOccurrence {
 }
 
 export interface PostScheduledTransactionData {
+  // The occurrence the user is posting (`occurrencePin`): the server refuses
+  // with 409 once it is no longer the due one.
+  expectedOccurrenceDate: string;
+  expectedOverrideId: string | null;
   transactionDate?: string;
   amount?: number | null;
   // Foreign-currency schedules only: the amount in the entry currency for this

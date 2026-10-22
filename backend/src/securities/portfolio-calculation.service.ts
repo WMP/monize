@@ -39,7 +39,9 @@ import {
   applyActionToQuantity,
   baseInvestmentAction,
   CASH_INCOME_ACTIONS,
+  HOLDING_QUANTITY_EPSILON,
   INVESTMENT_REPLAY_ORDER,
+  orderTransferOutBeforeIn,
   applyReturnOfCapital,
   returnOfCapitalAmount,
 } from "./investment-replay.util";
@@ -302,18 +304,37 @@ function enumerateDays(startDate: string, endDate: string): PeriodBucket[] {
 function applyTxToState(
   tx: InvestmentTransaction,
   state: { quantity: number; costBasis: number; basisKnown: boolean },
+  carriedIn?: number,
 ): void {
   const quantity = Number(tx.quantity) || 0;
 
   switch (baseInvestmentAction(tx.action)) {
     case InvestmentAction.BUY:
-    case InvestmentAction.REINVEST:
-    case InvestmentAction.TRANSFER_IN: {
+    case InvestmentAction.REINVEST: {
       // Includes the commission, which is part of what the acquisition cost --
       // the linked cash debit already carries it. `null` means the row cannot
       // say what it cost, and shares whose cost is unknown must not join the
       // basis as free -- nor leave the basis pretending to be complete.
       const cost = acquisitionCost(tx);
+      if (cost !== null) state.costBasis += cost;
+      else state.basisKnown = false;
+      state.quantity = applyActionToQuantity(
+        state.quantity,
+        tx.action,
+        quantity,
+      );
+      break;
+    }
+    case InvestmentAction.TRANSFER_IN: {
+      // Not a purchase (A26-M21): the lot takes the account-currency basis its
+      // paired TRANSFER_OUT released (`carriedIn`, from
+      // `carriedBasisByTransferIn`). The leg's own row cannot supply it -- its
+      // price is a per-share figure in the security's currency and its rate is
+      // 1. Residual: with no carried amount (the OUT leg outside the rows, the
+      // source short of units, or the two accounts in different currencies)
+      // it falls back to `acquisitionCost(tx)`, which is only right when the
+      // leg's price and rate say what the shares cost.
+      const cost = carriedIn ?? acquisitionCost(tx);
       if (cost !== null) state.costBasis += cost;
       else state.basisKnown = false;
       state.quantity = applyActionToQuantity(
@@ -359,6 +380,78 @@ function applyTxToState(
     // A closed position holds a known zero basis; the unknown lot is gone.
     state.basisKnown = true;
   }
+}
+
+/**
+ * The account-currency basis each TRANSFER_IN lot takes from its paired
+ * TRANSFER_OUT (A26-M21), keyed by the IN leg's id.
+ *
+ * One chronological pass over every row the caller fetched, whatever account it
+ * is in, so a destination's lot can be priced before or after its source group
+ * is folded. It folds with `applyTxToState`, the fold the capital-gains seed
+ * uses, and reads the rows OUT-before-IN (`orderTransferOutBeforeIn`). The OUT
+ * leg is matched to the IN leg through `linkedTransactionId`, and counts only
+ * when it relieved ALL its units (the source held at least the quantity) from
+ * a basis with no unpriced lot in it, and the two legs' accounts share a
+ * currency (`account` must be loaded): the
+ * released amount is in the source account's currency, and a rate-1 leg cannot
+ * convert it. An IN leg with no entry here is the caller's to price from its
+ * own row -- the residual `applyTxToState` names.
+ */
+function carriedBasisByTransferIn(
+  transactions: readonly InvestmentTransaction[],
+): Map<string, number> {
+  const states = new Map<
+    string,
+    { quantity: number; costBasis: number; basisKnown: boolean }
+  >();
+  const releasedByOut = new Map<
+    string,
+    { amount: number; currencyCode: string | null }
+  >();
+  const carriedIn = new Map<string, number>();
+
+  for (const tx of orderTransferOutBeforeIn(transactions)) {
+    if (!tx.securityId) continue;
+    const key = `${tx.accountId}:${tx.securityId}`;
+    let state = states.get(key);
+    if (!state) {
+      state = { quantity: 0, costBasis: 0, basisKnown: true };
+      states.set(key, state);
+    }
+
+    const action = baseInvestmentAction(tx.action);
+    let carried: number | undefined;
+    if (action === InvestmentAction.TRANSFER_IN && tx.linkedTransactionId) {
+      const source = releasedByOut.get(tx.linkedTransactionId);
+      const currencyCode = tx.account?.currencyCode ?? null;
+      if (
+        source !== undefined &&
+        source.currencyCode !== null &&
+        source.currencyCode === currencyCode
+      ) {
+        carried = source.amount;
+        carriedIn.set(tx.id, carried);
+      }
+    } else if (action === InvestmentAction.TRANSFER_OUT) {
+      const quantity = Number(tx.quantity) || 0;
+      // A source whose basis holds an unpriced lot releases a subtotal, not
+      // what the shares cost: nothing is carried, and the IN leg falls back.
+      if (
+        state.basisKnown &&
+        state.quantity > 0 &&
+        quantity > 0 &&
+        state.quantity >= quantity - HOLDING_QUANTITY_EPSILON
+      ) {
+        releasedByOut.set(tx.id, {
+          amount: quantity * (state.costBasis / state.quantity),
+          currencyCode: tx.account?.currencyCode ?? null,
+        });
+      }
+    }
+    applyTxToState(tx, state, carried);
+  }
+  return carriedIn;
 }
 
 /**
@@ -889,26 +982,9 @@ export class PortfolioCalculationService {
       transactions,
     );
 
-    // Both legs of a transfer are written in one transaction, so `created_at`
-    // -- a statement timestamp -- is identical on the pair and the SQL order
-    // between them is whatever the plan happens to produce. The OUT leg has to
-    // be seen first, because it is what tells the IN leg what the shares cost.
-    // Only the two legs are reordered: the comparator returns 0 for everything
-    // else at the same instant, and `sort` is stable, so nothing else moves.
-    const legRank = (action: InvestmentAction): number =>
-      action === InvestmentAction.TRANSFER_OUT
-        ? -1
-        : action === InvestmentAction.TRANSFER_IN
-          ? 1
-          : 0;
-    const ordered = [...transactions].sort((a, b) => {
-      if (a.transactionDate !== b.transactionDate) {
-        return a.transactionDate < b.transactionDate ? -1 : 1;
-      }
-      const created = Number(a.createdAt) - Number(b.createdAt);
-      if (created !== 0) return created;
-      return legRank(a.action) - legRank(b.action);
-    });
+    // The OUT leg of a transfer has to be seen before its IN leg, because it is
+    // what tells the IN leg what the shares cost; the shared helper says why.
+    const ordered = orderTransferOutBeforeIn(transactions);
 
     /**
      * What each `TRANSFER_OUT` released, for its paired `TRANSFER_IN` to take.
@@ -1312,10 +1388,10 @@ export class PortfolioCalculationService {
   ): Promise<RealizedGainEntry[]> {
     const { accountIds, startDate, endDate } = opts;
 
+    // Not filtered by account: a lot transferred in from an account the caller
+    // did not ask about still carries its basis (A26-M21), so the replay reads
+    // every account's rows and only the RESULTS are filtered by `accountIds`.
     const where: FindOptionsWhere<InvestmentTransaction> = { userId };
-    if (accountIds && accountIds.length > 0) {
-      where.accountId = In(accountIds);
-    }
     if (endDate) {
       where.transactionDate = LessThanOrEqual(endDate);
     }
@@ -1323,13 +1399,17 @@ export class PortfolioCalculationService {
     // Rows as effects: a VOID transaction moved no shares and no cost.
     where.status = NON_VOID_INVESTMENT_STATUS;
 
-    const transactions = await withScopedDb(this.dataSource, (m) =>
+    const fetched = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(InvestmentTransaction).find({
         where,
         relations: ["security", "account"],
         order: INVESTMENT_REPLAY_ORDER,
       }),
     );
+    const transactions = orderTransferOutBeforeIn(fetched);
+    const carriedIn = carriedBasisByTransferIn(transactions);
+    const requestedAccounts =
+      accountIds && accountIds.length > 0 ? new Set(accountIds) : null;
 
     const state = new Map<string, { quantity: number; costBasis: number }>();
     const results: RealizedGainEntry[] = [];
@@ -1350,13 +1430,28 @@ export class PortfolioCalculationService {
 
       switch (baseInvestmentAction(tx.action)) {
         case InvestmentAction.BUY:
-        case InvestmentAction.REINVEST:
-        case InvestmentAction.TRANSFER_IN: {
+        case InvestmentAction.REINVEST: {
           // Acquisition commission belongs in the basis a later disposal is
           // measured against; omitting it reported the commission as gain and
           // taxed it. Shared with every other replay so the realized-gain
           // report and the holdings page cannot disagree about the same buy.
           const cost = acquisitionCost(tx);
+          if (cost !== null) entry.costBasis += cost;
+          entry.quantity = applyActionToQuantity(
+            entry.quantity,
+            tx.action,
+            quantity,
+          );
+          break;
+        }
+        case InvestmentAction.TRANSFER_IN: {
+          // Not a purchase (A26-M21): the lot takes the account-currency basis
+          // its paired TRANSFER_OUT released. Residual: with no carried amount
+          // (the OUT leg missing, the source short of units, or the two
+          // accounts in different currencies) it falls back to the leg's own
+          // `acquisitionCost`, right only when the row's price and rate say
+          // what the shares cost.
+          const cost = carriedIn.get(tx.id) ?? acquisitionCost(tx);
           if (cost !== null) entry.costBasis += cost;
           entry.quantity = applyActionToQuantity(
             entry.quantity,
@@ -1383,7 +1478,10 @@ export class PortfolioCalculationService {
             const proceeds = Number(tx.totalAmount) * exchangeRate;
             const realizedGain = proceeds - costBasisSold;
 
-            if (!startDate || tx.transactionDate >= startDate) {
+            if (
+              (!startDate || tx.transactionDate >= startDate) &&
+              (!requestedAccounts || requestedAccounts.has(tx.accountId))
+            ) {
               results.push({
                 transactionId: tx.id,
                 transactionDate: tx.transactionDate,
@@ -1534,21 +1632,31 @@ export class PortfolioCalculationService {
   ): Promise<CapitalGainEntry[]> {
     const { accountIds, endDate } = opts;
 
+    // Not filtered by account: a lot transferred in from an account the caller
+    // did not ask about still carries its basis (A26-M21), so the carry reads
+    // every account's rows and only the groups reported are filtered below.
     const where: FindOptionsWhere<InvestmentTransaction> = { userId };
-    if (accountIds && accountIds.length > 0) {
-      where.accountId = In(accountIds);
-    }
     where.transactionDate = LessThanOrEqual(endDate);
 
     // Rows as effects: a VOID transaction moved no shares and no cost.
     where.status = NON_VOID_INVESTMENT_STATUS;
 
-    const transactions = await withScopedDb(this.dataSource, (m) =>
+    const fetched = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(InvestmentTransaction).find({
         where,
         relations: ["security", "account"],
         order: INVESTMENT_REPLAY_ORDER,
       }),
+    );
+
+    // Groups fold one (account, security) at a time, so a source group may be
+    // processed after its destination: the carried amounts come from one
+    // chronological pass over all rows, which each group's TRANSFER_IN reads.
+    const carriedIn = carriedBasisByTransferIn(fetched);
+    const requestedAccounts =
+      accountIds && accountIds.length > 0 ? new Set(accountIds) : null;
+    const transactions = fetched.filter(
+      (tx) => !requestedAccounts || requestedAccounts.has(tx.accountId),
     );
 
     if (transactions.length === 0) return [];
@@ -1668,7 +1776,7 @@ export class PortfolioCalculationService {
         txIdx < txs.length &&
         txs[txIdx].transactionDate < periods[0].periodStart
       ) {
-        applyTxToState(txs[txIdx], state);
+        applyTxToState(txs[txIdx], state, carriedIn.get(txs[txIdx].id));
         txIdx++;
       }
 
@@ -1705,28 +1813,36 @@ export class PortfolioCalculationService {
           const quantity = Number(tx.quantity) || 0;
           const exchangeRate = Number(tx.exchangeRate) || 1;
 
+          // `null` is a lot whose cost the row cannot state.
+          const addAcquisition = (cost: number | null) => {
+            if (cost === null) {
+              buysComplete = false;
+              state.basisKnown = false;
+            } else {
+              buys += cost;
+              state.costBasis += cost;
+            }
+            state.quantity = applyActionToQuantity(
+              state.quantity,
+              tx.action,
+              quantity,
+            );
+          };
+
           switch (baseInvestmentAction(tx.action)) {
             case InvestmentAction.BUY:
             case InvestmentAction.REINVEST:
-            case InvestmentAction.TRANSFER_IN: {
               // Commission included: it is money the period spent acquiring,
               // so leaving it out of `buys` also inflated the period's
               // capital gain by the same amount it understated the basis.
-              const cost = acquisitionCost(tx);
-              if (cost === null) {
-                buysComplete = false;
-                state.basisKnown = false;
-              } else {
-                buys += cost;
-                state.costBasis += cost;
-              }
-              state.quantity = applyActionToQuantity(
-                state.quantity,
-                tx.action,
-                quantity,
-              );
+              addAcquisition(acquisitionCost(tx));
               break;
-            }
+            case InvestmentAction.TRANSFER_IN:
+              // Not a purchase (A26-M21): the lot takes the basis its paired
+              // OUT released; the residual with no carried amount is
+              // `applyTxToState`'s.
+              addAcquisition(carriedIn.get(tx.id) ?? acquisitionCost(tx));
+              break;
             case InvestmentAction.SELL:
             case InvestmentAction.TRANSFER_OUT: {
               const sellQty = Math.min(quantity, state.quantity);

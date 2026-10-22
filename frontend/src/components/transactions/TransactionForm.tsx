@@ -1754,6 +1754,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
             displayCurrencyCode={isForeign ? entryCurrency : undefined}
             displayRate={isForeign ? (fxRate ?? undefined) : undefined}
             onCreateCategory={jointSafeCategoryCreator}
+            transactionDate={watchedDate}
           />
         </div>
       )}

@@ -17,6 +17,8 @@ import { builtInReportsApi } from '@/lib/built-in-reports';
 import { PayeeSpendingItem } from '@/types/built-in-reports';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useReportData } from '@/hooks/useReportData';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { reportTotal } from '@/lib/currency-total';
 import { useWidgetConfig } from '@/hooks/useWidgetConfig';
 import { resolveRangePreset } from '@/lib/date-range';
 import { chartColors, chartSeriesColor } from '@/lib/chart-colors';
@@ -39,7 +41,7 @@ interface SpendingByPayeeWidgetProps {
 export function SpendingByPayeeWidget({ isLoading }: SpendingByPayeeWidgetProps) {
   const t = useTranslations('dashboard');
   const router = useRouter();
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent, defaultCurrency } = useNumberFormat();
   const { config, updateConfig } = useWidgetConfig<RangeConfig>(
     WIDGET_ID,
     SPENDING_BY_PAYEE_DEFAULT,
@@ -69,7 +71,11 @@ export function SpendingByPayeeWidget({ isLoading }: SpendingByPayeeWidgetProps)
     [response],
   );
 
-  const totalExpenses = response?.totalSpending ?? 0;
+  // `totalSpending` is withheld when a row could not be converted; what is shown
+  // is the part that did, marked as a subtotal, and shares are of what is shown.
+  const spendingTotal = reportTotal(response?.totalSpending ?? response?.knownSpending ?? 0, response);
+  const totalExpenses = spendingTotal.value;
+  const reportingCurrency = response?.currency ?? defaultCurrency;
 
   // A payee in the widget opens its detail page; the date-ranged transaction
   // drill-down lives on the detail page's own chart and links.
@@ -148,7 +154,9 @@ export function SpendingByPayeeWidget({ isLoading }: SpendingByPayeeWidgetProps)
           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-sm flex-shrink-0">
             <span className="text-gray-500 dark:text-gray-400">{t('spendingByPayee.totalLabel')}</span>
             <span className="font-semibold text-gray-900 dark:text-gray-100">
-              {formatCurrency(totalExpenses)}
+              <PartialTotal total={spendingTotal} displayCurrency={reportingCurrency}>
+                {formatCurrency(totalExpenses)}
+              </PartialTotal>
             </span>
           </div>
         </>

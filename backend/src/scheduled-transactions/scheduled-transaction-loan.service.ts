@@ -236,6 +236,10 @@ export class ScheduledTransactionLoanService {
       );
       const { template } = installment;
       const amountsBySplitId = new Map<string, number>();
+      // A bill below the accrued interest carries a NEGATIVE principal (the
+      // capitalized shortfall), so its line is positive: a transfer FROM the
+      // loan, which raises the debt. The parent stays the bill shown, the
+      // lines still sum to it, and the same transaction books both.
       if (template.principalSplit?.id) {
         amountsBySplitId.set(template.principalSplit.id, -allocation.principal);
       }

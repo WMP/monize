@@ -82,12 +82,7 @@ export const RECEIPT_TRADE_CHAT_INSTRUCTIONS: readonly string[] = [
 
 /** What the inbox calls each fixed instruction, so a person reads it in their own language. */
 export type ReceiptInstructionKey =
-  | "automatic"
-  | "chat"
-  | "categorize"
-  | "parsed"
-  | "trade"
-  | "tradeChat";
+  "automatic" | "chat" | "categorize" | "parsed" | "trade" | "tradeChat";
 
 const RECEIPT_INSTRUCTION_KEYS: ReadonlyMap<string, ReceiptInstructionKey> =
   new Map([

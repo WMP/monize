@@ -1853,6 +1853,10 @@
   "foreignCurrencyFees": {
     "noEligibleAccounts": "Nessun conto ha una commissione per transazioni estere configurata. Imposta una percentuale di commissione su un conto per monitorare qui le sue commissioni in valuta estera."
   },
+  "partialData": {
+    "notice": "Alcuni valori sono parziali: {count, plural, one {# importo non è stato convertito in {displayCurrency} ed è escluso} other {# importi non sono stati convertiti in {displayCurrency} e sono esclusi}}. Nessun tasso disponibile per {currencies}; aggiungilo nella pagina Valute.",
+    "noticeExcluded": "Alcuni valori sono parziali: {count, plural, one {# importo non è stato calcolato ed è escluso} other {# importi non sono stati calcolati e sono esclusi}}."
+  },
   "sankey": {
     "help": "Il denaro entrato scorre attraverso il centro verso ciò in cui è stato speso, ciò che è stato risparmiato o investito e ciò che ha rimborsato debiti. Per impostazione predefinita il report copre i tuoi conti correnti, di risparmio, contanti, carte di credito e linee di credito aperti, e un trasferimento tra due di essi non viene mostrato. Escludi un conto di risparmio dal filtro dei conti per vedere quanto vi hai trasferito. Il pagamento di una carta di credito non è mai un rimborso di debito: gli acquisti che salda sono già contati come spese.",
     "depthLabel": "Dettaglio",

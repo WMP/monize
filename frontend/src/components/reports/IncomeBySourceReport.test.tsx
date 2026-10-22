@@ -465,4 +465,22 @@ describe("IncomeBySourceReport", () => {
     fireEvent.keyDown(inert, { key: 'Enter' });
     expect(mockPush).not.toHaveBeenCalled();
   });
+
+  it("marks the total a subtotal and shows no 0.00 when an income row was left out", async () => {
+    mockGetIncomeBySource.mockResolvedValue({
+      data: [{ categoryId: "cat-1", categoryName: "Salary", total: 50, color: "" }],
+      totalIncome: null,
+      knownIncome: 50,
+      currency: "CAD",
+      missingCurrencies: ["JPY"],
+      excludedCount: 1,
+    });
+    render(<IncomeBySourceReport />);
+    expect(await screen.findByTestId("partial-total")).toBeInTheDocument();
+    expect(screen.getByTestId("partial-total")).toHaveTextContent("$50.00");
+    expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("toggle-table"));
+    expect(await screen.findByTestId("partial-total")).toHaveTextContent("$50.00");
+    expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+  });
 });

@@ -18,6 +18,7 @@ import { amortizationMethodFor, mortgageTypeOf } from '@/lib/mortgage-type';
 import { methodScheduleTerms } from '@/lib/mortgage-installment';
 import type { MortgageType } from '@/types/account';
 import { roundToCents } from '@/lib/format';
+import { isDebtOutstanding } from '@/lib/loan-frequency';
 
 /**
  * "How much have my overpayments already helped?" — compares the original
@@ -177,7 +178,7 @@ export function computePastImpact(
   if (!originalSchedule) return null;
 
   // --- Current payoff, from the caller's forward projection ---
-  const isPaidOff = history.currentBalance <= 0.01;
+  const isPaidOff = !isDebtOutstanding(history.currentBalance);
   const lastActualPaymentDate =
     history.events.length > 0 ? history.events[history.events.length - 1].date : null;
   const currentPayoffDate = isPaidOff

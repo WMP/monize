@@ -2054,8 +2054,11 @@ export class SecurityPriceService {
     const fromDate = new Date(`${start}T00:00:00.000Z`);
     const toDate = new Date(`${end}T23:59:59.999Z`);
     // Whether any provider gave an answer, as opposed to failing or being
-    // refused by its breaker.
+    // refused by its breaker -- and whether EVERY routed provider did. A month
+    // is "empty" only when all of them were heard from: one answering [] for a
+    // window it lacks says nothing while the next one failed (A26-L20).
     let answered = false;
+    let allAnswered = true;
 
     for (const provider of this.providers.resolveForSecurity(
       security,
@@ -2082,6 +2085,7 @@ export class SecurityPriceService {
         this.logger.warn(
           `${provider.name} historical fill failed for ${security.symbol}: ${err instanceof Error ? err.message : String(err)}`,
         );
+        allAnswered = false;
         continue;
       }
       // `[]` is an answer -- the provider has no bars in this window -- while
@@ -2089,6 +2093,7 @@ export class SecurityPriceService {
       // caller may remember the window as empty, so it is tracked rather than
       // collapsed into "nothing came back".
       if (series !== null) answered = true;
+      else allAnswered = false;
       if (!series || series.prices.length === 0) continue;
 
       // This path reaches `bulkUpsertPrices` without going through either
@@ -2098,6 +2103,8 @@ export class SecurityPriceService {
       if (
         this.refuseForeignCurrency(security, series.currencyCode, provider.name)
       ) {
+        // Bars about another listing are not "no bars": not an empty month.
+        allAnswered = false;
         continue;
       }
 
@@ -2112,7 +2119,7 @@ export class SecurityPriceService {
       return { stored: series.prices.length, answered: true };
     }
 
-    return { stored: 0, answered };
+    return { stored: 0, answered: answered && allAnswered };
   }
 
   /**

@@ -29,15 +29,16 @@ at once (naming the offending edge), then at runtime from every module file in
 turn, walking `imports` and every provider's `design:paramtypes` as Nest reads
 them. Reordering imports is not a fix; defer the edge.
 
-## A stub standing in for a real module inherits its export list
+## The integration harness builds the real module graph
 
-`test/helpers/integration-setup.ts` replaces `ScheduledTransactionsModule` with
-a stub, so that stub's `exports` are a claim about the real module. It derives
-them from `Reflect.getMetadata("exports", ScheduledTransactionsModule)` rather
-than restating them: a hand-written copy keeps compiling until a consumer of the
-newly added export appears, and then eighteen suites fail somewhere else
-entirely ("argument ScheduledOccurrenceService at index [5] is available in the
-NotificationsModule module").
+`test/helpers/integration-setup.ts` builds the real `ScheduledTransactionsModule`
+wherever a suite's imports reach it, through the same `forwardRef` edges the app
+uses. It used to replace that module with a stub of empty services to break the
+Transactions -> Accounts -> ScheduledTransactions cycle, which kept the real
+`post()`, the auto-post cron and every consumer of the occurrence services out of
+every suite. Do not reintroduce a module stub there: a stub's exports are a claim
+about the real module that only fails when a consumer appears, and a service it
+fakes cannot be tested at the database boundary at all.
 
 ## Global Providers (app.module.ts)
 

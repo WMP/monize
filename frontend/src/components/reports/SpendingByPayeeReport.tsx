@@ -27,6 +27,8 @@ import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions'
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
 import { ReportError } from '@/components/reports/ReportError';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { reportTotal } from '@/lib/currency-total';
 import { exportToCsv } from '@/lib/csv-export';
 import type { ChartDatum } from '@/types/chart';
 
@@ -60,7 +62,7 @@ export function SpendingByPayeeReport() {
   const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent, defaultCurrency } = useNumberFormat();
   const [viewType, setViewType] = useState<'bar' | 'table'>('bar');
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } =
     useDateRange({ defaultRange: '3m' });
@@ -92,7 +94,12 @@ export function SpendingByPayeeReport() {
     [response],
   );
 
-  const totalExpenses = response?.totalSpending ?? 0;
+  // The server withholds `totalSpending` when a row could not be converted, so
+  // what is shown is the part that did convert, marked as a subtotal. It is also
+  // the denominator: percentages are shares of what is on screen.
+  const spendingTotal = reportTotal(response?.totalSpending ?? response?.knownSpending ?? 0, response);
+  const totalExpenses = spendingTotal.value;
+  const reportingCurrency = response?.currency ?? defaultCurrency;
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -262,7 +269,9 @@ export function SpendingByPayeeReport() {
                       {t('spendingByPayee.totalTopPayees', { count: chartData.length })}
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-gray-900 dark:text-gray-100">
-                      {formatCurrency(totalExpenses)}
+                      <PartialTotal total={spendingTotal} displayCurrency={reportingCurrency}>
+                        {formatCurrency(totalExpenses)}
+                      </PartialTotal>
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-gray-900 dark:text-gray-100">100%</td>
                   </tr>
@@ -302,7 +311,9 @@ export function SpendingByPayeeReport() {
                 {t('spendingByPayee.totalTopPayees', { count: chartData.length })}
               </div>
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {formatCurrency(totalExpenses)}
+                <PartialTotal total={spendingTotal} displayCurrency={reportingCurrency}>
+                  {formatCurrency(totalExpenses)}
+                </PartialTotal>
               </div>
             </div>
           </>

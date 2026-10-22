@@ -1,5 +1,5 @@
 import { ConflictException } from "@nestjs/common";
-import { EntityManager, MoreThanOrEqual } from "typeorm";
+import { EntityManager } from "typeorm";
 import { returnedRows } from "../common/db/query-result";
 import { todayYMD } from "../common/date-utils";
 import {
@@ -10,9 +10,9 @@ import {
 import { tr } from "../i18n/translate";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { ScheduledTransactionOverride } from "../scheduled-transactions/entities/scheduled-transaction-override.entity";
-import { ScheduledTransactionPosting } from "../scheduled-transactions/entities/scheduled-transaction-posting.entity";
 import {
   advanceScheduleCursor,
+  claimedSlotsFrom,
   prunedScheduleOverride,
   ScheduleCursorChange,
   scheduleCursorState,
@@ -165,17 +165,10 @@ async function advanceClaimedCursor(
       lastPostedDate: todayYMD(),
     });
   } else {
-    const claims = await m.getRepository(ScheduledTransactionPosting).find({
-      select: { id: true, originalDueDate: true },
-      where: {
-        scheduledTransactionId: schedule.id,
-        originalDueDate: MoreThanOrEqual(before.nextDueDate),
-      },
-    });
     await advanceScheduleCursor(
       m,
       schedule,
-      new Set(claims.map((claim) => ensureYMD(claim.originalDueDate))),
+      await claimedSlotsFrom(m, schedule.id, before.nextDueDate),
     );
   }
 

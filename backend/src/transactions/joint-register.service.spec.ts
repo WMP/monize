@@ -39,6 +39,8 @@ describe("JointRegisterService", () => {
     parentTransactionId: null,
   } as unknown as Transaction;
 
+  let crossOwnerAccess: { assertAccessStillHeld: jest.Mock };
+
   beforeEach(() => {
     txRepo = { findOne: jest.fn(), exists: jest.fn() };
     delegatesRepo = { findOne: jest.fn() };
@@ -55,10 +57,14 @@ describe("JointRegisterService", () => {
       remove: jest.fn().mockResolvedValue(undefined),
       markCleared: jest.fn().mockResolvedValue({ id: TX_ID }),
     };
+    crossOwnerAccess = {
+      assertAccessStillHeld: jest.fn().mockResolvedValue(undefined),
+    };
     service = new JointRegisterService(
       scoped.dataSource as never,
       jointAccounts as never,
       transactionsService as never,
+      crossOwnerAccess as never,
     );
   });
 
@@ -88,7 +94,23 @@ describe("JointRegisterService", () => {
           // Set from the joint grant, never from the request: the owner's
           // structural rules must not run on a grantee's row.
           actorIsNotOwner: true,
+          // The grant re-asserted inside the write's transaction (A26-M04).
+          beforeWrite: expect.any(Function),
         },
+      );
+    });
+
+    it("re-asserts the joint create grant inside the write's transaction (A26-M04)", async () => {
+      await service.create(GRANTEE, dto as never);
+      const [, , options] = transactionsService.createWithOutcome.mock.calls[0];
+      const m = { query: jest.fn() };
+      await options.beforeWrite(m);
+      expect(crossOwnerAccess.assertAccessStillHeld).toHaveBeenCalledWith(
+        m,
+        GRANTEE,
+        ACCOUNT_ID,
+        "create",
+        { joint: true },
       );
     });
 
@@ -151,7 +173,11 @@ describe("JointRegisterService", () => {
         expect(transactionsService.createWithOutcome).toHaveBeenCalledWith(
           OWNER,
           freeText,
-          { createPayeeIfMissing: true, actorIsNotOwner: true },
+          {
+            createPayeeIfMissing: true,
+            actorIsNotOwner: true,
+            beforeWrite: expect.any(Function),
+          },
         );
       });
 
@@ -186,8 +212,21 @@ describe("JointRegisterService", () => {
         OWNER,
         TX_ID,
         dto,
-        { createPayeeIfMissing: false },
+        { createPayeeIfMissing: false, beforeWrite: expect.any(Function) },
       );
+    });
+
+    it("refuses inside the write when the owner moved the row out of the joint account (A26-M04)", async () => {
+      txRepo.findOne.mockResolvedValue(plainRow);
+      await service.update(GRANTEE, TX_ID, { description: "x" } as never);
+      const [, , , options] = transactionsService.update.mock.calls[0];
+      const m = {
+        query: jest.fn().mockResolvedValue([{ account_id: "elsewhere" }]),
+      };
+      await expect(options.beforeWrite(m)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(crossOwnerAccess.assertAccessStillHeld).not.toHaveBeenCalled();
     });
 
     it("404s an unknown row without consulting grants", async () => {
@@ -244,7 +283,21 @@ describe("JointRegisterService", () => {
         ACCOUNT_ID,
         "delete",
       );
-      expect(transactionsService.remove).toHaveBeenCalledWith(OWNER, TX_ID);
+      expect(transactionsService.remove).toHaveBeenCalledWith(OWNER, TX_ID, {
+        beforeWrite: expect.any(Function),
+      });
+      const [, , options] = transactionsService.remove.mock.calls[0];
+      const m = {
+        query: jest.fn().mockResolvedValue([{ account_id: ACCOUNT_ID }]),
+      };
+      await options.beforeWrite(m);
+      expect(crossOwnerAccess.assertAccessStillHeld).toHaveBeenCalledWith(
+        m,
+        GRANTEE,
+        ACCOUNT_ID,
+        "delete",
+        { joint: true },
+      );
     });
 
     it("locks transfer rows", async () => {
@@ -269,6 +322,7 @@ describe("JointRegisterService", () => {
         OWNER,
         TX_ID,
         true,
+        { beforeWrite: expect.any(Function) },
       );
     });
   });

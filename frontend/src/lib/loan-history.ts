@@ -3,6 +3,7 @@ import { Transaction, TransactionSplit } from '@/types/transaction';
 import { LoanProjectionAnchor } from '@/types/scheduled-transaction';
 import { parseLocalDate } from '@/lib/utils';
 import { financialTodayYmd } from '@/lib/financial-today';
+import { isDebtOutstanding } from '@/lib/loan-frequency';
 import { transactionsApi } from '@/lib/transactions';
 import {
   LoanScheduleInput,
@@ -153,7 +154,7 @@ export function deriveLoanPaymentHistory(
     sortedTransactions.length > 0
       ? sortedTransactions[sortedTransactions.length - 1].transactionDate.split('T')[0]
       : null;
-  const loanPaidOff = currentBalance <= 0.01;
+  const loanPaidOff = !isDebtOutstanding(currentBalance);
   const scopedInterestTransactions = interestTransactions.filter((tx) => {
     if (!loanPaidOff || !lastTransactionDate) return true;
     return tx.transactionDate.split('T')[0] <= lastTransactionDate;
@@ -790,7 +791,7 @@ export function buildLoanProjectionInput(
  * is a SEPARATE, separately-fixable cause, so the surface can tell the user
  * which one applies instead of hiding the panel with no explanation:
  *
- * - `paid-off` -- nothing outstanding to amortize (balance <= 0.01).
+ * - `paid-off` -- nothing outstanding to amortize (balance below 0.01).
  * - `no-frequency` -- the account has no payment frequency set.
  * - `no-rate` -- no rate recorded anywhere (neither `account.interestRate` nor
  *   an applicable rate-change row). A per-row rate reconstructed from the
@@ -884,7 +885,7 @@ function evaluateLoanProjection(
   // the pre-payoff balance and print an Est. Payoff years away. Today's
   // balance is what says the loan is finished, and it kept saying so before
   // the anchor existed.
-  if (startingDebt <= 0.01 || history.currentBalance <= 0.01) {
+  if (!isDebtOutstanding(startingDebt) || !isDebtOutstanding(history.currentBalance)) {
     return { input: null, reason: 'paid-off' };
   }
   if (!account.paymentFrequency) {

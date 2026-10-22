@@ -60,7 +60,10 @@ import { withSystemContext } from "../common/db/with-context";
 import { withScopedDb } from "../common/db/scoped-db";
 import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { affectedRowCount } from "../common/db/query-result";
-import { LEDGER_MOVEMENT_PREDICATE } from "../common/ledger-balance.sql";
+import {
+  LEDGER_MOVEMENT_PREDICATE,
+  ledgerMovementPredicate,
+} from "../common/ledger-balance.sql";
 import {
   MortgageType,
   PrepaymentMode,
@@ -1197,7 +1200,16 @@ export class AccountsService {
             linkedChanged = true;
           }
           if (linkedChanged) {
-            await m.save(linkedAccount);
+            // The changed columns only. The other half was read without a lock,
+            // and `save` writes every column that differs from a fresh read --
+            // its snapshot `current_balance` among them, so a posting that
+            // landed in between was erased: cash half 1,010.00 back to 1,000.00
+            // beside a 1,010.00 ledger (A26-M13).
+            await m.update(Account, linkedAccount.id, {
+              name: linkedAccount.name,
+              currencyCode: linkedAccount.currencyCode,
+              institutionId: linkedAccount.institutionId,
+            });
           }
         }
 
@@ -1231,6 +1243,40 @@ export class AccountsService {
     }
 
     return savedAccount;
+  }
+
+  /** Refuses the delete of an account that holds any ledger row. */
+  private async assertAccountEmpty(
+    m: EntityManager,
+    accountId: string,
+  ): Promise<void> {
+    const transactionCount = await m.getRepository(Transaction).count({
+      where: { accountId },
+    });
+    if (transactionCount > 0) {
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.deleteWithTransactions",
+          `Cannot delete account with ${transactionCount} transaction(s). Close the account instead.`,
+          { transactionCount },
+        ),
+      );
+    }
+
+    // includes VOID rows: records read -- a VOID row is still a row the
+    // delete would destroy.
+    const investmentTransactionCount = await m
+      .getRepository(InvestmentTransaction)
+      .count({ where: { accountId } });
+    if (investmentTransactionCount > 0) {
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.deleteWithInvestmentTransactions",
+          `Cannot delete account with ${investmentTransactionCount} investment transaction(s). Close the account instead.`,
+          { investmentTransactionCount },
+        ),
+      );
+    }
   }
 
   /**
@@ -1307,6 +1353,31 @@ export class AccountsService {
             ),
           );
         }
+      }
+
+      // A row dated after today is not in `current_balance` yet, so "zero now"
+      // is not "zero including what is already booked": an empty account with
+      // a -25.00 row dated next week closed, and on that date the due-balance
+      // pass moved the closed account to -25.00, a balance the user cannot
+      // touch without reopening it (A26-M12). Checked under the row lock
+      // above, over both halves of a pair; a VOID row moves nothing.
+      const [pending]: { n: number }[] = await m.query(
+        `SELECT count(*)::int AS n
+           FROM transactions
+          WHERE account_id = ANY($1)
+            AND user_id = $2
+            AND ${ledgerMovementPredicate("")}
+            AND transaction_date > $3`,
+        [halves.map((half) => half.id), userId, todayYMD()],
+      );
+      if (pending.n > 0) {
+        throw new BadRequestException(
+          tr(
+            "errors.accounts.closeWithFutureTransactions",
+            `Cannot close an account with future-dated transactions. It has ${pending.n} transaction(s) dated after today; delete or void them first.`,
+            { count: pending.n },
+          ),
+        );
       }
 
       // A brokerage's `current_balance` is deliberately kept at 0 and its worth
@@ -1868,43 +1939,10 @@ export class AccountsService {
   async delete(userId: string, id: string): Promise<void> {
     const account = await this.findOne(userId, id);
 
-    // Check for regular transactions
-    const transactionCount = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(Transaction).count({
-        where: { accountId: id },
-      }),
-    );
-
-    if (transactionCount > 0) {
-      throw new BadRequestException(
-        tr(
-          "errors.accounts.deleteWithTransactions",
-          `Cannot delete account with ${transactionCount} transaction(s). Close the account instead.`,
-          { transactionCount },
-        ),
-      );
-    }
-
-    // Check for investment transactions
-    const investmentTransactionCount = await withScopedDb(
-      this.dataSource,
-      (m) =>
-        // includes VOID rows: records read -- a VOID row is still a row the
-        // delete would destroy.
-        m.getRepository(InvestmentTransaction).count({
-          where: { accountId: id },
-        }),
-    );
-
-    if (investmentTransactionCount > 0) {
-      throw new BadRequestException(
-        tr(
-          "errors.accounts.deleteWithInvestmentTransactions",
-          `Cannot delete account with ${investmentTransactionCount} investment transaction(s). Close the account instead.`,
-          { investmentTransactionCount },
-        ),
-      );
-    }
+    // Answered once up front, so a refusal comes before the loan schedule
+    // below is removed; asked again, under the account lock, in the deleting
+    // transaction itself.
+    await withScopedDb(this.dataSource, (m) => this.assertAccountEmpty(m, id));
 
     // If this is a loan or mortgage account with an associated scheduled
     // transaction, delete it first. This runs in the scheduled-transactions
@@ -1933,14 +1971,24 @@ export class AccountsService {
     // Unlink the paired account and remove this account atomically, so a
     // failure cannot leave a dangling link pointing at a deleted account.
     await withScopedDb(this.dataSource, async (m) => {
+      // The check above ran in another transaction, so a bank sync or import
+      // that wrote into the account since was cascaded away with it, leaving
+      // its transfer legs in other accounts one-sided (A26-M19). The account
+      // row lock is the one every writer of its balance takes, and a row
+      // insert's foreign-key lock conflicts with it, so after it no row can
+      // land before the removal: a writer either committed (and the count
+      // sees it) or waits for this delete.
+      await lockAccountsForBalanceWrite(m, [id], userId);
+      await this.assertAccountEmpty(m, id);
+
       if (account.linkedAccountId) {
-        const linkedAccount = await m.findOne(Account, {
-          where: { id: account.linkedAccountId },
-        });
-        if (linkedAccount) {
-          linkedAccount.linkedAccountId = null;
-          await m.save(linkedAccount);
-        }
+        // One column, by a targeted update: a `save` of the unlocked read
+        // wrote its snapshot balance back as well (A26-M13).
+        await m.update(
+          Account,
+          { id: account.linkedAccountId, userId },
+          { linkedAccountId: null },
+        );
       }
 
       await m.remove(account);
@@ -2297,4 +2345,39 @@ export class AccountsService {
       m.query(sql, [...accountIds, userId]),
     );
   }
+}
+
+/**
+ * Set an account's opening balance and move `current_balance` by exactly the
+ * change, inside the caller's transaction.
+ *
+ * The opening balance is part of the balance, so a new one moves it by
+ * `new - old`, both read under the balance-write lock, as one atomic delta.
+ * The import path used to compute an absolute `current_balance` from an
+ * account row read in an earlier transaction, rounded to 2dp: a posting that
+ * committed in between was overwritten, and a file's 100.1234 was stored as
+ * 100.12 (A26-M13). The import calls this; it lives here because this file is
+ * the sanctioned writer of `current_balance`.
+ */
+export async function applyOpeningBalanceChange(
+  m: EntityManager,
+  userId: string,
+  accountId: string,
+  openingBalance: number,
+): Promise<void> {
+  await lockAccountsForBalanceWrite(m, [accountId], userId);
+  const rows: { opening_balance: string | null }[] = await m.query(
+    `SELECT opening_balance FROM accounts WHERE id = $1 AND user_id = $2`,
+    [accountId, userId],
+  );
+  if (rows.length === 0) return;
+  const newOpening = roundMoney(openingBalance);
+  const delta = roundMoney(newOpening - Number(rows[0].opening_balance ?? 0));
+  await m.query(
+    `UPDATE accounts
+        SET opening_balance = $3,
+            current_balance = ROUND(CAST(current_balance AS numeric) + $4, 4)
+      WHERE id = $1 AND user_id = $2`,
+    [accountId, userId, newOpening, delta],
+  );
 }

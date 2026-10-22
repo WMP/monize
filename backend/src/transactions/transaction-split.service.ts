@@ -1020,7 +1020,15 @@ export class TransactionSplitService {
         // reachable from `PUT /transactions/:id/splits`, the AI action and the
         // MCP tool -- deleted the VOID legs and recreated them active, so the
         // target account was credited money the source still showed as not sent.
-        { parentStatus: transaction.status, carriedSeries, touchedSecurityIds },
+        //
+        // The status is the LOCKED parent's: the caller's copy was read before
+        // this transaction, and a VOID that committed in between would recreate
+        // the counterparts active against a VOID parent (A26-M09).
+        {
+          parentStatus: parent.status as TransactionStatus,
+          carriedSeries,
+          touchedSecurityIds,
+        },
         affectedAccountIds,
       );
 
@@ -1197,9 +1205,11 @@ export class TransactionSplitService {
           description: splitDto.memo || null,
           isTransfer: true,
           // A VOID parent's counterpart is VOID and moves no balance, exactly as
-          // on the bulk creation path (FR-002 family). The payee comes off the
-          // locked parent, not the caller's snapshot (FV4-002).
-          status: transaction.status,
+          // on the bulk creation path (FR-002 family). The status and the payee
+          // come off the locked parent, not the caller's snapshot (FV4-002): a
+          // VOID committed between the caller's read and this lock otherwise
+          // wrote an active leg under a VOID parent (A26-M09).
+          status: parent.status as TransactionStatus,
           payeeId: parent.payeeId || null,
           // Blank stays blank (issue #1214): the label resolves at read time.
           payeeName: parent.payeeName || null,
@@ -1214,7 +1224,7 @@ export class TransactionSplitService {
 
         // Same two rules as the bulk creation path above: a VOID parent's
         // counterpart moves no balance, and the amount is the converted one.
-        if (transaction.status === TransactionStatus.VOID) {
+        if (parent.status === TransactionStatus.VOID) {
           // Recorded, not applied.
         } else if (isTransactionInFuture(parent.transactionDate)) {
           await this.accountsService.recalculateCurrentBalance(

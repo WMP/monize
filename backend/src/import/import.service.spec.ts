@@ -1904,21 +1904,33 @@ describe("ImportService", () => {
           openingBalance: 0,
           currentBalance: 200,
         });
+        // The opening balance the delta is taken from, read under the lock.
+        const defaultQuery =
+          mockQueryRunner.manager.query.getMockImplementation();
+        mockQueryRunner.manager.query.mockImplementation(
+          async (sql: string, params?: unknown[]) =>
+            typeof sql === "string" && sql.includes("SELECT opening_balance")
+              ? [{ opening_balance: "0" }]
+              : defaultQuery
+                ? defaultQuery(sql, params)
+                : [],
+        );
 
         await service.importQifFile(userId, makeBaseDto());
 
-        // Should update account with new opening balance and adjusted current balance
-        const updateCalls = mockQueryRunner.manager.update.mock.calls.filter(
-          (call: unknown[]) => call[0] === Account && call[1] === "acct-1",
-        );
-        const openingBalanceUpdate = updateCalls.find(
-          (call: unknown[]) =>
-            (call[2] as Record<string, unknown>).openingBalance !== undefined,
+        // The opening balance is set and current_balance moved by the change,
+        // as one atomic delta under the account lock (A26-M13), never an
+        // absolute figure computed from the account read before the import.
+        const openingBalanceUpdate = (
+          mockQueryRunner.manager.query.mock.calls as unknown[][]
+        ).find(
+          ([sql]) =>
+            typeof sql === "string" && sql.includes("SET opening_balance"),
         );
         expect(openingBalanceUpdate).toBeDefined();
-        expect(openingBalanceUpdate[2].openingBalance).toBe(500.5);
-        // new currentBalance = 200 - 0 + 500.50 = 700.50
-        expect(openingBalanceUpdate[2].currentBalance).toBe(700.5);
+        const [, , newOpening, delta] = openingBalanceUpdate![1] as unknown[];
+        expect(newOpening).toBe(500.5);
+        expect(delta).toBe(500.5);
       });
     });
 

@@ -34,6 +34,9 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { useTranslations } from 'next-intl';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
+import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { isComplete, reportTotal, type ConvertedTotal } from '@/lib/currency-total';
 import { chartColors } from '@/lib/chart-colors';
 
 type BillSortField = 'bill' | 'count' | 'average' | 'total' | 'lastPayment';
@@ -148,7 +151,8 @@ function BillPaymentTooltip({ active, payload, label, formatCurrency }: BillPaym
 export function BillPaymentHistoryReport() {
   const t = useTranslations('reports');
   const router = useRouter();
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, defaultCurrency } = useNumberFormat();
+  const tCommon = useTranslations('common');
   const { formatDate } = useDateFormat();
   const formatChartMonth = useChartMonthFormat();
   const chartRef = useRef<HTMLDivElement>(null);
@@ -169,6 +173,17 @@ export function BillPaymentHistoryReport() {
       }),
     [rangeStart, rangeEnd],
   );
+
+  // The server withholds a summary total (`null`) when a row could not be
+  // converted and sends the part that did as `known*`. What is shown is that
+  // part, marked as a subtotal -- never a null drawn as 0.
+  const summary = billData?.summary;
+  const paidTotal = reportTotal(summary?.totalPaid ?? summary?.knownTotalPaid ?? 0, billData);
+  const averageTotal = reportTotal(summary?.monthlyAverage ?? summary?.knownMonthlyAverage ?? 0, billData);
+  const reportingCurrency = billData?.currency ?? defaultCurrency;
+  // A figure in a file has no tooltip, so the label itself carries the marker.
+  const exportLabel = (label: string, total: ConvertedTotal) =>
+    isComplete(total) ? label : `${label} ${tCommon('partialTotal.srSuffix')}`;
 
   // A chart's month marker is `useChartMonthFormat`, not `useDateFormat`'s
   // `formatMonth`. The two answer different questions: `formatMonth` renders
@@ -284,8 +299,8 @@ export function BillPaymentHistoryReport() {
       title: t('billPaymentHistory.paymentHistoryByBill'),
       subtitle: `${billData.summary.uniqueBills} ${t('billPaymentHistory.uniqueBills')}, ${billData.summary.totalPayments} ${t('billPaymentHistory.totalPayments').toLowerCase()}`,
       summaryCards: [
-        { label: t('billPaymentHistory.totalPaid'), value: formatCurrency(billData.summary.totalPaid), color: '#111827' },
-        { label: t('billPaymentHistory.monthlyAverage'), value: formatCurrency(billData.summary.monthlyAverage), color: '#2563eb' },
+        { label: exportLabel(t('billPaymentHistory.totalPaid'), paidTotal), value: formatCurrency(paidTotal.value), color: '#111827' },
+        { label: exportLabel(t('billPaymentHistory.monthlyAverage'), averageTotal), value: formatCurrency(averageTotal.value), color: '#2563eb' },
         { label: t('billPaymentHistory.billsPaid'), value: String(billData.summary.uniqueBills), color: '#111827' },
         { label: t('billPaymentHistory.totalPayments'), value: String(billData.summary.totalPayments), color: '#111827' },
       ],
@@ -327,13 +342,17 @@ export function BillPaymentHistoryReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('billPaymentHistory.totalPaid')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            {formatCurrency(billData.summary.totalPaid)}
+            <PartialTotal total={paidTotal} displayCurrency={reportingCurrency}>
+              {formatCurrency(paidTotal.value)}
+            </PartialTotal>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('billPaymentHistory.monthlyAverage')}</div>
           <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
-            {formatCurrency(billData.summary.monthlyAverage)}
+            <PartialTotal total={averageTotal} displayCurrency={reportingCurrency}>
+              {formatCurrency(averageTotal.value)}
+            </PartialTotal>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
@@ -350,6 +369,11 @@ export function BillPaymentHistoryReport() {
           </div>
         </div>
       </div>
+      <PartialDataNotice
+        missingCurrencies={billData.missingCurrencies ?? []}
+        excludedCount={billData.excludedCount ?? 0}
+        displayCurrency={reportingCurrency}
+      />
 
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">

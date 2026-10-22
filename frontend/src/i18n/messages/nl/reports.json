@@ -1853,6 +1853,10 @@
   "foreignCurrencyFees": {
     "noEligibleAccounts": "Voor geen enkele rekening zijn transactiekosten voor vreemde valuta geconfigureerd. Stel een kostenpercentage in op een rekening om hier de transactiekosten voor vreemde valuta bij te houden."
   },
+  "partialData": {
+    "notice": "Sommige cijfers zijn gedeeltelijk: {count, plural, one {# bedrag kon niet naar {displayCurrency} worden omgerekend en is} other {# bedragen konden niet naar {displayCurrency} worden omgerekend en zijn}} weggelaten. Er is geen koers voor {currencies}; voeg er een toe op de pagina Valuta's.",
+    "noticeExcluded": "Sommige cijfers zijn gedeeltelijk: {count, plural, one {# bedrag kon niet worden berekend en is} other {# bedragen konden niet worden berekend en zijn}} weggelaten."
+  },
   "sankey": {
     "help": "Binnengekomen geld stroomt door het midden naar waaraan het is uitgegeven, wat is gespaard of belegd en wat schulden heeft afgelost. Standaard omvat het rapport uw open betaal-, spaar-, contant-, creditcard- en kredietlijnrekeningen, en een overboeking tussen twee daarvan wordt niet getoond. Laat een spaarrekening weg uit het rekeningfilter om te zien wat u ernaar hebt overgemaakt. Een creditcardbetaling is nooit een aflossing: de aankopen die ze vereffent, zijn al als uitgaven geteld.",
     "depthLabel": "Detail",

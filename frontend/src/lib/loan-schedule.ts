@@ -33,7 +33,7 @@ import {
   getPeriodicRate,
   getPeriodsPerYear,
   isoDay,
-  PAYOFF_EPSILON,
+  isDebtOutstanding,
   resolveMaxPayments,
 } from "@/lib/loan-frequency";
 import {
@@ -197,7 +197,7 @@ export function generateBudgetSchedule(
   let currentDate = new Date(firstPaymentDate);
   let paymentNumber = 0;
 
-  while (balance > PAYOFF_EPSILON && paymentNumber < cap) {
+  while (isDebtOutstanding(balance) && paymentNumber < cap) {
     const rowDate = isoDay(currentDate);
     while (
       rateChangeIndex < rateChanges.length &&
@@ -278,7 +278,7 @@ export function generateBudgetSchedule(
     currentDate = advanceDate(currentDate, frequency);
   }
 
-  const paidOff = coveredInterest && balance <= PAYOFF_EPSILON;
+  const paidOff = coveredInterest && !isDebtOutstanding(balance);
   return {
     rows,
     payoffDate: paidOff && rows.length > 0 ? rows[rows.length - 1].date : null,
@@ -405,7 +405,7 @@ export function generateLoanSchedule(
   let lumpSumIndex = 0;
   let paymentNumber = 0;
 
-  while (balance > PAYOFF_EPSILON && paymentNumber < maxPayments) {
+  while (isDebtOutstanding(balance) && paymentNumber < maxPayments) {
     const rowDate = isoDay(currentDate);
 
     // Rate steps land on the first payment on or after their effective date
@@ -509,7 +509,7 @@ export function generateLoanSchedule(
           : null;
     if (reLevelEnd !== null) {
       const remaining = reLevelEnd - paymentNumber;
-      if (remaining > 0 && balance > PAYOFF_EPSILON) {
+      if (remaining > 0 && isDebtOutstanding(balance)) {
         currentPayment = calculatePaymentForTerm(
           balance,
           currentAnnualRate,
@@ -536,7 +536,7 @@ export function generateLoanSchedule(
     currentDate = advanceDate(currentDate, frequency);
   }
 
-  const paidOff = coveredInterest && balance <= PAYOFF_EPSILON;
+  const paidOff = coveredInterest && !isDebtOutstanding(balance);
 
   return {
     rows,

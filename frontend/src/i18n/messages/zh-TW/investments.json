@@ -263,7 +263,7 @@
     "sourceHolds": "來源持有",
     "sharesAt": "股 @",
     "avgCostSuffix": "平均成本。",
-    "transferCostNote": "每股成本（從來源科目預填）將帶入目的科目，確保獲利和損益報表正確。此操作僅移轉股份，不涉及現金交易。",
+    "transferCostNote": "每股成本是這些股份在轉出日期於來源帳戶中的成本。它會在儲存時計算並結轉到目標帳戶，確保您的收益與利潤報告保持正確。此操作僅轉移股份，不涉及現金往來。",
     "returnOfCapitalNote": "資本返還不是收入。它退還的是股票成本的一部分，因此會按此金額降低您持股的成本基礎。超出剩餘成本基礎的部分將記為已實現資本利得。",
     "totalAmount": "總金額（{currency}）",
     "sharesAtPrice": "{shares} 股 @ {symbol}{price}",

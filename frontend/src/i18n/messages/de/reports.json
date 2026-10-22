@@ -1853,6 +1853,10 @@
   "foreignCurrencyFees": {
     "noEligibleAccounts": "Für kein Konto ist eine Fremdwährungsgebühr konfiguriert. Legen Sie einen Gebührensatz für ein Konto fest, um dessen Fremdwährungsgebühren hier zu verfolgen."
   },
+  "partialData": {
+    "notice": "Einige Werte sind unvollständig: {count, plural, one {# Betrag konnte nicht in {displayCurrency} umgerechnet werden und ist} other {# Beträge konnten nicht in {displayCurrency} umgerechnet werden und sind}} nicht enthalten. Für {currencies} ist kein Kurs verfügbar; fügen Sie ihn auf der Seite Währungen hinzu.",
+    "noticeExcluded": "Einige Werte sind unvollständig: {count, plural, one {# Betrag konnte nicht ermittelt werden und ist} other {# Beträge konnten nicht ermittelt werden und sind}} nicht enthalten."
+  },
   "sankey": {
     "help": "Eingegangenes Geld fließt durch die Mitte in das, wofür es ausgegeben, gespart oder investiert wurde, und in die Tilgung von Schulden. Standardmäßig umfasst der Bericht Ihre offenen Giro-, Spar-, Bargeld-, Kreditkarten- und Kreditrahmenkonten, und eine Überweisung zwischen zwei dieser Konten wird nicht angezeigt. Nehmen Sie ein Sparkonto aus dem Kontofilter heraus, um zu sehen, was Sie darauf übertragen haben. Eine Kreditkartenzahlung ist nie eine Schuldenzahlung: Die damit beglichenen Käufe sind bereits als Ausgaben gezählt.",
     "depthLabel": "Detailtiefe",

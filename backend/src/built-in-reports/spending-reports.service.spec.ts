@@ -1160,4 +1160,113 @@ describe("SpendingReportsService", () => {
       );
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // A missing exchange rate is unknown, never 1:1 (INV-FX-001)
+  // ---------------------------------------------------------------------------
+  describe("a currency that has no rate", () => {
+    beforeEach(() => {
+      exchangeRateService.getLatestRates.mockResolvedValue([]);
+    });
+
+    it("getSpendingByPayee withholds the total and drops the unconverted payee row", async () => {
+      scopedManager.query.mockResolvedValue([
+        {
+          payee_id: "payee-1",
+          payee_name: "Starbucks",
+          currency_code: "USD",
+          total: "50.00",
+        },
+        {
+          payee_id: "payee-2",
+          payee_name: "Tokyo Shop",
+          currency_code: "JPY",
+          total: "100000",
+        },
+      ]);
+      payeesRepository.findByIds.mockResolvedValue([
+        { id: "payee-1", name: "Starbucks" },
+      ]);
+
+      const result = await service.getSpendingByPayee(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      expect(result.totalSpending).toBeNull();
+      expect(result.knownSpending).toBe(50);
+      expect(result.currency).toBe("USD");
+      expect(result.missingCurrencies).toEqual(["JPY"]);
+      expect(result.excludedCount).toBe(1);
+      expect(result.data).toHaveLength(1);
+      expect(JSON.stringify(result)).not.toContain("100000");
+    });
+
+    it("getSpendingByPayee answers zero, not null, for no rows", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      const result = await service.getSpendingByPayee(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      expect(result.totalSpending).toBe(0);
+      expect(result.knownSpending).toBe(0);
+      expect(result.missingCurrencies).toEqual([]);
+      expect(result.excludedCount).toBe(0);
+    });
+
+    it("getMonthlySpendingTrend leaves the unconverted row out of every month", async () => {
+      scopedManager.query.mockResolvedValue([
+        {
+          month: "2025-01",
+          category_id: "cat-parent",
+          currency_code: "USD",
+          total: "50.00",
+        },
+        {
+          month: "2025-01",
+          category_id: "cat-parent",
+          currency_code: "JPY",
+          total: "100000",
+        },
+        {
+          month: "2025-02",
+          category_id: "cat-parent",
+          currency_code: "JPY",
+          total: "100000",
+        },
+      ]);
+      categoriesRepository.find.mockResolvedValue([mockParentCategory]);
+
+      const result = await service.getMonthlySpendingTrend(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].month).toBe("2025-01");
+      expect(result.data[0].totalSpending).toBe(50);
+      expect(result.currency).toBe("USD");
+      expect(result.missingCurrencies).toEqual(["JPY"]);
+      expect(result.excludedCount).toBe(2);
+      expect(JSON.stringify(result)).not.toContain("100000");
+    });
+
+    it("getMonthlySpendingTrend reports no gaps when everything converted", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      const result = await service.getMonthlySpendingTrend(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      expect(result.missingCurrencies).toEqual([]);
+      expect(result.excludedCount).toBe(0);
+    });
+  });
 });

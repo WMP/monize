@@ -107,23 +107,18 @@ const BASELINE: ReadonlyArray<{ file: string; reason: string }> = [
     reason:
       "`resolveFxRateOrNull` is the one market-rate ladder and calls " +
       "getLatestRate only on the branch where the caller has no date at all " +
-      "(a rate entered against no posting date). Giving that branch a bound " +
-      "means deciding what a dateless entry means, which is its own change.",
-  },
-  {
-    file: "securities/investment-transactions.service.ts",
-    reason:
-      "The fallback when a posting's own `getRateForDate` comes back empty, " +
-      "for a rate that is then persisted on the row. Bounding it changes " +
-      "whether a trade can be posted at all, which is a posting-policy " +
-      "decision rather than a reporting one.",
+      "(a rate entered against no posting date). That read is bounded by " +
+      "`getLatestRate`'s default of FX_MAX_RATE_AGE_DAYS; moving the branch " +
+      "onto a dated lookup means deciding what a dateless entry means, which " +
+      "is its own change.",
   },
   {
     file: "scheduled-transactions/scheduled-transactions.service.ts",
     reason:
       "Same shape for a scheduled posting: the last resort before refusing " +
-      "to post an occurrence. Same decision to make, and the same reason it " +
-      "is not made in a guard.",
+      "to post an occurrence. The read is bounded by `getLatestRate`'s " +
+      "default of FX_MAX_RATE_AGE_DAYS; moving it onto a dated lookup is a " +
+      "posting-policy decision, not one made in a guard.",
   },
   {
     file: "strategies/gem-position.service.ts",

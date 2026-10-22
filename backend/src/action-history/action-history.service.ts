@@ -9,6 +9,7 @@ import { ModuleRef } from "@nestjs/core";
 import { DataSource, EntityManager } from "typeorm";
 import { Cron } from "@nestjs/schedule";
 import { BondPriceService } from "../bonds/bond-price.service";
+import type { HoldingsService } from "../securities/holdings.service";
 import {
   clearForeignSeries,
   restoredSeries,
@@ -32,17 +33,7 @@ import { Account } from "../accounts/entities/account.entity";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { Tag } from "../tags/entities/tag.entity";
-import {
-  InvestmentAction,
-  InvestmentTransaction,
-} from "../securities/entities/investment-transaction.entity";
-import {
-  acquisitionCost,
-  applyActionToQuantity,
-  basisAfterReturnOfCapital,
-  isQuantityOnlyAction,
-  INVESTMENT_REPLAY_ORDER_SQL,
-} from "../securities/investment-replay.util";
+import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { Security } from "../securities/entities/security.entity";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { Budget } from "../budgets/entities/budget.entity";
@@ -54,7 +45,6 @@ import { repriceSettledLoanTemplates } from "../loan-installments/reprice-templa
 import {
   LockedTransactionRow,
   lockAccountsForBalanceWrite,
-  lockHoldingScope,
   lockTransactionRows,
 } from "../common/db/locks";
 import { LEDGER_MOVEMENT_PREDICATE } from "../common/ledger-balance.sql";
@@ -82,6 +72,67 @@ function assertTransactionCreateRedoable(action: ActionHistory): void {
       "This transaction created entries in other accounts, so it cannot be redone. Create it again instead",
     ),
     errorCode: "REDO_CREATE_WITH_LEGS",
+  });
+}
+
+/**
+ * Account columns an undo or redo never writes back from a snapshot.
+ *
+ * `current_balance` is derived from the ledger: restoring the edit-time figure
+ * erased every movement no action recorded since (the due-balance cron, a
+ * bank sync, a grantee's posting), leaving chequing at 5,000.00 beside a
+ * ledger of 4,800.00 (A26-H06). The rest are lifecycle and pairing state the
+ * account edit does not change; close, reopen and pairing have their own
+ * paths with their own checks.
+ */
+const ACCOUNT_UNDO_DERIVED_FIELDS = [
+  "currentBalance",
+  "isClosed",
+  "closedDate",
+  "linkedAccountId",
+] as const;
+
+/**
+ * A loan's columns that `AccountsService.update` couples to its payment
+ * template: a change to any of them reprices the template or relinks its
+ * interest line in the same transaction (INV-LOAN-007, INV-LOAN-010). A
+ * snapshot restore replays the column and not the coupling, so the bill kept
+ * the other method's installment, or the template stopped being managed.
+ */
+const LOAN_TEMPLATE_FIELDS = [
+  "mortgageType",
+  "prepaymentMode",
+  "amortizationMonths",
+  "originalPrincipal",
+  "paymentAmount",
+  "paymentFrequency",
+  "interestCategoryId",
+  "sourceAccountId",
+  "scheduledTransactionId",
+  "paymentMatchingRuleId",
+] as const;
+
+/**
+ * Refuses, before anything is written, the undo or redo of an account edit
+ * that changed a template-coupled column of a loan with a schedule: the user
+ * edits the loan back, which runs the reprice and relink.
+ */
+function assertAccountEditUndoable(action: ActionHistory): void {
+  const before = action.beforeData ?? {};
+  const after = action.afterData ?? {};
+  if (!(before.scheduledTransactionId ?? after.scheduledTransactionId)) return;
+  const changed = LOAN_TEMPLATE_FIELDS.some(
+    (field) =>
+      JSON.stringify(before[field] ?? null) !==
+      JSON.stringify(after[field] ?? null),
+  );
+  if (!changed) return;
+  throw new ConflictException({
+    message: tr(
+      "errors.actionHistory.loanEditNotUndoable",
+      "This loan change cannot be undone automatically. Edit the loan to change it back.",
+    ),
+    errorCode: "LOAN_EDIT_NOT_UNDOABLE",
   });
 }
 
@@ -380,6 +431,20 @@ export class ActionHistoryService {
   }
 
   /**
+   * Resolved lazily, like `bondPrices`, and its class loaded at the call: the
+   * securities layer reaches this file back through its imports, so a
+   * top-level value import of `HoldingsService` is a load-time cycle that
+   * leaves a provider undefined when SecuritiesModule is built.
+   */
+  private holdings(): HoldingsService {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const loaded = require("../securities/holdings.service") as {
+      HoldingsService: typeof HoldingsService;
+    };
+    return this.moduleRef.get(loaded.HoldingsService, { strict: false });
+  }
+
+  /**
    * Record an undo entry. Callers do not await this -- see `pendingHistoryWrites`
    * above -- so the promise is registered before it is handed back, which is the
    * only way a teardown can tell the write is still running.
@@ -579,7 +644,7 @@ export class ActionHistoryService {
         await this.undoSimpleEntity(action, manager, Tag, "tags");
         break;
       case "account":
-        await this.undoSimpleEntity(action, manager, Account, "accounts");
+        await this.undoAccount(action, manager);
         break;
       case "scheduled_transaction":
         await this.undoSimpleEntity(
@@ -1726,6 +1791,38 @@ export class ActionHistoryService {
     }
   }
 
+  /**
+   * An account edit's undo or redo restores what the user edited and never
+   * what is derived (A26-H06): the derived and lifecycle columns are left out,
+   * a restored opening balance recomputes `current_balance` from the ledger
+   * under the balance-write lock, and a loan's template-coupled change is
+   * refused rather than restored without its reprice and relink.
+   */
+  private async undoAccount(
+    action: ActionHistory,
+    manager: EntityManager,
+  ): Promise<void> {
+    if (action.action !== "update") {
+      await this.undoSimpleEntity(action, manager, Account, "accounts");
+      return;
+    }
+    assertAccountEditUndoable(action);
+    const beforeData = { ...(action.beforeData ?? {}) };
+    for (const field of ACCOUNT_UNDO_DERIVED_FIELDS) delete beforeData[field];
+    await this.undoSimpleEntity(
+      { ...action, beforeData },
+      manager,
+      Account,
+      "accounts",
+    );
+    const openingRestored =
+      JSON.stringify(action.beforeData?.openingBalance ?? null) !==
+      JSON.stringify(action.afterData?.openingBalance ?? null);
+    if (action.entityId && openingRestored) {
+      await this.recalculateBalance(action.userId, action.entityId, manager);
+    }
+  }
+
   // --- Simple entity undo (categories, payees, tags, accounts) ---
 
   private async undoSimpleEntity(
@@ -1857,115 +1954,25 @@ export class ActionHistoryService {
     }
   }
 
+  /**
+   * Re-derive an account's holdings from its ledger after an undo or redo
+   * moved an investment row, through the one fold every other ledger write
+   * uses (`HoldingsService.rebuildAccountsFromTransactions`, inside this
+   * transaction, under the same holdings lock).
+   *
+   * This used to be a second fold over every non-VOID row: a DIVIDEND entered
+   * with a quantity added its total to the basis, and the average was stored at
+   * 6 decimals where the canonical writers store 10, so the boot drift report
+   * flagged what an undo had just written (A26-L21, INV-HOLDING-001).
+   */
   private async rebuildHoldings(
     userId: string,
     accountId: string,
     manager: EntityManager,
   ): Promise<void> {
-    // Same lock namespace every holdings writer takes, before the ledger is
-    // read. A rebuild replays investment_transactions and replaces the holdings
-    // derived from them, so what it must not lose is a *trade* -- an insert no
-    // holdings row locks (audit P4-006).
-    await lockHoldingScope(manager, [accountId]);
-
-    // Delete existing holdings for this account
-    await manager.query(`DELETE FROM holdings WHERE account_id = $1`, [
-      accountId,
-    ]);
-
-    // Rebuild from investment transactions
-    const invTransactions = await manager.query(
-      `SELECT * FROM investment_transactions
-       WHERE account_id = $1 AND user_id = $2 AND transaction_date <= CURRENT_DATE
-         AND status != 'VOID'
-       ORDER BY ${INVESTMENT_REPLAY_ORDER_SQL}`,
-      [accountId, userId],
-    );
-
-    const holdings = new Map<string, { quantity: number; totalCost: number }>();
-
-    for (const tx of invTransactions) {
-      const securityId = tx.security_id;
-      if (!securityId) continue;
-
-      const current = holdings.get(securityId) || {
-        quantity: 0,
-        totalCost: 0,
-      };
-      const qty = Number(tx.quantity || 0);
-
-      // Quantity folds through the shared reducer so an undo cannot rebuild a
-      // different position than the canonical holdings rebuild would. This copy
-      // multiplied by a SPLIT ratio without the `> 0` guard, so a ratio of 0
-      // silently destroyed the position; and it left the acquisition commission
-      // out of the basis, so undoing an action could also change the cost basis
-      // the holdings page reports.
-      // Basis treatment mirrors `computeHoldingsMap` exactly, over-sells
-      // included: the canonical fold carries an over-sold position as
-      // NEGATIVE (its own comment calls an over-sell "history"), so a clamp
-      // here made an undo rebuild a different position than the next
-      // canonical rebuild restores -- BUY 10, SELL 15, BUY 10 stores 5 shares
-      // canonically and stored 10 through this fold.
-      const quantityChange =
-        applyActionToQuantity(0, tx.action, qty) < 0 ? -qty : qty;
-      if (tx.action === InvestmentAction.RETURN_OF_CAPITAL) {
-        // As `computeHoldingsMap`: pays back cost, never below zero.
-        current.totalCost = basisAfterReturnOfCapital(current.totalCost, {
-          totalAmount: tx.total_amount,
-        });
-      } else if (tx.action === "SPLIT") {
-        // Total basis is preserved across a split.
-      } else if (isQuantityOnlyAction(tx.action)) {
-        // ADD_SHARES / REMOVE_SHARES: quantity only, no cost basis change.
-      } else if (quantityChange > 0) {
-        // Raw select: commission comes back as a string, and the row is
-        // denominated in the security's currency like the rest of this fold.
-        const cost = acquisitionCost({
-          quantity: tx.quantity,
-          price: tx.price,
-          commission: tx.commission,
-          // Snake_case: this is the raw row, not the entity.
-          totalAmount: tx.total_amount,
-        });
-        if (cost !== null) current.totalCost += cost;
-      } else if (current.quantity > 0) {
-        const avgCost = current.totalCost / current.quantity;
-        const relieved = Math.min(Math.abs(quantityChange), current.quantity);
-        current.totalCost -= relieved * avgCost;
-      }
-
-      current.quantity = applyActionToQuantity(
-        current.quantity,
-        tx.action,
-        qty,
-      );
-
-      // Snap near-zero to exactly zero, as the canonical fold does.
-      if (Math.abs(current.quantity) < 0.0001) {
-        current.quantity = 0;
-        current.totalCost = 0;
-      }
-
-      holdings.set(securityId, current);
-    }
-
-    // Insert rebuilt holdings. Negative (over-sold) positions are written as
-    // the canonical rebuild writes them; only a genuinely empty position is
-    // skipped.
-    for (const [securityId, data] of holdings) {
-      if (Math.abs(data.quantity) < 0.00000001) continue;
-      const avgCost =
-        data.quantity > 0
-          ? Math.round((data.totalCost / data.quantity) * 1000000) / 1000000
-          : 0;
-
-      await manager.query(
-        `INSERT INTO holdings (id, account_id, security_id, quantity, average_cost)
-         VALUES (uuid_generate_v4(), $1, $2, $3, $4)
-         ON CONFLICT (account_id, security_id) DO UPDATE SET quantity = $3, average_cost = $4`,
-        [accountId, securityId, data.quantity, avgCost],
-      );
-    }
+    await (
+      await this.holdings()
+    ).rebuildAccountsFromTransactions(userId, [accountId], manager);
   }
 
   private async reinsertEntity(

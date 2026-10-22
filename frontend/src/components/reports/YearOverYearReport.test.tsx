@@ -576,4 +576,47 @@ describe("YearOverYearReport", () => {
     });
     await act(async () => { fireEvent.click(screen.getByTestId("export-csv")); });
   });
+
+  it("marks a year's null totals as subtotals and withholds the change over them", async () => {
+    mockGetYearOverYear.mockResolvedValue({
+      data: [
+        {
+          year: 2024,
+          months: [{ month: 1, expenses: 50, income: 50, savings: 50 }],
+          totals: {
+            income: null,
+            expenses: null,
+            savings: null,
+            knownIncome: 50,
+            knownExpenses: 50,
+            knownSavings: 50,
+          },
+        },
+        {
+          year: 2025,
+          months: [{ month: 1, expenses: 70, income: 90, savings: 20 }],
+          totals: {
+            income: 90,
+            expenses: 70,
+            savings: 20,
+            knownIncome: 90,
+            knownExpenses: 70,
+            knownSavings: 20,
+          },
+        },
+      ],
+      currency: "CAD",
+      missingCurrencies: ["JPY"],
+      excludedCount: 1,
+    });
+    render(<YearOverYearReport />);
+    // One marker for each of the 2024 card's three figures; 2025 is complete.
+    await waitFor(() => expect(screen.getAllByTestId("partial-total")).toHaveLength(3));
+    const markers = screen.getAllByTestId("partial-total");
+    markers.forEach((marker) => expect(marker).toHaveTextContent("$50"));
+    expect(screen.queryByText("$0")).not.toBeInTheDocument();
+    // The change over a year with an unknown total is not a number.
+    expect(screen.getAllByTestId("unknown-amount")).toHaveLength(3);
+    expect(screen.getByTestId("partial-data-notice")).toHaveTextContent("JPY");
+  });
 });

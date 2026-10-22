@@ -30,11 +30,13 @@ Before writing a query, ask whose row it is. There are three answers, not two:
 |---|---|---|
 | The caller's | `scoped()` / `withScopedDb` | The policy is the point. |
 | An owner's, read by their delegate | `withDelegateContext(owner, delegate)` | `current = owner, real = delegate` is the identity the policies were written for. **No bypass** -- `app.real_user_id` stays true about who is authenticated. |
-| A delegate's, read by their owner (or any genuine cross-user sweep) | `withSystemContext` | There is no policy arm for it. Decide authorization *first*, under `scoped()`, and let only the minimum out. |
+| A delegate's, read by their owner (or any genuine cross-user sweep) | `withSystemContext` | There is no policy arm for it. Decide authorization *first*, under `scoped()`, and let only the minimum out; a bypass that then *writes* re-asserts that decision inside its own transaction (below). |
 
 Reaching for `withSystemContext` when the middle row applies is the easy wrong answer: it works, so nothing complains, and the bypass fence widens by one.
 
 `src/delegation/rls-context-smoke.spec.ts` is the guard, and its shape is worth copying: per-service specs mock `withScopedDb` away and are structurally incapable of seeing this class of bug, so that suite runs the **real** `withScopedDb` at `RLS_MODE=enforce`, records the ambient context at each repository call, and asserts the ordered sequence of identities plus the emitted `set_config` statements. Asserting the order is what proves the fence: the authorization read must appear under the caller's own identity *before* any bypass opens.
+
+**A grant decided in one transaction is re-asserted in the one that writes.** The caller's identity and the system bypass are different transactions (`withScopedDb` will not join across identities), so a grantee's write authorized under `scoped()` and written under `withSystemContext` has a gap a revoke can commit into: Bob's transfer into Alice's account landed after Alice revoked him (A26-M04). Every bypass write on a grantee's behalf calls `CrossOwnerAccessService.assertAccessStillHeld(m, realUserId, accountId, op)` on the write's own manager, after its row locks and before its first write; its `FOR SHARE` on the delegation and grant rows makes a concurrent revoke wait for the write, or makes the write see the grant gone and refuse with the first check's 404 / 403. The joint register passes it as the `beforeWrite` hook of the `TransactionsService` operation it reuses, and also re-reads that the row is still in the joint account. A delegation setting is written by one conditional `UPDATE` of the changed columns keyed on the owner, never by `save` of an entity read in an earlier transaction, which re-inserts a delegation a revoke deleted (A26-M05). `test/integration/delegated-write-recheck.integration.spec.ts` runs each case under the unprivileged role.
 
 ## A joint account is only shared where somebody remembered to share it
 

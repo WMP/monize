@@ -71,10 +71,18 @@ export const listAccountsOutput = toolOutput({
 // ---------------------------------------------------------------------------
 
 export const comparePeriodsOutput = toolOutput({
+  // Every figure is in `totalsCurrency`, each row converted at its own date. A
+  // period `total` (and so `totalChange` / `totalChangePercent`) is null while
+  // a pair has no rate; `knownSubtotal` (per period, undeclared like the
+  // portfolio's return diagnostics: the tool is at its `tools/list` budget)
+  // is what did convert. These flags are the contract, not decoration.
   period1: looseObject({ start: str, end: str, total: num }),
   period2: looseObject({ start: str, end: str, total: num }),
   totalChange: num,
   totalChangePercent: num,
+  totalsCurrency: str,
+  fxComplete: bool,
+  missingRatePairs: z.array(str),
   comparison: rows(),
 });
 
@@ -119,9 +127,17 @@ const manageToolOutput = (entityFields: z.ZodRawShape) =>
  * requested. Tolerant so every branch validates.
  */
 export const listTransactionsOutput = toolOutput({
-  totalIncome: num.optional(),
-  totalExpenses: num.optional(),
-  netCashFlow: num.optional(),
+  // The three totals are in `totalsCurrency` (each row converted at its own
+  // date) and null while a pair has no rate; `knownIncomeSubtotal` and
+  // `knownExpensesSubtotal` carry what did convert (undeclared: the tool is at
+  // its `tools/list` budget) and `missingRatePairs` the pairs to repair.
+  // `byCurrency` is the unconverted view, each entry in its own currency.
+  totalIncome: num,
+  totalExpenses: num,
+  netCashFlow: num,
+  totalsCurrency: str,
+  fxComplete: bool,
+  missingRatePairs: z.array(str),
   transactionCount: num.optional(),
   byCurrency: z.record(z.string(), looseObject({})).optional(),
   groupedBy: strNull.optional(),
@@ -199,12 +215,13 @@ export const generateReportOutput = toolOutput({
   // fields travel without eight shapes being spelled out here.
   data: z.array(z.unknown()).optional(),
   totals: z.unknown().optional(),
-  // Nullable on purpose: Spending by Category withholds its total when a row
-  // could not be converted, and sends `knownSpending`, `missingCurrencies` and
-  // `excludedCount` beside it. Those three are not declared here -- they belong
-  // to one branch, and the loose object carries a branch's own fields to the
-  // model without eight shapes being spelled out (and without the tools/list
-  // payload paying for every one of them).
+  // Nullable on purpose: every date-range report withholds its total when a
+  // row could not be converted (INV-FX-001), and sends `knownSpending` /
+  // `knownIncome`, `missingCurrencies` and `excludedCount` beside it. Those are
+  // not declared here -- they belong to individual branches, and the loose
+  // object carries a branch's own fields to the model without eight shapes being
+  // spelled out (and without the tools/list payload paying for every one of
+  // them; `tools-list-budget.spec.ts` holds this tool to a byte ceiling).
   totalSpending: num.optional(),
   totalIncome: num.optional(),
   items: rows().optional(),

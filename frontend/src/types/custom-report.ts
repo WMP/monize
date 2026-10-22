@@ -156,9 +156,16 @@ export interface ReportTimeframe {
 }
 
 export interface ReportSummary {
-  total: number;
+  /**
+   * `null` while any row was left out for want of an exchange rate; read
+   * `knownTotal` and mark it partial. Never render `null` as zero.
+   */
+  total: number | null;
+  /** Sum of the rows that converted: the total when nothing was excluded. */
+  knownTotal: number;
   count: number;
-  average: number;
+  /** `null` with `total`. */
+  average: number | null;
 }
 
 export interface ReportResult {
@@ -169,6 +176,12 @@ export interface ReportResult {
   timeframe: ReportTimeframe;
   data: AggregatedDataPoint[];
   summary: ReportSummary;
+  /** Reporting currency every money figure is expressed in. */
+  currency: string;
+  /** Source currencies with no rate into `currency`; their rows are in no figure. */
+  missingCurrencies: string[];
+  /** Rows (or split lines) left out of every figure for want of a rate. */
+  excludedCount: number;
   tableColumns?: TableColumn[];
 }
 

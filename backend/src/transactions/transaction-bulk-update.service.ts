@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  ConflictException,
   NotFoundException,
   Inject,
   forwardRef,
@@ -32,14 +33,13 @@ import {
   BulkUpdateFilterDto,
 } from "./dto/bulk-update.dto";
 import { getAllCategoryIdsWithChildren } from "../common/category-tree.util";
-import {
-  isTransactionInFuture,
-  formatDateYMDLocal,
-} from "../common/date-utils";
+import { formatDateYMDLocal } from "../common/date-utils";
 import { applyTransactionSearch } from "./apply-transaction-search";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
 import { lockTransactionRows } from "../common/db/locks";
+import { deletionBalanceEffect } from "../common/deletion-balance.util";
+import { roundMoney } from "../common/round.util";
 import {
   assertReconciledIdsMutable,
   assertReconciledRowsMutable,
@@ -191,6 +191,51 @@ export class TransactionBulkUpdateService {
 
     // Balance changes and the batch update commit in a single transaction.
     await withScopedDb(this.dataSource, async (m) => {
+      // Lock every row this batch could write before anything reads the
+      // statuses the VOID crossing is decided on.
+      //
+      // Whether a row crosses the VOID boundary -- and so whether its transfer
+      // counterpart and its split parent's legs move with it -- is a question
+      // about its status. Deciding it on a read taken before the lock let a
+      // concurrent edit flip that status in between: a VOID pair, one leg
+      // bulk-voided while another request un-voided the pair, expanded on "A is
+      // VOID, nothing crosses", then locked A, found it CLEARED and voided A
+      // alone, leaving the 100.00 in savings with no outflow (A26-M09). So the
+      // superset is discovered structurally (every mirror leg and split-parent
+      // leg, whatever its status), locked, and only then is the crossing read.
+      const lockSet = isUpdatingStatus
+        ? await this.discoverStatusLockSet(m, userId, eligibleIds)
+        : { parentIds: [], rowIds: [] };
+      if (isUpdatingStatus) {
+        // First lock of the transaction: advisory before row locks
+        // (`common/db/locks.ts`). The embedded investment rows a crossing
+        // parent carries are rebuilt under the holdings advisory lock, and
+        // `InvestmentTransactionsService.update()` reaches the same parent the
+        // other way round -- advisory lock first, then the parent's `FOR
+        // UPDATE`. Taken for every selected split parent, crossing or not,
+        // because the crossing is only known under the row lock; the helper's
+        // own `SELECT` is unlocked and may precede it.
+        if (lockSet.parentIds.length > 0) {
+          await this.splitService.lockEmbeddedInvestmentScopes(
+            m,
+            userId,
+            lockSet.parentIds,
+          );
+        }
+        // Split parents on their own first, then every other row ascending:
+        // the by-role order of `common/db/locks.ts`.
+        const lockedParents = await lockTransactionRows(
+          m,
+          lockSet.parentIds,
+          userId,
+        );
+        await lockTransactionRows(
+          m,
+          lockSet.rowIds.filter((id) => !lockedParents.has(id)),
+          userId,
+        );
+      }
+
       // A transfer's two legs are one movement of money and must share a
       // status. Selecting one leg and voiding it used to leave the counterpart
       // active: the source's balance was restored and the destination kept the
@@ -198,9 +243,7 @@ export class TransactionBulkUpdateService {
       //
       // The counterpart is folded into the batch BEFORE the balance pass so
       // both legs are voided and both balances adjusted in the same
-      // transaction. This is a structural read (which rows are transfer legs,
-      // whose counterparts) -- it does not read the statuses the balance pass
-      // derives from, so it is safe to run before the lock below.
+      // transaction, and on the statuses read under the lock above.
       statusIds = isUpdatingStatus
         ? await this.expandTransferCounterparts(
             m,
@@ -224,39 +267,24 @@ export class TransactionBulkUpdateService {
             )
           : { crossingParentIds: [], counterpartIds: [] };
 
-      // First lock of the transaction: advisory before row locks
-      // (`common/db/locks.ts`). The embedded investment rows these parents
-      // carry across the VOID boundary are rebuilt under the holdings advisory
-      // lock, and `InvestmentTransactionsService.update()` reaches the same
-      // parent the other way round -- advisory lock first, then the parent's
-      // `FOR UPDATE`. Taking it after the row locks below left the two paths
-      // each holding the other's next lock (40P01). The ids come from an
-      // unlocked `SELECT` inside the helper, which takes no lock and so may
-      // precede the advisory one; the re-entrant call before the balance pass
-      // costs nothing.
-      if (crossingParentIds.length > 0) {
-        await this.splitService.lockEmbeddedInvestmentScopes(
-          m,
-          userId,
-          crossingParentIds,
-        );
-      }
-
-      // Lock every row this batch will write, ascending by id, before anything
-      // reads the statuses the VOID adjustment is derived from. One transaction
-      // was not enough: handleStatusBalanceChanges aggregates the *current*
-      // statuses and the UPDATE that changes them runs afterwards, so without
-      // the lock a concurrent single-transaction edit lands in between and the
-      // batch applies a delta for a transition that no longer happened. The
-      // lock covers the expanded set and the propagation targets, not just the
-      // selection: every row this batch writes must be frozen or a counterpart
-      // reopens the same race.
+      // Every row this batch writes must be one the lock above froze. A row the
+      // locked expansion names that the structural discovery did not -- a leg
+      // linked or added after the discovery read -- would be written unlocked,
+      // which is the race this lock closes; refuse rather than lock it out of
+      // order.
       if (isUpdatingStatus) {
-        await lockTransactionRows(
-          m,
-          [...new Set([...statusIds, ...propagationTargetIds])],
-          userId,
+        const requested = new Set([...lockSet.parentIds, ...lockSet.rowIds]);
+        const unlocked = [...statusIds, ...propagationTargetIds].filter(
+          (id) => !requested.has(id),
         );
+        if (unlocked.length > 0) {
+          throw new ConflictException(
+            tr(
+              "errors.transactions.bulkUpdateConcurrentChange",
+              "These transactions changed while the update was running. Reload and try again.",
+            ),
+          );
+        }
       }
 
       // Strict reconciled lock over every row this batch will write -- the
@@ -522,7 +550,6 @@ export class TransactionBulkUpdateService {
           "transaction.linkedTransactionId",
           "transaction.isSplit",
         ])
-        .leftJoinAndSelect("transaction.splits", "splits")
         .where("transaction.id IN (:...ids)", { ids: allIds })
         .andWhere("transaction.userId = :userId", { userId })
         .getMany(),
@@ -549,28 +576,54 @@ export class TransactionBulkUpdateService {
     // Balance adjustments and both delete passes commit atomically.
     let deleted = 0;
     await withScopedDb(this.dataSource, async (m) => {
-      // Collect linked transaction IDs from transfers and split transfers
-      const linkedIdsToDelete = new Set<string>();
       const transactionIdsSet = new Set(transactions.map((t) => t.id));
 
+      // A split-transfer leg links to its split PARENT, not to a mirror leg.
+      // Queuing that link as "the other leg" deleted the parent, cascaded its
+      // split rows and left every sibling leg standing with its money: a
+      // -100.00 split to B (60.00) and C (40.00), bulk-deleted from B's
+      // register, left C at 40.00 with nothing on the other side (A26-H05). So
+      // a selected leg brings its parent's whole set, the way the single
+      // delete does (`removeTransferFromSplitInTransaction`).
+      const legParents = await m.find(TransactionSplit, {
+        select: { transactionId: true },
+        where: { linkedTransactionId: In([...transactionIdsSet]) },
+      });
+      const parentIds = new Set<string>(
+        legParents.map((split) => split.transactionId),
+      );
       for (const tx of transactions) {
-        if (
-          tx.linkedTransactionId &&
-          !transactionIdsSet.has(tx.linkedTransactionId)
-        ) {
-          linkedIdsToDelete.add(tx.linkedTransactionId);
-        }
-        if (tx.isSplit && tx.splits) {
-          for (const split of tx.splits) {
-            if (
-              split.linkedTransactionId &&
-              !transactionIdsSet.has(split.linkedTransactionId)
-            ) {
-              linkedIdsToDelete.add(split.linkedTransactionId);
-            }
-          }
-        }
+        if (tx.isSplit) parentIds.add(tx.id);
       }
+
+      // Split parents first, on their own, then everything else ascending: the
+      // by-role order of common/db/locks.ts, so this path cannot hold a leg a
+      // `removeSplit` holding its parent is waiting for (RV4-005). Their split
+      // rows are read under the parent lock, so the legs collected are the set
+      // the deletion removes, not the set the pre-read saw.
+      const lockedParents = await lockTransactionRows(
+        m,
+        [...parentIds],
+        userId,
+      );
+      const parentSplits =
+        lockedParents.size > 0
+          ? await m.find(TransactionSplit, {
+              select: { transactionId: true, linkedTransactionId: true },
+              where: { transactionId: In([...lockedParents.keys()]) },
+            })
+          : [];
+
+      // Every row this delete removes besides the selected ones: a plain
+      // transfer's mirror, a split parent reached through its leg, and each
+      // leg of every split parent in the set.
+      const linkedIdsToDelete = new Set<string>();
+      const queue = (id: string | null | undefined) => {
+        if (id && !transactionIdsSet.has(id)) linkedIdsToDelete.add(id);
+      };
+      for (const tx of transactions) queue(tx.linkedTransactionId);
+      for (const parentId of lockedParents.keys()) queue(parentId);
+      for (const split of parentSplits) queue(split.linkedTransactionId);
 
       // Lock every row about to be deleted -- primary and linked alike --
       // ascending by id, and derive the reversals from the locked values.
@@ -580,11 +633,14 @@ export class TransactionBulkUpdateService {
       // request deleted in the meantime is simply absent from `locked`, and gets
       // no reversal: reversing an amount whose row is already gone is how a
       // double delete leaves the balance 10.00 above the ledger (P4-003).
-      const locked = await lockTransactionRows(
+      const lockedRest = await lockTransactionRows(
         m,
-        [...allIds, ...linkedIdsToDelete],
+        [...allIds, ...linkedIdsToDelete].filter(
+          (id) => !lockedParents.has(id),
+        ),
         userId,
       );
+      const locked = new Map([...lockedParents, ...lockedRest]);
 
       // Every linked leg and split counterpart this delete removes was locked
       // above and lives in `locked`, so its account joins the net-worth
@@ -600,15 +656,17 @@ export class TransactionBulkUpdateService {
       // linked legs alike, before the first reversal.
       await assertReconciledRowsMutable(m, userId, [...locked.values()]);
 
+      // What each locked row contributed, from the one deletion rule: a VOID
+      // row moved nothing, a future-dated row is recomputed after it is gone.
       const balanceAdjustments = new Map<string, number>();
+      const recalcAccountIds = new Set<string>();
       for (const tx of locked.values()) {
-        if (
-          tx.status !== TransactionStatus.VOID &&
-          !isTransactionInFuture(tx.transactionDate)
-        ) {
-          const current = balanceAdjustments.get(tx.accountId) || 0;
-          balanceAdjustments.set(tx.accountId, current - tx.amount);
+        const { delta, needsRecalc } = deletionBalanceEffect(tx);
+        if (delta !== 0) {
+          const current = balanceAdjustments.get(tx.accountId) ?? 0;
+          balanceAdjustments.set(tx.accountId, roundMoney(current + delta));
         }
+        if (needsRecalc) recalcAccountIds.add(tx.accountId);
       }
 
       for (const accountId of [...balanceAdjustments.keys()].sort()) {
@@ -640,6 +698,10 @@ export class TransactionBulkUpdateService {
       // What the database removed, not what the pre-read hoped to remove: a row
       // a concurrent request already deleted must not be counted twice.
       deleted = primaryDeleted.affected ?? 0;
+
+      for (const accountId of [...recalcAccountIds].sort()) {
+        await this.accountsService.recalculateCurrentBalance(userId, accountId);
+      }
     });
 
     // Trigger net worth recalc for every affected account, deduplicated.
@@ -1242,6 +1304,66 @@ export class TransactionBulkUpdateService {
       .getMany();
 
     return [...eligibleIds, ...sameUser.map((t) => t.id)];
+  }
+
+  /**
+   * Every row a status change of `eligibleIds` could write, found without
+   * reading a status: the selection, each plain transfer leg's mirror, and every
+   * leg of each selected split parent. The crossing is decided later, on the
+   * locked rows; this set only has to contain whatever that decision can pick.
+   * Split parents come back apart from the rest so they can be locked first.
+   */
+  private async discoverStatusLockSet(
+    m: EntityManager,
+    userId: string,
+    eligibleIds: string[],
+  ): Promise<{ parentIds: string[]; rowIds: string[] }> {
+    const rows = await m
+      .getRepository(Transaction)
+      .createQueryBuilder("t")
+      .select(["t.id", "t.isSplit", "t.isTransfer", "t.linkedTransactionId"])
+      .where("t.id IN (:...ids)", { ids: eligibleIds })
+      .andWhere("t.userId = :userId", { userId })
+      .getMany();
+    const parentIds = rows.filter((t) => t.isSplit).map((t) => t.id);
+
+    // A split-transfer leg's link names its split PARENT, which the expansion
+    // never writes (see expandTransferCounterparts), so only a plain leg's
+    // link is a mirror to lock.
+    const transferLegIds = rows
+      .filter((t) => t.isTransfer && t.linkedTransactionId)
+      .map((t) => t.id);
+    const owningSplits =
+      transferLegIds.length > 0
+        ? await m.find(TransactionSplit, {
+            where: { linkedTransactionId: In(transferLegIds) },
+            select: ["id", "linkedTransactionId"],
+          })
+        : [];
+    const splitLegIds = new Set(owningSplits.map((s) => s.linkedTransactionId));
+    const mirrorIds = rows
+      .filter(
+        (t) => t.isTransfer && t.linkedTransactionId && !splitLegIds.has(t.id),
+      )
+      .map((t) => t.linkedTransactionId as string);
+
+    const parentLegIds =
+      parentIds.length > 0
+        ? (
+            await m.find(TransactionSplit, {
+              where: { transactionId: In(parentIds) },
+              select: ["id", "linkedTransactionId"],
+            })
+          )
+            .map((split) => split.linkedTransactionId)
+            .filter((id): id is string => id !== null)
+        : [];
+
+    const parentIdSet = new Set(parentIds);
+    const rowIds = [
+      ...new Set([...eligibleIds, ...mirrorIds, ...parentLegIds]),
+    ].filter((id) => !parentIdSet.has(id));
+    return { parentIds, rowIds };
   }
 
   /**

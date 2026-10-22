@@ -145,6 +145,12 @@ export interface CreateTransactionOptions {
    * `settle_loan_installment` rule refuses it (`row_from_scheduled_posting`).
    */
   fromScheduledPosting?: boolean;
+  /**
+   * Runs inside the write's own transaction before anything is written. A
+   * throw refuses the create with nothing written. The joint register
+   * re-asserts the grantee's grant here (A26-M04).
+   */
+  beforeWrite?: (m: EntityManager) => Promise<void>;
 }
 
 /**
@@ -592,6 +598,7 @@ export class TransactionsService {
     let savedTransactionId: string;
     try {
       savedTransactionId = await withScopedDb(this.dataSource, async (m) => {
+        if (options?.beforeWrite) await options.beforeWrite(m);
         const transaction = m.create(Transaction, {
           ...transactionData,
           // Derived from the account, not taken from the request: `amount` is in
@@ -3148,7 +3155,19 @@ export class TransactionsService {
     return finalTransaction;
   }
 
-  async remove(userId: string, id: string): Promise<void> {
+  async remove(
+    userId: string,
+    id: string,
+    options?: {
+      /**
+       * Runs inside the delete's own transaction, after the row lock and the
+       * reconciled lock and before anything is removed. A throw refuses the
+       * delete with nothing written (the joint register's grant re-check,
+       * A26-M04).
+       */
+      beforeWrite?: (m: EntityManager) => Promise<void>;
+    },
+  ): Promise<void> {
     const transaction = await this.findOne(userId, id);
     const beforeSnapshot = this.snapshotTransaction(transaction);
     // Every account this deletion moves, not only the selected row's, so the
@@ -3197,6 +3216,7 @@ export class TransactionsService {
       }
       // Strict reconciled lock, before the delete and any split cleanup.
       await assertReconciledRowsMutable(m, userId, [locked]);
+      if (options?.beforeWrite) await options.beforeWrite(m);
 
       // The locked row's account joins the fan-out set: a concurrent edit could
       // have moved the row, and the balance reversal below uses locked.accountId.
@@ -3382,6 +3402,10 @@ export class TransactionsService {
     userId: string,
     id: string,
     isCleared: boolean,
+    options?: {
+      /** Inside the status write's transaction, after the row lock (A26-M04). */
+      beforeWrite?: (m: EntityManager) => Promise<void>;
+    },
   ): Promise<Transaction> {
     return this.reconciliationService.markCleared(
       userId,
@@ -3390,6 +3414,7 @@ export class TransactionsService {
       (accountId: string, userId: string) =>
         this.netWorthService.triggerDebouncedRecalc(accountId, userId),
       this.findOne.bind(this),
+      options?.beforeWrite,
     );
   }
 

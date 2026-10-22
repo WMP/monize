@@ -3,12 +3,14 @@ import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { Category } from "../categories/entities/category.entity";
 import {
+  ConversionGaps,
   ReportCurrencyService,
   RawCategoryAggregate,
   RawPeriodAggregate,
   RateMap,
 } from "./report-currency.service";
 import { roundMoney, sumMoney, toMoneyNumber } from "../common/round.util";
+import { FxAggregate } from "../common/fx-aggregate";
 import {
   IncomeBySourceResponse,
   IncomeSourceItem,
@@ -199,16 +201,24 @@ export class IncomeReportsService {
 
     const categoryTotals = new Map<
       string,
-      { total: number; category: Category }
+      { agg: FxAggregate; category: Category }
     >();
+    // A row with no rate into the reporting currency is unknown, never its
+    // unconverted figure (INV-FX-001): it is in no category, no ranking and no
+    // total, and its currency is named.
+    const gaps = new ConversionGaps();
 
     for (const row of rawResults) {
-      const total = this.currencyService.convertAmount(
+      const total = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.total),
         row.currency_code,
         defaultCurrency,
         rateMap,
       );
+      if (total === null) {
+        gaps.record(row.currency_code);
+        continue;
+      }
       const categoryId = row.category_id;
       if (!categoryId) continue;
 
@@ -224,30 +234,36 @@ export class IncomeReportsService {
 
       const existing = categoryTotals.get(category.id);
       if (existing) {
-        existing.total += total;
+        existing.agg.addConverted(total);
       } else {
+        const agg = new FxAggregate();
+        agg.addConverted(total);
         categoryTotals.set(category.id, {
-          total,
+          agg,
           category: { ...category, name: displayName } as Category,
         });
       }
     }
 
     const data: IncomeSourceItem[] = Array.from(categoryTotals.entries())
-      .map(([id, { total, category }]) => ({
+      .map(([id, { agg, category }]) => ({
         categoryId: id,
         categoryName: category.name,
         color: category.color || null,
-        total: roundMoney(total),
+        total: roundMoney(agg.knownSubtotal),
       }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 15);
 
-    const totalIncome = sumMoney(data.map((item) => item.total));
+    const knownIncome = roundMoney(sumMoney(data.map((item) => item.total)));
 
     return {
       data,
-      totalIncome: roundMoney(totalIncome),
+      totalIncome: gaps.headline(knownIncome),
+      knownIncome,
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
     };
   }
 
@@ -444,8 +460,8 @@ export class IncomeReportsService {
      *
      * An excluded row is not a smaller number: the bar it belonged to is
      * missing part of its height and the window's totals are unknowable, so the
-     * gap is reported rather than absorbed. `convertAmount` returned the amount
-     * UNCONVERTED here, adding foreign units straight into a home-currency bar.
+     * gap is reported rather than absorbed. Folding the amount in UNCONVERTED
+     * would add foreign units straight into a home-currency bar.
      */
     const missingCurrencies = new Set<string>();
     let excludedCount = 0;

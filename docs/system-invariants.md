@@ -64,13 +64,14 @@ implied.
 | INV-BANKSYNC-003 | A synced row is written in the Monize account's currency or not at all | enforced |
 | INV-BANKSYNC-004 | Nothing imports a bank account awaiting its first preview except the confirmed single-account sync | enforced |
 | INV-API-001 | An API create carrying an `externalId` produces at most one row per account and key | partial |
-| INV-BALANCE-001 | `current_balance` equals opening balance plus included ledger rows | enforced |
+| INV-BALANCE-001 | `current_balance` equals opening balance plus included ledger rows | partial |
 | INV-HOLDING-001 | A holding equals a deterministic replay of the investment ledger | enforced |
 | INV-HOLDING-002 | Every view replays the ledger the same way | enforced |
 | INV-TRANSFER-001 | A transfer's two legs share the VOID boundary and one balance decision | enforced |
 | INV-REGISTER-001 | A row's running balance is the same figure whichever way the date register runs, and no balance is shown under any other order | enforced |
 | INV-REDEEM-001 | A redemption's accrued interest moves cash once and is income once | enforced |
 | INV-RECONCILE-001 | While the strict lock is on, a reconciled transaction is not altered | enforced |
+| INV-DELEGATION-001 | A grantee's write is authorized in the transaction that writes it, and a revoke is final | partial |
 | INV-FX-001 | An unavailable rate never becomes 1:1, a rate from after the date, or an unboundedly old one | partial |
 | INV-FX-002 | A row that carries its own exchange rate is converted at that rate on every surface | enforced |
 | INV-FX-003 | A currency pair is stored in one orientation | partial |
@@ -579,6 +580,32 @@ Enforcement         Every absolute recompute takes the account lock before readi
                     read and its write. The atomic delta path (updateBalance) is
                     unchanged. A VOID transfer moves neither balance
                     (transaction-transfer.service.ts skips both updateBalance calls).
+                    A deletion removes every row it would orphan: the bulk delete
+                    expands a selected split-transfer leg (whose link names its
+                    split parent, not a mirror) to the parent and every sibling
+                    leg, locks the parents before the legs and reverses each
+                    locked row through deletionBalanceEffect, as the single
+                    delete does (A26-H05).
+                    A transfer edit derives every delta from rows locked inside
+                    its own transaction and refuses with 409 when they differ
+                    from what the edit was built on: both legs ascending
+                    (same-owner and connected cross-owner, each under its own
+                    owner), and for a split-transfer leg the parent and then the
+                    leg (A26-H03). derived-state-writers.guard.spec.ts fails an
+                    update/remove/delete/bulk method that moves a balance
+                    without taking a lock itself, not only a file.
+                    Undo and redo of an account edit never write
+                    current_balance (nor is_closed, closed_date,
+                    linked_account_id) from the snapshot; a restored opening
+                    balance recomputes current_balance from the ledger under
+                    lockAccountsForBalanceWrite (A26-H06).
+                    No whole-entity save writes a snapshot's current_balance:
+                    the investment-pair rename and re-currency, and the account
+                    delete's unlink, update only the changed columns of the
+                    other half; an imported opening balance is
+                    applyOpeningBalanceChange (accounts.service.ts), a 4dp
+                    delta of new - old read under lockAccountsForBalanceWrite
+                    (A26-M13).
 Concurrency scope   per account
 Retry semantics     A recompute is idempotent against another recompute and, under
                     the lock, against a concurrent delta.
@@ -587,8 +614,26 @@ Required tests      Source scan: common/db/derived-state-writers.guard.spec.ts -
                     only sanctioned services write current_balance, and each reads
                     under a lock. Two-connection (delta interleaved with a recompute,
                     the delta must survive): backend/test/integration/balance-delta-recompute.integration.spec.ts.
-Status              enforced
+                    Bulk delete of a split-transfer leg, parent, both legs and a
+                    cross-owner leg, on the schema's ON DELETE actions:
+                    backend/test/integration/bulk-delete-split-leg.integration.spec.ts.
+                    Two concurrent transfer edits, same and different values, on a
+                    split-transfer leg and a connected cross-owner pair:
+                    backend/test/integration/transfer-edit-race.integration.spec.ts.
+                    Undo of a rename after an unrecorded movement, redo, and an
+                    opening-balance undo:
+                    backend/test/integration/account-undo.integration.spec.ts.
+                    A pair rename with a posting in its window, and an imported
+                    4dp opening balance beside a concurrent movement:
+                    backend/test/integration/investment-pair-stale-balance.integration.spec.ts,
+                    backend/test/integration/import-balance-delta.integration.spec.ts.
+Status              partial
 ```
+
+Open breach found by the 2026-10 audit, outside the ledger remediation stream: an
+investment transaction edited twice at once, or while it is deleted, duplicates or
+orphans its cash leg (A26-H04, task T10 of the securities stream). The status stays
+`partial` until that lands.
 
 See `docs/concurrency-and-idempotency.md` CONC-003. The former secondary breach --
 transfers created as `VOID` moving both balances -- is closed on the create path
@@ -689,12 +734,45 @@ Enforcement         No path writes the columns incrementally. Every ledger write
                     investment_transactions inserts that no holdings row-lock
                     covers -- so a concurrent trade cannot be replaced by a
                     projection that never saw it.
+                    update() and remove() then row-lock the investment row they
+                    read (and remove() its transfer leg) through
+                    lockUnchangedInvestmentRow
+                    (securities/investment-row-lock.util.ts) and refuse, before
+                    any write, a row that is gone (404) or no longer the one
+                    read (409): the cash row a reversal deletes and the values a
+                    save writes back are the locked row's, so a double-submitted
+                    edit cannot post its cash twice and a delete behind an edit
+                    cannot orphan the edit's cash row (A26-H04). The
+                    security-transfer edit (updateLinkedTransfer) takes the same
+                    holdings lock on every account the pair leaves or joins as its
+                    first statement and locks both legs the same way, so it
+                    validates an oversell seeing a concurrent trade (A26-L19).
+                    Undo and redo re-derive through the same fold
+                    (HoldingsService.rebuildAccountsFromTransactions); the copy in
+                    action-history.service.ts, which added a DIVIDEND's total to the
+                    basis and stored 6 decimals, is gone (A26-L21).
+                    A transfer is not a purchase: the fold hands a TRANSFER_IN the
+                    basis its paired TRANSFER_OUT relieved (orderTransferOutBeforeIn
+                    puts the OUT leg first when the two share an instant), and
+                    transferSecurity and updateLinkedTransfer write both legs'
+                    price from HoldingsService.releasedBasisPerShare inside their
+                    transaction -- the source's basis at the transfer's own place
+                    in the replay, never today's stored average and never a
+                    client price -- so a rebuild of the destination alone, which
+                    cannot see the OUT leg, falls back to the right figure
+                    (A26-M22). Residual: an IN leg's stored price is refreshed only
+                    when its transfer is written; a later back-dated change to the
+                    source's earlier rows reaches the destination at its next
+                    full or paired rebuild.
                     UNIQUE(account_id, security_id) still prevents duplicate rows.
                     A scope the ledger has no rows for projects to "no holding":
                     the row is deleted. Every writer takes that decision, and
                     the average cost a short position stores, through
                     projectedHoldingRow. An imported opening position is an
-                    ADD_SHARES row, not a holding with nothing behind it.
+                    ADD_SHARES row, not a holding with nothing behind it. The fold
+                    snaps a position to zero only below the stored scale
+                    (HOLDING_QUANTITY_EPSILON, 1e-8), never at 0.0001 per step, so
+                    purchases under 0.0001 shares form a holding (A26-M23).
 Concurrency scope   per (account, security)
 Retry semantics     Serialized by the lock; a lost update cannot occur.
 Failure response    the stored holding equals a deterministic replay of the ledger.
@@ -724,25 +802,26 @@ Known gap           an unpriced acquisition (acquisitionCost returns null) adds
                     partial figure with nothing marking it as one. The column has
                     no completeness flag; the surfaces that need one derive it
                     from the ledger (docs/financial-calculation-contract.md).
-                    Four narrower risks are open and unclosed, recorded here
-                    rather than fixed in passing: action-history.service.ts keeps
-                    a second fold over the ledger that does not filter by
-                    SHARE_MOVING_ACTIONS, so its undo/redo rebuild and
-                    computeHoldingsMap can disagree about a non-share-moving
-                    action; transferSecurity reads the source position's carried
-                    cost before the transaction it writes in, so a concurrent
-                    trade can move the basis between the read and the write;
-                    update() and remove() derive the scopes they will rebuild
-                    from a snapshot loaded before the transaction, without
-                    lockInvestmentTransactionRow, so a row that moved account or
-                    security in between is rebuilt on the old pair; and a
-                    security recorded in GBX normalizes to GBP for the provider
+                    One narrower risk is open and unclosed, recorded here rather
+                    than fixed in passing: a security recorded in GBX normalizes to GBP for the provider
                     currency check (quote-currency.util.ts) while currency_code
                     stays GBX, so every reader of that column sees a unit the
                     prices are not in.
 Required tests      Two-connection (concurrent trades on one holding, the stored
                     row compared against the replay):
                     backend/test/integration/holding-concurrent-trades.integration.spec.ts.
+                    Two-connection edit/edit and edit/delete of one BUY, the
+                    funding account's cash rows and balance against its ledger:
+                    backend/test/integration/investment-edit-race.integration.spec.ts.
+                    A back-dated transfer carries the source's basis on its date,
+                    follows a date edit, and ignores a client price:
+                    backend/test/integration/security-transfer-basis.integration.spec.ts.
+                    Two BUYs of 0.00005 hold 0.0001:
+                    backend/test/integration/holding-fractional.integration.spec.ts.
+                    A SELL racing a transfer edit cannot oversell:
+                    backend/test/integration/security-transfer-edit-race.integration.spec.ts.
+                    An undo stores the canonical average:
+                    backend/test/integration/holding-undo-fold.integration.spec.ts.
                     Out-of-order entry through the real service, stored row
                     compared against the replay:
                     backend/test/integration/holding-ledger-projection.integration.spec.ts.
@@ -838,11 +917,30 @@ Enforcement         The balance decision is made once per pair, keyed on VOID.
                     state is per-ledger. Guards: deletion-balance.guard.spec.ts,
                     investment-void-classification.guard.spec.ts,
                     void-status-transition.util.ts.
+                    The crossing is decided on the LOCKED status, never on a read
+                    taken before the row lock (A26-M09): the bulk status update
+                    discovers its lock set structurally (every mirror leg and every
+                    leg of a selected split parent, whatever its status), takes the
+                    holdings advisory lock, locks the split parents and then the
+                    rest, and only then expands the crossing; a row the locked
+                    expansion names outside that set is refused with 409. addSplit
+                    and updateSplits write the new counterparts with the locked
+                    parent's status, not the caller's copy.
+                    An account delete counts its rows again inside the deleting
+                    transaction, after lockAccountsForBalanceWrite on the account
+                    (the lock a row writer's balance update and FK check conflict
+                    with), so a sync or import that wrote a transfer leg into it
+                    is refused rather than cascaded away, leaving the other leg
+                    one-sided (A26-M19):
+                    backend/test/integration/account-delete-race.integration.spec.ts.
 Concurrency scope   per transfer pair
 Failure response    consistent balances across the pair on every VOID transition.
 Required tests      Per status-changing path, both legs' balances stay consistent
                     across a VOID transition, including the split-transfer variant
                     that links through the split parent rather than a mirror leg.
+                    Two connections, a status change committing between the
+                    caller's read and the row lock (bulk VOID of a pair, addSplit,
+                    updateSplits): backend/test/integration/void-crossing-lock.integration.spec.ts.
 Status              enforced
 ```
 
@@ -877,6 +975,45 @@ Required tests      docs/specs/redemption-accrued-interest.md section 6.
 Status              enforced
 ```
 
+### INV-DELEGATION-001 -- a grantee's write is authorized where it is written
+
+```text
+Statement           A write made on another owner's ledger by a grantee (a
+                    cross-owner transfer, a joint-register row) commits only if
+                    the grant that authorizes it is still held when it commits;
+                    once a revoke has committed, nothing the grantee started
+                    lands, and a revoked delegation is never re-instated by a
+                    settings save.
+Source of truth     account_delegates and account_delegate_grants.
+Enforcement         CrossOwnerAccessService.assertAccessStillHeld, on the
+                    write's own manager under the system bypass, after its row
+                    locks and before its first write: FOR SHARE on the
+                    delegation and grant rows, so a revoke (a DELETE of the
+                    delegation) waits for the write or the write sees the grant
+                    gone and refuses with the first check's 404 / 403. Called
+                    from writeTransferLegs, the connected cross-owner edit and
+                    delete, and the joint register's create, update, remove and
+                    cleared toggle (through the beforeWrite hook of the
+                    TransactionsService operation it reuses; update, remove and
+                    the toggle also refuse a row the owner moved out of the
+                    joint account). Delegation section and capability flags are
+                    one conditional UPDATE keyed on the owner (A26-M05);
+                    createDelegate's link reads the login FOR UPDATE.
+Concurrency scope   per delegation
+Failure response    404 / 403, nothing written.
+Required tests      Under the unprivileged role with RLS enforced, the owner's
+                    change committed between the grantee's authorization and the
+                    write: backend/test/integration/delegated-write-recheck.integration.spec.ts.
+Status              partial
+```
+
+Open, by design of the 2026-10 remediation split: the joint category create
+(`JointCategoriesService.create`) still writes under the bypass with no
+in-transaction re-check, since `CategoriesService.create` has no hook yet; and
+`resetDelegatePassword` still checks "no other owner" in one transaction and writes
+the credential in another (its write half is changed by the auth stream; the link
+side of the serialization, `createDelegate` locking the login, is in place).
+
 ### INV-RECONCILE-001 -- while the strict lock is on, a reconciled transaction is not altered
 
 ```text
@@ -904,7 +1041,15 @@ Enforcement         assertReconciledRowsMutable / assertReconciledIdsMutable
                     resolver behind clear / reconcile / unreconcile and
                     PATCH :id/status) and its bulkReconcile,
                     TransactionTransferService.removeTransfer /
-                    updateTransfer, TransactionBulkUpdateService.bulkUpdate /
+                    updateTransfer and each branch they hand off to, scanned on
+                    its own (updateSplitTransferLeg,
+                    updateConnectedCrossOwnerTransfer, updateFrozenTransferLeg,
+                    removeCrossOwnerTransfer,
+                    removeTransferFromSplitInTransaction; an assertion in one
+                    branch no longer satisfies the whole route, A26-M11). A
+                    cross-owner leg is asked under its own owner's setting,
+                    since each owner reconciles their own statement.
+                    TransactionBulkUpdateService.bulkUpdate /
                     bulkDelete, TransactionSplitService.updateSplits / addSplit /
                     removeSplit, ActionHistoryService.undoTransactionUpdate (undo
                     and redo of a transaction edit) and
@@ -1020,67 +1165,94 @@ Enforcement         The 1:1 half is enforced. Consumers return null on an absent
                     Yahoo adapter currencies/providers/yahoo-fx.provider.ts for
                     the refresh's and the live rate's quotes alike;
                     quoted-rate.util.spec.ts and yahoo-fx.provider.spec.ts).
-                    The mislabelling half is NOT enforced on the built-in report
-                    path: see Known gap below.
-Known gap           **An unconverted amount still reaches a report under the
-                    default currency's label.**
-                    built-in-reports/report-currency.service.ts convertAmount()
-                    is typed `number`, so when convertWithRateLookup returns null
-                    it logs a warning and returns the amount UNCONVERTED, and
-                    built-in-reports/data-quality-reports.service.ts then labels
-                    that figure `currencyCode: defaultCurrency` -- an unconverted
-                    amount under the target currency's label, which is the second
-                    clause of the statement above. Ten report services share that
-                    signature. The scan sees it (it is the one entry in
-                    fx-fallback.guard.spec.ts's RETURNS_ITS_INPUT_UNCONVERTED,
-                    with its reason) but does not fail it, so the gap is reviewed
-                    rather than invisible.
-                    What closes it: convertAmount returning `number | null`, each
-                    caller choosing between FxAggregate and its own withheld
-                    total, and every affected DTO carrying a completeness field
-                    a consumer branches on -- one specified change per report
-                    family, not a guard edit. Until then this entry is `partial`.
-                    Two families are done, by that route rather than around it:
-                    Spending by Category and Income vs Expenses take the nullable
-                    `tryConvertAmount` beside convertAmount, exclude a row they
-                    cannot convert, accumulate through FxAggregate, and answer
-                    with `currency`, `missingCurrencies` and `excludedCount`
-                    beside a total that is null when anything was left out. The
-                    report and the dashboard widget drawing each of them mark the
-                    same subtotal through PartialTotal. The remaining callers of
-                    A third surface is done on the investment side: Investment
-                    Transaction History no longer labels a row's amount with the
-                    account's currency (price, commission and total_amount are
-                    the SECURITY's, which the row now states in
-                    amountCurrencyCode / priceCurrencyCode /
-                    commissionCurrencyCode) and no longer sums across currencies
-                    on the client. A row that names no security carries the
-                    investment account's currency there, the one the write path
-                    denominated it in; calling it unknown withheld the card over
-                    one cash INTEREST posting. Its KPIs come from
-                    investment-reports/investment-transaction-summary.service.ts,
-                    which converts each row at its own transaction date and
-                    accumulates through FxAggregate, answering with total,
-                    knownSubtotal, missingPairs, excludedCount and fxComplete.
-                    The remaining callers of
-                    convertAmount are Income by Source, Spending by Payee,
-                    Monthly Spending Trend, Monthly Category Breakdown, and the
-                    anomaly, comparison, tax/recurring and data-quality families;
-                    data-quality is the one that also mislabels, and is where the
-                    second clause of the statement still fails.
+                    The latest-rate readers are on the same rule (A26-H11):
+                    ExchangeRateService.getLatestRates answers one row per
+                    directionless pair, the newer stored direction inside
+                    FX_MAX_RATE_AGE_DAYS of today (a tie to the canonical row),
+                    so the built-in reports' rate map and GET
+                    /currencies/exchange-rates no longer carry a frozen
+                    pre-1.17 mirror row or a rate of any age; getLatestRate's
+                    bound defaults to FX_MAX_RATE_AGE_DAYS instead of none; and
+                    InvestmentTransactionsService.resolveCashExchangeRateOrNull
+                    asks getRateForDate for the trade date (today when there is
+                    none) with no latest-rate fallback, so a back-dated trade
+                    with no admissible rate is refused (posting) or unknown
+                    (forecast). On the client, useExchangeRates leaves a row
+                    older than FX_MAX_RATE_AGE_DAYS out of its conversion map
+                    (frontend/src/lib/fx-rate-age.ts, held to the backend
+                    constant by fx-rate-age.contract.test.ts) and keeps the
+                    newer orientation of a pair; InvestmentTransactionForm and
+                    the embedded InvestmentSplitFields prefill the rate from
+                    getRateForDate for the trade date and ask again when the
+                    date changes, unless the person typed a rate.
+                    The mislabelling half is enforced on the built-in report
+                    path as well: ReportCurrencyService.convertAmount, the
+                    pass-through that returned the unconverted amount, is
+                    deleted, and every report converts through the nullable
+                    tryConvertAmount. A row whose currency has no rate is left
+                    out of every figure and recorded in a ConversionGaps
+                    (built-in-reports/report-currency.service.ts); each response
+                    carries `currency`, `missingCurrencies` and `excludedCount`,
+                    and a headline total is null beside a `known*` subtotal
+                    while anything is excluded. A transaction row in the
+                    Uncategorized list that cannot be converted keeps its own
+                    amount under its own currency code. The frontend renders the
+                    subtotal through PartialTotal. The scan's
+                    RETURNS_ITS_INPUT_UNCONVERTED list is empty, a further scan
+                    fails any call to convertAmount under built-in-reports/, and
+                    the rate-1 scan matches a rate-named identifier anywhere on
+                    the line (`exchangeRate ?? 1`, `spotRate.get(k) ?? 1`), not
+                    only a word starting with `rate`; its
+                    STORED_RATE_DEFAULTS_OWNED_ELSEWHERE list holds, with exact
+                    counts, the reads of a stored `exchange_rate` column
+                    (NOT NULL DEFAULT 1) in files other remediation streams own.
+                    convertWithRateLookup answers null for an empty currency
+                    code rather than treating it as the target currency.
+Known gap           The built-in reports convert a past period at the current
+                    rate (a flat latest-rate map), which is the look-ahead clause
+                    of the statement for every historical bucket; that is a
+                    policy the maintainer has to state.
+                    Convert before summing (A26-H12) is closed on three paths:
+                    the custom report engine (reports/reports.service.ts,
+                    tryConvertAmount per row, FxAggregate, `summary.total` null
+                    beside `knownTotal`), the AI/MCP transaction analytics
+                    (TransactionAnalyticsService LLM methods, each row at its own
+                    date, `totalsCurrency` / `fxComplete` / `missingRatePairs`)
+                    and budget actuals in budgets/budget-spending.util.ts
+                    queryCategorySpending (each row at its own date into the
+                    budget's currency, per-key completeness,
+                    resolveCategorySpentOrNull). It is still open where the
+                    callers have not been moved: budgets.service.ts,
+                    budget-alert.service.ts, budget-period.service.ts and the
+                    budget report and generator services still read
+                    resolveCategorySpent, the converted part, so a category with
+                    a missing rate shows a subtotal as its spent figure and
+                    alerts on it; computeActualIncome sums currencies unconverted;
+                    getLlmInvestmentTransactions totals, the ai/insights
+                    aggregator and getTransfersByAccount's roll-ups still add
+                    currencies.
 Concurrency scope   --
 Failure response    null or an explicitly partial figure, per
                     docs/financial-calculation-contract.md section 1. On the
-                    path named in Known gap above: a warning in the log and a
-                    wrong number on screen.
-Required tests      Present: common/fx-fallback.guard.spec.ts (the two source
-                    scans above) plus the FxAggregate accumulator
-                    (common/fx-aggregate.ts) that names each unresolvable pair
-                    rather than absorbing it.
-                    Owed: a unit test per report family asserting the response is
-                    withheld (not passed through) for a pair with no rate. There
-                    is none today, which is why the defect survived a guard
-                    written for it.
+                    paths named in Known gap above: a complete-looking figure
+                    that is wrong.
+Required tests      Present: common/fx-fallback.guard.spec.ts (the source scans
+                    above, each with a self-test of the shapes it bans) plus the
+                    FxAggregate accumulator (common/fx-aggregate.ts) that names
+                    each unresolvable pair rather than absorbing it; a unit case
+                    per built-in report family asserting the headline total is
+                    null, the known subtotal set and the currency named for a
+                    pair with no rate (A26-H10); portfolio.service.spec.ts
+                    asserts the intraday resolver's no-series, no-spot branch is
+                    unknown rather than 1 (A26-L05).
+                    test/integration/fx-latest-rates.integration.spec.ts: a
+                    stale mirror row beside a fresh canonical row lists one row
+                    carrying the fresh rate, a 324-day-old pair is absent,
+                    Spending by Payee converts 1,000.00 USD to 1,400.00 CAD, and
+                    a 1990 trade with only today's rate is refused with no row
+                    written; the client cases are in useExchangeRates.test.ts,
+                    InvestmentTransactionForm.test.tsx and
+                    InvestmentSplitFields.test.tsx.
 Status              partial
 ```
 
@@ -1096,8 +1268,9 @@ at the end of a line, `: 1` beside a rate) rather than from the rule -- so
 written from a diff certifies the diff. Read a status of `enforced` here as a
 claim to check against the scan, and read the scan for what it actually matches.
 `docs/verification-contract.md` section 6 still describes both load-bearing FX
-scans as having landed "with the fix, so no exception list"; that is now true of
-the first scan only.
+scans as having landed "with the fix, so no exception list"; the
+returned-input scan's list is empty again, and the rate-1 scan carries the
+stored-rate list described above.
 
 ### INV-FX-002 -- a row's own rate converts it on every surface
 
@@ -1128,11 +1301,21 @@ Enforcement         portfolio-calculation.service.ts has always multiplied
                     prints the line under the KPIs, so the reader is told which
                     rate answered. A row with no usable rate of its own falls
                     back to the rate on its own date, under INV-FX-001.
+                    An edit keeps the row's rate: update() re-resolves only when
+                    the account, funding account or security changes, and the
+                    AI/MCP edit preview (previewUpdateInvestmentTransaction, read
+                    by the MCP single and bulk edits and the assistant's signed
+                    confirmation, which commit the rate it returns) carries the
+                    stored rate unless the edit names one or another security
+                    (A26-M20).
 Test                investment-transaction-summary.service.spec.ts: a sale of
                     820.91 USD settled at 3.7287 reads 3,060.9271 PLN and asks
                     for no market rate; a row without a rate is converted at the
                     market rate and counted; a stored 1 across two currencies is
                     ignored; a third settlement currency is carried onward.
+                    investment-transactions.service.spec.ts "the row's own exchange
+                    rate": a description-only edit previews the stored 1.40, not
+                    today's 1.37.
 Status              enforced
 ```
 
@@ -1163,7 +1346,12 @@ Enforcement         Every writer routes through canonicalRateRow: saveRate and
                     use. currencies/exchange-rate-orientation.guard.spec.ts is
                     the scan: an INSERT INTO exchange_rates in a third file, or
                     in one of those two without the helper, fails it.
-                    On the read side getLatestRate now resolves either stored
+                    On the read side getLatestRates lists one row per pair, the
+                    newer direction inside the age bound (a database upgraded
+                    from before the expand release still holds the mirror row,
+                    and a direct-first reader of a list carrying both took it),
+                    and the client rate map keeps the newer orientation.
+                    getLatestRate now resolves either stored
                     direction through resolveFxRate (INV-FX-001's door) rather
                     than reading one orientation, the backfill coverage probe
                     counts a pair held either way as covered, and
@@ -1338,11 +1526,16 @@ Enforcement         securities/investment-amount.util.ts is the one door:
                     InvestmentTransactionForm makes the total an editable field:
                     the last edited of total and price wins, the same pattern it
                     already uses between the converted amount and the rate.
+                    A trade email that states only a price proposes the total of
+                    the price as written (ParsedTrade.priceUnits8, 1e-8 units),
+                    not of the 4-decimal card price: tradeExecutedTotalUnits in
+                    email-receipts/parsing/parse-trade.ts (A26-L17).
 Test                investment-amount.util.spec.ts (both directions and the
                     refusals); investment-transactions.service.spec.ts -- a SELL
                     of 141 shares supplied as 820.91 stores 820.9100 and
                     5.8220567376, a resent description-only edit keeps the stored
-                    total, a quantity change re-derives it.
+                    total, a quantity change re-derives it. parse-trade.spec.ts:
+                    10,000 x 1.23456789 proposes 12,345.6789, not 12,346.0000.
 Status              enforced
 ```
 
@@ -1380,6 +1573,11 @@ Enforcement         securities/providers/quote-currency.util.ts decides it once:
                     The provider contract carries the currency because
                     fetchHistoricalSeries returns a HistoricalSeries bundle; a
                     bare HistoricalPrice[] cannot state what its numbers are in.
+                    fillPriceWindow remembers a month as empty only when every
+                    routed provider answered it with no bars: a provider that
+                    failed, was refused, or answered about another currency
+                    (refuseForeignCurrency) leaves the month to be asked again
+                    (A26-L20).
 Known gap           **Unverifiable is accepted, not refused.** A provider that
                     reports no currency (MSN's chart series routinely does not,
                     and its Quotes endpoint only sometimes does), or a security
@@ -2556,6 +2754,13 @@ Required tests      Present: "final payment and lifetime interest" in
                     line before payment N) and, on the frontend,
                     loan-schedule-methods.test.ts (318 payments ending
                     2050-06-01; the bullet on payment N).
+                    One minor unit is owed, less is a residue (isDebtRetired,
+                    price-installment.ts, shared by the posting, the planner
+                    and the projection; isDebtOutstanding on the frontend): a
+                    debt of exactly 0.01 posts 0.01 and retires the loan
+                    (audit A26-L23; scheduled-loan-one-cent.integration.spec.ts,
+                    price-installment.spec.ts, plan-loan-settlement.spec.ts,
+                    loan-schedule.test.ts 1,000 / 999.99 -> two rows).
 Status              enforced
 ```
 
@@ -2651,6 +2856,19 @@ Statement           The interest of a scheduled loan installment is
                     (docs/specs/mortgage-types.md sections 2 and 6.2). The
                     ANNUITY and CANADIAN_FIXED payment beside this rate is
                     dated the same way: INV-LOAN-009.
+                    An installment below that interest does not drop the rest:
+                    a scheduled bill (every purpose but a rule's settlement)
+                    books the whole accrued interest and a NEGATIVE principal
+                    line of the shortfall, so the unpaid interest is added to
+                    the debt the next installment is priced on (negative
+                    amortization; allocateLoanPayment with
+                    capitalizeUnpaidInterest, reported as unpaidInterest on the
+                    allocation and on the loan occurrence projection). 400,000
+                    at 6 % with a 1,500 installment books 2,000 interest and
+                    -500 principal, debt 400,500, then 2,002.50 / -502.50, debt
+                    401,002.50 (audit A26-M29). A settlement keeps the spec's
+                    shortfall policy (refuse, or interest_first with the
+                    interest capped at the amount paid).
 Source of truth     The transactions ledger plus accounts.opening_balance
                     (INV-BALANCE-001's source) for the debt, and
                     loan_rate_changes for the rate, both bounded by the
@@ -2748,6 +2966,17 @@ Required tests      Present: scheduled-transaction-loan.service.spec.ts (prior
                     LOWER_INSTALLMENT mortgage on a real ledger, including the
                     moved due date); frontend loan-schedule-methods.test.ts
                     ("the calendar: k(d), remaining(d) and the next due date").
+                    The below-interest installment:
+                    scheduled-loan-below-interest.integration.spec.ts (R3
+                    through the real post(), two postings and the projection)
+                    and loan-payment-waterfall.util.spec.ts.
+                    A source account in another currency than the loan is
+                    refused by loan payment setup and both loan/mortgage
+                    create paths before any write (loan-source-currency.util.ts,
+                    errors.accounts.loanSourceCurrencyMismatch), and
+                    ScheduledTransactionsService.create refuses a currencyCode
+                    other than its account's (assertTransactionCurrencyMatchesAccount),
+                    so no bill is written that could never post (audit A26-M30).
                     A LINE OF CREDIT is exempt from the paid-off deactivation:
                     it is revolving, so owing nothing this period does not
                     finish it.
@@ -3012,8 +3241,9 @@ Enforcement         The core and the advancement (B1, issue #1639):
                     a pure fold over priceInstallment at each listed
                     occurrence's own due date, exposed by
                     GET /scheduled-transactions/:id/loan-occurrences; the
-                    picker and the override editor read it for a loan bill
-                    (F2, issue #1643) instead of repeating
+                    picker, the override editor and the Post dialog read it
+                    for a loan bill (F2, issue #1643; the dialog's preview,
+                    audit A26-L26) instead of repeating
                     scheduledTransaction.amount, and the rate-change dialogs
                     confirm on edit and delete and name the due date the bill
                     changes at (F1, issue #1642).
@@ -3107,6 +3337,15 @@ Enforcement         Creation: createLoanAccount, createMortgageAccount
                     identifyLoanTemplate reports the relinked template
                     managed; it is a no-op (logged) for a cleared category, no
                     schedule, or an ambiguous or already-unmanaged template.
+                    Undo and redo: ActionHistoryService refuses (409
+                    errors.actionHistory.loanEditNotUndoable), before any
+                    write, the undo or redo of an account edit that changed a
+                    template-coupled column (method, prepayment mode,
+                    amortization, original principal, payment, frequency,
+                    interest category, source account, schedule or matching
+                    rule) of a loan with a schedule; the column restore alone
+                    left the template unmanaged or priced for the other method
+                    (A26-H06). backend/test/integration/account-undo.integration.spec.ts.
 Concurrency scope   per loan: the update holds the account row lock, then the
                     plan takes the schedule row lock (pessimistic_write), the
                     order reassignLoanSourceAccount and the template
@@ -3618,7 +3857,12 @@ Required tests      bond-prices.integration.spec.ts (real PostgreSQL: a manual
                     refusals: type, quantity, currency, uppercase UUID, undo),
                     action-history undo spec, provider-priced.guard.spec.ts,
                     backup specs (support backup drops the link; restore
-                    names and recomputes).
+                    names and recomputes). A benchmark observation stored or
+                    corrected outside the 06:25 run (the boot warm-up, the refresh
+                    after a stored series) dispatches the recompute of the series
+                    reading that code after its run, outside the lease
+                    (BenchmarkRefreshService.recomputeAfterChange, A26-L22):
+                    benchmark-refresh.service.spec.ts "the recompute after a store".
 Status              enforced
 ```
 
@@ -3976,6 +4220,14 @@ Enforcement         PortfolioCalculationService.valueBondHoldings, used by
                     approximate for a security held in several accounts while
                     their total is exact (spec
                     docs/specs/bond-program-securities.md 2.4).
+                    A blend reader (a series that multiplies a quantity by a
+                    stored close) values a linked security through
+                    valuationClosePointOn (securities/bond-valuation-close.util.ts):
+                    the engine's row of that day only, so a day the engine refused
+                    (no row; INV-BOND-002) is unknown, never the previous engine
+                    close carried over it and never one lot's trade price
+                    (INV-BOND-005). The daily movement (DailyMovementService) reads
+                    it (A26-M26).
 Concurrency scope   --
 Retry semantics     --
 Crash semantics     --
@@ -3984,7 +4236,19 @@ Required tests      backend/src/securities/portfolio-calculation.service.spec.ts
                     (two accounts holding different series of one program, an
                     unknown lot, a valuation that throws);
                     backend/test/integration/bond-holding-value.integration.spec.ts
-Status              partial (historical per-account series)
+Status              partial. Still reading positionCloseAsOf (a carried engine
+                    close, or a trade price) over a refused day, and to be moved
+                    to valuationClosePointOn with the refusal carried as an
+                    unknown component: net worth daily and monthly
+                    (net-worth.service.ts loadDailyInvestments,
+                    recalculateBrokerageAccount; loadTxPriceSeries reads trade
+                    prices of linked securities), and through them latest net
+                    worth, the account summary totals, the period result and the
+                    investment report. Still reading the daily blend per account
+                    (A26-S14-02): Monte Carlo getHoldingStats, the investment
+                    report holdings, net worth by account for the current month;
+                    valueBondHoldings is the per-account answer. And the historical
+                    per-account series named above.
 ```
 
 ### INV-BONDNOTIFY-001 -- the bond notification producer fetches nothing
@@ -4107,21 +4371,56 @@ Enforcement         A durable occurrence key claimed atomically.
                     database-level backstop, so exactly-once holds regardless of
                     replica count; the cron treats the ConflictException as
                     "claimed by another replica".
+                    The two human entry points carry the occurrence the person
+                    saw: POST /scheduled-transactions/:id/post and /:id/skip
+                    require expectedOccurrenceDate (the date the occurrence falls
+                    on, nextOccurrenceDueDate on the client) and
+                    expectedOverrideId (the override shown, or null), and post()
+                    and skip() compare them, before the lock and again under it,
+                    with the cursor and the override at the cursor slot
+                    (occurrence-pin.ts assertOccurrencePin). A stale view is
+                    refused with 409 before anything is written, so it can
+                    neither post the next occurrence under the old one's date
+                    nor skip it. skip() takes the same row lock. Both refuse a
+                    schedule with no occurrence left (occurrences_remaining 0,
+                    or the cursor past end_date), so an exhausted schedule posts
+                    nothing more by any route.
+                    The cursor steps past every claimed slot on or after it on
+                    every advance (schedule-cursor.ts claimedSlotsFrom, read in
+                    the posting transaction after the claim), so a slot a
+                    settlement rule claimed ahead of the cursor (INV-LOAN-008)
+                    is never where the cursor stops.
 Concurrency scope   per (scheduled transaction, occurrence date)
-Retry semantics     Safe: a re-post is refused by the occurrence claim.
-Crash semantics     A crash between claim and advance leaves the claim row, so the
-                    next tick is refused rather than reposting.
+Retry semantics     Safe: a re-post is refused by the occurrence claim, and a
+                    manual retry by the pin once the cursor has moved.
+Crash semantics     The claim, the money, the override removal and the cursor
+                    advance commit or roll back together in one withScopedDb
+                    transaction: a crash before the commit leaves no claim, no
+                    row and no advance; after it, all of them.
 Failure response    the losing claim gets ConflictException, having posted nothing.
                     A replica whose selection went stale (the winner already
                     advanced next_due_date) is refused by expectedDueDate; without
                     it, post() re-read the row and posted the NEXT occurrence under
-                    a fresh claim key, once per extra replica.
+                    a fresh claim key, once per extra replica. A stale browser
+                    view is refused the same way by its pin (audit A26-H07).
+                    A failure AFTER the posting commit (completeTransfer, the
+                    loan template recalculation) is logged by post()'s
+                    afterPostCommit and the post is reported as done: the cron
+                    raises no SCHEDULED_POST_FAILED alert for a posted
+                    occurrence and an HTTP caller receives the posted schedule,
+                    so neither is invited to post it again (audit A26-M14;
+                    scheduled-post-commit-failure.integration.spec.ts).
 Required tests      Present (unit): scheduled-transactions.service.spec.ts, a cron
                     whose post() re-reads an advanced next_due_date posts nothing,
                     and post() recording its transaction on the claim.
-                    The unique index gives DB-level exactly-once; a two-instance
-                    "two replicas, one posting" integration test is still owed as
-                    the gold-standard proof.
+                    Present (integration, real post() against PostgreSQL):
+                    scheduled-posting.integration.spec.ts (two cron replicas
+                    under a barrier post once) and
+                    scheduled-post-occurrence-pin.integration.spec.ts (a stale
+                    post, skip and exhausted-schedule post are refused 409 with
+                    the ledger unchanged; a cron tick racing a pinned manual
+                    post has one effect; a rule claim ahead of the cursor is
+                    stepped over by post() and skip()).
 Status              enforced
 ```
 

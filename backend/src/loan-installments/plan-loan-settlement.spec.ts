@@ -811,12 +811,26 @@ describe("planLoanSettlement", () => {
       ]);
     });
 
-    it("E15: a debt of 0.01 is retired, a known zero and not a missing figure", () => {
-      expect(plan(-1333.33, makeFacts({ debt: 0.01 }))).toEqual({
+    it("E15: a debt below 0.01 is retired, a known zero and not a missing figure", () => {
+      expect(plan(-1333.33, makeFacts({ debt: 0.004 }))).toEqual({
         ok: false,
         reason: "loan_debt_retired",
         detail: { dueDate: "2024-01-01" },
       });
+    });
+
+    it("E15 boundary: 0.0099 is retired, 0.01 and 0.02 are owed", () => {
+      expect(plan(-1333.33, makeFacts({ debt: 0.0099 }))).toEqual({
+        ok: false,
+        reason: "loan_debt_retired",
+        detail: { dueDate: "2024-01-01" },
+      });
+      for (const debt of [0.01, 0.02]) {
+        const result = plan(-debt, makeFacts({ debt }));
+        expect(
+          result.ok === false && result.reason === "loan_debt_retired",
+        ).toBe(false);
+      }
     });
 
     it("E16: a tolerance that would make interest negative falls to the extra (row 6)", () => {
@@ -1495,7 +1509,7 @@ describe("planLoanSettlement", () => {
         loanAccountId: loanId,
         rowDate: "2024-01-02",
         dueDate: "2024-01-01",
-        principal: 999.99,
+        principal: 1000,
         extraPrincipal: 0,
       };
       expect(
@@ -1503,6 +1517,12 @@ describe("planLoanSettlement", () => {
           prior,
         ]),
       ).toMatchObject({ reason: "loan_debt_retired" });
+      // A fold that leaves one whole minor unit (0.01) leaves it owed.
+      expect(
+        plan(-5, makeFacts({ debt: 1000 }), {}, { date: "2024-02-02" }, [
+          { ...prior, principal: 999.99 },
+        ]),
+      ).not.toMatchObject({ reason: "loan_debt_retired" });
     });
 
     it("an unread ledger at the slot is loan_account_unavailable", () => {

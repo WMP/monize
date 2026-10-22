@@ -3,6 +3,7 @@ import { ScheduledTransaction } from "./entities/scheduled-transaction.entity";
 import { ScheduledTransactionOverride } from "./entities/scheduled-transaction-override.entity";
 import { calculateNextDueDate, ensureYMD } from "../common/recurrence";
 import { todayYMD } from "../common/date-utils";
+import { returnedRows } from "../common/db/query-result";
 
 /** The cursor columns `advanceScheduleCursor` wrote. */
 export interface ScheduleCursorAdvance {
@@ -20,10 +21,13 @@ export interface ScheduleCursorAdvance {
  * it pruned, `last_posted_date` set, `occurrences_remaining` decremented once
  * per slot and the schedule deactivated at zero or past `end_date`.
  *
- * Lifted out of `ScheduledTransactionsService.post()`, which calls it with the
- * one slot it claimed, so the settlement of a bank debit against an occurrence
- * (`docs/specs/loan-installment-settlement.md` section 12.3) advances the
- * cursor through the same code when it claims the due slot.
+ * Lifted out of `ScheduledTransactionsService.post()`, so the settlement of a
+ * bank debit against an occurrence (`docs/specs/loan-installment-settlement.md`
+ * section 12.3) advances the cursor through the same code when it claims the
+ * due slot. `post()`, `skip()` and the settlement claim all pass the slot they
+ * consume plus every claim on or after it (`claimedSlotsFrom`), so a slot a
+ * settlement rule claimed ahead of the cursor is never left under it (audit
+ * A26-S08-03).
  *
  * `schedule` is the LOCKED row (`SELECT ... FOR UPDATE`), never a snapshot
  * taken before the transaction: a concurrent edit to `occurrences_remaining`
@@ -32,7 +36,10 @@ export interface ScheduleCursorAdvance {
  * schedule, the row's current `next_due_date` among them; the cursor steps
  * past every consecutive claimed slot so the bill never offers an occurrence
  * whose own claim key is taken. With exactly the current slot in the set, this
- * is one step: what `post()` always did.
+ * is one step.
+ *
+ * `options.stampLastPosted` (default true) sets `last_posted_date`; a skip
+ * passes false because nothing was posted.
  *
  * A ONCE schedule has no next slot; `post()` deletes it instead and never
  * calls this.
@@ -44,6 +51,7 @@ export async function advanceScheduleCursor(
     "id" | "nextDueDate" | "frequency" | "occurrencesRemaining" | "endDate"
   >,
   consumedSlots: ReadonlySet<string>,
+  options: { stampLastPosted?: boolean } = {},
 ): Promise<ScheduleCursorAdvance> {
   let newNextDueDateStr = ensureYMD(schedule.nextDueDate);
   let slotsConsumed = 0;
@@ -76,9 +84,11 @@ export async function advanceScheduleCursor(
     .execute();
 
   const updateFields: Partial<ScheduledTransaction> = {
-    lastPostedDate: todayYMD(),
     nextDueDate: newNextDueDateStr,
   };
+  if (options.stampLastPosted !== false) {
+    updateFields.lastPostedDate = todayYMD();
+  }
 
   let occurrencesRemaining = schedule.occurrencesRemaining;
   if (
@@ -106,6 +116,29 @@ export async function advanceScheduleCursor(
     deactivated: updateFields.isActive === false,
     slotsConsumed,
   };
+}
+
+/**
+ * The slot dates (YYYY-MM-DD) of every claim on the schedule dated on or after
+ * `fromYmd`: the occurrences a post or a settlement rule has already consumed at
+ * or ahead of the cursor. Read inside the transaction that holds the schedule
+ * lock, after any claim it inserted, so the set passed to
+ * `advanceScheduleCursor` is complete.
+ */
+export async function claimedSlotsFrom(
+  m: EntityManager,
+  scheduleId: string,
+  fromYmd: string,
+): Promise<Set<string>> {
+  const rows = returnedRows<{ d: string }>(
+    await m.query(
+      `SELECT TO_CHAR(original_due_date, 'YYYY-MM-DD') AS d
+         FROM scheduled_transaction_postings
+        WHERE scheduled_transaction_id = $1 AND original_due_date >= $2`,
+      [scheduleId, fromYmd],
+    ),
+  );
+  return new Set(rows.map((row) => row.d));
 }
 
 /** The cursor columns of a schedule, as they stand before an advance or after it. */

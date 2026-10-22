@@ -372,6 +372,38 @@ describe("LoanMortgageAccountService", () => {
       expect(accountsRepository.save).not.toHaveBeenCalled();
       expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
     });
+
+    it("refuses a payment account in another currency before saving the loan (A26-S15-10)", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        id: "acc-chequing",
+        userId,
+        currencyCode: "PLN",
+      });
+
+      await expect(
+        service.createLoanAccount(userId, makeValidLoanDto()),
+      ).rejects.toThrow(
+        "The payment account is in PLN and the loan in CAD. Choose an account in CAD.",
+      );
+      expect(accountsRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "acc-chequing", userId },
+      });
+      expect(accountsRepository.create).not.toHaveBeenCalled();
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+    });
+
+    it("creates the loan when the payment account is in its currency", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        id: "acc-chequing",
+        userId,
+        currencyCode: "CAD",
+      });
+
+      await service.createLoanAccount(userId, makeValidLoanDto());
+
+      expect(scheduledTransactionsService.create).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("createMortgageAccount", () => {
@@ -628,6 +660,38 @@ describe("LoanMortgageAccountService", () => {
       );
       expect(accountsRepository.create).not.toHaveBeenCalled();
       expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a payment account in another currency before saving the mortgage (A26-S15-10)", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        id: "acc-chequing",
+        userId,
+        currencyCode: "PLN",
+      });
+
+      await expect(
+        service.createMortgageAccount(userId, makeValidMortgageDto()),
+      ).rejects.toThrow(
+        "The payment account is in PLN and the loan in CAD. Choose an account in CAD.",
+      );
+      expect(accountsRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "acc-chequing", userId },
+      });
+      expect(accountsRepository.create).not.toHaveBeenCalled();
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+    });
+
+    it("creates the mortgage when the payment account is in its currency", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        id: "acc-chequing",
+        userId,
+        currencyCode: "CAD",
+      });
+
+      await service.createMortgageAccount(userId, makeValidMortgageDto());
+
+      expect(scheduledTransactionsService.create).toHaveBeenCalledTimes(1);
     });
 
     it("refuses a mortgage interest category the caller does not own before writing anything", async () => {

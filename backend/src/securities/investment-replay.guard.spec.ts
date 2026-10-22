@@ -255,6 +255,58 @@ describe("investment action replay is written once", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("never folds a TRANSFER_IN through the purchase branch of a replay", () => {
+    // A26-M21 / A26-M22: a `case InvestmentAction.TRANSFER_IN:` sharing a case
+    // group with BUY priced the transferred-in lot as an acquisition at its
+    // own row's price and rate 1, so a security bought at USD 100 / 1.37 CAD
+    // arrived as a basis of 1,000 and a realized gain read 918 instead of 548.
+    // A transfer takes the basis its paired TRANSFER_OUT released
+    // (`computeHoldingsMap`'s `releasedByTransferOut`, `carriedBasisByTransferIn`);
+    // a fold that lists it with BUY has no way to say so. Give TRANSFER_IN its
+    // own case.
+    const FOLDS = [
+      "securities/portfolio-calculation.service.ts",
+      "securities/holdings.service.ts",
+    ];
+    const labelOf = (line: string) =>
+      /^\s*(case\s+[^:]+:)\s*(\{)?\s*$/.exec(line);
+    const offenders: string[] = [];
+
+    for (const rel of FOLDS) {
+      const lines = readFileSync(join(SRC_ROOT, rel), "utf8").split("\n");
+      // A group is a run of adjacent `case` labels (blank and comment lines
+      // between them ignored) that share one body; a label that opens `{`
+      // closes its group.
+      let group: { label: string; line: number }[] = [];
+      const flush = () => {
+        const labels = group.map((g) => g.label);
+        const transferIn = group.find((g) =>
+          /InvestmentAction\.TRANSFER_IN\b/.test(g.label),
+        );
+        if (
+          transferIn &&
+          labels.some((l) => /InvestmentAction\.(BUY|REINVEST)\b/.test(l))
+        ) {
+          offenders.push(`${rel}:${transferIn.line}`);
+        }
+        group = [];
+      };
+      for (const [index, line] of lines.entries()) {
+        if (/^\s*(\/\/.*)?$/.test(line)) continue;
+        const label = labelOf(line);
+        if (!label) {
+          flush();
+          continue;
+        }
+        group.push({ label: label[1], line: index + 1 });
+        if (label[2]) flush();
+      }
+      flush();
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
   it("multiplies rather than adds wherever a split ratio is applied", () => {
     // The specific arithmetic that was wrong, caught by shape: a split ratio
     // added to a running quantity. `*=` is the only correct operator here, and

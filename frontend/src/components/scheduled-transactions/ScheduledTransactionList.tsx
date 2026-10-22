@@ -719,7 +719,8 @@ export function ScheduledTransactionList({
 
     try {
       // A failed action refreshes nothing: a refetch claims the ledger moved.
-      if (await runScheduledAction(action, transaction.id, t)) {
+      // A 409 is the exception: the row was stale, so the list is refetched.
+      if (await runScheduledAction(action, transaction, t)) {
         onRefresh?.();
       }
     } finally {

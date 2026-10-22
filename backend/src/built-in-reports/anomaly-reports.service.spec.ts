@@ -109,7 +109,7 @@ describe("AnomalyReportsService", () => {
     currencyService = {
       getDefaultCurrency: jest.fn().mockResolvedValue("USD"),
       buildRateMap: jest.fn().mockResolvedValue(new Map()),
-      convertAmount: jest.fn().mockImplementation((amount) => amount),
+      tryConvertAmount: jest.fn().mockImplementation((amount) => amount),
     };
 
     ({ manager: scopedManager, dataSource: scopedDataSource } =
@@ -567,7 +567,7 @@ describe("AnomalyReportsService", () => {
     });
 
     it("converts foreign currency amounts via currency service", async () => {
-      currencyService.convertAmount.mockImplementation(
+      currencyService.tryConvertAmount.mockImplementation(
         (amount: number, fromCurrency: string) => {
           if (fromCurrency === "EUR") return amount * 1.1;
           return amount;
@@ -802,6 +802,72 @@ describe("AnomalyReportsService", () => {
       expect(spike).toBeDefined();
       expect(spike!.severity).toBe("high");
       expect(spike!.percentChange).toBe(400);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // A missing exchange rate is unknown, never 1:1 (INV-FX-001)
+  // ---------------------------------------------------------------------------
+  describe("getSpendingAnomalies with a currency that has no rate", () => {
+    it("computes statistics over converted rows only and names the gap", async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date("2025-06-25T12:00:00Z"));
+      currencyService.tryConvertAmount.mockImplementation(
+        (amount: number, from: string) => (from === "JPY" ? null : amount),
+      );
+      const raw = buildRawExpenses(12, 50);
+      raw.push({
+        id: "tx-jpy",
+        transaction_date: new Date("2025-06-20T12:00:00Z"),
+        payee_id: null,
+        payee_name: "Tokyo Shop",
+        currency_code: "JPY",
+        category_id: null,
+        amount: "100000.00",
+      });
+      scopedManager.query.mockResolvedValue(raw);
+
+      const result = await service.getSpendingAnomalies(mockUserId);
+      jest.useRealTimers();
+
+      expect(result.currency).toBe("USD");
+      expect(result.missingCurrencies).toEqual(["JPY"]);
+      expect(result.excludedCount).toBe(1);
+      // The 100,000 JPY row is in no statistic and in no anomaly.
+      expect(result.statistics.mean).toBe(50);
+      expect(result.statistics.stdDev).toBe(0);
+      expect(result.anomalies).toEqual([]);
+      expect(JSON.stringify(result)).not.toContain("100000");
+    });
+
+    it("reports a complete answer as no gaps", async () => {
+      scopedManager.query.mockResolvedValue(buildRawExpenses(12, 50));
+
+      const result = await service.getSpendingAnomalies(mockUserId);
+
+      expect(result.currency).toBe("USD");
+      expect(result.missingCurrencies).toEqual([]);
+      expect(result.excludedCount).toBe(0);
+    });
+
+    it("names the gap even when too few rows converted to analyse", async () => {
+      currencyService.tryConvertAmount.mockImplementation(
+        (amount: number, from: string) => (from === "JPY" ? null : amount),
+      );
+      const raw = buildRawExpenses(5, 50).map((row) => ({
+        ...row,
+        currency_code: "JPY",
+      }));
+      scopedManager.query.mockResolvedValue([
+        ...raw,
+        ...buildRawExpenses(5, 50),
+      ]);
+
+      const result = await service.getSpendingAnomalies(mockUserId);
+
+      expect(result.anomalies).toEqual([]);
+      expect(result.missingCurrencies).toEqual(["JPY"]);
+      expect(result.excludedCount).toBe(5);
     });
   });
 });

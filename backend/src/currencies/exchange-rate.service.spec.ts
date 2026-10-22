@@ -1725,16 +1725,35 @@ describe("ExchangeRateService", () => {
   });
 
   describe("getLatestRates", () => {
-    it("returns latest rates using distinctOn query", async () => {
-      const rates = [mockExchangeRate];
+    const listed = (
+      fromCurrency: string,
+      toCurrency: string,
+      rate: number | string,
+      rateDate: string,
+    ): ExchangeRate =>
+      ({
+        ...mockExchangeRate,
+        fromCurrency,
+        toCurrency,
+        rate,
+        rateDate,
+      }) as unknown as ExchangeRate;
+
+    const answerWith = (rows: ExchangeRate[]) => {
       const qb = createMockQueryBuilder({
-        getMany: jest.fn().mockResolvedValue(rates),
+        getMany: jest.fn().mockResolvedValue(rows),
       });
       exchangeRateRepository.createQueryBuilder.mockReturnValue(qb);
+      return qb;
+    };
+
+    it("reads the newest row per stored direction with a distinctOn query", async () => {
+      const fresh = listed("USD", "CAD", 1.365, todayYMD());
+      const qb = answerWith([fresh]);
 
       const result = await service.getLatestRates();
 
-      expect(result).toEqual(rates);
+      expect(result).toEqual([fresh]);
       expect(exchangeRateRepository.createQueryBuilder).toHaveBeenCalledWith(
         "er",
       );
@@ -1748,14 +1767,83 @@ describe("ExchangeRateService", () => {
     });
 
     it("returns empty array when no rates exist", async () => {
-      const qb = createMockQueryBuilder({
-        getMany: jest.fn().mockResolvedValue([]),
-      });
-      exchangeRateRepository.createQueryBuilder.mockReturnValue(qb);
+      answerWith([]);
+
+      expect(await service.getLatestRates()).toEqual([]);
+    });
+
+    it("returns one row per pair, the fresh canonical one, when a stale mirror survives", async () => {
+      // A deployment upgraded from before 1.17 holds the mirror row the refresh
+      // no longer writes beside the canonical row it does.
+      const staleMirror = listed(
+        "USD",
+        "CAD",
+        1.3,
+        addDaysYMD(todayYMD(), -80),
+      );
+      const freshCanonical = listed("CAD", "USD", "0.7142857143", todayYMD());
+      answerWith([freshCanonical, staleMirror]);
 
       const result = await service.getLatestRates();
 
-      expect(result).toEqual([]);
+      expect(result).toEqual([freshCanonical]);
+    });
+
+    it("keeps the fresher row whichever direction it is stored in", async () => {
+      const freshMirror = listed("USD", "CAD", 1.3, addDaysYMD(todayYMD(), -1));
+      const olderCanonical = listed(
+        "CAD",
+        "USD",
+        0.5,
+        addDaysYMD(todayYMD(), -9),
+      );
+      answerWith([olderCanonical, freshMirror]);
+
+      expect(await service.getLatestRates()).toEqual([freshMirror]);
+    });
+
+    it("gives a tie to the canonical orientation, whatever order the rows arrive in", async () => {
+      const date = addDaysYMD(todayYMD(), -2);
+      const canonical = listed("CAD", "USD", 0.5, date);
+      const mirror = listed("USD", "CAD", 1.3, date);
+
+      answerWith([mirror, canonical]);
+      expect(await service.getLatestRates()).toEqual([canonical]);
+      answerWith([canonical, mirror]);
+      expect(await service.getLatestRates()).toEqual([canonical]);
+    });
+
+    it("omits a pair whose newest row is older than the age bound", async () => {
+      const stale = listed(
+        "EUR",
+        "USD",
+        1.1,
+        addDaysYMD(todayYMD(), -(FX_MAX_RATE_AGE_DAYS + 1)),
+      );
+      const edge = listed(
+        "CAD",
+        "GBP",
+        0.6,
+        addDaysYMD(todayYMD(), -FX_MAX_RATE_AGE_DAYS),
+      );
+      answerWith([edge, stale]);
+
+      expect(await service.getLatestRates()).toEqual([edge]);
+    });
+
+    it("treats a non-positive stored rate as absent", async () => {
+      answerWith([listed("USD", "CAD", 0, todayYMD())]);
+
+      expect(await service.getLatestRates()).toEqual([]);
+    });
+
+    it("lists the pairs in a stable order", async () => {
+      const a = listed("USD", "CAD", 1.3, todayYMD());
+      const b = listed("EUR", "USD", 1.1, todayYMD());
+      const c = listed("CAD", "EUR", 0.7, todayYMD());
+      answerWith([a, b, c]);
+
+      expect(await service.getLatestRates()).toEqual([c, b, a]);
     });
   });
 
@@ -1804,18 +1892,26 @@ describe("ExchangeRateService", () => {
     });
 
     it("returns the rate when the pair is stored in the direction asked for", async () => {
-      store([row("USD", "CAD", 1.365, new Date("2026-02-10"))]);
+      store([row("USD", "CAD", 1.365, addDaysYMD(today, -10))]);
 
       const result = await service.getLatestRate("USD", "CAD");
 
       expect(result).toBe(1.365);
       // Both directions are read; the resolver decides between them.
       expect(exchangeRateRepository.findOne).toHaveBeenCalledWith({
-        where: { fromCurrency: "USD", toCurrency: "CAD" },
+        where: {
+          fromCurrency: "USD",
+          toCurrency: "CAD",
+          rateDate: expect.anything(),
+        },
         order: { rateDate: "DESC" },
       });
       expect(exchangeRateRepository.findOne).toHaveBeenCalledWith({
-        where: { fromCurrency: "CAD", toCurrency: "USD" },
+        where: {
+          fromCurrency: "CAD",
+          toCurrency: "USD",
+          rateDate: expect.anything(),
+        },
         order: { rateDate: "DESC" },
       });
     });
@@ -1823,7 +1919,7 @@ describe("ExchangeRateService", () => {
     it("inverts the stored row when the pair is held the other way", async () => {
       // The case that used to come back null. CAD sorts first, so this is the
       // orientation the collapse stores.
-      store([row("CAD", "USD", 0.7326, new Date("2026-02-10"))]);
+      store([row("CAD", "USD", 0.7326, addDaysYMD(today, -10))]);
 
       const result = await service.getLatestRate("USD", "CAD");
 
@@ -1855,6 +1951,18 @@ describe("ExchangeRateService", () => {
       expect(await service.getLatestRate("USD", "CAD")).toBe(1.3);
     });
 
+    it("bounds the answer at FX_MAX_RATE_AGE_DAYS when no age is passed", async () => {
+      store([row("USD", "CAD", 1.3, addDaysYMD(today, -60))]);
+
+      expect(await service.getLatestRate("USD", "CAD")).toBeNull();
+    });
+
+    it("answers a rate inside the default bound", async () => {
+      store([row("USD", "CAD", 1.3, addDaysYMD(today, -10))]);
+
+      expect(await service.getLatestRate("USD", "CAD")).toBe(1.3);
+    });
+
     it("applies an age bound to both directions", async () => {
       store([
         row("USD", "CAD", 1.3, addDaysYMD(today, -200)),
@@ -1878,7 +1986,7 @@ describe("ExchangeRateService", () => {
     });
 
     it("treats a non-positive stored rate as absent", async () => {
-      store([row("USD", "CAD", 0, new Date("2026-02-10"))]);
+      store([row("USD", "CAD", 0, addDaysYMD(today, -10))]);
 
       expect(await service.getLatestRate("USD", "CAD")).toBeNull();
     });
@@ -1886,7 +1994,7 @@ describe("ExchangeRateService", () => {
     it("converts a decimal string from the driver to a number", async () => {
       // The `pg` DATE parser hands the date back as a literal string and numerics
       // arrive as strings too, so this is the shape the real repository returns.
-      store([row("USD", "CAD", "1.3650000000", "2026-02-10")]);
+      store([row("USD", "CAD", "1.3650000000", addDaysYMD(today, -10))]);
 
       const result = await service.getLatestRate("USD", "CAD");
 

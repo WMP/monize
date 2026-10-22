@@ -88,6 +88,7 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-REGISTER-001 one balance per row | required | required | **required** | -- | -- | -- | -- | supporting |
 | INV-REDEEM-001 accrued interest | required | **required** | required | -- | -- | -- | -- | optional |
 | INV-RECONCILE-001 reconciled lock | supporting | **required** | required | required | -- | -- | -- | optional |
+| INV-DELEGATION-001 grant re-checked where written | supporting | -- | required | **required** | -- | -- | -- | -- |
 | INV-FX-001 no 1:1 fallback | **required** | **required** | required | -- | -- | required | optional | required |
 | INV-FX-002 a row's own rate on every surface | **required** | -- | required | -- | -- | -- | -- | optional |
 | INV-FX-003 one stored orientation per pair | **required** | **required** | required (owed by the contract release) | -- | -- | -- | -- | -- |

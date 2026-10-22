@@ -129,6 +129,8 @@ describe("no bond data without a person's action (INV-BOND-008)", () => {
       fetchSync as never,
       catalog,
       new SeriesHttp(health as never),
+      // A run that stored nothing recomputes nothing (A26-L22).
+      { recomputeLinkedSecuritiesOfSeries: jest.fn() } as never,
     );
     refresh.onApplicationBootstrap();
     await new Promise((resolve) => setImmediate(resolve));

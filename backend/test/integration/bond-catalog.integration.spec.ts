@@ -90,6 +90,9 @@ describe("bond catalog and benchmark refresh (integration)", () => {
       fetchSync,
       catalog,
       new SeriesHttp(health),
+      // A store that changes an observation dispatches a recompute (A26-L22);
+      // this suite's securities hold no bond, so a no-op stands in for it.
+      { recomputeLinkedSecuritiesOfSeries: async () => undefined } as never,
     );
   });
 
