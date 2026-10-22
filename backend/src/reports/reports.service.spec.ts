@@ -17,6 +17,7 @@ import {
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
+import { UserPreference } from "../users/entities/user-preference.entity";
 import { BudgetsService } from "../budgets/budgets.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { ReportCurrencyService } from "../built-in-reports/report-currency.service";
@@ -36,6 +37,7 @@ describe("ReportsService", () => {
   let transactionsRepository: Record<string, jest.Mock>;
   let categoriesRepository: Record<string, jest.Mock>;
   let payeesRepository: Record<string, jest.Mock>;
+  let userPreferencesRepository: Record<string, jest.Mock>;
   let mockActionHistoryService: Record<string, jest.Mock>;
   let mockCurrencyService: jest.Mocked<
     Pick<
@@ -138,13 +140,20 @@ describe("ReportsService", () => {
       ...overrides,
     }) as unknown as Transaction;
 
+  // What the search door applied inside a filter-group Brackets.
+  let innerAndWhereCalls: unknown[][] = [];
+
   const createMockInnerQb = () => {
     const inner = {} as Record<string, jest.Mock>;
     const handleArg = (arg: any) => {
       if (arg && arg.whereFactory) {
-        const nestedQb = {
+        const nestedQb: Record<string, jest.Mock> = {
           where: jest.fn().mockReturnThis(),
           orWhere: jest.fn().mockReturnThis(),
+          andWhere: jest.fn().mockImplementation((...args: unknown[]) => {
+            innerAndWhereCalls.push(args);
+            return nestedQb;
+          }),
         };
         arg.whereFactory(nestedQb);
       }
@@ -152,6 +161,10 @@ describe("ReportsService", () => {
     };
     inner.where = jest.fn().mockImplementation(handleArg);
     inner.orWhere = jest.fn().mockImplementation(handleArg);
+    inner.andWhere = jest.fn().mockImplementation((...args: unknown[]) => {
+      innerAndWhereCalls.push(args);
+      return inner;
+    });
     return inner;
   };
 
@@ -181,6 +194,7 @@ describe("ReportsService", () => {
   };
 
   beforeEach(async () => {
+    innerAndWhereCalls = [];
     reportsRepository = {
       create: jest
         .fn()
@@ -203,6 +217,11 @@ describe("ReportsService", () => {
       find: jest.fn().mockResolvedValue([]),
     };
 
+    // The search door reads the user's number and date formats.
+    userPreferencesRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
     mockActionHistoryService = {
       record: jest.fn().mockResolvedValue(null),
     };
@@ -223,6 +242,7 @@ describe("ReportsService", () => {
       [Transaction, transactionsRepository as never],
       [Category, categoriesRepository as never],
       [Payee, payeesRepository as never],
+      [UserPreference, userPreferencesRepository as never],
     ]));
 
     const module: TestingModule = await Test.createTestingModule({
@@ -1024,8 +1044,10 @@ describe("ReportsService", () => {
         const result = await service.execute("user-1", "report-1");
 
         expect(result.data).toHaveLength(1);
-        expect(result.data[0].value).toBe(100); // abs(-60) + abs(-40)
-        expect(result.data[0].count).toBe(2);
+        expect(result.data[0].value).toBe(100); // -(-60 + -40)
+        // A transaction counts once per group (audit A26-M33); the two lines
+        // are one unit when the report is not grouped by category.
+        expect(result.data[0].count).toBe(1);
       });
     });
 
@@ -1949,11 +1971,130 @@ describe("ReportsService", () => {
       });
     });
 
+    describe("signed category sums (audit A26-M33)", () => {
+      const refundRows = () => [
+        createMockTransaction({
+          id: "tx-1",
+          categoryId: "cat-1",
+          amount: -100,
+        }),
+        createMockTransaction({
+          id: "tx-2",
+          categoryId: "cat-1",
+          amount: 30,
+        }),
+        createMockTransaction({
+          id: "tx-3",
+          categoryId: "cat-salary",
+          amount: 5000,
+        }),
+      ];
+
+      it("nets a refund within its category for EXPENSES_ONLY (A26-S16-05)", async () => {
+        setupExecuteMocks(
+          { groupBy: GroupByType.CATEGORY, config: { ...defaultConfig } },
+          refundRows(),
+        );
+
+        const result = await service.execute("user-1", "report-1");
+
+        // Salary is income: it is not a row of an expense report, and it does
+        // not cancel anything in Groceries.
+        expect(result.data).toEqual([
+          expect.objectContaining({ id: "cat-1", value: 70, count: 2 }),
+        ]);
+      });
+
+      it("reports the magnitude of each category's net for BOTH", async () => {
+        setupExecuteMocks(
+          {
+            groupBy: GroupByType.CATEGORY,
+            config: { ...defaultConfig, direction: DirectionFilter.BOTH },
+          },
+          refundRows(),
+        );
+
+        const result = await service.execute("user-1", "report-1");
+
+        expect(result.data.find((d) => d.id === "cat-1")?.value).toBe(70);
+        expect(result.data.find((d) => d.id === "cat-salary")?.value).toBe(
+          5000,
+        );
+      });
+
+      it("nets within each category, never across two, under a month group", async () => {
+        setupExecuteMocks(
+          { groupBy: GroupByType.MONTH, config: { ...defaultConfig } },
+          refundRows(),
+        );
+
+        const result = await service.execute("user-1", "report-1");
+
+        expect(result.data).toHaveLength(1);
+        expect(result.data[0].value).toBe(70);
+        expect(result.data[0].count).toBe(2);
+      });
+
+      it("does not net a transfer pair: each leg is its own cell", async () => {
+        setupExecuteMocks(
+          {
+            groupBy: GroupByType.NONE,
+            config: { ...defaultConfig, includeTransfers: true },
+          },
+          [
+            createMockTransaction({
+              id: "tx-out",
+              amount: -200,
+              isTransfer: true,
+              categoryId: null,
+            }),
+            createMockTransaction({
+              id: "tx-in",
+              amount: 200,
+              isTransfer: true,
+              categoryId: null,
+            }),
+          ],
+        );
+
+        const result = await service.execute("user-1", "report-1");
+
+        expect(result.data).toEqual([
+          expect.objectContaining({ id: "total", value: 200 }),
+        ]);
+      });
+    });
+
     describe("query builder filter application", () => {
-      it("applies direction filter for EXPENSES_ONLY", async () => {
+      it("does not apply the direction filter to a total report, which nets both signs (audit A26-M33)", async () => {
+        for (const direction of [
+          DirectionFilter.EXPENSES_ONLY,
+          DirectionFilter.INCOME_ONLY,
+        ]) {
+          const { qb } = setupExecuteMocks({
+            config: { ...defaultConfig, direction },
+          });
+
+          await service.execute("user-1", "report-1");
+
+          const andWhereCalls = qb.andWhere.mock.calls.map(
+            (c: unknown[]) => c[0],
+          );
+          expect(andWhereCalls).not.toContain(
+            "(transaction.isSplit = true OR transaction.amount < 0)",
+          );
+          expect(andWhereCalls).not.toContain(
+            "(transaction.isSplit = true OR transaction.amount > 0)",
+          );
+        }
+      });
+
+      it("applies direction filter for EXPENSES_ONLY on the NONE metric", async () => {
         const { qb } = setupExecuteMocks({
+          groupBy: GroupByType.NONE,
           config: {
             ...defaultConfig,
+            metric: MetricType.NONE,
             direction: DirectionFilter.EXPENSES_ONLY,
           },
         });
@@ -1970,10 +2111,12 @@ describe("ReportsService", () => {
         );
       });
 
-      it("applies direction filter for INCOME_ONLY", async () => {
+      it("applies direction filter for INCOME_ONLY on the NONE metric", async () => {
         const { qb } = setupExecuteMocks({
+          groupBy: GroupByType.NONE,
           config: {
             ...defaultConfig,
+            metric: MetricType.NONE,
             direction: DirectionFilter.INCOME_ONLY,
           },
         });
@@ -2234,10 +2377,28 @@ describe("ReportsService", () => {
 
         await service.execute("user-1", "report-1");
 
-        expect(qb.andWhere).toHaveBeenCalledWith(
-          "(LOWER(transaction.payeeName) LIKE :searchTerm OR LOWER(transaction.description) LIKE :searchTerm)",
-          { searchTerm: "%coffee%" },
+        // Through the one search door (audit A26-L12): the clause carries the
+        // door's parameter prefix and the bound value is escaped, not hand-built.
+        const searchCall = qb.andWhere.mock.calls.find(
+          (c: unknown[]) => typeof c[0] === "string" && c[0].includes("rsrch"),
         );
+        expect(searchCall).toBeDefined();
+        expect(searchCall![0]).not.toContain("LIKE :searchTerm");
+        expect(Object.values(searchCall![1] as object)).toContain("%coffee%");
+      });
+
+      it("binds a % in the legacy searchText as a literal (audit A26-L12)", async () => {
+        const { qb } = setupExecuteMocks({
+          filters: { searchText: "50%" },
+          config: { ...defaultConfig },
+        });
+
+        await service.execute("user-1", "report-1");
+
+        const searchCall = qb.andWhere.mock.calls.find(
+          (c: unknown[]) => typeof c[0] === "string" && c[0].includes("rsrch"),
+        );
+        expect(Object.values(searchCall![1] as object)).toContain("%50\\%%");
       });
 
       it("does not apply searchText filter when empty/whitespace", async () => {
@@ -2251,9 +2412,11 @@ describe("ReportsService", () => {
         const andWhereCalls = qb.andWhere.mock.calls.map(
           (c: unknown[]) => c[0],
         );
-        expect(andWhereCalls).not.toContain(
-          expect.stringContaining("LIKE :searchTerm"),
-        );
+        expect(
+          andWhereCalls.some(
+            (c: unknown) => typeof c === "string" && c.includes("rsrch"),
+          ),
+        ).toBe(false);
       });
 
       it("applies filterGroups instead of legacy filters when present", async () => {
@@ -2441,6 +2604,25 @@ describe("ReportsService", () => {
 
         const result = await service.execute("user-1", "report-1");
         expect(result).toBeDefined();
+        // Through the search door (audit A26-L12), with the condition's own prefix.
+        expect(innerAndWhereCalls).toHaveLength(1);
+        expect(innerAndWhereCalls[0][0]).toContain("rsrch_g0_c0_");
+        expect(Object.values(innerAndWhereCalls[0][1] as object)).toContain(
+          "%coffee%",
+        );
+      });
+
+      it("adds no condition for a blank filterGroups text value", async () => {
+        setupExecuteMocks({
+          filters: {
+            filterGroups: [{ conditions: [{ field: "text", value: "  " }] }],
+          },
+          config: { ...defaultConfig },
+        });
+
+        await service.execute("user-1", "report-1");
+
+        expect(innerAndWhereCalls).toHaveLength(0);
       });
 
       it("applies filterGroups with text field as array", async () => {
@@ -2670,15 +2852,35 @@ describe("ReportsService", () => {
         setupExecuteMocks(
           {
             groupBy: GroupByType.NONE,
-            config: { ...defaultConfig, metric: MetricType.TOTAL_AMOUNT },
+            config: {
+              ...defaultConfig,
+              metric: MetricType.TOTAL_AMOUNT,
+              direction: DirectionFilter.BOTH,
+            },
           },
           transactions,
         );
 
         const result = await service.execute("user-1", "report-1");
 
+        // A26-M33: a zero net is not net spending, so EXPENSES_ONLY drops it;
+        // BOTH keeps every category's magnitude, zero included.
         expect(result.data).toHaveLength(1);
         expect(result.data[0].value).toBe(0);
+      });
+
+      it("drops a zero-net row from an expense report (audit A26-M33)", async () => {
+        setupExecuteMocks(
+          {
+            groupBy: GroupByType.NONE,
+            config: { ...defaultConfig, metric: MetricType.TOTAL_AMOUNT },
+          },
+          [createMockTransaction({ id: "tx-1", amount: 0 })],
+        );
+
+        const result = await service.execute("user-1", "report-1");
+
+        expect(result.data).toEqual([]);
       });
 
       it("handles positive amounts (income) with abs value", async () => {

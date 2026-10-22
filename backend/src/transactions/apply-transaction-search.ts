@@ -1,4 +1,9 @@
-import { EntityManager, ObjectLiteral, SelectQueryBuilder } from "typeorm";
+import {
+  EntityManager,
+  ObjectLiteral,
+  SelectQueryBuilder,
+  WhereExpressionBuilder,
+} from "typeorm";
 
 import { UserPreference } from "../users/entities/user-preference.entity";
 import {
@@ -65,8 +70,8 @@ export function searchNarrows(parsed: ParsedSearch | undefined): boolean {
 }
 
 /** Applies already-parsed terms to `qb` as one AND-ed condition. */
-export function applyParsedSearch<T extends ObjectLiteral>(
-  qb: SelectQueryBuilder<T>,
+export function applyParsedSearch(
+  qb: WhereExpressionBuilder,
   parsed: ParsedSearch | undefined,
   options: SearchClauseOptions,
 ): void {
