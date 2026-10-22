@@ -1245,6 +1245,15 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
     try {
       // Handle transfer mode
       if (mode === 'transfer') {
+        // An existing income, expense or split cannot become a transfer from
+        // here: creating one would leave the edited row in place and book the
+        // money twice (A26-H14). The mode is not offered on such an edit; this
+        // refuses it should anything else ever select it.
+        if (transaction && !transaction.isTransfer) {
+          toast.error(t('form.toasts.convertToTransferUnsupported'));
+          setIsLoading(false);
+          return;
+        }
         if (!transferToAccountId) {
           toast.error(t('form.toasts.destinationRequired'));
           setIsLoading(false);
@@ -1529,7 +1538,10 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
       onSubmit={handleSubmit(onSubmit)}
       className="space-y-4"
     >
-      {/* Mode selector - show for new/duplicate transactions, or non-transfer edits */}
+      {/* Mode selector - show for new/duplicate transactions, or non-transfer
+          edits. Transfer is offered only on a new entry: an edit has no route
+          that converts the row, and creating a transfer beside it would book
+          the money twice (A26-H14). */}
       {(!transaction || !transaction.isTransfer) && (
         <div className="flex space-x-2 pb-2 border-b dark:border-gray-700">
           <button
@@ -1564,17 +1576,19 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
           >
             {t('form.modeSplit')}
           </button>
-          <button
-            type="button"
-            onClick={() => handleModeChange('transfer')}
-            className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-              mode === 'transfer'
-                ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            {t('form.modeTransfer')}
-          </button>
+          {!transaction && (
+            <button
+              type="button"
+              onClick={() => handleModeChange('transfer')}
+              className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                mode === 'transfer'
+                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              {t('form.modeTransfer')}
+            </button>
+          )}
         </div>
       )}
 

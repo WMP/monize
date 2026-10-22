@@ -2510,22 +2510,67 @@ describe('TransactionForm', () => {
       });
     });
 
-    it('shows mode selector tabs for non-transfer existing transactions', async () => {
-      const existingTransaction = createExistingTransaction({ isTransfer: false });
+    // Switching an existing income, expense or split to Transfer mode created a
+    // second, new transfer and left the edited row in place, under a button
+    // labelled "Update Transfer" (A26-H14). There is no conversion route the
+    // form can call, so an edit does not offer the mode at all.
+    it('does not offer Transfer mode when editing an existing expense', async () => {
+      const existingTransaction = createExistingTransaction({ amount: -50, accountId: 'acc-1' });
 
-      render(
-        <TransactionForm
-          transaction={existingTransaction}
-          onSuccess={mockOnSuccess}
-          onCancel={mockOnCancel}
-        />
-      );
+      await act(async () => {
+        render(
+          <TransactionForm
+            transaction={existingTransaction}
+            onSuccess={mockOnSuccess}
+            onCancel={mockOnCancel}
+          />
+        );
+      });
 
       await waitFor(() => {
-        expect(screen.getByText('Transaction')).toBeInTheDocument();
-        expect(screen.getByText('Split')).toBeInTheDocument();
-        // The "Transfer" button in mode selector is still present for non-transfer transactions
-        expect(screen.getByText('Transfer')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /^Transaction$/ })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /^Split$/ })).toBeInTheDocument();
+      });
+      expect(screen.queryByRole('button', { name: /^Transfer$/ })).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Transaction/i }));
+      });
+      await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+      expect(mockCreateTransfer).not.toHaveBeenCalled();
+      expect(mockUpdateTransfer).not.toHaveBeenCalled();
+    });
+
+    it('does not offer Transfer mode when editing an existing split', async () => {
+      await act(async () => {
+        render(
+          <TransactionForm
+            transaction={createSplitTransaction()}
+            onSuccess={mockOnSuccess}
+            onCancel={mockOnCancel}
+          />
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /^Split$/ })).toBeInTheDocument();
+      });
+      expect(screen.queryByRole('button', { name: /^Transfer$/ })).not.toBeInTheDocument();
+    });
+
+    it('keeps Transfer mode when duplicating an expense into a new entry', async () => {
+      await act(async () => {
+        render(
+          <TransactionForm
+            duplicateFrom={createExistingTransaction({ amount: -50 })}
+            onSuccess={mockOnSuccess}
+            onCancel={mockOnCancel}
+          />
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /^Transfer$/ })).toBeInTheDocument();
       });
     });
 

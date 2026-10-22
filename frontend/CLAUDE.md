@@ -79,7 +79,7 @@ npm run i18n:check         # Verify the pseudo-locale is up to date (CI gate)
 
 **Every user-facing string is translated.** `useTranslations('namespace')`; catalogs in `src/i18n/messages/{locale}/{namespace}.json`, new namespaces registered in `src/i18n/messages.ts`. Develop English-first and run `npm run i18n:pseudo`; translate every other locale as the final commit on the PR (`src/i18n/messages.parity.test.ts`). Compose punctuation in the catalog, not in JSX, and never write `--` in copy. Full flow: `src/i18n/messages/README.md`.
 
-**A form round-trips the row it opened.** Each field loads from the leg it represents (a transfer's Transfer Amount from its FROM leg), and an unedited save sends back what was loaded; `docs/frontend/forms-and-formatting.md`, "Form Patterns".
+**A form round-trips the row it opened.** Each field loads from the leg it represents (a transfer's Transfer Amount from its FROM leg), an unedited save sends back what was loaded, and an edit offers no mode that cannot save the row itself (no Transfer on an existing income, expense or split); `docs/frontend/forms-and-formatting.md`, "Form Patterns".
 
 **Components:** interactive components are `'use client'`; server components are the default for pages and layouts. No `setState` in `useEffect` (`react-hooks/set-state-in-effect`); reset child state from a prop with the "info from previous render" pattern. Nothing interactive goes inside a `<button>` or an `<a>`. Focus rings are `focus-visible:`; transitions carry `motion-reduce:transition-none`.
 
