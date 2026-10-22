@@ -48,6 +48,7 @@
       "tradeChat": "Anda meminta konfirmasi perdagangan terlampir dikenali: usulkan transaksi investasi yang dilaporkannya, berupa pembelian, penjualan, dividen tunai, atau dividen yang diinvestasikan kembali."
     },
     "emailReceipt": "Struk surel: {subject} dari {sender}",
+    "emailReceiptForwarded": "Struk surel: {subject} dari {sender}, diteruskan oleh {forwarder}",
     "emailReceiptMissing": "Struk surel (surel telah dihapus)",
     "parserDraft": "Draf profil dari {count, plural, one {# surel} other {# surel}} ({domain})",
     "viewEmailReceipts": "Lihat struk surel",

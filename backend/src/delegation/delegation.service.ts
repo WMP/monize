@@ -34,6 +34,7 @@ import { UserPreference } from "../users/entities/user-preference.entity";
 import { RefreshToken } from "../auth/entities/refresh-token.entity";
 import {
   revokeOAuthGrantsAfterCommit,
+  revokeRefreshSessionsAfterCommit,
   revokeStandingCredentials,
 } from "../auth/credential-revocation";
 import { Account, AccountType } from "../accounts/entities/account.entity";
@@ -1531,22 +1532,36 @@ export class DelegationService {
     // so a locked-out delegate can sign in with the new password.
     delegate.failedLoginAttempts = 0;
     delegate.lockedUntil = null;
-    await this.systemScoped(User, (repo) => repo.save(delegate));
-
     // Same reach: the sessions being cut are the delegate's, and
     // `refresh_tokens` is keyed to them. A scoped UPDATE matched nothing, so
     // the old password's sessions survived a reset that reported success --
     // the one outcome a credential rotation must never have.
-    // PATs and trusted devices go with them, in the same transaction, and the
-    // OAuth grants after it: a reset that left either live would keep the old
-    // password's access working (`credential-revocation.ts`).
-    await this.systemScoped(RefreshToken, async (repo) => {
-      await repo.update(
-        { userId: delegate.id, isRevoked: false },
-        { isRevoked: true },
-      );
-      await revokeStandingCredentials(repo.manager, delegate.id);
-    });
+    // The password, PATs and trusted devices are one transaction, so a reset
+    // whose revocation fails leaves the old password in place; the refresh
+    // sessions converge and the OAuth grants go after the commit
+    // (`credential-revocation.ts`).
+    await withSystemContext(() =>
+      withScopedDb(this.dataSource, async (manager) => {
+        await manager.getRepository(User).save(delegate);
+        await manager
+          .getRepository(RefreshToken)
+          .update(
+            { userId: delegate.id, isRevoked: false },
+            { isRevoked: true },
+          );
+        await revokeStandingCredentials(manager, delegate.id);
+      }),
+    );
+    // The blanket UPDATE above misses a successor a concurrent rotation
+    // inserted after its snapshot; converge under the family locks. System
+    // context for the same reach as the write above.
+    await withSystemContext(() =>
+      revokeRefreshSessionsAfterCommit(
+        this.dataSource,
+        delegate.id,
+        this.logger,
+      ),
+    );
     await revokeOAuthGrantsAfterCommit(
       this.moduleRef,
       delegate.id,

@@ -173,9 +173,12 @@ section 10.5).
     email stored before this heals on "Reprocess" (idempotent: the forwarder is
     kept once recorded). A header that cannot be read leaves the email as the
     mailbox saw it; an original date later than the day the forward arrived is
-    dropped as garbled. The text is untrusted, so the block can only choose which
-    approved parser reads the email and which days to look at: it never reaches
-    the ledger except through the same card and approval.
+    dropped as garbled. The text is untrusted, so the block is honoured only
+    when the outer From is the owner's own address (the mailbox login or the
+    verified account email), and then it can only choose which approved parser
+    reads the email and which days to look at: a forward never auto-applies, so
+    it reaches the ledger only through a person's approval of the card, which
+    names the forwarder (A26-H02).
 
 13. **Who reads an email, in order.** (1) An approved parser selected for the
     shop's domain wins whenever it finds a `total` or a `paid`. (2) Otherwise,

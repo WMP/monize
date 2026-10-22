@@ -48,6 +48,7 @@
       "tradeChat": "Ekteki işlem onayının tanınmasını istediniz: bildirdiği yatırım işlemini, yani bir alım, satım, nakit temettü veya yeniden yatırılan temettüyü önerin."
     },
     "emailReceipt": "E-posta makbuzu: {subject}, gönderen: {sender}",
+    "emailReceiptForwarded": "E-posta makbuzu: {subject}, gönderen: {sender}, ileten: {forwarder}",
     "emailReceiptMissing": "E-posta makbuzu (e-posta silindi)",
     "parserDraft": "{count, plural, one {# e-postadan} other {# e-postadan}} profil taslağı ({domain})",
     "viewEmailReceipts": "E-posta makbuzlarını görüntüle",
