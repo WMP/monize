@@ -1876,6 +1876,17 @@ describe("UsersService", () => {
       expect(
         queries.some((q: string) => q.includes("DELETE FROM transactions")),
       ).toBe(true);
+      // A warranty's transaction link is ON DELETE SET NULL and the account
+      // survives, so nothing cascades to it: without its own delete every
+      // warranty and claim outlives "delete my data".
+      const claims = queries.findIndex((q: string) =>
+        q.includes("DELETE FROM warranty_claims"),
+      );
+      const warranties = queries.findIndex((q: string) =>
+        q.includes("DELETE FROM warranties"),
+      );
+      expect(claims).toBeGreaterThanOrEqual(0);
+      expect(claims).toBeLessThan(warranties);
       expect(
         queries.some((q: string) =>
           q.includes("DELETE FROM scheduled_transactions"),

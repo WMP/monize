@@ -93,6 +93,11 @@
     "viewAll": "查看所有洞察",
     "activeCount": "{count} 則有效"
   },
+  "warrantiesExpiring": {
+    "title": "即將到期的保固",
+    "empty": "未來 30 天內沒有即將到期的保固",
+    "loadFailed": "無法載入即將到期的保固。請重新載入儀表板後再試。"
+  },
   "topMovers": {
     "title": "漲跌幅排行",
     "empty": {

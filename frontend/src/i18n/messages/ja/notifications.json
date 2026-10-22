@@ -197,5 +197,11 @@
     "readyMessage": "{count, plural, other {#件}}のAI提案が承認を待っています（うち{added}件は新規）。AIレビュー受信箱を開いて承認または却下してください。",
     "expiringTitle": "AIの提案がまもなく期限切れになります",
     "expiringMessage": "{count, plural, other {#件}}のAI提案がまもなく期限切れになります。最初の期限は{date}です。AIレビュー受信箱を開いて承認または却下してください。"
+  },
+  "warranty": {
+    "expiringTitle": "{name}：保証が {days, plural, other {# 日}}以内に期限切れになります",
+    "expiringMessage": "{name} の保証は {date} に期限切れになります。開いて書類を確認するか、保証請求を記録してください。",
+    "todayTitle": "{name}：保証が本日期限切れになります",
+    "todayMessage": "{name} の保証は本日 {date} に期限切れになります。開いて書類を確認するか、保証請求を記録してください。"
   }
 }

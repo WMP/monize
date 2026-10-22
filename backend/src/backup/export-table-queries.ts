@@ -390,6 +390,17 @@ export function buildExportTableQueries(
             WHERE t.user_id = $1`,
     },
     {
+      // Warranties link to a transaction and a payee (both ON DELETE SET NULL)
+      // and never move money. Restored after both, and before
+      // transaction_attachments, whose rows can name a warranty as their parent.
+      key: "warranties",
+      sql: "SELECT * FROM warranties WHERE user_id = $1 ORDER BY purchase_date, created_at, id",
+    },
+    {
+      key: "warranty_claims",
+      sql: "SELECT * FROM warranty_claims WHERE user_id = $1 ORDER BY claim_date, created_at, id",
+    },
+    {
       // Attachment metadata. Restored after transactions (FK) and before
       // attachment_blobs (which references transaction_attachments).
       key: "transaction_attachments",

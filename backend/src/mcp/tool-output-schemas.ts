@@ -537,6 +537,20 @@ export const bondSeriesOutput = toolOutput({
 });
 
 // ---------------------------------------------------------------------------
+// warranties.tool.ts
+// ---------------------------------------------------------------------------
+
+/**
+ * `list_warranties`: the day `status` and `daysLeft` are about, and how many
+ * rows matched against how many came back. The rows are display columns.
+ */
+export const listWarrantiesOutput = toolOutput({
+  today: str,
+  warranties: rows(),
+  total: num,
+});
+
+// ---------------------------------------------------------------------------
 // relay.tool.ts
 // ---------------------------------------------------------------------------
 

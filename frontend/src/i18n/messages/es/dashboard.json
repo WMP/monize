@@ -93,6 +93,11 @@
     "viewAll": "Ver todos los análisis",
     "activeCount": "{count} activos"
   },
+  "warrantiesExpiring": {
+    "title": "Garantías que vencen pronto",
+    "empty": "Nada vence en los próximos 30 días",
+    "loadFailed": "No se pudieron cargar tus garantías por vencer. Recarga el panel para intentarlo de nuevo."
+  },
   "topMovers": {
     "title": "Mayores movimientos",
     "empty": {

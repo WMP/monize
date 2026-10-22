@@ -197,5 +197,11 @@
     "readyMessage": "{count, plural, other {# đề xuất AI}} đang chờ bạn phê duyệt, trong đó {added} đề xuất mới. Mở hộp thư xem xét AI để phê duyệt hoặc bỏ qua.",
     "expiringTitle": "Đề xuất AI sắp hết hạn",
     "expiringMessage": "{count, plural, other {# đề xuất AI}} sắp hết hạn. Đề xuất đầu tiên hết hạn vào {date}. Mở hộp thư xem xét AI để phê duyệt hoặc bỏ qua."
+  },
+  "warranty": {
+    "expiringTitle": "{name}: bảo hành hết hạn trong {days, plural, other {# ngày}}",
+    "expiringMessage": "Bảo hành của {name} hết hạn vào {date}. Mở để xem tài liệu hoặc ghi lại yêu cầu bảo hành.",
+    "todayTitle": "{name}: bảo hành hết hạn hôm nay",
+    "todayMessage": "Bảo hành của {name} hết hạn hôm nay, {date}. Mở để xem tài liệu hoặc ghi lại yêu cầu bảo hành."
   }
 }

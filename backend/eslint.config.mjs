@@ -77,6 +77,12 @@ const WITH_CONTEXT_ALLOWLIST = [
   // moves an elapsed `active` connection to `expired`. No request behind it
   // (docs/specs/bank-sync-notifications.md section 4).
   "src/bank-sync/bank-sync-consent-reminder.service.ts",
+  // Warranty expiry reminders: a daily cron with no request behind it, so a
+  // system-context fan-out over every user's unarchived warranties near their
+  // expiry (and every user's timezone), then a per-user body (withUserContext)
+  // that dispatches the 30, 7 and 0-day reminders
+  // (docs/future-plans/warranty-tracker.md section 6.7).
+  "src/warranties/warranty-expiry-reminder.service.ts",
   "src/budgets/budget-alert.service.ts",
   "src/budgets/budget-period-cron.service.ts",
   // Daily portfolio-movement cron: a system-context fan-out over users with a

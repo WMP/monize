@@ -29,7 +29,10 @@
     "unsupportedType": "Jenis file tidak didukung. Jenis yang diizinkan: {{ types }}",
     "tooMany": "Transaksi ini sudah memiliki maksimum {{ max }} lampiran",
     "swept": "Unggahan memakan waktu terlalu lama dan penyimpanannya telah dibebaskan. Silakan coba lagi.",
-    "pairRequiresImages": "Dokumen yang dipindai dan aslinya harus sama-sama berupa gambar"
+    "pairRequiresImages": "Dokumen yang dipindai dan aslinya harus sama-sama berupa gambar",
+    "warrantyNotFound": "Garansi tidak ditemukan",
+    "tooManyForWarranty": "Garansi ini sudah memiliki maksimum {{ max }} lampiran",
+    "documentKindNotForTransaction": "Jenis dokumen hanya berlaku untuk dokumen garansi"
   },
   "accounts": {
     "accountWithIdNotFound": "Akun dengan ID {{ id }} tidak ditemukan",
@@ -875,5 +878,47 @@
     "selectionNotNew": "Transaksi yang dipilih bukan baris baru dari data bank. Tidak ada yang diimpor; pratinjau lagi.",
     "selectionOverlap": "Sebuah transaksi tidak bisa diimpor sekaligus ditambahkan ke pengecualian.",
     "nothingToUpdate": "Kirim autoSync, notifySuccess atau tagOperationType untuk mengubah koneksi bank."
+  },
+  "warranties": {
+    "notFound": "Garansi dengan ID {{ id }} tidak ditemukan",
+    "transactionNotFound": "Transaksi dengan ID {{ id }} tidak ditemukan",
+    "transactionIsSplitLine": "Garansi ditautkan ke seluruh pembelian, bukan ke salah satu baris split-nya",
+    "payeeNotFound": "Penerima dengan ID {{ id }} tidak ditemukan",
+    "invalidTerm": "Masa garansi harus lebih dari nol",
+    "expiryRequired": "Garansi yang bukan seumur hidup memerlukan tanggal berakhir atau jangka waktu",
+    "expiresBeforePurchase": "Garansi tidak dapat berakhir sebelum tanggal pembeliannya",
+    "priceNeedsCurrency": "Harga pembelian dan mata uangnya diisi bersamaan atau tidak sama sekali",
+    "claimNotFound": "Klaim dengan ID {{ id }} tidak ditemukan",
+    "claimResolvedOnNeedsOutcome": "Tanggal penutupan klaim memerlukan status selesai atau ditolak",
+    "claimResolvedBeforeClaimDate": "Klaim tidak dapat ditutup sebelum tanggal klaimnya",
+    "import": {
+      "noFile": "Pilih file CSV untuk diimpor",
+      "notCsv": "File harus berupa file CSV",
+      "fileTooLarge": "File impor maksimal berukuran 1 MiB",
+      "emptyFile": "File harus memiliki baris header dan setidaknya satu baris data",
+      "tooManyRows": "File impor memiliki {{ count }} baris; maksimal {{ max }} yang diizinkan",
+      "missingColumns": "Baris header file tidak memiliki kolom {{ columns }}",
+      "invalidRows": "{{ count }} baris tidak valid, jadi tidak ada yang diimpor; perbaiki atau lewati baris tersebut",
+      "nameRequired": "ProductName wajib diisi",
+      "purchaseDateRequired": "PurchaseDate wajib diisi",
+      "tooLong": "{{ column }} maksimal {{ max }} karakter",
+      "invalidDate": "{{ column }} harus berupa tanggal dalam format YYYY-MM-DD",
+      "invalidDuration": "{{ column }} harus berupa bilangan bulat dari 0 hingga {{ max }}",
+      "invalidLifetime": "IsLifetime harus true, false, yes, no, 1, atau 0",
+      "noExpirySource": "Isi ExpirationDate, salah satu kolom WarrantyDuration, atau IsLifetime",
+      "lifetimeWithExpiry": "IsLifetime bernilai true, tetapi baris ini juga memberikan ExpirationDate atau WarrantyDuration; isi salah satu saja",
+      "durationIgnored": "ExpirationDate digunakan; kolom WarrantyDuration di sebelahnya diabaikan",
+      "durationDisagrees": "ExpirationDate {{ expiresOn }} digunakan; kolom WarrantyDuration menghasilkan {{ derived }}, yang tidak sesuai",
+      "negativePrice": "PurchasePrice tidak boleh negatif",
+      "invalidPrice": "PurchasePrice harus berupa angka dari 0 hingga {{ max }} dengan maksimal 4 angka desimal",
+      "currencyWithoutPrice": "Currency diisi tetapi PurchasePrice kosong",
+      "unknownCurrency": "Mata uang \"{{ value }}\" tidak dikenal; {{ currency }} digunakan",
+      "unknownWarrantyType": "WarrantyType \"{{ value }}\" bukan manufacturer, extended, store, atau other; diimpor sebagai other",
+      "invalidSerialJson": "SerialNumber diawali [ tetapi bukan array JSON berisi teks",
+      "tooManySerials": "SerialNumber berisi {{ count }} nilai; maksimal {{ max }} yang diizinkan",
+      "serialTooLong": "Setiap nomor seri maksimal {{ max }} karakter",
+      "invalidUrl": "ProductURL harus berupa alamat http atau https",
+      "invalidField": "{{ field }} tidak valid"
+    }
   }
 }

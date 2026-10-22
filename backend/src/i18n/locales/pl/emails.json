@@ -383,6 +383,12 @@
       "readyMessage": "Propozycje czekające na Twoją decyzję: {{ count }}. Nowe od ostatniego powiadomienia: {{ added }}. Otwórz, aby przejrzeć.",
       "expiringTitle": "Propozycje przeglądu AI wkrótce wygasną",
       "expiringMessage": "Propozycje, które wygasną w ciągu 3 dni: {{ count }}. Pierwsza wygasa {{ date }}. Otwórz, aby przejrzeć."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: gwarancja wkrótce wygaśnie",
+      "expiringMessage": "Gwarancja na {{ name }} wygasa {{ date }}. Otwórz ją, aby przejrzeć dokumenty lub zapisać zgłoszenie.",
+      "todayTitle": "{{ name }}: gwarancja wygasa dzisiaj",
+      "todayMessage": "Gwarancja na {{ name }} wygasa dzisiaj, {{ date }}. Otwórz ją, aby przejrzeć dokumenty lub zapisać zgłoszenie."
     }
   },
   "backupOffsite": {

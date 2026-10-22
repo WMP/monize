@@ -2492,11 +2492,16 @@ export class PortfolioService {
     );
     const displayCurrency = query.displayCurrency || preferredCurrency(pref);
 
+    // The window is a span of the user's calendar, as the client and the
+    // period-result service date it: after 20:00 in Toronto the UTC date is
+    // already tomorrow, and a UTC "today" opened 1W and 1M a day late.
+    const today = todayYMD();
     const cacheKey = this.buildIntradayCacheKey(
       userId,
       range,
       accountIds,
       displayCurrency,
+      today,
     );
     const now = Date.now();
     const cached = this.intradayCache.get(cacheKey);
@@ -2541,7 +2546,6 @@ export class PortfolioService {
 
     // Every bar is valued at the positions held at the close of its own day,
     // from the fold the daily series is built by (INV-INTRADAY-001).
-    const today = formatDateYMD(new Date(now));
     const window = intradayWindow(range, today);
     const ledger = await this.loadIntradayLedger(
       userId,
@@ -2754,7 +2758,8 @@ export class PortfolioService {
             windowBars: timestamps,
             step,
             sessionCloses,
-            today,
+            // Compared with the bars' own (UTC) dates, not the user's calendar.
+            today: formatDateYMD(new Date(now)),
           })
         : null;
     if (opening) {
@@ -3210,9 +3215,10 @@ export class PortfolioService {
     range: IntradayRangeKey,
     accountIds: string[] | undefined,
     displayCurrency: string,
+    today: string,
   ): string {
     const acctPart = (accountIds ?? []).slice().sort().join(",");
-    return `${userId}|${range}|${acctPart}|${displayCurrency}`;
+    return `${userId}|${range}|${acctPart}|${displayCurrency}|${today}`;
   }
 
   // ---------------------------------------------------------------------------

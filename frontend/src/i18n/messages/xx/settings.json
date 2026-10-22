@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "[XX-Bank sync results-XX]",
         "EMAIL_RECEIPTS": "[XX-Email receipts-XX]",
         "BONDS": "[XX-Bonds-XX]",
-        "AI_REVIEW": "[XX-AI review proposals-XX]"
+        "AI_REVIEW": "[XX-AI review proposals-XX]",
+        "WARRANTIES": "[XX-Warranty reminders-XX]"
       },
       "channelNotApplicable": "[XX-Not applicable for this notification type-XX]",
       "emailToggleLabel": "[XX-Report email for {category}-XX]",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "[XX-Grant read-only access to whole app sections. Account-scoped data still also needs per-account access.-XX]",
-      "aiRequiresFullAccess": "[XX-The AI Assistant reads across every account and section, so it only answers for this delegate once they can read all of your accounts and every other section.-XX]"
+      "aiRequiresFullAccess": "[XX-The AI Assistant reads across every account and section, so it only answers for this delegate once they can read all of your accounts and every other section.-XX]",
+      "warranties": {
+        "label": "[XX-Warranties-XX]",
+        "description": "[XX-Warranties, their documents and claims. A linked purchase shows only for an account they can read.-XX]"
+      }
     },
     "accounts": {
       "noAccounts": "[XX-No accounts to grant.-XX]",

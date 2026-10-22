@@ -408,6 +408,19 @@ export function composeLocalizedNotificationCopy(
         date: dateLabel(earliest),
       });
     }
+    case NotificationType.WARRANTY_EXPIRING:
+    case NotificationType.WARRANTY_EXPIRES_TODAY: {
+      // The name and the stored expiry date only: nothing counts days from
+      // `now`, so a copy delivered later in a report says the same thing.
+      const expires = calendarDate(data.expiresOn);
+      if (!strings(data, "name") || expires === null) return null;
+      const today = row.type === NotificationType.WARRANTY_EXPIRES_TODAY;
+      return pair(
+        today ? "warranty.todayTitle" : "warranty.expiringTitle",
+        today ? "warranty.todayMessage" : "warranty.expiringMessage",
+        { name: data.name, date: dateLabel(expires) },
+      );
+    }
     case NotificationType.BILL_DUE: {
       const due = calendarDate(data.dueDate);
       if (

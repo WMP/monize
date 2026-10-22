@@ -64,6 +64,7 @@ import { useTransactionsPanelCollapsed } from '@/hooks/useTransactionsPanelColla
 import { ChartCollapseButton, CollapsedChartStrip } from '@/components/transactions/ChartCollapseControls';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { useAuthStore } from '@/store/authStore';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useFormModal } from '@/hooks/useFormModal';
 import { useSwipeToPaginate } from '@/hooks/useSwipeToPaginate';
@@ -125,6 +126,11 @@ function TransactionsContent() {
     usePreferencesStore((s) => s.preferences?.defaultCurrency),
   );
   const { convertToDefault } = useExchangeRates();
+  // An acting delegate never adds a warranty (every warranty write is the
+  // owner's), and lists one only with the Warranties section granted.
+  const actingAsDelegate = useAuthStore((s) => s.actingAsUserId) !== null;
+  const delegateSections = useAuthStore((s) => s.delegateSections);
+  const canViewWarranties = !actingAsDelegate || delegateSections?.warranties === true;
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   // Joint accounts: effective write permissions per shared account, used to
@@ -657,7 +663,9 @@ function TransactionsContent() {
     if (transaction.isTransfer || transaction.isSplit) {
       try {
         const fullTransaction = await transactionsApi.getById(transaction.id);
-        openEdit(fullTransaction);
+        // The register row's warranty count is a list-only field; the form's
+        // Warranties line reads it to decide whether to fetch the list.
+        openEdit({ ...fullTransaction, warrantyCount: transaction.warrantyCount });
       } catch (error) {
         logger.error('Failed to load transaction details:', error);
         openEdit(transaction);
@@ -699,6 +707,52 @@ function TransactionsContent() {
     setShowScheduleForm(true);
   };
 
+  // A warranty lives on its own page: Add opens its form prefilled from this
+  // row, View lists the warranties linked to it.
+  const handleAddWarranty = (transaction: Transaction) => {
+    router.push(`/warranties?new=1&transactionId=${transaction.id}`);
+  };
+
+  const handleViewWarranties = (transaction: Transaction) => {
+    router.push(`/warranties?transactionId=${transaction.id}`);
+  };
+
+  // Add warranty, or a linked warranty, from inside the edit window leaves the
+  // page, so it goes through the window's own close: a dirty form asks first
+  // (Save, Discard or keep editing) and the navigation waits on the answer. It
+  // also waits for the closed Modal to pop its history entry, which would
+  // otherwise undo the push (AccountForm's Import QIF waits the same way); a
+  // bare link in the window is undone the same way, which is why the
+  // Warranties line hands its links here too.
+  const pendingFormNavigation = useRef<string | null>(null);
+  const navigateAfterFormCloses = (href: string) => {
+    window.setTimeout(() => router.push(href), 100);
+  };
+
+  const navigateFromForm = (href: string) => {
+    if (modalProps.onBeforeClose() === false) {
+      pendingFormNavigation.current = href;
+      return;
+    }
+    handleClose();
+    navigateAfterFormCloses(href);
+  };
+
+  const handleAddWarrantyFromForm = (transaction: Transaction) => {
+    navigateFromForm(`/warranties?new=1&transactionId=${transaction.id}`);
+  };
+
+  const handleOpenWarrantyFromForm = (warrantyId: string) => {
+    navigateFromForm(`/warranties/${warrantyId}`);
+  };
+
+  /** The navigation a dirty form's dialog was holding, now that it may go. */
+  const releaseFormNavigation = () => {
+    const href = pendingFormNavigation.current;
+    pendingFormNavigation.current = null;
+    if (href !== null) navigateAfterFormCloses(href);
+  };
+
   const handleScheduleFormSuccess = () => {
     setSchedulingFrom(undefined);
     setShowScheduleForm(false);
@@ -711,6 +765,7 @@ function TransactionsContent() {
   };
 
   const handleClose = () => {
+    pendingFormNavigation.current = null;
     setDuplicatingFrom(undefined);
     close();
   };
@@ -722,6 +777,9 @@ function TransactionsContent() {
     close();
     setFormKey(prev => prev + 1);
     loadData();
+    // Save from the unsaved-changes dialog: the edits are kept, and the
+    // navigation that asked for the close goes ahead.
+    releaseFormNavigation();
   };
 
   // "Create & New" keeps the window open and the form resets itself, so the
@@ -1449,11 +1507,14 @@ function TransactionsContent() {
             onCancel={handleClose}
             onDirtyChange={setFormDirty}
             submitRef={formSubmitRef}
+            onAddWarranty={actingAsDelegate ? undefined : handleAddWarrantyFromForm}
+            onOpenWarranty={handleOpenWarrantyFromForm}
           />
         </Modal>
         <UnsavedChangesDialog
           {...unsavedChangesDialog}
-          onDiscard={() => { setDuplicatingFrom(undefined); unsavedChangesDialog.onDiscard(); }}
+          onDiscard={() => { setDuplicatingFrom(undefined); unsavedChangesDialog.onDiscard(); releaseFormNavigation(); }}
+          onCancel={() => { pendingFormNavigation.current = null; unsavedChangesDialog.onCancel(); }}
         />
 
         {/* Schedule as Recurring Modal */}
@@ -1641,6 +1702,8 @@ function TransactionsContent() {
               onEdit={handleEdit}
               onDuplicate={handleDuplicate}
               onScheduleRecurring={handleScheduleRecurring}
+              onAddWarranty={actingAsDelegate ? undefined : handleAddWarranty}
+              onViewWarranties={canViewWarranties ? handleViewWarranties : undefined}
               onRefresh={loadAllData}
               onTransactionUpdate={handleTransactionUpdate}
               onPayeeClick={handlePayeeView}

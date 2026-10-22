@@ -7,6 +7,11 @@ import {
 import { Brackets, DataSource, QueryFailedError } from "typeorm";
 import { TransactionsService } from "./transactions.service";
 import { primaryAttachmentSql } from "../attachments/primary-attachment.util";
+import {
+  attachmentReachableFromTransactionSql,
+  reachedTransactionIdSql,
+  reachingWarrantyJoinSql,
+} from "../attachments/attachment-parent";
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
 import { TransactionSplit } from "./entities/transaction-split.entity";
 import { Category } from "../categories/entities/category.entity";
@@ -44,6 +49,7 @@ import {
   SearchFormats,
 } from "./transaction-search-query.util";
 import { TransactionAttachment } from "../attachments/entities/transaction-attachment.entity";
+import { Warranty } from "../warranties/entities/warranty.entity";
 import { lockTransactionRow, lockTransactionRows } from "../common/db/locks";
 import { lockedTransactionRow } from "../test-helpers/locks-testing";
 import {
@@ -102,6 +108,7 @@ describe("TransactionsService", () => {
   let investmentTxRepository: Record<string, jest.Mock>;
   let userPreferenceRepository: Record<string, jest.Mock>;
   let attachmentsRepository: Record<string, jest.Mock>;
+  let warrantiesRepository: Record<string, jest.Mock>;
   let accountsService: Record<string, jest.Mock>;
   let payeesService: Record<string, jest.Mock>;
   let netWorthService: Record<string, jest.Mock>;
@@ -177,11 +184,25 @@ describe("TransactionsService", () => {
     // it to no rows so every existing findAll test yields attachmentCount 0.
     attachmentsRepository = {
       createQueryBuilder: jest.fn().mockReturnValue({
+        leftJoin: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         // The count is restricted to primaries -- a scan pair is one
         // attachment, so its hidden original must not reach the paperclip.
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      }),
+    };
+
+    // The warranty-count enrichment is the same grouped shape; no rows by
+    // default, so every existing findAll test yields warrantyCount 0.
+    warrantiesRepository = {
+      createQueryBuilder: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -218,6 +239,7 @@ describe("TransactionsService", () => {
       [Payee, payeesRepository],
       // findAll reads attachment counts through the transaction manager.
       [TransactionAttachment, attachmentsRepository],
+      [Warranty, warrantiesRepository],
     ]);
     mockDataSource = tenantMocks.dataSource;
 
@@ -1592,6 +1614,58 @@ describe("TransactionsService", () => {
       expect(transactionsRepository.find).toHaveBeenLastCalledWith(
         expect.objectContaining({ take: 120 }),
       );
+    });
+  });
+
+  describe("findOneForDisplay", () => {
+    it("adds the register's per-row facts to the row read by id", async () => {
+      const mockTx = {
+        id: "tx-1",
+        userId: "user-1",
+        accountId: "account-1",
+        amount: -50,
+        splits: [],
+      };
+      transactionsRepository.findOne.mockResolvedValue(mockTx);
+      investmentTxRepository.find.mockResolvedValue([
+        { id: "inv-1", transactionId: "tx-1" },
+      ]);
+      const warrantyQb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ transactionId: "tx-1", count: "2" }]),
+      };
+      warrantiesRepository.createQueryBuilder.mockReturnValue(warrantyQb);
+
+      const result = await service.findOneForDisplay("user-1", "tx-1");
+
+      // A form opened on this row by id lists its warranties (the count is
+      // what the warranties line waits on) and sends an investment's cash
+      // leg to Investments, exactly as from the register.
+      expect(result).toMatchObject({
+        id: "tx-1",
+        warrantyCount: 2,
+        attachmentCount: 0,
+        linkedInvestmentTransactionId: "inv-1",
+      });
+      expect(warrantyQb.where).toHaveBeenCalledWith(
+        "w.transactionId IN (:...transactionIds)",
+        { transactionIds: ["tx-1"] },
+      );
+    });
+
+    it("refuses a row the caller cannot read, as findOne does", async () => {
+      transactionsRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.findOneForDisplay("user-1", "tx-1")).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(warrantiesRepository.createQueryBuilder).not.toHaveBeenCalled();
     });
   });
 
@@ -3134,6 +3208,24 @@ describe("TransactionsService", () => {
       );
     });
 
+    // A receipt on the row's warranty is one of the row's attachments (the
+    // maintainer's ruling, attachment-parent.ts), so the filter reaches it
+    // through the shared fragment rather than the row's own column alone.
+    it.each([true, false])(
+      "reaches the linked warranties' documents when hasAttachments is %s",
+      async (hasAttachments) => {
+        const mockQb = createMockQueryBuilder();
+        mockQb.getManyAndCount.mockResolvedValue([[], 0]);
+        await findAllWith({ hasAttachments }, mockQb);
+
+        expect(mockQb.andWhere).toHaveBeenCalledWith(
+          expect.stringContaining(
+            attachmentReachableFromTransactionSql("ta", "transaction.id"),
+          ),
+        );
+      },
+    );
+
     it("filters to transactions without attachments (NOT EXISTS)", async () => {
       const mockQb = createMockQueryBuilder();
       mockQb.getManyAndCount.mockResolvedValue([[], 0]);
@@ -3186,17 +3278,18 @@ describe("TransactionsService", () => {
       ]);
       transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
       investmentTxRepository.find.mockResolvedValue([]);
-      const attachmentCountAndWhere = jest.fn().mockReturnThis();
-      attachmentsRepository.createQueryBuilder.mockReturnValue({
+      const countQb = {
+        leftJoin: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
-        andWhere: attachmentCountAndWhere,
+        andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
         getRawMany: jest
           .fn()
           .mockResolvedValue([{ transactionId: "tx-1", count: "3" }]),
-      });
+      };
+      attachmentsRepository.createQueryBuilder.mockReturnValue(countQb);
 
       const result = await service.findAll("user-1");
 
@@ -3205,9 +3298,89 @@ describe("TransactionsService", () => {
       // The paperclip counts what the attachments list shows, and that list
       // hides a scan pair's original -- so the count is restricted to primaries
       // through the shared predicate.
-      expect(attachmentCountAndWhere).toHaveBeenCalledWith(
-        primaryAttachmentSql("ta"),
+      expect(countQb.andWhere).toHaveBeenCalledWith(primaryAttachmentSql("ta"));
+      // ... and that list carries the documents of every warranty linked to
+      // the row (the maintainer's ruling), so each attachment is keyed by the
+      // transaction it is reached from, own or through its warranty, in one
+      // grouped query over the page's ids.
+      const reachedFrom = reachedTransactionIdSql("ta", "w");
+      expect(countQb.leftJoin).toHaveBeenCalledWith(
+        Warranty,
+        "w",
+        reachingWarrantyJoinSql("ta", "w"),
       );
+      expect(countQb.select).toHaveBeenCalledWith(reachedFrom, "transactionId");
+      expect(countQb.where).toHaveBeenCalledWith(
+        `${reachedFrom} IN (:...transactionIds)`,
+        { transactionIds: ["tx-1", "tx-2"] },
+      );
+      expect(countQb.groupBy).toHaveBeenCalledWith(reachedFrom);
+      expect(attachmentsRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
+    });
+
+    it("annotates each transaction with its unarchived warranty count", async () => {
+      const mockQb = createMockQueryBuilder();
+      mockQb.getManyAndCount.mockResolvedValue([
+        [
+          { id: "tx-1", isCleared: false, isReconciled: false, isVoid: false },
+          { id: "tx-2", isCleared: false, isReconciled: false, isVoid: false },
+        ],
+        2,
+      ]);
+      transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
+      investmentTxRepository.find.mockResolvedValue([]);
+      const warrantyQb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ transactionId: "tx-2", count: "2" }]),
+      };
+      warrantiesRepository.createQueryBuilder.mockReturnValue(warrantyQb);
+
+      const result = await service.findAll("user-1");
+
+      expect(result.data[0].warrantyCount).toBe(0);
+      expect(result.data[1].warrantyCount).toBe(2);
+      // One grouped count over the page's ids, never one query per row, and
+      // an archived warranty is not on the badge.
+      expect(warrantiesRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
+      expect(warrantyQb.where).toHaveBeenCalledWith(
+        "w.transactionId IN (:...transactionIds)",
+        { transactionIds: ["tx-1", "tx-2"] },
+      );
+      expect(warrantyQb.andWhere).toHaveBeenCalledWith("w.archivedAt IS NULL");
+      expect(warrantyQb.groupBy).toHaveBeenCalledWith("w.transactionId");
+      // The warranty count never borrows the attachment count's rows.
+      expect(result.data[1].attachmentCount).toBe(0);
+    });
+
+    it("reports warrantyCount 0 on every row of a page without warranties", async () => {
+      const mockQb = createMockQueryBuilder();
+      mockQb.getManyAndCount.mockResolvedValue([
+        [{ id: "tx-1", isCleared: false, isReconciled: false, isVoid: false }],
+        1,
+      ]);
+      transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
+      investmentTxRepository.find.mockResolvedValue([]);
+
+      const result = await service.findAll("user-1");
+
+      expect(result.data[0].warrantyCount).toBe(0);
+    });
+
+    it("reads no warranty counts for an empty page", async () => {
+      const mockQb = createMockQueryBuilder();
+      mockQb.getManyAndCount.mockResolvedValue([[], 0]);
+      transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
+
+      await service.findAll("user-1");
+
+      // `IN ()` is a syntax error; the enrichment skips the query instead.
+      expect(warrantiesRepository.createQueryBuilder).not.toHaveBeenCalled();
     });
 
     it("applies pagination with page and limit", async () => {
@@ -5406,6 +5579,7 @@ describe("TransactionsService", () => {
         expect(rows.map((r) => r.id)).toEqual(["tx-1", "tx-2"]);
         expect(rows[0].linkedInvestmentTransactionId).toBe("inv-1");
         expect(rows[1].attachmentCount).toBe(0);
+        expect(rows[1].warrantyCount).toBe(0);
       });
 
       it("joins exactly what findAll joins, so a row is drawn the same on both", async () => {

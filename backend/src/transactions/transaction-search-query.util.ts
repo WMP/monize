@@ -123,7 +123,7 @@ export const SEARCH_ENUM_VALUES: Readonly<
 > = {
   status: ["cleared", "reconciled", "unreconciled", "void"],
   is: ["transfer", "split", "uncategorized"],
-  has: ["attachment", "ref", "memo", "tag"],
+  has: ["attachment", "warranty", "ref", "memo", "tag"],
 };
 
 type Comparator = "gt" | "gte" | "lt" | "lte";

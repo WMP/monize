@@ -6,6 +6,7 @@ import { AiReviewWorkService } from "../../ai-review/ai-review-work.service";
 import { ASSISTANT_CLAIM_KEY } from "../../ai-review/ai-review-work.types";
 import { EmailReceiptParserToolsService } from "../../email-receipts/parsers/email-receipt-parser-tools.service";
 import { BondSeriesService } from "../../bonds/bond-series.service";
+import { WarrantiesService } from "../../warranties/warranties.service";
 import { EMAIL_RECEIPT_PARSER_TOOL_DESCRIPTION } from "../../email-receipts/parsers/parser-tool.guide";
 import { AiActionBuilderService } from "../actions/ai-action-builder.service";
 import { AccountsService } from "../../accounts/accounts.service";
@@ -83,6 +84,7 @@ describe("ToolExecutorService email_receipt_parsers", () => {
         ToolExecutorService,
         { provide: EmailReceiptParserToolsService, useValue: tools },
         { provide: BondSeriesService, useValue: {} },
+        { provide: WarrantiesService, useValue: {} },
         ...unused,
       ],
     }).compile();

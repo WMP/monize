@@ -21,6 +21,7 @@ const widgetSkeleton = (minHeight = 'lg:min-h-[540px]') =>
   function WidgetSkeleton() {
     return <Card padding="md" className={minHeight} />;
   };
+const WarrantiesExpiringWidget = dynamic(() => import('./WarrantiesExpiringWidget').then(m => m.WarrantiesExpiringWidget), { ssr: false, loading: widgetSkeleton('lg:min-h-[390px]') });
 const ExpensesPieChart = dynamic(() => import('./ExpensesPieChart').then(m => m.ExpensesPieChart), {
   ssr: false,
   loading: widgetSkeleton(),
@@ -75,7 +76,8 @@ export type DashboardWidgetId =
   | 'geographic-allocation'
   | 'recurring-expenses'
   | 'weekend-weekday'
-  | 'cash-flow-sankey';
+  | 'cash-flow-sankey'
+  | 'warranties-expiring';
 
 /** The kind of visualization a widget renders, shown as an icon in Customize. */
 export type WidgetIconType = 'bar' | 'line' | 'pie' | 'table' | 'list';
@@ -348,6 +350,15 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
     iconType: 'bar',
     defaultEnabled: false,
     render: (ctx) => <CashFlowSankeyWidget accounts={ctx.accounts} isLoading={ctx.isLoading} />,
+  },
+  // Opt-in for the owner; a delegate sees it with the warranties section.
+  {
+    id: 'warranties-expiring',
+    titleSection: 'warrantiesExpiring',
+    iconType: 'list',
+    defaultEnabled: false,
+    delegateVisible: (sections) => !!sections?.warranties,
+    render: (ctx) => <WarrantiesExpiringWidget isLoading={ctx.isLoading} />,
   },
 ];
 

@@ -197,5 +197,11 @@
     "readyMessage": "{count, plural, one {# proposta IA attende} other {# proposte IA attendono}} la tua approvazione, di cui {added} nuove. Apri la casella di revisione IA per approvarle o rifiutarle.",
     "expiringTitle": "Proposte IA in scadenza",
     "expiringMessage": "{count, plural, one {# proposta IA scade} other {# proposte IA scadono}} a breve. La prima scade il {date}. Apri la casella di revisione IA per approvarle o rifiutarle."
+  },
+  "warranty": {
+    "expiringTitle": "{name}: la garanzia scade entro {days, plural, one {# giorno} other {# giorni}}",
+    "expiringMessage": "La garanzia di {name} scade il {date}. Aprila per controllare i documenti o registrare una richiesta di assistenza.",
+    "todayTitle": "{name}: la garanzia scade oggi",
+    "todayMessage": "La garanzia di {name} scade oggi, {date}. Aprila per controllare i documenti o registrare una richiesta di assistenza."
   }
 }
