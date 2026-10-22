@@ -93,6 +93,11 @@
     "viewAll": "すべてのインサイトを見る",
     "activeCount": "{count} 件有効"
   },
+  "warrantiesExpiring": {
+    "title": "まもなく期限切れになる保証",
+    "empty": "今後 30 日以内に期限切れになるものはありません",
+    "loadFailed": "期限切れが近い保証を読み込めませんでした。ダッシュボードを再読み込みして、もう一度お試しください。"
+  },
   "topMovers": {
     "title": "値動き上位",
     "empty": {

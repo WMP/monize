@@ -23,13 +23,18 @@ interface PageHeaderProps {
    * institution logo on account detail pages). Omitted by default.
    */
   icon?: ReactNode;
+  /**
+   * Optional element drawn on the title's line, after it (e.g. a status pill
+   * on a detail page). Omitted by default.
+   */
+  titleAdornment?: ReactNode;
 }
 
 /**
  * Inline page header with title, subtitle, and action buttons.
  * Renders directly in the content area without a separate background bar.
  */
-export function PageHeader({ title, subtitle, actions, helpUrl, compactMobileActions, icon }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, actions, helpUrl, compactMobileActions, icon, titleAdornment }: PageHeaderProps) {
   const t = useTranslations('layout');
 
   const layoutClasses = actions
@@ -44,6 +49,7 @@ export function PageHeader({ title, subtitle, actions, helpUrl, compactMobileAct
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
           {title}
         </h1>
+        {titleAdornment}
         {helpUrl && (
             <span className="relative inline-flex items-center group/help">
               <a

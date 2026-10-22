@@ -35,6 +35,7 @@ describe("TransactionsController", () => {
       createTransferWithOutcome: jest.fn(),
       findAll: jest.fn(),
       findOne: jest.fn(),
+      findOneForDisplay: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
       markCleared: jest.fn(),
@@ -935,14 +936,25 @@ describe("TransactionsController", () => {
   });
 
   describe("findOne()", () => {
-    it("delegates to service.findOne with userId and id", async () => {
-      const expected = { id: "tx-1", amount: -50 };
-      mockService.findOne.mockResolvedValue(expected);
+    it("answers with the row as the register shows it, counts included", async () => {
+      const expected = {
+        id: "tx-1",
+        amount: -50,
+        linkedInvestmentTransactionId: null,
+        attachmentCount: 1,
+        warrantyCount: 2,
+      };
+      mockService.findOneForDisplay.mockResolvedValue(expected);
 
       const result = await controller.findOne(mockReq, "tx-1");
 
       expect(result).toEqual(expected);
-      expect(mockService.findOne).toHaveBeenCalledWith("user-1", "tx-1", []);
+      expect(mockService.findOneForDisplay).toHaveBeenCalledWith(
+        "user-1",
+        "tx-1",
+        [],
+      );
+      expect(mockService.findOne).not.toHaveBeenCalled();
     });
   });
 

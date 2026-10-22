@@ -41,6 +41,7 @@ import { AiReviewApprovalController } from "../ai-review/ai-review-approval.cont
 import { AiReviewApprovalService } from "../ai-review/ai-review-approval.service";
 import { EmailReceiptParsersModule } from "../email-receipts/parsers/email-receipt-parsers.module";
 import { BondsModule } from "../bonds/bonds.module";
+import { WarrantiesModule } from "../warranties/warranties.module";
 
 @Module({
   imports: [
@@ -83,6 +84,8 @@ import { BondsModule } from "../bonds/bonds.module";
     forwardRef(() => EmailReceiptParsersModule),
     // The `fetch_bond_series` tool's logic (BondsModule exports it).
     forwardRef(() => BondsModule),
+    // The `list_warranties` tool's logic (WarrantiesModule exports it).
+    WarrantiesModule,
   ],
   providers: [
     AiService,

@@ -65,7 +65,12 @@ describe("a scanned attachment and the original it came from", () => {
     original?: UploadedAttachmentFile,
   ) =>
     withUserContext(userId, () =>
-      service.create(userId, transactionId, file, original),
+      service.create(
+        userId,
+        { kind: "transaction", id: transactionId },
+        file,
+        original,
+      ),
     );
 
   const rows = (): Promise<
@@ -178,7 +183,7 @@ describe("a scanned attachment and the original it came from", () => {
     await create(upload("plain.png", PNG));
 
     const listed = await withUserContext(userId, () =>
-      service.findAllForTransaction(userId, transactionId),
+      service.findAllFor(userId, { kind: "transaction", id: transactionId }),
     );
 
     expect(listed).toHaveLength(2);

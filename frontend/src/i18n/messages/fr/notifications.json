@@ -197,5 +197,11 @@
     "readyMessage": "{count, plural, one {# proposition IA attend} other {# propositions IA attendent}} votre approbation, dont {added} de nouvelles. Ouvrez la boîte de revue IA pour les approuver ou les rejeter.",
     "expiringTitle": "Des propositions IA expirent bientôt",
     "expiringMessage": "{count, plural, one {# proposition IA expire} other {# propositions IA expirent}} bientôt. La première expire le {date}. Ouvrez la boîte de revue IA pour les approuver ou les rejeter."
+  },
+  "warranty": {
+    "expiringTitle": "{name} : la garantie expire dans {days, plural, one {# jour} other {# jours}}",
+    "expiringMessage": "La garantie de {name} expire le {date}. Ouvrez-la pour consulter ses documents ou enregistrer une réclamation.",
+    "todayTitle": "{name} : la garantie expire aujourd'hui",
+    "todayMessage": "La garantie de {name} expire aujourd'hui, le {date}. Ouvrez-la pour consulter ses documents ou enregistrer une réclamation."
   }
 }

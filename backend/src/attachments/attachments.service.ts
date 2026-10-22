@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -10,7 +11,7 @@ import { createHash, randomUUID } from "crypto";
 import { DataSource, EntityManager } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { getRequestContext } from "../common/request-context";
-import { lockTransactionRow } from "../common/db/locks";
+import { lockTransactionRow, lockWarrantyRow } from "../common/db/locks";
 import { returnedRows } from "../common/db/query-result";
 import { AttachmentOrphanSweeper } from "./attachment-orphan-sweeper.service";
 import { tr } from "../i18n/translate";
@@ -30,11 +31,36 @@ import {
   primaryAttachmentSql,
   primaryAttachmentWhere,
 } from "./primary-attachment.util";
+import {
+  AttachmentParent,
+  attachmentParentColumns,
+  attachmentParentWhere,
+  DEFAULT_DOCUMENT_KIND,
+  DocumentKind,
+  parentColumn,
+  reachedTransactionIdSql,
+  reachingWarrantyJoinSql,
+} from "./attachment-parent";
+import { Warranty } from "../warranties/entities/warranty.entity";
+import { AttachmentListItemDto } from "./dto/attachment-list-item.dto";
 
 /** Largest single attachment we accept (also enforced by the upload interceptor). */
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10 MB
-/** Maximum attachments per transaction. */
+/**
+ * Maximum visible attachments per parent. Named for the transaction it was
+ * written for; a warranty takes the same cap under the same lock doctrine.
+ */
 export const MAX_ATTACHMENTS_PER_TRANSACTION = 10;
+
+/**
+ * Who is downloading, beyond the user id. `isDelegate` is the request's
+ * `isActing`: the global guard has already admitted the delegate to the route
+ * through the `warranties` section, and the service adds the one fact the
+ * guard cannot see, which parent the row hangs off.
+ */
+export interface AttachmentReader {
+  isDelegate?: boolean;
+}
 
 export interface AttachmentDownload {
   data: Buffer;
@@ -63,11 +89,17 @@ interface ValidatedUpload {
 
 /**
  * A listed attachment: the visible row, plus the id of the original photo it
- * was scanned from when there is one. `null` means there is no original --
- * an ordinary upload, or a scan whose original the user chose not to keep.
+ * was scanned from when there is one (`null` means there is no original --
+ * an ordinary upload, or a scan whose original the user chose not to keep)
+ * and the name of the warranty a document hangs off (`null` on a
+ * transaction's own rows). The Swagger class is the one definition.
  */
-export interface AttachmentListItem extends TransactionAttachment {
-  originalAttachmentId: string | null;
+export type AttachmentListItem = AttachmentListItemDto;
+
+/** The raw columns the list read selects beside each entity row. */
+interface ListRawRow {
+  orig_id: string | null;
+  warranty_name: string | null;
 }
 
 /**
@@ -104,9 +136,11 @@ export class AttachmentsService {
   }
 
   /**
-   * Store an uploaded file against a transaction. Validates size, sniffs the
-   * real MIME type (never trusting the client), enforces the per-transaction
-   * cap, and writes metadata + bytes together.
+   * Store an uploaded file against its parent, a transaction or a warranty
+   * (`AttachmentParent`, WTY-003). Validates size, sniffs the real MIME type
+   * (never trusting the client), enforces the per-parent cap, and writes
+   * metadata + bytes together. `documentKind` is what a warranty's document
+   * is; a transaction's attachments take the default.
    *
    * "Together" means different things per provider, and the difference matters:
    * the database provider's blob write joins this transaction and genuinely
@@ -146,10 +180,24 @@ export class AttachmentsService {
    */
   async create(
     userId: string,
-    transactionId: string,
+    parent: AttachmentParent,
     file: UploadedAttachmentFile | undefined,
     original?: UploadedAttachmentFile | undefined,
+    documentKind: DocumentKind = DEFAULT_DOCUMENT_KIND,
   ): Promise<TransactionAttachment> {
+    // A kind names a warranty's document; a transaction's attachment has none
+    // to name, so anything but the default is a malformed request.
+    if (
+      parent.kind === "transaction" &&
+      documentKind !== DEFAULT_DOCUMENT_KIND
+    ) {
+      throw new BadRequestException(
+        tr(
+          "errors.attachments.documentKindNotForTransaction",
+          "A document kind applies only to a warranty's documents",
+        ),
+      );
+    }
     const primary = this.validateUpload(file);
 
     // A scan pair: the enhanced image the user sees, plus the photo it came
@@ -185,35 +233,27 @@ export class AttachmentsService {
     const objectsWritten = new Set<string>();
     try {
       return await withScopedDb(this.dataSource, async (m) => {
-        // Lock the parent transaction before counting. The cap is a refusal, and
-        // a count taken without the lock is a check-then-act: at 9 attachments
+        // Lock the parent row before counting. The cap is a refusal, and a
+        // count taken without the lock is a check-then-act: at 9 attachments
         // two uploads both counted 9, both passed `< 10`, and the transaction
         // ended with 11 (audit P4-017). Every uploader now queues behind the
-        // same row, so the count each one sees includes its predecessor.
-        const locked = await lockTransactionRow(m, transactionId, userId);
-        if (!locked) {
-          throw new NotFoundException(
-            tr(
-              "errors.attachments.transactionNotFound",
-              "Transaction not found",
-            ),
-          );
-        }
+        // same row, so the count each one sees includes its predecessor. Both
+        // locks are owner-scoped, so a parent that is not the caller's reads
+        // as absent whatever the RLS mode.
+        await this.lockParent(m, parent, userId);
 
         // Primaries only: a scan pair is one attachment as far as the cap is
         // concerned, so its hidden original must not consume a slot the user
         // cannot see or free.
         const existing = await m.getRepository(TransactionAttachment).count({
-          where: { transactionId, userId, ...primaryAttachmentWhere },
+          where: {
+            ...attachmentParentWhere(parent),
+            userId,
+            ...primaryAttachmentWhere,
+          },
         });
         if (existing >= MAX_ATTACHMENTS_PER_TRANSACTION) {
-          throw new BadRequestException(
-            tr(
-              "errors.attachments.tooMany",
-              `This transaction already has the maximum of ${MAX_ATTACHMENTS_PER_TRANSACTION} attachments`,
-              { max: MAX_ATTACHMENTS_PER_TRANSACTION },
-            ),
-          );
+          throw new BadRequestException(this.tooManyMessage(parent));
         }
 
         const repo = m.getRepository(TransactionAttachment);
@@ -222,10 +262,13 @@ export class AttachmentsService {
           upload: ValidatedUpload,
           originalOfAttachmentId: string | null,
         ): Promise<TransactionAttachment> => {
+          // Both halves of a scan pair carry the same parent and the same
+          // document kind: the pair is one attachment.
           const row = repo.create({
             id: rowId,
             userId,
-            transactionId,
+            ...attachmentParentColumns(parent),
+            documentKind,
             filename: upload.filename,
             contentType: upload.contentType,
             byteSize: upload.buffer.length,
@@ -284,6 +327,49 @@ export class AttachmentsService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Row-lock the parent, or refuse with a not-found that names its kind.
+   *
+   * The two helpers share one doctrine (`common/db/locks.ts`): an owner-scoped
+   * `FOR UPDATE` that returns null for a row that is gone or somebody else's.
+   * Choosing between them is the only place the parent's kind is branched on
+   * for the write; every other site derives its column from the kind.
+   */
+  private async lockParent(
+    m: EntityManager,
+    parent: AttachmentParent,
+    userId: string,
+  ): Promise<void> {
+    if (parent.kind === "transaction") {
+      const locked = await lockTransactionRow(m, parent.id, userId);
+      if (locked) return;
+      throw new NotFoundException(
+        tr("errors.attachments.transactionNotFound", "Transaction not found"),
+      );
+    }
+    const locked = await lockWarrantyRow(m, parent.id, userId);
+    if (locked) return;
+    throw new NotFoundException(
+      tr("errors.attachments.warrantyNotFound", "Warranty not found"),
+    );
+  }
+
+  /** The cap refusal, worded for the parent it is about. */
+  private tooManyMessage(parent: AttachmentParent): string {
+    const max = MAX_ATTACHMENTS_PER_TRANSACTION;
+    return parent.kind === "transaction"
+      ? tr(
+          "errors.attachments.tooMany",
+          `This transaction already has the maximum of ${max} attachments`,
+          { max },
+        )
+      : tr(
+          "errors.attachments.tooManyForWarranty",
+          `This warranty already has the maximum of ${max} attachments`,
+          { max },
+        );
   }
 
   /**
@@ -376,40 +462,115 @@ export class AttachmentsService {
   }
 
   /**
-   * List attachment metadata for one of the user's transactions (no bytes).
+   * List attachment metadata under one of the user's parents, a transaction or
+   * a warranty (no bytes).
+   *
+   * A transaction's list is its own attachments followed by the documents of
+   * every warranty linked to it, archived or not (the maintainer's ruling,
+   * `attachment-parent.ts`); each row names its warranty. A warranty's list is
+   * its own documents alone.
    *
    * Primaries only: a scan pair is one attachment, and its original is reached
    * through `originalAttachmentId` rather than listed beside the row it belongs
-   * to. The id comes from one LEFT JOIN, not a query per row.
+   * to. The id and the warranty's name come from two LEFT JOINs, not a query
+   * per row.
    */
-  async findAllForTransaction(
+  async findAllFor(
     userId: string,
-    transactionId: string,
+    parent: AttachmentParent,
   ): Promise<AttachmentListItem[]> {
     return withScopedDb(this.dataSource, async (m) => {
-      const rows = await m
-        .getRepository(TransactionAttachment)
-        .createQueryBuilder("ta")
-        .leftJoin(
-          TransactionAttachment,
-          "orig",
-          "orig.original_of_attachment_id = ta.id",
+      const rows = await this.listQuery(m)
+        .where(
+          parent.kind === "transaction"
+            ? `${reachedTransactionIdSql("ta", "w")} = :parentId`
+            : `ta.${parentColumn(parent)} = :parentId`,
+          { parentId: parent.id },
         )
-        .addSelect("orig.id", "orig_id")
-        .where("ta.transaction_id = :transactionId", { transactionId })
         .andWhere("ta.user_id = :userId", { userId })
         .andWhere(primaryAttachmentSql("ta"))
-        .orderBy("ta.created_at", "ASC")
+        // Own rows first (their warranty_id is NULL, and FALSE sorts before
+        // TRUE), then the warranties' documents; upload order within each.
+        .orderBy("ta.warranty_id IS NOT NULL", "ASC")
+        .addOrderBy("ta.created_at", "ASC")
         .getRawAndEntities();
 
-      return rows.entities.map((entity, index) => ({
-        ...entity,
+      return rows.entities.map((entity, index) =>
         // Raw and entity rows are the same query in the same order, so the
         // index pairs them; `getRawAndEntities` guarantees that alignment.
-        originalAttachmentId:
-          (rows.raw[index] as { orig_id: string | null } | undefined)
-            ?.orig_id ?? null,
-      }));
+        toListItem(entity, rows.raw[index] as ListRawRow | undefined),
+      );
+    });
+  }
+
+  /**
+   * The list read's shape, shared with the kind update's response: each
+   * attachment row beside the id of its scan original and the name of the
+   * warranty it hangs off. The caller adds the restriction.
+   */
+  private listQuery(m: EntityManager) {
+    return m
+      .getRepository(TransactionAttachment)
+      .createQueryBuilder("ta")
+      .leftJoin(
+        TransactionAttachment,
+        "orig",
+        "orig.original_of_attachment_id = ta.id",
+      )
+      .addSelect("orig.id", "orig_id")
+      .leftJoin(Warranty, "w", reachingWarrantyJoinSql("ta", "w"))
+      .addSelect("w.name", "warranty_name");
+  }
+
+  /**
+   * Change what a warranty's document is, after upload.
+   *
+   * A transaction's attachment has no kind to change (W4), so the refusal is
+   * the same 400 `create` gives a kind on a transaction parent. A scan pair is
+   * one document, so the hidden original takes the kind in the same statement
+   * as its visible row; a pair that disagreed would be two documents to the
+   * next read. The load, the refusal and the write share one transaction, so a
+   * refused request has written nothing.
+   */
+  async updateDocumentKind(
+    userId: string,
+    id: string,
+    documentKind: DocumentKind,
+  ): Promise<AttachmentListItem> {
+    return withScopedDb(this.dataSource, async (m) => {
+      const repo = m.getRepository(TransactionAttachment);
+      const row = await repo.findOne({ where: { id, userId } });
+      if (!row) {
+        throw new NotFoundException(
+          tr("errors.attachments.notFound", "Attachment not found"),
+        );
+      }
+      if (row.warrantyId === null) {
+        throw new BadRequestException(
+          tr(
+            "errors.attachments.documentKindNotForTransaction",
+            "A document kind applies only to a warranty's documents",
+          ),
+        );
+      }
+      await m.query(
+        `UPDATE transaction_attachments SET document_kind = $1
+          WHERE (id = $2 OR original_of_attachment_id = $2) AND user_id = $3`,
+        [documentKind, id, userId],
+      );
+      const updated = await this.listQuery(m)
+        .where("ta.id = :id", { id })
+        .andWhere("ta.user_id = :userId", { userId })
+        .getRawAndEntities();
+      const entity = updated.entities[0];
+      if (!entity) {
+        // Deleted between the lock-free load and the read-back: the row the
+        // caller named is gone, which is the not-found above, not a success.
+        throw new NotFoundException(
+          tr("errors.attachments.notFound", "Attachment not found"),
+        );
+      }
+      return toListItem(entity, updated.raw[0] as ListRawRow | undefined);
     });
   }
 
@@ -428,7 +589,7 @@ export class AttachmentsService {
    * is one grouped aggregate rather than a query per user.
    *
    * Every row counts, including the unprocessed original of a scan pair, which
-   * `findAllForTransaction` deliberately hides: an original the user chose to
+   * `findAllFor` deliberately hides: an original the user chose to
    * keep occupies its bytes whether or not the register lists it beside the
    * visible half.
    *
@@ -467,10 +628,18 @@ export class AttachmentsService {
     );
   }
 
-  /** Load one attachment's bytes and headers for streaming download. */
+  /**
+   * Load one attachment's bytes and headers for streaming download.
+   *
+   * A delegate reaches this only through the `warranties` section (the route's
+   * decorators, checked by `AccountDelegateGuard`), so the only parent they may
+   * read is a warranty's: a transaction's attachment keeps the owner-only rule
+   * it had before the route admitted delegates at all (design 6.5).
+   */
   async getForDownload(
     userId: string,
     id: string,
+    reader: AttachmentReader = {},
   ): Promise<AttachmentDownload> {
     const attachment = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(TransactionAttachment).findOne({ where: { id, userId } }),
@@ -478,6 +647,14 @@ export class AttachmentsService {
     if (!attachment) {
       throw new NotFoundException(
         tr("errors.attachments.notFound", "Attachment not found"),
+      );
+    }
+    if (reader.isDelegate === true && attachment.warrantyId === null) {
+      throw new ForbiddenException(
+        tr(
+          "errors.delegation.actionNotAvailableAsDelegate",
+          "This action isn't available while you're acting on behalf of another user. Only the account owner can do this.",
+        ),
       );
     }
 
@@ -548,6 +725,18 @@ export class AttachmentsService {
       await this.orphanSweeper.sweepKey(key, provider);
     }
   }
+}
+
+/** One list row: the entity beside what the list's joins added. */
+function toListItem(
+  entity: TransactionAttachment,
+  raw: ListRawRow | undefined,
+): AttachmentListItem {
+  return {
+    ...entity,
+    originalAttachmentId: raw?.orig_id ?? null,
+    warrantyName: raw?.warranty_name ?? null,
+  };
 }
 
 /**

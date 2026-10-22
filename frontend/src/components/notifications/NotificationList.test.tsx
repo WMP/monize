@@ -1389,4 +1389,47 @@ describe('NotificationList', () => {
       },
     );
   });
+
+  describe('warranty reminders', () => {
+    const warranty = (overrides: Partial<Notification> = {}) =>
+      makeNotification({
+        id: 'wty-1',
+        budgetId: null,
+        budgetCategoryId: null,
+        type: 'WARRANTY_EXPIRING',
+        category: 'WARRANTIES',
+        severity: 'info',
+        title: 'stored title',
+        message: 'stored message',
+        data: { warrantyId: 'w-9', name: 'Dishwasher', expiresOn: '2026-11-20', threshold: 30, daysLeft: 30 },
+        target: '/warranties/w-9',
+        ...overrides,
+      });
+
+    it('composes the copy from the facts and opens the warranty', () => {
+      mockPush.mockClear();
+      render(<NotificationList {...defaultProps} notifications={[warranty()]} />);
+      expect(screen.getByText('Dishwasher: warranty expires within 30 days')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('notification-item-wty-1'));
+      expect(mockPush).toHaveBeenCalledWith('/warranties/w-9');
+    });
+
+    it.each(['WARRANTY_EXPIRING', 'WARRANTY_EXPIRES_TODAY'] as const)(
+      'opens the warranty for %s without a stored target, using data.warrantyId',
+      (type) => {
+        mockPush.mockClear();
+        render(<NotificationList {...defaultProps} notifications={[warranty({ type, target: null })]} />);
+        fireEvent.click(screen.getByTestId('notification-item-wty-1'));
+        expect(mockPush).toHaveBeenCalledWith('/warranties/w-9');
+      },
+    );
+
+    it('opens the warranties list when there is neither a target nor a warrantyId', () => {
+      mockPush.mockClear();
+      render(<NotificationList {...defaultProps} notifications={[warranty({ target: null, data: {} })]} />);
+      expect(screen.getByText('stored title')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('notification-item-wty-1'));
+      expect(mockPush).toHaveBeenCalledWith('/warranties');
+    });
+  });
 });

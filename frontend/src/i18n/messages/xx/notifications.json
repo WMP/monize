@@ -197,5 +197,11 @@
     "readyMessage": "[XX-{count, plural, one {# AI proposal waits} other {# AI proposals wait}} for your approval ({added} new). Open the AI review inbox to approve or dismiss.-XX]",
     "expiringTitle": "[XX-AI proposals expire soon-XX]",
     "expiringMessage": "[XX-{count, plural, one {# AI proposal expires} other {# AI proposals expire}} soon. The first one expires on {date}. Open the AI review inbox to approve or dismiss.-XX]"
+  },
+  "warranty": {
+    "expiringTitle": "[XX-{name}: warranty expires within {days, plural, one {# day} other {# days}}-XX]",
+    "expiringMessage": "[XX-The warranty for {name} expires on {date}. Open to review its documents or record a claim.-XX]",
+    "todayTitle": "[XX-{name}: warranty expires today-XX]",
+    "todayMessage": "[XX-The warranty for {name} expires today, {date}. Open to review its documents or record a claim.-XX]"
   }
 }

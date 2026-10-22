@@ -924,7 +924,11 @@ export class AiActionsService {
     refIds: string[],
   ): Promise<void> {
     for (const file of files) {
-      await this.attachmentsService.create(userId, transactionId, file);
+      await this.attachmentsService.create(
+        userId,
+        { kind: "transaction", id: transactionId },
+        file,
+      );
     }
     await this.relayAttachmentStore.releaseForPrompt(userId, refIds);
   }
