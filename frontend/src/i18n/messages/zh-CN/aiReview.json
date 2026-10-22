@@ -48,6 +48,7 @@
       "tradeChat": "你要求识别所附的交易确认：请提出它所报告的投资交易，即买入、卖出、现金股息或股息再投资。"
     },
     "emailReceipt": "邮件收据：来自 {sender} 的 {subject}",
+    "emailReceiptForwarded": "邮件收据：来自 {sender} 的 {subject}，转发者 {forwarder}",
     "emailReceiptMissing": "邮件收据（该邮件已被删除）",
     "parserDraft": "来自 {count, plural, one {# 封电子邮件} other {# 封电子邮件}} 的配置文件草稿 ({domain})",
     "viewEmailReceipts": "查看邮件收据",

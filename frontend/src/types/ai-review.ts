@@ -48,7 +48,10 @@ export interface AiReviewTrade {
 /** The email a request of kind `email_receipt` was raised for (`AiReviewInboxEmailReceipt`). */
 export interface AiReviewEmailReceipt {
   id: string;
+  /** The sender the email is read as: the shop's or broker's for a forward. */
   fromAddress: string;
+  /** Who actually sent it when it was the owner's forward, else null; the card names them. */
+  forwardedBy: string | null;
   subject: string;
   /** ISO timestamp. */
   receivedAt: string;
