@@ -115,6 +115,76 @@ describe("PortfolioCalculationService.calculateRealizedGains", () => {
     expect(sell.realizedGain).toBe(990); // 5990 - 5000
   });
 
+  it("measures a later sale against the basis a return of capital left (#1800)", async () => {
+    // Buy 100 @ 50 = 5,000; 1,000 of capital returned leaves 4,000 of basis;
+    // selling all 100 for 6,000 realizes 2,000, not 1,000.
+    txRepo.find.mockResolvedValue([
+      makeTx({
+        id: "buy",
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-10",
+        quantity: 100,
+        price: 50,
+        totalAmount: 5000,
+      }),
+      makeTx({
+        id: "roc",
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        transactionDate: "2024-03-10",
+        quantity: null as never,
+        price: null as never,
+        totalAmount: 1000,
+      }),
+      makeTx({
+        id: "sell",
+        action: InvestmentAction.SELL,
+        transactionDate: "2024-06-10",
+        quantity: 100,
+        price: 60,
+        totalAmount: 6000,
+      }),
+    ]);
+
+    const result = await service.calculateRealizedGains(userId);
+
+    // Within the basis, the distribution realizes nothing on its own.
+    expect(result.map((r) => r.transactionId)).toEqual(["sell"]);
+    expect(result[0].costBasis).toBe(4000);
+    expect(result[0].realizedGain).toBe(2000);
+  });
+
+  it("realizes the part of a return of capital the basis cannot absorb", async () => {
+    // 10 shares that cost 500 receive 700: the basis stops at zero and the
+    // 200 beyond it is a gain on the distribution's date, with no shares sold.
+    txRepo.find.mockResolvedValue([
+      makeTx({
+        id: "buy",
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-10",
+        quantity: 10,
+        price: 50,
+        totalAmount: 500,
+      }),
+      makeTx({
+        id: "roc",
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        transactionDate: "2024-03-10",
+        totalAmount: 700,
+      }),
+    ]);
+
+    const result = await service.calculateRealizedGains(userId);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      transactionId: "roc",
+      quantity: 0,
+      proceeds: 700,
+      costBasis: 500,
+      realizedGain: 200,
+    });
+  });
+
   it("averages cost across multiple BUYs before a partial SELL", async () => {
     // Buy 100 @ $50 -> costBasis 5000, qty 100
     // Buy 100 @ $70 -> costBasis 12000, qty 200, avg = 60
@@ -493,6 +563,45 @@ describe("PortfolioCalculationService.calculateCapitalGainsByMonth", () => {
     // Feb: (60*100) - (55*100) = +500
     expect(feb.totalCapitalGain).toBe(500);
     expect(feb.unrealizedGain).toBe(500);
+  });
+
+  it("nets a return of capital against the price it lowered (#1800)", async () => {
+    // 100 shares bought at 50; in January the fund pays back 2 a share (200)
+    // and its price falls from 50 to 48 by exactly that. Nothing was gained
+    // or lost: the 200 is capital coming back, and the basis falls with it.
+    txRepo.find.mockResolvedValue([
+      makeTx({
+        id: "buy",
+        action: InvestmentAction.BUY,
+        transactionDate: "2023-12-15",
+        quantity: 100,
+        price: 50,
+        totalAmount: 5000,
+      }),
+      makeTx({
+        id: "roc",
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        transactionDate: "2024-01-15",
+        totalAmount: 200,
+      }),
+    ]);
+    priceRepo.query.mockResolvedValue(
+      priceRows([
+        { date: "2023-12-31", price: 50 },
+        { date: "2024-01-31", price: 48 },
+      ]),
+    );
+
+    const result = await service.calculateCapitalGainsByMonth(userId, {
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+    });
+
+    const jan = result.find((r) => r.month === "2024-01")!;
+    expect(jan.sells).toBe(200);
+    expect(jan.totalCapitalGain).toBe(0);
+    expect(jan.realizedGain).toBe(0);
+    expect(jan.unrealizedGain).toBe(0);
   });
 
   it("reports gains as unknown when the basis carries an unpriced acquisition", async () => {
@@ -2331,6 +2440,44 @@ describe("PortfolioCalculationService.calculateCostBasisLotsInAccountCurrency", 
     // (10 x 100 + 5) x 4. The commission is recorded in the trade's currency,
     // so it moves with the trade rather than being added afterwards.
     expect(replayed.get("acct-1:sec-a")?.costBasis).toBe(4020);
+  });
+
+  /**
+   * Invariant: a return of capital comes off the basis at the rate it settled
+   * at, and never below zero (issue #1800).
+   * Minimal mutation: drop the RETURN_OF_CAPITAL branch.
+   * Test that fails under it: this one -- the basis comes back 4,020.
+   */
+  it("takes a return of capital off the basis at its own rate", async () => {
+    const replayed = await lots([
+      {
+        accountId: "acct-1",
+        securityId: "sec-a",
+        action: InvestmentAction.BUY,
+        quantity: 10,
+        price: 100,
+        commission: 5,
+        exchangeRate: 4,
+      } as InvestmentTransaction,
+      {
+        accountId: "acct-1",
+        securityId: "sec-a",
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        quantity: null,
+        price: null,
+        totalAmount: 50,
+        exchangeRate: 4,
+      } as unknown as InvestmentTransaction,
+    ]);
+
+    // 4,020 less 50 x 4; the ten shares stay.
+    expect(replayed.get("acct-1:sec-a")).toEqual({
+      quantity: 10,
+      costBasis: 3820,
+      currencyCode: "USD",
+      basisKnown: true,
+      basisGap: null,
+    });
   });
 
   it("reports the quantity the history accounts for", async () => {

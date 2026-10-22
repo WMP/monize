@@ -131,6 +131,7 @@ export const INVESTMENT_ACTIONS = [
   "CAPITAL_GAIN_SHORT",
   "CAPITAL_GAIN_LONG",
   "REDEEM",
+  "RETURN_OF_CAPITAL",
 ] as const;
 
 const investmentActionSchema = z.preprocess(

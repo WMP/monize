@@ -265,6 +265,7 @@ describe("FINANCIAL_TOOLS", () => {
         "CAPITAL_GAIN_SHORT",
         "CAPITAL_GAIN_LONG",
         "REDEEM",
+        "RETURN_OF_CAPITAL",
       ]);
     });
 

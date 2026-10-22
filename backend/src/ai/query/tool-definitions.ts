@@ -301,6 +301,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
               "CAPITAL_GAIN_SHORT",
               "CAPITAL_GAIN_LONG",
               "REDEEM",
+              "RETURN_OF_CAPITAL",
             ],
           },
           description:
@@ -842,9 +843,9 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
   {
     name: "manage_investment_transactions",
     description:
-      "Create, update, or delete the user's brokerage/investment-account transactions (any type: buy, sell, dividend, interest, capital gain, stock split, transfer in/out, dividend reinvestment, or share add/remove). This does NOT change anything immediately: it shows the user one or more confirmation cards they must explicitly approve before anything is saved. Use it only when the user clearly asks to record, edit, or delete an investment transaction in their latest message. Accepts NAMES for account, funding account, and security -- they are resolved internally (security matched by ticker symbol or name), so you do NOT need to look up IDs first. " +
+      "Create, update, or delete the user's brokerage/investment-account transactions (any type: buy, sell, dividend, interest, capital gain, return of capital, stock split, transfer in/out, dividend reinvestment, or share add/remove). This does NOT change anything immediately: it shows the user one or more confirmation cards they must explicitly approve before anything is saved. Use it only when the user clearly asks to record, edit, or delete an investment transaction in their latest message. Accepts NAMES for account, funding account, and security -- they are resolved internally (security matched by ticker symbol or name), so you do NOT need to look up IDs first. " +
       "operation = 'create' | 'update' | 'delete'. Provide an 'items' array (1-25 rows). " +
-      "create: { accountName, action, date, security?, quantity?, price?, commission?, accruedInterest?, bondSeriesCode?, fundingAccountName?, description? } -- security is required for BUY, SELL, REDEEM, SPLIT, REINVEST (and the REINVEST_*/CAPITAL_GAIN_* refinements), ADD_SHARES, and REMOVE_SHARES; optional for cash-only INTEREST. price is the per-share price, or the total cash for a DIVIDEND/INTEREST/CAPITAL_GAIN with no quantity. accruedInterest applies to REDEEM alone: it rides on the same cash movement and is recorded as a linked INTEREST transaction, so never record a second transaction for it. REDEEM of a security linked to a bond program (e.g. EDO): omit price and accruedInterest and name the series with bondSeriesCode when the account holds more than one -- the server fills price (principal returned per bond) and accruedInterest from the redemption split (net of any early-redemption fee), refuses the card when it cannot work the split out, and a price equal to the full payout per bond is split the same way; values you give for both are kept and the card flags a difference from the split. Buys debit, and sells/dividends/interest/capital gains credit, the brokerage's linked cash account automatically -- do not also record a separate cash transaction; fundingAccountName overrides which cash account is used. " +
+      "create: { accountName, action, date, security?, quantity?, price?, commission?, accruedInterest?, bondSeriesCode?, fundingAccountName?, description? } -- security is required for BUY, SELL, REDEEM, SPLIT, REINVEST (and the REINVEST_*/CAPITAL_GAIN_* refinements), ADD_SHARES, REMOVE_SHARES, and RETURN_OF_CAPITAL; optional for cash-only INTEREST. price is the per-share price, or the total cash for a DIVIDEND/INTEREST/CAPITAL_GAIN/RETURN_OF_CAPITAL with no quantity. RETURN_OF_CAPITAL is a distribution that pays back part of the cost rather than income: it credits cash like a dividend and reduces the holding's cost basis, so never record it as a DIVIDEND. accruedInterest applies to REDEEM alone: it rides on the same cash movement and is recorded as a linked INTEREST transaction, so never record a second transaction for it. REDEEM of a security linked to a bond program (e.g. EDO): omit price and accruedInterest and name the series with bondSeriesCode when the account holds more than one -- the server fills price (principal returned per bond) and accruedInterest from the redemption split (net of any early-redemption fee), refuses the card when it cannot work the split out, and a price equal to the full payout per bond is split the same way; values you give for both are kept and the card flags a difference from the split. Buys debit, and sells/dividends/interest/capital gains/returns of capital credit, the brokerage's linked cash account automatically -- do not also record a separate cash transaction; fundingAccountName overrides which cash account is used. " +
       "update: { transactionId, action?, date?, security?, quantity?, price?, commission?, accruedInterest?, bondSeriesCode?, description? } -- provide only the fields to change (at least one); omitted fields keep their current value; the total and cash impact are recomputed. First call list_investment_transactions to obtain the transactionId. " +
       "delete: { transactionId } -- deleting one leg of a security transfer removes the paired leg too and reverses any linked cash impact. First call list_investment_transactions to obtain the transactionId. " +
       "approvalMode controls the confirmation: by default a batch of 6 or more items shows one card for the whole batch, while 1-5 items show one card per item the user approves separately. Pass 'individual' to force one card per item at any count. Ignored for a single item. Maximum 25 items per call; if the user pastes more, process the first 25 and tell them to send the rest. After calling this tool, briefly tell the user to review and approve the card(s); never claim the change was applied.",
@@ -890,6 +891,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
                   "CAPITAL_GAIN_SHORT",
                   "CAPITAL_GAIN_LONG",
                   "REDEEM",
+                  "RETURN_OF_CAPITAL",
                 ],
                 description:
                   "create: transaction type (UPPER_SNAKE_CASE). update: new type (omit to keep).",
@@ -901,7 +903,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
               security: {
                 type: "string",
                 description:
-                  "Security ticker symbol or name. create: required for BUY, SELL, REDEEM, SPLIT, REINVEST (and the REINVEST_*/CAPITAL_GAIN_* refinements), ADD_SHARES, REMOVE_SHARES. Matched automatically to one of the user's securities.",
+                  "Security ticker symbol or name. create: required for BUY, SELL, REDEEM, SPLIT, REINVEST (and the REINVEST_*/CAPITAL_GAIN_* refinements), ADD_SHARES, REMOVE_SHARES, RETURN_OF_CAPITAL. Matched automatically to one of the user's securities.",
               },
               quantity: {
                 type: "number",
@@ -911,7 +913,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
               price: {
                 type: "number",
                 description:
-                  "Price per share (up to 6 decimals). For DIVIDEND/INTEREST/CAPITAL_GAIN with no quantity, the total cash amount. REDEEM of a bond-linked security: omit it; the server sets it to the principal returned per bond.",
+                  "Price per share (up to 6 decimals). For DIVIDEND/INTEREST/CAPITAL_GAIN/RETURN_OF_CAPITAL with no quantity, the total cash amount. REDEEM of a bond-linked security: omit it; the server sets it to the principal returned per bond.",
               },
               commission: {
                 type: "number",

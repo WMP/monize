@@ -1512,7 +1512,10 @@ CREATE TYPE investment_action AS ENUM (
     'REINVEST_CAPITAL_GAIN_LONG',
     'CAPITAL_GAIN_SHORT',
     'CAPITAL_GAIN_LONG',
-    'REDEEM'
+    'REDEEM',
+    -- Return of capital (issue #1800): cash in like a dividend, no shares, and
+    -- the amount reduces the position's cost basis instead of counting as income.
+    'RETURN_OF_CAPITAL'
 );
 
 CREATE TABLE investment_transactions (
