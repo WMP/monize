@@ -735,7 +735,15 @@ Enforcement         No path writes the columns incrementally. Every ledger write
                     read (409): the cash row a reversal deletes and the values a
                     save writes back are the locked row's, so a double-submitted
                     edit cannot post its cash twice and a delete behind an edit
-                    cannot orphan the edit's cash row (A26-H04).
+                    cannot orphan the edit's cash row (A26-H04). The
+                    security-transfer edit (updateLinkedTransfer) takes the same
+                    holdings lock on every account the pair leaves or joins as its
+                    first statement and locks both legs the same way, so it
+                    validates an oversell seeing a concurrent trade (A26-L19).
+                    Undo and redo re-derive through the same fold
+                    (HoldingsService.rebuildAccountsFromTransactions); the copy in
+                    action-history.service.ts, which added a DIVIDEND's total to the
+                    basis and stored 6 decimals, is gone (A26-L21).
                     A transfer is not a purchase: the fold hands a TRANSFER_IN the
                     basis its paired TRANSFER_OUT relieved (orderTransferOutBeforeIn
                     puts the OUT leg first when the two share an instant), and
@@ -787,14 +795,8 @@ Known gap           an unpriced acquisition (acquisitionCost returns null) adds
                     partial figure with nothing marking it as one. The column has
                     no completeness flag; the surfaces that need one derive it
                     from the ledger (docs/financial-calculation-contract.md).
-                    Three narrower risks are open and unclosed, recorded here
-                    rather than fixed in passing: action-history.service.ts keeps
-                    a second fold over the ledger that does not filter by
-                    SHARE_MOVING_ACTIONS, so its undo/redo rebuild and
-                    computeHoldingsMap can disagree about a non-share-moving
-                    action; the security-transfer edit (updateLinkedTransfer) derives
-                    both legs from snapshots loaded before its transaction; and a
-                    security recorded in GBX normalizes to GBP for the provider
+                    One narrower risk is open and unclosed, recorded here rather
+                    than fixed in passing: a security recorded in GBX normalizes to GBP for the provider
                     currency check (quote-currency.util.ts) while currency_code
                     stays GBX, so every reader of that column sees a unit the
                     prices are not in.
@@ -809,6 +811,10 @@ Required tests      Two-connection (concurrent trades on one holding, the stored
                     backend/test/integration/security-transfer-basis.integration.spec.ts.
                     Two BUYs of 0.00005 hold 0.0001:
                     backend/test/integration/holding-fractional.integration.spec.ts.
+                    A SELL racing a transfer edit cannot oversell:
+                    backend/test/integration/security-transfer-edit-race.integration.spec.ts.
+                    An undo stores the canonical average:
+                    backend/test/integration/holding-undo-fold.integration.spec.ts.
                     Out-of-order entry through the real service, stored row
                     compared against the replay:
                     backend/test/integration/holding-ledger-projection.integration.spec.ts.
@@ -1560,6 +1566,11 @@ Enforcement         securities/providers/quote-currency.util.ts decides it once:
                     The provider contract carries the currency because
                     fetchHistoricalSeries returns a HistoricalSeries bundle; a
                     bare HistoricalPrice[] cannot state what its numbers are in.
+                    fillPriceWindow remembers a month as empty only when every
+                    routed provider answered it with no bars: a provider that
+                    failed, was refused, or answered about another currency
+                    (refuseForeignCurrency) leaves the month to be asked again
+                    (A26-L20).
 Known gap           **Unverifiable is accepted, not refused.** A provider that
                     reports no currency (MSN's chart series routinely does not,
                     and its Quotes endpoint only sometimes does), or a security
@@ -3839,7 +3850,12 @@ Required tests      bond-prices.integration.spec.ts (real PostgreSQL: a manual
                     refusals: type, quantity, currency, uppercase UUID, undo),
                     action-history undo spec, provider-priced.guard.spec.ts,
                     backup specs (support backup drops the link; restore
-                    names and recomputes).
+                    names and recomputes). A benchmark observation stored or
+                    corrected outside the 06:25 run (the boot warm-up, the refresh
+                    after a stored series) dispatches the recompute of the series
+                    reading that code after its run, outside the lease
+                    (BenchmarkRefreshService.recomputeAfterChange, A26-L22):
+                    benchmark-refresh.service.spec.ts "the recompute after a store".
 Status              enforced
 ```
 

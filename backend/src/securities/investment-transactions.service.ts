@@ -3902,6 +3902,27 @@ export class InvestmentTransactionsService {
     }
 
     await withScopedDb(this.dataSource, async (manager) => {
+      // First statement of the transaction: the holdings lock on every account
+      // the pair leaves or joins, before anything is validated or written --
+      // the edit used to take it only inside its closing rebuild, so it checked
+      // the oversell without seeing a concurrent SELL and both committed
+      // (A26-L19). Then both legs under their row locks: a leg another request
+      // changed or deleted since the read above is refused before any write.
+      await lockHoldingScope(
+        manager,
+        [
+          editedLeg.accountId,
+          linkedLeg.accountId,
+          updateDto.accountId,
+          updateDto.destinationAccountId,
+        ].filter((id): id is string => !!id),
+      );
+      for (const leg of [editedLeg, linkedLeg].sort((a, b) =>
+        a.id.localeCompare(b.id),
+      )) {
+        await lockUnchangedInvestmentRow(manager, userId, leg);
+      }
+
       const bondGuard = await beginBondWriteGuard(manager, userId, [
         editedLeg.securityId,
         updateDto.securityId,
