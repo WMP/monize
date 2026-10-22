@@ -90,7 +90,7 @@
 | integration | `fix/audit-all` | 2026-10-22 | orchestrator | merge of the nine streams above on `origin/main`; only two conflicts, both one-sentence rule additions in `backend/CLAUDE.md` and `docs/concurrency-and-idempotency.md`, resolved as a union; 434 files, +24 738 / -2 882; base for wave 3 | -- |
 | securities | `fix/audit-securities` (based on `fix/audit-all`) | 2026-10-22 10:27 UTC | session_01GrbH4u1EPfY5je4VipC13b | T10, T30, T31, T32, T33, T53, T54 (head f56f24b) | not yet |
 | frontend-cache | `fix/audit-frontend-cache` (based on `fix/audit-securities`, which changed `InvestmentTransactionForm.tsx`) | 2026-10-22 13:52 UTC | session_01RAZXf3cHAX9X2vudVin4R9 | in progress | not yet |
-| completeness | `fix/audit-completeness` (based on `fix/audit-all`) | 2026-10-22 10:27 UTC | session_01Pk2XPqkS5NgERaje6xqw8N | in progress | not yet |
+| completeness | `fix/audit-completeness` (based on `fix/audit-all`) | 2026-10-22 10:27 UTC | session_01Pk2XPqkS5NgERaje6xqw8N | T17, T43, T44 (head 637adc2) | not yet |
 | budgets-reports | `fix/audit-budgets-reports` (based on `fix/audit-all`) | 2026-10-22 10:28 UTC | session_01SmTFihLQhD3vMaEABHhAYw | T37, T38, T39, T36 (head aef06b5) | not yet |
 | misc-a | `fix/audit-misc-a` (based on `fix/audit-all`) | 2026-10-22 12:17 UTC | session_01DqaKZmSw7QU76C18bQjxii | T21, T28, T34, T41, T51, T56 (head 7e9cd6c) | not yet |
 | currencies-db | `fix/audit-currencies-db` (based on `fix/audit-all`; the planned currencies and database streams combined: T27, T20, T50) | 2026-10-22 13:25 UTC | session_01Kr76jw9MUdySfrZAggG9tL | in progress | not yet |
