@@ -15,6 +15,7 @@ describe("InsightsAggregatorService", () => {
   let service: InsightsAggregatorService;
   let mockTransactionRepo: Record<string, jest.Mock>;
   let mockTransactionAnalytics: Record<string, jest.Mock>;
+  let managerQuery: jest.Mock;
 
   const userId = "user-1";
 
@@ -47,13 +48,17 @@ describe("InsightsAggregatorService", () => {
       getRecurringCharges: jest.fn().mockResolvedValue([]),
     };
 
+    const scoped = createScopedDbMocks([[Transaction, mockTransactionRepo]]);
+    managerQuery = scoped.manager.query;
+    // The user's timezone preference row; none means UTC.
+    managerQuery.mockResolvedValue([]);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InsightsAggregatorService,
         {
           provide: DataSource,
-          useValue: createScopedDbMocks([[Transaction, mockTransactionRepo]])
-            .dataSource,
+          useValue: scoped.dataSource,
         },
         {
           provide: TransactionAnalyticsService,
@@ -245,6 +250,110 @@ describe("InsightsAggregatorService", () => {
       await service.computeAggregates(userId, "USD");
 
       expect(qb.innerJoin).toHaveBeenCalled();
+    });
+  });
+
+  describe("the user's own calendar (A26-L29)", () => {
+    const ALL_BUT_DATE = [
+      "nextTick",
+      "queueMicrotask",
+      "setImmediate",
+      "clearImmediate",
+      "setTimeout",
+      "clearTimeout",
+      "setInterval",
+      "clearInterval",
+      "performance",
+      "hrtime",
+    ] as const;
+    afterEach(() => jest.useRealTimers());
+
+    function params(qb: Record<string, jest.Mock>): Record<string, unknown> {
+      return Object.fromEntries(
+        qb.setParameter.mock.calls.map(([k, v]: [string, unknown]) => [k, v]),
+      );
+    }
+
+    it("takes the month from the user's day when UTC is still the day before", async () => {
+      jest.useFakeTimers({
+        now: new Date("2026-10-21T00:30:00+02:00"),
+        doNotFake: [...ALL_BUT_DATE],
+      });
+      managerQuery.mockResolvedValue([
+        { timezone: "Europe/Warsaw", last_client_timezone: null },
+      ]);
+      const qb = mockQueryBuilder();
+      mockTransactionRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.computeAggregates(userId, "PLN");
+
+      expect(params(qb)).toMatchObject({
+        currentMonthStart: "2026-10-01",
+        previousMonthStart: "2026-09-01",
+        previousMonthEnd: "2026-09-30",
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        "t.transactionDate >= :startDate",
+        { startDate: "2026-04-01" },
+      );
+      expect(mockTransactionAnalytics.getRecurringCharges).toHaveBeenCalledWith(
+        userId,
+        "2026-04-01",
+        "2026-10-21",
+      );
+      expect(result.daysElapsedInMonth).toBe(21);
+      expect(result.daysInMonth).toBe(31);
+    });
+
+    it("enters the new month when the user's zone is already there", async () => {
+      jest.useFakeTimers({
+        now: new Date("2026-10-31T23:30:00Z"),
+        doNotFake: [...ALL_BUT_DATE],
+      });
+      managerQuery.mockResolvedValue([
+        { timezone: "Asia/Tokyo", last_client_timezone: null },
+      ]);
+      const qb = mockQueryBuilder();
+      mockTransactionRepo.createQueryBuilder.mockReturnValue(qb);
+      qb.getRawMany.mockResolvedValue([]);
+
+      const result = await service.computeAggregates(userId, "JPY");
+
+      expect(params(qb)).toMatchObject({
+        currentMonthStart: "2026-11-01",
+        previousMonthStart: "2026-10-01",
+        previousMonthEnd: "2026-10-31",
+      });
+      expect(mockTransactionAnalytics.getRecurringCharges).toHaveBeenCalledWith(
+        userId,
+        "2026-05-01",
+        "2026-11-01",
+      );
+      expect(result.daysElapsedInMonth).toBe(1);
+      expect(result.daysInMonth).toBe(30);
+    });
+
+    it("steps back over a year boundary and into February", async () => {
+      jest.useFakeTimers({
+        now: new Date("2028-03-15T12:00:00Z"),
+        doNotFake: [...ALL_BUT_DATE],
+      });
+      const qb = mockQueryBuilder();
+      mockTransactionRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.computeAggregates(userId, "USD");
+
+      expect(params(qb)).toMatchObject({
+        currentMonthStart: "2028-03-01",
+        previousMonthStart: "2028-02-01",
+        previousMonthEnd: "2028-02-29",
+      });
+      expect(mockTransactionAnalytics.getRecurringCharges).toHaveBeenCalledWith(
+        userId,
+        "2027-09-01",
+        "2028-03-15",
+      );
+      expect(result.daysInMonth).toBe(31);
     });
   });
 });

@@ -3,6 +3,7 @@ import {
   PushChartArtifactService,
   CHART_TOKEN_TTL_MS,
 } from "./push-chart-artifact.service";
+import { PUSH_TTL_SECONDS } from "./web-push-sender.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { renderPriceChart } from "./price-chart-png";
 jest.mock("../common/db/scoped-db", () =>
@@ -29,6 +30,9 @@ async function issue(s: ReturnType<typeof setup>) {
 }
 describe("push chart bearer tokens", () => {
   afterEach(() => jest.restoreAllMocks());
+  it("keeps the token valid as long as the push it rides on (A26-L27)", () => {
+    expect(CHART_TOKEN_TTL_MS).toBeGreaterThanOrEqual(PUSH_TTL_SECONDS * 1000);
+  });
   it("mints separate credentials for separate devices", async () => {
     const s = setup();
     expect(await issue(s)).not.toBe(await issue(s));

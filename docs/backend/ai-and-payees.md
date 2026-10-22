@@ -122,3 +122,7 @@ The review inbox approves in bulk through `POST /ai-review-requests/approve-batc
 ## A filter narrows the list it was applied to, never a total about the window
 
 `kind: "deposit"` on the AI/MCP rollup left `bills` empty and published `totalUpcomingBills: 0` with `amountsComplete: true` over a window holding a 1,200 bill -- a confident "nothing is due" in place of an answer nobody asked for. The buckets and the unknown-amount names all come from the rollup base (every filter except `kind`); only `items` and the counts follow the caller's filter, and both tool descriptions say so. The previous pass fixed exactly this for the `unknown` bucket and left the other two on the filtered list, which is the shape to look for: when a fix moves one member of a set off a wrong source, move all of them.
+
+## The insights aggregator reads the user's own calendar
+
+`InsightsAggregatorService.computeAggregates` (`src/ai/insights/insights-aggregator.service.ts`) takes "today" from the user's effective timezone (`getEffectiveTimezoneOfUser`, `todayInTimezone`) and derives the month windows from that `YYYY-MM-DD` string. Never from a local-midnight `Date` read back with `toISOString()`, which put a Warsaw user in the previous month (A26-L29).
