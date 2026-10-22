@@ -24,6 +24,9 @@ import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
+import { reportTotal } from '@/lib/currency-total';
 
 const logger = createLogger('CustomReportViewer');
 
@@ -35,7 +38,7 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
   const t = useTranslations('reports');
   const tc = useTranslations('common');
   const router = useRouter();
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, defaultCurrency } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const [report, setReport] = useState<CustomReport | null>(null);
   const [result, setResult] = useState<ReportResult | null>(null);
@@ -273,12 +276,29 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {formatCurrency(result.summary.total)}
+                {/* A null total is withheld, not zero: show the part that converted
+                    and mark it. The count metric's total is never null. */}
+                <PartialTotal
+                  total={reportTotal(
+                    result.summary.total ?? result.summary.knownTotal ?? 0,
+                    result.summary.total === null ? result : null,
+                  )}
+                  displayCurrency={result.currency ?? defaultCurrency}
+                >
+                  {formatCurrency(result.summary.total ?? result.summary.knownTotal ?? 0)}
+                </PartialTotal>
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 {t('customReportViewer.transactionCount', { count: result.summary.count })}
               </div>
             </div>
+          </div>
+          <div className="mb-4">
+            <PartialDataNotice
+              missingCurrencies={result.missingCurrencies ?? []}
+              excludedCount={result.excludedCount ?? 0}
+              displayCurrency={result.currency ?? defaultCurrency}
+            />
           </div>
 
           {/* Chart */}

@@ -990,9 +990,26 @@ Enforcement         The 1:1 half is enforced. Consumers return null on an absent
 Known gap           The built-in reports convert a past period at the current
                     rate (a flat latest-rate map), which is the look-ahead clause
                     of the statement for every historical bucket; that is a
-                    policy the maintainer has to state. The custom report engine,
-                    budget actuals and the AI/MCP transaction analytics summed
-                    currencies without converting at all (A26-H12).
+                    policy the maintainer has to state.
+                    Convert before summing (A26-H12) is closed on three paths:
+                    the custom report engine (reports/reports.service.ts,
+                    tryConvertAmount per row, FxAggregate, `summary.total` null
+                    beside `knownTotal`), the AI/MCP transaction analytics
+                    (TransactionAnalyticsService LLM methods, each row at its own
+                    date, `totalsCurrency` / `fxComplete` / `missingRatePairs`)
+                    and budget actuals in budgets/budget-spending.util.ts
+                    queryCategorySpending (each row at its own date into the
+                    budget's currency, per-key completeness,
+                    resolveCategorySpentOrNull). It is still open where the
+                    callers have not been moved: budgets.service.ts,
+                    budget-alert.service.ts, budget-period.service.ts and the
+                    budget report and generator services still read
+                    resolveCategorySpent, the converted part, so a category with
+                    a missing rate shows a subtotal as its spent figure and
+                    alerts on it; computeActualIncome sums currencies unconverted;
+                    getLlmInvestmentTransactions totals, the ai/insights
+                    aggregator and getTransfersByAccount's roll-ups still add
+                    currencies.
 Concurrency scope   --
 Failure response    null or an explicitly partial figure, per
                     docs/financial-calculation-contract.md section 1. On the

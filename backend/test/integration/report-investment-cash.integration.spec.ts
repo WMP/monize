@@ -121,7 +121,12 @@ describe("built-in reports and investment cash accounts (integration)", () => {
     breakdown = new MonthlyCategoryBreakdownService(dataSource, currency);
     // `execute` uses neither the budgets service (only the BUDGET_VARIANCE
     // metric does) nor action history (only the writes do).
-    customReports = new ReportsService(dataSource, {} as never, {} as never);
+    customReports = new ReportsService(
+      dataSource,
+      {} as never,
+      {} as never,
+      currency,
+    );
     analytics = new TransactionAnalyticsService(dataSource);
   });
 

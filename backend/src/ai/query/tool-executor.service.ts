@@ -513,8 +513,19 @@ export class ToolExecutorService {
       };
     }
 
+    // The totals are in `totalsCurrency` and are `null` while a pair has no
+    // rate: say which currency, or say they are withheld and what to add. A
+    // bare number is what let 4,000 PLN and 1,000 USD read as 5,000.
+    const cur = data.totalsCurrency;
+    const flow =
+      data.fxComplete === false ||
+      data.totalIncome === null ||
+      data.totalExpenses === null ||
+      data.netCashFlow === null
+        ? `Totals withheld: no exchange rate for ${data.missingRatePairs.join(", ")}; add it under Currencies. Converted so far: income ${data.knownIncomeSubtotal.toFixed(2)} ${cur}, expenses ${data.knownExpensesSubtotal.toFixed(2)} ${cur}`
+        : `Income: ${data.totalIncome.toFixed(2)} ${cur}, Expenses: ${data.totalExpenses.toFixed(2)} ${cur}, Net: ${data.netCashFlow.toFixed(2)} ${cur}`;
     const summaryParts = [
-      `${data.transactionCount} transactions from ${startDate} to ${endDate}. Income: ${data.totalIncome.toFixed(2)}, Expenses: ${data.totalExpenses.toFixed(2)}, Net: ${data.netCashFlow.toFixed(2)}`,
+      `${data.transactionCount} transactions from ${startDate} to ${endDate}. ${flow}`,
     ];
     if (data.groupedBy !== "none") {
       summaryParts.push(`Grouped by ${data.groupedBy}.`);
@@ -2494,9 +2505,23 @@ export class ToolExecutorService {
       direction,
     });
 
+    // Totals are in `totalsCurrency`; while a pair has no rate they are
+    // withheld (`null`), so the line says so instead of printing a subtotal.
+    const cur = data.totalsCurrency;
+    const periods = `Period 1 (${period1Start} to ${period1End})`;
+    const periods2 = `Period 2 (${period2Start} to ${period2End})`;
+    const summary =
+      data.fxComplete === false ||
+      data.period1.total === null ||
+      data.period2.total === null ||
+      data.totalChange === null ||
+      data.totalChangePercent === null
+        ? `Totals withheld: no exchange rate for ${data.missingRatePairs.join(", ")}; add it under Currencies. Converted so far: ${periods} ${data.period1.knownSubtotal.toFixed(2)} ${cur}, ${periods2} ${data.period2.knownSubtotal.toFixed(2)} ${cur}`
+        : `${periods}: ${data.period1.total.toFixed(2)} ${cur}, ${periods2}: ${data.period2.total.toFixed(2)} ${cur}, Change: ${data.totalChange >= 0 ? "+" : ""}${data.totalChange.toFixed(2)} ${cur} (${data.totalChangePercent >= 0 ? "+" : ""}${data.totalChangePercent}%)`;
+
     return {
       data,
-      summary: `Period 1 (${period1Start} to ${period1End}): ${data.period1.total.toFixed(2)}, Period 2 (${period2Start} to ${period2End}): ${data.period2.total.toFixed(2)}, Change: ${data.totalChange >= 0 ? "+" : ""}${data.totalChange.toFixed(2)} (${data.totalChangePercent >= 0 ? "+" : ""}${data.totalChangePercent}%)`,
+      summary,
       sources: [
         {
           type: "comparison",

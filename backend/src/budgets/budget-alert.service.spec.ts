@@ -116,6 +116,31 @@ function makeAlert(overrides: Partial<Notification> = {}): Notification {
   };
 }
 
+/**
+ * The actuals query converts every row into the budget's currency, so a mock
+ * repository must answer the budget lookup and hand back raw rows that carry a
+ * currency and a date. Every row here is in the budget's currency, which needs
+ * no rate: each existing number is the one the unconverted query returned.
+ */
+const TEST_BUDGET_CURRENCY = "USD";
+const spendingRow = (key: string, total: string) => ({
+  key,
+  currencyCode: TEST_BUDGET_CURRENCY,
+  txDate: "2026-01-10",
+  total,
+});
+// A Mock carrying `query`, so it fits the specs' `Record<string, jest.Mock>`.
+const spendingManager = () =>
+  Object.assign(jest.fn(), {
+    query: jest
+      .fn()
+      .mockImplementation(async (sql: string) =>
+        sql.includes("FROM budgets")
+          ? [{ currency_code: TEST_BUDGET_CURRENCY }]
+          : [],
+      ),
+  });
+
 describe("BudgetAlertService", () => {
   let scopedDataSource: DataSourceMock;
   /** Rows the conflict-safe INSERT accepted, in order. */
@@ -139,6 +164,7 @@ describe("BudgetAlertService", () => {
     andWhere: jest.fn().mockReturnThis(),
     innerJoin: jest.fn().mockReturnThis(),
     groupBy: jest.fn().mockReturnThis(),
+    addGroupBy: jest.fn().mockReturnThis(),
     getRawMany: jest.fn().mockResolvedValue([]),
   };
 
@@ -167,6 +193,7 @@ describe("BudgetAlertService", () => {
     };
 
     transactionsRepository = {
+      manager: spendingManager(),
       createQueryBuilder: jest.fn().mockReturnValue({ ...mockQueryBuilder }),
     };
 
@@ -1112,9 +1139,8 @@ describe("BudgetAlertService", () => {
         andWhere: jest.fn().mockReturnThis(),
         innerJoin: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-550" }]),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "-550")]),
       };
 
       transactionsRepository.createQueryBuilder.mockReturnValue(qb);
@@ -1159,9 +1185,8 @@ describe("BudgetAlertService", () => {
         andWhere: jest.fn().mockReturnThis(),
         innerJoin: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-600" }]),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "-600")]),
       };
 
       transactionsRepository.createQueryBuilder.mockReturnValue(qb);
@@ -1205,9 +1230,8 @@ describe("BudgetAlertService", () => {
         andWhere: jest.fn().mockReturnThis(),
         innerJoin: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-600" }]),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "-600")]),
       };
 
       transactionsRepository.createQueryBuilder.mockReturnValue(qb);
@@ -1246,9 +1270,8 @@ describe("BudgetAlertService", () => {
         andWhere: jest.fn().mockReturnThis(),
         innerJoin: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-600" }]),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "-600")]),
       };
 
       transactionsRepository.createQueryBuilder.mockReturnValue(qb);
@@ -1300,9 +1323,8 @@ describe("BudgetAlertService", () => {
         andWhere: jest.fn().mockReturnThis(),
         innerJoin: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ categoryId: "cat-1", total: "-600" }]),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([spendingRow("cat-1", "-600")]),
       };
 
       transactionsRepository.createQueryBuilder.mockReturnValue(qb);

@@ -71,10 +71,18 @@ export const listAccountsOutput = toolOutput({
 // ---------------------------------------------------------------------------
 
 export const comparePeriodsOutput = toolOutput({
+  // Every figure is in `totalsCurrency`, each row converted at its own date. A
+  // period `total` (and so `totalChange` / `totalChangePercent`) is null while
+  // a pair has no rate; `knownSubtotal` (per period, undeclared like the
+  // portfolio's return diagnostics: the tool is at its `tools/list` budget)
+  // is what did convert. These flags are the contract, not decoration.
   period1: looseObject({ start: str, end: str, total: num }),
   period2: looseObject({ start: str, end: str, total: num }),
   totalChange: num,
   totalChangePercent: num,
+  totalsCurrency: str,
+  fxComplete: bool,
+  missingRatePairs: z.array(str),
   comparison: rows(),
 });
 
@@ -119,9 +127,17 @@ const manageToolOutput = (entityFields: z.ZodRawShape) =>
  * requested. Tolerant so every branch validates.
  */
 export const listTransactionsOutput = toolOutput({
-  totalIncome: num.optional(),
-  totalExpenses: num.optional(),
-  netCashFlow: num.optional(),
+  // The three totals are in `totalsCurrency` (each row converted at its own
+  // date) and null while a pair has no rate; `knownIncomeSubtotal` and
+  // `knownExpensesSubtotal` carry what did convert (undeclared: the tool is at
+  // its `tools/list` budget) and `missingRatePairs` the pairs to repair.
+  // `byCurrency` is the unconverted view, each entry in its own currency.
+  totalIncome: num,
+  totalExpenses: num,
+  netCashFlow: num,
+  totalsCurrency: str,
+  fxComplete: bool,
+  missingRatePairs: z.array(str),
   transactionCount: num.optional(),
   byCurrency: z.record(z.string(), looseObject({})).optional(),
   groupedBy: strNull.optional(),

@@ -454,4 +454,59 @@ describe("CustomReportViewer", () => {
       expect(screen.getByText("Error Report")).toBeInTheDocument();
     });
   });
+  describe("partial conversion", () => {
+    const savedReport = {
+      id: "rpt-1",
+      name: "Partial Report",
+      viewType: "BAR_CHART",
+      timeframeType: "LAST_3_MONTHS",
+      groupBy: "CATEGORY",
+      config: {
+        metric: "TOTAL_AMOUNT",
+        direction: "EXPENSES_ONLY",
+        includeTransfers: false,
+      },
+      filters: {},
+    };
+    const executed = {
+      viewType: "BAR_CHART",
+      groupBy: "CATEGORY",
+      data: [{ label: "Groceries", value: 200, count: 1, id: "cat-1" }],
+      timeframe: { label: "Last 3 months" },
+      currency: "CAD",
+    };
+
+    it("marks a withheld total as partial and shows the known part, never zero", async () => {
+      mockGetById.mockResolvedValue(savedReport);
+      mockExecute.mockResolvedValue({
+        ...executed,
+        summary: { total: null, knownTotal: 200, count: 1, average: null },
+        missingCurrencies: ["JPY"],
+        excludedCount: 1,
+      });
+      render(<CustomReportViewer reportId="rpt-1" />);
+
+      const marker = await screen.findByTestId("partial-total");
+      expect(marker).toHaveTextContent("$200.00");
+      expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+      expect(screen.getByTestId("partial-data-notice")).toHaveTextContent(
+        "JPY",
+      );
+    });
+
+    it("shows no marker or notice when nothing was excluded", async () => {
+      mockGetById.mockResolvedValue(savedReport);
+      mockExecute.mockResolvedValue({
+        ...executed,
+        summary: { total: 200, knownTotal: 200, count: 1, average: 200 },
+        missingCurrencies: [],
+        excludedCount: 0,
+      });
+      render(<CustomReportViewer reportId="rpt-1" />);
+
+      await screen.findByText("$200.00");
+      expect(screen.queryByTestId("partial-total")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("partial-data-notice")).not.toBeInTheDocument();
+    });
+  });
 });
