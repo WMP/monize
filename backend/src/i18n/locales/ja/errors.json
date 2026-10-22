@@ -44,6 +44,7 @@
     "changeCurrencyWithTransactions": "取引のある口座の通貨は変更できません。",
     "alreadyClosed": "口座はすでに閉鎖されています",
     "closeNonZeroBalance": "残高がゼロでない口座は閉鎖できません。現在の残高：{{ currentBalance }}",
+    "closeWithFutureTransactions": "将来の日付の取引がある口座は閉鎖できません。今日より後の日付の取引が {{ count }} 件あります。先に削除または無効化してください。",
     "closeWithHoldings": "証券を保有している投資口座は閉鎖できません。数量がゼロでない保有銘柄が {{ holdingCount }} 件あります。先に売却または移管してください。",
     "notClosed": "口座は閉鎖されていません",
     "modifyBalanceClosed": "閉鎖された口座の残高は変更できません",
@@ -84,6 +85,7 @@
     "paymentMatchingFailed": "ローンは保存されましたが、支払い照合ルールを作成できませんでした。ローンの詳細から作成してください。"
   },
   "actionHistory": {
+    "loanEditNotUndoable": "このローンの変更は自動的に元に戻せません。元に戻すにはローンを編集してください。",
     "nothingToUndo": "元に戻すものがありません",
     "nothingToRedo": "やり直すものがありません",
     "undoNotSupportedForEntityType": "エンティティタイプ {{ entityType }} の元に戻す操作はサポートされていません",
@@ -758,6 +760,7 @@
     "investmentCashLegStatusLocked": "この取引は投資取引の現金側です。両側が一緒に変更されるよう、投資取引のステータスを変更して無効化または復元してください。",
     "notFoundById": "ID {{ id }} の取引が見つかりません",
     "bulkUpdateNoFields": "少なくとも1つの更新フィールドが必要です",
+    "bulkUpdateConcurrentChange": "更新の実行中にこれらの取引が変更されました。再読み込みしてもう一度お試しください。",
     "bulkSplitNoMatchingLinesOne": "いずれの分割行もカテゴリ更新に一致しなかったため、1件の分割取引がスキップされました",
     "bulkSplitNoMatchingLinesMany": "いずれの分割行もカテゴリ更新に一致しなかったため、{{ count }}件の分割取引がスキップされました",
     "bulkSplitTransferLegSkippedOne": "1件の分割振替をスキップしました（両側が同時に変わるよう、所属する分割取引から無効化または復元してください）",

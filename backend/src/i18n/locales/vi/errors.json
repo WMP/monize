@@ -44,6 +44,7 @@
     "changeCurrencyWithTransactions": "Không thể thay đổi tiền tệ của tài khoản đã có giao tác.",
     "alreadyClosed": "Tài khoản đã được đóng",
     "closeNonZeroBalance": "Không thể đóng tài khoản có số dư khác không. Số dư hiện tại: {{ currentBalance }}",
+    "closeWithFutureTransactions": "Không thể đóng tài khoản có giao dịch mang ngày trong tương lai. Tài khoản có {{ count }} giao dịch mang ngày sau hôm nay; hãy xóa hoặc hủy bỏ chúng trước.",
     "closeWithHoldings": "Không thể đóng tài khoản đầu tư vẫn còn nắm giữ chứng khoán. Tài khoản có {{ holdingCount }} khoản nắm giữ với số lượng khác 0; hãy bán hoặc chuyển đi trước.",
     "notClosed": "Tài khoản chưa được đóng",
     "modifyBalanceClosed": "Không thể sửa đổi số dư của tài khoản đã đóng",
@@ -84,6 +85,7 @@
     "paymentMatchingFailed": "Khoản vay đã được lưu, nhưng không thể tạo quy tắc đối chiếu thanh toán. Hãy tạo nó từ chi tiết khoản vay."
   },
   "actionHistory": {
+    "loanEditNotUndoable": "Không thể tự động hoàn tác thay đổi khoản vay này. Hãy chỉnh sửa khoản vay để đổi lại.",
     "nothingToUndo": "Không có gì để hoàn tác",
     "nothingToRedo": "Không có gì để làm lại",
     "undoNotSupportedForEntityType": "Hoàn tác không được hỗ trợ cho loại thực thể: {{ entityType }}",
@@ -758,6 +760,7 @@
     "investmentCashLegStatusLocked": "Giao dịch này là phần tiền mặt của một giao dịch đầu tư. Hãy hủy hoặc phục hồi nó bằng cách thay đổi trạng thái của giao dịch đầu tư, để cả hai bên thay đổi cùng nhau.",
     "notFoundById": "Không tìm thấy giao tác với ID {{ id }}",
     "bulkUpdateNoFields": "Phải cung cấp ít nhất một trường cập nhật",
+    "bulkUpdateConcurrentChange": "Các giao dịch này đã thay đổi trong khi cập nhật đang chạy. Hãy tải lại và thử lại.",
     "bulkSplitNoMatchingLinesOne": "Đã bỏ qua 1 giao dịch chia nhỏ vì không có phần chia nào của nó khớp với cập nhật danh mục",
     "bulkSplitNoMatchingLinesMany": "Đã bỏ qua {{ count }} giao dịch chia nhỏ vì không có phần chia nào của chúng khớp với cập nhật danh mục",
     "bulkSplitTransferLegSkippedOne": "Đã bỏ qua 1 giao dịch chuyển khoản tách dòng (hãy hủy hoặc khôi phục nó từ giao dịch tách dòng chứa nó, để cả hai bên thay đổi cùng nhau)",
