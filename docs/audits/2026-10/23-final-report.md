@@ -5719,3 +5719,1923 @@ Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the predicate and the spec postdate the u
 15. **Residual risks:** none beyond A26-S09-01.
 
 Causality: `PRE_EXISTING_UNREPORTED` (verification defect).
+
+
+
+### 7.3 LOW findings
+
+
+### A26-L01 - CI's backend lint step runs `eslint --fix`, so a fixable lint error never fails CI
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S01-01 (primary, 01-baseline.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** ci.
+
+#### A26-S01-01 (primary) - CI's backend lint step runs `eslint --fix`, so a fixable lint error never fails CI
+
+1. **Severity:** LOW
+2. **Confidence:** high
+3. **Location:** `backend/package.json` script `lint` (`eslint "{src,apps,libs,test}/**/*.ts" --fix`); `.github/workflows/ci.yml:66` (`- run: npm run lint` in `backend-lint`). Secondary: `AGENTS.md` "Required before you push" (names `npm run lint` as the gate), `docs/verification-contract.md:347` (says the job owns "eslint").
+4. **Violated invariant:** S01-I4. A lint error in `backend/` fails the `Backend Lint & Type Check` job. Causality: `PRE_EXISTING_UNREPORTED`.
+5. **Reproduction:** At `AUDIT_BASELINE_SHA`, three files carry `prettier/prettier` errors: `backend/src/ai-review/ai-review-work.service.ts:1049`, `backend/src/email-receipts/parsing/receipt-parser.types.ts:157`, `backend/src/email-receipts/pipeline/receipt-instructions.ts:85`. In a scratch worktree at the baseline: `npx eslint <the three files> --max-warnings=0` exits 1 with "3 problems (3 errors)"; `npx eslint <the three files> --fix` (what `npm run lint` does) exits 0 and rewrites the files. CI's checkout is ephemeral, so the rewrite is discarded and the job is green.
+6. **Observed:** The job passes with three lint errors on `main`. Any rule ESLint can auto-fix is never enforced by CI for the backend.
+7. **Expected:** The job fails on any lint error, as the frontend job does (`frontend` `lint` is `eslint .`, no `--fix`).
+8. **Impact:** Operations and code quality only. The RLS bans (`no-restricted-imports`, `no-restricted-syntax`) are not auto-fixable, so they still fail CI; this was checked by mutation (section 6, M2). The defect makes the gate weaker than `AGENTS.md` and `verification-contract.md` state, and the pre-commit hook (`.lintstagedrc.cjs`, also `--fix`) is the only formatting enforcement. A commit that bypasses the hook (web edit, `--no-verify`, squash of an unformatted branch) reaches `main` unformatted, as the three files show.
+9. **Root cause:** One script serves two purposes: a developer's auto-format (`--fix`) and the CI check. CI calls the developer script.
+10. **Recommended correction:** Add a check-only script and call it from CI.
+11. **Suggested remediation diff (illustrative, not applied):**
+    ```diff
+    --- a/.github/workflows/ci.yml
+    +++ b/.github/workflows/ci.yml
+    @@ backend-lint
+           - run: npm ci
+    -      - run: npm run lint
+    +      # `npm run lint` is the developer's formatter (--fix); CI checks only.
+    +      - run: npx eslint "{src,apps,libs,test}/**/*.ts" --max-warnings=0
+    ```
+    A check-only script in `backend/package.json` called from CI is the alternative; it was not written out here because `scripts/check-docs-manifests.mjs` fails a document naming an npm script that does not exist yet.
+    The same commit must format the three files, or the job turns red. `.github/` is an "Ask first" area (`AGENTS.md`), so the CI half needs the maintainer's agreement. `--max-warnings=0` is a decision: CI currently tolerates warnings; leave it out to change only the `--fix` half.
+12. **Recommended regression test:** A source-scanning guard over `ci.yml` that fails when a lint step in any job resolves to a script carrying `--fix`.
+13. **Suggested regression-test diff (illustrative, not applied):**
+    ```diff
+    --- /dev/null
+    +++ b/backend/src/common/ci-lint-no-fix.guard.spec.ts
+    @@
+    +import * as fs from "fs";
+    +import * as path from "path";
+    +
+    +const ROOT = path.resolve(__dirname, "../../..");
+    +
+    +describe("CI lint steps check, never fix", () => {
+    +  it("the backend-lint job runs a script without --fix", () => {
+    +    const ci = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
+    +    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "backend/package.json"), "utf8"));
+    +    const job = ci.slice(ci.indexOf("  backend-lint:"), ci.indexOf("  backend-unit-tests:"));
+    +    const scripts = [...job.matchAll(/npm run ([\w:-]+)/g)].map((m) => m[1]);
+    +    for (const s of scripts) expect(pkg.scripts[s] ?? "").not.toMatch(/--fix\b/);
+    +    expect(job).not.toMatch(/eslint[^\n]*--fix\b/);
+    +  });
+    +});
+    ```
+14. **Verification method:** Re-run the M1 mutation of section 6 (introduce a `prettier/prettier` violation); the job must fail. Run the guard against the unfixed `ci.yml`; it must fail.
+15. **Residual risks:** `ci.yml:66` is the only workflow step that calls the backend `lint` script (searched all of `.github/workflows/`). The guard parses YAML textually. `e2e/` has no lint and no type-check step in CI at all (handed to S21).
+
+
+### A26-L02 - The `WITH_CONTEXT_ALLOWLIST` lint fence misses several import forms
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S01-02 (primary, 01-baseline.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** ci.
+
+#### A26-S01-02 (primary) - The `WITH_CONTEXT_ALLOWLIST` lint fence does not match an import specifier with a file extension, a `./` segment, a dynamic `import()`, or a direct `requestContextStorage.run`
+
+1. **Severity:** LOW
+2. **Confidence:** high
+3. **Location:** `backend/eslint.config.mjs:283-289` (`BAN_WITH_CONTEXT.group = ["**/db/with-context", "./with-context"]`). Secondary: `backend/src/common/request-context.ts` (exports `requestContextStorage`, not restricted); the `BAN_OAUTH_PAYLOAD_ENTITY` pattern in the same file has the same form and was not tested.
+4. **Violated invariant:** S01-I3 (`AGENTS.md`, "Database access": "A new call site of any of these is added to `WITH_CONTEXT_ALLOWLIST` in the same PR, as a reviewed decision"). The rule has no entry in `docs/system-invariants.md`. Causality: `PRE_EXISTING_UNREPORTED` (the allowlist existed at `d5cea9bf`, `docs/audits/2026-08-upstream/01-baseline-architecture.md:171,896`).
+5. **Reproduction (executed, section 6 M3):** In a scratch worktree at the baseline, a new non-allowlisted file `src/zz/a.ts` with `import { withSystemContext } from "../common/db/with-context.js";` and a call to it. `npx eslint src/zz/a.ts` reports nothing; the control file `src/zz/b.ts` with the extensionless specifier is flagged. `npx tsc --noEmit` reports no error for `src/zz/a.ts` (`moduleResolution: nodenext` resolves `.js` to the `.ts` source). A separate `eslint --stdin` sweep found the same miss for `.ts` suffixes, a `../common/db/./with-context` segment and dynamic `import()`; `requestContextStorage.run({ system: true }, fn)` is not restricted by any rule.
+6. **Observed:** A file outside the allowlist can seed system context (RLS bypass) and pass lint and type-check.
+7. **Expected:** Every importer of `with-context`, in any spelling, and every direct seeding of the context store, fails lint unless allowlisted.
+8. **Impact:** Security process. No present-day bypass exists: all 81 importers are allowlisted and none uses these forms (section 12.2). The fence is the mechanism the repository names for reviewing every RLS-bypass call site, and it can be passed by accident (an editor auto-import that adds `.js`) without review.
+9. **Root cause:** The ban matches the import string by glob, not the resolved module; the glob enumerates two spellings.
+10. **Recommended correction:** Match by regular expression on the specifier, ban the dynamic form, and restrict `requestContextStorage.run` to `with-context.ts` and the interceptor.
+11. **Suggested remediation diff (illustrative, not applied):**
+    ```diff
+    --- a/backend/eslint.config.mjs
+    +++ b/backend/eslint.config.mjs
+    @@
+     const BAN_WITH_CONTEXT = {
+    -  group: ["**/db/with-context", "./with-context"],
+    +  // Matched by regex on the specifier: the glob form missed "with-context.js"
+    +  // (legal under moduleResolution nodenext), ".ts" and a "./" segment.
+    +  regex: "(^|/)with-context(\\.[cm]?[jt]s)?$",
+       message:
+    @@ no-restricted-syntax (src/**/*.ts block)
+    +        {
+    +          selector: "ImportExpression[source.value=/with-context/]",
+    +          message: "Dynamic import of common/db/with-context bypasses WITH_CONTEXT_ALLOWLIST.",
+    +        },
+    +        {
+    +          selector:
+    +            'CallExpression[callee.object.name="requestContextStorage"][callee.property.name="run"]',
+    +          message: "Seed identity through common/db/with-context (WITH_CONTEXT_ALLOWLIST), never the store directly.",
+    +        },
+    ```
+    The `requestContextStorage.run` selector needs `src/common/db/with-context.ts` and `src/common/interceptors/request-context.interceptor.ts` exempted in a separate block. Needs verification: `npx eslint src` stays green; `regex` support in the installed ESLint 10 `no-restricted-imports` (documented since ESLint 9).
+12. **Recommended regression test:** Extend `lint-bans.spec.ts` (it already loads the config) with a case that lints each bypass spelling through the ESLint Node API from a non-allowlisted path and expects one error each.
+13. **Suggested regression-test diff (illustrative, not applied):**
+    ```diff
+    --- a/backend/src/common/db/lint-bans.spec.ts
+    +++ b/backend/src/common/db/lint-bans.spec.ts
+    @@
+    +import { ESLint } from "eslint";
+    +
+    +describe("with-context fence matches every spelling", () => {
+    +  const eslint = new ESLint({ cwd: path.join(REPO_ROOT, "backend") });
+    +  it.each([
+    +    'import { withSystemContext } from "../common/db/with-context";',
+    +    'import { withSystemContext } from "../common/db/with-context.js";',
+    +    'import { withSystemContext } from "../common/db/./with-context";',
+    +    'export const m = () => import("../common/db/with-context");',
+    +    'import { requestContextStorage } from "../common/request-context";\nrequestContextStorage.run({ system: true } as never, () => 1);',
+    +  ])("flags %s", async (code) => {
+    +    const [r] = await eslint.lintText(code, { filePath: "src/zz/not-allowlisted.ts" });
+    +    expect(r.messages.some((m) => /with-context|identity/.test(m.message))).toBe(true);
+    +  });
+    +});
+    ```
+14. **Verification method:** The new cases fail on the baseline config (M3 shows it for `.js`) and pass after the fix; `npm run lint` over `src` stays green.
+15. **Residual risks:** A wrapper that receives a callback and calls `withSystemContext` on behalf of arbitrary callers is not caught by any lint rule; the sweep found only file-private wrappers (`delegation.service.ts:178`, `transaction-transfer.service.ts:914`). The same gap probably exists for `BAN_OAUTH_PAYLOAD_ENTITY` and `BAN_INJECT_REPOSITORY` path forms; not tested.
+
+
+### A26-L03 - The layer instruction files order a local coverage run that `AGENTS.md` and the verification contract say is CI's
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S01-03 (primary, 01-baseline.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** docs.
+
+#### A26-S01-03 (primary) - The layer instruction files order a local coverage run that `AGENTS.md`, the root `CLAUDE.md` and the verification contract say is CI's
+
+1. **Severity:** LOW
+2. **Confidence:** high
+3. **Location:** `backend/CLAUDE.md:121` ("2. `TZ=UTC npm run test:unit -- --coverage`" under "Before you finish"); `frontend/CLAUDE.md:113` ("2. `npm run test:cov` (CI runs the coverage thresholds, not a bare `npm run test`)"). Contradicted by `AGENTS.md` "Required before you push" ("While developing run `npm run test:changed` ...; the coverage gate is CI's, run it locally only when asked"), root `CLAUDE.md` ("`test:changed` for tests; CI owns the coverage gate"), and `docs/verification-contract.md` s7 ("The full `test:cov` gate stays CI's").
+4. **Violated invariant:** S01-I1. Causality: `PRE_EXISTING_UNREPORTED` (not verifiable against `d5cea9bf` in the shallow clone; the `test:changed` rule postdates the upstream audit, so it may be `NEW_SINCE_UPSTREAM_AUDIT`).
+5. **Reproduction:** An agent working in `backend/` reads `backend/CLAUDE.md` (the protocol and `AGENTS.md` both say the more specific file applies to its subtree) and runs the full coverage suite before finishing; an agent reading `AGENTS.md` runs `test:changed` and skips coverage. The measured cost of the backend coverage run at the baseline is in section 12.1.
+6. **Observed:** Two opposite instructions for the same step.
+7. **Expected:** One rule. The guard `backend/src/common/test-changed.guard.spec.ts` holds the `AGENTS.md` version, so the layer files should match it.
+8. **Impact:** Agent and contributor workflow only: either a long redundant run per task, or a contributor who reads only `AGENTS.md` believing the layer file is stale. No code impact.
+9. **Root cause:** `AGENTS.md` and the root `CLAUDE.md` were updated to the `test:changed` rule; the two layer "Before you finish" lists were not.
+10. **Recommended correction:** Change both layer lists to `npm run test:changed`, with the coverage run "only when asked".
+11. **Suggested remediation diff (illustrative, not applied):**
+    ```diff
+    --- a/backend/CLAUDE.md
+    +++ b/backend/CLAUDE.md
+    @@
+    -2. `TZ=UTC npm run test:unit -- --coverage` (and `npm run build && npm run test:integration` when a query, an entity, a migration or an RLS context changed)
+    +2. `npm run test:changed` (the coverage gate is CI's; run `TZ=UTC npm run test:unit -- --coverage` only when asked), and `npm run build && npm run test:integration` when a query, an entity, a migration or an RLS context changed
+    --- a/frontend/CLAUDE.md
+    +++ b/frontend/CLAUDE.md
+    @@
+    -2. `npm run test:cov` (CI runs the coverage thresholds, not a bare `npm run test`)
+    +2. `npm run test:changed` (CI runs `test:cov` and its thresholds; run it locally only when asked)
+    ```
+12. **Recommended regression test:** Extend `test-changed.guard.spec.ts` to scan every `CLAUDE.md` "Before you finish" block and fail on `--coverage` or `test:cov` there.
+13. **Suggested regression-test diff:** incomplete. The guard's present scope was not read in full; the missing information is whether it already reads the layer files. The decision is the maintainer's: a scanning guard, or a single sentence in `AGENTS.md` that layer files never restate the gate.
+14. **Verification method:** `instruction-files.spec.ts` (size ceilings) after the edit; the extended guard fails on the current text.
+15. **Residual risks:** None material.
+
+
+### A26-L04 - `.claude/settings.json` pre-approves `npm install*`, an action `AGENTS.md` lists under "Ask first"
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S01-04 (primary, 01-baseline.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** docs.
+
+#### A26-S01-04 (primary) - `.claude/settings.json` pre-approves `npm install*`, an action `AGENTS.md` lists under "Ask first"
+
+1. **Severity:** LOW
+2. **Confidence:** high
+3. **Location:** `.claude/settings.json` (`"Bash(npm install*)"`, also `"Bash(git add*)"`, `"Bash(git checkout -b*)"`). Secondary: root `CLAUDE.md` ("`.claude/settings.json` pre-approves lint, type-check, unit tests, the repo-level check scripts and read-only git. Ask before anything `AGENTS.md` lists under 'Ask first'"); `AGENTS.md` "Ask first: ... adding or upgrading a dependency" and "Do not change these casually: ... any `package-lock.json` (only as the product of an agreed dependency change)".
+4. **Violated invariant:** S01-I1 (the permission layer matches the instruction layer). Causality: `PRE_EXISTING_UNREPORTED`.
+5. **Reproduction:** A Claude Code agent asked to fix a build runs `npm install some-package` in `backend/`; the harness does not prompt, because the allow-list matches; `package.json` and `package-lock.json` change without the maintainer's agreement.
+6. **Observed:** The machine-held permission layer allows, silently, what the prose layer forbids without asking. The root `CLAUDE.md` describes the allow-list as covering checks and "read-only git", which `npm install*`, `git add*` and `git checkout -b*` are not (the last two are permitted by `AGENTS.md` "Autonomous work" and are not a contradiction in effect).
+7. **Expected:** The allow-list holds `npm ci*` (lock-file faithful) and not `npm install*`, or the root `CLAUDE.md` names the exception.
+8. **Impact:** Process: a dependency change bypasses "Ask first". The pull-request review is still a backstop.
+9. **Root cause:** `npm install` was allowed beside `npm ci` for convenience; the allow-list is not checked against `AGENTS.md`.
+10. **Recommended correction:** Drop `Bash(npm install*)`; describe the list accurately in the root `CLAUDE.md`.
+11. **Suggested remediation diff (illustrative, not applied):**
+    ```diff
+    --- a/.claude/settings.json
+    +++ b/.claude/settings.json
+    @@
+           "Bash(npm ci*)",
+    -      "Bash(npm install*)",
+    --- a/CLAUDE.md
+    +++ b/CLAUDE.md
+    @@
+    -- **Run the safe local actions yourself**: `.claude/settings.json` pre-approves lint, type-check, unit tests, the repo-level check scripts and read-only git.
+    +- **Run the safe local actions yourself**: `.claude/settings.json` pre-approves `npm ci`, lint, type-check, unit tests, the repo-level check scripts, read-only git, staging and creating a branch.
+    ```
+12. **Recommended regression test:** A guard that reads `.claude/settings.json` and fails on an allow entry matching `npm install`, `npm i `, `npm update`, `git push`, `git reset`, `git rebase`.
+13. **Suggested regression-test diff (illustrative, not applied):**
+    ```diff
+    --- a/backend/src/common/instruction-files.spec.ts
+    +++ b/backend/src/common/instruction-files.spec.ts
+    @@
+    +  it("the Claude Code allow-list pre-approves nothing AGENTS.md lists under Ask first", () => {
+    +    const s = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, ".claude/settings.json"), "utf8"));
+    +    const allow: string[] = s.permissions?.allow ?? [];
+    +    for (const a of allow) expect(a).not.toMatch(/npm (install|i |update|uninstall)|git (push|reset|rebase|branch -[dD])/);
+    +  });
+    ```
+14. **Verification method:** The new case fails on the baseline file and passes after removal.
+15. **Residual risks:** `npm run lint*` in `backend/` rewrites files (`--fix`, A26-S01-01); that is a local write the allow-list also permits, and is benign.
+
+
+### A26-L05 - `fx-fallback.guard.spec.ts` cannot see a camelCase rate fallback
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S02-11 (primary, 02-prior-high-triage.md, session severity LOW).
+- **Invariants and prior findings named:** INV-FX-001.
+- **Lens:** test.
+
+#### A26-S02-11 (primary) - `fx-fallback.guard.spec.ts` cannot see a rate variable whose name does not start with "rate"; a rate-1 fallback in the portfolio resolver goes undetected
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed mutation M1)
+3. **Location:** `backend/src/common/fx-fallback.guard.spec.ts:174-175` (`\brate\w*`); `backend/src/securities/portfolio.service.ts:2147`.
+4. **Violated invariant:** INV-FX-001's guard; AGENTS.md "Prefer the rule the machine can check".
+5. **Reproduction:** change `portfolio.service.ts:2147` `?? null` to `?? 1`.
+6. **Observed:** `fx-fallback.guard.spec.ts` and `portfolio.service.spec.ts` stay green (187 passed). The regex misses `exchangeRate`, `spotRate`, `directRate`; current hits it cannot see: `portfolio-calculation.service.ts:1299, 1615`, `transaction-transfer.service.ts:1382`, `transactions.service.ts:593`, `action-history.service.ts:931, 1066, 1324, 1415, 1470` (stored-rate reads of a `NOT NULL DEFAULT 1` column, so not lookup failures today).
+7. **Expected:** the guard or the portfolio spec fails.
+8. **Impact:** the next lookup-fallback-to-1 passes CI.
+9. **Root cause:** word-boundary regex on a camelCase name; no portfolio test for a missing spot rate without a time series.
+10. **Recommended correction:** match `[A-Za-z]*[Rr]ate\w*`; add a spec for the `!fx` branch.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/backend/src/common/fx-fallback.guard.spec.ts
++++ b/backend/src/common/fx-fallback.guard.spec.ts
+-          /\brate\w*\s*=\s*[^;]*[?:]\s*1\s*;/i.test(line) ||
+-          /\brate\w*\s*(\?\?|\|\|)\s*1\b/i.test(line);
++          /\b\w*rate\w*\s*=\s*[^;]*[?:]\s*1\s*;/i.test(line) ||
++          /\b\w*rate\w*\s*(\?\?|\|\|)\s*1\b/i.test(line);
+```
+
+   The stored-rate reads it then flags need a reviewed allowlist entry each, or a `storedRateOrOne` helper.
+12. **Recommended regression test:** portfolio summary with a currency that has neither a time series nor a spot rate.
+13. **Suggested regression-test diff:** in `portfolio.service.spec.ts`, `expect(summary.fxComplete).toBe(false)` and the pair in `missingRatePairs` for that case.
+14. **Verification:** re-run mutation M1; it must fail.
+15. **Residual risks:** the guard is backend-only; the frontend has none.
+
+Causality: `PRE_EXISTING_UNREPORTED` (test coverage). Owner: S13 (guard), S21 (register).
+
+
+### A26-L06 - `JwtStrategy` accepts every `JWT_SECRET`-signed token except `2fa_pending` as an access token
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S03-03 (primary, 03-security-auth.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** security.
+
+#### A26-S03-03 (primary) - `JwtStrategy` accepts every `JWT_SECRET`-signed token except `2fa_pending` as an access token
+
+1. **Severity:** LOW
+2. **Confidence:** high (static; every verifier read)
+3. **Location:** `backend/src/auth/strategies/jwt.strategy.ts` `validate()` (deny-lists only `type === "2fa_pending"`); mint sites `backend/src/auth/step-up/step-up.service.ts:210-214` (`type: "step_up"`, 5 min, returned in the JSON body), `backend/src/auth/oidc/oidc-reauth.service.ts:277-284` (pending marker, `oidc_reauth_pending`) and `:362` (artifact, `oidc_reauth`, delivered in the URL fragment `#reauth_token=` by `auth.controller.ts:668-678`), all HS256 with `JWT_SECRET` and `sub = userId`. Same deny-list shape at `delegation/guards/account-delegate.guard.ts:104-111` and `oauth/oauth-interaction.controller.ts:382-388`.
+4. **Violated invariant:** a credential minted for one verifier is not accepted by another (purpose binding, hint line).
+5. **Reproduction:** a signed-in user obtains a step-up token (`POST /auth/step-up`) or completes an OIDC re-auth; the token is readable by page script. Sending it as `Authorization: Bearer <token>` to any `AuthGuard('jwt')` route passes `JwtStrategy.validate` (no `type` check beyond `2fa_pending`), so it acts as a 5-minute access token. Bearer-header requests are outside the cookie/CSRF path.
+6. **Observed:** the access-token payload has no `type`, and validation accepts any payload whose `sub` resolves to an active user.
+7. **Expected:** access tokens carry a positive type (`type: "access"`) and `JwtStrategy` accepts only that type (an allowlist); the other verifiers check their own positive type, as `StepUpGuard` and `two-factor.service.ts` already do.
+8. **Impact:** narrow. The token belongs to the same user who requested it, so there is no cross-user escalation. It converts a script-readable step-up or re-auth artifact into a bearer access credential usable off-origin for up to 5 minutes, which an XSS could otherwise not obtain (the access and refresh tokens are httpOnly cookies).
+9. **Root cause:** one HS256 secret for several token types with deny-list typing.
+10. **Recommended correction:** add `type: "access"` to the two access-token mint sites, accept only that type in `JwtStrategy`, `AccountDelegateGuard` and `resolveCookieUser`, with a one-release grace for type-less tokens (15-minute lifetime makes the grace short).
+11. **Suggested remediation diff (illustrative, not applied):**
+    ```diff
+    --- a/backend/src/auth/token.service.ts
+    +++ b/backend/src/auth/token.service.ts
+    @@ generateTokenPair / refreshTokens
+         const payload: Record<string, unknown> = {
+           sub: user.id,
+    +      type: "access",
+    --- a/backend/src/auth/strategies/jwt.strategy.ts
+    +++ b/backend/src/auth/strategies/jwt.strategy.ts
+    @@ async validate(payload: any) {
+    -    if (payload.type === "2fa_pending") {
+    +    // Allowlist: an access token is typed "access"; a type-less token is a
+    +    // pre-upgrade access token (<= 15 min old) and is accepted until the next release.
+    +    if (payload.type !== undefined && payload.type !== "access") {
+           throw new UnauthorizedException(
+    ```
+    Still to verify: every test fixture that signs an access token without `type`; the MCP/OAuth bearer paths, which use their own verifiers.
+12. **Recommended regression test:** `jwt.strategy.spec.ts`: `validate({ sub, type: "step_up" })`, `oidc_reauth` and `oidc_reauth_pending` all reject.
+13. **Suggested regression-test diff (illustrative, not applied):**
+    ```diff
+    +it.each(["step_up", "oidc_reauth", "oidc_reauth_pending", "2fa_pending"])(
+    +  "refuses a %s token as an access token", async (type) => {
+    +    await expect(strategy.validate({ sub: "u1", type })).rejects.toThrow(UnauthorizedException);
+    +  });
+    ```
+14. **Verification method:** the unit test; an HTTP-level check that a step-up token in `Authorization` gets 401.
+15. **Residual risks:** separate secrets per token type would be stronger; not proposed here.
+
+- **Causality class:** `PRE_EXISTING_UNREPORTED` for the step-up token; `NEW_SINCE_UPSTREAM_AUDIT` for the OIDC re-auth artifact and marker (INV-AUTH-003 machinery postdates `d5cea9bf`).
+
+
+### A26-L07 - Admin and owner-of-delegate password resets revoke PATs and trusted devices in a separate transaction from the password write
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S03-05 (primary, 03-security-auth.md, session severity LOW).
+- **Invariants and prior findings named:** INV-AUTH-005.
+- **Lens:** security.
+
+#### A26-S03-05 (primary) - Admin and owner-of-delegate password resets revoke PATs and trusted devices in a separate transaction from the password write
+
+1. **Severity:** LOW
+2. **Confidence:** high (static)
+3. **Location:** `backend/src/admin/admin.service.ts:603-609` (`save(targetUser)` in one `withScopedDb`, then `revokeSessionsAndTokens` at `:723-731` in another; same split at `:445` and `:505`); `backend/src/delegation/delegation.service.ts:1512-1538` (`repo.save(delegate)` in one `systemScoped` call, `revokeStandingCredentials` in the next).
+4. **Violated invariant:** INV-AUTH-005, whose stated mechanism is that `revokeStandingCredentials` "revokes PATs and deletes trusted devices inside the password write's own withScopedDb transaction, so a refused reset revokes nothing and a committed one leaves neither live". The user, email-reset, OIDC-link and emergency-claim paths do this; these two do not.
+5. **Reproduction:** an administrator resets a user's password (or an owner resets a delegate-only user's password); the password write commits; the second transaction fails (connection loss, statement timeout, deploy). The new password is live and the old password's PATs and trusted devices are too. The caller gets a 500.
+6. **Observed:** two commits where the contract promises one.
+7. **Expected:** password, PATs and trusted devices change in one transaction; refresh families and OAuth grants after the commit, as elsewhere.
+8. **Impact:** narrow: it needs a failure in a millisecond window, and the admin sees an error. When it happens the credentials the reset existed to end keep working with no log line naming them (the admin path has no equivalent of the claim controller's account-naming error log).
+9. **Root cause:** `revokeSessionsAndTokens` bundles the in-transaction half and the refresh-token half, so callers invoke it after their own write's transaction instead of passing their manager.
+10. **Recommended correction:** take the manager: call `revokeStandingCredentials(manager, id)` inside the `save`'s transaction; keep the refresh-token and OAuth halves after the commit.
+11. **Suggested remediation diff (illustrative, not applied):**
+    ```diff
+    --- a/backend/src/admin/admin.service.ts
+    +++ b/backend/src/admin/admin.service.ts
+    @@ resetUserPasswordWithinContext
+    -    await withScopedDb(this.dataSource, (manager) =>
+    -      manager.getRepository(User).save(targetUser),
+    -    );
+    +    await withScopedDb(this.dataSource, async (manager) => {
+    +      await manager.getRepository(User).save(targetUser);
+    +      await revokeStandingCredentials(manager, targetUserId);
+    +    });
+    --- a/backend/src/delegation/delegation.service.ts
+    +++ b/backend/src/delegation/delegation.service.ts
+    @@ resetDelegatePassword
+    -    await this.systemScoped(User, (repo) => repo.save(delegate));
+    -    await this.systemScoped(RefreshToken, async (repo) => {
+    -      await repo.update({ userId: delegate.id, isRevoked: false }, { isRevoked: true });
+    -      await revokeStandingCredentials(repo.manager, delegate.id);
+    -    });
+    +    await this.systemScoped(User, async (repo) => {
+    +      await repo.save(delegate);
+    +      await revokeStandingCredentials(repo.manager, delegate.id);
+    +      await repo.manager.getRepository(RefreshToken).update(
+    +        { userId: delegate.id, isRevoked: false }, { isRevoked: true });
+    +    });
+    ```
+    `revokeSessionsAndTokens` then drops its `revokeStandingCredentials` call for the reset path only (the disable/delete paths at `:445` and `:505` should be checked the same way). Still to verify: `admin.service.spec.ts`, `delegation.service.spec.ts`, and that a refusal after the `save` now rolls the revocation back too.
+12. **Recommended regression test:** a failpoint test in the style of `logout-revoke-failpoint.integration.spec.ts`: a `BEFORE UPDATE` trigger on `personal_access_tokens` that raises; assert the reset rejects and the password hash is unchanged.
+13. **Suggested regression-test diff:** as described; not drafted further this session.
+14. **Verification method:** that failpoint test for both paths.
+15. **Residual risks:** the delegate path's whole-entity `save(delegate)` is also an instance of D-S03-01.
+
+- **Causality class:** `PRE_EXISTING_UNREPORTED` (INV-AUTH-005 postdates the upstream audit; these two paths were not brought into line with its mechanism).
+
+
+### A26-L08 - Per-user TOTP and step-up attempt budgets are enforced by peek-then-verify
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S03-06 (primary, 03-security-auth.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** security.
+
+#### A26-S03-06 (primary) - Per-user TOTP and step-up attempt budgets are enforced by peek-then-verify, so concurrent guesses exceed the cap
+
+1. **Severity:** LOW
+2. **Confidence:** medium (static; not executed)
+3. **Location:** `backend/src/auth/two-factor.service.ts:237-245` (per-token peek), `:274` and `:414-420` (`userTotpBudgetSpent` peek), `:430` (increment after the failed check); `backend/src/auth/step-up/step-up.service.ts` `verifyAndIssue` (peek at the top, `recordFailure` after bcrypt/TOTP).
+4. **Violated invariant:** the per-user budget "keyed by user rather than by client address, so no forwarded header moves it" (comment at `two-factor.service.ts:405-413`) bounds how many codes are checked per window. The increment is atomic (`AuthAttemptCounterService.increment`), but the decision to check a code is taken on a value read before any of the concurrent failures are counted.
+5. **Reproduction:** an attacker who has the password (2FA login) or a stolen session (step-up) sends K requests at once, each with a different code, from K client addresses so the per-IP `@Throttle` (5 per 15 minutes on `/auth/2fa/verify`, 10 per minute on `/auth/step-up`) does not bind. All K `peek` calls read the same count below `MAX_USER_2FA_ATTEMPTS` / `MAX_ATTEMPTS = 10`, so all K codes are checked; the counter afterwards equals K and the lock follows, but K guesses were evaluated instead of at most the cap.
+6. **Observed:** cap enforced only for sequential attempts.
+7. **Expected:** reserve an attempt before checking the code (`increment` first, compare the returned count with the cap, then refund on success via `reset`), the same "decide from what the database committed" rule `recordFailedLogin` follows.
+8. **Impact:** narrows the second-factor guessing budget only by the attacker's address count; a 6-digit TOTP with replay protection (`claimTotpCode`) keeps the per-burst success probability at K / 10^6 (or K * 3 / 10^6 with a ±1 step window). Low.
+9. **Root cause:** read-then-act on a counter whose write is atomic.
+10. **Recommended correction:** increment-then-check.
+11. **Suggested remediation diff (illustrative, not applied):**
+    ```diff
+    --- a/backend/src/auth/step-up/step-up.service.ts
+    +++ b/backend/src/auth/step-up/step-up.service.ts
+    @@ verifyAndIssue
+    -    const attempts = await this.attemptCounters.peek(STEP_UP_ATTEMPT_SCOPE, attemptKey);
+    -    if (attempts >= this.MAX_ATTEMPTS) {
+    +    // Reserve the attempt first: the count we compare is the one the database committed.
+    +    const { count } = await this.attemptCounters.increment(
+    +      STEP_UP_ATTEMPT_SCOPE, attemptKey, this.LOCKOUT_WINDOW_MS, "sliding");
+    +    if (count > this.MAX_ATTEMPTS) {
+    @@
+    -    if (!verified) {
+    -      await this.recordFailure(attemptKey);
+    +    if (!verified) {
+    ```
+    The success path keeps its `reset`. Same shape for `userTotpBudgetSpent` / `recordUserTotpFailure`. Still to verify: `step-up.service.spec.ts`, `two-factor.service.spec.ts`, and that a correct code after nine failures still passes (`count` 10 is not `> 10`).
+12. **Recommended regression test:** integration: 20 concurrent wrong codes against one user; assert at most `MAX` reached the verifier (spy on `verifyTotpForUser` call count, real counter table).
+13. **Suggested regression-test diff:** not drafted this session.
+14. **Verification method:** that test.
+15. **Residual risks:** none beyond the throttler's own per-address semantics.
+
+- **Causality class:** `PRE_EXISTING_UNREPORTED` (MON-M24 covered the login counter only).
+
+
+### A26-L09 - `20260908120000_remove_notification_browser.sql` drops a column the previous release still selects
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S05-02 (primary, 05-migrations-schema.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** data.
+
+#### A26-S05-02 (primary) - `20260908120000_remove_notification_browser.sql` drops a column the previous release still selects
+
+1. **Severity:** LOW
+2. **Confidence:** high
+3. **Location:** `database/migrations/20260908120000_remove_notification_browser.sql:5`; commit `8e2f78bc5` (2026-09-06) removed the entity property and added the `DROP COLUMN` in one change (the file was later renamed from `188_` to its timestamp); 1.15.1 (`f20c561f6`) `backend/src/users/entities/user-preference.entity.ts:49-50` maps `notification_browser`.
+4. **Violated invariant:** S05-C, `docs/database-migrations.md` "Two versions of the code run against one database during a rollout": `DROP COLUMN` is forbidden in the release that stops writing the column.
+5. **Realistic reproduction scenario:** An install on 1.15.x upgrades to any release from 1.16.0 to 1.19.0 with the chart's default `RollingUpdate` (`maxSurge: 1`, `maxUnavailable: 0`). The new pod runs `db-migrate` and commits the drop while the 1.15.x pod still serves. Every TypeORM read of `UserPreference` on the old pod selects `"UserPreference"."notification_browser"`. Executed on the `schema.sql` database: `SELECT "UserPreference"."notification_browser" FROM user_preferences "UserPreference"` fails `column UserPreference.notification_browser does not exist`.
+6. **Observed implementation behavior:** contract shipped in the same release as the writer's removal.
+7. **Expected behavior:** 1.16.0 stops mapping the column; a later release drops it.
+8. **Impact:** availability for the length of the rollout (every request on the old pod that reads preferences fails), longer if the new pod's readiness stalls with both generations live. Self-heals when the old pod is gone. No data loss (the column was dormant).
+9. **Root cause:** no guard for expand/contract; the documentation says so ("the only thing that catches a contract shipped too early is somebody asking").
+10. **Recommended correction:** the migration is merged and shipped, so it is never edited. Release notes for upgrades from 1.15.x or earlier should name the transient failure, or say to upgrade through 1.15.x -> 1.16.x with a `Recreate` rollout. For the future, a lint rule: a migration whose body contains `DROP COLUMN`, `RENAME`, `SET NOT NULL`, or a narrowing `ALTER TYPE` on a table that exists in the previous release's `schema.sql` must name, in a marked comment, the release in which the writer stopped, and `migration-lint.mjs` refuses one that does not.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/scripts/migration-lint.mjs
++++ b/backend/scripts/migration-lint.mjs
+@@
++// contract-without-expand: DROP COLUMN / RENAME / SET NOT NULL must carry
++//   -- contract-after: <version>
++// naming the release that stopped using the old shape.
++const CONTRACT = /\b(DROP\s+COLUMN|RENAME\s+(COLUMN|TO)|SET\s+NOT\s+NULL)\b/i;
++if (CONTRACT.test(body) && !/^--\s*contract-after:\s*\d+\.\d+\.\d+/m.test(raw)) {
++  report(file, "contract-without-expand", "a contract statement needs -- contract-after: <version>");
++}
+```
+
+12. **Recommended regression test:** a `migration-lint` self-test fixture with a bare `DROP COLUMN` that must be refused, and one with the marker that passes.
+13. **Suggested regression-test diff (illustrative, not applied):** one fixture pair under `backend/scripts/migration-lint.test.mjs` asserting the rule id `contract-without-expand`.
+14. **Verification method:** `npm run migration:lint:test && npm run migration:lint` (the existing migrations need markers or a grandfather list).
+15. **Residual risks / patch limitations:** a marker is a claim, not a proof; only a test that runs the previous release's image against the new schema proves it.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT`. It is the only contract-in-one-step among the 56: the other drops (`provider_missing_*` in `20260920163144`) remove columns no release ever shipped; the type change in `20260908130000` and the `NOT NULL`/constraint drop in `20260912200152` act on objects created in the same release.
+
+
+### A26-L10 - Restore staging writes external attachment objects without an upload intent (MON-M22 residual)
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S06-03 (primary, 06-backup-restore.md, session severity LOW).
+- **Invariants and prior findings named:** INV-ATTACHMENT-001, MON-M22.
+- **Lens:** data.
+
+#### A26-S06-03 (primary) - Restore staging writes external attachment objects without an upload intent; a process death or a failed discard leaves bytes nothing can find (MON-M22 residual)
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed: R4 on local and S3)
+3. **Location:** `backend/src/backup/backup-attachment-transfer.service.ts:503-529` (`tryStageAttachmentObject`, a bare `attachmentStorage.save`), `:532-542` (`discardStagedAttachmentObjects`, failures only logged); `backend/src/backup/backup-restore.service.ts:244-283, 438-448`. Contrast `backend/src/attachments/attachments.service.ts` create path (intent committed before the put).
+4. **Violated invariant:** INV-ATTACHMENT-001 "no bytes exist without metadata", eventually, which the create path achieves through an upload-intent tombstone the sweeper can enumerate.
+5. **Realistic reproduction scenario:** a restore of an artifact carrying attachments on a `local` or `s3` deployment; the pod is killed (OOM, rollout) after staging and before the commit, or the commit fails and the discard `DeleteObject` fails transiently.
+6. **Observed:** R4 (injected failure in `restoreDeferredFkColumns`, discard suppressed to model process death): both staged keys hold bytes, no `transaction_attachments` row names them, and `attachment_blob_tombstones` gained 0 rows. The sweeper works only from tombstones, so the objects are permanent.
+7. **Expected:** staging follows the create path's protocol: an intent tombstone per staged key committed before the put, cleared inside the restore transaction (or left for the sweeper on any failure).
+8. **Impact:** storage leak of copies of the user's own receipts in the volume or bucket, outside any metadata, surviving later account deletion. No exposure to another tenant; no incorrect figure.
+9. **Root cause:** the restore was given its own object-write path instead of reusing the intent/compensation protocol of INV-ATTACHMENT-001.
+10. **Recommended correction:** write `attachment_blob_tombstones` intents (`upload_lease_expires_at` set) for the staged keys in a short transaction before staging; in the restore transaction, clear them fenced on `swept_at IS NULL` exactly as `AttachmentsService.create` does; on failure leave them.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/backup/backup-attachment-transfer.service.ts
++++ b/backend/src/backup/backup-attachment-transfer.service.ts
+   private async tryStageAttachmentObject(key: string, bytes: Buffer): Promise<boolean> {
+     try {
++      // Same protocol as AttachmentsService.create: the intent outlives the
++      // process, so a death before the commit leaves a key the sweeper finds.
++      await this.objectIntents.record(this.attachmentStorage.name, key);
+       await this.attachmentStorage.save(key, bytes);
+       return true;
+--- a/backend/src/backup/backup-restore.service.ts
++++ b/backend/src/backup/backup-restore.service.ts
+                 await clearForeignSeriesOfUser(manager, userId);
++                await this.attachments.clearStagingIntents(manager, stagedKeys);
+```
+
+   (`objectIntents` stands for the helper in `attachments/storage/object-intent.ts`; its exact API was not read in this session.)
+12. **Recommended regression test:** R4 of the scratch spec, asserting the tombstone count rises by the number of staged keys and the sweeper then removes them.
+13. **Suggested regression-test diff:** R4 in `<scratchpad>/s06-roundtrip.integration.spec.ts`, with `expect(await tombstones()).toBe(before + staged.length)`.
+14. **Verification method:** the integration case on `local` with a real tmpdir, then one sweeper pass.
+15. **Residual risks / patch limitations:** the intent must not be swept while a long restore is still staging; the lease length has to cover the gate's queue time.
+
+Causality: `PRIOR_REPORTED`, `CONFIRMED_WITH_DIFFERENT_ROOT_CAUSE` (MON-M22: the upload and delete paths are fixed; the restore staging path is the remaining uncoupled writer).
+
+
+### A26-L11 - A restore applies no semantic backfill to rows from an older artifact (`skip_price_updates`)
+
+- **Canonical severity:** LOW. kept LOW; A26-S05-03 is the migration face that S06 carried.
+- **Absorbs:** A26-S06-04 (primary, 06-backup-restore.md, session severity LOW); A26-S05-03 (superseded, 05-migrations-schema.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** data.
+
+#### A26-S06-04 (primary) - A restore applies no semantic backfill to rows from an older artifact (`skip_price_updates`; carries A26-S05-03)
+
+1. **Severity:** LOW
+2. **Confidence:** medium (static; LOW does not require execution)
+3. **Location:** `database/migrations/20261012131846_securities_skip_price_updates_user_switch.sql` (one-time `UPDATE`); `backend/src/backup/backup-format.ts:13` (`BACKUP_VERSION = 1`, compared for equality at `backup-restore.service.ts:720`); no reference to `skip_price_updates` anywhere in `backend/src/backup/` except `support-backup/support-backup-rules.ts:439`.
+4. **Violated invariant:** S05-D: a migration that changes what a stored value means reaches every row that will carry the old meaning.
+5. **Realistic reproduction scenario:** as A26-S05-03: a 1.18 backup holding a security with `skip_price_updates = true` and a provider override, restored on 1.19.
+6. **Observed:** the row is inserted as stored; the security never refreshes under 1.19 semantics.
+7. **Expected:** the restore normalizes rows from artifacts older than the change.
+8. **Impact:** stale prices for the affected securities until the user flips the switch; visible in the UI; no money moves.
+9. **Root cause:** the artifact carries no producing release or schema marker, so the restore cannot tell an old meaning from a deliberate new value; every future semantic backfill has the same gap.
+10. **Recommended correction:** add `producedBy` (application version or the newest applied migration name) to the envelope, and a restore-side table of normalizations keyed by the migration that introduced them; apply `skip_price_updates` normalization when the artifact predates `20261012131846` or carries no marker.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/backup/backup-restore-database.service.ts
++++ b/backend/src/backup/backup-restore-database.service.ts
++  /** Semantic backfills a restored row must pass through, keyed by migration. */
++  async applyLegacyNormalizations(m: EntityManager, userId: string, producedBy: string | null) {
++    if (producedBy === null || producedBy < "20261012131846") {
++      await m.query(
++        `UPDATE securities SET skip_price_updates = false
++          WHERE user_id = $1 AND skip_price_updates
++            AND (quote_provider IS NOT NULL OR msn_instrument_id IS NOT NULL)`,
++        [userId],
++      );
++    }
++  }
+```
+
+12. **Recommended regression test:** restore a fixture without `producedBy` holding `{ skip_price_updates: true, quote_provider: "yahoo" }` and assert `false`; one with `producedBy` at or after the migration keeps `true`.
+13. **Suggested regression-test diff:** a case in `backup-restore.integration.spec.ts` built from `seedUserData` plus one `UPDATE securities`.
+14. **Verification method:** the integration case.
+15. **Residual risks / patch limitations:** artifacts written by 1.19.0 itself carry no marker and would be normalized too, clearing a deliberate switch on a security with a provider; the marker has to ship before the normalization is keyed on it, or the predicate accepted as safe.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT`.
+
+#### A26-S05-03 (superseded) - The `skip_price_updates` meaning change is a one-time backfill that a restore of an older backup bypasses
+
+Superseded by the primary above: same root cause, and its scenario is one surface of the primary's reproduction. Full text: `05-migrations-schema.md` section 4.
+
+
+### A26-L12 - The custom-report text filter is a second search door with unescaped LIKE wildcards (INV-SEARCH-001)
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S07-08 (primary, 07-cash-ledger.md, session severity LOW).
+- **Invariants and prior findings named:** INV-SEARCH-001.
+- **Lens:** financial.
+
+#### A26-S07-08 (primary) - The custom-report text filter is a second search door with unescaped LIKE wildcards (INV-SEARCH-001)
+
+1. **Severity:** LOW
+2. **Confidence:** high (static; a two-line input, not executed)
+3. **Location:** `backend/src/reports/reports.service.ts:572-578` (`searchText`) and `:719-735` (`text` condition): `%${value.trim().toLowerCase()}%` with no `escapeLikePattern`, outside `applyTransactionSearch`; the guard scans only `src/transactions/`.
+4. **Violated invariant:** INV-SEARCH-001 (one parser, escaped once).
+5. **Reproduction:** a custom report filtered on `50%` or `a_b`.
+6. **Observed (by reading):** `%` and `_` act as wildcards: `50%` matches every payee or description containing `50`.
+7. **Expected:** literal match, or the shared door.
+8. **Impact:** a report total over more rows than the filter names; narrow.
+9. **Root cause:** the guard's scope is the transactions module.
+10. **Recommended correction:** route through `resolveTransactionSearch` / `applyParsedSearch`, or at least `escapeLikePattern`.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+-          const searchTerm = `%${filters.searchText.trim().toLowerCase()}%`;
++          const searchTerm = `%${escapeLikePattern(filters.searchText.trim().toLowerCase())}%`;
+```
+
+12. **Recommended regression test:** a report over payees `50 Shop` and `5000 Mart` filtered on `50%`: with `%` literal it returns neither (no payee contains `50%`); today it returns both.
+13. **Suggested regression-test diff:** a `reports.service.spec.ts` case asserting the bound parameter is `%50\%%`.
+14. **Verification:** `npm run test:unit -- reports.service`; widen `transaction-search.guard.spec.ts` to `src/reports/`.
+15. **Residual risks:** S16 owns custom reports; the semantics (one parser versus substring) are a product decision.
+
+Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-L13 - Job leases are shorter than the provider calls they guard and the saves are not fenced by the lease token (AI insights, email-receipt poll)
+
+- **Canonical severity:** LOW. kept LOW for the pair: duplicate provider work and a duplicate draft, no money moved.
+- **Absorbs:** A26-S08-04 (primary, 08-scheduler-cron.md, session severity LOW); A26-S11-01 (merged surface, 11-email-receipts.md, session severity LOW).
+- **Invariants and prior findings named:** INV-CRON-001, INV-RECEIPT-006, MON-M25.
+- **Lens:** concurrency.
+
+#### A26-S08-04 (primary) - The AI insight lease (15 min) is shorter than the provider call it guards (Ollama aborts at 20 min), and the save is not fenced by the lease token: a second generation runs and both sets are saved (MON-M25 residual)
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed, R2)
+3. **Location:** `backend/src/ai/insights/ai-insights.service.ts:52` (`INSIGHT_GENERATION_LEASE_MS = 15 min`), `:184-238` (lease, cooldown re-read), `:741-790` (`saveInsights`, no token check); `ai/providers/ollama.provider.ts:160` (20-minute abort "for CPU inference"); `ai/providers/long-running-fetch.ts` (undici timeouts disabled).
+4. **Violated invariant:** INV-CRON-001 / the lease contract in `job-claim.service.ts` ("only one replica may do this now").
+5. **Realistic reproduction scenario:** a self-hosted deployment on CPU inference; the 6 AM cron's generation for a user takes 16 minutes; the user presses "Generate insights" (or a second replica's request arrives) after minute 15.
+6. **Observed implementation behavior (executed, the holder's lease expired by its own token while its provider call was in flight):** two provider calls, two insight rows saved for one generation window (`providerCalls: 2, rows: 2`).
+7. **Expected behavior:** the second caller stands down while the first is still running; or the first's save is refused once its lease is gone.
+8. **Impact:** duplicate insight cards (bounded by `MAX_INSIGHTS_PER_USER` pruning) and a second full CPU inference on the hardware the 20-minute budget exists for.
+9. **Root cause:** a TTL chosen independently of the work's own upper bound, with no renewal and an unfenced final write.
+10. **Recommended correction:** make the lease outlast the provider budget (derive it from the largest provider timeout plus margin), and fence the save: re-check under the lease token inside the save transaction.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/ai/insights/ai-insights.service.ts
++++ b/backend/src/ai/insights/ai-insights.service.ts
+-const INSIGHT_GENERATION_LEASE_MS = 15 * 60 * 1000;
++// Longer than the slowest provider call it guards (Ollama aborts at 20 min,
++// ollama.provider.ts) plus aggregation and save, so a live generation is never
++// retaken by a second one.
++const INSIGHT_GENERATION_LEASE_MS = 25 * 60 * 1000;
+@@ saveInsights
+-    await withScopedDb(this.dataSource, async (manager) => {
++    await withScopedDb(this.dataSource, async (manager) => {
++      const held = await manager.query(
++        `SELECT 1 FROM job_claims
++          WHERE claim_type = $1 AND user_id = $2 AND claim_key = $3
++            AND lease_token = $4::uuid FOR UPDATE`,
++        [JobClaimType.AiInsightGeneration, userId, INSIGHT_GENERATION_CLAIM_KEY, leaseToken],
++      );
++      if (returnedRows(held).length === 0) return; // retaken: the holder saves
+```
+
+   (`saveInsights` gains the `leaseToken` parameter.) Needs: unit tests, the R2 probe as an integration case.
+12. **Recommended regression test:** R2.
+13. **Suggested regression-test diff (illustrative, not applied):** the R2 probe asserting `rows === 1`.
+14. **Verification method:** `npm run test:unit -- ai-insights`; R2 as an integration spec.
+15. **Residual risks / patch limitations:** the provider is still paid twice when the lease is outrun; only a longer TTL (or renewal) prevents the call.
+
+Causality: `PRIOR_REPORTED`, MON-M25 residual with a different root cause (the process-local guard is gone; the lease replacing it is outrun). Related, not executed, same class (section 9): `email-receipt-poll` (10-min lease, provider steps up to the same 20-min budget), `bond-series` (`withLease` 90 min vs a worst case of hours; writes converge), `backup-offsite-retry` (outcome write not fenced by attempt).
+
+#### A26-S11-01 (merged surface) - The receipt poll's 10-minute lease is outrun by the provider calls it starts, and the parser-draft step has no claim of its own: two polls draft the same sender twice
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed, P2)
+3. **Location:** `backend/src/email-receipts/poll/email-receipt-poll.service.ts:42-44` (`POLL_LEASE_MS = 10 min`, `LEASE_WORK_BUDGET_MS = 8 min`), `:355-382` (the deadline is checked only between emails and once before the AI step); `ai/email-receipt-ai.service.ts:654-685` (`runAutomaticStep`: up to 2 drafts + 3 requests, no deadline), `:687-725` (`receiptsNeedingDraft`: a plain `SELECT`, no claim), `:250-282` (the draft saved with no re-check under a lock); `pipeline/email-receipt-pipeline.service.ts:295-310, :368-397` (up to `AI_CATEGORY_CALLS_PER_POLL = 10` category calls inside the deadline loop); `ai/providers/ollama.provider.ts:160` (20-minute abort); `ai/providers/anthropic.provider.ts:299` (2-minute abort).
+4. **Violated invariant:** INV-RECEIPT-006 ("two replicas, or the cron and Poll now, never read one mailbox at the same time"), and the lease contract of `job-claim.service.ts` (only one holder does the work).
+5. **Realistic reproduction scenario:** a self-hosted deployment with an Ollama provider on CPU, mailbox AI mode `automatic`, a new sender with no parser. The tick's pipeline loop finishes at minute 7 and the automatic step starts the first parser-draft call, which takes 12 minutes. The lease expires at minute 10. The next 15-minute tick (another replica, or the same one once its tick ends; or the user's "Poll now") claims the lease, and its automatic step selects the same `no_parser` email, because nothing marks a draft as in flight.
+6. **Observed implementation behavior (executed, P2, scratch worktree, real PostgreSQL under RLS; the holder's lease was expired by its own token during its provider call, the second poll then started):** `first.busy=false`, `second.busy=false`, `providerCalls=2`, `drafts=2` (two `draft` parsers for `newshop.example.com`). The same overlap repeats an AI category question for a `pending` email the first poll is still asking about (the second pass of the first poll then finds the row no longer `pending` and leaves it unchanged, so only the call is doubled); AI review requests are protected by `claimById` and are not doubled.
+7. **Expected behavior:** the lease covers every provider call started under it, or no provider call starts once the remaining lease cannot cover it; a second poll does not draft a sender the first is drafting.
+8. **Impact:** a duplicate draft parser per affected sender (it counts toward `MAX_PARSERS_PER_USER = 200` and the person must delete one), and doubled provider spend on the hardware the 20-minute timeout exists for. No ledger effect: drafts read nothing until approved, and every card still needs `confirm`.
+9. **Root cause:** a lease TTL chosen independently of the provider budget it guards (the work budget is enforced between emails, not between provider calls), with no renewal API in `JobClaimService` and no claim on the per-sender draft. Same class as A26-S08-04 (AI insights lease); S23 may consolidate them under one root cause.
+10. **Recommended correction:** pass the poll's deadline into the AI category question and `runAutomaticStep` and stop starting provider calls once `deadline` is passed; size `POLL_LEASE_MS` as work budget plus the largest single provider call plus margin; and make the draft save idempotent per sender (under an advisory lock on `user:domain`, skip the save when a parser covering the domain now exists).
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/email-receipts/poll/email-receipt-poll.service.ts
++++ b/backend/src/email-receipts/poll/email-receipt-poll.service.ts
+-/** One poll of one mailbox holds its lease this long at most (design INV-RECEIPT-006). */
+-export const POLL_LEASE_MS = 10 * 60_000;
+-/** No new work is started once this much of the lease is spent. */
+-const LEASE_WORK_BUDGET_MS = 8 * 60_000;
++/** No new work, provider calls included, is started once this much of the lease is spent. */
++const LEASE_WORK_BUDGET_MS = 8 * 60_000;
++/**
++ * The lease outlasts the work budget by the slowest single provider call that
++ * may start just before it ends (Ollama aborts at 20 minutes, ollama.provider.ts),
++ * so a call started under the lease never runs beside a second poll (INV-RECEIPT-006).
++ */
++export const POLL_LEASE_MS = LEASE_WORK_BUDGET_MS + 22 * 60_000;
+@@ processStored
+-      await this.processOne(userId, id, ["pending"], outcome, budget);
++      await this.processOne(userId, id, ["pending"], outcome, budget, deadline);
+@@
+     if (aiMode === "automatic" && Date.now() <= deadline) {
+       try {
+-        await this.ai.runAutomaticStep(userId);
++        await this.ai.runAutomaticStep(userId, { deadline });
+--- a/backend/src/email-receipts/ai/email-receipt-ai.service.ts
++++ b/backend/src/email-receipts/ai/email-receipt-ai.service.ts
+-  async runAutomaticStep(userId: string): Promise<AutomaticAiStepResult> {
++  async runAutomaticStep(
++    userId: string,
++    options: { deadline?: number } = {},
++  ): Promise<AutomaticAiStepResult> {
++    const timeLeft = () =>
++      options.deadline === undefined || Date.now() <= options.deadline;
+@@
+     for (const receiptId of drafts) {
++      if (!timeLeft()) break;
+       budget--;
+@@
+     for (const requestId of await this.pendingRequests(userId, budget)) {
++      if (!timeLeft()) break;
+       const outcome = await this.processAiRequest(userId, requestId);
+@@ draftParser, inside the save transaction
+       const created = await withScopedDb(this.dataSource, async (m) => {
+         const repo = m.getRepository(EmailReceiptParser);
++        await acquireAdvisoryLock(
++          m,
++          LockScope.EmailReceiptParserDraft,
++          `${userId}:${receipt.fromDomain}`,
++        );
++        // A draft saved by a concurrent run for this sender since the select:
++        // that one stands, and this answer is not stored twice.
++        const covering = await coveringParser(m, userId, receipt.fromDomain);
++        if (covering) return covering;
+```
+
+   (`coveringParser` is the `receiptsNeedingDraft` `NOT EXISTS` predicate as a function; `LockScope.EmailReceiptParserDraft` is new, or reuse the `<user>:<domain>` advisory lock `requestAiDraft` already takes. The pipeline's `askCategories` gets the same deadline check.) Needs: unit tests for the deadline, P2 as an integration case, a check that `MAX_PARSERS_PER_USER` handling is unchanged.
+12. **Recommended regression test:** P2 (lease expired by its holder's token during the first provider call, a second `pollMailbox`), asserting one provider call for the draft and one draft row.
+13. **Suggested regression-test diff (illustrative, not applied):** the P2 probe in section 12 with its final assertions changed to `expect(calls).toBe(1); expect(drafts).toHaveLength(1);` (it now asserts `calls === 2` to record the baseline).
+14. **Verification method:** `npm run test:unit -- email-receipt-poll email-receipt-ai`; P2 as `test/integration/email-receipts-poll-lease.integration.spec.ts`.
+15. **Residual risks / patch limitations:** a longer lease delays recovery after a crashed holder by the same amount (30 minutes instead of 10); the deadline makes a slow provider leave work for the next tick, which the existing "a released request carries a note" path already handles. The doubled call is prevented only for calls started under one lease; a person's own "Draft with AI" beside the automatic step can still draft a sender twice (the advisory lock fences the second row, not the second call).
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the module is new). Hand-off from S08 (section 12 of `08-scheduler-cron.md`) disposed here.
+
+
+### A26-L14 - A staged MNY file can still be deleted under a job that was just created (MON-L04 residual)
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S09-04 (primary, 09-import-mny.md, session severity LOW).
+- **Invariants and prior findings named:** MON-L04.
+- **Lens:** data.
+
+#### A26-S09-04 (primary) - A staged file can still be deleted under a job that was just created (MON-L04 residual)
+
+1. **Severity:** LOW
+2. **Confidence:** high (the PostgreSQL behaviour executed with two connections)
+3. **Location:** `backend/src/import/mny/mny-staging.service.ts:160-190` (sweep), `:197-216` (`dropSupersededFiles`), `mny-import.controller.ts:213-226` (`DELETE staged/:id`, no exclusion); `mny-import.service.ts:141, 163, 257`.
+4. **Violated invariant:** a pending or running job's staged bytes are not deleted (the comment at `:96-103` says "a started import can never have its bytes swept out from under it").
+5. **Reproduction:** connection A runs `create` (INSERT of the job referencing the staged row; holds `FOR KEY SHARE` until commit). Connection B runs the sweep (expired file) or `dropSupersededFiles` (a second upload in another tab). B's `NOT EXISTS` sees no job in its snapshot, waits on A's key-share lock, and once A commits, deletes the row without re-checking. Executed on PostgreSQL 16 with a two-table replica of the schema (`s09_sf`, `s09_jb ... ON DELETE SET NULL`): output `deleted staged row 1`, then `job 1 status=pending sf_id=NULL`.
+6. **Observed:** the job runs, `loadBytes` returns null, `MnyStagedFileMissingError` (a parse code, so non-retryable); with `wipeExistingData` the wipe has already run. `DELETE /import/mny/staged/:id` deletes a pending job's bytes unconditionally (the client never calls it; `discardStagedFile` is dead code, `frontend/src/lib/import-mny.ts:335`).
+7. **Expected:** the deleter re-checks the exclusion after acquiring the row lock, or the job creation refreshes the staged row so the deleter re-evaluates it.
+8. **Impact:** a failed import and a forced re-upload; no ledger damage (nothing was written). Window: the job INSERT's transaction versus an hourly sweep of an expired (24 h) file or a concurrent upload.
+9. **Root cause:** a single-statement `DELETE ... WHERE NOT EXISTS (job)` under READ COMMITTED does not re-evaluate the sub-select after waiting on a row lock that was not an update.
+10. **Recommended correction:** lock first, decide second, in two statements.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/backend/src/import/mny/mny-staging.service.ts
++++ b/backend/src/import/mny/mny-staging.service.ts
+@@ -163,17 +163,22 @@ export class MnyStagingService {
+         withScopedDb(this.dataSource, async (manager) => {
+-          const result = await manager
+-            .getRepository(ImportStagedFile)
+-            .createQueryBuilder()
+-            .delete()
+-            .where("expires_at < CURRENT_TIMESTAMP")
+-            .andWhere(`NOT EXISTS (...)`)
+-            .execute();
+-          return result.affected ?? 0;
++          // Statement 1 waits for any job INSERT holding a key-share lock;
++          // statement 2 then decides on a fresh snapshot that sees it.
++          const locked = returnedRows<{ id: string }>(await manager.query(
++            `SELECT id FROM import_staged_files
++              WHERE expires_at < CURRENT_TIMESTAMP FOR UPDATE SKIP LOCKED`));
++          if (locked.length === 0) return 0;
++          const deleted = await manager.query(
++            `DELETE FROM import_staged_files f WHERE f.id = ANY($1::uuid[])
++               AND NOT EXISTS (SELECT 1 FROM import_jobs j
++                 WHERE j.staged_file_id = f.id AND j.status IN ('pending','running'))
++             RETURNING id`, [locked.map((r) => r.id)]);
++          return returnedRows(deleted).length;
+```
+
+the same shape for `dropSupersededFiles`, and the controller's `remove` gains the same `NOT EXISTS` (a 409 when a job still needs the file). `SKIP LOCKED` is a choice: the sweep then defers a file whose job is being created to the next hour.
+
+12. **Recommended regression test:** a two-connection integration case: open a transaction that inserts a pending job for an expired staged file, run the sweep from a second connection, commit the first, assert the staged row survives.
+13. **Suggested regression-test diff:** `Suggested remediation diff: incomplete` for the test harness: the existing staging spec has no two-connection helper; the race needs a `QueryRunner` held open in the test (allowed in `test/`), which this session reproduced only in raw SQL.
+14. **Verification:** the race test above; `mny-staging.integration` green.
+15. **Residual risks:** none material.
+
+Causality: `PRIOR_REPORTED`, `CONFIRMED_WITH_DIFFERENT_ROOT_CAUSE` (MON-L04: the expiry exclusion exists; the residual is the snapshot race and the unguarded discard route).
+
+
+### A26-L15 - INV-IMPORT-003 is still unenforced on the MNY and QIF writers, and its index entry names one path of three
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S09-05 (primary, 09-import-mny.md, session severity LOW).
+- **Invariants and prior findings named:** INV-IMPORT-003.
+- **Lens:** docs.
+
+#### A26-S09-05 (primary) - INV-IMPORT-003 is still unenforced on the MNY and QIF writers, and its index entry names one path of three
+
+1. **Severity:** LOW
+2. **Confidence:** high (static; the constraint and the writers read)
+3. **Location:** `backend/src/import/mny/writers/write-reference.ts:159-206` (categories), `:214-246` (payees); `backend/src/import/import.service.ts:664-680` (QIF); fixed path for contrast `import-entity-creator.service.ts:165-210`; `database/schema.sql:268` (`UNIQUE(user_id, name, parent_id)`), `:313` (`UNIQUE(user_id, name)` on payees); `docs/system-invariants.md:287-305`.
+4. **Violated invariant:** INV-IMPORT-003.
+5. **Reproduction:** while a long MNY import's transaction is open, the user (or a rule, bank sync, or auto-post creating a payee) creates subcategory "Fuel" under an existing "Auto" or payee "ACME" that the file also needs. Whichever insert commits second gets 23505: if the import is second, its whole transaction aborts (job `failed`, retryable); if the manual create is second, it blocks for the remainder of the import and then fails.
+6. **Observed:** a plain `repo.insert` after a read taken at the start of the transaction.
+7. **Expected:** `INSERT ... ON CONFLICT DO NOTHING RETURNING id` and adopt the winner, as the CSV creator does.
+8. **Impact:** a lost multi-minute import (retryable, nothing written) or a blocked UI request; top-level categories are not constrained at all (NULL parent), so a concurrent duplicate is silently created.
+9. **Root cause:** the CSV fix was not carried to the other two writers; the index entry describes only `import.service.ts`.
+10. **Recommended correction:** use the `insertCategoryIfAbsent` shape in `writeCategories` and an equivalent for `writePayees`; update the invariant's enforcement text to list the three paths.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/backend/src/import/mny/writers/write-reference.ts
++++ b/backend/src/import/mny/writers/write-reference.ts
+@@ -191,12 +191,22 @@ export async function writeCategories(
+-    const id = randomUUID();
+-    await repo.insert({
+-      id,
+-      userId,
+-      name: category.name,
+-      parentId,
+-      isIncome: category.isIncome,
+-    });
++    const inserted = returnedRows<{ id: string }>(await manager.query(
++      `INSERT INTO categories (id, user_id, name, parent_id, is_income)
++       VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING RETURNING id`,
++      [randomUUID(), userId, category.name, parentId, category.isIncome]));
++    const id = inserted[0]?.id ?? (await repo.findOneOrFail({
++      where: { userId, name: category.name, parentId: parentId ?? IsNull() },
++      select: ["id"],
++    })).id;
++    if (inserted.length > 0) created += 1;
+```
+
+(and the `created += 1` below removed). Note that the ON CONFLICT insert still waits on a concurrent uncommitted insert; it only removes the abort.
+
+12-13. A two-connection integration case: hold a transaction that inserts subcategory X, run `writeCategories` needing X in a second, commit the first, assert the import adopts X.
+14. **Verification:** `npm run test:integration -- mny-import`.
+15. **Residual risks:** the top-level gap needs a `COALESCE`-style unique index (a migration; separate proposal).
+
+Causality: `PRE_EXISTING_UNREPORTED` for the MNY writer; the QIF half is the documented `unenforced` gap.
+
+
+### A26-L16 - Deleting a rule leaves its open AI review requests rule-less, and they block the email-receipt review of the same transaction
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S10-04 (primary, 10-rules-banksync-csv.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** data.
+
+#### A26-S10-04 (primary) - Deleting a rule leaves its open AI review requests rule-less, and they then block the email-receipt review of the same transaction
+
+1. **Severity:** LOW
+2. **Confidence:** high (static; the SQL is explicit)
+3. **Location:** `database/schema.sql:914` (`rule_id ... ON DELETE SET NULL`); `backend/src/transaction-rules/transaction-rules.service.ts:189-222` (`remove` does not close the rule's open requests); `backend/src/ai-review/ai-review-requests.service.ts:300-308` (`NOT EXISTS ... rule_id IS NULL AND status IN open`, no `kind`); `backend/src/email-receipts/pipeline/receipt-candidates.ts:115` (same predicate when choosing candidate transactions).
+4. **Violated invariant:** a receipt review is refused only by another open receipt review of that transaction (`ai-review-requests.service.ts:239`, "never a second one").
+5. **Reproduction:** rule R (`request_ai_review`) queues a `transaction_review` on T (`rule_id = R`, pending, 30-day expiry). The user deletes R; the request becomes `rule_id NULL`, still pending. A receipt email for T arrives.
+6. **Observed:** the insert's `NOT EXISTS` sees the orphaned request as an open receipt review; the receipt ends `review_conflict` (or T is dropped from the candidates), for up to 30 days; the orphaned request is still offered to the AI reviewer although its rule is gone.
+7. **Expected:** the receipt is queued; a deleted rule's open requests are expired with it.
+8. **Impact:** a receipt is not attached automatically; the user resolves a conflict that has no visible cause.
+9. **Root cause:** `rule_id IS NULL` is used as "receipt request", which stopped being true when `ON DELETE SET NULL` was chosen.
+10. **Recommended correction:** expire the rule's open requests in `remove`, and key the dedupe on `kind`.
+11. **Suggested remediation diff (illustrative, not applied)**
+
+```diff
+--- a/backend/src/transaction-rules/transaction-rules.service.ts
++++ b/backend/src/transaction-rules/transaction-rules.service.ts
+@@ async remove(
++      // Its open review requests go with it; left behind they would read as
++      // rule-less (ON DELETE SET NULL) receipt reviews.
++      await m.query(
++        `UPDATE ai_review_requests
++            SET status = 'expired', updated_at = CURRENT_TIMESTAMP
++          WHERE user_id = $1 AND rule_id = $2
++            AND status IN ('pending', 'claimed', 'proposed')`,
++        [userId, id],
++      );
+       const result = await m
+         .getRepository(TransactionRule)
+         .delete({ id, userId });
+--- a/backend/src/ai-review/ai-review-requests.service.ts
++++ b/backend/src/ai-review/ai-review-requests.service.ts
+                    WHERE open_request.user_id = $1::uuid
+                      AND open_request.transaction_id = $2::uuid
+-                     AND open_request.rule_id IS NULL
++                     AND open_request.kind = 'email_receipt'
+```
+
+   and the same `kind` predicate in `receipt-candidates.ts:115`.
+12. **Recommended regression test:** integration: queue a rule review, delete the rule, enqueue a receipt review for the same transaction, expect a row.
+13. **Suggested regression-test diff:** a case in `backend/test/integration/transaction-rules.integration.spec.ts` asserting the request's status is `expired` after `rules.remove` and that `enqueueForReceipt` returns a request.
+14. **Verification:** `npm run test:integration -- "transaction-rules|email-receipt"`.
+15. **Residual risks:** a request already rule-less in a deployed database needs the same `UPDATE` once (a data migration, not shown).
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (AI review requests and receipts are new). Shared with S11 (receipt surface).
+
+
+### A26-L17 - A trade email that states only a price books a total derived from the price rounded to 4 decimals (INV-TRADE-001)
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S11-02 (primary, 11-email-receipts.md, session severity LOW).
+- **Invariants and prior findings named:** INV-TRADE-001.
+- **Lens:** financial.
+
+#### A26-S11-02 (primary) - A trade email that states only a price books a total derived from that price rounded to 4 decimals, not from the price as written
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed, P1)
+3. **Location:** `backend/src/email-receipts/parsing/parse-trade.ts:35-36` (price read to 8 decimals, "stored to 4 for the card"), `:424-436` (`price.value = (units8 + 5_000) / 10_000`), `:559-571` (`tradeExecutedTotalUnits` multiplies `trade.price`, the 4-decimal value); `pipeline/email-receipt-trade.service.ts:177-185` (`toInput` signs that total on the card); the preview derives the stored price from it (`securities/investment-amount.util.ts`).
+4. **Violated invariant:** INV-TRADE-001 ("a caller that supplies only a price has the total derived from the price"; the price column holds 10 decimals) and the hint's executed-total rule: the email's own figure, not a rounded one, is the fact.
+5. **Realistic reproduction scenario:** a fund or fractional-share confirmation that states units and a NAV with 5 to 8 decimals and no total (the profile's `total` field reads nothing), parsed by an approved trade profile; the person approves the card as shown.
+6. **Observed implementation behavior (executed, P1, the Wealthsimple fixture with the total line removed):**
+
+   | Shares | Price written | Price kept | Total proposed | Exact | Difference |
+   | --- | --- | --- | --- | --- | --- |
+   | 10 000 | 1.23456789 | 1.2346 | 12 346.0000 | 12 345.6789 | +0.3211 (0.0026 %) |
+   | 1 000 | 26.320125 | 26.3201 | 26 320.1000 | 26 320.1250 | -0.0250 |
+   | 75.9878 | 26.32005 | 26.3201 | 2 000.0065 | 2 000.0019 | +0.0046 |
+
+7. **Expected behavior:** 12 345.6789, 26 320.1250 and 2 000.0019 (`quantity * price` from the 1e-8 units already read, rounded once to money precision), and the stored price is the price written.
+8. **Impact:** the investment transaction's cost basis and the cash it moves are off by up to `quantity * 0.00005` (0.32 on a 12 346 purchase in the example); the card shows the wrong figure as the fact. The auto-apply gate never books such a reading by itself (`tradeMayAutoApply` is false for a share-moving action that cannot be cross-checked), so a person approves it; the error is small enough not to be noticed.
+9. **Root cause:** the card's 4-decimal price (a display and storage rounding) is reused as the input of the total, instead of the exact `units8` the reader already holds.
+10. **Recommended correction:** keep `priceUnits8` on `ParsedTrade` (or compute the total in `parseTradeLinesTraced`, where `units8` is in scope) and derive the total from it; keep `price` as the 4-decimal display value.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/email-receipts/parsing/parse-trade.ts
++++ b/backend/src/email-receipts/parsing/parse-trade.ts
+@@ parseTradeLinesTraced
+   const read: ParsedTrade = {
+@@
+     price: price?.value ?? null,
++    // The price as written, in 1e-8 units: the total a price-only email
++    // implies is derived from this, never from the 4-decimal `price`.
++    priceUnits8: price ? price.units8.toString() : null,
+@@ export function tradeExecutedTotalUnits(trade: ParsedTrade): number | null {
+   if (trade.total !== null) return trade.total;
+   if (trade.price === null || trade.quantity === null) return null;
+   const quantity8 = BigInt(Math.round(trade.quantity * 1e8));
+-  const gross =
+-    (quantity8 * BigInt(trade.price) + 50_000_000n) / QUANTITY_UNITS;
++  // quantity (1e-8) * price (1e-8) = 1e-16; money is 1e-4: divide by 1e12, half up.
++  const gross =
++    trade.priceUnits8 !== undefined && trade.priceUnits8 !== null
++      ? (quantity8 * BigInt(trade.priceUnits8) + 500_000_000_000n) /
++        1_000_000_000_000n
++      : (quantity8 * BigInt(trade.price) + 50_000_000n) / QUANTITY_UNITS;
+--- a/backend/src/email-receipts/parsing/receipt-parser.types.ts
++++ b/backend/src/email-receipts/parsing/receipt-parser.types.ts
+   price: number | null;
++  /** The price as written, in 1e-8 units (a decimal string); absent on a reading stored before it existed. */
++  priceUnits8?: string | null;
+```
+
+   (`trade` is stored as JSON on `email_receipts.trade`; a stored reading without `priceUnits8` keeps today's arithmetic. The card's price passed to the preview should be the same exact value so `resolveInvestmentAmounts` derives the 10-decimal price from the total.) Needs: unit tests, the preview/commit parity check in `ai-review-work.service.spec.ts`, a numerical case per row above.
+12. **Recommended regression test:** P1's three rows in `parse-trade.spec.ts`, asserting the totals 123 456 789 / 263 201 250 / 20 000 019 (1/10000 units).
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/email-receipts/parsing/parse-trade.spec.ts
++++ b/backend/src/email-receipts/parsing/parse-trade.spec.ts
++  it("derives a price-only total from the price as written, not the 4-decimal one", () => {
++    const body = WEALTHSIMPLE_BUY_BODY.replace("Total cost: $2,000.00\n", "")
++      .replace("$26.32", "$1.23456789")
++      .replace("Shares: 75.9878", "Shares: 10000");
++    const parsed = parseTradeLines(trade, lines(body));
++    expect(tradeExecutedTotalUnits(parsed)).toBe(123_456_789); // 12 345.6789
++  });
+```
+
+14. **Verification method:** `npm run test:unit -- parse-trade email-receipt-trade ai-review-work`.
+15. **Residual risks / patch limitations:** the cross-check `tradeIsConsistent` already uses `units8`, so it is unaffected; a total stated in the email is unaffected. Not checked: whether the frontend preview (`frontend/src/lib/receipt-parser-form.ts` and the dry run) shows the same derived total (the comment at `:557` says the preview calls this one function).
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT`.
+
+
+### A26-L18 - The trade card's preview can call the FX provider inside the pipeline's receipt transaction
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S11-03 (primary, 11-email-receipts.md, session severity LOW).
+- **Invariants and prior findings named:** INV-FX-001.
+- **Lens:** data.
+
+#### A26-S11-03 (primary) - The trade card's preview can call the FX provider inside the pipeline's receipt transaction
+
+1. **Severity:** LOW
+2. **Confidence:** medium (static; the path is traced call by call, not executed)
+3. **Location:** `pipeline/email-receipt-pipeline.service.ts:292-294, :610-615` (the trade branch runs in the receipt's `withScopedDb`, row lock held); `pipeline/email-receipt-trade.service.ts:139-144` (`submitTrade`, a nested `withScopedDb` that joins it); `ai-review/ai-review-work.service.ts:667-682` (`previewCreateInvestmentTransaction`); `securities/investment-transactions.service.ts:778-792` (`getRateForDate`, default `fetchMissing`, then `getLatestRate`); `currencies/exchange-rate.service.ts:1160-1190` (`fxProviders.dailySeries` HTTP call and `persistRateSeries` inside the ambient transaction).
+4. **Violated invariant:** the pipeline's own rule ("a provider call must not hold a row lock", `email-receipt-pipeline.service.ts:295-297`) and `docs/external-side-effects.md` (provider calls outside the transaction); secondary: AGENTS.md "a rate for a date is `resolveFxRate`, never `getLatestRate`" (INV-FX-001) on the fallback.
+5. **Realistic reproduction scenario:** a trade profile reads a USD security bought in an account whose cash is CAD (or a scheduled deposit funds it from a CAD account); the trade date's USD/CAD rate is not stored. The poll's pipeline, holding the email's row lock and one pooled connection in an open transaction, waits for the provider's daily series.
+6. **Observed implementation behavior:** the transaction stays open for the provider's response time; the fetched window is inserted into `exchange_rates` in the user's transaction (rolled back with it if the pass fails later); if the provider answers nothing, the card is previewed at the latest stored rate, whatever its age.
+7. **Expected behavior:** the rate is resolved before the receipt's transaction (or `fetchMissing: false` inside it, with the missing rate reported), and a rate older than `FX_MAX_RATE_AGE_DAYS` is unknown, not the latest.
+8. **Impact:** a person's "Ignore" or "Link" on that email waits on the lock for the provider's timeout; a pool connection is held across an HTTP call per such email per tick. The latest-rate fallback can sign a card whose cash figure uses a stale rate (S13's INV-FX-001 surface).
+9. **Root cause:** `buildTradeCard` reuses the chat tool's preview, which is written for a request context with no outer transaction, from inside the pipeline's transaction.
+10. **Recommended correction:** resolve the settlement rate for the card before the pipeline's transaction, or call the preview with `fetchMissing: false` from the pipeline and let a missing rate make the email wait (`unmatched`-like) until the rate cron stores it; S13 decides the `getLatestRate` fallback.
+11. **Suggested remediation diff: incomplete.** Supported by the evidence:
+
+```diff
+--- a/backend/src/securities/investment-transactions.service.ts
++++ b/backend/src/securities/investment-transactions.service.ts
+@@ resolveCashExchangeRateOrNull
+-      rate = await this.exchangeRateService.getRateForDate(
+-        sourceCurrency,
+-        cashCurrency,
+-        transactionDate,
+-      );
++      rate = await this.exchangeRateService.getRateForDate(
++        sourceCurrency,
++        cashCurrency,
++        transactionDate,
++        // Inside a caller's transaction (the receipt pipeline) no provider is
++        // called: a missing rate is unknown until the rate cron stores it.
++        { fetchMissing: !isInScopedTransaction() },
++      );
+```
+
+   Missing: whether an `isInScopedTransaction()` helper exists (`common/db/scoped-db.ts` holds the ambient manager), and the maintainer's decision on the `getLatestRate` fallback (S13). Needs: unit test, an integration case with a stubbed provider.
+12. **Recommended regression test:** a pipeline integration case with a cross-currency trade profile and a provider stub that blocks, asserting that a concurrent `ignore` on the email is not blocked and that the provider was not called inside the pass.
+13. **Suggested regression-test diff:** not written; it depends on the decision in 11.
+14. **Verification method:** as 12, plus `npm run test:unit -- investment-transactions email-receipt-trade`.
+15. **Residual risks / patch limitations:** the chat tool's own preview keeps fetching, which is correct there.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the trade pipeline is new; the preview's fetch is older and S12/S13's).
+
+
+### A26-L19 - The security-transfer edit writes and validates before taking the holdings lock, from snapshots of both legs
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S12-07 (primary, 12-securities-holdings.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** concurrency.
+
+#### A26-S12-07 (primary) - The security-transfer edit writes and validates before taking the holdings lock, from snapshots of both legs
+
+1. **Severity:** LOW
+2. **Confidence:** medium (reading; not executed)
+3. **Location:** `backend/src/securities/investment-transactions.service.ts:4330-4336` (linked leg read outside the transaction), `:3853-4027` (no `lockHoldingScope` before the reversal, the two whole-entity `save`s and `validateNoNegativeHoldingsHistory`), `:4036-4040` (the lock is first taken inside `rebuildAccountsFromTransactions`).
+4. **Violated invariant:** "a refusal runs inside the same transaction under the same lock" (`AGENTS.md`); the lock-first order every other investment writer follows (`common/db/locks.ts`).
+5. **Reproduction:** account X holds 10; a SELL of 10 on X and an edit raising a transfer-out of X from 0 to 10 run together. The SELL holds the lock and validates without seeing the edit; the edit validates without the lock and without seeing the uncommitted SELL. Both commit.
+6. **Observed:** (by reading) X's history goes to -10; two concurrent edits of one transfer also overwrite each other's fields (no cash, so no money moves).
+7. **Expected:** the second writer waits on `lockHoldingScope` and is refused.
+8. **Impact:** a negative position the oversell guard exists to refuse; lost edits of a transfer's fields.
+9. **Root cause:** `updateLinkedTransfer` predates the lock-first rule and relies on the rebuild's lock.
+10. **Recommended correction:** take `lockHoldingScope` on both legs' old and new accounts as the first statement, then `lockInvestmentTransactionRow` on both legs and reload them.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+@@ -3853,4 +3853,12 @@
+     await withScopedDb(this.dataSource, async (manager) => {
++      await lockHoldingScope(manager, [
++        editedLeg.accountId,
++        linkedLeg.accountId,
++        ...[updateDto.accountId, updateDto.destinationAccountId].filter(
++          (id): id is string => !!id,
++        ),
++      ]);
++      // then lockInvestmentTransactionRow on both legs and reload them (A26-S12-01)
+       const bondGuard = await beginBondWriteGuard(manager, userId, [
+```
+
+12. **Recommended regression test:** a two-connection SELL versus transfer edit with a barrier on the lock.
+13. **Suggested regression-test diff:** incomplete: the barrier must hold `lockHoldingScope` while the edit is shown to block on it, which needs the patch above to exist first; same harness as A26-S12-01.
+14. **Verification:** `npm run test:integration -- security-transfer`.
+15. **Residual risks:** none beyond A26-S12-01's.
+
+- Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-L20 - The price-window fill remembers a month as empty when one provider answered nothing and another failed
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S12-08 (primary, 12-securities-holdings.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** financial.
+
+#### A26-S12-08 (primary) - The price-window fill remembers a month as empty when one provider answered nothing and another failed
+
+1. **Severity:** LOW
+2. **Confidence:** medium (reading)
+3. **Location:** `backend/src/securities/security-price.service.ts:2058, 2091` (`answered = true` on any non-null series), `:1999-2013` (`emptyPriceWindows.remember` when `stored === 0 && answered`).
+4. **Violated invariant:** `docs/backend/securities-and-providers.md` "a null from a refusal or from a transport failure ... means we did not get an answer"; the FX chain's rule that a window is `answered: false` as soon as a carrying provider returned null (`fx-provider-chain`), which the price fill does not follow.
+5. **Reproduction:** a security routed Yahoo then MSN; Yahoo answers `[]` for the month (a window it lacks), MSN times out. `ensurePricesForDate` stores nothing and remembers the month empty for 30 minutes.
+6. **Observed:** (by reading) the report shows the position unpriced and does not re-ask MSN for 30 minutes after MSN recovers.
+7. **Expected:** not remembered while a routed provider failed to answer.
+8. **Impact:** a report unpriced for up to 30 minutes after a partial outage; no wrong figure (the position is reported unpriced).
+9. **Root cause:** a single `answered` flag for the chain instead of "every routed provider answered".
+10. **Recommended correction:** track `allAnswered` and remember only when it holds.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+-      if (series !== null) answered = true;
++      if (series === null) allAnswered = false;
++      else answered = true;
+...
+-    return { stored: 0, answered };
++    return { stored: 0, answered: answered && allAnswered };
+```
+
+(`allAnswered` initialised true, set false in the `catch` too.)
+
+12. **Recommended regression test:** a unit case with provider 1 returning an empty series and provider 2 throwing, asserting nothing is remembered.
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++  it("does not remember a window empty while a routed provider failed", async () => {
++    yahoo.fetchHistoricalWindowSeries.mockResolvedValue({ prices: [], currencyCode: "USD" });
++    msn.fetchHistoricalSeries.mockRejectedValue(new Error("timeout"));
++    await service.ensurePricesForDate([sec.id], "2017-03-15");
++    await service.ensurePricesForDate([sec.id], "2017-03-15");
++    expect(msn.fetchHistoricalSeries).toHaveBeenCalledTimes(2);
++  });
+```
+
+14. **Verification:** `npm run test:unit -- security-price.service`.
+15. **Residual risks:** none.
+
+- Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-L21 - The undo/redo holdings fold adds a dividend's total to the basis and stores the average at 6 decimals
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S12-10 (primary, 12-securities-holdings.md, session severity LOW).
+- **Invariants and prior findings named:** INV-HOLDING-001.
+- **Lens:** financial.
+
+#### A26-S12-10 (primary) - The undo/redo holdings fold adds a dividend's total to the basis and stores the average at 6 decimals
+
+1. **Severity:** LOW
+2. **Confidence:** medium (reading)
+3. **Location:** `backend/src/action-history/action-history.service.ts:1873-1880` (reads every non-VOID row, no `SHARE_MOVING_ACTIONS` filter), `:1902-1916` (`quantityChange > 0` -> `acquisitionCost` with `total_amount`), `:1942-1947` (average rounded to 6 dp; the canonical writers store 10 dp, `holdings.service.ts:712-724`).
+4. **Violated invariant:** INV-HOLDING-001 (one fold; the drift report compares at 1e-10).
+5. **Reproduction:** 100 shares bought at 10.00 (basis 1,000.00) and a DIVIDEND entered with quantity 100 and price 0.50 (total 50.00, `deriveInvestmentTotal` uses `quantity || 1`). Undo any action on that account.
+6. **Observed:** (by reading) the undo rebuild stores an average of 10.50 instead of 10.00; any average that does not terminate in 6 dp (300.00 / 9 = 33.3333333333) is stored as 33.333333 and reported by the boot-time drift report as a discrepancy (difference 3.3e-7 > 1e-10).
+7. **Expected:** the canonical fold's result (10.00; 33.3333333333).
+8. **Impact:** a wrong average cost until the next canonical rebuild of that scope; drift reports that a rebuild then "repairs".
+9. **Root cause:** a second fold kept beside `computeHoldingsMap` (recorded as an open risk in INV-HOLDING-001's known gap, without the dividend arithmetic or the precision).
+10. **Recommended correction:** call `HoldingsService.rebuildAccountsFromTransactions(userId, [accountId], manager)` from the undo path and delete the copy.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/action-history/action-history.service.ts
++++ b/backend/src/action-history/action-history.service.ts
+@@ private async rebuildHoldings(
+-    await lockHoldingScope(manager, [accountId]);
+-    await manager.query(`DELETE FROM holdings WHERE account_id = $1`, [accountId]);
+-    ... (the hand-written fold and INSERT loop)
++    await this.holdingsService.rebuildAccountsFromTransactions(
++      userId,
++      [accountId],
++      manager,
++    );
+```
+
+Needs a `forwardRef` to `HoldingsService` (`src/module-graph.spec.ts`) and the undo specs updated.
+
+12. **Recommended regression test:** undo after a DIVIDEND with quantity, asserting the stored average equals `findLedgerDiscrepancies`'s replay (no discrepancy).
+13. **Suggested regression-test diff:** `expect(await holdings.findLedgerDiscrepancies(userId, m)).toEqual([])` after `actionHistory.undo(...)` on the fixture above.
+14. **Verification:** `npm run test:unit -- action-history`.
+15. **Residual risks:** none.
+
+- Causality: `PRE_EXISTING_UNREPORTED` (partly recorded as an INV-HOLDING-001 known gap).
+
+
+### A26-L22 - A benchmark observation stored outside the 06:25 run is not followed by a price recompute
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S14-03 (primary, 14-bonds.md, session severity LOW).
+- **Invariants and prior findings named:** INV-CACHE-001, INV-BOND-005.
+- **Lens:** financial.
+
+#### A26-S14-03 (primary) - A benchmark observation stored outside the 06:25 run is not followed by a price recompute
+
+1. **Severity:** LOW
+2. **Confidence:** high (static)
+3. **Location:** `backend/src/bonds/benchmark-refresh.service.ts:79-90` (boot warm-up), `:127-148` (`refreshNeverFetched`), `:351-414` (`store`, no recompute); `backend/src/bonds/bond-series.service.ts:316-322` (`afterStored`); `backend/src/bonds/bond-price.service.ts:103-119` (the only scheduled recompute, 06:45 Warsaw).
+4. **Violated invariant:** INV-CACHE-001 (derived state is invalidated after the commit that changed its input) applied to INV-BOND-005's engine price, whose inputs include the benchmark observations.
+5. **Realistic reproduction scenario:** (a) A deploy rolls at 11:00 on the day GUS publishes a CPI value that an EDO lot's new period needs; the boot warm-up (`onlyStale`) stores it. (b) A person fetches a new series whose benchmark was never fetched while another replica holds the `bond-benchmarks` lease for a run that computed its `needed` set before the series existed: `refreshNeverFetched` loses the lease and returns, then `recomputeLinkedSecuritiesOfSeries` recomputes without the observation.
+6. **Observed behaviour:** (a) The engine rows for the days the new value makes derivable are written only at the next 06:45 run, up to about 20 hours later; (b) the benchmark is fetched at the next weekday 06:25 run, so a Friday-morning series store waits until Monday 06:25/06:45, about 3 days.
+7. **Expected behaviour:** a store that changed or added observations, or a correction (`benchmark-refresh.service.ts:400-404` logs it), recomputes the engine prices of the securities whose series read that benchmark, after its commit.
+8. **Impact:** for those hours or days the stored price history lacks the days in question, and the blend surfaces fall back per A26-S14-01. Live valuations (`valueByAccount`, the security page) read the observations directly and are correct. Narrow, self-healing.
+9. **Root cause:** `BenchmarkRefreshService` has no post-store dispatch, and the only consumer link is the wall-clock gap of 20 minutes between the two crons (DR2).
+10. **Recommended correction:** have `store` report whether any row was inserted or changed, and after `refreshAll` commits dispatch `recomputeLinkedSecuritiesOfSeries` for the instruments whose newest terms read a changed code, outside the lease call. This inverts no module edge if the dispatch lives in `BondSeriesService` or a small coordinator; `BenchmarkRefreshService` cannot inject `BondPriceService` without checking `src/module-graph.spec.ts`.
+11. **Suggested remediation diff:** incomplete. Supported part:
+
+```diff
+--- a/backend/src/bonds/benchmark-refresh.service.ts
++++ b/backend/src/bonds/benchmark-refresh.service.ts
+@@ -351,7 +351,7 @@
+   private async store(
+     code: string,
+     result: BenchmarkFetchResult,
+-  ): Promise<void> {
++  ): Promise<boolean> {
++    let changed = false;
+@@ -399,6 +400,7 @@
+         );
++        changed = (corrections?.length ?? 0) > 0 || /* inserted rows */ false;
+```
+
+    Missing: the upsert's `RETURNING` already yields inserted and changed rows (`upserted`), but the outer `SELECT` joins `old` and drops insertions, so a second count of `upserted` is needed; and the caller that owns the recompute (a module-graph decision for the maintainer).
+12. **Recommended regression test:** a unit test of the refresh: a store that inserts a new observation triggers one recompute dispatch for the series reading that code, after the store resolved; an unchanged store triggers none.
+13. **Suggested regression-test diff:** omitted, depends on where the dispatch lives (item 11).
+14. **Verification method:** the unit test; `benchmark-refresh.service.spec.ts`; `no-automatic-bonds.integration.spec.ts` (a recompute must not fetch).
+15. **Residual risks:** a recompute of every linked security of every user after each correction may be costly; bounding it to the programs reading the code is required.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT`.
+
+
+### A26-L23 - A loan owing exactly one minor unit is treated as paid off on both layers
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S15-06 (primary, 15-loans-strategies.md, session severity LOW).
+- **Invariants and prior findings named:** INV-LOAN-004.
+- **Lens:** financial.
+
+#### A26-S15-06 (primary) - A loan owing exactly one minor unit is treated as paid off on both layers: the posting writes nothing, the schedule deactivates, the 0.01 stays owed and the account cannot be closed
+
+1. **Severity:** LOW
+2. **Confidence:** high (backend executed, R6; frontend executed by the sweep's probe H)
+3. **Location:** `backend/src/loan-installments/price-installment.ts:769` (`debt <= 0.01` -> `paid-off`), `reprice-template.ts:154-178` (deactivates), settlement `debtBefore <= 0.01` -> `loan_debt_retired` (spec 7.2, `plan-loan-settlement.ts`); close refusal `accounts.service.ts:1300-1306`; frontend `frontend/src/lib/loan-schedule.ts:408, 539` with `PAYOFF_EPSILON = 0.01` (`loan-frequency.ts:83`).
+4. **Violated invariant:** INV-LOAN-004 (the final payment retires the balance); the code's own comment in `bookLoanAllocation` says the threshold absorbs "a residue of less than one unit", and 0.01 is one whole unit.
+5. **Reproduction:** a loan whose ledger owes 0.01 (a manual payment one cent short of the payoff) with an active bill.
+6. **Observed (executed, R6):** the post claims 2026-08-01 with no transaction (`transaction_id` NULL), the schedule becomes inactive, the loan ledger stays **-0.01**; closing the account is refused (`closeNonZeroBalance`). A debt of 0.02 posts 0.02 (R6b). Frontend: balance 1,000 at 0 %, payment 999.99 -> one row, `paidOff: true`, `totalPaid` 999.99, balance 0.01.
+7. **Expected:** a debt of 0.01 is owed: post 0.01 (+0.00 interest) and retire it; the projection adds a 0.01 row.
+8. **Impact:** a loan that can never reach zero through the app without a hand-entered cent; the bill silently disappears.
+9. **Root cause:** `<=` where the documented intent is `<` one minor unit; the frontend epsilon mirrors it.
+10. **Recommended correction:** `debt < minorUnit / 2` (or `< 0.01`) on both layers and in the planner's `loan_debt_retired`.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/loan-installments/price-installment.ts
++++ b/backend/src/loan-installments/price-installment.ts
+-  if (debt <= 0.01) {
++  // Less than one cent is a rounding residue; one whole cent is still owed.
++  if (debt < 0.01) {
+--- a/frontend/src/lib/loan-schedule.ts
++++ b/frontend/src/lib/loan-schedule.ts
+-  while (balance > PAYOFF_EPSILON && paymentNumber < maxPayments) {
++  while (balance >= PAYOFF_EPSILON && paymentNumber < maxPayments) {
+```
+
+   plus the planner's threshold and spec 7.2/E15 updated together (the spec states `<= 0.01`; Rule 2: the spec must change with the code). Needs: the 4dp-ledger residue case (`bookLoanAllocation` leaves < 0.01) still reading as paid off.
+12. **Recommended regression test / 13. diff:** R6 as an integration case asserting a 0.01 posting and a zero ledger; `loan-schedule.test.ts` 1,000 / 999.99 asserting two rows.
+14. **Verification:** the probe; `npm run test:unit -- price-installment plan-loan-settlement`; `npm run test -- loan-schedule`.
+15. **Residual risks:** a JPY loan (0 decimals) needs the threshold in its own minor unit.
+
+- Causality: `NEW_SINCE_UPSTREAM_AUDIT` for the posting `retired` decision; the frontend epsilon `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-L24 - The GEM signal-change alert is not bound to the current period and its dedupe memory is purged after the retention window
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S15-07 (primary, 15-loans-strategies.md, session severity LOW).
+- **Invariants and prior findings named:** INV-GEM-NOTIFY-002, INV-GEM-NOTIFY-003.
+- **Lens:** financial.
+
+#### A26-S15-07 (primary) - The GEM signal-change alert is not bound to the current period and its dedupe memory is purged after the retention window, so an old change is announced, and announced again
+
+1. **Severity:** LOW
+2. **Confidence:** high (period: executed by the GEM sweep's `cx2` over the real `detectSignalChange`, re-read; purge: by reading)
+3. **Location:** `backend/src/strategies/gem-signal-change-alert.service.ts:202-218` (`detectSignalChange` compares the two newest history entries whatever the current period's state), `:176` (dedupe key); `backend/src/notification-center/notification.service.ts:325-366` (`purgeOld` deletes read rows older than the retention window and dismissed ones; `gem:` is not in `STATE_KEYED_DEDUPE_PREFIXES`, `notification-bounds.ts:29-32`).
+4. **Violated invariant:** INV-GEM-NOTIFY-002 (re-running the cron is a no-op per period) and INV-GEM-NOTIFY-003 (a non-evaluable current period is a no-op) of `docs/specs/gem-signal-change-notifications.md`.
+5. **Reproduction:** (a) a strategy configured in October whose current period is not yet evaluable and whose two newest history rows differ (2026-08-31 RISK_OFF, 2026-07-31 RISK_ON). (b) a quarterly strategy: the 2026-09-30 risk alert is read on 10-01; about 11-01 the purge deletes it; the 09-30/06-30 pair is still the newest, so the next run inserts and sends it again (WARNING, push/email), and again a month later.
+6. **Observed:** (a) `kind: "risk"`, key `gem:S:2026-08-31:risk` for a change two months old; (b) by reading, the insert succeeds once the row is purged.
+7. **Expected:** silence in both cases.
+8. **Impact:** repeated or stale "moved to risk-off" warnings; the recommendation shown is still the latest, so the harm is noise and a prompt to trade on a change already acted on.
+9. **Root cause:** the producer reads "two newest rows" instead of "the current period and the one before it", and relies on a dedupe row the retention policy deletes.
+10. **Recommended correction:** fire only when `current.evaluatedOn` is the report's current evaluable period (`report.signal?.evaluatedOn`), and keep `gem:` rows past retention like the bond state keys (or record the last notified period on the strategy row).
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/strategies/gem-signal-change-alert.service.ts
++++ b/backend/src/strategies/gem-signal-change-alert.service.ts
+@@ export function detectSignalChange(
+   if (periods.length < 2) return null;
+   const [current, previous] = periods;
++  // INV-GEM-NOTIFY-003: only the current period's change, never an old one.
++  if (!report.signal || report.signal.evaluatedOn !== current.evaluatedOn) {
++    return null;
++  }
+--- a/backend/src/notification-center/notification-bounds.ts
++++ b/backend/src/notification-center/notification-bounds.ts
+ export const STATE_KEYED_DEDUPE_PREFIXES: readonly string[] = [
+   "bond:unbooked:",
+   "bond:missing:",
++  "gem:",
+ ];
+```
+
+   Needs: the field name of the report's current signal checked against `GemStrategyReportView`; `bond-notification-events.ts:128` destructures the first two prefixes positionally and must not shift.
+12. **Recommended regression test / 13. diff:** spec test-matrix items 5-8 (`gem-signal-change-alert.service.spec.ts`): no current signal plus two differing history rows -> no notify; a purge then a re-run -> no second notify.
+14. **Verification:** `npm run test:unit -- gem-signal-change-alert notification`.
+15. **Residual risks:** the spec's own pseudo-code reads "two latest" too (section 11).
+
+- Causality: `NEW_SINCE_UPSTREAM_AUDIT`.
+
+
+### A26-L25 - Loan Amortization Report: "Original Amount" double-counts projected principal when the opening balance is unset; exports run while loading
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S15-08 (primary, 15-loans-strategies.md, session severity LOW).
+- **Invariants and prior findings named:** INV-LOAN-HISTORY-001.
+- **Lens:** frontend.
+
+#### A26-S15-08 (primary) - Loan Amortization Report: "Original Amount" double-counts projected principal when the opening balance is unset, and the CSV/PDF exports run while the history request has failed
+
+1. **Severity:** LOW
+2. **Confidence:** medium (Original Amount executed by the frontend sweep's probe N; exports by reading only)
+3. **Location:** `frontend/src/components/reports/LoanAmortizationReport.tsx:290-295` (`Math.abs(openingBalance) || (totalPrincipal + currentBalance)`, where `totalPrincipal` already includes projected rows); exports `:340-387` with `ReportToolbarActions` given no `disabled` (`:497-501`).
+4. **Violated invariant:** a figure is from one source (the history's `startingBalance`); INV-LOAN-HISTORY-001's failure response ("a FAILED read is unknown, not zero, and must not be rendered as a schedule").
+5. **Reproduction:** opening balance unset, current 9,000, 1,000 paid: card shows **19,000.02**, expected 10,000.00. History fetch rejected: the CSV still writes a schedule of "Projected" rows from the account's own rate and payment and the PDF says "Payments Made 0".
+6-8. **Observed / expected / impact:** as above; a wrong headline figure, and an export presenting a schedule the screen withholds.
+9. **Root cause:** the fallback sums the whole table; the export handlers do not read `historyError`.
+10. **Recommended correction:** `originalBalance = history.startingBalance` when the opening balance is unset; disable both exports while the history is in error.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+-    const originalBalance = Math.abs(selectedAccount.openingBalance) || (totalPrincipal + currentBalance);
++    const originalBalance =
++      Math.abs(selectedAccount.openingBalance) || history.startingBalance;
+@@
+-        <ReportToolbarActions onExportCsv={handleExportCsv} onExportPdf={handleExportPdf} />
++        <ReportToolbarActions
++          onExportCsv={handleExportCsv}
++          onExportPdf={handleExportPdf}
++          disabled={!!historyError}
++        />
+```
+
+   (names to be checked against the component's props.)
+12-14. **Test:** `LoanAmortizationReport.test.tsx`: the probe-N fixture asserting 10,000.00; a rejected history asserting both exports disabled. `npm run test -- LoanAmortizationReport`.
+15. **Residual risks:** none beyond the prop names.
+
+- Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-L26 - The Post dialog previews the stored template's principal/interest split while the post re-prices the bill from the ledger
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S15-09 (primary, 15-loans-strategies.md, session severity LOW).
+- **Invariants and prior findings named:** INV-LOAN-009.
+- **Lens:** frontend.
+
+#### A26-S15-09 (primary) - The Post dialog previews the stored template's principal/interest split, while the post re-prices the same bill from the ledger and books a different split
+
+1. **Severity:** LOW
+2. **Confidence:** high (backend half executed, R2; frontend half by reading)
+3. **Location:** `frontend/src/components/scheduled-transactions/PostTransactionDialog.tsx:456-474` (split rows pre-filled from `scheduledTransaction.splits`, the stored template), rendered at `:1182`; backend `scheduled-transactions.service.ts:3546-3636` (an unchanged echo re-prices through `resolvePostingAllocation`). The projection that prices the occurrence from the ledger exists (`GET /scheduled-transactions/:id/loan-occurrences`) and is read only by `OccurrenceDatePicker` and the override editor.
+4. **Violated invariant:** "a preview computes what the commit will do, through the same code" (AGENTS.md); INV-LOAN-009's F2 reads the projection for a loan bill on the picker and the editor but not on the dialog that commits.
+5. **Reproduction:** the R2 ledger: LOAN 200,000 at 6 %, the August installment posted (template rewritten for September to 997.50 interest / 502.50 principal), then a 10,000 principal-only payment on 2026-08-15. Open Post for 2026-09-01 and press Post without editing.
+6. **Observed:** the dialog shows interest 997.50, principal 502.50; the ledger receives interest **947.50**, principal **552.50** (executed through the real `post()`, R2). The total (1,500.00) is the same.
+7. **Expected:** the dialog shows 947.50 / 552.50 (the projection's first occurrence), or labels the lines as re-priced at posting.
+8. **Impact:** the split the user confirms is not the split written (50.00 moved between interest and principal here); a user who types the shown figures back (a non-echo) posts the stale split deliberately.
+9. **Root cause:** the dialog pre-fills from the template snapshot; the server's echo detection then replaces what was shown.
+10. **Recommended correction:** pre-fill a loan bill's lines from `loan-occurrences` (count 1) as the picker does; keep the server's echo re-pricing as the backstop.
+11. **Suggested remediation diff (illustrative, not applied):** in `PostTransactionDialog.tsx`, when `scheduledTransaction` pays a loan (the client already knows from `loanOccurrences` status `priced`), map the first occurrence's `lines` onto the split rows by `sourceSplitId` before `bookSplitRowsAtMinorUnit`; names to be checked against `types/scheduled-transaction.ts`.
+12-14. **Test:** a dialog test with a template 997.50/502.50 and a projection 947.50/552.50 asserting the rows show the projection; `npm run test -- PostTransactionDialog`.
+15. **Residual risks:** the projection is a read without the posting's lock; a payment committed between the dialog's read and the post still re-prices (server backstop).
+
+- Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the projection and the echo re-pricing are new). Overlap: S08 handed S19 the same dialog's amount pre-fill (`:433`); this finding is the loan-split half, for S19 to merge.
+
+
+### A26-L27 - A price push's chart token lives five minutes, the push it rides on four hours
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S17-04 (primary, 17-ai-mcp-notifications.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** frontend.
+
+#### A26-S17-04 (primary) - A price push's chart token lives five minutes, the push it rides on four hours
+
+1. **Severity:** LOW
+2. **Confidence:** high (read)
+3. **Location:** `backend/src/push/push-chart-artifact.service.ts:11` (`CHART_TOKEN_TTL_MS = 5 * 60_000`), `:27-40` (sweep every five minutes), `:73-93` (`consume` refuses after expiry); `backend/src/push/web-push-sender.service.ts:24, 339` (`PUSH_TTL_SECONDS = 4 * 60 * 60`, no `urgency` option, so the push service may hold a normal-priority message while the device dozes); `frontend/public/sw.js:468-489` (the image URL is fetched only when the notification is shown).
+4. **Violated invariant:** the opt-in price-chart feature's promise (the notification carries the chart) for every delivery the push service still makes.
+5. **Realistic reproduction scenario:** an Android phone in Doze or offline when a price alert fires; the push service delivers it 20 minutes later.
+6. **Observed implementation behavior:** the service worker shows the notification with an image URL whose token expired 15 minutes earlier and whose row the sweep removed; the image request is a 404 and the notification shows no chart.
+7. **Expected behavior:** the chart is available for as long as the push can be delivered, or the push expires with it.
+8. **Impact:** the feature silently degrades to text-only for every delayed delivery; no data or security effect. The one-use token also means a notification re-shown by the OS cannot fetch it again.
+9. **Root cause:** two TTLs chosen independently.
+10. **Recommended correction:** give price pushes that carry a chart a push TTL no longer than the token's, or raise the token TTL (and the quota window) to the push TTL.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/push/push-chart-artifact.service.ts
++++ b/backend/src/push/push-chart-artifact.service.ts
+-export const CHART_TOKEN_TTL_MS = 5 * 60_000;
++// As long as the push that names it can still be delivered
++// (web-push-sender.service.ts PUSH_TTL_SECONDS); the one-use DELETE still
++// retires it at the first fetch.
++export const CHART_TOKEN_TTL_MS = PUSH_TTL_SECONDS * 1000;
+```
+
+The quota (`CHART_ARTIFACT_LIMIT = 1000` live rows across the deployment) must then be re-sized: four hours of artifacts is 48 times the current window.
+12. **Recommended regression test:** a unit spec asserting `CHART_TOKEN_TTL_MS >= PUSH_TTL_SECONDS * 1000` (a source-level pin of the relation, the `CONFIRM_TIMEOUT_MS` pattern in `mcp-confirm.spec.ts`).
+13. **Suggested regression-test diff (illustrative, not applied):**
+
+```diff
++it("keeps a chart token alive for as long as the push can be delivered", () => {
++  expect(CHART_TOKEN_TTL_MS).toBeGreaterThanOrEqual(PUSH_TTL_SECONDS * 1000);
++});
+```
+
+14. **Verification method:** the spec above; `push-chart-token.integration.spec.ts`.
+15. **Residual risks / patch limitations:** the global quota becomes the binding limit for a large deployment; the cap's behaviour (`issue` returns `null`, the push goes without chart) is already graceful.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (push chart artifacts are new). This is the "chart artifact TTL" of the hint line.
+
+
+### A26-L28 - The portfolio-movement alert commits its new baseline before it writes the notification
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S17-06 (primary, 17-ai-mcp-notifications.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** data.
+
+#### A26-S17-06 (primary) - The portfolio-movement alert commits its new baseline before it writes the notification, so a failed write loses the alert for good
+
+1. **Severity:** LOW
+2. **Confidence:** medium (read; the failure window is not executed)
+3. **Location:** `backend/src/notification-center/portfolio-movement-alert.service.ts:232-247` (`storeBaseline` in its own transaction), `:251-257` (`dispatch.notify` after it); the notification already carries a per-day dedupe key (`:507`, `portmove:<currency>:<today>`).
+4. **Violated invariant:** `docs/external-side-effects.md` ordering ("do the thing, then write down what happened") applied to an alert: the state that suppresses a repeat must not commit before the thing it suppresses.
+5. **Realistic reproduction scenario:** the movement cron decides to fire and to re-baseline; `storeBaseline` commits; the `notify` transaction fails (a connection reset, a statement timeout) or the process is killed before it runs.
+6. **Observed implementation behavior:** the baseline has moved to today's value, so the next run measures no movement; no notification row exists.
+7. **Expected behavior:** the alert is written first (the dedupe key makes a retry harmless), then the baseline moves.
+8. **Impact:** an opted-in user misses one portfolio-movement alert; no financial state changes.
+9. **Root cause:** the suppression state is written before the event it suppresses, although the event is idempotent by its key.
+10. **Recommended correction:** call `notify` first and `storeBaseline` after it returns (a `null` from `notify` means another replica already wrote today's alert, and the baseline still moves).
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/notification-center/portfolio-movement-alert.service.ts
++++ b/backend/src/notification-center/portfolio-movement-alert.service.ts
+@@
+-    if (decision.rebaselineTo != null) {
+-      ...
+-      await this.storeBaseline(userId, decision.rebaselineTo, currency, today, snapshot);
+-    }
+-    if (decision.fire == null || baselineDate === null) return false;
+-    ...
+-    const written = await this.dispatch.notify(...);
++    let written: Notification | null = null;
++    if (decision.fire != null && baselineDate !== null) {
++      // First: the per-day dedupe key makes a retry of this write harmless,
++      // while a baseline moved first would hide the move from the retry.
++      written = await this.dispatch.notify(...);
++    }
++    if (decision.rebaselineTo != null) {
++      ...
++      await this.storeBaseline(userId, decision.rebaselineTo, currency, today, snapshot);
++    }
++    if (decision.fire == null || baselineDate === null) return false;
+```
+
+12. **Recommended regression test / 13. diff (illustrative, not applied):**
+
+```diff
++it("keeps the baseline when the alert could not be written", async () => {
++  dispatch.notify.mockRejectedValueOnce(new Error("connection reset"));
++  await expect(service.evaluateUser(USER)).rejects.toThrow();
++  expect(storeBaselineSpy).not.toHaveBeenCalled();
++});
+```
+
+14. **Verification method:** the unit case; `portfolio-movement-flow.integration.spec.ts` re-run.
+15. **Residual risks / patch limitations:** the fan-out still runs before the baseline commits; a crash between them repeats nothing because the second run's `notify` returns `null` on the dedupe key.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (portfolio-movement alerts are new). Handed from S08 (`08-scheduler-cron.md` section 12).
+
+
+### A26-L29 - The insights aggregator computes the month start as a local-midnight date read back in UTC
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S17-07 (primary, 17-ai-mcp-notifications.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** financial.
+
+#### A26-S17-07 (primary) - The insights aggregator computes the month start as a local-midnight date read back in UTC, so a server east of UTC treats the previous month as the current one
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed: `TZ=Europe/Warsaw` gives `2026-09-30` for the start of October 2026, `TZ=UTC` gives `2026-10-01`)
+3. **Location:** `backend/src/ai/insights/insights-aggregator.service.ts:54-61` (`new Date(y, m, 1).toISOString().substring(0, 10)` for `currentMonthStart` and `sixMonthsAgo`), `:79-81` (`monthlySpending.find(m => m.month === currentMonthStart.substring(0, 7))`).
+4. **Violated invariant:** `backend/CLAUDE.md` "A calendar date stepped over a range: `enumerateDaysYMD` / `addDaysYMD`, never a local-midnight `Date` read back with `toISOString()`".
+5. **Realistic reproduction scenario:** an operator sets `TZ=Europe/Warsaw` on the backend container; the 6 AM insight cron runs on 21 October.
+6. **Observed implementation behavior:** `currentMonthStart = "2026-09-30"`, so the aggregates' "current month" is September and the six-month window starts on 31 March.
+7. **Expected behavior:** `2026-10-01` and `2026-04-01` whatever the server zone (the user's financial today, `financialTodayYmd` on the server side).
+8. **Impact:** insights compare the wrong month ("you spent more this month") for every user of such a deployment; no stored financial data changes. Default containers run in UTC, which hides it.
+9. **Root cause:** local-time constructor plus UTC serialisation.
+10. **Recommended correction:** build the dates from a `YYYY-MM-DD` string of the user's financial today and step them with `addDaysYMD`/month arithmetic on strings.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+-      .toISOString()
+-      .substring(0, 10);
+-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1)
+-      .toISOString()
+-      .substring(0, 10);
+-    const today = now.toISOString().substring(0, 10);
++    const today = formatDateYMD(now); // or the user's financial today
++    const currentMonthStart = `${today.substring(0, 7)}-01`;
++    const sixMonthsAgo = addMonthsYMD(currentMonthStart, -6); // string arithmetic, no Date
+```
+
+(`addMonthsYMD` is illustrative: the repository's month-stepping helper must be located first, Rule 2.)
+12. **Recommended regression test / 13. diff (illustrative, not applied):** a spec run under a fixed non-UTC zone (`process.env.TZ` set before the module loads, or the jest config's per-file environment) asserting `currentMonthStart` is the first of the month.
+14. **Verification method:** the spec under `TZ=Europe/Warsaw` and `TZ=America/Los_Angeles`.
+15. **Residual risks / patch limitations:** `forecast-aggregator.service.ts:126` and other `toISOString().substring(0, 10)` reads of "today" have the UTC-day variant of the same question (not a month shift); not swept.
+
+Causality: `PRE_EXISTING_UNREPORTED`. Found in the approval challenge.
+
+
+### A26-L30 - Figures and labels bypass the reader's number locale and the message catalog (lib formatters, form readouts, figure surfaces)
+
+- **Canonical severity:** LOW. kept LOW for the group: one rule (`useNumberFormat`, the catalog), three sessions.
+- **Absorbs:** A26-S18-09 (primary, 18-frontend-core.md, session severity LOW); A26-S19-07 (merged surface, 19-frontend-forms.md, session severity LOW); A26-S20-07 (merged surface, 20-frontend-figures.md, session severity LOW).
+- **Invariants and prior findings named:** INV-DISPLAY-001.
+- **Lens:** frontend.
+
+#### A26-S18-09 (primary) - Two lib formatters render user-facing text outside the reader's locale and language
+
+1. **Severity:** LOW
+2. **Confidence:** high (static)
+3. **Location:** `frontend/src/lib/format.ts:476-491` (`formatRelativeTime`: hard-coded English "Never", "Just now", "5m ago", "Yesterday", then the browser's `toLocaleDateString()`), rendered by `components/investments/RefreshPricesButton.tsx:52, 79`; `frontend/src/lib/pdf-export.ts:253-259` (PDF header timestamp in `en-US`).
+4. **Violated invariant:** INV-DISPLAY-001 (the date and number locale by preference) and the translation rule in `AGENTS.md`.
+5. **Reproduction:** a Polish-language user with the `DD.MM.YYYY` date preference opens Investments; the button reads "(5m ago)" and, after a week, a browser-locale date; every exported PDF header says "Oct 21, 2026, 11:45 PM".
+6. **Observed / 7. Expected:** English and browser-locale strings / the catalog strings and `useDateFormat`.
+8. **Impact:** cosmetic but on every Investments visit and every PDF.
+9. **Root cause:** pure helpers predating the locale hooks, outside the guard's patterns.
+10. **Correction / 11. diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/components/investments/RefreshPricesButton.tsx
++++ b/frontend/src/components/investments/RefreshPricesButton.tsx
+-import { formatRelativeTime } from '@/lib/format';
++import { useRelativeTime } from '@/hooks/useRelativeTime';
+@@
+-          ? t('page.lastUpdated', { time: formatRelativeTime(lastPriceUpdate) })
++          ? t('page.lastUpdated', { time: relativeTime(lastPriceUpdate) })
+```
+
+   (`hooks/useRelativeTime.ts` exists; whether its output matches is to be checked), and `pdf-export.ts` takes the formatted timestamp from its React caller.
+12. **Regression test / 13. diff:** a `ui-conventions.test.ts` rule banning imports of `formatRelativeTime` from components, and a `pdf-export` case that passes a locale.
+14. **Verification:** `npm run test -- RefreshPricesButton pdf-export ui-conventions`.
+15. **Residual risks:** none material. Causality: `PRE_EXISTING_UNREPORTED`.
+
+#### A26-S19-07 (merged surface) - Nine form readouts format figures with `toFixed`, outside the reader's number locale, and the guard does not see them
+
+1. **Severity:** LOW
+2. **Confidence:** high (by reading)
+3. **Location:** `frontend/src/components/investments/InvestmentTransactionForm.tsx:1513, 1533, 1538, 1545, 1550` (split preview), `:1606, :1611` (transfer source holding), `:1783` (`sharesAtPrice`); `frontend/src/components/accounts/LoanPaymentSetupDialog.tsx:467, 472`; guard `frontend/src/test/number-locale.guard.test.ts` (scans `toFixed` only beside `%`).
+4. **Violated invariant:** INV-DISPLAY-001.
+5. **Reproduction:** a reader with `numberFormat: pl-PL` opens a security transfer.
+6. **Observed:** the source-holding line renders `10.0000` shares at `100.0000` average cost with dot decimals.
+7. **Expected:** `formatShareQuantity` / `formatCurrency` off `useNumberFormat()` (comma decimals for pl-PL).
+8. **Impact:** a misread figure at the point where the user decides how many shares to move; no stored value changes.
+9. **Root cause:** the guard is keyed on the `%` fingerprint, so a bare `toFixed` in JSX passes; `docs/system-invariants.md` records INV-DISPLAY-001 as `enforced`.
+10. **Recommended correction:** use the hook's formatters; extend the guard to a `toFixed(` inside JSX braces or a `t(...)` argument.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/components/investments/InvestmentTransactionForm.tsx
++++ b/frontend/src/components/investments/InvestmentTransactionForm.tsx
+@@ -1606 +1606 @@
+-                  {Number(selectedTransferHolding.quantity).toFixed(4)}
++                  {formatShareQuantity(Number(selectedTransferHolding.quantity))}
+@@ -1610,2 +1610 @@
+-                  {currencySymbol}
+-                  {Number(selectedTransferHolding.averageCost ?? 0).toFixed(4)}
++                  {formatCurrency(Number(selectedTransferHolding.averageCost ?? 0), transactionCurrency)}
+```
+
+12. **Recommended regression test:** a guard case matching `.toFixed(` inside JSX braces or a `t(` argument object under `src/components/`.
+13. **Suggested regression-test diff (illustrative, not applied):** add to `number-locale.guard.test.ts` a scan for `/\{[^}]*\.toFixed\(\d\)[^}]*\}/` over `src/components/**/*.tsx` with an empty allowlist.
+14. **Verification method:** the extended guard fails at the baseline on the nine sites and passes after the migration.
+15. **Residual risks:** `formatCurrency` rounds to the currency's decimals, so a 4dp average cost needs a price formatter with more decimals. Causality: `PRE_EXISTING_UNREPORTED`.
+
+#### A26-S20-07 (merged surface) - Numbers bypass the locale formatter and Monte Carlo compare labels bypass the catalog, with no guard to catch either
+
+1. **Severity:** LOW
+2. **Confidence:** high (read)
+3. **Location:** `frontend/src/components/reports/SavingsRateReport.tsx:389` (`point.savingsRate.toFixed(1)` into `"Rate: {rate}%"`, `i18n/messages/en/reports.json:1348`); `MonteCarloReport.tsx:646` (`(form.expectedReturn * 100).toFixed(1)`); `CurrencyExposureReport.tsx:172-176` (rate `toFixed`); `monte-carlo/compareMetricRows.ts:177` (`new Date(stamp).toLocaleString()` and the literal `'Never'`) and 36 literal English `label:` strings in the same file rendered by `CompareMetricTable.tsx:167, 184`; 17 non-test files in `src/` contain `.toFixed(` or `toLocaleString()`, and `src/test/ui-conventions.test.ts` scans for neither.
+4. **Violated invariant:** `frontend/CLAUDE.md` "Number a person reads: `useNumberFormat()` ... never `toFixed`, `toLocaleString()`, a literal `%`"; "Every user-facing string is translated".
+5-7. **Observed / expected:** a Polish reader sees "12.3%" and "Last run ... Never" in English; expected "12,3 %" through `formatPercent` and catalog strings.
+8. **Impact:** wrong decimal separator and untranslated labels on two reports; no financial value changes.
+9. **Root cause:** the rule has no source-scanning guard.
+10-11. **Correction / diff (illustrative):** `t('savingsRate.tooltipRate', { rate: formatPercent(point.savingsRate, 1) })` with the catalog's `%` removed; translate the compare labels through `useTranslations('reports')`; add a `toFixed(` / `toLocaleString()` scan to `ui-conventions.test.ts` with a shrink-only baseline of the current sites.
+12-15. **Test / verification / residual:** the guard itself is the regression test; `npm run test -- ui-conventions SavingsRateReport MonteCarloReport`; CSV paths (`MonteCarloReport.tsx:323-327`) are machine output and stay `toFixed`.
+
+Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-L31 - The client forecast accumulates floats and rounds the projected balance with `Math.round(x * 100) / 100`
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S18-10 (primary, 18-frontend-core.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** frontend.
+
+#### A26-S18-10 (primary) - The client forecast accumulates floats and rounds the projected balance with `Math.round(x * 100) / 100`
+
+1. **Severity:** LOW
+2. **Confidence:** high (computed)
+3. **Location:** `frontend/src/lib/forecast.ts:745` (`currentBalance += tx.amount`), `:760` (`Math.round(currentBalance * 100) / 100`), `:992`, `:1020-1027` (the projected balance returned to the posting dialog); `:503-510` (`Number(amount) * rate` unrounded).
+4. **Violated invariant:** `AGENTS.md` financial math ("never accumulate floats ... `roundMoney` every result"); `lib/format.ts` `roundToCents` is round-half-away-from-zero, `Math.round` is round-half-up and loses the IEEE midpoint.
+5. **Reproduction / numbers (node):** a projected balance of 1.0050 renders 1.00 (`roundToCents` 1.01); -2 500.0050 renders -2 500.00 (expected -2 500.01).
+6. **Impact:** a one-cent difference between the forecast's projected balance and the server's balance forecast for 4-decimal (FX-converted) balances; no write depends on it.
+7. **Correction / 11. diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/lib/forecast.ts
++++ b/frontend/src/lib/forecast.ts
+@@ -744,3 +744,3 @@
+     for (const tx of dayTransactions) {
+-      currentBalance += tx.amount;
++      currentBalance = roundMoney(currentBalance + tx.amount);
+     }
+@@ -760 +760 @@
+-        balance: Math.round(currentBalance * 100) / 100,
++        balance: roundToCents(currentBalance),
+@@ -1027 +1027 @@
+-  return Math.round(balance * 100) / 100;
++  return roundToCents(balance);
+```
+
+12. **Regression test:** `forecast.test.ts` with a 1.0050 starting balance asserting 1.01. 14. **Verification:** `npm run test -- forecast`. 15. **Residual risks:** none. Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-L32 - Frontend response types drop signals the backend sends (contract drift)
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S18-11 (primary, 18-frontend-core.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** frontend.
+
+#### A26-S18-11 (primary) - Response types drop signals the backend sends (contract drift)
+
+1. **Severity:** LOW
+2. **Confidence:** high for (a) and (b), verified at both ends; (c) as stated
+3. **Location and surfaces (Rule 7, one finding):**
+   - (a) `ExplainedRuleSkip` (`frontend/src/types/transaction-rule-explain.ts:66, 74`) is `'disabled' | 'invalid'`; the backend `RuleSkipReason` adds `'outside_active_window'` (`backend/src/transaction-rules/rule-effects.ts:91-95`, asserted by `rule-effects.active-window.spec.ts:52-88`); the renderer `ImportPreviewRuleTest.tsx:67` looks up `notEvaluated.${skippedRule}` and the catalog (`en/import.json:598-602`) has no `outside_active_window`, so the rule-test panel shows a missing-message key for a rule outside its active window (INV-RULE-004).
+   - (b) `bondRowsWithoutSeries` (`backend/src/import/dto/import.dto.ts:413`, MNY `mny-import-job.ts:106`) is in no frontend type and rendered nowhere: bond lots imported without a series are never reported.
+   - (c) `PortfolioPeriodResult.incompleteRanges` (`net-worth/portfolio-period-result.service.ts:150`) is absent from `types/net-worth.ts:175-245`: the dated gap ranges the server computes never reach the reader (the figures themselves are nullable, so no false total).
+4. **Violated invariant:** `docs/financial-calculation-contract.md` 1.3 (a withheld figure names what is missing); representation contract.
+5. **Correction / 11. diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/types/transaction-rule-explain.ts
++++ b/frontend/src/types/transaction-rule-explain.ts
+-export type ExplainedRuleSkip = 'disabled' | 'invalid';
++export type ExplainedRuleSkip = 'disabled' | 'invalid' | 'outside_active_window';
+--- a/frontend/src/i18n/messages/en/import.json
++++ b/frontend/src/i18n/messages/en/import.json
+       "notEvaluated": {
+         "afterStop": "Not evaluated: a previous rule stopped the rules.",
+         "disabled": "Not evaluated: the rule is switched off.",
+-        "invalid": "Not evaluated: the rule is not valid. Open it to repair it."
++        "invalid": "Not evaluated: the rule is not valid. Open it to repair it.",
++        "outside_active_window": "Not evaluated: the row's date is outside the rule's active dates."
+       },
+```
+
+   plus `bondRowsWithoutSeries?: number` on the import result types with a line in the completion step.
+12. **Regression test:** a contract test (the `budget-trend.contract.test.ts` pattern) holding `ExplainedRuleSkip` equal to the backend union.
+14. **Verification:** `npm run test -- ImportPreviewRuleTest transaction-rule-explain`; `npm run i18n:check`.
+15. Causality: `NEW_SINCE_UPSTREAM_AUDIT` for (a) (`transaction-rules/` is new) and (b) (bonds are new); (c) `NEW_SINCE_UPSTREAM_AUDIT`.
+
+
+### A26-L33 - A loan stored at 0 % interest opens with an empty rate and every edit is refused
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S19-06 (primary, 19-frontend-forms.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** frontend.
+
+#### A26-S19-06 (primary) - A loan or mortgage stored at 0 % interest opens with an empty rate and every edit is refused by the required-field check
+
+1. **Severity:** LOW
+2. **Confidence:** medium (by reading; not executed)
+3. **Location:** `frontend/src/components/accounts/AccountForm.tsx:427` (`interestRate: account.interestRate || undefined`), `:225, :233` (`requireField(data.interestRate === undefined, ...)` for MORTGAGE and LOAN).
+4. **Violated invariant:** a known zero renders as a number (`frontend/CLAUDE.md`: never truthiness where 0 is a legitimate value).
+5. **Reproduction:** an interest-free family loan or a 0 % promotional loan; the user renames the account.
+6. **Observed:** the rate field is empty; Save reports that the interest rate is required.
+7. **Expected:** the field shows 0 and the rename saves.
+8. **Impact:** workflow friction on one account kind; no money moves (the user can retype 0).
+9. **Root cause:** truthiness on a numeric API value.
+10. **Recommended correction:** `account.interestRate != null ? Number(account.interestRate) : undefined`.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/frontend/src/components/accounts/AccountForm.tsx
++++ b/frontend/src/components/accounts/AccountForm.tsx
+@@ -427 +427 @@
+-          interestRate: account.interestRate || undefined,
++          interestRate: account.interestRate != null ? Number(account.interestRate) : undefined,
+```
+
+12. **Recommended regression test:** a LOAN with `interestRate: 0` renames and saves; the payload carries `interestRate: 0`.
+13. **Suggested regression-test diff (illustrative, not applied):** in `AccountForm.test.tsx`, render the loan fixture with `interestRate: 0`, change the name, submit, and `expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ interestRate: 0 }))`.
+14. **Verification method:** the test above fails at the baseline.
+15. **Residual risks:** `creditLimit` 0 loads as `undefined` (`:416-418`) and is omitted on save, which leaves the stored 0 unchanged (harmless). Causality: `PRE_EXISTING_UNREPORTED` (S15 hand-off).
+
+
+### A26-L34 - "Interest already saved" counts unrecorded interest as saved for a loan that books interest outside the app
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S20-06 (primary, 20-frontend-figures.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** frontend.
+
+#### A26-S20-06 (primary) - "Interest already saved" counts unrecorded interest as saved for a loan that books interest outside the app
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed, probe P8)
+3. **Location:** `frontend/src/lib/loan-past-impact.ts:198-212` (`originalSchedule.totalInterest - (history.cumulativeInterest + projectedRemainingInterest)` with no gate on whether the history recorded interest); rendered by `components/accounts/loan-detail/PastImpactSection.tsx:60-66`.
+4. **Violated invariant:** a measured zero and an unknown are different (`docs/frontend/financial-figures.md`, "A historical loan row states the ledger"): `cumulativeInterest` is the ledger's zero for a loan whose interest is booked elsewhere, which the doc accepts for history but which is not "interest not paid".
+5. **Reproduction:** a 10,000 loan at 6 percent, four 500 payments of 450 principal and 50 interest. (A) interest recorded as separate expenses; (B) the same loan with interest booked in another application (principal-only rows).
+6. **Observed:** `cumulativeInterest` A 200, B 0; `interestAlreadySaved` A 0.00, B 159.14.
+7. **Expected:** B withheld (unknown) or equal to A; never 159.14.
+8. **Impact:** 159.14 shown as saved interest that was in fact paid (bounded by the unrecorded interest, 200.00 here); on a long mortgage the figure grows with every year booked outside the app.
+9. **Root cause:** the history has no "interest recorded" flag, and the saving subtracts its zero as a known amount; `observedInstallment` (`loan-history.ts:326-374`) already detects the same incomplete case for the payment.
+10. **Recommended correction:** return `interestAlreadySaved: null` when no repayment recorded interest and the loan's rate is not zero (the `observedInstallment(...).complete === false` test).
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+-  const interestAlreadySaved =
+-    originalSchedule.paidOff && projectedRemainingInterest !== null
++  const interestRecorded = history.cumulativeInterest > 0 || observedInstallment(history)?.complete === true;
++  const interestAlreadySaved =
++    originalSchedule.paidOff && projectedRemainingInterest !== null && interestRecorded
+```
+
+12-14. **Test / verification:** the probe (B equals A or is null) in `loan-past-impact.test.ts`; `npm run test -- loan-past-impact PastImpactSection`.
+15. **Residual risks:** a loan that genuinely charged 0 interest so far must keep its figure; the gate needs the 0 percent case (`annualRate === 0`) the doc's "0 percent is a rate" rule names.
+
+Causality: `PRE_EXISTING_UNREPORTED` (handed by S15, `15-loans-strategies.md` section 12).
+
+
+### A26-L35 - The E2E release gate passes a test that failed twice out of three, never runs one of its tests, and swaps a shard for the cluster run
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S21-05 (primary, 21-tests-ci-release.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** ci.
+
+#### A26-S21-05 (primary) - The E2E release gate passes a test that failed twice out of three, never runs one of its tests, and swaps a shard for the cluster run
+
+1. **Severity:** LOW
+2. **Confidence:** high
+3. **Location:** `e2e/playwright.config.ts:12` (`retries: process.env.CI ? 2 : 0`, no `failOnFlakyTests`); `ci.yml:1466-1478` (matrix `shard: [1, 2, 3, 4]` plus `include: shard: 4, cluster: 'true'`, which adds `cluster` to the existing shard-4 entry instead of adding a fifth job); `e2e/tests/backup.spec.ts:160-163` (`test.skip(process.env.DEMO_MODE !== 'true')`) versus `docker-compose.e2e.yml:46` (`DEMO_MODE: "false"`); no `e2e/tsconfig.json` and no lint or type-check step for `e2e/` in any workflow.
+4. **Violated invariant:** S21-I1 in its general form: a green gate means every test in it passed on the configuration it names.
+5. **Reproduction scenario:** (a) an order-dependent race in the app that fails one attempt in two passes with retries 2 at probability 7/8 per test, and the run is green (S01 observed 6 such first-attempt failures at the baseline); (b) the "Restricted in Demo Mode" backup test runs in no job; (c) shard 4's quarter of the suite runs only against the two-replica stack, so a defect that appears with one backend in that quarter is not seen.
+6. **Observed:** as above; the job comment `ci.yml:1451` says "Retries (2 in CI) absorb flakiness".
+7. **Expected:** flaky tests fail the gate (Playwright `failOnFlakyTests: true` in CI, or a step that fails on a non-empty "flaky" count), every test runs in some job, and the cluster run is a fifth job.
+8. **Impact:** test signal; the defects are in other findings.
+9. **Root cause:** retries were added to absorb environment noise and absorb product races too.
+10. **Recommended correction / 11. Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/e2e/playwright.config.ts
++++ b/e2e/playwright.config.ts
+   retries: process.env.CI ? 2 : 0,
++  // A retry may rescue the run from the environment, never hide a product race.
++  failOnFlakyTests: !!process.env.CI,
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+       matrix:
+-        shard: [1, 2, 3, 4]
+-        include:
+-          - shard: 4
+-            cluster: 'true'
++        shard: [1, 2, 3, 4]
++        cluster: ['false']
++        include:
++          - shard: 4
++            cluster: 'true'
++            name-suffix: cluster
+```
+
+    (the second hunk needs the job name and the `--shard` arithmetic adjusted; maintainer decision whether the cluster job runs the whole suite or one shard). The DEMO test needs either a demo-mode job or deletion with its behaviour covered by a component test.
+12. **Recommended regression test / 13. diff:** a guard asserting `failOnFlakyTests` is set when `CI` is, beside `ci-images.guard.spec.ts`.
+14. **Verification method:** a deliberately flaky test (`expect(Math.random() > 0.5)`) must turn the job red.
+15. **Residual risks:** turning flakes red will surface the six S01 observed; they then need root causes.
+
+Causality: `PRE_EXISTING_UNREPORTED` (S01 handed DR-S01-5 and the shard note to S21).
+
+
+### A26-L36 - `push:client:test` passes with zero discovered tests (MON-L07 residual)
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S21-06 (primary, 21-tests-ci-release.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** ci.
+
+#### A26-S21-06 (primary) - `push:client:test` passes with zero discovered tests, and REL-001's "every runner fails on zero" does not hold for `node --test`
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed)
+3. **Location:** `backend/package.json` `push:client:test` = `node --test scripts/unifiedpush-client/*.test.cjs` (run by `ci.yml:78`); `docs/release-integrity.md:19-22`, `:70-73`; `backend/src/common/jest-config.guard.spec.ts` (scans for the flag only).
+4. **Violated invariant:** REL-001 / S21-I1.
+5. **Reproduction (executed in the scratch worktree):** `npm run push:client:test` at the baseline: `tests 10, pass 10`, exit 0. Rename `core.test.cjs` to `core.spec.cjs`: `tests 0, pass 0`, **exit 0**. Separately, `node --test empty.test.cjs` on a file declaring no test exits 0; a missing explicit file exits 1. The four other `node --test` steps in CI name explicit files, so they fail on a missing file but pass on a file emptied of tests.
+6. **Observed / 7. Expected:** a renamed or moved push-client test silently drops out of `backend-lint`; expected exit 1 with zero tests.
+8. **Impact:** test signal for the push tooling under `backend/scripts/` (INV-PUSH tooling, not the server); narrow.
+9. **Root cause:** Node's test runner treats an empty set as success, and the guard only looks for a flag.
+10. **Recommended correction / 11. diff (illustrative, not applied):**
+
+```diff
+--- a/backend/package.json
++++ b/backend/package.json
+-    "push:client:test": "node --test scripts/unifiedpush-client/*.test.cjs",
++    "push:client:test": "node --test scripts/unifiedpush-client/core.test.cjs",
+```
+
+    and, for the general rule, a case in `jest-config.guard.spec.ts` refusing a `node --test` command whose arguments contain a glob.
+12. **Regression test / 13. diff:** the guard case above (`expect(script).not.toMatch(/node --test[^&|]*\*/)` over every `package.json` script and workflow `run:`).
+14. **Verification:** rename the file again; the step must exit 1.
+15. **Residual:** an explicit file emptied of tests still passes; Node has no "fail on zero" switch, so a count assertion (REL-002) is the only full answer.
+
+Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the push tooling postdates `d5cea9bf`). Also a documentation inconsistency (MON-L07 residual, section 11).
+
+
+### A26-L37 - Coverage excludes every DTO; two cross-field or privacy constraints there are held by no test
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S21-07 (primary, 21-tests-ci-release.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** test.
+
+#### A26-S21-07 (primary) - Coverage excludes every DTO, and two cross-field or privacy constraints that live only there are held by no test
+
+1. **Severity:** LOW (test coverage; the code is correct at the baseline)
+2. **Confidence:** high (executed)
+3. **Location:** `backend/package.json` `jest.collectCoverageFrom` `"!src/**/*.dto.ts"` (also `*.entity.ts`, `*.module.ts`); `backend/src/emergency-access/dto/upsert-settings.dto.ts:12-36` (`ReminderLtGrantConstraint`, the only place `reminderAfterDays < grantAfterDays` is enforced: the monitor, `emergency-access-monitor.service.ts:892`, only compares days since login with each threshold); `backend/src/backup/support-backup/dto/create-support-backup.dto.ts:36-56` (`IsNonIntegerMultiplierConstraint`: the de-identifying multiplier must not be an integer); 26 DTO files carry 46 `@Transform` decorators and five carry custom constraints, three of them with no spec of their own.
+4. **Violated invariant:** S21-I5 (the coverage gate measures the code that carries behaviour) and S21-I4.
+5. **Reproduction (executed in the scratch worktree):** (a) `ReminderLtGrantConstraint.validate` -> `return true`: `npx jest src/emergency-access` 4 suites, 128 tests, all pass. (b) `IsNonIntegerMultiplierConstraint.validate` without `!Number.isInteger(value)`: `npx jest src/backup/support-backup` 5 suites, 64 tests, all pass. No integration suite goes through HTTP (0 of 118 import `supertest`; `emergency-access-grant-cycles.integration.spec.ts:198` calls `upsertSettings` directly), and no E2E spec sets `reminderAfterDays`.
+6. **Observed:** with (a), an owner can save "remind after 30 days, grant after 7": the monitor grants the emergency contact access on day 7 and the owner's warning never precedes it. With (b), a support backup can be made with multiplier 2, so every private amount is recoverable by halving.
+7. **Expected:** each cross-field or privacy rule in a DTO is pinned by a `validate()`-level spec, and the coverage gate counts DTO files (their decorators execute at import, so including them costs nothing but exposes untested constraint and transform bodies).
+8. **Impact:** security and privacy rules that one refactor can drop with every gate green; no present-day defect.
+9. **Root cause:** DTOs were excluded as declarative files; some now hold logic.
+10. **Recommended correction:** drop `!src/**/*.dto.ts` from `collectCoverageFrom` (check the thresholds still hold) and add the two specs.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/package.json
++++ b/backend/package.json
+     "collectCoverageFrom": [
+       "src/**/*.(t|j)s",
+       "!src/main.ts",
+       "!src/**/*.module.ts",
+       "!src/**/*.entity.ts",
+-      "!src/**/*.dto.ts",
+       "!src/database/seed*.ts",
+```
+
+12. **Recommended regression test / 13. Suggested regression-test diff (illustrative, not applied):**
+
+```ts
+// backend/src/emergency-access/dto/upsert-settings.dto.spec.ts
+import { plainToInstance } from "class-transformer";
+import { validateSync } from "class-validator";
+import { UpsertSettingsDto } from "./upsert-settings.dto";
+
+it("refuses a reminder that does not come before the grant", () => {
+  const dto = plainToInstance(UpsertSettingsDto, { enabled: true, grantAfterDays: 7, reminderAfterDays: 7 });
+  expect(validateSync(dto).map((e) => e.property)).toContain("reminderAfterDays");
+});
+```
+
+    and the same shape for `CreateSupportBackupDto` with `multiplier: 2`.
+14. **Verification:** re-apply both mutations; the new specs must fail.
+15. **Residual:** excluding `*.entity.ts` was tested the same way and is held: the entity `numericTransformer` mutation `null -> 0` in `investment-transaction.entity.ts:22-26` is killed by `security-transfer.integration.spec.ts` ("is stored as unknown for ADD_SHARES"). The frontend exclusion of `src/proxy.ts` hides nothing measurable either: measured alone, its own tests cover it at 97.05 % statements, 95.16 % branches, 100 % functions.
+
+Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-L38 - A manual close in the middle of a budget period leaves the budget with no OPEN period for good
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S16-07 (primary, 16-budgets-reports.md, session severity LOW).
+- **Invariants and prior findings named:** none in the index (see field 4 of each member).
+- **Lens:** financial.
+
+#### A26-S16-07 (primary) - A manual close in the middle of a period leaves the budget with no OPEN period for good
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed, P3)
+3. **Location:** `budget-period.service.ts:177, 214-260` (`createNextPeriod` -> `createPeriodForBudget` -> `getCurrentMonthPeriodDates()`), route `budgets.controller.ts:295-303`; `budget-period-cron.service.ts:152-154` skips a budget with no OPEN period.
+4. **Violated invariant:** after a close, exactly one OPEN period exists for the following period (state machine).
+5. **Reproduction (executed):** with October 2026 OPEN, `POST /budgets/:id/periods/close` on 2026-10-21.
+6. **Observed:** October CLOSED; the next-period insert uses `period_start 2026-10-01`, hits `ON CONFLICT DO NOTHING` and returns the just-closed row; no OPEN period; `getOrCreateCurrentPeriod` returns the CLOSED October row (probe P3 `{"after":[...CLOSED, CLOSED],"current":"CLOSED"}`); the November cron finds no OPEN period and skips the budget every month after.
+7. **Expected:** the next period starts the day after the closed period ends (November), or a close before `period_end` is refused.
+8. **Impact:** the period history stops for that budget; the live budget page is unaffected (it reads the calendar month). Reachable only through the API: no frontend component calls `budgetsApi.closePeriod` (`frontend/src/lib/budgets.ts:161`). The same date rule makes a late cron (a replica down over a month boundary) skip the missed months silently.
+9. **Root cause:** the next period's dates come from the wall clock, not from the closed period.
+10. **Recommended correction:** derive the next period from `closedPeriod.periodEnd + 1 day` (`getMonthPeriodDates`), and refuse a manual close before `period_end` (maintainer decision).
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/src/budgets/budget-period.service.ts
++++ b/backend/src/budgets/budget-period.service.ts
+@@ async createPeriodForBudget(
+     budget: Budget,
+     rolloverMap?: Map<string, number>,
+     manager?: EntityManager,
++    dates: PeriodDateRange = getCurrentMonthPeriodDates(),
+   ): Promise<BudgetPeriod> {
+-    const { periodStart, periodEnd } = getCurrentMonthPeriodDates();
++    const { periodStart, periodEnd } = dates;
+@@ private async createNextPeriod(
+-    return this.createPeriodForBudget(budget, rolloverMap, manager);
++    return this.createPeriodForBudget(
++      budget, rolloverMap, manager, followingMonthPeriodDates(closedPeriod.periodEnd),
++    );
+```
+
+12. **Recommended regression test:** the P3 scenario: after a close dated inside the period, exactly one OPEN period exists and it starts the next month (or the close is refused with 400).
+13. **Suggested regression-test diff:** as item 12 in a budget period integration spec.
+14. **Verification:** `npm run test:integration -- budget`.
+15. **Residual risks:** with dates derived from the closed period, a two-month outage creates the missed month as OPEN and the next cron closes it; whether to back-fill is a product decision.
+
+Causality: `PRE_EXISTING_UNREPORTED`.
+
+
+### A26-L39 - Two flex groups over 90 percent share one alert fingerprint, so the second is never raised in the period
+
+- **Canonical severity:** LOW. kept LOW.
+- **Absorbs:** A26-S16-08 (primary, 16-budgets-reports.md, session severity LOW).
+- **Invariants and prior findings named:** MON-L03.
+- **Lens:** financial.
+
+#### A26-S16-08 (primary) - Two flex groups over 90 percent share one alert fingerprint, so the second is never raised in the period
+
+1. **Severity:** LOW
+2. **Confidence:** high (executed at the SQL level, P4)
+3. **Location:** `budget-alert.service.ts:589-608` (`budgetCategoryId: null`, one `FLEX_GROUP_WARNING` per group, group name only in `data`); `database/schema.sql:2483-2490`; `deduplicateAlerts` `:689-714` matches on `(type, budgetCategoryId)` only.
+4. **Violated invariant:** one alert per logical condition (MON-L03's own statement, "one logical alert fingerprint per budget period").
+5. **Reproduction (executed):** two `FLEX_GROUP_WARNING` rows for one budget and period with different group names.
+6. **Observed:** first insert 1 row, second 0 rows (probe P4 `flexFun 1, flexDining 0`); on later days `deduplicateAlerts` also filters the second group against the first.
+7. **Expected:** one alert per flex group.
+8. **Impact:** a user with two overspent flex groups is told about one.
+9. **Root cause:** the fingerprint identifies a budget-wide alert by `(budget, period, type, NULL category, severity)` and flex groups have no column of their own.
+10. **Recommended correction:** add the group to the key (a migration widening the fingerprint with `COALESCE(data->>'flexGroup', '')`, mirrored in `deduplicateAlerts`).
+11. **Suggested remediation diff (illustrative, not applied):** a timestamped migration dropping and recreating `idx_notifications_fingerprint` with the extra expression, the same in `database/schema.sql`, and `e.data?.flexGroup === candidate.data?.flexGroup` added to the `deduplicateAlerts` match.
+12. **Recommended regression test:** two groups at 95 percent produce two rows.
+13. **Suggested regression-test diff:** a `budget-alert.service.spec.ts` case for `deduplicateAlerts` plus an integration insert pair.
+14. **Verification:** `npm run migration:lint`, `scripts/verify-schema.sh`, the integration case.
+15. **Residual risks:** the migration's preflight must not collapse legitimate rows.
+
+Causality: `PRE_EXISTING_UNREPORTED` (the fingerprint shape is from migration 140).
