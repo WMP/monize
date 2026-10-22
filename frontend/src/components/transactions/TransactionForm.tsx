@@ -61,6 +61,7 @@ import { usePreferencesStore } from '@/store/preferencesStore';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import { AttachmentsSection } from './AttachmentsSection';
+import { TransactionWarrantiesLine } from './TransactionWarrantiesLine';
 import { attachmentsApi } from '@/lib/attachments';
 import type { StagedAttachment } from '@/types/attachment';
 import { optionalUuid, optionalString } from '@/lib/zod-helpers';
@@ -1773,6 +1774,14 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
           stagedFiles={stagedAttachments}
           onStagedFilesChange={setStagedAttachments}
         />
+      )}
+
+      {/* Warranties linked to this purchase, and Add warranty. A saved row
+          only (a warranty links to a transaction that exists), and not on a
+          joint account's row: a warranty is the reader's own, as attachments
+          are. */}
+      {transaction && !selectedIsJoint && (
+        <TransactionWarrantiesLine transaction={transaction} />
       )}
 
       {/* Actions. anchorProps, not a wrapper, so a guided tour rings the

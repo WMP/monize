@@ -298,6 +298,8 @@ vi.mock('@/components/transactions/TransactionList', () => ({
           <span data-testid={`tx-${t.id}-attachments`}>{t.attachmentCount ?? 'none'}</span>
         </div>
       ))}
+      {props.onAddWarranty && <button data-testid="add-warranty-btn" onClick={() => props.onAddWarranty({ id: 'tx-1' })}>Add warranty</button>}
+      {props.onViewWarranties && <button data-testid="view-warranties-btn" onClick={() => props.onViewWarranties({ id: 'tx-1' })}>View warranties</button>}
       {props.onPayeeClick && <button data-testid="payee-click-btn" onClick={() => props.onPayeeClick('payee-1')}>Payee</button>}
       {props.onTransferClick && <button data-testid="transfer-click-btn" onClick={() => props.onTransferClick('acc-2', 'tx-linked')}>Transfer</button>}
       {props.onCategoryClick && <button data-testid="category-click-btn" onClick={() => props.onCategoryClick('cat-1')}>Category</button>}
@@ -1727,6 +1729,44 @@ describe('TransactionsPage', () => {
         expect(mockGetById).toHaveBeenCalledWith('tx-split');
         expect(mockTxOpenEdit).toHaveBeenCalledWith(splitTx);
       });
+    });
+  });
+
+  describe('Warranties', () => {
+    // A warranty lives on its own page; the register only routes there.
+    beforeEach(() => {
+      mockGetAll.mockResolvedValue({
+        data: mockTransactions,
+        pagination: { page: 1, totalPages: 1, total: 3 },
+      });
+      mockGetSummary.mockResolvedValue({ totalIncome: 0, totalExpenses: 0, netCashFlow: 0, transactionCount: 0 });
+    });
+
+    it('Add warranty opens the Warranties form prefilled from the row', async () => {
+      render(<TransactionsPage />);
+      await waitFor(() => expect(screen.getByTestId('add-warranty-btn')).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId('add-warranty-btn'));
+      expect(mockPush).toHaveBeenCalledWith('/warranties?new=1&transactionId=tx-1');
+    });
+
+    it("View warranties lists the row's warranties", async () => {
+      render(<TransactionsPage />);
+      await waitFor(() => expect(screen.getByTestId('view-warranties-btn')).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId('view-warranties-btn'));
+      expect(mockPush).toHaveBeenCalledWith('/warranties?transactionId=tx-1');
+    });
+
+    it("keeps the row's warranty count when a split is re-read for editing", async () => {
+      const splitTx = { id: 'tx-split', date: '2026-02-01', amount: -100, payee: { name: 'Store' }, isTransfer: false, isSplit: true, splits: [], warrantyCount: 2 };
+      const fullSplitTx = { ...splitTx, warrantyCount: undefined, splits: [{ id: 's1', amount: -100 }] };
+      mockGetAll.mockResolvedValue({ data: [splitTx], pagination: { page: 1, totalPages: 1, total: 1 } });
+      mockGetById.mockResolvedValue(fullSplitTx);
+      render(<TransactionsPage />);
+      await waitFor(() => expect(screen.getByTestId('tx-tx-split')).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId('tx-tx-split'));
+      await waitFor(() =>
+        expect(mockTxOpenEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'tx-split', warrantyCount: 2 })),
+      );
     });
   });
 

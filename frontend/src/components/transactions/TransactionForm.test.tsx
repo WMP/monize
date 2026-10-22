@@ -197,6 +197,13 @@ vi.mock('@/lib/attachments', async (importOriginal) => ({
   },
 }));
 
+// The Warranties line has its own suite; here it only matters where it renders.
+vi.mock('./TransactionWarrantiesLine', () => ({
+  TransactionWarrantiesLine: ({ transaction }: { transaction: { id: string } }) => (
+    <div data-testid="warranties-line">{transaction.id}</div>
+  ),
+}));
+
 vi.mock('@/lib/transactions', () => ({
   transactionsApi: {
     create: (...args: any[]) => mockCreate(...args),
@@ -547,6 +554,43 @@ describe('TransactionForm', () => {
   // Joint accounts: a joint row belongs to the sharing owner, so every category
   // picker on the form offers the OWNER's list -- the split lines included.
   // =========================================================================
+  describe('the Warranties line', () => {
+    it('renders for a saved transaction', async () => {
+      render(
+        <TransactionForm
+          transaction={createExistingTransaction() as any}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+        />
+      );
+      await waitFor(() => {
+        expect(screen.getByTestId('warranties-line')).toHaveTextContent('123e4567-e89b-12d3-a456-426614174000');
+      });
+    });
+
+    it('is absent from a new transaction', async () => {
+      render(<TransactionForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      await waitFor(() => expect(mockAccountsGetAll).toHaveBeenCalled());
+      expect(screen.queryByTestId('warranties-line')).not.toBeInTheDocument();
+    });
+
+    it("is absent from a joint account's row, as attachments are", async () => {
+      mockAccountsGetAll.mockResolvedValue([
+        ...mockAccounts,
+        { ...mockAccounts[0], id: 'acc-joint', name: 'Shared Chequing', isJoint: true, ownerLabel: 'Sam' },
+      ]);
+      render(
+        <TransactionForm
+          transaction={createExistingTransaction({ accountId: 'acc-joint' }) as any}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+        />
+      );
+      await waitFor(() => expect(mockGetJointReferenceData).toHaveBeenCalledWith('acc-joint'));
+      expect(screen.queryByTestId('warranties-line')).not.toBeInTheDocument();
+    });
+  });
+
   describe('joint accounts', () => {
     const jointAccount = {
       ...mockAccounts[0],
