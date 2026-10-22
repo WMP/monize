@@ -1,4 +1,4 @@
-import { Repository, SelectQueryBuilder } from "typeorm";
+import { ObjectLiteral, Repository, SelectQueryBuilder } from "typeorm";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { BudgetCategory } from "./entities/budget-category.entity";
@@ -36,6 +36,40 @@ export interface OutgoingTransferWindow {
   periodEnd: string;
   /** Restrict to these destination accounts; omit to sweep every destination. */
   transferAccountIds?: string[];
+  /**
+   * Source accounts the budget leaves out (`budgetExcludedAccountIds`); a
+   * transfer out of an excluded account is not the budget's progress.
+   */
+  excludedAccountIds?: readonly string[];
+}
+
+/**
+ * The accounts a budget leaves out of its actuals, as chosen in the budget
+ * wizard and stored in `budgets.config` (audit A26-M31). `config` is a JSONB
+ * column the client writes, so anything but an array of strings reads as
+ * "nothing excluded".
+ */
+export function budgetExcludedAccountIds(config: unknown): string[] {
+  if (config === null || typeof config !== "object") return [];
+  const ids = (config as { excludedAccountIds?: unknown }).excludedAccountIds;
+  if (!Array.isArray(ids)) return [];
+  return ids.filter((id): id is string => typeof id === "string");
+}
+
+/**
+ * Leaves the budget's excluded accounts out of an actuals query whose
+ * transaction alias is `t`. The one place the predicate is written: every
+ * budget actuals query (live page, alerts, period close, income) calls it.
+ * Call it after the builder's `.where(...)`, which replaces earlier clauses.
+ */
+export function excludeBudgetAccounts<T extends ObjectLiteral>(
+  qb: SelectQueryBuilder<T>,
+  excludedAccountIds: readonly string[],
+): SelectQueryBuilder<T> {
+  if (excludedAccountIds.length === 0) return qb;
+  return qb.andWhere("t.account_id NOT IN (:...excludedAccountIds)", {
+    excludedAccountIds,
+  });
 }
 
 /** Destination account of a whole-row transfer (parent builder alias). */
@@ -69,7 +103,7 @@ export function outgoingParentTransfers(
       transferAccountIds: window.transferAccountIds,
     });
   }
-  return qb;
+  return excludeBudgetAccounts(qb, window.excludedAccountIds ?? []);
 }
 
 export function outgoingSplitTransfers(
@@ -95,7 +129,7 @@ export function outgoingSplitTransfers(
   } else {
     qb.andWhere("s.transfer_account_id IS NOT NULL");
   }
-  return qb;
+  return excludeBudgetAccounts(qb, window.excludedAccountIds ?? []);
 }
 
 /** What `queryCategorySpending` returns: converted sums plus what is unknown. */
@@ -163,11 +197,14 @@ export async function queryCategorySpending(
   }
 
   const manager = transactionsRepository.manager;
-  const budgetRows: Array<{ currency_code: string }> = await manager.query(
-    "SELECT currency_code FROM budgets WHERE id = $1",
-    [budgetCategories[0].budgetId],
-  );
+  const budgetRows: Array<{ currency_code: string; config: unknown }> =
+    await manager.query(
+      "SELECT currency_code, config FROM budgets WHERE id = $1",
+      [budgetCategories[0].budgetId],
+    );
   const currency = budgetRows[0]?.currency_code ?? "";
+  // Read from the budget row itself, so no caller can forget to pass them.
+  const excludedAccountIds = budgetExcludedAccountIds(budgetRows[0]?.config);
 
   const categoryIds = budgetCategories
     .filter((bc) => bc.categoryId !== null)
@@ -183,7 +220,7 @@ export async function queryCategorySpending(
   const transferRows: SpendingRow[] = [];
 
   if (categoryIds.length > 0) {
-    const directRows = await transactionsRepository
+    const directQb = transactionsRepository
       .createQueryBuilder("t")
       .select("t.category_id", "key")
       .addSelect("t.currency_code", "currencyCode")
@@ -194,14 +231,15 @@ export async function queryCategorySpending(
       .andWhere("t.transaction_date >= :periodStart", { periodStart })
       .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
       .andWhere("t.status != :void", { void: "VOID" })
-      .andWhere("t.is_split = false")
+      .andWhere("t.is_split = false");
+    const directRows = await excludeBudgetAccounts(directQb, excludedAccountIds)
       .groupBy("t.category_id")
       .addGroupBy("t.currency_code")
       .addGroupBy("t.transaction_date")
       .getRawMany();
     categoryRows.push(...directRows);
 
-    const splitRows = await splitsRepository
+    const splitQb = splitsRepository
       .createQueryBuilder("s")
       .innerJoin("s.transaction", "t")
       .select("s.category_id", "key")
@@ -212,7 +250,8 @@ export async function queryCategorySpending(
       .andWhere("s.category_id IN (:...categoryIds)", { categoryIds })
       .andWhere("t.transaction_date >= :periodStart", { periodStart })
       .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
-      .andWhere("t.status != :void", { void: "VOID" })
+      .andWhere("t.status != :void", { void: "VOID" });
+    const splitRows = await excludeBudgetAccounts(splitQb, excludedAccountIds)
       .groupBy("s.category_id")
       .addGroupBy("t.currency_code")
       .addGroupBy("t.transaction_date")
@@ -228,6 +267,7 @@ export async function queryCategorySpending(
       transferAccountIds: transferBudgetCategories.map(
         (bc) => bc.transferAccountId as string,
       ),
+      excludedAccountIds,
     };
 
     transferRows.push(

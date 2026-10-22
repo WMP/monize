@@ -1060,7 +1060,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
           minimum: 1,
           maximum: 24,
           description:
-            "spending_anomalies only: months of history to analyse. Defaults to 3.",
+            "spending_anomalies only: months of history to analyse. Defaults to 6.",
         },
         month: {
           type: "string",

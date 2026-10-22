@@ -1,5 +1,6 @@
 import {
   getCurrentMonthPeriodDates,
+  getFollowingMonthPeriodDates,
   getMonthPeriodDates,
   getPreviousMonthPeriodDates,
   parsePeriodFromYYYYMM,
@@ -106,6 +107,36 @@ describe("budget-date.utils", () => {
     it("should return null for invalid month", () => {
       expect(parsePeriodFromYYYYMM("2026-00")).toBeNull();
       expect(parsePeriodFromYYYYMM("2026-13")).toBeNull();
+    });
+  });
+
+  describe("getFollowingMonthPeriodDates", () => {
+    it("returns the month after a month-end period end", () => {
+      expect(getFollowingMonthPeriodDates("2026-10-31")).toEqual({
+        periodStart: "2026-11-01",
+        periodEnd: "2026-11-30",
+      });
+    });
+
+    it("rolls December over into January of the next year", () => {
+      expect(getFollowingMonthPeriodDates("2026-12-31")).toEqual({
+        periodStart: "2027-01-01",
+        periodEnd: "2027-01-31",
+      });
+    });
+
+    it("ends February on the 28th in a non-leap year", () => {
+      expect(getFollowingMonthPeriodDates("2026-01-31")).toEqual({
+        periodStart: "2026-02-01",
+        periodEnd: "2026-02-28",
+      });
+    });
+
+    it("uses the month after a mid-month period end", () => {
+      expect(getFollowingMonthPeriodDates("2026-10-21")).toEqual({
+        periodStart: "2026-11-01",
+        periodEnd: "2026-11-30",
+      });
     });
   });
 });

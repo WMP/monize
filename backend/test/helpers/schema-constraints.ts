@@ -294,8 +294,16 @@ export async function applyProductionConstraints(
 ): Promise<void> {
   await canonicalizeChecks(dataSource);
   const wanted = await productionConstraintsFor(dataSource);
-  const have = new Set(
-    (await readConstraintCatalog(dataSource)).map((c) => c.key),
+  const existing = await readConstraintCatalog(dataSource);
+  const have = new Set(existing.map((c) => c.key));
+  // A migration the harness replays for its policies or functions (179 for the
+  // notifications policy) also creates the indexes it carried at the time. When
+  // a later migration redefined one under the same name, the replayed shape is
+  // stale: schema.sql's definition replaces it rather than colliding with it.
+  const indexByName = new Map(
+    existing
+      .filter((c) => c.kind === "unique-index")
+      .map((c) => [c.name, c] as const),
   );
   const tables = new Set<string>(
     (
@@ -309,6 +317,12 @@ export async function applyProductionConstraints(
   for (const constraint of wanted) {
     if (!tables.has(constraint.table) || have.has(constraint.key)) continue;
     try {
+      const stale = indexByName.get(constraint.name);
+      if (constraint.kind === "unique-index" && stale) {
+        await dataSource.query(
+          `DROP INDEX IF EXISTS ${quoteIdent(stale.name)}`,
+        );
+      }
       await dataSource.query(constraint.ddl);
     } catch (err) {
       throw new Error(

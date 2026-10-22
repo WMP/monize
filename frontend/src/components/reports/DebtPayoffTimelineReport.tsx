@@ -268,9 +268,10 @@ export function DebtPayoffTimelineReport() {
             transactions,
             rateChanges,
             interestTransactions,
+            todayYmd,
           )
         : null,
-    [selectedAccount, transactions, rateChanges, interestTransactions],
+    [selectedAccount, transactions, rateChanges, interestTransactions, todayYmd],
   );
 
   // The count of payments the borrower actually made. Derived from the payment

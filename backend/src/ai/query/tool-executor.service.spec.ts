@@ -1579,14 +1579,30 @@ describe("ToolExecutorService", () => {
       );
     });
 
+    it("generate_report spending_anomalies defaults to the report's own window and threshold", async () => {
+      const result = await service.execute(userId, "generate_report", {
+        type: "spending_anomalies",
+      });
+
+      expect(builtInReports.getSpendingAnomalies).toHaveBeenCalledWith(
+        userId,
+        2,
+        6,
+      );
+      expect(result.summary).toContain("over the last 6 months");
+    });
+
     it("generate_report type spending_anomalies delegates to getSpendingAnomalies", async () => {
       const result = await service.execute(userId, "generate_report", {
         type: "spending_anomalies",
         months: 6,
       });
 
+      // Months are the window, never the z-score threshold (A26-M34): the
+      // threshold is the Reports page's own default.
       expect(builtInReports.getSpendingAnomalies).toHaveBeenCalledWith(
         userId,
+        2,
         6,
       );
       expect(result.sources[0].type).toBe("anomalies");

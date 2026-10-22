@@ -917,6 +917,51 @@ describe('LoanAmortizationReport', () => {
     expect(screen.queryByText('Try again')).not.toBeInTheDocument();
   });
 
+  it("shows the history's own starting balance as Original Amount when no opening balance is set (A26-L25)", async () => {
+    // Opening balance unset, 9,000 still owed after one 1,000 payment: the loan
+    // was 10,000. The old fallback added the PROJECTED principal as well and
+    // printed 19,000.02.
+    mockGetAllAccounts.mockResolvedValue([
+      {
+        id: 'loan-1', name: 'Car Loan', accountType: 'LOAN',
+        currentBalance: -9000, openingBalance: 0, interestRate: 5.0,
+        paymentAmount: 500, paymentFrequency: 'MONTHLY',
+        isCanadianMortgage: false, isVariableRate: false, isClosed: false,
+      },
+    ]);
+    mockGetAllTransactions.mockResolvedValue({
+      data: [{ id: 'tx-1', transactionDate: '2026-01-15', amount: 1000, linkedTransaction: null }],
+      pagination: { hasMore: false },
+    });
+    await renderReport();
+    await waitFor(() => {
+      expect(screen.getByText('Original Amount')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Projected Future Payments')).toBeInTheDocument();
+    expect(screen.getByText('Original Amount').nextElementSibling).toHaveTextContent(
+      /^\$10000\.00$/,
+    );
+  });
+
+  it('disables the export while this loan\'s history failed to load (A26-S15-08)', async () => {
+    mockGetAllAccounts.mockResolvedValue([
+      {
+        id: 'loan-1', name: 'Loan', accountType: 'LOAN',
+        currentBalance: -5000, openingBalance: -10000, interestRate: 5.0,
+        paymentAmount: 300, paymentFrequency: 'MONTHLY',
+        isCanadianMortgage: false, isVariableRate: false, isClosed: false,
+      },
+    ]);
+    mockGetAllTransactions.mockRejectedValue(new Error('boom'));
+    await renderReport();
+    await waitFor(() => {
+      expect(screen.getByText('Try again')).toBeInTheDocument();
+    });
+    // One trigger opens both the CSV and the PDF entries; disabled, neither is
+    // reachable, so an export cannot write an empty schedule.
+    expect(screen.getByRole('button', { name: /export/i })).toBeDisabled();
+  });
+
   it('exports CSV and PDF', async () => {
     const { exportToCsv } = await import('@/lib/csv-export');
     const { exportToPdf } = await import('@/lib/pdf-export');

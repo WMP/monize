@@ -2,6 +2,10 @@ import { Injectable } from "@nestjs/common";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/server";
 import { BuiltInReportsService } from "../../built-in-reports/built-in-reports.service";
+import {
+  SPENDING_ANOMALY_DEFAULT_MONTHS,
+  SPENDING_ANOMALY_DEFAULT_THRESHOLD,
+} from "../../built-in-reports/anomaly-reports.service";
 import { NetWorthService } from "../../net-worth/net-worth.service";
 import {
   resolveUserContext,
@@ -64,7 +68,7 @@ export class McpReportsTools {
             .describe("End date. Defaults to today."),
           months: numberArg(z.number().min(1).max(24))
             .optional()
-            .describe("spending_anomalies: months of history. Default 3."),
+            .describe("spending_anomalies: months of history. Default 6."),
           month: z
             .string()
             .max(7)
@@ -83,9 +87,11 @@ export class McpReportsTools {
 
         try {
           if (args.type === "spending_anomalies") {
+            // Window and threshold in their own places (audit A26-M34).
             const data = await this.reportsService.getSpendingAnomalies(
               user.userId,
-              args.months ?? 3,
+              SPENDING_ANOMALY_DEFAULT_THRESHOLD,
+              args.months ?? SPENDING_ANOMALY_DEFAULT_MONTHS,
             );
             return toolResult(data);
           }

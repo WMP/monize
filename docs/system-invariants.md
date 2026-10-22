@@ -86,6 +86,7 @@ implied.
 | INV-REPORT-001 | A report's account scope is investment linkage, not account type | enforced |
 | INV-REPORT-002 | A chart's down-sampling never reaches a count, a total or an export | enforced |
 | INV-REPORT-003 | A transfer leg appears in a report only as a named flow, never inside income, expenses or net | enforced |
+| INV-REPORT-004 | A category's cost is its signed sum within the category, on every report surface | partial |
 | INV-SANKEY-001 | The Cash Flow Sankey closes: income + inflows + deficit = expenses + outflows + unspent | enforced |
 | INV-SANKEY-002 | A Sankey transfer leg is counted at most once, by its own account's scope and its counterpart's class | enforced |
 | INV-SANKEY-003 | Investment linkage and VOID are excluded on every Sankey branch | enforced |
@@ -2379,6 +2380,41 @@ Required tests      cash-flow-sankey.integration.spec.ts (widening the scope to
 Status              enforced
 ```
 
+### INV-REPORT-004 -- a category's cost is its signed sum within the category
+
+```text
+Statement           A category's figure in a report is the signed sum of its
+                    rows of both signs, netted within that one category and
+                    never across two: a refund lowers the category's cost, and a
+                    category whose credits meet its debits is not spending.
+                    Transfers are not a category and are not netted.
+Source of truth     The signed amounts on transactions and transaction_splits.
+Enforcement         Built-in reports: NET_SPEND_AMOUNT / isNetSpending
+                    (backend/src/built-in-reports/spending-reports.service.ts);
+                    client summaries: netEntityTotal. Custom report engine
+                    (backend/src/reports/reports.service.ts): each line lands in
+                    a (group, category) cell, signed; a cell is kept only when
+                    its net is in the report's direction (EXPENSES_ONLY:
+                    isNetSpending of the negated net; INCOME_ONLY: a positive
+                    net; BOTH: the magnitude of the net), and a group is the sum
+                    of its kept cells (audit A26-M33). The metric NONE list keeps
+                    its row-level direction filter.
+                    The loan history's Interest Paid
+                    (frontend/src/lib/loan-history.ts) sums each interest row
+                    signed, so a lender's refund nets (A26-S15-05).
+Concurrency scope   --
+Failure response    --
+Required tests      Integration:
+                    backend/test/integration/report-custom-net-and-search.integration.spec.ts
+                    (Groceries -100 and +30: 70 under EXPENSES_ONLY and BOTH, by
+                    category and by month) and the reports.service.spec.ts cases;
+                    frontend/src/lib/loan-history.test.ts "nets an interest
+                    refund".
+Known gap           No source scan holds the rule: a new aggregator summing
+                    Math.abs per row passes every guard.
+Status              partial
+```
+
 ### INV-SANKEY-003 -- investment linkage and VOID are out of every branch
 
 ```text
@@ -3409,6 +3445,15 @@ Statement           Interest attributed to a historical loan payment is a
                     A forward PROJECTION may estimate -- that is its job, and
                     its rows are labelled projected. The prohibition is on a
                     historical row.
+                    A historical row is a row the ledger moved by today: a VOID
+                    payment or interest expense moved nothing and a future-dated
+                    one has not happened, so neither is history
+                    (deriveLoanPaymentHistory's required `todayYmd`, audit
+                    A26-M28). Interest is the signed sum of its rows, so a
+                    refund from the lender lowers Interest Paid (INV-REPORT-004,
+                    A26-S15-05). A loan whose repayments recorded no interest at
+                    a non-zero rate has an unknown interest saving, never the
+                    whole of it as saved (loan-past-impact.ts, A26-L34).
 Source of truth     transaction_splits (the payment's recorded interest leg,
                     identified by accounts.interest_category_id) and the
                     interest-category expenses on the loan's configured source
@@ -8175,7 +8220,11 @@ Source of truth     backend/src/transactions/apply-transaction-search.ts
 Enforcement         transaction-search.guard.spec.ts fails an import of the
                     parser or the builder outside the door's three files, and a
                     hand-built `%${...search...}%` pattern in the
-                    transactions module. The pattern scan is narrow: it catches
+                    transactions and reports modules. The custom report's text
+                    filters (the legacy searchText and the filter-group `text`
+                    condition) go through the door at split grain (audit
+                    A26-L12); before, they were a second LIKE door with `%` and
+                    `_` unescaped. The pattern scan is narrow: it catches
                     a template literal whose interpolation names a search
                     value, not a concatenated `'%' + q + '%'` or a template
                     over a differently named variable; those are left to

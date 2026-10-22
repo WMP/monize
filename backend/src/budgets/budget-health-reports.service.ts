@@ -16,6 +16,10 @@ import {
   SavingsRatePoint,
 } from "./budget-reports.service";
 import { roundMoney, roundToDecimals } from "../common/round.util";
+import {
+  budgetExcludedAccountIds,
+  excludeBudgetAccounts,
+} from "./budget-spending.util";
 
 @Injectable()
 export class BudgetHealthReportsService {
@@ -164,6 +168,7 @@ export class BudgetHealthReportsService {
             pc.categoryId,
             period.periodStart,
             period.periodEnd,
+            budgetExcludedAccountIds(budget.config),
           );
         }
 
@@ -223,6 +228,7 @@ export class BudgetHealthReportsService {
       .filter((bc) => bc.categoryId !== null && !bc.isTransfer)
       .map((bc) => bc.categoryId as string);
 
+    const excludedAccountIds = budgetExcludedAccountIds(budget.config);
     const today = new Date();
 
     // Compute full date range for all months at once
@@ -244,25 +250,28 @@ export class BudgetHealthReportsService {
     if (incomeCategoryIds.length > 0) {
       queries.push(
         withScopedDb(this.dataSource, (m) =>
-          m
-            .getRepository(Transaction)
-            .createQueryBuilder("t")
-            .select(
-              "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
-              "month",
-            )
-            .addSelect("COALESCE(SUM(t.amount), 0)", "total")
-            .where("t.user_id = :userId", { userId })
-            .andWhere("t.category_id IN (:...incomeCategoryIds)", {
-              incomeCategoryIds,
-            })
-            .andWhere("t.transaction_date >= :start", { start: rangeStart })
-            .andWhere("t.transaction_date <= :end", { end: rangeEnd })
-            .andWhere("t.status != :void", { void: "VOID" })
-            .andWhere("t.is_split = false")
-            .groupBy(
-              "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
-            )
+          excludeBudgetAccounts(
+            m
+              .getRepository(Transaction)
+              .createQueryBuilder("t")
+              .select(
+                "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
+                "month",
+              )
+              .addSelect("COALESCE(SUM(t.amount), 0)", "total")
+              .where("t.user_id = :userId", { userId })
+              .andWhere("t.category_id IN (:...incomeCategoryIds)", {
+                incomeCategoryIds,
+              })
+              .andWhere("t.transaction_date >= :start", { start: rangeStart })
+              .andWhere("t.transaction_date <= :end", { end: rangeEnd })
+              .andWhere("t.status != :void", { void: "VOID" })
+              .andWhere("t.is_split = false")
+              .groupBy(
+                "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
+              ),
+            excludedAccountIds,
+          )
             .getRawMany()
             .then((rows) => {
               for (const row of rows) {
@@ -279,26 +288,29 @@ export class BudgetHealthReportsService {
       // Income splits query (batch)
       queries.push(
         withScopedDb(this.dataSource, (m) =>
-          m
-            .getRepository(TransactionSplit)
-            .createQueryBuilder("s")
-            .innerJoin("s.transaction", "t")
-            .select(
-              "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
-              "month",
-            )
-            .addSelect("COALESCE(SUM(s.amount), 0)", "total")
-            .where("t.user_id = :userId", { userId })
-            .andWhere("s.category_id IN (:...incomeCategoryIds)", {
-              incomeCategoryIds,
-            })
-            .andWhere("t.transaction_date >= :start", { start: rangeStart })
-            .andWhere("t.transaction_date <= :end", { end: rangeEnd })
-            .andWhere("t.status != :void", { void: "VOID" })
-            .andWhere("s.amount > 0")
-            .groupBy(
-              "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
-            )
+          excludeBudgetAccounts(
+            m
+              .getRepository(TransactionSplit)
+              .createQueryBuilder("s")
+              .innerJoin("s.transaction", "t")
+              .select(
+                "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
+                "month",
+              )
+              .addSelect("COALESCE(SUM(s.amount), 0)", "total")
+              .where("t.user_id = :userId", { userId })
+              .andWhere("s.category_id IN (:...incomeCategoryIds)", {
+                incomeCategoryIds,
+              })
+              .andWhere("t.transaction_date >= :start", { start: rangeStart })
+              .andWhere("t.transaction_date <= :end", { end: rangeEnd })
+              .andWhere("t.status != :void", { void: "VOID" })
+              .andWhere("s.amount > 0")
+              .groupBy(
+                "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
+              ),
+            excludedAccountIds,
+          )
             .getRawMany()
             .then((rows) => {
               for (const row of rows) {
@@ -315,23 +327,26 @@ export class BudgetHealthReportsService {
       // No income categories: use all positive non-transfer transactions
       queries.push(
         withScopedDb(this.dataSource, (m) =>
-          m
-            .getRepository(Transaction)
-            .createQueryBuilder("t")
-            .select(
-              "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
-              "month",
-            )
-            .addSelect("COALESCE(SUM(t.amount), 0)", "total")
-            .where("t.user_id = :userId", { userId })
-            .andWhere("t.amount > 0")
-            .andWhere("t.is_transfer = false")
-            .andWhere("t.transaction_date >= :start", { start: rangeStart })
-            .andWhere("t.transaction_date <= :end", { end: rangeEnd })
-            .andWhere("t.status != :void", { void: "VOID" })
-            .groupBy(
-              "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
-            )
+          excludeBudgetAccounts(
+            m
+              .getRepository(Transaction)
+              .createQueryBuilder("t")
+              .select(
+                "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
+                "month",
+              )
+              .addSelect("COALESCE(SUM(t.amount), 0)", "total")
+              .where("t.user_id = :userId", { userId })
+              .andWhere("t.amount > 0")
+              .andWhere("t.is_transfer = false")
+              .andWhere("t.transaction_date >= :start", { start: rangeStart })
+              .andWhere("t.transaction_date <= :end", { end: rangeEnd })
+              .andWhere("t.status != :void", { void: "VOID" })
+              .groupBy(
+                "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
+              ),
+            excludedAccountIds,
+          )
             .getRawMany()
             .then((rows) => {
               for (const row of rows) {
@@ -346,26 +361,29 @@ export class BudgetHealthReportsService {
     if (expenseCategoryIds.length > 0) {
       queries.push(
         withScopedDb(this.dataSource, (m) =>
-          m
-            .getRepository(Transaction)
-            .createQueryBuilder("t")
-            .select(
-              "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
-              "month",
-            )
-            .addSelect("COALESCE(ABS(SUM(t.amount)), 0)", "total")
-            .where("t.user_id = :userId", { userId })
-            .andWhere("t.category_id IN (:...expenseCategoryIds)", {
-              expenseCategoryIds,
-            })
-            .andWhere("t.transaction_date >= :start", { start: rangeStart })
-            .andWhere("t.transaction_date <= :end", { end: rangeEnd })
-            .andWhere("t.status != :void", { void: "VOID" })
-            .andWhere("t.is_split = false")
-            .andWhere("t.amount < 0")
-            .groupBy(
-              "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
-            )
+          excludeBudgetAccounts(
+            m
+              .getRepository(Transaction)
+              .createQueryBuilder("t")
+              .select(
+                "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
+                "month",
+              )
+              .addSelect("COALESCE(ABS(SUM(t.amount)), 0)", "total")
+              .where("t.user_id = :userId", { userId })
+              .andWhere("t.category_id IN (:...expenseCategoryIds)", {
+                expenseCategoryIds,
+              })
+              .andWhere("t.transaction_date >= :start", { start: rangeStart })
+              .andWhere("t.transaction_date <= :end", { end: rangeEnd })
+              .andWhere("t.status != :void", { void: "VOID" })
+              .andWhere("t.is_split = false")
+              .andWhere("t.amount < 0")
+              .groupBy(
+                "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
+              ),
+            excludedAccountIds,
+          )
             .getRawMany()
             .then((rows) => {
               for (const row of rows) {
@@ -381,26 +399,29 @@ export class BudgetHealthReportsService {
 
       queries.push(
         withScopedDb(this.dataSource, (m) =>
-          m
-            .getRepository(TransactionSplit)
-            .createQueryBuilder("s")
-            .innerJoin("s.transaction", "t")
-            .select(
-              "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
-              "month",
-            )
-            .addSelect("COALESCE(ABS(SUM(s.amount)), 0)", "total")
-            .where("t.user_id = :userId", { userId })
-            .andWhere("s.category_id IN (:...expenseCategoryIds)", {
-              expenseCategoryIds,
-            })
-            .andWhere("t.transaction_date >= :start", { start: rangeStart })
-            .andWhere("t.transaction_date <= :end", { end: rangeEnd })
-            .andWhere("t.status != :void", { void: "VOID" })
-            .andWhere("s.amount < 0")
-            .groupBy(
-              "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
-            )
+          excludeBudgetAccounts(
+            m
+              .getRepository(TransactionSplit)
+              .createQueryBuilder("s")
+              .innerJoin("s.transaction", "t")
+              .select(
+                "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
+                "month",
+              )
+              .addSelect("COALESCE(ABS(SUM(s.amount)), 0)", "total")
+              .where("t.user_id = :userId", { userId })
+              .andWhere("s.category_id IN (:...expenseCategoryIds)", {
+                expenseCategoryIds,
+              })
+              .andWhere("t.transaction_date >= :start", { start: rangeStart })
+              .andWhere("t.transaction_date <= :end", { end: rangeEnd })
+              .andWhere("t.status != :void", { void: "VOID" })
+              .andWhere("s.amount < 0")
+              .groupBy(
+                "TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM')",
+              ),
+            excludedAccountIds,
+          )
             .getRawMany()
             .then((rows) => {
               for (const row of rows) {
@@ -483,33 +504,38 @@ export class BudgetHealthReportsService {
     categoryId: string,
     periodStart: string,
     periodEnd: string,
+    excludedAccountIds: readonly string[],
   ): Promise<number> {
     const [directResult, splitResult] = await Promise.all([
       withScopedDb(this.dataSource, (m) =>
-        m
-          .getRepository(Transaction)
-          .createQueryBuilder("t")
-          .select("COALESCE(SUM(t.amount), 0)", "total")
-          .where("t.user_id = :userId", { userId })
-          .andWhere("t.category_id = :categoryId", { categoryId })
-          .andWhere("t.transaction_date >= :start", { start: periodStart })
-          .andWhere("t.transaction_date <= :end", { end: periodEnd })
-          .andWhere("t.status != :void", { void: "VOID" })
-          .andWhere("t.is_split = false")
-          .getRawOne(),
+        excludeBudgetAccounts(
+          m
+            .getRepository(Transaction)
+            .createQueryBuilder("t")
+            .select("COALESCE(SUM(t.amount), 0)", "total")
+            .where("t.user_id = :userId", { userId })
+            .andWhere("t.category_id = :categoryId", { categoryId })
+            .andWhere("t.transaction_date >= :start", { start: periodStart })
+            .andWhere("t.transaction_date <= :end", { end: periodEnd })
+            .andWhere("t.status != :void", { void: "VOID" })
+            .andWhere("t.is_split = false"),
+          excludedAccountIds,
+        ).getRawOne(),
       ),
       withScopedDb(this.dataSource, (m) =>
-        m
-          .getRepository(TransactionSplit)
-          .createQueryBuilder("s")
-          .innerJoin("s.transaction", "t")
-          .select("COALESCE(SUM(s.amount), 0)", "total")
-          .where("t.user_id = :userId", { userId })
-          .andWhere("s.category_id = :categoryId", { categoryId })
-          .andWhere("t.transaction_date >= :start", { start: periodStart })
-          .andWhere("t.transaction_date <= :end", { end: periodEnd })
-          .andWhere("t.status != :void", { void: "VOID" })
-          .getRawOne(),
+        excludeBudgetAccounts(
+          m
+            .getRepository(TransactionSplit)
+            .createQueryBuilder("s")
+            .innerJoin("s.transaction", "t")
+            .select("COALESCE(SUM(s.amount), 0)", "total")
+            .where("t.user_id = :userId", { userId })
+            .andWhere("s.category_id = :categoryId", { categoryId })
+            .andWhere("t.transaction_date >= :start", { start: periodStart })
+            .andWhere("t.transaction_date <= :end", { end: periodEnd })
+            .andWhere("t.status != :void", { void: "VOID" }),
+          excludedAccountIds,
+        ).getRawOne(),
       ),
     ]);
 
