@@ -296,6 +296,29 @@ export interface InvestmentBreakdown {
   missingRatePairs: string[];
 }
 
+/**
+ * Account recomputes still running. Most callers start `recalculateAccount`
+ * without awaiting it (the post-import pass, account edits, the debounce
+ * timer), so a test teardown that truncates `transactions` can meet one
+ * mid-read: the TRUNCATE's exclusive lock and the recompute's share locks are
+ * taken in opposite orders, and Postgres reports a deadlock against whichever
+ * spec runs next. Same arrangement as `pendingHistoryWrites` in
+ * action-history.service.ts: nothing in `src/` waits on this set.
+ */
+const pendingAccountRecalcs = new Set<Promise<unknown>>();
+
+/**
+ * Resolves once every account recompute started so far has finished. Call it
+ * before truncating the tables a recompute reads. Settled, not successful: a
+ * failed recompute has also stopped touching the database.
+ */
+export async function settlePendingAccountRecalcs(): Promise<void> {
+  // Snapshotted because a settling promise removes itself from the set.
+  while (pendingAccountRecalcs.size > 0) {
+    await Promise.allSettled([...pendingAccountRecalcs]);
+  }
+}
+
 @Injectable()
 export class NetWorthService {
   private readonly logger = new Logger(NetWorthService.name);
@@ -441,7 +464,21 @@ export class NetWorthService {
     );
   }
 
-  async recalculateAccount(userId: string, accountId: string): Promise<void> {
+  /**
+   * Registered in `pendingAccountRecalcs` before it is handed back, so a
+   * teardown can tell a recompute nobody awaited is still running.
+   */
+  recalculateAccount(userId: string, accountId: string): Promise<void> {
+    const work = this.recalculateAccountNow(userId, accountId);
+    pendingAccountRecalcs.add(work);
+    // `finally` keeps the returned promise's own settlement untouched.
+    return work.finally(() => pendingAccountRecalcs.delete(work));
+  }
+
+  private async recalculateAccountNow(
+    userId: string,
+    accountId: string,
+  ): Promise<void> {
     // The same invalidation as the debounced seam, for the callers that
     // recompute an account directly instead of going through it.
     invalidatePortfolioSummary(userId);
