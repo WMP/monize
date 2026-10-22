@@ -4379,27 +4379,57 @@ Status              enforced
 ### INV-AUTH-001 -- refresh rotation
 
 ```text
-Statement           A presented refresh token rotates once; a second presentation
-                    revokes the family.
+Statement           A presented refresh token rotates once; presenting it again
+                    revokes the family, except that the immediate predecessor of a
+                    successor minted within the rotation grace is answered with an
+                    access token only.
 Source of truth     refresh_tokens.is_revoked, per family_id
-Enforcement         Pessimistic write lock on the RefreshToken row by tokenHash,
-                    plus family revocation on a token already revoked. The loser
-                    blocks on the lock, sees the winner's committed isRevoked,
-                    and takes the reuse-detection branch.
+Enforcement         TokenService.refreshTokens takes lockTokenFamily, then a
+                    pessimistic write lock on the RefreshToken row by tokenHash.
+                    A token already revoked is reuse: the family UPDATE commits and
+                    the 401 is raised after withScopedDb resolves (a throw inside
+                    the callback rolled the revocation back until A26-H01). The
+                    expired-token mark and the inactive-user family revoke commit
+                    the same way. The one exception is the grace
+                    (TokenService.ROTATION_GRACE_SECONDS, 10 s): when the presented
+                    token's replaced_by_hash names a successor that is still live
+                    and whose created_at is inside the window, the answer is an
+                    access token with no refresh token, nothing is revoked or
+                    minted, and the controller leaves the refresh cookie the first
+                    response set. A predecessor whose successor has itself rotated,
+                    or one presented after the window, is reuse. The browser
+                    client serializes refreshes across tabs with the Web Locks API
+                    (frontend/src/lib/api.ts, monize-token-refresh), so the grace
+                    is the fallback rather than the common path.
 Concurrency scope   per token family
-Retry semantics     A retried rotation of the same token is reuse, not a retry,
-                    and is treated as such by design.
+Retry semantics     A retried rotation of the same token inside the grace gets an
+                    access token; outside it, it is reuse by design.
 Crash semantics     A crash before commit leaves the presented token valid; a
                     crash after leaves the successor valid. Both are consistent.
-Failure response    401, family revoked.
-Required tests      Two-connection: two concurrent rotations of one token; assert
-                    the family ends revoked rather than two live successors.
+Failure response    401 after the family revocation has committed.
+Required tests      Real database: test/integration/refresh-reuse-revokes-family.integration.spec.ts
+                    rotates and re-presents a token past the grace and after a
+                    second rotation (family ends with zero live rows, successor
+                    refused), the grace answer (no revocation, successor still
+                    rotates), two concurrent refreshes of one token (exactly one
+                    live successor), and the durable expired and inactive-user
+                    branches. Unit (supporting): token.service.spec.ts records
+                    whether each refusing transaction committed.
+                    Still owed: a two-page Playwright test that both tabs stay
+                    signed in when the access cookie expires (e2e/ has no fixture
+                    that expires it).
+Known limit         The nightly purge deletes revoked rows, so a token reused more
+                    than a day after its rotation is "invalid", not "reused", and
+                    revokes nothing (D-S03-04). Inside the grace a thief presenting
+                    the predecessor is not detected; it receives one access token
+                    and no refresh token.
 Status              enforced
 ```
 
-Recorded as enforced because the mechanism is real and correct -- and because it
-is subtle enough that a future refactor could remove the lock without any test
-noticing.
+Recorded as enforced because the mechanism is real and a real-database test now
+holds it. It was recorded as enforced before the reuse branch's revocation was
+found to roll back with its own exception (A26-H01): the mock-based unit test
+asserted the `update` call, which a rolled-back update also satisfies.
 
 ### INV-AUTH-004 -- a logout reports only what it achieved
 

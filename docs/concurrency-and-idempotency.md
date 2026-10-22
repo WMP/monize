@@ -538,11 +538,14 @@ this table when a mechanism lands, not when someone judges the window small.
 | Logout vs rotation | Logout's family revoke is an unlocked bulk `UPDATE`. It happens to be safe because `isRevoked = true` is idempotent and the end state is order-independent -- but this is a property of the value, not a protocol, and it stops holding the moment logout writes anything else. | CONC-003 (tolerated; document, do not copy) |
 | MNY import retry after a committed write | `writeAll`'s transaction commits before post-processing, verification, staged-file deletion and the terminal status update. A failure in that window leaves committed rows behind a retryable job, and a retry re-parses with fresh UUIDs. No checkpoint, run id, or per-record key. See INV-IMPORT-002. | CONC-006, CONC-007 |
 
-Refresh-token rotation is worth reading as a positive finding rather than a gap:
-it is correct and subtle -- the loser blocks on the lock, then sees the winner's
-committed `isRevoked`, and takes the reuse-detection branch that revokes the whole
-family, so a concurrent double-rotation ends in revocation rather than two live
-successors.
+Refresh-token rotation is worth reading as a positive finding rather than a gap,
+with two corrections the 2026-10 audit forced. The loser blocks on the family
+lock, then sees the winner's committed `isRevoked`; inside the rotation grace it
+is answered with an access token only (two tabs of one browser), and outside it
+it is reuse and the family is revoked. A concurrent double-rotation therefore
+ends in exactly one live successor, never two. The reuse revocation commits
+before the 401 is raised: it used to be thrown inside the transaction, which
+rolled back the revocation it reported (A26-H01, INV-AUTH-001).
 
 The MNY import job deserves a more careful verdict than either column allows. It
 has the most complete protocol in the codebase for the races it was built to
