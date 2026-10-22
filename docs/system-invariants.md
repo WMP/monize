@@ -4050,6 +4050,13 @@ Failure response    the losing claim gets ConflictException, having posted nothi
                     it, post() re-read the row and posted the NEXT occurrence under
                     a fresh claim key, once per extra replica. A stale browser
                     view is refused the same way by its pin (audit A26-H07).
+                    A failure AFTER the posting commit (completeTransfer, the
+                    loan template recalculation) is logged by post()'s
+                    afterPostCommit and the post is reported as done: the cron
+                    raises no SCHEDULED_POST_FAILED alert for a posted
+                    occurrence and an HTTP caller receives the posted schedule,
+                    so neither is invited to post it again (audit A26-M14;
+                    scheduled-post-commit-failure.integration.spec.ts).
 Required tests      Present (unit): scheduled-transactions.service.spec.ts, a cron
                     whose post() re-reads an advanced next_due_date posts nothing,
                     and post() recording its transaction on the claim.

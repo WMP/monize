@@ -35,6 +35,7 @@ import { TransactionRulesService } from "../../transaction-rules/transaction-rul
 import { TransactionRulesRunService } from "../../transaction-rules/transaction-rules-run.service";
 import { UpdateSecurityDto } from "../../securities/dto/update-security.dto";
 import { tr } from "../../i18n/translate";
+import { isPostCommitFailure } from "../../common/post-commit-failure";
 import { AiActionSigningService } from "./ai-action-signing.service";
 import { AiWriteLimiter } from "./ai-write-limiter";
 import {
@@ -215,8 +216,8 @@ export class AiActionsService {
     // for the guard to be right.
     //
     // Reserved before executing, so concurrent double-submits cannot both pass,
-    // and released when the write throws, so a transient failure leaves the
-    // descriptor confirmable. It is not taken inside the write's transaction:
+    // and released when the write throws before it commits, so a transient
+    // failure leaves the descriptor confirmable. It is not taken inside the write's transaction:
     // `execute` fans out to services that each open their own, dispatch cache
     // invalidation after their commit (INV-CACHE-001) and record action history
     // outside it, and one enclosing transaction would silently move all of that
@@ -252,6 +253,16 @@ export class AiActionsService {
       }
       return result;
     } catch (err) {
+      // A step after a committed write failed (A26-S17-02): the write is done,
+      // so the claim stays spent and a retry cannot write it twice.
+      if (isPostCommitFailure(err)) {
+        this.logger.warn(
+          `AI action ${descriptor.actionId} failed after its write ` +
+            "committed; the claim stays spent: " +
+            err.message,
+        );
+        throw err;
+      }
       // Best-effort, and it must never replace the error it is cleaning up
       // after. The `Map` this claim replaced could not fail; a row can, and the
       // most likely reason `execute` threw -- an unreachable database, an

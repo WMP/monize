@@ -2978,6 +2978,33 @@ describe("ScheduledTransactionsService", () => {
       expect(completedInsideTransaction).toBe(false);
     });
 
+    // A26-S08-02 / A26-M14: the legs and the claim committed before
+    // completeTransfer ran, so its failure must not be reported as "not posted".
+    it("still resolves, and logs, when completeTransfer fails after the commit", async () => {
+      transactionsService.completeTransfer.mockRejectedValueOnce(
+        new Error("history down"),
+      );
+      const errorSpy = jest
+        .spyOn((service as any).logger, "error")
+        .mockImplementation(() => undefined);
+      const scheduled = makeScheduled({
+        isTransfer: true,
+        transferAccountId: "acc-2",
+      });
+      stubFindOne(scheduled);
+      const overrideQb = mockQueryBuilder(null);
+      overrideQb.getOne.mockResolvedValue(null);
+      overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+      accountsRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.post(userId, stId)).resolves.toBeDefined();
+
+      expect(transactionsService.completeTransfer).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(String(errorSpy.mock.calls[0][0])).toContain(stId);
+      expect(String(errorSpy.mock.calls[0][0])).toContain("history down");
+    });
+
     it("does not send currency codes, leaving the transfer service to derive them (P5-002)", async () => {
       // A schedule stores only its source currency. Sending that as
       // `fromCurrencyCode` with no target currency, rate or destination amount
@@ -6513,6 +6540,44 @@ describe("ScheduledTransactionsService", () => {
         .mockResolvedValue({ affected: 1 });
       transactionsService.create.mockResolvedValue({ id: "tx-new" });
     };
+
+    // A26-S08-02 / A26-M14: the posting committed before the re-price ran, so a
+    // failure of the re-price must not be reported as "not posted".
+    it("still resolves, and logs, when the post-commit loan re-price fails", async () => {
+      const scheduled = makeScheduled({
+        amount: -1500,
+        isSplit: true,
+        splits: loanTemplateSplits(),
+        frequency: "MONTHLY",
+      });
+      arrangeLoanPost(scheduled);
+      mockDataSource.query.mockImplementation(async (sql: string) => {
+        const text = String(sql);
+        if (text.includes("scheduled_transaction_postings")) {
+          return [[{ id: "posting-1" }], 1];
+        }
+        if (text.includes("opening_balance")) {
+          return [{ balance: "-198500" }];
+        }
+        return [
+          { user_id: "11111111-1111-1111-1111-111111111111", timezone: "UTC" },
+        ];
+      });
+      const recalc = jest
+        .spyOn((service as any).loanService, "recalculateLoanPaymentSplits")
+        .mockRejectedValue(new Error("lock timeout"));
+      const errorSpy = jest
+        .spyOn((service as any).logger, "error")
+        .mockImplementation(() => undefined);
+
+      await expect(service.post(userId, stId)).resolves.toBeDefined();
+
+      expect(transactionsService.create).toHaveBeenCalledTimes(1);
+      expect(recalc).toHaveBeenCalledWith(stId);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(String(errorSpy.mock.calls[0][0])).toContain(stId);
+      expect(String(errorSpy.mock.calls[0][0])).toContain("lock timeout");
+    });
 
     it("posts the ledger-derived allocation, not the stale stored split (issue #1253)", async () => {
       // The template was prepared when the previous occurrence posted: 1,000

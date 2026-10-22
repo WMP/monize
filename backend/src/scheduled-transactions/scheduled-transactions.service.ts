@@ -3825,10 +3825,14 @@ export class ScheduledTransactionsService {
     // inside it -- the history recorder swallows its own failures, so nesting it
     // would either abort the posting with `25P02` or lose the undo entry.
     if (preparedTransfer && writtenTransfer) {
-      await this.transactionsService.completeTransfer(
-        preparedTransfer,
-        writtenTransfer.savedFromId,
-        writtenTransfer.savedToId,
+      const prepared = preparedTransfer;
+      const written = writtenTransfer;
+      await this.afterPostCommit(id, "completeTransfer", () =>
+        this.transactionsService.completeTransfer(
+          prepared,
+          written.savedFromId,
+          written.savedToId,
+        ),
       );
     }
 
@@ -3841,10 +3845,39 @@ export class ScheduledTransactionsService {
       // recalculation locks the parent and derives the loan from the current
       // split set itself, so a concurrent retarget (Loan A -> Loan B) cannot
       // recalculate the wrong loan (issue #1154 re-review).
-      await this.loanService.recalculateLoanPaymentSplits(id);
+      await this.afterPostCommit(id, "recalculateLoanPaymentSplits", () =>
+        this.loanService.recalculateLoanPaymentSplits(id),
+      );
     }
 
     return this.findOne(userId, id);
+  }
+
+  /**
+   * Run a step that belongs after the posting transaction committed.
+   *
+   * A26-S08-02 / A26-M14: the money, the occurrence claim and the cursor advance
+   * are already committed here, so a failure of the step must not be reported
+   * as "not posted" (the cron's SCHEDULED_POST_FAILED alert, an HTTP error the
+   * caller retries). It is logged and not rethrown. The loan template is
+   * re-priced by the next posting's own re-resolution, and the transfer's
+   * history and tags are best-effort.
+   */
+  private async afterPostCommit(
+    id: string,
+    step: string,
+    fn: () => Promise<unknown>,
+  ): Promise<void> {
+    try {
+      await fn();
+    } catch (error) {
+      this.logger.error(
+        `Scheduled transaction ${id}: ${step} failed after the posting ` +
+          "committed; the occurrence is posted and the step is left to the " +
+          `next run: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 
   /**
