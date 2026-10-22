@@ -24,7 +24,11 @@ export type InvestmentAction =
   | 'REINVEST_CAPITAL_GAIN_LONG'
   | 'CAPITAL_GAIN_SHORT'
   | 'CAPITAL_GAIN_LONG'
-  | 'REDEEM';
+  | 'REDEEM'
+  // Return of capital (issue #1800): a base action of its own. Its cash arrives
+  // like a dividend's and no shares move, but it is not income -- it pays back
+  // part of the cost, so the server takes it off the position's cost basis.
+  | 'RETURN_OF_CAPITAL';
 
 export type QuoteProviderName = 'yahoo' | 'msn' | 'lse' | 'deutsche_boerse';
 

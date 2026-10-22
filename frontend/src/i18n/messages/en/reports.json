@@ -821,6 +821,7 @@
     "actionCapitalGainShort": "Short-Term Capital Gain",
     "actionCapitalGainLong": "Long-Term Capital Gain",
     "actionRedeem": "Redeem CD/Bond",
+    "actionReturnOfCapital": "Return of Capital",
     "colCommission": "Commission",
     "colPriceCurrency": "Price Currency",
     "colAmountCurrency": "Amount Currency",
