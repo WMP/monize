@@ -10,6 +10,7 @@ import { WarrantiesService } from "./warranties.service";
 import { WarrantyClaimsController } from "./warranty-claims.controller";
 import { WarrantyClaimsService } from "./warranty-claims.service";
 import { WarrantyExpiryReminderService } from "./warranty-expiry-reminder.service";
+import { WarrantyImportService } from "./warranty-import.service";
 
 /**
  * Warranties and their claims (docs/future-plans/warranty-tracker.md). The
@@ -32,6 +33,7 @@ import { WarrantyExpiryReminderService } from "./warranty-expiry-reminder.servic
     WarrantiesService,
     WarrantyClaimsService,
     WarrantyExpiryReminderService,
+    WarrantyImportService,
   ],
   controllers: [WarrantiesController, WarrantyClaimsController],
   exports: [WarrantiesService],

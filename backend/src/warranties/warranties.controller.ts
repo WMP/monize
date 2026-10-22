@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -10,10 +11,15 @@ import {
   Post,
   Query,
   Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { memoryStorage } from "multer";
 import {
   ApiBearerAuth,
+  ApiConsumes,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -26,7 +32,9 @@ import {
 } from "../delegation/decorators/delegate-access.decorator";
 import { delegateReadableAccountScope } from "../delegation/delegate-account-scope.util";
 import { DelegationService } from "../delegation/delegation.service";
+import { tr } from "../i18n/translate";
 import { CreateWarrantyDto } from "./dto/create-warranty.dto";
+import { ImportWarrantiesDto } from "./dto/import-warranties.dto";
 import { ListWarrantiesDto } from "./dto/list-warranties.dto";
 import { UpdateWarrantyDto } from "./dto/update-warranty.dto";
 import {
@@ -35,6 +43,23 @@ import {
   WarrantyView,
 } from "./dto/warranty-response.dto";
 import { WarrantiesService } from "./warranties.service";
+import {
+  WARRANTY_IMPORT_MAX_BYTES,
+  WarrantyImportResult,
+  WarrantyImportService,
+} from "./warranty-import.service";
+
+/**
+ * The content types a browser sends for a `.csv` file: `text/csv`, plain text,
+ * and Excel's registration on Windows. A CSV has no magic bytes to sniff, so
+ * the type is only a first filter; the size limit bounds the read and the
+ * parser refuses what is not a table.
+ */
+const CSV_CONTENT_TYPES: ReadonlySet<string> = new Set([
+  "text/csv",
+  "text/plain",
+  "application/vnd.ms-excel",
+]);
 
 /**
  * A user's warranties (docs/future-plans/warranty-tracker.md section 6.5).
@@ -56,6 +81,7 @@ export class WarrantiesController {
   constructor(
     private readonly warrantiesService: WarrantiesService,
     private readonly delegationService: DelegationService,
+    private readonly warrantyImportService: WarrantyImportService,
   ) {}
 
   @Get()
@@ -82,6 +108,52 @@ export class WarrantiesController {
   @ApiResponse({ status: 200, description: "Counts per status" })
   summary(@Request() req): Promise<WarrantySummary> {
     return this.warrantiesService.summary(req.user.id);
+  }
+
+  // Declared before the `:id` routes. Owner-only: no `@AllowDelegate()`.
+  @Post("import")
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      "Preview (dryRun, the default) or import a Warracker-format CSV of warranties",
+  })
+  @ApiConsumes("multipart/form-data")
+  @ApiResponse({ status: 200, description: "One verdict per data row" })
+  @ApiResponse({
+    status: 400,
+    description: "Not a CSV, missing columns, too many rows or invalid rows",
+  })
+  @ApiResponse({ status: 413, description: "The file is larger than 1 MiB" })
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: { fileSize: WARRANTY_IMPORT_MAX_BYTES, files: 1 },
+    }),
+  )
+  importCsv(
+    @Request() req,
+    @Query() query: ImportWarrantiesDto,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<WarrantyImportResult> {
+    if (!file) {
+      throw new BadRequestException(
+        tr("errors.warranties.import.noFile", "Choose a CSV file to import"),
+      );
+    }
+    const contentType = (file.mimetype ?? "")
+      .split(";")[0]
+      .trim()
+      .toLowerCase();
+    if (!CSV_CONTENT_TYPES.has(contentType)) {
+      throw new BadRequestException(
+        tr("errors.warranties.import.notCsv", "The file must be a CSV file"),
+      );
+    }
+    return this.warrantyImportService.run(
+      req.user.id,
+      file.buffer.toString("utf8"),
+      { dryRun: query.dryRun ?? true, skipInvalid: query.skipInvalid ?? false },
+    );
   }
 
   @Get(":id")

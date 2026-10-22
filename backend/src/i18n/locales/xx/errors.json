@@ -885,6 +885,35 @@
     "priceNeedsCurrency": "[XX-A purchase price and its currency are set together or not at all-XX]",
     "claimNotFound": "[XX-Claim with ID {{ id }} not found-XX]",
     "claimResolvedOnNeedsOutcome": "[XX-A claim's resolution date needs a status of resolved or denied-XX]",
-    "claimResolvedBeforeClaimDate": "[XX-A claim cannot be resolved before its claim date-XX]"
+    "claimResolvedBeforeClaimDate": "[XX-A claim cannot be resolved before its claim date-XX]",
+    "import": {
+      "noFile": "[XX-Choose a CSV file to import-XX]",
+      "notCsv": "[XX-The file must be a CSV file-XX]",
+      "fileTooLarge": "[XX-The import file must be at most 1 MiB-XX]",
+      "emptyFile": "[XX-The file must have a header row and at least one data row-XX]",
+      "tooManyRows": "[XX-The import file has {{ count }} rows; at most {{ max }} are allowed-XX]",
+      "missingColumns": "[XX-The file's header row has no {{ columns }} column-XX]",
+      "invalidRows": "[XX-{{ count }} rows are invalid, so nothing was imported; fix them or skip them-XX]",
+      "nameRequired": "[XX-ProductName is required-XX]",
+      "purchaseDateRequired": "[XX-PurchaseDate is required-XX]",
+      "tooLong": "[XX-{{ column }} must be at most {{ max }} characters-XX]",
+      "invalidDate": "[XX-{{ column }} must be a date in YYYY-MM-DD form-XX]",
+      "invalidDuration": "[XX-{{ column }} must be a whole number from 0 to {{ max }}-XX]",
+      "invalidLifetime": "[XX-IsLifetime must be true, false, yes, no, 1 or 0-XX]",
+      "noExpirySource": "[XX-Fill ExpirationDate, a WarrantyDuration column or IsLifetime-XX]",
+      "lifetimeWithExpiry": "[XX-IsLifetime is true, but the row also gives ExpirationDate or a WarrantyDuration; fill only one-XX]",
+      "durationIgnored": "[XX-ExpirationDate was used; the WarrantyDuration columns beside it were ignored-XX]",
+      "durationDisagrees": "[XX-ExpirationDate {{ expiresOn }} was used; the WarrantyDuration columns give {{ derived }}, which disagrees-XX]",
+      "negativePrice": "[XX-PurchasePrice must not be negative-XX]",
+      "invalidPrice": "[XX-PurchasePrice must be a number from 0 to {{ max }} with at most 4 decimal places-XX]",
+      "currencyWithoutPrice": "[XX-Currency is set but PurchasePrice is blank-XX]",
+      "unknownCurrency": "[XX-Currency \"{{ value }}\" is not known; {{ currency }} was used-XX]",
+      "unknownWarrantyType": "[XX-WarrantyType \"{{ value }}\" is not manufacturer, extended, store or other; imported as other-XX]",
+      "invalidSerialJson": "[XX-SerialNumber starts with [ but is not a JSON array of text-XX]",
+      "tooManySerials": "[XX-SerialNumber holds {{ count }} values; at most {{ max }} are allowed-XX]",
+      "serialTooLong": "[XX-Each serial number must be at most {{ max }} characters-XX]",
+      "invalidUrl": "[XX-ProductURL must be an http or https address-XX]",
+      "invalidField": "[XX-{{ field }} is not valid-XX]"
+    }
   }
 }

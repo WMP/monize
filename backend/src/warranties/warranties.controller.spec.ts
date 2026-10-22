@@ -15,6 +15,7 @@ import { DelegationService } from "../delegation/delegation.service";
 import { CreateWarrantyDto } from "./dto/create-warranty.dto";
 import { WarrantiesController } from "./warranties.controller";
 import { WarrantiesService } from "./warranties.service";
+import { WarrantyImportService } from "./warranty-import.service";
 
 const USER = "11111111-1111-4111-8111-111111111111";
 const W1 = "22222222-2222-4222-8222-222222222222";
@@ -26,6 +27,7 @@ describe("WarrantiesController", () => {
   let controller: WarrantiesController;
   let service: Record<string, jest.Mock>;
   let delegationService: { readableAccountIds: jest.Mock };
+  let importService: { run: jest.Mock };
   const req = { user: { id: USER, realUserId: USER } };
   const actingReq = {
     user: {
@@ -50,11 +52,20 @@ describe("WarrantiesController", () => {
     delegationService = {
       readableAccountIds: jest.fn().mockResolvedValue([ACCOUNT]),
     };
+    importService = {
+      run: jest.fn().mockResolvedValue({
+        rows: [],
+        created: 0,
+        skippedColumns: [],
+        dryRun: true,
+      }),
+    };
     const module: TestingModule = await Test.createTestingModule({
       controllers: [WarrantiesController],
       providers: [
         { provide: WarrantiesService, useValue: service },
         { provide: DelegationService, useValue: delegationService },
+        { provide: WarrantyImportService, useValue: importService },
       ],
     }).compile();
     controller = module.get(WarrantiesController);
@@ -129,6 +140,68 @@ describe("WarrantiesController", () => {
     expect(getRoutes.indexOf("summary")).toBeLessThan(getRoutes.indexOf(":id"));
   });
 
+  describe("POST /warranties/import", () => {
+    const csvFile = (
+      mimetype: string,
+      body = "ProductName,PurchaseDate\nLaptop,2026-10-01\n",
+    ): Express.Multer.File =>
+      ({
+        mimetype,
+        buffer: Buffer.from(body, "utf8"),
+      }) as Express.Multer.File;
+
+    it("previews by default and passes the file's text and the JWT's user", async () => {
+      await controller.importCsv(req, {}, csvFile("text/csv"));
+      expect(importService.run).toHaveBeenCalledWith(
+        USER,
+        "ProductName,PurchaseDate\nLaptop,2026-10-01\n",
+        { dryRun: true, skipInvalid: false },
+      );
+    });
+
+    it("commits only when dryRun is false, with skipInvalid as given", async () => {
+      await controller.importCsv(
+        req,
+        { dryRun: false, skipInvalid: true },
+        csvFile("application/vnd.ms-excel"),
+      );
+      expect(importService.run).toHaveBeenCalledWith(USER, expect.any(String), {
+        dryRun: false,
+        skipInvalid: true,
+      });
+    });
+
+    it("accepts text/plain with a charset parameter", async () => {
+      await controller.importCsv(req, {}, csvFile("text/plain; charset=utf-8"));
+      expect(importService.run).toHaveBeenCalled();
+    });
+
+    it("refuses a missing file and a non-CSV content type before reading", () => {
+      expect(() => controller.importCsv(req, {}, undefined)).toThrow(
+        "Choose a CSV file to import",
+      );
+      expect(() =>
+        controller.importCsv(req, {}, csvFile("application/pdf")),
+      ).toThrow("The file must be a CSV file");
+      expect(importService.run).not.toHaveBeenCalled();
+    });
+
+    it("is a POST answered with 200, declared before the :id routes", () => {
+      const proto = WarrantiesController.prototype;
+      expect(Reflect.getMetadata(METHOD_METADATA, proto.importCsv)).toBe(
+        RequestMethod.POST,
+      );
+      expect(Reflect.getMetadata(PATH_METADATA, proto.importCsv)).toBe(
+        "import",
+      );
+      expect(Reflect.getMetadata(HTTP_CODE_METADATA, proto.importCsv)).toBe(
+        200,
+      );
+      const names = Object.getOwnPropertyNames(proto);
+      expect(names.indexOf("importCsv")).toBeLessThan(names.indexOf("findOne"));
+    });
+  });
+
   describe("the delegate section (design decision 9)", () => {
     const handlerOf = (name: string): object =>
       (WarrantiesController.prototype as unknown as Record<string, object>)[
@@ -151,6 +224,7 @@ describe("WarrantiesController", () => {
         WarrantiesController.prototype,
       ).filter((name) => name !== "constructor" && !reads.includes(name));
       expect(writes).toEqual([
+        "importCsv",
         "create",
         "update",
         "remove",
