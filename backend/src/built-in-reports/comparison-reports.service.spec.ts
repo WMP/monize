@@ -85,7 +85,7 @@ describe("ComparisonReportsService", () => {
     currencyService = {
       getDefaultCurrency: jest.fn().mockResolvedValue("USD"),
       buildRateMap: jest.fn().mockResolvedValue(new Map()),
-      convertAmount: jest.fn().mockImplementation((amount) => amount),
+      tryConvertAmount: jest.fn().mockImplementation((amount) => amount),
     };
 
     ({ manager: scopedManager, dataSource: scopedDataSource } =
@@ -128,7 +128,14 @@ describe("ComparisonReportsService", () => {
       expect(result.data).toHaveLength(3);
       result.data.forEach((yearData) => {
         expect(yearData.months).toHaveLength(12);
-        expect(yearData.totals).toEqual({ income: 0, expenses: 0, savings: 0 });
+        expect(yearData.totals).toEqual({
+          income: 0,
+          expenses: 0,
+          savings: 0,
+          knownIncome: 0,
+          knownExpenses: 0,
+          knownSavings: 0,
+        });
         yearData.months.forEach((m) => {
           expect(m.income).toBe(0);
           expect(m.expenses).toBe(0);
@@ -208,7 +215,7 @@ describe("ComparisonReportsService", () => {
 
     it("merges multiple currency rows for the same month into one entry", async () => {
       const currentYear = new Date().getFullYear();
-      currencyService.convertAmount.mockImplementation(
+      currencyService.tryConvertAmount.mockImplementation(
         (amount: number, fromCurrency: string) => {
           if (fromCurrency === "EUR") return amount * 1.1;
           return amount;
@@ -603,7 +610,7 @@ describe("ComparisonReportsService", () => {
     });
 
     it("converts foreign currency amounts", async () => {
-      currencyService.convertAmount.mockImplementation(
+      currencyService.tryConvertAmount.mockImplementation(
         (amount: number, fromCurrency: string) => {
           if (fromCurrency === "EUR") return amount * 1.1;
           return amount;
@@ -751,6 +758,127 @@ describe("ComparisonReportsService", () => {
         mockUserId,
       );
       expect(currencyService.buildRateMap).toHaveBeenCalledWith("USD");
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // A missing exchange rate is unknown, never 1:1 (INV-FX-001)
+  // ---------------------------------------------------------------------------
+  describe("a currency that has no rate", () => {
+    const noJpyRate = (amount: number, from: string) =>
+      from === "JPY" ? null : amount;
+
+    it("getYearOverYear withholds the year's totals and keeps the converted part", async () => {
+      const currentYear = new Date().getFullYear();
+      currencyService.tryConvertAmount.mockImplementation(noJpyRate);
+      scopedManager.query.mockResolvedValue([
+        {
+          year: currentYear,
+          month: 1,
+          currency_code: "USD",
+          income: "0",
+          expenses: "50.00",
+        },
+        {
+          year: currentYear,
+          month: 1,
+          currency_code: "JPY",
+          income: "0",
+          expenses: "100000",
+        },
+      ]);
+
+      const result = await service.getYearOverYear(mockUserId, 1);
+      const year = result.data[0];
+
+      expect(year.totals.expenses).toBeNull();
+      expect(year.totals.income).toBeNull();
+      expect(year.totals.savings).toBeNull();
+      expect(year.totals.knownExpenses).toBe(50);
+      expect(year.totals.knownIncome).toBe(0);
+      expect(year.totals.knownSavings).toBe(-50);
+      expect(year.months[0].expenses).toBe(50);
+      expect(result.currency).toBe("USD");
+      expect(result.missingCurrencies).toEqual(["JPY"]);
+      expect(result.excludedCount).toBe(1);
+      expect(JSON.stringify(result)).not.toContain("100000");
+    });
+
+    it("getYearOverYear keeps a year without a gap complete", async () => {
+      const currentYear = new Date().getFullYear();
+      currencyService.tryConvertAmount.mockImplementation(noJpyRate);
+      scopedManager.query.mockResolvedValue([
+        {
+          year: currentYear - 1,
+          month: 1,
+          currency_code: "USD",
+          income: "10.00",
+          expenses: "5.00",
+        },
+        {
+          year: currentYear,
+          month: 1,
+          currency_code: "JPY",
+          income: "0",
+          expenses: "100000",
+        },
+      ]);
+
+      const result = await service.getYearOverYear(mockUserId, 2);
+
+      expect(result.data[0].totals.expenses).toBe(5);
+      expect(result.data[1].totals.expenses).toBeNull();
+    });
+
+    it("getWeekendVsWeekday withholds both totals and counts only what converted", async () => {
+      currencyService.tryConvertAmount.mockImplementation(noJpyRate);
+      scopedManager.query.mockResolvedValue([
+        {
+          day_of_week: 6,
+          category_id: null,
+          currency_code: "USD",
+          tx_count: 1,
+          total: "50.00",
+        },
+        {
+          day_of_week: 6,
+          category_id: null,
+          currency_code: "JPY",
+          tx_count: 1,
+          total: "100000",
+        },
+      ]);
+
+      const result = await service.getWeekendVsWeekday(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      expect(result.summary.weekendTotal).toBeNull();
+      expect(result.summary.weekdayTotal).toBeNull();
+      expect(result.summary.knownWeekendTotal).toBe(50);
+      expect(result.summary.knownWeekdayTotal).toBe(0);
+      expect(result.summary.weekendCount).toBe(1);
+      expect(result.currency).toBe("USD");
+      expect(result.missingCurrencies).toEqual(["JPY"]);
+      expect(result.excludedCount).toBe(1);
+      expect(JSON.stringify(result)).not.toContain("100000");
+    });
+
+    it("getWeekendVsWeekday answers zero, not null, for no rows", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      const result = await service.getWeekendVsWeekday(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      expect(result.summary.weekendTotal).toBe(0);
+      expect(result.summary.weekdayTotal).toBe(0);
+      expect(result.missingCurrencies).toEqual([]);
+      expect(result.excludedCount).toBe(0);
     });
   });
 });

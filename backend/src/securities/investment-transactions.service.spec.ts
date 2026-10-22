@@ -25,9 +25,10 @@ import {
 } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { AccountSubType } from "../accounts/entities/account.entity";
-import { isTransactionInFuture } from "../common/date-utils";
+import { isTransactionInFuture, todayYMD } from "../common/date-utils";
 
 jest.mock("../common/date-utils", () => ({
+  ...jest.requireActual("../common/date-utils"),
   isTransactionInFuture: jest.fn().mockReturnValue(false),
 }));
 
@@ -286,8 +287,9 @@ describe("InvestmentTransactionsService", () => {
 
     exchangeRateService = {
       getLatestRate: jest.fn().mockResolvedValue(1),
-      // Default to "no dated rate stored" so tests exercise the getLatestRate
-      // fallback unless they opt into a dated rate explicitly.
+      // Default to "no dated rate stored": a cross-currency posting then has no
+      // rate unless a test opts into a dated one. `getLatestRate` is never part
+      // of the posting path; it stays mocked so a test can assert it is unused.
       getRateForDate: jest.fn().mockResolvedValue(null),
     };
 
@@ -2666,14 +2668,16 @@ describe("InvestmentTransactionsService", () => {
           return Promise.resolve(mockSecurity);
         },
       );
-      exchangeRateService.getLatestRate.mockResolvedValue(1.08);
+      exchangeRateService.getRateForDate.mockResolvedValue(1.08);
 
       await service.update(userId, transactionId, { securityId: "sec-eur" });
 
-      expect(exchangeRateService.getLatestRate).toHaveBeenCalledWith(
+      expect(exchangeRateService.getRateForDate).toHaveBeenCalledWith(
         "EUR",
         "USD",
+        expect.anything(),
       );
+      expect(exchangeRateService.getLatestRate).not.toHaveBeenCalled();
       expect(investmentTransactionsRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           exchangeRate: 1.08,
@@ -4597,7 +4601,7 @@ describe("InvestmentTransactionsService", () => {
 
     it("returns the resolved rate for a cross-currency pair", async () => {
       crossCurrency();
-      exchangeRateService.getLatestRate.mockResolvedValue(1.35);
+      exchangeRateService.getRateForDate.mockResolvedValue(1.35);
 
       const rate = await service.resolveCashExchangeRateOrNull(
         userId,
@@ -4608,6 +4612,13 @@ describe("InvestmentTransactionsService", () => {
         undefined,
       );
       expect(rate).toBe(1.35);
+      // No date means today, answered by the dated path, never the latest row.
+      expect(exchangeRateService.getRateForDate).toHaveBeenCalledWith(
+        "EUR",
+        "CAD",
+        todayYMD(),
+      );
+      expect(exchangeRateService.getLatestRate).not.toHaveBeenCalled();
     });
 
     it("uses the date-aware (provider-capable) path when a date is supplied", async () => {
@@ -5117,7 +5128,7 @@ describe("InvestmentTransactionsService", () => {
       expect(exchangeRateService.getLatestRate).not.toHaveBeenCalled();
     });
 
-    it("converts cash amount using the latest market rate when currencies differ", async () => {
+    it("converts cash amount using the rate for the transaction date when currencies differ", async () => {
       // USD security bought inside a CAD brokerage/cash account
       const cadCashAccount = { ...mockCashAccount, currencyCode: "CAD" };
       const cadInvestmentAccount = {
@@ -5131,7 +5142,7 @@ describe("InvestmentTransactionsService", () => {
           return Promise.reject(new NotFoundException("Account not found"));
         },
       );
-      exchangeRateService.getLatestRate.mockResolvedValue(1.365);
+      exchangeRateService.getRateForDate.mockResolvedValue(1.365);
 
       await service.create(userId, {
         accountId,
@@ -5142,11 +5153,14 @@ describe("InvestmentTransactionsService", () => {
         price: 100,
       });
 
-      // Market rate lookup should happen in the security->cash direction
-      expect(exchangeRateService.getLatestRate).toHaveBeenCalledWith(
+      // Market rate lookup should happen in the security->cash direction, on the
+      // transaction's own date
+      expect(exchangeRateService.getRateForDate).toHaveBeenCalledWith(
         "USD",
         "CAD",
+        "2025-01-15",
       );
+      expect(exchangeRateService.getLatestRate).not.toHaveBeenCalled();
 
       // Investment transaction keeps the source-currency amount but stores the rate
       expect(investmentTransactionsRepository.create).toHaveBeenCalledWith(
@@ -5174,9 +5188,10 @@ describe("InvestmentTransactionsService", () => {
 
     it("rejects a cross-currency buy when no exchange rate can be determined (issue #744)", async () => {
       // USD security funded from a CAD cash account, with neither a dated rate
-      // nor a latest snapshot available. Previously this silently posted at
-      // rate 1.0 and corrupted the cash balance; now it must reject so the
-      // caller can supply an explicit exchangeRate.
+      // nor anything else. Previously this silently posted at rate 1.0 and
+      // corrupted the cash balance; now it must reject so the caller can supply
+      // an explicit exchangeRate. A latest stored snapshot is not a fallback: a
+      // back-dated trade priced at today's rate is the wrong rate, not a rate.
       const cadCashAccount = { ...mockCashAccount, currencyCode: "CAD" };
       const cadInvestmentAccount = {
         ...mockInvestmentAccount,
@@ -5190,7 +5205,8 @@ describe("InvestmentTransactionsService", () => {
         },
       );
       exchangeRateService.getRateForDate.mockResolvedValue(null);
-      exchangeRateService.getLatestRate.mockResolvedValue(null);
+      // A snapshot exists, and must not be reached for.
+      exchangeRateService.getLatestRate.mockResolvedValue(1.99);
 
       await expect(
         service.create(userId, {
@@ -5203,7 +5219,71 @@ describe("InvestmentTransactionsService", () => {
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
 
+      expect(exchangeRateService.getLatestRate).not.toHaveBeenCalled();
       expect(investmentTransactionsRepository.create).not.toHaveBeenCalled();
+      expect(transactionRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("prices a posting with no transaction date at today's rate for date, never the latest snapshot", async () => {
+      const cadCashAccount = { ...mockCashAccount, currencyCode: "CAD" };
+      const cadInvestmentAccount = {
+        ...mockInvestmentAccount,
+        currencyCode: "CAD",
+      };
+      accountsService.findOne.mockImplementation(
+        (_uid: string, aid: string) => {
+          if (aid === accountId) return Promise.resolve(cadInvestmentAccount);
+          if (aid === cashAccountId) return Promise.resolve(cadCashAccount);
+          return Promise.reject(new NotFoundException("Account not found"));
+        },
+      );
+      exchangeRateService.getRateForDate.mockResolvedValue(null);
+      exchangeRateService.getLatestRate.mockResolvedValue(1.99);
+
+      const rate = await service.resolveCashExchangeRateOrNull(
+        userId,
+        accountId,
+        cashAccountId,
+        securityId,
+        undefined,
+      );
+
+      expect(rate).toBeNull();
+      expect(exchangeRateService.getRateForDate).toHaveBeenCalledWith(
+        "USD",
+        "CAD",
+        todayYMD(),
+      );
+      expect(exchangeRateService.getLatestRate).not.toHaveBeenCalled();
+    });
+
+    it("answers null from the forecast variant when no rate exists for the date", async () => {
+      const cadCashAccount = { ...mockCashAccount, currencyCode: "CAD" };
+      const cadInvestmentAccount = {
+        ...mockInvestmentAccount,
+        currencyCode: "CAD",
+      };
+      accountsService.findOne.mockImplementation(
+        (_uid: string, aid: string) => {
+          if (aid === accountId) return Promise.resolve(cadInvestmentAccount);
+          if (aid === cashAccountId) return Promise.resolve(cadCashAccount);
+          return Promise.reject(new NotFoundException("Account not found"));
+        },
+      );
+      exchangeRateService.getRateForDate.mockResolvedValue(null);
+      exchangeRateService.getLatestRate.mockResolvedValue(1.99);
+
+      const rate = await service.resolveCashExchangeRateOrNull(
+        userId,
+        accountId,
+        cashAccountId,
+        securityId,
+        undefined,
+        "2025-01-15",
+      );
+
+      expect(rate).toBeNull();
+      expect(exchangeRateService.getLatestRate).not.toHaveBeenCalled();
     });
 
     it("uses the rate for the transaction date when available (issue #744)", async () => {
@@ -5300,7 +5380,7 @@ describe("InvestmentTransactionsService", () => {
           return Promise.reject(new NotFoundException("Account not found"));
         },
       );
-      exchangeRateService.getLatestRate.mockResolvedValue(1.3);
+      exchangeRateService.getRateForDate.mockResolvedValue(1.3);
 
       await service.create(userId, {
         accountId,
@@ -5339,7 +5419,7 @@ describe("InvestmentTransactionsService", () => {
           return Promise.reject(new NotFoundException("Account not found"));
         },
       );
-      exchangeRateService.getLatestRate.mockResolvedValue(1.4);
+      exchangeRateService.getRateForDate.mockResolvedValue(1.4);
 
       await service.create(userId, {
         accountId,
@@ -7331,7 +7411,7 @@ describe("InvestmentTransactionsService", () => {
         match: { ...mockSecurity, currencyCode: "EUR" },
         candidates: [],
       });
-      exchangeRateService.getLatestRate.mockResolvedValue(1.1);
+      exchangeRateService.getRateForDate.mockResolvedValue(1.1);
 
       const preview = await service.previewCreateInvestmentTransaction(userId, {
         accountId,

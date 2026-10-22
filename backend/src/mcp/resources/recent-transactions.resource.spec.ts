@@ -16,6 +16,16 @@ describe("McpRecentTransactionsResource", () => {
 
     analyticsService = {
       getSummary: jest.fn(),
+      getLlmFlowTotals: jest.fn().mockResolvedValue({
+        totalIncome: 0,
+        totalExpenses: 0,
+        netCashFlow: 0,
+        knownIncomeSubtotal: 0,
+        knownExpensesSubtotal: 0,
+        totalsCurrency: "PLN",
+        fxComplete: true,
+        missingRatePairs: [],
+      }),
     };
 
     resource = new McpRecentTransactionsResource(
@@ -70,11 +80,27 @@ describe("McpRecentTransactionsResource", () => {
     });
     analyticsService.getSummary.mockResolvedValue({
       totalIncome: 5000,
-      totalExpenses: -3000,
+      totalExpenses: 5000,
+      transactionCount: 2,
+    });
+    analyticsService.getLlmFlowTotals.mockResolvedValue({
+      totalIncome: 5000,
+      totalExpenses: 3000,
+      netCashFlow: 2000,
+      knownIncomeSubtotal: 5000,
+      knownExpensesSubtotal: 3000,
+      totalsCurrency: "PLN",
+      fxComplete: true,
+      missingRatePairs: [],
     });
 
     const result = await handler("monize://recent-transactions", ctx);
     const parsed = JSON.parse(result.contents[0].text);
+    // The converted totals win over the summary's per-currency sums.
+    expect(parsed.summary.totalExpenses).toBe(3000);
+    expect(parsed.summary.totalsCurrency).toBe("PLN");
+    expect(parsed.summary.fxComplete).toBe(true);
+    expect(parsed.summary.transactionCount).toBe(2);
     expect(parsed.summary.totalIncome).toBe(5000);
     expect(parsed.recentTransactions).toHaveLength(1);
     expect(parsed.total).toBe(1);

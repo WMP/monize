@@ -1,7 +1,11 @@
 import { DataSource } from "typeorm";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { ReportCurrencyService, RateMap } from "./report-currency.service";
+import {
+  ConversionGaps,
+  ReportCurrencyService,
+  RateMap,
+} from "./report-currency.service";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import {
@@ -172,9 +176,9 @@ describe("ReportCurrencyService", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // convertAmount
+  // tryConvertAmount
   // ---------------------------------------------------------------------------
-  describe("convertAmount", () => {
+  describe("tryConvertAmount", () => {
     let rateMap: RateMap;
 
     beforeEach(() => {
@@ -185,60 +189,60 @@ describe("ReportCurrencyService", () => {
     });
 
     it("returns the original amount when currencies match", () => {
-      const result = service.convertAmount(100, "USD", "USD", rateMap);
+      const result = service.tryConvertAmount(100, "USD", "USD", rateMap);
 
       expect(result).toBe(100);
     });
 
-    it("returns the original amount when fromCurrency is empty", () => {
-      const result = service.convertAmount(100, "", "USD", rateMap);
+    it("answers null when fromCurrency is empty (INV-FX-001)", () => {
+      const result = service.tryConvertAmount(100, "", "USD", rateMap);
 
-      expect(result).toBe(100);
+      expect(result).toBeNull();
     });
 
     it("converts using direct rate when available", () => {
-      const result = service.convertAmount(100, "EUR", "USD", rateMap);
+      const result = service.tryConvertAmount(100, "EUR", "USD", rateMap);
 
       // 100 EUR * 1.1 = 110 USD
       expect(result).toBeCloseTo(110, 2);
     });
 
     it("converts using inverse rate when direct rate is not available", () => {
-      const result = service.convertAmount(136, "CAD", "USD", rateMap);
+      const result = service.tryConvertAmount(136, "CAD", "USD", rateMap);
 
       // No CAD->USD rate, but USD->CAD = 1.36, so 136 / 1.36 = 100
       expect(result).toBeCloseTo(100, 2);
     });
 
-    it("returns original amount when no rate is available", () => {
-      const result = service.convertAmount(1000, "JPY", "USD", rateMap);
+    it("answers null, never the input, when no rate is available (INV-FX-001)", () => {
+      const result = service.tryConvertAmount(1000, "JPY", "USD", rateMap);
 
       // No JPY->USD or USD->JPY rate
-      expect(result).toBe(1000);
+      expect(result).toBeNull();
     });
 
     it("handles zero amount correctly", () => {
-      const result = service.convertAmount(0, "EUR", "USD", rateMap);
+      const result = service.tryConvertAmount(0, "EUR", "USD", rateMap);
 
       expect(result).toBe(0);
     });
 
     it("handles negative amounts correctly", () => {
-      const result = service.convertAmount(-50, "EUR", "USD", rateMap);
+      const result = service.tryConvertAmount(-50, "EUR", "USD", rateMap);
 
       // -50 * 1.1 = -55
       expect(result).toBeCloseTo(-55, 2);
     });
 
     it("handles large amounts", () => {
-      const result = service.convertAmount(1000000, "GBP", "USD", rateMap);
+      const result = service.tryConvertAmount(1000000, "GBP", "USD", rateMap);
 
       // 1000000 * 1.27 = 1270000
       expect(result).toBe(1270000);
     });
 
     it("handles fractional amounts", () => {
-      const result = service.convertAmount(0.01, "EUR", "USD", rateMap);
+      const result = service.tryConvertAmount(0.01, "EUR", "USD", rateMap);
 
       // 0.01 * 1.1 = 0.011
       expect(result).toBeCloseTo(0.011, 5);
@@ -248,10 +252,10 @@ describe("ReportCurrencyService", () => {
       const zeroRateMap = new Map<string, number>();
       zeroRateMap.set("USD->JPY", 0);
 
-      const result = service.convertAmount(100, "JPY", "USD", zeroRateMap);
+      const result = service.tryConvertAmount(100, "JPY", "USD", zeroRateMap);
 
-      // Inverse rate is 0, so it should return the original amount
-      expect(result).toBe(100);
+      // Inverse rate is 0, which is no rate: unknown, not the input.
+      expect(result).toBeNull();
     });
 
     it("prefers direct rate over inverse rate", () => {
@@ -259,10 +263,34 @@ describe("ReportCurrencyService", () => {
       bothRatesMap.set("EUR->USD", 1.1);
       bothRatesMap.set("USD->EUR", 0.95);
 
-      const result = service.convertAmount(100, "EUR", "USD", bothRatesMap);
+      const result = service.tryConvertAmount(100, "EUR", "USD", bothRatesMap);
 
       // Should use direct rate EUR->USD = 1.1, not inverse of USD->EUR
       expect(result).toBeCloseTo(110, 2);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // ConversionGaps
+  // ---------------------------------------------------------------------------
+  describe("ConversionGaps", () => {
+    it("reports a complete report as zero gaps and keeps the total", () => {
+      const gaps = new ConversionGaps();
+
+      expect(gaps.missingCurrencies).toEqual([]);
+      expect(gaps.excludedCount).toBe(0);
+      expect(gaps.headline(12.5)).toBe(12.5);
+    });
+
+    it("withholds the headline and lists currencies sorted and unique", () => {
+      const gaps = new ConversionGaps();
+      gaps.record("JPY");
+      gaps.record("CHF");
+      gaps.record("JPY");
+
+      expect(gaps.missingCurrencies).toEqual(["CHF", "JPY"]);
+      expect(gaps.excludedCount).toBe(3);
+      expect(gaps.headline(12.5)).toBeNull();
     });
   });
 });

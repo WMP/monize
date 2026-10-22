@@ -25,6 +25,8 @@ import type {
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { reportTotal } from '@/lib/currency-total';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
 import { quoteSearchValue } from '@/lib/search-query';
 
@@ -293,10 +295,18 @@ export function UncategorizedTransactionsReport() {
     totalCount: 0,
     expenseCount: 0,
     expenseTotal: 0,
+    knownExpenseTotal: 0,
     incomeCount: 0,
     incomeTotal: 0,
+    knownIncomeTotal: 0,
     currencyCode: defaultCurrency,
   };
+  // A total is `null` when a currency had no rate; the counts need none and
+  // still include those rows. What is shown is the part that converted, marked
+  // as a subtotal -- never a null drawn as 0. The rows themselves keep their
+  // own currency, so they are formatted with their own `currencyCode` below.
+  const expenseTotal = reportTotal(summary.expenseTotal ?? summary.knownExpenseTotal ?? 0, reportData);
+  const incomeTotal = reportTotal(summary.incomeTotal ?? summary.knownIncomeTotal ?? 0, reportData);
 
   return (
     <div className="space-y-6">
@@ -314,7 +324,9 @@ export function UncategorizedTransactionsReport() {
             {summary.expenseCount}
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            {formatCurrency(summary.expenseTotal, summary.currencyCode)}
+            <PartialTotal total={expenseTotal} displayCurrency={summary.currencyCode}>
+              {formatCurrency(expenseTotal.value, summary.currencyCode)}
+            </PartialTotal>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
@@ -323,7 +335,9 @@ export function UncategorizedTransactionsReport() {
             {summary.incomeCount}
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            {formatCurrency(summary.incomeTotal, summary.currencyCode)}
+            <PartialTotal total={incomeTotal} displayCurrency={summary.currencyCode}>
+              {formatCurrency(incomeTotal.value, summary.currencyCode)}
+            </PartialTotal>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">

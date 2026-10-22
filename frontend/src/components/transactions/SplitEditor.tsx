@@ -77,6 +77,11 @@ interface SplitEditorProps {
    * matches nothing is discarded, which is what every split line used to do.
    */
   onCreateCategory?: (name: string) => Promise<Category | null | undefined>;
+  /**
+   * The parent transaction's date (`YYYY-MM-DD`). An investment line prefills its
+   * FX rate from the rate for this day (INV-FX-001), never the latest.
+   */
+  transactionDate?: string;
 }
 
 // A stable default, so an absent prop does not rebuild the tag options every render.
@@ -99,6 +104,7 @@ export function SplitEditor({
   displayCurrencyCode,
   displayRate,
   onCreateCategory,
+  transactionDate,
 }: SplitEditorProps) {
   const t = useTranslations('transactions');
   // Read-only amounts, grouped in the user's number locale (en-US unchanged).
@@ -598,6 +604,8 @@ export function SplitEditor({
                     }
                     disabled={disabled}
                     currencyCode={currencyCode}
+                    transactionDate={transactionDate}
+                    rateEdited={split.exchangeRateEdited}
                   />
                 ) : split.splitType === 'category' || !supportsTransfers ? (
                   // Same picker as the non-split form's Category field: an id-backed
@@ -773,6 +781,8 @@ export function SplitEditor({
                       }
                       disabled={disabled}
                       currencyCode={currencyCode}
+                      transactionDate={transactionDate}
+                      rateEdited={split.exchangeRateEdited}
                     />
                   ) : split.splitType === 'category' || !supportsTransfers ? (
                     // Same picker as the non-split form's Category field: an id-backed

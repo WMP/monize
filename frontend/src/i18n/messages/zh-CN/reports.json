@@ -1851,6 +1851,10 @@
   "foreignCurrencyFees": {
     "noEligibleAccounts": "没有账户配置了境外交易手续费。在账户上设置手续费百分比，即可在此追踪其外币手续费。"
   },
+  "partialData": {
+    "notice": "部分数字不完整：{count, plural, other {# 笔金额}}无法换算为 {displayCurrency}，已被排除。{currencies} 没有汇率；请在货币页面添加。",
+    "noticeExcluded": "部分数字不完整：{count, plural, other {# 笔金额}}无法计算，已被排除。"
+  },
   "sankey": {
     "help": "流入的资金经过中间，流向其被花费的去处、被储蓄或投资的部分以及用于偿还债务的部分。默认情况下，报告涵盖您未关闭的支票、储蓄、现金、信用卡和信用额度账户，这些账户之间的转账不会显示。将某个储蓄账户从账户筛选中移除，即可看到您转入其中的金额。信用卡还款从不算作债务还款：它结清的消费已计为支出。",
     "depthLabel": "细节",

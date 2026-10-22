@@ -758,4 +758,54 @@ describe("UncategorizedTransactionsReport", () => {
       "EUR -50.00",
     );
   });
+
+  it("marks null summary totals as subtotals and keeps an unconverted row in its own currency", async () => {
+    mockGetUncategorizedTransactions.mockResolvedValue({
+      transactions: [
+        {
+          id: "tx-cad",
+          transactionDate: "2025-02-15",
+          payeeName: "Local Store",
+          description: "",
+          accountName: "Chequing",
+          accountId: "acc-1",
+          amount: -50,
+          currencyCode: "CAD",
+        },
+        {
+          id: "tx-jpy",
+          transactionDate: "2025-02-16",
+          payeeName: "Tokyo Store",
+          description: "",
+          accountName: "Yen Account",
+          accountId: "acc-2",
+          amount: -5000,
+          currencyCode: "JPY",
+        },
+      ],
+      summary: {
+        totalCount: 2,
+        expenseCount: 2,
+        expenseTotal: null,
+        knownExpenseTotal: 50,
+        incomeCount: 0,
+        incomeTotal: null,
+        knownIncomeTotal: 0,
+        currencyCode: "CAD",
+      },
+      currency: "CAD",
+      missingCurrencies: ["JPY"],
+      excludedCount: 1,
+    });
+    render(<UncategorizedTransactionsReport />);
+    await waitFor(() => expect(screen.getByText("Tokyo Store")).toBeInTheDocument());
+    const markers = screen.getAllByTestId("partial-total");
+    // Expense and income totals are both withheld; each is marked.
+    expect(markers).toHaveLength(2);
+    expect(markers[0]).toHaveTextContent("$50.00");
+    expect(markers[1]).toHaveTextContent("$0.00");
+    // The row keeps its own currency; it is never relabelled as CAD.
+    expect(screen.getByText("JPY -5000.00")).toBeInTheDocument();
+    expect(screen.getByText("$-50.00")).toBeInTheDocument();
+  });
 });

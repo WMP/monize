@@ -18,6 +18,8 @@ import { builtInReportsApi } from '@/lib/built-in-reports';
 import { IncomeSourceItem } from '@/types/built-in-reports';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useReportData } from '@/hooks/useReportData';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { reportTotal } from '@/lib/currency-total';
 import { useWidgetConfig } from '@/hooks/useWidgetConfig';
 import { resolveRangePreset } from '@/lib/date-range';
 import { chartColors } from '@/lib/chart-colors';
@@ -47,7 +49,7 @@ interface IncomeSlice {
 
 export function IncomeBySourceWidget({ isLoading }: IncomeBySourceWidgetProps) {
   const t = useTranslations('dashboard');
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatPercent, defaultCurrency } = useNumberFormat();
   const { config, updateConfig } = useWidgetConfig<IncomeBySourceConfig>(
     WIDGET_ID,
     INCOME_BY_SOURCE_DEFAULT,
@@ -85,7 +87,11 @@ export function IncomeBySourceWidget({ isLoading }: IncomeBySourceWidgetProps) {
     });
   }, [response]);
 
-  const totalIncome = response?.totalIncome ?? 0;
+  // `totalIncome` is withheld when a row could not be converted; what is shown
+  // is the part that did, marked as a subtotal, and shares are of what is shown.
+  const incomeTotal = reportTotal(response?.totalIncome ?? response?.knownIncome ?? 0, response);
+  const totalIncome = incomeTotal.value;
+  const reportingCurrency = response?.currency ?? defaultCurrency;
 
   const renderTooltip = (active: boolean | undefined, rawPayload: unknown) => {
     const payload = rawPayload as Array<{ payload: IncomeSlice }> | undefined;
@@ -180,7 +186,9 @@ export function IncomeBySourceWidget({ isLoading }: IncomeBySourceWidgetProps) {
           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-sm flex-shrink-0">
             <span className="text-gray-500 dark:text-gray-400">{t('incomeBySource.totalLabel')}</span>
             <span className="font-semibold text-gray-900 dark:text-gray-100">
-              {formatCurrency(totalIncome)}
+              <PartialTotal total={incomeTotal} displayCurrency={reportingCurrency}>
+                {formatCurrency(totalIncome)}
+              </PartialTotal>
             </span>
           </div>
         </>

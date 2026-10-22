@@ -36,6 +36,11 @@ import {
   ReportSummary,
 } from "./dto/execute-report.dto";
 import { roundMoney, sumMoney } from "../common/round.util";
+import { FxAggregate } from "../common/fx-aggregate";
+import {
+  ConversionGaps,
+  ReportCurrencyService,
+} from "../built-in-reports/report-currency.service";
 import { transferPayeeLabel } from "../transactions/transfer-payee-label.util";
 import { BudgetsService } from "../budgets/budgets.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
@@ -53,13 +58,69 @@ import {
   parseISO,
 } from "date-fns";
 
+/**
+ * The one conversion door of a single report execution: the reporting currency
+ * and the rate map are resolved once, and every row is converted through
+ * {@link RowConverter.convert}, which records a row it cannot convert instead of
+ * letting it join a sum in its own units (INV-FX-001).
+ */
+interface RowConverter {
+  readonly currency: string;
+  readonly gaps: ConversionGaps;
+  /** `null` when `currencyCode` has no rate into the reporting currency. */
+  convert(amount: number, currencyCode: string): number | null;
+}
+
+/** A group's running sum, kept in integer ten-thousandths by `FxAggregate`. */
+interface Bucket {
+  agg: FxAggregate;
+  count: number;
+}
+
 @Injectable()
 export class ReportsService {
   constructor(
     private dataSource: DataSource,
     private budgetsService: BudgetsService,
     private actionHistoryService: ActionHistoryService,
+    private currencyService: ReportCurrencyService,
   ) {}
+
+  private async createConverter(userId: string): Promise<RowConverter> {
+    const currency = await this.currencyService.getDefaultCurrency(userId);
+    const rateMap = await this.currencyService.buildRateMap(currency);
+    const gaps = new ConversionGaps();
+    return {
+      currency,
+      gaps,
+      convert: (amount, currencyCode) => {
+        // Zero converts to zero at any rate, so an empty row records no gap.
+        if (amount === 0) return 0;
+        const converted = this.currencyService.tryConvertAmount(
+          amount,
+          currencyCode,
+          currency,
+          rateMap,
+        );
+        if (converted === null) gaps.record(currencyCode);
+        return converted;
+      },
+    };
+  }
+
+  /**
+   * Whether a row that could not be converted still belongs in a group. A count
+   * needs no rate, so the count metric keeps every row; every money figure
+   * leaves the row out of the group's sum and its row count alike.
+   */
+  private keepsUnconverted(metric: MetricType): boolean {
+    return metric === MetricType.COUNT;
+  }
+
+  private addToBucket(bucket: Bucket, converted: number | null): void {
+    if (converted !== null) bucket.agg.addConverted(converted);
+    bucket.count += 1;
+  }
 
   async create(
     userId: string,
@@ -253,6 +314,8 @@ export class ReportsService {
       for (const p of payees) payeeMap.set(p.id, p);
     }
 
+    const converter = await this.createConverter(userId);
+
     // Aggregate data based on groupBy type
     let data = this.aggregateData(
       transactions,
@@ -260,6 +323,7 @@ export class ReportsService {
       report.config.metric,
       categoryMap,
       payeeMap,
+      converter,
     );
 
     // For BUDGET_VARIANCE metric with CATEGORY grouping, enrich with budget data
@@ -280,7 +344,11 @@ export class ReportsService {
     }
 
     // Calculate summary
-    const summary = this.calculateSummary(data);
+    const summary = this.calculateSummary(
+      data,
+      converter.gaps,
+      report.config.metric,
+    );
 
     return {
       reportId: report.id,
@@ -294,6 +362,9 @@ export class ReportsService {
       },
       data,
       summary,
+      currency: converter.currency,
+      missingCurrencies: converter.gaps.missingCurrencies,
+      excludedCount: converter.gaps.excludedCount,
       tableColumns: report.config.tableColumns,
     };
   }
@@ -751,26 +822,32 @@ export class ReportsService {
     metric: MetricType,
     categoryMap: Map<string, Category>,
     payeeMap: Map<string, Payee>,
+    conv: RowConverter,
   ): AggregatedDataPoint[] {
     switch (groupBy) {
       case GroupByType.NONE:
-        return this.aggregateNoGrouping(transactions, metric);
+        return this.aggregateNoGrouping(transactions, metric, conv);
       case GroupByType.CATEGORY:
-        return this.aggregateByCategory(transactions, metric, categoryMap);
+        return this.aggregateByCategory(
+          transactions,
+          metric,
+          categoryMap,
+          conv,
+        );
       case GroupByType.PAYEE:
-        return this.aggregateByPayee(transactions, metric, payeeMap);
+        return this.aggregateByPayee(transactions, metric, payeeMap, conv);
       case GroupByType.YEAR:
-        return this.aggregateByTime(transactions, metric, "year");
+        return this.aggregateByTime(transactions, metric, "year", conv);
       case GroupByType.MONTH:
-        return this.aggregateByTime(transactions, metric, "month");
+        return this.aggregateByTime(transactions, metric, "month", conv);
       case GroupByType.WEEK:
-        return this.aggregateByTime(transactions, metric, "week");
+        return this.aggregateByTime(transactions, metric, "week", conv);
       case GroupByType.DAY:
-        return this.aggregateByTime(transactions, metric, "day");
+        return this.aggregateByTime(transactions, metric, "day", conv);
       case GroupByType.TAG:
-        return this.aggregateByTag(transactions, metric);
+        return this.aggregateByTag(transactions, metric, conv);
       default:
-        return this.aggregateNoGrouping(transactions, metric);
+        return this.aggregateNoGrouping(transactions, metric, conv);
     }
   }
 
@@ -785,6 +862,7 @@ export class ReportsService {
   private aggregateNoGrouping(
     transactions: Transaction[],
     metric: MetricType,
+    conv: RowConverter,
   ): AggregatedDataPoint[] {
     // For NONE metric, return individual transactions as data points
     if (metric === MetricType.NONE) {
@@ -806,6 +884,11 @@ export class ReportsService {
           // Only the lines that are ordinary cash: an embedded investment line
           // is the trade's own cash side, not a row of this report.
           for (const split of ordinarySplitLines(tx)) {
+            const value = conv.convert(
+              Math.abs(Number(split.amount)),
+              tx.currencyCode,
+            );
+            if (value === null) continue;
             result.push({
               id: tx.id,
               label:
@@ -814,7 +897,7 @@ export class ReportsService {
                 transferLabel ||
                 tx.description ||
                 "Transaction",
-              value: Math.abs(Number(split.amount)),
+              value,
               count: 1,
               // Transaction-specific fields
               date: tx.transactionDate,
@@ -826,11 +909,16 @@ export class ReportsService {
             });
           }
         } else {
+          const value = conv.convert(
+            Math.abs(Number(tx.amount)),
+            tx.currencyCode,
+          );
+          if (value === null) continue;
           result.push({
             id: tx.id,
             label:
               tx.payeeName || transferLabel || tx.description || "Transaction",
-            value: Math.abs(Number(tx.amount)),
+            value,
             count: 1,
             // Transaction-specific fields
             date: tx.transactionDate,
@@ -847,20 +935,25 @@ export class ReportsService {
     }
 
     // For other metrics, aggregate into a single total
-    const amounts: number[] = [];
+    const bucket: Bucket = { agg: new FxAggregate(), count: 0 };
+    const add = (amount: number, currencyCode: string) => {
+      const converted = conv.convert(Math.abs(amount), currencyCode);
+      if (converted === null && !this.keepsUnconverted(metric)) return;
+      this.addToBucket(bucket, converted);
+    };
 
     for (const tx of transactions) {
       if (tx.isSplit && tx.splits && tx.splits.length > 0) {
         for (const split of ordinarySplitLines(tx)) {
-          amounts.push(Math.abs(Number(split.amount)));
+          add(Number(split.amount), tx.currencyCode);
         }
       } else {
-        amounts.push(Math.abs(Number(tx.amount)));
+        add(Number(tx.amount), tx.currencyCode);
       }
     }
 
-    const count = amounts.length;
-    const sum = sumMoney(amounts);
+    const count = bucket.count;
+    const sum = bucket.agg.knownSubtotal;
 
     if (count === 0) {
       return [];
@@ -881,8 +974,21 @@ export class ReportsService {
     transactions: Transaction[],
     metric: MetricType,
     categoryMap: Map<string, Category>,
+    conv: RowConverter,
   ): AggregatedDataPoint[] {
-    const dataMap = new Map<string, { sum: number; count: number }>();
+    const dataMap = new Map<string, Bucket>();
+    const bucketFor = (key: string): Bucket => {
+      const existing = dataMap.get(key);
+      if (existing) return existing;
+      const created: Bucket = { agg: new FxAggregate(), count: 0 };
+      dataMap.set(key, created);
+      return created;
+    };
+    const add = (key: string, amount: number, currencyCode: string) => {
+      const converted = conv.convert(Math.abs(amount), currencyCode);
+      if (converted === null && !this.keepsUnconverted(metric)) return;
+      this.addToBucket(bucketFor(key), converted);
+    };
 
     for (const tx of transactions) {
       if (tx.isSplit && tx.splits && tx.splits.length > 0) {
@@ -890,25 +996,27 @@ export class ReportsService {
         // category by definition, so counting it here filed a securities
         // purchase under "Uncategorized" spending (re-audit F-CUSTOM-001).
         for (const split of ordinarySplitLines(tx)) {
-          const categoryId = split.categoryId || "uncategorized";
-          const existing = dataMap.get(categoryId) || { sum: 0, count: 0 };
-          existing.sum = roundMoney(
-            existing.sum + Math.abs(Number(split.amount)),
+          add(
+            split.categoryId || "uncategorized",
+            Number(split.amount),
+            tx.currencyCode,
           );
-          existing.count += 1;
-          dataMap.set(categoryId, existing);
         }
       } else {
         // Regular transaction
-        const categoryId = tx.categoryId || "uncategorized";
-        const existing = dataMap.get(categoryId) || { sum: 0, count: 0 };
-        existing.sum = roundMoney(existing.sum + Math.abs(Number(tx.amount)));
-        existing.count += 1;
-        dataMap.set(categoryId, existing);
+        add(
+          tx.categoryId || "uncategorized",
+          Number(tx.amount),
+          tx.currencyCode,
+        );
       }
     }
 
-    const totalSum = sumMoney(Array.from(dataMap.values()).map((v) => v.sum));
+    // Shares of what converted: an excluded row is in no group's sum and in no
+    // percentage, the same rule Spending by Category follows.
+    const totalSum = sumMoney(
+      Array.from(dataMap.values()).map((v) => v.agg.knownSubtotal),
+    );
 
     const result: AggregatedDataPoint[] = [];
     for (const [categoryId, data] of dataMap) {
@@ -924,9 +1032,14 @@ export class ReportsService {
       result.push({
         id: categoryId,
         label,
-        value: this.calculateMetricValue(data.sum, data.count, metric),
+        value: this.calculateMetricValue(
+          data.agg.knownSubtotal,
+          data.count,
+          metric,
+        ),
         color: category?.color || undefined,
-        percentage: totalSum > 0 ? (data.sum / totalSum) * 100 : 0,
+        percentage:
+          totalSum > 0 ? (data.agg.knownSubtotal / totalSum) * 100 : 0,
         count: data.count,
       });
     }
@@ -938,11 +1051,9 @@ export class ReportsService {
     transactions: Transaction[],
     metric: MetricType,
     payeeMap: Map<string, Payee>,
+    conv: RowConverter,
   ): AggregatedDataPoint[] {
-    const dataMap = new Map<
-      string,
-      { sum: number; count: number; payeeName?: string }
-    >();
+    const dataMap = new Map<string, Bucket & { payeeName?: string }>();
 
     for (const tx of transactions) {
       // `tx.amount` on a split parent is the sum of EVERY line, so a payee total
@@ -950,21 +1061,26 @@ export class ReportsService {
       // ordinary cash at all.
       const reportable = reportableTransactionAmount(tx);
       if (reportable === null) continue;
+      const converted = conv.convert(Math.abs(reportable), tx.currencyCode);
+      if (converted === null && !this.keepsUnconverted(metric)) continue;
       const payeeId = tx.payeeId || "unknown";
       const existing = dataMap.get(payeeId) || {
-        sum: 0,
+        agg: new FxAggregate(),
         count: 0,
         payeeName: tx.payeeName ?? undefined,
       };
-      existing.sum = roundMoney(existing.sum + Math.abs(reportable));
-      existing.count += 1;
+      this.addToBucket(existing, converted);
       if (!existing.payeeName && tx.payeeName) {
         existing.payeeName = tx.payeeName;
       }
       dataMap.set(payeeId, existing);
     }
 
-    const totalSum = sumMoney(Array.from(dataMap.values()).map((v) => v.sum));
+    // Shares of what converted: an excluded row is in no group's sum and in no
+    // percentage, the same rule Spending by Category follows.
+    const totalSum = sumMoney(
+      Array.from(dataMap.values()).map((v) => v.agg.knownSubtotal),
+    );
 
     const result: AggregatedDataPoint[] = [];
     for (const [payeeId, data] of dataMap) {
@@ -972,8 +1088,13 @@ export class ReportsService {
       result.push({
         id: payeeId,
         label: payee?.name || data.payeeName || "Unknown",
-        value: this.calculateMetricValue(data.sum, data.count, metric),
-        percentage: totalSum > 0 ? (data.sum / totalSum) * 100 : 0,
+        value: this.calculateMetricValue(
+          data.agg.knownSubtotal,
+          data.count,
+          metric,
+        ),
+        percentage:
+          totalSum > 0 ? (data.agg.knownSubtotal / totalSum) * 100 : 0,
         count: data.count,
       });
     }
@@ -984,15 +1105,19 @@ export class ReportsService {
   private aggregateByTag(
     transactions: Transaction[],
     metric: MetricType,
+    conv: RowConverter,
   ): AggregatedDataPoint[] {
     const dataMap = new Map<
       string,
-      { sum: number; count: number; tagName: string; color?: string }
+      Bucket & { tagName: string; color?: string }
     >();
 
     for (const tx of transactions) {
       const reportable = reportableTransactionAmount(tx);
       if (reportable === null) continue;
+      // Converted once per row, so a row under several tags records one gap.
+      const converted = conv.convert(Math.abs(reportable), tx.currencyCode);
+      if (converted === null && !this.keepsUnconverted(metric)) continue;
       // Collect all tags: transaction-level + split-level. A tag on an embedded
       // investment line describes the trade, not ordinary cash, so the lines
       // that are not reportable do not open a bucket either.
@@ -1012,38 +1137,45 @@ export class ReportsService {
       if (allTags.length === 0) {
         // Untagged transactions
         const existing = dataMap.get("untagged") || {
-          sum: 0,
+          agg: new FxAggregate(),
           count: 0,
           tagName: "Untagged",
         };
-        existing.sum = roundMoney(existing.sum + Math.abs(reportable));
-        existing.count += 1;
+        this.addToBucket(existing, converted);
         dataMap.set("untagged", existing);
       } else {
         for (const tag of allTags) {
           const existing = dataMap.get(tag.id) || {
-            sum: 0,
+            agg: new FxAggregate(),
             count: 0,
             tagName: tag.name,
             color: tag.color ?? undefined,
           };
-          existing.sum = roundMoney(existing.sum + Math.abs(reportable));
-          existing.count += 1;
+          this.addToBucket(existing, converted);
           dataMap.set(tag.id, existing);
         }
       }
     }
 
-    const totalSum = sumMoney(Array.from(dataMap.values()).map((v) => v.sum));
+    // Shares of what converted: an excluded row is in no group's sum and in no
+    // percentage, the same rule Spending by Category follows.
+    const totalSum = sumMoney(
+      Array.from(dataMap.values()).map((v) => v.agg.knownSubtotal),
+    );
 
     const result: AggregatedDataPoint[] = [];
     for (const [tagId, data] of dataMap) {
       result.push({
         id: tagId,
         label: data.tagName,
-        value: this.calculateMetricValue(data.sum, data.count, metric),
+        value: this.calculateMetricValue(
+          data.agg.knownSubtotal,
+          data.count,
+          metric,
+        ),
         color: data.color,
-        percentage: totalSum > 0 ? (data.sum / totalSum) * 100 : 0,
+        percentage:
+          totalSum > 0 ? (data.agg.knownSubtotal / totalSum) * 100 : 0,
         count: data.count,
       });
     }
@@ -1055,15 +1187,15 @@ export class ReportsService {
     transactions: Transaction[],
     metric: MetricType,
     period: "year" | "month" | "week" | "day",
+    conv: RowConverter,
   ): AggregatedDataPoint[] {
-    const dataMap = new Map<
-      string,
-      { sum: number; count: number; label: string }
-    >();
+    const dataMap = new Map<string, Bucket & { label: string }>();
 
     for (const tx of transactions) {
       const reportable = reportableTransactionAmount(tx);
       if (reportable === null) continue;
+      const converted = conv.convert(Math.abs(reportable), tx.currencyCode);
+      if (converted === null && !this.keepsUnconverted(metric)) continue;
       const date = parseISO(tx.transactionDate);
       let key: string;
       let label: string;
@@ -1087,9 +1219,12 @@ export class ReportsService {
           break;
       }
 
-      const existing = dataMap.get(key) || { sum: 0, count: 0, label };
-      existing.sum = roundMoney(existing.sum + Math.abs(reportable));
-      existing.count += 1;
+      const existing = dataMap.get(key) || {
+        agg: new FxAggregate(),
+        count: 0,
+        label,
+      };
+      this.addToBucket(existing, converted);
       dataMap.set(key, existing);
     }
 
@@ -1098,7 +1233,11 @@ export class ReportsService {
       result.push({
         id: key,
         label: data.label,
-        value: this.calculateMetricValue(data.sum, data.count, metric),
+        value: this.calculateMetricValue(
+          data.agg.knownSubtotal,
+          data.count,
+          metric,
+        ),
         count: data.count,
       });
     }
@@ -1161,15 +1300,27 @@ export class ReportsService {
     }
   }
 
-  private calculateSummary(data: AggregatedDataPoint[]): ReportSummary {
-    const total = sumMoney(data.map((d) => d.value));
+  /**
+   * The headline figures. A money total is withheld (`null`) while any row was
+   * left out for want of a rate, and `knownTotal` carries the part that did
+   * convert. The count metric sums counts, which need no rate, so it is never
+   * withheld.
+   */
+  private calculateSummary(
+    data: AggregatedDataPoint[],
+    gaps: ConversionGaps,
+    metric: MetricType,
+  ): ReportSummary {
+    const knownTotal = roundMoney(sumMoney(data.map((d) => d.value)));
     const count = data.reduce((acc, d) => acc + (d.count || 1), 0);
-    const average = count > 0 ? total / count : 0;
+    const average = count > 0 ? knownTotal / count : 0;
+    const complete = this.keepsUnconverted(metric) || gaps.isComplete;
 
     return {
-      total: roundMoney(total),
+      total: complete ? knownTotal : null,
+      knownTotal,
       count,
-      average: roundMoney(average),
+      average: complete ? roundMoney(average) : null,
     };
   }
 

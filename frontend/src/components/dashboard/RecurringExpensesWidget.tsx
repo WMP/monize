@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl';
 import { builtInReportsApi } from '@/lib/built-in-reports';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useReportData } from '@/hooks/useReportData';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { reportTotal } from '@/lib/currency-total';
 import { useWidgetConfig } from '@/hooks/useWidgetConfig';
 import { chartSeriesColor } from '@/lib/chart-colors';
 import { RecurringExpenseItem } from '@/types/built-in-reports';
@@ -28,7 +30,7 @@ interface RecurringExpensesWidgetProps {
 export function RecurringExpensesWidget({ isLoading }: RecurringExpensesWidgetProps) {
   const t = useTranslations('dashboard');
   const router = useRouter();
-  const { formatCurrency, formatCurrencyCompact, formatCurrencyTight } = useNumberFormat();
+  const { formatCurrency, formatCurrencyCompact, formatCurrencyTight, defaultCurrency } = useNumberFormat();
   const { config, updateConfig } = useWidgetConfig<RecurringConfig>(
     WIDGET_ID,
     RECURRING_EXPENSES_DEFAULT,
@@ -55,7 +57,14 @@ export function RecurringExpensesWidget({ isLoading }: RecurringExpensesWidgetPr
     [response, router],
   );
 
-  const monthlyEstimate = response?.summary.monthlyEstimate ?? 0;
+  // `monthlyEstimate` is withheld when a row could not be converted; what is
+  // shown is the part that did, marked as a subtotal.
+  const estimate = reportTotal(
+    response?.summary.monthlyEstimate ?? response?.summary.knownMonthlyEstimate ?? 0,
+    response,
+  );
+  const monthlyEstimate = estimate.value;
+  const reportingCurrency = response?.currency ?? defaultCurrency;
 
   const rangeLabel = (range: string) =>
     t(`widgets.rangeLabels.${range}` as Parameters<typeof t>[0]);
@@ -125,8 +134,16 @@ export function RecurringExpensesWidget({ isLoading }: RecurringExpensesWidgetPr
           // the donut's hole rather than in a row under the chart.
           center={{
             label: t('recurringExpenses.monthlyEstimate'),
-            value: formatCurrencyCompact(monthlyEstimate),
-            compactValue: formatCurrencyTight(monthlyEstimate),
+            value: (
+              <PartialTotal total={estimate} displayCurrency={reportingCurrency}>
+                {formatCurrencyCompact(monthlyEstimate)}
+              </PartialTotal>
+            ),
+            compactValue: (
+              <PartialTotal total={estimate} displayCurrency={reportingCurrency}>
+                {formatCurrencyTight(monthlyEstimate)}
+              </PartialTotal>
+            ),
           }}
           renderTooltip={(slice) => (
             <ChartTooltipPanel>

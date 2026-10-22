@@ -1073,67 +1073,94 @@ Enforcement         The 1:1 half is enforced. Consumers return null on an absent
                     Yahoo adapter currencies/providers/yahoo-fx.provider.ts for
                     the refresh's and the live rate's quotes alike;
                     quoted-rate.util.spec.ts and yahoo-fx.provider.spec.ts).
-                    The mislabelling half is NOT enforced on the built-in report
-                    path: see Known gap below.
-Known gap           **An unconverted amount still reaches a report under the
-                    default currency's label.**
-                    built-in-reports/report-currency.service.ts convertAmount()
-                    is typed `number`, so when convertWithRateLookup returns null
-                    it logs a warning and returns the amount UNCONVERTED, and
-                    built-in-reports/data-quality-reports.service.ts then labels
-                    that figure `currencyCode: defaultCurrency` -- an unconverted
-                    amount under the target currency's label, which is the second
-                    clause of the statement above. Ten report services share that
-                    signature. The scan sees it (it is the one entry in
-                    fx-fallback.guard.spec.ts's RETURNS_ITS_INPUT_UNCONVERTED,
-                    with its reason) but does not fail it, so the gap is reviewed
-                    rather than invisible.
-                    What closes it: convertAmount returning `number | null`, each
-                    caller choosing between FxAggregate and its own withheld
-                    total, and every affected DTO carrying a completeness field
-                    a consumer branches on -- one specified change per report
-                    family, not a guard edit. Until then this entry is `partial`.
-                    Two families are done, by that route rather than around it:
-                    Spending by Category and Income vs Expenses take the nullable
-                    `tryConvertAmount` beside convertAmount, exclude a row they
-                    cannot convert, accumulate through FxAggregate, and answer
-                    with `currency`, `missingCurrencies` and `excludedCount`
-                    beside a total that is null when anything was left out. The
-                    report and the dashboard widget drawing each of them mark the
-                    same subtotal through PartialTotal. The remaining callers of
-                    A third surface is done on the investment side: Investment
-                    Transaction History no longer labels a row's amount with the
-                    account's currency (price, commission and total_amount are
-                    the SECURITY's, which the row now states in
-                    amountCurrencyCode / priceCurrencyCode /
-                    commissionCurrencyCode) and no longer sums across currencies
-                    on the client. A row that names no security carries the
-                    investment account's currency there, the one the write path
-                    denominated it in; calling it unknown withheld the card over
-                    one cash INTEREST posting. Its KPIs come from
-                    investment-reports/investment-transaction-summary.service.ts,
-                    which converts each row at its own transaction date and
-                    accumulates through FxAggregate, answering with total,
-                    knownSubtotal, missingPairs, excludedCount and fxComplete.
-                    The remaining callers of
-                    convertAmount are Income by Source, Spending by Payee,
-                    Monthly Spending Trend, Monthly Category Breakdown, and the
-                    anomaly, comparison, tax/recurring and data-quality families;
-                    data-quality is the one that also mislabels, and is where the
-                    second clause of the statement still fails.
+                    The latest-rate readers are on the same rule (A26-H11):
+                    ExchangeRateService.getLatestRates answers one row per
+                    directionless pair, the newer stored direction inside
+                    FX_MAX_RATE_AGE_DAYS of today (a tie to the canonical row),
+                    so the built-in reports' rate map and GET
+                    /currencies/exchange-rates no longer carry a frozen
+                    pre-1.17 mirror row or a rate of any age; getLatestRate's
+                    bound defaults to FX_MAX_RATE_AGE_DAYS instead of none; and
+                    InvestmentTransactionsService.resolveCashExchangeRateOrNull
+                    asks getRateForDate for the trade date (today when there is
+                    none) with no latest-rate fallback, so a back-dated trade
+                    with no admissible rate is refused (posting) or unknown
+                    (forecast). On the client, useExchangeRates leaves a row
+                    older than FX_MAX_RATE_AGE_DAYS out of its conversion map
+                    (frontend/src/lib/fx-rate-age.ts, held to the backend
+                    constant by fx-rate-age.contract.test.ts) and keeps the
+                    newer orientation of a pair; InvestmentTransactionForm and
+                    the embedded InvestmentSplitFields prefill the rate from
+                    getRateForDate for the trade date and ask again when the
+                    date changes, unless the person typed a rate.
+                    The mislabelling half is enforced on the built-in report
+                    path as well: ReportCurrencyService.convertAmount, the
+                    pass-through that returned the unconverted amount, is
+                    deleted, and every report converts through the nullable
+                    tryConvertAmount. A row whose currency has no rate is left
+                    out of every figure and recorded in a ConversionGaps
+                    (built-in-reports/report-currency.service.ts); each response
+                    carries `currency`, `missingCurrencies` and `excludedCount`,
+                    and a headline total is null beside a `known*` subtotal
+                    while anything is excluded. A transaction row in the
+                    Uncategorized list that cannot be converted keeps its own
+                    amount under its own currency code. The frontend renders the
+                    subtotal through PartialTotal. The scan's
+                    RETURNS_ITS_INPUT_UNCONVERTED list is empty, a further scan
+                    fails any call to convertAmount under built-in-reports/, and
+                    the rate-1 scan matches a rate-named identifier anywhere on
+                    the line (`exchangeRate ?? 1`, `spotRate.get(k) ?? 1`), not
+                    only a word starting with `rate`; its
+                    STORED_RATE_DEFAULTS_OWNED_ELSEWHERE list holds, with exact
+                    counts, the reads of a stored `exchange_rate` column
+                    (NOT NULL DEFAULT 1) in files other remediation streams own.
+                    convertWithRateLookup answers null for an empty currency
+                    code rather than treating it as the target currency.
+Known gap           The built-in reports convert a past period at the current
+                    rate (a flat latest-rate map), which is the look-ahead clause
+                    of the statement for every historical bucket; that is a
+                    policy the maintainer has to state.
+                    Convert before summing (A26-H12) is closed on three paths:
+                    the custom report engine (reports/reports.service.ts,
+                    tryConvertAmount per row, FxAggregate, `summary.total` null
+                    beside `knownTotal`), the AI/MCP transaction analytics
+                    (TransactionAnalyticsService LLM methods, each row at its own
+                    date, `totalsCurrency` / `fxComplete` / `missingRatePairs`)
+                    and budget actuals in budgets/budget-spending.util.ts
+                    queryCategorySpending (each row at its own date into the
+                    budget's currency, per-key completeness,
+                    resolveCategorySpentOrNull). It is still open where the
+                    callers have not been moved: budgets.service.ts,
+                    budget-alert.service.ts, budget-period.service.ts and the
+                    budget report and generator services still read
+                    resolveCategorySpent, the converted part, so a category with
+                    a missing rate shows a subtotal as its spent figure and
+                    alerts on it; computeActualIncome sums currencies unconverted;
+                    getLlmInvestmentTransactions totals, the ai/insights
+                    aggregator and getTransfersByAccount's roll-ups still add
+                    currencies.
 Concurrency scope   --
 Failure response    null or an explicitly partial figure, per
                     docs/financial-calculation-contract.md section 1. On the
-                    path named in Known gap above: a warning in the log and a
-                    wrong number on screen.
-Required tests      Present: common/fx-fallback.guard.spec.ts (the two source
-                    scans above) plus the FxAggregate accumulator
-                    (common/fx-aggregate.ts) that names each unresolvable pair
-                    rather than absorbing it.
-                    Owed: a unit test per report family asserting the response is
-                    withheld (not passed through) for a pair with no rate. There
-                    is none today, which is why the defect survived a guard
-                    written for it.
+                    paths named in Known gap above: a complete-looking figure
+                    that is wrong.
+Required tests      Present: common/fx-fallback.guard.spec.ts (the source scans
+                    above, each with a self-test of the shapes it bans) plus the
+                    FxAggregate accumulator (common/fx-aggregate.ts) that names
+                    each unresolvable pair rather than absorbing it; a unit case
+                    per built-in report family asserting the headline total is
+                    null, the known subtotal set and the currency named for a
+                    pair with no rate (A26-H10); portfolio.service.spec.ts
+                    asserts the intraday resolver's no-series, no-spot branch is
+                    unknown rather than 1 (A26-L05).
+                    test/integration/fx-latest-rates.integration.spec.ts: a
+                    stale mirror row beside a fresh canonical row lists one row
+                    carrying the fresh rate, a 324-day-old pair is absent,
+                    Spending by Payee converts 1,000.00 USD to 1,400.00 CAD, and
+                    a 1990 trade with only today's rate is refused with no row
+                    written; the client cases are in useExchangeRates.test.ts,
+                    InvestmentTransactionForm.test.tsx and
+                    InvestmentSplitFields.test.tsx.
 Status              partial
 ```
 
@@ -1149,8 +1176,9 @@ at the end of a line, `: 1` beside a rate) rather than from the rule -- so
 written from a diff certifies the diff. Read a status of `enforced` here as a
 claim to check against the scan, and read the scan for what it actually matches.
 `docs/verification-contract.md` section 6 still describes both load-bearing FX
-scans as having landed "with the fix, so no exception list"; that is now true of
-the first scan only.
+scans as having landed "with the fix, so no exception list"; the
+returned-input scan's list is empty again, and the rate-1 scan carries the
+stored-rate list described above.
 
 ### INV-FX-002 -- a row's own rate converts it on every surface
 
@@ -1216,7 +1244,12 @@ Enforcement         Every writer routes through canonicalRateRow: saveRate and
                     use. currencies/exchange-rate-orientation.guard.spec.ts is
                     the scan: an INSERT INTO exchange_rates in a third file, or
                     in one of those two without the helper, fails it.
-                    On the read side getLatestRate now resolves either stored
+                    On the read side getLatestRates lists one row per pair, the
+                    newer direction inside the age bound (a database upgraded
+                    from before the expand release still holds the mirror row,
+                    and a direct-first reader of a list carrying both took it),
+                    and the client rate map keeps the newer orientation.
+                    getLatestRate now resolves either stored
                     direction through resolveFxRate (INV-FX-001's door) rather
                     than reading one orientation, the backfill coverage probe
                     counts a pair held either way as covered, and

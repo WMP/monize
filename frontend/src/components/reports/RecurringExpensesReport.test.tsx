@@ -634,4 +634,37 @@ describe("RecurringExpensesReport", () => {
       await act(async () => { fireEvent.click(__ths[__i]); });
     }
   });
+
+  it("marks the null summary totals as subtotals and shows no 0.00", async () => {
+    mockGetRecurringExpenses.mockResolvedValue({
+      data: [
+        {
+          payeeId: "p-1",
+          payeeName: "Netflix",
+          categoryName: "Entertainment",
+          frequency: "MONTHLY",
+          occurrences: 6,
+          averageAmount: 50,
+          totalAmount: 50,
+          lastTransactionDate: "2025-01-15",
+        },
+      ],
+      summary: {
+        uniquePayees: 1,
+        totalRecurring: null,
+        knownTotalRecurring: 50,
+        monthlyEstimate: null,
+        knownMonthlyEstimate: 50,
+        monthCount: 6,
+      },
+      currency: "CAD",
+      missingCurrencies: ["JPY"],
+      excludedCount: 1,
+    });
+    render(<RecurringExpensesReport />);
+    await waitFor(() => expect(screen.getAllByTestId("partial-total")).toHaveLength(2));
+    screen.getAllByTestId("partial-total").forEach((marker) => expect(marker).toHaveTextContent("$50.00"));
+    expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+    expect(screen.getByTestId("partial-data-notice")).toHaveTextContent("JPY");
+  });
 });

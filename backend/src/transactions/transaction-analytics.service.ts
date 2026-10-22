@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { Brackets, DataSource, EntityManager } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
@@ -26,6 +26,14 @@ import {
   UNKNOWN_CATEGORY_LABEL,
 } from "../categories/category-name.util";
 import { roundMoney, sumMoney } from "../common/round.util";
+import { FxAggregate } from "../common/fx-aggregate";
+import { resolveUserDefaultCurrency } from "../common/default-currency.util";
+import {
+  buildRateIndex,
+  convertAtDate,
+  RateIndex,
+} from "../common/time-series/rate-index.util";
+import { isNetSpending } from "../built-in-reports/spending-reports.service";
 
 /**
  * The ordinary-cash amount of one transaction, for the recurring-charge
@@ -109,11 +117,30 @@ export interface LlmQueryTransactionsInput {
   direction?: LlmQueryDirection;
 }
 
-export interface LlmQueryTransactionsResult {
-  totalIncome: number;
-  totalExpenses: number;
-  netCashFlow: number;
+/**
+ * The income, expense and net totals an AI or MCP caller reads, in ONE currency.
+ *
+ * Every row is converted into `totalsCurrency` at the rate for its own
+ * transaction date (INV-FX-001, historical mode) before it is added. When any
+ * row has no admissible rate the three totals are `null` -- a total with an
+ * unconverted component is not a total -- and the partial sums travel in the
+ * `known*Subtotal` fields beside the pairs to repair (`missingRatePairs`, as
+ * `from->to`). `fxComplete` is the contract a caller reads with `=== false`.
+ */
+export interface LlmConvertedFlowFields {
+  totalIncome: number | null;
+  totalExpenses: number | null;
+  netCashFlow: number | null;
+  knownIncomeSubtotal: number;
+  knownExpensesSubtotal: number;
+  totalsCurrency: string;
+  fxComplete: boolean;
+  missingRatePairs: string[];
+}
+
+export interface LlmQueryTransactionsResult extends LlmConvertedFlowFields {
   transactionCount: number;
+  /** Per-currency and NOT converted: each entry is in its own currency. */
   byCurrency?: Record<
     string,
     {
@@ -146,11 +173,9 @@ export interface LlmListTransactionsInput {
   transfersOnly?: boolean;
 }
 
-export interface LlmListTransactionsResult {
-  totalIncome: number;
-  totalExpenses: number;
-  netCashFlow: number;
+export interface LlmListTransactionsResult extends LlmConvertedFlowFields {
   transactionCount: number;
+  /** Per-currency and NOT converted: each entry is in its own currency. */
   byCurrency?: Record<
     string,
     {
@@ -177,11 +202,28 @@ export interface LlmPeriodComparisonInput {
   direction?: LlmComparisonDirection;
 }
 
+/**
+ * One side of a period comparison, in `totalsCurrency`. `total` is `null` while
+ * a row of the period has no rate; `knownSubtotal` is what did convert.
+ */
+export interface LlmComparisonPeriodTotal {
+  start: string;
+  end: string;
+  total: number | null;
+  knownSubtotal: number;
+}
+
 export interface LlmPeriodComparisonResult {
-  period1: { start: string; end: string; total: number };
-  period2: { start: string; end: string; total: number };
-  totalChange: number;
-  totalChangePercent: number;
+  period1: LlmComparisonPeriodTotal;
+  period2: LlmComparisonPeriodTotal;
+  /** `null` unless both periods converted completely. */
+  totalChange: number | null;
+  /** `null` unless both periods converted completely. */
+  totalChangePercent: number | null;
+  totalsCurrency: string;
+  fxComplete: boolean;
+  missingRatePairs: string[];
+  /** Each row's amounts are the rows that converted (see `fxComplete`). */
   comparison: Array<{
     label: string;
     period1Amount: number;
@@ -193,6 +235,8 @@ export interface LlmPeriodComparisonResult {
 
 @Injectable()
 export class TransactionAnalyticsService {
+  private readonly logger = new Logger(TransactionAnalyticsService.name);
+
   constructor(private dataSource: DataSource) {}
 
   /**
@@ -1148,8 +1192,15 @@ export class TransactionAnalyticsService {
       true,
       true,
     );
+    const converted = await this.getConvertedFlowTotals(userId, {
+      accountIds: input.accountIds,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      categoryIds: input.categoryIds,
+      search: input.searchText,
+    });
 
-    let breakdown: unknown = undefined;
+    let breakdown: LlmBreakdown | undefined;
     if (input.groupBy) {
       breakdown = await this.getLlmGroupedBreakdown(
         userId,
@@ -1164,9 +1215,7 @@ export class TransactionAnalyticsService {
     }
 
     const result: LlmQueryTransactionsResult = {
-      totalIncome: summary.totalIncome,
-      totalExpenses: summary.totalExpenses,
-      netCashFlow: summary.netCashFlow,
+      ...this.convertedFlowFields(converted, breakdown?.fx),
       transactionCount: summary.transactionCount,
     };
 
@@ -1175,7 +1224,7 @@ export class TransactionAnalyticsService {
     }
 
     if (breakdown !== undefined) {
-      result.breakdown = breakdown;
+      result.breakdown = breakdown.rows;
     }
 
     return result;
@@ -1189,6 +1238,12 @@ export class TransactionAnalyticsService {
    * via {@link getLlmGroupedBreakdown} when `groupBy` is a real grouping (not
    * "none"), and an optional per-account transfer rollup via
    * {@link getTransfersByAccount} when `transfersOnly` is set.
+   *
+   * The headline totals are not `getSummary`'s: that sums each currency's
+   * numbers as they stand, so 1,000 USD joined 4,000 PLN as 5,000. They come
+   * from {@link getConvertedFlowTotals}, each row converted at the rate for its
+   * own date into the user's default currency (`totalsCurrency`), and are
+   * `null` while a pair has no rate. `byCurrency` stays the unconverted view.
    *
    * The RAW transaction list is NOT produced here -- tool adapters fetch it
    * separately via `TransactionsService.getLlmTransactionRows` only when asked.
@@ -1216,21 +1271,20 @@ export class TransactionAnalyticsService {
       true,
       true,
     );
+    const converted = await this.getConvertedFlowTotals(userId, {
+      accountIds: input.accountIds,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      categoryIds: input.categoryIds,
+      payeeIds: input.payeeIds,
+      search: input.searchText,
+      amountFrom: input.minAmount,
+      amountTo: input.maxAmount,
+    });
 
-    const result: LlmListTransactionsResult = {
-      totalIncome: summary.totalIncome,
-      totalExpenses: summary.totalExpenses,
-      netCashFlow: summary.netCashFlow,
-      transactionCount: summary.transactionCount,
-      groupedBy: groupBy,
-    };
-
-    if (Object.keys(summary.byCurrency).length > 1) {
-      result.byCurrency = summary.byCurrency;
-    }
-
+    let breakdown: LlmBreakdown | undefined;
     if (groupBy !== "none") {
-      result.breakdown = await this.getLlmGroupedBreakdown(
+      breakdown = await this.getLlmGroupedBreakdown(
         userId,
         input.startDate,
         input.endDate,
@@ -1245,6 +1299,20 @@ export class TransactionAnalyticsService {
       );
     }
 
+    const result: LlmListTransactionsResult = {
+      ...this.convertedFlowFields(converted, breakdown?.fx),
+      transactionCount: summary.transactionCount,
+      groupedBy: groupBy,
+    };
+
+    if (Object.keys(summary.byCurrency).length > 1) {
+      result.byCurrency = summary.byCurrency;
+    }
+
+    if (breakdown !== undefined) {
+      result.breakdown = breakdown.rows;
+    }
+
     if (input.transfersOnly) {
       result.transfers = await this.getTransfersByAccount(
         userId,
@@ -1255,6 +1323,192 @@ export class TransactionAnalyticsService {
     }
 
     return result;
+  }
+
+  /**
+   * Income and expense totals over the same rows (the same filtered query, so
+   * the same filters) as {@link getSummary}, each row converted into the user's
+   * default currency at the rate for its own transaction date.
+   *
+   * Grouped by currency and day so a foreign row is priced on its date and the
+   * rates load once for the window (`buildRateIndex`), inside this transaction.
+   * Same currency and zero need no rate; a row whose pair has no admissible rate
+   * is recorded in the aggregate, never folded in at 1:1.
+   */
+  private async getConvertedFlowTotals(
+    userId: string,
+    filters: {
+      accountIds?: string[];
+      startDate: string;
+      endDate: string;
+      categoryIds?: string[];
+      payeeIds?: string[];
+      search?: string;
+      amountFrom?: number;
+      amountTo?: number;
+      /** Default true: the totals answer "how much did I spend/earn". */
+      excludeTransfers?: boolean;
+    },
+  ): Promise<ConvertedFlowTotals> {
+    const { excludeTransfers = true, ...scope } = filters;
+    return withScopedDb(this.dataSource, async (m) => {
+      const reporting = await resolveUserDefaultCurrency(
+        this.dataSource,
+        userId,
+      );
+      const qb = await this.createFilteredAnalyticsQuery(m, userId, {
+        ...scope,
+        excludeInvestmentLinked: true,
+        excludeTransfers,
+      });
+
+      const amountExpr = "COALESCE(splits.amount, transaction.amount)";
+      const dayExpr = "TO_CHAR(transaction.transactionDate, 'YYYY-MM-DD')";
+      qb.select("transaction.currencyCode", "currencyCode")
+        .addSelect(dayExpr, "txDate")
+        .addSelect(
+          `SUM(CASE WHEN ${amountExpr} > 0 THEN ${amountExpr} ELSE 0 END)`,
+          "totalIncome",
+        )
+        .addSelect(
+          `SUM(CASE WHEN ${amountExpr} < 0 THEN ABS(${amountExpr}) ELSE 0 END)`,
+          "totalExpenses",
+        )
+        .groupBy("transaction.currencyCode")
+        .addGroupBy(dayExpr);
+
+      const rows = await qb.getRawMany();
+      const rates = await this.loadRateIndex(
+        m,
+        rows,
+        reporting,
+        filters.startDate,
+        filters.endDate,
+      );
+
+      const income = new FxAggregate();
+      const expenses = new FxAggregate();
+      for (const row of rows) {
+        addDatedAmount(
+          income,
+          Number(row.totalIncome) || 0,
+          row,
+          reporting,
+          rates,
+          this.logger,
+        );
+        addDatedAmount(
+          expenses,
+          Number(row.totalExpenses) || 0,
+          row,
+          reporting,
+          rates,
+          this.logger,
+        );
+      }
+      return { income, expenses, totalsCurrency: reporting };
+    });
+  }
+
+  /**
+   * The income, expense and net totals of a window in the user's default
+   * currency, for a surface that shows a month or a recent-activity summary
+   * (the MCP `financial-summary` and `recent-transactions` resources). The same
+   * rows and filters as {@link getSummary} with investment-linked cash excluded;
+   * `excludeTransfers` follows the caller. Same fields, same withholding, as the
+   * `list_transactions` totals.
+   */
+  async getLlmFlowTotals(
+    userId: string,
+    filters: { startDate: string; endDate: string; excludeTransfers?: boolean },
+  ): Promise<LlmConvertedFlowFields> {
+    return this.convertedFlowFields(
+      await this.getConvertedFlowTotals(userId, filters),
+    );
+  }
+
+  /**
+   * The totals fields of a list/query result. All three totals are withheld
+   * (`null`) when any component, in the totals or in a breakdown beside them,
+   * could not be converted; the known parts and the pairs to repair are always
+   * there.
+   */
+  private convertedFlowFields(
+    converted: ConvertedFlowTotals,
+    breakdownFx?: FxAggregate,
+  ): LlmConvertedFlowFields {
+    const all = new FxAggregate();
+    all.merge(converted.income);
+    all.merge(converted.expenses);
+    if (breakdownFx) all.merge(breakdownFx);
+    const fxComplete = all.isComplete;
+    const income = converted.income.knownSubtotal;
+    const expenses = converted.expenses.knownSubtotal;
+    return {
+      totalIncome: fxComplete ? income : null,
+      totalExpenses: fxComplete ? expenses : null,
+      netCashFlow: fxComplete ? roundMoney(income - expenses) : null,
+      knownIncomeSubtotal: income,
+      knownExpensesSubtotal: expenses,
+      totalsCurrency: converted.totalsCurrency,
+      fxComplete,
+      missingRatePairs: all.missingPairs,
+    };
+  }
+
+  /** Every stored rate the rows' foreign currencies can need, loaded once. */
+  private loadRateIndex(
+    m: EntityManager,
+    rows: Array<{ currencyCode?: string }>,
+    reporting: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<RateIndex> {
+    const foreign = new Set<string>();
+    for (const row of rows) {
+      if (row.currencyCode && row.currencyCode !== reporting) {
+        foreign.add(row.currencyCode);
+      }
+    }
+    return buildRateIndex(
+      (sql, params) => m.query(sql, params),
+      foreign,
+      reporting,
+      startDate,
+      endDate,
+    );
+  }
+
+  /**
+   * Fold per-(group, currency, day) rows into one converted aggregate per
+   * group. `keyOf` names the group; the first row seen stands for its label
+   * columns.
+   */
+  private foldGroups(
+    rows: RawGroupRow[],
+    keyOf: (row: RawGroupRow) => string,
+    reporting: string,
+    rates: RateIndex,
+  ): FoldedGroup[] {
+    const groups = new Map<string, FoldedGroup>();
+    for (const row of rows) {
+      const key = keyOf(row);
+      let group = groups.get(key);
+      if (!group) {
+        group = { first: row, agg: new FxAggregate(), count: 0 };
+        groups.set(key, group);
+      }
+      group.count += Number(row.count) || 0;
+      addDatedAmount(
+        group.agg,
+        Number(row.total) || 0,
+        row,
+        reporting,
+        rates,
+        this.logger,
+      );
+    }
+    return [...groups.values()];
   }
 
   private async getLlmGroupedBreakdown(
@@ -1269,8 +1523,12 @@ export class TransactionAnalyticsService {
     payeeIds?: string[],
     minAmount?: number,
     maxAmount?: number,
-  ): Promise<unknown> {
+  ): Promise<LlmBreakdown> {
     return withScopedDb(this.dataSource, async (m) => {
+      const reporting = await resolveUserDefaultCurrency(
+        this.dataSource,
+        userId,
+      );
       const qb = m
         .getRepository(Transaction)
         .createQueryBuilder("t")
@@ -1324,6 +1582,19 @@ export class TransactionAnalyticsService {
         paramPrefix: "srch",
       });
 
+      // Every group is also split by currency and day, so each part can be
+      // converted at its own date before it is added to its group.
+      const byCurrencyAndDay = () =>
+        qb
+          .addSelect("t.currencyCode", "currencyCode")
+          .addSelect(DAY_SQL, "txDate")
+          .addGroupBy("t.currencyCode")
+          .addGroupBy(DAY_SQL);
+      const fx = new FxAggregate();
+      const finish = (groups: FoldedGroup[]) => {
+        for (const g of groups) fx.merge(g.agg);
+      };
+
       switch (groupBy) {
         case "category": {
           // Grouping is on the category id, not the display name: "Cell Phone"
@@ -1337,19 +1608,37 @@ export class TransactionAnalyticsService {
             .addSelect(`SUM(ABS(${SPLIT_AMOUNT}))`, "total")
             .addSelect("COUNT(*)", "count")
             .groupBy(`${SPLIT_CATEGORY_ID}::text`);
+          byCurrencyAndDay();
 
           const rows = await qb.getRawMany();
+          const rates = await this.loadRateIndex(
+            m,
+            rows,
+            reporting,
+            startDate,
+            endDate,
+          );
           const names = await loadQualifiedCategoryNames(m, userId);
-          return rows
-            .map((r) => ({
-              category: r.categoryId
-                ? (names.get(r.categoryId) ?? UNKNOWN_CATEGORY_LABEL)
-                : UNCATEGORIZED_LABEL,
-              categoryId: r.categoryId ?? null,
-              total: roundMoney(Number(r.total)),
-              count: Number(r.count),
-            }))
-            .sort((a, b) => b.total - a.total);
+          const groups = this.foldGroups(
+            rows,
+            (r) => r.categoryId ?? "",
+            reporting,
+            rates,
+          );
+          finish(groups);
+          return {
+            fx,
+            rows: byKnownSubtotal(
+              groups.map((g) => ({
+                category: g.first.categoryId
+                  ? (names.get(g.first.categoryId) ?? UNKNOWN_CATEGORY_LABEL)
+                  : UNCATEGORIZED_LABEL,
+                categoryId: g.first.categoryId ?? null,
+                ...totalFields(g.agg),
+                count: g.count,
+              })),
+            ),
+          };
         }
 
         case "payee": {
@@ -1361,64 +1650,85 @@ export class TransactionAnalyticsService {
             .addSelect(`SUM(ABS(${SPLIT_AMOUNT}))`, "total")
             .addSelect("COUNT(*)", "count")
             .groupBy("t.payeeName");
+          byCurrencyAndDay();
 
           const rows = await qb.getRawMany();
-          return enforcePayeeAggregationThreshold(
-            rows.map((r) => ({
-              payee: r.label,
-              payeeId: r.payeeId ?? null,
-              total: roundMoney(Number(r.total)),
-              count: Number(r.count),
-            })),
+          const rates = await this.loadRateIndex(
+            m,
+            rows,
+            reporting,
+            startDate,
+            endDate,
           );
+          // The per-day rows each carry their own MIN; the group's is the
+          // least of them, as the single-row query returned before.
+          const payeeIds = new Map<string, string>();
+          for (const r of rows) {
+            const seen = payeeIds.get(r.label);
+            if (r.payeeId && (seen === undefined || r.payeeId < seen)) {
+              payeeIds.set(r.label, r.payeeId);
+            }
+          }
+          const groups = this.foldGroups(
+            rows,
+            (r) => r.label,
+            reporting,
+            rates,
+          );
+          finish(groups);
+          return {
+            fx,
+            rows: enforcePayeeAggregationThreshold(
+              groups.map((g) => ({
+                payee: g.first.label,
+                payeeId: payeeIds.get(g.first.label) ?? null,
+                agg: g.agg,
+                count: g.count,
+              })),
+            ),
+          };
         }
 
-        case "year": {
-          qb.select("TO_CHAR(t.transactionDate, 'YYYY')", "year")
-            .addSelect(`SUM(ABS(${SPLIT_AMOUNT}))`, "total")
-            .addSelect("COUNT(*)", "count")
-            .groupBy("TO_CHAR(t.transactionDate, 'YYYY')")
-            .orderBy("year", "ASC");
-
-          const rows = await qb.getRawMany();
-          return rows.map((r) => ({
-            year: r.year,
-            total: roundMoney(Number(r.total)),
-            count: Number(r.count),
-          }));
-        }
-
-        case "month": {
-          qb.select("TO_CHAR(t.transactionDate, 'YYYY-MM')", "month")
-            .addSelect(`SUM(ABS(${SPLIT_AMOUNT}))`, "total")
-            .addSelect("COUNT(*)", "count")
-            .groupBy("TO_CHAR(t.transactionDate, 'YYYY-MM')")
-            .orderBy("month", "ASC");
-
-          const rows = await qb.getRawMany();
-          return rows.map((r) => ({
-            month: r.month,
-            total: roundMoney(Number(r.total)),
-            count: Number(r.count),
-          }));
-        }
-
+        case "year":
+        case "month":
         case "week": {
-          qb.select(
-            "TO_CHAR(DATE_TRUNC('week', t.transactionDate), 'YYYY-MM-DD')",
-            "week",
-          )
+          const periodExpr =
+            groupBy === "year"
+              ? "TO_CHAR(t.transactionDate, 'YYYY')"
+              : groupBy === "month"
+                ? "TO_CHAR(t.transactionDate, 'YYYY-MM')"
+                : "TO_CHAR(DATE_TRUNC('week', t.transactionDate), 'YYYY-MM-DD')";
+          qb.select(periodExpr, "period")
             .addSelect(`SUM(ABS(${SPLIT_AMOUNT}))`, "total")
             .addSelect("COUNT(*)", "count")
-            .groupBy("DATE_TRUNC('week', t.transactionDate)")
-            .orderBy("week", "ASC");
+            .groupBy(periodExpr);
+          byCurrencyAndDay();
 
           const rows = await qb.getRawMany();
-          return rows.map((r) => ({
-            week: r.week,
-            total: roundMoney(Number(r.total)),
-            count: Number(r.count),
-          }));
+          const rates = await this.loadRateIndex(
+            m,
+            rows,
+            reporting,
+            startDate,
+            endDate,
+          );
+          const groups = this.foldGroups(
+            rows,
+            (r) => r.period,
+            reporting,
+            rates,
+          );
+          finish(groups);
+          return {
+            fx,
+            rows: groups
+              .sort((a, b) => (a.first.period < b.first.period ? -1 : 1))
+              .map((g) => ({
+                [groupBy]: g.first.period,
+                ...totalFields(g.agg),
+                count: g.count,
+              })),
+          };
         }
       }
     });
@@ -1427,6 +1737,17 @@ export class TransactionAnalyticsService {
   /**
    * Compare two date ranges side-by-side, grouped by category or payee.
    * Shared by `ToolExecutorService.comparePeriods` and the MCP tool.
+   *
+   * Every row is converted into the user's default currency (`totalsCurrency`)
+   * at the rate for its own date before it joins its group, so the periods are
+   * comparable. A period whose rows include a pair with no rate has a `null`
+   * total, which makes `totalChange` and `totalChangePercent` `null` too: the
+   * change between a total and a subtotal is not a change. When both periods
+   * hold only same-currency rows the figures are as they always were.
+   *
+   * `totalChangePercent` is `0` when the first period's total is `0`, as it
+   * always was; a row's own `changePercent` is `100` for a label new in the
+   * second period.
    */
   async getLlmPeriodComparison(
     userId: string,
@@ -1453,12 +1774,16 @@ export class TransactionAnalyticsService {
     ]);
 
     const allLabels = new Set([
-      ...period1.map((i) => i.label),
-      ...period2.map((i) => i.label),
+      ...period1.items.map((i) => i.label),
+      ...period2.items.map((i) => i.label),
     ]);
 
-    const p1Map = new Map(period1.map((i) => [i.label, i.total]));
-    const p2Map = new Map(period2.map((i) => [i.label, i.total]));
+    const p1Map = new Map(
+      period1.items.map((i) => [i.label, i.agg.knownSubtotal]),
+    );
+    const p2Map = new Map(
+      period2.items.map((i) => [i.label, i.agg.knownSubtotal]),
+    );
 
     const comparison = Array.from(allLabels).map((label) => {
       const p1Amount = roundMoney(p1Map.get(label) || 0);
@@ -1482,25 +1807,38 @@ export class TransactionAnalyticsService {
 
     comparison.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
 
-    const p1Total = sumMoney(period1.map((i) => i.total));
-    const p2Total = sumMoney(period2.map((i) => i.total));
-    const totalChange = roundMoney(p2Total - p1Total);
+    const both = new FxAggregate();
+    both.merge(period1.total);
+    both.merge(period2.total);
+    const p1Total = period1.total.knownSubtotal;
+    const p2Total = period2.total.knownSubtotal;
+    const fxComplete = both.isComplete;
+    const totalChange = fxComplete ? roundMoney(p2Total - p1Total) : null;
     const totalChangePercent =
-      p1Total !== 0 ? Math.round((totalChange / p1Total) * 10000) / 100 : 0;
+      totalChange === null
+        ? null
+        : p1Total !== 0
+          ? Math.round((totalChange / p1Total) * 10000) / 100
+          : 0;
 
     return {
       period1: {
         start: input.period1Start,
         end: input.period1End,
-        total: p1Total,
+        total: period1.total.total,
+        knownSubtotal: p1Total,
       },
       period2: {
         start: input.period2Start,
         end: input.period2End,
-        total: p2Total,
+        total: period2.total.total,
+        knownSubtotal: p2Total,
       },
       totalChange,
       totalChangePercent,
+      totalsCurrency: period1.totalsCurrency,
+      fxComplete,
+      missingRatePairs: both.missingPairs,
       comparison,
     };
   }
@@ -1511,8 +1849,12 @@ export class TransactionAnalyticsService {
     endDate: string,
     groupBy: LlmComparisonGroupBy,
     direction: LlmComparisonDirection,
-  ): Promise<{ label: string; total: number }[]> {
+  ): Promise<ComparisonPeriodData> {
     return withScopedDb(this.dataSource, async (m) => {
+      const reporting = await resolveUserDefaultCurrency(
+        this.dataSource,
+        userId,
+      );
       const qb = m
         .getRepository(Transaction)
         .createQueryBuilder("t")
@@ -1527,59 +1869,97 @@ export class TransactionAnalyticsService {
       joinSplitsForAnalytics(qb);
       applyInvestmentTransactionFilters(qb, "periodAccount", "t");
 
+      // Expenses are the signed sum over rows of both signs, negated, so a
+      // refund in a category reduces what was spent there instead of being
+      // dropped (a category's cost, AGENTS.md); a category whose credits meet
+      // its debits is not a row (`isNetSpending`). Income keeps its positive
+      // rows and "both" the magnitude of every row.
+      let amountExpr: string;
       if (direction === "expenses") {
-        qb.andWhere(`${SPLIT_AMOUNT} < 0`);
+        amountExpr = `-${SPLIT_AMOUNT}`;
+        qb.andWhere(`${SPLIT_AMOUNT} <> 0`);
       } else if (direction === "income") {
+        amountExpr = SPLIT_AMOUNT;
         qb.andWhere(`${SPLIT_AMOUNT} > 0`);
+      } else {
+        amountExpr = `ABS(${SPLIT_AMOUNT})`;
       }
 
       if (groupBy === "payee") {
         qb.select("COALESCE(t.payeeName, 'Unknown')", "label")
-          .addSelect(`SUM(ABS(${SPLIT_AMOUNT}))`, "total")
+          .addSelect(`SUM(${amountExpr})`, "total")
           .addSelect("COUNT(*)", "count")
-          .groupBy("t.payeeName")
-          .orderBy("total", "DESC");
+          .groupBy("t.payeeName");
       } else {
         // Same rule as the grouped breakdown: identity is the category id, and
         // the label carries the parent so a comparison never puts two different
         // "Cell Phone" categories in one row.
         qb.select(`${SPLIT_CATEGORY_ID}::text`, "categoryId")
-          .addSelect(`SUM(ABS(${SPLIT_AMOUNT}))`, "total")
+          .addSelect(`SUM(${amountExpr})`, "total")
           .addSelect("COUNT(*)", "count")
-          .groupBy(`${SPLIT_CATEGORY_ID}::text`)
-          .orderBy("total", "DESC");
+          .groupBy(`${SPLIT_CATEGORY_ID}::text`);
       }
+      // Each part is converted at its own date before it joins its group.
+      qb.addSelect("t.currencyCode", "currencyCode")
+        .addSelect(DAY_SQL, "txDate")
+        .addGroupBy("t.currencyCode")
+        .addGroupBy(DAY_SQL);
 
       const rows = await qb.getRawMany();
+      const rates = await this.loadRateIndex(
+        m,
+        rows,
+        reporting,
+        startDate,
+        endDate,
+      );
       const names =
         groupBy === "payee"
           ? new Map<string, string>()
           : await loadQualifiedCategoryNames(m, userId);
-      const items = rows.map((r) => ({
+      const groups = this.foldGroups(
+        rows,
+        (r) => (groupBy === "payee" ? r.label : (r.categoryId ?? "")),
+        reporting,
+        rates,
+      );
+      let items: ComparisonItem[] = groups.map((g) => ({
         label:
           groupBy === "payee"
-            ? r.label
-            : r.categoryId
-              ? (names.get(r.categoryId) ?? UNKNOWN_CATEGORY_LABEL)
+            ? g.first.label
+            : g.first.categoryId
+              ? (names.get(g.first.categoryId) ?? UNKNOWN_CATEGORY_LABEL)
               : UNCATEGORIZED_LABEL,
-        total: roundMoney(Number(r.total)),
-        count: Number(r.count),
+        agg: g.agg,
+        count: g.count,
       }));
+
+      if (direction === "expenses") {
+        // A group with a part still unconverted is kept: its net is unknown,
+        // not spent-in-nothing.
+        items = items.filter(
+          (i) => isNetSpending(i.agg.knownSubtotal) || !i.agg.isComplete,
+        );
+      }
 
       if (groupBy === "payee") {
         const above = items.filter((i) => i.count >= MIN_AGGREGATION_COUNT);
         const below = items.filter((i) => i.count < MIN_AGGREGATION_COUNT);
         if (below.length > 0) {
+          const other = new FxAggregate();
+          for (const i of below) other.merge(i.agg);
           above.push({
             label: "Other (aggregated)",
-            total: sumMoney(below.map((i) => i.total)),
+            agg: other,
             count: below.reduce((s, i) => s + i.count, 0),
           });
         }
-        return above.map((i) => ({ label: i.label, total: i.total }));
+        items = above;
       }
 
-      return items.map((r) => ({ label: r.label, total: r.total }));
+      const total = new FxAggregate();
+      for (const i of items) total.merge(i.agg);
+      return { totalsCurrency: reporting, items, total };
     });
   }
 
@@ -1709,34 +2089,131 @@ export class TransactionAnalyticsService {
   }
 }
 
+/** One day's SQL, for the `t` alias: the date a row is converted at. */
+const DAY_SQL = "TO_CHAR(t.transactionDate, 'YYYY-MM-DD')";
+
+/** A grouped raw row: its label columns, its currency and its day. */
+type RawGroupRow = Record<string, any>;
+
+interface FoldedGroup {
+  first: RawGroupRow;
+  agg: FxAggregate;
+  count: number;
+}
+
+interface ConvertedFlowTotals {
+  income: FxAggregate;
+  expenses: FxAggregate;
+  totalsCurrency: string;
+}
+
+/** A grouped breakdown with the conversion gaps its rows carry. */
+interface LlmBreakdown {
+  rows: unknown;
+  fx: FxAggregate;
+}
+
+interface ComparisonItem {
+  label: string;
+  agg: FxAggregate;
+  count: number;
+}
+
+interface ComparisonPeriodData {
+  totalsCurrency: string;
+  items: ComparisonItem[];
+  /** Everything in `items`, for the period's own total. */
+  total: FxAggregate;
+}
+
+/**
+ * Add one dated amount of `row.currencyCode` to `agg` in the reporting
+ * currency. Zero needs no rate and the same currency needs none; anything else
+ * is converted at the rate for its date or recorded as a gap.
+ */
+function addDatedAmount(
+  agg: FxAggregate,
+  amount: number,
+  row: RawGroupRow,
+  reporting: string,
+  rates: RateIndex,
+  logger: Logger,
+): void {
+  if (amount === 0) return;
+  if (row.currencyCode === reporting) {
+    agg.addConverted(amount);
+    return;
+  }
+  agg.add(
+    convertAtDate(
+      amount,
+      row.currencyCode,
+      reporting,
+      row.txDate,
+      rates,
+      logger,
+    ),
+    row.currencyCode,
+    reporting,
+  );
+}
+
+/**
+ * A group's figure: `total` only when every part converted, otherwise `null`
+ * with the converted part under `knownSubtotal`.
+ */
+function totalFields(agg: FxAggregate): {
+  total: number | null;
+  knownSubtotal?: number;
+} {
+  return agg.isComplete
+    ? { total: roundMoney(agg.knownSubtotal) }
+    : { total: null, knownSubtotal: roundMoney(agg.knownSubtotal) };
+}
+
+/** Largest first, by what converted (a withheld total still ranks). */
+function byKnownSubtotal<
+  T extends { total: number | null; knownSubtotal?: number },
+>(rows: T[]): T[] {
+  const figure = (r: T) => r.knownSubtotal ?? r.total ?? 0;
+  return rows.sort((a, b) => figure(b) - figure(a));
+}
+
 /**
  * LLM06-F2: Fold payee groups with fewer than MIN_AGGREGATION_COUNT
  * transactions into a single "Other (aggregated)" bucket so individual
  * transaction amounts can't leak via targeted queries.
  */
-interface PayeeBreakdownRow {
+interface PayeeGroup {
   payee: string;
   payeeId: string | null;
-  total: number;
+  agg: FxAggregate;
   count: number;
 }
 
-function enforcePayeeAggregationThreshold(
-  rows: PayeeBreakdownRow[],
-): PayeeBreakdownRow[] {
+function enforcePayeeAggregationThreshold(rows: PayeeGroup[]) {
   const above = rows.filter((r) => r.count >= MIN_AGGREGATION_COUNT);
   const below = rows.filter((r) => r.count < MIN_AGGREGATION_COUNT);
 
   if (below.length > 0) {
+    const other = new FxAggregate();
+    for (const r of below) other.merge(r.agg);
     // The synthetic bucket must never carry a real payee id -- it exists to
     // hide the identities of the folded groups.
     above.push({
       payee: "Other (aggregated)",
       payeeId: null,
-      total: sumMoney(below.map((r) => r.total)),
+      agg: other,
       count: below.reduce((sum, r) => sum + r.count, 0),
     });
   }
 
-  return above.sort((a, b) => b.total - a.total);
+  return byKnownSubtotal(
+    above.map((r) => ({
+      payee: r.payee,
+      payeeId: r.payeeId,
+      ...totalFields(r.agg),
+      count: r.count,
+    })),
+  );
 }

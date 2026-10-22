@@ -208,6 +208,11 @@ describe("McpTransactionsTools", () => {
       totalIncome: 1000,
       totalExpenses: 200,
       netCashFlow: 800,
+      knownIncomeSubtotal: 1000,
+      knownExpensesSubtotal: 200,
+      totalsCurrency: "USD",
+      fxComplete: true,
+      missingRatePairs: [] as string[],
       transactionCount: 5,
       groupedBy: "none",
     };
@@ -244,6 +249,30 @@ describe("McpTransactionsTools", () => {
       const parsed = result.structuredContent as any;
       expect(parsed.totalIncome).toBe(1000);
       expect(parsed.transactions).toBeUndefined();
+    });
+
+    it("returns the service's withheld totals as they are, naming the currency and the pairs", async () => {
+      ctx.setUser({ userId: "u1", scopes: "read" });
+      const withheld = {
+        ...summary,
+        totalIncome: null,
+        totalExpenses: null,
+        netCashFlow: null,
+        knownExpensesSubtotal: 4000,
+        totalsCurrency: "PLN",
+        fxComplete: false,
+        missingRatePairs: ["USD->PLN"],
+      };
+      analyticsService.getLlmListTransactions.mockResolvedValue(withheld);
+
+      const result = await handlers["list_transactions"](
+        { startDate: "2026-09-01", endDate: "2026-09-30" },
+        ctx,
+      );
+
+      // The same data object the assistant's executor gets (shared-tool
+      // parity): no total is invented where the service withheld one.
+      expect(result.structuredContent).toEqual(withheld);
     });
 
     it("fills in default dates when omitted", async () => {
@@ -457,10 +486,23 @@ describe("McpTransactionsTools", () => {
     it("delegates to analyticsService.getLlmPeriodComparison", async () => {
       ctx.setUser({ userId: "u1", scopes: "read" });
       analyticsService.getLlmPeriodComparison.mockResolvedValue({
-        period1: { start: "2025-12-01", end: "2025-12-31", total: 0 },
-        period2: { start: "2026-01-01", end: "2026-01-31", total: 0 },
+        period1: {
+          start: "2025-12-01",
+          end: "2025-12-31",
+          total: 0,
+          knownSubtotal: 0,
+        },
+        period2: {
+          start: "2026-01-01",
+          end: "2026-01-31",
+          total: 0,
+          knownSubtotal: 0,
+        },
         totalChange: 0,
         totalChangePercent: 0,
+        totalsCurrency: "USD",
+        fxComplete: true,
+        missingRatePairs: [],
         comparison: [],
       });
 
@@ -483,13 +525,53 @@ describe("McpTransactionsTools", () => {
       );
     });
 
+    it("returns the service's withheld totals as they are, naming the currency and the pairs", async () => {
+      ctx.setUser({ userId: "u1", scopes: "read" });
+      const withheld = {
+        period1: {
+          start: "2026-08-01",
+          end: "2026-08-31",
+          total: 400,
+          knownSubtotal: 400,
+        },
+        period2: {
+          start: "2026-09-01",
+          end: "2026-09-30",
+          total: null,
+          knownSubtotal: 4000,
+        },
+        totalChange: null,
+        totalChangePercent: null,
+        totalsCurrency: "PLN",
+        fxComplete: false,
+        missingRatePairs: ["USD->PLN"],
+        comparison: [],
+      };
+      analyticsService.getLlmPeriodComparison.mockResolvedValue(withheld);
+
+      const result = await handlers["compare_periods"](
+        {
+          period1Start: "2026-08-01",
+          period1End: "2026-08-31",
+          period2Start: "2026-09-01",
+          period2End: "2026-09-30",
+        },
+        ctx,
+      );
+
+      expect(result.structuredContent).toEqual(withheld);
+    });
+
     it("fills in all four dates when omitted", async () => {
       ctx.setUser({ userId: "u1", scopes: "read" });
       analyticsService.getLlmPeriodComparison.mockResolvedValue({
-        period1: { start: "", end: "", total: 0 },
-        period2: { start: "", end: "", total: 0 },
+        period1: { start: "", end: "", total: 0, knownSubtotal: 0 },
+        period2: { start: "", end: "", total: 0, knownSubtotal: 0 },
         totalChange: 0,
         totalChangePercent: 0,
+        totalsCurrency: "USD",
+        fxComplete: true,
+        missingRatePairs: [],
         comparison: [],
       });
 

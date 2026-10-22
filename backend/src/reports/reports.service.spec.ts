@@ -19,6 +19,7 @@ import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { BudgetsService } from "../budgets/budgets.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { ReportCurrencyService } from "../built-in-reports/report-currency.service";
 import {
   createScopedDbMocks,
   DataSourceMock,
@@ -36,6 +37,13 @@ describe("ReportsService", () => {
   let categoriesRepository: Record<string, jest.Mock>;
   let payeesRepository: Record<string, jest.Mock>;
   let mockActionHistoryService: Record<string, jest.Mock>;
+  let mockCurrencyService: jest.Mocked<
+    Pick<
+      ReportCurrencyService,
+      "getDefaultCurrency" | "buildRateMap" | "tryConvertAmount"
+    >
+  >;
+  let rateMap: Map<string, number>;
 
   const defaultConfig: ReportConfig = {
     metric: MetricType.TOTAL_AMOUNT,
@@ -199,6 +207,17 @@ describe("ReportsService", () => {
       record: jest.fn().mockResolvedValue(null),
     };
 
+    // The real conversion door over a supplied rate map, so a mock cannot answer
+    // a shape the real service cannot produce.
+    rateMap = new Map();
+    mockCurrencyService = {
+      getDefaultCurrency: jest.fn().mockResolvedValue("USD"),
+      buildRateMap: jest.fn().mockImplementation(async () => rateMap),
+      tryConvertAmount: jest
+        .fn()
+        .mockImplementation(ReportCurrencyService.prototype.tryConvertAmount),
+    };
+
     ({ dataSource: scopedDataSource } = createScopedDbMocks([
       [CustomReport, reportsRepository as never],
       [Transaction, transactionsRepository as never],
@@ -233,6 +252,7 @@ describe("ReportsService", () => {
           provide: ActionHistoryService,
           useValue: mockActionHistoryService,
         },
+        { provide: ReportCurrencyService, useValue: mockCurrencyService },
         { provide: DataSource, useValue: scopedDataSource },
       ],
     }).compile();
@@ -706,7 +726,12 @@ describe("ReportsService", () => {
       expect(result.reportId).toBe("report-1");
       expect(result.name).toBe("Monthly Expenses");
       expect(result.data).toEqual([]);
-      expect(result.summary).toEqual({ total: 0, count: 0, average: 0 });
+      expect(result.summary).toEqual({
+        total: 0,
+        knownTotal: 0,
+        count: 0,
+        average: 0,
+      });
     });
 
     it("returns correct report metadata", async () => {
@@ -1675,7 +1700,252 @@ describe("ReportsService", () => {
 
         const result = await service.execute("user-1", "report-1");
 
-        expect(result.summary).toEqual({ total: 0, count: 0, average: 0 });
+        expect(result.summary).toEqual({
+          total: 0,
+          knownTotal: 0,
+          count: 0,
+          average: 0,
+        });
+      });
+    });
+
+    describe("currency conversion (INV-FX-001)", () => {
+      const cad = (id: string, amount: number, extra = {}) =>
+        createMockTransaction({
+          id,
+          amount,
+          currencyCode: "CAD",
+          ...extra,
+        });
+      const jpy = (id: string, amount: number, extra = {}) =>
+        createMockTransaction({
+          id,
+          amount,
+          currencyCode: "JPY",
+          ...extra,
+        });
+
+      beforeEach(() => {
+        mockCurrencyService.getDefaultCurrency.mockResolvedValue("CAD");
+      });
+
+      const run = async (
+        groupBy: GroupByType,
+        transactions: Transaction[],
+        metric: MetricType = MetricType.TOTAL_AMOUNT,
+      ) => {
+        setupExecuteMocks(
+          { groupBy, config: { ...defaultConfig, metric } },
+          transactions,
+        );
+        categoriesRepository.find.mockResolvedValue([mockCategory]);
+        return service.execute("user-1", "report-1");
+      };
+
+      const groceries = [cad("tx-1", -200), jpy("tx-2", -10000)];
+
+      describe("with a rate", () => {
+        beforeEach(() => rateMap.set("JPY->CAD", 0.009));
+
+        it("converts each row before summing, by category", async () => {
+          const result = await run(GroupByType.CATEGORY, groceries);
+
+          expect(result.data).toHaveLength(1);
+          expect(result.data[0].label).toBe("Groceries");
+          expect(result.data[0].value).toBe(290);
+          expect(result.data[0].count).toBe(2);
+          expect(result.summary.total).toBe(290);
+          expect(result.summary.knownTotal).toBe(290);
+          expect(result.currency).toBe("CAD");
+          expect(result.missingCurrencies).toEqual([]);
+          expect(result.excludedCount).toBe(0);
+        });
+
+        it("converts through the inverse pair when only it is stored", async () => {
+          rateMap.clear();
+          rateMap.set("CAD->JPY", 1000 / 9);
+
+          const result = await run(GroupByType.CATEGORY, groceries);
+
+          expect(result.summary.total).toBeCloseTo(290, 2);
+        });
+
+        it("converts with no grouping", async () => {
+          const result = await run(GroupByType.NONE, groceries);
+
+          expect(result.data[0].value).toBe(290);
+          expect(result.summary.total).toBe(290);
+        });
+
+        it("converts each row of the no-aggregation listing", async () => {
+          const result = await run(
+            GroupByType.NONE,
+            groceries,
+            MetricType.NONE,
+          );
+
+          expect(result.data.map((d) => d.value).sort()).toEqual([200, 90]);
+          expect(result.summary.total).toBe(290);
+        });
+
+        it("converts by payee", async () => {
+          const result = await run(GroupByType.PAYEE, groceries);
+
+          expect(result.data[0].value).toBe(290);
+          expect(result.summary.total).toBe(290);
+        });
+
+        it("converts by tag", async () => {
+          const tag = { id: "tag-1", name: "Food", color: null };
+          const result = await run(
+            GroupByType.TAG,
+            groceries.map((t) => ({ ...t, tags: [tag] }) as Transaction),
+          );
+
+          expect(result.data[0].value).toBe(290);
+          expect(result.summary.total).toBe(290);
+        });
+
+        it("converts by month", async () => {
+          const result = await run(GroupByType.MONTH, groceries);
+
+          expect(result.data).toHaveLength(1);
+          expect(result.data[0].value).toBe(290);
+          expect(result.summary.total).toBe(290);
+        });
+
+        it("averages converted amounts", async () => {
+          const result = await run(
+            GroupByType.CATEGORY,
+            groceries,
+            MetricType.AVERAGE,
+          );
+
+          expect(result.data[0].value).toBe(145);
+        });
+
+        it("converts the lines of a split transaction", async () => {
+          const split = jpy("tx-3", -10000, {
+            isSplit: true,
+            splits: [
+              { id: "s1", amount: -10000, categoryId: "cat-1", tags: [] },
+            ],
+          });
+          const result = await run(GroupByType.CATEGORY, [split]);
+
+          expect(result.summary.total).toBe(90);
+        });
+      });
+
+      describe("without a rate", () => {
+        it("withholds the total and names the currency, by category", async () => {
+          const result = await run(GroupByType.CATEGORY, groceries);
+
+          expect(result.data).toHaveLength(1);
+          expect(result.data[0].value).toBe(200);
+          expect(result.summary.total).toBeNull();
+          expect(result.summary.knownTotal).toBe(200);
+          expect(result.missingCurrencies).toEqual(["JPY"]);
+          expect(result.excludedCount).toBe(1);
+          expect(result.currency).toBe("CAD");
+        });
+
+        it("withholds the total with no grouping", async () => {
+          const result = await run(GroupByType.NONE, groceries);
+
+          expect(result.data[0].value).toBe(200);
+          expect(result.data[0].count).toBe(1);
+          expect(result.summary.total).toBeNull();
+          expect(result.summary.knownTotal).toBe(200);
+        });
+
+        it("leaves the unconverted row out of the listing", async () => {
+          const result = await run(
+            GroupByType.NONE,
+            groceries,
+            MetricType.NONE,
+          );
+
+          expect(result.data).toHaveLength(1);
+          expect(result.data[0].value).toBe(200);
+          expect(result.summary.total).toBeNull();
+          expect(result.excludedCount).toBe(1);
+        });
+
+        it("withholds the total by payee", async () => {
+          const result = await run(GroupByType.PAYEE, groceries);
+
+          expect(result.data[0].value).toBe(200);
+          expect(result.summary.total).toBeNull();
+          expect(result.missingCurrencies).toEqual(["JPY"]);
+        });
+
+        it("withholds the total by tag, counting a row once", async () => {
+          const tags = [
+            { id: "tag-1", name: "A", color: null },
+            { id: "tag-2", name: "B", color: null },
+          ];
+          const result = await run(GroupByType.TAG, [
+            cad("tx-1", -200),
+            jpy("tx-2", -10000, { tags }),
+          ]);
+
+          expect(result.summary.total).toBeNull();
+          expect(result.excludedCount).toBe(1);
+          expect(result.missingCurrencies).toEqual(["JPY"]);
+        });
+
+        it("withholds the total by month", async () => {
+          const result = await run(GroupByType.MONTH, groceries);
+
+          expect(result.data[0].value).toBe(200);
+          expect(result.summary.total).toBeNull();
+          expect(result.summary.knownTotal).toBe(200);
+        });
+
+        it("counts every row for the count metric", async () => {
+          const result = await run(
+            GroupByType.CATEGORY,
+            groceries,
+            MetricType.COUNT,
+          );
+
+          expect(result.data[0].value).toBe(2);
+          expect(result.summary.total).toBe(2);
+        });
+
+        it("leaves a zero amount in without a rate", async () => {
+          const result = await run(GroupByType.CATEGORY, [
+            cad("tx-1", -200),
+            jpy("tx-2", 0),
+          ]);
+
+          expect(result.summary.total).toBe(200);
+          expect(result.excludedCount).toBe(0);
+        });
+      });
+
+      it("reports an empty result as zero, not unknown", async () => {
+        const result = await run(GroupByType.CATEGORY, []);
+
+        expect(result.summary.total).toBe(0);
+        expect(result.summary.knownTotal).toBe(0);
+        expect(result.missingCurrencies).toEqual([]);
+        expect(result.excludedCount).toBe(0);
+      });
+
+      it("needs no rate for the reporting currency itself", async () => {
+        const result = await run(GroupByType.CATEGORY, [cad("tx-1", -200)]);
+
+        expect(result.summary.total).toBe(200);
+      });
+
+      it("resolves the currency and rates once per execution", async () => {
+        rateMap.set("JPY->CAD", 0.009);
+        await run(GroupByType.CATEGORY, groceries);
+
+        expect(mockCurrencyService.getDefaultCurrency).toHaveBeenCalledTimes(1);
+        expect(mockCurrencyService.buildRateMap).toHaveBeenCalledTimes(1);
       });
     });
 

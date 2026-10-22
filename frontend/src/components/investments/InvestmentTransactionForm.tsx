@@ -54,7 +54,7 @@ import {
   supportsAccruedInterest,
 } from '@/lib/investment-actions';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
-import { useExchangeRates } from '@/hooks/useExchangeRates';
+import { exchangeRatesApi } from '@/lib/exchange-rates';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { createLogger } from '@/lib/logger';
 import { useFormSubmitRef } from '@/hooks/useFormSubmitRef';
@@ -436,7 +436,6 @@ function InvestmentTransactionFormFields({
     watchedSplitOldShares > 0 ? watchedSplitNewShares / watchedSplitOldShares : 0;
 
   const allAccountsSource = allAccounts || accounts;
-  const { getRate: getMarketRate } = useExchangeRates();
 
   // Derive currency from selected account
   const accountCurrency = useMemo(() => {
@@ -610,57 +609,80 @@ function InvestmentTransactionFormFields({
     watchedAccruedInterest,
   ]);
 
-  // Auto-fill the exchange rate with the latest market rate whenever the
-  // currency pair changes, unless the user is editing an existing transaction
-  // (in which case we keep the stored rate) or has manually edited the field.
+  // Set when the person types the rate (or the converted total it derives
+  // from). A typed rate survives a pair or date change; a prefilled one does
+  // not, because it answered a different question.
+  const rateEditedRef = useRef(false);
+
+  // Editing keeps the stored rate on load. `undefined` until the first run that
+  // can ask; then the pair-and-day key the stored rate belongs to, or `null`
+  // once it has been left (a different pair or day asks again).
+  const keptRateKeyRef = useRef<string | null | undefined>(undefined);
+  const hasStoredRate =
+    !!transaction && !!transaction.exchangeRate && transaction.exchangeRate !== 1;
+
+  // When the currencies match there is nothing to convert: keep the rate at 1
+  // so the backend falls back cleanly.
   //
   // Wait until securities have loaded before running: otherwise, when editing
   // an existing cross-currency transaction, the security isn't in the list
   // yet so transactionCurrency falls back to the account currency, making
   // needsConversion transiently false. Without this guard we'd clobber the
-  // stored exchangeRate to 1 here, then replace it with the market default
-  // on the next render after securities finish loading.
+  // stored exchangeRate to 1 here.
   useEffect(() => {
-    if (!securitiesLoaded) return;
-    if (!needsConversion) {
-      // When no conversion is needed, keep the rate at 1 implicitly so the
-      // backend falls back cleanly.
-      if (watchedExchangeRate !== 1) {
-        setValue('exchangeRate', 1, { shouldDirty: false });
-      }
-      return;
+    if (!securitiesLoaded || needsConversion) return;
+    if (watchedExchangeRate !== 1) {
+      setValue('exchangeRate', 1, { shouldDirty: false });
     }
-    // If form already has a non-default rate (either from editing or user
-    // input), don't clobber it.
-    if (watchedExchangeRate && watchedExchangeRate !== 1) {
-      return;
+    rateEditedRef.current = false;
+  }, [securitiesLoaded, needsConversion, watchedExchangeRate, setValue]);
+
+  // Prefill the exchange rate with the rate for the TRADE DATE (INV-FX-001),
+  // never the latest: a BUY dated 2025-01-02 entered today commits the 2025-01-02
+  // rate. Keyed on pair and date, so a date change asks again unless the person
+  // typed a rate. The answer is adopted only while its key is still the current
+  // one (the cleanup cancels a superseded request), and a null answer or a failed
+  // request leaves the field unresolved -- 0, which blocks the commit -- rather
+  // than falling back to the latest rate.
+  useEffect(() => {
+    if (!securitiesLoaded || !needsConversion) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(watchedTransactionDate)) return;
+    if (rateEditedRef.current) return;
+    const rateKey = `${transactionCurrency}->${cashCurrency}@${watchedTransactionDate}`;
+    if (keptRateKeyRef.current === undefined) {
+      keptRateKeyRef.current = hasStoredRate ? rateKey : null;
     }
-    const marketRate = getMarketRate(transactionCurrency, cashCurrency);
-    if (marketRate && marketRate !== 1) {
-      // Rates are NUMERIC(20,10) and every conversion multiplies at that
-      // precision; six is what the field *shows*. Rounding the stored value to
-      // six made the persisted rate disagree with the quote it came from.
-      setValue('exchangeRate', roundFxRate(marketRate), {
-        shouldDirty: false,
+    if (keptRateKeyRef.current === rateKey) return;
+    keptRateKeyRef.current = null;
+    let cancelled = false;
+    // The old answer belonged to another pair or day; do not leave it standing
+    // while the new one is in flight.
+    setValue('exchangeRate', 0, { shouldDirty: false });
+    exchangeRatesApi
+      .getRateForDate(transactionCurrency, cashCurrency, watchedTransactionDate)
+      .then((rate) => {
+        if (cancelled || rateEditedRef.current) return;
+        if (rate && rate > 0) {
+          // Rates are NUMERIC(20,10) and every conversion multiplies at that
+          // precision; six is what the field *shows*.
+          setValue('exchangeRate', roundFxRate(rate), { shouldDirty: false });
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        logger.error('Failed to load the exchange rate for the trade date:', error);
       });
-      return;
-    }
-    // Nothing resolved. The 1 this field carries is the one the branch above
-    // wrote while the currencies still matched -- it means "no conversion", not
-    // "the rate is one", and leaving it here is what let a cross-currency trade
-    // preview at 1:1. Clear it so the state reads as unknown and the commit is
-    // blocked until a rate is supplied.
-    if (watchedExchangeRate !== 0) {
-      setValue('exchangeRate', 0, { shouldDirty: false });
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [
     securitiesLoaded,
     needsConversion,
     transactionCurrency,
     cashCurrency,
-    getMarketRate,
+    watchedTransactionDate,
+    hasStoredRate,
     setValue,
-    watchedExchangeRate,
   ]);
 
   /**
@@ -728,6 +750,7 @@ function InvestmentTransactionFormFields({
     if (!needsConversion || totalAmount === 0) return;
     if (value === undefined || value === null) return;
     const newRate = roundToDecimals(value / totalAmount, 10);
+    rateEditedRef.current = true;
     setValue('exchangeRate', newRate, { shouldDirty: true, shouldValidate: true });
   };
 
@@ -1717,6 +1740,7 @@ function InvestmentTransactionFormFields({
                 ) {
                   return;
                 }
+                rateEditedRef.current = true;
                 setValue('exchangeRate', incoming, {
                   shouldDirty: true,
                   shouldValidate: true,

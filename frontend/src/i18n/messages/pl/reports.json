@@ -1851,6 +1851,10 @@
   "foreignCurrencyFees": {
     "noEligibleAccounts": "Żadne konto nie ma skonfigurowanej opłaty za transakcje zagraniczne. Ustaw procent opłaty na koncie, aby śledzić tutaj jego opłaty za transakcje w obcej walucie."
   },
+  "partialData": {
+    "notice": "Niektóre wartości są częściowe: {count, plural, one {# kwoty nie udało się przeliczyć na {displayCurrency} i została pominięta} few {# kwot nie udało się przeliczyć na {displayCurrency} i zostały pominięte} many {# kwot nie udało się przeliczyć na {displayCurrency} i zostały pominięte} other {# kwoty nie udało się przeliczyć na {displayCurrency} i zostały pominięte}}. Brak kursu dla {currencies}; dodaj go na stronie Waluty.",
+    "noticeExcluded": "Niektóre wartości są częściowe: {count, plural, one {# kwoty nie udało się obliczyć i została pominięta} few {# kwot nie udało się obliczyć i zostały pominięte} many {# kwot nie udało się obliczyć i zostały pominięte} other {# kwoty nie udało się obliczyć i zostały pominięte}}."
+  },
   "sankey": {
     "help": "Pieniądze, które wpłynęły, płyną przez środek do tego, na co je wydano, co zaoszczędzono lub zainwestowano i co spłaciło długi. Domyślnie raport obejmuje Twoje otwarte konta osobiste, oszczędnościowe, gotówkowe, karty kredytowe i linie kredytowe, a przelew między dwoma z nich nie jest pokazywany. Usuń konto oszczędnościowe z filtra kont, aby zobaczyć, co na nie przelałeś. Spłata karty kredytowej nigdy nie jest spłatą długu: zakupy, które rozlicza, są już liczone jako wydatki.",
     "depthLabel": "Szczegółowość",

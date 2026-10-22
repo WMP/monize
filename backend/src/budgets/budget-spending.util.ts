@@ -2,6 +2,11 @@ import { Repository, SelectQueryBuilder } from "typeorm";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { BudgetCategory } from "./entities/budget-category.entity";
+import { FxAggregate } from "../common/fx-aggregate";
+import {
+  buildRateIndex,
+  convertAtDate,
+} from "../common/time-series/rate-index.util";
 
 /**
  * A transfer a budget (or a transfer analysis) counts arrives in one of two
@@ -93,9 +98,42 @@ export function outgoingSplitTransfers(
   return qb;
 }
 
+/** What `queryCategorySpending` returns: converted sums plus what is unknown. */
+export interface CategorySpending {
+  /** categoryId -> signed net sum of the rows that converted, in `currency`. */
+  spendingMap: Map<string, number>;
+  /** destination accountId -> outgoing total of the rows that converted. */
+  transferSpendingMap: Map<string, number>;
+  /** The budget's currency: every figure above is in it. */
+  currency: string;
+  /** Categories with a row that had no rate; their map entry is a subtotal. */
+  incompleteCategoryIds: ReadonlySet<string>;
+  /** Transfer destinations with a row that had no rate. */
+  incompleteTransferAccountIds: ReadonlySet<string>;
+  /** `"JPY->CAD"` for each pair with no admissible rate, sorted. */
+  missingRatePairs: string[];
+}
+
+interface SpendingRow {
+  key: string;
+  currencyCode: string;
+  txDate: string;
+  total: string | null;
+}
+
 /**
- * Queries transaction and split spending for budget categories within a period.
+ * Queries transaction and split spending for budget categories within a period,
+ * converted into the budget's currency (INV-FX-001, "convert before summing").
  * Returns maps of categoryId -> totalSpent and transferAccountId -> totalSpent.
+ *
+ * Each row is converted at the rate of its own transaction date (the newest
+ * observation on or before that date within the age bound), so a month's figure
+ * does not move when a later rate is stored. A row with no admissible rate is
+ * left out of the map's subtotal and its key is reported in the incomplete sets
+ * with the pair in `missingRatePairs`; it is never added at rate 1. The
+ * `*OrNull` resolver turns an incomplete key into `null`. The callers
+ * switching to that resolver (budget page `spent: number | null`, alerts
+ * skipping an unknown line, period close) is owned by the budgets stream.
  *
  * Shared between BudgetsService and BudgetAlertService to avoid duplication.
  */
@@ -106,24 +144,50 @@ export async function queryCategorySpending(
   budgetCategories: BudgetCategory[],
   periodStart: string,
   periodEnd: string,
-): Promise<{
-  spendingMap: Map<string, number>;
-  transferSpendingMap: Map<string, number>;
-}> {
+): Promise<CategorySpending> {
+  const spendingMap = new Map<string, number>();
+  const transferSpendingMap = new Map<string, number>();
+  const incompleteCategoryIds = new Set<string>();
+  const incompleteTransferAccountIds = new Set<string>();
+
+  // No line, no amount to convert and no budget to name a currency from.
+  if (budgetCategories.length === 0) {
+    return {
+      spendingMap,
+      transferSpendingMap,
+      currency: "",
+      incompleteCategoryIds,
+      incompleteTransferAccountIds,
+      missingRatePairs: [],
+    };
+  }
+
+  const manager = transactionsRepository.manager;
+  const budgetRows: Array<{ currency_code: string }> = await manager.query(
+    "SELECT currency_code FROM budgets WHERE id = $1",
+    [budgetCategories[0].budgetId],
+  );
+  const currency = budgetRows[0]?.currency_code ?? "";
+
   const categoryIds = budgetCategories
     .filter((bc) => bc.categoryId !== null)
     .map((bc) => bc.categoryId as string);
-
-  const spendingMap = new Map<string, number>();
-  const transferSpendingMap = new Map<string, number>();
   const transferBudgetCategories = budgetCategories.filter(
     (bc) => bc.isTransfer && bc.transferAccountId,
   );
 
+  // Every query groups by currency and transaction date as well as by key, so
+  // each group is one currency on one day and converts at one rate.
+  const dateExpr = "TO_CHAR(t.transaction_date, 'YYYY-MM-DD')";
+  const categoryRows: SpendingRow[] = [];
+  const transferRows: SpendingRow[] = [];
+
   if (categoryIds.length > 0) {
     const directRows = await transactionsRepository
       .createQueryBuilder("t")
-      .select("t.category_id", "categoryId")
+      .select("t.category_id", "key")
+      .addSelect("t.currency_code", "currencyCode")
+      .addSelect(dateExpr, "txDate")
       .addSelect("COALESCE(SUM(t.amount), 0)", "total")
       .where("t.user_id = :userId", { userId })
       .andWhere("t.category_id IN (:...categoryIds)", { categoryIds })
@@ -132,15 +196,17 @@ export async function queryCategorySpending(
       .andWhere("t.status != :void", { void: "VOID" })
       .andWhere("t.is_split = false")
       .groupBy("t.category_id")
+      .addGroupBy("t.currency_code")
+      .addGroupBy("t.transaction_date")
       .getRawMany();
-    for (const row of directRows) {
-      spendingMap.set(row.categoryId, parseFloat(row.total || "0"));
-    }
+    categoryRows.push(...directRows);
 
     const splitRows = await splitsRepository
       .createQueryBuilder("s")
       .innerJoin("s.transaction", "t")
-      .select("s.category_id", "categoryId")
+      .select("s.category_id", "key")
+      .addSelect("t.currency_code", "currencyCode")
+      .addSelect(dateExpr, "txDate")
       .addSelect("COALESCE(SUM(s.amount), 0)", "total")
       .where("t.user_id = :userId", { userId })
       .andWhere("s.category_id IN (:...categoryIds)", { categoryIds })
@@ -148,11 +214,10 @@ export async function queryCategorySpending(
       .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
       .andWhere("t.status != :void", { void: "VOID" })
       .groupBy("s.category_id")
+      .addGroupBy("t.currency_code")
+      .addGroupBy("t.transaction_date")
       .getRawMany();
-    for (const row of splitRows) {
-      const existing = spendingMap.get(row.categoryId) || 0;
-      spendingMap.set(row.categoryId, existing + parseFloat(row.total || "0"));
-    }
+    categoryRows.push(...splitRows);
   }
 
   if (transferBudgetCategories.length > 0) {
@@ -164,35 +229,97 @@ export async function queryCategorySpending(
         (bc) => bc.transferAccountId as string,
       ),
     };
-    const collect = (
-      rows: Array<{ destinationAccountId: string; total: string }>,
-    ) => {
-      for (const row of rows) {
-        transferSpendingMap.set(
-          row.destinationAccountId,
-          (transferSpendingMap.get(row.destinationAccountId) ?? 0) +
-            parseFloat(row.total || "0"),
-        );
-      }
-    };
 
-    collect(
-      await outgoingParentTransfers(transactionsRepository, window)
-        .select(PARENT_TRANSFER_DESTINATION, "destinationAccountId")
+    transferRows.push(
+      ...(await outgoingParentTransfers(transactionsRepository, window)
+        .select(PARENT_TRANSFER_DESTINATION, "key")
+        .addSelect("t.currency_code", "currencyCode")
+        .addSelect(dateExpr, "txDate")
         .addSelect(`COALESCE(ABS(SUM(${PARENT_TRANSFER_AMOUNT})), 0)`, "total")
         .groupBy(PARENT_TRANSFER_DESTINATION)
-        .getRawMany(),
+        .addGroupBy("t.currency_code")
+        .addGroupBy("t.transaction_date")
+        .getRawMany()),
     );
-    collect(
-      await outgoingSplitTransfers(splitsRepository, window)
-        .select(SPLIT_TRANSFER_DESTINATION, "destinationAccountId")
+    transferRows.push(
+      ...(await outgoingSplitTransfers(splitsRepository, window)
+        .select(SPLIT_TRANSFER_DESTINATION, "key")
+        .addSelect("t.currency_code", "currencyCode")
+        .addSelect(dateExpr, "txDate")
         .addSelect(`COALESCE(ABS(SUM(${SPLIT_TRANSFER_AMOUNT})), 0)`, "total")
         .groupBy(SPLIT_TRANSFER_DESTINATION)
-        .getRawMany(),
+        .addGroupBy("t.currency_code")
+        .addGroupBy("t.transaction_date")
+        .getRawMany()),
     );
   }
 
-  return { spendingMap, transferSpendingMap };
+  const foreignCurrencies = new Set<string>();
+  for (const row of [...categoryRows, ...transferRows]) {
+    if (row.currencyCode !== currency) foreignCurrencies.add(row.currencyCode);
+  }
+  const rateIndex = await buildRateIndex(
+    (sql, params) => manager.query(sql, params),
+    foreignCurrencies,
+    currency,
+    periodStart,
+    periodEnd,
+  );
+
+  const fold = (
+    rows: SpendingRow[],
+  ): { totals: Map<string, FxAggregate>; pairs: Set<string> } => {
+    const totals = new Map<string, FxAggregate>();
+    const pairs = new Set<string>();
+    for (const row of rows) {
+      let agg = totals.get(row.key);
+      if (!agg) {
+        agg = new FxAggregate();
+        totals.set(row.key, agg);
+      }
+      const amount = parseFloat(row.total || "0");
+      // Same currency needs no rate, and neither does zero: a foreign group
+      // that nets to nothing moves the category by nothing.
+      if (row.currencyCode === currency || amount === 0) {
+        agg.addConverted(amount);
+        continue;
+      }
+      const converted = convertAtDate(
+        amount,
+        row.currencyCode,
+        currency,
+        row.txDate,
+        rateIndex,
+      );
+      agg.add(converted, row.currencyCode, currency);
+    }
+    for (const agg of totals.values()) {
+      for (const pair of agg.missingPairs) pairs.add(pair);
+    }
+    return { totals, pairs };
+  };
+
+  const categories = fold(categoryRows);
+  for (const [key, agg] of categories.totals) {
+    spendingMap.set(key, agg.knownSubtotal);
+    if (!agg.isComplete) incompleteCategoryIds.add(key);
+  }
+  const transfers = fold(transferRows);
+  for (const [key, agg] of transfers.totals) {
+    transferSpendingMap.set(key, agg.knownSubtotal);
+    if (!agg.isComplete) incompleteTransferAccountIds.add(key);
+  }
+
+  return {
+    spendingMap,
+    transferSpendingMap,
+    currency,
+    incompleteCategoryIds,
+    incompleteTransferAccountIds,
+    missingRatePairs: [
+      ...new Set([...categories.pairs, ...transfers.pairs]),
+    ].sort(),
+  };
 }
 
 /** Resolves the display name for a budget category. */
@@ -218,6 +345,9 @@ export function resolveCategoryName(bc: BudgetCategory): string {
  *     exceed income.
  *   - Transfers: already filtered to outgoing (amount < 0), returned as a
  *     positive value by the query.
+ *
+ * The figure is the KNOWN converted part: a row with no exchange rate is not in
+ * it. A caller that can show "unknown" uses `resolveCategorySpentOrNull`.
  */
 export function resolveCategorySpent(
   bc: BudgetCategory,
@@ -229,4 +359,26 @@ export function resolveCategorySpent(
   }
   const raw = bc.categoryId ? spendingMap.get(bc.categoryId) || 0 : 0;
   return bc.isIncome ? Math.max(raw, 0) : Math.max(-raw, 0);
+}
+
+/**
+ * `resolveCategorySpent` for a caller that can show "unknown": `null` when a
+ * row of this line had no rate to the budget currency (a partial sum is not the
+ * line's spent), otherwise the same clamped value.
+ */
+export function resolveCategorySpentOrNull(
+  bc: BudgetCategory,
+  spending: CategorySpending,
+): number | null {
+  const incomplete =
+    bc.isTransfer && bc.transferAccountId
+      ? spending.incompleteTransferAccountIds.has(bc.transferAccountId)
+      : bc.categoryId !== null &&
+        spending.incompleteCategoryIds.has(bc.categoryId);
+  if (incomplete) return null;
+  return resolveCategorySpent(
+    bc,
+    spending.spendingMap,
+    spending.transferSpendingMap,
+  );
 }

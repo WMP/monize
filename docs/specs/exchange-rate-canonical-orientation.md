@@ -209,7 +209,12 @@ which is the error the existing price dedupe exists to avoid.
 - The client rate map (`frontend/src/hooks/useExchangeRates.ts`) and the
   server-side map in `backend/src/built-in-reports/report-currency.service.ts`
   already fall back to the inverse key, so receiving one orientation per pair
-  needs no change in either. Coverage `observations` counts distinct dates and
+  needs no change in either. (Correction, audit A26-H11: they fall back only
+  when the direct key is absent, and a database upgraded from before this
+  release still holds the frozen mirror row, so both took it over the fresh
+  canonical row. `ExchangeRateService.getLatestRates` now answers one row per
+  pair, the newer direction inside `FX_MAX_RATE_AGE_DAYS`, and the client map
+  keeps the newer orientation and drops a row older than the bound.) Coverage `observations` counts distinct dates and
   is unchanged; so is the day count a history extension reports.
 
 ## 9. Staging

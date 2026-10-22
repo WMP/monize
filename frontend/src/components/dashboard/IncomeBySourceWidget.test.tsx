@@ -49,4 +49,18 @@ describe('IncomeBySourceWidget', () => {
     await renderWidget();
     expect(screen.getByText('No income in this period.')).toBeInTheDocument();
   });
+
+  it('marks the total a subtotal when an income row was left out', async () => {
+    getIncomeBySource.mockResolvedValue({
+      data: [{ categoryId: 'c1', categoryName: 'Salary', color: null, total: 50 }],
+      totalIncome: null,
+      knownIncome: 50,
+      currency: 'CAD',
+      missingCurrencies: ['JPY'],
+      excludedCount: 1,
+    });
+    await renderWidget();
+    expect(screen.getByTestId('partial-total')).toHaveTextContent('$50');
+    expect(screen.queryByText('$0')).not.toBeInTheDocument();
+  });
 });
