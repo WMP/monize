@@ -116,8 +116,8 @@ describe("currencies module RLS context smoke (real withScopedDb)", () => {
     // Called with no ambient scope at all (no interceptor, no wrapper): the real
     // withScopedDb must throw, proving the smokes above pass because of the
     // wrappers and not because the check is inert.
-    await expect(service.ensureSystemCurrency("USD")).rejects.toThrow(
-      "DB access outside request/user/system context",
-    );
+    await expect(
+      service.ensureCurrencyForUser("user-1", "USD"),
+    ).rejects.toThrow("DB access outside request/user/system context");
   });
 });

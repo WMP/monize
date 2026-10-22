@@ -263,7 +263,7 @@ function InvestmentTransactionFormFields({
     REDEEM: t('transactionForm.actionRedeem'),
     RETURN_OF_CAPITAL: t('transactionForm.actionReturnOfCapital'),
   };
-  const { defaultCurrency, formatCurrency } = useNumberFormat();
+  const { defaultCurrency, formatCurrency, formatShareQuantity, formatPrice } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const [isLoading, setIsLoading] = useState(false);
   // What the submit button does once a *new* transaction has been created.
@@ -1535,7 +1535,7 @@ function InvestmentTransactionFormFields({
           <div className="text-xs text-gray-600 dark:text-gray-400">
             {t('transactionForm.splitRatioHelp')}{' '}
             <span className="font-mono font-semibold text-gray-800 dark:text-gray-200">
-              {splitRatio > 0 ? splitRatio.toFixed(6) : '–'}
+              {splitRatio > 0 ? formatPrice(splitRatio) : '–'}
             </span>
           </div>
           <NumericInput
@@ -1555,24 +1555,22 @@ function InvestmentTransactionFormFields({
               <div>
                 {t('transactionForm.holdingPreviewBefore', { date: formatDate(watchedTransactionDate) })}{' '}
                 <span className="font-mono">
-                  {splitPreview.currentQty.toFixed(4)}
+                  {formatShareQuantity(splitPreview.currentQty)}
                 </span>{' '}
                 {t('transactionForm.holdingPreviewShares')}{' '}
                 <span className="font-mono">
-                  {currencySymbol}
-                  {splitPreview.currentAvg.toFixed(4)}
+                  {formatCurrency(splitPreview.currentAvg, transactionCurrency, 4)}
                 </span>{' '}
                 {t('transactionForm.holdingPreviewAvgCost')}
               </div>
               <div>
                 {t('transactionForm.holdingPreviewAfter')}{' '}
                 <span className="font-mono">
-                  {splitPreview.newQty.toFixed(4)}
+                  {formatShareQuantity(splitPreview.newQty)}
                 </span>{' '}
                 {t('transactionForm.holdingPreviewShares')}{' '}
                 <span className="font-mono">
-                  {currencySymbol}
-                  {splitPreview.newAvg.toFixed(4)}
+                  {formatCurrency(splitPreview.newAvg, transactionCurrency, 4)}
                 </span>{' '}
                 {t('transactionForm.holdingPreviewAvgCost')}
               </div>
@@ -1620,6 +1618,8 @@ function InvestmentTransactionFormFields({
               min={0}
               error={errors.quantity?.message}
             />
+            {/* Read-only: the server carries the basis the source held on the
+                transfer date and ignores a figure sent from here (A26-M22). */}
             <NumericInput
               label={t('transactionForm.costPerShare', { currency: transactionCurrency })}
               prefix={currencySymbol}
@@ -1627,6 +1627,7 @@ function InvestmentTransactionFormFields({
               onChange={(value) => setValue('price', value, { shouldValidate: true })}
               decimalPlaces={6}
               min={0}
+              disabled
               error={errors.price?.message}
             />
           </div>
@@ -1635,12 +1636,13 @@ function InvestmentTransactionFormFields({
               <div className="rounded border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                 {t('transactionForm.sourceHolds')}{' '}
                 <span className="font-mono">
-                  {Number(selectedTransferHolding.quantity).toFixed(4)}
+                  {formatShareQuantity(Number(selectedTransferHolding.quantity))}
                 </span>{' '}
                 {t('transactionForm.sharesAt')}{' '}
                 <span className="font-mono">
-                  {currencySymbol}
-                  {Number(selectedTransferHolding.averageCost ?? 0).toFixed(4)}
+                  {selectedTransferHolding.averageCost == null
+                    ? '–'
+                    : formatCurrency(Number(selectedTransferHolding.averageCost), transactionCurrency, 4)}
                 </span>{' '}
                 {t('transactionForm.avgCostSuffix')}
               </div>
@@ -1813,7 +1815,7 @@ function InvestmentTransactionFormFields({
           )}
           {needsQuantityPrice && (
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {t('transactionForm.sharesAtPrice', { shares: watchedQuantity, symbol: currencySymbol, price: watchedPrice.toFixed(6) })}
+              {t('transactionForm.sharesAtPrice', { shares: formatShareQuantity(watchedQuantity), symbol: currencySymbol, price: formatPrice(watchedPrice) })}
               {watchedCommission > 0 && ` ${baseInvestmentAction(watchedAction) === 'SELL' ? '-' : '+'} ${formatCurrency(watchedCommission, transactionCurrency)} ${t('transactionForm.commissionSuffix')}`}
               {supportsAccruedInterest(watchedAction) && watchedAccruedInterest > 0 &&
                 ` + ${formatCurrency(watchedAccruedInterest, transactionCurrency)} ${t('transactionForm.accruedInterestSuffix')}`}

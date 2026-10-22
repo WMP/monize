@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, one {{days} दिन शेष} other {{days} दिन शेष}}",
     "today": "आज समाप्त",
-    "ago": "{count, plural, one {{days} दिन पहले समाप्त} other {{days} दिन पहले समाप्त}}"
+    "ago": "{count, plural, one {{days} दिन पहले समाप्त} other {{days} दिन पहले समाप्त}}",
+    "leftYears": "{yearsCount, plural, one {{years} वर्ष} other {{years} वर्ष}}, {daysCount, plural, one {{days} दिन} other {{days} दिन}} शेष",
+    "agoYears": "{yearsCount, plural, one {{years} वर्ष} other {{years} वर्ष}}, {daysCount, plural, one {{days} दिन} other {{days} दिन}} पहले समाप्त"
   },
   "kind": {
     "manufacturer": "निर्माता",

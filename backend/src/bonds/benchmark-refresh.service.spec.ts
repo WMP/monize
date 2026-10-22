@@ -9,6 +9,7 @@ import { todayInTimezone } from "../common/date-utils";
 import { BenchmarkRefreshService } from "./benchmark-refresh.service";
 import { SeriesHttp } from "./series-http";
 import { BondCatalogService } from "./bond-catalog.service";
+import { BondPriceService } from "./bond-price.service";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -33,12 +34,17 @@ function build(opts: {
   fetchers?: Record<string, jest.Mock>;
   /** Warsaw date of each series' last successful fetch; null: never fetched. */
   fetched?: Record<string, string | null>;
-  /** What the correction-trace statement returns (rows that replaced a value). */
+  /**
+   * What the upsert statement returns: the rows it wrote, a NULL old_value for
+   * an inserted one, the replaced value for a correction.
+   */
   corrections?: Array<{
     observation_date: string;
-    old_value: string;
+    old_value: string | null;
     new_value: string;
   }>;
+  /** The stored series whose newest terms read a changed code. */
+  instruments?: string[];
   health?: Partial<Record<keyof ProviderHealthService, jest.Mock>>;
   /** The benchmarks a stored series reads (the one-query answer); default both. */
   read?: string[];
@@ -79,6 +85,10 @@ function build(opts: {
   const writes: Array<{ sql: string; params: unknown[] }> = [];
   const reads: Array<{ sql: string; params: unknown[] }> = [];
   manager.query.mockImplementation(async (sql: string, params: unknown[]) => {
+    if (sql.includes("SELECT i.id")) {
+      reads.push({ sql, params });
+      return (opts.instruments ?? ["inst-1"]).map((id) => ({ id }));
+    }
     if (sql.includes("FROM bond_instruments i")) {
       reads.push({ sql, params });
       return (opts.read ?? ["NBP_X", "CPI_X"]).map((code) => ({ code }));
@@ -112,12 +122,16 @@ function build(opts: {
     ),
   };
   const catalog = { seedBenchmarkSeries: jest.fn(async () => undefined) };
+  const prices = {
+    recomputeLinkedSecuritiesOfSeries: jest.fn(async () => undefined),
+  };
   const service = new BenchmarkRefreshService(
     dataSource as unknown as DataSource,
     health as unknown as ProviderHealthService,
     fetchSync as unknown as FetchSyncService,
     catalog as unknown as BondCatalogService,
     new SeriesHttp(health as unknown as ProviderHealthService),
+    prices as unknown as BondPriceService,
   );
   return {
     service,
@@ -129,6 +143,7 @@ function build(opts: {
     fetchSync,
     catalog,
     manager,
+    prices,
   };
 }
 
@@ -217,11 +232,15 @@ describe("BenchmarkRefreshService", () => {
         600000,
         expect.any(Function),
       );
-      expect(refresh).toHaveBeenCalledWith({ only: new Set(["CPI_X"]) });
+      expect(refresh).toHaveBeenCalledWith({
+        only: new Set(["CPI_X"]),
+        changed: expect.any(Set),
+      });
       await service.refreshNeverFetched(["inst-1"], { fetch: jest.fn() });
       expect(refresh).toHaveBeenLastCalledWith({
         fetch: expect.any(Function),
         only: new Set(["CPI_X"]),
+        changed: expect.any(Set),
       });
     });
 
@@ -649,11 +668,103 @@ describe("BenchmarkRefreshService", () => {
     const { service, fetchSync } = build({});
     const refresh = jest.spyOn(service, "refreshAll").mockResolvedValue();
     await service.scheduledRefresh();
-    expect(refresh).toHaveBeenLastCalledWith();
+    expect(refresh).toHaveBeenLastCalledWith({ changed: expect.any(Set) });
     service.onApplicationBootstrap();
     await new Promise((r) => setImmediate(r));
-    expect(refresh).toHaveBeenLastCalledWith({ onlyStale: true });
+    expect(refresh).toHaveBeenLastCalledWith({
+      onlyStale: true,
+      changed: expect.any(Set),
+    });
     expect(fetchSync.withLease).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * A26-L22 (A26-S14-03), INV-CACHE-001: an observation stored outside the
+   * 06:25 run (the boot warm-up, the refresh after a stored series) left the
+   * engine prices without it until the next 06:45 recompute, up to a weekend.
+   */
+  describe("the recompute after a store", () => {
+    /** The cron and the warm-up refresh the installed adapters; use the fake. */
+    const onFakeAdapter = (
+      service: BenchmarkRefreshService,
+      adapter: BondAdapter,
+    ) => {
+      const original = service.refreshAll.bind(service);
+      jest
+        .spyOn(service, "refreshAll")
+        .mockImplementation((options = {}) =>
+          original({ ...options, adapters: [adapter] }),
+        );
+    };
+
+    it("recomputes the series reading a code whose observation was inserted, after the store", async () => {
+      const { service, adapter, prices, writes, reads } = build({
+        read: ["CPI_X"],
+        corrections: [
+          {
+            observation_date: "2026-08-01",
+            old_value: null,
+            new_value: "0.0340000000",
+          },
+        ],
+        instruments: ["inst-edo"],
+      });
+      prices.recomputeLinkedSecuritiesOfSeries.mockImplementation(async () => {
+        // Dispatched after the store committed: the coverage write has run.
+        expect(
+          writes.some((w) => w.sql.includes("UPDATE benchmark_series")),
+        ).toBe(true);
+      });
+
+      onFakeAdapter(service, adapter);
+      await service.scheduledRefresh();
+
+      expect(prices.recomputeLinkedSecuritiesOfSeries).toHaveBeenCalledTimes(1);
+      expect(prices.recomputeLinkedSecuritiesOfSeries).toHaveBeenCalledWith([
+        "inst-edo",
+      ]);
+      const lookup = reads.find((r) => r.sql.includes("SELECT i.id"))!;
+      expect(lookup.params).toEqual([["CPI_X"]]);
+    });
+
+    it("recomputes after a correction too, from the boot warm-up", async () => {
+      const { service, adapter, prices } = build({
+        read: ["NBP_X"],
+        corrections: [
+          {
+            observation_date: "2026-08-01",
+            old_value: "0.0340000000",
+            new_value: "0.0350000000",
+          },
+        ],
+      });
+
+      onFakeAdapter(service, adapter);
+      service.onApplicationBootstrap();
+      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => setImmediate(r));
+
+      expect(prices.recomputeLinkedSecuritiesOfSeries).toHaveBeenCalledWith([
+        "inst-1",
+      ]);
+    });
+
+    it("recomputes nothing when the store changed no observation", async () => {
+      const { service, adapter, prices, reads, writes } = build({
+        corrections: [],
+      });
+
+      onFakeAdapter(service, adapter);
+      await service.scheduledRefresh();
+
+      // The run did store: it is the store that changed nothing.
+      expect(
+        writes.some((w) => w.sql.includes("INSERT INTO benchmark_values")),
+      ).toBe(true);
+
+      expect(prices.recomputeLinkedSecuritiesOfSeries).not.toHaveBeenCalled();
+      expect(reads.some((r) => r.sql.includes("SELECT i.id"))).toBe(false);
+    });
   });
 
   it("a failed warm-up is a warning, not a crash", async () => {

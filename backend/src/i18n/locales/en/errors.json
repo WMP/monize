@@ -486,7 +486,8 @@
     "mnyImportAlreadyRunning": "An import is already running. Wait for it to finish before starting another.",
     "mnyAlreadyImported": "This file was already imported on {{ date }} (import {{ jobId }}), and its records are still in your account. Importing it again would duplicate them. To replace them, start over and choose to replace your existing data.",
     "mnyJobNotFound": "Import job not found",
-    "mnyFileTooLarge": "That Money file is larger than the {{ limit }} MB import limit."
+    "mnyFileTooLarge": "That Money file is larger than the {{ limit }} MB import limit.",
+    "noRateForSplitTransfer": "No exchange rate for {{ pair }} on {{ date }}: a split line transfers into an account in another currency. Add an exchange rate for that pair and date, then import again."
   },
   "monteCarlo": {
     "scenarioNotFound": "Scenario {{ id }} not found",
@@ -648,6 +649,7 @@
     "transactionSplitNotFound": "Transaction split {{ splitId }} not found for embedded investment update",
     "parentTransactionNotFound": "Parent transaction {{ transactionId }} not found for embedded investment update",
     "investmentTransactionNotFound": "Investment transaction with ID {{ id }} not found",
+    "investmentTransactionChanged": "This transaction was changed by another request. Reload it and try again.",
     "cannotChangeTransferDirection": "Cannot change the direction of a transfer; delete it and create a new transfer instead",
     "destinationAccountMustBeInvestment": "Destination account must be of type INVESTMENT",
     "transferPairMissing": "This transfer's paired transaction is missing; delete and recreate the transfer instead of editing it",

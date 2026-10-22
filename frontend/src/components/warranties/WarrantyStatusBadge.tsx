@@ -12,11 +12,14 @@ const STATUS_VARIANT: Record<WarrantyStatus, BadgeVariant> = {
   expired: 'red',
 };
 
+/** A year is 365 days here; `daysLeft` is a day count, so no calendar is consulted. */
+const DAYS_PER_YEAR = 365;
+
 type WarrantyStatusFields = Pick<Warranty, 'status' | 'daysLeft'>;
 
 /**
  * The days-left line for a warranty, from the server's `daysLeft`: "12 days
- * left", "Expires today", "Expired 3 days ago", or `null` for a lifetime
+ * left", "3 years, 321 days left" from a year up, "Expires today", "Expired 3 days ago", or `null` for a lifetime
  * warranty (which has no `daysLeft`). Formatting only; whether a warranty is
  * expiring or expired is the server's `status` (WTY-002), and nothing here
  * compares two dates.
@@ -29,6 +32,12 @@ export function useWarrantyDaysLeftText(): (warranty: WarrantyStatusFields) => s
     if (daysLeft === null) return null;
     if (daysLeft === 0) return t('daysLeft.today');
     const count = Math.abs(daysLeft);
+    if (count >= DAYS_PER_YEAR) {
+      const yearsCount = Math.floor(count / DAYS_PER_YEAR);
+      const daysCount = count % DAYS_PER_YEAR;
+      const values = { yearsCount, daysCount, years: formatNumber(yearsCount, 0), days: formatNumber(daysCount, 0) };
+      return daysLeft > 0 ? t('daysLeft.leftYears', values) : t('daysLeft.agoYears', values);
+    }
     const days = formatNumber(count, 0);
     return daysLeft > 0 ? t('daysLeft.left', { count, days }) : t('daysLeft.ago', { count, days });
   };

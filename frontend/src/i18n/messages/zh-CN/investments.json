@@ -266,7 +266,7 @@
     "sourceHolds": "来源持有",
     "sharesAt": "股 @",
     "avgCostSuffix": "平均成本。",
-    "transferCostNote": "每股成本（从来源账户预填）会转移到目标账户，以确保盈亏报表正确。此操作仅移动股份，不涉及现金。",
+    "transferCostNote": "每股成本是这些股份在转出日期于来源账户中的成本。它会在保存时计算并结转到目标账户，确保您的收益和利润报告保持正确。此操作仅转移股份，不涉及现金往来。",
     "returnOfCapitalNote": "资本返还不是收入。它退还的是股票成本的一部分，因此会按此金额降低您持仓的成本基础。超出剩余成本基础的部分将记为已实现资本收益。",
     "totalAmount": "总金额（{currency}）",
     "sharesAtPrice": "{shares} 股 @ {symbol}{price}",

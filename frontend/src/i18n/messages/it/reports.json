@@ -1918,5 +1918,8 @@
       "residualDeficit": "Prelevato dai saldi",
       "unlinkedAccount": "(conto non collegato)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Generato: {timestamp}"
   }
 }

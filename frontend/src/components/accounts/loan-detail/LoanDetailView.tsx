@@ -139,6 +139,13 @@ export function LoanDetailView({
     setLoadedPlanVersion((version) => version + 1);
   }, []);
 
+  // The user's calendar day -- what decides whether the anchor is still ahead
+  // of them. The backend prices the same installment against its own
+  // request-timezone `todayYMD()`, so reading UTC here would put the schedule
+  // table and the bill on two different calendars. It also bounds the history:
+  // a VOID or future-dated row has moved no balance yet (A26-M28).
+  const todayYmd = useFinancialToday();
+
   // Overpayment recognition settings (category / memo / payee) now live in the
   // account edit form, so the `account` prop always carries the saved values.
   const history = useMemo(
@@ -148,15 +155,10 @@ export function LoanDetailView({
         transactions,
         rateChanges,
         interestTransactions,
+        todayYmd,
       ),
-    [account, transactions, rateChanges, interestTransactions],
+    [account, transactions, rateChanges, interestTransactions, todayYmd],
   );
-
-  // The user's calendar day -- what decides whether the anchor is still ahead
-  // of them. The backend prices the same installment against its own
-  // request-timezone `todayYMD()`, so reading UTC here would put the schedule
-  // table and the bill on two different calendars.
-  const todayYmd = useFinancialToday();
 
   // The borrower's real current installment (principal + interest) from the
   // payment history, shown on the summary card and used to seed the projection.

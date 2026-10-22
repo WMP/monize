@@ -266,7 +266,7 @@
     "sourceHolds": "El origen tiene",
     "sharesAt": "acciones @",
     "avgCostSuffix": "costo prom.",
-    "transferCostNote": "El costo por acción (precargado desde la cuenta de origen) se traslada al destino para que tus informes de ganancias sean correctos. Solo mueve acciones — no hay movimiento de efectivo.",
+    "transferCostNote": "El costo por acción es lo que costaron las acciones en la cuenta de origen en la fecha de la transferencia. Se calcula al guardar y se traslada a la cuenta de destino para que sus informes de ganancias y beneficios sigan siendo correctos. Solo se mueven acciones; no cambia de manos ningún efectivo.",
     "returnOfCapitalNote": "Una devolución de capital no es un ingreso. Reembolsa parte de lo que costaron las acciones, por lo que reduce la base de costo de su posición en este importe. Lo que supere la base de costo restante se registra como ganancia de capital realizada.",
     "totalAmount": "Cantidad Total ({currency})",
     "sharesAtPrice": "{shares} acciones @ {symbol}{price}",

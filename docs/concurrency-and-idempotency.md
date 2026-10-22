@@ -448,6 +448,21 @@ itself*, and not against a concurrent delta -- which is CONC-003, and is why
 the account-balance cron appears in the gap register below despite being
 correctly documented as idempotent with respect to re-running.
 
+**A lease outlasts the work it guards, and its holder's writes are fenced by
+its token** (A26-L13). A lease TTL chosen apart from the work let an AI insight
+generation (15-minute lease) and a receipt poll (10-minute lease) run on past
+expiry inside a 20-minute Ollama call, while a second holder started the same
+work and both saved. So a lease around a provider call is sized from
+`PROVIDER_CALL_BUDGET_MS` (`ai/providers/provider-call-budget.ts`, the largest
+provider abort) plus a margin, is renewed while the work runs
+(`JobClaimService.whileLeaseHeld`, every third of the TTL, through
+`renewLease`, which declares the token for the migration-143 trigger), and the
+holder's own write checks `JobClaimService.holdsLease` -- the row `FOR UPDATE`
+with this attempt's token, inside the write's transaction -- before writing, so
+a holder whose lease was retaken writes nothing. A step whose selection is a
+plain read (the receipt poll's parser draft) takes its own claim per key
+(`email_receipt_parser_draft`, per sender domain). `provider-lease-overrun.integration.spec.ts`.
+
 ## 8. Mechanism inventory and gap register
 
 This is the part of the document that goes stale fastest, and the part most
@@ -462,7 +477,7 @@ worth keeping: CONC-003 can only be checked against a list of all writers.
 | `accounts/accounts.service.ts` `update` | `Account` row | Concurrent balance modification |
 | `accounts/accounts.service.ts` `close` | `Account` row | Race between the balance check and the close |
 | `strategies/gem-signal.service.ts` | advisory, per `strategyId` | Materialization interleaving with a settings save |
-| `securities/investment-transactions.service.ts` `create`, `update`, `remove`, `transferSecurity`, `createEmbeddedForSplit` | advisory, per account (`lockHoldingScope`), first statement of the transaction | A ledger write and a rebuild racing on one position, and the lock order that keeps it deadlock-free |
+| `securities/investment-transactions.service.ts` `create`, `update`, `remove`, `transferSecurity`, the transfer edit (`updateLinkedTransfer`), `createEmbeddedForSplit` | advisory, per account (`lockHoldingScope`), first statement of the transaction; `update`, `remove` and the transfer edit then row-lock the rows they read (`lockUnchangedInvestmentRow`) | A ledger write and a rebuild racing on one position, and the lock order that keeps it deadlock-free |
 | `transactions/transaction-reconciliation.service.ts`, `transactions/transaction-bulk-update.service.ts`, `transactions/transactions.service.ts` `update`, `transactions/transaction-split.service.ts` `updateSplits` (split-parent writes) | advisory, per brokerage account (`lockEmbeddedInvestmentScopes`), first statement of the transaction | The embedded rows' rebuild takes the same lock, and an investment write row-locks the same parent after taking it |
 | `import/import.service.ts` | advisory, per investment account (`lockHoldingScope`), first statement of the import transaction | The import's balance writes row-lock `accounts` before `rebuildImportedHoldings` |
 | `transaction-rules/transaction-rules.service.ts` `create`, `update`, `setEnabled`, `remove`, `reorder` | advisory, per user (`lockTransactionRuleList`), first statement of the transaction | Create's `max + 1` position, the per-user cap, delete's compaction and reorder each read the whole rule list before writing it; the deferred unique `(user_id, position)` is the backstop |

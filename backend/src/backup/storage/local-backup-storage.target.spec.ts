@@ -180,30 +180,27 @@ describe("LocalBackupStorageTarget", () => {
   });
 
   describe("removing", () => {
-    it("deletes from the directory the entry was listed in", async () => {
+    it("deletes the user's own entry and never a legacy one", async () => {
       const legacyName = "monize-backup-daily-2026-09-01.json.gz";
       writeFileSync(join(root, legacyName), "old");
       await target.publish(location, ARTIFACT, Buffer.from("mine"));
       const entries = await target.list(location);
 
+      // A legacy artifact names no owner, so no user's pass may delete it
+      // (A26-M07, INV-BACKUP-001): the call refuses and the file stays.
+      await expect(
+        target.remove(
+          location,
+          entries.find((e) => e.legacy)!,
+        ),
+      ).rejects.toThrow(/legacy/);
+      await expect(fs.stat(join(root, legacyName))).resolves.toBeDefined();
+
       await target.remove(
         location,
-        entries.find((e) => e.legacy)!,
+        entries.find((e) => !e.legacy)!,
       );
-
-      // The legacy copy went; the user's own is untouched. Routing by anything
-      // other than the entry's own `legacy` flag would have deleted whichever
-      // directory the caller guessed.
-      await expect(fs.stat(join(root, legacyName))).rejects.toMatchObject({
-        code: "ENOENT",
-      });
-      const survivor = await target.open(location, ARTIFACT);
-      expect(survivor).not.toBeNull();
-      // Read to the end rather than abandoned: a caller that opens an artifact
-      // owes it a close, and a stream left open when this directory is torn down
-      // reports the disappearance as an unhandled error on whatever is running
-      // by then. Draining it also proves the surviving bytes are the right ones.
-      expect(await read(survivor!.stream)).toBe("mine");
+      expect(await target.open(location, ARTIFACT)).toBeNull();
     });
   });
 

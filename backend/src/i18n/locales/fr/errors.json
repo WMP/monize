@@ -486,7 +486,8 @@
     "mnyImportAlreadyRunning": "Un import est déjà en cours. Attendez qu'il se termine avant d'en lancer un autre.",
     "mnyAlreadyImported": "Ce fichier a déjà été importé le {{ date }} (importation {{ jobId }}) et ses enregistrements sont toujours dans votre compte. L'importer à nouveau les dupliquerait. Pour les remplacer, recommencez et choisissez de remplacer vos données existantes.",
     "mnyJobNotFound": "Tâche d'import introuvable",
-    "mnyFileTooLarge": "Ce fichier Money dépasse la limite d'import de {{ limit }} Mo."
+    "mnyFileTooLarge": "Ce fichier Money dépasse la limite d'import de {{ limit }} Mo.",
+    "noRateForSplitTransfer": "Aucun taux de change pour {{ pair }} au {{ date }} : une ligne ventilée transfère vers un compte dans une autre devise. Ajoutez un taux de change pour cette paire et cette date, puis importez à nouveau."
   },
   "monteCarlo": {
     "scenarioNotFound": "Scénario {{ id }} introuvable",
@@ -648,6 +649,7 @@
     "transactionSplitNotFound": "Fraction de transaction {{ splitId }} introuvable pour la mise à jour d'investissement intégré",
     "parentTransactionNotFound": "Transaction parente {{ transactionId }} introuvable pour la mise à jour d'investissement intégré",
     "investmentTransactionNotFound": "Transaction d'investissement avec l'ID {{ id }} introuvable",
+    "investmentTransactionChanged": "Cette transaction a été modifiée par une autre requête. Rechargez-la et réessayez.",
     "cannotChangeTransferDirection": "Impossible de changer la direction d'un virement ; supprimez-le et créez un nouveau virement",
     "destinationAccountMustBeInvestment": "Le compte destination doit être de type INVESTMENT",
     "transferPairMissing": "La transaction appairée de ce virement est manquante ; supprimez et recréez le virement plutôt que de le modifier",

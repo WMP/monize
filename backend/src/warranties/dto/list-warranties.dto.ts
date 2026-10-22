@@ -31,6 +31,9 @@ export const WARRANTY_SORTS: readonly WarrantySort[] = [
   "purchaseDate",
 ];
 
+export type WarrantySortDir = "asc" | "desc";
+export const WARRANTY_SORT_DIRS: readonly WarrantySortDir[] = ["asc", "desc"];
+
 /**
  * `GET /warranties`. Every value is a query-string value: a repeated key
  * arrives as an array, which `@IsIn`, `@IsString` and `@IsUUID` refuse rather
@@ -75,6 +78,15 @@ export class ListWarrantiesDto {
   @IsOptional()
   @IsIn(WARRANTY_SORTS)
   sort?: WarrantySort;
+
+  @ApiPropertyOptional({
+    enum: WARRANTY_SORT_DIRS,
+    description:
+      "Direction of `sort`; absent keeps the field's own default (name and expiry ascending, purchase date descending)",
+  })
+  @IsOptional()
+  @IsIn(WARRANTY_SORT_DIRS)
+  sortDir?: WarrantySortDir;
 
   @ApiPropertyOptional({ minimum: 1, default: 1 })
   @IsOptional()

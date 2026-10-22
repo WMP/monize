@@ -1994,4 +1994,215 @@ describe("Backup export/restore round-trip (integration)", () => {
     const latest = history[history.length - 1];
     expect(latest?.assets).toBe(14400);
   });
+
+  /**
+   * A26-S06-04: a migration that changes what a stored value means backfills the
+   * rows it finds once; a restore of an older artifact brings the old meaning
+   * back in. `skip_price_updates` used to be overridden by a provider and is now
+   * the user's own switch (20261012131846), so a pre-1.19 `true` on a security
+   * that has a provider would never refresh again.
+   */
+  describe("semantic backfills for rows from an older artifact", () => {
+    const AT_MIGRATION =
+      "20261012131846_securities_skip_price_updates_user_switch.sql";
+
+    /** Exports user A with four securities and returns the parsed document. */
+    async function exportedDocument(userId: string): Promise<{
+      doc: Record<string, unknown>;
+      symbols: Record<string, string>;
+    }> {
+      await seedUserData(userId);
+      const add = async (
+        symbol: string,
+        skip: boolean,
+        provider: string | null,
+        msn: string | null,
+      ) => {
+        await dataSource.query(
+          `INSERT INTO securities (user_id, symbol, name, currency_code,
+                                   skip_price_updates, quote_provider,
+                                   msn_instrument_id)
+           VALUES ($1, $2, $2, 'USD', $3, $4, $5)`,
+          [userId, symbol, skip, provider, msn],
+        );
+      };
+      await add("SKIPPROV", true, "yahoo", null);
+      await add("SKIPMSN", true, null, "msn-1");
+      await add("SKIPNONE", true, null, null);
+      await add("LIVEPROV", false, "yahoo", null);
+      const { buffer } = await withUserContext(userId, () =>
+        service.exportToBuffer(userId),
+      );
+      return {
+        doc: JSON.parse(gunzipSync(buffer).toString("utf-8")),
+        symbols: {},
+      };
+    }
+
+    /** Restores `doc` into a new user and answers symbol -> skip_price_updates. */
+    async function restoredFlags(
+      doc: Record<string, unknown>,
+    ): Promise<Record<string, boolean>> {
+      const target = await createTestUserDirect(dataSource, {
+        email: `backfill-${randomUUID()}@example.com`,
+      });
+      await withUserContext(target.id, () =>
+        service.restoreData(target.id, {
+          compressedData: gzipSync(Buffer.from(JSON.stringify(doc))),
+          password: PASSWORD,
+        }),
+      );
+      const rows: Array<{ symbol: string; skip_price_updates: boolean }> =
+        await dataSource.query(
+          `SELECT symbol, skip_price_updates FROM securities WHERE user_id = $1`,
+          [target.id],
+        );
+      return Object.fromEntries(
+        rows.map((r) => [r.symbol, r.skip_price_updates]),
+      );
+    }
+
+    /** The artifact as a pre-1.19 release wrote it: no marker, no new column. */
+    const asPreMarker = (doc: Record<string, unknown>) => {
+      const { producedBy: _producedBy, ...rest } = doc;
+      return {
+        ...rest,
+        user_preferences: (
+          doc.user_preferences as Record<string, unknown>[]
+        ).map(({ hidden_table_columns: _h, ...row }) => row),
+      };
+    };
+
+    it("clears the old meaning on a marker-less artifact without hidden_table_columns", async () => {
+      const user = await createTestUserDirect(dataSource, {
+        email: "backfill-source@example.com",
+      });
+      const { doc } = await exportedDocument(user.id);
+      const old = asPreMarker(doc);
+      expect(
+        (old.user_preferences as Record<string, unknown>[])[0],
+      ).not.toHaveProperty("hidden_table_columns");
+
+      const flags = await restoredFlags(old);
+
+      // A provider or an MSN id used to override the flag: the row refreshed, so
+      // it must still refresh. A flag with neither was always a real "skip".
+      expect(flags.SKIPPROV).toBe(false);
+      expect(flags.SKIPMSN).toBe(false);
+      expect(flags.SKIPNONE).toBe(true);
+      expect(flags.LIVEPROV).toBe(false);
+    });
+
+    it.each([
+      ["at the migration", AT_MIGRATION],
+      [
+        "after the migration",
+        "20261012133629_user_preferences_hidden_table_columns.sql",
+      ],
+    ])(
+      "keeps a deliberate switch when the marker is %s",
+      async (_l, marker) => {
+        const user = await createTestUserDirect(dataSource, {
+          email: "backfill-marker@example.com",
+        });
+        const { doc } = await exportedDocument(user.id);
+        // Even with the evidence column removed: the marker decides.
+        const flags = await restoredFlags({
+          ...asPreMarker(doc),
+          producedBy: { schemaMigration: marker },
+        });
+
+        expect(flags.SKIPPROV).toBe(true);
+        expect(flags.SKIPMSN).toBe(true);
+        expect(flags.SKIPNONE).toBe(true);
+        expect(flags.LIVEPROV).toBe(false);
+      },
+    );
+
+    it("clears the old meaning when the marker is before the migration", async () => {
+      const user = await createTestUserDirect(dataSource, {
+        email: "backfill-before@example.com",
+      });
+      const { doc } = await exportedDocument(user.id);
+      const flags = await restoredFlags({
+        ...doc,
+        producedBy: { schemaMigration: "20261012131845_before.sql" },
+      });
+      expect(flags.SKIPPROV).toBe(false);
+      expect(flags.SKIPNONE).toBe(true);
+    });
+
+    it("keeps the flag on a marker-less artifact that carries hidden_table_columns (1.19.0)", async () => {
+      const user = await createTestUserDirect(dataSource, {
+        email: "backfill-119@example.com",
+      });
+      const { doc } = await exportedDocument(user.id);
+      const { producedBy: _p, ...markerless } = doc;
+      expect(
+        (markerless.user_preferences as Record<string, unknown>[])[0],
+      ).toHaveProperty("hidden_table_columns");
+
+      const flags = await restoredFlags(markerless);
+
+      expect(flags.SKIPPROV).toBe(true);
+      expect(flags.SKIPMSN).toBe(true);
+      expect(flags.SKIPNONE).toBe(true);
+    });
+
+    it("does not normalize a marker-less artifact with no preference rows", async () => {
+      const user = await createTestUserDirect(dataSource, {
+        email: "backfill-nopref@example.com",
+      });
+      const { doc } = await exportedDocument(user.id);
+      const { producedBy: _p, ...markerless } = doc;
+      const flags = await restoredFlags({
+        ...markerless,
+        user_preferences: [],
+      });
+
+      expect(flags.SKIPPROV).toBe(true);
+      expect(flags.SKIPNONE).toBe(true);
+    });
+
+    it("writes the newest applied migration into the artifact, and restores one without it", async () => {
+      // The entity-built schema has no ledger; create one the way the migration
+      // runner does. Dropped again so no other case sees it.
+      await dataSource.query(
+        `CREATE TABLE IF NOT EXISTS schema_migrations (
+           filename VARCHAR(255) PRIMARY KEY,
+           applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+         )`,
+      );
+      try {
+        await dataSource.query(
+          `INSERT INTO schema_migrations (filename) VALUES
+             ('191_payee_lookup_ai_enabled.sql'),
+             ($1),
+             ('20261012133629_user_preferences_hidden_table_columns.sql')`,
+          [AT_MIGRATION],
+        );
+        const user = await createTestUserDirect(dataSource, {
+          email: "backfill-marker-written@example.com",
+        });
+        const { doc } = await exportedDocument(user.id);
+        expect(doc.producedBy).toEqual({
+          schemaMigration:
+            "20261012133629_user_preferences_hidden_table_columns.sql",
+        });
+        // And a restore of a marked artifact is unaffected by the extra member.
+        const flags = await restoredFlags(doc);
+        expect(flags.SKIPPROV).toBe(true);
+      } finally {
+        await dataSource.query(`DROP TABLE IF EXISTS schema_migrations`);
+      }
+    });
+
+    it("writes a null marker when the ledger does not exist", async () => {
+      const user = await createTestUserDirect(dataSource, {
+        email: "backfill-no-ledger@example.com",
+      });
+      const { doc } = await exportedDocument(user.id);
+      expect(doc.producedBy).toEqual({ schemaMigration: null });
+    });
+  });
 });

@@ -28,6 +28,28 @@ const trade = WEALTHSIMPLE_TRADE_DEFINITION.trade as ReceiptTradeDefinition;
 const lines = (body: string): string[] => normalizeReceiptLines(body);
 
 describe("parseTradeLines", () => {
+  /**
+   * A26-L17 (INV-TRADE-001): a price-only email books the total its price AS
+   * WRITTEN implies. The 4-decimal card price (1.2346) gave 12,346.0000 for
+   * 10,000 x 1.23456789; the fact is 12,345.6789.
+   */
+  it.each([
+    ["10000", "$1.23456789", 123_456_789],
+    ["1000", "$26.320125", 263_201_250],
+    // 75.9878 x 26.32005 = 2,000.0026953...; the audit's 2,000.0019 was a slip.
+    ["75.9878", "$26.32005", 20_000_027],
+  ])(
+    "derives a price-only total from the price as written (%s shares at %s)",
+    (shares, price, totalUnits) => {
+      const body = WEALTHSIMPLE_BUY_BODY.replace("Total cost: $2,000.00\n", "")
+        .replace("$26.32", price)
+        .replace("Shares: 75.9878", `Shares: ${shares}`);
+      const parsed = parseTradeLines(trade, lines(body));
+      expect(parsed.total).toBeNull();
+      expect(tradeExecutedTotalUnits(parsed)).toBe(totalUnits);
+    },
+  );
+
   it("reads a Wealthsimple fractional buy completely", () => {
     const parsed = parseTradeLines(trade, lines(WEALTHSIMPLE_BUY_BODY));
     expect(parsed).toEqual({
@@ -36,6 +58,7 @@ describe("parseTradeLines", () => {
       quantity: 75.9878,
       total: 20_000_000,
       price: 263_200,
+      priceUnits8: "2632000000",
       commission: null,
       currency: null,
       currencySource: null,

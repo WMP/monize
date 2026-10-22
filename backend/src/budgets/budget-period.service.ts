@@ -14,14 +14,14 @@ import { BudgetPeriodCategory } from "./entities/budget-period-category.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { BudgetsService } from "./budgets.service";
-import { getCurrentMonthPeriodDates } from "./budget-date.utils";
 import {
-  outgoingParentTransfers,
-  outgoingSplitTransfers,
-  PARENT_TRANSFER_AMOUNT,
-  PARENT_TRANSFER_DESTINATION,
-  SPLIT_TRANSFER_AMOUNT,
-  SPLIT_TRANSFER_DESTINATION,
+  getCurrentMonthPeriodDates,
+  getFollowingMonthPeriodDates,
+  PeriodDateRange,
+} from "./budget-date.utils";
+import {
+  queryCategorySpending,
+  resolveCategorySpent,
 } from "./budget-spending.util";
 import { roundMoney, sumMoney } from "../common/round.util";
 
@@ -127,9 +127,12 @@ export class BudgetPeriodService {
         throw new NoOpenPeriodError();
       }
 
+      // `periodCategories.budgetCategory` carries the line's rollover setting,
+      // which `computeRollover` reads: without it every close wrote a zero
+      // rollover (audit A26-M32). No lock on this read, so the join is allowed.
       const openPeriod = await periods.findOne({
         where: { id: locked.id },
-        relations: ["periodCategories"],
+        relations: ["periodCategories", "periodCategories.budgetCategory"],
       });
       if (!openPeriod) {
         // The row was locked a statement ago, so this cannot happen without the
@@ -140,6 +143,7 @@ export class BudgetPeriodService {
       }
 
       const actuals = await this.computePeriodActuals(
+        manager,
         userId,
         budget,
         openPeriod.periodStart,
@@ -210,13 +214,16 @@ export class BudgetPeriodService {
   /**
    * @param manager the caller's transaction when the new period must commit
    *   with the close that produced it; otherwise a scoped one is opened here.
+   * @param dates the period to create; the current calendar month unless the
+   *   caller derives it from the period it closed.
    */
   async createPeriodForBudget(
     budget: Budget,
     rolloverMap?: Map<string, number>,
     manager?: EntityManager,
+    dates: PeriodDateRange = getCurrentMonthPeriodDates(),
   ): Promise<BudgetPeriod> {
-    const { periodStart, periodEnd } = getCurrentMonthPeriodDates();
+    const { periodStart, periodEnd } = dates;
 
     const budgetCategories = budget.categories || [];
 
@@ -333,138 +340,52 @@ export class BudgetPeriodService {
       }
     }
 
-    return this.createPeriodForBudget(budget, rolloverMap, manager);
+    // The month after the closed one, not the current month: a close before
+    // the period ends would otherwise "create" the month it just closed, hit
+    // ON CONFLICT, and leave the budget with no OPEN period (audit A26-L38).
+    return this.createPeriodForBudget(
+      budget,
+      rolloverMap,
+      manager,
+      getFollowingMonthPeriodDates(closedPeriod.periodEnd),
+    );
   }
 
+  /**
+   * The period's actuals per budget line, through the same query as the live
+   * budget page (`queryCategorySpending`): converted into the budget's
+   * currency, without the accounts the budget excludes, and read on the
+   * close's own transaction so the frozen figures are the ones it locked.
+   *
+   * A line with a row that had no rate freezes its converted part; the
+   * `actual_amount` column has no "unknown" (residual of A26-H12).
+   */
   private async computePeriodActuals(
+    manager: EntityManager,
     userId: string,
     budget: Budget,
     periodStart: string,
     periodEnd: string,
   ): Promise<Map<string, number>> {
     const budgetCategories = budget.categories || [];
-    const categoryIds = budgetCategories
-      .filter((bc) => bc.categoryId !== null && !bc.isTransfer)
-      .map((bc) => bc.categoryId as string);
+    const { spendingMap, transferSpendingMap } = await queryCategorySpending(
+      manager.getRepository(Transaction),
+      manager.getRepository(TransactionSplit),
+      userId,
+      budgetCategories,
+      periodStart,
+      periodEnd,
+    );
 
     const result = new Map<string, number>();
-
-    const spendingByCategoryId = new Map<string, number>();
-
-    if (categoryIds.length > 0) {
-      const directSpending = await withScopedDb(this.dataSource, (m) =>
-        m
-          .getRepository(Transaction)
-          .createQueryBuilder("t")
-          .select("t.category_id", "categoryId")
-          .addSelect("COALESCE(SUM(t.amount), 0)", "total")
-          .where("t.user_id = :userId", { userId })
-          .andWhere("t.category_id IN (:...categoryIds)", { categoryIds })
-          .andWhere("t.transaction_date >= :periodStart", { periodStart })
-          .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
-          .andWhere("t.status != :void", { void: "VOID" })
-          .andWhere("t.is_split = false")
-          .groupBy("t.category_id")
-          .getRawMany(),
-      );
-
-      for (const row of directSpending) {
-        spendingByCategoryId.set(row.categoryId, parseFloat(row.total || "0"));
-      }
-
-      const splitSpending = await withScopedDb(this.dataSource, (m) =>
-        m
-          .getRepository(TransactionSplit)
-          .createQueryBuilder("s")
-          .innerJoin("s.transaction", "t")
-          .select("s.category_id", "categoryId")
-          .addSelect("COALESCE(SUM(s.amount), 0)", "total")
-          .where("t.user_id = :userId", { userId })
-          .andWhere("s.category_id IN (:...categoryIds)", { categoryIds })
-          .andWhere("t.transaction_date >= :periodStart", { periodStart })
-          .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
-          .andWhere("t.status != :void", { void: "VOID" })
-          .groupBy("s.category_id")
-          .getRawMany(),
-      );
-
-      for (const row of splitSpending) {
-        const existing = spendingByCategoryId.get(row.categoryId) || 0;
-        spendingByCategoryId.set(
-          row.categoryId,
-          existing + parseFloat(row.total || "0"),
-        );
-      }
-    }
-
-    // Transfer actuals
-    const transferBudgetCategories = budgetCategories.filter(
-      (bc) => bc.isTransfer && bc.transferAccountId,
-    );
-    const transferSpendingMap = new Map<string, number>();
-
-    if (transferBudgetCategories.length > 0) {
-      const window = {
-        userId,
-        periodStart,
-        periodEnd,
-        transferAccountIds: transferBudgetCategories.map(
-          (bc) => bc.transferAccountId as string,
-        ),
-      };
-
-      // Both transfer shapes -- whole-row transfers and split lines carrying a
-      // transfer_account_id -- or the materialized period disagrees with the
-      // live budget page for the same month (review #1131).
-      const [parentActuals, splitActuals] = await withScopedDb(
-        this.dataSource,
-        async (m) => {
-          const parents = await outgoingParentTransfers(
-            m.getRepository(Transaction),
-            window,
-          )
-            .select(PARENT_TRANSFER_DESTINATION, "destinationAccountId")
-            .addSelect(
-              `COALESCE(ABS(SUM(${PARENT_TRANSFER_AMOUNT})), 0)`,
-              "total",
-            )
-            .groupBy(PARENT_TRANSFER_DESTINATION)
-            .getRawMany();
-          const splits = await outgoingSplitTransfers(
-            m.getRepository(TransactionSplit),
-            window,
-          )
-            .select(SPLIT_TRANSFER_DESTINATION, "destinationAccountId")
-            .addSelect(
-              `COALESCE(ABS(SUM(${SPLIT_TRANSFER_AMOUNT})), 0)`,
-              "total",
-            )
-            .groupBy(SPLIT_TRANSFER_DESTINATION)
-            .getRawMany();
-          return [parents, splits] as const;
-        },
-      );
-
-      for (const row of [...parentActuals, ...splitActuals]) {
-        transferSpendingMap.set(
-          row.destinationAccountId,
-          (transferSpendingMap.get(row.destinationAccountId) ?? 0) +
-            parseFloat(row.total || "0"),
-        );
-      }
-    }
-
     for (const bc of budgetCategories) {
-      if (bc.isTransfer && bc.transferAccountId) {
-        const amount = transferSpendingMap.get(bc.transferAccountId) || 0;
-        result.set(bc.id, amount);
-      } else if (bc.categoryId) {
-        const raw = spendingByCategoryId.get(bc.categoryId) || 0;
-        const amount = bc.isIncome ? Math.max(raw, 0) : Math.max(-raw, 0);
-        result.set(bc.id, amount);
+      if ((bc.isTransfer && bc.transferAccountId) || bc.categoryId) {
+        result.set(
+          bc.id,
+          resolveCategorySpent(bc, spendingMap, transferSpendingMap),
+        );
       }
     }
-
     return result;
   }
 }

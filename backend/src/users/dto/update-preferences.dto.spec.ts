@@ -236,3 +236,32 @@ describe("UpdatePreferencesDto viewDefaults validation", () => {
     );
   });
 });
+
+async function defaultCurrencyResult(defaultCurrency: unknown) {
+  const dto = plainToInstance(UpdatePreferencesDto, { defaultCurrency });
+  const errors = await validate(dto);
+  return {
+    error: errors.find((e) => e.property === "defaultCurrency"),
+    value: dto.defaultCurrency,
+  };
+}
+
+describe("UpdatePreferencesDto defaultCurrency validation", () => {
+  it.each(["q#!", "", "US", "USDD", "U5D", 123])(
+    "rejects %p",
+    async (value) => {
+      expect((await defaultCurrencyResult(value)).error).toBeDefined();
+    },
+  );
+
+  it("accepts a code and upper-cases a lower-case one", async () => {
+    expect((await defaultCurrencyResult("USD")).error).toBeUndefined();
+    const lower = await defaultCurrencyResult("pln");
+    expect(lower.error).toBeUndefined();
+    expect(lower.value).toBe("PLN");
+  });
+
+  it("accepts an omitted value (optional)", async () => {
+    expect((await defaultCurrencyResult(undefined)).error).toBeUndefined();
+  });
+});

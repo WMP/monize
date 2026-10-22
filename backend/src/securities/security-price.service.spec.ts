@@ -3806,8 +3806,13 @@ describe("SecurityPriceService", () => {
     it("does not ask again for a security-month that came back empty", async () => {
       // `[]`, not `null`: the provider answering "no bars in that window" is
       // what may be remembered. `null` is no answer at all -- a failure or a
-      // refusal -- and remembering that poisons the month for everyone.
+      // refusal -- and remembering that poisons the month for everyone. Every
+      // routed provider answers empty here (A26-L20).
       windowSpy.mockResolvedValue({ prices: [], currencyCode: null });
+      msnFinanceService.fetchHistoricalSeries.mockResolvedValue({
+        prices: [],
+        currencyCode: null,
+      });
 
       await service.ensurePricesForDate(["sec-1"], "2017-08-18");
       const afterFirst = windowSpy.mock.calls.length;
@@ -3909,6 +3914,26 @@ describe("SecurityPriceService", () => {
       expect(securitiesRepository.find).toHaveBeenCalled();
     });
 
+    it("does not remember a window empty while another routed provider failed", async () => {
+      // A26-L20: Yahoo answering [] for a window it lacks is not "this month
+      // has no prices" while MSN, the next provider routed, timed out -- MSN
+      // was never heard from, so the month is asked again.
+      seedSecurity();
+      jest
+        .spyOn(yahoo, "fetchHistoricalWindowSeries")
+        .mockResolvedValue({ prices: [], currencyCode: "USD" });
+      msnFinanceService.fetchHistoricalSeries.mockRejectedValue(
+        new Error("timeout"),
+      );
+
+      await service.ensurePricesForDate(["sec-1"], "2017-03-15");
+      expect(msnFinanceService.fetchHistoricalSeries).toHaveBeenCalled();
+
+      securitiesRepository.find.mockClear();
+      await service.ensurePricesForDate(["sec-1"], "2017-03-16");
+      expect(securitiesRepository.find).toHaveBeenCalled();
+    });
+
     it("still remembers a window the provider answered as empty", async () => {
       // The memory has to keep working, or a report reloaded on the same date
       // re-asks the provider for every security it has no history for.
@@ -3916,6 +3941,10 @@ describe("SecurityPriceService", () => {
       jest
         .spyOn(yahoo, "fetchHistoricalWindowSeries")
         .mockResolvedValue({ prices: [], currencyCode: null });
+      msnFinanceService.fetchHistoricalSeries.mockResolvedValue({
+        prices: [],
+        currencyCode: null,
+      });
 
       await service.ensurePricesForDate(["sec-1"], "2026-03-15");
 

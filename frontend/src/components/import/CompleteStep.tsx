@@ -252,6 +252,11 @@ export function CompleteStep({
               </li>
             </ul>
             <SkippedRowsList rows={importResult.skippedRows} total={importResult.skipped} />
+            {(importResult.bondRowsWithoutSeries ?? 0) > 0 && (
+              <p className="mt-4 text-sm text-amber-800 dark:text-amber-300">
+                {t('complete.bondRowsWithoutSeries', { count: importResult.bondRowsWithoutSeries ?? 0 })}
+              </p>
+            )}
             {importResult.errorMessages.length > 0 && (
               <div className="mt-4">
                 <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">

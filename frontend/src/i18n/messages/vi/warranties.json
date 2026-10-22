@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, other {Còn {days} ngày}}",
     "today": "Hết hạn hôm nay",
-    "ago": "{count, plural, other {Đã hết hạn {days} ngày trước}}"
+    "ago": "{count, plural, other {Đã hết hạn {days} ngày trước}}",
+    "leftYears": "Còn {yearsCount, plural, other {{years} năm}}, {daysCount, plural, other {{days} ngày}}",
+    "agoYears": "Đã hết hạn {yearsCount, plural, other {{years} năm}}, {daysCount, plural, other {{days} ngày}} trước"
   },
   "kind": {
     "manufacturer": "Nhà sản xuất",

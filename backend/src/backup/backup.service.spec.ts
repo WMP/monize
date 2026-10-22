@@ -20,7 +20,10 @@ import { OidcReauthService } from "../auth/oidc/oidc-reauth.service";
 import { BackupService, RestoreBackupInput } from "./backup.service";
 import { BackupExportService } from "./backup-export.service";
 import { BackupRestoreService } from "./backup-restore.service";
-import { BackupAttachmentTransferService } from "./backup-attachment-transfer.service";
+import {
+  BackupAttachmentTransferService,
+  RESTORE_STAGING_INTENT_LEASE_MS,
+} from "./backup-attachment-transfer.service";
 import { BackupRestoreDatabaseService } from "./backup-restore-database.service";
 import { BackupBondSeriesRecoveryService } from "./backup-bond-series-recovery.service";
 import { BackupData } from "./backup-format";
@@ -164,6 +167,8 @@ describe("BackupService", () => {
   let maintenance: UserMaintenanceMock;
   let mockDataSource: Record<string, jest.Mock>;
   let mockQueryRunner: Record<string, jest.Mock>;
+  /** Storage keys whose staging intent the (modelled) sweeper has claimed. */
+  let sweptIntentKeys: Set<string>;
   // Typed rather than Record<string, jest.Mock>: this is one of our own
   // interfaces, so tsc should reject a return shape the real provider cannot
   // produce (docs/backend/testing.md, "a mock must return what the real collaborator
@@ -575,6 +580,20 @@ describe("BackupService", () => {
   };
 
   function mockQueryHandler(sql: string, params?: unknown[]) {
+    if (typeof sql === "string" && sql.includes("attachment_blob_tombstones")) {
+      // The staging intent protocol (object-intent.ts). The insert comes back as
+      // bare rows, the fenced delete as the UPDATE/DELETE `[rows, count]` tuple,
+      // exactly as the postgres driver shapes them. `sweptIntentKeys` models the
+      // sweeper having claimed a key: the upsert refuses it, the clear finds none.
+      const key = Array.isArray(params) ? String(params[2] ?? params[1]) : "";
+      const swept = sweptIntentKeys.has(key);
+      if (sql.includes("INSERT INTO")) {
+        return Promise.resolve(swept ? [] : [{ id: "intent" }]);
+      }
+      if (sql.includes("DELETE FROM")) {
+        return Promise.resolve(swept ? [[], 0] : [[{ id: "intent" }], 1]);
+      }
+    }
     if (
       typeof sql === "string" &&
       sql.includes("FROM transaction_attachments") &&
@@ -640,6 +659,7 @@ describe("BackupService", () => {
       findOne: jest.fn(),
     };
     ownedAttachments = [];
+    sweptIntentKeys = new Set();
 
     // Export reads and the restore transaction now both run through
     // `withScopedDb`, so the former QueryRunner is the transaction's
@@ -4095,6 +4115,87 @@ describe("BackupService", () => {
         // The database rolled back; the object write did not, so it must not be
         // left behind with nothing referencing it.
         expect(attachmentStorage.delete).toHaveBeenCalledWith(stagedKey);
+      });
+
+      describe("staging upload intents", () => {
+        const intentCalls = (verb: "INSERT INTO" | "DELETE FROM") =>
+          mockQueryRunner.query.mock.calls.filter(
+            ([sql]: [unknown]) =>
+              String(sql).includes(verb) &&
+              String(sql).includes("attachment_blob_tombstones"),
+          );
+
+        it("records the intent before the bytes are put, and clears it in the restore", async () => {
+          attachmentStorage.load.mockResolvedValue(BYTES);
+
+          await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: backupWithLocalAttachment() }),
+          );
+
+          const stagedKey = attachmentStorage.save.mock.calls[0][0];
+          const [record] = intentCalls("INSERT INTO");
+          expect(record[1]).toEqual([
+            userId,
+            "local",
+            stagedKey,
+            String(RESTORE_STAGING_INTENT_LEASE_MS),
+          ]);
+          const recordedAt = mockQueryRunner.query.mock.calls.indexOf(record);
+          expect(
+            mockQueryRunner.query.mock.invocationCallOrder[recordedAt],
+          ).toBeLessThan(attachmentStorage.save.mock.invocationCallOrder[0]);
+          const [clear] = intentCalls("DELETE FROM");
+          expect(clear[1]).toEqual(["local", stagedKey]);
+        });
+
+        it("does not write the bytes when the intent cannot be recorded", async () => {
+          attachmentStorage.load.mockResolvedValue(BYTES);
+          mockQueryRunner.query.mockImplementation((sql: string, params) => {
+            if (
+              String(sql).includes("INSERT INTO") &&
+              String(sql).includes("attachment_blob_tombstones")
+            ) {
+              return Promise.reject(new Error("tombstones unavailable"));
+            }
+            return mockQueryHandler(sql, params as unknown[]);
+          });
+
+          const result = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: backupWithLocalAttachment() }),
+          );
+
+          expect(attachmentStorage.save).not.toHaveBeenCalled();
+          expect(result.skippedAttachments).toBe(1);
+          expect(result.restored.transactionAttachments).toBe(0);
+        });
+
+        it("rolls back and discards when the sweeper claimed a staged key first", async () => {
+          attachmentStorage.load.mockResolvedValue(BYTES);
+          mockQueryRunner.query.mockImplementation((sql: string, params) => {
+            if (
+              String(sql).includes("DELETE FROM") &&
+              String(sql).includes("attachment_blob_tombstones")
+            ) {
+              return Promise.resolve([[], 0]);
+            }
+            return mockQueryHandler(sql, params as unknown[]);
+          });
+
+          await expect(
+            service.restoreData(
+              userId,
+              makeInput({
+                password: "test",
+                data: backupWithLocalAttachment(),
+              }),
+            ),
+          ).rejects.toThrow();
+
+          const stagedKey = attachmentStorage.save.mock.calls[0][0];
+          expect(attachmentStorage.delete).toHaveBeenCalledWith(stagedKey);
+        });
       });
     });
 

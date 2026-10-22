@@ -6,7 +6,7 @@ import {
   InvestmentReportResult,
 } from '@/types/investment-report';
 import { InvestmentTransactionSummary } from '@/types/investment';
-import { getCached, setCache, invalidateCache } from './apiCache';
+import { dedupe, patchCached, invalidateCache } from './apiCache';
 
 // The saved investment-reports list lives under one cache key; keep the key and
 // TTL in one place so getAll and the optimistic favourite patch cannot drift.
@@ -63,11 +63,10 @@ export const investmentReportsApi = {
   },
 
   getAll: async (): Promise<InvestmentReport[]> => {
-    const cached = getCached<InvestmentReport[]>(INVESTMENT_REPORTS_CACHE_KEY);
-    if (cached) return cached;
-    const response = await apiClient.get<InvestmentReport[]>('/reports/investment');
-    setCache(INVESTMENT_REPORTS_CACHE_KEY, response.data, INVESTMENT_REPORTS_CACHE_TTL);
-    return response.data;
+    return dedupe(INVESTMENT_REPORTS_CACHE_KEY, async () => {
+      const response = await apiClient.get<InvestmentReport[]>('/reports/investment');
+      return response.data;
+    }, INVESTMENT_REPORTS_CACHE_TTL);
   },
 
   getById: async (id: string): Promise<InvestmentReport> => {
@@ -107,16 +106,14 @@ export const investmentReportsApi = {
     // just starred -- already shows the new order (issue #1224). The
     // invalidateCache below drops this optimistic copy once the server answers,
     // on either path, so the next read reconciles against the server.
-    const cached = getCached<InvestmentReport[]>(INVESTMENT_REPORTS_CACHE_KEY);
-    if (cached) {
-      setCache(
-        INVESTMENT_REPORTS_CACHE_KEY,
-        cached.map((report) =>
+    patchCached<InvestmentReport[]>(
+      INVESTMENT_REPORTS_CACHE_KEY,
+      (list) =>
+        list.map((report) =>
           report.id === id ? { ...report, isFavourite } : report,
         ),
-        INVESTMENT_REPORTS_CACHE_TTL,
-      );
-    }
+      INVESTMENT_REPORTS_CACHE_TTL,
+    );
     try {
       const response = await apiClient.patch<InvestmentReport>(`/reports/investment/${id}`, {
         isFavourite,

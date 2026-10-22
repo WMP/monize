@@ -698,11 +698,17 @@ export class BudgetAlertService {
       critical: 2,
     };
 
+    // The same key as `idx_notifications_fingerprint`: a flex-group warning is
+    // budget-wide (no category), so the group in `data` is what tells two of
+    // them apart (audit A26-L39).
+    const flexGroupOf = (data: Record<string, unknown> | null | undefined) =>
+      typeof data?.flexGroup === "string" ? data.flexGroup : "";
     return candidates.filter((candidate) => {
       const match = existing.find(
         (e) =>
           e.type === candidate.type &&
-          e.budgetCategoryId === candidate.budgetCategoryId,
+          e.budgetCategoryId === candidate.budgetCategoryId &&
+          flexGroupOf(e.data) === flexGroupOf(candidate.data),
       );
       if (!match) return true;
       // Allow if candidate severity is higher than existing

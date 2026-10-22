@@ -37,12 +37,21 @@ import {
   type ReceiptRow,
 } from "./receipt-rows";
 
+import { PROVIDER_CALL_BUDGET_MS } from "../../ai/providers/provider-call-budget";
+
 export { pickReceivedAt } from "./receipt-rows";
 
-/** One poll of one mailbox holds its lease this long at most (design INV-RECEIPT-006). */
-export const POLL_LEASE_MS = 10 * 60_000;
-/** No new work is started once this much of the lease is spent. */
+/** No new work, provider calls included, is started once this much of the lease is spent. */
 const LEASE_WORK_BUDGET_MS = 8 * 60_000;
+/**
+ * One poll of one mailbox holds its lease this long (design INV-RECEIPT-006),
+ * renewed while it runs: the work budget plus the slowest single provider call
+ * that may start just before the budget ends, plus a margin. It was ten
+ * minutes, shorter than one Ollama call, so a second poll started beside a
+ * draft still running (A26-S11-01).
+ */
+export const POLL_LEASE_MS =
+  LEASE_WORK_BUDGET_MS + PROVIDER_CALL_BUDGET_MS + 2 * 60_000;
 /** A first sync reads what arrived in the last 30 days (design 3.4). */
 const FIRST_SYNC_DAYS = 30;
 /** Stored emails processed, and emails re-matched, per poll. */
@@ -219,10 +228,23 @@ export class EmailReceiptPollService {
     if (leaseToken === null) return { processed: 0, busy: true };
     const deadline = Date.now() + LEASE_WORK_BUDGET_MS;
     try {
-      const outcome: EmailReceiptPollOutcome = { ...EMPTY };
-      await this.processStored(userId, view.id, view.aiMode, outcome, deadline);
-      await this.attention.evaluate(userId);
-      return { processed: outcome.processed, busy: false };
+      return await this.whileLeaseHeld(
+        userId,
+        view.id,
+        leaseToken,
+        async () => {
+          const outcome: EmailReceiptPollOutcome = { ...EMPTY };
+          await this.processStored(
+            userId,
+            view.id,
+            view.aiMode,
+            outcome,
+            deadline,
+          );
+          await this.attention.evaluate(userId);
+          return { processed: outcome.processed, busy: false };
+        },
+      );
     } finally {
       await this.releaseLease(userId, view.id, leaseToken);
     }
@@ -247,20 +269,44 @@ export class EmailReceiptPollService {
     if (leaseToken === null) return { ...EMPTY, busy: true };
     const deadline = Date.now() + LEASE_WORK_BUDGET_MS;
     try {
-      const outcome = await this.pollLeased(
+      return await this.whileLeaseHeld(
         userId,
         mailboxId,
-        options,
-        deadline,
+        leaseToken,
+        async () => {
+          const outcome = await this.pollLeased(
+            userId,
+            mailboxId,
+            options,
+            deadline,
+          );
+          // After the pipeline ran: one notification per user when emails wait
+          // for a profile or a fix. Never throws (it logs), and runs under the
+          // owner's identity this method was called with.
+          await this.attention.evaluate(userId);
+          return outcome;
+        },
       );
-      // After the pipeline ran: one notification per user when emails wait for a
-      // profile or a fix. Never throws (it logs), and runs under the owner's
-      // identity this method was called with.
-      await this.attention.evaluate(userId);
-      return outcome;
     } finally {
       await this.releaseLease(userId, mailboxId, leaseToken);
     }
+  }
+
+  /** The poll's work under its lease, renewed while it runs (A26-L13). */
+  private whileLeaseHeld<T>(
+    userId: string,
+    mailboxId: string,
+    leaseToken: string,
+    work: () => Promise<T>,
+  ): Promise<T> {
+    return this.jobClaims.whileLeaseHeld(
+      JobClaimType.EmailReceiptPoll,
+      userId,
+      mailboxId,
+      leaseToken,
+      POLL_LEASE_MS,
+      work,
+    );
   }
 
   private async releaseLease(
@@ -374,7 +420,7 @@ export class EmailReceiptPollService {
 
     if (aiMode === "automatic" && Date.now() <= deadline) {
       try {
-        await this.ai.runAutomaticStep(userId);
+        await this.ai.runAutomaticStep(userId, { deadline });
       } catch (error) {
         this.logger.warn(
           `Receipt AI step failed user=${userId} (${describeFailure(error)})`,

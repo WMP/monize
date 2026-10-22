@@ -1918,5 +1918,8 @@
       "residualDeficit": "Pobrane z sald",
       "unlinkedAccount": "(niepowiązane konto)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Wygenerowano: {timestamp}"
   }
 }

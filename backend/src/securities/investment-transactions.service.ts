@@ -25,7 +25,7 @@ import {
 } from "./bond-redemption-fill.util";
 import { tr } from "../i18n/translate";
 import { DataSource, EntityManager } from "typeorm";
-import { withScopedDb } from "../common/db/scoped-db";
+import { getActiveScopedManager, withScopedDb } from "../common/db/scoped-db";
 import {
   lockTransactionRow,
   lockTransactionRows,
@@ -33,6 +33,7 @@ import {
   lockHoldingScope,
   LockedInvestmentTransactionRow,
 } from "../common/db/locks";
+import { lockUnchangedInvestmentRow } from "./investment-row-lock.util";
 import { applyVoidTransitionToMirrorLeg } from "../transactions/void-status-transition.util";
 import { assertReconciledRowsMutable } from "../transactions/reconciled-lock.util";
 import { investmentRowHasEffect } from "./investment-row-effects.util";
@@ -683,6 +684,7 @@ export class InvestmentTransactionsService {
     securityId: string | null | undefined,
     dtoRate: number | undefined,
     transactionDate?: string | Date,
+    options?: { fetchMissing?: boolean },
   ): Promise<number> {
     const rate = await this.resolveCashExchangeRateOrNull(
       userId,
@@ -691,6 +693,7 @@ export class InvestmentTransactionsService {
       securityId,
       dtoRate,
       transactionDate,
+      options,
     );
     if (rate === null) {
       // Posting cannot proceed without a rate for a genuine cross-currency pair:
@@ -731,6 +734,12 @@ export class InvestmentTransactionsService {
     securityId: string | null | undefined,
     dtoRate: number | undefined,
     transactionDate?: string | Date,
+    /**
+     * `fetchMissing: false` reads only the stored history: no provider call.
+     * For a caller inside someone else's transaction, where an HTTP round trip
+     * would hold that transaction's locks and connection (A26-L18).
+     */
+    options?: { fetchMissing?: boolean },
   ): Promise<number | null> {
     let supplied: number | undefined;
     if (dtoRate !== undefined && dtoRate !== null) {
@@ -780,11 +789,20 @@ export class InvestmentTransactionsService {
     // that date when not already stored). There is no fallback to the latest
     // stored snapshot: a rate for another date is not this date's rate, and
     // "unknown" is the answer that makes the caller supply one.
-    const rate = await this.exchangeRateService.getRateForDate(
-      sourceCurrency,
-      cashCurrency,
-      transactionDate || todayYMD(),
-    );
+    const onDate = transactionDate || todayYMD();
+    const rate =
+      options?.fetchMissing === false
+        ? await this.exchangeRateService.getRateForDate(
+            sourceCurrency,
+            cashCurrency,
+            onDate,
+            { fetchMissing: false },
+          )
+        : await this.exchangeRateService.getRateForDate(
+            sourceCurrency,
+            cashCurrency,
+            onDate,
+          );
 
     if (rate === null || !(Number(rate) > 0)) {
       // Unknown, not applicable: a zero/negative or absent rate is "no rate".
@@ -1599,6 +1617,12 @@ export class InvestmentTransactionsService {
         action: string;
         transactionDate: string;
         bondInstrumentId: string | null;
+        /**
+         * The row's own rate. Kept when the edit names none and leaves the
+         * security as it is: what `update()` does (INV-FX-002), and the rate the
+         * adapters commit is the one this preview returns.
+         */
+        exchangeRate?: number;
       };
     },
   ): Promise<CreateInvestmentTransactionPreview> {
@@ -1774,13 +1798,31 @@ export class InvestmentTransactionsService {
       totalAmount: suppliedTotal,
     });
 
+    // An edit that names no rate and keeps the security keeps the row's own
+    // rate: the account and the funding account cannot change through the
+    // edit preview, so the currency pair is the stored one (A26-M20). Only a
+    // different security re-resolves, for its pair, as `update()` does.
+    const keptRate =
+      input.exchangeRate === undefined &&
+      input.editing?.exchangeRate !== undefined &&
+      (security?.id ?? null) === input.editing.securityId
+        ? input.editing.exchangeRate
+        : undefined;
     const exchangeRate = await this.resolveCashExchangeRate(
       userId,
       input.accountId,
       input.fundingAccountId ?? null,
       security?.id ?? null,
-      input.exchangeRate,
+      input.exchangeRate ?? keptRate,
       input.transactionDate,
+      // A preview built inside a caller's transaction (the email-receipt
+      // pipeline holds the receipt's row lock while it builds a trade card)
+      // reads only the stored rates: a provider call there would hold the
+      // lock and a pooled connection for the provider's response time, and
+      // its fetched window would commit or roll back with the receipt. A
+      // missing rate is then refused by name, and the card waits for the
+      // rate cron (A26-L18). A request-scoped preview still fetches.
+      { fetchMissing: getActiveScopedManager() === undefined },
     );
 
     // Signed cash impact in the security's currency, converted to the cash
@@ -1906,9 +1948,11 @@ export class InvestmentTransactionsService {
       accruedInterest:
         input.accruedInterest ?? Number(existing.accruedInterest ?? 0),
       fundingAccountId: existing.fundingAccountId ?? undefined,
-      // Only an explicit override pins the rate; otherwise the preview
-      // re-resolves it fresh (for the new currency pair if the security or
-      // account changed), matching update()'s re-resolution precedence.
+      // Only an explicit override changes the rate; otherwise the row keeps
+      // its own unless the security changes (`editing.exchangeRate` below),
+      // matching update()'s precedence. The adapters commit what this
+      // preview returns, so a re-resolved market rate here would be written
+      // as if the person had asked for it.
       exchangeRate: input.exchangeRate,
       description: input.description ?? existing.description ?? undefined,
       bondSeriesCode: input.bondSeriesCode,
@@ -1922,6 +1966,7 @@ export class InvestmentTransactionsService {
         action: existing.action,
         transactionDate: existing.transactionDate,
         bondInstrumentId: existing.bondInstrumentId,
+        exchangeRate: Number(existing.exchangeRate),
       },
     });
 
@@ -2296,7 +2341,8 @@ export class InvestmentTransactionsService {
    * Move a security between two investment accounts while preserving cost
    * basis. Creates both legs atomically: a TRANSFER_OUT in the source account
    * (drawn down at the source's running average cost) and a TRANSFER_IN in the
-   * destination account at the source's carried average cost. No cash
+   * destination account at the per-share basis the source released at the
+   * transfer's date (A26-M22). No cash
    * transaction is created -- shares move only, no money changes hands -- so
    * both legs use exchangeRate 1 and have a null linked cash transaction.
    */
@@ -2350,24 +2396,6 @@ export class InvestmentTransactionsService {
 
     await this.securitiesService.findOne(userId, dto.securityId);
 
-    // Carry the source's actual blended average cost so basis is conserved.
-    // The client sends a prefilled costPerShare for display, but the server is
-    // authoritative here: a stale or zero client value (e.g. a UI race before
-    // holdings load, or a direct API call) must not be able to poison the
-    // destination's cost basis. When the source holds the security, its current
-    // average cost is exactly what the TRANSFER_OUT draws down, so using it for
-    // both legs conserves basis. With no existing holding the over-draw guard
-    // below rejects the transfer anyway, so the client value is a harmless
-    // fallback.
-    const sourceHolding = await this.holdingsService.findByAccountAndSecurity(
-      dto.fromAccountId,
-      dto.securityId,
-    );
-    const carriedCost =
-      sourceHolding && Number(sourceHolding.quantity) > 0
-        ? roundToDecimals(Number(sourceHolding.averageCost) || 0, 6)
-        : dto.costPerShare;
-
     // Transfer legs carry no cash, so totalAmount is 0 -- matching how
     // calculateTotalAmount() treats TRANSFER_IN/TRANSFER_OUT on the edit path.
     // Cost basis flows through quantity * price (per-share cost) instead.
@@ -2406,7 +2434,10 @@ export class InvestmentTransactionsService {
           action: InvestmentAction.TRANSFER_OUT,
           transactionDate: dto.transactionDate,
           quantity: dto.quantity,
-          price: carriedCost,
+          // Provisional: replaced below by the basis the ledger says this leg
+          // relieves. The client's figure is only the fallback for a source
+          // that does not hold the units on this date.
+          price: dto.costPerShare,
           commission: 0,
           totalAmount,
           exchangeRate: 1,
@@ -2420,6 +2451,32 @@ export class InvestmentTransactionsService {
           savedOut,
           false,
         );
+
+        // Carry the source's basis AT THE TRANSFER'S DATE, read from the ledger
+        // under the lock (A26-M22). The stored holding is today's average --
+        // after a later buy it is not what the source held on the transfer's
+        // date -- and the client's costPerShare is display only: a stale or zero
+        // value must not be able to poison the destination's basis. The server
+        // is authoritative: both legs take what the OUT leg relieves at its
+        // position in the replay, divided by the quantity. `null` (the source
+        // does not hold the units on that date) keeps the client figure; the
+        // over-draw guard below refuses that transfer anyway.
+        const releasedPerShare =
+          await this.holdingsService.releasedBasisPerShare(
+            userId,
+            dto.securityId,
+            outId,
+            manager,
+          );
+        const carriedCost =
+          releasedPerShare !== null
+            ? roundToDecimals(releasedPerShare, INVESTMENT_PRICE_DECIMALS)
+            : dto.costPerShare;
+        if (releasedPerShare !== null) {
+          await manager.update(InvestmentTransaction, outId, {
+            price: carriedCost,
+          });
+        }
 
         const transferIn = manager.create(InvestmentTransaction, {
           userId,
@@ -3850,6 +3907,27 @@ export class InvestmentTransactionsService {
     }
 
     await withScopedDb(this.dataSource, async (manager) => {
+      // First statement of the transaction: the holdings lock on every account
+      // the pair leaves or joins, before anything is validated or written --
+      // the edit used to take it only inside its closing rebuild, so it checked
+      // the oversell without seeing a concurrent SELL and both committed
+      // (A26-L19). Then both legs under their row locks: a leg another request
+      // changed or deleted since the read above is refused before any write.
+      await lockHoldingScope(
+        manager,
+        [
+          editedLeg.accountId,
+          linkedLeg.accountId,
+          updateDto.accountId,
+          updateDto.destinationAccountId,
+        ].filter((id): id is string => !!id),
+      );
+      for (const leg of [editedLeg, linkedLeg].sort((a, b) =>
+        a.id.localeCompare(b.id),
+      )) {
+        await lockUnchangedInvestmentRow(manager, userId, leg);
+      }
+
       const bondGuard = await beginBondWriteGuard(manager, userId, [
         editedLeg.securityId,
         updateDto.securityId,
@@ -3982,7 +4060,9 @@ export class InvestmentTransactionsService {
             : (null as any);
         }
         if (updateDto.quantity !== undefined) leg.quantity = updateDto.quantity;
-        if (updateDto.price !== undefined) leg.price = updateDto.price;
+        // `updateDto.price` is deliberately not applied: a transfer leg's price
+        // is the basis the source released, recomputed from the ledger below
+        // (A26-M22), never a figure the client sends.
         if (updateDto.commission !== undefined)
           leg.commission = updateDto.commission;
         if (updateDto.transactionDate !== undefined)
@@ -4015,6 +4095,31 @@ export class InvestmentTransactionsService {
         savedLinked,
         false,
       );
+
+      // Both legs carry the basis the (new) OUT leg relieves at its position in
+      // the replay, now that the shared fields are saved (A26-M22). A date or
+      // quantity edit moves that position, so the old price would be stale; a
+      // source that does not hold the units on the date keeps the stored price
+      // and the negative-holdings check below refuses the edit.
+      const carriedPerShare = outLeg.securityId
+        ? await this.holdingsService.releasedBasisPerShare(
+            userId,
+            outLeg.securityId,
+            outLeg.id,
+            manager,
+          )
+        : null;
+      if (carriedPerShare !== null) {
+        const carriedCost = roundToDecimals(
+          carriedPerShare,
+          INVESTMENT_PRICE_DECIMALS,
+        );
+        await manager.update(InvestmentTransaction, [outLeg.id, inLeg.id], {
+          price: carriedCost,
+        });
+        outLeg.price = carriedCost;
+        inLeg.price = carriedCost;
+      }
 
       await this.holdingsService.validateNoNegativeHoldingsHistory(
         userId,
@@ -4477,6 +4582,11 @@ export class InvestmentTransactionsService {
         manager,
         [accountId, updateDto.accountId].filter((id): id is string => !!id),
       );
+      // Everything below is derived from the row read before this transaction
+      // (the cash row the reversal deletes, the values the save writes back),
+      // so it has to still be the row as it is now: a concurrent edit or delete
+      // is refused before anything is written (A26-H04).
+      await lockUnchangedInvestmentRow(manager, userId, transaction);
 
       const bondGuard = await beginBondWriteGuard(manager, userId, [
         oldSecurityId,
@@ -4992,6 +5102,15 @@ export class InvestmentTransactionsService {
       // First statement of the transaction: advisory before row locks
       // (`common/db/locks.ts`); the reversals below row-lock `accounts`.
       await lockHoldingScope(manager, affectedAccountIds);
+      // Each leg is removed with the cash row it carries now, so it must still
+      // be the row read above: a delete behind a concurrent edit would reverse
+      // a cash row the edit already replaced and leave the new one without an
+      // owner (A26-H04). Ascending id, so two deletes of one pair queue.
+      for (const leg of [...legsToRemove].sort((a, b) =>
+        a.id.localeCompare(b.id),
+      )) {
+        await lockUnchangedInvestmentRow(manager, userId, leg);
+      }
 
       // Deleting an acquisition can leave a later removal uncovered: refused
       // after the mutation, in this transaction, so nothing commits

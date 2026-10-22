@@ -486,7 +486,8 @@
     "mnyImportAlreadyRunning": "已有匯入正在進行。請等待完成後再開始新的匯入。",
     "mnyAlreadyImported": "此檔案已於 {{ date }} 匯入(匯入 {{ jobId }}),其紀錄仍在您的帳戶中。再次匯入會造成重複。如需取代,請重新開始並選擇取代現有資料。",
     "mnyJobNotFound": "找不到匯入工作",
-    "mnyFileTooLarge": "這個 Money 檔案超過 {{ limit }} MB 的匯入上限。"
+    "mnyFileTooLarge": "這個 Money 檔案超過 {{ limit }} MB 的匯入上限。",
+    "noRateForSplitTransfer": "{{ date }} 沒有 {{ pair }} 的匯率：一筆分割行轉帳到另一種貨幣的帳戶。請為該貨幣對與日期新增匯率，然後重新匯入。"
   },
   "monteCarlo": {
     "scenarioNotFound": "找不到情境 {{ id }}",
@@ -648,6 +649,7 @@
     "transactionSplitNotFound": "找不到內嵌投資更新的交易分割 {{ splitId }}",
     "parentTransactionNotFound": "找不到內嵌投資更新的父交易 {{ transactionId }}",
     "investmentTransactionNotFound": "找不到 ID 為 {{ id }} 的投資交易",
+    "investmentTransactionChanged": "此交易已被另一個請求變更。請重新載入後再試。",
     "cannotChangeTransferDirection": "無法變更轉帳方向；請刪除後重新建立轉帳",
     "destinationAccountMustBeInvestment": "目的科目類型必須為 INVESTMENT",
     "transferPairMissing": "此轉帳的配對交易遺失；請刪除後重新建立轉帳，而非進行編輯",

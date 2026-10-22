@@ -86,6 +86,7 @@ implied.
 | INV-REPORT-001 | A report's account scope is investment linkage, not account type | enforced |
 | INV-REPORT-002 | A chart's down-sampling never reaches a count, a total or an export | enforced |
 | INV-REPORT-003 | A transfer leg appears in a report only as a named flow, never inside income, expenses or net | enforced |
+| INV-REPORT-004 | A category's cost is its signed sum within the category, on every report surface | partial |
 | INV-SANKEY-001 | The Cash Flow Sankey closes: income + inflows + deficit = expenses + outflows + unspent | enforced |
 | INV-SANKEY-002 | A Sankey transfer leg is counted at most once, by its own account's scope and its counterpart's class | enforced |
 | INV-SANKEY-003 | Investment linkage and VOID are excluded on every Sankey branch | enforced |
@@ -128,13 +129,13 @@ implied.
 | INV-AUTH-005 | A replaced password ends every credential issued on the old one | enforced |
 | INV-ACTIVITY-001 | Activity is attributed to whoever acted, not to whoever was acted for | enforced |
 | INV-PROFILE-001 | A user-profile response is an allowlist | enforced |
-| INV-DISPLAY-001 | A figure addressed to a person is rendered in that person's number locale | enforced |
+| INV-DISPLAY-001 | A figure addressed to a person is rendered in that person's number locale | partial |
 | INV-DISPLAY-002 | A partial figure is relabelled where it is shown: a scalar total is null with its known subtotal named, a series point is plotted as unknown | partial |
 | INV-MCP-001 | Identity comes from the credential on the request | enforced |
 | INV-MCP-002 | An MCP request is answered by the MCP transport, never by the app shell | enforced |
 | INV-MCP-003 | A write confirmation is bound to one credential and one change | enforced |
 | INV-MCP-004 | A write happens only on the round a human answered | enforced |
-| INV-CURRENCY-001 | A shared currency is deleted only by its creator, on a global count | enforced |
+| INV-CURRENCY-001 | A shared currency is deleted only by its creator, on a global count; a user's action never creates or leaves one offered to every user | partial |
 | INV-ATTACHMENT-001 | Available metadata resolves to committed bytes | enforced |
 | INV-ATTACHMENT-002 | A scanned document and its original are one attachment | enforced |
 | INV-ATTACHMENT-003 | An attachment's bytes are read from the backend that holds them, and a provider switch moves them | enforced |
@@ -174,7 +175,7 @@ implied.
 | INV-PORTMOVE-007 | A portfolio movement's external flow is converted at the date each amount crossed the boundary | enforced |
 | INV-PORTMOVE-008 | A late close restates a portfolio movement's baseline instead of being booked as the period's move, and a carried close never withholds it | enforced |
 | INV-RLS-001 | Enforced mode refuses to run on a role that can bypass RLS | enforced |
-| INV-CACHE-001 | A money-moving write invalidates every derived cache | enforced |
+| INV-CACHE-001 | A money-moving write invalidates every derived cache | partial |
 | INV-DAYNOTE-001 | A calendar date is covered by at most one of a user's notes, and a save never reads first | enforced |
 | INV-PAYEE-001 | A contact lookup never overwrites a value the user entered, and the automatic one runs at most once per payee | enforced |
 | INV-PAYEE-002 | Google Places requests in one Pacific calendar month never exceed the cap for the key's owner | enforced |
@@ -735,12 +736,45 @@ Enforcement         No path writes the columns incrementally. Every ledger write
                     investment_transactions inserts that no holdings row-lock
                     covers -- so a concurrent trade cannot be replaced by a
                     projection that never saw it.
+                    update() and remove() then row-lock the investment row they
+                    read (and remove() its transfer leg) through
+                    lockUnchangedInvestmentRow
+                    (securities/investment-row-lock.util.ts) and refuse, before
+                    any write, a row that is gone (404) or no longer the one
+                    read (409): the cash row a reversal deletes and the values a
+                    save writes back are the locked row's, so a double-submitted
+                    edit cannot post its cash twice and a delete behind an edit
+                    cannot orphan the edit's cash row (A26-H04). The
+                    security-transfer edit (updateLinkedTransfer) takes the same
+                    holdings lock on every account the pair leaves or joins as its
+                    first statement and locks both legs the same way, so it
+                    validates an oversell seeing a concurrent trade (A26-L19).
+                    Undo and redo re-derive through the same fold
+                    (HoldingsService.rebuildAccountsFromTransactions); the copy in
+                    action-history.service.ts, which added a DIVIDEND's total to the
+                    basis and stored 6 decimals, is gone (A26-L21).
+                    A transfer is not a purchase: the fold hands a TRANSFER_IN the
+                    basis its paired TRANSFER_OUT relieved (orderTransferOutBeforeIn
+                    puts the OUT leg first when the two share an instant), and
+                    transferSecurity and updateLinkedTransfer write both legs'
+                    price from HoldingsService.releasedBasisPerShare inside their
+                    transaction -- the source's basis at the transfer's own place
+                    in the replay, never today's stored average and never a
+                    client price -- so a rebuild of the destination alone, which
+                    cannot see the OUT leg, falls back to the right figure
+                    (A26-M22). Residual: an IN leg's stored price is refreshed only
+                    when its transfer is written; a later back-dated change to the
+                    source's earlier rows reaches the destination at its next
+                    full or paired rebuild.
                     UNIQUE(account_id, security_id) still prevents duplicate rows.
                     A scope the ledger has no rows for projects to "no holding":
                     the row is deleted. Every writer takes that decision, and
                     the average cost a short position stores, through
                     projectedHoldingRow. An imported opening position is an
-                    ADD_SHARES row, not a holding with nothing behind it.
+                    ADD_SHARES row, not a holding with nothing behind it. The fold
+                    snaps a position to zero only below the stored scale
+                    (HOLDING_QUANTITY_EPSILON, 1e-8), never at 0.0001 per step, so
+                    purchases under 0.0001 shares form a holding (A26-M23).
 Concurrency scope   per (account, security)
 Retry semantics     Serialized by the lock; a lost update cannot occur.
 Failure response    the stored holding equals a deterministic replay of the ledger.
@@ -770,25 +804,26 @@ Known gap           an unpriced acquisition (acquisitionCost returns null) adds
                     partial figure with nothing marking it as one. The column has
                     no completeness flag; the surfaces that need one derive it
                     from the ledger (docs/financial-calculation-contract.md).
-                    Four narrower risks are open and unclosed, recorded here
-                    rather than fixed in passing: action-history.service.ts keeps
-                    a second fold over the ledger that does not filter by
-                    SHARE_MOVING_ACTIONS, so its undo/redo rebuild and
-                    computeHoldingsMap can disagree about a non-share-moving
-                    action; transferSecurity reads the source position's carried
-                    cost before the transaction it writes in, so a concurrent
-                    trade can move the basis between the read and the write;
-                    update() and remove() derive the scopes they will rebuild
-                    from a snapshot loaded before the transaction, without
-                    lockInvestmentTransactionRow, so a row that moved account or
-                    security in between is rebuilt on the old pair; and a
-                    security recorded in GBX normalizes to GBP for the provider
+                    One narrower risk is open and unclosed, recorded here rather
+                    than fixed in passing: a security recorded in GBX normalizes to GBP for the provider
                     currency check (quote-currency.util.ts) while currency_code
                     stays GBX, so every reader of that column sees a unit the
                     prices are not in.
 Required tests      Two-connection (concurrent trades on one holding, the stored
                     row compared against the replay):
                     backend/test/integration/holding-concurrent-trades.integration.spec.ts.
+                    Two-connection edit/edit and edit/delete of one BUY, the
+                    funding account's cash rows and balance against its ledger:
+                    backend/test/integration/investment-edit-race.integration.spec.ts.
+                    A back-dated transfer carries the source's basis on its date,
+                    follows a date edit, and ignores a client price:
+                    backend/test/integration/security-transfer-basis.integration.spec.ts.
+                    Two BUYs of 0.00005 hold 0.0001:
+                    backend/test/integration/holding-fractional.integration.spec.ts.
+                    A SELL racing a transfer edit cannot oversell:
+                    backend/test/integration/security-transfer-edit-race.integration.spec.ts.
+                    An undo stores the canonical average:
+                    backend/test/integration/holding-undo-fold.integration.spec.ts.
                     Out-of-order entry through the real service, stored row
                     compared against the replay:
                     backend/test/integration/holding-ledger-projection.integration.spec.ts.
@@ -1268,11 +1303,21 @@ Enforcement         portfolio-calculation.service.ts has always multiplied
                     prints the line under the KPIs, so the reader is told which
                     rate answered. A row with no usable rate of its own falls
                     back to the rate on its own date, under INV-FX-001.
+                    An edit keeps the row's rate: update() re-resolves only when
+                    the account, funding account or security changes, and the
+                    AI/MCP edit preview (previewUpdateInvestmentTransaction, read
+                    by the MCP single and bulk edits and the assistant's signed
+                    confirmation, which commit the rate it returns) carries the
+                    stored rate unless the edit names one or another security
+                    (A26-M20).
 Test                investment-transaction-summary.service.spec.ts: a sale of
                     820.91 USD settled at 3.7287 reads 3,060.9271 PLN and asks
                     for no market rate; a row without a rate is converted at the
                     market rate and counted; a stored 1 across two currencies is
                     ignored; a third settlement currency is carried onward.
+                    investment-transactions.service.spec.ts "the row's own exchange
+                    rate": a description-only edit previews the stored 1.40, not
+                    today's 1.37.
 Status              enforced
 ```
 
@@ -1483,11 +1528,16 @@ Enforcement         securities/investment-amount.util.ts is the one door:
                     InvestmentTransactionForm makes the total an editable field:
                     the last edited of total and price wins, the same pattern it
                     already uses between the converted amount and the rate.
+                    A trade email that states only a price proposes the total of
+                    the price as written (ParsedTrade.priceUnits8, 1e-8 units),
+                    not of the 4-decimal card price: tradeExecutedTotalUnits in
+                    email-receipts/parsing/parse-trade.ts (A26-L17).
 Test                investment-amount.util.spec.ts (both directions and the
                     refusals); investment-transactions.service.spec.ts -- a SELL
                     of 141 shares supplied as 820.91 stores 820.9100 and
                     5.8220567376, a resent description-only edit keeps the stored
-                    total, a quantity change re-derives it.
+                    total, a quantity change re-derives it. parse-trade.spec.ts:
+                    10,000 x 1.23456789 proposes 12,345.6789, not 12,346.0000.
 Status              enforced
 ```
 
@@ -1525,6 +1575,11 @@ Enforcement         securities/providers/quote-currency.util.ts decides it once:
                     The provider contract carries the currency because
                     fetchHistoricalSeries returns a HistoricalSeries bundle; a
                     bare HistoricalPrice[] cannot state what its numbers are in.
+                    fillPriceWindow remembers a month as empty only when every
+                    routed provider answered it with no bars: a provider that
+                    failed, was refused, or answered about another currency
+                    (refuseForeignCurrency) leaves the month to be asked again
+                    (A26-L20).
 Known gap           **Unverifiable is accepted, not refused.** A provider that
                     reports no currency (MSN's chart series routinely does not,
                     and its Quotes endpoint only sometimes does), or a security
@@ -2324,6 +2379,41 @@ Required tests      cash-flow-sankey.integration.spec.ts (widening the scope to
                     or not at all, from the ledger); truth table B in
                     cash-flow-sankey.service.spec.ts.
 Status              enforced
+```
+
+### INV-REPORT-004 -- a category's cost is its signed sum within the category
+
+```text
+Statement           A category's figure in a report is the signed sum of its
+                    rows of both signs, netted within that one category and
+                    never across two: a refund lowers the category's cost, and a
+                    category whose credits meet its debits is not spending.
+                    Transfers are not a category and are not netted.
+Source of truth     The signed amounts on transactions and transaction_splits.
+Enforcement         Built-in reports: NET_SPEND_AMOUNT / isNetSpending
+                    (backend/src/built-in-reports/spending-reports.service.ts);
+                    client summaries: netEntityTotal. Custom report engine
+                    (backend/src/reports/reports.service.ts): each line lands in
+                    a (group, category) cell, signed; a cell is kept only when
+                    its net is in the report's direction (EXPENSES_ONLY:
+                    isNetSpending of the negated net; INCOME_ONLY: a positive
+                    net; BOTH: the magnitude of the net), and a group is the sum
+                    of its kept cells (audit A26-M33). The metric NONE list keeps
+                    its row-level direction filter.
+                    The loan history's Interest Paid
+                    (frontend/src/lib/loan-history.ts) sums each interest row
+                    signed, so a lender's refund nets (A26-S15-05).
+Concurrency scope   --
+Failure response    --
+Required tests      Integration:
+                    backend/test/integration/report-custom-net-and-search.integration.spec.ts
+                    (Groceries -100 and +30: 70 under EXPENSES_ONLY and BOTH, by
+                    category and by month) and the reports.service.spec.ts cases;
+                    frontend/src/lib/loan-history.test.ts "nets an interest
+                    refund".
+Known gap           No source scan holds the rule: a new aggregator summing
+                    Math.abs per row passes every guard.
+Status              partial
 ```
 
 ### INV-SANKEY-003 -- investment linkage and VOID are out of every branch
@@ -3356,6 +3446,15 @@ Statement           Interest attributed to a historical loan payment is a
                     A forward PROJECTION may estimate -- that is its job, and
                     its rows are labelled projected. The prohibition is on a
                     historical row.
+                    A historical row is a row the ledger moved by today: a VOID
+                    payment or interest expense moved nothing and a future-dated
+                    one has not happened, so neither is history
+                    (deriveLoanPaymentHistory's required `todayYmd`, audit
+                    A26-M28). Interest is the signed sum of its rows, so a
+                    refund from the lender lowers Interest Paid (INV-REPORT-004,
+                    A26-S15-05). A loan whose repayments recorded no interest at
+                    a non-zero rate has an unknown interest saving, never the
+                    whole of it as saved (loan-past-impact.ts, A26-L34).
 Source of truth     transaction_splits (the payment's recorded interest leg,
                     identified by accounts.interest_category_id) and the
                     interest-category expenses on the loan's configured source
@@ -3804,7 +3903,12 @@ Required tests      bond-prices.integration.spec.ts (real PostgreSQL: a manual
                     refusals: type, quantity, currency, uppercase UUID, undo),
                     action-history undo spec, provider-priced.guard.spec.ts,
                     backup specs (support backup drops the link; restore
-                    names and recomputes).
+                    names and recomputes). A benchmark observation stored or
+                    corrected outside the 06:25 run (the boot warm-up, the refresh
+                    after a stored series) dispatches the recompute of the series
+                    reading that code after its run, outside the lease
+                    (BenchmarkRefreshService.recomputeAfterChange, A26-L22):
+                    benchmark-refresh.service.spec.ts "the recompute after a store".
 Status              enforced
 ```
 
@@ -4162,6 +4266,14 @@ Enforcement         PortfolioCalculationService.valueBondHoldings, used by
                     approximate for a security held in several accounts while
                     their total is exact (spec
                     docs/specs/bond-program-securities.md 2.4).
+                    A blend reader (a series that multiplies a quantity by a
+                    stored close) values a linked security through
+                    valuationClosePointOn (securities/bond-valuation-close.util.ts):
+                    the engine's row of that day only, so a day the engine refused
+                    (no row; INV-BOND-002) is unknown, never the previous engine
+                    close carried over it and never one lot's trade price
+                    (INV-BOND-005). The daily movement (DailyMovementService) reads
+                    it (A26-M26).
 Concurrency scope   --
 Retry semantics     --
 Crash semantics     --
@@ -4170,7 +4282,19 @@ Required tests      backend/src/securities/portfolio-calculation.service.spec.ts
                     (two accounts holding different series of one program, an
                     unknown lot, a valuation that throws);
                     backend/test/integration/bond-holding-value.integration.spec.ts
-Status              partial (historical per-account series)
+Status              partial. Still reading positionCloseAsOf (a carried engine
+                    close, or a trade price) over a refused day, and to be moved
+                    to valuationClosePointOn with the refusal carried as an
+                    unknown component: net worth daily and monthly
+                    (net-worth.service.ts loadDailyInvestments,
+                    recalculateBrokerageAccount; loadTxPriceSeries reads trade
+                    prices of linked securities), and through them latest net
+                    worth, the account summary totals, the period result and the
+                    investment report. Still reading the daily blend per account
+                    (A26-S14-02): Monte Carlo getHoldingStats, the investment
+                    report holdings, net worth by account for the current month;
+                    valueBondHoldings is the per-account answer. And the historical
+                    per-account series named above.
 ```
 
 ### INV-BONDNOTIFY-001 -- the bond notification producer fetches nothing
@@ -4983,6 +5107,16 @@ Enforcement         Client: every figure goes through useNumberFormat(); a pure
                     exists to override) -- with a classified allowlist and a
                     comment stripper so the prose that has to NAME the banned
                     patterns does not trip its own scan.
+                    A fifth scan fails a `.toFixed(` in UI code (components,
+                    app, hooks): a classified list names the machine-read sites
+                    (CSV rows, an API fraction string, a numeric table value)
+                    and a shrink-only baseline names the readouts not yet
+                    migrated, each with an exact count, so a new site and a
+                    stale entry both fail. ui-conventions.test.ts fails a UI
+                    import of the English-only formatRelativeTime (use
+                    useRelativeTime). The PDF header's generation time is
+                    formatted by the reader's date, time and timezone
+                    preferences and labelled from the catalog (pdf-export.ts).
                     The percentage scan is keyed on the literal '%' rather than
                     on `toFixed`: written from the diff it matched only the
                     shapes the migration had just removed and reported clean over
@@ -5069,7 +5203,10 @@ Required tests      Present: useNumberFormat.test.ts (share quantity at 8dp unde
                     expectation with the same helper the component renders
                     through -- SecurityList.test.tsx did, which is why the defect
                     shipped green.
-Status              enforced
+Status              partial: the toFixed baseline in number-locale.guard.test.ts
+                    still lists readouts in SavingsRateReport,
+                    MonteCarloReport, CurrencyExposureReport, LoanSummaryCards,
+                    CurrencyList and InvestmentTransactionListParts.
 ```
 
 The number locale is a SEPARATE preference from the language, and that is the
@@ -5299,6 +5436,18 @@ Enforcement         Creator-only, on a genuinely global count, under a lock.
                     function currency_code_in_use_globally (migration 137) which
                     covers every FK including budgets and both exchange_rates
                     columns -- not the caller's tenant-scoped count.
+                    No user action creates a currency offered to every user:
+                    a request path calls ensureCurrencyForUser, which writes a
+                    known ISO code as an inactive reference row and any other
+                    code as the user's own, and activates only that user's
+                    user_currency_preferences row; it runs inside the
+                    transaction that writes the reference, before it (the
+                    non-deferrable user_preferences.default_currency FK). A
+                    user's self-delete locks the currencies they created and
+                    removes the unreferenced ones after the user row goes; the
+                    trigger currencies_creator_cleared_deactivate (migration
+                    20261022133443) deactivates every currency whose creator is
+                    cleared, on every deletion path (A26-M17, A26-M25).
 Concurrency scope   global -- cross-tenant
 Failure response    non-creator deactivates without deleting; 409 while referenced.
 Required tests      Present: currency-references.spec.ts derives the reference list
@@ -5306,7 +5455,17 @@ Required tests      Present: currency-references.spec.ts derives the reference l
                     forgotten; currencies.service.spec.ts asserts a non-creator's
                     remove deletes only the preference and never the currency row.
                     A two-connection delete-versus-use test is still owed.
-Status              enforced
+                    currency-ownership.integration.spec.ts: a first default of
+                    PLN saves on a fresh instance and is offered to nobody else;
+                    a non-ISO code is its user's own; deleting the creator
+                    removes an unreferenced custom currency and deactivates a
+                    referenced one, also on a direct DELETE FROM users.
+Status              partial -- rows written before migration 20261022133443 are
+                    not repaired: an active system currency an earlier import,
+                    preference or deletion created stays offered to every user,
+                    and the admin delete path (admin.service.ts) deactivates a
+                    deleted user's currencies but does not remove the
+                    unreferenced ones.
 ```
 
 The global count is a SECURITY DEFINER function precisely so that under
@@ -5330,7 +5489,12 @@ Enforcement         Ordered so a failure leaves recoverable bytes, never a row
                     exists: attachment-orphan-sweeper.service.ts (hourly, under
                     withSystemContext) claims tombstones and deletes leased-past
                     orphaned bytes. Local writes are crash-atomic
-                    (local-storage.provider.ts writeFileAtomic). "No bytes without
+                    (local-storage.provider.ts writeFileAtomic). A restore
+                    stages its objects under the same protocol
+                    (backup-attachment-transfer.service.ts: an intent with a
+                    two-hour lease before each put, cleared in the restore
+                    transaction, kept when a discard's delete fails; A26-L10;
+                    backup-restore-staging.integration.spec.ts). "No bytes without
                     metadata" holds eventually rather than instantaneously, which
                     is what the invariant asks.
 Concurrency scope   per attachment
@@ -5514,6 +5678,14 @@ Crash semantics     Expiry is a property of the stored timestamp, not of a timer
                     bundle's life beyond the next purge by either door.
 Status              enforced
 ```
+
+The same device-sharing threat applies to `sessionStorage`, which a sign-out
+and a delegate context-switch reload both leave in place (A26-M36): the
+intraday portfolio series is keyed by user and acting context, and
+`clearIdentityScopedSessionStorage` (`frontend/src/lib/identity-session-storage.ts`)
+drops it and the remembered entry date and currency on `logout` and before the
+switch's reload; `frontend/src/lib/session-storage.guard.test.ts` lists every
+`sessionStorage` writer with whether it is identity-neutral or identity-scoped.
 
 ### INV-SHARE-004 -- a share never dead-ends
 
@@ -5779,9 +5951,15 @@ Enforcement         Namespacing: userFolderPath uses shardedSegments(userId) for
 Concurrency scope   per user
 Crash semantics     A kill or ENOSPC mid-write leaves the temp file, never a
                     truncated final name -- the rename is the publish.
+                    A legacy flat-folder artifact names no owner, so retention
+                    never deletes it and the local target's remove refuses it
+                    (A26-M07).
 Required tests      Present: atomic-file.spec.ts and auto-backup.service.spec.ts
                     use a real mkdtemp; backup.service.spec.ts asserts restore
-                    honours the artifact's own completeness claim.
+                    honours the artifact's own completeness claim;
+                    auto-backup.service.spec.ts asserts a legacy flat file
+                    survives any user's retention while the user's own sharded
+                    files are still pruned.
 Status              enforced
 ```
 
@@ -6173,7 +6351,10 @@ Enforcement         Per job, and now mostly a durable cross-replica claim.
                     (ON CONFLICT (budget_id, period_start) DO NOTHING RETURNING with
                     the loser re-reading the winner), AI insight generation
                     (claimLease with the cooldown re-read under it, not a
-                    process-local Set), demo reset (claimOnce
+                    process-local Set; the lease outlasts the provider call,
+                    PROVIDER_CALL_BUDGET_MS plus a margin, is renewed by
+                    JobClaimService.whileLeaseHeld while it runs, and the save
+                    is fenced by holdsLease on the token, A26-L13), demo reset (claimOnce
                     keyed by the UTC day).
                     The MNY reaper's conditional CAS and the price/FX refreshes'
                     natural-key ON CONFLICT were already real.
@@ -6943,14 +7124,37 @@ cross-user lookups (a candidate below) and whether `db-init` / `db-migrate` are
 serialized across replicas -- `common/db/advisory-locks.ts` now exists and that
 sub-point warrants its own re-check.
 
+A refusing role is only half the containment; the policies have to refuse too.
+The `account_delegates` and `account_delegate_grants` `WITH CHECK` repeated
+their `USING` read arms until migration `20261022142820`, so a delegate-side
+session could issue itself a delegation from any owner and read that owner's
+ledger through the joint read arms (A26-M06). They now admit a write only from
+the owner's own session and a grant only over the owner's own account
+(`docs/row-level-security-contract.md` section 5). The status above stays
+`enforced`: it covers the role check, which this did not change. The joint
+read arms still trust any active delegation whose delegate is the real user
+while that user acts for a different owner (D-S04-01, not closed here).
+
 ### INV-CACHE-001 -- a money-moving write invalidates its caches
 
 ```text
 Statement           A write that changes money invalidates every client cache
-                    family derived from transactions.
+                    family derived from transactions, and so does a write that
+                    changes what those figures are derived from without being a
+                    ledger row: a recategorisation (category reassign, payee
+                    category backfill), a stored price, a security's currency,
+                    an exchange rate, the reporting currency or timezone, an
+                    import. A read in flight across the write never writes its
+                    pre-write answer back.
 Enforcement         invalidateBalanceCaches (frontend lib/apiCache.ts) drops the
                     accounts:, investments: AND budgets: prefixes -- every
-                    transaction-derived family. The cache layer is mostly
+                    transaction-derived family. The valuation-input and
+                    recategorising writes call it too; a reporting-currency or
+                    timezone change and every import call clearAllCache. Every
+                    cached read goes through dedupe, whose per-key generation
+                    refuses a result that raced an invalidation; getCached and
+                    setCache are for tests, and patchCached is the one in-place
+                    rewrite. The cache layer is mostly
                     frontend, which is why the function name does not appear in
                     backend/src. The server holds one derived cache of its own,
                     the portfolio-summary memo
@@ -6979,7 +7183,13 @@ Required tests      Present: frontend cache-prefix-classification.guard.test.ts
                     requires every cache prefix to declare itself transaction-
                     derived (and be dropped) or reference-data (and be kept), so a
                     new family cannot default to stale; balance-cache.guard.test.ts
-                    requires every balance-writing API method to invalidate;
+                    requires every balance-writing API method to invalidate
+                    (its route list names the reassign, the category backfill
+                    and the price routes); the same classification guard fails
+                    a getCached or setCache call outside apiCache.ts; one lib
+                    case per channel (categories, payees, tags, investments,
+                    exchange-rates, user-settings, import, import-mny) and a
+                    race case in investments and budgets;
                     backend portfolio-summary-memo.spec.ts and the memo cases in
                     portfolio.service.spec.ts require an invalidated user to
                     recompute while another user's entry survives;
@@ -6989,7 +7199,10 @@ Required tests      Present: frontend cache-prefix-classification.guard.test.ts
                     drop standing. The cross-replica hop itself is proved by the
                     CLUSTER_MODE=multi E2E shard, where the write and the read
                     land on different replicas.
-Status              enforced
+Status              partial: the balance-cache guard is a route list, so a new
+                    recategorising or valuation-input route is held only once it
+                    is added there, and the preference and rate-refresh drops
+                    are held by unit tests, not a scan.
 ```
 
 ### INV-DAYNOTE-001 -- one note per day, written without reading first
@@ -7125,6 +7338,17 @@ carry an earlier prefix and replay first on a fresh install. A migration must
 not depend on the ordering of another in-flight migration; nothing checks that
 beyond review.
 
+
+Adjacent, and not claimed by this entry: expand before contract. A migration
+that drops, renames or retypes a column, or adds `SET NOT NULL`, breaks the
+previous release's pods for the length of a rolling update unless that release
+no longer uses the old shape (`20260908120000_remove_notification_browser.sql`
+did not wait, A26-L09). The migration lint now refuses such a statement
+(`contract-without-expand`) unless its file carries `-- contract-after: X.Y.Z`;
+the files before the rule are frozen by name in
+`GRANDFATHERED_CONTRACT_MIGRATIONS`. The marker is a claim, not a proof: only
+running the previous release against the new schema proves it, and no CI job
+does (`docs/database-migrations.md`).
 ### INV-HA-001 -- a replica serves only while what it shares is reachable
 
 ```text
@@ -7968,14 +8192,25 @@ Statement           Two replicas, or the cron and "Poll now", never read one
                     mailbox at the same time.
 Source of truth     job_claims (email_receipt_poll, user, mailbox)
 Enforcement         JobClaimService.claimLease around the whole poll, released by
-                    token in finally; withUserContext wraps the lease.
+                    token in finally and renewed while the poll runs
+                    (whileLeaseHeld); withUserContext wraps the lease. The TTL
+                    (POLL_LEASE_MS) is the 8-minute work budget plus the slowest
+                    provider call (PROVIDER_CALL_BUDGET_MS) plus 2 minutes, and no
+                    provider call starts past the budget. An automatic parser
+                    draft holds its own per-sender claim
+                    (email_receipt_parser_draft, user, domain) with a
+                    token-fenced save, so a poll that outran a retaken lease does
+                    not draft a sender twice (A26-L13).
 Concurrency scope   mailbox
-Retry semantics     a lost lease expires after 10 minutes; the poll starts no new
-                    work after 8
+Retry semantics     a lost lease expires POLL_LEASE_MS after its last renewal;
+                    the poll starts no new work after 8 minutes
 Crash semantics     the lease expires; INV-RECEIPT-002 makes a repeated read safe
 Failure response    "Poll now" answers busy
 Required tests      Present: rls-context-smoke.spec.ts (real lease), poll service
-                    unit spec. Missing: a two-instance cron test.
+                    unit spec, provider-lease-overrun.integration.spec.ts (a
+                    second poll after the first's lease was expired mid-draft:
+                    one provider call, one draft). Missing: a two-instance cron
+                    test.
 Status              enforced
 ```
 
@@ -8102,7 +8337,11 @@ Source of truth     backend/src/transactions/apply-transaction-search.ts
 Enforcement         transaction-search.guard.spec.ts fails an import of the
                     parser or the builder outside the door's three files, and a
                     hand-built `%${...search...}%` pattern in the
-                    transactions module. The pattern scan is narrow: it catches
+                    transactions and reports modules. The custom report's text
+                    filters (the legacy searchText and the filter-group `text`
+                    condition) go through the door at split grain (audit
+                    A26-L12); before, they were a second LIKE door with `%` and
+                    `_` unescaped. The pattern scan is narrow: it catches
                     a template literal whose interpolation names a search
                     value, not a concatenated `'%' + q + '%'` or a template
                     over a differently named variable; those are left to

@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "Scheduled payments configured for {count} account{plural}.",
     "viewInvestments": "View Investments",
     "viewTransactions": "View Transactions",
-    "importMoreFiles": "Import More Files"
+    "importMoreFiles": "Import More Files",
+    "bondRowsWithoutSeries": "{count, plural, one {# bond purchase was imported without a series. Choose its series in the security's bond lots.} other {# bond purchases were imported without a series. Choose their series in the security's bond lots.}}"
   },
   "multiAccountReview": {
     "heading": "Multi-Account QIF Import",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "Notes about this import",
     "downloadReport": "Download report",
-    "done": "Done"
+    "done": "Done",
+    "bondRowsWithoutSeries": "{count, plural, one {# bond purchase was imported without a series. Choose its series in the security's bond lots.} other {# bond purchases were imported without a series. Choose their series in the security's bond lots.}}"
   },
   "mnyWarnings": {
     "missingTable": "This Money version has no {count, plural, one {# table} other {# tables}} the import uses.",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "Not evaluated: a previous rule stopped the rules.",
         "disabled": "Not evaluated: the rule is switched off.",
-        "invalid": "Not evaluated: the rule is not valid. Open it to repair it."
+        "invalid": "Not evaluated: the rule is not valid. Open it to repair it.",
+        "outside_active_window": "Not evaluated: the row's date is outside the rule's active dates."
       },
       "condition": {
         "met": "Condition met",

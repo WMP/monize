@@ -63,9 +63,14 @@ describe("TransactionRulesService remove", () => {
     await expect(h.service.remove(USER_ID, RULE_ID)).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    expect(h.manager.query).toHaveBeenCalledTimes(1);
+    // The lock, then the expiry of the rule's open review requests (A26-L16),
+    // which the 404 rolls back with the transaction; no compaction.
+    expect(h.manager.query).toHaveBeenCalledTimes(2);
     expect(sqlOf(h.manager.query.mock.calls[0])).toContain(
       "pg_advisory_xact_lock",
+    );
+    expect(sqlOf(h.manager.query.mock.calls[1])).toContain(
+      "UPDATE ai_review_requests",
     );
   });
 
@@ -78,13 +83,21 @@ describe("TransactionRulesService remove", () => {
       id: RULE_ID,
       userId: USER_ID,
     });
-    const [lock, compact] = h.manager.query.mock.calls;
+    const [lock, expire, compact] = h.manager.query.mock.calls;
     expect(sqlOf(lock)).toContain("pg_advisory_xact_lock");
+    // A26-L16: the rule's open review requests are expired BEFORE the delete,
+    // while `rule_id` still names the rule (ON DELETE SET NULL clears it).
+    expect(sqlOf(expire)).toContain("UPDATE ai_review_requests");
+    expect(sqlOf(expire)).toContain("status = 'expired'");
+    expect(expire[1]).toEqual([USER_ID, RULE_ID]);
+    expect(h.manager.query.mock.invocationCallOrder[1]).toBeLessThan(
+      h.rules.delete.mock.invocationCallOrder[0],
+    );
     expect(sqlOf(compact)).toContain("UPDATE transaction_rules");
     expect(sqlOf(compact)).toContain("ROW_NUMBER() OVER (ORDER BY position)");
     expect(compact[1]).toEqual([USER_ID]);
     expect(h.rules.delete.mock.invocationCallOrder[0]).toBeLessThan(
-      h.manager.query.mock.invocationCallOrder[1],
+      h.manager.query.mock.invocationCallOrder[2],
     );
   });
 });

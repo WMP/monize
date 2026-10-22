@@ -21,6 +21,7 @@ import {
 } from "./bond-adapter";
 import { INSTALLED_BOND_ADAPTERS } from "./bond-adapters";
 import { BondCatalogService } from "./bond-catalog.service";
+import { BondPriceService } from "./bond-price.service";
 import { HttpFetch, SeriesHttp } from "./series-http";
 
 export interface RefreshOptions {
@@ -40,6 +41,11 @@ export interface RefreshOptions {
    * refresh that follows a stored series passes the ones never fetched.
    */
   readonly only?: ReadonlySet<string>;
+  /**
+   * Collects the codes whose observations this run inserted or changed, for
+   * the recompute that follows the run (A26-L22).
+   */
+  readonly changed?: Set<string>;
 }
 
 /** Days without a successful store after which a failing series is reported as an outage. */
@@ -69,6 +75,7 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
     private readonly fetchSync: FetchSyncService,
     private readonly catalog: BondCatalogService,
     private readonly http: SeriesHttp,
+    private readonly prices: BondPriceService,
   ) {}
 
   /**
@@ -77,16 +84,19 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
    * a reason to stop the application.
    */
   onApplicationBootstrap(): void {
+    const changed = new Set<string>();
     void withSystemContext(() =>
       this.fetchSync.withLease(
         FetchSyncJob.BondBenchmarks,
         this.FETCH_LEASE_MS,
-        () => this.refreshAll({ onlyStale: true }),
+        () => this.refreshAll({ onlyStale: true, changed }),
       ),
-    ).catch((error) => {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`Initial bond benchmark refresh failed: ${message}`);
-    });
+    )
+      .then(() => this.recomputeAfterChange(changed))
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Initial bond benchmark refresh failed: ${message}`);
+      });
   }
 
   /**
@@ -100,12 +110,13 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
    */
   @Cron("25 6 * * 1-5", { timeZone: "Europe/Warsaw" })
   async scheduledRefresh(): Promise<void> {
+    const changed = new Set<string>();
     try {
       await withSystemContext(() =>
         this.fetchSync.withLease(
           FetchSyncJob.BondBenchmarks,
           this.FETCH_LEASE_MS,
-          () => this.refreshAll(),
+          () => this.refreshAll({ changed }),
         ),
       );
     } catch (error) {
@@ -114,6 +125,8 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Scheduled bond benchmark refresh failed: ${message}`);
     }
+    // What a series stored before a later one failed is still committed.
+    await this.recomputeAfterChange(changed);
   }
 
   /**
@@ -129,6 +142,7 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
     options: Pick<RefreshOptions, "fetch" | "adapters"> = {},
   ): Promise<void> {
     if (instrumentIds.length === 0) return;
+    const changed = new Set<string>();
     try {
       await withSystemContext(async () => {
         const codes = await this.benchmarksRead(instrumentIds, true);
@@ -136,7 +150,7 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
         await this.fetchSync.withLease(
           FetchSyncJob.BondBenchmarks,
           this.FETCH_LEASE_MS,
-          () => this.refreshAll({ ...options, only: codes }),
+          () => this.refreshAll({ ...options, only: codes, changed }),
         );
       });
     } catch (error) {
@@ -145,6 +159,57 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
         `Bond benchmark refresh after a stored series failed: ${message}`,
       );
     }
+    await this.recomputeAfterChange(changed);
+  }
+
+  /**
+   * After a run's stores committed and outside its lease: recompute the engine
+   * prices of the securities whose series read a benchmark the run inserted or
+   * corrected an observation of (INV-CACHE-001 applied to INV-BOND-005's
+   * inputs). Without it a value stored by the boot warm-up or by the refresh
+   * after a stored series waited for the next 06:45 run, up to a weekend
+   * (A26-L22). Bounded to those series; an unchanged run recomputes nothing.
+   * Never throws: the recompute logs its own failures.
+   */
+  private async recomputeAfterChange(
+    changed: ReadonlySet<string>,
+  ): Promise<void> {
+    if (changed.size === 0) return;
+    try {
+      const instrumentIds = await withSystemContext(() =>
+        this.instrumentsReading(changed),
+      );
+      await this.prices.recomputeLinkedSecuritiesOfSeries(instrumentIds);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Bond price recompute after a benchmark store failed: ${message}`,
+      );
+    }
+  }
+
+  /** The stored series whose newest terms version reads one of `codes`. */
+  private async instrumentsReading(
+    codes: ReadonlySet<string>,
+  ): Promise<string[]> {
+    const rows: Array<{ id: string }> = await withScopedDb(
+      this.dataSource,
+      (m) =>
+        m.query(
+          `SELECT i.id
+             FROM bond_instruments i
+             JOIN LATERAL (
+               SELECT t.terms
+                 FROM bond_terms_versions t
+                WHERE t.bond_instrument_id = i.id
+                ORDER BY t.version DESC
+                LIMIT 1
+             ) v ON TRUE
+            WHERE v.terms -> 'rateRule' ->> 'benchmarkId' = ANY($1::text[])`,
+          [[...codes]],
+        ),
+    );
+    return rows.map((r) => r.id);
   }
 
   /**
@@ -214,6 +279,7 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
           fetchImpl,
           today,
           options.onlyStale === true,
+          options.changed,
         );
         if (outcome !== "skipped") attempted += 1;
         if (outcome === "failed") failed += 1;
@@ -232,6 +298,7 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
     fetchImpl: HttpFetch | undefined,
     today: string,
     onlyStale: boolean,
+    changed?: Set<string>,
   ): Promise<"stored" | "skipped" | "failed"> {
     try {
       if (
@@ -245,7 +312,7 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
           allowedHosts: series.hosts,
         }),
       );
-      await this.store(series.code, result);
+      if (await this.store(series.code, result)) changed?.add(series.code);
       this.health.recordDataRecovered(series.providerId);
       this.logger.log(
         `Stored ${result.observations.length} observation(s) for ${series.code}, covered through ${result.coveredThrough}`,
@@ -351,16 +418,18 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
   private async store(
     code: string,
     result: BenchmarkFetchResult,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const { observations } = result;
-    await withScopedDb(this.dataSource, async (m) => {
+    return withScopedDb(this.dataSource, async (m) => {
+      let changed = false;
       if (observations.length > 0) {
         // `old` reads the rows as they were before this statement's upsert (a
         // data-modifying CTE shares the statement snapshot), so a correction
-        // reports the value it replaced. A newly inserted row has no old side.
-        const corrections: Array<{
+        // reports the value it replaced. A newly inserted row has no old side
+        // (old_value NULL): it is a change, and not a correction.
+        const upserted: Array<{
           observation_date: string;
-          old_value: string;
+          old_value: string | null;
           new_value: string;
         }> = await m.query(
           `WITH incoming AS (
@@ -387,7 +456,7 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
                   o.value::text AS old_value,
                   u.value::text AS new_value
              FROM upserted u
-             JOIN old o ON o.observation_date = u.observation_date`,
+             LEFT JOIN old o ON o.observation_date = u.observation_date`,
           [
             code,
             observations.map((o) => o.observationDate),
@@ -397,7 +466,11 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
             observations.map((o) => o.sourceUrl ?? null),
           ],
         );
-        for (const c of corrections ?? []) {
+        changed = (upserted ?? []).length > 0;
+        const corrections = (upserted ?? []).filter(
+          (row) => row.old_value !== null,
+        );
+        for (const c of corrections) {
           this.logger.warn(
             `Bond benchmark correction: series ${code}, observation ${c.observation_date}, value ${c.old_value} replaced by ${c.new_value}`,
           );
@@ -410,6 +483,7 @@ export class BenchmarkRefreshService implements OnApplicationBootstrap {
           WHERE code = $1`,
         [code, result.coveredThrough],
       );
+      return changed;
     });
   }
 }

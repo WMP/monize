@@ -1918,5 +1918,8 @@
       "residualDeficit": "Diambil dari saldo",
       "unlinkedAccount": "(rekening tidak tertaut)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Dibuat: {timestamp}"
   }
 }

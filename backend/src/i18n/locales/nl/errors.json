@@ -486,7 +486,8 @@
     "mnyImportAlreadyRunning": "Er loopt al een import. Wacht tot deze klaar is voordat u een nieuwe start.",
     "mnyAlreadyImported": "Dit bestand is al geïmporteerd op {{ date }} (import {{ jobId }}) en de records staan nog in uw account. Opnieuw importeren zou ze dupliceren. Begin opnieuw en kies ervoor uw bestaande gegevens te vervangen om ze te vervangen.",
     "mnyJobNotFound": "Importtaak niet gevonden",
-    "mnyFileTooLarge": "Dit Money-bestand is groter dan de importlimiet van {{ limit }} MB."
+    "mnyFileTooLarge": "Dit Money-bestand is groter dan de importlimiet van {{ limit }} MB.",
+    "noRateForSplitTransfer": "Geen wisselkoers voor {{ pair }} op {{ date }}: een gesplitste regel boekt over naar een rekening in een andere valuta. Voeg een wisselkoers toe voor dat paar en die datum en importeer opnieuw."
   },
   "monteCarlo": {
     "scenarioNotFound": "Scenario {{ id }} niet gevonden",
@@ -648,6 +649,7 @@
     "transactionSplitNotFound": "Transactiesplitsing {{ splitId }} niet gevonden voor ingebedde beleggingsupdate",
     "parentTransactionNotFound": "Bovenliggende transactie {{ transactionId }} niet gevonden voor ingebedde beleggingsupdate",
     "investmentTransactionNotFound": "Beleggingstransactie met ID {{ id }} niet gevonden",
+    "investmentTransactionChanged": "Deze transactie is door een ander verzoek gewijzigd. Laad deze opnieuw en probeer het nogmaals.",
     "cannotChangeTransferDirection": "Kan de richting van een overboeking niet wijzigen; verwijder deze en maak een nieuwe overboeking aan",
     "destinationAccountMustBeInvestment": "Doelrekening moet van het type INVESTMENT zijn",
     "transferPairMissing": "De gekoppelde transactie van deze overboeking ontbreekt; verwijder de overboeking en maak deze opnieuw aan in plaats van te bewerken",

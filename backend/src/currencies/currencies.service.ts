@@ -4,6 +4,7 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
   OnApplicationBootstrap,
 } from "@nestjs/common";
 import { tr } from "../i18n/translate";
@@ -18,6 +19,7 @@ import {
   CURRENCY_METADATA,
   resolveCurrencyMetadata,
   getCurrencyCatalog,
+  isKnownIsoCurrency,
   type CurrencyMetadata,
 } from "./currency-metadata";
 import { FALLBACK_DEFAULT_CURRENCY } from "../common/default-currency.util";
@@ -75,7 +77,7 @@ export class CurrenciesService implements OnApplicationBootstrap {
   async onApplicationBootstrap(): Promise<void> {
     try {
       await withSystemContext(() =>
-        this.ensureSystemCurrency(DEFAULT_CURRENCY_CODE),
+        this.ensureBootstrapCurrency(DEFAULT_CURRENCY_CODE),
       );
     } catch (err) {
       this.logger.warn(
@@ -196,7 +198,7 @@ export class CurrenciesService implements OnApplicationBootstrap {
 
     // One transaction around the whole block: the lazy-create fallback re-runs
     // the same query and must see the row it just wrote. The nested
-    // `ensureSystemCurrency` joins this transaction (scoped-db re-entrancy).
+    // `ensureCurrencyForUser` joins this transaction (scoped-db re-entrancy).
     return withScopedDb(this.dataSource, async (manager) => {
       const rows: UserCurrencyView[] = await manager.query(query, [userId]);
 
@@ -212,7 +214,7 @@ export class CurrenciesService implements OnApplicationBootstrap {
           );
         const defaultCurrency = prefRows[0]?.default_currency;
         if (defaultCurrency) {
-          await this.ensureSystemCurrency(defaultCurrency);
+          await this.ensureCurrencyForUser(userId, defaultCurrency);
           return manager.query(query, [userId]);
         }
       }
@@ -230,14 +232,71 @@ export class CurrenciesService implements OnApplicationBootstrap {
   }
 
   /**
-   * Ensure a system currency row exists for `code`, creating it from the
-   * curated/derived metadata (name, symbol, decimal places) when missing.
-   * Idempotent and safe to call on every default-currency change. Used so we
-   * create a currency on demand -- with a real symbol -- instead of seeding a
-   * whole list up front.
+   * Ensure the bootstrap system currency row exists, creating it from the
+   * curated/derived metadata (name, symbol, decimal places) when missing. It is
+   * ACTIVE and owned by nobody, so every user is offered it: that is right for
+   * the one default-preference currency and wrong for anything else. Called only
+   * from `onApplicationBootstrap`, never from a user's request -- a request
+   * goes through `ensureCurrencyForUser`.
    */
-  async ensureSystemCurrency(code: string): Promise<void> {
+  private async ensureBootstrapCurrency(code: string): Promise<void> {
     await this.insertSystemCurrencyIfMissing(code, true);
+  }
+
+  /**
+   * Make `code` usable by `userId` -- as the default-currency preference, or as
+   * the currency an imported account, security or rate is priced in -- without
+   * offering it to anybody else. A user's action never creates a currency every
+   * other user is shown: a known ISO 4217 code becomes an inactive reference row
+   * (as the bond catalog's does, and owned by nobody), and anything else is the
+   * user's own custom currency. Either way only this user's preference row is
+   * activated.
+   *
+   * One `withScopedDb`: it joins the caller's transaction, so a preference
+   * written after this call in the same transaction finds its foreign key. The
+   * insert is `ON CONFLICT DO NOTHING`, so an existing row (active, inactive,
+   * system or somebody's own) is left as it is.
+   */
+  async ensureCurrencyForUser(userId: string, code: string): Promise<void> {
+    const upper = code.toUpperCase();
+    if (!/^[A-Z]{3}$/.test(upper)) {
+      throw new BadRequestException(
+        tr(
+          "errors.common.currencyCodeInvalid",
+          "Currency code must be exactly 3 letters (e.g., USD, CAD)",
+        ),
+      );
+    }
+
+    await withScopedDb(this.dataSource, async (manager) => {
+      const existing = await manager.getRepository(Currency).findOne({
+        where: { code: upper },
+      });
+      if (!existing) {
+        const meta = resolveCurrencyMetadata(upper);
+        const isReference = isKnownIsoCurrency(upper);
+        await manager.query(
+          `INSERT INTO currencies (code, name, symbol, decimal_places, is_active, created_by_user_id)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (code) DO NOTHING`,
+          [
+            upper,
+            meta.name,
+            meta.symbol,
+            meta.decimalPlaces,
+            !isReference,
+            isReference ? null : userId,
+          ],
+        );
+      }
+
+      await manager.query(
+        `INSERT INTO user_currency_preferences (user_id, currency_code, is_active)
+         VALUES ($1, $2, true)
+         ON CONFLICT (user_id, currency_code) DO UPDATE SET is_active = true`,
+        [userId, upper],
+      );
+    });
   }
 
   /**
@@ -272,6 +331,46 @@ export class CurrenciesService implements OnApplicationBootstrap {
         [upper, meta.name, meta.symbol, meta.decimalPlaces],
       );
     });
+  }
+
+  /**
+   * Lock the custom currencies `userId` created and return their codes, in code
+   * order. Called in the transaction that deletes the user, before the user row
+   * goes: the lock keeps a concurrent activation from committing a reference
+   * between this decision and `removeUnreferencedCurrencies`.
+   */
+  async lockCurrenciesCreatedBy(
+    manager: EntityManager,
+    userId: string,
+  ): Promise<string[]> {
+    const rows: Array<{ code: string }> = await manager.query(
+      `SELECT code FROM currencies WHERE created_by_user_id = $1 ORDER BY code FOR UPDATE`,
+      [userId],
+    );
+    return rows.map((row) => row.code);
+  }
+
+  /**
+   * After a user is deleted, remove the currencies they created that nothing
+   * references any more. The foreign key's ON DELETE SET NULL has by then turned
+   * each into a system row (a trigger deactivated it), so only a row with no
+   * creator is deleted, and only when `currency_code_in_use_globally` says
+   * nobody -- including rows this scope cannot see -- still points at it.
+   *
+   * Lock the candidates (`lockCurrenciesCreatedBy`), then decide here, one code
+   * at a time on the transaction's single connection: the CONC-008 rule.
+   */
+  async removeUnreferencedCurrencies(
+    manager: EntityManager,
+    codes: string[],
+  ): Promise<void> {
+    for (const code of codes) {
+      if (await this.isInUseGlobally(manager, code)) continue;
+      await manager.query(
+        `DELETE FROM currencies WHERE code = $1 AND created_by_user_id IS NULL`,
+        [code],
+      );
+    }
   }
 
   async findOne(code: string): Promise<Currency> {

@@ -486,7 +486,8 @@
     "mnyImportAlreadyRunning": "Ya hay una importación en curso. Espere a que termine antes de iniciar otra.",
     "mnyAlreadyImported": "Este archivo ya se importó el {{ date }} (importación {{ jobId }}) y sus registros siguen en su cuenta. Importarlo de nuevo los duplicaría. Para reemplazarlos, empiece de nuevo y elija reemplazar sus datos existentes.",
     "mnyJobNotFound": "Tarea de importación no encontrada",
-    "mnyFileTooLarge": "Ese archivo de Money supera el límite de importación de {{ limit }} MB."
+    "mnyFileTooLarge": "Ese archivo de Money supera el límite de importación de {{ limit }} MB.",
+    "noRateForSplitTransfer": "No hay tipo de cambio para {{ pair }} el {{ date }}: una línea dividida transfiere a una cuenta en otra moneda. Añade un tipo de cambio para ese par y esa fecha y vuelve a importar."
   },
   "monteCarlo": {
     "scenarioNotFound": "Escenario {{ id }} no encontrado",
@@ -648,6 +649,7 @@
     "transactionSplitNotFound": "Desglose de transacción {{ splitId }} no encontrado para la actualización de inversión incrustada",
     "parentTransactionNotFound": "Transacción padre {{ transactionId }} no encontrada para la actualización de inversión incrustada",
     "investmentTransactionNotFound": "Transacción de inversión con ID {{ id }} no encontrada",
+    "investmentTransactionChanged": "Otra solicitud ha modificado esta transacción. Vuelva a cargarla e inténtelo de nuevo.",
     "cannotChangeTransferDirection": "No se puede cambiar la dirección de una transferencia; elimínala y crea una nueva transferencia",
     "destinationAccountMustBeInvestment": "La cuenta de destino debe ser de tipo INVESTMENT",
     "transferPairMissing": "Falta la transacción par de esta transferencia; elimina y vuelve a crear la transferencia en lugar de editarla",

@@ -73,6 +73,8 @@ npm run i18n:check         # Verify the pseudo-locale is up to date (CI gate)
 
 **A write that moves money calls `invalidateBalanceCaches()`** (or `clearAllCache()` where the write can touch anything). `src/lib/balance-cache.guard.test.ts` scans for the omission.
 
+**So does a write that recategorises rows or changes a valuation input** (a price, a security, a rate), and a cached read goes through `dedupe`, never `getCached`/`setCache` (`docs/frontend/api-and-cache.md`).
+
 **Asynchronous data belongs to the request that produced it.** Keep the payload with its request key, adopt a mutation's response only when its origin still matches the current selection, and never render a failed lookup as an empty result (`accounts = []`, `interest = []`, a total of zero). `docs/frontend/api-and-cache.md` has the rule and the regression matrix.
 
 **An unknown value is `null` and renders as unknown; a known zero renders as a number.** Never `?? 0`, `|| 0` or `?? 1` on an API value, never `connectNulls` by default, and never `> 0` or truthiness where `0` is a legitimate value. Decide which of the two states a branch is in before writing it.

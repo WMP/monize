@@ -201,6 +201,19 @@ export class TransactionRulesService {
         );
         if (rule.revision !== expectedRevision) throw this.revisionConflict();
       }
+      // The rule's open review requests go with it. `rule_id` is ON DELETE SET
+      // NULL, so left open they would read as rule-less requests, which the
+      // receipt dedupe treats as a review already in progress, and they would
+      // keep being offered for a rule that is gone (A26-L16). Closed before
+      // the delete, in its transaction, so a refused delete closes nothing.
+      await m.query(
+        `UPDATE ai_review_requests
+            SET status = 'expired', updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $1
+            AND rule_id = $2
+            AND status IN ('pending', 'claimed', 'proposed')`,
+        [userId, id],
+      );
       const result = await m
         .getRepository(TransactionRule)
         .delete({ id, userId });

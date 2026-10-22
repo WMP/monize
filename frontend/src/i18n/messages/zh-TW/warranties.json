@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, other {剩餘 {days} 天}}",
     "today": "今天到期",
-    "ago": "{count, plural, other {已於 {days} 天前到期}}"
+    "ago": "{count, plural, other {已於 {days} 天前到期}}",
+    "leftYears": "剩餘 {yearsCount, plural, other {{years} 年}} {daysCount, plural, other {{days} 天}}",
+    "agoYears": "{yearsCount, plural, other {{years} 年}} {daysCount, plural, other {{days} 天}}前已過期"
   },
   "kind": {
     "manufacturer": "原廠保固",

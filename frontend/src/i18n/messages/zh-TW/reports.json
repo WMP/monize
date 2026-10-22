@@ -1918,5 +1918,8 @@
       "residualDeficit": "動用餘額",
       "unlinkedAccount": "（未關聯帳戶）"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "產生時間：{timestamp}"
   }
 }

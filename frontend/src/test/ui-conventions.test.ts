@@ -3483,3 +3483,37 @@ describe("an investment amount is formatted with its own currency", () => {
     ).toBe(false);
   });
 });
+
+describe("a relative time is read through useRelativeTime", () => {
+  /**
+   * `formatRelativeTime` in `lib/format.ts` hardcodes English ("5m ago",
+   * "Yesterday") and a browser-locale date, so a Polish reader got English
+   * beside a translated page. `useRelativeTime()` goes through
+   * `Intl.RelativeTimeFormat` in the reader's language.
+   */
+  const RAW_RELATIVE_TIME_IMPORT =
+    /import\s*\{[^}]*\bformatRelativeTime\b[^}]*\}\s*from\s*["']@\/lib\/format["']/;
+  const UI_FILE = /^\/src\/(components|app|hooks)\//;
+
+  it("has no UI file importing formatRelativeTime from @/lib/format", () => {
+    const offenders = productionSources()
+      .filter(([path]) => UI_FILE.test(path))
+      .filter(([, content]) => RAW_RELATIVE_TIME_IMPORT.test(withoutComments(content)))
+      .map(([path]) => path);
+
+    // Use `useRelativeTime()` (hooks/useRelativeTime.ts).
+    expect(offenders).toEqual([]);
+  });
+
+  it("still recognises the import it bans", () => {
+    expect(
+      RAW_RELATIVE_TIME_IMPORT.test(
+        "import { formatDate, formatRelativeTime } from '@/lib/format';",
+      ),
+    ).toBe(true);
+    expect(
+      RAW_RELATIVE_TIME_IMPORT.test("import { useRelativeTime } from '@/hooks/useRelativeTime';"),
+    ).toBe(false);
+    expect(sources["/src/lib/format.ts"]).toContain("export function formatRelativeTime");
+  });
+});

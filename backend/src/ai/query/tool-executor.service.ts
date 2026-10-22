@@ -78,6 +78,10 @@ import {
   LlmScheduledKind,
 } from "../../scheduled-transactions/scheduled-transactions.service";
 import { BuiltInReportsService } from "../../built-in-reports/built-in-reports.service";
+import {
+  SPENDING_ANOMALY_DEFAULT_MONTHS,
+  SPENDING_ANOMALY_DEFAULT_THRESHOLD,
+} from "../../built-in-reports/anomaly-reports.service";
 import { WarrantiesService } from "../../warranties/warranties.service";
 import { LlmWarrantyQuery } from "../../warranties/warranty-llm-shape";
 import { validateToolInput } from "./tool-input-schemas";
@@ -2965,7 +2969,8 @@ export class ToolExecutorService {
    * returns the same per-type data shape. The five aggregation types take a date
    * range (default last 30 days); 'net_worth_history' takes a date range
    * (default last 12 months); 'spending_anomalies' takes a months window
-   * (default 3); 'month_comparison' takes a month (default the previous month).
+   * (default 6, as the Reports page); 'month_comparison' takes a month
+   * (default the previous month).
    */
   private async generateReport(
     userId: string,
@@ -3018,9 +3023,14 @@ export class ToolExecutorService {
     }
 
     if (type === "spending_anomalies") {
-      const months = (input.months as number | undefined) ?? 3;
+      // The window and the threshold are two arguments: the months were once
+      // passed as the z-score threshold (audit A26-M34). The threshold is the
+      // Reports page's own default, so both surfaces answer alike.
+      const months =
+        (input.months as number | undefined) ?? SPENDING_ANOMALY_DEFAULT_MONTHS;
       const data = await this.builtInReportsService.getSpendingAnomalies(
         userId,
+        SPENDING_ANOMALY_DEFAULT_THRESHOLD,
         months,
       );
       const count = data.anomalies.length;

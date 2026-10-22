@@ -627,6 +627,22 @@ describe("AnomalyReportsService", () => {
       expect(diffMonths).toBeLessThanOrEqual(7);
     });
 
+    it("reads the months window it is given, apart from the threshold", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      // (userId, threshold, months): 12 months of history at threshold 2. The
+      // AI and MCP adapters once passed the months as the threshold (A26-M34).
+      await service.getSpendingAnomalies(mockUserId, 2, 12);
+
+      const [, startDate, endDate] = scopedManager.query.mock.calls[0][1];
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffMonths =
+        (end.getFullYear() - start.getFullYear()) * 12 +
+        (end.getMonth() - start.getMonth());
+      expect(diffMonths).toBe(12);
+    });
+
     it("ignores payees with empty or blank names", async () => {
       const now = new Date();
       const recentDate = new Date(now);

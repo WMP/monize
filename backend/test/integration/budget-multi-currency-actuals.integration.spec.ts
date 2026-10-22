@@ -274,9 +274,7 @@ describe("budget actuals across currencies (integration)", () => {
       } as Partial<TransactionSplit>),
       dataSource.manager.create(TransactionSplit, {
         transactionId: parent.id,
-        // What the production writer stores for a transfer line; the column's
-        // default is "category", which chk_split_kind_exclusive refuses beside a
-        // transfer account.
+        // A transfer line is kind TRANSFER (chk_split_kind_exclusive).
         kind: SplitKind.TRANSFER,
         transferAccountId: savingsId,
         linkedTransactionId: counterpart.id,

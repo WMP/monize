@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, other {{days} hari lagi}}",
     "today": "Berakhir hari ini",
-    "ago": "{count, plural, other {Berakhir {days} hari lalu}}"
+    "ago": "{count, plural, other {Berakhir {days} hari lalu}}",
+    "leftYears": "{yearsCount, plural, other {{years} tahun}}, {daysCount, plural, other {{days} hari}} lagi",
+    "agoYears": "Berakhir {yearsCount, plural, other {{years} tahun}}, {daysCount, plural, other {{days} hari}} lalu"
   },
   "kind": {
     "manufacturer": "Produsen",

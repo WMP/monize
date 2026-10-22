@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import apiClient from './api';
 import { payeesApi } from './payees';
-import { invalidateCache } from './apiCache';
+import { invalidateCache, setCache, getCached, clearAllCache } from './apiCache';
 
 vi.mock('./api', () => ({
   default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -253,5 +253,43 @@ describe('payeesApi', () => {
     expect(result.suggestions).toHaveLength(1);
     // Nothing was written, so nothing cached is stale.
     expect(invalidateCache).not.toHaveBeenCalledWith('payees:');
+  });
+});
+
+describe('payeesApi recategorising writes drop budget caches (INV-CACHE-001)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearAllCache();
+    setCache('budgets:dashboard', { id: 'b' });
+  });
+
+  it('applyCategorySuggestions drops budgets:dashboard when transactions were backfilled', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { updated: 1, transactionsBackfilled: 2 },
+    });
+    await payeesApi.applyCategorySuggestions([{ payeeId: 'p-1', categoryId: 'c-1' }]);
+    expect(getCached('budgets:dashboard')).toBeUndefined();
+  });
+
+  it('applyCategorySuggestions leaves budgets:dashboard when none were backfilled', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { updated: 1, transactionsBackfilled: 0 },
+    });
+    await payeesApi.applyCategorySuggestions([{ payeeId: 'p-1', categoryId: 'c-1' }]);
+    expect(getCached('budgets:dashboard')).toEqual({ id: 'b' });
+  });
+
+  it('update drops budgets:dashboard when it categorised transactions', async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({
+      data: { id: 'p-1', transactionsCategorized: 3 },
+    });
+    await payeesApi.update('p-1', { defaultCategoryId: 'c-1' } as any);
+    expect(getCached('budgets:dashboard')).toBeUndefined();
+  });
+
+  it('update leaves budgets:dashboard when it categorised nothing', async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: { id: 'p-1' } });
+    await payeesApi.update('p-1', { name: 'X' } as any);
+    expect(getCached('budgets:dashboard')).toEqual({ id: 'b' });
   });
 });

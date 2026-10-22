@@ -12,10 +12,8 @@ import {
 } from "../common/time-series/rate-index.util";
 import { PricePoint } from "../common/time-series/price-boundary.util";
 import { NetWorthService } from "../net-worth/net-worth.service";
-import {
-  SECURITY_CLOSE_DECIMALS,
-  positionClosePointAsOf,
-} from "../net-worth/position-price.util";
+import { SECURITY_CLOSE_DECIMALS } from "../net-worth/position-price.util";
+import { valuationClosePointOn } from "./bond-valuation-close.util";
 import { foldExternalFlow } from "../notification-center/portfolio-flow.util";
 import { PORTFOLIO_MOVE_PERCENT_DECIMALS } from "../notification-center/portfolio-movement.util";
 import { UserPreference } from "../users/entities/user-preference.entity";
@@ -121,7 +119,7 @@ interface ReplayRow {
  *
  * Nothing here re-derives a value or a share count. Values come from
  * `NetWorthService.getDailyInvestments` with its completeness flags, prices
- * through `positionClosePointAsOf` (the same door valuation uses), and
+ * through `valuationClosePointOn` (the one close rule for a blend reader), and
  * quantities from one replay through `applyActionToQuantity` (INV-HOLDING-002)
  * that serves both endpoints. Whether a figure may be reported at all is decided
  * once, in `decideDailyMovement`.
@@ -485,7 +483,7 @@ export class DailyMovementService {
   }
 }
 
-/** The two price sources `positionClosePointAsOf` merges, as loaded for a window. */
+/** The two price sources `valuationClosePointOn` reads, as loaded for a window. */
 interface PriceSeries {
   stored: Map<string, PricePoint[]>;
   txFallback: Map<string, PricePoint[]>;
@@ -506,7 +504,12 @@ class MovementModel {
   private readonly priceSeries: PriceSeries;
   private readonly securities: Map<
     string,
-    { symbol?: string; name?: string; currencyCode?: string }
+    {
+      symbol?: string;
+      name?: string;
+      currencyCode?: string;
+      bondProgramId?: string | null;
+    }
   >;
 
   constructor(input: {
@@ -516,7 +519,12 @@ class MovementModel {
     priceSeries: PriceSeries;
     securities: Map<
       string,
-      { symbol?: string; name?: string; currencyCode?: string }
+      {
+        symbol?: string;
+        name?: string;
+        currencyCode?: string;
+        bondProgramId?: string | null;
+      }
     >;
     rateIndex: RateIndex;
   }) {
@@ -540,8 +548,14 @@ class MovementModel {
     return this.securities.get(securityId);
   }
 
+  /**
+   * A bond-linked security is closed only by the engine's row of the day:
+   * a day the engine refused is no close at all, never the previous engine
+   * close or one lot's trade price (A26-M26, INV-BOND-010).
+   */
   closePointOn(securityId: string, date: string): PricePoint | null {
-    return positionClosePointAsOf(
+    return valuationClosePointOn(
+      this.securities.get(securityId),
       this.priceSeries.stored.get(securityId),
       this.priceSeries.txFallback.get(securityId),
       date,

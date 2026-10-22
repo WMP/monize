@@ -266,7 +266,7 @@
     "sourceHolds": "Sumber memegang",
     "sharesAt": "lembar @",
     "avgCostSuffix": "biaya rata-rata.",
-    "transferCostNote": "Biaya per lembar (diisi otomatis dari akun sumber) dibawa ke tujuan agar laporan keuntungan dan laba Anda tetap benar. Ini hanya memindahkan lembar -- tidak ada perubahan tunai.",
+    "transferCostNote": "Biaya per saham adalah harga saham tersebut di akun sumber pada tanggal transfer. Biaya ini dihitung saat Anda menyimpan dan dibawa ke akun tujuan, sehingga laporan keuntungan dan laba Anda tetap benar. Ini hanya memindahkan saham; tidak ada uang tunai yang berpindah tangan.",
     "returnOfCapitalNote": "Pengembalian modal bukan pendapatan. Ini mengembalikan sebagian dari biaya perolehan saham, sehingga menurunkan dasar biaya kepemilikan Anda sebesar jumlah ini. Jumlah yang melebihi sisa dasar biaya dilaporkan sebagai keuntungan modal yang direalisasi.",
     "totalAmount": "Total Jumlah ({currency})",
     "sharesAtPrice": "{shares} lembar @ {symbol}{price}",

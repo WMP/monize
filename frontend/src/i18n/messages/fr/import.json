@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "Paiements récurrents configurés pour {count} compte{plural}.",
     "viewInvestments": "Voir les investissements",
     "viewTransactions": "Voir les transactions",
-    "importMoreFiles": "Importer d'autres fichiers"
+    "importMoreFiles": "Importer d'autres fichiers",
+    "bondRowsWithoutSeries": "{count, plural, one {# achat d'obligation a été importé sans série. Choisissez sa série dans les lots d'obligations du titre.} other {# achats d'obligations ont été importés sans série. Choisissez leur série dans les lots d'obligations du titre.}}"
   },
   "multiAccountReview": {
     "heading": "Importation QIF multi-comptes",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "Remarques sur cet import",
     "downloadReport": "Télécharger le rapport",
-    "done": "Terminé"
+    "done": "Terminé",
+    "bondRowsWithoutSeries": "{count, plural, one {# achat d'obligation a été importé sans série. Choisissez sa série dans les lots d'obligations du titre.} other {# achats d'obligations ont été importés sans série. Choisissez leur série dans les lots d'obligations du titre.}}"
   },
   "mnyWarnings": {
     "missingTable": "Cette version de Money n'a pas {count, plural, one {# table} other {# tables}} utilisée(s) par l'import.",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "Non évaluée : une règle précédente a arrêté les règles.",
         "disabled": "Non évaluée : la règle est désactivée.",
-        "invalid": "Non évaluée : la règle n'est pas valide. Ouvrez-la pour la réparer."
+        "invalid": "Non évaluée : la règle n'est pas valide. Ouvrez-la pour la réparer.",
+        "outside_active_window": "Non évaluée : la date de la ligne est en dehors des dates actives de la règle."
       },
       "condition": {
         "met": "Condition remplie",

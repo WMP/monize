@@ -486,7 +486,8 @@
     "mnyImportAlreadyRunning": "Impor sedang berjalan. Tunggu hingga selesai sebelum memulai yang lain.",
     "mnyAlreadyImported": "File ini sudah diimpor pada {{ date }} (impor {{ jobId }}), dan catatannya masih ada di akun Anda. Mengimpornya lagi akan menggandakannya. Untuk menggantinya, mulai ulang dan pilih untuk mengganti data Anda yang ada.",
     "mnyJobNotFound": "Tugas impor tidak ditemukan",
-    "mnyFileTooLarge": "Berkas Money itu lebih besar dari batas impor {{ limit }} MB."
+    "mnyFileTooLarge": "Berkas Money itu lebih besar dari batas impor {{ limit }} MB.",
+    "noRateForSplitTransfer": "Tidak ada kurs untuk {{ pair }} pada {{ date }}: sebuah baris pecahan mentransfer ke akun dengan mata uang lain. Tambahkan kurs untuk pasangan dan tanggal tersebut, lalu impor lagi."
   },
   "monteCarlo": {
     "scenarioNotFound": "Skenario {{ id }} tidak ditemukan",
@@ -648,6 +649,7 @@
     "transactionSplitNotFound": "Pembagian transaksi {{ splitId }} tidak ditemukan untuk pembaruan investasi tertanam",
     "parentTransactionNotFound": "Transaksi induk {{ transactionId }} tidak ditemukan untuk pembaruan investasi tertanam",
     "investmentTransactionNotFound": "Transaksi investasi dengan ID {{ id }} tidak ditemukan",
+    "investmentTransactionChanged": "Transaksi ini telah diubah oleh permintaan lain. Muat ulang lalu coba lagi.",
     "cannotChangeTransferDirection": "Tidak dapat mengubah arah transfer; hapus dan buat transfer baru",
     "destinationAccountMustBeInvestment": "Akun tujuan harus bertipe INVESTMENT",
     "transferPairMissing": "Transaksi berpasangan dari transfer ini hilang; hapus dan buat ulang transfer alih-alih mengeditnya",

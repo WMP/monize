@@ -90,6 +90,9 @@ describe("bond catalog and benchmark refresh (integration)", () => {
       fetchSync,
       catalog,
       new SeriesHttp(health),
+      // A store that changes an observation dispatches a recompute (A26-L22);
+      // this suite's securities hold no bond, so a no-op stands in for it.
+      { recomputeLinkedSecuritiesOfSeries: async () => undefined } as never,
     );
   });
 
@@ -492,7 +495,7 @@ describe("bond catalog and benchmark refresh (integration)", () => {
 
   describe("the currency of an instrument", () => {
     it("is created on a deployment that has no such currency, owned by no user", async () => {
-      // The only caller of ensureSystemCurrency's insert branch: the beforeEach
+      // The only caller of ensureCatalogCurrency's insert branch: the beforeEach
       // pre-inserts PLN, so remove it and seed on a fresh deployment.
       await dataSource.query(`DELETE FROM currencies WHERE code = 'PLN'`);
       await withSystemContext(() => catalog.seed());

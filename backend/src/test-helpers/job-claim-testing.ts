@@ -38,6 +38,9 @@ export type JobClaimMock = jest.Mocked<
     | "releasePermanentClaim"
     | "markDelivered"
     | "wasDelivered"
+    | "renewLease"
+    | "whileLeaseHeld"
+    | "holdsLease"
   >
 >;
 
@@ -56,6 +59,23 @@ export function createJobClaimMock(): JobClaimMock {
     // won but the work already done -- sets this true, which is the assertion
     // worth writing (audit RV4-006).
     wasDelivered: jest.fn().mockResolvedValue(false),
+    renewLease: jest.fn().mockResolvedValue(true),
+    // Runs the work, as the real method does; the renewal timer is the real
+    // method's concern and is covered by job-claim.service.spec.ts.
+    whileLeaseHeld: jest
+      .fn()
+      .mockImplementation(
+        (
+          _type: unknown,
+          _userId: unknown,
+          _key: unknown,
+          _token: unknown,
+          _ttl: unknown,
+          work: () => Promise<unknown>,
+        ) => work(),
+      ) as JobClaimMock["whileLeaseHeld"],
+    // Still the holder by default, so a save under the lease goes through.
+    holdsLease: jest.fn().mockResolvedValue(true),
   };
 }
 

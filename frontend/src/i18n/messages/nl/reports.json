@@ -1918,5 +1918,8 @@
       "residualDeficit": "Uit saldi opgenomen",
       "unlinkedAccount": "(niet-gekoppelde rekening)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Gemaakt: {timestamp}"
   }
 }

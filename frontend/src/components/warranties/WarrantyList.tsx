@@ -23,22 +23,21 @@ import { useTableDensity, type DensityLevel } from '@/hooks/useTableDensity';
 import { useDensityPreference } from '@/store/densityStore';
 import { cn } from '@/lib/utils';
 import { withCurrencyCode } from '@/lib/format';
-import type { Warranty, WarrantySort } from '@/types/warranty';
+import type { Warranty, WarrantySort, WarrantySortDir } from '@/types/warranty';
 
 /**
- * The direction the server sorts each field in. The list route takes a field
- * and no direction (`ListWarrantiesDto.sort`), so a header shows the one
- * direction the rows are actually in and pressing it again changes nothing.
- * A `Record` over the union so a new sort field is a compile error until it is
- * given a direction and a phone chip.
+ * The direction a field sorts in when first chosen; pressing the active field
+ * again flips it (`ListWarrantiesDto.sortDir`). A `Record` over the union so a
+ * new sort field is a compile error until it is given a direction and a phone
+ * chip.
  */
-const SORT_DIRECTION: Record<WarrantySort, 'asc' | 'desc'> = {
+export const DEFAULT_SORT_DIRECTION: Record<WarrantySort, WarrantySortDir> = {
   expiresOn: 'asc',
   name: 'asc',
   purchaseDate: 'desc',
 };
 
-const SORT_FIELDS = Object.keys(SORT_DIRECTION) as WarrantySort[];
+const SORT_FIELDS = Object.keys(DEFAULT_SORT_DIRECTION) as WarrantySort[];
 
 interface WarrantyActionHandlers {
   onEdit: (warranty: Warranty) => void;
@@ -237,6 +236,7 @@ export interface WarrantyListProps extends WarrantyActionHandlers {
   /** A row's primary action: open the warranty's detail page. Edit stays a row action. */
   onOpen: (warranty: Warranty) => void;
   sort: WarrantySort;
+  sortDir: WarrantySortDir;
   onSort: (sort: WarrantySort) => void;
   /** What an empty page says, decided by the page that knows which filters are on. */
   empty: WarrantyListEmpty;
@@ -268,6 +268,7 @@ export interface WarrantyListProps extends WarrantyActionHandlers {
 export function WarrantyList({
   warranties,
   sort,
+  sortDir,
   onSort,
   empty,
   toolbarActions,
@@ -334,7 +335,6 @@ export function WarrantyList({
     expiresOn: t('list.columns.expiresOn'),
     purchaseDate: t('list.columns.purchaseDate'),
   };
-  const sortDirection = SORT_DIRECTION[sort];
   const headerClass = cn(TH_CLASS, headerPadding);
   // An empty page draws the buttons alone: "Showing 0 of 0" would repeat what
   // the empty state below already says.
@@ -375,7 +375,7 @@ export function WarrantyList({
               <tr>
                 <th
                   className={`${headerPadding} text-left`}
-                  aria-sort={sortDirection === 'asc' ? 'ascending' : 'descending'}
+                  aria-sort={sortDir === 'asc' ? 'ascending' : 'descending'}
                 >
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('list.sortLabel')}</span>
@@ -388,7 +388,7 @@ export function WarrantyList({
                         className="flex min-h-[30px] items-center px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider rounded focus-visible:outline-2 focus-visible:outline-blue-500"
                       >
                         {sortLabels[field]}
-                        <SortIcon field={field} sortField={sort} sortDirection={sortDirection} />
+                        <SortIcon field={field} sortField={sort} sortDirection={sortDir} />
                       </button>
                     ))}
                   </div>
@@ -396,14 +396,14 @@ export function WarrantyList({
               </tr>
             ) : (
               <tr>
-                <SortableHeader field="name" sortField={sort} sortDirection={sortDirection} onSort={onSort} className={headerClass}>
+                <SortableHeader field="name" sortField={sort} sortDirection={sortDir} onSort={onSort} className={headerClass}>
                   {sortLabels.name}
                 </SortableHeader>
                 <Th className={headerPadding}>{t('list.columns.status')}</Th>
                 <SortableHeader
                   field="expiresOn"
                   sortField={sort}
-                  sortDirection={sortDirection}
+                  sortDirection={sortDir}
                   onSort={onSort}
                   className={cn(headerClass, 'hidden sm:table-cell')}
                 >
@@ -412,7 +412,7 @@ export function WarrantyList({
                 <SortableHeader
                   field="purchaseDate"
                   sortField={sort}
-                  sortDirection={sortDirection}
+                  sortDirection={sortDir}
                   onSort={onSort}
                   className={cn(headerClass, 'hidden md:table-cell')}
                 >

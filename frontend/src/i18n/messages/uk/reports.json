@@ -1918,5 +1918,8 @@
       "residualDeficit": "Взято із залишків",
       "unlinkedAccount": "(непов’язаний рахунок)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Створено: {timestamp}"
   }
 }

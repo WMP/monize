@@ -1447,11 +1447,11 @@ describe('DebtPayoffTimelineReport', () => {
       expect(rows[rows.length - 1].balance).toBe(0);
     });
 
-    it('keeps a future-dated posted payment in its own run among the projected rows', async () => {
-      // A repayment posted ahead of its date is a HISTORICAL event dated after
-      // the projection starts, so the two interleave. Grouping by a month key
-      // would fold it back into a month it no longer sits beside; grouping
-      // contiguous runs over a date-ordered series gives it its own row.
+    it('does not count a future-dated posted payment as history (A26-M28)', async () => {
+      // A repayment posted ahead of its date has not happened yet. It used to be
+      // a HISTORICAL event dated after the projection starts, interleaving with
+      // the projected rows; the history now keeps only what the ledger moved by
+      // today, so the payment is not a historical row and not a payment made.
       mockGetAllAccounts.mockResolvedValue([{
         id: 'loan-1',
         name: 'Prepaid Loan',
@@ -1473,7 +1473,7 @@ describe('DebtPayoffTimelineReport', () => {
         pagination: { hasMore: false },
       });
 
-      await renderAwaitingHistory('2');
+      await renderAwaitingHistory('1');
 
       const rows: Array<{ date: string; label: string; axisKey: string; isProjected: boolean }> =
         chartRows('area-chart');
@@ -1482,12 +1482,9 @@ describe('DebtPayoffTimelineReport', () => {
         [...rows].map((row) => row.date.slice(0, 10)).sort(),
       );
       expect(new Set(rows.map((row) => row.axisKey)).size).toBe(rows.length);
-      // October holds a posted payment and projected ones, and they are not one
-      // row: the historical run sits between two projected runs.
+      // October holds projected rows only: the posted-ahead payment is not one.
       const october = rows.filter((row) => row.label === 'Oct 2026');
-      expect(october.length).toBeGreaterThan(1);
-      expect(october.some((row) => !row.isProjected)).toBe(true);
-      expect(october.some((row) => row.isProjected)).toBe(true);
+      expect(october.every((row) => row.isProjected)).toBe(true);
     });
 
     it('still knows it has a projection when the loan pays off in the transition month', async () => {

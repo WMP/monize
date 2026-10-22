@@ -334,6 +334,54 @@ describe("PortfolioMovementAlertService", () => {
     ]);
   });
 
+  it("keeps the baseline when the alert could not be written (A26-L28)", async () => {
+    const { service, notify, baselineWrites } = setup({
+      summary: summaryOf({ totalPortfolioValue: 90_000 }),
+    });
+    notify.mockRejectedValueOnce(new Error("connection reset"));
+
+    await service.run();
+
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(baselineWrites).toEqual([]);
+
+    // The next run still sees the movement and raises the alert.
+    await service.run();
+    expect(notify).toHaveBeenCalledTimes(2);
+    expect(baselineWrites).toEqual([
+      { value: 90_000, currency: "USD", on: TODAY },
+    ]);
+  });
+
+  it("writes the alert before it moves the baseline (A26-L28)", async () => {
+    const order: string[] = [];
+    const { service, notify, baselineWrites } = setup({
+      summary: summaryOf({ totalPortfolioValue: 90_000 }),
+    });
+    notify.mockImplementation(async () => {
+      order.push(`notify:${baselineWrites.length}`);
+      return { id: "written" };
+    });
+
+    await service.run();
+
+    expect(order).toEqual(["notify:0"]);
+    expect(baselineWrites).toHaveLength(1);
+  });
+
+  it("still moves the baseline when another replica wrote today's alert (A26-L28)", async () => {
+    const { service, notify, baselineWrites } = setup({
+      summary: summaryOf({ totalPortfolioValue: 90_000 }),
+    });
+    notify.mockResolvedValueOnce(null);
+
+    await service.run();
+
+    expect(baselineWrites).toEqual([
+      { value: 90_000, currency: "USD", on: TODAY },
+    ]);
+  });
+
   it("names the late close it removed when the period's own move fires", async () => {
     const { service, notify } = setup({
       state: stateOf({

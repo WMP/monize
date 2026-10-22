@@ -2359,3 +2359,95 @@ describe('buildMultiAccountForecast', () => {
     expect(jan20?.balances).toEqual({ 'acc-1': 600, 'acc-2': 500 });
   });
 });
+
+describe('forecast money arithmetic (integer 1/10000 units, one rounding for display)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 0, 15));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const tenTenths = (accountId: string): FutureTransaction[] =>
+    Array.from({ length: 10 }, (_, i) => ({
+      id: `ft-${accountId}-${i}`,
+      accountId,
+      name: 'Tenth',
+      amount: 0.1,
+      date: '2025-01-16',
+    }));
+
+  describe('buildForecast', () => {
+    it('rounds a 1.0050 starting balance half away from zero to 1.01', () => {
+      const points = buildForecast([makeAccount({ currentBalance: 1.005 })], [], 'week', 'acc-1').points;
+      expect(points[0].balance).toBe(1.01);
+    });
+
+    it('rounds a -2500.0050 balance to -2500.01', () => {
+      const points = buildForecast([makeAccount({ currentBalance: -2500.005 })], [], 'week', 'acc-1').points;
+      expect(points[0].balance).toBe(-2500.01);
+    });
+
+    it('sums ten 0.1 transactions on 0 to exactly 1', () => {
+      const points = buildForecast(
+        [makeAccount({ currentBalance: 0 })], [], 'week', 'acc-1', tenTenths('acc-1'),
+      ).points;
+      expect(points.find(p => p.date === '2025-01-16')?.balance).toBe(1);
+    });
+
+    it('rounds a converted amount to the storage precision', () => {
+      const scheduled = makeScheduled({ nextDueDate: '2025-01-20', amount: -10, frequency: 'ONCE' });
+      const result = buildForecast(
+        [makeAccount({ currentBalance: 0, currencyCode: 'EUR' })], [scheduled], 'week', 'acc-1', [],
+        (amount) => amount * (1 / 3),
+      );
+      const tx = result.points.find(p => p.date === '2025-01-20')?.transactions[0];
+      expect(tx?.amount).toBe(-3.3333);
+    });
+  });
+
+  describe('getProjectedBalanceAtDate', () => {
+    it('rounds 1.0050 to 1.01 and -2500.0050 to -2500.01', () => {
+      expect(getProjectedBalanceAtDate(makeAccount({ currentBalance: 1.005 }), '2025-01-20', [], [])).toBe(1.01);
+      expect(getProjectedBalanceAtDate(makeAccount({ currentBalance: -2500.005 }), '2025-01-20', [], [])).toBe(-2500.01);
+    });
+
+    it('sums ten 0.1 future transactions on 0 to exactly 1', () => {
+      expect(
+        getProjectedBalanceAtDate(makeAccount({ currentBalance: 0 }), '2025-01-20', [], tenTenths('acc-1')),
+      ).toBe(1);
+    });
+  });
+
+  describe('buildMultiAccountForecast', () => {
+    it('rounds each line half away from zero and totals the rounded lines', () => {
+      const result = buildMultiAccountForecast(
+        [
+          makeAccount({ id: 'acc-1', name: 'A', currentBalance: 1.005 }),
+          makeAccount({ id: 'acc-2', name: 'B', currentBalance: -2500.005 }),
+        ],
+        [], 'week', ['acc-1', 'acc-2'],
+      );
+      expect(result.points[0].balances).toEqual({ 'acc-1': 1.01, 'acc-2': -2500.01 });
+      expect(result.points[0].balance).toBe(-2499);
+    });
+
+    it('sums ten 0.1 transactions on 0 to exactly 1', () => {
+      const result = buildMultiAccountForecast(
+        [makeAccount({ currentBalance: 0 })], [], 'week', ['acc-1'], tenTenths('acc-1'),
+      );
+      const point = result.points.find(p => p.date === '2025-01-16');
+      expect(point?.balances).toEqual({ 'acc-1': 1 });
+      expect(point?.balance).toBe(1);
+    });
+  });
+
+  describe('getForecastSummary', () => {
+    it('rounds the starting balance half away from zero', () => {
+      const summary = getForecastSummary([{ date: '2025-01-15', balance: 1.01, transactions: [] }]);
+      expect(summary.startingBalance).toBe(1.01);
+    });
+  });
+});

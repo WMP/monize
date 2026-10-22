@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "{count} hesap için zamanlanmış ödemeler yapılandırıldı.",
     "viewInvestments": "Yatırımları Görüntüle",
     "viewTransactions": "İşlemleri Görüntüle",
-    "importMoreFiles": "Daha Fazla Dosya İçe Aktar"
+    "importMoreFiles": "Daha Fazla Dosya İçe Aktar",
+    "bondRowsWithoutSeries": "{count, plural, one {# tahvil alımı seri olmadan içe aktarıldı. Serisini menkul kıymetin tahvil lotlarında seçin.} other {# tahvil alımı seri olmadan içe aktarıldı. Serilerini menkul kıymetin tahvil lotlarında seçin.}}"
   },
   "multiAccountReview": {
     "heading": "Çok Hesaplı QIF İçe Aktarma",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "Bu içe aktarmayla ilgili notlar",
     "downloadReport": "Raporu indir",
-    "done": "Bitti"
+    "done": "Bitti",
+    "bondRowsWithoutSeries": "{count, plural, one {# tahvil alımı seri olmadan içe aktarıldı. Serisini menkul kıymetin tahvil lotlarında seçin.} other {# tahvil alımı seri olmadan içe aktarıldı. Serilerini menkul kıymetin tahvil lotlarında seçin.}}"
   },
   "mnyWarnings": {
     "missingTable": "Bu Money sürümünde, içe aktarmanın kullandığı {count, plural, other {# tablo}} yok.",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "Değerlendirilmedi: önceki bir kural kuralları durdurdu.",
         "disabled": "Değerlendirilmedi: kural kapalı.",
-        "invalid": "Değerlendirilmedi: kural geçerli değil. Onarmak için açın."
+        "invalid": "Değerlendirilmedi: kural geçerli değil. Onarmak için açın.",
+        "outside_active_window": "Değerlendirilmedi: satırın tarihi kuralın etkin tarihlerinin dışında."
       },
       "condition": {
         "met": "Koşul sağlandı",

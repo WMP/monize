@@ -486,7 +486,8 @@
     "mnyImportAlreadyRunning": "Đã có một lần nhập đang chạy. Hãy đợi hoàn tất trước khi bắt đầu lần khác.",
     "mnyAlreadyImported": "Tệp này đã được nhập vào ngày {{ date }} (lần nhập {{ jobId }}) và các bản ghi vẫn còn trong tài khoản của bạn. Nhập lại sẽ tạo bản trùng. Để thay thế chúng, hãy bắt đầu lại và chọn thay thế dữ liệu hiện có.",
     "mnyJobNotFound": "Không tìm thấy tác vụ nhập",
-    "mnyFileTooLarge": "Tệp Money đó lớn hơn giới hạn nhập {{ limit }} MB."
+    "mnyFileTooLarge": "Tệp Money đó lớn hơn giới hạn nhập {{ limit }} MB.",
+    "noRateForSplitTransfer": "Không có tỷ giá cho {{ pair }} vào ngày {{ date }}: một dòng chia tách chuyển sang tài khoản bằng loại tiền khác. Hãy thêm tỷ giá cho cặp tiền và ngày đó, rồi nhập lại."
   },
   "monteCarlo": {
     "scenarioNotFound": "Không tìm thấy kịch bản {{ id }}",
@@ -648,6 +649,7 @@
     "transactionSplitNotFound": "Không tìm thấy phần chia giao tác {{ splitId }} cho cập nhật đầu tư nhúng",
     "parentTransactionNotFound": "Không tìm thấy giao tác cha {{ transactionId }} cho cập nhật đầu tư nhúng",
     "investmentTransactionNotFound": "Không tìm thấy giao tác đầu tư với ID {{ id }}",
+    "investmentTransactionChanged": "Giao dịch này đã bị một yêu cầu khác thay đổi. Hãy tải lại và thử lại.",
     "cannotChangeTransferDirection": "Không thể thay đổi hướng chuyển tiền; hãy xóa và tạo lại chuyển tiền thay thế",
     "destinationAccountMustBeInvestment": "Tài khoản đích phải là loại ĐẦU TƯ",
     "transferPairMissing": "Giao tác đối của chuyển tiền này bị thiếu; hãy xóa và tạo lại chuyển tiền thay vì chỉnh sửa",

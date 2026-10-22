@@ -1918,5 +1918,8 @@
       "residualDeficit": "Drawn from balances",
       "unlinkedAccount": "(unlinked account)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Generated: {timestamp}"
   }
 }

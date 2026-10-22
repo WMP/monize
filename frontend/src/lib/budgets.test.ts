@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import apiClient from './api';
 import { budgetsApi } from './budgets';
-import { invalidateCache } from './apiCache';
+import { invalidateCache, invalidateBalanceCaches, getCached, clearAllCache } from './apiCache';
 
 vi.mock('./api', () => ({
   default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -216,5 +216,24 @@ describe('budgetsApi', () => {
     await budgetsApi.getCategoryBudgetStatus(['c-1']);
     await budgetsApi.getCategoryBudgetStatus(['c-1']);
     expect(apiClient.post).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('budgetsApi category status race (INV-CACHE-001)', () => {
+  it('a late pre-invalidation response does not land in the cache', async () => {
+    vi.clearAllMocks();
+    clearAllCache();
+    let resolveOld: (v: unknown) => void = () => {};
+    vi.mocked(apiClient.post).mockImplementationOnce(
+      () => new Promise((resolve) => { resolveOld = resolve; }),
+    );
+    const oldRead = budgetsApi.getCategoryBudgetStatus(['c1']);
+
+    invalidateBalanceCaches();
+
+    resolveOld({ data: { c1: { spent: 1 } } });
+    await oldRead;
+
+    expect(getCached('budgets:cat-status:c1')).toBeUndefined();
   });
 });

@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, one {Manca {days} giorno} other {Mancano {days} giorni}}",
     "today": "Scade oggi",
-    "ago": "{count, plural, one {Scaduta da {days} giorno} other {Scaduta da {days} giorni}}"
+    "ago": "{count, plural, one {Scaduta da {days} giorno} other {Scaduta da {days} giorni}}",
+    "leftYears": "Mancano {yearsCount, plural, one {{years} anno} other {{years} anni}}, {daysCount, plural, one {{days} giorno} other {{days} giorni}}",
+    "agoYears": "Scaduta da {yearsCount, plural, one {{years} anno} other {{years} anni}}, {daysCount, plural, one {{days} giorno} other {{days} giorni}}"
   },
   "kind": {
     "manufacturer": "Produttore",

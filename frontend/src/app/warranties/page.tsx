@@ -23,7 +23,7 @@ import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { WarrantyImportDialog } from '@/components/warranties/WarrantyImportDialog';
-import { WarrantyList } from '@/components/warranties/WarrantyList';
+import { DEFAULT_SORT_DIRECTION, WarrantyList } from '@/components/warranties/WarrantyList';
 import { exportWarrantiesCsv } from '@/components/warranties/warranty-csv-export';
 import type { WarrantyPrefill } from '@/components/warranties/WarrantyForm';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -43,6 +43,7 @@ import type {
   Warranty,
   WarrantyListResult,
   WarrantySort,
+  WarrantySortDir,
   WarrantyStatusFilter,
   WarrantySummary,
 } from '@/types/warranty';
@@ -85,6 +86,7 @@ function WarrantiesContent() {
   const q = useDebouncedValue(searchInput.trim(), 300);
   const [archived, setArchived] = useState(false);
   const [sort, setSort] = useState<WarrantySort>('expiresOn');
+  const [sortDir, setSortDir] = useState<WarrantySortDir>(DEFAULT_SORT_DIRECTION.expiresOn);
   const [page, setPage] = useState(1);
   const [transactionFilter, setTransactionFilter] = useState<string | null>(urlTransactionId);
 
@@ -109,11 +111,12 @@ function WarrantiesContent() {
       q: q || undefined,
       archived,
       sort,
+      sortDir,
       page,
       limit: PAGE_SIZE,
       transactionId: transactionFilter ?? undefined,
     }),
-    [status, q, archived, sort, page, transactionFilter],
+    [status, q, archived, sort, sortDir, page, transactionFilter],
   );
   const requestKey = JSON.stringify(params);
   const [list, setList] = useState<{ key: string; result: WarrantyListResult } | null>(null);
@@ -193,6 +196,7 @@ function WarrantiesContent() {
         q: q || undefined,
         archived,
         sort,
+        sortDir,
         transactionId: transactionFilter ?? undefined,
       });
       const today = rows[0]?.today;
@@ -368,7 +372,10 @@ function WarrantiesContent() {
       <WarrantyList
         warranties={list.result.data}
         sort={sort}
+        sortDir={sortDir}
         onSort={(next) => {
+          // The active column flips; a new one starts in its own natural direction.
+          setSortDir(next === sort ? (sortDir === 'asc' ? 'desc' : 'asc') : DEFAULT_SORT_DIRECTION[next]);
           setSort(next);
           setPage(1);
         }}
@@ -487,7 +494,7 @@ function WarrantiesContent() {
               </Badge>
             ))}
           </div>
-          <div className="w-full sm:w-auto sm:min-w-[18rem]">
+          <div className="w-full sm:w-auto sm:min-w-[30rem]">
             <Input
               type="search"
               aria-label={t('page.search.label')}

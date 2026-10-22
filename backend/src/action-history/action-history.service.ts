@@ -9,6 +9,7 @@ import { ModuleRef } from "@nestjs/core";
 import { DataSource, EntityManager } from "typeorm";
 import { Cron } from "@nestjs/schedule";
 import { BondPriceService } from "../bonds/bond-price.service";
+import type { HoldingsService } from "../securities/holdings.service";
 import {
   clearForeignSeries,
   restoredSeries,
@@ -32,17 +33,7 @@ import { Account } from "../accounts/entities/account.entity";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { Tag } from "../tags/entities/tag.entity";
-import {
-  InvestmentAction,
-  InvestmentTransaction,
-} from "../securities/entities/investment-transaction.entity";
-import {
-  acquisitionCost,
-  applyActionToQuantity,
-  basisAfterReturnOfCapital,
-  isQuantityOnlyAction,
-  INVESTMENT_REPLAY_ORDER_SQL,
-} from "../securities/investment-replay.util";
+import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { Security } from "../securities/entities/security.entity";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { Budget } from "../budgets/entities/budget.entity";
@@ -54,7 +45,6 @@ import { repriceSettledLoanTemplates } from "../loan-installments/reprice-templa
 import {
   LockedTransactionRow,
   lockAccountsForBalanceWrite,
-  lockHoldingScope,
   lockTransactionRows,
 } from "../common/db/locks";
 import { LEDGER_MOVEMENT_PREDICATE } from "../common/ledger-balance.sql";
@@ -438,6 +428,20 @@ export class ActionHistoryService {
 
   private bondPrices(): BondPriceService {
     return this.moduleRef.get(BondPriceService, { strict: false });
+  }
+
+  /**
+   * Resolved lazily, like `bondPrices`, and its class loaded at the call: the
+   * securities layer reaches this file back through its imports, so a
+   * top-level value import of `HoldingsService` is a load-time cycle that
+   * leaves a provider undefined when SecuritiesModule is built.
+   */
+  private holdings(): HoldingsService {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const loaded = require("../securities/holdings.service") as {
+      HoldingsService: typeof HoldingsService;
+    };
+    return this.moduleRef.get(loaded.HoldingsService, { strict: false });
   }
 
   /**
@@ -1950,115 +1954,25 @@ export class ActionHistoryService {
     }
   }
 
+  /**
+   * Re-derive an account's holdings from its ledger after an undo or redo
+   * moved an investment row, through the one fold every other ledger write
+   * uses (`HoldingsService.rebuildAccountsFromTransactions`, inside this
+   * transaction, under the same holdings lock).
+   *
+   * This used to be a second fold over every non-VOID row: a DIVIDEND entered
+   * with a quantity added its total to the basis, and the average was stored at
+   * 6 decimals where the canonical writers store 10, so the boot drift report
+   * flagged what an undo had just written (A26-L21, INV-HOLDING-001).
+   */
   private async rebuildHoldings(
     userId: string,
     accountId: string,
     manager: EntityManager,
   ): Promise<void> {
-    // Same lock namespace every holdings writer takes, before the ledger is
-    // read. A rebuild replays investment_transactions and replaces the holdings
-    // derived from them, so what it must not lose is a *trade* -- an insert no
-    // holdings row locks (audit P4-006).
-    await lockHoldingScope(manager, [accountId]);
-
-    // Delete existing holdings for this account
-    await manager.query(`DELETE FROM holdings WHERE account_id = $1`, [
-      accountId,
-    ]);
-
-    // Rebuild from investment transactions
-    const invTransactions = await manager.query(
-      `SELECT * FROM investment_transactions
-       WHERE account_id = $1 AND user_id = $2 AND transaction_date <= CURRENT_DATE
-         AND status != 'VOID'
-       ORDER BY ${INVESTMENT_REPLAY_ORDER_SQL}`,
-      [accountId, userId],
-    );
-
-    const holdings = new Map<string, { quantity: number; totalCost: number }>();
-
-    for (const tx of invTransactions) {
-      const securityId = tx.security_id;
-      if (!securityId) continue;
-
-      const current = holdings.get(securityId) || {
-        quantity: 0,
-        totalCost: 0,
-      };
-      const qty = Number(tx.quantity || 0);
-
-      // Quantity folds through the shared reducer so an undo cannot rebuild a
-      // different position than the canonical holdings rebuild would. This copy
-      // multiplied by a SPLIT ratio without the `> 0` guard, so a ratio of 0
-      // silently destroyed the position; and it left the acquisition commission
-      // out of the basis, so undoing an action could also change the cost basis
-      // the holdings page reports.
-      // Basis treatment mirrors `computeHoldingsMap` exactly, over-sells
-      // included: the canonical fold carries an over-sold position as
-      // NEGATIVE (its own comment calls an over-sell "history"), so a clamp
-      // here made an undo rebuild a different position than the next
-      // canonical rebuild restores -- BUY 10, SELL 15, BUY 10 stores 5 shares
-      // canonically and stored 10 through this fold.
-      const quantityChange =
-        applyActionToQuantity(0, tx.action, qty) < 0 ? -qty : qty;
-      if (tx.action === InvestmentAction.RETURN_OF_CAPITAL) {
-        // As `computeHoldingsMap`: pays back cost, never below zero.
-        current.totalCost = basisAfterReturnOfCapital(current.totalCost, {
-          totalAmount: tx.total_amount,
-        });
-      } else if (tx.action === "SPLIT") {
-        // Total basis is preserved across a split.
-      } else if (isQuantityOnlyAction(tx.action)) {
-        // ADD_SHARES / REMOVE_SHARES: quantity only, no cost basis change.
-      } else if (quantityChange > 0) {
-        // Raw select: commission comes back as a string, and the row is
-        // denominated in the security's currency like the rest of this fold.
-        const cost = acquisitionCost({
-          quantity: tx.quantity,
-          price: tx.price,
-          commission: tx.commission,
-          // Snake_case: this is the raw row, not the entity.
-          totalAmount: tx.total_amount,
-        });
-        if (cost !== null) current.totalCost += cost;
-      } else if (current.quantity > 0) {
-        const avgCost = current.totalCost / current.quantity;
-        const relieved = Math.min(Math.abs(quantityChange), current.quantity);
-        current.totalCost -= relieved * avgCost;
-      }
-
-      current.quantity = applyActionToQuantity(
-        current.quantity,
-        tx.action,
-        qty,
-      );
-
-      // Snap near-zero to exactly zero, as the canonical fold does.
-      if (Math.abs(current.quantity) < 0.0001) {
-        current.quantity = 0;
-        current.totalCost = 0;
-      }
-
-      holdings.set(securityId, current);
-    }
-
-    // Insert rebuilt holdings. Negative (over-sold) positions are written as
-    // the canonical rebuild writes them; only a genuinely empty position is
-    // skipped.
-    for (const [securityId, data] of holdings) {
-      if (Math.abs(data.quantity) < 0.00000001) continue;
-      const avgCost =
-        data.quantity > 0
-          ? Math.round((data.totalCost / data.quantity) * 1000000) / 1000000
-          : 0;
-
-      await manager.query(
-        `INSERT INTO holdings (id, account_id, security_id, quantity, average_cost)
-         VALUES (uuid_generate_v4(), $1, $2, $3, $4)
-         ON CONFLICT (account_id, security_id) DO UPDATE SET quantity = $3, average_cost = $4`,
-        [accountId, securityId, data.quantity, avgCost],
-      );
-    }
+    await (
+      await this.holdings()
+    ).rebuildAccountsFromTransactions(userId, [accountId], manager);
   }
 
   private async reinsertEntity(

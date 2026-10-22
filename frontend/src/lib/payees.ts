@@ -22,7 +22,7 @@ import {
   ApplyAutoMergeGroup,
   ApplyAutoMergeResult,
 } from '@/types/payee';
-import { dedupe, invalidateCache } from './apiCache';
+import { dedupe, invalidateBalanceCaches, invalidateCache } from './apiCache';
 
 /**
  * Same-origin URL for a payee's cached brand favicon. Rendered directly in an
@@ -118,6 +118,9 @@ export const payeesApi = {
       data,
     );
     invalidateCache('payees:');
+    // Categorising existing transactions moves budget roll-ups.
+    const categorized = response.data.transactionsCategorized;
+    if (typeof categorized === 'number' && categorized > 0) invalidateBalanceCaches();
     return response.data;
   },
 
@@ -197,6 +200,8 @@ export const payeesApi = {
     }
 
     invalidateCache('payees:');
+    // A backfill sets category_id on existing transactions, which moves budget roll-ups.
+    if (totalBackfilled > 0) invalidateBalanceCaches();
     return { updated: totalUpdated, transactionsBackfilled: totalBackfilled };
   },
 

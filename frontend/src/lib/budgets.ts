@@ -22,7 +22,7 @@ import {
   GenerateBudgetResponse,
   ApplyGeneratedBudgetData,
 } from '@/types/budget';
-import { dedupe, getCached, setCache, invalidateCache } from './apiCache';
+import { dedupe, invalidateCache } from './apiCache';
 
 export const budgetsApi = {
   // Budget CRUD
@@ -267,13 +267,12 @@ export const budgetsApi = {
     if (categoryIds.length === 0) return {};
     const sortedIds = [...categoryIds].sort();
     const cacheKey = `budgets:cat-status:${sortedIds.join(',')}`;
-    const cached = getCached<Record<string, CategoryBudgetStatus>>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.post<Record<string, CategoryBudgetStatus>>(
-      '/budgets/category-budget-status',
-      { categoryIds },
-    );
-    setCache(cacheKey, response.data, 60_000);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.post<Record<string, CategoryBudgetStatus>>(
+        '/budgets/category-budget-status',
+        { categoryIds },
+      );
+      return response.data;
+    }, 60_000);
   },
 };

@@ -15,6 +15,7 @@ import {
   ValidateIf,
 } from "class-validator";
 import { Transform } from "class-transformer";
+import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
 import { IsDashboardWidgetConfig } from "../validators/is-dashboard-widget-config.validator";
 import { IsHiddenTableColumns } from "../validators/is-hidden-table-columns.validator";
 import { IsViewDefaults } from "../validators/is-view-defaults.validator";
@@ -49,8 +50,10 @@ export class UpdatePreferencesDto {
     example: "USD",
   })
   @IsOptional()
-  @IsString()
-  @MaxLength(3)
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.toUpperCase() : value,
+  )
+  @IsCurrencyCode()
   defaultCurrency?: string;
 
   @ApiPropertyOptional({

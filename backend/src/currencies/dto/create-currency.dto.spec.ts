@@ -1,4 +1,5 @@
 import { validate } from "class-validator";
+import { plainToInstance } from "class-transformer";
 import { CreateCurrencyDto } from "./create-currency.dto";
 
 function buildDto(
@@ -35,7 +36,7 @@ describe("CreateCurrencyDto", () => {
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
     expect(errors[0].property).toBe("code");
-    expect(errors[0].constraints).toHaveProperty("isLength");
+    expect(errors[0].constraints).toHaveProperty("matches");
   });
 
   it("rejects code longer than 3 characters", async () => {
@@ -43,6 +44,26 @@ describe("CreateCurrencyDto", () => {
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
     expect(errors[0].property).toBe("code");
+  });
+
+  it("rejects a code that is not three letters", async () => {
+    const dto = plainToInstance(CreateCurrencyDto, {
+      code: "q#!",
+      name: "Junk",
+      symbol: "?",
+    });
+    const errors = await validate(dto);
+    expect(errors.map((e) => e.property)).toEqual(["code"]);
+  });
+
+  it("accepts a lower-case code and upper-cases it", async () => {
+    const dto = plainToInstance(CreateCurrencyDto, {
+      code: "pln",
+      name: "Zloty",
+      symbol: "zl",
+    });
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.code).toBe("PLN");
   });
 
   it("rejects missing code", async () => {

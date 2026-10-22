@@ -63,6 +63,11 @@ import {
 } from "./email-receipt-ai.prompts";
 import { buildAiParsedReceipt } from "./email-receipt-ai.extraction";
 import { extractJsonObject } from "./email-receipt-ai.schema";
+import {
+  JobClaimService,
+  JobClaimType,
+} from "../../common/jobs/job-claim.service";
+import { PROVIDER_CALL_BUDGET_MS } from "../../ai/providers/provider-call-budget";
 
 /** The `feature` labels the provider usage log records (design section 8). */
 export const EMAIL_RECEIPT_PARSER_FEATURE = "email_receipt_parser";
@@ -115,6 +120,17 @@ export interface AutomaticAiStepResult {
 export const AUTOMATIC_AI_CALLS_PER_TICK = 5;
 export const AUTOMATIC_DRAFTS_PER_TICK = 2;
 
+/**
+ * How long one sender's draft claim survives its holder: the slowest provider
+ * call it guards plus a margin for the save, renewed while the call runs.
+ */
+export const DRAFT_LEASE_MS = PROVIDER_CALL_BUDGET_MS + 2 * 60_000;
+
+/** The draft claim's key: the sender domain, within the claim key's 200 characters. */
+function draftClaimKey(fromDomain: string): string {
+  return fromDomain.slice(0, 200);
+}
+
 interface ReceiptContext {
   receipt: EmailReceipt;
   aiMode: EmailReceiptMailbox["aiMode"];
@@ -154,6 +170,7 @@ export class EmailReceiptAiService {
     private readonly requests: AiReviewRequestsService,
     private readonly work: AiReviewWorkService,
     private readonly transactions: TransactionsService,
+    private readonly jobClaims: JobClaimService,
   ) {}
 
   // ---------------------------------------------------------------------
@@ -171,6 +188,24 @@ export class EmailReceiptAiService {
     userId: string,
     receiptId: string,
   ): Promise<EmailReceiptParserView> {
+    const view = await this.draftParserFenced(userId, receiptId, null);
+    // Without a draft lease there is no fence to fail.
+    if (!view) throw receiptNotFound(receiptId);
+    return view;
+  }
+
+  /**
+   * `draftParser`, optionally under the poll's per-sender draft lease: with a
+   * `draftLease`, the save checks inside its transaction that the lease is
+   * still this attempt's and that no parser covers the sender yet, and saves
+   * nothing (returns null) otherwise, so two polls never store two drafts for
+   * one sender (A26-S11-01).
+   */
+  private async draftParserFenced(
+    userId: string,
+    receiptId: string,
+    draftLease: string | null,
+  ): Promise<EmailReceiptParserView | null> {
     const { receipt } = await this.readContext(userId, receiptId, {
       requireAi: true,
     });
@@ -249,6 +284,18 @@ export class EmailReceiptAiService {
 
     const created = await withScopedDb(this.dataSource, async (m) => {
       const repo = m.getRepository(EmailReceiptParser);
+      if (
+        draftLease !== null &&
+        !(await this.jobClaims.holdsLease(
+          m,
+          JobClaimType.EmailReceiptParserDraft,
+          userId,
+          draftClaimKey(receipt.fromDomain),
+          draftLease,
+        ))
+      ) {
+        return null;
+      }
       const stillThere = await m
         .getRepository(EmailReceipt)
         .count({ where: { id: receiptId, userId } });
@@ -280,6 +327,8 @@ export class EmailReceiptAiService {
         }),
       );
     });
+    // Null only from the fence: another attempt holds this sender's draft.
+    if (created === null) return null;
     return toParserView(created, categories);
   }
 
@@ -651,23 +700,32 @@ export class EmailReceiptAiService {
    * fails is not retried by the poll: a released request carries a note, and a
    * failed draft marks its email `draft_failed` until it is reprocessed.
    */
-  async runAutomaticStep(userId: string): Promise<AutomaticAiStepResult> {
+  async runAutomaticStep(
+    userId: string,
+    options: { deadline?: number } = {},
+  ): Promise<AutomaticAiStepResult> {
     const result: AutomaticAiStepResult = {
       proposed: 0,
       failed: 0,
       drafted: 0,
     };
     let budget = AUTOMATIC_AI_CALLS_PER_TICK;
+    // No provider call starts once the poll's work budget is spent: its lease
+    // is sized to cover one call started before the deadline, not a series.
+    const timeLeft = () =>
+      options.deadline === undefined || Date.now() <= options.deadline;
 
     const drafts = await this.receiptsNeedingDraft(
       userId,
       Math.min(AUTOMATIC_DRAFTS_PER_TICK, budget),
     );
-    for (const receiptId of drafts) {
+    for (const { id: receiptId, fromDomain } of drafts) {
+      if (!timeLeft()) break;
       budget--;
       try {
-        await this.draftParser(userId, receiptId);
-        result.drafted++;
+        if (await this.draftUnderClaim(userId, receiptId, fromDomain)) {
+          result.drafted++;
+        }
       } catch (error) {
         this.logger.warn(
           `Automatic parser draft failed (${describeFailure(error)})`,
@@ -677,6 +735,7 @@ export class EmailReceiptAiService {
     }
 
     for (const requestId of await this.pendingRequests(userId, budget)) {
+      if (!timeLeft()) break;
       const outcome = await this.processAiRequest(userId, requestId);
       if (outcome.ok) result.proposed++;
       else result.failed++;
@@ -684,16 +743,58 @@ export class EmailReceiptAiService {
     return result;
   }
 
+  /**
+   * One sender's automatic draft under its own claim (A26-S11-01): the
+   * selection below is a plain read, so a second poll whose lease was retaken
+   * from a slow first one would otherwise draft the same sender beside it. The
+   * claim outlasts the provider call and is renewed while it runs; a sender
+   * another attempt is drafting is skipped (false), and the save is fenced by
+   * the claim's token.
+   */
+  private async draftUnderClaim(
+    userId: string,
+    receiptId: string,
+    fromDomain: string,
+  ): Promise<boolean> {
+    const key = draftClaimKey(fromDomain);
+    const lease = await this.jobClaims.claimLease(
+      JobClaimType.EmailReceiptParserDraft,
+      userId,
+      key,
+      DRAFT_LEASE_MS,
+    );
+    if (lease === null) return false;
+    try {
+      const view = await this.jobClaims.whileLeaseHeld(
+        JobClaimType.EmailReceiptParserDraft,
+        userId,
+        key,
+        lease,
+        DRAFT_LEASE_MS,
+        () => this.draftParserFenced(userId, receiptId, lease),
+      );
+      return view !== null;
+    } finally {
+      await this.jobClaims
+        .releaseLease(JobClaimType.EmailReceiptParserDraft, userId, key, lease)
+        .catch((error: unknown) =>
+          this.logger.warn(
+            `Could not release the parser draft claim (${describeFailure(error)})`,
+          ),
+        );
+    }
+  }
+
   /** One receipt per sender domain that no parser of the user covers and no draft failed for. */
   private async receiptsNeedingDraft(
     userId: string,
     limit: number,
-  ): Promise<string[]> {
+  ): Promise<Array<{ id: string; fromDomain: string }>> {
     if (limit <= 0) return [];
     const rows = await withScopedDb(this.dataSource, async (m) =>
-      returnedRows<{ id: string }>(
+      returnedRows<{ id: string; from_domain: string }>(
         await m.query(
-          `SELECT id FROM (
+          `SELECT id, from_domain FROM (
              SELECT DISTINCT ON (r.from_domain) r.id, r.from_domain, r.received_at
                FROM email_receipts r
               WHERE r.user_id = $1
@@ -721,7 +822,7 @@ export class EmailReceiptAiService {
         ),
       ),
     );
-    return rows.map((row) => row.id);
+    return rows.map((row) => ({ id: row.id, fromDomain: row.from_domain }));
   }
 
   private async markDraftFailed(

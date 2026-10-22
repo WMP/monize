@@ -59,6 +59,7 @@ function renderList(props: Partial<WarrantyListProps> = {}) {
     <WarrantyList
       warranties={[warranty()]}
       sort="expiresOn"
+      sortDir="asc"
       empty={{ title: 'Nothing here', description: 'Add one' }}
       {...handlers}
       {...props}
@@ -83,7 +84,7 @@ describe('WarrantyList', () => {
     const row = screen.getByText('Laptop').closest('tr')!;
     expect(within(row).getByText('Best Buy')).toBeInTheDocument();
     expect(within(row).getByText('Active')).toBeInTheDocument();
-    expect(within(row).getByText('711 days left')).toBeInTheDocument();
+    expect(within(row).getByText('1 year, 346 days left')).toBeInTheDocument();
     expect(within(row).getByText('on 2028-10-01')).toBeInTheDocument();
     expect(within(row).getByText('on 2026-10-01')).toBeInTheDocument();
     // Not the reader's currency, so the code says whose dollars these are.
@@ -169,7 +170,7 @@ describe('WarrantyList', () => {
   });
 
   it('marks the active sort column with the direction the server sorts it in', () => {
-    renderList({ sort: 'purchaseDate' });
+    renderList({ sort: 'purchaseDate', sortDir: 'desc' });
     expect(screen.getByRole('columnheader', { name: /Purchased/ })).toHaveAttribute('aria-sort', 'descending');
     expect(screen.getByRole('columnheader', { name: /Expires/ })).toHaveAttribute('aria-sort', 'none');
   });
@@ -199,6 +200,7 @@ describe('WarrantyList', () => {
       <WarrantyList
         warranties={[warranty({ archivedAt: '2026-10-20T00:00:00Z' })]}
         sort="expiresOn"
+        sortDir="asc"
         empty={{ title: 'Nothing here' }}
         onSort={vi.fn()}
         onOpen={vi.fn()}
@@ -260,7 +262,7 @@ describe('WarrantyList', () => {
     expect(within(row).getByText('Expires')).toBeInTheDocument();
     expect(within(row).getByText('Purchased')).toBeInTheDocument();
     expect(within(row).getByText('Open claims')).toBeInTheDocument();
-    expect(within(row).getByText('711 days left')).toBeInTheDocument();
+    expect(within(row).getByText('1 year, 346 days left')).toBeInTheDocument();
     // The header becomes the sort chips, covering every sort field.
     const chips = screen.getAllByRole('button', { pressed: false });
     expect(chips.map((c) => c.textContent)).toEqual(expect.arrayContaining([expect.stringContaining('Name')]));

@@ -287,3 +287,129 @@ describe('en-US is not hardcoded in a formatter', () => {
     ).toBe(true);
   });
 });
+
+describe('a figure is not formatted with toFixed in UI code', () => {
+  /**
+   * `toFixed(n)` is a `.` decimal with no grouping in every locale, so a figure
+   * a person reads that goes through it ignores `numberFormat`. The loan setup
+   * dialog and the investment form wrote `toFixed(2)` / `toFixed(4)` into their
+   * readouts beside hooks that already formatted the rest of the same sentence.
+   * Use `useNumberFormat()`: `formatCurrency(value, code, digits)`,
+   * `formatShareQuantity`, `formatPrice`, `formatNumber(value, digits)`.
+   */
+  const TO_FIXED = /\.toFixed\(/g;
+  const UI_SOURCE = /^\/src\/(components|app|hooks)\//;
+
+  type Entry = { count: number; reason: string };
+
+  /** Not a readout: the call produces a value a machine or a table reads. */
+  const CLASSIFIED: Record<string, Entry> = {
+    '/src/components/reports/MonteCarloReport.tsx': {
+      count: 5,
+      reason:
+        'CSV export rows (p10..p90): machine output with a fixed "." decimal, not a figure on screen',
+    },
+    '/src/components/securities/detail/SecurityBondScenarioPanel.tsx': {
+      count: 1,
+      reason:
+        'percentToFraction builds the fraction string the API takes, a wire value and not a readout',
+    },
+    '/src/components/reports/ReportChart.tsx': {
+      count: 1,
+      reason:
+        'Number((x / total * 100).toFixed(1)) rounds to a NUMBER for a table cell that is formatted later',
+    },
+  };
+
+  /**
+   * Known readout offenders owned by other streams. Shrink-only: the stream that
+   * owns the file migrates it to `useNumberFormat()` and lowers or deletes the
+   * entry in the same commit. Never add a file or raise a count here.
+   */
+  const BASELINE: Record<string, Entry> = {
+    '/src/components/reports/SavingsRateReport.tsx': {
+      count: 1,
+      reason: 'tooltipRate: point.savingsRate.toFixed(1); reports stream migrates it to formatPercent',
+    },
+    '/src/components/reports/MonteCarloReport.tsx': {
+      count: 2,
+      reason: 'collapsedCustomReturns return/vol toFixed(1); reports stream migrates it to formatPercent',
+    },
+    '/src/components/reports/CurrencyExposureReport.tsx': {
+      count: 2,
+      reason: 'FX rate readout toFixed(FX_RATE_DISPLAY_DECIMALS); reports stream migrates it',
+    },
+    '/src/components/accounts/loan-detail/LoanSummaryCards.tsx': {
+      count: 1,
+      reason: 'effectiveRate toFixed(3); loans stream migrates it to formatPercent',
+    },
+    '/src/components/currencies/CurrencyList.tsx': {
+      count: 2,
+      reason: 'exchange rate readout and its title toFixed(FX_RATE_DISPLAY_DECIMALS); currencies stream migrates it',
+    },
+    '/src/components/investments/InvestmentTransactionListParts.tsx': {
+      count: 1,
+      reason: 'share quantity trimmed through toFixed(4); investments list stream migrates it to formatShareQuantity',
+    },
+  };
+
+  function expectedCount(path: string): number {
+    return (CLASSIFIED[path]?.count ?? 0) + (BASELINE[path]?.count ?? 0);
+  }
+
+  function actualCounts(): Map<string, number[]> {
+    const found = new Map<string, number[]>();
+    for (const [path, raw] of productionSources()) {
+      if (!UI_SOURCE.test(path)) continue;
+      const content = withoutComments(raw);
+      for (const match of content.matchAll(TO_FIXED)) {
+        const lines = found.get(path) ?? [];
+        lines.push(lineOf(content, match.index));
+        found.set(path, lines);
+      }
+    }
+    return found;
+  }
+
+  it('has no toFixed outside the classified and baseline sets', () => {
+    const offenders: string[] = [];
+    for (const [path, lines] of actualCounts()) {
+      if (lines.length > expectedCount(path)) {
+        offenders.push(
+          `${path}: ${lines.length} found, ${expectedCount(path)} allowed (lines ${lines.join(', ')})`,
+        );
+      }
+    }
+    // Use `useNumberFormat()` (`formatCurrency`, `formatShareQuantity`,
+    // `formatPrice`, `formatNumber`, `formatPercent`). A machine value (CSV, an
+    // API string) is classified above with its reason; a readout never is.
+    expect(offenders).toEqual([]);
+  });
+
+  it('keeps every entry honest: a lower count means the entry must shrink', () => {
+    const found = actualCounts();
+    const stale: string[] = [];
+    for (const path of new Set([...Object.keys(CLASSIFIED), ...Object.keys(BASELINE)])) {
+      const actual = found.get(path)?.length ?? 0;
+      if (actual < expectedCount(path)) {
+        stale.push(`${path}: ${actual} found, ${expectedCount(path)} listed -- lower or delete the entry`);
+      }
+    }
+    expect(stale).toEqual([]);
+  });
+
+  it('gives every entry a reason and a positive count', () => {
+    for (const list of [CLASSIFIED, BASELINE]) {
+      for (const [path, entry] of Object.entries(list)) {
+        expect(entry.count, `${path} count`).toBeGreaterThan(0);
+        expect(entry.reason.length, `${path} reason`).toBeGreaterThan(10);
+      }
+    }
+  });
+
+  it('still finds toFixed in UI code, so the scan is not vacuous', () => {
+    const found = actualCounts();
+    expect(found.size).toBeGreaterThan(0);
+    expect(found.get('/src/components/reports/MonteCarloReport.tsx')?.length).toBeGreaterThanOrEqual(5);
+  });
+});

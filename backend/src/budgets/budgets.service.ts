@@ -28,6 +28,8 @@ import {
   PeriodDateRange,
 } from "./budget-date.utils";
 import {
+  budgetExcludedAccountIds,
+  excludeBudgetAccounts,
   queryCategorySpending,
   resolveCategoryName,
   resolveCategorySpent,
@@ -1044,36 +1046,41 @@ export class BudgetsService {
       (bc) => bc.categoryId as string,
     );
 
+    const excludedAccountIds = budgetExcludedAccountIds(budget.config);
     const [directResult, splitResult] = await Promise.all([
       withScopedDb(this.dataSource, (m) =>
-        m
-          .getRepository(Transaction)
-          .createQueryBuilder("t")
-          .select("COALESCE(SUM(t.amount), 0)", "total")
-          .where("t.user_id = :userId", { userId })
-          .andWhere("t.category_id IN (:...incomeCategoryIds)", {
-            incomeCategoryIds,
-          })
-          .andWhere("t.transaction_date >= :periodStart", { periodStart })
-          .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
-          .andWhere("t.status != :void", { void: "VOID" })
-          .andWhere("t.is_split = false")
-          .getRawOne(),
+        excludeBudgetAccounts(
+          m
+            .getRepository(Transaction)
+            .createQueryBuilder("t")
+            .select("COALESCE(SUM(t.amount), 0)", "total")
+            .where("t.user_id = :userId", { userId })
+            .andWhere("t.category_id IN (:...incomeCategoryIds)", {
+              incomeCategoryIds,
+            })
+            .andWhere("t.transaction_date >= :periodStart", { periodStart })
+            .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
+            .andWhere("t.status != :void", { void: "VOID" })
+            .andWhere("t.is_split = false"),
+          excludedAccountIds,
+        ).getRawOne(),
       ),
       withScopedDb(this.dataSource, (m) =>
-        m
-          .getRepository(TransactionSplit)
-          .createQueryBuilder("s")
-          .innerJoin("s.transaction", "t")
-          .select("COALESCE(SUM(s.amount), 0)", "total")
-          .where("t.user_id = :userId", { userId })
-          .andWhere("s.category_id IN (:...incomeCategoryIds)", {
-            incomeCategoryIds,
-          })
-          .andWhere("t.transaction_date >= :periodStart", { periodStart })
-          .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
-          .andWhere("t.status != :void", { void: "VOID" })
-          .getRawOne(),
+        excludeBudgetAccounts(
+          m
+            .getRepository(TransactionSplit)
+            .createQueryBuilder("s")
+            .innerJoin("s.transaction", "t")
+            .select("COALESCE(SUM(s.amount), 0)", "total")
+            .where("t.user_id = :userId", { userId })
+            .andWhere("s.category_id IN (:...incomeCategoryIds)", {
+              incomeCategoryIds,
+            })
+            .andWhere("t.transaction_date >= :periodStart", { periodStart })
+            .andWhere("t.transaction_date <= :periodEnd", { periodEnd })
+            .andWhere("t.status != :void", { void: "VOID" }),
+          excludedAccountIds,
+        ).getRawOne(),
       ),
     ]);
 

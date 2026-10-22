@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, one {Queda {days} día} other {Quedan {days} días}}",
     "today": "Vence hoy",
-    "ago": "{count, plural, one {Venció hace {days} día} other {Venció hace {days} días}}"
+    "ago": "{count, plural, one {Venció hace {days} día} other {Venció hace {days} días}}",
+    "leftYears": "Quedan {yearsCount, plural, one {{years} año} other {{years} años}}, {daysCount, plural, one {{days} día} other {{days} días}}",
+    "agoYears": "Venció hace {yearsCount, plural, one {{years} año} other {{years} años}}, {daysCount, plural, one {{days} día} other {{days} días}}"
   },
   "kind": {
     "manufacturer": "Fabricante",

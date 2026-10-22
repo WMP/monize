@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, other {{days}일 남음}}",
     "today": "오늘 만료",
-    "ago": "{count, plural, other {{days}일 전에 만료됨}}"
+    "ago": "{count, plural, other {{days}일 전에 만료됨}}",
+    "leftYears": "{yearsCount, plural, other {{years}년}} {daysCount, plural, other {{days}일}} 남음",
+    "agoYears": "{yearsCount, plural, other {{years}년}} {daysCount, plural, other {{days}일}} 전에 만료됨"
   },
   "kind": {
     "manufacturer": "제조사",
