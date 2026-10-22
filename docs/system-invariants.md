@@ -5453,6 +5453,14 @@ Crash semantics     Expiry is a property of the stored timestamp, not of a timer
 Status              enforced
 ```
 
+The same device-sharing threat applies to `sessionStorage`, which a sign-out
+and a delegate context-switch reload both leave in place (A26-M36): the
+intraday portfolio series is keyed by user and acting context, and
+`clearIdentityScopedSessionStorage` (`frontend/src/lib/identity-session-storage.ts`)
+drops it and the remembered entry date and currency on `logout` and before the
+switch's reload; `frontend/src/lib/session-storage.guard.test.ts` lists every
+`sessionStorage` writer with whether it is identity-neutral or identity-scoped.
+
 ### INV-SHARE-004 -- a share never dead-ends
 
 ```text
