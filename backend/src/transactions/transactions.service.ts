@@ -2571,6 +2571,25 @@ export class TransactionsService {
     return transaction;
   }
 
+  /**
+   * One transaction as the register shows it: the row plus the facts the list
+   * adds to every row (`linkedInvestmentTransactionId`, `attachmentCount`,
+   * `warrantyCount`), from the same enrichment. A form opened on a row read
+   * by id, from any page, then knows what the register would: whether the
+   * row has warranties to list, and whether an investment owns it.
+   */
+  async findOneForDisplay(
+    userId: string,
+    id: string,
+    jointAccountIds: string[] = [],
+  ): Promise<TransactionWithInvestmentLink> {
+    const transaction = await this.findOne(userId, id, jointAccountIds);
+    const [enriched] = await withScopedDb(this.dataSource, (m) =>
+      this.enrichWithInvestmentLinks(m, [transaction]),
+    );
+    return enriched;
+  }
+
   async update(
     userId: string,
     id: string,

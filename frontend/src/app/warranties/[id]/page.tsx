@@ -182,12 +182,42 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
     purchaseModal.openEdit(transaction);
   };
 
+  // A warranty listed in the purchase's form opens the way the register opens
+  // one: the form closes through its own close path first, so a dirty form
+  // asks before anything is lost and the closing modal's history step cannot
+  // undo the navigation. This warranty's own entry just closes the form; the
+  // page already shows it. A target a dirty form's dialog holds is released
+  // by Discard or by a successful Save, and dropped by Keep editing.
+  const pendingPurchaseNavigation = useRef<string | null>(null);
+  const navigateAfterPurchaseCloses = (href: string | null) => {
+    if (href !== null) window.setTimeout(() => router.push(href), 100);
+  };
+  const handleClosePurchase = () => {
+    pendingPurchaseNavigation.current = null;
+    purchaseModal.close();
+  };
+  const handleOpenWarrantyFromPurchase = (openedId: string) => {
+    const href = openedId === warrantyId ? null : `/warranties/${openedId}`;
+    if (purchaseModal.modalProps.onBeforeClose() === false) {
+      pendingPurchaseNavigation.current = href;
+      return;
+    }
+    handleClosePurchase();
+    navigateAfterPurchaseCloses(href);
+  };
+  const releasePurchaseNavigation = () => {
+    const href = pendingPurchaseNavigation.current;
+    pendingPurchaseNavigation.current = null;
+    navigateAfterPurchaseCloses(href);
+  };
+
   // A saved purchase may have moved the payee, date or amount the warranty
   // shows, so the cached warranty reads go and the warranty is read again.
   const handlePurchaseSaved = () => {
     purchaseModal.close();
     invalidateCache('warranties:');
     reload();
+    releasePurchaseNavigation();
   };
 
   const handleToggleArchive = async () => {
@@ -299,11 +329,11 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
         </Modal>
         <UnsavedChangesDialog {...unsavedChangesDialog} />
 
-        {/* No onAddWarranty / onOpenWarranty: the form's Warranties line lists
-            them as text here, on the warranty's own page. */}
+        {/* The form's Warranties line links each warranty on this purchase;
+            no Add warranty here, on a warranty's own page. */}
         <Modal
           isOpen={purchaseModal.showForm}
-          onClose={purchaseModal.close}
+          onClose={handleClosePurchase}
           {...purchaseModal.modalProps}
           maxWidth="2xl"
           padding="md"
@@ -313,13 +343,24 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
             <TransactionForm
               transaction={purchaseModal.editingItem}
               onSuccess={handlePurchaseSaved}
-              onCancel={purchaseModal.close}
+              onCancel={handleClosePurchase}
               onDirtyChange={purchaseModal.setFormDirty}
               submitRef={purchaseModal.formSubmitRef}
+              onOpenWarranty={readOnly ? undefined : handleOpenWarrantyFromPurchase}
             />
           )}
         </Modal>
-        <UnsavedChangesDialog {...purchaseModal.unsavedChangesDialog} />
+        <UnsavedChangesDialog
+          {...purchaseModal.unsavedChangesDialog}
+          onDiscard={() => {
+            purchaseModal.unsavedChangesDialog.onDiscard();
+            releasePurchaseNavigation();
+          }}
+          onCancel={() => {
+            pendingPurchaseNavigation.current = null;
+            purchaseModal.unsavedChangesDialog.onCancel();
+          }}
+        />
 
         <ConfirmDialog
           isOpen={confirmDelete}

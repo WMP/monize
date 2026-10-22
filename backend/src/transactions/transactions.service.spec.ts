@@ -1617,6 +1617,58 @@ describe("TransactionsService", () => {
     });
   });
 
+  describe("findOneForDisplay", () => {
+    it("adds the register's per-row facts to the row read by id", async () => {
+      const mockTx = {
+        id: "tx-1",
+        userId: "user-1",
+        accountId: "account-1",
+        amount: -50,
+        splits: [],
+      };
+      transactionsRepository.findOne.mockResolvedValue(mockTx);
+      investmentTxRepository.find.mockResolvedValue([
+        { id: "inv-1", transactionId: "tx-1" },
+      ]);
+      const warrantyQb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ transactionId: "tx-1", count: "2" }]),
+      };
+      warrantiesRepository.createQueryBuilder.mockReturnValue(warrantyQb);
+
+      const result = await service.findOneForDisplay("user-1", "tx-1");
+
+      // A form opened on this row by id lists its warranties (the count is
+      // what the warranties line waits on) and sends an investment's cash
+      // leg to Investments, exactly as from the register.
+      expect(result).toMatchObject({
+        id: "tx-1",
+        warrantyCount: 2,
+        attachmentCount: 0,
+        linkedInvestmentTransactionId: "inv-1",
+      });
+      expect(warrantyQb.where).toHaveBeenCalledWith(
+        "w.transactionId IN (:...transactionIds)",
+        { transactionIds: ["tx-1"] },
+      );
+    });
+
+    it("refuses a row the caller cannot read, as findOne does", async () => {
+      transactionsRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.findOneForDisplay("user-1", "tx-1")).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(warrantiesRepository.createQueryBuilder).not.toHaveBeenCalled();
+    });
+  });
+
   describe("findOne", () => {
     it("returns transaction when found and belongs to user", async () => {
       const mockTx = {

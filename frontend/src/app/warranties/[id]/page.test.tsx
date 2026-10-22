@@ -53,6 +53,19 @@ vi.mock('next/dynamic', () => ({
             <button type="button" onClick={() => props.onSuccess()}>
               Save transaction stub
             </button>
+            {props.onOpenWarranty && (
+              <>
+                <button type="button" onClick={() => props.onOpenWarranty(W_ID)}>
+                  Open this warranty stub
+                </button>
+                <button
+                  type="button"
+                  onClick={() => props.onOpenWarranty('33333333-3333-4333-8333-333333333333')}
+                >
+                  Open other warranty stub
+                </button>
+              </>
+            )}
           </div>
         );
       }
@@ -330,10 +343,52 @@ describe('WarrantyDetailPage', () => {
       expect(router.push).not.toHaveBeenCalled();
       const dialog = screen.getByRole('dialog', { name: 'Edit Transaction' });
       expect(within(dialog).getByTestId('editing-transaction')).toHaveTextContent('tx-1');
-      // No Add / Open warranty hand-offs on the warranty's own page.
-      expect(within(dialog).getByTestId('transaction-hosts')).toHaveTextContent('0');
+      // The form links the purchase's warranties; no Add warranty on a
+      // warranty's own page.
+      expect(within(dialog).getByTestId('transaction-hosts')).toHaveTextContent('1');
     });
 
+    it("closes the form on this warranty's own link, without navigating", async () => {
+      await renderPage();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Edit the purchase of .*Best Buy/ }));
+      });
+      vi.useFakeTimers();
+      try {
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: 'Open this warranty stub' }));
+        });
+        expect(screen.queryByTestId('transaction-form')).not.toBeInTheDocument();
+        await act(async () => {
+          vi.advanceTimersByTime(200);
+        });
+        expect(router.push).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("opens another warranty only after the form has closed", async () => {
+      await renderPage();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Edit the purchase of .*Best Buy/ }));
+      });
+      vi.useFakeTimers();
+      try {
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: 'Open other warranty stub' }));
+        });
+        expect(screen.queryByTestId('transaction-form')).not.toBeInTheDocument();
+        // After the closing modal's own history step, never before it.
+        expect(router.push).not.toHaveBeenCalled();
+        await act(async () => {
+          vi.advanceTimersByTime(200);
+        });
+        expect(router.push).toHaveBeenCalledWith('/warranties/33333333-3333-4333-8333-333333333333');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
     it('reads the warranty again, past the cache, after the purchase is saved', async () => {
       await renderPage();
       await act(async () => {
