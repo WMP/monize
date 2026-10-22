@@ -436,6 +436,7 @@
       "destinationRequired": "请选择目标账户",
       "sameAccount": "来源账户和目标账户必须不同",
       "negativeTransfer": "转账金额不能为负数",
+      "convertToTransferUnsupported": "无法在此处将现有交易转换为转账。请删除该交易，然后改为创建转账。",
       "payeeCreated": "收款人\"{name}\"已创建",
       "payeeCreateFailed": "创建收款人失败",
       "payeeReactivated": "收款人\"{name}\"已重新激活",

@@ -436,6 +436,7 @@
       "destinationRequired": "振替先口座を選択してください",
       "sameAccount": "振替元と振替先の口座は異なる必要があります",
       "negativeTransfer": "振替金額はマイナスにできません",
+      "convertToTransferUnsupported": "既存の取引はここで振替に変更できません。取引を削除して、代わりに振替を作成してください。",
       "payeeCreated": "支払先「{name}」を作成しました",
       "payeeCreateFailed": "支払先の作成に失敗しました",
       "payeeReactivated": "支払先「{name}」を再有効化しました",
