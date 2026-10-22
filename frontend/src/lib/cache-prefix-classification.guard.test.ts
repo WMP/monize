@@ -161,4 +161,20 @@ describe('cache prefix classification', () => {
 
     expect(stale).toEqual([]);
   });
+
+  it('no module reads or writes the cache by hand outside apiCache.ts', () => {
+    // Use `dedupe` for a read (it is generation-aware, so a request that raced
+    // an invalidation cannot repopulate the cache) and `patchCached` for an
+    // in-place rewrite. `getCached` / `setCache` are for tests only.
+    const hand = /\b(?:getCached|setCache)\s*(?:<[^>]*>)?\s*\(/;
+    const offenders: string[] = [];
+    for (const [path, source] of Object.entries(sources)) {
+      if (/\.test\.tsx?$/.test(path)) continue;
+      if (path.endsWith('/src/lib/apiCache.ts')) continue;
+      source.split('\n').forEach((line, index) => {
+        if (hand.test(line)) offenders.push(`${path}:${index + 1}`);
+      });
+    }
+    expect(offenders).toEqual([]);
+  });
 });

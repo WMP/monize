@@ -533,6 +533,31 @@ describe('CompleteStep', () => {
     expect(screen.getByText(/2 transactions/)).toBeInTheDocument();
   });
 
+  it('shows how many bond purchases were imported without a series', () => {
+    render(
+      <CompleteStep
+        {...defaultProps}
+        importResult={{ ...defaultProps.importResult!, bondRowsWithoutSeries: 2 }}
+      />,
+    );
+    expect(
+      screen.getByText(/2 bond purchases were imported without a series/),
+    ).toBeInTheDocument();
+  });
+
+  it('shows no bond series line when the count is absent or zero', () => {
+    const { unmount } = render(<CompleteStep {...defaultProps} />);
+    expect(screen.queryByText(/imported without a series/)).not.toBeInTheDocument();
+    unmount();
+    render(
+      <CompleteStep
+        {...defaultProps}
+        importResult={{ ...defaultProps.importResult!, bondRowsWithoutSeries: 0 }}
+      />,
+    );
+    expect(screen.queryByText(/imported without a series/)).not.toBeInTheDocument();
+  });
+
   it('shows loan accounts needing setup when present in importResult', () => {
     const resultWithLoans = {
       ...defaultProps.importResult!,

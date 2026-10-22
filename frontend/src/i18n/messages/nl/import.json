@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "Geplande betalingen ingesteld voor {count} rekening{plural}.",
     "viewInvestments": "Beleggingen bekijken",
     "viewTransactions": "Transacties bekijken",
-    "importMoreFiles": "Meer bestanden importeren"
+    "importMoreFiles": "Meer bestanden importeren",
+    "bondRowsWithoutSeries": "{count, plural, one {# obligatieaankoop is zonder serie geïmporteerd. Kies de serie in de obligatieposten van het effect.} other {# obligatieaankopen zijn zonder serie geïmporteerd. Kies de series in de obligatieposten van het effect.}}"
   },
   "multiAccountReview": {
     "heading": "QIF-import voor meerdere rekeningen",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "Opmerkingen over deze import",
     "downloadReport": "Rapport downloaden",
-    "done": "Klaar"
+    "done": "Klaar",
+    "bondRowsWithoutSeries": "{count, plural, one {# obligatieaankoop is zonder serie geïmporteerd. Kies de serie in de obligatieposten van het effect.} other {# obligatieaankopen zijn zonder serie geïmporteerd. Kies de series in de obligatieposten van het effect.}}"
   },
   "mnyWarnings": {
     "missingTable": "Deze Money-versie heeft {count, plural, one {# tabel} other {# tabellen}} niet die de import gebruikt.",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "Niet beoordeeld: een eerdere regel heeft de regels gestopt.",
         "disabled": "Niet beoordeeld: de regel staat uit.",
-        "invalid": "Niet beoordeeld: de regel is ongeldig. Open hem om hem te herstellen."
+        "invalid": "Niet beoordeeld: de regel is ongeldig. Open hem om hem te herstellen.",
+        "outside_active_window": "Niet beoordeeld: de datum van de rij valt buiten de actieve datums van de regel."
       },
       "condition": {
         "met": "Voorwaarde voldaan",

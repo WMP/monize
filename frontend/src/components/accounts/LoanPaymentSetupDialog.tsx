@@ -464,12 +464,12 @@ export function LoanPaymentSetupDialog({
                 </p>
                 {hasDetectedSplit && (
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    {t('loanPaymentSetup.lastSplit', { currency: currencySymbol, principal: detected.lastPrincipalAmount?.toFixed(2) ?? '', interest: detected.lastInterestAmount?.toFixed(2) ?? '' })}
+                    {t('loanPaymentSetup.lastSplit', { principal: detected.lastPrincipalAmount != null ? formatCurrency(detected.lastPrincipalAmount, loanAccount.currencyCode) : '', interest: detected.lastInterestAmount != null ? formatCurrency(detected.lastInterestAmount, loanAccount.currencyCode) : '' })}
                   </p>
                 )}
                 {detected.extraPrincipalCount > 0 && (
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                    {t('loanPaymentSetup.extraPayments', { count: detected.extraPrincipalCount, currency: currencySymbol, avg: detected.averageExtraPrincipal.toFixed(2) })}
+                    {t('loanPaymentSetup.extraPayments', { count: detected.extraPrincipalCount, avg: formatCurrency(detected.averageExtraPrincipal, loanAccount.currencyCode) })}
                   </p>
                 )}
                 <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
@@ -542,7 +542,7 @@ export function LoanPaymentSetupDialog({
                     />
                     {!derivesInstallment && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {t('loanPaymentSetup.totalPayment', { currency: currencySymbol, amount: totalPaymentAmount.toFixed(2) })}
+                        {t('loanPaymentSetup.totalPayment', { amount: formatCurrency(totalPaymentAmount, loanAccount.currencyCode) })}
                       </p>
                     )}
                   </div>
@@ -566,7 +566,7 @@ export function LoanPaymentSetupDialog({
                   </label>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
                     {useDetectedSplit
-                      ? t('loanPaymentSetup.useDetectedSplitDesc', { currency: currencySymbol, interest: detected!.lastInterestAmount!.toFixed(2) })
+                      ? t('loanPaymentSetup.useDetectedSplitDesc', { interest: formatCurrency(detected!.lastInterestAmount!, loanAccount.currencyCode) })
                       : t('loanPaymentSetup.calculateFromRate')}
                   </p>
                 </div>

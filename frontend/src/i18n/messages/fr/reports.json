@@ -1903,5 +1903,8 @@
       "residualDeficit": "Puisé dans les soldes",
       "unlinkedAccount": "(compte non lié)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Généré : {timestamp}"
   }
 }

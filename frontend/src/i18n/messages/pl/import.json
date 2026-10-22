@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "Skonfigurowano zaplanowane spłaty dla {count} {count, plural, one {konta} few {kont} many {kont} other {konta}}.",
     "viewInvestments": "Zobacz inwestycje",
     "viewTransactions": "Pokaż transakcje",
-    "importMoreFiles": "Importuj kolejne pliki"
+    "importMoreFiles": "Importuj kolejne pliki",
+    "bondRowsWithoutSeries": "{count, plural, one {# zakup obligacji zaimportowano bez serii. Wybierz serię w partiach obligacji tego papieru.} few {# zakupy obligacji zaimportowano bez serii. Wybierz serie w partiach obligacji tego papieru.} many {# zakupów obligacji zaimportowano bez serii. Wybierz serie w partiach obligacji tego papieru.} other {# zakupu obligacji zaimportowano bez serii. Wybierz serie w partiach obligacji tego papieru.}}"
   },
   "multiAccountReview": {
     "heading": "Import QIF z wieloma kontami",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "Uwagi dotyczące tego importu",
     "downloadReport": "Pobierz raport",
-    "done": "Gotowe"
+    "done": "Gotowe",
+    "bondRowsWithoutSeries": "{count, plural, one {# zakup obligacji zaimportowano bez serii. Wybierz serię w partiach obligacji tego papieru.} few {# zakupy obligacji zaimportowano bez serii. Wybierz serie w partiach obligacji tego papieru.} many {# zakupów obligacji zaimportowano bez serii. Wybierz serie w partiach obligacji tego papieru.} other {# zakupu obligacji zaimportowano bez serii. Wybierz serie w partiach obligacji tego papieru.}}"
   },
   "mnyWarnings": {
     "missingTable": "Ta wersja Money nie ma {count, plural, one {# tabeli} few {# tabel} many {# tabel} other {# tabeli}} używanych przez import.",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "Nie sprawdzono: poprzednia reguła zatrzymała kolejne reguły.",
         "disabled": "Nie sprawdzono: reguła jest wyłączona.",
-        "invalid": "Nie sprawdzono: reguła jest nieprawidłowa. Otwórz ją, aby ją naprawić."
+        "invalid": "Nie sprawdzono: reguła jest nieprawidłowa. Otwórz ją, aby ją naprawić.",
+        "outside_active_window": "Nie sprawdzono: data wiersza jest poza okresem obowiązywania reguły."
       },
       "condition": {
         "met": "Warunek spełniony",

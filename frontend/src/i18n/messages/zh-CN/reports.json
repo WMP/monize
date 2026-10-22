@@ -1903,5 +1903,8 @@
       "residualDeficit": "动用余额",
       "unlinkedAccount": "（未关联账户）"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "生成时间：{timestamp}"
   }
 }

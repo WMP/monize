@@ -159,6 +159,33 @@ export type PeriodResultReason =
    */
   | 'windowTooShort';
 
+/** One cause of an incomplete window, over the run of points it affected. */
+export interface IncompleteDataRange {
+  /** A security id, a `"USD->PLN"` pair, or an account id. */
+  key: string;
+  /** First date of the run. */
+  start: string;
+  /** Last date of the run; equal to `start` for a single point. */
+  end: string;
+}
+
+/**
+ * The three causes of an incomplete window, each folded into its runs, with a
+ * flag per cause saying whether older runs were dropped to keep the payload
+ * bounded. Mirrors `IncompleteDataRanges` in
+ * `backend/src/net-worth/incomplete-data-ranges.util.ts`.
+ */
+export interface IncompleteDataRanges {
+  /** Securities with no usable price, by run. */
+  prices: IncompleteDataRange[];
+  /** Currency pairs with no rate, by run. */
+  rates: IncompleteDataRange[];
+  /** Cash accounts with no balance, by run. */
+  cash: IncompleteDataRange[];
+  /** Per cause: true when runs older than the ones listed were dropped. */
+  truncated: { prices: boolean; rates: boolean; cash: boolean };
+}
+
 /**
  * What GET /net-worth/investments-period-result answers: what the portfolio did
  * over the window, and how much of that was the reader's own money.
@@ -202,6 +229,13 @@ export interface PortfolioPeriodResult {
   missingRatePairs: string[];
   unpricedSecurityIds: string[];
   unknownCashAccountIds: string[];
+  /**
+   * The same three causes DATED: each key's runs of consecutive points over the
+   * window, rather than the union sets above, which say what is missing and not
+   * when. Bounded per cause; `truncated` says a list is the newest runs rather
+   * than all of them. Optional: an older backend omits it.
+   */
+  incompleteRanges?: IncompleteDataRanges;
 
   // The INVESTED part of the same window: securities only, cash excluded
   // entirely. These are what "Portfolio performance" and the investment charts

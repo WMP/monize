@@ -1,6 +1,7 @@
 import apiClient from './api';
 import {
   dedupe,
+  invalidateBalanceCaches,
   invalidateCache,
   invalidateScheduledFxReadModel,
 } from './apiCache';
@@ -225,6 +226,8 @@ export const exchangeRatesApi = {
       { code },
     );
     invalidateCache('exchange-rates:');
+    // A rate is a valuation input for every converted total.
+    invalidateBalanceCaches();
     return response.data;
   },
 
@@ -243,6 +246,8 @@ export const exchangeRatesApi = {
     // value. Invalidating before the POST would leave that window open.
     invalidateCache('exchange-rates:');
     invalidateScheduledFxReadModel();
+    // A rate is a valuation input for every converted total.
+    invalidateBalanceCaches();
     return response.data;
   },
 

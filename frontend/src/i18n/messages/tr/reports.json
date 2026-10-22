@@ -1903,5 +1903,8 @@
       "residualDeficit": "Bakiyelerden çekilen",
       "unlinkedAccount": "(bağlantısız hesap)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Oluşturulma: {timestamp}"
   }
 }

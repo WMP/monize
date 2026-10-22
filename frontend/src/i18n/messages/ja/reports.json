@@ -1903,5 +1903,8 @@
       "residualDeficit": "残高から充当",
       "unlinkedAccount": "（リンクされていない口座）"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "作成日時: {timestamp}"
   }
 }

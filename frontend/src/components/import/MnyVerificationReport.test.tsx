@@ -148,6 +148,23 @@ describe('MnyVerificationReport', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows how many bond purchases were imported without a series', () => {
+    render(
+      <MnyVerificationReport
+        {...defaultProps}
+        result={result({ bondRowsWithoutSeries: 1 })}
+      />,
+    );
+    expect(
+      screen.getByText(/1 bond purchase was imported without a series/),
+    ).toBeInTheDocument();
+  });
+
+  it('shows no bond series line when the count is absent', () => {
+    render(<MnyVerificationReport {...defaultProps} />);
+    expect(screen.queryByText(/imported without a series/)).not.toBeInTheDocument();
+  });
+
   it('lists warnings with their counts', () => {
     render(
       <MnyVerificationReport

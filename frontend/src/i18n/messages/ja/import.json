@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "{count} 件の勘定科目{plural}に定期支払いを設定しました。",
     "viewInvestments": "投資を表示",
     "viewTransactions": "取引を表示",
-    "importMoreFiles": "さらにファイルをインポート"
+    "importMoreFiles": "さらにファイルをインポート",
+    "bondRowsWithoutSeries": "{count, plural, other {#件の債券購入がシリーズなしでインポートされました。銘柄の債券ロットでシリーズを選択してください。}}"
   },
   "multiAccountReview": {
     "heading": "複数勘定科目 QIF インポート",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "このインポートに関する注意",
     "downloadReport": "レポートをダウンロード",
-    "done": "完了"
+    "done": "完了",
+    "bondRowsWithoutSeries": "{count, plural, other {#件の債券購入がシリーズなしでインポートされました。銘柄の債券ロットでシリーズを選択してください。}}"
   },
   "mnyWarnings": {
     "missingTable": "この Money バージョンには、インポートが使用するテーブルが {count, plural, other {# 個}} ありません。",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "未評価：前のルールがそれ以降のルールを停止しました。",
         "disabled": "未評価：ルールがオフになっています。",
-        "invalid": "未評価：ルールが無効です。開いて修正してください。"
+        "invalid": "未評価：ルールが無効です。開いて修正してください。",
+        "outside_active_window": "未評価：行の日付がルールの有効期間外です。"
       },
       "condition": {
         "met": "条件を満たしています",

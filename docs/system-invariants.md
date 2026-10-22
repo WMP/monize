@@ -129,7 +129,7 @@ implied.
 | INV-AUTH-005 | A replaced password ends every credential issued on the old one | enforced |
 | INV-ACTIVITY-001 | Activity is attributed to whoever acted, not to whoever was acted for | enforced |
 | INV-PROFILE-001 | A user-profile response is an allowlist | enforced |
-| INV-DISPLAY-001 | A figure addressed to a person is rendered in that person's number locale | enforced |
+| INV-DISPLAY-001 | A figure addressed to a person is rendered in that person's number locale | partial |
 | INV-MCP-001 | Identity comes from the credential on the request | enforced |
 | INV-MCP-002 | An MCP request is answered by the MCP transport, never by the app shell | enforced |
 | INV-MCP-003 | A write confirmation is bound to one credential and one change | enforced |
@@ -174,7 +174,7 @@ implied.
 | INV-PORTMOVE-007 | A portfolio movement's external flow is converted at the date each amount crossed the boundary | enforced |
 | INV-PORTMOVE-008 | A late close restates a portfolio movement's baseline instead of being booked as the period's move, and a carried close never withholds it | enforced |
 | INV-RLS-001 | Enforced mode refuses to run on a role that can bypass RLS | enforced |
-| INV-CACHE-001 | A money-moving write invalidates every derived cache | enforced |
+| INV-CACHE-001 | A money-moving write invalidates every derived cache | partial |
 | INV-DAYNOTE-001 | A calendar date is covered by at most one of a user's notes, and a save never reads first | enforced |
 | INV-PAYEE-001 | A contact lookup never overwrites a value the user entered, and the automatic one runs at most once per payee | enforced |
 | INV-PAYEE-002 | Google Places requests in one Pacific calendar month never exceed the cap for the key's owner | enforced |
@@ -5106,6 +5106,16 @@ Enforcement         Client: every figure goes through useNumberFormat(); a pure
                     exists to override) -- with a classified allowlist and a
                     comment stripper so the prose that has to NAME the banned
                     patterns does not trip its own scan.
+                    A fifth scan fails a `.toFixed(` in UI code (components,
+                    app, hooks): a classified list names the machine-read sites
+                    (CSV rows, an API fraction string, a numeric table value)
+                    and a shrink-only baseline names the readouts not yet
+                    migrated, each with an exact count, so a new site and a
+                    stale entry both fail. ui-conventions.test.ts fails a UI
+                    import of the English-only formatRelativeTime (use
+                    useRelativeTime). The PDF header's generation time is
+                    formatted by the reader's date, time and timezone
+                    preferences and labelled from the catalog (pdf-export.ts).
                     The percentage scan is keyed on the literal '%' rather than
                     on `toFixed`: written from the diff it matched only the
                     shapes the migration had just removed and reported clean over
@@ -5192,7 +5202,10 @@ Required tests      Present: useNumberFormat.test.ts (share quantity at 8dp unde
                     expectation with the same helper the component renders
                     through -- SecurityList.test.tsx did, which is why the defect
                     shipped green.
-Status              enforced
+Status              partial: the toFixed baseline in number-locale.guard.test.ts
+                    still lists readouts in SavingsRateReport,
+                    MonteCarloReport, CurrencyExposureReport, LoanSummaryCards,
+                    CurrencyList and InvestmentTransactionListParts.
 ```
 
 The number locale is a SEPARATE preference from the language, and that is the
@@ -7071,10 +7084,22 @@ while that user acts for a different owner (D-S04-01, not closed here).
 
 ```text
 Statement           A write that changes money invalidates every client cache
-                    family derived from transactions.
+                    family derived from transactions, and so does a write that
+                    changes what those figures are derived from without being a
+                    ledger row: a recategorisation (category reassign, payee
+                    category backfill), a stored price, a security's currency,
+                    an exchange rate, the reporting currency or timezone, an
+                    import. A read in flight across the write never writes its
+                    pre-write answer back.
 Enforcement         invalidateBalanceCaches (frontend lib/apiCache.ts) drops the
                     accounts:, investments: AND budgets: prefixes -- every
-                    transaction-derived family. The cache layer is mostly
+                    transaction-derived family. The valuation-input and
+                    recategorising writes call it too; a reporting-currency or
+                    timezone change and every import call clearAllCache. Every
+                    cached read goes through dedupe, whose per-key generation
+                    refuses a result that raced an invalidation; getCached and
+                    setCache are for tests, and patchCached is the one in-place
+                    rewrite. The cache layer is mostly
                     frontend, which is why the function name does not appear in
                     backend/src. The server holds one derived cache of its own,
                     the portfolio-summary memo
@@ -7103,7 +7128,13 @@ Required tests      Present: frontend cache-prefix-classification.guard.test.ts
                     requires every cache prefix to declare itself transaction-
                     derived (and be dropped) or reference-data (and be kept), so a
                     new family cannot default to stale; balance-cache.guard.test.ts
-                    requires every balance-writing API method to invalidate;
+                    requires every balance-writing API method to invalidate
+                    (its route list names the reassign, the category backfill
+                    and the price routes); the same classification guard fails
+                    a getCached or setCache call outside apiCache.ts; one lib
+                    case per channel (categories, payees, tags, investments,
+                    exchange-rates, user-settings, import, import-mny) and a
+                    race case in investments and budgets;
                     backend portfolio-summary-memo.spec.ts and the memo cases in
                     portfolio.service.spec.ts require an invalidated user to
                     recompute while another user's entry survives;
@@ -7113,7 +7144,10 @@ Required tests      Present: frontend cache-prefix-classification.guard.test.ts
                     drop standing. The cross-replica hop itself is proved by the
                     CLUSTER_MODE=multi E2E shard, where the write and the read
                     land on different replicas.
-Status              enforced
+Status              partial: the balance-cache guard is a route list, so a new
+                    recategorising or valuation-input route is held only once it
+                    is added there, and the preference and rate-refresh drops
+                    are held by unit tests, not a scan.
 ```
 
 ### INV-DAYNOTE-001 -- one note per day, written without reading first

@@ -1903,5 +1903,8 @@
       "residualDeficit": "शेष राशि से लिया",
       "unlinkedAccount": "(असंबद्ध खाता)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "बनाया गया: {timestamp}"
   }
 }

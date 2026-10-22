@@ -63,7 +63,10 @@ export interface ExplainedRuleEffects {
   stopped: boolean;
 }
 
-export type ExplainedRuleSkip = 'disabled' | 'invalid';
+/** Mirrors `RuleSkipReason` in `backend/src/transaction-rules/rule-effects.ts` (pinned by the contract test). */
+export const EXPLAINED_RULE_SKIPS = ['disabled', 'invalid', 'outside_active_window'] as const;
+
+export type ExplainedRuleSkip = (typeof EXPLAINED_RULE_SKIPS)[number];
 
 export interface ExplainedRule {
   ruleId: string;

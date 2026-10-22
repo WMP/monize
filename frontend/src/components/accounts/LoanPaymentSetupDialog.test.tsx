@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ComponentProps } from 'react';
-import { render, screen, fireEvent, act, waitFor } from '@/test/render';
+import { render, screen, fireEvent, act, waitFor, cleanup } from '@/test/render';
 import { LoanPaymentSetupDialog } from './LoanPaymentSetupDialog';
 import { accountsApi } from '@/lib/accounts';
 import { categoriesApi } from '@/lib/categories';
 import { payeesApi } from '@/lib/payees';
 import { Account, DetectedLoanPayment } from '@/types/account';
 import toast from 'react-hot-toast';
+import { usePreferencesStore } from '@/store/preferencesStore';
 
 vi.mock('@/lib/accounts', () => ({
   accountsApi: {
@@ -924,6 +925,34 @@ describe('LoanPaymentSetupDialog', () => {
     });
     await renderDialog();
     expect(screen.getByText(/Last payment split:/)).toBeInTheDocument();
+  });
+
+  it('writes the detected amounts in the reader number locale, with the currency once', async () => {
+    usePreferencesStore.setState({
+      preferences: { numberFormat: 'pl-PL', language: 'en' } as any,
+    });
+    try {
+      mockDetectLoanPayments.mockResolvedValue({
+        ...defaultDetected,
+        lastPrincipalAmount: 1200.5,
+        lastInterestAmount: 300.25,
+        extraPrincipalCount: 2,
+        averageExtraPrincipal: 99.5,
+      });
+      await renderDialog();
+
+      const split = screen.getByText(/Last payment split:/).textContent ?? '';
+      expect(split).toMatch(/300,25/);
+      expect(split).toMatch(/1\s?200,50/);
+      expect(split).not.toMatch(/\d\.\d\d/);
+      // The currency comes from the formatter alone, not from a `{currency}`
+      // placeholder beside it.
+      expect(split.match(/USD|\$/g) ?? []).toHaveLength(2);
+      expect(screen.getByText(/avg [^)]*99,50/)).toBeInTheDocument();
+    } finally {
+      cleanup();
+      usePreferencesStore.setState({ preferences: null });
+    }
   });
 
   it('enables detected split by default for mortgages when split data is available', async () => {
