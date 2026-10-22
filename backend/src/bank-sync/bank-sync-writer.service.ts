@@ -38,7 +38,7 @@ import {
   type ResolvedPayee,
 } from "./bank-sync-payee-lookup";
 import {
-  findLedgerKeys,
+  findHeldRows,
   newPlannedRows,
   planFingerprint,
 } from "./bank-sync-plan-fingerprint";
@@ -138,12 +138,16 @@ export interface BankSyncWriteOutcome {
  * step 5): the ledger rows, the payees, the transactions, the import rules, the
  * balance and the sync outcome commit together or not at all.
  *
- * **INV-BANKSYNC-001, the mechanism.** Each planned row first claims its ledger
- * row with `INSERT ... ON CONFLICT (account_id, external_key) DO NOTHING
- * RETURNING id`; nothing returned means the bank transaction was imported
- * before, and nothing else is written for it. The ledger is keyed on the Monize
- * account, so the claim holds across reconnects, and the unique index is what
- * makes two concurrent syncs converge.
+ * **INV-BANKSYNC-001, the mechanism.** A planned row's key is a function of the
+ * row alone (`explainBankImport`). A row the ledger already holds, under that
+ * key or a key an earlier planner gave the same bank transaction
+ * (`findHeldRows`, read under the link and account row locks this write holds),
+ * is skipped. Every other row first claims its ledger row with
+ * `INSERT ... ON CONFLICT (account_id, external_key) DO NOTHING RETURNING id`;
+ * nothing returned means the bank transaction was imported before, and nothing
+ * else is written for it. The ledger is keyed on the Monize account, so the
+ * claim holds across reconnects, and the unique index is what makes two
+ * concurrent syncs converge.
  *
  * **INV-BANKSYNC-003.** Every row is written in the account's own currency,
  * through `assertTransactionCurrencyMatchesAccount`; the plan already refused a
@@ -272,22 +276,19 @@ export class BankSyncWriterService {
         );
       }
 
-      // 3b. A confirmed preview or a selection: what is about to be written is
-      //     what was shown. The rows are the planned ones the ledger does not
-      //     hold yet, read under the row lock this transaction holds, so a
-      //     concurrent sync of the same account has either committed (and its
-      //     rows are duplicates now) or waits behind it.
+      // 3b. The planned rows the ledger already holds, under its own key or a
+      //     key an earlier version of the planner gave the same bank
+      //     transaction (`findHeldRows`), read under the row lock this
+      //     transaction holds, so a concurrent sync of the same account has
+      //     either committed (and its rows are held now) or waits behind it.
+      //     A confirmed preview or a selection: what is about to be written is
+      //     what was shown.
       const { selection } = input;
       if (selection !== undefined) assertDisjointSelection(selection);
+      const held = await findHeldRows(m, userId, accountId, plan.planned);
       let newKeys: ReadonlySet<string> | null = null;
       if (input.expectedFingerprint !== undefined || selection !== undefined) {
-        const ledgerKeys = await findLedgerKeys(
-          m,
-          userId,
-          accountId,
-          plan.planned.map((row) => row.externalKey),
-        );
-        const newRows = newPlannedRows(plan.planned, ledgerKeys);
+        const newRows = newPlannedRows(plan.planned, held);
         newKeys = new Set(newRows.map((row) => row.externalKey));
         if (
           input.expectedFingerprint !== undefined &&
@@ -354,6 +355,10 @@ export class BankSyncWriterService {
 
       for (const row of plan.planned) {
         if (importKeys !== null && !importKeys.has(row.externalKey)) continue;
+        if (held.has(row.externalKey)) {
+          skipped += 1;
+          continue;
+        }
         const claimed = returnedRows<{ id: string }>(
           await m.query(
             `INSERT INTO bank_sync_imported_transactions

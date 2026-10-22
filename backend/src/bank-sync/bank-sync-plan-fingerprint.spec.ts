@@ -1,8 +1,8 @@
 import type { EntityManager } from "typeorm";
 import {
-  findLedgerEntries,
-  findLedgerKeys,
+  findHeldRows,
   newPlannedRows,
+  type HeldLedgerRow,
   planFingerprint,
 } from "./bank-sync-plan-fingerprint";
 import { NO_BANK_OPERATION } from "./bank-operation";
@@ -10,6 +10,7 @@ import type { PlannedBankRow } from "./bank-transaction-planner";
 
 const row = (over: Partial<PlannedBankRow> = {}): PlannedBankRow => ({
   externalKey: "ref:1",
+  legacyKeys: null,
   transactionDate: "2026-09-10",
   amount: -12.34,
   payeeText: null,
@@ -79,78 +80,145 @@ describe("newPlannedRows", () => {
       row({ externalKey: "ref:2" }),
       row({ externalKey: "ref:3" }),
     ];
-    expect(
-      newPlannedRows(rows, new Set(["ref:2"])).map((r) => r.externalKey),
-    ).toEqual(["ref:1", "ref:3"]);
-  });
-});
-
-describe("findLedgerKeys", () => {
-  const query = jest.fn();
-  const m = { query } as unknown as EntityManager;
-
-  beforeEach(() => query.mockReset());
-
-  it("asks for the account's keys among the given ones, filtered by user, and reads only", async () => {
-    query.mockResolvedValue([{ external_key: "ref:2" }]);
-    const found = await findLedgerKeys(m, "user-1", "acc-1", [
-      "ref:1",
-      "ref:2",
+    const held = new Map<string, HeldLedgerRow>([
+      ["ref:2", { key: "ref:2", excluded: false }],
     ]);
-    expect(found).toEqual(new Set(["ref:2"]));
-    const [sql, params] = query.mock.calls[0];
-    expect(String(sql)).toMatch(/^\s*SELECT/);
-    expect(String(sql)).toContain("account_id = $1");
-    expect(String(sql)).toContain("user_id = $2");
-    expect(params).toEqual(["acc-1", "user-1", ["ref:1", "ref:2"]]);
-  });
-
-  it("asks nothing for no keys", async () => {
-    await expect(findLedgerKeys(m, "user-1", "acc-1", [])).resolves.toEqual(
-      new Set(),
-    );
-    expect(query).not.toHaveBeenCalled();
-  });
-});
-
-describe("findLedgerEntries (spec section 7b)", () => {
-  const query = jest.fn();
-  const m = { query } as unknown as EntityManager;
-
-  beforeEach(() => query.mockReset());
-
-  it("tells an exception from an imported row, and reads only", async () => {
-    query.mockResolvedValue([
-      { external_key: "ref:1", excluded: false },
-      { external_key: "ref:2", excluded: true },
-      // A row the driver answers without the flag is not an exception.
-      { external_key: "ref:3" },
-    ]);
-    const found = await findLedgerEntries(m, "user-1", "acc-1", [
+    expect(newPlannedRows(rows, held).map((r) => r.externalKey)).toEqual([
       "ref:1",
-      "ref:2",
       "ref:3",
     ]);
-    expect([...found]).toEqual([
-      ["ref:1", { excluded: false }],
-      ["ref:2", { excluded: true }],
-      ["ref:3", { excluded: false }],
+  });
+
+  it("treats an exception as held, and a row held by a legacy key as held", () => {
+    const rows = [
+      row({ externalKey: "ref:new|1" }),
+      row({ externalKey: "ref:new|2" }),
+    ];
+    const held = new Map<string, HeldLedgerRow>([
+      ["ref:new|1", { key: "ref:old", excluded: true }],
     ]);
+    expect(newPlannedRows(rows, held).map((r) => r.externalKey)).toEqual([
+      "ref:new|2",
+    ]);
+  });
+});
+
+describe("findHeldRows", () => {
+  const query = jest.fn();
+  const m = { query } as unknown as EntityManager;
+  const legacyRow = (over: Partial<PlannedBankRow> = {}) =>
+    row({
+      externalKey: "ref:R|2026-09-10|-12.3400:0",
+      legacyKeys: { bare: "ref:R", contested: "ref:R#abc" },
+      transactionDate: "2026-09-10",
+      ...over,
+    });
+
+  beforeEach(() => query.mockReset());
+
+  it("holds a row by its own key, and says which key the ledger carries", async () => {
+    query.mockResolvedValue([
+      {
+        external_key: "ref:R|2026-09-10|-12.3400:0",
+        booking_date: "2026-09-10",
+        excluded: false,
+      },
+    ]);
+    const held = await findHeldRows(m, "user-1", "acc-1", [legacyRow()]);
+    expect([...held]).toEqual([
+      [
+        "ref:R|2026-09-10|-12.3400:0",
+        { key: "ref:R|2026-09-10|-12.3400:0", excluded: false },
+      ],
+    ]);
+  });
+
+  it("holds a row by its legacy contested key, whatever the booking date", async () => {
+    query.mockResolvedValue([
+      {
+        external_key: "ref:R#abc",
+        booking_date: "2026-01-01",
+        excluded: false,
+      },
+    ]);
+    const held = await findHeldRows(m, "user-1", "acc-1", [legacyRow()]);
+    expect(held.get("ref:R|2026-09-10|-12.3400:0")).toEqual({
+      key: "ref:R#abc",
+      excluded: false,
+    });
+  });
+
+  it("holds a row by its legacy bare key when that row was booked on the row's date", async () => {
+    query.mockResolvedValue([
+      { external_key: "ref:R", booking_date: "2026-09-10", excluded: false },
+    ]);
+    const held = await findHeldRows(m, "user-1", "acc-1", [legacyRow()]);
+    expect(held.get("ref:R|2026-09-10|-12.3400:0")).toEqual({
+      key: "ref:R",
+      excluded: false,
+    });
+  });
+
+  it("does not hold a row by the legacy bare key of another day: it is another transaction", async () => {
+    query.mockResolvedValue([
+      { external_key: "ref:R", booking_date: "2026-09-01", excluded: false },
+    ]);
+    const held = await findHeldRows(m, "user-1", "acc-1", [legacyRow()]);
+    expect(held.size).toBe(0);
+  });
+
+  it("prefers the own key, then the contested key, over the bare key", async () => {
+    query.mockResolvedValue([
+      { external_key: "ref:R", booking_date: "2026-09-10", excluded: false },
+      { external_key: "ref:R#abc", booking_date: "2026-09-10", excluded: true },
+    ]);
+    const held = await findHeldRows(m, "user-1", "acc-1", [legacyRow()]);
+    expect(held.get("ref:R|2026-09-10|-12.3400:0")).toEqual({
+      key: "ref:R#abc",
+      excluded: true,
+    });
+  });
+
+  it("passes an exception through as excluded, and a row without the flag is not one", async () => {
+    query.mockResolvedValue([
+      { external_key: "ref:1", booking_date: "2026-09-10", excluded: true },
+      { external_key: "ref:2", booking_date: "2026-09-10", excluded: false },
+      { external_key: "ref:3", booking_date: "2026-09-10" },
+    ]);
+    const held = await findHeldRows(m, "user-1", "acc-1", [
+      row({ externalKey: "ref:1" }),
+      row({ externalKey: "ref:2" }),
+      row({ externalKey: "ref:3" }),
+      row({ externalKey: "ref:4" }),
+    ]);
+    expect([...held]).toEqual([
+      ["ref:1", { key: "ref:1", excluded: true }],
+      ["ref:2", { key: "ref:2", excluded: false }],
+      ["ref:3", { key: "ref:3", excluded: false }],
+    ]);
+  });
+
+  it("asks once, for every candidate key, filtered by account and user, and reads only", async () => {
+    query.mockResolvedValue([]);
+    await findHeldRows(m, "user-1", "acc-1", [
+      legacyRow(),
+      row({ externalKey: "hash:x:0" }),
+    ]);
+    expect(query).toHaveBeenCalledTimes(1);
     const [sql, params] = query.mock.calls[0];
     expect(String(sql)).toMatch(/^\s*SELECT external_key/);
+    expect(String(sql)).toContain("account_id = $1");
+    expect(String(sql)).toContain("user_id = $2");
     expect(String(sql)).toContain("excluded_at IS NOT NULL");
-    expect(params).toEqual(["acc-1", "user-1", ["ref:1", "ref:2", "ref:3"]]);
+    expect(params).toEqual([
+      "acc-1",
+      "user-1",
+      ["ref:R|2026-09-10|-12.3400:0", "ref:R#abc", "ref:R", "hash:x:0"],
+    ]);
   });
 
-  it("holds an exception as a key like any other, so it is never a new row", async () => {
-    query.mockResolvedValue([{ external_key: "ref:2", excluded: true }]);
-    await expect(
-      findLedgerKeys(m, "user-1", "acc-1", ["ref:1", "ref:2"]),
-    ).resolves.toEqual(new Set(["ref:2"]));
-  });
-
-  it("asks nothing for no keys", async () => {
-    await expect(findLedgerEntries(m, "user-1", "acc-1", [])).resolves.toEqual(
+  it("asks nothing for no planned rows", async () => {
+    await expect(findHeldRows(m, "user-1", "acc-1", [])).resolves.toEqual(
       new Map(),
     );
     expect(query).not.toHaveBeenCalled();
