@@ -18,6 +18,8 @@ export const EMBEDDED_INVESTMENT_SPLIT_ACTIONS: ReadonlySet<InvestmentAction> =
     InvestmentAction.REINVEST_INTEREST,
     InvestmentAction.REINVEST_CAPITAL_GAIN_SHORT,
     InvestmentAction.REINVEST_CAPITAL_GAIN_LONG,
+    // Cash in like a dividend; the basis reduction is the replay's, not the split's.
+    InvestmentAction.RETURN_OF_CAPITAL,
   ]);
 
 export function isInvestmentActionAllowedInSplit(
@@ -32,7 +34,8 @@ export function isInvestmentActionAllowedInSplit(
  * embedded investment split's amount matches the implied cash side.
  *
  * Negative = cash leaves the brokerage cash account (BUY).
- * Positive = cash arrives in the brokerage cash account (SELL, DIVIDEND, etc).
+ * Positive = cash arrives in the brokerage cash account (SELL, DIVIDEND,
+ *            RETURN_OF_CAPITAL, etc).
  * Zero     = no cash side (REINVEST and the share-only actions).
  */
 export function computeInvestmentCashImpact(
@@ -72,6 +75,7 @@ export function computeInvestmentCashImpact(
     case InvestmentAction.DIVIDEND:
     case InvestmentAction.INTEREST:
     case InvestmentAction.CAPITAL_GAIN:
+    case InvestmentAction.RETURN_OF_CAPITAL:
       return stated === null ? (q || 1) * p : stated;
     case InvestmentAction.REINVEST:
       return 0;

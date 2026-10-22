@@ -48,7 +48,26 @@ vi.mock('next/dynamic', () => ({
     const DynamicComponent = (props: any) => {
       // Check loader path to determine which component
       if (props.transaction !== undefined || props.onSuccess !== undefined) {
-        return <div data-testid="dynamic-transaction-form">TransactionForm</div>;
+        return (
+          <div data-testid="dynamic-transaction-form">
+            TransactionForm
+            {props.onAddWarranty && (
+              <button data-testid="form-add-warranty" onClick={() => props.onAddWarranty(props.transaction)}>
+                Form add warranty
+              </button>
+            )}
+            {props.onOpenWarranty && (
+              <button data-testid="form-open-warranty" onClick={() => props.onOpenWarranty('w-9')}>
+                Form open warranty
+              </button>
+            )}
+            {props.onDirtyChange && (
+              <button data-testid="form-make-dirty" onClick={() => props.onDirtyChange(true)}>
+                Make dirty
+              </button>
+            )}
+          </div>
+        );
       }
       if (props.payee !== undefined) {
         return <div data-testid="dynamic-payee-form">PayeeForm</div>;
@@ -130,7 +149,14 @@ vi.mock('@/lib/logger', () => ({
   }),
 }));
 
-// Mock auth store
+// Mock auth store. `mockActing` is who the reader is acting as; a delegate
+// test sets it and the top-level `beforeEach` puts it back.
+const { mockActing } = vi.hoisted(() => ({
+  mockActing: {
+    actingAsUserId: null as string | null,
+    delegateSections: null as Record<string, boolean> | null,
+  },
+}));
 vi.mock('@/store/authStore', () => ({
   useAuthStore: Object.assign(
     (selector?: any) => {
@@ -140,6 +166,8 @@ vi.mock('@/store/authStore', () => ({
         isLoading: false,
         _hasHydrated: true,
         logout: vi.fn(),
+        actingAsUserId: mockActing.actingAsUserId,
+        delegateSections: mockActing.delegateSections,
       };
       return selector ? selector(state) : state;
     },
@@ -298,6 +326,8 @@ vi.mock('@/components/transactions/TransactionList', () => ({
           <span data-testid={`tx-${t.id}-attachments`}>{t.attachmentCount ?? 'none'}</span>
         </div>
       ))}
+      {props.onAddWarranty && <button data-testid="add-warranty-btn" onClick={() => props.onAddWarranty({ id: 'tx-1' })}>Add warranty</button>}
+      {props.onViewWarranties && <button data-testid="view-warranties-btn" onClick={() => props.onViewWarranties({ id: 'tx-1' })}>View warranties</button>}
       {props.onPayeeClick && <button data-testid="payee-click-btn" onClick={() => props.onPayeeClick('payee-1')}>Payee</button>}
       {props.onTransferClick && <button data-testid="transfer-click-btn" onClick={() => props.onTransferClick('acc-2', 'tx-linked')}>Transfer</button>}
       {props.onCategoryClick && <button data-testid="category-click-btn" onClick={() => props.onCategoryClick('cat-1')}>Category</button>}
@@ -438,7 +468,14 @@ vi.mock('@/components/ui/ConfirmDialog', () => ({
 }));
 
 vi.mock('@/components/ui/UnsavedChangesDialog', () => ({
-  UnsavedChangesDialog: () => null,
+  UnsavedChangesDialog: ({ isOpen, onSave, onDiscard, onCancel }: any) =>
+    isOpen ? (
+      <div data-testid="unsaved-dialog">
+        <button data-testid="unsaved-save" onClick={onSave}>Save</button>
+        <button data-testid="unsaved-discard" onClick={onDiscard}>Discard</button>
+        <button data-testid="unsaved-cancel" onClick={onCancel}>Keep editing</button>
+      </div>
+    ) : null,
 }));
 
 vi.mock('@/components/ui/LoadingSpinner', () => ({
@@ -488,20 +525,29 @@ const mockTxOpenEdit = vi.fn();
 const mockTxClose = vi.fn();
 const mockSetFormDirty = vi.fn();
 
-vi.mock('@/hooks/useFormModal', () => ({
-  useFormModal: () => ({
-    showForm: false,
-    editingItem: null,
-    openCreate: mockTxOpenCreate,
-    openEdit: mockTxOpenEdit,
-    close: mockTxClose,
-    isEditing: false,
-    modalProps: {},
-    setFormDirty: mockSetFormDirty,
-    unsavedChangesDialog: { isOpen: false, onSave: vi.fn(), onDiscard: vi.fn(), onCancel: vi.fn() },
-    formSubmitRef: { current: null },
-  }),
-}));
+// A stub by default; a test that drives the edit window's close path (the
+// unsaved-changes check) sets `mockRealFormModal.value` for the real hook.
+const { mockRealFormModal } = vi.hoisted(() => ({ mockRealFormModal: { value: false } }));
+vi.mock('@/hooks/useFormModal', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/useFormModal')>();
+  return {
+    useFormModal: () =>
+      mockRealFormModal.value
+        ? actual.useFormModal()
+        : {
+            showForm: false,
+            editingItem: null,
+            openCreate: mockTxOpenCreate,
+            openEdit: mockTxOpenEdit,
+            close: mockTxClose,
+            isEditing: false,
+            modalProps: {},
+            setFormDirty: mockSetFormDirty,
+            unsavedChangesDialog: { isOpen: false, onSave: vi.fn(), onDiscard: vi.fn(), onCancel: vi.fn() },
+            formSubmitRef: { current: null },
+          },
+  };
+});
 
 // Stateless by default, which is what almost every test here wants. The sort
 // tests swap in a stateful implementation, because a click that cannot change
@@ -572,6 +618,13 @@ const mockLongPayees = [
   { id: 'long-pay-2', name: 'Grocery Chain Supermarket Location Two', defaultCategoryId: null },
   { id: 'long-pay-3', name: 'Grocery Chain Supermarket Location Three', defaultCategoryId: null },
 ];
+
+// Every suite in this file starts as the owner with the stubbed form modal.
+beforeEach(() => {
+  mockActing.actingAsUserId = null;
+  mockActing.delegateSections = null;
+  mockRealFormModal.value = false;
+});
 
 describe('TransactionsPage', () => {
   beforeEach(() => {
@@ -1727,6 +1780,164 @@ describe('TransactionsPage', () => {
         expect(mockGetById).toHaveBeenCalledWith('tx-split');
         expect(mockTxOpenEdit).toHaveBeenCalledWith(splitTx);
       });
+    });
+  });
+
+  describe('Warranties', () => {
+    // A warranty lives on its own page; the register only routes there.
+    beforeEach(() => {
+      mockGetAll.mockResolvedValue({
+        data: mockTransactions,
+        pagination: { page: 1, totalPages: 1, total: 3 },
+      });
+      mockGetSummary.mockResolvedValue({ totalIncome: 0, totalExpenses: 0, netCashFlow: 0, transactionCount: 0 });
+    });
+
+    it('Add warranty opens the Warranties form prefilled from the row', async () => {
+      render(<TransactionsPage />);
+      await waitFor(() => expect(screen.getByTestId('add-warranty-btn')).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId('add-warranty-btn'));
+      expect(mockPush).toHaveBeenCalledWith('/warranties?new=1&transactionId=tx-1');
+    });
+
+    it("View warranties lists the row's warranties", async () => {
+      render(<TransactionsPage />);
+      await waitFor(() => expect(screen.getByTestId('view-warranties-btn')).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId('view-warranties-btn'));
+      expect(mockPush).toHaveBeenCalledWith('/warranties?transactionId=tx-1');
+    });
+
+    describe('for an acting delegate', () => {
+      it('offers neither warranty action without the Warranties section', async () => {
+        mockActing.actingAsUserId = 'owner-1';
+        mockActing.delegateSections = { warranties: false };
+        await act(async () => {
+          render(<TransactionsPage />);
+        });
+        await waitFor(() => expect(screen.getByTestId('tx-count')).toHaveTextContent('3 transactions'));
+        expect(screen.queryByTestId('add-warranty-btn')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('view-warranties-btn')).not.toBeInTheDocument();
+      });
+
+      it('offers View only with the Warranties section', async () => {
+        mockActing.actingAsUserId = 'owner-1';
+        mockActing.delegateSections = { warranties: true };
+        await act(async () => {
+          render(<TransactionsPage />);
+        });
+        await waitFor(() => expect(screen.getByTestId('view-warranties-btn')).toBeInTheDocument());
+        expect(screen.queryByTestId('add-warranty-btn')).not.toBeInTheDocument();
+      });
+
+      it("gives the edit window no Add warranty", async () => {
+        mockRealFormModal.value = true;
+        mockActing.actingAsUserId = 'owner-1';
+        mockActing.delegateSections = { warranties: true };
+        await act(async () => {
+          render(<TransactionsPage />);
+        });
+        await waitFor(() => expect(screen.getByTestId('tx-tx-1')).toBeInTheDocument());
+        await act(async () => {
+          fireEvent.click(screen.getByTestId('tx-tx-1'));
+        });
+        expect(screen.getByTestId('dynamic-transaction-form')).toBeInTheDocument();
+        expect(screen.queryByTestId('form-add-warranty')).not.toBeInTheDocument();
+      });
+    });
+
+    describe('Add warranty from inside the edit window', () => {
+      // A link out of the window would drop unsaved edits without asking; the
+      // page closes the window through its own close path first.
+      async function openEditWindow() {
+        mockRealFormModal.value = true;
+        await act(async () => {
+          render(<TransactionsPage />);
+        });
+        await waitFor(() => expect(screen.getByTestId('tx-tx-1')).toBeInTheDocument());
+        await act(async () => {
+          fireEvent.click(screen.getByTestId('tx-tx-1'));
+        });
+        expect(screen.getByTestId('dynamic-transaction-form')).toBeInTheDocument();
+      }
+
+      it('asks about unsaved edits first and stays put', async () => {
+        await openEditWindow();
+        fireEvent.click(screen.getByTestId('form-make-dirty'));
+        fireEvent.click(screen.getByTestId('form-add-warranty'));
+        expect(screen.getByTestId('unsaved-dialog')).toBeInTheDocument();
+        expect(screen.getByTestId('dynamic-transaction-form')).toBeInTheDocument();
+        await new Promise((r) => setTimeout(r, 150));
+        expect(mockPush).not.toHaveBeenCalled();
+      });
+
+      it('keeps editing and does not navigate when the dialog is dismissed', async () => {
+        await openEditWindow();
+        fireEvent.click(screen.getByTestId('form-make-dirty'));
+        fireEvent.click(screen.getByTestId('form-add-warranty'));
+        fireEvent.click(screen.getByTestId('unsaved-cancel'));
+        expect(screen.queryByTestId('unsaved-dialog')).not.toBeInTheDocument();
+        expect(screen.getByTestId('dynamic-transaction-form')).toBeInTheDocument();
+        await new Promise((r) => setTimeout(r, 150));
+        expect(mockPush).not.toHaveBeenCalled();
+      });
+
+      it('navigates once the edits are discarded', async () => {
+        await openEditWindow();
+        fireEvent.click(screen.getByTestId('form-make-dirty'));
+        fireEvent.click(screen.getByTestId('form-add-warranty'));
+        fireEvent.click(screen.getByTestId('unsaved-discard'));
+        expect(screen.queryByTestId('dynamic-transaction-form')).not.toBeInTheDocument();
+        await waitFor(() =>
+          expect(mockPush).toHaveBeenCalledWith('/warranties?new=1&transactionId=tx-1'),
+        );
+      });
+
+      it('closes a clean form and navigates', async () => {
+        await openEditWindow();
+        fireEvent.click(screen.getByTestId('form-add-warranty'));
+        expect(screen.queryByTestId('unsaved-dialog')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('dynamic-transaction-form')).not.toBeInTheDocument();
+        await waitFor(() =>
+          expect(mockPush).toHaveBeenCalledWith('/warranties?new=1&transactionId=tx-1'),
+        );
+      });
+
+      // A linked warranty in the window's Warranties line: a bare link was
+      // undone by the closing Modal's history.back(), landing on Transactions.
+      it('opens a linked warranty by closing the window first', async () => {
+        await openEditWindow();
+        fireEvent.click(screen.getByTestId('form-open-warranty'));
+        expect(screen.queryByTestId('unsaved-dialog')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('dynamic-transaction-form')).not.toBeInTheDocument();
+        expect(mockPush).not.toHaveBeenCalled();
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/warranties/w-9'));
+      });
+
+      it('asks about unsaved edits before opening a linked warranty', async () => {
+        await openEditWindow();
+        fireEvent.click(screen.getByTestId('form-make-dirty'));
+        fireEvent.click(screen.getByTestId('form-open-warranty'));
+        expect(screen.getByTestId('unsaved-dialog')).toBeInTheDocument();
+        expect(screen.getByTestId('dynamic-transaction-form')).toBeInTheDocument();
+        await new Promise((r) => setTimeout(r, 150));
+        expect(mockPush).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByTestId('unsaved-discard'));
+        expect(screen.queryByTestId('dynamic-transaction-form')).not.toBeInTheDocument();
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/warranties/w-9'));
+      });
+    });
+
+    it("keeps the row's warranty count when a split is re-read for editing", async () => {
+      const splitTx = { id: 'tx-split', date: '2026-02-01', amount: -100, payee: { name: 'Store' }, isTransfer: false, isSplit: true, splits: [], warrantyCount: 2 };
+      const fullSplitTx = { ...splitTx, warrantyCount: undefined, splits: [{ id: 's1', amount: -100 }] };
+      mockGetAll.mockResolvedValue({ data: [splitTx], pagination: { page: 1, totalPages: 1, total: 1 } });
+      mockGetById.mockResolvedValue(fullSplitTx);
+      render(<TransactionsPage />);
+      await waitFor(() => expect(screen.getByTestId('tx-tx-split')).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId('tx-tx-split'));
+      await waitFor(() =>
+        expect(mockTxOpenEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'tx-split', warrantyCount: 2 })),
+      );
     });
   });
 

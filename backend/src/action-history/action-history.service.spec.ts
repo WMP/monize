@@ -1905,6 +1905,81 @@ describe("ActionHistoryService", () => {
       // Params: [accountId, securityId, quantity, avgCost] -- 5 shares, not 10.
       expect(insertCall[1][2]).toBe(5);
     });
+
+    it("takes a return of capital off the basis, as the canonical rebuild does (#1800)", async () => {
+      // The undo rebuild is a hand-written copy of computeHoldingsMap: BUY 10
+      // at 100 then 250 of capital returned is 750 over the same 10 shares
+      // there, so it must be here too -- and a return beyond the basis stops
+      // at zero rather than going negative.
+      const invAction = {
+        ...mockAction,
+        entityType: "investment_transaction",
+        action: "create",
+        entityId: "inv-1",
+        afterData: { id: "inv-1" },
+      };
+      mockRepository.findOne.mockResolvedValue(invAction);
+
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({
+        id: "inv-1",
+        userId,
+        accountId: "acc-1",
+        transactionId: null,
+      });
+      mockQueryRunner.manager.remove.mockResolvedValue(undefined);
+      mockQueryRunner.manager.update.mockResolvedValue({ affected: 1 });
+      mockQueryRunner.query
+        .mockResolvedValueOnce([]) // pg_advisory_xact_lock
+        .mockResolvedValueOnce(undefined) // DELETE FROM holdings
+        .mockResolvedValueOnce([
+          {
+            security_id: "sec-1",
+            action: "BUY",
+            quantity: "10",
+            price: "100",
+            total_amount: "1000",
+          },
+          {
+            security_id: "sec-1",
+            action: "RETURN_OF_CAPITAL",
+            quantity: null,
+            price: null,
+            total_amount: "250",
+          },
+          {
+            security_id: "sec-2",
+            action: "BUY",
+            quantity: "5",
+            price: "10",
+            total_amount: "50",
+          },
+          {
+            security_id: "sec-2",
+            action: "RETURN_OF_CAPITAL",
+            quantity: null,
+            price: null,
+            total_amount: "80",
+          },
+        ]) // SELECT investment_transactions
+        .mockResolvedValue(undefined); // INSERT INTO holdings
+
+      await service.undo(userId);
+
+      const inserts = mockQueryRunner.query.mock.calls.filter(
+        (call: any[]) =>
+          typeof call[0] === "string" &&
+          call[0].includes("INSERT INTO holdings"),
+      );
+      // Params: [accountId, securityId, quantity, avgCost].
+      const bySecurity = new Map<string, unknown[]>(
+        inserts.map((call: any[]): [string, unknown[]] => [
+          call[1][1],
+          call[1],
+        ]),
+      );
+      expect(bySecurity.get("sec-1")?.slice(2)).toEqual([10, 75]);
+      expect(bySecurity.get("sec-2")?.slice(2)).toEqual([5, 0]);
+    });
   });
 
   describe("undo bulk transaction", () => {

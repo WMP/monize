@@ -47,6 +47,10 @@
     "ai_review": {
       "title": "AI-beoordelingsvoorstellen",
       "body": "Enkele AI-beoordelingsvoorstellen wachten op je beslissing. Open Monize voor de details."
+    },
+    "warranties": {
+      "title": "Garantieherinnering",
+      "body": "Een van je garanties verloopt binnenkort. Open Monize voor de details."
     }
   },
   "actions": {

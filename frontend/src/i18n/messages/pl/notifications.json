@@ -197,5 +197,11 @@
     "readyMessage": "{count, plural, one {# propozycja AI czeka} few {# propozycje AI czekają} many {# propozycji AI czeka} other {# propozycji AI czeka}} na Twoje zatwierdzenie, w tym {added, plural, one {# nowa} few {# nowe} many {# nowych} other {# nowej}}. Otwórz skrzynkę przeglądu AI, aby je zatwierdzić lub odrzucić.",
     "expiringTitle": "Propozycje AI wkrótce wygasną",
     "expiringMessage": "{count, plural, one {# propozycja AI wygasa} few {# propozycje AI wygasają} many {# propozycji AI wygasa} other {# propozycji AI wygasa}} wkrótce. Pierwsza wygasa {date}. Otwórz skrzynkę przeglądu AI, aby je zatwierdzić lub odrzucić."
+  },
+  "warranty": {
+    "expiringTitle": "{name}: gwarancja wygasa w ciągu {days, plural, one {# dnia} few {# dni} many {# dni} other {# dnia}}",
+    "expiringMessage": "Gwarancja na {name} wygasa {date}. Otwórz ją, aby przejrzeć dokumenty lub zapisać zgłoszenie.",
+    "todayTitle": "{name}: gwarancja wygasa dzisiaj",
+    "todayMessage": "Gwarancja na {name} wygasa dzisiaj, {date}. Otwórz ją, aby przejrzeć dokumenty lub zapisać zgłoszenie."
   }
 }

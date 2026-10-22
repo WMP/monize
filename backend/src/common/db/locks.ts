@@ -386,6 +386,38 @@ export async function lockTransactionRows(
 }
 
 /**
+ * Row-lock one warranty, or null when it is gone or not this user's.
+ *
+ * The same owner-scoped `FOR UPDATE` doctrine as `lockTransactionRow`: the
+ * attachment cap is a refusal decided from a count, and a count taken without
+ * the parent's lock is a check-then-act (audit P4-017), so every uploader to
+ * one warranty queues behind its row first. Scoped to `userId` in the query,
+ * not only by the policy, so the lock can never be taken on a warranty the
+ * caller is not authorised for whatever the `RLS_MODE`. Nothing a caller
+ * derives a write from is carried yet; the row's identity is the result.
+ */
+export interface LockedWarrantyRow {
+  id: string;
+}
+
+export async function lockWarrantyRow(
+  manager: EntityManager,
+  id: string,
+  userId: string,
+): Promise<LockedWarrantyRow | null> {
+  const rows: { id: string }[] = await manager.query(
+    `SELECT id
+       FROM warranties
+      WHERE id = $1 AND user_id = $2
+        FOR UPDATE`,
+    [id, userId],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return { id: row.id };
+}
+
+/**
  * Row-lock one investment transaction and return the columns its holdings and
  * cash effects are derived from, or null when it is gone or not this user's.
  * Same P4-003 doctrine as `lockTransactionRow`: the status a transition is

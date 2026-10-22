@@ -198,6 +198,7 @@
     "actionCapitalGainShort": "Ganancia de capital a corto plazo",
     "actionCapitalGainLong": "Ganancia de capital a largo plazo",
     "actionRedeem": "Rescate de CD/bono",
+    "actionReturnOfCapital": "Devolución de capital",
     "allActions": "Todas las Acciones"
   },
   "transactionForm": {
@@ -218,6 +219,7 @@
     "actionCapitalGainShort": "Ganancia de capital a corto plazo",
     "actionCapitalGainLong": "Ganancia de capital a largo plazo",
     "actionRedeem": "Rescate de CD/bono",
+    "actionReturnOfCapital": "Devolución de capital",
     "actionTransfer": "Transferencia",
     "brokerageAccount": "Cuenta de Corretaje",
     "fromAccount": "Cuenta de Origen",
@@ -262,6 +264,7 @@
     "sharesAt": "acciones @",
     "avgCostSuffix": "costo prom.",
     "transferCostNote": "El costo por acción (precargado desde la cuenta de origen) se traslada al destino para que tus informes de ganancias sean correctos. Solo mueve acciones — no hay movimiento de efectivo.",
+    "returnOfCapitalNote": "Una devolución de capital no es un ingreso. Reembolsa parte de lo que costaron las acciones, por lo que reduce la base de costo de su posición en este importe. Lo que supere la base de costo restante se registra como ganancia de capital realizada.",
     "totalAmount": "Cantidad Total ({currency})",
     "sharesAtPrice": "{shares} acciones @ {symbol}{price}",
     "commissionSuffix": "comisión",

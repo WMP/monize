@@ -29,7 +29,10 @@
     "unsupportedType": "サポートされていないファイル形式です。使用可能な形式: {{ types }}",
     "tooMany": "この取引にはすでに最大 {{ max }} 件の添付ファイルがあります",
     "swept": "アップロードに時間がかかりすぎたため、ストレージが解放されました。もう一度お試しください。",
-    "pairRequiresImages": "スキャンした書類と元の写真は、どちらも画像である必要があります"
+    "pairRequiresImages": "スキャンした書類と元の写真は、どちらも画像である必要があります",
+    "warrantyNotFound": "保証が見つかりません",
+    "tooManyForWarranty": "この保証にはすでに最大 {{ max }} 件の添付ファイルがあります",
+    "documentKindNotForTransaction": "書類の種類は保証の書類にのみ指定できます"
   },
   "accounts": {
     "accountWithIdNotFound": "ID {{ id }} の口座が見つかりません",
@@ -873,5 +876,47 @@
     "selectionNotNew": "選択した取引は、銀行データの新しい行ではありません。何もインポートされませんでした。もう一度プレビューしてください。",
     "selectionOverlap": "1件の取引をインポートと除外リストへの追加の両方に指定することはできません。",
     "nothingToUpdate": "銀行接続を変更するには、autoSync, notifySuccess または tagOperationType を送信してください。"
+  },
+  "warranties": {
+    "notFound": "ID {{ id }} の保証が見つかりません",
+    "transactionNotFound": "ID {{ id }} の取引が見つかりません",
+    "transactionIsSplitLine": "保証は分割行の 1 つではなく、購入全体にリンクされます",
+    "payeeNotFound": "ID {{ id }} の支払先が見つかりません",
+    "invalidTerm": "保証期間は 0 より長くする必要があります",
+    "expiryRequired": "永久保証でない保証には、期限日または期間が必要です",
+    "expiresBeforePurchase": "保証の期限を購入日より前にすることはできません",
+    "priceNeedsCurrency": "購入価格と通貨は両方とも指定するか、どちらも指定しないでください",
+    "claimNotFound": "ID {{ id }} の保証請求が見つかりません",
+    "claimResolvedOnNeedsOutcome": "保証請求の完了日は、ステータスが解決済みまたは却下の場合にのみ設定できます",
+    "claimResolvedBeforeClaimDate": "保証請求を請求日より前に完了させることはできません",
+    "import": {
+      "noFile": "インポートする CSV ファイルを選択してください",
+      "notCsv": "ファイルは CSV ファイルである必要があります",
+      "fileTooLarge": "インポートファイルは 1 MiB 以下である必要があります",
+      "emptyFile": "ファイルにはヘッダー行と少なくとも 1 つのデータ行が必要です",
+      "tooManyRows": "インポートファイルには {{ count }} 行あります。許可されるのは最大 {{ max }} 行です",
+      "missingColumns": "ファイルのヘッダー行に {{ columns }} 列がありません",
+      "invalidRows": "{{ count }} 行が無効なため、何もインポートされませんでした。修正するかスキップしてください",
+      "nameRequired": "ProductName は必須です",
+      "purchaseDateRequired": "PurchaseDate は必須です",
+      "tooLong": "{{ column }} は {{ max }} 文字以内にしてください",
+      "invalidDate": "{{ column }} は YYYY-MM-DD 形式の日付にしてください",
+      "invalidDuration": "{{ column }} は 0 から {{ max }} までの整数にしてください",
+      "invalidLifetime": "IsLifetime は true、false、yes、no、1、0 のいずれかにしてください",
+      "noExpirySource": "ExpirationDate、WarrantyDuration 列、IsLifetime のいずれかを入力してください",
+      "lifetimeWithExpiry": "IsLifetime が true ですが、行に ExpirationDate または WarrantyDuration も指定されています。どれか 1 つだけを入力してください",
+      "durationIgnored": "ExpirationDate を使用しました。隣の WarrantyDuration 列は無視されました",
+      "durationDisagrees": "ExpirationDate {{ expiresOn }} を使用しました。WarrantyDuration 列からは {{ derived }} となり、一致しません",
+      "negativePrice": "PurchasePrice をマイナスにすることはできません",
+      "invalidPrice": "PurchasePrice は 0 から {{ max }} までの、小数点以下 4 桁以内の数値にしてください",
+      "currencyWithoutPrice": "Currency が設定されていますが、PurchasePrice が空です",
+      "unknownCurrency": "通貨「{{ value }}」は不明です。{{ currency }} を使用しました",
+      "unknownWarrantyType": "WarrantyType「{{ value }}」は manufacturer、extended、store、other のいずれでもありません。other としてインポートしました",
+      "invalidSerialJson": "SerialNumber は [ で始まっていますが、テキストの JSON 配列ではありません",
+      "tooManySerials": "SerialNumber に {{ count }} 個の値があります。許可されるのは最大 {{ max }} 個です",
+      "serialTooLong": "各シリアル番号は {{ max }} 文字以内にしてください",
+      "invalidUrl": "ProductURL は http または https のアドレスにしてください",
+      "invalidField": "{{ field }} が無効です"
+    }
   }
 }

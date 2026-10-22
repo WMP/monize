@@ -85,7 +85,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "दीर्घकालिक पूंजी लाभ का पुनर्निवेश",
       "CAPITAL_GAIN_SHORT": "अल्पकालिक पूंजी लाभ",
       "CAPITAL_GAIN_LONG": "दीर्घकालिक पूंजी लाभ",
-      "REDEEM": "सीडी/बॉन्ड रिडीम करें"
+      "REDEEM": "सीडी/बॉन्ड रिडीम करें",
+      "RETURN_OF_CAPITAL": "पूंजी की वापसी"
     },
     "descriptions": {
       "createdAccount": "खाता \"{name}\" बनाया गया",

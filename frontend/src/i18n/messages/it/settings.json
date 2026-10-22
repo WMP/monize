@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "Risultati della sincronizzazione bancaria",
         "EMAIL_RECEIPTS": "Ricevute email",
         "BONDS": "Obbligazioni",
-        "AI_REVIEW": "Proposte di revisione IA"
+        "AI_REVIEW": "Proposte di revisione IA",
+        "WARRANTIES": "Promemoria delle garanzie"
       },
       "channelNotApplicable": "Non applicabile a questo tipo di notifica",
       "emailToggleLabel": "Email (report) per {category}",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "Concedi accesso in sola lettura a intere sezioni dell'app. I dati limitati per conto richiedono comunque l'accesso per singolo conto.",
-      "aiRequiresFullAccess": "L'Assistente AI legge tutti i conti e le sezioni, quindi risponde per questo delegato solo quando può leggere tutti i tuoi conti e ogni altra sezione."
+      "aiRequiresFullAccess": "L'Assistente AI legge tutti i conti e le sezioni, quindi risponde per questo delegato solo quando può leggere tutti i tuoi conti e ogni altra sezione.",
+      "warranties": {
+        "label": "Garanzie",
+        "description": "Le garanzie, i loro documenti e le richieste di assistenza. Un acquisto collegato è visibile solo se si trova in un conto che il delegato può leggere."
+      }
     },
     "accounts": {
       "noAccounts": "Nessun conto da concedere.",

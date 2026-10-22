@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "은행 동기화 결과",
         "EMAIL_RECEIPTS": "이메일 영수증",
         "BONDS": "채권",
-        "AI_REVIEW": "AI 검토 제안"
+        "AI_REVIEW": "AI 검토 제안",
+        "WARRANTIES": "보증 알림"
       },
       "channelNotApplicable": "이 알림 유형에는 해당되지 않습니다",
       "emailToggleLabel": "{category} 보고서 이메일",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "전체 앱 섹션에 대한 읽기 전용 접근 권한을 부여합니다. 계정 범위 데이터는 여전히 계정별 접근 권한도 필요합니다.",
-      "aiRequiresFullAccess": "AI 어시스턴트는 모든 계정과 섹션을 읽으므로, 이 위임자가 모든 계정과 다른 모든 섹션을 읽을 수 있을 때만 응답합니다."
+      "aiRequiresFullAccess": "AI 어시스턴트는 모든 계정과 섹션을 읽으므로, 이 위임자가 모든 계정과 다른 모든 섹션을 읽을 수 있을 때만 응답합니다.",
+      "warranties": {
+        "label": "보증",
+        "description": "보증과 해당 문서 및 보증 청구입니다. 연결된 구매는 대리인이 읽을 수 있는 계좌에 있는 경우에만 표시됩니다."
+      }
     },
     "accounts": {
       "noAccounts": "부여할 계정이 없습니다.",

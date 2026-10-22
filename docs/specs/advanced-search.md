@@ -141,7 +141,7 @@ the text fields, unchanged; a bare term still ORs all of them.
 | `date:` | date | `transactions.transaction_date` |
 | `status:` | enum | `cleared`, `reconciled`, `unreconciled`, `void`, mapped to `transactions.status` |
 | `is:` | enum | `transfer` (`is_transfer`), `split` (`is_split`), `uncategorized` (`uncategorizedSql`; the category filter's three inline copies are not yet folded onto it, see section 11) |
-| `has:` | enum | `attachment` (`hasAttachmentSql`; the `hasAttachments` filter's inline copies fold onto it later, section 11), `ref` (non-blank reference), `memo` (non-blank description or any non-blank split memo), `tag` (any transaction or split tag) |
+| `has:` | enum | `attachment` (`hasAttachmentSql`: at least one visible attachment of the row's own, or a document of any warranty linked to the row, archived or not, through `attachmentReachableFromTransactionSql` in `backend/src/attachments/attachment-parent.ts`, the same rows the register's `attachmentCount` counts; the `hasAttachments` filter's inline copies share the fragment and fold onto `hasAttachmentSql` later, section 11), `warranty` (`hasWarrantySql`: at least one unarchived warranty linked to the row, the same rows the register's `warrantyCount` counts), `ref` (non-blank reference), `memo` (non-blank description or any non-blank split memo), `tag` (any transaction or split tag) |
 
 An unknown enum value (`status:pending`) is `malformed` (decision 6).
 

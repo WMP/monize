@@ -95,6 +95,8 @@ export interface Transaction {
   linkedInvestmentTransactionId?: string | null;
   /** Number of file attachments on this transaction (populated by the list endpoint). */
   attachmentCount?: number;
+  /** Number of unarchived warranties linked to this transaction (populated by the list endpoint). */
+  warrantyCount?: number;
   /**
    * The key an API client created this row with (unique per account), or null.
    * Not shown in the app; it exists so a client can retry a create safely.

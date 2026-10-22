@@ -266,6 +266,7 @@ describe("transaction search (integration)", () => {
       ["is:uncategorized", ["A", "B", "C", "D", "E", "F"]],
       ["status:unreconciled", ["A", "B", "C", "D", "E", "F"]],
       ["has:attachment", []],
+      ["has:warranty", []],
       ["account:chequing", ["A", "B", "C", "D", "E", "F"]],
       ["10 -account:chequing", []],
     ])("%j", async (input, expected) => {
@@ -301,7 +302,7 @@ describe("transaction search (integration)", () => {
       // result.
       for (const query of [
         "nomatch payee:x memo:=x cat:x* tag:x account:x ref:=x #1",
-        "nomatch status:void is:transfer is:uncategorized has:attachment has:memo has:tag has:ref",
+        "nomatch status:void is:transfer is:uncategorized has:attachment has:warranty has:memo has:tag has:ref",
       ]) {
         await expect(
           transactionsMatching(query, refAccount.id, alias),
@@ -367,6 +368,44 @@ describe("transaction search (integration)", () => {
           ),
       );
     }
+
+    it("has:warranty finds, and warrantyCount counts, the same unarchived warranties", async () => {
+      const idOf = (label: string) =>
+        [...labels.entries()].find(([, l]) => l === label)?.[0] as string;
+      const insertWarranty = (transactionId: string, archived: boolean) =>
+        dataSource.query(
+          `INSERT INTO warranties (user_id, name, purchase_date, is_lifetime, transaction_id, archived_at)
+           VALUES ($1, 'Kettle', '2026-03-10', true, $2, ${archived ? "NOW()" : "NULL"})`,
+          [userId, transactionId],
+        );
+      await insertWarranty(idOf("A"), false);
+      await insertWarranty(idOf("A"), true);
+      // Only archived: put away, so neither the search nor the badge sees it.
+      await insertWarranty(idOf("B"), true);
+      try {
+        const found = await register(refAccount.id, "has:warranty");
+        expect(found.data.map((row) => labels.get(row.id))).toEqual(["A"]);
+
+        const without = await register(refAccount.id, "-has:warranty");
+        expect(without.data.map((row) => labels.get(row.id)).sort()).toEqual([
+          "B",
+          "C",
+          "D",
+          "E",
+          "F",
+        ]);
+
+        const page = await register(refAccount.id, "");
+        const counts = Object.fromEntries(
+          page.data.map((row) => [labels.get(row.id), row.warrantyCount]),
+        );
+        expect(counts).toEqual({ A: 1, B: 0, C: 0, D: 0, E: 0, F: 0 });
+      } finally {
+        await dataSource.query("DELETE FROM warranties WHERE user_id = $1", [
+          userId,
+        ]);
+      }
+    });
 
     it("the register finds cheque 10 by #10", async () => {
       const page = await register(refAccount.id, "#10");
