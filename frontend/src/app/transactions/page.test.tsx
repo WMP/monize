@@ -1636,12 +1636,19 @@ describe('TransactionsPage', () => {
         { date: '2026-02-01', balance: 0, accountId: 'acc-2', currencyCode: 'USD' },
       ]);
 
-      render(<TransactionsPage />);
+      // Inside act, as the first fold test: the page's other loads can
+      // resolve after the banner shows, and an update outside act fails the
+      // act guard (it did on CI).
+      await act(async () => {
+        render(<TransactionsPage />);
+      });
       await waitFor(() => {
         expect(screen.getByTestId('chart-zero-balances')).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole('button', { name: 'Hide chart' }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Hide chart' }));
+      });
 
       expect(screen.queryByTestId('chart-zero-balances')).not.toBeInTheDocument();
       expect(screen.getByTestId('chart-collapsed-strip')).toBeInTheDocument();
