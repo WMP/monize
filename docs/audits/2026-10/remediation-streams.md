@@ -88,9 +88,9 @@
 | mny | `fix/audit-mny` | 2026-10-22 06:10 UTC | session_019FG9PsmcGWWcRSDqUKYSDk | T04, T26, T52 (head 31022f0) | not yet |
 | scheduler | `fix/audit-scheduler` (based on `fix/audit-harness`) | 2026-10-22 07:33 UTC | session_01T3KXuByz6au2UiJkLQBeap | T12, T13, T35, T55 (head beb2ced; integration 126/127 suites, the known deadlock flake) | not yet |
 | integration | `fix/audit-all` | 2026-10-22 | orchestrator | merge of the nine streams above on `origin/main`; only two conflicts, both one-sentence rule additions in `backend/CLAUDE.md` and `docs/concurrency-and-idempotency.md`, resolved as a union; 434 files, +24 738 / -2 882; base for wave 3 | -- |
-| securities | `fix/audit-securities` (based on `fix/audit-all`) | 2026-10-22 | see next update | | |
-| completeness | `fix/audit-completeness` (based on `fix/audit-all`) | 2026-10-22 | see next update | | |
-| budgets-reports | `fix/audit-budgets-reports` (based on `fix/audit-all`) | 2026-10-22 | see next update | | |
+| securities | `fix/audit-securities` (based on `fix/audit-all`) | 2026-10-22 10:27 UTC | session_01GrbH4u1EPfY5je4VipC13b | in progress | not yet |
+| completeness | `fix/audit-completeness` (based on `fix/audit-all`) | 2026-10-22 10:27 UTC | session_01Pk2XPqkS5NgERaje6xqw8N | in progress | not yet |
+| budgets-reports | `fix/audit-budgets-reports` (based on `fix/audit-all`) | 2026-10-22 10:28 UTC | session_01SmTFihLQhD3vMaEABHhAYw | in progress | not yet |
 | banksync | `fix/audit-banksync` | 2026-10-22 05:25 UTC | session_01HUQYhLK1iA2SyKqUEunC7S | T05 (head 70005fe; row-keyed dedup, no migration, legacy keys held; residuals recorded in INV-BANKSYNC-001) | not yet |
 | fx | `fix/audit-fx` | 2026-10-22 05:49 UTC | session_01E4fLuC2UsV3VXW9mWmgnkP | T14, T15, T16 (head 38de59a, locales translated; coverage above thresholds) | not yet |
 | auth | `fix/audit-auth` | 2026-10-22 04:19 UTC | session_01J1DvFkbLT5hNjYcqy139nN | T01, T18, T49 (head 58dca78; 34 files; gate green per commit, run with NODE_OPTIONS=--max-old-space-size=6144; T01 adds a 10 s rotation grace for a second tab, maintainer decision) | not yet |
