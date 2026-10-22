@@ -135,6 +135,7 @@
       "toggleTitle": "日期中不显示年份，为收款人留出更多空间"
     },
     "attachmentsCount": "{count, plural, other {# 个附件}}",
+    "warrantiesCount": "{count, plural, other {# 项保修}}",
     "today": "今天",
     "export": {
       "button": "导出",
@@ -198,7 +199,9 @@
       "duplicateTitle": "复制交易",
       "copy": "复制",
       "duplicate": "复制",
-      "scheduleRecurring": "设为定期计划"
+      "scheduleRecurring": "设为定期计划",
+      "addWarranty": "添加保修",
+      "viewWarranties": "查看保修"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "编辑",
     "duplicate": "复制",
     "scheduleRecurring": "设为定期计划",
+    "addWarranty": "添加保修",
+    "viewWarranties": "查看保修",
     "delete": "删除"
   },
   "filter": {
@@ -465,7 +470,14 @@
       },
       "feeCaption": "包含 {percent}% 境外交易手续费（{fee}）。"
     },
-    "jointSplitDisabled": "共享账户中的拆分交易只能由所有者管理"
+    "jointSplitDisabled": "共享账户中的拆分交易只能由所有者管理",
+    "warranties": {
+      "title": "保修",
+      "add": "添加保修",
+      "expires": "{date} 到期",
+      "loading": "正在加载保修",
+      "loadError": "无法加载此交易的保修。"
+    }
   },
   "splitEditor": {
     "header": "拆分详情",
@@ -626,7 +638,8 @@
       "amountRange": "金额 50 至 100",
       "datePeriod": "2026 年 3 月的任意一天",
       "isSplit": "拆分交易",
-      "hasAttachment": "有附件"
+      "hasAttachment": "有附件",
+      "hasWarranty": "有保修"
     }
   },
   "searchInterpretation": {
@@ -668,6 +681,7 @@
       },
       "has": {
         "attachment": "有附件",
+        "warranty": "有保修",
         "ref": "有参考号",
         "memo": "有备注",
         "tag": "有标签"

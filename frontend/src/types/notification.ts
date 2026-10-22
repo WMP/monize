@@ -58,7 +58,11 @@ export type NotificationType =
   // AI review proposals waiting for approval (AI_REVIEW): counts and a date only,
   // never the person's instruction.
   | 'AI_REVIEW_PROPOSALS_READY'
-  | 'AI_REVIEW_PROPOSALS_EXPIRING';
+  | 'AI_REVIEW_PROPOSALS_EXPIRING'
+  // Warranty reminders (WARRANTIES): 30 and 7 days before expiry, and the day
+  // itself. The data carries the warranty's name and its expiry date.
+  | 'WARRANTY_EXPIRING'
+  | 'WARRANTY_EXPIRES_TODAY';
 
 /** How urgent, and how it is drawn. */
 export type NotificationSeverity = 'info' | 'warning' | 'critical' | 'success';
@@ -101,7 +105,8 @@ export type NotificationCategory =
   | 'BANK_SYNC_ACTIVITY'
   | 'EMAIL_RECEIPTS'
   | 'BONDS'
-  | 'AI_REVIEW';
+  | 'AI_REVIEW'
+  | 'WARRANTIES';
 
 export interface Notification {
   id: string;

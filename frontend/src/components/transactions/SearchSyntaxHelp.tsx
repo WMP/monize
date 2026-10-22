@@ -35,6 +35,7 @@ export const SEARCH_SYNTAX_EXAMPLES = [
   { example: 'date:2026-03', key: 'datePeriod' },
   { example: 'is:split', key: 'isSplit' },
   { example: 'has:attachment', key: 'hasAttachment' },
+  { example: 'has:warranty', key: 'hasWarranty' },
 ] as const;
 
 interface SearchSyntaxHelpProps {

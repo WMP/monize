@@ -32,7 +32,8 @@ concerns this document describes:
 | `backend/src/backup/backup-envelope.ts`, `backup-stream-crypto.ts`, `backup-key-wrap.ts` | The encrypted-backup format: all three container versions, the framed writer and reader, and the key-wrapped (v3) container the automatic backup writes. |
 | `backend/src/backup/backup-restore.service.ts` | §3 and §6: the processing gate, decryption, decompression, format validation, re-authentication ordering, id remapping, and the one transaction the rest runs inside. |
 | `backend/src/backup/backup-attachment-transfer.service.ts` | §4's restore half: staging carried bytes, the legacy ownership proof, and both object-store cleanup paths. |
-| `backend/src/backup/backup-restore-database.service.ts` | The restore's SQL: teardown, currency preparation, row inserts, deferred-FK repair. |
+| `backend/src/backup/backup-restore-database.service.ts` | The restore's SQL: currency preparation, row inserts, deferred-FK repair; delegates the teardown. |
+| `backend/src/backup/restore-wipe.ts` | The restore's teardown: the FK-safe `DELETE` of everything the user owns, on the restore's own transaction. |
 | `backend/src/backup/backup-bond-series-recovery.service.ts`, `restore-bond-series.ts`, `export-bond-catalog.ts` | §3a: the catalog-identity member the export writes, and the restore's fetch of the series it names before the transaction. |
 | `backend/src/backup/backup-format.ts` | The file format itself -- version, `BackupData`, the two result types -- shared by all four. |
 | `backend/src/backup/export-table-queries.ts` | §2's other half: what is read, in what order, and what is deliberately not read. |

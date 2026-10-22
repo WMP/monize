@@ -101,7 +101,10 @@ export function ConfirmDialog({
             </svg>
           )}
         </div>
-        <div className="ml-4">
+        {/* min-w-0 lets the column shrink inside the flex row and break-words
+            wraps an unbreakable word (a long file name) instead of widening
+            the dialog into a horizontal scroll. */}
+        <div className="ml-4 min-w-0 flex-1 break-words" data-testid="confirm-dialog-text">
           <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{title}</h3>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{message}</p>
         </div>

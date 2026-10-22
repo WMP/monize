@@ -47,6 +47,10 @@
     "ai_review": {
       "title": "Propozycje przeglądu AI",
       "body": "Część propozycji przeglądu AI czeka na Twoją decyzję. Otwórz Monize, aby zobaczyć szczegóły."
+    },
+    "warranties": {
+      "title": "Przypomnienie o gwarancji",
+      "body": "Jedna z Twoich gwarancji wkrótce wygaśnie. Otwórz Monize, aby zobaczyć szczegóły."
     }
   },
   "actions": {

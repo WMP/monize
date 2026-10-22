@@ -201,6 +201,13 @@ implied.
 | INV-SEARCH-003 | Every term of a search holds on the row the query counts; every call site searches at split grain | enforced |
 | INV-SEARCH-004 | Matching a search never multiplies a counted row | enforced |
 | INV-SEARCH-005 | The assistant's totals and rows read the search string alike | enforced |
+| INV-WTY-001 | A warranty never writes a ledger row, a balance or a holding | partial |
+| INV-WTY-002 | Every warranty status a surface prints is the server's, from one function | partial |
+| INV-WTY-003 | An attachment has exactly one parent, a transaction or a warranty; a transaction's attachments are its own rows plus the documents of warranties linked to it, through one fragment | enforced |
+| INV-WTY-004 | Each warranty reminder threshold notifies once per (warranty, expiry date, threshold), across replicas | enforced |
+| INV-WTY-005 | A warranty or claim write naming a row the caller does not own is refused before the write | enforced |
+| INV-WTY-006 | A warranty import's preview and commit are one computation | enforced |
+| INV-WTY-007 | A delegate never learns a transaction outside their readable accounts through a warranty | enforced |
 
 ## Imports
 
@@ -7788,6 +7795,296 @@ Retry semantics     --
 Crash semantics     --
 Failure response    --
 Required tests      Source scan; PG integration.
+Status              enforced
+```
+
+## Warranties
+
+Design: `docs/future-plans/warranty-tracker.md` (section 5), where these seven
+are WTY-001 to WTY-007. The code, its specs and the other contract documents
+cite that short form, which is the tail of each ID here, so a search for either
+finds both.
+
+### INV-WTY-001 -- a warranty never moves money
+
+```text
+Statement           A warranty never writes a ledger row, a balance or a
+                    holding. Its purchase price is for reference: nothing sums
+                    it, and the module reads a transaction and a payee only to
+                    link them.
+Source of truth     warranties, warranty_claims; transactions, accounts and
+                    holdings are never written from backend/src/warranties/
+Enforcement         warranties.guard.spec.ts walks every non-spec source under
+                    backend/src/warranties/, subdirectories included, and
+                    fails an import of TransactionsService or its module, of
+                    a transaction writer (split, transfer, bulk create, bulk
+                    update, reconciliation, remove-transaction-leg,
+                    convert-to-transfer), of AccountsService or its module,
+                    HoldingsService, InvestmentTransactionsService or
+                    SecuritiesModule, and any mention of those four service
+                    names; the failure message names WTY-001. The service
+                    reaches a purchase and a payee through their entities, by
+                    read only (assertOwnedTransaction in
+                    warranties.service.ts, loadLinkedTransactions in
+                    warranty-linked-transaction.ts).
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    --
+Required tests      Source scan: the guard, with planted offences as its
+                    negative control.
+Status              partial
+```
+
+Status is `partial` because the scan holds the writer services' door and not a
+write through an entity the module may import: a save on
+`getRepository(Transaction)`, or raw SQL writing `transactions`, `accounts` or
+`holdings` from inside `backend/src/warranties/`, would pass it. There is none
+(read on 2026-10-21: the module's two uses of the `Transaction` repository are a
+`findOne` and a select). It becomes `enforced` when the scan also fails a write
+call on those entities' repositories and an `INSERT`, `UPDATE` or `DELETE` that
+names one of those tables.
+
+### INV-WTY-002 -- every warranty status is the server's
+
+```text
+Statement           The status and days left a surface prints for a warranty
+                    (the list and its summary strip, the detail page, the
+                    dashboard widget, the reminder, the AI tool) are the
+                    server's, from one function.
+Source of truth     warrantyStatus(expiresOn, isLifetime, today, windowDays)
+                    in backend/src/warranties/warranty-status.util.ts, with
+                    today the user's date: todayYMD inside a request, the
+                    user's timezone in the reminder cron
+Enforcement         On the server, warrantyStatus holds the only date
+                    comparison. The list's status filter and the summary's
+                    counts select rows through warrantyStatusBounds in the same
+                    file, which warranty-status.util.spec.ts holds equal to
+                    warrantyStatus on every day either side of each boundary;
+                    the reminder cron takes days left from warrantyStatus;
+                    getLlmWarranties reads through findAll. Every view carries
+                    today, status and daysLeft. On the client,
+                    WarrantyStatusBadge, WarrantyList, WarrantyDetailCard and
+                    WarrantiesExpiringWidget print status and daysLeft, and
+                    their unit tests pin that. No source scan forbids a date
+                    comparison in those components.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    A dated warranty without expires_on (which
+                    chk_warranty_expiry makes impossible) throws rather than
+                    being given a status.
+Required tests      Present: warranty-status.util.spec.ts (truth table A,
+                    example 1, the bounds agreement),
+                    WarrantyStatusBadge.test.tsx,
+                    WarrantiesExpiringWidget.test.tsx. Missing: a source scan
+                    over the warranty components and the widget.
+Status              partial
+```
+
+Status is `partial` because the client half holds by unit tests and review, not
+by a scan: a component that compared `expiresOn` with today to pick a colour or
+a sort group would pass every test above. A read on 2026-10-21 found no `Date`
+built in those components; the form's duration helper (`warrantyTermEndDate`
+in `frontend/src/lib/warranties.ts`) turns a term into a date and decides no
+status. It becomes `enforced` when a scan fails a comparison of `expiresOn`, a
+`new Date` or a financial-today read in `frontend/src/components/warranties/`
+and the widget.
+
+### INV-WTY-003 -- an attachment has exactly one parent
+
+```text
+Statement           Every transaction_attachments row belongs to exactly one
+                    parent, a transaction or a warranty; a transaction's
+                    attachments are its own rows plus the documents of every
+                    warranty linked to it, archived or not, reached through
+                    warranties.transaction_id by one fragment.
+Source of truth     transaction_attachments.transaction_id and warranty_id
+Enforcement         chk_attachment_one_parent,
+                    ((transaction_id IS NOT NULL)::int +
+                     (warranty_id IS NOT NULL)::int) = 1, added by
+                    20261022001322_attachment_parent.sql and declared in
+                    database/schema.sql (in SQL only; the entity does not
+                    carry it). AttachmentsService.create and findAllFor take
+                    an AttachmentParent union (attachment-parent.ts), never
+                    two ids, and the controller has one route per parent; both
+                    halves of a scan pair carry the parent, and the cap of ten
+                    is counted per parent under lockTransactionRow or
+                    lockWarrantyRow. The reach is written once,
+                    attachmentReachableFromTransactionSql and
+                    reachedTransactionIdSql in attachment-parent.ts, used by
+                    the transaction's attachment list (each row carrying
+                    warrantyName), the register's paperclip count and
+                    hasAttachments filter, has:attachment and the rule
+                    engine's attachment fact; attachment-parent.guard.spec.ts
+                    fails a transaction_attachments query in
+                    transactions.service.ts, transaction-search.util.ts or
+                    rule-facts.ts that does not call one of them, so a count
+                    of own rows alone, or a reach into warranty_id that skips
+                    warranties.transaction_id, cannot come back; its failure
+                    message names WTY-003 and the maintainer's ruling.
+Concurrency scope   the parent row (the cap)
+Retry semantics     --
+Crash semantics     --
+Failure response    the CHECK refuses the INSERT or UPDATE; an eleventh
+                    document on one parent is a 400
+Required tests      Present: warranty-attachments.integration.spec.ts (no
+                    parent and two parents refused, a second parent added
+                    later refused, a scan pair stored under the warranty
+                    alone and listed on the transaction with its warranty's
+                    name, its presence in attachmentCount, has:attachment
+                    and the rule facts whether or not the warranty is
+                    archived, an unlinked warranty's document in none of them,
+                    the warranty's delete cascading its documents, tombstoning
+                    their bytes and dropping the transaction's count, a kind
+                    change reaching both halves of a scan pair),
+                    attachments.service.spec.ts (both parents, the cap per
+                    parent, the list's reach and order, the kind change),
+                    the guard.
+Status              enforced
+```
+
+### INV-WTY-004 -- one reminder per threshold, across replicas
+
+```text
+Statement           Each reminder threshold (30, 7 and 0 days before
+                    expires_on) notifies a warranty's owner at most once per
+                    (warranty, expires_on, threshold), however many replicas
+                    run the tick; a missed day never fires a burst, and
+                    nothing fires after the day of expiry.
+Source of truth     notifications.dedupe_key
+Enforcement         warrantyExpiryDedupeKey (warranty-notifications.ts) builds
+                    "wty:exp:<warrantyId>:<expiresOn>:<threshold>" and the row
+                    is written through NotificationDispatchService.notify into
+                    NotificationService.create (INV-NOTIFY-001), an INSERT ...
+                    ON CONFLICT DO NOTHING RETURNING over
+                    idx_notifications_dedupe: the insert winner fans the row
+                    out, the loser gets null and sends nothing.
+                    warrantyReminderThreshold picks the smallest mark at or
+                    above days left, so a missed run moves to a smaller mark
+                    and never fires the skipped ones. The date is part of the
+                    key, so a changed expires_on fires again.
+Concurrency scope   (warranty, expires_on, threshold)
+Retry semantics     a re-run of the tick, on any replica, finds the key taken
+Crash semantics     the row and its key commit together; a crash before the
+                    commit leaves nothing and the next tick writes it
+Failure response    one warranty's or one user's failure is logged and the
+                    loop continues
+Required tests      Present: warranty-notifications.spec.ts and
+                    warranty-expiry-reminder.service.spec.ts (truth table B,
+                    examples 3 and 4); warranty-expiry-reminders.integration.spec.ts
+                    (two evaluations at the same instant, every day from 45
+                    days out to the day after expiry, write exactly three
+                    rows with three winners; a changed expires_on re-fires;
+                    archived and lifetime warranties are not candidates; days
+                    counted in the user's timezone).
+Status              enforced
+```
+
+### INV-WTY-005 -- a refusal happens before the write
+
+```text
+Statement           A warranty or claim write that names a transaction, a
+                    payee, a currency or a parent warranty the caller does not
+                    own (or that does not exist) is refused before anything is
+                    written.
+Source of truth     transactions, payees, currencies, warranties, read by
+                    (id, user_id)
+Enforcement         WarrantiesService.createRow (behind create) and update
+                    read the named transaction and payee by (id, userId), and
+                    the currency by code, inside the withScopedDb transaction
+                    that writes (assertOwnedTransaction, assertOwnedPayee,
+                    assertKnownCurrency), and a miss is a NotFoundException
+                    before the INSERT or UPDATE. Every claim write reads its
+                    warranty by (id, userId) under lockWarrantyRow in the same
+                    transaction (warranty-claims.service.ts). The CSV import
+                    writes each row through WarrantiesService.createRow on the
+                    manager of its one transaction, so a refused row writes
+                    nothing.
+Concurrency scope   the write's own transaction
+Retry semantics     a refused write wrote nothing, so a retry starts clean
+Crash semantics     --
+Failure response    404
+Required tests      Present: warranties.integration.spec.ts (another user's or
+                    an unknown transaction or payee: a 404 and no row, with
+                    the positive control; another user's warranty neither
+                    readable nor writable), rls-context-smoke.spec.ts (the
+                    refusal reads share the write's transaction).
+Status              enforced
+```
+
+### INV-WTY-006 -- an import's preview and commit are one computation
+
+```text
+Statement           The preview of a warranty CSV and its commit read the file
+                    through the same code, so the commit creates exactly the
+                    rows the preview called valid, and nothing at all while a
+                    row is invalid unless the caller chose to skip it.
+Source of truth     WarrantyImportService.run(userId, content, { dryRun,
+                    skipInvalid })
+Enforcement         Both paths parse with parseCsvRows and map and validate
+                    every row with mapWarrantyCsv inside one withScopedDb
+                    transaction; dryRun returns before any write, and the
+                    commit refuses a file with an invalid row unless
+                    skipInvalid is set. The import dialog sends the file it
+                    previewed. The file is refused above 1 MiB or 1000 data
+                    rows, before it is read.
+Concurrency scope   the import's own transaction
+Retry semantics     a commit that failed wrote nothing; a second commit of the
+                    same file creates its rows again (there is no import key)
+Crash semantics     before commit nothing is written; after it, every row
+Failure response    400 naming the invalid-row count, a missing column or the
+                    row limit; 413 for a file over 1 MiB
+Required tests      Present: warranty-import.service.spec.ts (writes exactly
+                    what the dry run previewed), warranty-csv.spec.ts (the
+                    Warracker column map and the invalid-row cases),
+                    warranties.integration.spec.ts (a clean file's commit
+                    creates the preview's valid rows; one invalid row writes
+                    nothing unless skipped).
+Status              enforced
+```
+
+### INV-WTY-007 -- a delegate learns no transaction through a warranty
+
+```text
+Statement           A delegate with the warranties section sees every
+                    warranty, its documents and its claims, and the linked
+                    purchase only when its account is one they may read;
+                    otherwise linkedTransaction is null, transactionId is
+                    omitted, and nothing in the response identifies the
+                    purchase.
+Source of truth     account_delegates.warranties_can_read and the delegation's
+                    per-account READ grants
+Enforcement         The read routes carry @AllowDelegate() and
+                    @DelegateRequiresSection("warranties"); every write route
+                    is owner-only. WarrantiesController resolves
+                    delegateReadableAccountScope once per request and passes
+                    it as accountScope; loadLinkedTransactions
+                    (warranty-linked-transaction.ts) is the one read of a warranty's purchase and narrows it
+                    with restrictToAccountScope (an empty scope reads nothing).
+                    transactionId is set only for the owner or with the
+                    purchase itself; linkedTransactionHidden says only that a
+                    hidden purchase exists. getLlmWarranties reads through
+                    findAll, so linkedTransactionId is null under the same
+                    rule. The list's transactionId filter
+                    (GET /warranties?transactionId=) is narrowed by the same
+                    scope: for a delegate, WarrantiesService.findAll first
+                    checks the purchase's account through
+                    restrictToAccountScope, and an id outside the scope
+                    answers the empty page an unknown id answers.
+Concurrency scope   --
+Retry semantics     --
+Crash semantics     --
+Failure response    403 for a delegate without the section, or on a write
+Required tests      Present: warranties.integration.spec.ts (truth table C,
+                    one case per row; every write route refused to a delegate
+                    with the section; and "delegate filtering the list by a
+                    purchase id: matches only a purchase in a granted
+                    account", where the ungranted purchase's id answers the
+                    same empty page as an unknown id and the granted one finds
+                    its row), warranties.service.spec.ts (the transactionId
+                    filter for a delegate), warranties.controller.spec.ts,
+                    rls-context-smoke.spec.ts.
 Status              enforced
 ```
 

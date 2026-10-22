@@ -23,6 +23,12 @@ import { repriceSettledLoanTemplates } from "../loan-installments/reprice-templa
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { TransactionAttachment } from "../attachments/entities/transaction-attachment.entity";
 import { primaryAttachmentSql } from "../attachments/primary-attachment.util";
+import {
+  attachmentReachableFromTransactionSql,
+  reachedTransactionIdSql,
+  reachingWarrantyJoinSql,
+} from "../attachments/attachment-parent";
+import { Warranty } from "../warranties/entities/warranty.entity";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 import { UpdateTransactionDto } from "./dto/update-transaction.dto";
 import { CreateTransactionSplitDto } from "./dto/create-transaction-split.dto";
@@ -148,6 +154,8 @@ export interface CreateTransactionOutcome {
 export interface TransactionWithInvestmentLink extends Transaction {
   linkedInvestmentTransactionId?: string | null;
   attachmentCount?: number;
+  /** Unarchived warranties linked to the row. */
+  warrantyCount?: number;
 }
 
 /**
@@ -1426,9 +1434,12 @@ export class TransactionsService {
       if (hasAttachments !== undefined) {
         // Primaries only: a scan pair's hidden original is not an attachment
         // the user has, so "no attachments" must not be false because one is
-        // stored behind the row they deleted the visible half of.
+        // stored behind the row they deleted the visible half of. The row's
+        // own attachments and its linked warranties' documents alike
+        // (attachment-parent.ts).
         const existsSubquery =
-          `SELECT 1 FROM transaction_attachments ta WHERE ta.transaction_id = transaction.id ` +
+          `SELECT 1 FROM transaction_attachments ta WHERE ` +
+          `${attachmentReachableFromTransactionSql("ta", "transaction.id")} ` +
           `AND ${primaryAttachmentSql("ta")}`;
         queryBuilder.andWhere(
           hasAttachments
@@ -2302,9 +2313,11 @@ export class TransactionsService {
 
     if (filters.hasAttachments !== undefined) {
       // Primaries only, as the listing counts them: a scan pair's hidden
-      // original is not an attachment the user has.
+      // original is not an attachment the user has. The same reach as the
+      // listing, own rows and linked warranties' documents.
       const attachmentExists =
-        `SELECT 1 FROM transaction_attachments bfTa WHERE bfTa.transaction_id = bf.id ` +
+        `SELECT 1 FROM transaction_attachments bfTa WHERE ` +
+        `${attachmentReachableFromTransactionSql("bfTa", "bf.id")} ` +
         `AND ${primaryAttachmentSql("bfTa")}`;
       qb.andWhere(
         filters.hasAttachments
@@ -2438,6 +2451,7 @@ export class TransactionsService {
     const transactionIds = data.map((tx) => tx.id);
     const investmentLinkMap = new Map<string, string>();
     const attachmentCountMap = new Map<string, number>();
+    const warrantyCountMap = new Map<string, number>();
 
     if (transactionIds.length > 0) {
       // includes VOID rows: records read -- the register links a VOID cash
@@ -2455,23 +2469,48 @@ export class TransactionsService {
         }
       }
 
-      // One grouped count over the current page's ids (index-backed by
-      // idx on transaction_id); avoids an N+1 and keeps the blob-free
-      // attachments table off the main query.
+      // One grouped count over the current page's ids; avoids an N+1 and
+      // keeps the blob-free attachments table off the main query. A row's
+      // attachments are its own plus the documents of every warranty linked
+      // to it, archived or not (attachment-parent.ts), so each attachment is
+      // keyed by the transaction it is reached from.
       const attachmentCounts = await m
         .getRepository(TransactionAttachment)
         .createQueryBuilder("ta")
-        .select("ta.transactionId", "transactionId")
+        .leftJoin(Warranty, "w", reachingWarrantyJoinSql("ta", "w"))
+        .select(reachedTransactionIdSql("ta", "w"), "transactionId")
         .addSelect("COUNT(*)", "count")
-        .where("ta.transactionId IN (:...transactionIds)", { transactionIds })
+        .where(
+          `${reachedTransactionIdSql("ta", "w")} IN (:...transactionIds)`,
+          {
+            transactionIds,
+          },
+        )
         // A scan pair counts once: the register's paperclip is a count of what
         // the attachments list shows, and that list hides originals.
         .andWhere(primaryAttachmentSql("ta"))
-        .groupBy("ta.transactionId")
+        .groupBy(reachedTransactionIdSql("ta", "w"))
         .getRawMany<{ transactionId: string; count: string }>();
 
       for (const row of attachmentCounts) {
         attachmentCountMap.set(row.transactionId, Number(row.count));
+      }
+
+      // The same shape for warranties (idx_warranties_transaction): an
+      // archived warranty is put away, so the register's badge does not
+      // count it.
+      const warrantyCounts = await m
+        .getRepository(Warranty)
+        .createQueryBuilder("w")
+        .select("w.transactionId", "transactionId")
+        .addSelect("COUNT(*)", "count")
+        .where("w.transactionId IN (:...transactionIds)", { transactionIds })
+        .andWhere("w.archivedAt IS NULL")
+        .groupBy("w.transactionId")
+        .getRawMany<{ transactionId: string; count: string }>();
+
+      for (const row of warrantyCounts) {
+        warrantyCountMap.set(row.transactionId, Number(row.count));
       }
     }
 
@@ -2482,6 +2521,7 @@ export class TransactionsService {
       isVoid: tx.isVoid,
       linkedInvestmentTransactionId: investmentLinkMap.get(tx.id) || null,
       attachmentCount: attachmentCountMap.get(tx.id) ?? 0,
+      warrantyCount: warrantyCountMap.get(tx.id) ?? 0,
     }));
   }
 
@@ -2529,6 +2569,25 @@ export class TransactionsService {
     }
 
     return transaction;
+  }
+
+  /**
+   * One transaction as the register shows it: the row plus the facts the list
+   * adds to every row (`linkedInvestmentTransactionId`, `attachmentCount`,
+   * `warrantyCount`), from the same enrichment. A form opened on a row read
+   * by id, from any page, then knows what the register would: whether the
+   * row has warranties to list, and whether an investment owns it.
+   */
+  async findOneForDisplay(
+    userId: string,
+    id: string,
+    jointAccountIds: string[] = [],
+  ): Promise<TransactionWithInvestmentLink> {
+    const transaction = await this.findOne(userId, id, jointAccountIds);
+    const [enriched] = await withScopedDb(this.dataSource, (m) =>
+      this.enrichWithInvestmentLinks(m, [transaction]),
+    );
+    return enriched;
   }
 
   async update(

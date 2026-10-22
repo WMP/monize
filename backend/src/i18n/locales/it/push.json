@@ -47,6 +47,10 @@
     "ai_review": {
       "title": "Proposte di revisione IA",
       "body": "Alcune proposte di revisione IA attendono la tua decisione. Apri Monize per i dettagli."
+    },
+    "warranties": {
+      "title": "Promemoria garanzia",
+      "body": "Una delle tue garanzie scade a breve. Apri Monize per i dettagli."
     }
   },
   "actions": {

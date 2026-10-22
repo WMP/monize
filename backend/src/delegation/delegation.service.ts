@@ -76,6 +76,7 @@ export interface DelegateSectionSet {
   budgets: boolean;
   reports: boolean;
   ai: boolean;
+  warranties: boolean;
 }
 
 const SECTION_FIELD: Record<DelegateSection, keyof AccountDelegate> = {
@@ -84,6 +85,7 @@ const SECTION_FIELD: Record<DelegateSection, keyof AccountDelegate> = {
   budgets: "budgetsCanRead",
   reports: "reportsCanRead",
   ai: "aiCanRead",
+  warranties: "warrantiesCanRead",
 };
 
 /**
@@ -858,6 +860,7 @@ export class DelegationService {
       budgets: !!d?.budgetsCanRead,
       reports: !!d?.reportsCanRead,
       ai: !!d?.aiCanRead,
+      warranties: !!d?.warrantiesCanRead,
     };
   }
 
@@ -946,7 +949,8 @@ export class DelegationService {
         | "investmentsCanRead"
         | "budgetsCanRead"
         | "reportsCanRead"
-        | "aiCanRead",
+        | "aiCanRead"
+        | "warrantiesCanRead",
         boolean
       >
     >,

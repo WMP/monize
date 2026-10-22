@@ -27,5 +27,7 @@ export const CURRENCY_REFERENCE_COLUMNS: Readonly<
   securities: ["currency_code"],
   scheduled_transactions: ["currency_code", "original_currency_code"],
   budgets: ["currency_code"],
+  // The informational purchase price's currency; NULL when no price is set.
+  warranties: ["currency_code"],
   user_preferences: ["default_currency"],
 };

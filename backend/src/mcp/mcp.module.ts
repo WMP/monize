@@ -20,6 +20,7 @@ import { TransactionRulesModule } from "../transaction-rules/transaction-rules.m
 import { AiReviewQueueModule } from "../ai-review/ai-review-queue.module";
 import { EmailReceiptParsersModule } from "../email-receipts/parsers/email-receipt-parsers.module";
 import { BondsModule } from "../bonds/bonds.module";
+import { WarrantiesModule } from "../warranties/warranties.module";
 
 import { McpServerService } from "./mcp-server.service";
 import { McpHttpController } from "./mcp-http.controller";
@@ -40,6 +41,7 @@ import { McpRulesTools } from "./tools/rules.tool";
 import { McpAiReviewTools } from "./tools/ai-review.tool";
 import { McpEmailReceiptParserTools } from "./tools/email-receipt-parsers.tool";
 import { McpBondSeriesTools } from "./tools/bond-series.tool";
+import { McpWarrantiesTools } from "./tools/warranties.tool";
 
 import { McpAccountListResource } from "./resources/account-list.resource";
 import { McpCategoryTreeResource } from "./resources/category-tree.resource";
@@ -87,6 +89,8 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
     // fetch_bond_series and enter_bond_series_manually: the catalog's series
     // fetch (BondsModule exports it).
     forwardRef(() => BondsModule),
+    // list_warranties: WarrantiesService.getLlmWarranties.
+    WarrantiesModule,
   ],
   providers: [
     McpServerService,
@@ -106,6 +110,7 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
     McpAiReviewTools,
     McpEmailReceiptParserTools,
     McpBondSeriesTools,
+    McpWarrantiesTools,
     McpAccountListResource,
     McpCategoryTreeResource,
     McpRecentTransactionsResource,
