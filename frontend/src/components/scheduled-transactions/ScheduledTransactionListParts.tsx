@@ -3,9 +3,11 @@
 import { isPast, isToday, addDays, isBefore } from 'date-fns';
 import { useTranslations } from 'next-intl';
 import { useCallback, type JSX } from 'react';
+import { AxiosError } from 'axios';
 import toast from 'react-hot-toast';
 import { ScheduledTransaction } from '@/types/scheduled-transaction';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
+import { occurrencePin } from '@/lib/scheduled-effective-amount';
 import { getErrorMessage } from '@/lib/errors';
 import { parseLocalDate } from '@/lib/utils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -198,24 +200,31 @@ export function useScheduledAmountFormatter(): (
  * both are written once whichever layout the row was tapped in. It answers
  * whether the write SUCCEEDED, because a failed action must not trigger the
  * caller's refresh -- a refetch is a claim that something changed.
+ *
+ * Post and skip name the occurrence the row showed (`occurrencePin(row)`), so a
+ * stale list cannot act on the next one. The one exception to "a failure
+ * refreshes nothing" is the server's 409 on that pin: the error toast still
+ * carries the server's message, but the row the user acted on is stale (the cron
+ * or another tab already moved the schedule on), so this answers true and the
+ * caller refetches the list.
  */
 export async function runScheduledAction(
   action: 'post' | 'skip' | 'delete',
-  transactionId: string,
+  transaction: ScheduledTransaction,
   t: (key: string) => string,
 ): Promise<boolean> {
   try {
     switch (action) {
       case 'post':
-        await scheduledTransactionsApi.post(transactionId);
+        await scheduledTransactionsApi.post(transaction.id, occurrencePin(transaction));
         toast.success(t('list.toasts.posted'));
         break;
       case 'skip':
-        await scheduledTransactionsApi.skip(transactionId);
+        await scheduledTransactionsApi.skip(transaction.id, occurrencePin(transaction));
         toast.success(t('list.toasts.skipped'));
         break;
       case 'delete':
-        await scheduledTransactionsApi.delete(transactionId);
+        await scheduledTransactionsApi.delete(transaction.id);
         toast.success(t('list.toasts.deleted'));
         break;
     }
@@ -227,7 +236,7 @@ export async function runScheduledAction(
       delete: t('list.toasts.deleteFailed'),
     };
     toast.error(getErrorMessage(error, messages[action]));
-    return false;
+    return error instanceof AxiosError && error.response?.status === 409 && action !== 'delete';
   }
 }
 

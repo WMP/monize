@@ -562,8 +562,10 @@ in the ledger and `priorSettlements` is empty; where it plans several rows
 before writing (the manual run), `priorSettlements` carries them. Both give
 the same `debtBefore` for the same rows.
 
-`debtBefore <= 0.01` refuses `loan_debt_retired` (the threshold
-`resolveInstallment` reads as paid off).
+`debtBefore < 0.01` refuses `loan_debt_retired` (the threshold
+`resolveInstallment` reads as paid off): less than one minor unit is a
+rounding residue, while one whole unit is still owed and is settled like any
+other debt (audit A26-L23).
 
 ### 7.3 The priced installment
 
@@ -703,7 +705,7 @@ and 510.00.
 | E12 | as E8 | as E8 | -1,300.00 | `installment_amount_shortfall` (below `B` - `tol`) |
 | E13 | LOAN, JPY 30,000,000 at 1.2 %, monthly, payment 120,000 | 90,000 + 30,000 = 120,000 | -120,004 | 90,000 / 30,004 / -- (`tolerance`, `tol` = 5 JPY) |
 | E14 | as E13 | as E13 | -120,006 | 90,000 / 30,000 / 6 (`extra_principal`) |
-| E15 | `debtBefore` 0.01 | -- | any | `loan_debt_retired` |
+| E15 | `debtBefore` 0.0099 | -- | any | `loan_debt_retired` (0.01 is owed and is priced) |
 | E16 | ANNUITY 0 %, `payment_amount` 600.00 (base 500.00 plus the standing extra 100.00, decision 12) | 500.00 + 0.00 + 100.00 = 600.00 (`B` 500.00) | -599.97 | 500.00 / 0.00 / 99.97 (`extra_shed`: row 2 would make interest -0.03, row 6 takes it) |
 
 ### 9.4 The fold in one pass
@@ -776,7 +778,7 @@ action.
 | 14 | `no_installment_in_window` | no slot in the window (section 6.2 step 1) | `windowFrom`, `windowTo` |
 | 15 | `occurrence_already_posted` | every slot in the window is occupied or planned earlier in the pass (step 2) | `dueDates` |
 | 16 | `loan_not_configured` | a dated input is missing at the chosen slot (rate, annuity payment) | `missing`, `dueDate` |
-| 17 | `loan_debt_retired` | `debtBefore <= 0.01` | `dueDate` |
+| 17 | `loan_debt_retired` | `debtBefore < 0.01` | `dueDate` |
 | 18 | `installment_amount_excess` | section 8 rows 4 and 5 | `dueDate`, `expected` (`T`), `paid`, `debtBefore` |
 | 19 | `installment_amount_shortfall` | section 8 row 8 | `dueDate`, `expected` (`T`), `paid` |
 

@@ -578,6 +578,32 @@ wrong about a number that was itself correct. INV-OCCURRENCE-003 in
 
 An occurrence that fell due and was neither posted nor skipped is still owed. Posting and skipping both advance `next_due_date` past the slot, and every expansion walks from there, so an occurrence that comes back dated before a projection's first day is one the user still has to pay or collect. Both balance projections apply it on their first day rather than dropping it: the cash-flow forecast on today, the account balance forecast on tomorrow, because its today is the posted balance. Each projection says how many it carried. Dropping it showed a balance that only held if the bill was never paid. That is the opposite of a forecast, and the gap grew with every day the bill stayed unposted (discussion #1784). Only the last 31 days are carried (`OVERDUE_CARRY_DAYS`, the same number in `common/scheduled-occurrences.ts` and `lib/forecast.ts`): an occurrence older than that is read as a schedule the user forgot rather than a bill still owed, so a forgotten schedule moves a projection by at most one window of occurrences instead of every slot since it was last posted. `BudgetsService.getUpcomingBills`, which safe-to-spend subtracts, counts from the same day, so a bill the forecast calls owed is not also reported as money available to spend. The occurrence keeps every other rule: its effective amount and date, its share of `occurrences_remaining`, the schedule's `end_date`, and the withholding when it cannot be priced. The projection knows an occurrence is settled only through `next_due_date`: a bill paid by entering a plain transaction, with its occurrence left unposted, is counted a second time on the first day until that occurrence is posted or skipped. The projected half of the calendar's daily totals (`GET /accounts/daily-balance-totals`) carries the same occurrences on the same day but does not say so: its response has no `overdue` field (`docs/backend/transactions-and-money.md`).
 
+```text
+FIN-OCC-PIN
+A request that consumes a scheduled occurrence -- a post or a skip -- names the
+occurrence its caller saw, and the server refuses it with 409, before anything
+is written, when that is no longer the occurrence due. The cron names the slot
+it selected (`expectedDueDate`); a person's request names the date the
+occurrence falls on and the override that moved it (`expectedOccurrenceDate`,
+`expectedOverrideId`, from `occurrencePin` on the client). The server's
+cursor at request time is never the identity: it is whatever another tab, a
+replica or a retry left it at.
+```
+
+Without the pin, a Bills tab loaded before the hourly auto-post sent September's
+post after the cron had already posted September: the server read the advanced
+cursor and booked October, a month early under September's date, and on a
+schedule with one occurrence left it booked an extra payment of the whole bill
+(audit A26-H07). A stale Skip skipped October. The pin is also the safe answer
+to a retried request whose response was lost: the retry finds the cursor moved
+and is refused. INV-OCCURRENCE-001 records the enforcement.
+
+Every advance of the cursor, whoever makes it, steps past every slot already
+claimed on or after it (`claimedSlotsFrom` in `schedule-cursor.ts`). A
+settlement rule may claim a slot ahead of the cursor (INV-LOAN-008); a post that
+stepped past its own slot only left the cursor on that claimed slot, and every
+later post was refused as already posted, with no alert (audit A26-M15).
+
 ## 8. Import and restore: zero, null, absent
 
 The MS Money importer is deliberately not uniform, and the distinction is worth
@@ -922,6 +948,37 @@ occurrence is claimed in `scheduled_transaction_postings` in the same
 database transaction as the split (INV-LOAN-008): one settlement per
 scheduled occurrence, and the claim is the arbiter between `post()` and a
 settlement racing the same slot.
+
+### An installment below the interest adds the shortfall to the debt
+
+Interest accrues on the debt whether or not the installment covers it. When a
+scheduled bill's installment is smaller than the period's interest (a rate
+rise whose payment sync the user declined, a payment set too low), the bill
+books the whole accrued interest and a negative principal line of the
+difference, so the unpaid interest is added to the loan in the same
+transaction as the payment (negative amortization). LOAN 400,000.00 at 6 %
+monthly, installment 1,500.00: interest 2,000.00, principal -500.00, debt
+400,500.00; the next installment's interest is 2,002.50, principal -502.50,
+debt 401,002.50. `allocateLoanPayment` does it with
+`capitalizeUnpaidInterest` and reports the amount as `unpaidInterest`, which
+the loan occurrence projection carries, so the bill, the posting and the
+projection agree (INV-LOAN-006). It is one transaction rather than a separate
+interest-accrual row on the loan, so deleting or undoing the payment removes
+the capitalization with it and a re-post cannot book it twice.
+
+The cap it replaces booked interest equal to the installment and principal
+zero: the debt stayed flat while 500.00 a month of interest was recorded
+nowhere, and every payoff date read from the ledger was optimistic (audit
+A26-M29). A rule's settlement of a bank row keeps its own shortfall policy
+above (refuse, or interest first with the interest capped at what the bank
+took), because there the row's amount is the fact being divided.
+
+The bill's source account is in the loan's currency. Loan payment setup and
+the loan and mortgage create paths refuse a source account in another
+currency before anything is written, because the bill is booked on the source
+account in the loan's currency and every posting of it would be refused
+(audit A26-M30). A cross-currency loan payment would need an FX transfer
+template priced in two currencies, which does not exist.
 
 ## 10. Gap register
 

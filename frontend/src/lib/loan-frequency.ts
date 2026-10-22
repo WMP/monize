@@ -79,8 +79,20 @@ export const DEFAULT_MAX_PROJECTION_YEARS = 50;
  * there would silently disagree the moment this moves.
  */
 export const HARD_MAX_PAYMENTS = 10000;
-/** Balances at or below this are considered paid off (matches the reports) */
+/**
+ * One minor unit. A balance below it is a rounding residue and counts as paid
+ * off; one whole unit (0.01) is owed and takes a row of its own, as the
+ * server's `isDebtRetired` reads it (audit A26-S15-06).
+ */
 export const PAYOFF_EPSILON = 0.01;
+
+/** Float noise at the boundary: 1.01 - 1 is 0.010000000000000009. */
+const PAYOFF_NOISE = 1e-9;
+
+/** True when `balance` still owes at least one whole minor unit. */
+export function isDebtOutstanding(balance: number): boolean {
+  return balance >= PAYOFF_EPSILON - PAYOFF_NOISE;
+}
 
 /**
  * Payments in `years` of `frequency`, clamped to `HARD_MAX_PAYMENTS` -- the

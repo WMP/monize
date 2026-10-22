@@ -314,6 +314,29 @@ operation's boundary are the same boundary. If anything happens after the commit
 that the caller would consider part of the operation, the operation is in the
 second row of the table and needs reconciliation. See INV-IMPORT-002.
 
+**A step after the commit never reports the operation as not done.** The
+corollary for the caller: once a single-use write has committed, an error from a
+follow-up step is "done, follow-up failed", never "failed". Reporting it as a
+failure is what turns the second row into a duplicate, because the caller's
+remedy for a failure is to do it again. Two shapes hold the rule:
+
+- Swallow and log a best-effort follow-up whose state is re-derived later.
+  `ScheduledTransactionsService.post()` runs `completeTransfer` and
+  `recalculateLoanPaymentSplits` after the posting transaction through
+  `afterPostCommit`, which logs and returns, so the auto-post cron raises no
+  "could not be posted" alert for a posted occurrence and an HTTP caller gets the
+  posted schedule, not an error that invites a retry (audit A26-M14,
+  A26-S08-02). The loan template is re-priced by the next posting's
+  re-resolution in any case.
+- Mark a follow-up the caller must hear about with `PostCommitFailure`
+  (`backend/src/common/post-commit-failure.ts`). A caller holding a single-use
+  claim keeps it on that error: `AiActionsService.confirm` releases the
+  descriptor's claim only when the error is not a `PostCommitFailure`, so a
+  failed attachment after a committed `create_transaction` cannot make the same
+  descriptor confirmable again (A26-S17-02, INV-MCP-004). Wrapping the
+  attachment step of `executeCreateTransaction` / `executeUpdateTransaction`
+  and the MCP direct commits in it is still owed (audit task T13, AI half).
+
 The exchange-rate and security-price refreshes are the model for repeatable
 writes: `ON CONFLICT (from_currency, to_currency, rate_date) DO UPDATE` and
 `ON CONFLICT (security_id, price_date) DO UPDATE` make a repeated fetch
@@ -506,6 +529,11 @@ counted as a skip, not an error (INV-OCCURRENCE-001). The cron passes the
 occurrence it selected as `expectedDueDate`, because the claim key is only as
 good as the date it is built from: a replica that re-read the schedule after the
 winner advanced it keyed the claim on the next occurrence and posted that. A
+manual post or skip carries the occurrence the person saw the same way
+(`expectedOccurrenceDate` and `expectedOverrideId`, required on both routes and
+checked by `assertOccurrencePin` before the lock and under it), so a stale tab
+or a retried request is refused with 409 instead of consuming the next
+occurrence. A
 `settle_loan_installment` rule claims the same row, under the same unique key,
 through `claimLoanOccurrence` (`backend/src/loan-installments/claim-loan-occurrence.ts`):
 the same `INSERT ... ON CONFLICT DO NOTHING RETURNING id`, on the same

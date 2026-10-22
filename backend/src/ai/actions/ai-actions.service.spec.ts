@@ -5,6 +5,7 @@ import {
   AiActionsService,
   AI_ACTION_CLAIM_PURPOSE,
 } from "./ai-actions.service";
+import { PostCommitFailure } from "../../common/post-commit-failure";
 import { AiActionSigningService } from "./ai-action-signing.service";
 import { AiWriteLimiter, AI_DAILY_WRITE_LIMIT } from "./ai-write-limiter";
 import {
@@ -1723,6 +1724,25 @@ describe("AiActionsService", () => {
     );
     const result = await service.confirm(USER, dtoFor(descriptor));
     expect(result).toEqual({ type: "create_transaction", id: "tx-new" });
+  });
+
+  // A26-S17-02 / A26-M14: a step after the ledger write committed (the
+  // attachment store) fails. The write is done, so the claim stays spent and a
+  // second confirm of the same descriptor cannot write a duplicate.
+  it("keeps the claim when a step after the committed write fails (PostCommitFailure)", async () => {
+    const descriptor = createTxDescriptor({ actionId: "act-post-commit" });
+    const failure = new PostCommitFailure("attachment store down");
+    transactions.create.mockRejectedValueOnce(failure);
+
+    await expect(service.confirm(USER, dtoFor(descriptor))).rejects.toBe(
+      failure,
+    );
+    expect(singleUseTokens.release).not.toHaveBeenCalled();
+
+    await expect(
+      service.confirm(USER, dtoFor(descriptor)),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(transactions.create).toHaveBeenCalledTimes(1);
   });
 
   it("rejects when the daily write limit is reached", async () => {

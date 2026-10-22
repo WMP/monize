@@ -243,6 +243,29 @@ describe("projectLoanOccurrences", () => {
     ]);
   });
 
+  describe("the payoff boundary (A26-S15-06): one whole minor unit is owed", () => {
+    it("prices an occurrence on a debt of exactly 0.01 as a payment of 0.01", () => {
+      const result = project({ count: 1, debt: 0.01 });
+      expect(result.status).toBe("priced");
+      expect(result.occurrences[0]).toMatchObject({
+        amount: 0.01,
+        principal: 0.01,
+        debtBefore: 0.01,
+        complete: true,
+      });
+    });
+
+    it("prices a debt of 0.02 as 0.02 and a debt below one unit as a payoff of 0", () => {
+      expect(project({ count: 1, debt: 0.02 }).occurrences[0].amount).toBe(
+        0.02,
+      );
+      expect(project({ count: 1, debt: 0.0049 }).occurrences[0]).toMatchObject({
+        amount: 0,
+        complete: true,
+      });
+    });
+  });
+
   describe("an override", () => {
     it("with an amount and no lines is the bill for that occurrence, divided at its date, and never the template (8.6)", () => {
       const result = project({
@@ -397,6 +420,7 @@ describe("projectLoanOccurrences", () => {
         principal: null,
         interest: null,
         extraPrincipal: null,
+        unpaidInterest: null,
         annualRate: 5,
         debtBefore: 99832.08,
         complete: false,
@@ -492,6 +516,7 @@ describe("projectLoanOccurrences", () => {
           principal: 0,
           interest: 0,
           extraPrincipal: 0,
+          unpaidInterest: 0,
           annualRate: 5,
           debtBefore: 0,
           complete: true,
@@ -576,6 +601,7 @@ describe("projectLoanOccurrences", () => {
         principal: null,
         interest: null,
         extraPrincipal: null,
+        unpaidInterest: null,
         annualRate: 5,
         debtBefore: 0,
         complete: false,
@@ -923,5 +949,92 @@ describe("projectLoanOccurrences", () => {
         debtLedger: new Map(),
       }),
     ).toEqual({ status: "priced", occurrences: [] });
+  });
+  describe("a bill below the accrued interest capitalizes the shortfall (A26-S15-04, R3)", () => {
+    // LOAN 400,000.00 at 6 % paid monthly: 2,000.00 accrues against 1,500.00.
+    const loan = {
+      id: loanAccountId,
+      accountType: "LOAN",
+      interestRate: 6,
+      paymentAmount: 1500,
+      paymentFrequency: "MONTHLY",
+      interestCategoryId: "cat-interest",
+      currencyCode: "CAD",
+    } as unknown as Account;
+    const r3 = (extra: Parameters<typeof project>[0] = {}) =>
+      project({
+        account: loan,
+        schedule: makeSchedule({ amount: -1500 }),
+        splits: makeSplits(500, 1000),
+        rateChanges: [],
+        debt: 400000,
+        count: 2,
+        ...extra,
+      });
+
+    it("reports the negative principal and the unpaid interest", () => {
+      const [first] = r3().occurrences;
+      expect(first).toMatchObject({
+        amount: 1500,
+        interest: 2000,
+        principal: -500,
+        extraPrincipal: 0,
+        unpaidInterest: 500,
+        complete: true,
+      });
+    });
+
+    it("adds the shortfall to the debt the next occurrence starts from", () => {
+      // The ledger is flat at 400,000.00, so the later debt differs only by
+      // what the fold booked: the first bill's -500.00 of principal.
+      const [first, second] = r3().occurrences;
+      expect(first.debtBefore).toBe(400000);
+      expect(second.debtBefore).toBe(400500);
+      expect(second).toMatchObject({
+        interest: 2002.5,
+        principal: -502.5,
+        unpaidInterest: 502.5,
+      });
+    });
+
+    it("reports 0 unpaid when the bill covers the interest", () => {
+      const [first] = r3({ debt: 100000 }).occurrences;
+      expect(first.unpaidInterest).toBe(0);
+      expect(first.principal).toBeGreaterThan(0);
+    });
+
+    it("reads an override line against the bill's direction: a positive principal line is a shortfall", () => {
+      const result = r3({
+        count: 1,
+        overrides: [
+          {
+            id: "ovr-1",
+            originalDate: "2023-02-03",
+            overrideDate: "2023-02-03",
+            amount: -1500,
+            splits: [
+              {
+                categoryId: null,
+                transferAccountId: loanAccountId,
+                amount: 500,
+                memo: "Principal",
+              },
+              {
+                categoryId: "cat-interest",
+                transferAccountId: null,
+                amount: -2000,
+                memo: "Interest",
+              },
+            ],
+          },
+        ],
+      });
+      expect(result.occurrences[0]).toMatchObject({
+        amount: 1500,
+        principal: -500,
+        interest: 2000,
+        unpaidInterest: 500,
+      });
+    });
   });
 });

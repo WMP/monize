@@ -473,7 +473,7 @@ describe("ScheduledTransactionLoanService", () => {
         expect(scheduledTransactionsRepository.update).not.toHaveBeenCalled();
       });
 
-      it("caps interest at the payment when the payment does not cover it (RR2-006)", async () => {
+      it("keeps the children equal to the parent when the payment does not cover the interest (RR2-006, A26-S15-04)", async () => {
         // 100,000 outstanding at 60% annual (5% monthly) against a configured
         // 1,000 payment. Neither branch bounded the interest and the parent
         // update only ever shrinks, so the template held an interest child of
@@ -481,6 +481,11 @@ describe("ScheduledTransactionLoanService", () => {
         // which the posting path's split validator rejects outright, so the
         // schedule stopped posting. `LoanPaymentSetupService` was corrected for
         // the same underpayment and this sibling was not.
+        //
+        // The children still sum to the parent, and the 4,000 the payment
+        // leaves unpaid is no longer lost: the template books the whole
+        // interest and a NEGATIVE principal (a positive transfer line from the
+        // loan), so the posting raises the debt by it.
         const loanAccount = makeLoanAccount({
           currentBalance: -100000,
           interestRate: 60,
@@ -517,12 +522,13 @@ describe("ScheduledTransactionLoanService", () => {
             call[0].amount,
           ]),
         );
-        // The whole installment goes to interest; nothing retires principal.
-        expect(saved["split-interest"]).toBe(-1000);
-        expect(saved["split-principal"]).toBe(-0);
-        // Children sum to the parent exactly, so posting still validates. The
-        // parent keeps the amount the user configured -- the payment is not
-        // short of the debt, it is short of the interest.
+        // The whole interest is booked and the shortfall is capitalized.
+        expect(saved["split-interest"]).toBe(-5000);
+        expect(saved["split-principal"]).toBe(4000);
+        // Children sum to the parent exactly (-5,000 + 4,000 = -1,000), so
+        // posting still validates. The parent keeps the amount the user
+        // configured -- the payment is not short of the debt, it is short of
+        // the interest.
         expect(scheduledTransactionsRepository.update).not.toHaveBeenCalled();
       });
 
@@ -1808,6 +1814,32 @@ describe("ScheduledTransactionLoanService", () => {
       expect(result.amountsBySplitId.get("split-principal")).toBe(-507.5);
       expect(result.kind).toBe("allocation");
       if (result.kind !== "allocation") throw new Error("unreachable");
+      expect(result.parentAmount).toBe(-1500);
+    });
+
+    it("posts a bill below the accrued interest with a positive principal line, a transfer from the loan (A26-S15-04)", async () => {
+      // 400,000 at 6% monthly accrues 2,000 against a 1,500 bill: the whole
+      // interest is booked and the 500 shortfall is added to the debt.
+      accountsRepository.findOne.mockResolvedValue(
+        makeLoanAccount({
+          currentBalance: -400000,
+          interestRate: 6,
+          paymentFrequency: "MONTHLY",
+          paymentAmount: 1500,
+        }),
+      );
+      manager.query.mockResolvedValue([{ balance: "-400000" }]);
+
+      const result = await service.resolvePostingAllocation(
+        makeScheduledTransaction({ amount: -1500 }),
+        templateSplits(),
+        "2026-06-01",
+      );
+
+      expect(result.kind).toBe("allocation");
+      if (result.kind !== "allocation") throw new Error("unreachable");
+      expect(result.amountsBySplitId.get("split-interest")).toBe(-2000);
+      expect(result.amountsBySplitId.get("split-principal")).toBe(500);
       expect(result.parentAmount).toBe(-1500);
     });
 

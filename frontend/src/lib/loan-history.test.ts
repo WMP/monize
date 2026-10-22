@@ -2410,6 +2410,14 @@ describe('diagnoseLoanProjection', () => {
     expect(input).toBeNull();
   });
 
+  it('treats a debt of exactly 0.01 as owed and one below a cent as paid off (A26-S15-06)', () => {
+    const owed = reasonAndInputAgree(makeAccount({ currentBalance: -0.01 }));
+    expect(owed.reason).not.toBe('paid-off');
+    const residue = reasonAndInputAgree(makeAccount({ currentBalance: -0.0099 }));
+    expect(residue.reason).toBe('paid-off');
+    expect(residue.input).toBeNull();
+  });
+
   it("reports 'no-frequency' when the payment frequency is unset", () => {
     const { reason, input } = reasonAndInputAgree(
       makeAccount({ paymentFrequency: null as unknown as Account['paymentFrequency'] }),

@@ -20,6 +20,7 @@ import {
   LoanTemplateSplits,
   periodicRateFor,
   priceInstallment,
+  isDebtRetired,
 } from "./price-installment";
 import {
   installmentNumberOf,
@@ -335,8 +336,11 @@ export function planLoanSettlement(
       (sum, p) => sum + toUnits(p.principal) + toUnits(p.extraPrincipal),
       0,
     );
-  const debtBefore = roundMoney(fromUnits(toUnits(debtLedger) - foldedUnits));
-  if (debtBefore <= 0.01) {
+  const debtExact = fromUnits(toUnits(debtLedger) - foldedUnits);
+  const debtBefore = roundMoney(debtExact);
+  // Less than one minor unit, judged before the rounding so a 4dp residue of
+  // 0.0099 stays a residue, as `resolveInstallmentCore` reads it.
+  if (isDebtRetired(debtExact)) {
     return refuse("loan_debt_retired", { dueDate });
   }
 

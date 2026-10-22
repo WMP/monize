@@ -35,6 +35,7 @@ import {
 } from "./payment-frequency.util";
 import { localDateForColumn } from "../common/date-utils";
 import { allocateLoanPayment } from "./loan-payment-waterfall.util";
+import { assertLoanSourceCurrency } from "./loan-source-currency.util";
 import { FrequencyType as FrequencyTypeDto } from "../scheduled-transactions/dto/create-scheduled-transaction.dto";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -235,6 +236,9 @@ export class LoanPaymentSetupService {
         tr("errors.accounts.sourceNotFound", "Source account not found"),
       );
     }
+    // The bill is written in the loan's currency on this account; refused
+    // here, before any write, rather than at every posting (A26-S15-10).
+    assertLoanSourceCurrency(sourceAccount.currencyCode, account.currencyCode);
 
     // Payment matching settles mortgages and loans only (spec decision 4),
     // and a pattern the rule create would refuse is refused here, before the

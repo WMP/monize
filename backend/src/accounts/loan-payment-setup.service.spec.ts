@@ -45,6 +45,7 @@ describe("LoanPaymentSetupService", () => {
     userId: "user-1",
     name: "Checking",
     accountType: AccountType.CHEQUING,
+    currencyCode: "USD",
   };
 
   const mockScheduledTx = {
@@ -155,6 +156,25 @@ describe("LoanPaymentSetupService", () => {
           nextDueDate: "2026-04-01",
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it("refuses a payment account in another currency before writing anything (A26-S15-10)", async () => {
+      accountsRepository.findOne
+        .mockResolvedValueOnce({ ...mockLoanAccount, currencyCode: "EUR" })
+        .mockResolvedValueOnce({ ...mockSourceAccount, currencyCode: "PLN" });
+      await expect(
+        service.setupLoanPayments("user-1", "loan-1", {
+          interestCategoryId: "interest-cat-1",
+          paymentAmount: 500,
+          paymentFrequency: "MONTHLY",
+          sourceAccountId: "source-1",
+          nextDueDate: "2026-04-01",
+        }),
+      ).rejects.toThrow(
+        "The payment account is in PLN and the loan in EUR. Choose an account in EUR.",
+      );
+      expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
+      expect(accountsRepository.update).not.toHaveBeenCalled();
     });
 
     it("creates scheduled transaction and updates account for loan", async () => {

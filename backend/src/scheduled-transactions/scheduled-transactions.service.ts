@@ -62,7 +62,12 @@ import {
   LoanOccurrencesProjection,
   ScheduledTransactionLoanService,
 } from "./scheduled-transaction-loan.service";
-import { advanceScheduleCursor } from "./schedule-cursor";
+import {
+  assertOccurrencePin,
+  assertScheduleHasOccurrence,
+  OccurrencePin,
+} from "./occurrence-pin";
+import { advanceScheduleCursor, claimedSlotsFrom } from "./schedule-cursor";
 import { addDaysYMD, todayInTimezone, todayYMD } from "../common/date-utils";
 import {
   calculateNextDueDate as calcNextDueDate,
@@ -84,6 +89,7 @@ import { validateSplitAmountSum } from "../common/split-amount.util";
 import { roundMoney, sumMoney } from "../common/round.util";
 import {
   applyFxConversion,
+  assertTransactionCurrencyMatchesAccount,
   normalizeFxEntry,
   roundFxRate,
 } from "../common/fx-entry.util";
@@ -931,6 +937,14 @@ export class ScheduledTransactionsService {
     if (hasSplits && !isTransfer) {
       this.validateSplits(splits, createDto.amount);
     }
+
+    // The schedule's own currency is its account's; a foreign entry is the
+    // `originalCurrencyCode` trio below. Refused before any write, as a
+    // posting would refuse it at every due date (A26-S15-10).
+    assertTransactionCurrencyMatchesAccount(
+      createDto.currencyCode,
+      account.currencyCode,
+    );
 
     const fx = this.resolveScheduleFx(createDto, account.currencyCode, {
       isSplit: !!(hasSplits && !isTransfer),
@@ -2659,36 +2673,74 @@ export class ScheduledTransactionsService {
     });
   }
 
-  async skip(userId: string, id: string): Promise<ScheduledTransaction> {
-    const scheduled = await this.findOne(userId, id);
+  /**
+   * Skip the due occurrence. One transaction: lock the schedule and the
+   * occurrence's override, refuse a stale `pin` or an exhausted schedule, then
+   * advance. Every refusal comes before the first write (A26-S08-01).
+   */
+  async skip(
+    userId: string,
+    id: string,
+    pin?: OccurrencePin,
+  ): Promise<ScheduledTransaction> {
+    await withScopedDb(this.dataSource, async (m) => {
+      const current = await m.findOne(ScheduledTransaction, {
+        where: { id, userId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!current) {
+        throw new NotFoundException(
+          tr(
+            "errors.scheduled.notFound",
+            `Scheduled transaction with ID ${id} not found`,
+            { id },
+          ),
+        );
+      }
+      const nextDueDateStr = ensureYMD(current.nextDueDate);
+      const override = await m
+        .getRepository(ScheduledTransactionOverride)
+        .findOne({
+          where: { scheduledTransactionId: id, originalDate: nextDueDateStr },
+          lock: { mode: "pessimistic_write" },
+        });
+      if (pin) {
+        assertOccurrencePin(nextDueDateStr, override, pin);
+      }
+      assertScheduleHasOccurrence(current);
 
-    const nextDueDateStr = ensureYMD(scheduled.nextDueDate);
+      if (calcNextDueDate(nextDueDateStr, current.frequency) > nextDueDateStr) {
+        // Step past this slot and every slot a settlement rule claimed at or
+        // after it. A skip posts nothing, so `last_posted_date` stays.
+        await advanceScheduleCursor(
+          m,
+          current,
+          new Set([
+            nextDueDateStr,
+            ...(await claimedSlotsFrom(m, id, nextDueDateStr)),
+          ]),
+          { stampLastPosted: false },
+        );
+        return;
+      }
 
-    const newNextDueDateStr = calcNextDueDate(
-      nextDueDateStr,
-      scheduled.frequency,
-    );
-
-    const updateFields: Record<string, any> = {
-      nextDueDate: newNextDueDateStr,
-    };
-
-    if (
-      scheduled.occurrencesRemaining !== null &&
-      scheduled.occurrencesRemaining > 0
-    ) {
-      const newRemaining = scheduled.occurrencesRemaining - 1;
-      updateFields.occurrencesRemaining = newRemaining;
-      if (newRemaining === 0) {
+      // A cadence that does not step (ONCE): the cursor stays, as before.
+      const updateFields: Record<string, any> = {
+        nextDueDate: nextDueDateStr,
+      };
+      if (
+        current.occurrencesRemaining !== null &&
+        current.occurrencesRemaining > 0
+      ) {
+        const newRemaining = current.occurrencesRemaining - 1;
+        updateFields.occurrencesRemaining = newRemaining;
+        if (newRemaining === 0) {
+          updateFields.isActive = false;
+        }
+      }
+      if (current.endDate && nextDueDateStr > ensureYMD(current.endDate)) {
         updateFields.isActive = false;
       }
-    }
-
-    if (scheduled.endDate && newNextDueDateStr > ensureYMD(scheduled.endDate)) {
-      updateFields.isActive = false;
-    }
-
-    await withScopedDb(this.dataSource, async (m) => {
       await m.getRepository(ScheduledTransactionOverride).delete({
         scheduledTransactionId: id,
         originalDate: nextDueDateStr,
@@ -2872,6 +2924,16 @@ export class ScheduledTransactionsService {
        */
       expectedDueDate?: string;
       /**
+       * The occurrence a person was looking at when they pressed Post (the
+       * date shown, which an override may have moved, and that override's id).
+       * Refused with `ConflictException` before the lock and again under it
+       * unless it is still the occurrence the schedule would post, so a stale
+       * view cannot post the next occurrence early or pay an exhausted
+       * schedule again (A26-S08-01). Set by the HTTP controller; the cron, the
+       * AI action and the email receipt pin through `expectedDueDate`.
+       */
+      occurrencePin?: OccurrencePin;
+      /**
        * The poster is a delegate acting as the owner (see
        * `TransactionsService.create`): the owner's structural rules are
        * skipped on the posted row. Set from the verified identity only.
@@ -2938,6 +3000,13 @@ export class ScheduledTransactionsService {
         .andWhere("override.originalDate = :nextDueDateStr", { nextDueDateStr })
         .getOne(),
     );
+    if (options.occurrencePin) {
+      assertOccurrencePin(
+        nextDueDateStr,
+        storedOverride,
+        options.occurrencePin,
+      );
+    }
 
     const postDate =
       postDto?.transactionDate ||
@@ -3354,6 +3423,10 @@ export class ScheduledTransactionsService {
         );
       }
 
+      // Nothing left to post: the cron stops at a zero count or past `end_date`,
+      // a manual post of the consumed slot would be an extra payment.
+      assertScheduleHasOccurrence(current);
+
       // Cron selected this row when it was active and auto-posting; if the user
       // turned either off after selection but before the lock, the automatic
       // post must not fire (issue #1154 re-review). Manual posts do not pass this
@@ -3398,6 +3471,13 @@ export class ScheduledTransactionsService {
           where: { scheduledTransactionId: id, originalDate: nextDueDateStr },
           lock: { mode: "pessimistic_write" },
         });
+      if (options.occurrencePin) {
+        assertOccurrencePin(
+          ensureYMD(current.nextDueDate),
+          lockedOverride,
+          options.occurrencePin,
+        );
+      }
       if (
         !sameOverrideMutationBasis(storedOverride, lockedOverride) ||
         (storedOverride?.updatedAt?.getTime() ?? null) !==
@@ -3734,9 +3814,18 @@ export class ScheduledTransactionsService {
       //
       // From `current`, the locked row, not from the `scheduled` snapshot
       // taken before the transaction: a concurrent edit to occurrencesRemaining
-      // or endDate would otherwise be reverted by this advancement. The one
-      // consumed slot is the occurrence claimed above.
-      await advanceScheduleCursor(m, current, new Set([nextDueDateStr]));
+      // or endDate would otherwise be reverted by this advancement. The
+      // consumed slots are the occurrence claimed above and every claim at or
+      // after it: a settlement rule may hold a later slot (INV-LOAN-008), and a
+      // cursor left on it would refuse every later post (A26-S08-03).
+      await advanceScheduleCursor(
+        m,
+        current,
+        new Set([
+          nextDueDateStr,
+          ...(await claimedSlotsFrom(m, id, nextDueDateStr)),
+        ]),
+      );
       return false;
     });
 
@@ -3745,10 +3834,14 @@ export class ScheduledTransactionsService {
     // inside it -- the history recorder swallows its own failures, so nesting it
     // would either abort the posting with `25P02` or lose the undo entry.
     if (preparedTransfer && writtenTransfer) {
-      await this.transactionsService.completeTransfer(
-        preparedTransfer,
-        writtenTransfer.savedFromId,
-        writtenTransfer.savedToId,
+      const prepared = preparedTransfer;
+      const written = writtenTransfer;
+      await this.afterPostCommit(id, "completeTransfer", () =>
+        this.transactionsService.completeTransfer(
+          prepared,
+          written.savedFromId,
+          written.savedToId,
+        ),
       );
     }
 
@@ -3761,10 +3854,39 @@ export class ScheduledTransactionsService {
       // recalculation locks the parent and derives the loan from the current
       // split set itself, so a concurrent retarget (Loan A -> Loan B) cannot
       // recalculate the wrong loan (issue #1154 re-review).
-      await this.loanService.recalculateLoanPaymentSplits(id);
+      await this.afterPostCommit(id, "recalculateLoanPaymentSplits", () =>
+        this.loanService.recalculateLoanPaymentSplits(id),
+      );
     }
 
     return this.findOne(userId, id);
+  }
+
+  /**
+   * Run a step that belongs after the posting transaction committed.
+   *
+   * A26-S08-02 / A26-M14: the money, the occurrence claim and the cursor advance
+   * are already committed here, so a failure of the step must not be reported
+   * as "not posted" (the cron's SCHEDULED_POST_FAILED alert, an HTTP error the
+   * caller retries). It is logged and not rethrown. The loan template is
+   * re-priced by the next posting's own re-resolution, and the transfer's
+   * history and tags are best-effort.
+   */
+  private async afterPostCommit(
+    id: string,
+    step: string,
+    fn: () => Promise<unknown>,
+  ): Promise<void> {
+    try {
+      await fn();
+    } catch (error) {
+      this.logger.error(
+        `Scheduled transaction ${id}: ${step} failed after the posting ` +
+          "committed; the occurrence is posted and the step is left to the " +
+          `next run: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 
   /**

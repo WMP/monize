@@ -478,6 +478,42 @@ describe('PostTransactionDialog', () => {
     expect(dateInput.value).toBe('2025-02-20');
   });
 
+  // A26-S08-01: the post names the occurrence the dialog opened on, so a stale
+  // dialog cannot post the occurrence the cron or another tab already moved past.
+  it('posts the occurrence pin: the slot and no override when none governs it', async () => {
+    mockPostApi.mockClear();
+    render(<PostTransactionDialog {...defaultProps} />);
+
+    const buttons = screen.getAllByText('Post Transaction');
+    fireEvent.click(buttons[buttons.length - 1]);
+
+    await waitFor(() => {
+      expect(mockPostApi).toHaveBeenCalledWith('s1', expect.objectContaining({
+        expectedOccurrenceDate: '2025-02-15',
+        expectedOverrideId: null,
+      }));
+    });
+  });
+
+  it('posts the override date and the override id when an override moved the date', async () => {
+    mockPostApi.mockClear();
+    const moved = {
+      ...transactionWithOverride,
+      nextOverride: { ...transactionWithOverride.nextOverride, id: 'ovr-1' },
+    };
+    render(<PostTransactionDialog {...defaultProps} scheduledTransaction={moved} />);
+
+    const buttons = screen.getAllByText('Post Transaction');
+    fireEvent.click(buttons[buttons.length - 1]);
+
+    await waitFor(() => {
+      expect(mockPostApi).toHaveBeenCalledWith('s1', expect.objectContaining({
+        expectedOccurrenceDate: '2025-02-20',
+        expectedOverrideId: 'ovr-1',
+      }));
+    });
+  });
+
   it('initializes transaction date to nextDueDate when no override exists', () => {
     render(<PostTransactionDialog {...defaultProps} />);
 

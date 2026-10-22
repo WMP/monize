@@ -40,11 +40,13 @@ describe('isDebtSettled', () => {
   it('treats an outstanding balance as unsettled', () => {
     expect(isDebtSettled(-250000)).toBe(false);
     expect(isDebtSettled(-0.02)).toBe(false);
+    // One whole minor unit is owed (A26-S15-06), not a rounding residue.
+    expect(isDebtSettled(-0.01)).toBe(false);
   });
 
   it('treats a zero or rounding-residual balance as settled', () => {
     expect(isDebtSettled(0)).toBe(true);
-    expect(isDebtSettled(-0.01)).toBe(true);
+    expect(isDebtSettled(-0.0099)).toBe(true);
     expect(isDebtSettled(-0.004)).toBe(true);
   });
 

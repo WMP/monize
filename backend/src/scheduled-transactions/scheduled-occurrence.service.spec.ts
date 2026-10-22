@@ -714,6 +714,7 @@ describe("ScheduledOccurrenceService", () => {
       principal: null,
       interest: null,
       extraPrincipal: null,
+      unpaidInterest: null,
       annualRate: null,
       debtBefore: null,
       complete: amount !== null,
