@@ -486,6 +486,7 @@ export function SecurityTypeAllocationReport() {
           <ReportToolbarActions
             onRefreshComplete={loadData}
             onExportPdf={handleExportPdf}
+            disabled={isLoading || !!error}
           />
         </div>
       </div>

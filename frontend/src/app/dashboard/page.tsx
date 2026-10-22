@@ -63,6 +63,9 @@ function DashboardContent() {
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
   const [hasInvestments, setHasInvestments] = useState(false);
   const [netWorthData, setNetWorthData] = useState<MonthlyNetWorth[]>([]);
+  // The net worth request failed: `netWorthData` is then empty, which is not
+  // the answer "no history yet" and must not be shown as one.
+  const [netWorthFailed, setNetWorthFailed] = useState(false);
   const [favouriteSecurities, setFavouriteSecurities] = useState<FavouriteSecurityQuote[]>([]);
   const [hasSecurities, setHasSecurities] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -162,14 +165,18 @@ function DashboardContent() {
         const [accountsData, scheduledData, netWorth, favouriteSecs, securitiesList] = await Promise.all([
           accountsApi.getAll(),
           scheduledTransactionsApi.getAll(),
-          netWorthApi.getMonthly({ startDate: twelveMonthsAgo, endDate: today }).catch(() => [] as MonthlyNetWorth[]),
+          netWorthApi.getMonthly({ startDate: twelveMonthsAgo, endDate: today }).catch((error) => {
+            logger.error('Failed to load net worth history:', error);
+            return null;
+          }),
           investmentsApi.getFavouriteSecurities().catch(() => [] as FavouriteSecurityQuote[]),
           investmentsApi.getSecurities().catch(() => []),
         ]);
 
         setAccounts(accountsData);
         setScheduledTransactions(scheduledData);
-        setNetWorthData(netWorth);
+        setNetWorthData(netWorth ?? []);
+        setNetWorthFailed(netWorth === null);
         setFavouriteSecurities(favouriteSecs);
         setHasSecurities(securitiesList.length > 0);
 
@@ -227,6 +234,7 @@ function DashboardContent() {
     topMovers,
     favouriteSecurities,
     netWorthData,
+    netWorthFailed,
     brokerageMarketValues,
     unpricedHoldingCounts,
     incompleteHoldingAccountIds,

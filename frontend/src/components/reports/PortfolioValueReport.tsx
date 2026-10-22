@@ -266,6 +266,10 @@ export function PortfolioValueReport() {
   );
   const [reloadKey, setReloadKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  // The last load failed (the chart request, or the summary and accounts that
+  // sit beside it). The loader keeps the previous window's points through a
+  // failure, so an export must not read them as this selection's answer.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [chartViewType, setChartViewType] = useState<'area' | 'table'>('area');
   // Whether the chart stacks per-security contribution bands instead of a
   // single portfolio-total area. Persisted so the choice survives navigation.
@@ -582,6 +586,7 @@ export function PortfolioValueReport() {
 
     const loadData = async () => {
       setIsLoading(true);
+      setLoadFailed(false);
       setIntradayUnavailable(null);
       setIntradayFallbackNotice(null);
       // The previous window's causes describe the previous window. Each loader
@@ -697,9 +702,12 @@ export function PortfolioValueReport() {
           const [portfolioResult, accountsResult] = summaryAndAccountsResult;
           setPortfolio(portfolioResult);
           setAccounts(accountsResult);
+        } else {
+          setLoadFailed(true);
         }
       } catch (error) {
         logger.error('Failed to load portfolio data:', error);
+        if (loadSeqRef.current === seq) setLoadFailed(true);
       } finally {
         if (loadSeqRef.current === seq) {
           setIsLoading(false);
@@ -1414,7 +1422,7 @@ export function PortfolioValueReport() {
               onRefreshComplete={() => setReloadKey((k) => k + 1)}
               onExportPdf={handleExportPdf}
               onExportCsv={handleExportCsv}
-              disabled={chartPoints.length === 0}
+              disabled={isLoading || loadFailed || chartPoints.length === 0}
             />
           </div>
         </div>

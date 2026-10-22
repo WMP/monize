@@ -264,7 +264,12 @@ export function GeographicAllocationReport() {
   // Country look-through breakdown (server-side: splits ETFs/funds across their
   // manual country allocation, places stocks by listing exchange, "Other" =
   // unclassified remainder). Cheap + cached, so fetched alongside the summary.
-  const { data: countryResp, reload: reloadCountry } = useReportData(
+  const {
+    data: countryResp,
+    isLoading: countryLoading,
+    error: countryError,
+    reload: reloadCountry,
+  } = useReportData(
     () =>
       investmentsApi.getCountryWeightings(
         selectedAccountIds.length > 0 ? selectedAccountIds : undefined,
@@ -344,7 +349,7 @@ export function GeographicAllocationReport() {
 
   const countryData = useMemo<CountryRow[]>(() => {
     if (!countryResp) return [];
-    const total = countryResp.totalPortfolioValue || 0;
+    const total = countryResp.totalPortfolioValue;
     const rows: CountryRow[] = countryResp.items.map((item, idx) => ({
       country: item.country,
       marketValue: item.totalValue,
@@ -362,7 +367,19 @@ export function GeographicAllocationReport() {
     return rows;
   }, [countryResp, t]);
 
-  const countryTotalValue = countryResp?.totalPortfolioValue ?? 0;
+  // `null` until the country request has answered: not a portfolio of zero.
+  const countryTotalValue = countryResp ? countryResp.totalPortfolioValue : null;
+  // The country view draws from its own request, which the hook keeps the last
+  // answer of through a pending or failed reload (another account filter's).
+  // While it is either, the view shows that state and the export is off.
+  const countryUnavailable = viewType === 'country' && (countryLoading || !!countryError);
+
+  // What the "Total Portfolio" card on screen reads, which is what a PDF under
+  // the same caption carries in every view: the holdings total, marked partial
+  // when a holding was left out of it.
+  const totalPortfolioCardValue = `${formatCurrency(totalValue, defaultCurrency)}${
+    excludedCount > 0 ? ` ${tCommon('partialTotal.srSuffix')}` : ''
+  }`;
 
   const sortedCountryData = useMemo(() => {
     const sorted = [...countryData];
@@ -420,7 +437,7 @@ export function GeographicAllocationReport() {
         title: t('page.names.geographic-allocation' as Parameters<typeof t>[0]),
         subtitle: t('geographicAllocation.viewByCountry'),
         summaryCards: [
-          { label: t('geographicAllocation.totalPortfolio'), value: formatCurrency(countryTotalValue, defaultCurrency), color: '#111827' },
+          { label: t('geographicAllocation.totalPortfolio'), value: totalPortfolioCardValue, color: '#111827' },
         ],
         chartContainer: chartRef.current,
         chartLegend: countryData.map((item) => ({
@@ -478,9 +495,7 @@ export function GeographicAllocationReport() {
       summaryCards: [
         {
           label: t('geographicAllocation.totalPortfolio'),
-          value: `${formatCurrency(totalValue, defaultCurrency)}${
-            excludedCount > 0 ? ` ${tCommon('partialTotal.srSuffix')}` : ''
-          }`,
+          value: totalPortfolioCardValue,
           color: '#111827',
         },
         { label: t('geographicAllocation.regions'), value: String(regionData.length), color: '#111827' },
@@ -576,6 +591,7 @@ export function GeographicAllocationReport() {
               reloadCountry();
             }}
             onExportPdf={handleExportPdf}
+            disabled={isLoading || countryUnavailable}
           />
         </div>
       </div>
@@ -617,7 +633,18 @@ export function GeographicAllocationReport() {
       </div>
 
       {/* Chart */}
-      {viewType === 'region' ? (
+      {countryUnavailable ? (
+        countryError ? (
+          <ReportError onRetry={reloadCountry} />
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-1/3" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          </div>
+        )
+      ) : viewType === 'region' ? (
         <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             {t('geographicAllocation.regionalAllocation')}
@@ -728,7 +755,7 @@ export function GeographicAllocationReport() {
           screen-reader user hears the column order rather than the painted one
           (the WCAG 1.3.2 tension mechanism A carries); the `CellLabel` captions
           limit the cost, since every value names its own column. */}
-      {viewType === 'country' ? (
+      {countryUnavailable ? null : viewType === 'country' ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
           <div className="overflow-x-auto">
             <table role="table" className="block min-w-full divide-y divide-gray-200 dark:divide-gray-700 sm:table">
@@ -805,7 +832,7 @@ export function GeographicAllocationReport() {
                         its frontend type, which is a change to files this
                         report does not own. Do not "finish" this by reaching
                         for the client-side marker. */}
-                    {formatCurrencyFull(countryTotalValue, defaultCurrency)}
+                    {countryTotalValue === null ? '-' : formatCurrencyFull(countryTotalValue, defaultCurrency)}
                   </td>
                   <td role="cell" className={`${COUNTRY_PLACEMENT.percentage} font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                     <CellLabel className={CAPTION_CLASS}>{countryColumns.percentage.label}</CellLabel>

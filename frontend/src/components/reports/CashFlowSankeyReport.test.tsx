@@ -864,3 +864,46 @@ describe('SankeyNodeShape', () => {
   });
 });
 
+
+describe('CashFlowSankeyReport: a reload is not the previous answer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsMobile = false;
+    window.localStorage.clear();
+  });
+
+  const CARDS = ['income', 'inflows', 'expenses', 'outflows', 'residual'];
+
+  async function changeDepth() {
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Subcategories' }));
+    });
+  }
+
+  it('shows no card and offers no export while the next request has failed', async () => {
+    await renderReport();
+    expect(screen.getByTestId('export-pdf')).toBeEnabled();
+
+    mockGetSankey.mockRejectedValue(new Error('500'));
+    await changeDepth();
+    await waitFor(() => expect(mockGetSankey).toHaveBeenLastCalledWith(expect.objectContaining({ depth: 2 })));
+
+    for (const key of CARDS) expect(screen.queryByTestId(`sankey-card-${key}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sankey')).not.toBeInTheDocument();
+    expect(screen.getByTestId('export-pdf')).toBeDisabled();
+    expect(screen.getByTestId('export-csv')).toBeDisabled();
+  });
+
+  it('shows no card and offers no export while the next request is pending', async () => {
+    await renderReport();
+
+    mockGetSankey.mockReturnValue(new Promise(() => {}));
+    await changeDepth();
+    await waitFor(() => expect(mockGetSankey).toHaveBeenLastCalledWith(expect.objectContaining({ depth: 2 })));
+
+    for (const key of CARDS) expect(screen.queryByTestId(`sankey-card-${key}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sankey')).not.toBeInTheDocument();
+    expect(screen.getByTestId('export-pdf')).toBeDisabled();
+    expect(screen.getByTestId('export-csv')).toBeDisabled();
+  });
+});

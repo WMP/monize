@@ -497,6 +497,9 @@ export function LoanAmortizationReport() {
             <ReportToolbarActions
               onExportCsv={handleExportCsv}
               onExportPdf={handleExportPdf}
+              // A failed history load keeps the previous loan's rows in the
+              // hook; the figures the export would carry are not this loan's.
+              disabled={!!historyError}
               className="sm:flex-1"
             />
           </div>

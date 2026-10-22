@@ -24,6 +24,8 @@ const WIDGET_ID = 'assets-liabilities';
 interface AssetsVsLiabilitiesProps {
   data: MonthlyNetWorth[];
   isLoading: boolean;
+  /** The request failed: `data` is empty because nothing came back, not because there is no history. */
+  error?: boolean;
 }
 
 const ASSET_COLOUR = chartColors.income;
@@ -48,7 +50,7 @@ function AssetsTooltip({ slice, total, formatCurrency, formatPercent }: AssetsTo
   );
 }
 
-export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProps) {
+export function AssetsVsLiabilities({ data, isLoading, error = false }: AssetsVsLiabilitiesProps) {
   const t = useTranslations('dashboard');
   const { formatCurrencyCompact: formatCurrency, formatCurrencyTight, formatPercent, defaultCurrency } = useNumberFormat();
   const { config, updateConfig } = useWidgetConfig<AssetsLiabilitiesConfig>(
@@ -122,6 +124,8 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
         <div className="h-64 flex items-center justify-center">
           <div className="animate-pulse w-48 h-48 rounded-full bg-gray-200 dark:bg-gray-700" />
         </div>
+      ) : error ? (
+        <WidgetMessage>{t('netWorth.loadFailed')}</WidgetMessage>
       ) : chartData.length === 0 ? (
         <WidgetMessage>{t('assetsVsLiabilities.empty')}</WidgetMessage>
       ) : (

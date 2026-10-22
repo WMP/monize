@@ -57,6 +57,9 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
+  // The last run failed. `result` keeps the run before it, which is not this
+  // selection's answer, so it is not exportable.
+  const [runFailed, setRunFailed] = useState(false);
   const [asOfOverride, setAsOfOverride] = useState('');
   // View-time account override. Seeded from the report's saved config (below,
   // once the report loads) but freely changeable without persisting.
@@ -125,7 +128,9 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
           accountIds: selectedAccountIds,
         });
         setResult(data);
+        setRunFailed(false);
       } catch (error) {
+        setRunFailed(true);
         toast.error(getErrorMessage(error, t('investmentReportViewer.toasts.runFailed')));
         logger.error(error);
       } finally {
@@ -368,7 +373,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
           <ReportToolbarActions
             onRefreshComplete={executeReport}
             onExportCsv={handleExportCsv}
-            disabled={!result || result.rowCount === 0}
+            disabled={isExecuting || runFailed || !result || result.rowCount === 0}
             className="sm:self-auto"
           />
         </div>

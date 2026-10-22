@@ -109,6 +109,8 @@ export function InvestmentPerformanceReport() {
   // The comparison chart owns its own fetched series, colours and chart DOM, so
   // its PDF export is delegated to this handle (matching SecurityPerformanceReport).
   const comparisonExportRef = useRef<SecurityComparisonChartHandle>(null);
+  // Whether that chart (its own request) holds the current selection's answer.
+  const [comparisonExportable, setComparisonExportable] = useState(false);
   // Persisted so the report opens on the accounts the user last chose.
   // Accounts arrive with the data below, so stale IDs are pruned there.
   const [selectedAccountIds, setSelectedAccountIds, pruneAccountFilter] =
@@ -513,6 +515,8 @@ export function InvestmentPerformanceReport() {
           <ReportToolbarActions
             onRefreshComplete={() => setReloadKey((k) => k + 1)}
             onExportPdf={handleExportPdf}
+            // Both requests feed the export; the chart's only its own view.
+            disabled={isLoading || !!error || (viewType === 'performance' && !comparisonExportable)}
           />
         </div>
       </div>
@@ -535,6 +539,7 @@ export function InvestmentPerformanceReport() {
             subtitle={t('investmentPerformance.chartSubtitle')}
             reloadKey={reloadKey}
             exportRef={comparisonExportRef}
+            onExportableChange={setComparisonExportable}
           />
           {isPerformanceChartCapped && (
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">

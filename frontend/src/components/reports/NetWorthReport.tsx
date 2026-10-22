@@ -502,7 +502,7 @@ export function NetWorthReport() {
           <ReportToolbarActions
             onExportPdf={handleExportPdf}
             onExportCsv={handleExportCsv}
-            disabled={chartData.length === 0}
+            disabled={dataUnavailable || chartData.length === 0}
           />
         </div>
       </div>

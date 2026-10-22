@@ -54,10 +54,7 @@ const COALESCED_TOTAL =
  * Shrink-only: each entry is a known offender owned by a later task. Remove an
  * entry when its site is fixed; never add one.
  */
-const BASELINE: ReadonlyArray<string> = [
-  '/src/components/reports/GeographicAllocationReport.tsx: totalPortfolioValue',
-  '/src/components/reports/GeographicAllocationReport.tsx: totalPortfolioValue',
-];
+const BASELINE: ReadonlyArray<string> = [];
 
 function offenders(): string[] {
   const found: string[] = [];

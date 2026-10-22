@@ -37,7 +37,12 @@ vi.mock('@/hooks/useNumberFormat', async () => {
   };
 });
 const dateRangeMock = vi.hoisted(() => ({ value: '1y' }));
-const STABLE_RANGE = { start: '2024-01-01', end: '2025-01-01' };
+// The selection the mocked range hook reports; a test moves it and re-renders.
+const rangeMock = { end: '2025-01-01' };
+const STABLE_RANGE = {
+  start: '2024-01-01',
+  get end() { return rangeMock.end; },
+};
 vi.mock('@/hooks/useDateRange', () => ({
   useDateRange: () => ({
     dateRange: dateRangeMock.value,
@@ -140,6 +145,7 @@ describe('NetWorthReport', () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     dateRangeMock.value = '1y';
+    rangeMock.end = '2025-01-01';
     setMobile(false);
   });
 
@@ -707,3 +713,47 @@ describe('NetWorthReport completeness', () => {
   });
 });
 
+
+describe('NetWorthReport: a reload is not the previous answer', () => {
+  const answer = [
+    { month: '2024-01-01', assets: 50000, liabilities: 10000, netWorth: 40000 },
+    { month: '2024-06-01', assets: 55000, liabilities: 9000, netWorth: 46000 },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    dateRangeMock.value = '1y';
+    rangeMock.end = '2025-01-01';
+    setMobile(false);
+  });
+
+  async function loadThenChangeRange(next: () => unknown) {
+    mockGetMonthly.mockResolvedValue(answer);
+    let view!: ReturnType<typeof render>;
+    await act(async () => {
+      view = render(<NetWorthReport />);
+    });
+    await screen.findByText('Current Net Worth');
+    expect(screen.getByTitle('Export report')).toBeEnabled();
+
+    mockGetMonthly.mockImplementation(next);
+    rangeMock.end = '2025-02-01';
+    await act(async () => {
+      view.rerender(<NetWorthReport />);
+    });
+    await waitFor(() =>
+      expect(mockGetMonthly).toHaveBeenLastCalledWith({ startDate: '2024-01-01', endDate: '2025-02-01' }),
+    );
+  }
+
+  it('disables the export while the next request has failed', async () => {
+    await loadThenChangeRange(() => Promise.reject(new Error('500')));
+    expect(screen.getByTitle('Export report')).toBeDisabled();
+  });
+
+  it('disables the export while the next request is pending', async () => {
+    await loadThenChangeRange(() => new Promise(() => {}));
+    expect(screen.getByTitle('Export report')).toBeDisabled();
+  });
+});

@@ -64,6 +64,19 @@ describe('AssetsVsLiabilities', () => {
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
+  it('says the load failed, not that there is no data, when the net worth request failed', () => {
+    render(<AssetsVsLiabilities data={[]} isLoading={false} error />);
+    expect(
+      screen.getByText("Couldn't load your net worth history. Reload the dashboard to try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('No net worth data available yet.')).not.toBeInTheDocument();
+  });
+
+  it('keeps the empty-state copy for a successful empty answer', () => {
+    render(<AssetsVsLiabilities data={[]} isLoading={false} error={false} />);
+    expect(screen.getByText('No net worth data available yet.')).toBeInTheDocument();
+  });
+
   it('renders empty state when there is no data', () => {
     render(<AssetsVsLiabilities data={[]} isLoading={false} />);
     expect(screen.getByText('No net worth data available yet.')).toBeInTheDocument();
