@@ -45,7 +45,7 @@ before auditing.
 | S20 | done | 2026-10-21 | 2026-10-22 | c7a3707 | 0/1/3/4 | `20-frontend-figures.md` (child session_01VSrfzDF4F63zWMJY2giCfB); verdict REQUEST CHANGES; budgets, strategies, bonds, receipts, tours UI sampled by grep only |
 | S21 | done | 2026-10-21 | 2026-10-22 | 8ea9316 | 0/0/4/3 | `21-tests-ci-release.md` (child session_01Xmf7H997Adk6ipvAx74awQ); verdict APPROVE; program-wide mutation table in its section 6.2, known-wrong tests in 10.1 |
 | S22 | done | 2026-10-22 | 2026-10-22 | 59a1440 | 0/0/0/0 | `22-delta-review.md` (child session_014uWBGZjh8U2E8eYrTBBQUi); `MAIN_SHA` = `AUDIT_BASELINE_SHA`, empty delta; 8 re-check runs green |
-| S23 | in-progress | 2026-10-22 | | | | `23-final-report.md`, `remediation-tasks.md` (child: see next ledger update) |
+| S23 | in-progress | 2026-10-22 | | | | `23-final-report.md`, `remediation-tasks.md` (child session_011YqjmH3T7NPt3FPS97otNP, claude-opus-5-5) |
 
 Status values: `open`, `in-progress` (resume it first), `done`, `split` (see `sessions.md` for
 the two halves).
