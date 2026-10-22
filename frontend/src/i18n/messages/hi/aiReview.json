@@ -48,6 +48,7 @@
       "tradeChat": "आपने संलग्न ट्रेड पुष्टि को पहचानने को कहा: उसमें बताया गया निवेश लेनदेन प्रस्तावित करें, यानी खरीद, बिक्री, नकद लाभांश या पुनर्निवेशित लाभांश।"
     },
     "emailReceipt": "ईमेल रसीद: {subject}, प्रेषक {sender}",
+    "emailReceiptForwarded": "ईमेल रसीद: {subject}, प्रेषक {sender}, आगे भेजने वाला {forwarder}",
     "emailReceiptMissing": "ईमेल रसीद (ईमेल हटा दिया गया)",
     "parserDraft": "{count, plural, one {# ईमेल} other {# ईमेल}} से पार्सर का ड्राफ़्ट ({domain})",
     "viewEmailReceipts": "ईमेल रसीदें देखें",

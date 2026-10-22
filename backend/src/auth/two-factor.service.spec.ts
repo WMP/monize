@@ -278,6 +278,27 @@ describe("TwoFactorService", () => {
       (otplib.verifySync as jest.Mock).mockReturnValue({ valid: true });
     });
 
+    it("refuses over the per-user cap without checking the code, even when the peek saw room", async () => {
+      // A concurrent burst across many temp tokens: each peek read the same
+      // low count, so the bound is the count the reservation committed
+      // (A26-L08). The code here is valid; a check would have signed in.
+      attemptCounters.peek.mockResolvedValue(0);
+      attemptCounters.increment
+        .mockResolvedValueOnce({
+          count: 1,
+          windowExpiresAt: new Date(Date.now() + 60_000),
+        })
+        .mockResolvedValueOnce({
+          count: 11,
+          windowExpiresAt: new Date(Date.now() + 60_000),
+        });
+
+      await expect(service.verify2FA(tempToken, code)).rejects.toThrow(
+        "Too many verification attempts. Your account has been temporarily locked.",
+      );
+      expect(otplib.verifySync).not.toHaveBeenCalled();
+    });
+
     it("should verify a valid TOTP code and return tokens", async () => {
       const result = await service.verify2FA(tempToken, code);
 
@@ -684,7 +705,10 @@ describe("TwoFactorService", () => {
 
       expect(result.message).toContain("disabled successfully");
       expect(otplib.verifySync).not.toHaveBeenCalled();
-      expect(attemptCounters.increment).not.toHaveBeenCalled();
+      // The attempt is reserved before the transaction decides (A26-L08) and
+      // handed back by the reset once the repair succeeded: nothing is left
+      // counted against the user.
+      expect(attemptCounters.reset).toHaveBeenCalledWith("2fa-user", "user-1");
       expect(usersRepository.update).toHaveBeenCalledWith(
         { id: "user-1" },
         { twoFactorSecret: null, backupCodes: null },

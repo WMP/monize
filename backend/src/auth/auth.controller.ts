@@ -215,16 +215,20 @@ export class AuthController {
   private setAuthCookies(
     res: Response,
     accessToken: string,
-    refreshToken: string,
+    refreshToken: string | null,
     userId: string,
     rememberMe?: boolean,
   ) {
     res.cookie("auth_token", accessToken, this.getAccessCookieOptions());
-    res.cookie(
-      "refresh_token",
-      refreshToken,
-      this.getRefreshCookieOptions(rememberMe),
-    );
+    // `null` is a refresh answered inside the rotation grace (a second tab):
+    // the refresh cookie the first response set is the live one, keep it.
+    if (refreshToken !== null) {
+      res.cookie(
+        "refresh_token",
+        refreshToken,
+        this.getRefreshCookieOptions(rememberMe),
+      );
+    }
     res.cookie(
       "csrf_token",
       generateCsrfToken(userId, this.authService.getCsrfKey()),
