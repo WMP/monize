@@ -71,6 +71,7 @@ implied.
 | INV-REGISTER-001 | A row's running balance is the same figure whichever way the date register runs, and no balance is shown under any other order | enforced |
 | INV-REDEEM-001 | A redemption's accrued interest moves cash once and is income once | enforced |
 | INV-RECONCILE-001 | While the strict lock is on, a reconciled transaction is not altered | enforced |
+| INV-DELEGATION-001 | A grantee's write is authorized in the transaction that writes it, and a revoke is final | partial |
 | INV-FX-001 | An unavailable rate never becomes 1:1, a rate from after the date, or an unboundedly old one | partial |
 | INV-FX-002 | A row that carries its own exchange rate is converted at that rate on every surface | enforced |
 | INV-FX-003 | A currency pair is stored in one orientation | partial |
@@ -837,6 +838,45 @@ Failure response    400 before any write for a non-REDEEM action, a negative
 Required tests      docs/specs/redemption-accrued-interest.md section 6.
 Status              enforced
 ```
+
+### INV-DELEGATION-001 -- a grantee's write is authorized where it is written
+
+```text
+Statement           A write made on another owner's ledger by a grantee (a
+                    cross-owner transfer, a joint-register row) commits only if
+                    the grant that authorizes it is still held when it commits;
+                    once a revoke has committed, nothing the grantee started
+                    lands, and a revoked delegation is never re-instated by a
+                    settings save.
+Source of truth     account_delegates and account_delegate_grants.
+Enforcement         CrossOwnerAccessService.assertAccessStillHeld, on the
+                    write's own manager under the system bypass, after its row
+                    locks and before its first write: FOR SHARE on the
+                    delegation and grant rows, so a revoke (a DELETE of the
+                    delegation) waits for the write or the write sees the grant
+                    gone and refuses with the first check's 404 / 403. Called
+                    from writeTransferLegs, the connected cross-owner edit and
+                    delete, and the joint register's create, update, remove and
+                    cleared toggle (through the beforeWrite hook of the
+                    TransactionsService operation it reuses; update, remove and
+                    the toggle also refuse a row the owner moved out of the
+                    joint account). Delegation section and capability flags are
+                    one conditional UPDATE keyed on the owner (A26-M05);
+                    createDelegate's link reads the login FOR UPDATE.
+Concurrency scope   per delegation
+Failure response    404 / 403, nothing written.
+Required tests      Under the unprivileged role with RLS enforced, the owner's
+                    change committed between the grantee's authorization and the
+                    write: backend/test/integration/delegated-write-recheck.integration.spec.ts.
+Status              partial
+```
+
+Open, by design of the 2026-10 remediation split: the joint category create
+(`JointCategoriesService.create`) still writes under the bypass with no
+in-transaction re-check, since `CategoriesService.create` has no hook yet; and
+`resetDelegatePassword` still checks "no other owner" in one transaction and writes
+the credential in another (its write half is changed by the auth stream; the link
+side of the serialization, `createDelegate` locking the login, is in place).
 
 ### INV-RECONCILE-001 -- while the strict lock is on, a reconciled transaction is not altered
 

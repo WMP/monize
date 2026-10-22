@@ -643,8 +643,9 @@ export class TransactionTransferService {
    * authorization first, under scoped(), and let only the minimum out").
    *
    * Everything here is a read or a pure computation, so it is safe to run
-   * outside the caller's transaction: account ownership and delegation grants
-   * are not written by the posting that follows.
+   * outside the caller's transaction -- but a delegation grant read here can
+   * be revoked before the legs are written, so `writeTransferLegs` asserts it
+   * again inside the write's own transaction (A26-M04).
    */
   async prepareTransfer(
     userId: string,
@@ -798,6 +799,25 @@ export class TransactionTransferService {
     const writeLegsAtomically = async (
       m: EntityManager,
     ): Promise<WrittenTransfer> => {
+      // The grant prepareTransfer found was read in the grantee's identity, in
+      // an earlier transaction; re-assert it here, under the bypass, before
+      // the first write, so a revoke that committed in between refuses this
+      // write instead of watching it land (A26-M04).
+      if (hasForeignLeg) {
+        for (const [accountId, ownerId] of [
+          [fromAccountId, fromOwnerId],
+          [toAccountId, toOwnerId],
+        ] as const) {
+          if (ownerId !== prepared.realUserId) {
+            await this.crossOwnerAccess.assertAccessStillHeld(
+              m,
+              prepared.realUserId,
+              accountId,
+              "create",
+            );
+          }
+        }
+      }
       // Advisory, in the write's own transaction and identity: the unique
       // index refuses a second leg holding the key (caught below).
       if (externalId) {
@@ -1633,6 +1653,17 @@ export class TransactionTransferService {
       );
       await withSystemContext(() =>
         withScopedDb(this.dataSource, async (m) => {
+          // The delete grant was decided before this system transaction; a
+          // revoke that committed since refuses here, before either leg goes
+          // (A26-M04).
+          for (const leg of ordered) {
+            await this.crossOwnerAccess.assertAccessStillHeld(
+              m,
+              realUserId,
+              leg.accountId,
+              "delete",
+            );
+          }
           for (const leg of ordered) {
             await removeLeg(m, leg);
           }
@@ -2093,6 +2124,7 @@ export class TransactionTransferService {
     }
     return this.updateConnectedCrossOwnerTransfer(
       effectiveUserId,
+      realUserId,
       ownLeg,
       counterpart,
       updateDto,
@@ -2240,6 +2272,7 @@ export class TransactionTransferService {
    */
   private async updateConnectedCrossOwnerTransfer(
     effectiveUserId: string,
+    realUserId: string,
     ownLeg: Transaction,
     counterpart: Transaction,
     updateDto: Partial<UpdateTransferDto>,
@@ -2403,6 +2436,18 @@ export class TransactionTransferService {
           await assertReconciledRowsMutable(m, leg.userId, [
             lockedById.get(leg.id)!,
           ]);
+        }
+        // The edit grant resolveCounterpartAccess found was read before this
+        // system transaction opened; re-assert it on every leg the real user
+        // does not own, so a revoke that committed in between refuses the
+        // write (A26-M04).
+        for (const leg of ordered) {
+          await this.crossOwnerAccess.assertAccessStillHeld(
+            m,
+            realUserId,
+            leg.accountId,
+            "edit",
+          );
         }
         const lockedFrom = lockedById.get(fromTransaction.id)!;
         const lockedTo = lockedById.get(toTransaction.id)!;

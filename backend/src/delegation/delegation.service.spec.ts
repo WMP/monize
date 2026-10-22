@@ -59,6 +59,8 @@ describe("DelegationService", () => {
       find: jest.fn(),
       save: jest.fn(),
       count: jest.fn().mockResolvedValue(0),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      exists: jest.fn().mockResolvedValue(true),
     };
     grantsRepo = { findOne: jest.fn(), find: jest.fn(), count: jest.fn() };
     usersRepo = { findOne: jest.fn(), find: jest.fn(), save: jest.fn() };
@@ -1045,35 +1047,34 @@ describe("DelegationService", () => {
   });
 
   describe("setCapabilities", () => {
-    it("throws when the delegation is not owned by the caller", async () => {
-      delegatesRepo.findOne.mockResolvedValue(null);
+    it("throws when the delegation is not owned by the caller (or was revoked)", async () => {
+      delegatesRepo.update.mockResolvedValue({ affected: 0 });
       await expect(
         service.setCapabilities(OWNER_ID, "g1", { payeesCanCreate: true }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it("updates only the provided flags", async () => {
-      const delegation = {
-        id: "g1",
-        ownerUserId: OWNER_ID,
-        payeesCanCreate: false,
-        payeesCanEdit: false,
-        categoriesCanEdit: true,
-        tagsCanDelete: false,
-      };
-      delegatesRepo.findOne.mockResolvedValue(delegation);
-      delegatesRepo.save.mockResolvedValue(delegation);
-
+    it("updates only the provided flags, conditionally on the owner, never by save (A26-M05)", async () => {
       await service.setCapabilities(OWNER_ID, "g1", {
         payeesCanCreate: true,
         tagsCanDelete: true,
+        payeesCanEdit: undefined,
       });
 
-      expect(delegation.payeesCanCreate).toBe(true);
-      expect(delegation.tagsCanDelete).toBe(true);
-      expect(delegation.payeesCanEdit).toBe(false); // unchanged
-      expect(delegation.categoriesCanEdit).toBe(true); // unchanged
-      expect(delegatesRepo.save).toHaveBeenCalledWith(delegation);
+      expect(delegatesRepo.update).toHaveBeenCalledWith(
+        { id: "g1", ownerUserId: OWNER_ID },
+        { payeesCanCreate: true, tagsCanDelete: true },
+      );
+      // A save of a stale entity re-INSERTs a delegation a revoke deleted.
+      expect(delegatesRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("404s an empty patch on a delegation that does not exist", async () => {
+      delegatesRepo.exists.mockResolvedValue(false);
+      await expect(
+        service.setCapabilities(OWNER_ID, "g1", {}),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(delegatesRepo.update).not.toHaveBeenCalled();
     });
   });
 
@@ -1184,33 +1185,24 @@ describe("DelegationService", () => {
   });
 
   describe("setSectionGrants", () => {
-    it("throws when the delegation is not owned by the caller", async () => {
-      delegatesRepo.findOne.mockResolvedValue(null);
+    it("throws when the delegation is not owned by the caller (or was revoked)", async () => {
+      delegatesRepo.update.mockResolvedValue({ affected: 0 });
       await expect(
         service.setSectionGrants(OWNER_ID, "g1", { billsCanRead: true }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it("updates only the provided sections", async () => {
-      const delegation = {
-        id: "g1",
-        ownerUserId: OWNER_ID,
-        billsCanRead: false,
-        investmentsCanRead: true,
-        reportsCanRead: false,
-      };
-      delegatesRepo.findOne.mockResolvedValue(delegation);
-      delegatesRepo.save.mockResolvedValue(delegation);
-
+    it("updates only the provided sections, conditionally on the owner (A26-M05)", async () => {
       await service.setSectionGrants(OWNER_ID, "g1", {
         billsCanRead: true,
         reportsCanRead: true,
       });
 
-      expect(delegation.billsCanRead).toBe(true);
-      expect(delegation.reportsCanRead).toBe(true);
-      expect(delegation.investmentsCanRead).toBe(true); // unchanged
-      expect(delegatesRepo.save).toHaveBeenCalledWith(delegation);
+      expect(delegatesRepo.update).toHaveBeenCalledWith(
+        { id: "g1", ownerUserId: OWNER_ID },
+        { billsCanRead: true, reportsCanRead: true },
+      );
+      expect(delegatesRepo.save).not.toHaveBeenCalled();
     });
   });
 

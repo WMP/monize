@@ -5,7 +5,7 @@ import {
   NotFoundException,
   forwardRef,
 } from "@nestjs/common";
-import { DataSource } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
 import { TransactionSplitService } from "./transaction-split.service";
 import {
@@ -72,6 +72,8 @@ export class TransactionReconciliationService {
     userId: string,
     transactionId: string,
     resolve: (current: TransactionStatus) => ResolvedTransition,
+    /** Inside the transaction, after the row lock, before any write. */
+    beforeWrite?: (m: EntityManager) => Promise<void>,
   ): Promise<{
     accountId: string;
     balanceMoved: boolean;
@@ -110,6 +112,7 @@ export class TransactionReconciliationService {
         );
       }
 
+      if (beforeWrite) await beforeWrite(m);
       const oldStatus = locked.status as TransactionStatus;
 
       // Strict reconciled lock. A status change away from RECONCILED is an
@@ -253,6 +256,7 @@ export class TransactionReconciliationService {
     isCleared: boolean,
     triggerNetWorthRecalc: (accountId: string, userId: string) => void,
     findOne: (userId: string, id: string) => Promise<Transaction>,
+    beforeWrite?: (m: EntityManager) => Promise<void>,
   ): Promise<Transaction> {
     const { accountId, balanceMoved } = await this.applyStatusTransition(
       userId,
@@ -275,6 +279,7 @@ export class TransactionReconciliationService {
             : TransactionStatus.UNRECONCILED,
         };
       },
+      beforeWrite,
     );
 
     if (balanceMoved) {
