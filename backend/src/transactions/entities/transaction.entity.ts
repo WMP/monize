@@ -45,7 +45,11 @@ export class Transaction {
   @Column({ type: "uuid", name: "account_id" })
   accountId: string;
 
-  @ManyToOne(() => Account, (account) => account.transactions)
+  // `database/schema.sql` declares ON DELETE CASCADE; stated here so the
+  // entity-built integration schema deletes an account the way production does.
+  @ManyToOne(() => Account, (account) => account.transactions, {
+    onDelete: "CASCADE",
+  })
   @JoinColumn({ name: "account_id" })
   account: Account;
 

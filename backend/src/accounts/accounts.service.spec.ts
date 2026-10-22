@@ -1766,6 +1766,32 @@ describe("AccountsService", () => {
       expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
     });
 
+    it("re-counts under the account lock inside the deleting transaction (A26-M19)", async () => {
+      accountsRepository.findOne.mockResolvedValue({ ...mockAccount });
+      // Empty when first asked; a sync committed a row before the lock.
+      transactionRepository.count
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(1);
+      investmentTxRepository.count.mockResolvedValue(0);
+
+      await expect(service.delete("user-1", "account-1")).rejects.toThrow(
+        "Close the account instead",
+      );
+
+      const lockCall = mockQueryRunner.manager.query.mock.calls.findIndex(
+        ([sql]: [string]) =>
+          typeof sql === "string" &&
+          sql.includes("FROM accounts") &&
+          sql.includes("FOR UPDATE"),
+      );
+      expect(lockCall).toBeGreaterThanOrEqual(0);
+      expect(transactionRepository.count).toHaveBeenCalledTimes(2);
+      expect(
+        mockQueryRunner.manager.query.mock.invocationCallOrder[lockCall],
+      ).toBeLessThan(transactionRepository.count.mock.invocationCallOrder[1]);
+      expect(mockQueryRunner.manager.remove).not.toHaveBeenCalled();
+    });
+
     it("records action history on delete", async () => {
       accountsRepository.findOne.mockResolvedValue({ ...mockAccount });
       transactionRepository.count.mockResolvedValue(0);

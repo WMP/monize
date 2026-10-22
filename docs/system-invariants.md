@@ -816,6 +816,13 @@ Enforcement         The balance decision is made once per pair, keyed on VOID.
                     expansion names outside that set is refused with 409. addSplit
                     and updateSplits write the new counterparts with the locked
                     parent's status, not the caller's copy.
+                    An account delete counts its rows again inside the deleting
+                    transaction, after lockAccountsForBalanceWrite on the account
+                    (the lock a row writer's balance update and FK check conflict
+                    with), so a sync or import that wrote a transfer leg into it
+                    is refused rather than cascaded away, leaving the other leg
+                    one-sided (A26-M19):
+                    backend/test/integration/account-delete-race.integration.spec.ts.
 Concurrency scope   per transfer pair
 Failure response    consistent balances across the pair on every VOID transition.
 Required tests      Per status-changing path, both legs' balances stay consistent

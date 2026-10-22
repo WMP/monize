@@ -1242,6 +1242,40 @@ export class AccountsService {
     return savedAccount;
   }
 
+  /** Refuses the delete of an account that holds any ledger row. */
+  private async assertAccountEmpty(
+    m: EntityManager,
+    accountId: string,
+  ): Promise<void> {
+    const transactionCount = await m.getRepository(Transaction).count({
+      where: { accountId },
+    });
+    if (transactionCount > 0) {
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.deleteWithTransactions",
+          `Cannot delete account with ${transactionCount} transaction(s). Close the account instead.`,
+          { transactionCount },
+        ),
+      );
+    }
+
+    // includes VOID rows: records read -- a VOID row is still a row the
+    // delete would destroy.
+    const investmentTransactionCount = await m
+      .getRepository(InvestmentTransaction)
+      .count({ where: { accountId } });
+    if (investmentTransactionCount > 0) {
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.deleteWithInvestmentTransactions",
+          `Cannot delete account with ${investmentTransactionCount} investment transaction(s). Close the account instead.`,
+          { investmentTransactionCount },
+        ),
+      );
+    }
+  }
+
   /**
    * The other half of a linked investment pair, locked for update.
    *
@@ -1903,43 +1937,10 @@ export class AccountsService {
   async delete(userId: string, id: string): Promise<void> {
     const account = await this.findOne(userId, id);
 
-    // Check for regular transactions
-    const transactionCount = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(Transaction).count({
-        where: { accountId: id },
-      }),
-    );
-
-    if (transactionCount > 0) {
-      throw new BadRequestException(
-        tr(
-          "errors.accounts.deleteWithTransactions",
-          `Cannot delete account with ${transactionCount} transaction(s). Close the account instead.`,
-          { transactionCount },
-        ),
-      );
-    }
-
-    // Check for investment transactions
-    const investmentTransactionCount = await withScopedDb(
-      this.dataSource,
-      (m) =>
-        // includes VOID rows: records read -- a VOID row is still a row the
-        // delete would destroy.
-        m.getRepository(InvestmentTransaction).count({
-          where: { accountId: id },
-        }),
-    );
-
-    if (investmentTransactionCount > 0) {
-      throw new BadRequestException(
-        tr(
-          "errors.accounts.deleteWithInvestmentTransactions",
-          `Cannot delete account with ${investmentTransactionCount} investment transaction(s). Close the account instead.`,
-          { investmentTransactionCount },
-        ),
-      );
-    }
+    // Answered once up front, so a refusal comes before the loan schedule
+    // below is removed; asked again, under the account lock, in the deleting
+    // transaction itself.
+    await withScopedDb(this.dataSource, (m) => this.assertAccountEmpty(m, id));
 
     // If this is a loan or mortgage account with an associated scheduled
     // transaction, delete it first. This runs in the scheduled-transactions
@@ -1968,6 +1969,16 @@ export class AccountsService {
     // Unlink the paired account and remove this account atomically, so a
     // failure cannot leave a dangling link pointing at a deleted account.
     await withScopedDb(this.dataSource, async (m) => {
+      // The check above ran in another transaction, so a bank sync or import
+      // that wrote into the account since was cascaded away with it, leaving
+      // its transfer legs in other accounts one-sided (A26-M19). The account
+      // row lock is the one every writer of its balance takes, and a row
+      // insert's foreign-key lock conflicts with it, so after it no row can
+      // land before the removal: a writer either committed (and the count
+      // sees it) or waits for this delete.
+      await lockAccountsForBalanceWrite(m, [id], userId);
+      await this.assertAccountEmpty(m, id);
+
       if (account.linkedAccountId) {
         // One column, by a targeted update: a `save` of the unlocked read
         // wrote its snapshot balance back as well (A26-M13).
