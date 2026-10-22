@@ -33,11 +33,14 @@ const WRITE_ALLOWLIST: Readonly<Record<string, string>> = {
     "the door itself -- every producer goes through it",
   "users/users.service.ts":
     "delete-my-data erases every table this account owns, notifications included",
-  "backup/backup-restore-database.service.ts":
-    "restore owns IDs, timestamps and conflict handling; its dynamic insert " +
-    "calls boundRestoredNotification, using the same bounds as the producer " +
-    "door. notification-restore-bounds.spec.ts exercises that INSERT's actual " +
-    "parameters because this source scan cannot resolve dynamic table names",
+  "backup/restore-wipe.ts":
+    "a restore's pre-clear deletes the account's notifications before the " +
+    "archive's rows go back. The restore's dynamic insert, in " +
+    "backup-restore-database.service.ts, owns IDs, timestamps and conflict " +
+    "handling and calls boundRestoredNotification with the producer door's " +
+    "bounds; notification-restore-bounds.spec.ts exercises that INSERT's " +
+    "actual parameters because this source scan cannot resolve dynamic table " +
+    "names",
 };
 
 /**

@@ -81,8 +81,6 @@ const PLAIN: Record<string, string> = {
     'onboarding copy, composed by the app',
   '/src/components/reports/InvestmentReportColumnChooser.tsx':
     'a column label, composed by the app',
-  '/src/components/settings/DelegateAccessModal.tsx':
-    'a permission-section label, composed by the app',
   '/src/components/ai/ChatMessage.tsx':
     'a data-source label on an answer, not a transaction field',
   '/src/components/dashboard/InsightsWidget.tsx':

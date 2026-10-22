@@ -47,6 +47,10 @@
     "ai_review": {
       "title": "AI 검토 제안",
       "body": "일부 AI 검토 제안이 회원님의 결정을 기다리고 있습니다. 자세한 내용은 Monize를 열어 확인하세요."
+    },
+    "warranties": {
+      "title": "보증 알림",
+      "body": "보증 중 하나가 곧 만료됩니다. 자세한 내용은 Monize를 열어 확인하세요."
     }
   },
   "actions": {

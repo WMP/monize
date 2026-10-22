@@ -383,6 +383,12 @@
       "readyMessage": "判断待ちの提案: {{ count }}件。前回の通知以降の新規: {{ added }}件。開いて確認してください。",
       "expiringTitle": "AIレビューの提案がまもなく期限切れになります",
       "expiringMessage": "3日以内に期限切れになる提案: {{ count }}件。最初の期限は{{ date }}です。開いて確認してください。"
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}：保証の期限がまもなく切れます",
+      "expiringMessage": "{{ name }} の保証は {{ date }} に期限切れになります。開いて書類を確認するか、保証請求を記録してください。",
+      "todayTitle": "{{ name }}：保証が本日期限切れになります",
+      "todayMessage": "{{ name }} の保証は本日 {{ date }} に期限切れになります。開いて書類を確認するか、保証請求を記録してください。"
     }
   },
   "backupOffsite": {

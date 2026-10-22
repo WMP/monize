@@ -383,6 +383,12 @@
       "readyMessage": "Số đề xuất đang chờ quyết định của bạn: {{ count }}. Mới kể từ thông báo trước: {{ added }}. Mở để xem xét.",
       "expiringTitle": "Đề xuất xem xét của AI sắp hết hạn",
       "expiringMessage": "Số đề xuất hết hạn trong vòng 3 ngày: {{ count }}. Đề xuất đầu tiên hết hạn vào {{ date }}. Mở để xem xét."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: bảo hành sắp hết hạn",
+      "expiringMessage": "Bảo hành của {{ name }} hết hạn vào {{ date }}. Mở để xem tài liệu hoặc ghi lại yêu cầu bảo hành.",
+      "todayTitle": "{{ name }}: bảo hành hết hạn hôm nay",
+      "todayMessage": "Bảo hành của {{ name }} hết hạn hôm nay, {{ date }}. Mở để xem tài liệu hoặc ghi lại yêu cầu bảo hành."
     }
   },
   "backupOffsite": {

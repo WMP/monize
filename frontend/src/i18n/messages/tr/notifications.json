@@ -197,5 +197,11 @@
     "readyMessage": "{count, plural, one {# yapay zeka önerisi} other {# yapay zeka önerisi}} onayınızı bekliyor, bunların {added} tanesi yeni. Onaylamak veya reddetmek için yapay zeka inceleme gelen kutusunu açın.",
     "expiringTitle": "Yapay zeka önerilerinin süresi yakında doluyor",
     "expiringMessage": "{count, plural, one {# yapay zeka önerisinin} other {# yapay zeka önerisinin}} süresi yakında doluyor. İlkinin süresi {date} tarihinde doluyor. Onaylamak veya reddetmek için yapay zeka inceleme gelen kutusunu açın."
+  },
+  "warranty": {
+    "expiringTitle": "{name}: garantinin süresi {days, plural, other {# gün}} içinde doluyor",
+    "expiringMessage": "{name} garantisinin süresi {date} tarihinde doluyor. Belgelerini incelemek veya bir talep kaydetmek için açın.",
+    "todayTitle": "{name}: garantinin süresi bugün doluyor",
+    "todayMessage": "{name} garantisinin süresi bugün, {date} tarihinde doluyor. Belgelerini incelemek veya bir talep kaydetmek için açın."
   }
 }

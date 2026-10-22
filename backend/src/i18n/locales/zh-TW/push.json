@@ -47,6 +47,10 @@
     "ai_review": {
       "title": "AI 審核提案",
       "body": "部分 AI 審核提案正在等待您的決定。開啟 Monize 查看詳細資料。"
+    },
+    "warranties": {
+      "title": "保固提醒",
+      "body": "您有一項保固即將到期。開啟 Monize 查看詳細資料。"
     }
   },
   "actions": {
