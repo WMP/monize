@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "Ergebnisse der Bank-Synchronisierung",
         "EMAIL_RECEIPTS": "E-Mail-Belege",
         "BONDS": "Anleihen",
-        "AI_REVIEW": "KI-Prüfvorschläge"
+        "AI_REVIEW": "KI-Prüfvorschläge",
+        "WARRANTIES": "Garantie-Erinnerungen"
       },
       "channelNotApplicable": "Für diese Benachrichtigungsart nicht zutreffend",
       "emailToggleLabel": "Bericht-E-Mail für {category}",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "Schreibgeschützten Zugriff auf ganze App-Bereiche gewähren. Kontobezogene Daten benötigen zusätzlich Zugriff pro Konto.",
-      "aiRequiresFullAccess": "Der KI-Assistent liest alle Konten und Bereiche und antwortet für diesen Delegierten daher erst, wenn er alle Ihre Konten und jeden anderen Bereich lesen darf."
+      "aiRequiresFullAccess": "Der KI-Assistent liest alle Konten und Bereiche und antwortet für diesen Delegierten daher erst, wenn er alle Ihre Konten und jeden anderen Bereich lesen darf.",
+      "warranties": {
+        "label": "Garantien",
+        "description": "Garantien mit ihren Dokumenten und Ansprüchen. Ein verknüpfter Kauf wird nur bei einem Konto angezeigt, das der Delegierte lesen darf."
+      }
     },
     "accounts": {
       "noAccounts": "Keine Konten zum Gewähren.",

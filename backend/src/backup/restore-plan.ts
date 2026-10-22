@@ -152,6 +152,15 @@ export const RESTORE_PLAN: ReadonlyArray<RestoreStep> = [
     scopeToUser: false,
   },
   {
+    // After `transactions` and `payees`, which it references (both nullable,
+    // ON DELETE SET NULL), and before `transaction_attachments`, whose rows can
+    // name a warranty as their parent.
+    table: "warranties",
+    countKey: "warranties",
+    scopeToUser: true,
+  },
+  { table: "warranty_claims", countKey: "warrantyClaims", scopeToUser: true },
+  {
     table: "transaction_attachments",
     countKey: "transactionAttachments",
     scopeToUser: true,

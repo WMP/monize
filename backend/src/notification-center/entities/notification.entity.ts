@@ -87,6 +87,12 @@ export enum NotificationType {
   // expiry (`air:exp:...`). See `docs/specs/ai-review-notifications.md`.
   AI_REVIEW_PROPOSALS_READY = "AI_REVIEW_PROPOSALS_READY",
   AI_REVIEW_PROPOSALS_EXPIRING = "AI_REVIEW_PROPOSALS_EXPIRING",
+  // A warranty reaches a reminder mark (WARRANTIES category): 30 or 7 days
+  // before `expires_on`, or the day itself. The date is part of the dedupe key,
+  // so a changed `expires_on` earns a fresh set. See
+  // `docs/future-plans/warranty-tracker.md` section 6.6.
+  WARRANTY_EXPIRING = "WARRANTY_EXPIRING",
+  WARRANTY_EXPIRES_TODAY = "WARRANTY_EXPIRES_TODAY",
 }
 
 /**
@@ -151,6 +157,7 @@ export enum NotificationCategory {
   EMAIL_RECEIPTS = "EMAIL_RECEIPTS",
   BONDS = "BONDS",
   AI_REVIEW = "AI_REVIEW",
+  WARRANTIES = "WARRANTIES",
 }
 
 /**
@@ -192,6 +199,10 @@ export const BOND_NOTIFICATION_TYPES: readonly NotificationType[] = [
 export const AI_REVIEW_NOTIFICATION_TYPES: readonly NotificationType[] = [
   NotificationType.AI_REVIEW_PROPOSALS_READY,
   NotificationType.AI_REVIEW_PROPOSALS_EXPIRING,
+];
+export const WARRANTY_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.WARRANTY_EXPIRING,
+  NotificationType.WARRANTY_EXPIRES_TODAY,
 ];
 
 /**
@@ -245,6 +256,9 @@ export function notificationCategoryOf(
   }
   if (AI_REVIEW_NOTIFICATION_TYPES.includes(type)) {
     return NotificationCategory.AI_REVIEW;
+  }
+  if (WARRANTY_NOTIFICATION_TYPES.includes(type)) {
+    return NotificationCategory.WARRANTIES;
   }
   return NotificationCategory.BUDGETS;
 }

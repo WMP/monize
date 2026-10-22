@@ -151,7 +151,7 @@ export const primaryAttachmentWhere = { originalOfAttachmentId: IsNull() };
 Its users, all switched in the same task:
 
 - the cap count in `create`;
-- `findAllForTransaction`, which returns primaries only, each carrying
+- `findAllFor`, which returns primaries only, each carrying
   `originalAttachmentId` resolved by one `LEFT JOIN` on
   `original_of_attachment_id = ta.id` (no per-row query);
 - the register's grouped `attachmentCount` and the `hasAttachments` EXISTS

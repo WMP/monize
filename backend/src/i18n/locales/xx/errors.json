@@ -29,7 +29,10 @@
     "unsupportedType": "[XX-Unsupported file type. Allowed types: {{ types }}-XX]",
     "tooMany": "[XX-This transaction already has the maximum of {{ max }} attachments-XX]",
     "swept": "[XX-The upload took too long and its storage was reclaimed. Please try again.-XX]",
-    "pairRequiresImages": "[XX-A scanned document and its original must both be images-XX]"
+    "pairRequiresImages": "[XX-A scanned document and its original must both be images-XX]",
+    "warrantyNotFound": "[XX-Warranty not found-XX]",
+    "tooManyForWarranty": "[XX-This warranty already has the maximum of {{ max }} attachments-XX]",
+    "documentKindNotForTransaction": "[XX-A document kind applies only to a warranty's documents-XX]"
   },
   "accounts": {
     "accountWithIdNotFound": "[XX-Account with ID {{ id }} not found-XX]",
@@ -878,5 +881,47 @@
     "selectionNotNew": "[XX-A selected transaction is not a new row of the bank's data. Nothing was imported; preview again.-XX]",
     "selectionOverlap": "[XX-A transaction cannot be both imported and added to the exceptions.-XX]",
     "nothingToUpdate": "[XX-Send autoSync, notifySuccess or tagOperationType to change a bank connection.-XX]"
+  },
+  "warranties": {
+    "notFound": "[XX-Warranty with ID {{ id }} not found-XX]",
+    "transactionNotFound": "[XX-Transaction with ID {{ id }} not found-XX]",
+    "transactionIsSplitLine": "[XX-A warranty links to the whole purchase, not to one of its split lines-XX]",
+    "payeeNotFound": "[XX-Payee with ID {{ id }} not found-XX]",
+    "invalidTerm": "[XX-A warranty term must be longer than zero-XX]",
+    "expiryRequired": "[XX-A warranty that is not lifetime needs an expiry date or a term-XX]",
+    "expiresBeforePurchase": "[XX-A warranty cannot expire before its purchase date-XX]",
+    "priceNeedsCurrency": "[XX-A purchase price and its currency are set together or not at all-XX]",
+    "claimNotFound": "[XX-Claim with ID {{ id }} not found-XX]",
+    "claimResolvedOnNeedsOutcome": "[XX-A claim's resolution date needs a status of resolved or denied-XX]",
+    "claimResolvedBeforeClaimDate": "[XX-A claim cannot be resolved before its claim date-XX]",
+    "import": {
+      "noFile": "[XX-Choose a CSV file to import-XX]",
+      "notCsv": "[XX-The file must be a CSV file-XX]",
+      "fileTooLarge": "[XX-The import file must be at most 1 MiB-XX]",
+      "emptyFile": "[XX-The file must have a header row and at least one data row-XX]",
+      "tooManyRows": "[XX-The import file has {{ count }} rows; at most {{ max }} are allowed-XX]",
+      "missingColumns": "[XX-The file's header row has no {{ columns }} column-XX]",
+      "invalidRows": "[XX-{{ count }} rows are invalid, so nothing was imported; fix them or skip them-XX]",
+      "nameRequired": "[XX-ProductName is required-XX]",
+      "purchaseDateRequired": "[XX-PurchaseDate is required-XX]",
+      "tooLong": "[XX-{{ column }} must be at most {{ max }} characters-XX]",
+      "invalidDate": "[XX-{{ column }} must be a date in YYYY-MM-DD form-XX]",
+      "invalidDuration": "[XX-{{ column }} must be a whole number from 0 to {{ max }}-XX]",
+      "invalidLifetime": "[XX-IsLifetime must be true, false, yes, no, 1 or 0-XX]",
+      "noExpirySource": "[XX-Fill ExpirationDate, a WarrantyDuration column or IsLifetime-XX]",
+      "lifetimeWithExpiry": "[XX-IsLifetime is true, but the row also gives ExpirationDate or a WarrantyDuration; fill only one-XX]",
+      "durationIgnored": "[XX-ExpirationDate was used; the WarrantyDuration columns beside it were ignored-XX]",
+      "durationDisagrees": "[XX-ExpirationDate {{ expiresOn }} was used; the WarrantyDuration columns give {{ derived }}, which disagrees-XX]",
+      "negativePrice": "[XX-PurchasePrice must not be negative-XX]",
+      "invalidPrice": "[XX-PurchasePrice must be a number from 0 to {{ max }} with at most 4 decimal places-XX]",
+      "currencyWithoutPrice": "[XX-Currency is set but PurchasePrice is blank-XX]",
+      "unknownCurrency": "[XX-Currency \"{{ value }}\" is not known; {{ currency }} was used-XX]",
+      "unknownWarrantyType": "[XX-WarrantyType \"{{ value }}\" is not manufacturer, extended, store or other; imported as other-XX]",
+      "invalidSerialJson": "[XX-SerialNumber starts with [ but is not a JSON array of text-XX]",
+      "tooManySerials": "[XX-SerialNumber holds {{ count }} values; at most {{ max }} are allowed-XX]",
+      "serialTooLong": "[XX-Each serial number must be at most {{ max }} characters-XX]",
+      "invalidUrl": "[XX-ProductURL must be an http or https address-XX]",
+      "invalidField": "[XX-{{ field }} is not valid-XX]"
+    }
   }
 }

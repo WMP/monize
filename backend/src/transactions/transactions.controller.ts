@@ -1521,7 +1521,11 @@ export class TransactionsController {
             req.user.realUserId ?? req.user.id,
           )),
         ];
-    return this.transactionsService.findOne(req.user.id, id, jointIds);
+    return this.transactionsService.findOneForDisplay(
+      req.user.id,
+      id,
+      jointIds,
+    );
   }
 
   @Patch(":id")

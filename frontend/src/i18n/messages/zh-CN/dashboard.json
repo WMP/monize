@@ -93,6 +93,11 @@
     "viewAll": "查看所有洞察",
     "activeCount": "{count} 条活跃"
   },
+  "warrantiesExpiring": {
+    "title": "即将到期的保修",
+    "empty": "未来 30 天内没有即将到期的保修",
+    "loadFailed": "无法加载即将到期的保修。请刷新仪表板后重试。"
+  },
   "topMovers": {
     "title": "涨跌幅榜",
     "empty": {

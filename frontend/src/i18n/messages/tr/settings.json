@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "Banka senkronizasyonu sonuçları",
         "EMAIL_RECEIPTS": "E-posta makbuzları",
         "BONDS": "Tahviller",
-        "AI_REVIEW": "Yapay zeka inceleme önerileri"
+        "AI_REVIEW": "Yapay zeka inceleme önerileri",
+        "WARRANTIES": "Garanti hatırlatıcıları"
       },
       "channelNotApplicable": "Bu bildirim türü için geçerli değil",
       "emailToggleLabel": "{category} için rapor e-postası",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "Uygulama bölümlerine salt okunur erişim verin. Hesap kapsamlı veriler yine de hesap başına erişim gerektirir.",
-      "aiRequiresFullAccess": "Yapay Zeka Asistanı tüm hesapları ve bölümleri okur; bu nedenle bu temsilci için yalnızca tüm hesaplarınızı ve diğer tüm bölümleri okuyabildiğinde yanıt verir."
+      "aiRequiresFullAccess": "Yapay Zeka Asistanı tüm hesapları ve bölümleri okur; bu nedenle bu temsilci için yalnızca tüm hesaplarınızı ve diğer tüm bölümleri okuyabildiğinde yanıt verir.",
+      "warranties": {
+        "label": "Garantiler",
+        "description": "Garantiler, belgeleri ve talepleri. Bağlı bir satın alma yalnızca temsilcinin okuyabildiği bir hesaptaysa görünür."
+      }
     },
     "accounts": {
       "noAccounts": "Verilecek hesap yok.",

@@ -47,6 +47,10 @@
     "ai_review": {
       "title": "Propuestas de revisión de IA",
       "body": "Algunas propuestas de revisión de IA esperan su decisión. Abra Monize para ver los detalles."
+    },
+    "warranties": {
+      "title": "Recordatorio de garantía",
+      "body": "Una de sus garantías vence pronto. Abra Monize para ver los detalles."
     }
   },
   "actions": {

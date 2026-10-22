@@ -353,6 +353,8 @@ export interface BackupData {
   email_receipt_parsers: Record<string, unknown>[];
   transactions: Record<string, unknown>[];
   transaction_splits: Record<string, unknown>[];
+  warranties: Record<string, unknown>[];
+  warranty_claims: Record<string, unknown>[];
   transaction_attachments: Record<string, unknown>[];
   attachment_blobs: Record<string, unknown>[];
   transaction_tags: Record<string, unknown>[];

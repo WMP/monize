@@ -93,6 +93,11 @@
     "viewAll": "Tüm analizleri görüntüle",
     "activeCount": "{count} aktif"
   },
+  "warrantiesExpiring": {
+    "title": "Süresi yakında dolacak garantiler",
+    "empty": "Önümüzdeki 30 gün içinde süresi dolan bir şey yok",
+    "loadFailed": "Süresi dolmak üzere olan garantileriniz yüklenemedi. Yeniden denemek için panoyu yenileyin."
+  },
   "topMovers": {
     "title": "En Çok Değişenler",
     "empty": {

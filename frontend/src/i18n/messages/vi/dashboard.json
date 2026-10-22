@@ -93,6 +93,11 @@
     "viewAll": "Xem tất cả thông tin",
     "activeCount": "{count} đang hoạt động"
   },
+  "warrantiesExpiring": {
+    "title": "Bảo hành sắp hết hạn",
+    "empty": "Không có gì hết hạn trong 30 ngày tới",
+    "loadFailed": "Không thể tải các bảo hành sắp hết hạn của bạn. Hãy tải lại bảng điều khiển để thử lại."
+  },
   "topMovers": {
     "title": "Biến động hàng đầu",
     "empty": {

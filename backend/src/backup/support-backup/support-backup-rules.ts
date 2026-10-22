@@ -8,6 +8,7 @@ import {
   scaleQty,
 } from "./support-backup-rule-kinds";
 import { PLANNING_RULES } from "./support-backup-rules.planning";
+import { WARRANTY_RULES } from "./support-backup-rules.warranties";
 
 /**
  * Per-column de-identification rules for the support backup. This registry is
@@ -758,6 +759,8 @@ export const RULES: Record<string, TableRules> = {
   // their own file (a separate area from the account core above), merged here
   // so every import site and the golden test still read one RULES map.
   ...PLANNING_RULES,
+  // The warranty tables, likewise in their own file.
+  ...WARRANTY_RULES,
 };
 
 /**
