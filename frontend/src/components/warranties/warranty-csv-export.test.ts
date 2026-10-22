@@ -31,6 +31,7 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
     name: 'Laptop',
     vendorName: 'Best Buy',
     payeeId: null,
+    payee: null,
     modelNumber: 'XPS-13',
     serialNumbers: ['SN1', 'SN2'],
     warrantyKind: 'extended',

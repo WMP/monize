@@ -49,11 +49,20 @@ export interface WarrantyLinkedTransaction {
   accountId: string;
 }
 
+/** The vendor's payee as a logo needs it (`PayeeLogoData`). */
+export interface WarrantyPayee {
+  id: string;
+  name: string;
+  hasLogo: boolean;
+}
+
 export interface Warranty {
   id: string;
   name: string;
   vendorName: string | null;
   payeeId: string | null;
+  /** The payee `payeeId` names; `null` when there is none. */
+  payee: WarrantyPayee | null;
   modelNumber: string | null;
   serialNumbers: string[];
   warrantyKind: WarrantyKind;

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, cleanup, act } from '@/test/render';
+import { render, screen, cleanup, act, fireEvent } from '@/test/render';
 import { useAuthStore } from '@/store/authStore';
 import type { Warranty } from '@/types/warranty';
 import { WarrantyDetailCard } from './WarrantyDetailCard';
@@ -18,7 +18,7 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
 }));
 
-/** Renders and lets the payee and account reads settle. */
+/** Renders and lets the account read settle. */
 async function renderCard(w: Warranty) {
   let result!: ReturnType<typeof render>;
   await act(async () => {
@@ -33,6 +33,7 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
     name: 'Laptop',
     vendorName: 'Best Buy',
     payeeId: 'p-1',
+    payee: { id: 'p-1', name: 'Best Buy', hasLogo: true },
     modelNumber: 'XPS-13',
     serialNumbers: ['SN-1', 'SN-2'],
     warrantyKind: 'extended',
@@ -69,7 +70,6 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
 describe('WarrantyDetailCard', () => {
   beforeEach(() => {
     mockGetPayee.mockReset();
-    mockGetPayee.mockResolvedValue({ id: 'p-1', name: 'Best Buy', hasLogo: true });
     mockGetAccounts.mockReset();
     mockGetAccounts.mockResolvedValue([{ id: 'acc-1', name: 'Visa' }]);
   });
@@ -95,7 +95,9 @@ describe('WarrantyDetailCard', () => {
     expect(screen.getByRole('link', { name: 'Best Buy' })).toHaveAttribute('href', '/payees/p-1');
 
     cleanup();
-    await renderCard(warranty({ payeeId: null, vendorName: 'Corner shop', linkedTransaction: null, transactionId: undefined }));
+    await renderCard(
+      warranty({ payeeId: null, payee: null, vendorName: 'Corner shop', linkedTransaction: null, transactionId: undefined }),
+    );
     expect(screen.getByText('Corner shop')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Corner shop' })).not.toBeInTheDocument();
   });
@@ -124,6 +126,7 @@ describe('WarrantyDetailCard', () => {
     await renderCard(warranty({
           vendorName: null,
           payeeId: null,
+          payee: null,
           modelNumber: null,
           serialNumbers: [],
           purchasePrice: null,
@@ -134,12 +137,32 @@ describe('WarrantyDetailCard', () => {
     expect(screen.getAllByText('None')).toHaveLength(6);
   });
 
-  it('links the purchase to the register with its date, payee and amount in its currency', async () => {
-    await renderCard(warranty());
-    const link = screen.getByRole('link', {
-      name: 'Open the transaction of 10/01/2026: Best Buy, -$1,299.99 CAD',
+  it('edits the purchase in place, named by its date, payee and amount in its currency', async () => {
+    const onEditPurchase = vi.fn();
+    await act(async () => {
+      render(<WarrantyDetailCard warranty={warranty()} onEditPurchase={onEditPurchase} />);
     });
-    expect(link).toHaveAttribute('href', '/transactions?targetTransactionId=tx-1');
+    const block = screen.getByRole('button', {
+      name: 'Edit the purchase of 10/01/2026: Best Buy, -$1,299.99 CAD',
+    });
+    expect(block).toHaveAttribute('data-testid', 'warranty-purchase');
+    expect(block.className).toContain('focus-visible:ring-2');
+    fireEvent.click(block);
+    expect(onEditPurchase).toHaveBeenCalledWith('tx-1');
+    expect(screen.getByRole('link', { name: 'View in register' })).toHaveAttribute(
+      'href',
+      '/transactions?targetTransactionId=tx-1',
+    );
+  });
+
+  it('draws the purchase as a card, not a control, without an edit handler', async () => {
+    await renderCard(warranty());
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('warranty-purchase').tagName).toBe('DIV');
+    expect(screen.getByRole('link', { name: 'View in register' })).toHaveAttribute(
+      'href',
+      '/transactions?targetTransactionId=tx-1',
+    );
   });
 
   it('says there is no linked transaction when the owner has none', async () => {
@@ -165,30 +188,30 @@ describe('WarrantyDetailCard', () => {
   it('shows a delegate the purchase when the server sent it', async () => {
     useAuthStore.setState({ actingAsUserId: 'owner-1' });
     await renderCard(warranty());
-    expect(screen.getByRole('link', { name: /Best Buy.*1,299\.99/ })).toHaveAttribute(
-      'href',
-      '/transactions?targetTransactionId=tx-1',
-    );
+    const block = screen.getByTestId('warranty-purchase');
+    expect(block).toHaveTextContent('Best Buy');
+    expect(block).toHaveTextContent('-$1,299.99 CAD');
   });
 
   describe('vendor and purchase logos', () => {
-    it("draws the vendor's logo beside the Vendor value from its payee", async () => {
+    it("draws the vendor's logo beside the Vendor value from the view's payee, reading no payee", async () => {
       await renderCard(warranty());
-      expect(mockGetPayee).toHaveBeenCalledWith('p-1');
+      expect(mockGetPayee).not.toHaveBeenCalled();
       const vendorLink = screen.getByRole('link', { name: 'Best Buy' });
       const logo = vendorLink.parentElement?.querySelector('img');
       expect(logo).toHaveAttribute('src', '/api/v1/payees/p-1/logo');
     });
 
     it('draws the initial when the payee has no logo', async () => {
-      mockGetPayee.mockResolvedValue({ id: 'p-1', name: 'Best Buy', hasLogo: false });
-      await renderCard(warranty());
+      await renderCard(warranty({ payee: { id: 'p-1', name: 'Best Buy', hasLogo: false } }));
       expect(screen.queryByRole('img')).not.toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Best Buy' }).parentElement).toHaveTextContent('BBest Buy');
     });
 
     it('shows a typed vendor as text alone and reads no payee', async () => {
-      await renderCard(warranty({ payeeId: null, vendorName: 'Corner shop', linkedTransaction: null, transactionId: undefined }));
+      await renderCard(
+        warranty({ payeeId: null, payee: null, vendorName: 'Corner shop', linkedTransaction: null, transactionId: undefined }),
+      );
       expect(mockGetPayee).not.toHaveBeenCalled();
       const value = screen.getByText('Corner shop');
       expect(value.tagName).toBe('DD');
@@ -198,7 +221,7 @@ describe('WarrantyDetailCard', () => {
     it("leads with the purchase: the vendor's logo, the server's payee, date, account and amount", async () => {
       await renderCard(warranty());
       const block = screen.getByTestId('warranty-purchase');
-      expect(block.tagName).toBe('A');
+      expect(block.tagName).toBe('DIV');
       expect(block.querySelector('img')).toHaveAttribute('src', '/api/v1/payees/p-1/logo');
       expect(block).toHaveTextContent('Best Buy');
       expect(block).toHaveTextContent('10/01/2026 · Visa');
@@ -225,6 +248,7 @@ describe('WarrantyDetailCard', () => {
       expect(block).toHaveTextContent('The purchase is in an account you cannot read.');
       expect(block.querySelector('img')).toBeNull();
       expect(mockGetAccounts).not.toHaveBeenCalled();
+      expect(screen.queryByRole('link', { name: 'View in register' })).not.toBeInTheDocument();
     });
   });
 });

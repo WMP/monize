@@ -178,7 +178,9 @@
     },
     "transaction": {
       "title": "[XX-Purchase-XX]",
-      "open": "[XX-Open the transaction of {date}: {payee}, {amount}-XX]",
+      "edit": "[XX-Edit the purchase of {date}: {payee}, {amount}-XX]",
+      "viewInRegister": "[XX-View in register-XX]",
+      "loadFailed": "[XX-Failed to load the purchase-XX]",
       "dateInAccount": "[XX-{date} · {account}-XX]",
       "none": "[XX-No linked transaction-XX]",
       "unreadable": "[XX-The purchase is in an account you cannot read.-XX]",
@@ -188,13 +190,13 @@
   "documents": {
     "title": "[XX-Documents-XX]",
     "empty": "[XX-No documents yet-XX]",
-    "kindLabel": "[XX-Document type-XX]",
     "kindFor": "[XX-Document type for {name}-XX]",
     "kindUpdateFailed": "[XX-Failed to change the document type-XX]",
     "kinds": {
       "receipt": "[XX-Receipt-XX]",
       "manual": "[XX-Manual-XX]",
       "photo": "[XX-Photo-XX]",
+      "warranty": "[XX-Warranty certificate-XX]",
       "other": "[XX-Other-XX]"
     }
   },

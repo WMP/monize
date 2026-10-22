@@ -178,7 +178,9 @@
     },
     "transaction": {
       "title": "खरीद",
-      "open": "{date} का लेनदेन खोलें: {payee}, {amount}",
+      "edit": "{date} की खरीदारी संपादित करें: {payee}, {amount}",
+      "viewInRegister": "रजिस्टर में देखें",
+      "loadFailed": "खरीदारी लोड नहीं हो सकी",
       "dateInAccount": "{date} · {account}",
       "none": "कोई जुड़ा हुआ लेनदेन नहीं",
       "unreadable": "यह खरीद ऐसे खाते में है जिसे आप पढ़ नहीं सकते।",
@@ -188,13 +190,13 @@
   "documents": {
     "title": "दस्तावेज़",
     "empty": "अभी तक कोई दस्तावेज़ नहीं",
-    "kindLabel": "दस्तावेज़ का प्रकार",
     "kindFor": "{name} के लिए दस्तावेज़ का प्रकार",
     "kindUpdateFailed": "दस्तावेज़ का प्रकार बदलने में विफल",
     "kinds": {
       "receipt": "रसीद",
       "manual": "मैनुअल",
       "photo": "फ़ोटो",
+      "warranty": "वारंटी प्रमाणपत्र",
       "other": "अन्य"
     }
   },

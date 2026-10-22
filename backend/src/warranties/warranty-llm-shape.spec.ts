@@ -14,6 +14,7 @@ function view(overrides: Partial<WarrantyView> = {}): WarrantyView {
     name: "Laptop",
     vendorName: "Best Buy",
     payeeId: null,
+    payee: null,
     modelNumber: "X1",
     serialNumbers: ["SN-1"],
     warrantyKind: "manufacturer",

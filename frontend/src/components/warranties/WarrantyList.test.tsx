@@ -21,6 +21,7 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
     name: 'Laptop',
     vendorName: 'Best Buy',
     payeeId: null,
+    payee: null,
     modelNumber: null,
     serialNumbers: [],
     warrantyKind: 'manufacturer',
@@ -89,6 +90,46 @@ describe('WarrantyList', () => {
     expect(within(row).getByText('$1,299.99 CAD')).toBeInTheDocument();
     expect(within(row).getByText('2')).toBeInTheDocument();
     expect(within(row).getByText('0')).toBeInTheDocument();
+  });
+
+  describe("the vendor's logo", () => {
+    const PAYEE = { id: 'p-1', name: 'Best Buy', hasLogo: true };
+
+    it("draws the payee's cached logo before the vendor, from the view alone", () => {
+      renderList({ warranties: [warranty({ payeeId: 'p-1', payee: PAYEE })] });
+      const vendor = within(screen.getByText('Laptop').closest('tr')!).getByText('Best Buy');
+      const logo = vendor.parentElement!.querySelector('img');
+      expect(logo).toHaveAttribute('src', '/api/v1/payees/p-1/logo');
+      expect(logo).toHaveStyle({ width: '20px', height: '20px' });
+      expect(vendor.parentElement!.firstElementChild).toBe(logo);
+    });
+
+    it("draws the vendor's initial for a payee without a logo and for a typed vendor", () => {
+      renderList({
+        warranties: [
+          warranty({ payeeId: 'p-1', payee: { ...PAYEE, hasLogo: false } }),
+          warranty({ id: 'w-2', name: 'Fridge', vendorName: 'Corner shop' }),
+        ],
+      });
+      expect(screen.queryByRole('img')).not.toBeInTheDocument();
+      const payeeLine = within(screen.getByText('Laptop').closest('tr')!).getByText('Best Buy').parentElement!;
+      expect(payeeLine).toHaveTextContent('BBest Buy');
+      const typedLine = within(screen.getByText('Fridge').closest('tr')!).getByText('Corner shop').parentElement!;
+      expect(typedLine).toHaveTextContent('CCorner shop');
+    });
+
+    it('draws no logo when there is no vendor', () => {
+      renderList({ warranties: [warranty({ vendorName: null })] });
+      const cell = screen.getByText('Laptop').parentElement!;
+      expect(cell.children).toHaveLength(1);
+    });
+
+    it('draws the logo on the phone card too', () => {
+      mockIsMobile = true;
+      renderList({ warranties: [warranty({ payeeId: 'p-1', payee: PAYEE })] });
+      const vendor = within(screen.getByText('Laptop').closest('tr')!).getByText('Best Buy');
+      expect(vendor.parentElement!.querySelector('img')).toHaveAttribute('src', '/api/v1/payees/p-1/logo');
+    });
   });
 
   it('says Lifetime where a lifetime warranty has no end date', () => {

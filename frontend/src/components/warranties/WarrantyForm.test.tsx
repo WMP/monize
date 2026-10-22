@@ -23,6 +23,7 @@ const warranty: Warranty = {
   name: 'Fridge',
   vendorName: 'Home Depot',
   payeeId: null,
+  payee: null,
   modelNumber: 'RF-200',
   serialNumbers: ['SN1'],
   warrantyKind: 'extended',

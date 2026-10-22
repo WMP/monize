@@ -3,6 +3,7 @@
 import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { PayeeLogo } from '@/components/payees/PayeeLogo';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ListTopToolbar } from '@/components/ui/ListTopToolbar';
 import { SortableHeader } from '@/components/ui/SortableHeader';
@@ -149,8 +150,13 @@ const WarrantyRow = memo(function WarrantyRow({
   const identity = (
     <div className="min-w-0">
       <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">{warranty.name}</div>
+      {/* The vendor's logo from the view's own payee; a free-text vendor
+          draws its initial, so the vendor text lines up on every row. */}
       {warranty.vendorName && (
-        <div className="text-xs text-gray-500 dark:text-gray-400 break-words">{warranty.vendorName}</div>
+        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+          <PayeeLogo payee={warranty.payee} name={warranty.vendorName} size={20} />
+          <span className="min-w-0 break-words">{warranty.vendorName}</span>
+        </div>
       )}
     </div>
   );

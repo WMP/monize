@@ -37,6 +37,7 @@ import {
   isTransactionInScope,
   loadLinkedTransactions,
 } from "./warranty-linked-transaction";
+import { loadWarrantyPayees } from "./warranty-payee";
 import {
   LlmWarrantyList,
   LlmWarrantyQuery,
@@ -641,8 +642,8 @@ export class WarrantiesService {
 
   /**
    * Rows to views: one status per row from `warrantyStatus`, and the page's
-   * document counts, open-claim counts and linked purchases as three grouped
-   * reads over the page's ids (the register's `attachmentCount` pattern),
+   * document counts, open-claim counts, linked purchases and vendor payees as
+   * four grouped reads over the page's ids (the register's `attachmentCount` pattern),
    * awaited one after another on the transaction's connection. The writes
    * pass no `accountScope`: they are owner-only, and an owner reads every
    * account.
@@ -688,6 +689,7 @@ export class WarrantiesService {
     );
 
     const linked = await loadLinkedTransactions(m, userId, rows, accountScope);
+    const payees = await loadWarrantyPayees(m, userId, rows);
 
     return rows.map((row) => {
       const { status, daysLeft } = warrantyStatus(
@@ -705,6 +707,7 @@ export class WarrantiesService {
         name: row.name,
         vendorName: row.vendorName,
         payeeId: row.payeeId,
+        payee: row.payeeId !== null ? (payees.get(row.payeeId) ?? null) : null,
         modelNumber: row.modelNumber,
         serialNumbers: row.serialNumbers ?? [],
         warrantyKind: row.warrantyKind,

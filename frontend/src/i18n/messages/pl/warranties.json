@@ -178,7 +178,9 @@
     },
     "transaction": {
       "title": "Zakup",
-      "open": "Otwórz transakcję z {date}: {payee}, {amount}",
+      "edit": "Edytuj zakup z {date}: {payee}, {amount}",
+      "viewInRegister": "Zobacz w rejestrze",
+      "loadFailed": "Nie udało się wczytać zakupu",
       "dateInAccount": "{date} · {account}",
       "none": "Brak powiązanej transakcji",
       "unreadable": "Zakup znajduje się na koncie, którego nie możesz odczytać.",
@@ -188,13 +190,13 @@
   "documents": {
     "title": "Dokumenty",
     "empty": "Nie ma jeszcze dokumentów",
-    "kindLabel": "Rodzaj dokumentu",
     "kindFor": "Rodzaj dokumentu dla {name}",
     "kindUpdateFailed": "Nie udało się zmienić rodzaju dokumentu",
     "kinds": {
       "receipt": "Paragon",
       "manual": "Instrukcja",
       "photo": "Zdjęcie",
+      "warranty": "Certyfikat gwarancji",
       "other": "Inny"
     }
   },

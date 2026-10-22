@@ -23,6 +23,7 @@ function makeWarranty(overrides: Partial<Warranty> = {}): Warranty {
     name: 'Dishwasher',
     vendorName: null,
     payeeId: null,
+    payee: null,
     modelNumber: null,
     serialNumbers: [],
     warrantyKind: 'manufacturer',

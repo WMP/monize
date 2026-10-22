@@ -42,6 +42,20 @@ const CLAIM_PAYLOAD = { claimDate: '2026-10-21', status: 'open', description: 'H
 vi.mock('next/dynamic', () => ({
   default: () =>
     function FormStub(props: any) {
+      // The purchase's TransactionForm: shows which transaction it was handed.
+      if ('transaction' in props) {
+        return (
+          <div data-testid="transaction-form">
+            <span data-testid="editing-transaction">{props.transaction.id}</span>
+            <span data-testid="transaction-hosts">
+              {[props.onAddWarranty, props.onOpenWarranty].filter(Boolean).length}
+            </span>
+            <button type="button" onClick={() => props.onSuccess()}>
+              Save transaction stub
+            </button>
+          </div>
+        );
+      }
       const isClaim = 'today' in props;
       return (
         <div data-testid={isClaim ? 'claim-form' : 'warranty-form'}>
@@ -55,6 +69,23 @@ vi.mock('next/dynamic', () => ({
         </div>
       );
     },
+}));
+
+const mockGetTransaction = vi.fn();
+vi.mock('@/lib/transactions', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/lib/transactions')>();
+  return {
+    ...original,
+    transactionsApi: {
+      ...original.transactionsApi,
+      getById: (...args: unknown[]) => mockGetTransaction(...args),
+    },
+  };
+});
+const mockInvalidateCache = vi.fn();
+vi.mock('@/lib/apiCache', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/apiCache')>()),
+  invalidateCache: (...args: unknown[]) => mockInvalidateCache(...args),
 }));
 
 const mockGetById = vi.fn();
@@ -105,6 +136,7 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
     name: 'Laptop',
     vendorName: 'Best Buy',
     payeeId: null,
+    payee: null,
     modelNumber: 'XPS-13',
     serialNumbers: ['SN-1'],
     warrantyKind: 'manufacturer',
@@ -235,7 +267,8 @@ describe('WarrantyDetailPage', () => {
     // The owner changes a document's kind on its row; the badge is the reader's.
     expect(within(documents).getByRole('combobox', { name: 'Document type for receipt.pdf' })).toHaveValue('receipt');
     expect(within(documents).queryByTestId('document-kind-a-1')).not.toBeInTheDocument();
-    expect(within(documents).getByLabelText('Document type')).toBeInTheDocument();
+    // A new document's kind is set on its row; the upload carries no picker.
+    expect(within(documents).queryByLabelText('Document type')).not.toBeInTheDocument();
   });
 
   it('lists the claims and adds one', async () => {
@@ -275,12 +308,90 @@ describe('WarrantyDetailPage', () => {
     expect(mockDeleteClaim).toHaveBeenCalledWith(W_ID, 'c-1');
   });
 
-  it('links the purchase to the register', async () => {
-    await renderPage();
-    expect(screen.getByRole('link', { name: /Open the transaction of .*Best Buy/ })).toHaveAttribute(
-      'href',
-      '/transactions?targetTransactionId=tx-1',
-    );
+  describe('the linked purchase', () => {
+    const FULL_TRANSACTION = { id: 'tx-1', accountId: 'acc-1', payeeName: 'Best Buy', amount: -1299.99 };
+
+    beforeEach(() => {
+      mockGetTransaction.mockResolvedValue(FULL_TRANSACTION);
+    });
+
+    it('opens the loaded transaction in the edit window, in place', async () => {
+      await renderPage();
+      expect(screen.queryByTestId('transaction-form')).not.toBeInTheDocument();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Edit the purchase of .*Best Buy/ }));
+      });
+      expect(mockGetTransaction).toHaveBeenCalledWith('tx-1');
+      expect(router.push).not.toHaveBeenCalled();
+      const dialog = screen.getByRole('dialog', { name: 'Edit Transaction' });
+      expect(within(dialog).getByTestId('editing-transaction')).toHaveTextContent('tx-1');
+      // No Add / Open warranty hand-offs on the warranty's own page.
+      expect(within(dialog).getByTestId('transaction-hosts')).toHaveTextContent('0');
+    });
+
+    it('reads the warranty again, past the cache, after the purchase is saved', async () => {
+      await renderPage();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Edit the purchase of .*Best Buy/ }));
+      });
+      expect(mockGetById).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Save transaction stub' }));
+      });
+      expect(mockInvalidateCache).toHaveBeenCalledWith('warranties:');
+      expect(mockGetById).toHaveBeenCalledTimes(2);
+      expect(screen.queryByTestId('transaction-form')).not.toBeInTheDocument();
+    });
+
+    it('says so, and opens nothing, when the purchase cannot be loaded', async () => {
+      mockGetTransaction.mockRejectedValue(new Error('boom'));
+      await renderPage();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Edit the purchase of .*Best Buy/ }));
+      });
+      expect(toast.error).toHaveBeenCalledWith('Failed to load the purchase');
+      expect(screen.queryByTestId('transaction-form')).not.toBeInTheDocument();
+    });
+
+    it("sends a cash leg an investment owns to Investments, as the register does", async () => {
+      mockGetTransaction.mockResolvedValue({ ...FULL_TRANSACTION, linkedInvestmentTransactionId: 'inv-1' });
+      await renderPage();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Edit the purchase of .*Best Buy/ }));
+      });
+      expect(router.push).toHaveBeenCalledWith('/investments?edit=inv-1');
+      expect(screen.queryByTestId('transaction-form')).not.toBeInTheDocument();
+    });
+
+    it('offers the register as its own link', async () => {
+      await renderPage();
+      expect(screen.getByRole('link', { name: 'View in register' })).toHaveAttribute(
+        'href',
+        '/transactions?targetTransactionId=tx-1',
+      );
+    });
+
+    it('shows a delegate the purchase as a card, with the register link and no edit', async () => {
+      useAuthStore.setState({ actingAsUserId: 'owner-1' });
+      await renderPage();
+      expect(screen.queryByRole('button', { name: /Edit the purchase/ })).not.toBeInTheDocument();
+      const block = screen.getByTestId('warranty-purchase');
+      expect(block.tagName).toBe('DIV');
+      expect(block).toHaveTextContent('Best Buy');
+      fireEvent.click(block);
+      expect(mockGetTransaction).not.toHaveBeenCalled();
+      expect(screen.getByRole('link', { name: 'View in register' })).toHaveAttribute(
+        'href',
+        '/transactions?targetTransactionId=tx-1',
+      );
+    });
+
+    it('shows no register link without a purchase', async () => {
+      mockGetById.mockResolvedValue(warranty({ transactionId: undefined, linkedTransaction: null }));
+      await renderPage();
+      expect(screen.queryByRole('link', { name: 'View in register' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Edit the purchase/ })).not.toBeInTheDocument();
+    });
   });
 
   it('says there is no linked transaction when there is none', async () => {

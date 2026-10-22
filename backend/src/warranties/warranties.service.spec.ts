@@ -131,7 +131,10 @@ describe("WarrantiesService", () => {
       findOne: jest.fn().mockResolvedValue(null),
       createQueryBuilder: jest.fn(() => transactionQb),
     };
-    payeeRepo = { findOne: jest.fn().mockResolvedValue(null) };
+    payeeRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+      find: jest.fn().mockResolvedValue([]),
+    };
     currencyRepo = {
       findOne: jest.fn(async ({ where }: { where: { code: string } }) =>
         where.code === "CAD" ? { code: "CAD" } : null,
@@ -240,6 +243,63 @@ describe("WarrantiesService", () => {
       expect(claimQb.andWhere).toHaveBeenCalledWith("c.status = :open", {
         open: "open",
       });
+    });
+
+    it("loads the page's vendor payees in one read over the distinct ids", async () => {
+      const OTHER_PAYEE = "77777777-7777-4777-8777-777777777777";
+      listQb = qbMock({
+        manyAndCount: [
+          [
+            warranty({ payeeId: PAYEE }),
+            warranty({ id: W2, payeeId: PAYEE }),
+            warranty({
+              id: "88888888-8888-4888-8888-888888888888",
+              payeeId: OTHER_PAYEE,
+            }),
+          ],
+          3,
+        ],
+      });
+      payeeRepo.find.mockResolvedValue([
+        { id: PAYEE, name: "Best Buy", hasLogo: true },
+        { id: OTHER_PAYEE, name: "Costco", hasLogo: false },
+      ]);
+
+      const { data } = await service.findAll(USER, {}, { today: TODAY });
+
+      expect(payeeRepo.find).toHaveBeenCalledTimes(1);
+      const [options] = payeeRepo.find.mock.calls[0];
+      expect(options.select).toEqual({ id: true, name: true, hasLogo: true });
+      expect(options.where.userId).toBe(USER);
+      expect(options.where.id.value).toEqual([PAYEE, OTHER_PAYEE]);
+      expect(data.map((view) => view.payee)).toEqual([
+        { id: PAYEE, name: "Best Buy", hasLogo: true },
+        { id: PAYEE, name: "Best Buy", hasLogo: true },
+        { id: OTHER_PAYEE, name: "Costco", hasLogo: false },
+      ]);
+      // Under the page's own scoped transaction.
+      expect(mocks.dataSource.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it("answers a null payee, and reads none, when no row names one", async () => {
+      listQb = qbMock({ manyAndCount: [[warranty()], 1] });
+
+      const { data } = await service.findAll(USER, {}, { today: TODAY });
+
+      expect(data[0].payeeId).toBeNull();
+      expect(data[0].payee).toBeNull();
+      expect(payeeRepo.find).not.toHaveBeenCalled();
+    });
+
+    it("answers a null payee when the named payee is not the caller's", async () => {
+      listQb = qbMock({
+        manyAndCount: [[warranty({ payeeId: PAYEE })], 1],
+      });
+
+      const { data } = await service.findAll(USER, {}, { today: TODAY });
+
+      expect(payeeRepo.find).toHaveBeenCalledTimes(1);
+      expect(data[0].payee).toBeNull();
     });
 
     it("prefers the transaction's own payee name over its payee's", async () => {

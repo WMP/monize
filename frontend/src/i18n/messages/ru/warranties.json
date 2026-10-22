@@ -178,7 +178,9 @@
     },
     "transaction": {
       "title": "Покупка",
-      "open": "Открыть проводку от {date}: {payee}, {amount}",
+      "edit": "Изменить покупку от {date}: {payee}, {amount}",
+      "viewInRegister": "Посмотреть в журнале",
+      "loadFailed": "Не удалось загрузить покупку",
       "dateInAccount": "{date} · {account}",
       "none": "Нет связанной проводки",
       "unreadable": "Покупка находится на счёте, к которому у вас нет доступа на чтение.",
@@ -188,13 +190,13 @@
   "documents": {
     "title": "Документы",
     "empty": "Документов пока нет",
-    "kindLabel": "Тип документа",
     "kindFor": "Тип документа для {name}",
     "kindUpdateFailed": "Не удалось изменить тип документа",
     "kinds": {
       "receipt": "Чек",
       "manual": "Инструкция",
       "photo": "Фото",
+      "warranty": "Гарантийный талон",
       "other": "Другое"
     }
   },

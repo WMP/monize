@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { warrantiesApi } from '@/lib/warranties';
 import type { Warranty } from '@/types/warranty';
+import { PayeeLogo } from '@/components/payees/PayeeLogo';
 import { WarrantyStatusBadge } from '@/components/warranties/WarrantyStatusBadge';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { WidgetHeading } from './widget-meta';
@@ -104,8 +105,9 @@ export function WarrantiesExpiringWidget({ isLoading: parentLoading }: Warrantie
                   {warranty.name}
                 </span>
                 {warranty.vendorName && (
-                  <span className="block truncate text-xs text-gray-500 dark:text-gray-400">
-                    {warranty.vendorName}
+                  <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    <PayeeLogo payee={warranty.payee} name={warranty.vendorName} size={20} />
+                    <span className="truncate">{warranty.vendorName}</span>
                   </span>
                 )}
               </span>

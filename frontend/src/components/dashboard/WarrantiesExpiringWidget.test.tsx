@@ -20,6 +20,8 @@ function warranty(over: Partial<Warranty>): Warranty {
     id: 'w1',
     name: 'Dishwasher',
     vendorName: 'Home Depot',
+    payeeId: null,
+    payee: null,
     expiresOn: '2026-11-05',
     status: 'expiring',
     daysLeft: 15,
@@ -64,6 +66,25 @@ describe('WarrantiesExpiringWidget', () => {
     expect(screen.getAllByText('Expiring soon').length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: /Dishwasher/ })).toHaveAttribute('href', '/warranties/w1');
     expect(screen.getByRole('link', { name: /Laptop/ })).toHaveAttribute('href', '/warranties/w2');
+  });
+
+  it("draws the vendor's logo from the view's payee, and the initial for a typed vendor", async () => {
+    listMock.mockResolvedValue({
+      data: [
+        warranty({ payeeId: 'p-1', payee: { id: 'p-1', name: 'Home Depot', hasLogo: true } }),
+        warranty({ id: 'w2', name: 'Laptop', vendorName: 'Corner shop' }),
+        warranty({ id: 'w3', name: 'Kettle', vendorName: null }),
+      ],
+      pagination: {},
+    });
+    await renderWidget();
+
+    const logos = screen.getAllByRole('img');
+    expect(logos).toHaveLength(1);
+    expect(logos[0]).toHaveAttribute('src', '/api/v1/payees/p-1/logo');
+    expect(screen.getByText('Home Depot').parentElement?.firstElementChild).toBe(logos[0]);
+    expect(screen.getByText('Corner shop').parentElement).toHaveTextContent('CCorner shop');
+    expect(screen.getByRole('link', { name: /Kettle/ }).querySelector('[aria-hidden="true"]')).toBeNull();
   });
 
   it('renders at most five rows', async () => {

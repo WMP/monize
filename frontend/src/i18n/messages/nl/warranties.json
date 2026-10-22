@@ -178,7 +178,9 @@
     },
     "transaction": {
       "title": "Aankoop",
-      "open": "Transactie van {date} openen: {payee}, {amount}",
+      "edit": "Aankoop van {date} bewerken: {payee}, {amount}",
+      "viewInRegister": "Bekijken in het overzicht",
+      "loadFailed": "De aankoop kon niet worden geladen",
       "dateInAccount": "{date} · {account}",
       "none": "Geen gekoppelde transactie",
       "unreadable": "De aankoop staat op een rekening die je niet mag lezen.",
@@ -188,13 +190,13 @@
   "documents": {
     "title": "Documenten",
     "empty": "Nog geen documenten",
-    "kindLabel": "Soort document",
     "kindFor": "Soort document voor {name}",
     "kindUpdateFailed": "Soort document wijzigen mislukt",
     "kinds": {
       "receipt": "Bon",
       "manual": "Handleiding",
       "photo": "Foto",
+      "warranty": "Garantiebewijs",
       "other": "Overig"
     }
   },

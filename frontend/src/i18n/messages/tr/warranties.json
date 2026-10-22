@@ -178,7 +178,9 @@
     },
     "transaction": {
       "title": "Satın alma",
-      "open": "{date} tarihli işlemi aç: {payee}, {amount}",
+      "edit": "{date} tarihli satın almayı düzenle: {payee}, {amount}",
+      "viewInRegister": "Kayıt defterinde görüntüle",
+      "loadFailed": "Satın alma yüklenemedi",
       "dateInAccount": "{date} · {account}",
       "none": "Bağlı işlem yok",
       "unreadable": "Satın alma, okuma izniniz olmayan bir hesapta.",
@@ -188,13 +190,13 @@
   "documents": {
     "title": "Belgeler",
     "empty": "Henüz belge yok",
-    "kindLabel": "Belge türü",
     "kindFor": "{name} için belge türü",
     "kindUpdateFailed": "Belge türü değiştirilemedi",
     "kinds": {
       "receipt": "Fiş",
       "manual": "Kılavuz",
       "photo": "Fotoğraf",
+      "warranty": "Garanti belgesi",
       "other": "Diğer"
     }
   },

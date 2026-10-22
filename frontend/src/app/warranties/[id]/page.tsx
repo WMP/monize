@@ -23,15 +23,24 @@ import { WarrantyStatusBadge } from '@/components/warranties/WarrantyStatusBadge
 import { useFormModal } from '@/hooks/useFormModal';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
+import { invalidateCache } from '@/lib/apiCache';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
+import { transactionsApi } from '@/lib/transactions';
 import { isUuid } from '@/lib/uuid';
 import { warrantiesApi } from '@/lib/warranties';
 import { useAuthStore } from '@/store/authStore';
+import type { Transaction } from '@/types/transaction';
 import type { CreateWarrantyData, Warranty } from '@/types/warranty';
 
 const WarrantyForm = dynamic(
   () => import('@/components/warranties/WarrantyForm').then((m) => m.WarrantyForm),
+  { ssr: false },
+);
+
+// The register's own edit window, opened here for the linked purchase.
+const TransactionForm = dynamic(
+  () => import('@/components/transactions/TransactionForm').then((m) => m.TransactionForm),
   { ssr: false },
 );
 
@@ -88,6 +97,7 @@ function BackToWarranties() {
 function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
   const t = useTranslations('warranties');
   const tc = useTranslations('common');
+  const tt = useTranslations('transactions');
   const router = useRouter();
   // An acting delegate reads the warranty, its documents and its claims; every
   // write is the owner's (design decision 9).
@@ -130,6 +140,7 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
     unsavedChangesDialog,
     formSubmitRef,
   } = useFormModal<Warranty>();
+  const purchaseModal = useFormModal<Transaction>();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -145,6 +156,34 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
       toast.error(getErrorMessage(error, t('page.toasts.updateFailed')));
       throw error;
     }
+  };
+
+  // The purchase opens in the register's edit window, loaded whole as the
+  // register loads a row before editing it. A cash leg an investment owns is
+  // edited from Investments, as the register sends it there.
+  const handleEditPurchase = async (transactionId: string) => {
+    let transaction: Transaction;
+    try {
+      transaction = await transactionsApi.getById(transactionId);
+    } catch (error) {
+      logger.error('Failed to load the linked purchase:', error);
+      toast.error(t('detail.transaction.loadFailed'));
+      return;
+    }
+    if (transaction.linkedInvestmentTransactionId) {
+      toast(tt('page.toasts.investmentLinked'));
+      router.push(`/investments?edit=${transaction.linkedInvestmentTransactionId}`);
+      return;
+    }
+    purchaseModal.openEdit(transaction);
+  };
+
+  // A saved purchase may have moved the payee, date or amount the warranty
+  // shows, so the cached warranty reads go and the warranty is read again.
+  const handlePurchaseSaved = () => {
+    purchaseModal.close();
+    invalidateCache('warranties:');
+    reload();
   };
 
   const handleToggleArchive = async () => {
@@ -231,7 +270,7 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
         />
 
         <div className="space-y-6">
-          <WarrantyDetailCard warranty={warranty} />
+          <WarrantyDetailCard warranty={warranty} onEditPurchase={readOnly ? undefined : handleEditPurchase} />
           <WarrantyDocumentsSection warrantyId={warranty.id} readOnly={readOnly} />
           <WarrantyClaimList warrantyId={warranty.id} today={warranty.today} onChanged={reload} readOnly={readOnly} />
         </div>
@@ -254,6 +293,28 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
           />
         </Modal>
         <UnsavedChangesDialog {...unsavedChangesDialog} />
+
+        {/* No onAddWarranty / onOpenWarranty: the form's Warranties line lists
+            them as text here, on the warranty's own page. */}
+        <Modal
+          isOpen={purchaseModal.showForm}
+          onClose={purchaseModal.close}
+          {...purchaseModal.modalProps}
+          maxWidth="2xl"
+          padding="md"
+          title={tt('page.editModal.editTitle')}
+        >
+          {purchaseModal.showForm && purchaseModal.editingItem && (
+            <TransactionForm
+              transaction={purchaseModal.editingItem}
+              onSuccess={handlePurchaseSaved}
+              onCancel={purchaseModal.close}
+              onDirtyChange={purchaseModal.setFormDirty}
+              submitRef={purchaseModal.formSubmitRef}
+            />
+          )}
+        </Modal>
+        <UnsavedChangesDialog {...purchaseModal.unsavedChangesDialog} />
 
         <ConfirmDialog
           isOpen={confirmDelete}

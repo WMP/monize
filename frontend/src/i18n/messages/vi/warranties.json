@@ -178,7 +178,9 @@
     },
     "transaction": {
       "title": "Giao dịch mua",
-      "open": "Mở giao dịch ngày {date}: {payee}, {amount}",
+      "edit": "Sửa giao dịch mua ngày {date}: {payee}, {amount}",
+      "viewInRegister": "Xem trong sổ ghi",
+      "loadFailed": "Không thể tải giao dịch mua",
       "dateInAccount": "{date} · {account}",
       "none": "Không có giao dịch liên kết",
       "unreadable": "Giao dịch mua nằm trong tài khoản mà bạn không thể đọc.",
@@ -188,13 +190,13 @@
   "documents": {
     "title": "Tài liệu",
     "empty": "Chưa có tài liệu nào",
-    "kindLabel": "Loại tài liệu",
     "kindFor": "Loại tài liệu cho {name}",
     "kindUpdateFailed": "Không thay đổi được loại tài liệu",
     "kinds": {
       "receipt": "Biên lai",
       "manual": "Sách hướng dẫn",
       "photo": "Ảnh",
+      "warranty": "Giấy bảo hành",
       "other": "Khác"
     }
   },

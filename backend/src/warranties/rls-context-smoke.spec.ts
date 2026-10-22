@@ -111,6 +111,7 @@ describe("warranties module RLS context smoke (real withScopedDb)", () => {
               purchasePrice: null,
               currencyCode: null,
               transactionId: TX_ID,
+              payeeId: PAYEE_ID,
               archivedAt: null,
               createdAt: new Date("2026-10-21T00:00:00.000Z"),
               updatedAt: new Date("2026-10-21T00:00:00.000Z"),
@@ -145,7 +146,13 @@ describe("warranties module RLS context smoke (real withScopedDb)", () => {
           createQueryBuilder: jest.fn(() => linkedQb),
         },
       ],
-      [Payee, recorded("payees", { findOne: () => ({ id: PAYEE_ID }) })],
+      [
+        Payee,
+        recorded("payees", {
+          findOne: () => ({ id: PAYEE_ID }),
+          find: () => [{ id: PAYEE_ID, name: "Best Buy", hasLogo: true }],
+        }),
+      ],
       [Currency, recorded("currencies", { findOne: () => ({ code: "CAD" }) })],
       [WarrantyClaim, { createQueryBuilder: jest.fn(() => emptyQb) }],
     ]);
@@ -191,6 +198,7 @@ describe("warranties module RLS context smoke (real withScopedDb)", () => {
       `currencies.findOne: current=${OWNER_ID}`,
       `warranties.save: current=${OWNER_ID}`,
       `transactions.link: current=${OWNER_ID}`,
+      `payees.find: current=${OWNER_ID}`,
     ]);
     expect(mocks.dataSource.transaction).toHaveBeenCalledTimes(1);
     expect(mocks.manager.query).toHaveBeenCalledWith(CURRENT_SQL, [OWNER_ID]);
@@ -215,6 +223,7 @@ describe("warranties module RLS context smoke (real withScopedDb)", () => {
     expect(identities()).toEqual([
       `warranties.list: current=${OWNER_ID} real=${DELEGATE_ID}`,
       `transactions.link: current=${OWNER_ID} real=${DELEGATE_ID}`,
+      `payees.find: current=${OWNER_ID} real=${DELEGATE_ID}`,
     ]);
     expect(mocks.manager.query).toHaveBeenCalledWith(CURRENT_SQL, [OWNER_ID]);
     expect(mocks.manager.query).toHaveBeenCalledWith(REAL_SQL, [DELEGATE_ID]);

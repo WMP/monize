@@ -178,7 +178,9 @@
     },
     "transaction": {
       "title": "구매",
-      "open": "{date} 거래 열기: {payee}, {amount}",
+      "edit": "{date} 구매 편집: {payee}, {amount}",
+      "viewInRegister": "거래 목록에서 보기",
+      "loadFailed": "구매를 불러오지 못했습니다",
       "dateInAccount": "{date} · {account}",
       "none": "연결된 거래 없음",
       "unreadable": "이 구매는 회원님이 읽을 수 없는 계좌에 있습니다.",
@@ -188,13 +190,13 @@
   "documents": {
     "title": "문서",
     "empty": "아직 문서가 없습니다",
-    "kindLabel": "문서 유형",
     "kindFor": "{name}의 문서 유형",
     "kindUpdateFailed": "문서 유형을 변경하지 못했습니다",
     "kinds": {
       "receipt": "영수증",
       "manual": "설명서",
       "photo": "사진",
+      "warranty": "보증서",
       "other": "기타"
     }
   },

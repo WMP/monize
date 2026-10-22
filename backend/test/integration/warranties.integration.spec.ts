@@ -323,6 +323,7 @@ describe("Warranties under RLS enforcement (integration)", () => {
       expect(view).toMatchObject({
         transactionId: grantedTxId,
         payeeId: alicePayeeId,
+        payee: { id: alicePayeeId, name: "Best Buy", hasLogo: false },
         linkedTransaction: { id: grantedTxId, accountId: grantedAccountId },
       });
       expect(await warrantyCount()).toBe(1);

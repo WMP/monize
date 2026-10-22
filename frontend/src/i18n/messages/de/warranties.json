@@ -178,7 +178,9 @@
     },
     "transaction": {
       "title": "Kauf",
-      "open": "Buchung vom {date} öffnen: {payee}, {amount}",
+      "edit": "Kauf vom {date} bearbeiten: {payee}, {amount}",
+      "viewInRegister": "Im Kontobuch ansehen",
+      "loadFailed": "Der Kauf konnte nicht geladen werden",
       "dateInAccount": "{date} · {account}",
       "none": "Keine verknüpfte Buchung",
       "unreadable": "Der Kauf liegt in einem Konto, das Sie nicht lesen dürfen.",
@@ -188,13 +190,13 @@
   "documents": {
     "title": "Dokumente",
     "empty": "Noch keine Dokumente",
-    "kindLabel": "Dokumentart",
     "kindFor": "Dokumentart für {name}",
     "kindUpdateFailed": "Die Dokumentart konnte nicht geändert werden",
     "kinds": {
       "receipt": "Beleg",
       "manual": "Handbuch",
       "photo": "Foto",
+      "warranty": "Garantieurkunde",
       "other": "Sonstiges"
     }
   },

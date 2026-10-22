@@ -178,7 +178,9 @@
     },
     "transaction": {
       "title": "Покупка",
-      "open": "Відкрити транзакцію від {date}: {payee}, {amount}",
+      "edit": "Редагувати покупку від {date}: {payee}, {amount}",
+      "viewInRegister": "Переглянути в журналі",
+      "loadFailed": "Не вдалося завантажити покупку",
       "dateInAccount": "{date} · {account}",
       "none": "Немає пов'язаної транзакції",
       "unreadable": "Покупка на рахунку, до якого у вас немає доступу на читання.",
@@ -188,13 +190,13 @@
   "documents": {
     "title": "Документи",
     "empty": "Документів ще немає",
-    "kindLabel": "Тип документа",
     "kindFor": "Тип документа для {name}",
     "kindUpdateFailed": "Не вдалося змінити тип документа",
     "kinds": {
       "receipt": "Чек",
       "manual": "Інструкція",
       "photo": "Фото",
+      "warranty": "Гарантійний талон",
       "other": "Інше"
     }
   },

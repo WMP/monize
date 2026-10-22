@@ -178,7 +178,9 @@
     },
     "transaction": {
       "title": "Compra",
-      "open": "Abrir a transação de {date}: {payee}, {amount}",
+      "edit": "Editar a compra de {date}: {payee}, {amount}",
+      "viewInRegister": "Ver no registo",
+      "loadFailed": "Falha ao carregar a compra",
       "dateInAccount": "{date} · {account}",
       "none": "Nenhuma transação associada",
       "unreadable": "A compra está numa conta que não pode ler.",
@@ -188,13 +190,13 @@
   "documents": {
     "title": "Documentos",
     "empty": "Ainda não há documentos",
-    "kindLabel": "Tipo de documento",
     "kindFor": "Tipo de documento de {name}",
     "kindUpdateFailed": "Falha ao alterar o tipo de documento",
     "kinds": {
       "receipt": "Recibo",
       "manual": "Manual",
       "photo": "Fotografia",
+      "warranty": "Certificado de garantia",
       "other": "Outro"
     }
   },

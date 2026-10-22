@@ -17,6 +17,16 @@ export interface LinkedTransaction {
 }
 
 /**
+ * The vendor's payee as a logo needs it: `hasLogo` is the payee's own
+ * `has_logo`, so a list draws the cached favicon without a read per row.
+ */
+export interface WarrantyPayee {
+  id: string;
+  name: string;
+  hasLogo: boolean;
+}
+
+/**
  * One warranty as every read route answers it (design 6.5). `status` and
  * `daysLeft` are the server's (WTY-002), computed against `today`, the
  * reader's date in their own timezone, which is echoed so a surface can say
@@ -27,6 +37,8 @@ export interface WarrantyView {
   name: string;
   vendorName: string | null;
   payeeId: string | null;
+  /** The payee `payeeId` names; `null` when there is none. */
+  payee: WarrantyPayee | null;
   modelNumber: string | null;
   serialNumbers: string[];
   warrantyKind: WarrantyKind;
