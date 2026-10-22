@@ -38,6 +38,23 @@ the platform manifest on some engines):
 | `v1.64.0-noble` | `linux/amd64` | `sha256:bc72a8df40831ded821e3cbc79c318c21b44d6e51dff9fd89ace7a8249c5b462` |
 | `v1.64.0-noble` | `linux/arm64` | `sha256:4109b399f6d3de22a133ab935df0d7614ed0de9195d529f0ebc6255655cdb495` |
 
+## When to move a digest
+
+A new digest is new content, and a freshly published image is exactly what a
+compromised account or registry would deliver. The rule is the one
+`.github/dependabot.yml` already applies to npm packages:
+
+- **Wait about a week.** Move a pin to a digest that has been public for at
+  least seven days, so a compromised or broken publish has time to be noticed
+  and withdrawn first.
+- **Never automatically.** A digest changes only in a reviewed pull request;
+  whoever changes it reads the digest from the registry themselves (below) and
+  updates this file in the same commit.
+- **Urgent security fixes are the exception, done by hand.** When a fix cannot
+  wait a week (for example a Node.js security release for the base image),
+  update the reference and this file manually and say in the pull request why
+  the week was skipped.
+
 ## Reading the digest of a tag
 
 Either command prints the index digest for a tag; run it, compare, and only
