@@ -22,6 +22,7 @@ import {
 } from "./rls-setup";
 import { settlePendingPriceWrites } from "@/securities/security-price.service";
 import { settlePendingHistoryWrites } from "@/action-history/action-history.service";
+import { settlePendingAccountRecalcs } from "@/net-worth/net-worth.service";
 import { DatabaseStorageProvider } from "@/attachments/storage/database-storage.provider";
 import type { AttachmentStorageProvider } from "@/attachments/storage/attachment-storage.interface";
 import { ATTACHMENT_STORAGE_PROVIDER } from "@/attachments/storage/attachment-storage.interface";
@@ -211,6 +212,10 @@ export async function cleanTables(
   // callers, so a history INSERT can be in flight against the `users` row
   // this truncate is about to remove.
   await settlePendingHistoryWrites();
+  // And for account recomputes: the post-import pass starts one per account
+  // without awaiting it, and its reads of `transactions` deadlocked against
+  // this truncate (ofx-import-fitid, "deadlock detected" in cleanTables).
+  await settlePendingAccountRecalcs();
   const tables = tableNames.join(", ");
   await dataSource.query(`TRUNCATE ${tables} CASCADE`);
 }
