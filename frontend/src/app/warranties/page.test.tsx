@@ -173,6 +173,7 @@ describe('WarrantiesPage', () => {
       q: undefined,
       archived: false,
       sort: 'expiresOn',
+      sortDir: 'asc',
       page: 1,
       limit: 50,
       transactionId: undefined,
@@ -294,7 +295,27 @@ describe('WarrantiesPage', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('columnheader', { name: /Name/ }));
     });
-    expect(lastListParams()).toMatchObject({ sort: 'name' });
+    expect(lastListParams()).toMatchObject({ sort: 'name', sortDir: 'asc' });
+  });
+
+  it('flips the direction when the active column is pressed again', async () => {
+    await renderPage();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('columnheader', { name: /Expires/ }));
+    });
+    expect(lastListParams()).toMatchObject({ sort: 'expiresOn', sortDir: 'desc' });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('columnheader', { name: /Expires/ }));
+    });
+    expect(lastListParams()).toMatchObject({ sort: 'expiresOn', sortDir: 'asc' });
+  });
+
+  it('starts a newly chosen column in its own natural direction', async () => {
+    await renderPage();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('columnheader', { name: /Purchased/ }));
+    });
+    expect(lastListParams()).toMatchObject({ sort: 'purchaseDate', sortDir: 'desc' });
   });
 
   it('keeps showing the newest request when an older one answers last', async () => {
@@ -503,6 +524,7 @@ describe('WarrantiesPage', () => {
       q: undefined,
       archived: false,
       sort: 'expiresOn',
+      sortDir: 'asc',
       transactionId: undefined,
     });
     expect(mockExportCsv).toHaveBeenCalledWith(rows, 'warranties-2026-10-21');

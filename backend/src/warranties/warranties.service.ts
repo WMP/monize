@@ -189,16 +189,26 @@ export class WarrantiesService {
         );
       }
 
+      const sortDir = (defaultDir: "ASC" | "DESC") =>
+        query.sortDir
+          ? query.sortDir === "desc"
+            ? "DESC"
+            : "ASC"
+          : defaultDir;
       switch (query.sort ?? "expiresOn") {
         case "name":
-          qb.orderBy("w.name", "ASC");
+          qb.orderBy("w.name", sortDir("ASC"));
           break;
         case "purchaseDate":
-          qb.orderBy("w.purchaseDate", "DESC").addOrderBy("w.name", "ASC");
+          qb.orderBy("w.purchaseDate", sortDir("DESC")).addOrderBy(
+            "w.name",
+            "ASC",
+          );
           break;
         case "expiresOn":
-          // Lifetime rows carry no date and sort after every dated one.
-          qb.orderBy("w.expiresOn", "ASC", "NULLS LAST").addOrderBy(
+          // Lifetime rows carry no date and sort after every dated one, in
+          // either direction.
+          qb.orderBy("w.expiresOn", sortDir("ASC"), "NULLS LAST").addOrderBy(
             "w.name",
             "ASC",
           );

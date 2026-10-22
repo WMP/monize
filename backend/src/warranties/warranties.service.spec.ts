@@ -589,6 +589,22 @@ describe("WarrantiesService", () => {
       expect(listQb.addOrderBy).toHaveBeenLastCalledWith("w.id", "ASC");
     });
 
+    it.each([
+      ["expiresOn", "asc", "w.expiresOn", "ASC", "NULLS LAST"],
+      ["expiresOn", "desc", "w.expiresOn", "DESC", "NULLS LAST"],
+      ["name", "desc", "w.name", "DESC", undefined],
+      ["purchaseDate", "asc", "w.purchaseDate", "ASC", undefined],
+      ["purchaseDate", "desc", "w.purchaseDate", "DESC", undefined],
+    ] as const)(
+      "sorts by %s %s when sortDir is given",
+      async (sort, sortDir, column, direction, nulls) => {
+        await service.findAll(USER, { sort, sortDir }, { today: TODAY });
+        const expected: unknown[] = [column, direction];
+        if (nulls) expected.push(nulls);
+        expect(listQb.orderBy).toHaveBeenCalledWith(...expected);
+      },
+    );
+
     it("reads today in the user's timezone, not the server's", async () => {
       // 03:00 UTC on the 21st is still the 20th in Toronto.
       jest.useFakeTimers().setSystemTime(new Date("2026-10-21T03:00:00Z"));

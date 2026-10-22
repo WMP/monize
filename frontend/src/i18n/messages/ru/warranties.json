@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, one {Остался {days} день} few {Осталось {days} дня} many {Осталось {days} дней} other {Осталось {days} дня}}",
     "today": "Истекает сегодня",
-    "ago": "{count, plural, one {Истекла {days} день назад} few {Истекла {days} дня назад} many {Истекла {days} дней назад} other {Истекла {days} дня назад}}"
+    "ago": "{count, plural, one {Истекла {days} день назад} few {Истекла {days} дня назад} many {Истекла {days} дней назад} other {Истекла {days} дня назад}}",
+    "leftYears": "Осталось: {yearsCount, plural, one {{years} год} few {{years} года} many {{years} лет} other {{years} года}}, {daysCount, plural, one {{days} день} few {{days} дня} many {{days} дней} other {{days} дня}}",
+    "agoYears": "Истекла: {yearsCount, plural, one {{years} год} few {{years} года} many {{years} лет} other {{years} года}}, {daysCount, plural, one {{days} день} few {{days} дня} many {{days} дней} other {{days} дня}} назад"
   },
   "kind": {
     "manufacturer": "От производителя",

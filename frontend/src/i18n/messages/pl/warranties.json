@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, one {Został {days} dzień} few {Zostały {days} dni} many {Zostało {days} dni} other {Zostało {days} dnia}}",
     "today": "Wygasa dzisiaj",
-    "ago": "{count, plural, one {Wygasła {days} dzień temu} few {Wygasła {days} dni temu} many {Wygasła {days} dni temu} other {Wygasła {days} dnia temu}}"
+    "ago": "{count, plural, one {Wygasła {days} dzień temu} few {Wygasła {days} dni temu} many {Wygasła {days} dni temu} other {Wygasła {days} dnia temu}}",
+    "leftYears": "Zostało: {yearsCount, plural, one {{years} rok} few {{years} lata} many {{years} lat} other {{years} roku}}, {daysCount, plural, one {{days} dzień} few {{days} dni} many {{days} dni} other {{days} dnia}}",
+    "agoYears": "Wygasła: {yearsCount, plural, one {{years} rok} few {{years} lata} many {{years} lat} other {{years} roku}}, {daysCount, plural, one {{days} dzień} few {{days} dni} many {{days} dni} other {{days} dnia}} temu"
   },
   "kind": {
     "manufacturer": "Od producenta",

@@ -31,8 +31,9 @@ export const WARRANTY_KINDS: readonly WarrantyKind[] = [
   'other',
 ];
 
-/** `GET /warranties?sort=`. The server owns the direction of each. */
+/** `GET /warranties?sort=`, with `sortDir=` to pick the direction. */
 export type WarrantySort = 'expiresOn' | 'name' | 'purchaseDate';
+export type WarrantySortDir = 'asc' | 'desc';
 
 /** The most serial numbers one warranty carries (`WARRANTY_MAX_SERIAL_NUMBERS`). */
 export const WARRANTY_MAX_SERIAL_NUMBERS = 10;
@@ -112,6 +113,7 @@ export interface WarrantyListParams {
   transactionId?: string;
   archived?: boolean;
   sort?: WarrantySort;
+  sortDir?: WarrantySortDir;
   page?: number;
   limit?: number;
 }

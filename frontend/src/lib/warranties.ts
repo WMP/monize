@@ -33,6 +33,7 @@ function listQuery(params: WarrantyListParams): Record<string, string> {
   if (params.transactionId) query.transactionId = params.transactionId;
   if (params.archived !== undefined) query.archived = String(params.archived);
   if (params.sort) query.sort = params.sort;
+  if (params.sortDir) query.sortDir = params.sortDir;
   if (params.page !== undefined) query.page = String(params.page);
   if (params.limit !== undefined) query.limit = String(params.limit);
   return query;

@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, one {Залишився {days} день} few {Залишилося {days} дні} many {Залишилося {days} днів} other {Залишилося {days} дня}}",
     "today": "Закінчується сьогодні",
-    "ago": "{count, plural, one {Закінчилася {days} день тому} few {Закінчилася {days} дні тому} many {Закінчилася {days} днів тому} other {Закінчилася {days} дня тому}}"
+    "ago": "{count, plural, one {Закінчилася {days} день тому} few {Закінчилася {days} дні тому} many {Закінчилася {days} днів тому} other {Закінчилася {days} дня тому}}",
+    "leftYears": "Залишилося: {yearsCount, plural, one {{years} рік} few {{years} роки} many {{years} років} other {{years} року}}, {daysCount, plural, one {{days} день} few {{days} дні} many {{days} днів} other {{days} дня}}",
+    "agoYears": "Закінчилася: {yearsCount, plural, one {{years} рік} few {{years} роки} many {{years} років} other {{years} року}}, {daysCount, plural, one {{days} день} few {{days} дні} many {{days} днів} other {{days} дня}} тому"
   },
   "kind": {
     "manufacturer": "Від виробника",

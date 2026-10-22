@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "[XX-{count, plural, one {{days} day left} other {{days} days left}}-XX]",
     "today": "[XX-Expires today-XX]",
-    "ago": "[XX-{count, plural, one {Expired {days} day ago} other {Expired {days} days ago}}-XX]"
+    "ago": "[XX-{count, plural, one {Expired {days} day ago} other {Expired {days} days ago}}-XX]",
+    "leftYears": "[XX-{yearsCount, plural, one {{years} year} other {{years} years}}, {daysCount, plural, one {{days} day} other {{days} days}} left-XX]",
+    "agoYears": "[XX-Expired {yearsCount, plural, one {{years} year} other {{years} years}}, {daysCount, plural, one {{days} day} other {{days} days}} ago-XX]"
   },
   "kind": {
     "manufacturer": "[XX-Manufacturer-XX]",

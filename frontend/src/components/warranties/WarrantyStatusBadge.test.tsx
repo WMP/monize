@@ -39,6 +39,21 @@ describe('WarrantyStatusBadge', () => {
     expect(screen.getByText('1 day left')).toBeInTheDocument();
   });
 
+  it('prints years and days from a year up', () => {
+    render(<WarrantyStatusBadge warranty={{ status: 'active', daysLeft: 3 * 365 + 321 }} showDaysLeft />);
+    expect(screen.getByText('3 years, 321 days left')).toBeInTheDocument();
+  });
+
+  it('uses the singular and a zero remainder at exactly one year', () => {
+    render(<WarrantyStatusBadge warranty={{ status: 'active', daysLeft: 365 }} showDaysLeft />);
+    expect(screen.getByText('1 year, 0 days left')).toBeInTheDocument();
+  });
+
+  it('prints years and days for a long-expired warranty', () => {
+    render(<WarrantyStatusBadge warranty={{ status: 'expired', daysLeft: -(365 + 1) }} showDaysLeft />);
+    expect(screen.getByText('Expired 1 year, 1 day ago')).toBeInTheDocument();
+  });
+
   it('says a warranty expiring today expires today', () => {
     render(<WarrantyStatusBadge warranty={{ status: 'expiring', daysLeft: 0 }} showDaysLeft />);
     expect(screen.getByText('Expiring soon')).toBeInTheDocument();
@@ -68,6 +83,6 @@ describe('WarrantyStatusBadge', () => {
   it("formats the day count in the reader's number format", () => {
     usePreferencesStore.setState({ preferences: { numberFormat: 'de-DE' } as never });
     render(<WarrantyStatusBadge warranty={{ status: 'active', daysLeft: 1200 }} showDaysLeft />);
-    expect(screen.getByText('1.200 days left')).toBeInTheDocument();
+    expect(screen.getByText('3 years, 105 days left')).toBeInTheDocument();
   });
 });

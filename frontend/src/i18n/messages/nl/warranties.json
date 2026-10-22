@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, one {Nog {days} dag} other {Nog {days} dagen}}",
     "today": "Verloopt vandaag",
-    "ago": "{count, plural, one {{days} dag geleden verlopen} other {{days} dagen geleden verlopen}}"
+    "ago": "{count, plural, one {{days} dag geleden verlopen} other {{days} dagen geleden verlopen}}",
+    "leftYears": "Nog {yearsCount, plural, one {{years} jaar} other {{years} jaar}}, {daysCount, plural, one {{days} dag} other {{days} dagen}}",
+    "agoYears": "{yearsCount, plural, one {{years} jaar} other {{years} jaar}}, {daysCount, plural, one {{days} dag} other {{days} dagen}} geleden verlopen"
   },
   "kind": {
     "manufacturer": "Fabrikant",

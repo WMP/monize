@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, one {Falta {days} dia} other {Faltam {days} dias}}",
     "today": "Expira hoje",
-    "ago": "{count, plural, one {Expirou há {days} dia} other {Expirou há {days} dias}}"
+    "ago": "{count, plural, one {Expirou há {days} dia} other {Expirou há {days} dias}}",
+    "leftYears": "Faltam {yearsCount, plural, one {{years} ano} other {{years} anos}}, {daysCount, plural, one {{days} dia} other {{days} dias}}",
+    "agoYears": "Expirou há {yearsCount, plural, one {{years} ano} other {{years} anos}}, {daysCount, plural, one {{days} dia} other {{days} dias}}"
   },
   "kind": {
     "manufacturer": "Fabricante",

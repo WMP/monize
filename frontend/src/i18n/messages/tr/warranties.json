@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, other {{days} gün kaldı}}",
     "today": "Süresi bugün doluyor",
-    "ago": "{count, plural, other {Süresi {days} gün önce doldu}}"
+    "ago": "{count, plural, other {Süresi {days} gün önce doldu}}",
+    "leftYears": "{yearsCount, plural, other {{years} yıl}}, {daysCount, plural, other {{days} gün}} kaldı",
+    "agoYears": "Süresi {yearsCount, plural, other {{years} yıl}}, {daysCount, plural, other {{days} gün}} önce doldu"
   },
   "kind": {
     "manufacturer": "Üretici",

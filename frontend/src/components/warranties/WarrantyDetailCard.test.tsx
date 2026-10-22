@@ -81,7 +81,7 @@ describe('WarrantyDetailCard', () => {
 
   it('shows what the warranty is from the server view', async () => {
     await renderCard(warranty());
-    expect(screen.getByText('711 days left')).toBeInTheDocument();
+    expect(screen.getByText('1 year, 346 days left')).toBeInTheDocument();
     expect(screen.getByText('Extended')).toBeInTheDocument();
     expect(screen.getByText('XPS-13')).toBeInTheDocument();
     expect(screen.getByText('SN-1')).toBeInTheDocument();

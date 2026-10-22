@@ -77,7 +77,9 @@
   "daysLeft": {
     "left": "{count, plural, other {残り {days} 日}}",
     "today": "本日期限切れ",
-    "ago": "{count, plural, other {{days} 日前に期限切れ}}"
+    "ago": "{count, plural, other {{days} 日前に期限切れ}}",
+    "leftYears": "残り {yearsCount, plural, other {{years} 年}} {daysCount, plural, other {{days} 日}}",
+    "agoYears": "{yearsCount, plural, other {{years} 年}} {daysCount, plural, other {{days} 日}} 前に期限切れ"
   },
   "kind": {
     "manufacturer": "メーカー保証",
