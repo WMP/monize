@@ -197,5 +197,11 @@
     "readyMessage": "{count, plural, one {# AI-voorstel wacht} other {# AI-voorstellen wachten}} op uw goedkeuring, waarvan {added} nieuw. Open de AI-beoordelingsinbox om ze goed te keuren of te negeren.",
     "expiringTitle": "AI-voorstellen verlopen binnenkort",
     "expiringMessage": "{count, plural, one {# AI-voorstel verloopt} other {# AI-voorstellen verlopen}} binnenkort. Het eerste verloopt op {date}. Open de AI-beoordelingsinbox om ze goed te keuren of te negeren."
+  },
+  "warranty": {
+    "expiringTitle": "{name}: garantie verloopt binnen {days, plural, one {# dag} other {# dagen}}",
+    "expiringMessage": "De garantie voor {name} verloopt op {date}. Open hem om de documenten te bekijken of een claim vast te leggen.",
+    "todayTitle": "{name}: garantie verloopt vandaag",
+    "todayMessage": "De garantie voor {name} verloopt vandaag, {date}. Open hem om de documenten te bekijken of een claim vast te leggen."
   }
 }

@@ -250,6 +250,12 @@
       "expiringTitle": "[XX-AI review proposals expire soon-XX]",
       "expiringMessage": "[XX-Proposals that expire within 3 days: {{ count }}. The first one expires on {{ date }}. Open to review.-XX]"
     },
+    "warranty": {
+      "expiringTitle": "[XX-{{ name }}: warranty expires soon-XX]",
+      "expiringMessage": "[XX-The warranty for {{ name }} expires on {{ date }}. Open to review its documents or record a claim.-XX]",
+      "todayTitle": "[XX-{{ name }}: warranty expires today-XX]",
+      "todayMessage": "[XX-The warranty for {{ name }} expires today, {{ date }}. Open to review its documents or record a claim.-XX]"
+    },
     "portfolioMovement": {
       "titleUp": "[XX-Investments up {{ percent }}%-XX]",
       "titleDown": "[XX-Investments down {{ percent }}%-XX]",

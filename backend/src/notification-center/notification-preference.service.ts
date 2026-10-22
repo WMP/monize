@@ -36,6 +36,7 @@ export const NOTIFICATION_PREFERENCE_CATEGORIES: readonly NotificationCategory[]
     NotificationCategory.EMAIL_RECEIPTS,
     NotificationCategory.BONDS,
     NotificationCategory.AI_REVIEW,
+    NotificationCategory.WARRANTIES,
   ];
 
 /**
@@ -166,6 +167,14 @@ export const NOTIFICATION_CATEGORY_CHANNELS: Record<
     push: true,
     unifiedpush: true,
   },
+  // Warranty expiry reminders: user-facing, so every channel is a live control
+  // (the producer goes through the dispatch seam).
+  [NotificationCategory.WARRANTIES]: {
+    email: true,
+    emailNotification: true,
+    push: true,
+    unifiedpush: true,
+  },
 };
 
 /** A category's channel state when the user has stored no row for it. */
@@ -219,6 +228,9 @@ export const NOTIFICATION_CATEGORY_DEFAULTS: Readonly<
   [NotificationCategory.BONDS]: GLOBAL_DEFAULTS,
   // Proposals waiting for approval keep the global rule, like receipts.
   [NotificationCategory.AI_REVIEW]: GLOBAL_DEFAULTS,
+  // Warranty reminders keep the global rule: the bell and the report email,
+  // push off until the user turns it on.
+  [NotificationCategory.WARRANTIES]: GLOBAL_DEFAULTS,
 };
 
 /**

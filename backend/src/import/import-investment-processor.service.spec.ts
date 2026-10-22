@@ -926,6 +926,38 @@ describe("ImportInvestmentProcessorService", () => {
       expect(cashTx[0].amount).toBeGreaterThan(0);
     });
 
+    it("should create a positive cash transaction for a return of capital", async () => {
+      const securityMap = new Map<string, string | null>();
+      securityMap.set("Test Stock", "sec-1");
+      const ctx = makeContext({ securityMap });
+
+      managerOf(ctx).findOne.mockImplementation((entity: any, opts: any) => {
+        if (entity === Security && opts?.where?.id === "sec-1") {
+          return Promise.resolve({ id: "sec-1", symbol: "TST" });
+        }
+        return Promise.resolve(null);
+      });
+
+      await service.processTransaction(ctx, {
+        action: "RtrnCap",
+        security: "Test Stock",
+        date: "2025-01-15",
+        amount: 125.5,
+      });
+
+      const saveCalls = managerOf(ctx).save.mock.calls;
+      const investmentTx = saveCalls.find(
+        (call: any) => call[0] instanceof InvestmentTransaction,
+      );
+      expect(investmentTx[0].totalAmount).toBe(125.5);
+      const cashTx = saveCalls.find(
+        (call: any) =>
+          call[0]?.currencyCode === "USD" && call[0]?.amount !== undefined,
+      );
+      expect(cashTx).toBeDefined();
+      expect(cashTx[0].amount).toBe(125.5);
+    });
+
     it("should NOT create cash transaction for SPLIT action", async () => {
       const ctx = makeContext();
       const qifTx = {
@@ -1319,8 +1351,8 @@ describe("ImportInvestmentProcessorService", () => {
       expect(ctx.importResult.imported).toBe(1);
     });
 
-    it("maps RtrnCap to DIVIDEND", async () => {
-      await testActionMapping("RtrnCap", InvestmentAction.DIVIDEND);
+    it("maps RtrnCap to RETURN_OF_CAPITAL, not DIVIDEND (#1800)", async () => {
+      await testActionMapping("RtrnCap", InvestmentAction.RETURN_OF_CAPITAL);
     });
 
     it("maps MargInt to INTEREST", async () => {

@@ -310,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinwestycja długoterminowych zysków kapitałowych",
       "CAPITAL_GAIN_SHORT": "Krótkoterminowy zysk kapitałowy",
       "CAPITAL_GAIN_LONG": "Długoterminowy zysk kapitałowy",
-      "REDEEM": "Wykup CD/obligacji"
+      "REDEEM": "Wykup CD/obligacji",
+      "RETURN_OF_CAPITAL": "Zwrot kapitału"
     },
     "toasts": {
       "loadHistoryFailed": "Nie udało się wczytać historii",

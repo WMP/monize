@@ -383,6 +383,12 @@
       "readyMessage": "결정을 기다리는 제안: {{ count }}건. 지난 알림 이후 새 제안: {{ added }}건. 열어서 검토하세요.",
       "expiringTitle": "AI 검토 제안이 곧 만료됩니다",
       "expiringMessage": "3일 이내에 만료되는 제안: {{ count }}건. 첫 번째 제안은 {{ date }}에 만료됩니다. 열어서 검토하세요."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: 보증이 곧 만료됩니다",
+      "expiringMessage": "{{ name }}의 보증이 {{ date }}에 만료됩니다. 열어서 문서를 검토하거나 보증 청구를 기록하세요.",
+      "todayTitle": "{{ name }}: 보증이 오늘 만료됩니다",
+      "todayMessage": "{{ name }}의 보증이 오늘({{ date }}) 만료됩니다. 열어서 문서를 검토하거나 보증 청구를 기록하세요."
     }
   },
   "backupOffsite": {

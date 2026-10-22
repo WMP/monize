@@ -310,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinvestasi Keuntungan Modal Jangka Panjang",
       "CAPITAL_GAIN_SHORT": "Keuntungan Modal Jangka Pendek",
       "CAPITAL_GAIN_LONG": "Keuntungan Modal Jangka Panjang",
-      "REDEEM": "Pencairan CD/Obligasi"
+      "REDEEM": "Pencairan CD/Obligasi",
+      "RETURN_OF_CAPITAL": "Pengembalian Modal"
     },
     "toasts": {
       "loadHistoryFailed": "Gagal memuat riwayat",

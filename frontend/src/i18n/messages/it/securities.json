@@ -310,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinvestimento plusvalenza a lungo termine",
       "CAPITAL_GAIN_SHORT": "Plusvalenza a breve termine",
       "CAPITAL_GAIN_LONG": "Plusvalenza a lungo termine",
-      "REDEEM": "Rimborso CD/obbligazione"
+      "REDEEM": "Rimborso CD/obbligazione",
+      "RETURN_OF_CAPITAL": "Rimborso di capitale"
     },
     "toasts": {
       "loadHistoryFailed": "Caricamento storico non riuscito",

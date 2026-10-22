@@ -383,6 +383,12 @@
       "readyMessage": "Proposte in attesa della tua decisione: {{ count }}. Nuove dall'ultima notifica: {{ added }}. Apri per esaminarle.",
       "expiringTitle": "Proposte di revisione IA in scadenza",
       "expiringMessage": "Proposte che scadono entro 3 giorni: {{ count }}. La prima scade il {{ date }}. Apri per esaminarle."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: la garanzia scade a breve",
+      "expiringMessage": "La garanzia di {{ name }} scade il {{ date }}. Aprila per controllare i documenti o registrare una richiesta di assistenza.",
+      "todayTitle": "{{ name }}: la garanzia scade oggi",
+      "todayMessage": "La garanzia di {{ name }} scade oggi, {{ date }}. Aprila per controllare i documenti o registrare una richiesta di assistenza."
     }
   },
   "backupOffsite": {
