@@ -871,5 +871,15 @@
     "selectionNotNew": "A selected transaction is not a new row of the bank's data. Nothing was imported; preview again.",
     "selectionOverlap": "A transaction cannot be both imported and added to the exceptions.",
     "nothingToUpdate": "Send autoSync, notifySuccess or tagOperationType to change a bank connection."
+  },
+  "warranties": {
+    "notFound": "Warranty with ID {{ id }} not found",
+    "transactionNotFound": "Transaction with ID {{ id }} not found",
+    "transactionIsSplitLine": "A warranty links to the whole purchase, not to one of its split lines",
+    "payeeNotFound": "Payee with ID {{ id }} not found",
+    "invalidTerm": "A warranty term must be longer than zero",
+    "expiryRequired": "A warranty that is not lifetime needs an expiry date or a term",
+    "expiresBeforePurchase": "A warranty cannot expire before its purchase date",
+    "priceNeedsCurrency": "A purchase price and its currency are set together or not at all"
   }
 }
