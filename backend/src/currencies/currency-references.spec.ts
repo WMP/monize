@@ -306,6 +306,11 @@ describe("currency global liveness", () => {
     expect(names).toEqual([
       // The global currency-liveness answer, evaluated across every tenant.
       "currency_code_in_use_globally",
+      // Whether a grant's account belongs to the delegation's owner, for the
+      // account_delegate_grants WITH CHECK: the policy cannot read accounts
+      // under RLS (the accounts policy reads the grants -- a policy cycle). One
+      // boolean about two ids the caller supplies (A26-M06).
+      "delegation_grant_account_is_owners",
       // Records an attachment-blob tombstone as the table owner, so the deletion
       // is captured under RLS whichever tenant's DELETE fired the trigger
       // (migration 140).
