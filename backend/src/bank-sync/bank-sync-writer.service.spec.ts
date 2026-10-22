@@ -57,6 +57,7 @@ const emptyRefused = () => ({
 function row(over: Partial<PlannedBankRow> = {}): PlannedBankRow {
   return {
     externalKey: "ref:1",
+    legacyKeys: null,
     transactionDate: "2026-09-10",
     amount: -12.34,
     payeeText: "Biedronka",
@@ -310,6 +311,50 @@ describe("BankSyncWriterService", () => {
       expect(manager.create).toHaveBeenCalledTimes(1);
       expect(payees.findByName).toHaveBeenCalledTimes(1);
       expect(statements("SET transaction_id")).toHaveLength(1);
+    });
+
+    it("skips a row the held map contains without claiming it, and claims a row it does not", async () => {
+      const heldKey = "ref:R|2026-09-10|-12.3400:0";
+      manager.query.mockImplementation(
+        async (sql: string, params?: unknown[]) => {
+          const text = String(sql);
+          if (text.includes("SELECT external_key")) {
+            // The ledger holds the row under the key an earlier planner gave it.
+            return [
+              {
+                external_key: "ref:R",
+                booking_date: "2026-09-10",
+                excluded: false,
+              },
+            ];
+          }
+          if (text.includes("INSERT INTO bank_sync_imported_transactions")) {
+            return [{ id: `ledger-${String(params![2])}` }];
+          }
+          if (text.includes("INSERT INTO payees")) {
+            return [
+              { id: "p", name: String(params![1]), default_category_id: null },
+            ];
+          }
+          return [];
+        },
+      );
+
+      const outcome = await service.write(
+        input([
+          row({
+            externalKey: heldKey,
+            legacyKeys: { bare: "ref:R", contested: "ref:R#abc" },
+          }),
+          row({ externalKey: "ref:2" }),
+        ]),
+      );
+
+      expect(outcome).toMatchObject({ imported: 1, skipped: 1 });
+      const claims = statements("INSERT INTO bank_sync_imported_transactions");
+      expect(claims).toHaveLength(1);
+      expect((claims[0][1] as unknown[])[2]).toBe("ref:2");
+      expect(manager.create).toHaveBeenCalledTimes(1);
     });
 
     it("imports nothing, applies no rules and moves no balance when every row is a duplicate", async () => {
@@ -778,9 +823,12 @@ describe("BankSyncWriterService", () => {
       ).resolves.toMatchObject({ imported: 0 });
     });
 
-    it("does not read the ledger for a fingerprint when none was sent (the daily sync)", async () => {
-      await service.write(input(rows()));
-      expect(statements("SELECT external_key")).toHaveLength(0);
+    it("reads the ledger once for the held rows when no fingerprint was sent (the daily sync), and compares nothing", async () => {
+      await expect(service.write(input(rows()))).resolves.toMatchObject({
+        imported: 3,
+        skipped: 0,
+      });
+      expect(statements("SELECT external_key")).toHaveLength(1);
     });
 
     it("is checked after the link and currency refusals, which come first", async () => {
