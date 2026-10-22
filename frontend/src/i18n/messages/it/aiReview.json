@@ -48,6 +48,7 @@
       "tradeChat": "Hai chiesto di riconoscere la conferma di operazione allegata: proponi la transazione di investimento che riporta, un acquisto, una vendita, un dividendo in contanti o un dividendo reinvestito."
     },
     "emailReceipt": "Ricevuta via email: {subject} da {sender}",
+    "emailReceiptForwarded": "Ricevuta via email: {subject} da {sender}, inoltrata da {forwarder}",
     "emailReceiptMissing": "Ricevuta via email (l'email è stata eliminata)",
     "parserDraft": "Bozza di parser da {count, plural, one {# email} other {# email}} ({domain})",
     "viewEmailReceipts": "Vedi ricevute via email",

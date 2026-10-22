@@ -7528,7 +7528,10 @@ Statement           Nothing a receipt carries is written to a transaction except
                     chose are part of the card (tags are added, never removed;
                     an AI category is display-only and a person approves it).
                     Auto-apply, when the user turned it on, calls the same
-                    confirm with the card it built; the daily AI write limit
+                    confirm with the card it built, never for a forward (the
+                    sender of a forward is a claim of its text; only the
+                    owner's own forward is read as the shop's at all,
+                    A26-H02); the daily AI write limit
                     is exempted for a profile's proposal only by the user's own
                     stored mailbox switch, decided on the server.
 Source of truth     ai_review_requests (kind email_receipt), transactions
@@ -7548,7 +7551,10 @@ Crash semantics     the request stays proposed until the write commits
 Failure response    409 when the request is no longer proposed; the proposal
                     stays in the inbox when auto-apply is refused
 Required tests      Present: email-receipts-pipeline.integration.spec.ts (a
-                    proposal applied end to end), ai-review-requests integration.
+                    proposal applied end to end), ai-review-requests integration,
+                    email-receipts-forwarded-sender.integration.spec.ts (an
+                    outside sender's pasted forward block is not the shop's;
+                    the owner's forward is never auto-applied).
 Status              enforced
 ```
 
@@ -7661,7 +7667,12 @@ Statement           A brokerage trade-confirmation email (a profile with a
                     auto-applied. Auto-apply, when the user turned it on, calls the
                     same confirm and only for an approved profile, a complete
                     reading whose price agrees with its shares and total, no
-                    matching row at all, and a card that built. No automatic pass
+                    matching row at all, a card that built, and an email that
+                    is no forward. A forwarded header block re-identifies an
+                    email (and so chooses the profile) only when the outer
+                    From is the owner's own address (the mailbox login or the
+                    verified account email); anybody else's pasted block is
+                    text (A26-H02). No automatic pass
                     (the poll's rematch, a bulk run) replaces a trade proposal:
                     one waiting for approval, or dismissed, stays as it is. A
                     trade that pays a scheduled bill or deposit posts that
@@ -7689,6 +7700,10 @@ Enforcement         EmailReceiptTradeService queues the request claimed by the
                     transaction. The pipeline returns unchanged under
                     onlyWhenStatusIn for an email whose request is an open or
                     dismissed email_trade one, and selectRematch never selects one.
+                    resolveForwardedIdentity (imap/forwarded-receipt.ts) honours
+                    a forwarded block only for an outer From in loadOwnAddresses
+                    (poll/own-addresses.ts), at ingestion and in the pipeline's
+                    heal; both auto-apply gates read isForwardedReceipt.
 Concurrency scope   email_receipts row (pipeline, link), holdings scope (confirm)
 Retry semantics     a second confirm of the same card is refused by the
                     single-use claim and by markTradeApplied; a person's reprocess
@@ -7702,10 +7717,13 @@ Required tests      Present: email-receipt-trade.service.spec.ts,
                     ai-review-work.service.spec.ts, ai-actions.service.spec.ts,
                     investment-transactions.service.spec.ts,
                     email-receipt-trade-link.service.spec.ts,
-                    email-receipt-pipeline.service.spec.ts.
-                    Absent: an integration test against real PostgreSQL (the
-                    migration, the ledger query and the two-connection race of
-                    two confirms, or of a link and a confirm).
+                    email-receipt-pipeline.service.spec.ts,
+                    email-receipts-forwarded-sender.integration.spec.ts (real
+                    PostgreSQL under RLS: the poll, the card and confirm; an
+                    outside sender's forward books nothing, the cash stays
+                    10 000.00; the owner's forward waits for a person).
+                    Absent: the two-connection race of two confirms, or of a
+                    link and a confirm, against real PostgreSQL.
 Status              enforced
 ```
 

@@ -354,6 +354,7 @@ describe("the forwarded-message header of the real mails", () => {
         },
         body,
         new Date("2026-10-04T08:33:42.000Z"),
+        new Set(["alice.example@example.com"]),
       );
       expect(identity).toMatchObject({
         fromAddress: from,
