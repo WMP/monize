@@ -544,6 +544,7 @@
     "bondSeriesNotNameable": "Transaksi {{ action }} terjadwal pada sekuritas terkait program obligasi tidak dapat menyebutkan seri obligasi dari unitnya. Catat sebagai transaksi dan pilih serinya, atau jadwalkan pembelian (BUY), yang mengambil seri yang dijual pada tanggalnya.",
     "notFound": "Transaksi terjadwal dengan ID {{ id }} tidak ditemukan",
     "occurrenceAlreadyPosted": "Kejadian ini sudah dicatat.",
+    "noOccurrencesLeft": "Jadwal ini tidak memiliki kejadian tersisa untuk diposting atau dilewati.",
     "changedConcurrently": "The scheduled transaction changed during the operation. Reload it and retry.",
     "fxPlainOnly": "Mata uang lain hanya dapat dipakai pada transaksi terjadwal biasa, bukan pada transaksi terbagi, transfer, atau investasi",
     "fxRateUnavailable": "Tidak ada nilai tukar yang tersedia untuk {{ from }} ke {{ to }} pada {{ date }}. Masukkan jumlah dalam {{ to }} untuk mempostingnya.",

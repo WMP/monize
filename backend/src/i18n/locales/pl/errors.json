@@ -544,6 +544,7 @@
     "bondSeriesNotNameable": "Zaplanowana operacja {{ action }} na papierze wartościowym powiązanym z obligacjami nie może wskazać serii obligacji swoich jednostek. Zapisz ją jako transakcję i wybierz serię albo zaplanuj zakup (BUY), który obejmuje serię będącą w sprzedaży w jego dniu.",
     "notFound": "Nie znaleziono zaplanowanej transakcji o ID {{ id }}",
     "occurrenceAlreadyPosted": "Ta rata została już zaksięgowana.",
+    "noOccurrencesLeft": "Ten harmonogram nie ma już wystąpień do zaksięgowania ani pominięcia.",
     "changedConcurrently": "The scheduled transaction changed during the operation. Reload it and retry.",
     "fxPlainOnly": "Innej waluty można użyć tylko w zwykłej zaplanowanej transakcji, a nie w podziale, przelewie ani inwestycji",
     "fxRateUnavailable": "Dla {{ date }} nie ma dostępnego kursu wymiany z {{ from }} na {{ to }}. Wprowadź kwotę w {{ to }}, aby ją zaksięgować.",

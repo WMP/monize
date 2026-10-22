@@ -17,6 +17,7 @@ import { SplitEditor, SplitRow, createEmptySplits, toSplitRows } from '@/compone
 import { toOverrideSplits } from './splitSerialization';
 import { bookSplitRowsAtMinorUnit } from '@/lib/minor-unit-booking';
 import { ScheduledTransaction, PostScheduledTransactionData } from '@/types/scheduled-transaction';
+import { occurrencePin } from '@/lib/scheduled-effective-amount';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
@@ -736,6 +737,7 @@ export function PostTransactionDialog({
     try {
       const postData: PostScheduledTransactionData = isInvestmentKind
         ? {
+            ...occurrencePin(scheduledTransaction),
             transactionDate,
             description: description || null,
             investmentQuantity:
@@ -746,6 +748,9 @@ export function PostTransactionDialog({
               investmentTotalAmount === '' ? undefined : Number(investmentTotalAmount),
           }
         : {
+            // The occurrence as the dialog opened it: a post that finds another
+            // tab or the cron has moved on is refused with 409.
+            ...occurrencePin(scheduledTransaction),
             transactionDate,
             // For a foreign-currency schedule only the biller's amount is sent,
             // so the backend -- not this dialog -- decides what is booked;

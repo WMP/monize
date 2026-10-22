@@ -475,6 +475,11 @@ counted as a skip, not an error (INV-OCCURRENCE-001). The cron passes the
 occurrence it selected as `expectedDueDate`, because the claim key is only as
 good as the date it is built from: a replica that re-read the schedule after the
 winner advanced it keyed the claim on the next occurrence and posted that. A
+manual post or skip carries the occurrence the person saw the same way
+(`expectedOccurrenceDate` and `expectedOverrideId`, required on both routes and
+checked by `assertOccurrencePin` before the lock and under it), so a stale tab
+or a retried request is refused with 409 instead of consuming the next
+occurrence. A
 `settle_loan_installment` rule claims the same row, under the same unique key,
 through `claimLoanOccurrence` (`backend/src/loan-installments/claim-loan-occurrence.ts`):
 the same `INSERT ... ON CONFLICT DO NOTHING RETURNING id`, on the same

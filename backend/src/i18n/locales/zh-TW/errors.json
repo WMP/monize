@@ -544,6 +544,7 @@
     "bondSeriesNotNameable": "連結到債券計畫的證券，其排程中的{{ action }}無法指明其份額所屬的債券系列。請將其記錄為交易並選擇系列，或排程一筆買入（BUY），它會採用當日在售的系列。",
     "notFound": "找不到 ID 為 {{ id }} 的定期交易",
     "occurrenceAlreadyPosted": "此次記帳已完成。",
+    "noOccurrencesLeft": "此排程已沒有可記帳或略過的期次。",
     "changedConcurrently": "The scheduled transaction changed during the operation. Reload it and retry.",
     "fxPlainOnly": "只有一般定期交易才能使用其他貨幣，分割、轉帳和投資均不支援",
     "fxRateUnavailable": "{{ date }} 沒有從 {{ from }} 到 {{ to }} 的可用匯率。請以 {{ to }} 輸入金額後再過帳。",

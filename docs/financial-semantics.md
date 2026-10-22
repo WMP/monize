@@ -578,6 +578,32 @@ wrong about a number that was itself correct. INV-OCCURRENCE-003 in
 
 An occurrence that fell due and was neither posted nor skipped is still owed. Posting and skipping both advance `next_due_date` past the slot, and every expansion walks from there, so an occurrence that comes back dated before a projection's first day is one the user still has to pay or collect. Both balance projections apply it on their first day rather than dropping it: the cash-flow forecast on today, the account balance forecast on tomorrow, because its today is the posted balance. Each projection says how many it carried. Dropping it showed a balance that only held if the bill was never paid. That is the opposite of a forecast, and the gap grew with every day the bill stayed unposted (discussion #1784). Only the last 31 days are carried (`OVERDUE_CARRY_DAYS`, the same number in `common/scheduled-occurrences.ts` and `lib/forecast.ts`): an occurrence older than that is read as a schedule the user forgot rather than a bill still owed, so a forgotten schedule moves a projection by at most one window of occurrences instead of every slot since it was last posted. `BudgetsService.getUpcomingBills`, which safe-to-spend subtracts, counts from the same day, so a bill the forecast calls owed is not also reported as money available to spend. The occurrence keeps every other rule: its effective amount and date, its share of `occurrences_remaining`, the schedule's `end_date`, and the withholding when it cannot be priced. The projection knows an occurrence is settled only through `next_due_date`: a bill paid by entering a plain transaction, with its occurrence left unposted, is counted a second time on the first day until that occurrence is posted or skipped. The projected half of the calendar's daily totals (`GET /accounts/daily-balance-totals`) carries the same occurrences on the same day but does not say so: its response has no `overdue` field (`docs/backend/transactions-and-money.md`).
 
+```text
+FIN-OCC-PIN
+A request that consumes a scheduled occurrence -- a post or a skip -- names the
+occurrence its caller saw, and the server refuses it with 409, before anything
+is written, when that is no longer the occurrence due. The cron names the slot
+it selected (`expectedDueDate`); a person's request names the date the
+occurrence falls on and the override that moved it (`expectedOccurrenceDate`,
+`expectedOverrideId`, from `occurrencePin` on the client). The server's
+cursor at request time is never the identity: it is whatever another tab, a
+replica or a retry left it at.
+```
+
+Without the pin, a Bills tab loaded before the hourly auto-post sent September's
+post after the cron had already posted September: the server read the advanced
+cursor and booked October, a month early under September's date, and on a
+schedule with one occurrence left it booked an extra payment of the whole bill
+(audit A26-H07). A stale Skip skipped October. The pin is also the safe answer
+to a retried request whose response was lost: the retry finds the cursor moved
+and is refused. INV-OCCURRENCE-001 records the enforcement.
+
+Every advance of the cursor, whoever makes it, steps past every slot already
+claimed on or after it (`claimedSlotsFrom` in `schedule-cursor.ts`). A
+settlement rule may claim a slot ahead of the cursor (INV-LOAN-008); a post that
+stepped past its own slot only left the cursor on that claimed slot, and every
+later post was refused as already posted, with no alert (audit A26-M15).
+
 ## 8. Import and restore: zero, null, absent
 
 The MS Money importer is deliberately not uniform, and the distinction is worth

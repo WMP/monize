@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   nextOccurrenceEffectiveAmount,
   occurrenceAccountIds,
+  occurrencePin,
   occurrenceSettlementAccountId,
   occurrenceTouchesAccounts,
   overrideEffectiveAmount,
@@ -202,6 +203,42 @@ describe('scheduled effective amounts', () => {
       expect(
         nextOccurrenceEffectiveAmount(plain({ effectiveAmount: -1200 })).amount,
       ).toBe(-1200);
+    });
+  });
+
+  describe('occurrencePin', () => {
+    it('is the slot and no override when none governs the occurrence', () => {
+      expect(
+        occurrencePin(plain({ nextDueDate: '2026-09-01T00:00:00.000Z' })),
+      ).toEqual({ expectedOccurrenceDate: '2026-09-01', expectedOverrideId: null });
+    });
+
+    it('is the override date and the override id when an override moved the occurrence', () => {
+      expect(
+        occurrencePin(
+          plain({
+            nextDueDate: '2026-09-01',
+            nextOverride: override({ id: 'ovr-7', overrideDate: '2026-09-03' }),
+          }),
+        ),
+      ).toEqual({ expectedOccurrenceDate: '2026-09-03', expectedOverrideId: 'ovr-7' });
+    });
+
+    it('carries the override id when the override kept the slot date', () => {
+      expect(
+        occurrencePin(
+          plain({
+            nextDueDate: '2026-09-01',
+            nextOverride: override({ id: 'ovr-8', overrideDate: '2026-09-01' }),
+          }),
+        ),
+      ).toEqual({ expectedOccurrenceDate: '2026-09-01', expectedOverrideId: 'ovr-8' });
+    });
+
+    it('treats an absent nextOverride as no override', () => {
+      expect(
+        occurrencePin(plain({ nextDueDate: '2026-09-01', nextOverride: undefined })),
+      ).toEqual({ expectedOccurrenceDate: '2026-09-01', expectedOverrideId: null });
     });
   });
 

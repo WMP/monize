@@ -4018,21 +4018,49 @@ Enforcement         A durable occurrence key claimed atomically.
                     database-level backstop, so exactly-once holds regardless of
                     replica count; the cron treats the ConflictException as
                     "claimed by another replica".
+                    The two human entry points carry the occurrence the person
+                    saw: POST /scheduled-transactions/:id/post and /:id/skip
+                    require expectedOccurrenceDate (the date the occurrence falls
+                    on, nextOccurrenceDueDate on the client) and
+                    expectedOverrideId (the override shown, or null), and post()
+                    and skip() compare them, before the lock and again under it,
+                    with the cursor and the override at the cursor slot
+                    (occurrence-pin.ts assertOccurrencePin). A stale view is
+                    refused with 409 before anything is written, so it can
+                    neither post the next occurrence under the old one's date
+                    nor skip it. skip() takes the same row lock. Both refuse a
+                    schedule with no occurrence left (occurrences_remaining 0,
+                    or the cursor past end_date), so an exhausted schedule posts
+                    nothing more by any route.
+                    The cursor steps past every claimed slot on or after it on
+                    every advance (schedule-cursor.ts claimedSlotsFrom, read in
+                    the posting transaction after the claim), so a slot a
+                    settlement rule claimed ahead of the cursor (INV-LOAN-008)
+                    is never where the cursor stops.
 Concurrency scope   per (scheduled transaction, occurrence date)
-Retry semantics     Safe: a re-post is refused by the occurrence claim.
-Crash semantics     A crash between claim and advance leaves the claim row, so the
-                    next tick is refused rather than reposting.
+Retry semantics     Safe: a re-post is refused by the occurrence claim, and a
+                    manual retry by the pin once the cursor has moved.
+Crash semantics     The claim, the money, the override removal and the cursor
+                    advance commit or roll back together in one withScopedDb
+                    transaction: a crash before the commit leaves no claim, no
+                    row and no advance; after it, all of them.
 Failure response    the losing claim gets ConflictException, having posted nothing.
                     A replica whose selection went stale (the winner already
                     advanced next_due_date) is refused by expectedDueDate; without
                     it, post() re-read the row and posted the NEXT occurrence under
-                    a fresh claim key, once per extra replica.
+                    a fresh claim key, once per extra replica. A stale browser
+                    view is refused the same way by its pin (audit A26-H07).
 Required tests      Present (unit): scheduled-transactions.service.spec.ts, a cron
                     whose post() re-reads an advanced next_due_date posts nothing,
                     and post() recording its transaction on the claim.
-                    The unique index gives DB-level exactly-once; a two-instance
-                    "two replicas, one posting" integration test is still owed as
-                    the gold-standard proof.
+                    Present (integration, real post() against PostgreSQL):
+                    scheduled-posting.integration.spec.ts (two cron replicas
+                    under a barrier post once) and
+                    scheduled-post-occurrence-pin.integration.spec.ts (a stale
+                    post, skip and exhausted-schedule post are refused 409 with
+                    the ledger unchanged; a cron tick racing a pinned manual
+                    post has one effect; a rule claim ahead of the cursor is
+                    stepped over by post() and skip()).
 Status              enforced
 ```
 

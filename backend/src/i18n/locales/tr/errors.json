@@ -544,6 +544,7 @@
     "bondSeriesNotNameable": "Tahvil programına bağlı bir menkul kıymette zamanlanmış {{ action }} işlemi, paylarının tahvil serisini belirtemez. Bunu işlem olarak kaydedip seriyi seçin veya kendi tarihinde satışta olan seriyi alan bir alım (BUY) zamanlayın.",
     "notFound": "{{ id }} kimliğine sahip zamanlanmış işlem bulunamadı",
     "occurrenceAlreadyPosted": "Bu tekrar zaten kaydedildi.",
+    "noOccurrencesLeft": "Bu planın göndermek veya atlamak için kalan oluşumu yok.",
     "changedConcurrently": "The scheduled transaction changed during the operation. Reload it and retry.",
     "fxPlainOnly": "Farklı bir para birimi yalnızca sade bir zamanlanmış işlemde kullanılabilir; bölünmüş işlem, transfer veya yatırımda kullanılamaz",
     "fxRateUnavailable": "{{ date }} tarihinde {{ from }} biriminden {{ to }} birimine döviz kuru yok. Kaydetmek için tutarı {{ to }} cinsinden girin.",

@@ -544,6 +544,7 @@
     "bondSeriesNotNameable": "채권 프로그램에 연결된 증권의 예약된 {{ action }}은(는) 해당 주식의 채권 시리즈를 지정할 수 없습니다. 거래로 기록하고 시리즈를 선택하거나, 그날 판매 중인 시리즈를 사용하는 매수(BUY)를 예약하세요.",
     "notFound": "ID가 {{ id }}인 예약 거래를 찾을 수 없습니다",
     "occurrenceAlreadyPosted": "이 발생 건은 이미 등록되었습니다.",
+    "noOccurrencesLeft": "이 일정에는 게시하거나 건너뛸 회차가 남아 있지 않습니다.",
     "changedConcurrently": "The scheduled transaction changed during the operation. Reload it and retry.",
     "fxPlainOnly": "다른 통화는 일반 예약 거래에서만 사용할 수 있으며 분할, 이체, 투자에서는 사용할 수 없습니다",
     "fxRateUnavailable": "{{ date }}에 {{ from }}에서 {{ to }}로의 환율을 사용할 수 없습니다. 게시하려면 금액을 {{ to }}로 입력하세요.",

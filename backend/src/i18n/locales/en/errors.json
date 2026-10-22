@@ -544,6 +544,7 @@
     "bondSeriesNotNameable": "A scheduled {{ action }} of a bond-linked security cannot name the bond series of its shares. Record it as a transaction and choose the series, or schedule a BUY, which takes the series on sale on its date.",
     "notFound": "Scheduled transaction with ID {{ id }} not found",
     "occurrenceAlreadyPosted": "This occurrence has already been posted.",
+    "noOccurrencesLeft": "This schedule has no occurrences left to post or skip.",
     "changedConcurrently": "The scheduled transaction changed during the operation. Reload it and retry.",
     "fxPlainOnly": "A different currency can only be used on a plain scheduled transaction, not a split, transfer or investment",
     "fxRateUnavailable": "No exchange rate is available for {{ from }} to {{ to }} on {{ date }}. Enter the amount in {{ to }} to post it.",

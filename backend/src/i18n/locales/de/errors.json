@@ -544,6 +544,7 @@
     "bondSeriesNotNameable": "Eine geplante Buchung vom Typ {{ action }} eines mit einem Anleiheprogramm verknüpften Wertpapiers kann die Anleiheserie ihrer Anteile nicht benennen. Erfassen Sie sie als Buchung und wählen Sie die Serie, oder planen Sie einen Kauf (BUY), der die an seinem Tag angebotene Serie nimmt.",
     "notFound": "Terminierte Buchung mit ID {{ id }} nicht gefunden",
     "occurrenceAlreadyPosted": "Dieser Vorgang wurde bereits gebucht.",
+    "noOccurrencesLeft": "Dieser Zeitplan hat keine Termine mehr, die gebucht oder übersprungen werden können.",
     "changedConcurrently": "The scheduled transaction changed during the operation. Reload it and retry.",
     "fxPlainOnly": "Eine abweichende Währung ist nur bei einer einfachen terminierten Buchung möglich, nicht bei einer Aufteilung, Überweisung oder Investition",
     "fxRateUnavailable": "Für {{ from }} zu {{ to }} ist am {{ date }} kein Wechselkurs verfügbar. Geben Sie den Betrag in {{ to }} ein, um ihn zu buchen.",

@@ -544,6 +544,7 @@
     "bondSeriesNotNameable": "Un'operazione programmata {{ action }} su un titolo collegato a un programma obbligazionario non può indicare la serie obbligazionaria delle sue quote. Registrala come transazione e scegli la serie, oppure programma un acquisto (BUY), che prende la serie in vendita alla sua data.",
     "notFound": "Transazione pianificata con ID {{ id }} non trovata",
     "occurrenceAlreadyPosted": "Questa occorrenza è già stata registrata.",
+    "noOccurrencesLeft": "Questa pianificazione non ha più occorrenze da registrare o saltare.",
     "changedConcurrently": "The scheduled transaction changed during the operation. Reload it and retry.",
     "fxPlainOnly": "Una valuta diversa può essere usata solo su una transazione pianificata semplice, non su una suddivisione, un trasferimento o un investimento",
     "fxRateUnavailable": "Non è disponibile alcun tasso di cambio da {{ from }} a {{ to }} il {{ date }}. Inserisci l'importo in {{ to }} per registrarla.",

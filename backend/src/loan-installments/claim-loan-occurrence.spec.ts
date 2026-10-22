@@ -1,8 +1,7 @@
 import { ConflictException } from "@nestjs/common";
-import { EntityManager, MoreThanOrEqual } from "typeorm";
+import { EntityManager } from "typeorm";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { ScheduledTransactionOverride } from "../scheduled-transactions/entities/scheduled-transaction-override.entity";
-import { ScheduledTransactionPosting } from "../scheduled-transactions/entities/scheduled-transaction-posting.entity";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import {
   OCCURRENCE_ALREADY_POSTED_CODE,
@@ -28,7 +27,6 @@ describe("claimLoanOccurrence", () => {
   let manager: Record<string, jest.Mock>;
   let schedules: Record<string, jest.Mock>;
   let overrides: Record<string, jest.Mock>;
-  let postings: Record<string, jest.Mock>;
   let deleteChain: Record<string, jest.Mock>;
 
   const m = () => manager as unknown as EntityManager;
@@ -114,11 +112,9 @@ describe("claimLoanOccurrence", () => {
   beforeEach(() => {
     schedules = { findOne: jest.fn() };
     overrides = { find: jest.fn().mockResolvedValue([]) };
-    postings = { find: jest.fn().mockResolvedValue([]) };
     manager = createScopedDbMocks([
       [ScheduledTransaction, schedules],
       [ScheduledTransactionOverride, overrides],
-      [ScheduledTransactionPosting, postings],
     ]).manager;
     // The INSERT comes back as bare rows (the driver's shape for INSERT).
     manager.query.mockResolvedValue([{ id: "claim-1" }]);
@@ -198,7 +194,7 @@ describe("claimLoanOccurrence", () => {
     expect(result).not.toHaveProperty("cursor");
     expect(manager.update).not.toHaveBeenCalled();
     expect(manager.createQueryBuilder).not.toHaveBeenCalled();
-    expect(postings.find).not.toHaveBeenCalled();
+    expect(manager.query).toHaveBeenCalledTimes(1);
   });
 
   it("advances the cursor past every consecutive claimed slot when the slot is the next due date, recording before and after", async () => {
@@ -212,21 +208,20 @@ describe("claimLoanOccurrence", () => {
       .mockResolvedValueOnce(locked)
       .mockResolvedValueOnce(advanced);
     // The slot just claimed, and two later slots settled out of order before.
-    postings.find.mockResolvedValue([
-      { id: "claim-1", originalDueDate: "2024-01-01" },
-      { id: "claim-feb", originalDueDate: "2024-02-01" },
-      { id: "claim-mar", originalDueDate: "2024-03-01" },
-    ]);
+    manager.query
+      .mockResolvedValueOnce([{ id: "claim-1" }])
+      .mockResolvedValueOnce([
+        { d: "2024-01-01" },
+        { d: "2024-02-01" },
+        { d: "2024-03-01" },
+      ]);
 
     const result = await claim();
 
-    expect(postings.find).toHaveBeenCalledWith({
-      select: { id: true, originalDueDate: true },
-      where: {
-        scheduledTransactionId: scheduleId,
-        originalDueDate: MoreThanOrEqual("2024-01-01"),
-      },
-    });
+    // The claims on or after the cursor come from the shared `claimedSlotsFrom`.
+    const [claimsSql, claimsParams] = manager.query.mock.calls[1];
+    expect(claimsSql).toContain("FROM scheduled_transaction_postings");
+    expect(claimsParams).toEqual([scheduleId, "2024-01-01"]);
     // advanceScheduleCursor stepped three slots: the claimed one and the two
     // already taken, so the bill never offers a claimed key.
     expect(manager.update).toHaveBeenCalledWith(
@@ -268,9 +263,9 @@ describe("claimLoanOccurrence", () => {
     schedules.findOne
       .mockResolvedValueOnce(schedule())
       .mockResolvedValueOnce(schedule({ nextDueDate: "2024-02-01" }));
-    postings.find.mockResolvedValue([
-      { id: "claim-1", originalDueDate: "2024-01-01" },
-    ]);
+    manager.query
+      .mockResolvedValueOnce([{ id: "claim-1" }])
+      .mockResolvedValueOnce([{ d: "2024-01-01" }]);
     const kept = override("ovr-keep", "2024-03-01");
     overrides.find
       .mockResolvedValueOnce([override("ovr-gone", "2024-01-01"), kept])
@@ -325,7 +320,7 @@ describe("claimLoanOccurrence", () => {
     );
     // No step, so nothing to prune and no claims to read.
     expect(manager.createQueryBuilder).not.toHaveBeenCalled();
-    expect(postings.find).not.toHaveBeenCalled();
+    expect(manager.query).toHaveBeenCalledTimes(1);
     expect(manager.delete).not.toHaveBeenCalled();
     expect(result.cursorAdvanced).toBe(true);
     expect(result.cursor).toMatchObject({

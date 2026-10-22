@@ -385,6 +385,10 @@ export interface SelectedLoanOccurrence {
 }
 
 export interface PostScheduledTransactionData {
+  // The occurrence the user is posting (`occurrencePin`): the server refuses
+  // with 409 once it is no longer the due one.
+  expectedOccurrenceDate: string;
+  expectedOverrideId: string | null;
   transactionDate?: string;
   amount?: number | null;
   // Foreign-currency schedules only: the amount in the entry currency for this
