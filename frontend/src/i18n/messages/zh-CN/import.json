@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "已为 {count} 个账户{plural}配置定期还款。",
     "viewInvestments": "查看投资",
     "viewTransactions": "查看交易",
-    "importMoreFiles": "导入更多文件"
+    "importMoreFiles": "导入更多文件",
+    "bondRowsWithoutSeries": "{count, plural, other {有 # 笔债券买入在没有系列的情况下导入。请在该证券的债券批次中选择系列。}}"
   },
   "multiAccountReview": {
     "heading": "多账户 QIF 导入",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "关于本次导入的说明",
     "downloadReport": "下载报告",
-    "done": "完成"
+    "done": "完成",
+    "bondRowsWithoutSeries": "{count, plural, other {有 # 笔债券买入在没有系列的情况下导入。请在该证券的债券批次中选择系列。}}"
   },
   "mnyWarnings": {
     "missingTable": "此 Money 版本缺少导入所需的 {count, plural, other {# 张表}}。",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "未评估：前面的规则已停止后续规则。",
         "disabled": "未评估：规则已关闭。",
-        "invalid": "未评估：规则无效。请打开它进行修复。"
+        "invalid": "未评估：规则无效。请打开它进行修复。",
+        "outside_active_window": "未评估：该行的日期不在规则的生效日期内。"
       },
       "condition": {
         "met": "条件已满足",

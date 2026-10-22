@@ -1901,5 +1901,8 @@
       "residualDeficit": "Retirado dos saldos",
       "unlinkedAccount": "(conta não vinculada)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Gerado: {timestamp}"
   }
 }

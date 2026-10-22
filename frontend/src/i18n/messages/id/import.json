@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "Pembayaran terjadwal dikonfigurasi untuk {count} akun.",
     "viewInvestments": "Lihat Investasi",
     "viewTransactions": "Lihat Transaksi",
-    "importMoreFiles": "Impor File Lainnya"
+    "importMoreFiles": "Impor File Lainnya",
+    "bondRowsWithoutSeries": "{count, plural, other {# pembelian obligasi diimpor tanpa seri. Pilih serinya di lot obligasi sekuritas.}}"
   },
   "multiAccountReview": {
     "heading": "Impor QIF Multi-Akun",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "Catatan tentang impor ini",
     "downloadReport": "Unduh laporan",
-    "done": "Selesai"
+    "done": "Selesai",
+    "bondRowsWithoutSeries": "{count, plural, other {# pembelian obligasi diimpor tanpa seri. Pilih serinya di lot obligasi sekuritas.}}"
   },
   "mnyWarnings": {
     "missingTable": "Versi Money ini tidak memiliki {count, plural, other {# tabel}} yang dipakai impor.",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "Tidak dievaluasi: aturan sebelumnya menghentikan aturan.",
         "disabled": "Tidak dievaluasi: aturan dimatikan.",
-        "invalid": "Tidak dievaluasi: aturan tidak valid. Buka untuk memperbaikinya."
+        "invalid": "Tidak dievaluasi: aturan tidak valid. Buka untuk memperbaikinya.",
+        "outside_active_window": "Tidak dievaluasi: tanggal baris berada di luar tanggal aktif aturan."
       },
       "condition": {
         "met": "Kondisi terpenuhi",

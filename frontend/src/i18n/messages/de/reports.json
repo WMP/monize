@@ -1901,5 +1901,8 @@
       "residualDeficit": "Aus Guthaben entnommen",
       "unlinkedAccount": "(nicht verknüpftes Konto)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Erstellt: {timestamp}"
   }
 }

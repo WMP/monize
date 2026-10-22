@@ -1901,5 +1901,8 @@
       "residualDeficit": "Rút từ số dư",
       "unlinkedAccount": "(tài khoản chưa liên kết)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Đã tạo: {timestamp}"
   }
 }

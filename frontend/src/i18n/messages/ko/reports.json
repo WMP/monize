@@ -1901,5 +1901,8 @@
       "residualDeficit": "잔액에서 인출",
       "unlinkedAccount": "(연결되지 않은 계좌)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "생성: {timestamp}"
   }
 }

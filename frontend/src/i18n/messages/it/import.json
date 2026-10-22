@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "Pagamenti pianificati configurati per {count} conto{plural}.",
     "viewInvestments": "Visualizza investimenti",
     "viewTransactions": "Visualizza transazioni",
-    "importMoreFiles": "Importa altri file"
+    "importMoreFiles": "Importa altri file",
+    "bondRowsWithoutSeries": "{count, plural, one {# acquisto di obbligazioni è stato importato senza serie. Scegli la serie nei lotti obbligazionari del titolo.} other {# acquisti di obbligazioni sono stati importati senza serie. Scegli le serie nei lotti obbligazionari del titolo.}}"
   },
   "multiAccountReview": {
     "heading": "Importazione QIF multi-conto",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "Note su questa importazione",
     "downloadReport": "Scarica il report",
-    "done": "Fatto"
+    "done": "Fatto",
+    "bondRowsWithoutSeries": "{count, plural, one {# acquisto di obbligazioni è stato importato senza serie. Scegli la serie nei lotti obbligazionari del titolo.} other {# acquisti di obbligazioni sono stati importati senza serie. Scegli le serie nei lotti obbligazionari del titolo.}}"
   },
   "mnyWarnings": {
     "missingTable": "Questa versione di Money non ha {count, plural, one {# tabella} other {# tabelle}} usata dall'importazione.",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "Non valutata: una regola precedente ha interrotto le regole.",
         "disabled": "Non valutata: la regola è disattivata.",
-        "invalid": "Non valutata: la regola non è valida. Aprila per ripararla."
+        "invalid": "Non valutata: la regola non è valida. Aprila per ripararla.",
+        "outside_active_window": "Non valutata: la data della riga è fuori dalle date attive della regola."
       },
       "condition": {
         "met": "Condizione soddisfatta",

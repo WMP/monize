@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "Pagos planificados configurados para {count} cuenta{plural}.",
     "viewInvestments": "Ver Inversiones",
     "viewTransactions": "Ver Transacciones",
-    "importMoreFiles": "Importar Más Archivos"
+    "importMoreFiles": "Importar Más Archivos",
+    "bondRowsWithoutSeries": "{count, plural, one {Se importó # compra de bonos sin serie. Elige su serie en los lotes de bonos del valor.} other {Se importaron # compras de bonos sin serie. Elige sus series en los lotes de bonos del valor.}}"
   },
   "multiAccountReview": {
     "heading": "Importación QIF de Múltiples Cuentas",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "Notas sobre esta importación",
     "downloadReport": "Descargar informe",
-    "done": "Listo"
+    "done": "Listo",
+    "bondRowsWithoutSeries": "{count, plural, one {Se importó # compra de bonos sin serie. Elige su serie en los lotes de bonos del valor.} other {Se importaron # compras de bonos sin serie. Elige sus series en los lotes de bonos del valor.}}"
   },
   "mnyWarnings": {
     "missingTable": "Esta versión de Money no tiene {count, plural, one {# tabla} other {# tablas}} que usa la importación.",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "No evaluada: una regla anterior detuvo las reglas.",
         "disabled": "No evaluada: la regla está desactivada.",
-        "invalid": "No evaluada: la regla no es válida. Ábrela para repararla."
+        "invalid": "No evaluada: la regla no es válida. Ábrela para repararla.",
+        "outside_active_window": "No evaluada: la fecha de la fila está fuera de las fechas activas de la regla."
       },
       "condition": {
         "met": "Condición cumplida",

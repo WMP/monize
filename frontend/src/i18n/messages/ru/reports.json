@@ -1901,5 +1901,8 @@
       "residualDeficit": "Взято из остатков",
       "unlinkedAccount": "(несвязанный счёт)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Создано: {timestamp}"
   }
 }
