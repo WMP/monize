@@ -481,7 +481,8 @@
     "mnyImportAlreadyRunning": "インポートが既に実行中です。完了してから次を開始してください。",
     "mnyAlreadyImported": "このファイルは {{ date }} にすでにインポートされており(インポート {{ jobId }})、そのレコードはまだアカウントにあります。もう一度インポートすると重複します。置き換えるには、最初からやり直して既存のデータを置き換える設定を選んでください。",
     "mnyJobNotFound": "インポートジョブが見つかりません",
-    "mnyFileTooLarge": "この Money ファイルはインポート上限の {{ limit }} MB を超えています。"
+    "mnyFileTooLarge": "この Money ファイルはインポート上限の {{ limit }} MB を超えています。",
+    "noRateForSplitTransfer": "{{ date }} の {{ pair }} の為替レートがありません。分割行が別の通貨の口座へ振り替えています。その通貨ペアと日付の為替レートを追加してから、もう一度インポートしてください。"
   },
   "monteCarlo": {
     "scenarioNotFound": "シナリオ {{ id }} が見つかりません",

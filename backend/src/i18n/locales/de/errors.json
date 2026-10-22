@@ -481,7 +481,8 @@
     "mnyImportAlreadyRunning": "Ein Import läuft bereits. Warten Sie, bis er abgeschlossen ist, bevor Sie einen weiteren starten.",
     "mnyAlreadyImported": "Diese Datei wurde bereits am {{ date }} importiert (Import {{ jobId }}), und ihre Datensätze befinden sich noch in Ihrem Konto. Ein erneuter Import würde sie duplizieren. Um sie zu ersetzen, beginnen Sie von vorn und wählen Sie, Ihre vorhandenen Daten zu ersetzen.",
     "mnyJobNotFound": "Import-Auftrag nicht gefunden",
-    "mnyFileTooLarge": "Diese Money-Datei ist größer als das Importlimit von {{ limit }} MB."
+    "mnyFileTooLarge": "Diese Money-Datei ist größer als das Importlimit von {{ limit }} MB.",
+    "noRateForSplitTransfer": "Kein Wechselkurs für {{ pair }} am {{ date }}: Eine Splitzeile überweist auf ein Konto in einer anderen Währung. Fügen Sie einen Wechselkurs für dieses Paar und Datum hinzu und importieren Sie erneut."
   },
   "monteCarlo": {
     "scenarioNotFound": "Szenario {{ id }} nicht gefunden",

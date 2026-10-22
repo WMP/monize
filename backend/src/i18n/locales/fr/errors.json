@@ -481,7 +481,8 @@
     "mnyImportAlreadyRunning": "Un import est déjà en cours. Attendez qu'il se termine avant d'en lancer un autre.",
     "mnyAlreadyImported": "Ce fichier a déjà été importé le {{ date }} (importation {{ jobId }}) et ses enregistrements sont toujours dans votre compte. L'importer à nouveau les dupliquerait. Pour les remplacer, recommencez et choisissez de remplacer vos données existantes.",
     "mnyJobNotFound": "Tâche d'import introuvable",
-    "mnyFileTooLarge": "Ce fichier Money dépasse la limite d'import de {{ limit }} Mo."
+    "mnyFileTooLarge": "Ce fichier Money dépasse la limite d'import de {{ limit }} Mo.",
+    "noRateForSplitTransfer": "Aucun taux de change pour {{ pair }} au {{ date }} : une ligne ventilée transfère vers un compte dans une autre devise. Ajoutez un taux de change pour cette paire et cette date, puis importez à nouveau."
   },
   "monteCarlo": {
     "scenarioNotFound": "Scénario {{ id }} introuvable",

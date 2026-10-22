@@ -481,7 +481,8 @@
     "mnyImportAlreadyRunning": "Ya hay una importación en curso. Espere a que termine antes de iniciar otra.",
     "mnyAlreadyImported": "Este archivo ya se importó el {{ date }} (importación {{ jobId }}) y sus registros siguen en su cuenta. Importarlo de nuevo los duplicaría. Para reemplazarlos, empiece de nuevo y elija reemplazar sus datos existentes.",
     "mnyJobNotFound": "Tarea de importación no encontrada",
-    "mnyFileTooLarge": "Ese archivo de Money supera el límite de importación de {{ limit }} MB."
+    "mnyFileTooLarge": "Ese archivo de Money supera el límite de importación de {{ limit }} MB.",
+    "noRateForSplitTransfer": "No hay tipo de cambio para {{ pair }} el {{ date }}: una línea dividida transfiere a una cuenta en otra moneda. Añade un tipo de cambio para ese par y esa fecha y vuelve a importar."
   },
   "monteCarlo": {
     "scenarioNotFound": "Escenario {{ id }} no encontrado",
