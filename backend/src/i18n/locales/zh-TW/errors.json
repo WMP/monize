@@ -69,6 +69,7 @@
     "onlyLoanMortgageLoc": "只有貸款、抵押貸款和信用額度科目支援定期還款設定",
     "alreadyHasScheduledPayment": "此科目已設定定期還款。請改為編輯現有的定期交易。",
     "sourceNotFound": "找不到來源科目",
+    "loanSourceCurrencyMismatch": "付款科目的幣別是 {{ source }}，貸款的幣別是 {{ loan }}。請選擇 {{ loan }} 科目。",
     "invalidSourceAccount": "請選擇一個未關閉且不是該貸款本身的帳戶用於付款",
     "ambiguousBrokerage": "「{{ query }}」符合多個券商帳戶：{{ list }}。請使用準確的帳戶名稱。",
     "unknownInvestmentAccount": "未知帳戶：{{ name }}。請使用使用者帳戶清單中的準確名稱。",

@@ -74,7 +74,12 @@ export type LoanOccurrenceMissing =
   /** An earlier slot's figures are unknown, so the debt this one starts from is: that occurrence's own `missing`. */
   | { readonly kind: "earlier-occurrence"; readonly originalDate: string };
 
-/** One projected occurrence (spec 8.1). Unsigned money, booked in the minor unit. */
+/**
+ * One projected occurrence (spec 8.1). Unsigned money, booked in the minor
+ * unit. `principal` is negative only where the bill is below the accrued
+ * interest and capitalizes the shortfall (audit A26-S15-04): the debt grows by
+ * `unpaidInterest`, and the fold adds it to the next occurrence's debt.
+ */
 export interface LoanOccurrence {
   /** The recurrence slot: the occurrence's identity. */
   originalDate: string;
@@ -85,6 +90,11 @@ export interface LoanOccurrence {
   principal: number | null;
   interest: number | null;
   extraPrincipal: number | null;
+  /**
+   * The accrued interest the bill does not cover, capitalized into the debt
+   * through a negative `principal`; 0 when the interest is covered.
+   */
+  unpaidInterest: number | null;
   /** The rate at `dueDate` (spec section 1); known independently of the fold. */
   annualRate: number | null;
   /** The folded debt at `dueDate` (spec 8.2). */
@@ -154,6 +164,7 @@ function unknownOccurrence(
     principal: null,
     interest: null,
     extraPrincipal: null,
+    unpaidInterest: null,
     annualRate,
     debtBefore,
     complete: false,
@@ -183,6 +194,21 @@ function overrideLinesAsSplits(
 /** The unsigned amount of a line, 0 for a line the template does not carry. */
 function lineAmount(split: ScheduledTransactionSplit | undefined): number {
   return split ? roundMoney(Math.abs(Number(split.amount))) : 0;
+}
+
+/**
+ * The principal a line retires, read against the direction of the bill it
+ * belongs to (`direction` is the sign of the bill's own amount, -1 for a
+ * payment out): a line against that direction is a transfer from the loan,
+ * the shortfall a bill below the interest capitalizes, so it retires a
+ * negative amount. Never the absolute value, which would read it as a payment.
+ */
+function principalRetired(
+  split: ScheduledTransactionSplit | undefined,
+  direction: 1 | -1,
+): number {
+  // `|| 0`: a zero line against a negative direction is -0, which is not 0.
+  return split ? roundMoney(direction * Number(split.amount)) || 0 : 0;
 }
 
 /**
@@ -410,6 +436,7 @@ export function projectLoanOccurrences(
         principal: 0,
         interest: 0,
         extraPrincipal: 0,
+        unpaidInterest: 0,
         annualRate: rateAtDue,
         debtBefore: debtDue,
         complete: rateAtDue !== null,
@@ -451,7 +478,10 @@ export function projectLoanOccurrences(
         );
         continue;
       }
-      const principal = lineAmount(lines.principalSplit);
+      const principal = principalRetired(
+        lines.principalSplit,
+        Number(override.amount) > 0 ? 1 : -1,
+      );
       const interest = lineAmount(lines.interestSplit);
       const extraPrincipal = lineAmount(lines.extraPrincipalSplit);
       booked.push({
@@ -466,6 +496,7 @@ export function projectLoanOccurrences(
         principal,
         interest,
         extraPrincipal,
+        unpaidInterest: principal < 0 ? roundMoney(-principal) : 0,
         annualRate: rateAtDue,
         debtBefore: debtDue,
         complete: true,
@@ -519,6 +550,7 @@ export function projectLoanOccurrences(
       principal: allocation.principal,
       interest: allocation.interest,
       extraPrincipal: allocation.extraPrincipal,
+      unpaidInterest: allocation.unpaidInterest,
       annualRate: rateAtDue,
       debtBefore: debtDue,
       complete: true,

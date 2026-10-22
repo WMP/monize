@@ -69,6 +69,7 @@
     "onlyLoanMortgageLoc": "Seuls les comptes de prêt, prêt hypothécaire et ligne de crédit prennent en charge la configuration des paiements récurrents",
     "alreadyHasScheduledPayment": "Ce compte a déjà un paiement récurrent configuré. Modifiez la transaction récurrente existante.",
     "sourceNotFound": "Compte source introuvable",
+    "loanSourceCurrencyMismatch": "Le compte de paiement est en {{ source }} et le prêt en {{ loan }}. Choisissez un compte en {{ loan }}.",
     "invalidSourceAccount": "Choisissez un compte ouvert, autre que le prêt lui-même, pour effectuer le paiement",
     "ambiguousBrokerage": "« {{ query }} » correspond à plusieurs comptes de courtage : {{ list }}. Utilisez le nom exact du compte.",
     "unknownInvestmentAccount": "Compte inconnu : {{ name }}. Utilisez un nom exact de la liste des comptes de l'utilisateur.",

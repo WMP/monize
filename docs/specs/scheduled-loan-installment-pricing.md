@@ -67,6 +67,19 @@ the type's compounding trait (`docs/specs/mortgage-types.md` table 4.1).
 Both inputs are dated at `d`, for the same reason: a payment or a rate change
 recorded for next month belongs to next month's installment.
 
+When `interest` exceeds the whole installment (extra principal included), the
+`template`, `posting`, `reconfigure` and `sync` purposes (the occurrence
+projection prices through `template` and `posting`) book
+`interest` in full and `principal = payment - interest`, a negative line that
+adds the unpaid interest to `debt(d')` of the next installment
+(`allocateLoanPayment` with `capitalizeUnpaidInterest`; the shortfall is
+`unpaidInterest` on the allocation and on each projected occurrence). The
+`settlement` purpose keeps the cap (interest at most the payment, principal 0)
+and its own shortfall policy (`docs/specs/loan-installment-settlement.md`
+section 8). Worked example: debt 400,000.00 at 6 % monthly, payment 1,500.00
+-> 2,000.00 / -500.00, debt 400,500.00 -> 2,002.50 / -502.50, debt
+401,002.50 (audit A26-M29).
+
 Three sources are explicitly **not** inputs:
 
 - **The previously stored split.** `next = prev_interest - prev_principal *

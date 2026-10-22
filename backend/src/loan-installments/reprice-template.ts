@@ -220,6 +220,10 @@ export async function applyLoanTemplateRewrite(
       `mortgageType=${mortgageType}`,
   );
 
+  // `newPrincipal` is negative for a bill below the accrued interest (the
+  // shortfall is capitalized), which stores the line as a positive transfer
+  // from the loan; the parent below stays the bill, and the children still sum
+  // to it. `identifyLoanTemplate` keys on the transfer account, not the sign.
   if (principalSplit) {
     principalSplit.amount = -newPrincipal;
     await m.getRepository(ScheduledTransactionSplit).save(principalSplit);

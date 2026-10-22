@@ -89,6 +89,7 @@ import { validateSplitAmountSum } from "../common/split-amount.util";
 import { roundMoney, sumMoney } from "../common/round.util";
 import {
   applyFxConversion,
+  assertTransactionCurrencyMatchesAccount,
   normalizeFxEntry,
   roundFxRate,
 } from "../common/fx-entry.util";
@@ -936,6 +937,14 @@ export class ScheduledTransactionsService {
     if (hasSplits && !isTransfer) {
       this.validateSplits(splits, createDto.amount);
     }
+
+    // The schedule's own currency is its account's; a foreign entry is the
+    // `originalCurrencyCode` trio below. Refused before any write, as a
+    // posting would refuse it at every due date (A26-S15-10).
+    assertTransactionCurrencyMatchesAccount(
+      createDto.currencyCode,
+      account.currencyCode,
+    );
 
     const fx = this.resolveScheduleFx(createDto, account.currencyCode, {
       isSplit: !!(hasSplits && !isTransfer),

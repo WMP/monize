@@ -1389,4 +1389,59 @@ describe("priceInstallment", () => {
       ).resolves.toMatchObject({ payment: 584.59 });
     });
   });
+  describe("an installment below the accrued interest (A26-S15-04)", () => {
+    // LOAN 400,000.00 at 6 % paid monthly: 2,000.00 accrues against 1,500.00.
+    const loan = makeMortgage({
+      accountType: "LOAN" as AccountType,
+      mortgageType: null,
+      interestRate: 6,
+      paymentAmount: 1500,
+      currentBalance: -400000,
+      openingBalance: -400000,
+    } as Partial<Account>);
+    const bill = () => makeTemplate(500, 1000, "2026-08-01");
+
+    it.each(["template", "posting", "reconfigure", "sync"] as const)(
+      "the %s purpose capitalizes the shortfall through a negative principal",
+      (purpose) => {
+        expect(priced(loan, bill(), 400000, 6, purpose)).toEqual({
+          principal: -500,
+          interest: 2000,
+          extra: 0,
+          parent: 1500,
+        });
+      },
+    );
+
+    it("the settlement purpose keeps the cap: its shortfall policy is the settlement spec's", () => {
+      expect(priced(loan, bill(), 400000, 6, "settlement")).toEqual({
+        principal: 0,
+        interest: 1500,
+        extra: 0,
+        parent: 1500,
+      });
+    });
+
+    it("reports the unpaid interest on the allocation", () => {
+      const result = price(loan, bill(), 400000, 6, "posting");
+      if (result.kind !== "ok") throw new Error("unreachable");
+      expect(result.allocation.unpaidInterest).toBe(500);
+      const settled = price(loan, bill(), 400000, 6, "settlement");
+      if (settled.kind !== "ok") throw new Error("unreachable");
+      expect(settled.allocation.unpaidInterest).toBe(500);
+    });
+  });
+
+  describe("identifyLoanTemplate with a capitalized principal line", () => {
+    it("identifies a template whose principal line is positive, a transfer from the loan", () => {
+      const template = makeTemplate(-500, 2000, "2026-08-01");
+      const identified = identifyLoanTemplate(
+        template.splits as ScheduledTransactionSplit[],
+        { id: loanAccountId, interestCategoryId: "cat-interest" },
+      );
+      expect(identified.managed).toBe(true);
+      expect(identified.principalSplit?.id).toBe("split-principal");
+      expect(Number(identified.principalSplit?.amount)).toBe(500);
+    });
+  });
 });

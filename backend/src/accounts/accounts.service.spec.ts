@@ -2265,6 +2265,8 @@ describe("AccountsService", () => {
       accountsRepository.findOne.mockResolvedValue({
         ...mockAccount,
         id: "source-1",
+        // The payment account is in the mortgage's currency (A26-S15-10).
+        currencyCode: "CAD",
       });
       accountsRepository.create.mockImplementation((data) => ({
         ...data,

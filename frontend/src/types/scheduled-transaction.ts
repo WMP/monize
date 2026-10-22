@@ -359,6 +359,12 @@ export interface LoanOccurrence {
   principal: number | null;
   interest: number | null;
   extraPrincipal: number | null;
+  /**
+   * The accrued interest the bill does not cover: capitalized into the debt
+   * through a negative `principal`. 0 when covered, null when unknown; absent
+   * from an older server's answer.
+   */
+  unpaidInterest?: number | null;
   annualRate: number | null;
   debtBefore: number | null;
   complete: boolean;

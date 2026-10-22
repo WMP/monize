@@ -65,6 +65,7 @@ describe("LoanPaymentSetupService: LINEAR and INTEREST_ONLY", () => {
     userId: "user-1",
     name: "Checking",
     accountType: AccountType.CHEQUING,
+    currencyCode: "EUR",
   };
 
   const dto = (

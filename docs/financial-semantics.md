@@ -949,6 +949,37 @@ database transaction as the split (INV-LOAN-008): one settlement per
 scheduled occurrence, and the claim is the arbiter between `post()` and a
 settlement racing the same slot.
 
+### An installment below the interest adds the shortfall to the debt
+
+Interest accrues on the debt whether or not the installment covers it. When a
+scheduled bill's installment is smaller than the period's interest (a rate
+rise whose payment sync the user declined, a payment set too low), the bill
+books the whole accrued interest and a negative principal line of the
+difference, so the unpaid interest is added to the loan in the same
+transaction as the payment (negative amortization). LOAN 400,000.00 at 6 %
+monthly, installment 1,500.00: interest 2,000.00, principal -500.00, debt
+400,500.00; the next installment's interest is 2,002.50, principal -502.50,
+debt 401,002.50. `allocateLoanPayment` does it with
+`capitalizeUnpaidInterest` and reports the amount as `unpaidInterest`, which
+the loan occurrence projection carries, so the bill, the posting and the
+projection agree (INV-LOAN-006). It is one transaction rather than a separate
+interest-accrual row on the loan, so deleting or undoing the payment removes
+the capitalization with it and a re-post cannot book it twice.
+
+The cap it replaces booked interest equal to the installment and principal
+zero: the debt stayed flat while 500.00 a month of interest was recorded
+nowhere, and every payoff date read from the ledger was optimistic (audit
+A26-M29). A rule's settlement of a bank row keeps its own shortfall policy
+above (refuse, or interest first with the interest capped at what the bank
+took), because there the row's amount is the fact being divided.
+
+The bill's source account is in the loan's currency. Loan payment setup and
+the loan and mortgage create paths refuse a source account in another
+currency before anything is written, because the bill is booked on the source
+account in the loan's currency and every posting of it would be refused
+(audit A26-M30). A cross-currency loan payment would need an FX transfer
+template priced in two currencies, which does not exist.
+
 ## 10. Gap register
 
 Places where two paths currently answer the same question differently. Each was

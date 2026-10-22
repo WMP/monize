@@ -2562,6 +2562,19 @@ Statement           The interest of a scheduled loan installment is
                     (docs/specs/mortgage-types.md sections 2 and 6.2). The
                     ANNUITY and CANADIAN_FIXED payment beside this rate is
                     dated the same way: INV-LOAN-009.
+                    An installment below that interest does not drop the rest:
+                    a scheduled bill (every purpose but a rule's settlement)
+                    books the whole accrued interest and a NEGATIVE principal
+                    line of the shortfall, so the unpaid interest is added to
+                    the debt the next installment is priced on (negative
+                    amortization; allocateLoanPayment with
+                    capitalizeUnpaidInterest, reported as unpaidInterest on the
+                    allocation and on the loan occurrence projection). 400,000
+                    at 6 % with a 1,500 installment books 2,000 interest and
+                    -500 principal, debt 400,500, then 2,002.50 / -502.50, debt
+                    401,002.50 (audit A26-M29). A settlement keeps the spec's
+                    shortfall policy (refuse, or interest_first with the
+                    interest capped at the amount paid).
 Source of truth     The transactions ledger plus accounts.opening_balance
                     (INV-BALANCE-001's source) for the debt, and
                     loan_rate_changes for the rate, both bounded by the
@@ -2659,6 +2672,17 @@ Required tests      Present: scheduled-transaction-loan.service.spec.ts (prior
                     LOWER_INSTALLMENT mortgage on a real ledger, including the
                     moved due date); frontend loan-schedule-methods.test.ts
                     ("the calendar: k(d), remaining(d) and the next due date").
+                    The below-interest installment:
+                    scheduled-loan-below-interest.integration.spec.ts (R3
+                    through the real post(), two postings and the projection)
+                    and loan-payment-waterfall.util.spec.ts.
+                    A source account in another currency than the loan is
+                    refused by loan payment setup and both loan/mortgage
+                    create paths before any write (loan-source-currency.util.ts,
+                    errors.accounts.loanSourceCurrencyMismatch), and
+                    ScheduledTransactionsService.create refuses a currencyCode
+                    other than its account's (assertTransactionCurrencyMatchesAccount),
+                    so no bill is written that could never post (audit A26-M30).
                     A LINE OF CREDIT is exempt from the paid-off deactivation:
                     it is revolving, so owing nothing this period does not
                     finish it.

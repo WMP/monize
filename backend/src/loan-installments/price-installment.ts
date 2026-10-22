@@ -108,6 +108,33 @@ export interface LoanTemplateSplits {
 export type InstallmentPurpose =
   "template" | "posting" | "reconfigure" | "settlement" | "sync";
 
+/**
+ * Whether an installment below the accrued interest capitalizes the
+ * shortfall (negative amortization through the bill's own principal line,
+ * audit A26-S15-04) rather than capping interest at the installment.
+ *
+ * Every purpose of a scheduled BILL does -- `template` (the advancement),
+ * `posting` (what the occurrence books), `reconfigure` and `sync` (template
+ * rewrites that must hold what the posting will book) -- so the stored
+ * template, the projection and the posting agree. `settlement` alone keeps
+ * the cap: a bank debit already happened, and its shortfall policy is the
+ * settlement spec's `refuse` / `interest_first`, not a debt the bill grows
+ * (`docs/specs/loan-installment-settlement.md` decisions 13-14, section 8
+ * rows 8-9). The switch lists every purpose, so a new one fails to compile
+ * until it decides.
+ */
+function capitalizesShortfall(purpose: InstallmentPurpose): boolean {
+  switch (purpose) {
+    case "template":
+    case "posting":
+    case "reconfigure":
+    case "sync":
+      return true;
+    case "settlement":
+      return false;
+  }
+}
+
 /** One resolved installment: what the next posting of this template should move. */
 export type ResolvedInstallment =
   | { kind: "declined"; reason: string }
@@ -680,6 +707,7 @@ export function priceInstallment(
     interest: newInterest,
     principal: newPrincipal,
     currentBalance: debt,
+    capitalizeUnpaidInterest: capitalizesShortfall(purpose),
   });
 
   return {

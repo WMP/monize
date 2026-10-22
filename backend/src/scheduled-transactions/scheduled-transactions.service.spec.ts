@@ -173,7 +173,9 @@ describe("ScheduledTransactionsService", () => {
     };
 
     accountsService = {
-      findOne: jest.fn().mockResolvedValue({ id: "acc-1", userId }),
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: "acc-1", userId, currencyCode: "USD" }),
     };
 
     // The posting path no longer calls `createTransfer`: authorization has to be
@@ -369,6 +371,32 @@ describe("ScheduledTransactionsService", () => {
       expect(scheduledRepo.create).toHaveBeenCalled();
       expect(scheduledRepo.save).toHaveBeenCalled();
       expect(result).toEqual(saved);
+    });
+
+    it("refuses a currencyCode other than the schedule account's before writing (A26-S15-10)", async () => {
+      accountsService.findOne.mockResolvedValue({
+        id: "acc-1",
+        userId,
+        currencyCode: "PLN",
+      });
+
+      await expect(
+        service.create(userId, { ...baseDto, currencyCode: "EUR" }),
+      ).rejects.toThrow(
+        "Transaction currency EUR must match the account currency PLN.",
+      );
+      expect(scheduledRepo.create).not.toHaveBeenCalled();
+      expect(scheduledRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("accepts the account's currency in any letter case", async () => {
+      const saved = makeScheduled();
+      scheduledRepo.save.mockResolvedValue(saved);
+      stubFindOne(saved);
+
+      await service.create(userId, { ...baseDto, currencyCode: "usd" });
+
+      expect(scheduledRepo.save).toHaveBeenCalled();
     });
 
     it("should default startDate to nextDueDate", async () => {
@@ -3829,6 +3857,7 @@ describe("ScheduledTransactionsService", () => {
         id: "acc-inv",
         userId,
         accountSubType: "INVESTMENT_BROKERAGE",
+        currencyCode: "USD",
       });
 
       await expect(
@@ -3844,6 +3873,7 @@ describe("ScheduledTransactionsService", () => {
         id: "acc-inv",
         userId,
         accountSubType: "INVESTMENT_BROKERAGE",
+        currencyCode: "USD",
       });
       const saved = makeScheduled({
         isInvestment: true,
@@ -4516,6 +4546,7 @@ describe("ScheduledTransactionsService", () => {
         id: "acc-inv",
         userId,
         accountSubType: "INVESTMENT_BROKERAGE",
+        currencyCode: "USD",
       });
 
       await expect(
@@ -4531,6 +4562,7 @@ describe("ScheduledTransactionsService", () => {
         id: "acc-inv",
         userId,
         accountSubType: "INVESTMENT_BROKERAGE",
+        currencyCode: "USD",
       });
 
       await expect(
@@ -4556,6 +4588,7 @@ describe("ScheduledTransactionsService", () => {
           id: "acc-inv",
           userId,
           accountSubType: "INVESTMENT_BROKERAGE",
+          currencyCode: "USD",
         });
       });
 
@@ -4633,6 +4666,7 @@ describe("ScheduledTransactionsService", () => {
         id: "acc-inv",
         userId,
         accountSubType: "INVESTMENT_BROKERAGE",
+        currencyCode: "USD",
       });
 
       await expect(
@@ -4651,6 +4685,7 @@ describe("ScheduledTransactionsService", () => {
         id: "acc-inv",
         userId,
         accountSubType: "INVESTMENT_BROKERAGE",
+        currencyCode: "USD",
       });
 
       await expect(
@@ -4666,6 +4701,7 @@ describe("ScheduledTransactionsService", () => {
         id: "acc-inv",
         userId,
         accountSubType: "INVESTMENT_BROKERAGE",
+        currencyCode: "USD",
       });
 
       await expect(
@@ -4685,6 +4721,7 @@ describe("ScheduledTransactionsService", () => {
             id,
             userId: uid,
             accountSubType: "INVESTMENT_BROKERAGE",
+            currencyCode: "USD",
           } as any;
         },
       );
@@ -5115,6 +5152,7 @@ describe("ScheduledTransactionsService", () => {
         id: "acc-inv",
         userId,
         accountSubType: "INVESTMENT_BROKERAGE",
+        currencyCode: "USD",
       });
 
       await expect(
@@ -5168,6 +5206,7 @@ describe("ScheduledTransactionsService", () => {
             id,
             userId: uid,
             accountSubType: "INVESTMENT_BROKERAGE",
+            currencyCode: "USD",
           } as any;
         },
       );
@@ -7484,6 +7523,7 @@ describe("ScheduledTransactionsService", () => {
         id: "acc-inv",
         userId,
         accountSubType: "INVESTMENT_BROKERAGE",
+        currencyCode: "CAD",
       });
       investmentTransactionsService.resolveSettlementCurrencyPair.mockResolvedValue(
         { from: "USD", to: "CAD" },
