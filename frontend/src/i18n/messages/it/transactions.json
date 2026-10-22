@@ -436,6 +436,7 @@
       "destinationRequired": "Seleziona un conto di destinazione",
       "sameAccount": "Il conto di origine e quello di destinazione devono essere diversi",
       "negativeTransfer": "L'importo del trasferimento non deve essere negativo",
+      "convertToTransferUnsupported": "Una transazione esistente non può essere trasformata qui in un trasferimento. Eliminala e crea invece il trasferimento.",
       "payeeCreated": "Beneficiario \"{name}\" creato",
       "payeeCreateFailed": "Creazione beneficiario non riuscita",
       "payeeReactivated": "Beneficiario \"{name}\" riattivato",

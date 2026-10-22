@@ -436,6 +436,7 @@
       "destinationRequired": "Selecteer een doelrekening",
       "sameAccount": "Bron- en doelrekening moeten verschillend zijn",
       "negativeTransfer": "Overboekingsbedrag mag niet negatief zijn",
+      "convertToTransferUnsupported": "Een bestaande transactie kan hier niet in een overboeking worden omgezet. Verwijder de transactie en maak in plaats daarvan de overboeking aan.",
       "payeeCreated": "Begunstigde \"{name}\" aangemaakt",
       "payeeCreateFailed": "Aanmaken van begunstigde mislukt",
       "payeeReactivated": "Begunstigde \"{name}\" opnieuw geactiveerd",

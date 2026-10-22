@@ -185,10 +185,15 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
      * derive an exchange rate from the converted total and mark it
      * user-overridden, so a bare blur replaced a fetched 10dp rate with one
      * reverse-engineered from the cents-rounded total (1.365234 -> 1.365250)
-     * and stopped the date effect re-fetching.
+     * and stopped the date effect re-fetching. A held value with more
+     * precision than the display is the same case: its text is its display.
      */
     const notifyIfChanged = (next: number | undefined) => {
       if (next === value) return;
+      // The field shows two decimals, and a stored four-decimal value (-3.3333)
+      // re-parses as its display (-3.33): the same field untouched, not an
+      // edit. Reporting it re-amounted the row on every cosmetic save.
+      if (next !== undefined && value !== undefined && roundToCents(value) === next) return;
       onChange(next);
     };
 

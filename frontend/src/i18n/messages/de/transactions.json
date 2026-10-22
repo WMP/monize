@@ -436,6 +436,7 @@
       "destinationRequired": "Bitte wählen Sie ein Zielkonto aus",
       "sameAccount": "Quell- und Zielkonto müssen verschieden sein",
       "negativeTransfer": "Überweisungsbetrag darf nicht negativ sein",
+      "convertToTransferUnsupported": "Eine bestehende Buchung kann hier nicht in eine Überweisung umgewandelt werden. Löschen Sie sie und erstellen Sie stattdessen die Überweisung.",
       "payeeCreated": "Zahlungsempfänger „{name}” erstellt",
       "payeeCreateFailed": "Zahlungsempfänger konnte nicht erstellt werden",
       "payeeReactivated": "Zahlungsempfänger „{name}” reaktiviert",

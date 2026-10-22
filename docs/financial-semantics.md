@@ -988,6 +988,8 @@ Where two rows can hold *different* statuses -- a cross-owner transfer, whose st
 
 A split parent and the transfer legs its children created are one movement of money, so voiding *one* leg from the target side is refused rather than applied -- refuse and point at the parent, which already has a propagation path. Only the VOID boundary is shared; reconciliation states (`PENDING`/`CLEARED`/`RECONCILED`) are genuinely per-ledger.
 
+The same holds for a leg's figures. `TransactionsService.update` (the generic row update behind `PATCH /transactions/:id`, a personal access token, the joint register, the assistant and MCP) refuses a change to a transfer leg's amount, account, date or rate with `errors.transactions.cannotEditTransfer`, inside its transaction and under the row lock, before anything is written (`assertNoStructuralTransferLegEdit`); the transfer routes write both legs together. The comparison is by value, so a form re-sending the figures the leg already holds is accepted. Before it, `PATCH` on the savings leg of a 100.00 transfer with `amount: 150` wrote legs of -100.00 and +150.00 (A26-M10); `transfers.integration.spec.ts` ("update() on a transfer leg") holds both legs of a pair and a split-transfer leg.
+
 A refusal is only worth as much as its least-guarded entry point: the same state was reachable through `bulkUpdate`. When you refuse something on one path, grep for the bulk, AI-action and MCP routes to the same write in the same commit.
 
 ### A deletion reverses only what the row actually contributed

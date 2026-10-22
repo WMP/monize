@@ -19,6 +19,7 @@ import { exchangeRatesApi } from '@/lib/exchange-rates';
 import {
   FX_RATE_DISPLAY_DECIMALS,
   getCurrencySymbol,
+  roundMoney,
   roundToCents,
   roundToDecimals,
 } from '@/lib/format';
@@ -94,26 +95,38 @@ const buildTransactionSchema = (t: (key: string) => string) => z.object({
 type TransactionFormData = z.infer<ReturnType<typeof buildTransactionSchema>>;
 
 /**
+ * The figure a transfer form shows as "Transfer Amount": the FROM (negative)
+ * leg's, whichever leg the form was opened on. The receiving leg holds the
+ * amount in the destination currency, which is the "Amount Received" field,
+ * so loading it here would re-price the transfer on an unedited save.
+ */
+function transferSourceAmount(source: Transaction): number {
+  const linked = source.linkedTransaction;
+  const fromLeg = Number(source.amount) >= 0 && linked ? linked : source;
+  return Math.abs(Number(fromLeg.amount));
+}
+
+/**
  * A reconciled transaction was matched against a statement during
  * reconciliation. Only the date and amount feed that match, so editing other
  * fields (payee, category, notes, reference) leaves the reconciliation intact
  * and should save without a warning. Returns true only when the submitted date
  * or amount differs from the original, in which case the edit is gated behind a
- * confirmation. Amounts are compared in integer cents at the same 2-decimal
- * precision the form loads them with, so float drift never triggers a warning.
+ * confirmation. Amounts are compared at the server's four decimals, the
+ * precision the form loads them with, so float drift never triggers a warning
+ * and a sub-cent change is not missed.
  */
 function reconciledEditAffectsReconciliation(
   original: Transaction,
   data: TransactionFormData,
 ): boolean {
   const dateChanged = data.transactionDate !== original.transactionDate;
-  // Mirror the form's defaultValues normalization: transfers always load an
-  // absolute amount, everything else keeps its sign.
+  // Mirror the form's defaultValues normalization: transfers always load the
+  // source leg's absolute amount, everything else keeps its sign.
   const originalAmount = original.isTransfer
-    ? Math.abs(Math.round(Number(original.amount) * 100) / 100)
-    : Math.round(Number(original.amount) * 100) / 100;
-  const amountChanged =
-    Math.round(Number(data.amount) * 100) !== Math.round(originalAmount * 100);
+    ? transferSourceAmount(original)
+    : Number(original.amount);
+  const amountChanged = roundMoney(Number(data.amount)) !== roundMoney(originalAmount);
   return dateChanged || amountChanged;
 }
 
@@ -357,10 +370,11 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
           payeeId: initSource.payeeId || '',
           payeeName: initSource.payeeName || '',
           categoryId: initSource.categoryId || '',
-          // For transfers, always show absolute amount
+          // As stored (four decimals), so an unedited save re-sends it. For
+          // transfers, the source (FROM) leg's absolute amount.
           amount: initSource.isTransfer
-            ? Math.abs(Math.round(Number(initSource.amount) * 100) / 100)
-            : Math.round(Number(initSource.amount) * 100) / 100,
+            ? roundMoney(transferSourceAmount(initSource))
+            : roundMoney(Number(initSource.amount)),
           currencyCode: initSource.currencyCode,
           description: initSource.description || '',
           referenceNumber: initSource.referenceNumber || '',
@@ -1253,6 +1267,15 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
     try {
       // Handle transfer mode
       if (mode === 'transfer') {
+        // An existing income, expense or split cannot become a transfer from
+        // here: creating one would leave the edited row in place and book the
+        // money twice (A26-H14). The mode is not offered on such an edit; this
+        // refuses it should anything else ever select it.
+        if (transaction && !transaction.isTransfer) {
+          toast.error(t('form.toasts.convertToTransferUnsupported'));
+          setIsLoading(false);
+          return;
+        }
         if (!transferToAccountId) {
           toast.error(t('form.toasts.destinationRequired'));
           setIsLoading(false);
@@ -1327,9 +1350,12 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
 
       // Validate splits sum to amount if in split mode
       if (isSplitMode && splitsData) {
+        // At the server's precision: it requires the lines to equal the parent
+        // exactly at four decimals, so a one-cent tolerance here let through a
+        // set the server refuses and refused a stored four-decimal set.
         const splitsTotal = splitsData.reduce((sum, s) => sum + s.amount, 0);
-        const roundedSplitsTotal = Math.round(splitsTotal * 100) / 100;
-        const roundedAmount = Math.round(data.amount * 100) / 100;
+        const roundedSplitsTotal = roundMoney(splitsTotal);
+        const roundedAmount = roundMoney(data.amount);
         if (roundedSplitsTotal !== roundedAmount) {
           toast.error(t('form.toasts.splitsNotEqual', { splitTotal: roundedSplitsTotal, txAmount: roundedAmount }));
           setIsLoading(false);
@@ -1537,7 +1563,10 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
       onSubmit={handleSubmit(onSubmit)}
       className="space-y-4"
     >
-      {/* Mode selector - show for new/duplicate transactions, or non-transfer edits */}
+      {/* Mode selector - show for new/duplicate transactions, or non-transfer
+          edits. Transfer is offered only on a new entry: an edit has no route
+          that converts the row, and creating a transfer beside it would book
+          the money twice (A26-H14). */}
       {(!transaction || !transaction.isTransfer) && (
         <div className="flex space-x-2 pb-2 border-b dark:border-gray-700">
           <button
@@ -1572,17 +1601,19 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
           >
             {t('form.modeSplit')}
           </button>
-          <button
-            type="button"
-            onClick={() => handleModeChange('transfer')}
-            className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-              mode === 'transfer'
-                ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            {t('form.modeTransfer')}
-          </button>
+          {!transaction && (
+            <button
+              type="button"
+              onClick={() => handleModeChange('transfer')}
+              className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                mode === 'transfer'
+                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              {t('form.modeTransfer')}
+            </button>
+          )}
         </div>
       )}
 

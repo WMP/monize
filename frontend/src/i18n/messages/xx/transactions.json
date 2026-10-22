@@ -436,6 +436,7 @@
       "destinationRequired": "[XX-Please select a destination account-XX]",
       "sameAccount": "[XX-Source and destination accounts must be different-XX]",
       "negativeTransfer": "[XX-Transfer amount must not be negative-XX]",
+      "convertToTransferUnsupported": "[XX-An existing transaction can't be turned into a transfer here. Delete it and create the transfer instead.-XX]",
       "payeeCreated": "[XX-Payee \"{name}\" created-XX]",
       "payeeCreateFailed": "[XX-Failed to create payee-XX]",
       "payeeReactivated": "[XX-Payee \"{name}\" reactivated-XX]",
