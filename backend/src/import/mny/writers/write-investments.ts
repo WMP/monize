@@ -271,17 +271,16 @@ export async function writeInvestments(
 
       if (newCashTransactionId !== null) {
         affectedAccountIds.add(cashAccountId as string);
-        // Rendered in the row's own currency: this writer denominates the
-        // cash amount, the total and the price in `transaction.currencyCode`
-        // with `exchangeRate: 1`, so quoting the label in any other currency
-        // would disagree with the amount stored beside it.
+        // The label prints the price and total, which are in the security's
+        // currency (`securityCurrencyCode`); the cash amount beside it is in
+        // the account's (`currencyCode`, `exchangeRate: 1`).
         const activityPayeeName = formatInvestmentCashPayeeName({
           action: transaction.action,
           symbol,
           quantity: transaction.quantity,
           price: transaction.price,
           totalAmount: transaction.totalAmount,
-          currencyCode: transaction.currencyCode,
+          currencyCode: transaction.securityCurrencyCode,
         });
         cashRows.push({
           id: newCashTransactionId,

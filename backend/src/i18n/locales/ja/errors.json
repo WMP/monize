@@ -477,7 +477,9 @@
     "mnyPasswordIncorrect": "そのパスワードでは Money ファイルを開けません。確認してもう一度お試しください。",
     "mnyUnreadableDatabase": "この Money ファイルは復号できましたが、内容を読み取れませんでした。破損している可能性があります。",
     "mnyStagedFileMissing": "アップロードした Money ファイルは既に利用できません。もう一度アップロードしてください。",
+    "mnyStagedFileInUse": "この Money ファイルはインポート中です。破棄する前にインポートの完了をお待ちください。",
     "mnyImportAlreadyRunning": "インポートが既に実行中です。完了してから次を開始してください。",
+    "mnyAlreadyImported": "このファイルは {{ date }} にすでにインポートされており(インポート {{ jobId }})、そのレコードはまだアカウントにあります。もう一度インポートすると重複します。置き換えるには、最初からやり直して既存のデータを置き換える設定を選んでください。",
     "mnyJobNotFound": "インポートジョブが見つかりません",
     "mnyFileTooLarge": "この Money ファイルはインポート上限の {{ limit }} MB を超えています。"
   },

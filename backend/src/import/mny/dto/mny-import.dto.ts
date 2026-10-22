@@ -165,6 +165,12 @@ export class MnyImportJobDto {
   })
   retryable: boolean;
 
+  @ApiProperty({
+    description:
+      "True once the import's rows reached the ledger; a failure after it is not 'nothing saved', and the file must not be imported again",
+  })
+  dataCommitted: boolean;
+
   @ApiPropertyOptional()
   startedAt: Date | null;
 

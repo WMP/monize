@@ -73,6 +73,7 @@ function toJobDto(job: ImportJob): MnyImportJobDto {
     result: job.result,
     errorKey: job.errorKey,
     retryable: job.retryable,
+    dataCommitted: job.dataCommitted,
     startedAt: job.startedAt,
     completedAt: job.completedAt,
   };
@@ -209,6 +210,10 @@ export class MnyImportController {
   @ApiResponse({
     status: 404,
     description: "No such staged file for this user",
+  })
+  @ApiResponse({
+    status: 409,
+    description: "A pending or running import still needs the file",
   })
   async discard(
     @Request() req,

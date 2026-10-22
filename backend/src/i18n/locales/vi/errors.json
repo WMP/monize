@@ -477,7 +477,9 @@
     "mnyPasswordIncorrect": "Mật khẩu đó không mở được tệp Money. Hãy kiểm tra lại và thử lần nữa.",
     "mnyUnreadableDatabase": "Tệp Money đó đã được giải mã nhưng không thể đọc nội dung. Tệp có thể đã bị hỏng.",
     "mnyStagedFileMissing": "Tệp Money đã tải lên không còn khả dụng. Vui lòng tải lên lại.",
+    "mnyStagedFileInUse": "Tệp Money này đang được nhập. Hãy đợi quá trình nhập hoàn tất trước khi loại bỏ tệp.",
     "mnyImportAlreadyRunning": "Đã có một lần nhập đang chạy. Hãy đợi hoàn tất trước khi bắt đầu lần khác.",
+    "mnyAlreadyImported": "Tệp này đã được nhập vào ngày {{ date }} (lần nhập {{ jobId }}) và các bản ghi vẫn còn trong tài khoản của bạn. Nhập lại sẽ tạo bản trùng. Để thay thế chúng, hãy bắt đầu lại và chọn thay thế dữ liệu hiện có.",
     "mnyJobNotFound": "Không tìm thấy tác vụ nhập",
     "mnyFileTooLarge": "Tệp Money đó lớn hơn giới hạn nhập {{ limit }} MB."
   },

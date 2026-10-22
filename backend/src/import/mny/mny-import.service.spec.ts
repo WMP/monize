@@ -271,13 +271,14 @@ describe("MnyImportService", () => {
     staging = {
       findInfo: jest.fn().mockResolvedValue({ id: "staged-1" }),
       loadBytes: jest.fn().mockResolvedValue(Buffer.from("bytes")),
-      remove: jest.fn().mockResolvedValue(true),
+      removeConsumed: jest.fn().mockResolvedValue(undefined),
     };
     parser = { parse: jest.fn().mockReturnValue(parsedFile()) };
     jobs = {
       hasActiveJob: jest.fn().mockResolvedValue(false),
       create: jest.fn().mockResolvedValue({ id: "job-1" }),
       discard: jest.fn().mockResolvedValue(undefined),
+      releaseCommittedContent: jest.fn().mockResolvedValue(undefined),
       runClaimed: jest.fn().mockResolvedValue(true),
       fail: jest.fn().mockResolvedValue(undefined),
       // Written INSIDE the import transaction, so it commits with the rows it
@@ -485,6 +486,29 @@ describe("MnyImportService", () => {
       expect(usersService.deleteData.mock.invocationCallOrder[0]).toBeLessThan(
         jobs.runClaimed.mock.invocationCallOrder[0],
       );
+      // The wipe removed the rows an earlier import's content key vouched
+      // for, so the key is released -- after the wipe, never before (A26-H08).
+      expect(jobs.releaseCommittedContent).toHaveBeenCalledWith("user-1");
+      expect(usersService.deleteData.mock.invocationCallOrder[0]).toBeLessThan(
+        jobs.releaseCommittedContent.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("keeps the content keys when the wipe is refused", async () => {
+      usersService.deleteData.mockRejectedValue(new Error("bad password"));
+
+      await expect(
+        service.start("user-1", {
+          stagedFileId: "staged-1",
+          options: { wipeExistingData: true },
+        }),
+      ).rejects.toThrow("bad password");
+      expect(jobs.releaseCommittedContent).not.toHaveBeenCalled();
+    });
+
+    it("does not release the content keys for an import that keeps existing data", async () => {
+      await service.start("user-1", { stagedFileId: "staged-1" });
+      expect(jobs.releaseCommittedContent).not.toHaveBeenCalled();
     });
 
     it("fails the request, not a background job, when re-authentication fails", async () => {
@@ -747,7 +771,7 @@ describe("MnyImportService", () => {
     it("deletes the staged bytes once the import succeeds", async () => {
       await run();
 
-      expect(staging.remove).toHaveBeenCalledWith("user-1", "staged-1");
+      expect(staging.removeConsumed).toHaveBeenCalledWith("user-1", "staged-1");
     });
 
     it("checkpoints data_committed on the write transaction's own manager, under this attempt's token", async () => {

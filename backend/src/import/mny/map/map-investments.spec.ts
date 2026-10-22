@@ -97,6 +97,7 @@ function input(
     accounts: accountsFixture(),
     securities: securitiesFixture(),
     bills: [],
+    exchangeRates: [],
     ...overrides,
   };
 }
@@ -1120,6 +1121,192 @@ describe("mapInvestments", () => {
       expect([...result.referencedSecurities].sort()).toEqual([1, 2]);
       expect([...result.referencedPayees]).toEqual([4]);
       expect([...result.referencedCategories]).toEqual([9]);
+    });
+  });
+
+  describe("a security quoted in another currency than its account", () => {
+    // A CAD account holding a USD security: TRN.amt is CAD, while the app reads
+    // an investment row's price and total as the security's currency and its
+    // exchange rate as security -> cash account.
+    const cadAccounts = (): MappedAccounts => ({
+      ...accountsFixture(),
+      currencyByHandle: new Map([
+        [10, "CAD"],
+        [11, "CAD"],
+      ]),
+    });
+    const usdSecurity = (): MappedSecurities =>
+      mapSecurities({
+        securities: [mnySecurity({ handle: 1, symbol: "SEC1", currency: 7 })],
+        currencyByHandle: new Map([[7, "USD"]]),
+        baseCurrency: "CAD",
+        activeHandles: new Set([1]),
+      });
+    const buyInput = (
+      overrides: Partial<MapInvestmentsInput> = {},
+    ): MapInvestmentsInput =>
+      input({
+        accounts: cadAccounts(),
+        securities: usdSecurity(),
+        transactions: transactionData({
+          transactions: [
+            invRow({
+              handle: 1,
+              action: MNY_ACTION.BUY,
+              amount: -1250,
+              date: "2026-03-02",
+            }),
+          ],
+        }),
+        investments: investmentData({
+          investmentDetails: [
+            mnyInvestmentDetail({
+              transaction: 1,
+              quantity: 10,
+              price: 125,
+              commission: 0,
+            }),
+          ],
+        }),
+        ...overrides,
+      });
+
+    it("converts the trade into the security's currency at the file's rate", () => {
+      const result = mapInvestments(
+        buyInput({
+          exchangeRates: [
+            {
+              fromCurrency: "USD",
+              toCurrency: "CAD",
+              rate: 1.25,
+              rateDate: "2026-03-02",
+            },
+          ],
+        }),
+      );
+
+      expect(result.warnings).toEqual([]);
+      expect(result.transactions[0]).toMatchObject({
+        totalAmount: 1000,
+        price: 100,
+        exchangeRate: 1.25,
+        cashAmount: -1250,
+        currencyCode: "CAD",
+        securityCurrencyCode: "USD",
+      });
+    });
+
+    it("uses the inverse when the file stores the pair the other way", () => {
+      const result = mapInvestments(
+        buyInput({
+          exchangeRates: [
+            {
+              fromCurrency: "CAD",
+              toCurrency: "USD",
+              rate: 0.8,
+              rateDate: "2026-03-02",
+            },
+          ],
+        }),
+      );
+
+      expect(result.transactions[0]).toMatchObject({
+        totalAmount: 1000,
+        price: 100,
+        exchangeRate: 1.25,
+        cashAmount: -1250,
+        securityCurrencyCode: "USD",
+      });
+    });
+
+    it("leaves the figures and warns when the file has no rate", () => {
+      const result = mapInvestments(buyInput());
+
+      expect(result.transactions[0]).toMatchObject({
+        totalAmount: 1250,
+        exchangeRate: 1,
+        cashAmount: -1250,
+        currencyCode: "CAD",
+        securityCurrencyCode: "CAD",
+      });
+      expect(result.warnings).toEqual([
+        {
+          code: "crossCurrencyTradeUnconverted",
+          subject: "SEC1",
+          detail: "USD->CAD on 2026-03-02: no_observation",
+          row: expect.objectContaining({ handle: 1 }),
+        },
+      ]);
+    });
+
+    it("converts the accrued-interest companion at the same rate", () => {
+      const result = mapInvestments(
+        buyInput({
+          transactions: transactionData({
+            transactions: [
+              invRow({
+                handle: 1,
+                action: MNY_ACTION.SELL,
+                amount: 1250,
+                date: "2026-03-02",
+              }),
+            ],
+          }),
+          investments: investmentData({
+            investmentDetails: [
+              mnyInvestmentDetail({
+                transaction: 1,
+                quantity: 10,
+                price: 120,
+                commission: 0,
+                interest: 50,
+              }),
+            ],
+          }),
+          exchangeRates: [
+            {
+              fromCurrency: "USD",
+              toCurrency: "CAD",
+              rate: 1.25,
+              rateDate: "2026-03-02",
+            },
+          ],
+        }),
+      );
+
+      const companion = result.transactions.find(
+        (t) => t.action === InvestmentAction.INTEREST,
+      );
+      expect(companion).toMatchObject({
+        totalAmount: 40,
+        price: 40,
+        exchangeRate: 1.25,
+      });
+    });
+
+    it("keeps a same-currency trade at rate 1 with no warning", () => {
+      const result = mapInvestments(
+        buyInput({
+          accounts: accountsFixture(),
+          securities: securitiesFixture(),
+          exchangeRates: [
+            {
+              fromCurrency: "USD",
+              toCurrency: "CAD",
+              rate: 1.25,
+              rateDate: "2026-03-02",
+            },
+          ],
+        }),
+      );
+
+      expect(result.warnings).toEqual([]);
+      expect(result.transactions[0]).toMatchObject({
+        totalAmount: 1250,
+        exchangeRate: 1,
+        currencyCode: "USD",
+        securityCurrencyCode: "USD",
+      });
     });
   });
 });
