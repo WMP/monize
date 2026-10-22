@@ -218,6 +218,13 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-SEARCH-003 terms hold on the counted row | supporting | -- | **required** | -- | -- | -- | -- | optional |
 | INV-SEARCH-004 search never inflates an aggregate | -- | -- | **required** | -- | -- | -- | -- | -- |
 | INV-SEARCH-005 assistant totals and rows agree | -- | required | **required** | -- | -- | -- | -- | -- |
+| INV-WTY-001 a warranty never moves money | -- | **required** | -- | -- | -- | -- | -- | -- |
+| INV-WTY-002 every warranty status is the server's | **required** | required (not yet met) | -- | -- | -- | -- | -- | optional |
+| INV-WTY-003 an attachment has exactly one parent | required | required | **required** | -- | -- | -- | -- | optional |
+| INV-WTY-004 one warranty reminder per threshold | required | -- | required | **required** | -- | -- | -- | -- |
+| INV-WTY-005 a warranty refusal before the write | required | -- | **required** | -- | -- | -- | -- | -- |
+| INV-WTY-006 an import's preview and commit agree | **required** | -- | required | -- | -- | -- | -- | -- |
+| INV-WTY-007 no transaction through a warranty | required | -- | **required** | -- | -- | -- | -- | -- |
 
 Bold marks the kind that is load-bearing -- the one whose absence means the
 invariant is unverified no matter how many others pass. `INV-PROFILE-001`'s is a

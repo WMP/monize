@@ -284,8 +284,14 @@ describe("Shared Access RLS identity smoke (real withScopedDb)", () => {
       [PersonalAccessToken, repo("pats", { update: { affected: 1 } })],
       [TrustedDevice, repo("trustedDevices", { delete: { affected: 1 } })],
     ]);
-    // A real repository carries the transaction's manager.
-    (refreshTokens as Record<string, unknown>).manager = manager;
+    // The converging refresh revocation after the commit opens with a raw
+    // SELECT of the delegate's live families; none are left here.
+    const setConfig = manager.query.getMockImplementation();
+    manager.query.mockImplementation((sql: string, params?: unknown[]) =>
+      sql.includes("SELECT DISTINCT family_id")
+        ? Promise.resolve([])
+        : (setConfig?.(sql, params) ?? Promise.resolve(undefined)),
+    );
 
     await withUserContext(OWNER_ID, () =>
       service.resetDelegatePassword(OWNER_ID, DELEGATION_ID),
@@ -303,6 +309,11 @@ describe("Shared Access RLS identity smoke (real withScopedDb)", () => {
     // So must the PATs and trusted devices the old password stood behind.
     expect(identities()).toContain("pats.update: bypass");
     expect(identities()).toContain("trustedDevices.delete: bypass");
+    // And the post-commit convergence reaches the delegate's own sessions.
+    expect(manager.query).toHaveBeenCalledWith(
+      expect.stringContaining("SELECT DISTINCT family_id"),
+      [DELEGATE_ID, null],
+    );
   });
 
   it("revokeDelegate decides whether to delete the login on rows it can actually read", async () => {

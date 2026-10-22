@@ -95,20 +95,16 @@ export class StepUpAuthService {
     args: VerifyArgs,
   ): Promise<StepUpVerificationResult> {
     const attemptKey = `${userId}:${purpose}`;
+    // Advisory early refusal only, so a spent budget costs no user read. The
+    // decision that bounds the guesses is `reserveAttempt`, taken just before
+    // each verifier: a burst of concurrent requests all read the same count
+    // here, before any of their failures is recorded (A26-L08).
     const attempts = await this.attemptCounters.peek(
       STEP_UP_ATTEMPT_SCOPE,
       attemptKey,
     );
     if (attempts >= this.MAX_ATTEMPTS) {
-      this.logger.warn(
-        `Step-up rejected: too many attempts for user ${userId} purpose ${purpose}`,
-      );
-      throw new UnauthorizedException(
-        tr(
-          "errors.auth.stepUpTooManyAttempts",
-          "Too many verification attempts. Please try again later.",
-        ),
-      );
+      this.refuseTooManyAttempts(userId, purpose);
     }
 
     const user = await this.scoped(User, (repo) =>
@@ -138,6 +134,7 @@ export class StepUpAuthService {
           message: "Enter your 6-digit authenticator code to continue",
         });
       }
+      await this.reserveAttempt(attemptKey, userId, purpose);
       verified = await this.twoFactorService.verifyTotpForUser(
         userId,
         args.totpCode,
@@ -175,6 +172,7 @@ export class StepUpAuthService {
           message: "Enter your current password to continue",
         });
       }
+      await this.reserveAttempt(attemptKey, userId, purpose);
       verified = await bcrypt.compare(args.password, user.passwordHash);
     } else {
       // Local account with no password set (admin-provisioned via reset
@@ -191,7 +189,7 @@ export class StepUpAuthService {
     }
 
     if (!verified) {
-      await this.recordFailure(attemptKey);
+      // Already counted: the attempt was reserved before the check.
       this.logger.warn(
         `Step-up verification failed for user ${userId} purpose ${purpose}`,
       );
@@ -227,16 +225,44 @@ export class StepUpAuthService {
     };
   }
 
-  private async recordFailure(key: string): Promise<void> {
-    // "sliding", matching the `Map` this replaced: it wrote
-    // `expiresAt: Date.now() + LOCKOUT_WINDOW_MS` on every failure, so the
-    // lockout lifted only after a quiet window rather than a fixed 30 minutes
-    // from the first attempt. See `AttemptWindow`.
-    await this.attemptCounters.increment(
+  /**
+   * Count this attempt before its code or password is checked, and refuse it
+   * when the committed count is over the cap. The count compared is the one
+   * the single INSERT ... ON CONFLICT ... RETURNING wrote, so K concurrent
+   * attempts get K distinct counts and at most `MAX_ATTEMPTS` reach a verifier
+   * (A26-L08). A success resets the counter, so a correct code after nine
+   * failures (count 10, not over 10) still passes.
+   *
+   * "sliding", matching the `Map` this replaced: it wrote
+   * `expiresAt: Date.now() + LOCKOUT_WINDOW_MS` on every failure, so the
+   * lockout lifted only after a quiet window rather than a fixed 30 minutes
+   * from the first attempt. See `AttemptWindow`.
+   */
+  private async reserveAttempt(
+    key: string,
+    userId: string,
+    purpose: StepUpPurpose,
+  ): Promise<void> {
+    const { count } = await this.attemptCounters.increment(
       STEP_UP_ATTEMPT_SCOPE,
       key,
       this.LOCKOUT_WINDOW_MS,
       "sliding",
+    );
+    if (count > this.MAX_ATTEMPTS) {
+      this.refuseTooManyAttempts(userId, purpose);
+    }
+  }
+
+  private refuseTooManyAttempts(userId: string, purpose: StepUpPurpose): never {
+    this.logger.warn(
+      `Step-up rejected: too many attempts for user ${userId} purpose ${purpose}`,
+    );
+    throw new UnauthorizedException(
+      tr(
+        "errors.auth.stepUpTooManyAttempts",
+        "Too many verification attempts. Please try again later.",
+      ),
     );
   }
 }

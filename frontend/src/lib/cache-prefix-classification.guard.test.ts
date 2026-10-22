@@ -37,6 +37,10 @@ const TRANSACTION_DERIVED: ReadonlyArray<[string, string]> = [
     'budgets:',
     'dashboard progress and per-category status are sums of categorised transactions',
   ],
+  [
+    'warranties:',
+    "each warranty carries its linked purchase's date, payee and amount (linkedTransaction), and deleting that transaction unlinks it, so a transaction write changes the cached view",
+  ],
 ];
 
 /** Kept -- a transaction write cannot change these. */

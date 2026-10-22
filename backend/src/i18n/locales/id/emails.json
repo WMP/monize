@@ -383,6 +383,12 @@
       "readyMessage": "Usulan yang menunggu keputusan Anda: {{ count }}. Baru sejak pemberitahuan terakhir: {{ added }}. Buka untuk meninjau.",
       "expiringTitle": "Usulan tinjauan AI segera kedaluwarsa",
       "expiringMessage": "Usulan yang kedaluwarsa dalam 3 hari: {{ count }}. Yang pertama kedaluwarsa pada {{ date }}. Buka untuk meninjau."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: garansi segera berakhir",
+      "expiringMessage": "Garansi untuk {{ name }} berakhir pada {{ date }}. Buka untuk meninjau dokumennya atau mencatat klaim.",
+      "todayTitle": "{{ name }}: garansi berakhir hari ini",
+      "todayMessage": "Garansi untuk {{ name }} berakhir hari ini, {{ date }}. Buka untuk meninjau dokumennya atau mencatat klaim."
     }
   },
   "backupOffsite": {

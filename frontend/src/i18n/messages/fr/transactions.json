@@ -135,6 +135,7 @@
       "toggleTitle": "Retirer l’année des dates pour laisser plus de place au bénéficiaire"
     },
     "attachmentsCount": "{count, plural, one {# pièce jointe} other {# pièces jointes}}",
+    "warrantiesCount": "{count, plural, one {# garantie} other {# garanties}}",
     "today": "Aujourd'hui",
     "export": {
       "button": "Exporter",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Dupliquer la transaction",
       "copy": "Copier",
       "duplicate": "Dupliquer",
-      "scheduleRecurring": "Planifier comme récurrente"
+      "scheduleRecurring": "Planifier comme récurrente",
+      "addWarranty": "Ajouter une garantie",
+      "viewWarranties": "Voir les garanties"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Modifier",
     "duplicate": "Dupliquer",
     "scheduleRecurring": "Planifier comme récurrente",
+    "addWarranty": "Ajouter une garantie",
+    "viewWarranties": "Voir les garanties",
     "delete": "Supprimer"
   },
   "filter": {
@@ -465,7 +470,14 @@
       },
       "feeCaption": "Comprend des frais de transaction à l'étranger de {percent}% ({fee})."
     },
-    "jointSplitDisabled": "Seul le propriétaire peut gérer les transactions ventilées d'un compte partagé"
+    "jointSplitDisabled": "Seul le propriétaire peut gérer les transactions ventilées d'un compte partagé",
+    "warranties": {
+      "title": "Garanties",
+      "add": "Ajouter une garantie",
+      "expires": "Expire le {date}",
+      "loading": "Chargement des garanties",
+      "loadError": "Les garanties de cette transaction n'ont pas pu être chargées."
+    }
   },
   "splitEditor": {
     "header": "Détails de la répartition",
@@ -626,7 +638,8 @@
       "amountRange": "Montant de 50 à 100",
       "datePeriod": "N’importe quel jour de mars 2026",
       "isSplit": "Opérations ventilées",
-      "hasAttachment": "Possède une pièce jointe"
+      "hasAttachment": "Possède une pièce jointe",
+      "hasWarranty": "Possède une garantie"
     }
   },
   "searchInterpretation": {
@@ -668,6 +681,7 @@
       },
       "has": {
         "attachment": "Possède une pièce jointe",
+        "warranty": "Possède une garantie",
         "ref": "Possède un numéro de référence",
         "memo": "Possède une note",
         "tag": "Possède une étiquette"

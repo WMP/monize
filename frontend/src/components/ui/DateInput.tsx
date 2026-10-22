@@ -588,7 +588,8 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
               }}
               onBlur={externalOnBlur}
               onKeyDown={handleKeyDown}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              disabled={props.disabled}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
             />
             {/* Hidden input bound to react-hook-form for value/ref management */}
             <input
@@ -629,16 +630,18 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
             className="pr-9"
             {...props}
           />
+          {/* A disabled field cannot be changed through its popover either. */}
           <button
             type="button"
             tabIndex={-1}
             onClick={handleCalendarClick}
+            disabled={props.disabled}
             aria-label={t('dateInput.openPicker')}
-            className="absolute top-px bottom-px right-px z-10 flex items-center pr-2.5 pl-1 bg-white dark:bg-gray-800 rounded-r-md text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+            className="absolute top-px bottom-px right-px z-10 flex items-center pr-2.5 pl-1 bg-white dark:bg-gray-800 rounded-r-md text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 disabled:cursor-not-allowed disabled:hover:text-gray-400 dark:disabled:hover:text-gray-500"
           >
             {calendarIconSvg}
           </button>
-          {showCalendar && (
+          {showCalendar && !props.disabled && (
             <CalendarPopover
               value={isoValue}
               onSelect={handleCalendarSelect}

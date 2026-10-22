@@ -1,6 +1,11 @@
 import { EntityManager } from "typeorm";
 import { primaryAttachmentSql } from "../attachments/primary-attachment.util";
 import { TransactionAttachment } from "../attachments/entities/transaction-attachment.entity";
+import {
+  reachedTransactionIdSql,
+  reachingWarrantyJoinSql,
+} from "../attachments/attachment-parent";
+import { Warranty } from "../warranties/entities/warranty.entity";
 import { Category } from "../categories/entities/category.entity";
 import {
   RULE_WEEKDAYS,
@@ -172,6 +177,7 @@ export async function loadCategoryChains(
  * rows (the picture the user sees and its hidden original), so the originals
  * are left out exactly as the register's paperclip does
  * (`primaryAttachmentSql`); the row counts once, and only its presence matters.
+ * A document of a warranty linked to the transaction is one of its attachments.
  */
 export async function loadAttachmentPresence(
   m: EntityManager,
@@ -180,13 +186,19 @@ export async function loadAttachmentPresence(
 ): Promise<ReadonlySet<string>> {
   const wanted = [...new Set(transactionIds)];
   if (wanted.length === 0) return new Set();
+  // A transaction's attachments are its own rows plus the documents of every
+  // warranty linked to it (attachment-parent.ts), so each row is keyed by the
+  // transaction it is reached from.
   const rows = await m
     .getRepository(TransactionAttachment)
     .createQueryBuilder("ta")
-    .select("ta.transactionId", "transactionId")
+    .leftJoin(Warranty, "w", reachingWarrantyJoinSql("ta", "w"))
+    .select(reachedTransactionIdSql("ta", "w"), "transactionId")
     .distinct(true)
     .where("ta.userId = :userId", { userId })
-    .andWhere("ta.transactionId IN (:...wanted)", { wanted })
+    .andWhere(`${reachedTransactionIdSql("ta", "w")} IN (:...wanted)`, {
+      wanted,
+    })
     .andWhere(primaryAttachmentSql("ta"))
     .getRawMany<{ transactionId: string }>();
   return new Set(rows.map((row) => row.transactionId));

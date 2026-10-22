@@ -1301,6 +1301,13 @@ describe("email receipts pipeline (integration)", () => {
     let purchaseTxId: string;
 
     beforeEach(async () => {
+      // The Gmail the forwards come from is Alice's own verified account email:
+      // only the owner's forward is stored as the shop's (A26-H02;
+      // email-receipts-forwarded-sender.integration.spec.ts has the others').
+      await db.query(`UPDATE users SET email = $1 WHERE id = $2`, [
+        "alice.example@gmail.example.com",
+        aliceId,
+      ]);
       // The bank charge of the PURCHASE day (Aug 12), a month before the forward.
       purchaseTxId = (
         await asAlice(() =>

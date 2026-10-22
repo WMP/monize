@@ -1,7 +1,14 @@
 import type { EntityManager } from "typeorm";
 import { returnedRows } from "../../common/db/query-result";
-import { resolveForwardedIdentity } from "../imap/forwarded-receipt";
-import { extractMailText } from "../imap/mail-text.util";
+import {
+  mayBeForwarded,
+  resolveForwardedIdentity,
+  type ReceiptIdentity,
+} from "../imap/forwarded-receipt";
+import {
+  extractMailText,
+  type ExtractedMailText,
+} from "../imap/mail-text.util";
 
 const DAY_MS = 86_400_000;
 
@@ -70,55 +77,62 @@ export function skippedRow(
  * The one row builder of the poll and the archive import: the same text
  * extraction, forwarded-identity resolution and arrival time. `fallbackDate` is
  * the arrival time used when the Date header is missing or in the future (the
- * IMAP internal date, or an mbox separator date). A message that cannot be
- * decoded becomes a `skipped` row.
+ * IMAP internal date, or an mbox separator date). `ownAddresses` reads the
+ * owner's own addresses (`loadOwnAddresses`), asked only for a message whose
+ * text holds a forwarded header block: only a forward from one of them is
+ * stored as the shop's. A message that cannot be decoded becomes a `skipped`
+ * row.
  */
 export async function buildReceiptRow(
   source: Buffer,
   uid: string,
   fallbackDate: Date,
   now: Date,
+  ownAddresses: () => Promise<ReadonlySet<string>>,
 ): Promise<ReceiptRow> {
+  let mail: ExtractedMailText;
+  let outer: ReceiptIdentity;
+  let receivedAt: Date;
+  let forwarded: boolean;
   try {
-    const mail = await extractMailText(source);
-    const receivedAt = pickReceivedAt(mail.date, fallbackDate, now);
-    // A forward from the user's own address: the shop, the subject and the day
-    // it wrote come from the forwarded header block in the text, so the parser
-    // is chosen by the shop and the match window is centred on the purchase.
-    const identity = resolveForwardedIdentity(
-      {
-        fromAddress: mail.fromAddress,
-        fromDomain: mail.fromDomain,
-        subject: mail.subject,
-        forwardedBy: null,
-        originalSentAt: null,
-      },
-      mail.text,
-      receivedAt,
-    ) ?? {
+    mail = await extractMailText(source);
+    receivedAt = pickReceivedAt(mail.date, fallbackDate, now);
+    outer = {
       fromAddress: mail.fromAddress,
       fromDomain: mail.fromDomain,
       subject: mail.subject,
       forwardedBy: null,
       originalSentAt: null,
     };
-    return {
-      messageId: mail.messageId,
-      fromAddress: identity.fromAddress,
-      fromDomain: identity.fromDomain,
-      subject: identity.subject,
-      receivedAt,
-      bodyText: mail.text,
-      bodyHtml: mail.html,
-      forwardedBy: identity.forwardedBy,
-      originalSentAt: identity.originalSentAt,
-      uid,
-      status: "pending",
-      statusReason: null,
-    };
+    forwarded = mayBeForwarded(outer, mail.text);
   } catch {
     return skippedRow(uid, "undecodable", fallbackDate);
   }
+  // Outside the catch: a failure to read the owner's addresses is the batch's
+  // failure (nothing is stored, the cursor stays), never an undecodable message.
+  const own = forwarded ? await ownAddresses() : null;
+  // A forward from the user's own address: the shop, the subject and the day
+  // it wrote come from the forwarded header block in the text, so the parser
+  // is chosen by the shop and the match window is centred on the purchase.
+  // Anyone else's pasted block is text: the email stays theirs (A26-H02).
+  const identity =
+    (own === null
+      ? null
+      : resolveForwardedIdentity(outer, mail.text, receivedAt, own)) ?? outer;
+  return {
+    messageId: mail.messageId,
+    fromAddress: identity.fromAddress,
+    fromDomain: identity.fromDomain,
+    subject: identity.subject,
+    receivedAt,
+    bodyText: mail.text,
+    bodyHtml: mail.html,
+    forwardedBy: identity.forwardedBy,
+    originalSentAt: identity.originalSentAt,
+    uid,
+    status: "pending",
+    statusReason: null,
+  };
 }
 
 /**

@@ -23,7 +23,13 @@ const logger = createLogger('DelegateAccessModal');
 type GrantOp = 'canRead' | 'canCreate' | 'canEdit' | 'canDelete' | 'isJoint';
 type CapOp = 'create' | 'edit' | 'delete';
 type CapResource = 'payees' | 'categories' | 'tags';
-type SectionKey = 'bills' | 'investments' | 'budgets' | 'reports' | 'ai';
+type SectionKey =
+  | 'bills'
+  | 'investments'
+  | 'budgets'
+  | 'reports'
+  | 'ai'
+  | 'warranties';
 type Tab = 'sections' | 'accounts' | 'shared';
 
 interface DraftGrant {
@@ -62,7 +68,17 @@ const CAP_OPS: { op: CapOp; label: string }[] = [
   { op: 'delete', label: 'Delete' },
 ];
 
-const SECTIONS: { key: SectionKey; label: string; description: string }[] = [
+// Labels for the five original sections predate the settings catalog; the
+// warranties row carries catalog keys (`labelKey`/`descriptionKey`).
+interface SectionDef {
+  key: SectionKey;
+  label?: string;
+  description?: string;
+  labelKey?: 'sections.warranties.label';
+  descriptionKey?: 'sections.warranties.description';
+}
+
+const SECTIONS: SectionDef[] = [
   {
     key: 'bills',
     label: 'Bills & Deposits',
@@ -80,6 +96,11 @@ const SECTIONS: { key: SectionKey; label: string; description: string }[] = [
     label: 'AI Assistant',
     description: "Uses the owner's configured AI provider",
   },
+  {
+    key: 'warranties',
+    labelKey: 'sections.warranties.label',
+    descriptionKey: 'sections.warranties.description',
+  },
 ];
 
 const SECTION_FIELD: Record<SectionKey, keyof DelegateSectionFlags> = {
@@ -88,6 +109,7 @@ const SECTION_FIELD: Record<SectionKey, keyof DelegateSectionFlags> = {
   budgets: 'budgetsCanRead',
   reports: 'reportsCanRead',
   ai: 'aiCanRead',
+  warranties: 'warrantiesCanRead',
 };
 
 function emptyGrant(): DraftGrant {
@@ -127,6 +149,7 @@ function buildInitialDraft(delegate: DelegateSummary): Draft {
       budgets: !!delegate.sections?.budgets,
       reports: !!delegate.sections?.reports,
       ai: !!delegate.sections?.ai,
+      warranties: !!delegate.sections?.warranties,
     },
   };
 }
@@ -382,31 +405,37 @@ export function DelegateAccessModal({
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {t('sections.description')}
             </p>
-            {SECTIONS.map((s) => (
-              <div
-                key={s.key}
-                className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-700/50 pb-2"
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                    {s.label}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {s.description}
-                  </p>
-                  {s.key === 'ai' && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {t('sections.aiRequiresFullAccess')}
+            {SECTIONS.map((s) => {
+              const label = s.labelKey ? t(s.labelKey) : s.label;
+              const description = s.descriptionKey
+                ? t(s.descriptionKey)
+                : s.description;
+              return (
+                <div
+                  key={s.key}
+                  className="flex items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-700/50 pb-2"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                      {label}
                     </p>
-                  )}
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {description}
+                    </p>
+                    {s.key === 'ai' && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {t('sections.aiRequiresFullAccess')}
+                      </p>
+                    )}
+                  </div>
+                  <ToggleSwitch
+                    checked={draft.sections[s.key]}
+                    onChange={(v) => setSection(s.key, v)}
+                    label={`${label} section`}
+                  />
                 </div>
-                <ToggleSwitch
-                  checked={draft.sections[s.key]}
-                  onChange={(v) => setSection(s.key, v)}
-                  label={`${s.label} section`}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

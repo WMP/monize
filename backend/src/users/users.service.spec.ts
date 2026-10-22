@@ -1160,6 +1160,56 @@ describe("UsersService", () => {
       );
     });
 
+    it("converges the refresh sessions after the password commit", async () => {
+      // The in-transaction blanket UPDATE misses a successor a concurrent
+      // rotation inserts after its snapshot (A26-M02); the converging revoke
+      // runs after the commit, in its own transactions.
+      const hashedPassword = await bcrypt.hash("OldPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        passwordHash: hashedPassword,
+      });
+      const order: string[] = [];
+      const runTransaction =
+        mockDataSource.transaction.getMockImplementation()!;
+      mockDataSource.transaction.mockImplementation(async (...args: any[]) => {
+        order.push("begin");
+        const result = await runTransaction(...args);
+        order.push("commit");
+        return result;
+      });
+      usersRepository.save.mockImplementation(async (u: unknown) => {
+        order.push("save");
+        return u;
+      });
+      const answer = mockQueryRunner.query.getMockImplementation();
+      mockQueryRunner.query.mockImplementation(
+        async (sql: unknown, params?: unknown[]) => {
+          if (String(sql).includes("SELECT DISTINCT family_id")) {
+            order.push("converge");
+            expect(params).toEqual(["user-1", null]);
+            return [];
+          }
+          return answer ? answer(sql, params) : [];
+        },
+      );
+
+      await service.changePassword("user-1", {
+        currentPassword: "OldPass123!",
+        newPassword: "NewPass456!",
+      });
+
+      const write = order.lastIndexOf("save");
+      expect(order.slice(write - 1, write + 5)).toEqual([
+        "begin",
+        "save",
+        "commit",
+        "begin",
+        "converge",
+        "commit",
+      ]);
+    });
+
     it("writes the password and the row revocations in one transaction", async () => {
       const hashedPassword = await bcrypt.hash("OldPass123!", 10);
       usersRepository.findOne.mockResolvedValue({
@@ -1826,6 +1876,17 @@ describe("UsersService", () => {
       expect(
         queries.some((q: string) => q.includes("DELETE FROM transactions")),
       ).toBe(true);
+      // A warranty's transaction link is ON DELETE SET NULL and the account
+      // survives, so nothing cascades to it: without its own delete every
+      // warranty and claim outlives "delete my data".
+      const claims = queries.findIndex((q: string) =>
+        q.includes("DELETE FROM warranty_claims"),
+      );
+      const warranties = queries.findIndex((q: string) =>
+        q.includes("DELETE FROM warranties"),
+      );
+      expect(claims).toBeGreaterThanOrEqual(0);
+      expect(claims).toBeLessThan(warranties);
       expect(
         queries.some((q: string) =>
           q.includes("DELETE FROM scheduled_transactions"),

@@ -1049,11 +1049,15 @@ export class McpTransactionsTools {
     for (const dto of dtos) {
       const buffer = Buffer.from(dto.data, "base64");
       const attachment = await withUserContext(userId, () =>
-        this.attachmentsService.create(userId, transactionId, {
-          originalname: dto.filename,
-          buffer,
-          size: buffer.length,
-        }),
+        this.attachmentsService.create(
+          userId,
+          { kind: "transaction", id: transactionId },
+          {
+            originalname: dto.filename,
+            buffer,
+            size: buffer.length,
+          },
+        ),
       );
       created.push({ id: attachment.id, filename: attachment.filename });
     }

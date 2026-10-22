@@ -215,10 +215,9 @@ describe("restore plan", () => {
     // two of them are about the same fact from opposite directions.
     const cleared = new Set(
       [
-        ...readFileSync(
-          join(__dirname, "backup-restore-database.service.ts"),
-          "utf8",
-        ).matchAll(/DELETE FROM (\w+) WHERE user_id/g),
+        ...readFileSync(join(__dirname, "restore-wipe.ts"), "utf8").matchAll(
+          /DELETE FROM (\w+) WHERE user_id/g,
+        ),
       ].map((m) => m[1]),
     );
 
