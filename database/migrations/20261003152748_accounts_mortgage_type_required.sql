@@ -3,11 +3,16 @@
 -- two legacy flags it replaced, is_canadian_mortgage and is_variable_rate, are
 -- dropped.
 --
--- Contract half of "expand now, contract later": the previous release must
--- already read and write mortgage_type (Phase 1, migration
--- 20261002151116_accounts_mortgage_type.sql), and this migration ships at least
--- one release after it, so the image a rollback lands on no longer needs the
--- flags.
+-- Contract half of "expand now, contract later": every release since 1.18.0
+-- prices from mortgage_type (Phase 1, migration
+-- 20261002151116_accounts_mortgage_type.sql), but those releases still map and
+-- write the two flags; 1.20.0 is the first whose code does not, which is what
+-- the marker below claims. A pod of an earlier release selects the dropped
+-- columns, so it fails for the length of a RollingUpdate, and a rollback to
+-- such a release needs the columns back (docs/database-migrations.md, "What
+-- the lint checks").
+--
+-- contract-after: 1.20.0
 --
 -- 1. Every MORTGAGE row still null is re-derived from the flags with the
 --    Phase 1 backfill CASE (spec table 4.2), before they are dropped: an insert
