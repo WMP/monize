@@ -25,6 +25,10 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { Response } from "express";
 import {
+  AllowDelegate,
+  DelegateRequiresSection,
+} from "../delegation/decorators/delegate-access.decorator";
+import {
   AttachmentListItem,
   AttachmentsService,
   MAX_ATTACHMENT_BYTES,
@@ -58,8 +62,10 @@ const uploadPairInterceptor = FileFieldsInterceptor(
 /**
  * One route per parent (WTY-003): the parent's kind is the route, its id the
  * path parameter, and the service receives the pair as an `AttachmentParent`.
- * The warranty routes are owner-only here; the delegate section is a later
- * task's.
+ * A delegate reaches only the two warranty reads, through the `warranties`
+ * section (design decision 9): the warranty's document list, and the download,
+ * which the service additionally refuses when the row's parent is a
+ * transaction, so a transaction's attachments keep their owner-only rule.
  */
 @ApiTags("Attachments")
 @ApiBearerAuth()
@@ -124,6 +130,8 @@ export class AttachmentsController {
   }
 
   @Get("warranties/:warrantyId/attachments")
+  @AllowDelegate()
+  @DelegateRequiresSection("warranties")
   @ApiOperation({ summary: "List a warranty's documents" })
   @ApiResponse({ status: 200, description: "Attachment metadata list" })
   findAllForWarranty(
@@ -137,8 +145,14 @@ export class AttachmentsController {
   }
 
   @Get("attachments/:id/download")
+  @AllowDelegate()
+  @DelegateRequiresSection("warranties")
   @ApiOperation({ summary: "Download an attachment's bytes" })
   @ApiResponse({ status: 200, description: "Attachment file bytes" })
+  @ApiResponse({
+    status: 403,
+    description: "A delegate asked for a transaction's attachment",
+  })
   @ApiResponse({ status: 404, description: "Attachment not found" })
   @ApiResponse({
     status: 503,
@@ -152,7 +166,9 @@ export class AttachmentsController {
     @Res() res: Response,
   ): Promise<void> {
     const { data, contentType, filename, byteSize } =
-      await this.attachmentsService.getForDownload(req.user.id, id);
+      await this.attachmentsService.getForDownload(req.user.id, id, {
+        isDelegate: req.user.isActing === true,
+      });
 
     res.set({
       "Content-Type": contentType,

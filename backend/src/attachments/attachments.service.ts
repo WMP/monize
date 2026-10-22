@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -46,6 +47,16 @@ export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10 MB
  * written for; a warranty takes the same cap under the same lock doctrine.
  */
 export const MAX_ATTACHMENTS_PER_TRANSACTION = 10;
+
+/**
+ * Who is downloading, beyond the user id. `isDelegate` is the request's
+ * `isActing`: the global guard has already admitted the delegate to the route
+ * through the `warranties` section, and the service adds the one fact the
+ * guard cannot see, which parent the row hangs off.
+ */
+export interface AttachmentReader {
+  isDelegate?: boolean;
+}
 
 export interface AttachmentDownload {
   data: Buffer;
@@ -522,10 +533,18 @@ export class AttachmentsService {
     );
   }
 
-  /** Load one attachment's bytes and headers for streaming download. */
+  /**
+   * Load one attachment's bytes and headers for streaming download.
+   *
+   * A delegate reaches this only through the `warranties` section (the route's
+   * decorators, checked by `AccountDelegateGuard`), so the only parent they may
+   * read is a warranty's: a transaction's attachment keeps the owner-only rule
+   * it had before the route admitted delegates at all (design 6.5).
+   */
   async getForDownload(
     userId: string,
     id: string,
+    reader: AttachmentReader = {},
   ): Promise<AttachmentDownload> {
     const attachment = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(TransactionAttachment).findOne({ where: { id, userId } }),
@@ -533,6 +552,14 @@ export class AttachmentsService {
     if (!attachment) {
       throw new NotFoundException(
         tr("errors.attachments.notFound", "Attachment not found"),
+      );
+    }
+    if (reader.isDelegate === true && attachment.warrantyId === null) {
+      throw new ForbiddenException(
+        tr(
+          "errors.delegation.actionNotAvailableAsDelegate",
+          "This action isn't available while you're acting on behalf of another user. Only the account owner can do this.",
+        ),
       );
     }
 

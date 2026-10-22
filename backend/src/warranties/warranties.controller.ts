@@ -20,6 +20,12 @@ import {
 } from "@nestjs/swagger";
 import { AuthGuard } from "@nestjs/passport";
 
+import {
+  AllowDelegate,
+  DelegateRequiresSection,
+} from "../delegation/decorators/delegate-access.decorator";
+import { delegateReadableAccountScope } from "../delegation/delegate-account-scope.util";
+import { DelegationService } from "../delegation/delegation.service";
 import { CreateWarrantyDto } from "./dto/create-warranty.dto";
 import { ListWarrantiesDto } from "./dto/list-warranties.dto";
 import { UpdateWarrantyDto } from "./dto/update-warranty.dto";
@@ -33,14 +39,12 @@ import { WarrantiesService } from "./warranties.service";
 /**
  * A user's warranties (docs/future-plans/warranty-tracker.md section 6.5).
  *
- * Deliberately NOT `@AllowDelegate` yet: the delegate READ section
- * `warranties` does not exist until task B5, which adds
- * `@AllowDelegate()` with `@DelegateRequiresSection('warranties')` to the
- * read routes only, together with the narrowing of `linkedTransaction` to the
- * delegate's readable accounts (WTY-007). Until then every route is
- * owner-only by the global `AccountDelegateGuard`'s default, so a read that a
- * delegate could reach cannot leak a linked purchase from an account they
- * were never granted. The write routes stay owner-only after B5 as well.
+ * The read routes carry `@AllowDelegate()` with
+ * `@DelegateRequiresSection("warranties")` (design decision 9): a delegate the
+ * owner granted the section sees every warranty, and the service narrows each
+ * row's linked purchase to the accounts the delegation grants READ on, which
+ * `delegateReadableAccountScope` resolves once per request here (WTY-007).
+ * Every write stays owner-only by the global `AccountDelegateGuard`'s default.
  *
  * `userId` comes from the JWT on every route and is never read from the request.
  */
@@ -49,20 +53,31 @@ import { WarrantiesService } from "./warranties.service";
 @UseGuards(AuthGuard("jwt"))
 @Controller("warranties")
 export class WarrantiesController {
-  constructor(private readonly warrantiesService: WarrantiesService) {}
+  constructor(
+    private readonly warrantiesService: WarrantiesService,
+    private readonly delegationService: DelegationService,
+  ) {}
 
   @Get()
+  @AllowDelegate()
+  @DelegateRequiresSection("warranties")
   @ApiOperation({ summary: "List the caller's warranties" })
   @ApiResponse({ status: 200, description: "One page of warranties" })
-  findAll(
+  async findAll(
     @Request() req,
     @Query() query: ListWarrantiesDto,
   ): Promise<WarrantyListResult> {
-    return this.warrantiesService.findAll(req.user.id, query);
+    const accountScope = await delegateReadableAccountScope(
+      req,
+      this.delegationService,
+    );
+    return this.warrantiesService.findAll(req.user.id, query, { accountScope });
   }
 
   // Declared before `:id`, which would otherwise take "summary" as an id.
   @Get("summary")
+  @AllowDelegate()
+  @DelegateRequiresSection("warranties")
   @ApiOperation({ summary: "Unarchived warranties counted per status" })
   @ApiResponse({ status: 200, description: "Counts per status" })
   summary(@Request() req): Promise<WarrantySummary> {
@@ -70,14 +85,20 @@ export class WarrantiesController {
   }
 
   @Get(":id")
+  @AllowDelegate()
+  @DelegateRequiresSection("warranties")
   @ApiOperation({ summary: "Get one warranty" })
   @ApiResponse({ status: 200, description: "The warranty" })
   @ApiResponse({ status: 404, description: "Warranty not found" })
-  findOne(
+  async findOne(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
   ): Promise<WarrantyView> {
-    return this.warrantiesService.findOne(req.user.id, id);
+    const accountScope = await delegateReadableAccountScope(
+      req,
+      this.delegationService,
+    );
+    return this.warrantiesService.findOne(req.user.id, id, { accountScope });
   }
 
   @Post()

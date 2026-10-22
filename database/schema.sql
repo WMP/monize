@@ -1744,6 +1744,7 @@ CREATE TABLE account_delegates (
     budgets_can_read      BOOLEAN NOT NULL DEFAULT false,
     reports_can_read      BOOLEAN NOT NULL DEFAULT false,
     ai_can_read           BOOLEAN NOT NULL DEFAULT false,
+    warranties_can_read   BOOLEAN NOT NULL DEFAULT false,
     CONSTRAINT account_delegates_owner_delegate_unique UNIQUE (owner_user_id, delegate_user_id),
     CONSTRAINT account_delegates_no_self CHECK (owner_user_id <> delegate_user_id)
 );

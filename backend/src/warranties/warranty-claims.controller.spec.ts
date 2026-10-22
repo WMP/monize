@@ -7,7 +7,10 @@ import {
   PATH_METADATA,
 } from "@nestjs/common/constants";
 
-import { ALLOW_DELEGATE_KEY } from "../delegation/decorators/delegate-access.decorator";
+import {
+  ALLOW_DELEGATE_KEY,
+  DELEGATE_SECTION_KEY,
+} from "../delegation/decorators/delegate-access.decorator";
 import { CreateWarrantyClaimDto } from "./dto/create-warranty-claim.dto";
 import { WarrantyClaimsController } from "./warranty-claims.controller";
 import { WarrantyClaimsService } from "./warranty-claims.service";
@@ -83,11 +86,17 @@ describe("WarrantyClaimsController", () => {
     );
   });
 
-  it("lets no delegate in until the warranties section exists (task B5)", () => {
+  it("admits a delegate to the list through the warranties section and to no mutation (design decision 9)", () => {
     expect(
       Reflect.getMetadata(ALLOW_DELEGATE_KEY, WarrantyClaimsController),
     ).toBeUndefined();
-    for (const name of ["findAll", "create", "update", "remove"]) {
+    expect(Reflect.getMetadata(ALLOW_DELEGATE_KEY, handler("findAll"))).toBe(
+      true,
+    );
+    expect(Reflect.getMetadata(DELEGATE_SECTION_KEY, handler("findAll"))).toBe(
+      "warranties",
+    );
+    for (const name of ["create", "update", "remove"]) {
       expect([
         name,
         Reflect.getMetadata(ALLOW_DELEGATE_KEY, handler(name)),

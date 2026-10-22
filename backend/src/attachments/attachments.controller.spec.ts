@@ -1,5 +1,9 @@
 import { Response } from "express";
 import {
+  ALLOW_DELEGATE_KEY,
+  DELEGATE_SECTION_KEY,
+} from "../delegation/decorators/delegate-access.decorator";
+import {
   AttachmentsController,
   contentDisposition,
 } from "./attachments.controller";
@@ -180,6 +184,49 @@ describe("AttachmentsController", () => {
       }),
     );
     expect(end).toHaveBeenCalledWith(Buffer.from("bytes"));
+    expect(service.getForDownload).toHaveBeenCalledWith("user-1", "a1", {
+      isDelegate: false,
+    });
+  });
+
+  it("tells the service when the downloader is an acting delegate", async () => {
+    service.getForDownload.mockResolvedValue({
+      data: Buffer.from("bytes"),
+      contentType: "image/png",
+      filename: "r.png",
+      byteSize: 5,
+    });
+    const res = { set: jest.fn(), end: jest.fn() } as unknown as Response;
+
+    await controller.download(
+      { user: { id: "user-1", isActing: true, delegationId: "d1" } },
+      "a1",
+      res,
+    );
+
+    expect(service.getForDownload).toHaveBeenCalledWith("user-1", "a1", {
+      isDelegate: true,
+    });
+  });
+
+  it("admits a delegate to the warranty list and the download through the warranties section only", () => {
+    const proto = AttachmentsController.prototype as unknown as Record<
+      string,
+      object
+    >;
+    for (const name of ["findAllForWarranty", "download"]) {
+      expect([
+        name,
+        Reflect.getMetadata(ALLOW_DELEGATE_KEY, proto[name]),
+        Reflect.getMetadata(DELEGATE_SECTION_KEY, proto[name]),
+      ]).toEqual([name, true, "warranties"]);
+    }
+    for (const name of ["upload", "findAll", "uploadForWarranty", "remove"]) {
+      expect([
+        name,
+        Reflect.getMetadata(ALLOW_DELEGATE_KEY, proto[name]),
+      ]).toEqual([name, undefined]);
+    }
   });
 
   it("delegates delete to the service", async () => {

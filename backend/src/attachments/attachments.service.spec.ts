@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   NotFoundException,
   PayloadTooLargeException,
   ServiceUnavailableException,
@@ -951,6 +952,60 @@ describe("AttachmentsService", () => {
         service.getForDownload("user-1", "a1"),
       ).rejects.toBeInstanceOf(NotFoundException);
       expect(storage.load).not.toHaveBeenCalled();
+    });
+
+    describe("for an acting delegate (design decision 9)", () => {
+      const row = {
+        id: "a1",
+        contentType: "image/png",
+        filename: "r.png",
+        byteSize: 10,
+        storageProvider: "database",
+        storageKey: "a1",
+      };
+
+      it("serves a warranty's document: the section admitted them to the route", async () => {
+        attRepo.findOne.mockResolvedValue({
+          ...row,
+          transactionId: null,
+          warrantyId: "wty-1",
+        });
+        storage.load.mockResolvedValue(PNG_BYTES);
+
+        const result = await service.getForDownload("user-1", "a1", {
+          isDelegate: true,
+        });
+
+        expect(result.data).toBe(PNG_BYTES);
+      });
+
+      it("refuses a transaction's attachment before reading a byte: that parent keeps its owner-only rule", async () => {
+        attRepo.findOne.mockResolvedValue({
+          ...row,
+          transactionId: "tx-1",
+          warrantyId: null,
+        });
+
+        await expect(
+          service.getForDownload("user-1", "a1", { isDelegate: true }),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(storage.load).not.toHaveBeenCalled();
+      });
+
+      it("serves the owner a transaction's attachment as before", async () => {
+        attRepo.findOne.mockResolvedValue({
+          ...row,
+          transactionId: "tx-1",
+          warrantyId: null,
+        });
+        storage.load.mockResolvedValue(PNG_BYTES);
+
+        const result = await service.getForDownload("user-1", "a1", {
+          isDelegate: false,
+        });
+
+        expect(result.data).toBe(PNG_BYTES);
+      });
     });
 
     it("reads from the backend the row names, not the active one", async () => {

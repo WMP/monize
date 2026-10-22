@@ -250,6 +250,82 @@ describe("WarrantiesService", () => {
       expect(data[0].linkedTransaction?.payeeName).toBe("BEST BUY #123");
     });
 
+    describe("the linked purchase for a delegate (WTY-007, truth table C)", () => {
+      const SCOPE_CLAUSE = "t.account_id IN (:...delegateScopeAccountIds)";
+
+      it("leaves the owner's read unnarrowed", async () => {
+        listQb = qbMock({
+          manyAndCount: [[warranty({ transactionId: TX })], 1],
+        });
+        transactionQb = qbMock({ many: [linkedTransactionRow()] });
+
+        const { data } = await service.findAll(USER, {}, { today: TODAY });
+
+        expect(transactionQb.andWhere).not.toHaveBeenCalledWith(
+          SCOPE_CLAUSE,
+          expect.anything(),
+        );
+        expect(data[0].transactionId).toBe(TX);
+        expect(data[0].linkedTransaction?.id).toBe(TX);
+      });
+
+      it("shows the purchase when its account is in the delegate's scope", async () => {
+        listQb = qbMock({
+          manyAndCount: [[warranty({ transactionId: TX })], 1],
+        });
+        transactionQb = qbMock({ many: [linkedTransactionRow()] });
+
+        const { data } = await service.findAll(
+          USER,
+          {},
+          { today: TODAY, accountScope: [ACCOUNT] },
+        );
+
+        expect(transactionQb.andWhere).toHaveBeenCalledWith(SCOPE_CLAUSE, {
+          delegateScopeAccountIds: [ACCOUNT],
+        });
+        expect(data[0].transactionId).toBe(TX);
+        expect(data[0].linkedTransaction?.accountId).toBe(ACCOUNT);
+      });
+
+      it("answers null and omits the id when the account is outside the scope", async () => {
+        listQb = qbMock({
+          manyAndCount: [[warranty({ transactionId: TX })], 1],
+        });
+        // The narrowed read returns nothing: the purchase's account is not granted.
+        transactionQb = qbMock({ many: [] });
+        const other = "99999999-9999-4999-8999-999999999999";
+
+        const { data } = await service.findAll(
+          USER,
+          {},
+          { today: TODAY, accountScope: [other] },
+        );
+
+        expect(transactionQb.andWhere).toHaveBeenCalledWith(SCOPE_CLAUSE, {
+          delegateScopeAccountIds: [other],
+        });
+        expect(data[0].linkedTransaction).toBeNull();
+        expect(data[0]).not.toHaveProperty("transactionId");
+      });
+
+      it("reads no purchase at all for an empty scope", async () => {
+        listQb = qbMock({
+          manyAndCount: [[warranty({ transactionId: TX })], 1],
+        });
+
+        const { data } = await service.findAll(
+          USER,
+          {},
+          { today: TODAY, accountScope: [] },
+        );
+
+        expect(transactionRepo.createQueryBuilder).not.toHaveBeenCalled();
+        expect(data[0].linkedTransaction).toBeNull();
+        expect(data[0]).not.toHaveProperty("transactionId");
+      });
+    });
+
     it("hides archived rows by default and lists only them when asked", async () => {
       await service.findAll(USER, {}, { today: TODAY });
       expect(listQb.andWhere).toHaveBeenCalledWith("w.archived_at IS NULL");
@@ -359,6 +435,23 @@ describe("WarrantiesService", () => {
       warrantyRepo.findOne.mockResolvedValue(warranty());
       const view = await service.findOne(USER, W1, { today: "2028-10-02" });
       expect(view).toMatchObject({ status: "expired", daysLeft: -1 });
+    });
+
+    it("narrows the linked purchase to a delegate's scope as the list does (WTY-007)", async () => {
+      warrantyRepo.findOne.mockResolvedValue(warranty({ transactionId: TX }));
+      transactionQb = qbMock({ many: [] });
+
+      const view = await service.findOne(USER, W1, {
+        today: TODAY,
+        accountScope: ["99999999-9999-4999-8999-999999999999"],
+      });
+
+      expect(transactionQb.andWhere).toHaveBeenCalledWith(
+        "t.account_id IN (:...delegateScopeAccountIds)",
+        expect.anything(),
+      );
+      expect(view.linkedTransaction).toBeNull();
+      expect(view).not.toHaveProperty("transactionId");
     });
   });
 

@@ -19,6 +19,10 @@ import {
 } from "@nestjs/swagger";
 import { AuthGuard } from "@nestjs/passport";
 
+import {
+  AllowDelegate,
+  DelegateRequiresSection,
+} from "../delegation/decorators/delegate-access.decorator";
 import { CreateWarrantyClaimDto } from "./dto/create-warranty-claim.dto";
 import { UpdateWarrantyClaimDto } from "./dto/update-warranty-claim.dto";
 import {
@@ -30,10 +34,10 @@ import {
  * The claims made against one warranty
  * (docs/future-plans/warranty-tracker.md section 6.5).
  *
- * Deliberately NOT `@AllowDelegate` yet: task B5 adds `@AllowDelegate()` with
- * `@DelegateRequiresSection('warranties')` to the GET only. Until then every
- * route is owner-only by the global `AccountDelegateGuard`'s default, and the
- * mutations stay owner-only after B5 as well (design decision 9).
+ * The GET carries `@AllowDelegate()` with
+ * `@DelegateRequiresSection("warranties")`: a delegate with the section reads
+ * a warranty's claims. The mutations stay owner-only by the global
+ * `AccountDelegateGuard`'s default (design decision 9).
  *
  * `userId` comes from the JWT on every route and is never read from the request.
  */
@@ -45,6 +49,8 @@ export class WarrantyClaimsController {
   constructor(private readonly claimsService: WarrantyClaimsService) {}
 
   @Get()
+  @AllowDelegate()
+  @DelegateRequiresSection("warranties")
   @ApiOperation({ summary: "List a warranty's claims, newest first" })
   @ApiResponse({ status: 200, description: "The warranty's claims" })
   @ApiResponse({ status: 404, description: "Warranty not found" })

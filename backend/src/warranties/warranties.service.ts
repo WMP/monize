@@ -13,6 +13,7 @@ import {
 } from "../common/dto/pagination-query.dto";
 import { primaryAttachmentSql } from "../attachments/primary-attachment.util";
 import { Currency } from "../currencies/entities/currency.entity";
+import { restrictToAccountScope } from "../delegation/delegate-account-scope.util";
 import { tr } from "../i18n/translate";
 import { Payee } from "../payees/entities/payee.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
@@ -41,10 +42,16 @@ import {
  * What a read needs to know about its reader beyond the user id. `today`
  * defaults to the request's own date (`todayYMD`, the user's stored timezone
  * via `RequestContextInterceptor`); a caller outside a request passes the
- * user's date itself.
+ * user's date itself. `accountScope` is `delegateReadableAccountScope`'s
+ * answer, resolved once per request by the controller: `undefined` for the
+ * owner, and for an acting delegate the accounts they may read, possibly none.
+ * A warranty itself is not account-scoped (the section admits the delegate to
+ * every row); the scope decides only whether its linked purchase is shown
+ * (WTY-007, design truth table C).
  */
 export interface WarrantyReadContext {
   today?: string;
+  accountScope?: readonly string[];
 }
 
 /** The stored fields that decide whether a row satisfies the table's CHECKs. */
@@ -176,7 +183,7 @@ export class WarrantiesService {
       qb.addOrderBy("w.id", "ASC").skip(skip).take(limit);
 
       const [rows, total] = await qb.getManyAndCount();
-      const data = await this.toViews(m, userId, rows, today);
+      const data = await this.toViews(m, userId, rows, today, ctx.accountScope);
       return { data, pagination: buildPaginationMeta(page, limit, total) };
     });
   }
@@ -189,7 +196,13 @@ export class WarrantiesService {
     const today = ctx.today ?? todayYMD();
     return withScopedDb(this.dataSource, async (m) => {
       const row = await this.loadOwned(m, userId, id);
-      const [view] = await this.toViews(m, userId, [row], today);
+      const [view] = await this.toViews(
+        m,
+        userId,
+        [row],
+        today,
+        ctx.accountScope,
+      );
       return view;
     });
   }
@@ -591,13 +604,16 @@ export class WarrantiesService {
    * Rows to views: one status per row from `warrantyStatus`, and the page's
    * document counts, open-claim counts and linked purchases as three grouped
    * reads over the page's ids (the register's `attachmentCount` pattern),
-   * awaited one after another on the transaction's connection.
+   * awaited one after another on the transaction's connection. The writes
+   * pass no `accountScope`: they are owner-only, and an owner reads every
+   * account.
    */
   private async toViews(
     m: EntityManager,
     userId: string,
     rows: Warranty[],
     today: string,
+    accountScope?: readonly string[],
   ): Promise<WarrantyView[]> {
     if (rows.length === 0) return [];
     const ids = rows.map((row) => row.id);
@@ -632,43 +648,12 @@ export class WarrantiesService {
       claimRows.map((r) => [r.warrantyId, Number(r.count)]),
     );
 
-    const transactionIds = [
-      ...new Set(
-        rows
-          .map((row) => row.transactionId)
-          .filter((id): id is string => id !== null),
-      ),
-    ];
-    const linked = new Map<string, LinkedTransaction>();
-    if (transactionIds.length > 0) {
-      const transactions = await m
-        .getRepository(Transaction)
-        .createQueryBuilder("t")
-        .leftJoin("t.payee", "p")
-        .select([
-          "t.id",
-          "t.transactionDate",
-          "t.payeeName",
-          "t.amount",
-          "t.currencyCode",
-          "t.accountId",
-          "p.id",
-          "p.name",
-        ])
-        .where("t.id IN (:...transactionIds)", { transactionIds })
-        .andWhere("t.user_id = :userId", { userId })
-        .getMany();
-      for (const t of transactions) {
-        linked.set(t.id, {
-          id: t.id,
-          transactionDate: t.transactionDate,
-          payeeName: t.payeeName ?? t.payee?.name ?? null,
-          amount: Number(t.amount),
-          currencyCode: t.currencyCode,
-          accountId: t.accountId,
-        });
-      }
-    }
+    const linked = await this.loadLinkedTransactions(
+      m,
+      userId,
+      rows,
+      accountScope,
+    );
 
     return rows.map((row) => {
       const { status, daysLeft } = warrantyStatus(
@@ -707,8 +692,75 @@ export class WarrantiesService {
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
       };
-      if (row.transactionId !== null) view.transactionId = row.transactionId;
+      // Truth table C: the owner always learns the id; a delegate learns it
+      // only with the purchase itself, so a link they may not read leaves no
+      // trace in the response.
+      if (
+        row.transactionId !== null &&
+        (accountScope === undefined || linkedTransaction !== null)
+      ) {
+        view.transactionId = row.transactionId;
+      }
       return view;
     });
+  }
+
+  /**
+   * The purchases the rows link to, keyed by transaction id, in one read.
+   * This is the only place a warranty reaches its purchase for a reader
+   * (WTY-007): an acting delegate's `accountScope` narrows the read to the
+   * accounts their delegation grants READ on, so a purchase in any other
+   * account is simply absent from the map, and an empty scope reads nothing.
+   * `undefined` is the owner and narrows nothing.
+   */
+  private async loadLinkedTransactions(
+    m: EntityManager,
+    userId: string,
+    rows: Warranty[],
+    accountScope: readonly string[] | undefined,
+  ): Promise<Map<string, LinkedTransaction>> {
+    const linked = new Map<string, LinkedTransaction>();
+    const transactionIds = [
+      ...new Set(
+        rows
+          .map((row) => row.transactionId)
+          .filter((id): id is string => id !== null),
+      ),
+    ];
+    if (transactionIds.length === 0 || accountScope?.length === 0) {
+      return linked;
+    }
+    const qb = m
+      .getRepository(Transaction)
+      .createQueryBuilder("t")
+      .leftJoin("t.payee", "p")
+      .select([
+        "t.id",
+        "t.transactionDate",
+        "t.payeeName",
+        "t.amount",
+        "t.currencyCode",
+        "t.accountId",
+        "p.id",
+        "p.name",
+      ])
+      .where("t.id IN (:...transactionIds)", { transactionIds })
+      .andWhere("t.user_id = :userId", { userId });
+    const transactions = await restrictToAccountScope(
+      qb,
+      "t.account_id",
+      accountScope,
+    ).getMany();
+    for (const t of transactions) {
+      linked.set(t.id, {
+        id: t.id,
+        transactionDate: t.transactionDate,
+        payeeName: t.payeeName ?? t.payee?.name ?? null,
+        amount: Number(t.amount),
+        currencyCode: t.currencyCode,
+        accountId: t.accountId,
+      });
+    }
+    return linked;
   }
 }
