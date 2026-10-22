@@ -29,7 +29,9 @@
     "unsupportedType": "[XX-Unsupported file type. Allowed types: {{ types }}-XX]",
     "tooMany": "[XX-This transaction already has the maximum of {{ max }} attachments-XX]",
     "swept": "[XX-The upload took too long and its storage was reclaimed. Please try again.-XX]",
-    "pairRequiresImages": "[XX-A scanned document and its original must both be images-XX]"
+    "pairRequiresImages": "[XX-A scanned document and its original must both be images-XX]",
+    "warrantyNotFound": "[XX-Warranty not found-XX]",
+    "tooManyForWarranty": "[XX-This warranty already has the maximum of {{ max }} attachments-XX]"
   },
   "accounts": {
     "accountWithIdNotFound": "[XX-Account with ID {{ id }} not found-XX]",
@@ -880,6 +882,9 @@
     "invalidTerm": "[XX-A warranty term must be longer than zero-XX]",
     "expiryRequired": "[XX-A warranty that is not lifetime needs an expiry date or a term-XX]",
     "expiresBeforePurchase": "[XX-A warranty cannot expire before its purchase date-XX]",
-    "priceNeedsCurrency": "[XX-A purchase price and its currency are set together or not at all-XX]"
+    "priceNeedsCurrency": "[XX-A purchase price and its currency are set together or not at all-XX]",
+    "claimNotFound": "[XX-Claim with ID {{ id }} not found-XX]",
+    "claimResolvedOnNeedsOutcome": "[XX-A claim's resolution date needs a status of resolved or denied-XX]",
+    "claimResolvedBeforeClaimDate": "[XX-A claim cannot be resolved before its claim date-XX]"
   }
 }

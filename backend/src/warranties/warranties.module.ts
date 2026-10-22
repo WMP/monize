@@ -5,6 +5,8 @@ import { Warranty } from "./entities/warranty.entity";
 import { WarrantyClaim } from "./entities/warranty-claim.entity";
 import { WarrantiesController } from "./warranties.controller";
 import { WarrantiesService } from "./warranties.service";
+import { WarrantyClaimsController } from "./warranty-claims.controller";
+import { WarrantyClaimsService } from "./warranty-claims.service";
 
 /**
  * Warranties and their claims (docs/future-plans/warranty-tracker.md). The
@@ -15,8 +17,8 @@ import { WarrantiesService } from "./warranties.service";
  */
 @Module({
   imports: [TypeOrmModule.forFeature([Warranty, WarrantyClaim])],
-  providers: [WarrantiesService],
-  controllers: [WarrantiesController],
+  providers: [WarrantiesService, WarrantyClaimsService],
+  controllers: [WarrantiesController, WarrantyClaimsController],
   exports: [WarrantiesService],
 })
 export class WarrantiesModule {}
