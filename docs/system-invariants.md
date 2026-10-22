@@ -64,7 +64,7 @@ implied.
 | INV-BANKSYNC-003 | A synced row is written in the Monize account's currency or not at all | enforced |
 | INV-BANKSYNC-004 | Nothing imports a bank account awaiting its first preview except the confirmed single-account sync | enforced |
 | INV-API-001 | An API create carrying an `externalId` produces at most one row per account and key | partial |
-| INV-BALANCE-001 | `current_balance` equals opening balance plus included ledger rows | enforced |
+| INV-BALANCE-001 | `current_balance` equals opening balance plus included ledger rows | partial |
 | INV-HOLDING-001 | A holding equals a deterministic replay of the investment ledger | enforced |
 | INV-HOLDING-002 | Every view replays the ledger the same way | enforced |
 | INV-TRANSFER-001 | A transfer's two legs share the VOID boundary and one balance decision | enforced |
@@ -503,6 +503,12 @@ Enforcement         Every absolute recompute takes the account lock before readi
                     read and its write. The atomic delta path (updateBalance) is
                     unchanged. A VOID transfer moves neither balance
                     (transaction-transfer.service.ts skips both updateBalance calls).
+                    A deletion removes every row it would orphan: the bulk delete
+                    expands a selected split-transfer leg (whose link names its
+                    split parent, not a mirror) to the parent and every sibling
+                    leg, locks the parents before the legs and reverses each
+                    locked row through deletionBalanceEffect, as the single
+                    delete does (A26-H05).
 Concurrency scope   per account
 Retry semantics     A recompute is idempotent against another recompute and, under
                     the lock, against a concurrent delta.
@@ -511,8 +517,17 @@ Required tests      Source scan: common/db/derived-state-writers.guard.spec.ts -
                     only sanctioned services write current_balance, and each reads
                     under a lock. Two-connection (delta interleaved with a recompute,
                     the delta must survive): backend/test/integration/balance-delta-recompute.integration.spec.ts.
-Status              enforced
+                    Bulk delete of a split-transfer leg, parent, both legs and a
+                    cross-owner leg, on the schema's ON DELETE actions:
+                    backend/test/integration/bulk-delete-split-leg.integration.spec.ts.
+Status              partial
 ```
+
+Open breaches found by the 2026-10 audit, each closed in the commit that lands its
+test: a transfer edit (split-transfer leg, connected cross-owner) derives both deltas
+from snapshots read before its lock (A26-H03); undo or redo of an account edit writes
+the edit-time `current_balance` back absolutely (A26-H06); an investment-pair rename
+or re-currency saves the linked half's stale `current_balance` (A26-M13).
 
 See `docs/concurrency-and-idempotency.md` CONC-003. The former secondary breach --
 transfers created as `VOID` moving both balances -- is closed on the create path

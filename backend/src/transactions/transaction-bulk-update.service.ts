@@ -32,14 +32,13 @@ import {
   BulkUpdateFilterDto,
 } from "./dto/bulk-update.dto";
 import { getAllCategoryIdsWithChildren } from "../common/category-tree.util";
-import {
-  isTransactionInFuture,
-  formatDateYMDLocal,
-} from "../common/date-utils";
+import { formatDateYMDLocal } from "../common/date-utils";
 import { applyTransactionSearch } from "./apply-transaction-search";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
 import { lockTransactionRows } from "../common/db/locks";
+import { deletionBalanceEffect } from "../common/deletion-balance.util";
+import { roundMoney } from "../common/round.util";
 import {
   assertReconciledIdsMutable,
   assertReconciledRowsMutable,
@@ -522,7 +521,6 @@ export class TransactionBulkUpdateService {
           "transaction.linkedTransactionId",
           "transaction.isSplit",
         ])
-        .leftJoinAndSelect("transaction.splits", "splits")
         .where("transaction.id IN (:...ids)", { ids: allIds })
         .andWhere("transaction.userId = :userId", { userId })
         .getMany(),
@@ -549,28 +547,54 @@ export class TransactionBulkUpdateService {
     // Balance adjustments and both delete passes commit atomically.
     let deleted = 0;
     await withScopedDb(this.dataSource, async (m) => {
-      // Collect linked transaction IDs from transfers and split transfers
-      const linkedIdsToDelete = new Set<string>();
       const transactionIdsSet = new Set(transactions.map((t) => t.id));
 
+      // A split-transfer leg links to its split PARENT, not to a mirror leg.
+      // Queuing that link as "the other leg" deleted the parent, cascaded its
+      // split rows and left every sibling leg standing with its money: a
+      // -100.00 split to B (60.00) and C (40.00), bulk-deleted from B's
+      // register, left C at 40.00 with nothing on the other side (A26-H05). So
+      // a selected leg brings its parent's whole set, the way the single
+      // delete does (`removeTransferFromSplitInTransaction`).
+      const legParents = await m.find(TransactionSplit, {
+        select: { transactionId: true },
+        where: { linkedTransactionId: In([...transactionIdsSet]) },
+      });
+      const parentIds = new Set<string>(
+        legParents.map((split) => split.transactionId),
+      );
       for (const tx of transactions) {
-        if (
-          tx.linkedTransactionId &&
-          !transactionIdsSet.has(tx.linkedTransactionId)
-        ) {
-          linkedIdsToDelete.add(tx.linkedTransactionId);
-        }
-        if (tx.isSplit && tx.splits) {
-          for (const split of tx.splits) {
-            if (
-              split.linkedTransactionId &&
-              !transactionIdsSet.has(split.linkedTransactionId)
-            ) {
-              linkedIdsToDelete.add(split.linkedTransactionId);
-            }
-          }
-        }
+        if (tx.isSplit) parentIds.add(tx.id);
       }
+
+      // Split parents first, on their own, then everything else ascending: the
+      // by-role order of common/db/locks.ts, so this path cannot hold a leg a
+      // `removeSplit` holding its parent is waiting for (RV4-005). Their split
+      // rows are read under the parent lock, so the legs collected are the set
+      // the deletion removes, not the set the pre-read saw.
+      const lockedParents = await lockTransactionRows(
+        m,
+        [...parentIds],
+        userId,
+      );
+      const parentSplits =
+        lockedParents.size > 0
+          ? await m.find(TransactionSplit, {
+              select: { transactionId: true, linkedTransactionId: true },
+              where: { transactionId: In([...lockedParents.keys()]) },
+            })
+          : [];
+
+      // Every row this delete removes besides the selected ones: a plain
+      // transfer's mirror, a split parent reached through its leg, and each
+      // leg of every split parent in the set.
+      const linkedIdsToDelete = new Set<string>();
+      const queue = (id: string | null | undefined) => {
+        if (id && !transactionIdsSet.has(id)) linkedIdsToDelete.add(id);
+      };
+      for (const tx of transactions) queue(tx.linkedTransactionId);
+      for (const parentId of lockedParents.keys()) queue(parentId);
+      for (const split of parentSplits) queue(split.linkedTransactionId);
 
       // Lock every row about to be deleted -- primary and linked alike --
       // ascending by id, and derive the reversals from the locked values.
@@ -580,11 +604,14 @@ export class TransactionBulkUpdateService {
       // request deleted in the meantime is simply absent from `locked`, and gets
       // no reversal: reversing an amount whose row is already gone is how a
       // double delete leaves the balance 10.00 above the ledger (P4-003).
-      const locked = await lockTransactionRows(
+      const lockedRest = await lockTransactionRows(
         m,
-        [...allIds, ...linkedIdsToDelete],
+        [...allIds, ...linkedIdsToDelete].filter(
+          (id) => !lockedParents.has(id),
+        ),
         userId,
       );
+      const locked = new Map([...lockedParents, ...lockedRest]);
 
       // Every linked leg and split counterpart this delete removes was locked
       // above and lives in `locked`, so its account joins the net-worth
@@ -600,15 +627,17 @@ export class TransactionBulkUpdateService {
       // linked legs alike, before the first reversal.
       await assertReconciledRowsMutable(m, userId, [...locked.values()]);
 
+      // What each locked row contributed, from the one deletion rule: a VOID
+      // row moved nothing, a future-dated row is recomputed after it is gone.
       const balanceAdjustments = new Map<string, number>();
+      const recalcAccountIds = new Set<string>();
       for (const tx of locked.values()) {
-        if (
-          tx.status !== TransactionStatus.VOID &&
-          !isTransactionInFuture(tx.transactionDate)
-        ) {
-          const current = balanceAdjustments.get(tx.accountId) || 0;
-          balanceAdjustments.set(tx.accountId, current - tx.amount);
+        const { delta, needsRecalc } = deletionBalanceEffect(tx);
+        if (delta !== 0) {
+          const current = balanceAdjustments.get(tx.accountId) ?? 0;
+          balanceAdjustments.set(tx.accountId, roundMoney(current + delta));
         }
+        if (needsRecalc) recalcAccountIds.add(tx.accountId);
       }
 
       for (const accountId of [...balanceAdjustments.keys()].sort()) {
@@ -640,6 +669,10 @@ export class TransactionBulkUpdateService {
       // What the database removed, not what the pre-read hoped to remove: a row
       // a concurrent request already deleted must not be counted twice.
       deleted = primaryDeleted.affected ?? 0;
+
+      for (const accountId of [...recalcAccountIds].sort()) {
+        await this.accountsService.recalculateCurrentBalance(userId, accountId);
+      }
     });
 
     // Trigger net worth recalc for every affected account, deduplicated.
