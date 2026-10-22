@@ -25,6 +25,7 @@ import {
   pickReceivedAt,
   POLL_LEASE_MS,
 } from "./email-receipt-poll.service";
+import { PROVIDER_CALL_BUDGET_MS } from "../../ai/providers/provider-call-budget";
 
 jest.mock("../../common/db/scoped-db", () =>
   jest
@@ -169,6 +170,16 @@ function setup() {
   const jobClaims = {
     claimLease: jest.fn(async () => TOKEN as string | null),
     releaseLease: jest.fn(async () => undefined),
+    whileLeaseHeld: jest.fn(
+      (
+        _type: unknown,
+        _userId: unknown,
+        _key: unknown,
+        _token: unknown,
+        _ttl: unknown,
+        work: () => Promise<unknown>,
+      ) => work(),
+    ),
   } as unknown as jest.Mocked<JobClaimService>;
   const pipeline = {
     process: jest.fn(async () => ({ unchanged: false }) as never),
@@ -301,7 +312,7 @@ describe("the cron", () => {
 });
 
 describe("the lease (INV-RECEIPT-006)", () => {
-  it("is claimed per mailbox for ten minutes and released by its token", async () => {
+  it("is claimed per mailbox, outlasts a provider call, is renewed while the poll runs and released by its token", async () => {
     const h = setup();
     await poll(h);
     expect(h.jobClaims.claimLease).toHaveBeenCalledWith(
@@ -310,7 +321,20 @@ describe("the lease (INV-RECEIPT-006)", () => {
       MAILBOX,
       POLL_LEASE_MS,
     );
-    expect(POLL_LEASE_MS).toBe(10 * 60_000);
+    // The work budget (8 minutes) plus the slowest provider call that may
+    // start just before it ends (A26-L13); it was 10 minutes, shorter than one
+    // Ollama call.
+    expect(POLL_LEASE_MS).toBeGreaterThanOrEqual(
+      8 * 60_000 + PROVIDER_CALL_BUDGET_MS,
+    );
+    expect(h.jobClaims.whileLeaseHeld).toHaveBeenCalledWith(
+      "email_receipt_poll",
+      USER,
+      MAILBOX,
+      TOKEN,
+      POLL_LEASE_MS,
+      expect.any(Function),
+    );
     expect(h.jobClaims.releaseLease).toHaveBeenCalledWith(
       "email_receipt_poll",
       USER,
@@ -867,7 +891,9 @@ describe("the automatic AI step", () => {
     const h = setup();
     h.mailbox.loadConnection.mockResolvedValue(loaded({ aiMode: "automatic" }));
     await poll(h);
-    expect(h.ai.runAutomaticStep).toHaveBeenCalledWith(USER);
+    expect(h.ai.runAutomaticStep).toHaveBeenCalledWith(USER, {
+      deadline: expect.any(Number),
+    });
   });
 
   it("runs after the pipeline, so the requests it queued are answered in the same tick", async () => {
@@ -1061,7 +1087,9 @@ describe("processStoredNow (the archive import's processing step)", () => {
 
     h.mailbox.getView.mockResolvedValue(view({ aiMode: "automatic" }));
     await h.service.processStoredNow(USER);
-    expect(h.ai.runAutomaticStep).toHaveBeenCalledWith(USER);
+    expect(h.ai.runAutomaticStep).toHaveBeenCalledWith(USER, {
+      deadline: expect.any(Number),
+    });
   });
 
   it("releases the lease when processing throws", async () => {
