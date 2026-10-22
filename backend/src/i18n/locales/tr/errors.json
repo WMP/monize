@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "Gömülü yatırım güncellemesi için {{ splitId }} işlem bölümü bulunamadı",
     "parentTransactionNotFound": "Gömülü yatırım güncellemesi için {{ transactionId }} üst işlem bulunamadı",
     "investmentTransactionNotFound": "{{ id }} kimliğine sahip yatırım işlemi bulunamadı",
+    "investmentTransactionChanged": "Bu işlem başka bir istek tarafından değiştirildi. Yeniden yükleyip tekrar deneyin.",
     "cannotChangeTransferDirection": "Transfer yönü değiştirilemez; bunun yerine silin ve yeni bir transfer oluşturun",
     "destinationAccountMustBeInvestment": "Hedef hesap YATIRİM türünde olmalıdır",
     "transferPairMissing": "Bu transferin eşleştirilmiş işlemi eksik; düzenlemek yerine sil ve yeniden oluştur",

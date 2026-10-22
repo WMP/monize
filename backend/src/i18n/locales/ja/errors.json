@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "埋め込み投資更新のための取引分割 {{ splitId }} が見つかりません",
     "parentTransactionNotFound": "埋め込み投資更新のための親取引 {{ transactionId }} が見つかりません",
     "investmentTransactionNotFound": "ID {{ id }} の投資取引が見つかりません",
+    "investmentTransactionChanged": "この取引は別のリクエストによって変更されました。再読み込みしてもう一度お試しください。",
     "cannotChangeTransferDirection": "振替の方向は変更できません。代わりに削除して新しい振替を作成してください",
     "destinationAccountMustBeInvestment": "振替先口座は INVESTMENT タイプでなければなりません",
     "transferPairMissing": "この振替のペア取引がありません。編集する代わりに振替を削除して再作成してください",

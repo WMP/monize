@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "포함된 투자 업데이트에 대한 거래 분할 {{ splitId }}을(를) 찾을 수 없습니다",
     "parentTransactionNotFound": "포함된 투자 업데이트에 대한 상위 거래 {{ transactionId }}을(를) 찾을 수 없습니다",
     "investmentTransactionNotFound": "ID가 {{ id }}인 투자 거래를 찾을 수 없습니다",
+    "investmentTransactionChanged": "다른 요청이 이 거래를 변경했습니다. 다시 불러온 후 다시 시도하세요.",
     "cannotChangeTransferDirection": "이체 방향은 변경할 수 없습니다. 삭제한 후 새 이체를 생성하세요",
     "destinationAccountMustBeInvestment": "입금 계정은 INVESTMENT 유형이어야 합니다",
     "transferPairMissing": "이 이체의 짝이 되는 거래가 누락되었습니다. 편집하는 대신 이체를 삭제하고 다시 생성하세요",

@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "嵌入式投资更新时未找到交易拆分项 {{ splitId }}",
     "parentTransactionNotFound": "嵌入式投资更新时未找到父交易 {{ transactionId }}",
     "investmentTransactionNotFound": "未找到 ID 为 {{ id }} 的投资交易",
+    "investmentTransactionChanged": "此交易已被另一个请求更改。请重新加载后再试。",
     "cannotChangeTransferDirection": "无法更改转账方向；请删除后创建新转账",
     "destinationAccountMustBeInvestment": "目标账户类型必须为 INVESTMENT",
     "transferPairMissing": "此转账的配对交易缺失；请删除后重新创建转账而非编辑",

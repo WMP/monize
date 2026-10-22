@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "Buchungsteil {{ splitId }} nicht gefunden für eingebettete Investment-Aktualisierung",
     "parentTransactionNotFound": "Übergeordnete Buchung {{ transactionId }} nicht gefunden für eingebettete Investment-Aktualisierung",
     "investmentTransactionNotFound": "Investmentbuchung mit ID {{ id }} nicht gefunden",
+    "investmentTransactionChanged": "Diese Transaktion wurde durch eine andere Anfrage geändert. Laden Sie sie neu und versuchen Sie es erneut.",
     "cannotChangeTransferDirection": "Die Richtung einer Überweisung kann nicht geändert werden; löschen Sie sie und erstellen Sie eine neue Überweisung",
     "destinationAccountMustBeInvestment": "Zielkonto muss vom Typ INVESTMENT sein",
     "transferPairMissing": "Die gepaarte Buchung dieser Überweisung fehlt; löschen Sie die Überweisung und erstellen Sie sie neu, anstatt sie zu bearbeiten",

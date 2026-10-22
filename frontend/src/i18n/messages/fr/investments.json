@@ -261,7 +261,7 @@
     "sourceHolds": "La source détient",
     "sharesAt": "parts @",
     "avgCostSuffix": "coût moyen.",
-    "transferCostNote": "Le coût par part (prérempli depuis le compte source) est transféré vers la destination afin que vos rapports de gains et bénéfices restent exacts. Cela déplace uniquement les parts — aucune liquidité ne change de main.",
+    "transferCostNote": "Le coût par part est ce que les parts ont coûté dans le compte source à la date du transfert. Il est calculé à l'enregistrement et reporté sur le compte de destination, afin que vos rapports de plus-values et de bénéfices restent exacts. Seules des parts sont déplacées ; aucun argent ne change de mains.",
     "totalAmount": "Montant total ({currency})",
     "sharesAtPrice": "{shares} parts @ {symbol}{price}",
     "commissionSuffix": "commission",

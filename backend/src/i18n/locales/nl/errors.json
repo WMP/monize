@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "Transactiesplitsing {{ splitId }} niet gevonden voor ingebedde beleggingsupdate",
     "parentTransactionNotFound": "Bovenliggende transactie {{ transactionId }} niet gevonden voor ingebedde beleggingsupdate",
     "investmentTransactionNotFound": "Beleggingstransactie met ID {{ id }} niet gevonden",
+    "investmentTransactionChanged": "Deze transactie is door een ander verzoek gewijzigd. Laad deze opnieuw en probeer het nogmaals.",
     "cannotChangeTransferDirection": "Kan de richting van een overboeking niet wijzigen; verwijder deze en maak een nieuwe overboeking aan",
     "destinationAccountMustBeInvestment": "Doelrekening moet van het type INVESTMENT zijn",
     "transferPairMissing": "De gekoppelde transactie van deze overboeking ontbreekt; verwijder de overboeking en maak deze opnieuw aan in plaats van te bewerken",

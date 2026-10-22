@@ -261,7 +261,7 @@
     "sourceHolds": "출처 보유",
     "sharesAt": "주 @",
     "avgCostSuffix": "평균 취득원가.",
-    "transferCostNote": "주당 취득원가(출처 계정에서 미리 채워짐)가 목적지로 이전되어 이익 및 수익 보고서가 올바르게 유지됩니다. 주식만 이동하며 현금 변동은 없습니다.",
+    "transferCostNote": "주당 비용은 이체일에 원본 계좌에서 해당 주식의 취득 비용입니다. 저장할 때 계산되어 대상 계좌로 이월되므로 손익 보고서가 정확하게 유지됩니다. 주식만 이동하며 현금은 오가지 않습니다.",
     "totalAmount": "총 금액 ({currency})",
     "sharesAtPrice": "{shares}주 @ {symbol}{price}",
     "commissionSuffix": "수수료",

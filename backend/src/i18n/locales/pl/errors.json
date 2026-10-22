@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "Nie znaleziono podziału transakcji {{ splitId }} dla aktualizacji osadzonej inwestycji",
     "parentTransactionNotFound": "Nie znaleziono transakcji nadrzędnej {{ transactionId }} dla aktualizacji osadzonej inwestycji",
     "investmentTransactionNotFound": "Nie znaleziono transakcji inwestycyjnej o ID {{ id }}",
+    "investmentTransactionChanged": "Ta transakcja została zmieniona przez inne żądanie. Wczytaj ją ponownie i spróbuj jeszcze raz.",
     "cannotChangeTransferDirection": "Nie można zmienić kierunku przelewu; zamiast tego usuń go i utwórz nowy przelew",
     "destinationAccountMustBeInvestment": "Konto docelowe musi być typu INVESTMENT",
     "transferPairMissing": "Brakuje sparowanej transakcji tego przelewu; zamiast edytować, usuń i utwórz przelew ponownie",

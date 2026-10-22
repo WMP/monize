@@ -261,7 +261,7 @@
     "sourceHolds": "Kaynak elinde tutar",
     "sharesAt": "hisse @",
     "avgCostSuffix": "ort. maliyet.",
-    "transferCostNote": "Hisse başı maliyet (kaynak hesaptan önceden doldurulmuş) kazanç ve kâr raporlarınızın doğru kalması için hedefe taşınır. Bu yalnızca hisseleri taşır -- nakit el değiştirmez.",
+    "transferCostNote": "Pay başına maliyet, payların transfer tarihinde kaynak hesaptaki maliyetidir. Kaydettiğinizde hesaplanır ve hedef hesaba aktarılır; böylece kazanç ve kâr raporlarınız doğru kalır. Yalnızca paylar taşınır; nakit el değiştirmez.",
     "totalAmount": "Toplam Tutar ({currency})",
     "sharesAtPrice": "{shares} hisse @ {symbol}{price}",
     "commissionSuffix": "komisyon",

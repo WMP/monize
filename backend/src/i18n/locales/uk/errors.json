@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "Розбиття операції {{ splitId }} не знайдено для вбудованого інвестиційного оновлення",
     "parentTransactionNotFound": "Батьківську операцію {{ transactionId }} не знайдено для вбудованого інвестиційного оновлення",
     "investmentTransactionNotFound": "Інвестиційну операцію з ідентифікатором {{ id }} не знайдено",
+    "investmentTransactionChanged": "Цю операцію змінив інший запит. Завантажте її знову й повторіть спробу.",
     "cannotChangeTransferDirection": "Неможливо змінити напрямок переказу; натомість видаліть його і створіть новий переказ",
     "destinationAccountMustBeInvestment": "Рахунок призначення має бути типу INVESTMENT",
     "transferPairMissing": "Парна операція цього переказу відсутня; натомість видаліть і перестворіть переказ замість редагування",

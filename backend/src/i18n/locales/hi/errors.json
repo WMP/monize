@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "एम्बेडेड निवेश अपडेट के लिए लेनदेन विभाजन {{ splitId }} नहीं मिला",
     "parentTransactionNotFound": "एम्बेडेड निवेश अपडेट के लिए मूल लेनदेन {{ transactionId }} नहीं मिला",
     "investmentTransactionNotFound": "ID {{ id }} वाला निवेश लेनदेन नहीं मिला",
+    "investmentTransactionChanged": "इस लेन-देन को किसी अन्य अनुरोध ने बदल दिया है। इसे फिर से लोड करें और दोबारा प्रयास करें।",
     "cannotChangeTransferDirection": "स्थानांतरण की दिशा नहीं बदली जा सकती; इसके बजाय इसे हटाएँ और एक नया स्थानांतरण बनाएँ",
     "destinationAccountMustBeInvestment": "गंतव्य खाता INVESTMENT प्रकार का होना चाहिए",
     "transferPairMissing": "इस स्थानांतरण का युग्मित लेनदेन अनुपस्थित है; इसे संपादित करने के बजाय हटाएँ और पुनः बनाएँ",

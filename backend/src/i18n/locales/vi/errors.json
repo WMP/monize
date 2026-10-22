@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "Không tìm thấy phần chia giao tác {{ splitId }} cho cập nhật đầu tư nhúng",
     "parentTransactionNotFound": "Không tìm thấy giao tác cha {{ transactionId }} cho cập nhật đầu tư nhúng",
     "investmentTransactionNotFound": "Không tìm thấy giao tác đầu tư với ID {{ id }}",
+    "investmentTransactionChanged": "Giao dịch này đã bị một yêu cầu khác thay đổi. Hãy tải lại và thử lại.",
     "cannotChangeTransferDirection": "Không thể thay đổi hướng chuyển tiền; hãy xóa và tạo lại chuyển tiền thay thế",
     "destinationAccountMustBeInvestment": "Tài khoản đích phải là loại ĐẦU TƯ",
     "transferPairMissing": "Giao tác đối của chuyển tiền này bị thiếu; hãy xóa và tạo lại chuyển tiền thay vì chỉnh sửa",

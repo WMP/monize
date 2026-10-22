@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "Pembagian transaksi {{ splitId }} tidak ditemukan untuk pembaruan investasi tertanam",
     "parentTransactionNotFound": "Transaksi induk {{ transactionId }} tidak ditemukan untuk pembaruan investasi tertanam",
     "investmentTransactionNotFound": "Transaksi investasi dengan ID {{ id }} tidak ditemukan",
+    "investmentTransactionChanged": "Transaksi ini telah diubah oleh permintaan lain. Muat ulang lalu coba lagi.",
     "cannotChangeTransferDirection": "Tidak dapat mengubah arah transfer; hapus dan buat transfer baru",
     "destinationAccountMustBeInvestment": "Akun tujuan harus bertipe INVESTMENT",
     "transferPairMissing": "Transaksi berpasangan dari transfer ini hilang; hapus dan buat ulang transfer alih-alih mengeditnya",

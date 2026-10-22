@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "Часть проводки {{ splitId }} не найдена для обновления встроенной инвестиционной проводки",
     "parentTransactionNotFound": "Родительская проводка {{ transactionId }} не найдена для обновления встроенной инвестиционной проводки",
     "investmentTransactionNotFound": "Инвестиционная проводка с ID {{ id }} не найдена",
+    "investmentTransactionChanged": "Эта операция была изменена другим запросом. Загрузите её заново и повторите попытку.",
     "cannotChangeTransferDirection": "Невозможно изменить направление перевода; удалите его и создайте новый перевод",
     "destinationAccountMustBeInvestment": "Целевой счёт должен быть типа INVESTMENT",
     "transferPairMissing": "Парная проводка этого перевода отсутствует; удалите и воссоздайте перевод вместо редактирования",

@@ -643,6 +643,7 @@
     "transactionSplitNotFound": "Parcela de transação {{ splitId }} não encontrada para atualização de investimento incorporado",
     "parentTransactionNotFound": "Transação-mãe {{ transactionId }} não encontrada para atualização de investimento incorporado",
     "investmentTransactionNotFound": "Transação de investimento com ID {{ id }} não encontrada",
+    "investmentTransactionChanged": "Esta transação foi alterada por outro pedido. Recarregue-a e tente novamente.",
     "cannotChangeTransferDirection": "Não é possível alterar a direção de uma transferência; elimine-a e crie uma nova transferência",
     "destinationAccountMustBeInvestment": "A conta de destino deve ser do tipo INVESTMENT",
     "transferPairMissing": "A transação emparelhada desta transferência está em falta; elimine e recrie a transferência em vez de a editar",
