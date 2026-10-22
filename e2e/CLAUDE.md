@@ -17,6 +17,8 @@ COMPOSE_PROFILES=cluster E2E_CLUSTER_MODE=multi E2E_INTERNAL_API_URL=http://api-
 E2E_CLUSTER=multi npx playwright test tests/cluster.spec.ts --project=chromium
 ```
 
+CI runs every Playwright command inside the official Playwright image, pinned by digest, through `scripts/e2e-playwright.sh` (browsers and their system libraries come with the image; nothing is installed on the runner). The same script works locally: `scripts/e2e-playwright.sh npx playwright test tests/accounts.spec.ts`. When `@playwright/test` changes, update the image as `docs/container-images.md` describes; the script refuses a version mismatch.
+
 `playwright.config.ts` sets one worker only when `CI` is set, and `tests/zz-danger-zone.spec.ts` deletes the shared account, so its `zz-` ordering only means anything serially. The UI locale is pinned to `en` so label-based selectors match the base catalog. `e2e/push/README.md` has the push harness recipe.
 
 ## Conventions
