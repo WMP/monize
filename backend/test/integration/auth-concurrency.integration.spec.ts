@@ -183,15 +183,9 @@ describe("refresh-token concurrency (integration, INV-AUTH-001, INV-AUTH-004)", 
       expect(outcome.reasons).toHaveLength(0);
 
       const minted = [outcome.a, outcome.b]
-        .filter(
-          (
-            r,
-          ): r is PromiseFulfilledResult<{
-            accessToken: string;
-            refreshToken: string | null;
-          }> => r.status === "fulfilled",
+        .flatMap((r) =>
+          r.status === "fulfilled" ? [r.value.refreshToken] : [],
         )
-        .map((r) => r.value.refreshToken)
         .filter((token): token is string => token !== null);
       expect(minted).toHaveLength(1);
 
