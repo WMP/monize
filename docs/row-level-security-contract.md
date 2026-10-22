@@ -330,6 +330,19 @@ Adding a **user-owned** table: ship its `CREATE POLICY` in the same migration,
 and -- for any migration numbered after `123` -- its own `ALTER TABLE ... ENABLE
 ROW LEVEL SECURITY`. `database/CLAUDE.md` has the rules and the worked examples.
 
+**A read arm never goes into `WITH CHECK`.** A policy whose `USING` admits a
+second party (a delegate's `app.real_user_id` arm, a joint read arm) states its
+`WITH CHECK` separately, naming only the identity that may create the row: one
+expression for both let a delegate-side session issue itself a delegation from
+any owner (A26-M06). `account_delegates` and `account_delegate_grants` admit a
+write only from the owner's own session (`current = real = owner`), and a grant
+only over the owner's own account, checked through the SECURITY DEFINER
+`delegation_grant_account_is_owners` because a policy on the grants cannot read
+`accounts` (the accounts policy reads the grants, and PostgreSQL refuses the
+cycle as infinite recursion). Migration `20261022142820`; the cases are in
+`rls-enforcement.integration.spec.ts`, "delegation rows are issued by the owner
+only".
+
 Exempting a table is a deliberate decision, and takes four things in one change:
 
 1. an entry in `RLS_EXEMPT_TABLES` with a one-line reason;

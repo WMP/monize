@@ -4100,6 +4100,35 @@ CREATE POLICY monte_carlo_cash_flows_isolation ON monte_carlo_cash_flows
 -- while acting (current = owner, real = delegate).
 -- ---------------------------------------------------------------------------
 
+-- A grant's account must belong to the delegation's owner. The grants WITH
+-- CHECK cannot read accounts under RLS (the accounts policy reads
+-- account_delegate_grants: "infinite recursion detected in policy"), so this
+-- reads both rows as the definer. EXECUTE stays with PUBLIC: a policy
+-- expression runs with the caller's privileges (A26-M06).
+CREATE OR REPLACE FUNCTION delegation_grant_account_is_owners(
+  p_delegation_id UUID,
+  p_account_id UUID
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+      FROM account_delegates ad
+      JOIN accounts a ON a.user_id = ad.owner_user_id
+     WHERE ad.id = p_delegation_id
+       AND a.id = p_account_id
+  )
+$$;
+
+COMMENT ON FUNCTION delegation_grant_account_is_owners(UUID, UUID) IS
+  'True when the account belongs to the owner of the delegation. SECURITY '
+  'DEFINER because the account_delegate_grants WITH CHECK cannot read accounts '
+  'under RLS: the accounts policy reads account_delegate_grants (a policy cycle).';
+
 DROP POLICY IF EXISTS account_delegate_grants_isolation ON account_delegate_grants;
 CREATE POLICY account_delegate_grants_isolation ON account_delegate_grants
   USING ((SELECT app_bypass_rls()) OR EXISTS (
@@ -4107,11 +4136,14 @@ CREATE POLICY account_delegate_grants_isolation ON account_delegate_grants
     WHERE ad.id = account_delegate_grants.delegation_id
       AND (ad.owner_user_id = (SELECT app_current_user_id())
         OR ad.delegate_user_id = (SELECT app_real_user_id()))))
-  WITH CHECK ((SELECT app_bypass_rls()) OR EXISTS (
+  WITH CHECK ((SELECT app_bypass_rls()) OR (EXISTS (
     SELECT 1 FROM account_delegates ad
     WHERE ad.id = account_delegate_grants.delegation_id
-      AND (ad.owner_user_id = (SELECT app_current_user_id())
-        OR ad.delegate_user_id = (SELECT app_real_user_id()))));
+      AND ad.owner_user_id = (SELECT app_current_user_id())
+      AND ad.owner_user_id = (SELECT app_real_user_id()))
+    AND delegation_grant_account_is_owners(
+      account_delegate_grants.delegation_id,
+      account_delegate_grants.account_id)));
 
 -- ---------------------------------------------------------------------------
 -- Bespoke owner columns, and the documented exemptions
@@ -4133,15 +4165,17 @@ CREATE POLICY users_self ON users
 -- with). The delegate reaches it through app.real_user_id, which works both in
 -- their own session (current = real = delegate) and while acting for the owner
 -- (current = owner, real = delegate) -- the latter is what lets the delegate
--- guard resolve its own grant row on every acting request.
+-- guard resolve its own grant row on every acting request. Those are read arms:
+-- WITH CHECK admits only the owner's own session (current = real = owner), so
+-- no delegate-side statement can issue itself a delegation (A26-M06).
 -- ---------------------------------------------------------------------------
 DROP POLICY IF EXISTS account_delegates_isolation ON account_delegates;
 CREATE POLICY account_delegates_isolation ON account_delegates
   USING (owner_user_id = (SELECT app_current_user_id())
       OR delegate_user_id = (SELECT app_real_user_id())
       OR (SELECT app_bypass_rls()))
-  WITH CHECK (owner_user_id = (SELECT app_current_user_id())
-      OR delegate_user_id = (SELECT app_real_user_id())
+  WITH CHECK ((owner_user_id = (SELECT app_current_user_id())
+               AND owner_user_id = (SELECT app_real_user_id()))
       OR (SELECT app_bypass_rls()));
 
 -- ---------------------------------------------------------------------------
