@@ -82,6 +82,6 @@
 
 | Stream | Branch | Started | Child session | Tasks done | Merged |
 |---|---|---|---|---|---|
-| harness | `fix/audit-harness` | | | | |
-| auth | `fix/audit-auth` | | | | |
-| forms | `fix/audit-forms` | | | | |
+| harness | `fix/audit-harness` | 2026-10-22 04:19 UTC | session_01JWWBawaWKEiTgRH4EUCL9M | | |
+| auth | `fix/audit-auth` | 2026-10-22 04:19 UTC | session_01J1DvFkbLT5hNjYcqy139nN | | |
+| forms | `fix/audit-forms` | 2026-10-22 04:19 UTC | session_013UqoZAfBLgw68Gya3qWYTS | | |
