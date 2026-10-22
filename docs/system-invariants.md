@@ -4192,6 +4192,14 @@ Enforcement         PortfolioCalculationService.valueBondHoldings, used by
                     approximate for a security held in several accounts while
                     their total is exact (spec
                     docs/specs/bond-program-securities.md 2.4).
+                    A blend reader (a series that multiplies a quantity by a
+                    stored close) values a linked security through
+                    valuationClosePointOn (securities/bond-valuation-close.util.ts):
+                    the engine's row of that day only, so a day the engine refused
+                    (no row; INV-BOND-002) is unknown, never the previous engine
+                    close carried over it and never one lot's trade price
+                    (INV-BOND-005). The daily movement (DailyMovementService) reads
+                    it (A26-M26).
 Concurrency scope   --
 Retry semantics     --
 Crash semantics     --
@@ -4200,7 +4208,19 @@ Required tests      backend/src/securities/portfolio-calculation.service.spec.ts
                     (two accounts holding different series of one program, an
                     unknown lot, a valuation that throws);
                     backend/test/integration/bond-holding-value.integration.spec.ts
-Status              partial (historical per-account series)
+Status              partial. Still reading positionCloseAsOf (a carried engine
+                    close, or a trade price) over a refused day, and to be moved
+                    to valuationClosePointOn with the refusal carried as an
+                    unknown component: net worth daily and monthly
+                    (net-worth.service.ts loadDailyInvestments,
+                    recalculateBrokerageAccount; loadTxPriceSeries reads trade
+                    prices of linked securities), and through them latest net
+                    worth, the account summary totals, the period result and the
+                    investment report. Still reading the daily blend per account
+                    (A26-S14-02): Monte Carlo getHoldingStats, the investment
+                    report holdings, net worth by account for the current month;
+                    valueBondHoldings is the per-account answer. And the historical
+                    per-account series named above.
 ```
 
 ### INV-BONDNOTIFY-001 -- the bond notification producer fetches nothing

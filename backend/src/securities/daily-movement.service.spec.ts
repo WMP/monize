@@ -532,6 +532,30 @@ describe("DailyMovementService", () => {
       expect(res.unchangedCount).toBe(0);
     });
 
+    it("gives no row to a bond-linked position on a day the engine refused, whatever a trade struck", async () => {
+      // A26-M26: the engine priced 09-10 and refused 09-11; an imported BUY
+      // struck 45.00 on 09-11. A quoted security would read that trade price
+      // as the day's close and report a 10.00 fall; a linked one has no close.
+      replayRows = [buy("edo", 100, "2026-09-01")];
+      securities = [
+        {
+          id: "edo",
+          symbol: "EDO",
+          currencyCode: "CAD",
+          bondProgramId: "prog-edo",
+        },
+      ];
+      netWorth.loadValuationSeries.mockResolvedValue({
+        stored: new Map([["edo", [{ date: "2026-09-10", close: 55 }]]]),
+        txFallback: new Map([["edo", [{ date: "2026-09-11", close: 45 }]]]),
+      });
+
+      const res = await service.getDailyMovementDetail("user-1", "2026-09-11");
+
+      expect(res.gains).toEqual([]);
+      expect(res.losses).toEqual([]);
+    });
+
     it("gives no row to a position sold to zero", async () => {
       replayRows = [
         buy("abc", 100, "2026-09-01"),
