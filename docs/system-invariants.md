@@ -133,7 +133,7 @@ implied.
 | INV-MCP-002 | An MCP request is answered by the MCP transport, never by the app shell | enforced |
 | INV-MCP-003 | A write confirmation is bound to one credential and one change | enforced |
 | INV-MCP-004 | A write happens only on the round a human answered | enforced |
-| INV-CURRENCY-001 | A shared currency is deleted only by its creator, on a global count | enforced |
+| INV-CURRENCY-001 | A shared currency is deleted only by its creator, on a global count; a user's action never creates or leaves one offered to every user | partial |
 | INV-ATTACHMENT-001 | Available metadata resolves to committed bytes | enforced |
 | INV-ATTACHMENT-002 | A scanned document and its original are one attachment | enforced |
 | INV-ATTACHMENT-003 | An attachment's bytes are read from the backend that holds them, and a provider switch moves them | enforced |
@@ -5237,6 +5237,18 @@ Enforcement         Creator-only, on a genuinely global count, under a lock.
                     function currency_code_in_use_globally (migration 137) which
                     covers every FK including budgets and both exchange_rates
                     columns -- not the caller's tenant-scoped count.
+                    No user action creates a currency offered to every user:
+                    a request path calls ensureCurrencyForUser, which writes a
+                    known ISO code as an inactive reference row and any other
+                    code as the user's own, and activates only that user's
+                    user_currency_preferences row; it runs inside the
+                    transaction that writes the reference, before it (the
+                    non-deferrable user_preferences.default_currency FK). A
+                    user's self-delete locks the currencies they created and
+                    removes the unreferenced ones after the user row goes; the
+                    trigger currencies_creator_cleared_deactivate (migration
+                    20261022133443) deactivates every currency whose creator is
+                    cleared, on every deletion path (A26-M17, A26-M25).
 Concurrency scope   global -- cross-tenant
 Failure response    non-creator deactivates without deleting; 409 while referenced.
 Required tests      Present: currency-references.spec.ts derives the reference list
@@ -5244,7 +5256,17 @@ Required tests      Present: currency-references.spec.ts derives the reference l
                     forgotten; currencies.service.spec.ts asserts a non-creator's
                     remove deletes only the preference and never the currency row.
                     A two-connection delete-versus-use test is still owed.
-Status              enforced
+                    currency-ownership.integration.spec.ts: a first default of
+                    PLN saves on a fresh instance and is offered to nobody else;
+                    a non-ISO code is its user's own; deleting the creator
+                    removes an unreferenced custom currency and deactivates a
+                    referenced one, also on a direct DELETE FROM users.
+Status              partial -- rows written before migration 20261022133443 are
+                    not repaired: an active system currency an earlier import,
+                    preference or deletion created stays offered to every user,
+                    and the admin delete path (admin.service.ts) deactivates a
+                    deleted user's currencies but does not remove the
+                    unreferenced ones.
 ```
 
 The global count is a SECURITY DEFINER function precisely so that under

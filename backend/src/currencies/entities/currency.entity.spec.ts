@@ -1,3 +1,4 @@
+import { instanceToPlain } from "class-transformer";
 import { Currency } from "./currency.entity";
 
 describe("Currency entity", () => {
@@ -21,6 +22,16 @@ describe("Currency entity", () => {
     expect(currency.decimalPlaces).toBe(2);
     expect(currency.isActive).toBe(true);
     expect(currency.createdAt).toBeInstanceOf(Date);
+  });
+
+  it("never serializes the creator's id (another user's UUID)", () => {
+    const body = instanceToPlain(
+      buildCurrency({
+        createdByUserId: "7b0e6f0e-0000-4000-8000-000000000001",
+      }),
+    );
+    expect(body).not.toHaveProperty("createdByUserId");
+    expect(body.code).toBe("CAD");
   });
 
   it("uses code as the primary key (not a generated UUID)", () => {

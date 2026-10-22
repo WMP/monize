@@ -216,7 +216,7 @@ Verified by exploration; file paths are current as of this writing.
   matches `cs`; investment cash+brokerage linked pairs match `hacctRel`; `investment_action` enum
   already has BUY/SELL/DIVIDEND/SPLIT/TRANSFER_IN/TRANSFER_OUT/REINVEST/ADD_SHARES/REMOVE_SHARES;
   `HoldingsService.rebuildAccountsFromTransactions(userId, accountIds, queryRunner)` is the
-  canonical holdings rebuild; `CurrenciesService.ensureSystemCurrency(code)` creates currencies
+  canonical holdings rebuild; `CurrenciesService.ensureCurrencyForUser(userId, code)` creates currencies
   idempotently with proper metadata; `UsersService.deleteData` is the safe selective wipe;
   scheduled transactions support splits/transfers/investment templates and `is_active`.
 - **Gaps to fill**: ~~no `EVERY2MONTHS`/`SEMIANNUAL` frequency~~ (added in B3, with the frontend's
@@ -533,7 +533,7 @@ real mappers and, in the integration spec, the real INSERT path.
 | Money source | Monize target | Rules |
 |---|---|---|
 | `DHD` (file defaults) | base currency context | Spike-confirmed field for the file's default currency handle; fallback = user's `default_currency` preference. Never a hardcoded literal |
-| `CRNC` | `currencies` via `ensureSystemCurrency` | Only currencies actually referenced by imported accounts/securities/rates |
+| `CRNC` | `currencies` via `ensureCurrencyForUser` | Only currencies actually referenced by imported accounts/securities/rates |
 | `CRNC_EXCHG` | `exchange_rates` | Additive insert on `(from, to, rate_date)` that never replaces an existing row, because the table is shared by every user (INV-FX-004); toggle-controlled |
 | `PAY` | `payees` | Referenced-only (default), degenerate-name filter, existing-payee find-or-create by name |
 | `CAT` | `categories` | Parents before children (`nLevel`); flatten deeper than two levels into `Parent:Child` names; `is_income` derived per spike (root-ancestor classification, transaction-sign heuristic as fallback); referenced-only default |
@@ -767,7 +767,7 @@ See 6.4 for what the implementation settled differently from this plan.
 |----|------|---------|------|--------|
 | M1.1 | Entities + migration + RLS: `import_staged_files` (bytea, user-owned, `expires_at`), `import_jobs` (`status`, `options`, `progress`, `result`, `heartbeat_at`); `user_id`-direct RLS policies; `database/schema.sql` mirrored. Acceptance: cross-user isolation spec; ratchet unchanged | — | M | **done** |
 | M1.2 | Staging service (`withScopedDb`) + TTL sweep cron + delete-on-complete; `docs/cron-jobs.md` entry. Acceptance: expiry works; sweep idempotent across replicas | M1.1 | S | **done** |
-| M1.3 | Reference mapper (`map/map-reference.ts`): currencies (DHD base + `ensureSystemCurrency`), accounts (type/subtype map, `hacctRel` pairs, deferred closure, favourites, opening balances), categories (flatten, `is_income`, referenced-only), payees (junk filter, referenced-only), warnings model. Unit fixtures cover every `at` value, deep category trees, junk payees | M0.4, M0.6 | L | **done** |
+| M1.3 | Reference mapper (`map/map-reference.ts`): currencies (DHD base + `ensureCurrencyForUser`), accounts (type/subtype map, `hacctRel` pairs, deferred closure, favourites, opening balances), categories (flatten, `is_income`, referenced-only), payees (junk filter, referenced-only), warnings model. Unit fixtures cover every `at` value, deep category trees, junk payees | M0.4, M0.6 | L | **done** |
 | M1.4 | Transaction + transfer mapper (`map/map-transactions.ts`, `map/map-transfers.ts`): inclusion rule (`frq != -1` only — auto-entered rows import), statuses/void, splits, `TRN_XFER` pairing with pre-generated UUIDs, **loan-payment transfer splits**, reference numbers. Acceptance: loan fixture yields a transfer split linked to the loan-side transaction, each side imported exactly once | M1.3 | L | **done** |
 | M1.5 | Parser service + preview builder (`mny-parser.service.ts`): orchestrates decrypt -> read -> map; computes per-account final balances (the verification baseline). Acceptance: preview for `money2008.mny` matches hand-computed values | M1.3, M1.4 | M | **done** |
 | M1.6 | Controller + DTOs: `POST /import/mny/parse` (multer memoryStorage, `password` field, `MNY_IMPORT_LIMIT_MB`, i18n error taxonomy incl. required-vs-incorrect password and Jet 3 rejection), `POST /import/mny/start`, `GET /import/mny/jobs/:id`, `DELETE /import/mny/staged/:id`. Acceptance: contract specs; password never logged or echoed; oversized file -> clean localized error | M1.1, M1.5 | M | **done** |
@@ -817,7 +817,7 @@ legs now fold into the same integer-minor-unit accumulator.
 
 **The currency list is not the accounts' currency list.** `exchange_rates` has a
 foreign key to `currencies` on *both* sides, and a security can be denominated in
-a currency no account uses, so `ensureSystemCurrency` has to run over the union
+a currency no account uses, so `ensureCurrencyForUser` has to run over the union
 of account, security and rate currencies. Rate currencies are collected only when
 that toggle is on, so unticking it does not create currencies for nothing.
 

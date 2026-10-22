@@ -364,6 +364,22 @@ export class UsersService {
         // later would depend on that object not having been touched by the
         // update in between.
         const previousDefaultCurrency = before?.defaultCurrency;
+        // The chosen currency's row must exist before the preference that points
+        // at it is written (a foreign key), so it is ensured here, in this
+        // transaction, and for this user only: a fresh instance holds just USD.
+        // No catch -- a failure fails the request, as the foreign key would.
+        if (
+          dto.defaultCurrency != null &&
+          dto.defaultCurrency !== previousDefaultCurrency
+        ) {
+          const currenciesService = this.moduleRef.get(CurrenciesService, {
+            strict: false,
+          });
+          await currenciesService.ensureCurrencyForUser(
+            userId,
+            dto.defaultCurrency,
+          );
+        }
         // The update is written out rather than delegated to
         // `patchUserPreferences`, which looks like duplication and is not: that
         // helper materializes the row itself, and this method has to read
@@ -396,19 +412,6 @@ export class UsersService {
       dto.defaultCurrency !== undefined &&
       dto.defaultCurrency !== previousDefaultCurrency
     ) {
-      // Currencies are created on demand rather than seeded up front, so make
-      // sure the newly chosen default currency exists (with a proper symbol)
-      // before anything tries to display or convert it.
-      try {
-        const currenciesService = this.moduleRef.get(CurrenciesService, {
-          strict: false,
-        });
-        await currenciesService.ensureSystemCurrency(dto.defaultCurrency);
-      } catch (err) {
-        this.logger.warn(
-          `Could not ensure default currency ${dto.defaultCurrency} exists: ${err.message}`,
-        );
-      }
       try {
         const exchangeRateService = this.moduleRef.get(ExchangeRateService, {
           strict: false,
@@ -650,7 +653,19 @@ export class UsersService {
       await refreshTokens.delete({ actingAsUserId: userId });
       await manager.getRepository(PersonalAccessToken).delete({ userId });
       await manager.getRepository(UserPreference).delete({ userId });
+      // The user's custom currencies lose their creator when the row goes
+      // (ON DELETE SET NULL, and a trigger deactivates them): lock them first,
+      // then drop the ones nothing references, so none lingers as a system
+      // currency nobody can edit or delete.
+      const currencies = this.moduleRef.get(CurrenciesService, {
+        strict: false,
+      });
+      const createdCodes = await currencies.lockCurrenciesCreatedBy(
+        manager,
+        userId,
+      );
       await manager.getRepository(User).remove(user);
+      await currencies.removeUnreferencedCurrencies(manager, createdCodes);
     });
     return { downgraded: false };
   }

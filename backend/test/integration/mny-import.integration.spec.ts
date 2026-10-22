@@ -134,7 +134,7 @@ describe("mny writers (integration)", () => {
     "exchange_rates",
   ];
 
-  /** Mirrors CurrenciesService.ensureSystemCurrency, which the FKs require. */
+  /** Stands in for CurrenciesService.ensureCurrencyForUser, whose row the FKs require. */
   async function ensureCurrency(code: string): Promise<void> {
     await dataSource.query(
       `INSERT INTO currencies (code, name, symbol, decimal_places, is_active)
@@ -206,7 +206,8 @@ describe("mny writers (integration)", () => {
         {
           provide: CurrenciesService,
           useValue: {
-            ensureSystemCurrency: (code: string) => ensureCurrency(code),
+            ensureCurrencyForUser: (_userId: string, code: string) =>
+              ensureCurrency(code),
           },
         },
         // The real holdings rebuild -- the whole point of the investment half of

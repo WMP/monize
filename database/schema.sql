@@ -71,6 +71,23 @@ CREATE TABLE currencies (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- A user's deletion clears created_by_user_id (ON DELETE SET NULL); a currency
+-- that loses its creator must not become an active system currency every user is
+-- offered, so it is deactivated as the creator is cleared.
+CREATE OR REPLACE FUNCTION currencies_creator_cleared_deactivate() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.is_active := false;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER currencies_creator_cleared_deactivate
+    BEFORE UPDATE OF created_by_user_id ON currencies
+    FOR EACH ROW
+    WHEN (OLD.created_by_user_id IS NOT NULL AND NEW.created_by_user_id IS NULL)
+    EXECUTE FUNCTION currencies_creator_cleared_deactivate();
+
 -- Per-user currency preferences (visibility + is_active)
 CREATE TABLE user_currency_preferences (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
