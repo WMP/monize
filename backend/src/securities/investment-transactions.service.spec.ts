@@ -7482,6 +7482,83 @@ describe("InvestmentTransactionsService", () => {
     });
   });
 
+  /**
+   * A26-L18: the email-receipt pipeline builds a trade card's preview inside
+   * the receipt's transaction, with its row lock held. There the preview reads
+   * only stored rates; a provider call would hold the lock and a pooled
+   * connection for its response time.
+   */
+  describe("previewCreateInvestmentTransaction inside a caller's transaction", () => {
+    const scopedDb = jest.requireMock("../common/db/scoped-db") as {
+      getActiveScopedManager: jest.Mock;
+    };
+
+    beforeEach(() => {
+      accountsService.findOne.mockImplementation(
+        (_uid: string, aid: string) => {
+          if (aid === accountId)
+            return Promise.resolve({
+              ...mockInvestmentAccount,
+              currencyCode: "CAD",
+            });
+          if (aid === cashAccountId)
+            return Promise.resolve({ ...mockCashAccount, currencyCode: "CAD" });
+          return Promise.reject(new NotFoundException("Account not found"));
+        },
+      );
+      securitiesService.resolveBySymbolOrName.mockResolvedValue({
+        match: mockSecurity,
+        candidates: [],
+      });
+      securitiesService.findOne.mockResolvedValue(mockSecurity);
+      exchangeRateService.getRateForDate.mockResolvedValue(1.37);
+    });
+
+    const preview = () =>
+      service.previewCreateInvestmentTransaction(userId, {
+        accountId,
+        action: InvestmentAction.BUY,
+        transactionDate: "2026-10-15",
+        securityQuery: "AAPL",
+        quantity: 10,
+        price: 100,
+      });
+
+    it("reads only stored rates, never the provider", async () => {
+      scopedDb.getActiveScopedManager.mockReturnValue({});
+      try {
+        await preview();
+      } finally {
+        scopedDb.getActiveScopedManager.mockReturnValue(undefined);
+      }
+      expect(exchangeRateService.getRateForDate).toHaveBeenCalledWith(
+        "USD",
+        "CAD",
+        "2026-10-15",
+        { fetchMissing: false },
+      );
+    });
+
+    it("refuses by name when no stored rate answers", async () => {
+      scopedDb.getActiveScopedManager.mockReturnValue({});
+      exchangeRateService.getRateForDate.mockResolvedValue(null);
+      try {
+        await expect(preview()).rejects.toBeInstanceOf(BadRequestException);
+      } finally {
+        scopedDb.getActiveScopedManager.mockReturnValue(undefined);
+      }
+    });
+
+    it("still fetches for a request-scoped preview", async () => {
+      await preview();
+      expect(exchangeRateService.getRateForDate).toHaveBeenCalledWith(
+        "USD",
+        "CAD",
+        "2026-10-15",
+      );
+    });
+  });
+
   describe("previewCreateInvestmentTransaction", () => {
     beforeEach(() => {
       accountsService.findOne.mockImplementation(

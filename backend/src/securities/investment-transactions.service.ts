@@ -25,7 +25,7 @@ import {
 } from "./bond-redemption-fill.util";
 import { tr } from "../i18n/translate";
 import { DataSource, EntityManager } from "typeorm";
-import { withScopedDb } from "../common/db/scoped-db";
+import { getActiveScopedManager, withScopedDb } from "../common/db/scoped-db";
 import {
   lockTransactionRow,
   lockTransactionRows,
@@ -684,6 +684,7 @@ export class InvestmentTransactionsService {
     securityId: string | null | undefined,
     dtoRate: number | undefined,
     transactionDate?: string | Date,
+    options?: { fetchMissing?: boolean },
   ): Promise<number> {
     const rate = await this.resolveCashExchangeRateOrNull(
       userId,
@@ -692,6 +693,7 @@ export class InvestmentTransactionsService {
       securityId,
       dtoRate,
       transactionDate,
+      options,
     );
     if (rate === null) {
       // Posting cannot proceed without a rate for a genuine cross-currency pair:
@@ -732,6 +734,12 @@ export class InvestmentTransactionsService {
     securityId: string | null | undefined,
     dtoRate: number | undefined,
     transactionDate?: string | Date,
+    /**
+     * `fetchMissing: false` reads only the stored history: no provider call.
+     * For a caller inside someone else's transaction, where an HTTP round trip
+     * would hold that transaction's locks and connection (A26-L18).
+     */
+    options?: { fetchMissing?: boolean },
   ): Promise<number | null> {
     let supplied: number | undefined;
     if (dtoRate !== undefined && dtoRate !== null) {
@@ -781,11 +789,20 @@ export class InvestmentTransactionsService {
     // that date when not already stored). There is no fallback to the latest
     // stored snapshot: a rate for another date is not this date's rate, and
     // "unknown" is the answer that makes the caller supply one.
-    const rate = await this.exchangeRateService.getRateForDate(
-      sourceCurrency,
-      cashCurrency,
-      transactionDate || todayYMD(),
-    );
+    const onDate = transactionDate || todayYMD();
+    const rate =
+      options?.fetchMissing === false
+        ? await this.exchangeRateService.getRateForDate(
+            sourceCurrency,
+            cashCurrency,
+            onDate,
+            { fetchMissing: false },
+          )
+        : await this.exchangeRateService.getRateForDate(
+            sourceCurrency,
+            cashCurrency,
+            onDate,
+          );
 
     if (rate === null || !(Number(rate) > 0)) {
       // Unknown, not applicable: a zero/negative or absent rate is "no rate".
@@ -1795,6 +1812,14 @@ export class InvestmentTransactionsService {
       security?.id ?? null,
       input.exchangeRate ?? keptRate,
       input.transactionDate,
+      // A preview built inside a caller's transaction (the email-receipt
+      // pipeline holds the receipt's row lock while it builds a trade card)
+      // reads only the stored rates: a provider call there would hold the
+      // lock and a pooled connection for the provider's response time, and
+      // its fetched window would commit or roll back with the receipt. A
+      // missing rate is then refused by name, and the card waits for the
+      // rate cron (A26-L18). A request-scoped preview still fetches.
+      { fetchMissing: getActiveScopedManager() === undefined },
     );
 
     // Signed cash impact in the security's currency, converted to the cash

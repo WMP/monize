@@ -600,6 +600,12 @@ export interface ParsedTrade {
   quantity: number | null;
   total: number | null;
   price: number | null;
+  /**
+   * The price as written, in 1e-8 units (a decimal string, since JSON has no
+   * BigInt). `price` is its 4-decimal card value; a price-only total is derived
+   * from this one. Absent on a reading stored before it existed.
+   */
+  priceUnits8?: string | null;
   commission: number | null;
   /**
    * The trade's currency as a 3-letter code: the one the total (else the

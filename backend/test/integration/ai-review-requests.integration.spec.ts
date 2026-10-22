@@ -616,6 +616,29 @@ describe("AI review requests (integration)", () => {
       expect(await openCount(created.id)).toBe(2);
     });
 
+    /**
+     * A26-L16 (A26-S10-04): `rule_id ... ON DELETE SET NULL` turned a deleted
+     * rule's open request into a rule-less one, which the receipt dedupe reads
+     * as a receipt (or manual) review: the email ended `review_conflict` for up
+     * to 30 days. Deleting the rule through the service closes its open
+     * requests in the same transaction.
+     */
+    it("a deleted rule's open request is expired with it and no longer blocks the receipt review", async () => {
+      const rule = await asAlice(() => rules.create(aliceId, reviewRule()));
+      const created = await asAlice(() => transactions.create(aliceId, dto()));
+      const receiptId = await seedReceipt(aliceId);
+
+      await asAlice(() => rules.remove(aliceId, rule.id));
+
+      expect(
+        (await requests()).map((r) => ({ rule: r.rule_id, status: r.status })),
+      ).toEqual([{ rule: null, status: "expired" }]);
+      expect(
+        await enqueueClaimed(aliceId, created.id, receiptId),
+      ).not.toBeNull();
+      expect(await openCount(created.id)).toBe(1);
+    });
+
     it("two concurrent enqueues for one transaction queue exactly one request (the advisory lock, not the index)", async () => {
       const txId = await seedTransaction();
       const first = await seedReceipt(aliceId, 1);

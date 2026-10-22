@@ -480,6 +480,18 @@ answered with nothing may be remembered as empty for thirty minutes, a window
 a carrying provider never answered never is, because the provider that fell
 silent may hold what the others do not (INV-FX-005).
 
+**No FX provider call inside someone else's transaction.** A rate fetch is an
+HTTP round trip, and inside a caller's open transaction it holds that
+transaction's row locks and pooled connection for the provider's response time,
+while the window it persists commits or rolls back with work it has nothing to
+do with. `InvestmentTransactionsService.previewCreateInvestmentTransaction`
+therefore reads only stored rates (`getRateForDate(..., { fetchMissing: false })`)
+when it runs under an ambient scoped manager (`getActiveScopedManager()`), which
+is how the email-receipt pipeline builds a trade card while it holds the
+receipt's row lock: a missing rate is refused by name and the card waits for the
+rate cron. A request-scoped preview (the assistant, MCP) still fetches
+(A26-L18).
+
 Failures propagate as `null`, deliberately. `getRateForDate`'s own comment says
 it "returns null when no rate can be determined (so the caller can reject or flag
 the operation rather than silently assuming 1.0)". The provider layer is

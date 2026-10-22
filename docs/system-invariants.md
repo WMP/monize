@@ -1513,11 +1513,16 @@ Enforcement         securities/investment-amount.util.ts is the one door:
                     InvestmentTransactionForm makes the total an editable field:
                     the last edited of total and price wins, the same pattern it
                     already uses between the converted amount and the rate.
+                    A trade email that states only a price proposes the total of
+                    the price as written (ParsedTrade.priceUnits8, 1e-8 units),
+                    not of the 4-decimal card price: tradeExecutedTotalUnits in
+                    email-receipts/parsing/parse-trade.ts (A26-L17).
 Test                investment-amount.util.spec.ts (both directions and the
                     refusals); investment-transactions.service.spec.ts -- a SELL
                     of 141 shares supplied as 820.91 stores 820.9100 and
                     5.8220567376, a resent description-only edit keeps the stored
-                    total, a quantity change re-derives it.
+                    total, a quantity change re-derives it. parse-trade.spec.ts:
+                    10,000 x 1.23456789 proposes 12,345.6789, not 12,346.0000.
 Status              enforced
 ```
 
