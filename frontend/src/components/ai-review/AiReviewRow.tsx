@@ -132,8 +132,15 @@ export function AiReviewRow({
               </Link>
             ) : item.kind === 'email_receipt' || item.kind === 'email_trade' ? (
               <>
+                {/* A forward's sender is what its text claims: the card names who forwarded it. */}
                 {item.emailReceipt
-                  ? t('row.emailReceipt', { subject: item.emailReceipt.subject, sender: item.emailReceipt.fromAddress })
+                  ? item.emailReceipt.forwardedBy
+                    ? t('row.emailReceiptForwarded', {
+                        subject: item.emailReceipt.subject,
+                        sender: item.emailReceipt.fromAddress,
+                        forwarder: item.emailReceipt.forwardedBy,
+                      })
+                    : t('row.emailReceipt', { subject: item.emailReceipt.subject, sender: item.emailReceipt.fromAddress })
                   : t('row.emailReceiptMissing')}{' '}
                 {/* The email's own detail when it still exists; the list when it was deleted. */}
                 <Link

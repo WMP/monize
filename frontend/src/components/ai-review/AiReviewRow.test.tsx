@@ -23,6 +23,7 @@ const emailReceiptItem = (overrides: Partial<AiReviewItem> = {}) =>
     emailReceipt: {
       id: 'r-1',
       fromAddress: 'orders@allegro.pl',
+      forwardedBy: null,
       subject: 'Your order 123',
       receivedAt: '2026-09-01T10:00:00.000Z',
     },
@@ -49,6 +50,30 @@ describe('AiReviewRow', () => {
     expect(screen.queryByText(/^Rule:/)).not.toBeInTheDocument();
   });
 
+  it('names who forwarded the email, since the sender it is read as is what the forward claims', () => {
+    renderRow(
+      emailReceiptItem({
+        emailReceipt: {
+          id: 'r-1',
+          fromAddress: 'notifications@broker.example.com',
+          forwardedBy: 'receipts@example.com',
+          subject: 'Your order has been filled',
+          receivedAt: '2026-09-01T10:00:00.000Z',
+        },
+      }),
+    );
+    expect(
+      screen.getByText(
+        /Email receipt: Your order has been filled from notifications@broker\.example\.com, forwarded by receipts@example\.com/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('says nothing about forwarding for an email received directly', () => {
+    renderRow(emailReceiptItem());
+    expect(screen.queryByText(/forwarded by/)).not.toBeInTheDocument();
+  });
+
   it('links to the email\'s own detail from an email receipt row', () => {
     renderRow(emailReceiptItem());
     expect(screen.getByRole('link', { name: 'View email receipts' })).toHaveAttribute(
@@ -60,7 +85,13 @@ describe('AiReviewRow', () => {
   it('shows the email as it is, as plain text', () => {
     const { container } = renderRow(
       emailReceiptItem({
-        emailReceipt: { id: 'r-1', fromAddress: 'x@y.example', subject: '<b>Hi</b>', receivedAt: '2026-09-01T10:00:00.000Z' },
+        emailReceipt: {
+          id: 'r-1',
+          fromAddress: 'x@y.example',
+          forwardedBy: null,
+          subject: '<b>Hi</b>',
+          receivedAt: '2026-09-01T10:00:00.000Z',
+        },
       }),
     );
     expect(screen.getByText(/Email receipt: <b>Hi<\/b> from x@y\.example/)).toBeInTheDocument();

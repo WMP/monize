@@ -64,7 +64,14 @@ link is not limited to expenses.
 `purchase_date` is the date of the original message: `original_sent_at` when
 the mailbox owner forwarded the receipt to the mailbox and the forwarded
 header block was recognised (`imap/forwarded-message.ts`, applied at
-ingestion and again on reprocess), otherwise `received_at`. A forward arrives
+ingestion and again on reprocess), otherwise `received_at`.
+
+**A forwarded header block is honoured only for the owner's own forward**
+(A26-H02): the outer From must be the mailbox login or the owner's verified
+account email (`loadOwnAddresses`, read from the server's rows), compared
+trimmed and lower-case; anybody else's pasted block is text, the email stays
+that sender's, and a row another sender's block re-identified earlier is put
+back under that sender on its next pass (`resolveForwardedIdentity`). A forward arrives
 days after the purchase; centring the window on the arrival date would miss
 the transaction. A forwarded date later than `received_at + 1 day` is not
 believed and is dropped. The manual transaction picker uses the same date as
@@ -268,7 +275,7 @@ transaction of `-24.99` is description only, reason `amount_differs` (`paid` is
 
 Applies only when every one holds: mailbox `auto_apply`; parser `approved`;
 `complete`; `abs(T) = paid ?? total`; `match_kind` is `order_id`, `reference` or `amount_payee` (never `amount_date`, never a
-match made with a tolerance that an exact amount would not make); the card was built; the receipt has no `joined` or `scaled` part (linked receipts spec section 7: a person approves every join). Any refusal from `confirm` (write limit, reconciled lock, a
+match made with a tolerance that an exact amount would not make); the card was built; the receipt has no `joined` or `scaled` part (linked receipts spec section 7: a person approves every join); the email is no forward (`forwarded_by` is null, `isForwardedReceipt`): who sent a forward is what its text claims, so a person approves it, and the inbox card names the forwarder (A26-H02). Any refusal from `confirm` (write limit, reconciled lock, a
 changed row) leaves the proposal waiting in the inbox.
 
 ## 7. (continued) Tag, categories by the AI, bulk work
@@ -530,9 +537,10 @@ markup is read from that.
 | Every row of the completeness table | `parsing/parse-receipt.spec.ts` |
 | Every row of the match table; date window edges (day -3, day +14, day +15) | `matching/match-receipt.spec.ts` |
 | Forwarded-header detection (Gmail, Outlook, Apple Mail, Thunderbird; English and Polish labels; date formats; the 200-line bound; no header means no result) | `imap/forwarded-message.spec.ts`, `imap/forwarded-receipt.spec.ts` |
+| Only the owner's forward is re-identified: an outside sender's pasted block stays the sender's, an unverified account email is no owner's, an earlier forged row is put back; the owner's forward is proposed, never auto-applied, on the purchase and the trade path, and the inbox card names the forwarder (A26-H02) | `imap/forwarded-receipt.spec.ts`, `poll/email-receipt-poll.service.spec.ts`, `pipeline/email-receipt-pipeline.service.spec.ts`, `test/integration/email-receipts-forwarded-sender.integration.spec.ts` |
 | A forwarded receipt matches the transaction near the original date, on ingestion and on reprocess; a manual link of any date | `test/integration/email-receipts-pipeline.integration.spec.ts` |
 | Every row of the proposal table; the numerical example; description cap and duplicate | `proposal/build-receipt-proposal.spec.ts` |
-| Auto-apply gate: each condition false in turn (and `reference`, `amount_date`) | `email-receipt-pipeline.service.spec.ts`, `pipeline/email-receipt-pipeline.profile.spec.ts` |
+| Auto-apply gate: each condition false in turn (and `reference`, `amount_date`, a forward) | `email-receipt-pipeline.service.spec.ts`, `pipeline/email-receipt-pipeline.profile.spec.ts` |
 | Every strategy of section 3a, the order tried, the window edges per profile, the tolerance edges in integer units, R and O in the chosen fields only, a value shorter than 4 characters | `matching/match-receipt.profile.spec.ts`, `parsing/receipt-match-config.spec.ts` |
 | The match trace: attempts stop at the deciding strategy, at most 10 candidates per attempt | `matching/match-trace.spec.ts` |
 | Every validation code of `match`, `reference`, `tag`, `aiCategories` | `parsing/receipt-parser.validation.match.spec.ts`, `parsing/parse-receipt.reference.spec.ts` |
