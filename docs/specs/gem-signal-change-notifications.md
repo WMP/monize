@@ -74,6 +74,13 @@ implementation), never a second evaluation of the signal.
   yet), there is no current signal, so there is nothing to compare and the producer
   is a **no-op** -- it never reads "no change" from a missing evaluation. The signal
   is authoritative only once materialized.
+  The current period is the report's current signal: `detectSignalChange`
+  compares the two newest history rows only when the newest one is
+  `report.signal.evaluatedOn`, so a period not yet evaluable never re-announces an
+  older change (A26-L24). The `gem:` dedupe row is state-keyed
+  (`STATE_KEYED_DEDUPE_PREFIXES`): the retention purge keeps it until it was
+  dismissed a year ago, so a period that outlasts the 30-day window is not
+  announced twice.
 - **INV-GEM-NOTIFY-004 (one writer, reuse the materializer).** Written through
   `NotificationDispatchService.notify` -> `NotificationService.create`
   (INV-NOTIFY-001), from a cron under `withSystemContext` fan-out / `withUserContext`
