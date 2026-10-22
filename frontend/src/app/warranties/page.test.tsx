@@ -41,7 +41,15 @@ vi.mock('next/dynamic', () => ({
         <div data-testid="warranty-form">
           {props.warranty && <span data-testid="editing">{props.warranty.name}</span>}
           {props.prefill && <span data-testid="prefill">{JSON.stringify(props.prefill)}</span>}
-          <button type="button" onClick={() => Promise.resolve(props.onSubmit(FORM_PAYLOAD)).catch(() => {})}>
+          {/* As the form does: save, then hand back through onSuccess. */}
+          <button
+            type="button"
+            onClick={() =>
+              Promise.resolve(props.onSubmit(FORM_PAYLOAD))
+                .then(() => props.onSuccess())
+                .catch(() => {})
+            }
+          >
             Submit stub
           </button>
         </div>

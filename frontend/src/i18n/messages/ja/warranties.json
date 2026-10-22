@@ -190,6 +190,9 @@
   "documents": {
     "title": "書類",
     "empty": "書類はまだありません",
+    "pendingHint": "書類は保証を保存したときにアップロードされます。",
+    "tooMany": "保証ごとに最大 {max} 件の書類",
+    "uploadFailedAfterCreate": "保証を追加しましたが、{count, plural, one {この書類} other {これらの書類}}をアップロードできませんでした: {names}。保証の「書類」セクションから追加してください。",
     "kindFor": "{name} の書類の種類",
     "kindUpdateFailed": "書類の種類を変更できませんでした",
     "kinds": {

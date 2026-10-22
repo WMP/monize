@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Warranties",
-    "subtitle": "What you bought, when its cover ends, and who sold it",
+    "subtitle": "What you bought, when its coverage ends, and who sold it",
     "newButton": "Add warranty",
     "exportButton": "Export CSV",
     "importButton": "Import CSV",
@@ -39,7 +39,7 @@
     },
     "empty": {
       "title": "No warranties yet",
-      "description": "Add a warranty to keep track of when its cover ends.",
+      "description": "Add a warranty to keep track of when its coverage ends.",
       "filteredTitle": "No warranties match",
       "filteredDescription": "Try another status, or clear the search.",
       "archivedTitle": "No archived warranties"
@@ -118,7 +118,7 @@
     "kindLabel": "Warranty type",
     "purchaseDateLabel": "Purchase date",
     "expiry": {
-      "label": "Cover ends",
+      "label": "Coverage ends",
       "date": "On a date",
       "duration": "After a duration",
       "lifetime": "Never",
@@ -190,6 +190,9 @@
   "documents": {
     "title": "Documents",
     "empty": "No documents yet",
+    "pendingHint": "Documents will be uploaded when you save the warranty.",
+    "tooMany": "Maximum {max} documents per warranty",
+    "uploadFailedAfterCreate": "Warranty added, but {count, plural, one {this document} other {these documents}} could not be uploaded: {names}. Add {count, plural, one {it} other {them}} from the warranty's Documents section.",
     "kindFor": "Document type for {name}",
     "kindUpdateFailed": "Failed to change the document type",
     "kinds": {

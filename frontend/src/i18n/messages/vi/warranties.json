@@ -190,6 +190,9 @@
   "documents": {
     "title": "Tài liệu",
     "empty": "Chưa có tài liệu nào",
+    "pendingHint": "Tài liệu sẽ được tải lên khi bạn lưu bảo hành.",
+    "tooMany": "Tối đa {max} tài liệu cho mỗi bảo hành",
+    "uploadFailedAfterCreate": "Đã thêm bảo hành, nhưng không thể tải lên {count, plural, one {tài liệu này} other {các tài liệu này}}: {names}. Hãy thêm từ mục Tài liệu của bảo hành.",
     "kindFor": "Loại tài liệu cho {name}",
     "kindUpdateFailed": "Không thay đổi được loại tài liệu",
     "kinds": {

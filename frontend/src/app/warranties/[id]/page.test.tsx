@@ -62,7 +62,12 @@ vi.mock('next/dynamic', () => ({
           {props.warranty && <span data-testid="editing">{props.warranty.name}</span>}
           <button
             type="button"
-            onClick={() => Promise.resolve(props.onSubmit(isClaim ? CLAIM_PAYLOAD : WARRANTY_PAYLOAD)).catch(() => {})}
+            onClick={() =>
+              Promise.resolve(props.onSubmit(isClaim ? CLAIM_PAYLOAD : WARRANTY_PAYLOAD))
+                // The warranty form hands back through onSuccess; the claim form closes in onSubmit.
+                .then(() => props.onSuccess?.())
+                .catch(() => {})
+            }
           >
             {isClaim ? 'Submit claim stub' : 'Submit warranty stub'}
           </button>

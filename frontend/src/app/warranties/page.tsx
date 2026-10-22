@@ -242,21 +242,27 @@ function WarrantiesContent() {
       .finally(() => router.replace(`/warranties?transactionId=${id}`));
   }, [readOnly, urlNew, urlTransactionId, openCreate, router, t]);
 
-  const handleFormSubmit = async (data: CreateWarrantyData) => {
+  // Save only: the form uploads a new warranty's staged documents to the row
+  // this resolves with, then calls handleFormSuccess.
+  const handleFormSubmit = async (data: CreateWarrantyData): Promise<Warranty> => {
     try {
       if (editingItem) {
-        await warrantiesApi.update(editingItem.id, data);
+        const updated = await warrantiesApi.update(editingItem.id, data);
         toast.success(t('page.toasts.updated'));
-      } else {
-        await warrantiesApi.create(data);
-        toast.success(t('page.toasts.created'));
+        return updated;
       }
-      close();
-      reload();
+      const created = await warrantiesApi.create(data);
+      toast.success(t('page.toasts.created'));
+      return created;
     } catch (error) {
       toast.error(getErrorMessage(error, editingItem ? t('page.toasts.updateFailed') : t('page.toasts.createFailed')));
       throw error;
     }
+  };
+
+  const handleFormSuccess = () => {
+    close();
+    reload();
   };
 
   const openDetail = useCallback(
@@ -548,6 +554,7 @@ function WarrantiesContent() {
             warranty={editingItem}
             prefill={prefill}
             onSubmit={handleFormSubmit}
+            onSuccess={handleFormSuccess}
             onCancel={close}
             onDirtyChange={setFormDirty}
             submitRef={formSubmitRef}

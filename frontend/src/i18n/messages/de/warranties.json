@@ -190,6 +190,9 @@
   "documents": {
     "title": "Dokumente",
     "empty": "Noch keine Dokumente",
+    "pendingHint": "Dokumente werden hochgeladen, wenn Sie die Garantie speichern.",
+    "tooMany": "Maximal {max} Dokumente pro Garantie",
+    "uploadFailedAfterCreate": "Garantie hinzugefügt, aber {count, plural, one {dieses Dokument konnte} other {diese Dokumente konnten}} nicht hochgeladen werden: {names}. Fügen Sie {count, plural, one {es} other {sie}} im Bereich Dokumente der Garantie hinzu.",
     "kindFor": "Dokumentart für {name}",
     "kindUpdateFailed": "Die Dokumentart konnte nicht geändert werden",
     "kinds": {

@@ -158,7 +158,7 @@ interface WarrantyDetailCardProps {
 }
 
 /**
- * What a warranty is: when its cover ends, what kind it is, who sold it and
+ * What a warranty is: when its coverage ends, what kind it is, who sold it and
  * for how much, the identifiers to quote in a claim, and the purchase it
  * came from. Status and days left are the server's (WTY-002); the price is
  * informational and in its own currency (design decision 6).

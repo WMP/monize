@@ -190,6 +190,9 @@
   "documents": {
     "title": "Belgeler",
     "empty": "Henüz belge yok",
+    "pendingHint": "Belgeler, garantiyi kaydettiğinizde yüklenecek.",
+    "tooMany": "Garanti başına en fazla {max} belge",
+    "uploadFailedAfterCreate": "Garanti eklendi ancak {count, plural, one {bu belge} other {bu belgeler}} yüklenemedi: {names}. Garantinin Belgeler bölümünden ekleyin.",
     "kindFor": "{name} için belge türü",
     "kindUpdateFailed": "Belge türü değiştirilemedi",
     "kinds": {

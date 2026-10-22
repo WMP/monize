@@ -190,6 +190,9 @@
   "documents": {
     "title": "दस्तावेज़",
     "empty": "अभी तक कोई दस्तावेज़ नहीं",
+    "pendingHint": "वारंटी सहेजने पर दस्तावेज़ अपलोड किए जाएँगे।",
+    "tooMany": "प्रति वारंटी अधिकतम {max} दस्तावेज़",
+    "uploadFailedAfterCreate": "वारंटी जोड़ी गई, लेकिन {count, plural, one {यह दस्तावेज़} other {ये दस्तावेज़}} अपलोड नहीं हो {count, plural, one {सका} other {सके}}: {names}। {count, plural, one {इसे} other {इन्हें}} वारंटी के दस्तावेज़ अनुभाग से जोड़ें।",
     "kindFor": "{name} के लिए दस्तावेज़ का प्रकार",
     "kindUpdateFailed": "दस्तावेज़ का प्रकार बदलने में विफल",
     "kinds": {

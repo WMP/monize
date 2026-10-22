@@ -190,6 +190,9 @@
   "documents": {
     "title": "문서",
     "empty": "아직 문서가 없습니다",
+    "pendingHint": "문서는 보증을 저장할 때 업로드됩니다.",
+    "tooMany": "보증당 최대 {max}개의 문서",
+    "uploadFailedAfterCreate": "보증이 추가되었지만 {count, plural, one {이 문서} other {이 문서들}}를 업로드하지 못했습니다: {names}. 보증의 문서 섹션에서 추가하세요.",
     "kindFor": "{name}의 문서 유형",
     "kindUpdateFailed": "문서 유형을 변경하지 못했습니다",
     "kinds": {

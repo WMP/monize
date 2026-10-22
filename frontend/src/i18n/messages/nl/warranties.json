@@ -190,6 +190,9 @@
   "documents": {
     "title": "Documenten",
     "empty": "Nog geen documenten",
+    "pendingHint": "Documenten worden geüpload wanneer u de garantie opslaat.",
+    "tooMany": "Maximaal {max} documenten per garantie",
+    "uploadFailedAfterCreate": "Garantie toegevoegd, maar {count, plural, one {dit document kon} other {deze documenten konden}} niet worden geüpload: {names}. Voeg {count, plural, one {het} other {ze}} toe via de sectie Documenten van de garantie.",
     "kindFor": "Soort document voor {name}",
     "kindUpdateFailed": "Soort document wijzigen mislukt",
     "kinds": {

@@ -190,6 +190,9 @@
   "documents": {
     "title": "Documenti",
     "empty": "Ancora nessun documento",
+    "pendingHint": "I documenti verranno caricati quando salvi la garanzia.",
+    "tooMany": "Massimo {max} documenti per garanzia",
+    "uploadFailedAfterCreate": "Garanzia aggiunta, ma {count, plural, one {questo documento non è stato caricato} other {questi documenti non sono stati caricati}}: {names}. {count, plural, one {Aggiungilo} other {Aggiungili}} dalla sezione Documenti della garanzia.",
     "kindFor": "Tipo di documento per {name}",
     "kindUpdateFailed": "Impossibile modificare il tipo di documento",
     "kinds": {

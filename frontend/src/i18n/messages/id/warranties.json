@@ -190,6 +190,9 @@
   "documents": {
     "title": "Dokumen",
     "empty": "Belum ada dokumen",
+    "pendingHint": "Dokumen akan diunggah saat Anda menyimpan garansi.",
+    "tooMany": "Maksimum {max} dokumen per garansi",
+    "uploadFailedAfterCreate": "Garansi ditambahkan, tetapi {count, plural, one {dokumen ini} other {dokumen-dokumen ini}} tidak dapat diunggah: {names}. Tambahkan dari bagian Dokumen garansi.",
     "kindFor": "Jenis dokumen untuk {name}",
     "kindUpdateFailed": "Gagal mengubah jenis dokumen",
     "kinds": {

@@ -512,7 +512,10 @@ tick (the smallest mark at or above 20 is 30), then the 7-day one.
   loaded through `dynamic()` (`DateInput`, `CurrencyInput` in a `Controller`,
   `CurrencyPickerButton` in an `items-stretch` row, the payee picker the
   transaction form uses, the duration helper, the lifetime switch, the kind
-  select, a serial-numbers list), `ConfirmDialog` for delete, an Archived
+  select, a serial-numbers list, and on a new warranty a Documents block:
+  `AttachmentsSection` in its staged mode, uploaded to the warranty once it
+  is created, a failed upload named in a toast and never undoing the save),
+  `ConfirmDialog` for delete, an Archived
   toggle, `useDensityPreference('warranties')`. `?new=1&transactionId=<id>`
   opens the form prefilled from `transactionsApi.getById`;
   `?transactionId=<id>` filters the list.

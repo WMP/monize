@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@/test/render';
+import toast from 'react-hot-toast';
 import type { Warranty } from '@/types/warranty';
 import { WarrantyForm, toWarrantyPayload, type WarrantyFormData } from './WarrantyForm';
 
@@ -8,6 +9,15 @@ vi.mock('@/lib/payees', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/payees')>()),
   payeesApi: { getAll: (...args: unknown[]) => mockGetPayees(...args) },
 }));
+
+const mockUpload = vi.fn();
+vi.mock('@/lib/attachments', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/attachments')>();
+  return {
+    ...actual,
+    attachmentsApi: { ...actual.attachmentsApi, upload: (...args: unknown[]) => mockUpload(...args) },
+  };
+});
 
 vi.mock('@/hooks/useDateFormat', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/hooks/useDateFormat')>()),
@@ -47,12 +57,31 @@ const warranty: Warranty = {
 };
 
 async function renderForm(props: Partial<Parameters<typeof WarrantyForm>[0]> = {}) {
-  const onSubmit = vi.fn().mockResolvedValue(undefined);
+  const onSubmit = vi.fn().mockResolvedValue({ ...warranty, id: 'w-new' });
+  const onSuccess = vi.fn();
   const onCancel = vi.fn();
+  const onDirtyChange = vi.fn();
   await act(async () => {
-    render(<WarrantyForm onSubmit={onSubmit} onCancel={onCancel} {...props} />);
+    render(
+      <WarrantyForm
+        onSubmit={onSubmit}
+        onSuccess={onSuccess}
+        onCancel={onCancel}
+        onDirtyChange={onDirtyChange}
+        {...props}
+      />,
+    );
   });
-  return { onSubmit, onCancel };
+  return { onSubmit, onSuccess, onCancel, onDirtyChange };
+}
+
+/** Stage a document the way a reader does: through the Add attachment picker. */
+async function stageDocument(name: string): Promise<File> {
+  const file = new File(['%PDF'], name, { type: 'application/pdf' });
+  await act(async () => {
+    fireEvent.change(screen.getByLabelText('Add attachment'), { target: { files: [file] } });
+  });
+  return file;
 }
 
 async function submit(label = 'Add warranty') {
@@ -84,6 +113,8 @@ describe('WarrantyForm', () => {
   beforeEach(() => {
     mockGetPayees.mockReset();
     mockGetPayees.mockResolvedValue([{ id: 'p-1', name: 'Best Buy' }, { id: 'p-2', name: 'Costco' }]);
+    mockUpload.mockReset();
+    mockUpload.mockResolvedValue({ id: 'a-1' });
   });
 
   it('refuses a warranty with no name and no purchase date', async () => {
@@ -281,6 +312,64 @@ describe('WarrantyForm', () => {
     await submit();
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSubmit.mock.calls[0][0]).toMatchObject({ vendorName: 'Corner shop', payeeId: null });
+  });
+
+  it('uploads a staged document to the new warranty once it has been created', async () => {
+    const { onSubmit, onSuccess, onDirtyChange } = await renderForm({ prefill: PREFILL });
+    expect(screen.getByText('Documents')).toBeInTheDocument();
+    const file = await stageDocument('receipt.pdf');
+    expect(screen.getByText('receipt.pdf')).toBeInTheDocument();
+    // A staged document is an unsaved change the close guard must ask about.
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+
+    await submit();
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+    expect(mockUpload).toHaveBeenCalledTimes(1);
+    expect(mockUpload).toHaveBeenCalledWith({ warrantyId: 'w-new' }, file, undefined);
+    // Saved first, then uploaded, then handed back to the host.
+    expect(onSubmit.mock.invocationCallOrder[0]).toBeLessThan(mockUpload.mock.invocationCallOrder[0]);
+    expect(mockUpload.mock.invocationCallOrder[0]).toBeLessThan(onSuccess.mock.invocationCallOrder[0]);
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('keeps the new warranty and names the document when its upload fails', async () => {
+    mockUpload.mockRejectedValueOnce(new Error('503')).mockResolvedValueOnce({ id: 'a-2' });
+    const { onSuccess } = await renderForm({ prefill: PREFILL });
+    await stageDocument('receipt.pdf');
+    await stageDocument('manual.pdf');
+
+    await submit();
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+    // Both were tried: one failure does not stop the rest.
+    expect(mockUpload).toHaveBeenCalledTimes(2);
+    expect(toast.error).toHaveBeenCalledTimes(1);
+    expect(toast.error).toHaveBeenCalledWith(
+      "Warranty added, but this document could not be uploaded: receipt.pdf. Add it from the warranty's Documents section.",
+    );
+  });
+
+  it('uploads nothing and calls no success when the save itself fails', async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new Error('400'));
+    // Submitted through the ref the modal's Save uses, whose promise carries
+    // the host's rejection where the test can hold it.
+    const submitRef: { current: (() => void) | null } = { current: null };
+    const { onSuccess } = await renderForm({ prefill: PREFILL, onSubmit, submitRef });
+    await stageDocument('receipt.pdf');
+    await act(async () => {
+      await (submitRef.current as unknown as () => Promise<void>)().catch(() => undefined);
+    });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(mockUpload).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it('offers no staged documents when editing: they live on the detail page', async () => {
+    const { onSuccess } = await renderForm({ warranty });
+    expect(screen.queryByText('Documents')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Add attachment')).not.toBeInTheDocument();
+    await submit('Save changes');
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+    expect(mockUpload).not.toHaveBeenCalled();
   });
 
   it('calls onCancel', async () => {

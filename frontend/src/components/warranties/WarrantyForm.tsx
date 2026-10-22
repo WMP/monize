@@ -1,7 +1,8 @@
 'use client';
 
 import { MutableRefObject, useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import toast from 'react-hot-toast';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,17 +16,20 @@ import { Combobox } from '@/components/ui/Combobox';
 import { FormActions } from '@/components/ui/FormActions';
 import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import { CurrencyPickerButton } from '@/components/transactions/CurrencyPickerButton';
+import { AttachmentsSection } from '@/components/transactions/AttachmentsSection';
 import { useFormSubmitRef } from '@/hooks/useFormSubmitRef';
 import { useFormDirtyNotify } from '@/hooks/useFormDirtyNotify';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { payeesApi } from '@/lib/payees';
+import { attachmentsApi } from '@/lib/attachments';
 import { getCurrencySymbol } from '@/lib/format';
 import { isCalendarDate } from '@/lib/calendar-month';
 import { createLogger } from '@/lib/logger';
 import { textOrNull } from '@/lib/form-text';
 import { expiresBeforePurchase, warrantyTermEndDate } from '@/lib/warranties';
 import type { Payee } from '@/types/payee';
+import type { StagedAttachment } from '@/types/attachment';
 import {
   WARRANTY_KINDS,
   WARRANTY_MAX_SERIAL_NUMBERS,
@@ -37,7 +41,7 @@ import {
 
 const logger = createLogger('WarrantyForm');
 
-/** How the form says when cover ends; only a date or lifetime is submitted. */
+/** How the form says when coverage ends; only a date or lifetime is submitted. */
 export type WarrantyExpiryMode = 'date' | 'duration' | 'lifetime';
 const EXPIRY_MODES: readonly WarrantyExpiryMode[] = ['date', 'duration', 'lifetime'];
 
@@ -159,7 +163,14 @@ interface WarrantyFormProps {
   warranty?: Warranty;
   /** Starting values for a new warranty (ignored when editing). */
   prefill?: WarrantyPrefill;
-  onSubmit: (data: CreateWarrantyData) => Promise<void>;
+  /**
+   * Save the warranty and resolve with the saved row; reject to keep the form
+   * open. A new warranty's staged documents are uploaded to the row it
+   * resolves with, so the host closes the form in `onSuccess`, not here.
+   */
+  onSubmit: (data: CreateWarrantyData) => Promise<Warranty>;
+  /** The save and any staged uploads are done: close the form and reload. */
+  onSuccess: () => void;
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
   submitRef?: MutableRefObject<(() => void) | null>;
@@ -210,16 +221,39 @@ function initialValues(
   };
 }
 
+/** Join file names in the reader's locale, so no separator is written here. */
+function formatNameList(locale: string, names: string[]): string {
+  try {
+    return new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(names);
+  } catch {
+    return new Intl.ListFormat(undefined, { style: 'long', type: 'conjunction' }).format(names);
+  }
+}
+
 /**
  * Create or edit a warranty. The duration helper works out `expiresOn` from
  * the purchase date as a convenience and the form submits that date; the
  * DTO's `term` is for the importer and the API.
+ *
+ * A new warranty can carry documents: they are staged here and uploaded to
+ * the warranty once it exists, as the New Transaction window does. An
+ * existing warranty's documents are managed on its detail page.
  */
-export function WarrantyForm({ warranty, prefill, onSubmit, onCancel, onDirtyChange, submitRef }: WarrantyFormProps) {
+export function WarrantyForm({
+  warranty,
+  prefill,
+  onSubmit,
+  onSuccess,
+  onCancel,
+  onDirtyChange,
+  submitRef,
+}: WarrantyFormProps) {
   const t = useTranslations('warranties');
+  const locale = useLocale();
   const { defaultCurrency } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const [payees, setPayees] = useState<Payee[]>([]);
+  const [stagedDocuments, setStagedDocuments] = useState<StagedAttachment[]>([]);
 
   // The vendor picker offers the payee list; a failed load leaves it a plain
   // text field, which is still a vendor the server accepts.
@@ -253,12 +287,45 @@ export function WarrantyForm({ warranty, prefill, onSubmit, onCancel, onDirtyCha
   });
 
   const transactionId = warranty ? undefined : (prefill?.transactionId ?? undefined);
-  const handleValid = useCallback(
-    (data: WarrantyFormData) => onSubmit(toWarrantyPayload(data, transactionId)),
-    [onSubmit, transactionId],
+
+  // Upload the documents staged in the New Warranty window to the warranty
+  // just created. The warranty already exists at this point, so a failed
+  // upload is reported by name but never undoes the save.
+  const uploadStagedDocuments = useCallback(
+    async (warrantyId: string) => {
+      const failed: string[] = [];
+      for (const { file, original } of stagedDocuments) {
+        try {
+          // A scan pair goes in ONE request, which is what makes it a pair.
+          await attachmentsApi.upload({ warrantyId }, file, original);
+        } catch (error) {
+          failed.push(file.name);
+          logger.error('Failed to upload a staged document:', error);
+        }
+      }
+      if (failed.length > 0) {
+        toast.error(
+          t('documents.uploadFailedAfterCreate', {
+            count: failed.length,
+            names: formatNameList(locale, failed),
+          }),
+        );
+      }
+    },
+    [stagedDocuments, t, locale],
   );
 
-  useFormDirtyNotify(isDirty, onDirtyChange);
+  const handleValid = useCallback(
+    async (data: WarrantyFormData) => {
+      const saved = await onSubmit(toWarrantyPayload(data, transactionId));
+      if (!warranty) await uploadStagedDocuments(saved.id);
+      onSuccess();
+    },
+    [onSubmit, onSuccess, transactionId, warranty, uploadStagedDocuments],
+  );
+
+  // A staged document is an unsaved change: closing the window drops it.
+  useFormDirtyNotify(isDirty || stagedDocuments.length > 0, onDirtyChange);
   useFormSubmitRef(submitRef, handleSubmit, handleValid);
 
   const expiryMode = useWatch({ control, name: 'expiryMode' });
@@ -544,6 +611,16 @@ export function WarrantyForm({ warranty, prefill, onSubmit, onCancel, onDirtyCha
         />
         {errors.notes && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.notes.message}</p>}
       </div>
+
+      {/* A new warranty's documents are staged and uploaded once it has been
+          created; an existing warranty's are managed on its detail page. */}
+      {!warranty && (
+        <AttachmentsSection
+          stagedFiles={stagedDocuments}
+          onStagedFilesChange={setStagedDocuments}
+          stagedFor="warranty"
+        />
+      )}
 
       <FormActions
         onCancel={onCancel}

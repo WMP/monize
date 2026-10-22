@@ -190,6 +190,9 @@
   "documents": {
     "title": "文档",
     "empty": "还没有文档",
+    "pendingHint": "保存保修后将上传文档。",
+    "tooMany": "每个保修最多 {max} 个文档",
+    "uploadFailedAfterCreate": "已添加保修，但{count, plural, one {此文档} other {这些文档}}无法上传：{names}。请从保修的“文档”部分添加。",
     "kindFor": "{name} 的文档类型",
     "kindUpdateFailed": "更改文档类型失败",
     "kinds": {

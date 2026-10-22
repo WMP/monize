@@ -172,7 +172,7 @@ server will refuse is worse than an absent one.
 ## An attachment is opened in `AttachmentPreviewDialog`, never downloaded from a row
 
 Clicking an attachment previews it; Download is a footer action of the preview.
-A warranty's documents are `AttachmentsSection` with a warranty parent (`{ warrantyId }`, wrapped by `WarrantyDocumentsSection`), never a second uploader.
+A warranty's documents are `AttachmentsSection` with a warranty parent (`{ warrantyId }`, wrapped by `WarrantyDocumentsSection`), never a second uploader; a new warranty's are its staged mode with `stagedFor="warranty"`, which `WarrantyForm` uploads once the warranty exists.
 Four rules the viewer holds, each with a test:
 
 - **Bytes come through `attachmentsApi.fetchBytes`**, never a bare `<img src>`

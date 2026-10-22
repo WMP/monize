@@ -146,16 +146,20 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
 
   const warranty = loaded !== null && loaded.id === warrantyId ? loaded.warranty : null;
 
-  const handleFormSubmit = async (data: CreateWarrantyData) => {
+  const handleFormSubmit = async (data: CreateWarrantyData): Promise<Warranty> => {
     try {
-      await warrantiesApi.update(warrantyId, data);
+      const updated = await warrantiesApi.update(warrantyId, data);
       toast.success(t('page.toasts.updated'));
-      close();
-      reload();
+      return updated;
     } catch (error) {
       toast.error(getErrorMessage(error, t('page.toasts.updateFailed')));
       throw error;
     }
+  };
+
+  const handleFormSuccess = () => {
+    close();
+    reload();
   };
 
   // The purchase opens in the register's edit window, loaded whole as the
@@ -287,6 +291,7 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
             key={editingItem?.id ?? 'edit'}
             warranty={editingItem}
             onSubmit={handleFormSubmit}
+            onSuccess={handleFormSuccess}
             onCancel={close}
             onDirtyChange={setFormDirty}
             submitRef={formSubmitRef}

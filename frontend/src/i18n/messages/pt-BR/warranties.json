@@ -190,6 +190,9 @@
   "documents": {
     "title": "Documentos",
     "empty": "Ainda não há documentos",
+    "pendingHint": "Os documentos serão enviados quando você salvar a garantia.",
+    "tooMany": "Máximo de {max} documentos por garantia",
+    "uploadFailedAfterCreate": "Garantia adicionada, mas não foi possível enviar {count, plural, one {este documento} other {estes documentos}}: {names}. {count, plural, one {Adicione-o} other {Adicione-os}} na seção Documentos da garantia.",
     "kindFor": "Tipo de documento de {name}",
     "kindUpdateFailed": "Falha ao alterar o tipo de documento",
     "kinds": {

@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "[XX-Warranties-XX]",
-    "subtitle": "[XX-What you bought, when its cover ends, and who sold it-XX]",
+    "subtitle": "[XX-What you bought, when its coverage ends, and who sold it-XX]",
     "newButton": "[XX-Add warranty-XX]",
     "exportButton": "[XX-Export CSV-XX]",
     "importButton": "[XX-Import CSV-XX]",
@@ -39,7 +39,7 @@
     },
     "empty": {
       "title": "[XX-No warranties yet-XX]",
-      "description": "[XX-Add a warranty to keep track of when its cover ends.-XX]",
+      "description": "[XX-Add a warranty to keep track of when its coverage ends.-XX]",
       "filteredTitle": "[XX-No warranties match-XX]",
       "filteredDescription": "[XX-Try another status, or clear the search.-XX]",
       "archivedTitle": "[XX-No archived warranties-XX]"
@@ -118,7 +118,7 @@
     "kindLabel": "[XX-Warranty type-XX]",
     "purchaseDateLabel": "[XX-Purchase date-XX]",
     "expiry": {
-      "label": "[XX-Cover ends-XX]",
+      "label": "[XX-Coverage ends-XX]",
       "date": "[XX-On a date-XX]",
       "duration": "[XX-After a duration-XX]",
       "lifetime": "[XX-Never-XX]",
@@ -190,6 +190,9 @@
   "documents": {
     "title": "[XX-Documents-XX]",
     "empty": "[XX-No documents yet-XX]",
+    "pendingHint": "[XX-Documents will be uploaded when you save the warranty.-XX]",
+    "tooMany": "[XX-Maximum {max} documents per warranty-XX]",
+    "uploadFailedAfterCreate": "[XX-Warranty added, but {count, plural, one {this document} other {these documents}} could not be uploaded: {names}. Add {count, plural, one {it} other {them}} from the warranty's Documents section.-XX]",
     "kindFor": "[XX-Document type for {name}-XX]",
     "kindUpdateFailed": "[XX-Failed to change the document type-XX]",
     "kinds": {

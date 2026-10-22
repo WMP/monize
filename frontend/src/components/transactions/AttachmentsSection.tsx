@@ -33,7 +33,8 @@ const logger = createLogger('AttachmentsSection');
  * documents, each row carrying its document kind; a new document is stored
  * as `other` and the reader sets its kind on its row. Staged mode: holds files
  * client-side for a transaction that does not exist yet (the New Transaction
- * window); the parent form uploads them once the transaction has been created.
+ * window, or the New Warranty window with `stagedFor: 'warranty'`); the parent
+ * form uploads them once the transaction or warranty has been created.
  */
 type AttachmentsSectionProps =
   | { transactionId: string }
@@ -48,6 +49,12 @@ type AttachmentsSectionProps =
   | {
       stagedFiles: StagedAttachment[];
       onStagedFilesChange: (files: StagedAttachment[]) => void;
+      /**
+       * The row the files will be uploaded to once it exists. A warranty's
+       * staged files are its Documents, and say so; the default is a
+       * transaction's attachments.
+       */
+      stagedFor?: SavedParentKind;
     };
 
 type SavedParentKind = 'transaction' | 'warranty';
@@ -57,8 +64,9 @@ type SavedParentKind = 'transaction' | 'warranty';
  * Validate a freshly selected file against the shared limits. Returns a
  * translated error message when the file is rejected, or null when it is
  * acceptable. `currentCount` is the number of attachments already present
- * (existing + pending) so the per-transaction cap is enforced consistently in
- * both modes.
+ * (existing + pending) so the per-parent cap is enforced consistently in
+ * both modes; `tooManyMessage` names the parent (a transaction's attachments
+ * or a warranty's documents).
  */
 function validateSelection(
   file: File,
@@ -67,9 +75,10 @@ function validateSelection(
   // A pure function cannot call the hook, so the component hands its formatter
   // down -- the `NumberFormatters` pattern, for one formatter.
   formatBytes: (bytes: number) => string,
+  tooManyMessage: string,
 ): string | null {
   if (currentCount >= MAX_ATTACHMENTS_PER_TRANSACTION) {
-    return t('tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION });
+    return tooManyMessage;
   }
   if (!ACCEPTED_ATTACHMENT_TYPES.includes(file.type)) {
     return t('unsupported');
@@ -93,6 +102,7 @@ function validateSelection(
 function AttachmentsHeader({
   children,
   heading,
+  label,
 }: {
   children: React.ReactNode;
   /**
@@ -101,6 +111,8 @@ function AttachmentsHeader({
    * field of a form.
    */
   heading?: string;
+  /** A field label in place of "Attachments", for a form that is not a transaction's. */
+  label?: string;
 }) {
   const t = useTranslations('attachments');
   return (
@@ -114,7 +126,7 @@ function AttachmentsHeader({
         </h2>
       ) : (
         <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          {t('title')}
+          {label ?? t('title')}
         </span>
       )}
       <div
@@ -239,6 +251,9 @@ function SavedAttachments({
   const { formatBytes } = useNumberFormat();
   const groupIdPrefix = useId();
   const isWarranty = parentKind === 'warranty';
+  const tooManyMessage = isWarranty
+    ? tw('documents.tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION })
+    : t('tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION });
   const parent = useMemo<AttachmentParent>(
     () =>
       parentKind === 'warranty'
@@ -303,7 +318,7 @@ function SavedAttachments({
 
   const handleFileSelected = async (file: File) => {
     if (ownCount === null) return;
-    const error = validateSelection(file, ownCount, t, formatBytes);
+    const error = validateSelection(file, ownCount, t, formatBytes, tooManyMessage);
     if (error) {
       toast.error(error);
       return;
@@ -341,7 +356,7 @@ function SavedAttachments({
   const handleScanSelected = (file: File) => {
     if (ownCount === null) return;
     if (ownCount >= MAX_ATTACHMENTS_PER_TRANSACTION) {
-      toast.error(t('tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION }));
+      toast.error(tooManyMessage);
       return;
     }
     setScanning(file);
@@ -629,18 +644,25 @@ function SavedAttachments({
 }
 
 /**
- * Holds files client-side for a transaction that does not exist yet. Selected
- * files are validated the same way as saved uploads and previewed locally; the
- * parent form uploads them once it has created the transaction.
+ * Holds files client-side for a transaction or warranty that does not exist
+ * yet. Selected files are validated the same way as saved uploads and
+ * previewed locally; the parent form uploads them once it has created the row.
  */
 function StagedAttachments({
   files,
   onChange,
+  stagedFor,
 }: {
   files: StagedAttachment[];
   onChange: (files: StagedAttachment[]) => void;
+  stagedFor: SavedParentKind;
 }) {
   const t = useTranslations('attachments');
+  const tw = useTranslations('warranties');
+  const isWarranty = stagedFor === 'warranty';
+  const tooManyMessage = isWarranty
+    ? tw('documents.tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION })
+    : t('tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION });
   const { formatBytes } = useNumberFormat();
   const [scanning, setScanning] = useState<File | null>(null);
   /** The staged entry open in the preview, or null when it is closed. */
@@ -671,7 +693,7 @@ function StagedAttachments({
   );
 
   const handleFileSelected = (file: File) => {
-    const error = validateSelection(file, files.length, t, formatBytes);
+    const error = validateSelection(file, files.length, t, formatBytes, tooManyMessage);
     if (error) {
       toast.error(error);
       return;
@@ -682,7 +704,7 @@ function StagedAttachments({
   /** Same admission as the saved list: the cap, and nothing about the photo. */
   const handleScanSelected = (file: File) => {
     if (files.length >= MAX_ATTACHMENTS_PER_TRANSACTION) {
-      toast.error(t('tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION }));
+      toast.error(tooManyMessage);
       return;
     }
     setScanning(file);
@@ -715,7 +737,7 @@ function StagedAttachments({
 
   return (
     <div className="space-y-2">
-      <AttachmentsHeader>
+      <AttachmentsHeader label={isWarranty ? tw('documents.title') : undefined}>
         <ScanDocumentControl
           onFileSelected={handleScanSelected}
           onReady={rememberScanPicker}
@@ -728,7 +750,9 @@ function StagedAttachments({
       </AttachmentsHeader>
 
       {files.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">{t('empty')}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {isWarranty ? tw('documents.empty') : t('empty')}
+        </p>
       ) : (
         <>
           <ul className="space-y-2">
@@ -786,7 +810,7 @@ function StagedAttachments({
             })}
           </ul>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {t('pendingHint')}
+            {isWarranty ? tw('documents.pendingHint') : t('pendingHint')}
           </p>
         </>
       )}
@@ -840,6 +864,7 @@ export function AttachmentsSection(props: AttachmentsSectionProps) {
     <StagedAttachments
       files={props.stagedFiles}
       onChange={props.onStagedFilesChange}
+      stagedFor={props.stagedFor ?? 'transaction'}
     />
   );
 }

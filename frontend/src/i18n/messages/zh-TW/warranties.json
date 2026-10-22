@@ -190,6 +190,9 @@
   "documents": {
     "title": "文件",
     "empty": "尚無文件",
+    "pendingHint": "儲存保固後將上傳文件。",
+    "tooMany": "每個保固最多 {max} 個文件",
+    "uploadFailedAfterCreate": "已新增保固，但{count, plural, one {此文件} other {這些文件}}無法上傳：{names}。請從保固的「文件」區段新增。",
     "kindFor": "{name} 的文件類型",
     "kindUpdateFailed": "變更文件類型失敗",
     "kinds": {

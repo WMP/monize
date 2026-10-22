@@ -540,6 +540,31 @@ describe('AttachmentsSection', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
       expect(onChange).toHaveBeenCalledWith([]);
     });
+
+    it("speaks of a new warranty's documents, not a transaction's attachments", () => {
+      render(
+        <AttachmentsSection stagedFiles={[]} onStagedFilesChange={vi.fn()} stagedFor="warranty" />,
+      );
+      expect(screen.getByText('Documents')).toBeInTheDocument();
+      expect(screen.getByText('No documents yet')).toBeInTheDocument();
+      expect(screen.queryByText('Attachments')).not.toBeInTheDocument();
+    });
+
+    it("holds a new warranty to ten documents and says so in the warranty's words", () => {
+      const ten = Array.from({ length: 10 }, () => ({ file: fileOfType('image/png') }));
+      const onChange = vi.fn();
+      render(
+        <AttachmentsSection stagedFiles={ten} onStagedFilesChange={onChange} stagedFor="warranty" />,
+      );
+      expect(screen.getByText('Documents will be uploaded when you save the warranty.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Add attachment' })).toBeDisabled();
+
+      fireEvent.change(screen.getByLabelText('Add attachment'), {
+        target: { files: [fileOfType('image/png')] },
+      });
+      expect(onChange).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith('Maximum 10 documents per warranty');
+    });
   });
 
   describe('with a warranty parent', () => {

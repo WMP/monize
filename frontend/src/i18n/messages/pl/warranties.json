@@ -190,6 +190,9 @@
   "documents": {
     "title": "Dokumenty",
     "empty": "Nie ma jeszcze dokumentów",
+    "pendingHint": "Dokumenty zostaną przesłane po zapisaniu gwarancji.",
+    "tooMany": "Maksymalnie {max} dokumentów na gwarancję",
+    "uploadFailedAfterCreate": "Gwarancja dodana, ale nie udało się przesłać {count, plural, one {tego dokumentu} few {tych dokumentów} many {tych dokumentów} other {tych dokumentów}}: {names}. Dodaj {count, plural, one {go} few {je} many {je} other {je}} w sekcji Dokumenty gwarancji.",
     "kindFor": "Rodzaj dokumentu dla {name}",
     "kindUpdateFailed": "Nie udało się zmienić rodzaju dokumentu",
     "kinds": {
