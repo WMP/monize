@@ -108,7 +108,7 @@ Severity-ordered. IDs `A26-S21-nn`.
 
     with a `docker-compose.smoke.yml` overlay setting `image: monize-backend:smoke` / `monize-frontend:smoke`, `NODE_ENV: production` and a named volume at `/data/backups`. Maintainer decision: run the whole E2E suite on production images (stronger, slower) or keep a boot smoke beside the development-image E2E.
 12. **Recommended regression test:** the smoke job itself; plus a guard that every image the publish jobs build (`target: production`) is also built by a job in their `needs:`.
-13. **Suggested regression-test diff:** a case in `backend/src/common/ci-images.guard.spec.ts` (it already parses the workflows) asserting that the set of `target:` values pushed by `build-and-push` / `build-preview` is a subset of the targets built by a gate listed in `needs:`.
+13. **Suggested regression-test diff:** a case in `backend/src/common/ci-images.guard.spec.ts` (it already reads the workflow and compose text) asserting that the set of `target:` values pushed by `build-and-push` / `build-preview` is a subset of the targets built by a gate listed in `needs:`.
 14. **Verification method:** mutation: add `import "supertest";` to `backend/src/main.ts` (a devDependency) and confirm the new job fails while the other gates stay green.
 15. **Residual risks:** a boot smoke does not exercise the production paths of individual features; only running E2E on the production images does. The workflow change itself is under `.github/` and needs maintainer agreement (`AGENTS.md`).
 
@@ -174,10 +174,12 @@ Causality: `PRE_EXISTING_UNREPORTED` (the upstream audit lists "E2E development 
 13. **Suggested regression-test diff:** add to `backend/src/common/ci-images.guard.spec.ts`:
 
 ```ts
+// The spec reads workflow text (it has no YAML parser); keep it textual.
 it("publishes no consumer-facing tag before the CVE gate", () => {
-  const steps = job("build-and-push").steps;
-  const gate = steps.findIndex((s) => s.name === "Fail on critical CVEs");
-  const tagged = steps.findIndex((s) => /:latest|outputs\.version/.test(String(s.with?.tags ?? "")));
+  const ci = readFileSync(join(requireRepoRoot(), ".github/workflows/ci.yml"), "utf8");
+  const job = ci.slice(ci.indexOf("\n  build-and-push:"), ci.indexOf("\n  release:"));
+  const gate = job.indexOf("name: Fail on critical CVEs");
+  const tagged = job.search(/\$\{\{ matrix\.image \}\}:(latest|\$\{\{ needs\.prepare-release\.outputs\.version)/);
   expect(gate).toBeGreaterThan(-1);
   expect(tagged === -1 || tagged > gate).toBe(true);
 });
@@ -313,6 +315,52 @@ Causality: `PRE_EXISTING_UNREPORTED` (S01 handed DR-S01-5 and the shard note to 
 
 Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the push tooling postdates `d5cea9bf`). Also a documentation inconsistency (MON-L07 residual, section 11).
 
+### A26-S21-07 -- Coverage excludes every DTO, and two cross-field or privacy constraints that live only there are held by no test
+
+1. **Severity:** LOW (test coverage; the code is correct at the baseline)
+2. **Confidence:** high (executed)
+3. **Location:** `backend/package.json` `jest.collectCoverageFrom` `"!src/**/*.dto.ts"` (also `*.entity.ts`, `*.module.ts`); `backend/src/emergency-access/dto/upsert-settings.dto.ts:12-36` (`ReminderLtGrantConstraint`, the only place `reminderAfterDays < grantAfterDays` is enforced: the monitor, `emergency-access-monitor.service.ts:892`, only compares days since login with each threshold); `backend/src/backup/support-backup/dto/create-support-backup.dto.ts:36-56` (`IsNonIntegerMultiplierConstraint`: the de-identifying multiplier must not be an integer); 26 DTO files carry 46 `@Transform` decorators and five carry custom constraints, three of them with no spec of their own.
+4. **Violated invariant:** S21-I5 (the coverage gate measures the code that carries behaviour) and S21-I4.
+5. **Reproduction (executed in the scratch worktree):** (a) `ReminderLtGrantConstraint.validate` -> `return true`: `npx jest src/emergency-access` 4 suites, 128 tests, all pass. (b) `IsNonIntegerMultiplierConstraint.validate` without `!Number.isInteger(value)`: `npx jest src/backup/support-backup` 5 suites, 64 tests, all pass. No integration suite goes through HTTP (0 of 118 import `supertest`; `emergency-access-grant-cycles.integration.spec.ts:198` calls `upsertSettings` directly), and no E2E spec sets `reminderAfterDays`.
+6. **Observed:** with (a), an owner can save "remind after 30 days, grant after 7": the monitor grants the emergency contact access on day 7 and the owner's warning never precedes it. With (b), a support backup can be made with multiplier 2, so every private amount is recoverable by halving.
+7. **Expected:** each cross-field or privacy rule in a DTO is pinned by a `validate()`-level spec, and the coverage gate counts DTO files (their decorators execute at import, so including them costs nothing but exposes untested constraint and transform bodies).
+8. **Impact:** security and privacy rules that one refactor can drop with every gate green; no present-day defect.
+9. **Root cause:** DTOs were excluded as declarative files; some now hold logic.
+10. **Recommended correction:** drop `!src/**/*.dto.ts` from `collectCoverageFrom` (check the thresholds still hold) and add the two specs.
+11. **Suggested remediation diff (illustrative, not applied):**
+
+```diff
+--- a/backend/package.json
++++ b/backend/package.json
+     "collectCoverageFrom": [
+       "src/**/*.(t|j)s",
+       "!src/main.ts",
+       "!src/**/*.module.ts",
+       "!src/**/*.entity.ts",
+-      "!src/**/*.dto.ts",
+       "!src/database/seed*.ts",
+```
+
+12. **Recommended regression test / 13. Suggested regression-test diff (illustrative, not applied):**
+
+```ts
+// backend/src/emergency-access/dto/upsert-settings.dto.spec.ts
+import { plainToInstance } from "class-transformer";
+import { validateSync } from "class-validator";
+import { UpsertSettingsDto } from "./upsert-settings.dto";
+
+it("refuses a reminder that does not come before the grant", () => {
+  const dto = plainToInstance(UpsertSettingsDto, { enabled: true, grantAfterDays: 7, reminderAfterDays: 7 });
+  expect(validateSync(dto).map((e) => e.property)).toContain("reminderAfterDays");
+});
+```
+
+    and the same shape for `CreateSupportBackupDto` with `multiplier: 2`.
+14. **Verification:** re-apply both mutations; the new specs must fail.
+15. **Residual:** excluding `*.entity.ts` was tested the same way and is held: the entity `numericTransformer` mutation `null -> 0` in `investment-transaction.entity.ts:22-26` is killed by `security-transfer.integration.spec.ts` ("is stored as unknown for ADD_SHARES"). The frontend exclusion of `src/proxy.ts` hides nothing measurable either: measured alone, its own tests cover it at 97.05 % statements, 95.16 % branches, 100 % functions.
+
+Causality: `PRE_EXISTING_UNREPORTED`.
+
 ## 5. Prior-finding dispositions
 
 | MON | Disposition | Evidence |
@@ -335,7 +383,11 @@ Causality: `NEW_SINCE_UPSTREAM_AUDIT` (the push tooling postdates `d5cea9bf`). A
 | S21-I7 | `import "supertest";` (devDependency) in `backend/src/main.ts` | none: no lint rule, unit and integration do not load `main.ts` at production install, E2E uses the development image (traced, not executed) | **undetected** (A26-S21-01) |
 | S21-I6 | `/data/backups` mounted root-owned for uid 1001 (the baseline Compose default) | none: E2E runs as root (probe executed) | **undetected** (A26-S21-03) |
 | INV-RELEASE-001 | CVE gate moved before the push (the fix of A26-S21-02), and its reverse | none: no workflow self-test exists | **undetected** |
-| S21-I3 | `report-currency.service.ts:113-118` return `null` instead of `amount` (the contract-correct behaviour) | `report-currency.service.spec.ts:213` "returns original amount when no rate is available" fails | detected **by a known-wrong test** (it protects the defect) |
+| S21-I3 | `report-currency.service.ts:113-118` return `null` instead of `amount` (the contract-correct behaviour) | `report-currency.service.spec.ts:213` "returns original amount when no rate is available" fails (`toBe(1000)`; reasoned from the assertion, not executed) | detected **by a known-wrong test** (it protects the defect) |
+| S21-I5 | `emergency-access/dto/upsert-settings.dto.ts:16` `return true` | none: `src/emergency-access` 128/128 (executed) | **undetected** (A26-S21-07) |
+| S21-I5 | `support-backup/dto/create-support-backup.dto.ts:42` drop `!Number.isInteger` | none: `src/backup/support-backup` 64/64 (executed) | **undetected** (A26-S21-07) |
+| S21-I5 | `securities/entities/investment-transaction.entity.ts:24-25` `null -> 0` | `security-transfer.integration.spec.ts` (1 failed, 69 passed, executed) | covered |
+| S21-I5 | `frontend/vitest.config.ts:23` exclusion removed, coverage of `src/proxy.ts` measured | n/a (measurement: 97.05 / 95.16 / 100 / 97.01) | no hidden gap |
 
 ### 6.2 Program-wide table (undetected rows of S01..S18, merged; S19 and S20 had no section 6 when merged)
 
@@ -379,7 +431,8 @@ Secondary rows (not counted above; see the session reports): 32 rows "covered" o
 | `zizmor ... \|\| true` hides workflow findings | SARIF is uploaded to code scanning; not a gate by design | visibility choice, documented in the job | DESIGN_RISK (not listed) |
 | Unconfirmed known-wrong tests 2-4 still present | override price: `PostTransactionDialog.test.tsx:1426`, `OverrideEditorDialog.test.tsx:698` assert the override is kept; logout: `AppHeader.test.tsx:204` "does not claim success when authApi.logout fails", `auth.controller.spec.ts:1099`; backup naming: no filename assertion found, the located backup known-wrong tests are the cross-owner sweep (A26-S06-01) | corrected or replaced | REJECTED (items 2, 3); item 4 superseded by A26-S06-01's tests; item 1 CONFIRMED (section 10) |
 | `net-worth.service.spec.ts:1961` "returns amount unconverted when no rate exists" is known-wrong | the body asserts the gap (comment "NOT applied as 1:1 (audit P5-009)") | the title is stale, the assertion is right | REJECTED (doc nit, section 11) |
-| Entity numeric transformers excluded from coverage hide a defect | 31 entity files define local `numericTransformer` / `decimalTransformer` / `dateTransformer`; excluded by `!src/**/*.entity.ts` | pending the C3 mutation run | open (section 12) |
+| Entity numeric transformers excluded from coverage hide a defect | 31 entity files define local transformers; mutation `investment-transaction.entity.ts:22-26` `null -> 0` run against 8 investment integration suites | killed: `security-transfer.integration.spec.ts` fails (`Received: 0`), 69 others pass | REJECTED (held at integration) |
+| `frontend/src/proxy.ts` (CSP nonce, auth redirect, API proxy) excluded from coverage hides an untested file | coverage measured with the exclusion removed, its five test files only | 97.05 % statements, 95.16 % branches, 100 % functions | REJECTED (the exclusion is unexplained but hides nothing today) |
 
 ## 9. Design risks
 
