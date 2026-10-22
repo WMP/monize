@@ -81,6 +81,67 @@ function assertTransactionCreateRedoable(action: ActionHistory): void {
   });
 }
 
+/**
+ * Account columns an undo or redo never writes back from a snapshot.
+ *
+ * `current_balance` is derived from the ledger: restoring the edit-time figure
+ * erased every movement no action recorded since (the due-balance cron, a
+ * bank sync, a grantee's posting), leaving chequing at 5,000.00 beside a
+ * ledger of 4,800.00 (A26-H06). The rest are lifecycle and pairing state the
+ * account edit does not change; close, reopen and pairing have their own
+ * paths with their own checks.
+ */
+const ACCOUNT_UNDO_DERIVED_FIELDS = [
+  "currentBalance",
+  "isClosed",
+  "closedDate",
+  "linkedAccountId",
+] as const;
+
+/**
+ * A loan's columns that `AccountsService.update` couples to its payment
+ * template: a change to any of them reprices the template or relinks its
+ * interest line in the same transaction (INV-LOAN-007, INV-LOAN-010). A
+ * snapshot restore replays the column and not the coupling, so the bill kept
+ * the other method's installment, or the template stopped being managed.
+ */
+const LOAN_TEMPLATE_FIELDS = [
+  "mortgageType",
+  "prepaymentMode",
+  "amortizationMonths",
+  "originalPrincipal",
+  "paymentAmount",
+  "paymentFrequency",
+  "interestCategoryId",
+  "sourceAccountId",
+  "scheduledTransactionId",
+  "paymentMatchingRuleId",
+] as const;
+
+/**
+ * Refuses, before anything is written, the undo or redo of an account edit
+ * that changed a template-coupled column of a loan with a schedule: the user
+ * edits the loan back, which runs the reprice and relink.
+ */
+function assertAccountEditUndoable(action: ActionHistory): void {
+  const before = action.beforeData ?? {};
+  const after = action.afterData ?? {};
+  if (!(before.scheduledTransactionId ?? after.scheduledTransactionId)) return;
+  const changed = LOAN_TEMPLATE_FIELDS.some(
+    (field) =>
+      JSON.stringify(before[field] ?? null) !==
+      JSON.stringify(after[field] ?? null),
+  );
+  if (!changed) return;
+  throw new ConflictException({
+    message: tr(
+      "errors.actionHistory.loanEditNotUndoable",
+      "This loan change cannot be undone automatically. Edit the loan to change it back.",
+    ),
+    errorCode: "LOAN_EDIT_NOT_UNDOABLE",
+  });
+}
+
 export interface RecordActionParams {
   entityType: string;
   entityId: string | null;
@@ -575,7 +636,7 @@ export class ActionHistoryService {
         await this.undoSimpleEntity(action, manager, Tag, "tags");
         break;
       case "account":
-        await this.undoSimpleEntity(action, manager, Account, "accounts");
+        await this.undoAccount(action, manager);
         break;
       case "scheduled_transaction":
         await this.undoSimpleEntity(
@@ -1719,6 +1780,38 @@ export class ActionHistoryService {
           error instanceof Error ? error.message : String(error)
         }`,
       );
+    }
+  }
+
+  /**
+   * An account edit's undo or redo restores what the user edited and never
+   * what is derived (A26-H06): the derived and lifecycle columns are left out,
+   * a restored opening balance recomputes `current_balance` from the ledger
+   * under the balance-write lock, and a loan's template-coupled change is
+   * refused rather than restored without its reprice and relink.
+   */
+  private async undoAccount(
+    action: ActionHistory,
+    manager: EntityManager,
+  ): Promise<void> {
+    if (action.action !== "update") {
+      await this.undoSimpleEntity(action, manager, Account, "accounts");
+      return;
+    }
+    assertAccountEditUndoable(action);
+    const beforeData = { ...(action.beforeData ?? {}) };
+    for (const field of ACCOUNT_UNDO_DERIVED_FIELDS) delete beforeData[field];
+    await this.undoSimpleEntity(
+      { ...action, beforeData },
+      manager,
+      Account,
+      "accounts",
+    );
+    const openingRestored =
+      JSON.stringify(action.beforeData?.openingBalance ?? null) !==
+      JSON.stringify(action.afterData?.openingBalance ?? null);
+    if (action.entityId && openingRestored) {
+      await this.recalculateBalance(action.userId, action.entityId, manager);
     }
   }
 

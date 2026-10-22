@@ -81,6 +81,7 @@
     "paymentMatchingFailed": "[XX-The loan was saved, but its payment matching rule could not be created. Create it from the loan's details.-XX]"
   },
   "actionHistory": {
+    "loanEditNotUndoable": "[XX-This loan change cannot be undone automatically. Edit the loan to change it back.-XX]",
     "nothingToUndo": "[XX-Nothing to undo-XX]",
     "nothingToRedo": "[XX-Nothing to redo-XX]",
     "undoNotSupportedForEntityType": "[XX-Undo not supported for entity type: {{ entityType }}-XX]",

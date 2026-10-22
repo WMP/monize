@@ -2138,6 +2138,89 @@ describe("ActionHistoryService", () => {
       expect(mockQueryRunner.manager.delete).toHaveBeenCalled();
     });
 
+    it("undoes an account edit without writing derived or lifecycle columns back (A26-H06)", async () => {
+      const action = {
+        ...mockAction,
+        entityType: "account",
+        action: "update",
+        entityId: "acc-1",
+        beforeData: {
+          id: "acc-1",
+          name: "Chequing",
+          openingBalance: 5000,
+          currentBalance: 5000,
+          isClosed: false,
+          closedDate: null,
+          linkedAccountId: null,
+        },
+        afterData: {
+          id: "acc-1",
+          name: "Renamed",
+          openingBalance: 5000,
+          currentBalance: 5000,
+          isClosed: false,
+          closedDate: null,
+          linkedAccountId: null,
+        },
+      };
+      mockRepository.findOne.mockResolvedValue(action);
+      mockQueryRunner.manager.update.mockResolvedValue({ affected: 1 });
+
+      await service.undo(userId);
+
+      const accountUpdate = mockQueryRunner.manager.update.mock.calls.find(
+        (call: unknown[]) => call[1] === "acc-1",
+      );
+      expect(accountUpdate[2]).toEqual({
+        name: "Chequing",
+        openingBalance: 5000,
+      });
+      // The opening balance did not change, so nothing is recomputed.
+      expect(mockQueryRunner.query).not.toHaveBeenCalledWith(
+        expect.stringContaining("SET current_balance"),
+        expect.anything(),
+      );
+    });
+
+    it.each([
+      [
+        "a method change",
+        { mortgageType: "ANNUITY" },
+        { mortgageType: "LINEAR" },
+      ],
+      [
+        "an interest-category change",
+        { interestCategoryId: "cat-a" },
+        { interestCategoryId: "cat-b" },
+      ],
+    ])(
+      "refuses undo of %s on a loan with a schedule, writing nothing (A26-H06)",
+      async (_label, beforeLoan, afterLoan) => {
+        const action = {
+          ...mockAction,
+          entityType: "account",
+          action: "update",
+          entityId: "loan-1",
+          beforeData: {
+            id: "loan-1",
+            scheduledTransactionId: "st-1",
+            ...beforeLoan,
+          },
+          afterData: {
+            id: "loan-1",
+            scheduledTransactionId: "st-1",
+            ...afterLoan,
+          },
+        };
+        mockRepository.findOne.mockResolvedValue(action);
+
+        await expect(service.undo(userId)).rejects.toBeInstanceOf(
+          ConflictException,
+        );
+        expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      },
+    );
+
     it("should undo scheduled_transaction delete", async () => {
       const action = {
         ...mockAction,

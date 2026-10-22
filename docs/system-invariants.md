@@ -518,6 +518,11 @@ Enforcement         Every absolute recompute takes the account lock before readi
                     leg (A26-H03). derived-state-writers.guard.spec.ts fails an
                     update/remove/delete/bulk method that moves a balance
                     without taking a lock itself, not only a file.
+                    Undo and redo of an account edit never write
+                    current_balance (nor is_closed, closed_date,
+                    linked_account_id) from the snapshot; a restored opening
+                    balance recomputes current_balance from the ledger under
+                    lockAccountsForBalanceWrite (A26-H06).
 Concurrency scope   per account
 Retry semantics     A recompute is idempotent against another recompute and, under
                     the lock, against a concurrent delta.
@@ -532,12 +537,14 @@ Required tests      Source scan: common/db/derived-state-writers.guard.spec.ts -
                     Two concurrent transfer edits, same and different values, on a
                     split-transfer leg and a connected cross-owner pair:
                     backend/test/integration/transfer-edit-race.integration.spec.ts.
+                    Undo of a rename after an unrecorded movement, redo, and an
+                    opening-balance undo:
+                    backend/test/integration/account-undo.integration.spec.ts.
 Status              partial
 ```
 
 Open breaches found by the 2026-10 audit, each closed in the commit that lands its
-test: undo or redo of an account edit writes
-the edit-time `current_balance` back absolutely (A26-H06); an investment-pair rename
+test: an investment-pair rename
 or re-currency saves the linked half's stale `current_balance` (A26-M13).
 
 See `docs/concurrency-and-idempotency.md` CONC-003. The former secondary breach --
@@ -3103,6 +3110,15 @@ Enforcement         Creation: createLoanAccount, createMortgageAccount
                     identifyLoanTemplate reports the relinked template
                     managed; it is a no-op (logged) for a cleared category, no
                     schedule, or an ambiguous or already-unmanaged template.
+                    Undo and redo: ActionHistoryService refuses (409
+                    errors.actionHistory.loanEditNotUndoable), before any
+                    write, the undo or redo of an account edit that changed a
+                    template-coupled column (method, prepayment mode,
+                    amortization, original principal, payment, frequency,
+                    interest category, source account, schedule or matching
+                    rule) of a loan with a schedule; the column restore alone
+                    left the template unmanaged or priced for the other method
+                    (A26-H06). backend/test/integration/account-undo.integration.spec.ts.
 Concurrency scope   per loan: the update holds the account row lock, then the
                     plan takes the schedule row lock (pessimistic_write), the
                     order reassignLoanSourceAccount and the template
