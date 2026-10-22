@@ -78,6 +78,10 @@ import {
   LlmScheduledKind,
 } from "../../scheduled-transactions/scheduled-transactions.service";
 import { BuiltInReportsService } from "../../built-in-reports/built-in-reports.service";
+import {
+  LlmWarrantyQuery,
+  WarrantiesService,
+} from "../../warranties/warranties.service";
 import { validateToolInput } from "./tool-input-schemas";
 import { AttachmentDto } from "./dto/ai-query.dto";
 import {
@@ -220,6 +224,8 @@ export class ToolExecutorService {
     // reaches BondsModule through a forwardRef (`src/module-graph.spec.ts`).
     @Inject(forwardRef(() => BondSeriesService))
     private readonly bondSeries: BondSeriesService,
+    // `list_warranties` (design decision 11).
+    private readonly warrantiesService: WarrantiesService,
   ) {}
 
   async execute(
@@ -329,6 +335,9 @@ export class ToolExecutorService {
           break;
         case "email_receipt_parsers":
           result = await this.emailReceiptParsers(userId, validatedInput);
+          break;
+        case "list_warranties":
+          result = await this.listWarranties(userId, validatedInput);
           break;
         default:
           this.logger.warn(`execute unknown tool=${toolName} user=${userId}`);
@@ -2843,6 +2852,41 @@ export class ToolExecutorService {
         {
           type: "payees",
           description: search ? `Payees matching "${search}"` : "All payees",
+        },
+      ],
+    };
+  }
+
+  /**
+   * `list_warranties` over `WarrantiesService.getLlmWarranties`, the MCP tool's
+   * own method. No account scope is passed: a delegate reaches the assistant
+   * only with READ on every account and section (`DelegateRequiresFullScope`
+   * on `AiQueryController`), so no linked purchase is theirs to be hidden
+   * from, and the answer equals what the warranties page shows them (WTY-007).
+   */
+  private async listWarranties(
+    userId: string,
+    input: Record<string, unknown>,
+  ): Promise<ToolResult> {
+    const query = input as LlmWarrantyQuery;
+    const result = await this.warrantiesService.getLlmWarranties(userId, query);
+    const count = result.warranties.length;
+    const filter = [
+      query.status && query.status !== "all" ? query.status : "",
+      query.q ? `matching "${query.q}"` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    return {
+      data: result,
+      summary: `${count} warrant${count === 1 ? "y" : "ies"}${
+        filter ? ` ${filter}` : ""
+      }${result.total > count ? ` (of ${result.total})` : ""} as of ${result.today}.`,
+      sources: [
+        {
+          type: "warranties",
+          description: filter ? `Warranties ${filter}` : "Current warranties",
         },
       ],
     };

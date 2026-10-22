@@ -22,6 +22,11 @@ import {
   MAX_RULE_TOOL_LIST_LIMIT,
 } from "../../transaction-rules/transaction-rules.limits";
 import { SEARCH_SYNTAX_SUMMARY } from "../../transactions/transaction-search-query.util";
+import {
+  LLM_WARRANTY_DEFAULT_LIMIT,
+  LLM_WARRANTY_MAX_LIMIT,
+} from "../../warranties/warranties.service";
+import { LIST_WARRANTIES_DESCRIPTION } from "./tool-input-schemas";
 
 export { RULE_LANGUAGE_GUIDE };
 
@@ -1324,6 +1329,28 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
         },
       },
       required: ["countryCode", "seriesCode"],
+    },
+  },
+  {
+    name: "list_warranties",
+    description: LIST_WARRANTIES_DESCRIPTION,
+    inputSchema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          enum: ["all", "lifetime", "active", "expiring", "expired"],
+          description: "expiring: within windowDays. Default all.",
+        },
+        q: {
+          type: "string",
+          description: "Name, vendor, model or serial.",
+        },
+        limit: {
+          type: "number",
+          description: `Default ${LLM_WARRANTY_DEFAULT_LIMIT}, at most ${LLM_WARRANTY_MAX_LIMIT}.`,
+        },
+      },
     },
   },
 ];

@@ -27,6 +27,10 @@ import {
 import { TRANSACTION_SORT_FIELDS } from "../../transactions/register-order";
 import { RULE_ACTIONS_HELP, RULE_CONDITION_HELP } from "./rule-language";
 import { RULE_TRIGGERS } from "../../transaction-rules/rule-trigger.types";
+import {
+  LLM_WARRANTY_DEFAULT_LIMIT,
+  LLM_WARRANTY_MAX_LIMIT,
+} from "../../warranties/warranties.service";
 import { MAX_RULE_ACTIONS } from "../../transaction-rules/rule-validation";
 import {
   MAX_RULE_RUN_ACCOUNTS,
@@ -1078,6 +1082,28 @@ export const fetchBondSeriesSchema = z.object({
     .describe("Series code."),
 });
 
+/**
+ * `list_warranties`, one definition for both surfaces: the MCP tool registers
+ * this schema and the description below as they are, and the assistant's
+ * definition in `tool-definitions.ts` states the same fields.
+ */
+export const LIST_WARRANTIES_DESCRIPTION =
+  "Current (unarchived) warranties, soonest expiry first. `status` and " +
+  "`daysLeft` are as of `today`: quote them, never compute from dates. " +
+  "`linkedTransactionId` is the purchase, null if unlinked; `total` counts " +
+  "all matches.";
+
+export const listWarrantiesSchema = z.object({
+  status: z
+    .enum(["all", "lifetime", "active", "expiring", "expired"])
+    .optional()
+    .describe("expiring: within windowDays. Default all."),
+  q: z.string().max(100).optional().describe("Name, vendor, model or serial."),
+  limit: numberArg(z.number().int().min(1).max(LLM_WARRANTY_MAX_LIMIT))
+    .optional()
+    .describe(`Default ${LLM_WARRANTY_DEFAULT_LIMIT}.`),
+});
+
 export const toolInputSchemas: Record<string, z.ZodSchema> = {
   list_transactions: listTransactionsSchema,
   list_accounts: listAccountsSchema,
@@ -1102,6 +1128,7 @@ export const toolInputSchemas: Record<string, z.ZodSchema> = {
   ai_review_requests: aiReviewRequestsSchema,
   email_receipt_parsers: emailReceiptParsersSchema,
   fetch_bond_series: fetchBondSeriesSchema,
+  list_warranties: listWarrantiesSchema,
 };
 
 /**
