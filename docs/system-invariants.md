@@ -727,6 +727,15 @@ Enforcement         No path writes the columns incrementally. Every ledger write
                     investment_transactions inserts that no holdings row-lock
                     covers -- so a concurrent trade cannot be replaced by a
                     projection that never saw it.
+                    update() and remove() then row-lock the investment row they
+                    read (and remove() its transfer leg) through
+                    lockUnchangedInvestmentRow
+                    (securities/investment-row-lock.util.ts) and refuse, before
+                    any write, a row that is gone (404) or no longer the one
+                    read (409): the cash row a reversal deletes and the values a
+                    save writes back are the locked row's, so a double-submitted
+                    edit cannot post its cash twice and a delete behind an edit
+                    cannot orphan the edit's cash row (A26-H04).
                     UNIQUE(account_id, security_id) still prevents duplicate rows.
                     A scope the ledger has no rows for projects to "no holding":
                     the row is deleted. Every writer takes that decision, and
@@ -770,10 +779,8 @@ Known gap           an unpriced acquisition (acquisitionCost returns null) adds
                     action; transferSecurity reads the source position's carried
                     cost before the transaction it writes in, so a concurrent
                     trade can move the basis between the read and the write;
-                    update() and remove() derive the scopes they will rebuild
-                    from a snapshot loaded before the transaction, without
-                    lockInvestmentTransactionRow, so a row that moved account or
-                    security in between is rebuilt on the old pair; and a
+                    the security-transfer edit (updateLinkedTransfer) derives
+                    both legs from snapshots loaded before its transaction; and a
                     security recorded in GBX normalizes to GBP for the provider
                     currency check (quote-currency.util.ts) while currency_code
                     stays GBX, so every reader of that column sees a unit the
@@ -781,6 +788,9 @@ Known gap           an unpriced acquisition (acquisitionCost returns null) adds
 Required tests      Two-connection (concurrent trades on one holding, the stored
                     row compared against the replay):
                     backend/test/integration/holding-concurrent-trades.integration.spec.ts.
+                    Two-connection edit/edit and edit/delete of one BUY, the
+                    funding account's cash rows and balance against its ledger:
+                    backend/test/integration/investment-edit-race.integration.spec.ts.
                     Out-of-order entry through the real service, stored row
                     compared against the replay:
                     backend/test/integration/holding-ledger-projection.integration.spec.ts.

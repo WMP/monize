@@ -33,6 +33,7 @@ import {
   lockHoldingScope,
   LockedInvestmentTransactionRow,
 } from "../common/db/locks";
+import { lockUnchangedInvestmentRow } from "./investment-row-lock.util";
 import { applyVoidTransitionToMirrorLeg } from "../transactions/void-status-transition.util";
 import { assertReconciledRowsMutable } from "../transactions/reconciled-lock.util";
 import { investmentRowHasEffect } from "./investment-row-effects.util";
@@ -4472,6 +4473,11 @@ export class InvestmentTransactionsService {
         manager,
         [accountId, updateDto.accountId].filter((id): id is string => !!id),
       );
+      // Everything below is derived from the row read before this transaction
+      // (the cash row the reversal deletes, the values the save writes back),
+      // so it has to still be the row as it is now: a concurrent edit or delete
+      // is refused before anything is written (A26-H04).
+      await lockUnchangedInvestmentRow(manager, userId, transaction);
 
       const bondGuard = await beginBondWriteGuard(manager, userId, [
         oldSecurityId,
@@ -4986,6 +4992,15 @@ export class InvestmentTransactionsService {
       // First statement of the transaction: advisory before row locks
       // (`common/db/locks.ts`); the reversals below row-lock `accounts`.
       await lockHoldingScope(manager, affectedAccountIds);
+      // Each leg is removed with the cash row it carries now, so it must still
+      // be the row read above: a delete behind a concurrent edit would reverse
+      // a cash row the edit already replaced and leave the new one without an
+      // owner (A26-H04). Ascending id, so two deletes of one pair queue.
+      for (const leg of [...legsToRemove].sort((a, b) =>
+        a.id.localeCompare(b.id),
+      )) {
+        await lockUnchangedInvestmentRow(manager, userId, leg);
+      }
 
       // Deleting an acquisition can leave a later removal uncovered: refused
       // after the mutation, in this transaction, so nothing commits

@@ -645,6 +645,7 @@
     "transactionSplitNotFound": "Transaction split {{ splitId }} not found for embedded investment update",
     "parentTransactionNotFound": "Parent transaction {{ transactionId }} not found for embedded investment update",
     "investmentTransactionNotFound": "Investment transaction with ID {{ id }} not found",
+    "investmentTransactionChanged": "This transaction was changed by another request. Reload it and try again.",
     "cannotChangeTransferDirection": "Cannot change the direction of a transfer; delete it and create a new transfer instead",
     "destinationAccountMustBeInvestment": "Destination account must be of type INVESTMENT",
     "transferPairMissing": "This transfer's paired transaction is missing; delete and recreate the transfer instead of editing it",

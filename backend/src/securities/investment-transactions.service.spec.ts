@@ -53,6 +53,8 @@ describe("InvestmentTransactionsService", () => {
   let dataSource: DataSourceMock;
   let mockQueryRunner: Record<string, any>;
   let mockActionHistoryService: Record<string, jest.Mock>;
+  let findOneSpy: jest.SpyInstance;
+  let lockedInvestmentRows: (id: string) => Promise<unknown[]>;
 
   const userId = "user-1";
   const accountId = "account-1";
@@ -379,30 +381,77 @@ describe("InvestmentTransactionsService", () => {
     // Deletes are conditional and each reversal is gated on what the database
     // actually removed, so the double reports a count.
     mocks.manager.delete = jest.fn().mockResolvedValue({ affected: 1 });
-    mocks.manager.query = jest.fn().mockImplementation(async (sql: string) => {
-      if (!String(sql).includes("FOR UPDATE")) return [];
-      const row = (await transactionRepository.findOne({})) as {
-        id?: string;
-        accountId?: string;
-        amount?: number;
-        transactionDate?: string;
-        status?: string | null;
-      } | null;
-      if (!row?.id) return [];
-      return [
-        {
-          id: row.id,
-          account_id: row.accountId,
-          amount: String(row.amount ?? 0),
-          transaction_date: row.transactionDate ?? null,
-          status: row.status ?? null,
-          is_split: false,
-          linked_transaction_id: null,
-          parent_transaction_id: null,
-        },
-      ];
-    });
+    mocks.manager.query = jest
+      .fn()
+      .mockImplementation(async (sql: string, params?: unknown[]) => {
+        if (!String(sql).includes("FOR UPDATE")) return [];
+        if (String(sql).includes("FROM investment_transactions")) {
+          return lockedInvestmentRows(String(params?.[0]));
+        }
+        const row = (await transactionRepository.findOne({})) as {
+          id?: string;
+          accountId?: string;
+          amount?: number;
+          transactionDate?: string;
+          status?: string | null;
+        } | null;
+        if (!row?.id) return [];
+        return [
+          {
+            id: row.id,
+            account_id: row.accountId,
+            amount: String(row.amount ?? 0),
+            transaction_date: row.transactionDate ?? null,
+            status: row.status ?? null,
+            is_split: false,
+            linked_transaction_id: null,
+            parent_transaction_id: null,
+          },
+        ];
+      });
     mockQueryRunner = { manager: mocks.manager };
+
+    /**
+     * `update()` and `remove()` row-lock the investment row they read and
+     * refuse a row that changed since (A26-H04). Unless a spec says otherwise
+     * the lock finds the row as the service last read it -- through `findOne`
+     * or the repository -- so nothing changed in between.
+     */
+    lockedInvestmentRows = async (id: string) => {
+      const reads = [
+        ...findOneSpy.mock.results,
+        ...investmentTransactionsRepository.findOne.mock.results,
+      ].reverse();
+      for (const read of reads) {
+        let row: Partial<InvestmentTransaction> | null | undefined;
+        try {
+          row = await read.value;
+        } catch {
+          continue;
+        }
+        if (row?.id !== id) continue;
+        return [
+          {
+            id: row.id,
+            account_id: row.accountId,
+            security_id: row.securityId ?? null,
+            funding_account_id: row.fundingAccountId ?? null,
+            transaction_id: row.transactionId ?? null,
+            transaction_split_id: row.transactionSplitId ?? null,
+            linked_transaction_id: row.linkedTransactionId ?? null,
+            action: row.action,
+            transaction_date: row.transactionDate,
+            quantity: row.quantity ?? null,
+            price: row.price ?? null,
+            commission: row.commission ?? null,
+            total_amount: row.totalAmount,
+            exchange_rate: row.exchangeRate,
+            status: row.status,
+          },
+        ];
+      }
+      return [];
+    };
 
     // A bond redemption's split and the series an account holds; a spec that
     // exercises them sets the answers.
@@ -425,6 +474,7 @@ describe("InvestmentTransactionsService", () => {
       currenciesService as never,
       bondHoldingsService as never,
     );
+    findOneSpy = jest.spyOn(service, "findOne");
   });
 
   afterEach(() => {
@@ -5725,6 +5775,7 @@ describe("InvestmentTransactionsService", () => {
         userId,
         totalAmount: 1500,
         commission: 0,
+        exchangeRate: 1,
         fundingAccountId: null,
         transactionId: "cash-tx-1",
         account: mockInvestmentAccount,
@@ -5775,6 +5826,7 @@ describe("InvestmentTransactionsService", () => {
         price: 150,
         totalAmount: 1500,
         commission: 0,
+        exchangeRate: 1,
         fundingAccountId: null,
         transactionId: null,
         account: mockInvestmentAccount,
@@ -5805,6 +5857,7 @@ describe("InvestmentTransactionsService", () => {
         price: 150,
         totalAmount: 1500,
         commission: 0,
+        exchangeRate: 1,
         fundingAccountId: null,
         transactionId: null,
         account: mockInvestmentAccount,
@@ -5834,6 +5887,7 @@ describe("InvestmentTransactionsService", () => {
         price: 150,
         totalAmount: 1500,
         commission: 0,
+        exchangeRate: 1,
         fundingAccountId: null,
         transactionId: "cash-tx-1",
         account: mockInvestmentAccount,
@@ -5907,6 +5961,7 @@ describe("InvestmentTransactionsService", () => {
         userId,
         totalAmount: 1500,
         commission: 0,
+        exchangeRate: 1,
         fundingAccountId: null,
         transactionId: "cash-tx-1",
         account: mockInvestmentAccount,
@@ -5934,6 +5989,7 @@ describe("InvestmentTransactionsService", () => {
         price: 150,
         totalAmount: 1500,
         commission: 0,
+        exchangeRate: 1,
         fundingAccountId: null,
         transactionId: null,
         account: mockInvestmentAccount,
@@ -5948,6 +6004,59 @@ describe("InvestmentTransactionsService", () => {
       expect(lockOrder()).toBeLessThan(firstRowTouchOrder());
     });
 
+    /**
+     * A26-H04: the row the edit or delete decides from is the one under its
+     * own lock. A cash leg replaced by a concurrent edit (or a row a
+     * concurrent delete removed) is refused before anything is written.
+     */
+    it("update refuses with 409, writing nothing, when the row's cash leg changed since the read", async () => {
+      investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder(mockBuyTransaction),
+      );
+      lockedInvestmentRows = async (id: string) => [
+        {
+          id,
+          account_id: accountId,
+          security_id: securityId,
+          funding_account_id: null,
+          transaction_id: "cash-tx-replaced",
+          transaction_split_id: null,
+          linked_transaction_id: null,
+          action: InvestmentAction.BUY,
+          transaction_date: "2025-01-15",
+          quantity: "10",
+          price: "150",
+          commission: "9.99",
+          total_amount: "1509.99",
+          exchange_rate: "1",
+          status: TransactionStatus.CLEARED,
+        },
+      ];
+
+      await expect(
+        service.update(userId, transactionId, { price: 160 }),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+      expect(mockQueryRunner.manager.delete).not.toHaveBeenCalled();
+      expect(investmentTransactionsRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("remove refuses with 404, writing nothing, when the row was deleted since the read", async () => {
+      investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder(mockBuyTransaction),
+      );
+      lockedInvestmentRows = async () => [];
+
+      await expect(
+        service.remove(userId, transactionId),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(mockQueryRunner.manager.delete).not.toHaveBeenCalled();
+      expect(investmentTransactionsRepository.remove).not.toHaveBeenCalled();
+      expect(mockActionHistoryService.record).not.toHaveBeenCalled();
+    });
+
     it("update takes the holdings advisory lock before its first row lock or write", async () => {
       const existingTx = {
         id: "inv-tx-1",
@@ -5960,6 +6069,7 @@ describe("InvestmentTransactionsService", () => {
         price: 150,
         totalAmount: 1500,
         commission: 0,
+        exchangeRate: 1,
         fundingAccountId: null,
         transactionId: null,
         account: mockInvestmentAccount,
@@ -5988,6 +6098,7 @@ describe("InvestmentTransactionsService", () => {
         userId,
         totalAmount: 1500,
         commission: 0,
+        exchangeRate: 1,
         fundingAccountId: null,
         transactionId: "cash-tx-1",
         account: mockInvestmentAccount,
@@ -6406,21 +6517,23 @@ describe("InvestmentTransactionsService", () => {
       // delta from the same stale amount (audit P4-003).
       mockQueryRunner.manager.query = jest
         .fn()
-        .mockImplementation(async (sql: string) =>
-          String(sql).includes("FOR UPDATE")
-            ? [
-                {
-                  id: parentTx.id,
-                  account_id: parentTx.accountId,
-                  amount: String(parentTx.amount),
-                  transaction_date: parentTx.transactionDate,
-                  status: null,
-                  is_split: true,
-                  linked_transaction_id: null,
-                  parent_transaction_id: null,
-                },
-              ]
-            : [],
+        .mockImplementation(async (sql: string, params?: unknown[]) =>
+          String(sql).includes("FROM investment_transactions")
+            ? lockedInvestmentRows(String(params?.[0]))
+            : String(sql).includes("FOR UPDATE")
+              ? [
+                  {
+                    id: parentTx.id,
+                    account_id: parentTx.accountId,
+                    amount: String(parentTx.amount),
+                    transaction_date: parentTx.transactionDate,
+                    status: null,
+                    is_split: true,
+                    linked_transaction_id: null,
+                    parent_transaction_id: null,
+                  },
+                ]
+              : [],
         );
 
       return { split, incomeSplit, parentTx };
