@@ -82,6 +82,7 @@
 
 | Stream | Branch | Started | Child session | Tasks done | Merged |
 |---|---|---|---|---|---|
-| harness | `fix/audit-harness` | 2026-10-22 04:19 UTC | session_01JWWBawaWKEiTgRH4EUCL9M | | |
-| auth | `fix/audit-auth` | 2026-10-22 04:19 UTC | session_01J1DvFkbLT5hNjYcqy139nN | | |
-| forms | `fix/audit-forms` | 2026-10-22 04:19 UTC | session_013UqoZAfBLgw68Gya3qWYTS | | |
+| harness | `fix/audit-harness` | 2026-10-22 04:19 UTC | session_01JWWBawaWKEiTgRH4EUCL9M | in progress | not yet |
+| receipts | `fix/audit-receipts` | 2026-10-22 | see next update | | |
+| auth | `fix/audit-auth` | 2026-10-22 04:19 UTC | session_01J1DvFkbLT5hNjYcqy139nN | T01, T18 (in progress: T49; T01 adds a 10 s rotation grace for a second tab, maintainer decision) | not yet |
+| forms | `fix/audit-forms` | 2026-10-22 04:19 UTC | session_013UqoZAfBLgw68Gya3qWYTS | T06, T07, T42 (head b714919; gate green; T07 taken as the fallback: Transfer mode hidden on an existing row, in-place conversion left as a proposal) | not yet |
