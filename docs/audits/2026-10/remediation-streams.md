@@ -86,6 +86,6 @@
 | ledger | `fix/audit-ledger` (based on `fix/audit-harness`) | 2026-10-22 05:37 UTC | session_0162iK2ZgbyzonPiq6wog7RJ | in progress | not yet |
 | receipts | `fix/audit-receipts` | 2026-10-22 05:13 UTC | session_01Vd7kVJvSZgM5rCdWSbwbDd | in progress | not yet |
 | banksync | `fix/audit-banksync` | 2026-10-22 05:25 UTC | session_01HUQYhLK1iA2SyKqUEunC7S | T05 (head 70005fe; row-keyed dedup, no migration, legacy keys held; residuals recorded in INV-BANKSYNC-001) | not yet |
-| fx | `fix/audit-fx` | 2026-10-22 | see next update | | |
+| fx | `fix/audit-fx` | 2026-10-22 05:49 UTC | session_01E4fLuC2UsV3VXW9mWmgnkP | in progress | not yet |
 | auth | `fix/audit-auth` | 2026-10-22 04:19 UTC | session_01J1DvFkbLT5hNjYcqy139nN | T01, T18, T49 (head 58dca78; 34 files; gate green per commit, run with NODE_OPTIONS=--max-old-space-size=6144; T01 adds a 10 s rotation grace for a second tab, maintainer decision) | not yet |
 | forms | `fix/audit-forms` | 2026-10-22 04:19 UTC | session_013UqoZAfBLgw68Gya3qWYTS | T06, T07, T42 (head b714919; gate green; T07 taken as the fallback: Transfer mode hidden on an existing row, in-place conversion left as a proposal) | not yet |
