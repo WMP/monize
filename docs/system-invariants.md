@@ -523,6 +523,13 @@ Enforcement         Every absolute recompute takes the account lock before readi
                     linked_account_id) from the snapshot; a restored opening
                     balance recomputes current_balance from the ledger under
                     lockAccountsForBalanceWrite (A26-H06).
+                    No whole-entity save writes a snapshot's current_balance:
+                    the investment-pair rename and re-currency, and the account
+                    delete's unlink, update only the changed columns of the
+                    other half; an imported opening balance is
+                    applyOpeningBalanceChange (accounts.service.ts), a 4dp
+                    delta of new - old read under lockAccountsForBalanceWrite
+                    (A26-M13).
 Concurrency scope   per account
 Retry semantics     A recompute is idempotent against another recompute and, under
                     the lock, against a concurrent delta.
@@ -540,12 +547,17 @@ Required tests      Source scan: common/db/derived-state-writers.guard.spec.ts -
                     Undo of a rename after an unrecorded movement, redo, and an
                     opening-balance undo:
                     backend/test/integration/account-undo.integration.spec.ts.
+                    A pair rename with a posting in its window, and an imported
+                    4dp opening balance beside a concurrent movement:
+                    backend/test/integration/investment-pair-stale-balance.integration.spec.ts,
+                    backend/test/integration/import-balance-delta.integration.spec.ts.
 Status              partial
 ```
 
-Open breaches found by the 2026-10 audit, each closed in the commit that lands its
-test: an investment-pair rename
-or re-currency saves the linked half's stale `current_balance` (A26-M13).
+Open breach found by the 2026-10 audit, outside the ledger remediation stream: an
+investment transaction edited twice at once, or while it is deleted, duplicates or
+orphans its cash leg (A26-H04, task T10 of the securities stream). The status stays
+`partial` until that lands.
 
 See `docs/concurrency-and-idempotency.md` CONC-003. The former secondary breach --
 transfers created as `VOID` moving both balances -- is closed on the create path

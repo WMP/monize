@@ -1197,7 +1197,16 @@ export class AccountsService {
             linkedChanged = true;
           }
           if (linkedChanged) {
-            await m.save(linkedAccount);
+            // The changed columns only. The other half was read without a lock,
+            // and `save` writes every column that differs from a fresh read --
+            // its snapshot `current_balance` among them, so a posting that
+            // landed in between was erased: cash half 1,010.00 back to 1,000.00
+            // beside a 1,010.00 ledger (A26-M13).
+            await m.update(Account, linkedAccount.id, {
+              name: linkedAccount.name,
+              currencyCode: linkedAccount.currencyCode,
+              institutionId: linkedAccount.institutionId,
+            });
           }
         }
 
@@ -1960,13 +1969,13 @@ export class AccountsService {
     // failure cannot leave a dangling link pointing at a deleted account.
     await withScopedDb(this.dataSource, async (m) => {
       if (account.linkedAccountId) {
-        const linkedAccount = await m.findOne(Account, {
-          where: { id: account.linkedAccountId },
-        });
-        if (linkedAccount) {
-          linkedAccount.linkedAccountId = null;
-          await m.save(linkedAccount);
-        }
+        // One column, by a targeted update: a `save` of the unlocked read
+        // wrote its snapshot balance back as well (A26-M13).
+        await m.update(
+          Account,
+          { id: account.linkedAccountId, userId },
+          { linkedAccountId: null },
+        );
       }
 
       await m.remove(account);
@@ -2323,4 +2332,39 @@ export class AccountsService {
       m.query(sql, [...accountIds, userId]),
     );
   }
+}
+
+/**
+ * Set an account's opening balance and move `current_balance` by exactly the
+ * change, inside the caller's transaction.
+ *
+ * The opening balance is part of the balance, so a new one moves it by
+ * `new - old`, both read under the balance-write lock, as one atomic delta.
+ * The import path used to compute an absolute `current_balance` from an
+ * account row read in an earlier transaction, rounded to 2dp: a posting that
+ * committed in between was overwritten, and a file's 100.1234 was stored as
+ * 100.12 (A26-M13). The import calls this; it lives here because this file is
+ * the sanctioned writer of `current_balance`.
+ */
+export async function applyOpeningBalanceChange(
+  m: EntityManager,
+  userId: string,
+  accountId: string,
+  openingBalance: number,
+): Promise<void> {
+  await lockAccountsForBalanceWrite(m, [accountId], userId);
+  const rows: { opening_balance: string | null }[] = await m.query(
+    `SELECT opening_balance FROM accounts WHERE id = $1 AND user_id = $2`,
+    [accountId, userId],
+  );
+  if (rows.length === 0) return;
+  const newOpening = roundMoney(openingBalance);
+  const delta = roundMoney(newOpening - Number(rows[0].opening_balance ?? 0));
+  await m.query(
+    `UPDATE accounts
+        SET opening_balance = $3,
+            current_balance = ROUND(CAST(current_balance AS numeric) + $4, 4)
+      WHERE id = $1 AND user_id = $2`,
+    [accountId, userId, newOpening, delta],
+  );
 }

@@ -40,6 +40,16 @@ jest.mock("../common/db/scoped-db", () =>
 );
 
 describe("AccountsService", () => {
+  /**
+   * The columns the linked investment half was written with: a targeted
+   * update of the changed columns, never a save of its unlocked read
+   * (A26-M13).
+   */
+  const linkedUpdate = (id: string): Record<string, unknown> | undefined =>
+    (mockQueryRunner.manager.update.mock.calls as unknown[][]).find(
+      (call) => call[1] === id || (call[1] as { id?: string })?.id === id,
+    )?.[2] as Record<string, unknown> | undefined;
+
   let service: AccountsService;
   let accountsRepository: Record<string, jest.Mock>;
   let transactionRepository: Record<string, jest.Mock>;
@@ -1748,8 +1758,12 @@ describe("AccountsService", () => {
 
       await service.delete("user-1", "account-1");
 
-      const savedLinked = mockQueryRunner.manager.save.mock.calls[0][0];
-      expect(savedLinked.linkedAccountId).toBeNull();
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ userId: "user-1" }),
+        { linkedAccountId: null },
+      );
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
     });
 
     it("records action history on delete", async () => {
@@ -2910,9 +2924,14 @@ describe("AccountsService", () => {
 
       await service.update("user-1", "account-1", { currencyCode: "CAD" });
 
-      // Second save should be the linked account currency update
-      const linkedSave = mockQueryRunner.manager.save.mock.calls[1][0];
-      expect(linkedSave.currencyCode).toBe("CAD");
+      // The linked half gets a targeted update of the synced columns.
+      const linked = mockQueryRunner.manager.update.mock.calls.find(
+        (call: unknown[]) =>
+          (call[2] as { currencyCode?: string })?.currencyCode === "CAD",
+      );
+      expect(linked).toBeDefined();
+      expect(linked[2]).not.toHaveProperty("currentBalance");
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledTimes(1);
       expect(mockDataSource.transaction).toHaveBeenCalled();
     });
 
@@ -2988,11 +3007,14 @@ describe("AccountsService", () => {
 
       await service.update("user-1", "brok-1", { name: "RRSP" });
 
-      const [brokerageSave, cashSave] =
-        mockQueryRunner.manager.save.mock.calls.map((c) => c[0]);
+      const [brokerageSave] = mockQueryRunner.manager.save.mock.calls.map(
+        (c) => c[0],
+      );
       expect(brokerageSave.name).toBe("RRSP - Depot");
-      expect(cashSave.id).toBe("cash-1");
-      expect(cashSave.name).toBe("RRSP - Bargeld");
+      expect(linkedUpdate("cash-1")).toEqual(
+        expect.objectContaining({ name: "RRSP - Bargeld" }),
+      );
+      expect(linkedUpdate("cash-1")).not.toHaveProperty("currentBalance");
     });
 
     it("renames the brokerage half when the cash half is renamed", async () => {
@@ -3016,10 +3038,11 @@ describe("AccountsService", () => {
 
       await service.update("user-1", "cash-1", { name: "RRSP" });
 
-      const [cashSave, brokerageSave] =
-        mockQueryRunner.manager.save.mock.calls.map((c) => c[0]);
+      const [cashSave] = mockQueryRunner.manager.save.mock.calls.map(
+        (c) => c[0],
+      );
       expect(cashSave.name).toBe("RRSP - Bargeld");
-      expect(brokerageSave.name).toBe("RRSP - Depot");
+      expect(linkedUpdate("brok-1")?.name).toBe("RRSP - Depot");
     });
 
     // A client that sends the stored name back rather than the base must not
@@ -3045,10 +3068,11 @@ describe("AccountsService", () => {
 
       await service.update("user-1", "brok-1", { name: "RRSP - Depot" });
 
-      const [brokerageSave, cashSave] =
-        mockQueryRunner.manager.save.mock.calls.map((c) => c[0]);
+      const [brokerageSave] = mockQueryRunner.manager.save.mock.calls.map(
+        (c) => c[0],
+      );
       expect(brokerageSave.name).toBe("RRSP - Depot");
-      expect(cashSave.name).toBe("RRSP - Bargeld");
+      expect(linkedUpdate("cash-1")?.name).toBe("RRSP - Bargeld");
     });
 
     // The English words are stripped alongside the locale's, so a pair created
@@ -3075,10 +3099,11 @@ describe("AccountsService", () => {
 
       await service.update("user-1", "brok-1", { name: "RRSP - Brokerage" });
 
-      const [brokerageSave, cashSave] =
-        mockQueryRunner.manager.save.mock.calls.map((c) => c[0]);
+      const [brokerageSave] = mockQueryRunner.manager.save.mock.calls.map(
+        (c) => c[0],
+      );
       expect(brokerageSave.name).toBe("RRSP - Depot");
-      expect(cashSave.name).toBe("RRSP - Bargeld");
+      expect(linkedUpdate("cash-1")?.name).toBe("RRSP - Bargeld");
     });
 
     it("leaves a standalone investment account name exactly as submitted", async () => {
@@ -3497,8 +3522,11 @@ describe("AccountsService", () => {
 
       await service.delete("user-1", "account-1");
 
-      const savedLinked = mockQueryRunner.manager.save.mock.calls[0][0];
-      expect(savedLinked.linkedAccountId).toBeNull();
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ userId: "user-1" }),
+        { linkedAccountId: null },
+      );
       expect(mockQueryRunner.manager.remove).toHaveBeenCalled();
     });
 
@@ -3700,8 +3728,9 @@ describe("AccountsService", () => {
       await service.update("user-1", "account-1", {
         currencyCode: "CAD",
       });
-      // 2 saves: original account + linked account
-      expect(mockQueryRunner.manager.save).toHaveBeenCalledTimes(2);
+      // The account itself is saved; the linked half gets a targeted update.
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledTimes(1);
+      expect(linkedUpdate("linked-1")?.currencyCode).toBe("CAD");
     });
 
     it("does not save linked account when not found", async () => {
@@ -3734,10 +3763,9 @@ describe("AccountsService", () => {
           institutionId: null,
         });
       await service.update("user-1", "account-1", { institutionId: "inst-1" });
-      // 2 saves: original account + linked partner
-      expect(mockQueryRunner.manager.save).toHaveBeenCalledTimes(2);
-      const linkedSave = mockQueryRunner.manager.save.mock.calls[1][0];
-      expect(linkedSave.institutionId).toBe("inst-1");
+      // The account itself is saved; the linked partner gets a targeted update.
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledTimes(1);
+      expect(linkedUpdate("linked-1")?.institutionId).toBe("inst-1");
     });
 
     it("triggers net-worth recalc when openingBalance changes", async () => {

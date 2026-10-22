@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { EntityManager, IsNull } from "typeorm";
+import { applyOpeningBalanceChange } from "../accounts/accounts.service";
 import {
   Account,
   AccountType,
@@ -382,19 +383,14 @@ export class ImportEntityCreatorService {
     account: Account,
     openingBalance: number,
   ): Promise<void> {
-    const existingOpeningBalance = Number(account.openingBalance) || 0;
-    const existingCurrentBalance = Number(account.currentBalance) || 0;
-    const newOpeningBalance = Math.round(openingBalance * 100) / 100;
-
-    const newCurrentBalance =
-      Math.round(
-        (existingCurrentBalance - existingOpeningBalance + newOpeningBalance) *
-          100,
-      ) / 100;
-
-    await manager.update(Account, accountId, {
-      openingBalance: newOpeningBalance,
-      currentBalance: newCurrentBalance,
-    });
+    // A delta under the account lock, at 4dp, rather than an absolute write
+    // computed from `account`, which the caller read in an earlier
+    // transaction (A26-M13). Only the owner is taken from it.
+    await applyOpeningBalanceChange(
+      manager,
+      account.userId,
+      accountId,
+      openingBalance,
+    );
   }
 }
