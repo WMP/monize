@@ -4673,11 +4673,16 @@ describe("ImportService", () => {
 
       await service.importQifMultiAccountFile(userId, baseDto);
 
-      // "_IntExp" should be created as "Interest Expense" (description used)
-      const catCreates = mockQueryRunner.manager.create.mock.calls.filter(
-        (call) => call[0] === Category,
-      );
-      const catNames = catCreates.map((c) => c[1].name);
+      // "_IntExp" should be created as "Interest Expense" (description used).
+      // Categories are inserted with ON CONFLICT DO NOTHING (INV-IMPORT-003),
+      // so the name is the INSERT's second parameter.
+      const catNames = mockQueryRunner.query.mock.calls
+        .filter(
+          (call: unknown[]) =>
+            typeof call[0] === "string" &&
+            call[0].includes("INSERT INTO categories"),
+        )
+        .map((call: unknown[]) => (call[1] as unknown[])[1]);
       expect(catNames).toContain("Interest Expense");
       // "_401k" has no description, so original name is used
       expect(catNames).toContain("_401k");

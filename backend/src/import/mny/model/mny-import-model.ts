@@ -369,15 +369,27 @@ export interface MappedInvestmentTransaction {
    * sibling split leg already records the interest. There is no column here.
    */
   readonly accruedInterest: number;
-  /** Positive magnitude of the transaction, in the account's currency. */
+  /**
+   * Positive magnitude of the transaction, in the security's currency; in the
+   * account's currency when no exchange rate converted it, with a warning.
+   */
   readonly totalAmount: number;
+  /**
+   * The cash/account currency the cash leg is written in. Not necessarily the
+   * currency `price` and `totalAmount` are in; see `securityCurrencyCode`.
+   */
   readonly currencyCode: string;
   /**
-   * Converts `totalAmount` into the cash account's currency. 1 for a
-   * same-currency trade -- which is every trade whose cash lands in its own
-   * sleeve, since a sleeve shares its brokerage's currency. A trade funded from
-   * an account in another currency derives its rate from the two amounts Money
-   * recorded, because 1 there would post the cash unconverted.
+   * The currency `price`, `commission` and `totalAmount` are in: the security's
+   * when the trade was converted, else the account's (`currencyCode`).
+   */
+  readonly securityCurrencyCode: string;
+  /**
+   * Converts `totalAmount` (security currency) into the cash account's
+   * currency: security -> cash account. 1 only for a same-currency trade or one
+   * left unconverted with a warning. A trade funded from an account in another
+   * currency derives its rate from the two amounts Money recorded, because 1
+   * there would post the cash unconverted.
    */
   readonly exchangeRate: number;
   /** Signed cash impact on the cash sleeve; 0 for the share-only actions. */

@@ -47,6 +47,7 @@ function investment(
     accruedInterest: 0,
     totalAmount: 1009.99,
     currencyCode: "USD",
+    securityCurrencyCode: "USD",
     exchangeRate: 1,
     cashAmount: -1009.99,
     status: TransactionStatus.CLEARED,
@@ -636,17 +637,43 @@ describe("writeInvestments", () => {
     });
   });
 
-  it("quotes the label in the row's own currency", async () => {
+  it("quotes the label in the currency the price and total are in", async () => {
     const { manager, transactions } = doubles();
 
     await writeInvestments(manager, "user-1", {
       ...baseInput,
-      transactions: [investment({ currencyCode: "EUR" })],
+      transactions: [investment({ securityCurrencyCode: "EUR" })],
     });
 
     expect(transactions.insert.mock.calls[0][0][0].payeeName).toBe(
       "Buy: VOO 10 @ €100.00",
     );
+  });
+
+  it("keeps the cash row in the account currency when the trade is in another", async () => {
+    const { manager, transactions } = doubles();
+
+    await writeInvestments(manager, "user-1", {
+      ...baseInput,
+      transactions: [
+        investment({
+          currencyCode: "CAD",
+          securityCurrencyCode: "USD",
+          exchangeRate: 1.25,
+          totalAmount: 1000,
+          price: 100,
+          commission: 0,
+          cashAmount: -1250,
+        }),
+      ],
+    });
+
+    expect(transactions.insert.mock.calls[0][0][0]).toMatchObject({
+      amount: -1250,
+      currencyCode: "CAD",
+      exchangeRate: 1,
+      payeeName: "Buy: VOO 10 @ $100.00",
+    });
   });
 
   it("labels an income leg with its total rather than a unit price", async () => {

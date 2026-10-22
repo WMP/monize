@@ -115,6 +115,7 @@ function mapAll(
     accounts: mappedAccounts,
     securities: mappedSecurities,
     bills: [],
+    exchangeRates: [],
   });
   const banking = mapTransactions({
     transactions,
@@ -380,6 +381,7 @@ describe("a trade funded from an outside account (issue #1212)", () => {
       accounts: mappedAccounts,
       securities: securities(),
       bills: [],
+      exchangeRates: [],
     });
     const banking = mapTransactions({
       transactions: rows,

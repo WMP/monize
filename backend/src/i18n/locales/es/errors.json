@@ -479,7 +479,9 @@
     "mnyPasswordIncorrect": "Esa contraseña no abre el archivo de Money. Compruébela y vuelva a intentarlo.",
     "mnyUnreadableDatabase": "Ese archivo de Money se descifró, pero no se pudo leer su contenido. Puede estar dañado.",
     "mnyStagedFileMissing": "El archivo de Money subido ya no está disponible. Vuelva a subirlo.",
+    "mnyStagedFileInUse": "Este archivo de Money se está importando. Espere a que termine la importación antes de descartarlo.",
     "mnyImportAlreadyRunning": "Ya hay una importación en curso. Espere a que termine antes de iniciar otra.",
+    "mnyAlreadyImported": "Este archivo ya se importó el {{ date }} (importación {{ jobId }}) y sus registros siguen en su cuenta. Importarlo de nuevo los duplicaría. Para reemplazarlos, empiece de nuevo y elija reemplazar sus datos existentes.",
     "mnyJobNotFound": "Tarea de importación no encontrada",
     "mnyFileTooLarge": "Ese archivo de Money supera el límite de importación de {{ limit }} MB."
   },

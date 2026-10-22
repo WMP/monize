@@ -40,6 +40,7 @@ function trade(
     accruedInterest: 0,
     totalAmount: 2400,
     currencyCode: "USD",
+    securityCurrencyCode: "USD",
     exchangeRate: 1,
     cashAmount: -2400,
     status: TransactionStatus.CLEARED,
@@ -183,6 +184,26 @@ describe("applyInvestmentCashSources", () => {
     );
 
     expect(result.transactions[0].exchangeRate).toBe(1.3);
+  });
+
+  it("keeps the rate a converted trade already carries", () => {
+    // A CAD account buying a USD security: the total is in USD and the rate
+    // 1.25 is security -> account. The funding row settles in the account's own
+    // currency, so adopting it must not reset the rate to 1.
+    const result = applyInvestmentCashSources(
+      investments([
+        trade({
+          currencyCode: "CAD",
+          securityCurrencyCode: "USD",
+          totalAmount: 2400,
+          exchangeRate: 1.25,
+          cashAmount: -3_000,
+        }),
+      ]),
+      new Map([[21, source({ currencyCode: "CAD", amount: -3_000 })]]),
+    );
+
+    expect(result.transactions[0].exchangeRate).toBe(1.25);
   });
 
   it("does not invent a rate it cannot derive", () => {

@@ -479,7 +479,9 @@
     "mnyPasswordIncorrect": "Kata sandi itu tidak membuka berkas Money. Periksa dan coba lagi.",
     "mnyUnreadableDatabase": "Berkas Money itu berhasil didekripsi, tetapi isinya tidak dapat dibaca. Mungkin rusak.",
     "mnyStagedFileMissing": "Berkas Money yang diunggah sudah tidak tersedia. Silakan unggah kembali.",
+    "mnyStagedFileInUse": "File Money ini sedang diimpor. Tunggu hingga impor selesai sebelum membuangnya.",
     "mnyImportAlreadyRunning": "Impor sedang berjalan. Tunggu hingga selesai sebelum memulai yang lain.",
+    "mnyAlreadyImported": "File ini sudah diimpor pada {{ date }} (impor {{ jobId }}), dan catatannya masih ada di akun Anda. Mengimpornya lagi akan menggandakannya. Untuk menggantinya, mulai ulang dan pilih untuk mengganti data Anda yang ada.",
     "mnyJobNotFound": "Tugas impor tidak ditemukan",
     "mnyFileTooLarge": "Berkas Money itu lebih besar dari batas impor {{ limit }} MB."
   },

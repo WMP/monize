@@ -24,6 +24,26 @@ const PHASES: MnyImportPhase[] = [
   'verifying',
 ];
 
+/** Error keys whose copy already says the rows are in the ledger. */
+const COMMITTED_ERROR_KEYS = new Set([
+  'mnyImportFailedAfterCommit',
+  'mnyJobStalledAfterCommit',
+]);
+
+/**
+ * The copy for a failed job. Once its rows committed, the server's state wins
+ * over any generic key: "Nothing was saved" over a committed import invited a
+ * second import of the file, which doubled every balance (A26-H08).
+ */
+function failedJobMessageKey(job: MnyImportJob): string {
+  if (job.dataCommitted === true) {
+    return job.errorKey && COMMITTED_ERROR_KEYS.has(job.errorKey)
+      ? job.errorKey
+      : 'mnyImportFailedAfterCommit';
+  }
+  return job.errorKey ? job.errorKey : 'mnyImportFailed';
+}
+
 /**
  * The import as it runs, and what to do when it does not.
  *
@@ -48,9 +68,7 @@ export function MnyImportProgress({
             {t('mnyImporting.failedHeading')}
           </h2>
           <p className="mt-1 text-sm text-red-700 dark:text-red-300">
-            {job.errorKey
-              ? t(`mnyErrors.${job.errorKey}`)
-              : t('mnyErrors.mnyImportFailed')}
+            {t(`mnyErrors.${failedJobMessageKey(job)}`)}
           </p>
         </div>
         <div className="flex justify-between pt-4">

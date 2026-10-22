@@ -262,6 +262,12 @@ export interface MnyImportJob {
   result: MnyImportResult | null;
   errorKey: string | null;
   retryable: boolean;
+  /**
+   * True once the import's rows reached the ledger, so a failure after it is
+   * not "nothing saved" and the file must not be imported again. Absent on an
+   * older backend: no information, so read it as `=== true`.
+   */
+  dataCommitted?: boolean;
   startedAt: string | null;
   completedAt: string | null;
 }

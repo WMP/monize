@@ -20,7 +20,9 @@ export type MnyErrorCode =
   /** Decryption succeeded but the page structure could not be parsed. */
   | "mnyUnreadableDatabase"
   /** The staged upload expired or was deleted before the import ran. */
-  | "mnyStagedFileMissing";
+  | "mnyStagedFileMissing"
+  /** This user's ledger already holds a committed import of the same bytes. */
+  | "mnyAlreadyImported";
 
 /**
  * Base class for every `.mny` parse failure. Never include the password (or
@@ -96,6 +98,24 @@ export class MnyStagedFileMissingError extends MnyImportError {
     super(
       "mnyStagedFileMissing",
       `Staged import file ${stagedFileId} is no longer available`,
+    );
+  }
+}
+
+/**
+ * The commit checkpoint found these bytes already committed for this user
+ * (audit A26-H08).
+ *
+ * Thrown from inside the import transaction, so it rolls this attempt's rows
+ * back; a parse-class error, so the job is not offered Retry: the same bytes
+ * would be refused again.
+ */
+export class MnyAlreadyImportedError extends MnyImportError {
+  constructor(jobId: string, cause?: unknown) {
+    super(
+      "mnyAlreadyImported",
+      `Import job ${jobId} refused at its commit: this user's ledger already holds a committed import of the same file`,
+      cause,
     );
   }
 }

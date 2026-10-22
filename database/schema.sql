@@ -2682,6 +2682,11 @@ CREATE TABLE import_jobs (
     -- import transaction's last statement is a fenced compare-and-set on this
     -- column, and a zero-row result rolls the whole import back (audit RV4-001).
     attempt_token UUID,
+    -- The staged file's digest, copied by the commit checkpoint inside the import
+    -- transaction (migration 20261022061534). Held by the unique index below, so
+    -- the same bytes cannot be committed into one user's ledger twice; cleared
+    -- when a "start fresh" import's wipe removed the rows it vouched for.
+    content_sha256 CHAR(64),
     heartbeat_at TIMESTAMP,
     started_at TIMESTAMP,
     completed_at TIMESTAMP,
@@ -2742,6 +2747,12 @@ CREATE INDEX idx_import_jobs_running_heartbeat ON import_jobs(heartbeat_at) WHER
 CREATE UNIQUE INDEX idx_import_jobs_one_active_per_user
     ON import_jobs(user_id)
     WHERE status IN ('pending', 'running');
+-- One committed import per user and file content (audit A26-H08). The service
+-- refuses the start first; this is what makes a second commit of the same bytes
+-- abort its own import transaction.
+CREATE UNIQUE INDEX idx_import_jobs_committed_content
+    ON import_jobs(user_id, content_sha256)
+    WHERE content_sha256 IS NOT NULL;
 
 CREATE TRIGGER update_import_jobs_updated_at BEFORE UPDATE ON import_jobs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

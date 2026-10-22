@@ -274,6 +274,19 @@ before any of them is recorded, so all K reach the verifier (A26-L08:
 StepUpAuthService.reserveAttempt, TwoFactorService.reserveUserTotpAttempt;
 test/integration/two-factor-step-up-budget.integration.spec.ts). A peek may stay
 in front as an advisory early refusal.
+
+CONC-011
+A delete or update that must spare a row another table is about to reference
+locks its candidates first (`SELECT ... FOR UPDATE`, `SKIP LOCKED` where waiting
+buys nothing) and decides in a later statement. A single
+`DELETE ... WHERE NOT EXISTS (referencing row)` under READ COMMITTED evaluates
+the sub-select on the snapshot it started with: it waits on the referencing
+INSERT's key-share lock and then deletes without looking again, so the reference
+committed while it waited is not seen. The worked example is
+`MnyStagingService.deleteUnlessNeeded` and `remove` (audit A26-L14): a staged
+file a job INSERT was committing against was swept or discarded, and the job ran
+without its bytes. A referencing INSERT that arrives after the lock waits for
+the deleter and then fails its foreign key; report that as the row being gone.
 ```
 
 ## 4. Retry semantics

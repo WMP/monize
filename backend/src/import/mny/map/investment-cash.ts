@@ -124,17 +124,21 @@ export function applyInvestmentCashSources(
         fundingAccountKey: source.splitId === null ? source.accountKey : null,
         cashTransactionId: source.transactionId,
         transactionSplitId: source.splitId,
+        // The source settles in the account's currency and the total is in the
+        // security's, so a source in the account's currency keeps the rate the
+        // mapper already put on the trade (1 for a same-currency trade).
         exchangeRate:
-          source.currencyCode === transaction.currencyCode ||
-          transaction.totalAmount <= 0
-            ? 1
-            : roundFxRate(
-                Math.abs(source.amount) /
-                  disposalCashAmount(
-                    transaction.totalAmount,
-                    transaction.accruedInterest,
-                  ),
-              ),
+          source.currencyCode === transaction.currencyCode
+            ? transaction.exchangeRate
+            : transaction.totalAmount <= 0
+              ? 1
+              : roundFxRate(
+                  Math.abs(source.amount) /
+                    disposalCashAmount(
+                      transaction.totalAmount,
+                      transaction.accruedInterest,
+                    ),
+                ),
       };
     }),
   };

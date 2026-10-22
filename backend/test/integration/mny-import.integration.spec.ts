@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { ConflictException } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { DataSource, EntityManager } from "typeorm";
@@ -55,6 +56,7 @@ import {
 } from "@/import/mny/__fixtures__/mny-row-builders";
 import {
   cashKeyByAccountKey,
+  currencyCodesByHandle,
   mapAccounts,
   mapCategories,
   mapPayees,
@@ -84,6 +86,7 @@ import {
   writeInvestments,
   writeSecurities,
 } from "@/import/mny/writers/write-investments";
+import { ExchangeRateRow } from "@/import/mny/writers/write-prices";
 import { writeBills } from "@/import/mny/writers/write-bills";
 import { writeLoans } from "@/import/mny/writers/write-loans";
 import { ScheduledTransaction } from "@/scheduled-transactions/entities/scheduled-transaction.entity";
@@ -856,8 +859,12 @@ describe("mny writers (integration)", () => {
     async function importRows(
       rows: ReturnType<typeof transactionData>,
       investmentTables: ReturnType<typeof investmentData>,
+      overrides: {
+        referenceRows?: ReturnType<typeof reference>;
+        exchangeRates?: readonly ExchangeRateRow[];
+      } = {},
     ) {
-      const referenceRows = reference();
+      const referenceRows = overrides.referenceRows ?? reference();
       const accounts = mapAccounts(
         referenceRows,
         DEFAULT_MNY_IMPORT_OPTIONS,
@@ -865,7 +872,7 @@ describe("mny writers (integration)", () => {
       );
       const securities = mapSecurities({
         securities: investmentTables.securities,
-        currencyByHandle: new Map(),
+        currencyByHandle: currencyCodesByHandle(referenceRows),
         baseCurrency: "USD",
         activeHandles: new Set([SECURITY_HANDLE]),
       });
@@ -875,6 +882,7 @@ describe("mny writers (integration)", () => {
         accounts,
         securities,
         bills: [],
+        exchangeRates: overrides.exchangeRates ?? [],
       });
       const transactions = mapTransactions({
         transactions: rows,
@@ -1018,6 +1026,142 @@ describe("mny writers (integration)", () => {
       expect(trade.transactionSplitId).toBe(investmentLeg!.id);
       expect(trade.transactionId).toBeNull();
       expect(trade.fundingAccountId).toBeNull();
+    });
+
+    describe("across currencies", () => {
+      const crossCurrencyReference = (accountCurrency: number) =>
+        referenceData({
+          currencies: [
+            mnyCurrency({ handle: 1, isoCode: "EUR" }),
+            mnyCurrency({ handle: 2, isoCode: "USD" }),
+            mnyCurrency({ handle: 3, isoCode: "CAD" }),
+          ],
+          defaults: mnyDefaults({ defaultCurrency: 2 }),
+          accounts: [
+            mnyAccount({
+              handle: CHEQUING,
+              type: 0,
+              name: "Chequing",
+              currency: 1,
+            }),
+            mnyAccount({
+              handle: BROKERAGE,
+              type: 5,
+              name: "Brokerage",
+              relatedAccount: SLEEVE,
+              currency: accountCurrency,
+            }),
+            mnyAccount({
+              handle: SLEEVE,
+              type: 0,
+              name: "Brokerage (Cash)",
+              relatedAccount: BROKERAGE,
+              currency: accountCurrency,
+            }),
+          ],
+        });
+
+      it("credits the USD sleeve with the investment side's own amount", async () => {
+        await ensureCurrency("EUR");
+        // A transfer into the brokerage that adds shares and moves no trade
+        // cash: the sleeve row is the only record of the money arriving. Money
+        // stores EUR 2400 out of chequing and USD 2640 on the investment side.
+        const { accountIdByKey } = await importRows(
+          transactionData({
+            transactions: [
+              mnyTransaction({
+                handle: 20,
+                account: CHEQUING,
+                amount: -2_400,
+              }),
+              mnyTransaction({
+                handle: 21,
+                account: BROKERAGE,
+                amount: 2_640,
+                security: SECURITY_HANDLE,
+                action: MNY_ACTION.ADD_SHARES,
+              }),
+            ],
+            transfers: [mnyTransfer({ from: 20, to: 21 })],
+          }),
+          detail(21),
+          { referenceRows: crossCurrencyReference(2) },
+        );
+
+        const bank = await rowsIn(accountIdByKey.get("acct-1")!);
+        const sleeve = await rowsIn(accountIdByKey.get("acct-6")!);
+        expect(bank).toHaveLength(1);
+        expect(bank[0]).toMatchObject({
+          amount: "-2400.0000",
+          currencyCode: "EUR",
+        });
+        expect(sleeve).toHaveLength(1);
+        expect(sleeve[0]).toMatchObject({
+          amount: "2640.0000",
+          currencyCode: "USD",
+          linkedTransactionId: bank[0].id,
+        });
+      });
+
+      it("stores a USD-quoted trade in a CAD account in USD with its rate", async () => {
+        await ensureCurrency("CAD");
+        const { accountIdByKey } = await importRows(
+          transactionData({
+            transactions: [
+              mnyTransaction({
+                handle: 21,
+                account: BROKERAGE,
+                amount: -1_250,
+                date: "2026-03-02",
+                security: SECURITY_HANDLE,
+                action: MNY_ACTION.BUY,
+              }),
+            ],
+          }),
+          investmentData({
+            securities: [
+              mnySecurity({
+                handle: SECURITY_HANDLE,
+                symbol: "VOO",
+                currency: 2,
+              }),
+            ],
+            investmentDetails: [
+              mnyInvestmentDetail({
+                transaction: 21,
+                price: 125,
+                quantity: 10,
+              }),
+            ],
+          }),
+          {
+            referenceRows: crossCurrencyReference(3),
+            exchangeRates: [
+              {
+                fromCurrency: "CAD",
+                toCurrency: "USD",
+                rate: 0.8,
+                rateDate: "2026-03-02",
+              },
+            ],
+          },
+        );
+
+        const trade = await dataSource
+          .getRepository(InvestmentTransaction)
+          .findOneOrFail({ where: { userId } });
+        expect(Number(trade.price)).toBe(100);
+        expect(Number(trade.totalAmount)).toBe(1000);
+        expect(Number(trade.exchangeRate)).toBe(1.25);
+
+        const cash = await rowsIn(accountIdByKey.get("acct-6")!);
+        expect(cash).toHaveLength(1);
+        expect(cash[0]).toMatchObject({
+          amount: "-1250.0000",
+          currencyCode: "CAD",
+        });
+        expect(trade.transactionId).toBe(cash[0].id);
+      });
     });
   });
 
@@ -1669,6 +1813,151 @@ describe("mny writers (integration)", () => {
       ).rejects.toThrow(/no longer available/i);
     });
 
+    /**
+     * A failure after `writeAll` committed (A26-H08). The fixture's figures are
+     * the finding's: Sample Deposit Account 5000.00, investment cash 4061.00,
+     * 1000 shares. Before the fix the job said "Nothing was saved", the staged
+     * id survived, and a second start (or a re-upload of the same bytes) took
+     * them to 10000.00, 8122.00 and 2000 shares.
+     */
+    describe("a committed import", () => {
+      async function ledgerSnapshot() {
+        const accounts = await dataSource
+          .getRepository(Account)
+          .find({ where: { userId }, order: { name: "ASC" } });
+        const holdings: { quantity: string }[] = await dataSource.query(
+          `SELECT h.quantity FROM holdings h
+             JOIN accounts a ON a.id = h.account_id
+            WHERE a.user_id = $1 AND h.quantity <> 0`,
+          [userId],
+        );
+        return {
+          transactions: await dataSource
+            .getRepository(Transaction)
+            .count({ where: { userId } }),
+          investmentRows: await dataSource
+            .getRepository(InvestmentTransaction)
+            .count({ where: { userId } }),
+          balances: accounts.map(
+            (account) => `${account.name}=${Number(account.currentBalance)}`,
+          ),
+          shares: holdings
+            .map((holding) => Number(holding.quantity))
+            .sort((a, b) => a - b),
+        };
+      }
+
+      async function stageFixture(): Promise<string> {
+        const staged = await withUserContext(userId, () =>
+          staging.stage(userId, {
+            filename: "sample-cd-redemption.mny",
+            data: stagedBytes("sampleCdRedemption"),
+          }),
+        );
+        return staged.id;
+      }
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it("reports a failure after the commit as committed and refuses a second start", async () => {
+        const post = module.get(ImportPostProcessingService);
+        jest
+          .spyOn(post, "run")
+          .mockRejectedValueOnce(new Error("failpoint after commit"));
+        const stagedFileId = await stageFixture();
+
+        const job = await awaitJob(
+          (
+            await withUserContext(userId, () =>
+              importService.start(userId, { stagedFileId }),
+            )
+          ).id,
+        );
+
+        const before = await ledgerSnapshot();
+        expect(job).toMatchObject({
+          status: "failed",
+          dataCommitted: true,
+          retryable: false,
+          errorKey: "mnyImportFailedAfterCommit",
+        });
+        expect(before.balances).toContain("Sample Deposit Account=5000");
+        expect(before.balances).toContain(
+          "Sample Investment Account - Cash=4061",
+        );
+        expect(before.shares).toEqual([1000]);
+
+        // The API path: the staged id survived the failure.
+        await expect(
+          withUserContext(userId, () =>
+            importService.start(userId, { stagedFileId }),
+          ),
+        ).rejects.toThrow(ConflictException);
+        expect(await ledgerSnapshot()).toEqual(before);
+      });
+
+      it("refuses a re-upload of the same bytes while the first import's rows exist", async () => {
+        const first = await awaitJob(
+          (
+            await withUserContext(userId, async () =>
+              importService.start(userId, {
+                stagedFileId: await stageFixture(),
+              }),
+            )
+          ).id,
+        );
+        expect(first.status).toBe("completed");
+        const before = await ledgerSnapshot();
+
+        // The UI path: start over and upload the same file again.
+        const again = await stageFixture();
+        const refusal = withUserContext(userId, () =>
+          importService.start(userId, { stagedFileId: again }),
+        );
+        await expect(refusal).rejects.toThrow(ConflictException);
+        await expect(refusal).rejects.toThrow(/already imported/i);
+        expect(await ledgerSnapshot()).toEqual(before);
+        expect(
+          await dataSource
+            .getRepository(ImportJob)
+            .count({ where: { userId } }),
+        ).toBe(1);
+      });
+
+      it("lets the same bytes in again when the start replaces existing data", async () => {
+        const first = await awaitJob(
+          (
+            await withUserContext(userId, async () =>
+              importService.start(userId, {
+                stagedFileId: await stageFixture(),
+              }),
+            )
+          ).id,
+        );
+        expect(first.status).toBe("completed");
+
+        // `deleteData` is stubbed in this suite, so the rows do not actually
+        // go; what is asserted is that the wipe-and-import is not refused and
+        // that its own commit is not refused by the first job's content key.
+        const second = await awaitJob(
+          (
+            await withUserContext(userId, async () =>
+              importService.start(userId, {
+                stagedFileId: await stageFixture(),
+                options: { wipeExistingData: true },
+              }),
+            )
+          ).id,
+        );
+        expect(second).toMatchObject({
+          status: "completed",
+          dataCommitted: true,
+        });
+      });
+    });
+
     /*
      * money2002.mny is the investment fixture: 86 `SEC` rows, 60 `act` 15
      * transactions and 60 open `LOT` rows across 30 securities. That makes it
@@ -1817,8 +2106,11 @@ describe("mny writers (integration)", () => {
         const rates = await dataSource.getRepository(ExchangeRate).find();
         expect(rates.length).toBe(job.result!.exchangeRatesImported);
 
-        // A second import of the same file must converge, not duplicate.
-        await runImport("money2002");
+        // A second import of the same file must converge, not duplicate. Only a
+        // start that replaces existing data may import the same bytes again
+        // (A26-H08); `deleteData` is stubbed here, so the global rate rows the
+        // first run wrote are still present for the second to collide with.
+        await runImport("money2002", { wipeExistingData: true });
         const after = await dataSource.getRepository(ExchangeRate).find();
         expect(after.length).toBe(rates.length);
       });

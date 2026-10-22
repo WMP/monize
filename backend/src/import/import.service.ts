@@ -76,6 +76,7 @@ import { deletionBalanceEffect } from "../common/deletion-balance.util";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { tr } from "../i18n/translate";
 import { TransactionRulesApplierService } from "../transaction-rules/transaction-rules-applier.service";
+import { insertCategoryIfAbsent } from "./insert-category-if-absent";
 
 @Injectable()
 export class ImportService {
@@ -671,16 +672,19 @@ export class ImportService {
       return existing.id;
     }
 
-    const newCategory = manager.create(Category, {
+    // Adopts a row another transaction created since the lookup above rather
+    // than aborting the whole import on its unique violation (INV-IMPORT-003).
+    const saved = await insertCategoryIfAbsent(manager, {
       userId,
       name,
       parentId,
       isIncome,
     });
-    const saved = await manager.save(newCategory);
     processedCategories.set(cacheKey, saved.id);
     categoryMap.set(name, saved.id);
-    importResult.categoriesCreated++;
+    if (saved.inserted) {
+      importResult.categoriesCreated++;
+    }
     return saved.id;
   }
 
