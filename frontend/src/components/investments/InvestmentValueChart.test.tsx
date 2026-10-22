@@ -7,6 +7,7 @@ import {
 } from './InvestmentValueChart';
 import { netWorthApi } from '@/lib/net-worth';
 import { investmentsApi } from '@/lib/investments';
+import { useAuthStore } from '@/store/authStore';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import type { PortfolioPeriodResult } from '@/types/net-worth';
 
@@ -204,6 +205,8 @@ describe('InvestmentValueChart', () => {
     } catch {
       // jsdom without sessionStorage: nothing to clear.
     }
+    // The intraday cache key carries the signed-in identity (INV-SHARE-003).
+    useAuthStore.setState({ user: { id: 'user-1' } as never, actingAsUserId: null });
     // A null store is the pre-load state, where the hook takes the default.
     usePreferencesStore.setState({ preferences: null });
     dateRangeState.dateRange = '1y';
@@ -1220,7 +1223,7 @@ describe('InvestmentValueChart', () => {
       const { rerender } = render(<InvestmentValueChart refreshKey={0} />);
       await screen.findByText('Portfolio Value Over Time');
       await waitFor(() =>
-        expect(window.sessionStorage.getItem('monize-intraday|1d||CAD')).toBeTruthy(),
+        expect(window.sessionStorage.getItem('monize-intraday|u:user-1|a:self|1d||CAD')).toBeTruthy(),
       );
       const before = vi.mocked(investmentsApi.getIntradayValue).mock.calls.length;
 
@@ -1454,7 +1457,7 @@ describe('InvestmentValueChart', () => {
     };
     // Seed the session-storage cache manually
     window.sessionStorage.setItem(
-      `monize-intraday|1d||CAD`,
+      `monize-intraday|u:user-1|a:self|1d||CAD`,
       JSON.stringify(cachedPayload),
     );
 

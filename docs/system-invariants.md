@@ -5611,6 +5611,14 @@ Crash semantics     Expiry is a property of the stored timestamp, not of a timer
 Status              enforced
 ```
 
+The same device-sharing threat applies to `sessionStorage`, which a sign-out
+and a delegate context-switch reload both leave in place (A26-M36): the
+intraday portfolio series is keyed by user and acting context, and
+`clearIdentityScopedSessionStorage` (`frontend/src/lib/identity-session-storage.ts`)
+drops it and the remembered entry date and currency on `logout` and before the
+switch's reload; `frontend/src/lib/session-storage.guard.test.ts` lists every
+`sessionStorage` writer with whether it is identity-neutral or identity-scoped.
+
 ### INV-SHARE-004 -- a share never dead-ends
 
 ```text
@@ -5875,9 +5883,15 @@ Enforcement         Namespacing: userFolderPath uses shardedSegments(userId) for
 Concurrency scope   per user
 Crash semantics     A kill or ENOSPC mid-write leaves the temp file, never a
                     truncated final name -- the rename is the publish.
+                    A legacy flat-folder artifact names no owner, so retention
+                    never deletes it and the local target's remove refuses it
+                    (A26-M07).
 Required tests      Present: atomic-file.spec.ts and auto-backup.service.spec.ts
                     use a real mkdtemp; backup.service.spec.ts asserts restore
-                    honours the artifact's own completeness claim.
+                    honours the artifact's own completeness claim;
+                    auto-backup.service.spec.ts asserts a legacy flat file
+                    survives any user's retention while the user's own sharded
+                    files are still pruned.
 Status              enforced
 ```
 
@@ -6269,7 +6283,10 @@ Enforcement         Per job, and now mostly a durable cross-replica claim.
                     (ON CONFLICT (budget_id, period_start) DO NOTHING RETURNING with
                     the loser re-reading the winner), AI insight generation
                     (claimLease with the cooldown re-read under it, not a
-                    process-local Set), demo reset (claimOnce
+                    process-local Set; the lease outlasts the provider call,
+                    PROVIDER_CALL_BUDGET_MS plus a margin, is renewed by
+                    JobClaimService.whileLeaseHeld while it runs, and the save
+                    is fenced by holdsLease on the token, A26-L13), demo reset (claimOnce
                     keyed by the UTC day).
                     The MNY reaper's conditional CAS and the price/FX refreshes'
                     natural-key ON CONFLICT were already real.
@@ -8086,14 +8103,25 @@ Statement           Two replicas, or the cron and "Poll now", never read one
                     mailbox at the same time.
 Source of truth     job_claims (email_receipt_poll, user, mailbox)
 Enforcement         JobClaimService.claimLease around the whole poll, released by
-                    token in finally; withUserContext wraps the lease.
+                    token in finally and renewed while the poll runs
+                    (whileLeaseHeld); withUserContext wraps the lease. The TTL
+                    (POLL_LEASE_MS) is the 8-minute work budget plus the slowest
+                    provider call (PROVIDER_CALL_BUDGET_MS) plus 2 minutes, and no
+                    provider call starts past the budget. An automatic parser
+                    draft holds its own per-sender claim
+                    (email_receipt_parser_draft, user, domain) with a
+                    token-fenced save, so a poll that outran a retaken lease does
+                    not draft a sender twice (A26-L13).
 Concurrency scope   mailbox
-Retry semantics     a lost lease expires after 10 minutes; the poll starts no new
-                    work after 8
+Retry semantics     a lost lease expires POLL_LEASE_MS after its last renewal;
+                    the poll starts no new work after 8 minutes
 Crash semantics     the lease expires; INV-RECEIPT-002 makes a repeated read safe
 Failure response    "Poll now" answers busy
 Required tests      Present: rls-context-smoke.spec.ts (real lease), poll service
-                    unit spec. Missing: a two-instance cron test.
+                    unit spec, provider-lease-overrun.integration.spec.ts (a
+                    second poll after the first's lease was expired mid-draft:
+                    one provider call, one draft). Missing: a two-instance cron
+                    test.
 Status              enforced
 ```
 

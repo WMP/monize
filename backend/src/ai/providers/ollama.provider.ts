@@ -23,6 +23,7 @@ import { unverifiedModelReason } from "./model-verification.util";
 export const OLLAMA_DEFAULT_BASE_URL = "http://localhost:11434";
 import { validateUrlBasicSafety } from "../validators/safe-url.validator";
 import { toolsField } from "./tools-field.util";
+import { OLLAMA_CALL_TIMEOUT_MS } from "./provider-call-budget";
 
 /**
  * How often to emit a progress log line during a long-running stream so
@@ -157,7 +158,10 @@ export class OllamaProvider implements AiProvider {
 
     // H14: Timeout covers both fetch and stream consumption
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20 * 60 * 1000); // 20 minutes for CPU inference
+    const timeout = setTimeout(
+      () => controller.abort(),
+      OLLAMA_CALL_TIMEOUT_MS,
+    );
 
     const requestStart = Date.now();
     const url = this.buildUrl("/api/chat");
@@ -302,7 +306,10 @@ export class OllamaProvider implements AiProvider {
 
     // H14: Timeout covers both fetch and stream consumption
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20 * 60 * 1000);
+    const timeout = setTimeout(
+      () => controller.abort(),
+      OLLAMA_CALL_TIMEOUT_MS,
+    );
 
     try {
       const response = await this.fetchImpl(this.buildUrl("/api/chat"), {
@@ -425,7 +432,10 @@ export class OllamaProvider implements AiProvider {
 
     // H14: Timeout covers both fetch and stream consumption
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20 * 60 * 1000); // 20 minutes for CPU inference
+    const timeout = setTimeout(
+      () => controller.abort(),
+      OLLAMA_CALL_TIMEOUT_MS,
+    );
 
     const requestStart = Date.now();
     const url = this.buildUrl("/api/chat");

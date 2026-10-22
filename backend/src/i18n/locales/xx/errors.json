@@ -486,7 +486,8 @@
     "mnyImportAlreadyRunning": "[XX-An import is already running. Wait for it to finish before starting another.-XX]",
     "mnyAlreadyImported": "[XX-This file was already imported on {{ date }} (import {{ jobId }}), and its records are still in your account. Importing it again would duplicate them. To replace them, start over and choose to replace your existing data.-XX]",
     "mnyJobNotFound": "[XX-Import job not found-XX]",
-    "mnyFileTooLarge": "[XX-That Money file is larger than the {{ limit }} MB import limit.-XX]"
+    "mnyFileTooLarge": "[XX-That Money file is larger than the {{ limit }} MB import limit.-XX]",
+    "noRateForSplitTransfer": "[XX-No exchange rate for {{ pair }} on {{ date }}: a split line transfers into an account in another currency. Add an exchange rate for that pair and date, then import again.-XX]"
   },
   "monteCarlo": {
     "scenarioNotFound": "[XX-Scenario {{ id }} not found-XX]",

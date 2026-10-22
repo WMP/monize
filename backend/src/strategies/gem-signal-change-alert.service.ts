@@ -194,8 +194,9 @@ export interface SignalChange {
 }
 
 /**
- * The recommendation change between the two latest periods of a report's
- * history, or `null` when there is none (or fewer than two evaluable periods).
+ * The recommendation change between the report's current period and the one
+ * before it, or `null` when there is none, when the current period has no
+ * signal yet, or with fewer than two evaluable periods.
  * A risk-state change wins over an allocation change: it always implies one, and
  * the requester wanted the state move as its own louder event.
  */
@@ -207,6 +208,12 @@ export function detectSignalChange(
   );
   if (periods.length < 2) return null;
   const [current, previous] = periods;
+  // INV-GEM-NOTIFY-003 (A26-L24): only the current period's change. A current
+  // period that is not evaluable yet has no signal, and the two newest history
+  // rows are then an old change that was announced when it happened.
+  if (!report.signal || report.signal.evaluatedOn !== current.evaluatedOn) {
+    return null;
+  }
 
   if (current.state !== previous.state) {
     return { kind: "risk", current, previous };

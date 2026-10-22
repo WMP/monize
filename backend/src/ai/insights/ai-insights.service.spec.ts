@@ -1,7 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
 import { NotFoundException } from "@nestjs/common";
-import { AiInsightsService } from "./ai-insights.service";
+import {
+  AiInsightsService,
+  INSIGHT_GENERATION_LEASE_MS,
+} from "./ai-insights.service";
+import { PROVIDER_CALL_BUDGET_MS } from "../providers/provider-call-budget";
 import { AiInsight } from "../entities/ai-insight.entity";
 import { AiService } from "../ai.service";
 import { AiUsageService } from "../ai-usage.service";
@@ -370,6 +374,52 @@ describe("AiInsightsService", () => {
       );
       expect(mockAiService.complete).toHaveBeenCalled();
       expect(mockInsightRepo.save).toHaveBeenCalled();
+    });
+
+    it("runs the generation under a renewed lease that outlasts the provider call (A26-L13)", async () => {
+      const qb = mockQb();
+      qb.getOne.mockResolvedValue(null);
+      qb.getMany.mockResolvedValue([]);
+      qb.getRawOne.mockResolvedValue(null);
+      mockInsightRepo.createQueryBuilder.mockReturnValue(qb);
+      const before = jobClaims.whileLeaseHeld.mock.calls.length;
+
+      await service.generateInsights(userId);
+
+      expect(INSIGHT_GENERATION_LEASE_MS).toBeGreaterThan(
+        PROVIDER_CALL_BUDGET_MS,
+      );
+      expect(jobClaims.whileLeaseHeld.mock.calls.slice(before)).toEqual([
+        [
+          "ai_insight_generation",
+          userId,
+          expect.any(String),
+          TEST_LEASE_TOKEN,
+          INSIGHT_GENERATION_LEASE_MS,
+          expect.any(Function),
+        ],
+      ]);
+    });
+
+    it("saves nothing when its lease was retaken while the provider ran (A26-L13)", async () => {
+      const qb = mockQb();
+      qb.getOne.mockResolvedValue(null);
+      qb.getMany.mockResolvedValue([]);
+      qb.getRawOne.mockResolvedValue(null);
+      mockInsightRepo.createQueryBuilder.mockReturnValue(qb);
+      jobClaims.holdsLease.mockResolvedValueOnce(false);
+
+      await service.generateInsights(userId);
+
+      expect(mockAiService.complete).toHaveBeenCalled();
+      expect(jobClaims.holdsLease).toHaveBeenCalledWith(
+        expect.anything(),
+        "ai_insight_generation",
+        userId,
+        expect.any(String),
+        TEST_LEASE_TOKEN,
+      );
+      expect(mockInsightRepo.save).not.toHaveBeenCalled();
     });
 
     it("appends a language directive when the user's language is not English", async () => {

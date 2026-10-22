@@ -40,9 +40,23 @@ function period(
   } as unknown as GemHistoryEntryView;
 }
 
-/** A report carrying only the history the detector reads. */
-function reportWith(history: GemHistoryEntryView[]): GemStrategyReportView {
-  return { history } as unknown as GemStrategyReportView;
+/**
+ * A report carrying only what the detector reads: the history and the current
+ * period's signal, which by default is the newest history period's (the
+ * current period was evaluated).
+ */
+function reportWith(
+  history: GemHistoryEntryView[],
+  signalOn: string | null = history.reduce<string | null>(
+    (newest, p) =>
+      newest === null || p.evaluatedOn > newest ? p.evaluatedOn : newest,
+    null,
+  ),
+): GemStrategyReportView {
+  return {
+    history,
+    signal: signalOn === null ? null : { evaluatedOn: signalOn },
+  } as unknown as GemStrategyReportView;
 }
 
 const US = winner("US_EQUITY", "sec-us", "VTI");
@@ -136,6 +150,29 @@ describe("detectSignalChange", () => {
         ]),
       ),
     ).toBeNull();
+  });
+});
+
+describe("detectSignalChange is bound to the current period (A26-L24, INV-GEM-NOTIFY-003)", () => {
+  const history = [
+    period("2026-08-31", "RISK_OFF", SAFE),
+    period("2026-07-31", "RISK_ON", US),
+  ];
+
+  it("is silent when the current period has no signal, whatever the history's two newest rows say", () => {
+    expect(detectSignalChange(reportWith(history, null))).toBeNull();
+  });
+
+  it("is silent when the current signal is a later period than the history's newest change", () => {
+    // October's period is evaluated and stored but not yet in this history
+    // view: the August change is two months old and was announced then.
+    expect(detectSignalChange(reportWith(history, "2026-10-31"))).toBeNull();
+  });
+
+  it("announces the change when the current signal is the newest history period", () => {
+    expect(detectSignalChange(reportWith(history, "2026-08-31"))?.kind).toBe(
+      "risk",
+    );
   });
 });
 

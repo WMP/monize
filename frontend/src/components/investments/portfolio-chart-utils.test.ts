@@ -20,6 +20,7 @@ import {
   writeIntradayCache,
 } from './portfolio-chart-utils';
 import { formatChartDate, type ChartDatePattern } from '@/lib/utils';
+import { useAuthStore } from '@/store/authStore';
 
 describe('INTRADAY_RANGES', () => {
   it('is the set the intraday endpoint accepts', () => {
@@ -41,20 +42,79 @@ describe('INTRADAY_RANGES', () => {
   });
 });
 
+function signInAs(userId: string | null, actingAsUserId: string | null = null) {
+  useAuthStore.setState({
+    user: userId ? ({ id: userId } as never) : null,
+    actingAsUserId,
+  });
+}
+
 describe('buildIntradayCacheKey', () => {
+  beforeEach(() => {
+    signInAs('u1');
+  });
+
+  afterEach(() => {
+    signInAs(null);
+  });
+
   it('builds key with defined account ids (sorted)', () => {
     const key = buildIntradayCacheKey('1d', ['z', 'a', 'm'], 'USD');
-    expect(key).toBe(`${INTRADAY_CACHE_PREFIX}1d|a,m,z|USD`);
+    expect(key).toBe(`${INTRADAY_CACHE_PREFIX}u:u1|a:self|1d|a,m,z|USD`);
   });
 
   it('builds key with undefined account ids (null coalescing)', () => {
     const key = buildIntradayCacheKey('1w', undefined, 'EUR');
-    expect(key).toBe(`${INTRADAY_CACHE_PREFIX}1w||EUR`);
+    expect(key).toBe(`${INTRADAY_CACHE_PREFIX}u:u1|a:self|1w||EUR`);
   });
 
   it('builds key with empty account ids array', () => {
     const key = buildIntradayCacheKey('1m', [], 'GBP');
-    expect(key).toBe(`${INTRADAY_CACHE_PREFIX}1m||GBP`);
+    expect(key).toBe(`${INTRADAY_CACHE_PREFIX}u:u1|a:self|1m||GBP`);
+  });
+
+  // INV-SHARE-003: two identities never share a key.
+  it('gives two users different keys for the same range, accounts and currency', () => {
+    signInAs('user-a');
+    const a = buildIntradayCacheKey('1d', ['x'], 'USD');
+    signInAs('user-b');
+    const b = buildIntradayCacheKey('1d', ['x'], 'USD');
+    expect(a).not.toBe(b);
+  });
+
+  it('gives one user a different key acting as an owner than as self', () => {
+    signInAs('user-a');
+    const self = buildIntradayCacheKey('1d', ['x'], 'USD');
+    signInAs('user-a', 'owner-1');
+    const owner = buildIntradayCacheKey('1d', ['x'], 'USD');
+    signInAs('user-a', 'owner-2');
+    const other = buildIntradayCacheKey('1d', ['x'], 'USD');
+    expect(new Set([self, owner, other]).size).toBe(3);
+  });
+
+  it('never gives a signed-out reader the key of a signed-in user', () => {
+    signInAs('u1');
+    const signedIn = buildIntradayCacheKey('1d', [], 'USD');
+    signInAs(null);
+    const anonymous = buildIntradayCacheKey('1d', [], 'USD');
+    expect(anonymous).not.toBe(signedIn);
+  });
+
+  it('refuses to write or read an entry keyed without an identity', () => {
+    signInAs(null);
+    const key = buildIntradayCacheKey('1d', [], 'USD');
+    writeIntradayCache(key, {
+      fetchedAt: 1,
+      points: [],
+      interval: '5m',
+      currency: 'USD',
+      fallbackToDaily: false,
+      skippedSymbols: [],
+      failedSymbols: [],
+    });
+    expect(window.sessionStorage.getItem(key)).toBeNull();
+    window.sessionStorage.setItem(key, '{"fetchedAt":1}');
+    expect(readIntradayCache(key)).toBeNull();
   });
 });
 

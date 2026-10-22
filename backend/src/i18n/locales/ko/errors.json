@@ -486,7 +486,8 @@
     "mnyImportAlreadyRunning": "가져오기가 이미 실행 중입니다. 완료된 후에 다시 시작하세요.",
     "mnyAlreadyImported": "이 파일은 {{ date }}에 이미 가져왔으며(가져오기 {{ jobId }}) 그 기록이 아직 계정에 있습니다. 다시 가져오면 중복됩니다. 기록을 바꾸려면 처음부터 다시 시작하고 기존 데이터를 바꾸도록 선택하세요.",
     "mnyJobNotFound": "가져오기 작업을 찾을 수 없습니다",
-    "mnyFileTooLarge": "이 Money 파일은 가져오기 한도인 {{ limit }} MB를 초과합니다."
+    "mnyFileTooLarge": "이 Money 파일은 가져오기 한도인 {{ limit }} MB를 초과합니다.",
+    "noRateForSplitTransfer": "{{ date }}의 {{ pair }} 환율이 없습니다. 분할 항목이 다른 통화의 계좌로 이체합니다. 해당 통화 쌍과 날짜의 환율을 추가한 다음 다시 가져오세요."
   },
   "monteCarlo": {
     "scenarioNotFound": "시나리오 {{ id }}을(를) 찾을 수 없습니다",

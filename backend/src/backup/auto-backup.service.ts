@@ -2253,14 +2253,12 @@ export class AutoBackupService {
   /**
    * Delete backups past the retention limit of their tier, newest kept.
    *
-   * The store's `legacy` artifacts are swept alongside the user's own. On the
-   * `local` target those are the flat base folder a version before per-user
-   * folders wrote into: the filenames carry no user id, so they were already
-   * shared -- every user's pass has always deleted whatever it found there --
-   * and sweeping them alongside the new layout ages them out as sharded backups
-   * accumulate, rather than stranding them under a limit that no longer looks at
-   * them. On an equal date the legacy copy is the one deleted, so the artifact
-   * that is definitely this user's is the one kept.
+   * The store's `legacy` artifacts are never swept, and never take a slot. On
+   * the `local` target those are the flat base folder a version before per-user
+   * folders wrote into: the filenames carry no user id, so nothing proves one is
+   * this user's, and deleting it could take another owner's only pre-upgrade
+   * recovery point (INV-BACKUP-001; `open()` refuses them for the same reason).
+   * They are left for an operator to remove, and the pass logs how many remain.
    *
    * `tiers` restricts which tiers may be swept. A partial run passes
    * `["partial"]`: it must bound its own artifacts without being able to delete
@@ -2286,16 +2284,20 @@ export class AutoBackupService {
     // it has no durable state of its own and the run's status stays "success".
     const failures: string[] = [];
 
+    const legacyCount = files.filter((f) => f.entry.legacy).length;
+    if (legacyCount > 0) {
+      this.logger.log(
+        `Retention: ${legacyCount} legacy flat-folder backup(s) left for an operator to remove`,
+      );
+    }
+    const owned = files.filter((f) => !f.entry.legacy);
+
     // Sort each tier newest first and delete beyond retention limit
     const deleteExcess = async (tier: BackupTier, limit: number) => {
       if (!tiers.includes(tier)) return;
-      const sorted = files
+      const sorted = owned
         .filter((f) => f.tier === tier)
-        .sort(
-          (a, b) =>
-            b.date.getTime() - a.date.getTime() ||
-            Number(a.entry.legacy) - Number(b.entry.legacy),
-        );
+        .sort((a, b) => b.date.getTime() - a.date.getTime());
       for (let i = limit; i < sorted.length; i++) {
         const { entry } = sorted[i];
         try {

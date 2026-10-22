@@ -486,7 +486,8 @@
     "mnyImportAlreadyRunning": "已有导入正在进行。请等待其完成后再开始新的导入。",
     "mnyAlreadyImported": "此文件已于 {{ date }} 导入(导入 {{ jobId }}),其记录仍在您的账户中。再次导入会造成重复。如需替换,请重新开始并选择替换现有数据。",
     "mnyJobNotFound": "未找到导入任务",
-    "mnyFileTooLarge": "该 Money 文件超过 {{ limit }} MB 的导入上限。"
+    "mnyFileTooLarge": "该 Money 文件超过 {{ limit }} MB 的导入上限。",
+    "noRateForSplitTransfer": "{{ date }} 没有 {{ pair }} 的汇率：一条拆分行转账到另一种货币的账户。请为该货币对和日期添加汇率，然后重新导入。"
   },
   "monteCarlo": {
     "scenarioNotFound": "未找到情景 {{ id }}",

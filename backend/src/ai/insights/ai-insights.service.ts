@@ -30,6 +30,7 @@ import { sanitizePromptValue } from "../../common/sanitization.util";
 import { UserPreference } from "../../users/entities/user-preference.entity";
 import { AiInsightResponse, InsightsListResponse } from "./dto/ai-insights.dto";
 import { preferredCurrency } from "../../common/default-currency.util";
+import { PROVIDER_CALL_BUDGET_MS } from "../providers/provider-call-budget";
 
 const INSIGHT_EXPIRY_DAYS = 7;
 const MAX_INSIGHTS_PER_USER = 50;
@@ -44,12 +45,15 @@ const INSIGHT_GENERATION_CLAIM_KEY = "generation";
 /**
  * How long a generation lease survives its holder.
  *
- * Long enough to cover aggregate computation plus a slow provider call, short
- * enough that a killed replica does not block the user until someone intervenes.
- * The lease is released on the happy path, so this only ever matters after a
- * crash.
+ * Longer than the slowest provider call it guards (`PROVIDER_CALL_BUDGET_MS`,
+ * Ollama's 20-minute abort) plus aggregation and the save, and renewed while
+ * the generation runs (`JobClaimService.whileLeaseHeld`), so a live generation
+ * is never retaken by a second one (A26-L13; it was 15 minutes, shorter than
+ * the call). Still bounded, so a killed replica does not block the user until
+ * someone intervenes; the lease is released on the happy path.
  */
-const INSIGHT_GENERATION_LEASE_MS = 15 * 60 * 1000;
+export const INSIGHT_GENERATION_LEASE_MS =
+  PROVIDER_CALL_BUDGET_MS + 5 * 60 * 1000;
 // Number of users whose insights are generated concurrently in the daily cron.
 // Each generation makes LLM calls, so keep this modest to respect provider
 // rate limits and cost while still being faster than fully sequential.
@@ -198,116 +202,14 @@ export class AiInsightsService {
     const startTime = Date.now();
 
     try {
-      // The cooldown again, now that this replica holds the lease.
-      //
-      // The read above happened before the claim, so on its own it is a
-      // check-then-act: a replica that read "no recent insight" while another
-      // was still generating, then won the lease the moment the winner released
-      // it, generated and saved a second set -- duplicate rows with no
-      // idempotency key, and the provider paid twice. The winner saves before
-      // it releases (the `finally` below), so a read taken under the lease sees
-      // those rows and stands down. A generation that saved nothing leaves no
-      // row, so the next holder still retries it, which is the point of the
-      // lease being released rather than kept.
-      if (await this.hasRecentInsight(userId)) {
-        this.logger.log(
-          `Insights generation skipped user=${userId}: another replica generated within the ${MIN_GENERATION_INTERVAL_HOURS}h cooldown while this one waited`,
-        );
-        return this.getInsights(userId);
-      }
-
-      this.logger.log(`Insights generation start user=${userId}`);
-      const preferences = await withScopedDb(this.dataSource, (manager) =>
-        manager.getRepository(UserPreference).findOne({
-          where: { userId },
-        }),
+      return await this.jobClaims.whileLeaseHeld(
+        JobClaimType.AiInsightGeneration,
+        userId,
+        INSIGHT_GENERATION_CLAIM_KEY,
+        leased,
+        INSIGHT_GENERATION_LEASE_MS,
+        () => this.generateLeased(userId, leased, startTime),
       );
-      const currency = preferredCurrency(preferences);
-
-      let aggregates: SpendingAggregates;
-      const aggregateStart = Date.now();
-      try {
-        aggregates = await this.aggregatorService.computeAggregates(
-          userId,
-          currency,
-        );
-        this.logger.log(
-          `Insights aggregates built user=${userId} currency=${currency} ` +
-            `categories=${aggregates.categorySpending.length} ` +
-            `months=${aggregates.monthlySpending.length} ` +
-            `recurring=${aggregates.recurringCharges.length} ` +
-            `in ${Date.now() - aggregateStart}ms`,
-        );
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unknown error";
-        this.logger.warn(
-          `Failed to compute aggregates for user ${userId}: ${message}`,
-        );
-        return this.getInsights(userId);
-      }
-
-      if (
-        aggregates.categorySpending.length === 0 &&
-        aggregates.monthlySpending.length === 0
-      ) {
-        this.logger.log(
-          `Insights generation skipped user=${userId}: no spending data to analyze`,
-        );
-        return this.getInsights(userId);
-      }
-
-      const prompt = this.buildInsightsPrompt(aggregates);
-
-      try {
-        const providerCallStart = Date.now();
-        this.logger.log(
-          `Insights provider call start user=${userId} promptChars=${prompt.length}`,
-        );
-        const response = await this.aiService.complete(
-          userId,
-          {
-            systemPrompt:
-              INSIGHT_SYSTEM_PROMPT +
-              aiLanguageInstruction(preferences?.language),
-            messages: [{ role: "user", content: prompt }],
-            maxTokens: 4096,
-            temperature: 0.3,
-            responseFormat: "json",
-          },
-          "insight",
-        );
-        const providerCallMs = Date.now() - providerCallStart;
-        this.logger.log(
-          `Insights provider call done user=${userId} ` +
-            `model=${response.model} ms=${providerCallMs} ` +
-            `inputTokens=${response.usage.inputTokens} ` +
-            `outputTokens=${response.usage.outputTokens} ` +
-            `contentChars=${response.content.length}`,
-        );
-
-        const rawInsights = this.parseInsightsResponse(
-          response.content,
-          userId,
-        );
-        await this.saveInsights(userId, rawInsights);
-        this.logger.log(
-          `Insights generation complete user=${userId} ` +
-            `totalMs=${Date.now() - startTime} ` +
-            `parsed=${rawInsights.length} ` +
-            `inputTokens=${response.usage.inputTokens} ` +
-            `outputTokens=${response.usage.outputTokens}`,
-        );
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unknown error";
-        this.logger.warn(
-          `Failed to generate AI insights for user ${userId} ` +
-            `after ${Date.now() - startTime}ms: ${message}`,
-        );
-      }
-
-      return this.getInsights(userId);
     } finally {
       this.generatingUsers.delete(userId);
       await this.jobClaims
@@ -326,6 +228,123 @@ export class AiInsightsService {
           ),
         );
     }
+  }
+
+  /**
+   * The generation itself, under the lease `generateInsights` took and renews.
+   * `leaseToken` fences the save: a generation whose lease was retaken saves
+   * nothing (A26-L13).
+   */
+  private async generateLeased(
+    userId: string,
+    leaseToken: string,
+    startTime: number,
+  ): Promise<InsightsListResponse> {
+    // The cooldown again, now that this replica holds the lease.
+    //
+    // The read above happened before the claim, so on its own it is a
+    // check-then-act: a replica that read "no recent insight" while another
+    // was still generating, then won the lease the moment the winner released
+    // it, generated and saved a second set -- duplicate rows with no
+    // idempotency key, and the provider paid twice. The winner saves before
+    // it releases (the `finally` in `generateInsights`), so a read taken under the lease sees
+    // those rows and stands down. A generation that saved nothing leaves no
+    // row, so the next holder still retries it, which is the point of the
+    // lease being released rather than kept.
+    if (await this.hasRecentInsight(userId)) {
+      this.logger.log(
+        `Insights generation skipped user=${userId}: another replica generated within the ${MIN_GENERATION_INTERVAL_HOURS}h cooldown while this one waited`,
+      );
+      return this.getInsights(userId);
+    }
+
+    this.logger.log(`Insights generation start user=${userId}`);
+    const preferences = await withScopedDb(this.dataSource, (manager) =>
+      manager.getRepository(UserPreference).findOne({
+        where: { userId },
+      }),
+    );
+    const currency = preferredCurrency(preferences);
+
+    let aggregates: SpendingAggregates;
+    const aggregateStart = Date.now();
+    try {
+      aggregates = await this.aggregatorService.computeAggregates(
+        userId,
+        currency,
+      );
+      this.logger.log(
+        `Insights aggregates built user=${userId} currency=${currency} ` +
+          `categories=${aggregates.categorySpending.length} ` +
+          `months=${aggregates.monthlySpending.length} ` +
+          `recurring=${aggregates.recurringCharges.length} ` +
+          `in ${Date.now() - aggregateStart}ms`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      this.logger.warn(
+        `Failed to compute aggregates for user ${userId}: ${message}`,
+      );
+      return this.getInsights(userId);
+    }
+
+    if (
+      aggregates.categorySpending.length === 0 &&
+      aggregates.monthlySpending.length === 0
+    ) {
+      this.logger.log(
+        `Insights generation skipped user=${userId}: no spending data to analyze`,
+      );
+      return this.getInsights(userId);
+    }
+
+    const prompt = this.buildInsightsPrompt(aggregates);
+
+    try {
+      const providerCallStart = Date.now();
+      this.logger.log(
+        `Insights provider call start user=${userId} promptChars=${prompt.length}`,
+      );
+      const response = await this.aiService.complete(
+        userId,
+        {
+          systemPrompt:
+            INSIGHT_SYSTEM_PROMPT +
+            aiLanguageInstruction(preferences?.language),
+          messages: [{ role: "user", content: prompt }],
+          maxTokens: 4096,
+          temperature: 0.3,
+          responseFormat: "json",
+        },
+        "insight",
+      );
+      const providerCallMs = Date.now() - providerCallStart;
+      this.logger.log(
+        `Insights provider call done user=${userId} ` +
+          `model=${response.model} ms=${providerCallMs} ` +
+          `inputTokens=${response.usage.inputTokens} ` +
+          `outputTokens=${response.usage.outputTokens} ` +
+          `contentChars=${response.content.length}`,
+      );
+
+      const rawInsights = this.parseInsightsResponse(response.content, userId);
+      await this.saveInsights(userId, rawInsights, leaseToken);
+      this.logger.log(
+        `Insights generation complete user=${userId} ` +
+          `totalMs=${Date.now() - startTime} ` +
+          `parsed=${rawInsights.length} ` +
+          `inputTokens=${response.usage.inputTokens} ` +
+          `outputTokens=${response.usage.outputTokens}`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      this.logger.warn(
+        `Failed to generate AI insights for user ${userId} ` +
+          `after ${Date.now() - startTime}ms: ${message}`,
+      );
+    }
+
+    return this.getInsights(userId);
   }
 
   /**
@@ -741,6 +760,7 @@ export class AiInsightsService {
   private async saveInsights(
     userId: string,
     rawInsights: RawInsight[],
+    leaseToken: string,
   ): Promise<void> {
     if (rawInsights.length === 0) return;
 
@@ -751,7 +771,20 @@ export class AiInsightsService {
 
     // One transaction: the save and the cap-enforcing prune are a
     // read-modify-write over the same rows.
-    await withScopedDb(this.dataSource, async (manager) => {
+    const saved = await withScopedDb(this.dataSource, async (manager) => {
+      // The fence (A26-L13): a generation that outran its lease, which another
+      // attempt has since retaken, saves nothing; the holder saves its own set.
+      if (
+        !(await this.jobClaims.holdsLease(
+          manager,
+          JobClaimType.AiInsightGeneration,
+          userId,
+          INSIGHT_GENERATION_CLAIM_KEY,
+          leaseToken,
+        ))
+      ) {
+        return false;
+      }
       const repo = manager.getRepository(AiInsight);
       const insights = rawInsights.map((raw) =>
         repo.create({
@@ -781,7 +814,13 @@ export class AiInsightsService {
           await repo.remove(toRemove);
         }
       }
+      return true;
     });
+    if (!saved) {
+      this.logger.warn(
+        `Insights not saved user=${userId}: the generation lease was retaken by another attempt`,
+      );
+    }
   }
 
   private sanitizeData(data: unknown): Record<string, unknown> {

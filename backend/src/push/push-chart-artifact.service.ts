@@ -7,8 +7,20 @@ import { withScopedDb } from "../common/db/scoped-db";
 import { withSystemContext } from "../common/db/with-context";
 import { returnedRows } from "../common/db/query-result";
 import { derivePurposeKey } from "../auth/crypto.util";
+import { PUSH_TTL_SECONDS } from "./web-push-sender.service";
 
-export const CHART_TOKEN_TTL_MS = 5 * 60_000;
+/**
+ * The chart token rides on a push the push service may hold for
+ * `PUSH_TTL_SECONDS` (a phone in Doze), so it must stay valid as long (A26-L27).
+ * The cleanup cron (every 5 minutes) deletes expired rows, so it still fits.
+ */
+export const CHART_TOKEN_TTL_MS = PUSH_TTL_SECONDS * 1000;
+/**
+ * Bounds the stored PNG bytes (64 KB each). The longer TTL keeps rows alive
+ * longer, so this cap binds sooner than it did at 5 minutes; that is the
+ * deliberate trade. At the cap `issue` returns null and the push goes without
+ * a chart.
+ */
 export const CHART_ARTIFACT_LIMIT = 1000;
 export const CHART_MAX_BYTES = 64 * 1024;
 export const CHART_TOKEN_PATTERN = /^[a-f0-9]{64}\.[0-9]{13}\.[a-f0-9]{64}$/;

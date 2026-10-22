@@ -425,3 +425,5 @@ choosing for them is how a default becomes a surprise.
 is commented as local-only, the `s3` target's listing has no legacy entries to
 return, and retiring it is its own PR against its own evidence -- not a silent
 side effect of a refactor whose whole claim is that it changed nothing.
+(Superseded by A26-M07: the sweep deleted other owners' legacy files, so legacy
+entries are now listed but never removed; see `docs/external-side-effects.md`.)
