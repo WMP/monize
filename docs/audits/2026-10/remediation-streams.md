@@ -80,6 +80,8 @@
 
 ## Status
 
+2026-10-22 16:30 UTC: upstream `kenlasko/monize` `main` moved 43 commits past the baseline (`13a7abf3`, warranty tracker). Every fix branch had `upstream/main` merged in (merge commits, no history rewritten): one real conflict in `transactions.service.ts` (forms: both sides added a method at the same place, both kept), one import block in `tool-executor.service.ts` (budgets-reports), one doc comment in `apiCache.ts` (frontend-cache); `fix/audit-all` refreshed and merged into the wave-3 branches. All 15 branches now merge cleanly into upstream `main`.
+
 | Stream | Branch | Started | Child session | Tasks done | Merged |
 |---|---|---|---|---|---|
 | harness | `fix/audit-harness` | 2026-10-22 04:19 UTC | session_01JWWBawaWKEiTgRH4EUCL9M | T08 (head 67041d9; 7 commits, tests and helpers only, no production code; full integration suite 123/123 green) | not yet |
