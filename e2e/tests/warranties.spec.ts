@@ -86,8 +86,8 @@ test.describe('Warranties', () => {
 
     const documents = page.getByRole('region', { name: 'Documents' });
     await expect(documents.getByText('No documents yet')).toBeVisible();
-    // The picker starts on Other; the kind chosen applies to the next upload.
-    await documents.getByLabel('Document type', { exact: true }).selectOption('receipt');
+    // The upload carries no kind picker: a new document is stored as Other.
+    await expect(documents.getByLabel('Document type', { exact: true })).toHaveCount(0);
     await documents.getByLabel('Add attachment').setInputFiles({
       name: 'proof-of-purchase.png',
       mimeType: 'image/png',
@@ -96,17 +96,23 @@ test.describe('Warranties', () => {
 
     const row = documents.locator('li', { hasText: 'proof-of-purchase.png' });
     await expect(row).toBeVisible({ timeout: 15000 });
-    // The owner's row carries its kind as a picker (changeable after upload).
-    await expect(
-      row.getByRole('combobox', { name: 'Document type for proof-of-purchase.png' }),
-    ).toHaveValue('receipt');
+    // The owner's row carries its kind as a picker, set after upload.
+    const kind = row.getByRole('combobox', { name: 'Document type for proof-of-purchase.png' });
+    await expect(kind).toHaveValue('other');
+    const saved = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        /\/attachments\/[^/]+$/.test(new URL(response.url()).pathname),
+    );
+    await kind.selectOption('receipt');
+    expect((await saved).ok()).toBe(true);
+    await expect(kind).toHaveValue('receipt');
 
     await page.reload();
     await expect(row).toBeVisible({ timeout: 15000 });
-    // The owner's row carries its kind as a picker (changeable after upload).
-    await expect(
-      row.getByRole('combobox', { name: 'Document type for proof-of-purchase.png' }),
-    ).toHaveValue('receipt');
+    // The kind was stored: the row reads it back after a reload.
+    await expect(kind).toHaveValue('receipt');
+    await expect(kind.locator('option:checked')).toHaveText('Receipt');
   });
 
   test('filters, searches and archives a warranty on the Warranties page', async ({

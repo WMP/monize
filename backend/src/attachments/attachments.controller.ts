@@ -118,7 +118,7 @@ export class AttachmentsController {
   @Post("warranties/:warrantyId/attachments")
   @ApiOperation({
     summary:
-      "Upload a document (receipt, manual, photo or other) to a warranty",
+      "Upload a document (receipt, manual, photo, warranty certificate or other) to a warranty",
   })
   @ApiConsumes("multipart/form-data")
   @ApiResponse({ status: 201, description: "Attachment metadata" })

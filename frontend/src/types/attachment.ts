@@ -1,13 +1,18 @@
 /**
- * What a document is. A warranty's documents carry the kind the reader picked
- * on upload; a transaction's attachments are always `other`
+ * What a document is. A warranty's new document is stored as `other` and the
+ * reader sets its kind on its row (`warranty` is the warranty certificate
+ * itself); a transaction's attachments are always `other`
  * (docs/future-plans/warranty-tracker.md decision 7).
  */
-export type DocumentKind = 'receipt' | 'manual' | 'photo' | 'other';
+export type DocumentKind = 'receipt' | 'manual' | 'photo' | 'warranty' | 'other';
 
-export const DOCUMENT_KINDS: readonly DocumentKind[] = ['receipt', 'manual', 'photo', 'other'];
-
-export const DEFAULT_DOCUMENT_KIND: DocumentKind = 'other';
+export const DOCUMENT_KINDS: readonly DocumentKind[] = [
+  'receipt',
+  'manual',
+  'photo',
+  'warranty',
+  'other',
+];
 
 /**
  * The row an attachment hangs off: a transaction or a warranty, never both

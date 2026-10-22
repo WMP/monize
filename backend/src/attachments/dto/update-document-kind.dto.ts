@@ -10,7 +10,8 @@ import { DOCUMENT_KINDS, DocumentKind } from "../attachment-parent";
 export class UpdateDocumentKindDto {
   @ApiProperty({
     enum: DOCUMENT_KINDS,
-    description: "What the document is: receipt, manual, photo or other",
+    description:
+      "What the document is: receipt, manual, photo, warranty (the certificate) or other",
   })
   @IsIn(DOCUMENT_KINDS)
   documentKind: DocumentKind;

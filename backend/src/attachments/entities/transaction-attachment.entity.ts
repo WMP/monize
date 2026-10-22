@@ -12,7 +12,11 @@ import { ApiProperty } from "@nestjs/swagger";
 import { User } from "../../users/entities/user.entity";
 import { Transaction } from "../../transactions/entities/transaction.entity";
 import { Warranty } from "../../warranties/entities/warranty.entity";
-import { DEFAULT_DOCUMENT_KIND, DocumentKind } from "../attachment-parent";
+import {
+  DEFAULT_DOCUMENT_KIND,
+  DOCUMENT_KINDS,
+  DocumentKind,
+} from "../attachment-parent";
 
 /**
  * Metadata for a file attached to a transaction (receipt, invoice, document)
@@ -46,7 +50,7 @@ import { DEFAULT_DOCUMENT_KIND, DocumentKind } from "../attachment-parent";
 )
 @Check(
   "chk_attachment_document_kind",
-  "document_kind IN ('receipt', 'manual', 'photo', 'other')",
+  "document_kind IN ('receipt', 'manual', 'photo', 'warranty', 'other')",
 )
 export class TransactionAttachment {
   @ApiProperty({ example: "c5f5d5f0-1234-4567-890a-123456789abc" })
@@ -85,7 +89,7 @@ export class TransactionAttachment {
    */
   @ApiProperty({
     example: "receipt",
-    enum: ["receipt", "manual", "photo", "other"],
+    enum: DOCUMENT_KINDS,
   })
   @Column({
     type: "varchar",

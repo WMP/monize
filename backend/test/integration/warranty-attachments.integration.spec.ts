@@ -476,6 +476,15 @@ describe("A warranty's documents under RLS enforcement (WTY-003)", () => {
       );
       expect(kinds).toEqual(["manual", "manual"]);
 
+      // The warranty certificate is a kind the database accepts too
+      // (chk_attachment_document_kind).
+      await asAlice(() =>
+        attachments.updateDocumentKind(aliceId, visibleId, "warranty"),
+      );
+      expect(
+        (await rowsOf("warranty_id", warrantyId)).map((r) => r.document_kind),
+      ).toEqual(["warranty", "warranty"]);
+
       await expect(
         asAlice(() =>
           attachments.updateDocumentKind(aliceId, own.id, "receipt"),

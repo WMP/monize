@@ -440,7 +440,7 @@ CREATE TABLE transaction_attachments (
     warranty_id UUID,
     -- What a warranty's document is; a transaction's attachments are always
     -- 'other' (the register offers no picker).
-    document_kind VARCHAR(20) NOT NULL DEFAULT 'other', -- 'receipt' | 'manual' | 'photo' | 'other'
+    document_kind VARCHAR(20) NOT NULL DEFAULT 'other', -- 'receipt' | 'manual' | 'photo' | 'warranty' | 'other'
     filename VARCHAR(255) NOT NULL,
     content_type VARCHAR(100) NOT NULL, -- server-sniffed MIME, not the client's claim
     byte_size BIGINT NOT NULL,
@@ -456,7 +456,7 @@ CREATE TABLE transaction_attachments (
     CONSTRAINT chk_attachment_not_own_original
         CHECK (original_of_attachment_id IS NULL OR original_of_attachment_id <> id),
     CONSTRAINT chk_attachment_document_kind
-        CHECK (document_kind IN ('receipt', 'manual', 'photo', 'other')),
+        CHECK (document_kind IN ('receipt', 'manual', 'photo', 'warranty', 'other')),
     -- Exactly one parent: never none, never both.
     CONSTRAINT chk_attachment_one_parent
         CHECK (((transaction_id IS NOT NULL)::int + (warranty_id IS NOT NULL)::int) = 1)

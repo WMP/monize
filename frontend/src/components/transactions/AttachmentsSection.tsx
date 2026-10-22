@@ -19,7 +19,6 @@ import {
   Attachment,
   AttachmentParent,
   ACCEPTED_ATTACHMENT_TYPES,
-  DEFAULT_DOCUMENT_KIND,
   DOCUMENT_KINDS,
   DocumentKind,
   MAX_ATTACHMENT_BYTES,
@@ -31,8 +30,8 @@ const logger = createLogger('AttachmentsSection');
 /**
  * Saved mode: manages the attachments of an existing transaction directly
  * against the server. Warranty mode: the same saved list for a warranty's
- * documents, with a document kind chosen on upload and shown on each row
- * (`documentKind` is the kind the picker starts on). Staged mode: holds files
+ * documents, each row carrying its document kind; a new document is stored
+ * as `other` and the reader sets its kind on its row. Staged mode: holds files
  * client-side for a transaction that does not exist yet (the New Transaction
  * window); the parent form uploads them once the transaction has been created.
  */
@@ -40,7 +39,6 @@ type AttachmentsSectionProps =
   | { transactionId: string }
   | {
       warrantyId: string;
-      documentKind?: DocumentKind;
       /**
        * List and preview only: no upload, scan, kind picker or delete. An
        * acting delegate reads a warranty's documents but never changes them.
@@ -174,37 +172,6 @@ function UploadControl({
 }
 
 /**
- * The kind picker a warranty's upload carries. The choice applies to the next
- * file added or scanned, so it sits beside the controls rather than on a row.
- */
-function DocumentKindPicker({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: DocumentKind;
-  onChange: (kind: DocumentKind) => void;
-  disabled?: boolean;
-}) {
-  const t = useTranslations('warranties');
-  return (
-    <div className="sm:max-w-xs">
-      <Select
-        id="attachment-document-kind"
-        label={t('documents.kindLabel')}
-        value={value}
-        disabled={disabled}
-        options={DOCUMENT_KINDS.map((kind) => ({
-          value: kind,
-          label: t(`documents.kinds.${kind}`),
-        }))}
-        onChange={(event) => onChange(event.target.value as DocumentKind)}
-      />
-    </div>
-  );
-}
-
-/**
  * The documents of one linked warranty, as a transaction's list carries them
  * after its own rows.
  */
@@ -260,12 +227,10 @@ function splitByOwner(
 function SavedAttachments({
   parentKind,
   parentId,
-  initialDocumentKind,
   readOnly = false,
 }: {
   parentKind: SavedParentKind;
   parentId: string;
-  initialDocumentKind?: DocumentKind;
   readOnly?: boolean;
 }) {
   const t = useTranslations('attachments');
@@ -280,9 +245,6 @@ function SavedAttachments({
         ? { warrantyId: parentId }
         : { transactionId: parentId },
     [parentKind, parentId],
-  );
-  const [documentKind, setDocumentKind] = useState<DocumentKind>(
-    initialDocumentKind ?? DEFAULT_DOCUMENT_KIND,
   );
   // `null` until a list has loaded; a failed load is `loadFailed`, never an
   // empty list, so neither "No documents yet" nor the cap check can be drawn
@@ -352,12 +314,10 @@ function SavedAttachments({
   const upload = async (file: File, original?: File) => {
     setUploading(true);
     try {
-      // A transaction's upload carries no kind: its route takes none (W4).
-      if (isWarranty) {
-        await attachmentsApi.upload(parent, file, original, documentKind);
-      } else {
-        await attachmentsApi.upload(parent, file, original);
-      }
+      // No kind is sent: a transaction's route takes none (W4), and a
+      // warranty's new document is stored as `other` until the reader sets
+      // its kind on its row.
+      await attachmentsApi.upload(parent, file, original);
       toast.success(t('uploaded'));
       await load();
     } catch (err) {
@@ -509,7 +469,7 @@ function SavedAttachments({
           </span>
         </button>
         {kindEditable && (
-          <div className="w-28 shrink-0">
+          <div className="w-40 shrink-0">
             <Select
               id={`document-kind-select-${attachment.id}`}
               aria-label={tw('documents.kindFor', { name: attachment.filename })}
@@ -603,14 +563,6 @@ function SavedAttachments({
           </>
         )}
       </AttachmentsHeader>
-
-      {isWarranty && !readOnly && known !== null && (
-        <DocumentKindPicker
-          value={documentKind}
-          onChange={setDocumentKind}
-          disabled={uploading}
-        />
-      )}
 
       {body ?? (
         <>
@@ -880,7 +832,6 @@ export function AttachmentsSection(props: AttachmentsSectionProps) {
         key={`warranty:${props.warrantyId}`}
         parentKind="warranty"
         parentId={props.warrantyId}
-        initialDocumentKind={props.documentKind}
         readOnly={props.readOnly}
       />
     );

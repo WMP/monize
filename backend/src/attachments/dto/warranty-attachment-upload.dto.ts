@@ -12,7 +12,7 @@ export class WarrantyAttachmentUploadDto {
   @ApiPropertyOptional({
     enum: DOCUMENT_KINDS,
     description:
-      "What the document is: receipt, manual, photo or other (the default)",
+      "What the document is: receipt, manual, photo, warranty (the certificate) or other (the default)",
   })
   @IsOptional()
   @IsIn(DOCUMENT_KINDS)

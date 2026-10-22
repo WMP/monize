@@ -25,7 +25,13 @@ export type AttachmentParentKind = AttachmentParent["kind"];
  * What a warranty's document is. A transaction's attachments always carry
  * `other` (the design's open question W4 keeps the picker off the register).
  */
-export const DOCUMENT_KINDS = ["receipt", "manual", "photo", "other"] as const;
+export const DOCUMENT_KINDS = [
+  "receipt",
+  "manual",
+  "photo",
+  "warranty",
+  "other",
+] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 export const DEFAULT_DOCUMENT_KIND: DocumentKind = "other";
 

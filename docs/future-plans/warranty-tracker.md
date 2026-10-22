@@ -108,8 +108,8 @@ and never contributes to a balance, a report or a total.
    "value under warranty" figure in v1 (open question W2).
 7. **Attachments gain a second parent.** `transaction_attachments.transaction_id`
    becomes nullable, `warranty_id` is added, a CHECK requires exactly one of
-   the two, and `document_kind` (`receipt | manual | photo | other`, default
-   `other`) is added. Both rows of a scan pair carry the same parent. Ownership
+   the two, and `document_kind` (`receipt | manual | photo | warranty | other`,
+   default `other`; `warranty` is the warranty certificate itself) is added. Both rows of a scan pair carry the same parent. Ownership
    stays `user_id`, so the `attachment_blobs` policy, the tombstone trigger,
    the orphan sweeper, the storage migrator and the backup transfer do not
    change. The per-parent cap (`MAX_ATTACHMENTS_PER_TRANSACTION`, ten) applies
@@ -213,6 +213,11 @@ specific than the text above or than sections 6 and 10:
   `has:attachment` or the rule facts"); a document's kind can be changed after
   upload (`PATCH attachments/:id`, `AttachmentsService.updateDocumentKind`,
   both halves of a scan pair together).
+- **A document's kind is set on its row, not on upload** (the maintainer's
+  ruling, 2026-10-22): the Documents section has no upload-time kind picker,
+  a new document is stored as `other`, and the owner changes it with the
+  row's picker. The upload route and `attachmentsApi.upload` still accept a
+  `documentKind` for a caller that knows it.
 
 ## 4. Definitions
 
@@ -326,7 +331,9 @@ ALTER TABLE transaction_attachments
   ADD COLUMN IF NOT EXISTS document_kind VARCHAR(20) NOT NULL DEFAULT 'other';
 -- CHECK constraints are added with a DO block guarded by pg_constraint, the
 -- repository's pattern for idempotent constraints.
---   chk_attachment_document_kind: document_kind IN ('receipt','manual','photo','other')
+--   chk_attachment_document_kind:
+--     document_kind IN ('receipt','manual','photo','warranty','other')
+--     (`warranty` widened in by a later migration, attachment_kind_warranty)
 --   chk_attachment_one_parent:
 --     (transaction_id IS NOT NULL)::int + (warranty_id IS NOT NULL)::int = 1
 CREATE INDEX IF NOT EXISTS idx_transaction_attachments_warranty
@@ -511,7 +518,8 @@ tick (the smallest mark at or above 20 is 30), then the 7-day one.
   `?transactionId=<id>` filters the list.
 - the warranty detail page (route /warranties/[id]): the status card (days
   left, kind, vendor, price, serials, product link), a Documents section
-  (`AttachmentsSection` with `{ warrantyId }` and a `documentKind` picker;
+  (`AttachmentsSection` with `{ warrantyId }`, each row carrying a
+  `documentKind` picker;
   preview through `AttachmentPreviewDialog`, scanning through
   `ScanDocumentControl`, both parent-agnostic today), a Claims section
   (`WarrantyClaimList.tsx`, `WarrantyClaimForm.tsx`), and the linked

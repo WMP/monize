@@ -543,9 +543,9 @@ describe('AttachmentsSection', () => {
   });
 
   describe('with a warranty parent', () => {
-    async function renderWarranty(documentKind?: 'receipt' | 'manual' | 'photo' | 'other') {
+    async function renderWarranty() {
       await act(async () => {
-        render(<AttachmentsSection warrantyId="w-1" documentKind={documentKind} />);
+        render(<AttachmentsSection warrantyId="w-1" />);
       });
     }
 
@@ -588,40 +588,33 @@ describe('AttachmentsSection', () => {
       expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     });
 
-    it('uploads with the kind chosen, Other until one is', async () => {
+    it('uploads with no kind and offers no upload-time picker', async () => {
       mockList.mockResolvedValue([]);
       mockUpload.mockResolvedValue(warrantyDoc());
       await renderWarranty();
 
-      const kind = screen.getByLabelText('Document type') as HTMLSelectElement;
-      expect(kind.value).toBe('other');
-      fireEvent.change(kind, { target: { value: 'receipt' } });
+      // A new document is stored as Other; its row's picker sets the kind.
+      expect(screen.getByLabelText('Add attachment')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Document type')).not.toBeInTheDocument();
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
 
       await act(async () => {
         fireEvent.change(screen.getByLabelText('Add attachment'), {
           target: { files: [fileOfType('application/pdf')] },
         });
       });
-      await waitFor(() =>
-        expect(mockUpload).toHaveBeenCalledWith(
-          { warrantyId: 'w-1' },
-          expect.any(File),
-          undefined,
-          'receipt',
-        ),
-      );
+      await waitFor(() => expect(mockUpload).toHaveBeenCalledTimes(1));
+      expect(mockUpload.mock.calls[0]).toEqual([
+        { warrantyId: 'w-1' },
+        expect.any(File),
+        undefined,
+      ]);
     });
 
-    it('starts the picker on the kind the caller names', async () => {
-      mockList.mockResolvedValue([]);
-      await renderWarranty('photo');
-      expect((screen.getByLabelText('Document type') as HTMLSelectElement).value).toBe('photo');
-    });
-
-    it('uploads a scanned pair under the warranty with its kind', async () => {
+    it('uploads a scanned pair under the warranty with no kind', async () => {
       mockList.mockResolvedValue([]);
       mockUpload.mockResolvedValue(warrantyDoc());
-      await renderWarranty('receipt');
+      await renderWarranty();
       await act(async () => {
         fireEvent.change(screen.getByLabelText('Scan document'), {
           target: { files: [fileOfType('image/jpeg')] },
@@ -631,11 +624,12 @@ describe('AttachmentsSection', () => {
         fireEvent.click(screen.getByRole('button', { name: 'accept-pair' }));
       });
       await waitFor(() => expect(mockUpload).toHaveBeenCalledTimes(1));
-      const [parent, file, original, documentKind] = mockUpload.mock.calls[0];
+      const call = mockUpload.mock.calls[0];
+      expect(call).toHaveLength(3);
+      const [parent, file, original] = call;
       expect(parent).toEqual({ warrantyId: 'w-1' });
       expect((file as File).name).toBe('receipt-scan.jpg');
       expect(original).toBeInstanceOf(File);
-      expect(documentKind).toBe('receipt');
     });
 
     it('previews a document rather than downloading it', async () => {
@@ -671,8 +665,32 @@ describe('AttachmentsSection', () => {
         });
         expect(screen.getByRole('combobox', { name: 'Document type for manual.pdf' })).toHaveValue('receipt');
         expect(toast.error).not.toHaveBeenCalled();
-        // The upload picker is a different control and is left alone.
-        expect(screen.getByLabelText('Document type')).toHaveValue('other');
+      });
+
+      it('offers the five kinds, the warranty certificate among them', async () => {
+        mockList.mockResolvedValue([warrantyDoc()]);
+        mockUpdateKind.mockResolvedValue(warrantyDoc({ documentKind: 'warranty' }));
+        await renderWarranty();
+        const picker = screen.getByRole('combobox', { name: 'Document type for manual.pdf' });
+        expect(
+          within(picker).getAllByRole('option').map((option) => [
+            (option as HTMLOptionElement).value,
+            option.textContent,
+          ]),
+        ).toEqual([
+          ['receipt', 'Receipt'],
+          ['manual', 'Manual'],
+          ['photo', 'Photo'],
+          ['warranty', 'Warranty certificate'],
+          ['other', 'Other'],
+        ]);
+        await act(async () => {
+          fireEvent.change(picker, { target: { value: 'warranty' } });
+        });
+        expect(mockUpdateKind).toHaveBeenCalledWith('a-1', 'warranty');
+        expect(
+          screen.getByRole('combobox', { name: 'Document type for manual.pdf' }),
+        ).toHaveValue('warranty');
       });
 
       it('puts the old kind back and says so when the server refuses', async () => {
@@ -696,6 +714,7 @@ describe('AttachmentsSection', () => {
           render(<AttachmentsSection warrantyId="w-1" readOnly />);
         });
         expect(screen.getByTestId('document-kind-a-1')).toHaveTextContent('Manual');
+        expect(screen.queryByLabelText('Document type')).not.toBeInTheDocument();
         expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
       });
