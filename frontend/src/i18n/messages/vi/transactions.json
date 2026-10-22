@@ -477,7 +477,8 @@
       "add": "Thêm bảo hành",
       "expires": "Hết hạn {date}",
       "loading": "Đang tải bảo hành",
-      "loadError": "Không thể tải các bảo hành của giao tác này."
+      "loadError": "Không thể tải các bảo hành của giao tác này.",
+      "empty": "Chưa có bảo hành nào"
     }
   },
   "splitEditor": {

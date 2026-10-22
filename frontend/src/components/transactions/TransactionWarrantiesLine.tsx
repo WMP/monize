@@ -3,7 +3,8 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { Button } from '@/components/ui/Button';
 import { WarrantyStatusBadge } from '@/components/warranties/WarrantyStatusBadge';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { createLogger } from '@/lib/logger';
@@ -14,8 +15,8 @@ import { rowHasWarranties } from './WarrantyBadge';
 
 const logger = createLogger('TransactionWarrantiesLine');
 
-const LINK_CLASS =
-  'rounded text-blue-600 hover:underline dark:text-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500';
+const ROW_CLASS =
+  'flex min-w-0 items-center gap-3 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500';
 
 /** The answer for one transaction id, so a reply for another is never shown. */
 type LoadState =
@@ -23,14 +24,17 @@ type LoadState =
   | { transactionId: string; failed: true };
 
 interface TransactionWarrantiesLineProps {
-  /** A saved transaction; the form renders this only when editing one. */
-  transaction: Pick<Transaction, 'id' | 'warrantyCount'>;
+  /** The saved transaction, or none on a new one, which has no warranties yet. */
+  transaction?: Pick<Transaction, 'id' | 'warrantyCount'>;
   /**
-   * Opens the Warranties page's form prefilled from this transaction. The host
-   * owns it because leaving the edit window is the host's close, which asks
-   * about unsaved edits first; without it the line offers no Add.
+   * Opens the Warranties page's form prefilled from this transaction. The form
+   * owns what happens first: an edit leaves through the host's close, which
+   * asks about unsaved edits; a new transaction is saved before anything
+   * leaves. Without it the line offers no Add.
    */
   onAddWarranty?: () => void;
+  /** Add is under way (a new transaction is being saved first). */
+  isAdding?: boolean;
   /**
    * Opens one warranty's detail page, through the host's close-then-navigate
    * like `onAddWarranty`. A bare link cannot: this line sits in a
@@ -54,33 +58,34 @@ function isModifiedClick(event: MouseEvent<HTMLAnchorElement>): boolean {
  * plain click goes through `onOpenWarranty`. The line lists warranties only
  * (name, status, expiry); their documents are in the Attachments section. The list is fetched only when
  * the register row says the transaction has any (`warrantyCount`); with none
- * the line is the Add button alone and nothing is fetched.
+ * nothing is fetched and the line says there are none yet, as it does when the
+ * fetch comes back empty.
  */
-export function TransactionWarrantiesLine({ transaction, onAddWarranty, onOpenWarranty }: TransactionWarrantiesLineProps) {
+export function TransactionWarrantiesLine({ transaction, onAddWarranty, isAdding, onOpenWarranty }: TransactionWarrantiesLineProps) {
   const t = useTranslations('transactions');
   const { formatDate } = useDateFormat();
-  const transactionId = transaction.id;
-  const shouldFetch = rowHasWarranties(transaction);
+  const fetchId = transaction !== undefined && rowHasWarranties(transaction) ? transaction.id : null;
+  const shouldFetch = fetchId !== null;
   const [loaded, setLoaded] = useState<LoadState | null>(null);
 
   useEffect(() => {
-    if (!shouldFetch) return;
+    if (fetchId === null) return;
     let cancelled = false;
     warrantiesApi
-      .list({ transactionId })
+      .list({ transactionId: fetchId })
       .then((result) => {
-        if (!cancelled) setLoaded({ transactionId, warranties: result.data });
+        if (!cancelled) setLoaded({ transactionId: fetchId, warranties: result.data });
       })
       .catch((error) => {
         logger.error('Failed to load the transaction warranties:', error);
-        if (!cancelled) setLoaded({ transactionId, failed: true });
+        if (!cancelled) setLoaded({ transactionId: fetchId, failed: true });
       });
     return () => {
       cancelled = true;
     };
-  }, [shouldFetch, transactionId]);
+  }, [fetchId]);
 
-  const current = shouldFetch && loaded?.transactionId === transactionId ? loaded : null;
+  const current = shouldFetch && loaded?.transactionId === fetchId ? loaded : null;
 
   return (
     <div className="space-y-2" data-testid="transaction-warranties">
@@ -89,14 +94,9 @@ export function TransactionWarrantiesLine({ transaction, onAddWarranty, onOpenWa
           {t('form.warranties.title')}
         </span>
         {onAddWarranty && (
-          <button
-            type="button"
-            onClick={onAddWarranty}
-            className={`inline-flex items-center gap-1 text-sm ${LINK_CLASS}`}
-          >
-            <PlusIcon className="h-4 w-4" aria-hidden="true" />
+          <Button type="button" variant="outline" size="sm" isLoading={isAdding} onClick={onAddWarranty}>
             {t('form.warranties.add')}
-          </button>
+          </Button>
         )}
       </div>
       {shouldFetch && current === null && (
@@ -109,22 +109,48 @@ export function TransactionWarrantiesLine({ transaction, onAddWarranty, onOpenWa
           {t('form.warranties.loadError')}
         </p>
       )}
+      {(!shouldFetch || (current !== null && 'warranties' in current && current.warranties.length === 0)) && (
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t('form.warranties.empty')}</p>
+      )}
       {current !== null && 'warranties' in current && current.warranties.length > 0 && (
-        <ul className="space-y-1">
+        <ul className="space-y-2">
           {current.warranties.map((warranty) => {
+            // Laid out as the Attachments rows above it are: an icon tile,
+            // the name over its expiry, and the status at the end.
             const content = (
               <>
-                <span className="min-w-0 break-words">{warranty.name}</span>
-                <WarrantyStatusBadge warranty={warranty} />
-                {!warranty.isLifetime && warranty.expiresOn !== null && (
-                  <span className="whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
-                    {t('form.warranties.expires', { date: formatDate(warranty.expiresOn) })}
+                <span
+                  aria-hidden="true"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-gray-100 dark:bg-gray-700"
+                >
+                  <ShieldCheckIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span
+                    className={`block break-words text-sm ${
+                      onOpenWarranty
+                        ? 'text-blue-600 hover:underline dark:text-blue-400'
+                        : 'text-gray-900 dark:text-gray-100'
+                    }`}
+                  >
+                    {warranty.name}
                   </span>
-                )}
+                  {!warranty.isLifetime && warranty.expiresOn !== null && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {t('form.warranties.expires', { date: formatDate(warranty.expiresOn) })}
+                    </span>
+                  )}
+                </span>
+                <span className="shrink-0">
+                  <WarrantyStatusBadge warranty={warranty} />
+                </span>
               </>
             );
             return (
-              <li key={warranty.id}>
+              <li
+                key={warranty.id}
+                className="rounded-md border border-gray-200 p-2 dark:border-gray-700"
+              >
                 {onOpenWarranty ? (
                   <Link
                     href={`/warranties/${warranty.id}`}
@@ -133,14 +159,12 @@ export function TransactionWarrantiesLine({ transaction, onAddWarranty, onOpenWa
                       event.preventDefault();
                       onOpenWarranty(warranty.id);
                     }}
-                    className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-sm ${LINK_CLASS}`}
+                    className={ROW_CLASS}
                   >
                     {content}
                   </Link>
                 ) : (
-                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-900 dark:text-gray-100">
-                    {content}
-                  </span>
+                  <span className={ROW_CLASS}>{content}</span>
                 )}
               </li>
             );

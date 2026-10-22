@@ -477,7 +477,8 @@
       "add": "新增保固",
       "expires": "{date} 到期",
       "loading": "正在載入保固",
-      "loadError": "無法載入此交易的保固。"
+      "loadError": "無法載入此交易的保固。",
+      "empty": "尚無保固"
     }
   },
   "splitEditor": {
