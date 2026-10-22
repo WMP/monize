@@ -552,6 +552,7 @@
     "bondSeriesNotNameable": "Uma operação agendada {{ action }} de um ativo vinculado a um programa de títulos não pode indicar a série de títulos das suas cotas. Registre-a como transação e escolha a série, ou agende uma compra (BUY), que usa a série à venda na sua data.",
     "notFound": "Transação agendada com ID {{ id }} não encontrada",
     "occurrenceAlreadyPosted": "Esta ocorrência já foi lançada.",
+    "noOccurrencesLeft": "Este agendamento não tem mais ocorrências para lançar ou pular.",
     "changedConcurrently": "The scheduled transaction changed during the operation. Reload it and retry.",
     "fxPlainOnly": "Só é possível usar outra moeda em uma transação agendada simples, não em uma divisão, transferência ou investimento",
     "fxRateUnavailable": "Não há uma taxa de câmbio disponível de {{ from }} para {{ to }} em {{ date }}. Insira o valor em {{ to }} para lançá-la.",
