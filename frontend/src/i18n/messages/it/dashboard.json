@@ -93,6 +93,11 @@
     "viewAll": "Visualizza tutte le analisi",
     "activeCount": "{count} attive"
   },
+  "warrantiesExpiring": {
+    "title": "Garanzie in scadenza",
+    "empty": "Nessuna scadenza nei prossimi 30 giorni",
+    "loadFailed": "Impossibile caricare le garanzie in scadenza. Ricarica la dashboard per riprovare."
+  },
   "topMovers": {
     "title": "Maggiori variazioni",
     "empty": {

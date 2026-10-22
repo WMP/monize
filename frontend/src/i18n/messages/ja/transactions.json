@@ -135,6 +135,7 @@
       "toggleTitle": "日付から年を省いて支払先の表示幅を広げます"
     },
     "attachmentsCount": "{count, plural, other {# 件の添付ファイル}}",
+    "warrantiesCount": "{count, plural, other {# 件の保証}}",
     "today": "今日",
     "export": {
       "button": "エクスポート",
@@ -198,7 +199,9 @@
       "duplicateTitle": "取引を複製",
       "copy": "コピー",
       "duplicate": "複製",
-      "scheduleRecurring": "定期取引としてスケジュール"
+      "scheduleRecurring": "定期取引としてスケジュール",
+      "addWarranty": "保証を追加",
+      "viewWarranties": "保証を表示"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "編集",
     "duplicate": "複製",
     "scheduleRecurring": "定期取引としてスケジュール",
+    "addWarranty": "保証を追加",
+    "viewWarranties": "保証を表示",
     "delete": "削除"
   },
   "filter": {
@@ -465,7 +470,14 @@
       },
       "feeCaption": "{percent}% の外貨取引手数料（{fee}）が含まれます。"
     },
-    "jointSplitDisabled": "共有口座の分割取引を管理できるのは所有者のみです"
+    "jointSplitDisabled": "共有口座の分割取引を管理できるのは所有者のみです",
+    "warranties": {
+      "title": "保証",
+      "add": "保証を追加",
+      "expires": "{date} に期限切れ",
+      "loading": "保証を読み込み中",
+      "loadError": "この取引の保証を読み込めませんでした。"
+    }
   },
   "splitEditor": {
     "header": "分割の詳細",
@@ -626,7 +638,8 @@
       "amountRange": "金額が 50〜100",
       "datePeriod": "2026年3月のいずれかの日",
       "isSplit": "分割取引",
-      "hasAttachment": "添付ファイルあり"
+      "hasAttachment": "添付ファイルあり",
+      "hasWarranty": "保証あり"
     }
   },
   "searchInterpretation": {
@@ -668,6 +681,7 @@
       },
       "has": {
         "attachment": "添付ファイルあり",
+        "warranty": "保証あり",
         "ref": "参照番号あり",
         "memo": "メモあり",
         "tag": "タグあり"

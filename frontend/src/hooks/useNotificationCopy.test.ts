@@ -290,3 +290,43 @@ describe('useNotificationCopy: AI review notifications', () => {
     }
   });
 });
+
+describe('useNotificationCopy: warranty notifications', () => {
+  afterEach(() => {
+    cleanup();
+    usePreferencesStore.setState({ preferences: null });
+  });
+
+  const facts = { warrantyId: 'w1', name: 'Dishwasher', expiresOn: '2026-11-20', threshold: 30, daysLeft: 30 };
+
+  it('WARRANTY_EXPIRING names the warranty, the mark and the date in the reader format', () => {
+    usePreferencesStore.setState({ preferences: { dateFormat: 'YYYY-MM-DD', timezone: 'UTC' } as any });
+    const copy = copyOf(row('WARRANTY_EXPIRING', facts));
+    expect(copy.title).toBe('Dishwasher: warranty expires within 30 days');
+    expect(copy.message).toContain('The warranty for Dishwasher expires on 2026-11-20.');
+    expect(copyOf(row('WARRANTY_EXPIRING', { ...facts, threshold: 7 })).title).toContain('within 7 days');
+  });
+
+  it('WARRANTY_EXPIRES_TODAY says it expires today', () => {
+    usePreferencesStore.setState({ preferences: { dateFormat: 'YYYY-MM-DD', timezone: 'UTC' } as any });
+    const copy = copyOf(row('WARRANTY_EXPIRES_TODAY', { ...facts, threshold: 0, daysLeft: 0 }));
+    expect(copy.title).toBe('Dishwasher: warranty expires today');
+    expect(copy.message).toContain('expires today, 2026-11-20');
+  });
+
+  it('falls back to the stored English when the facts are missing or invalid', () => {
+    for (const [type, data] of [
+      ['WARRANTY_EXPIRING', {}],
+      ['WARRANTY_EXPIRING', { ...facts, name: '' }],
+      ['WARRANTY_EXPIRING', { ...facts, expiresOn: 'soon' }],
+      ['WARRANTY_EXPIRING', { ...facts, threshold: 0 }],
+      ['WARRANTY_EXPIRING', { ...facts, threshold: '30' }],
+      ['WARRANTY_EXPIRES_TODAY', { name: 'Dishwasher' }],
+      ['WARRANTY_EXPIRES_TODAY', { ...facts, expiresOn: 20261120 }],
+    ] as const) {
+      const copy = copyOf(row(type, { ...data }));
+      expect(copy.title).toBe('stored title');
+      expect(copy.message).toBe('stored message');
+    }
+  });
+});

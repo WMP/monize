@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "Hasil sinkronisasi bank",
         "EMAIL_RECEIPTS": "Tanda terima email",
         "BONDS": "Obligasi",
-        "AI_REVIEW": "Usulan tinjauan AI"
+        "AI_REVIEW": "Usulan tinjauan AI",
+        "WARRANTIES": "Pengingat garansi"
       },
       "channelNotApplicable": "Tidak berlaku untuk jenis notifikasi ini",
       "emailToggleLabel": "Email laporan untuk {category}",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "Berikan akses hanya-baca ke seluruh bagian aplikasi. Data yang dicakup akun juga masih memerlukan akses per-akun.",
-      "aiRequiresFullAccess": "Asisten AI membaca seluruh akun dan bagian, sehingga hanya menjawab untuk delegasi ini setelah ia dapat membaca semua akun Anda dan setiap bagian lainnya."
+      "aiRequiresFullAccess": "Asisten AI membaca seluruh akun dan bagian, sehingga hanya menjawab untuk delegasi ini setelah ia dapat membaca semua akun Anda dan setiap bagian lainnya.",
+      "warranties": {
+        "label": "Garansi",
+        "description": "Garansi beserta dokumen dan klaimnya. Pembelian yang ditautkan hanya ditampilkan untuk akun yang dapat dibaca oleh delegasi."
+      }
     },
     "accounts": {
       "noAccounts": "Tidak ada akun untuk diberikan.",

@@ -135,6 +135,7 @@
       "toggleTitle": "Drop the year from dates so more of the payee fits"
     },
     "attachmentsCount": "{count, plural, one {# attachment} other {# attachments}}",
+    "warrantiesCount": "{count, plural, one {# warranty} other {# warranties}}",
     "today": "Today",
     "export": {
       "button": "Export",
@@ -198,7 +199,9 @@
       "duplicateTitle": "Duplicate transaction",
       "copy": "Copy",
       "duplicate": "Duplicate",
-      "scheduleRecurring": "Schedule as Recurring"
+      "scheduleRecurring": "Schedule as Recurring",
+      "addWarranty": "Add warranty",
+      "viewWarranties": "View warranties"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "Edit",
     "duplicate": "Duplicate",
     "scheduleRecurring": "Schedule as Recurring",
+    "addWarranty": "Add warranty",
+    "viewWarranties": "View warranties",
     "delete": "Delete"
   },
   "filter": {
@@ -466,7 +471,14 @@
       },
       "feeCaption": "Includes a {percent}% foreign transaction fee ({fee})."
     },
-    "jointSplitDisabled": "Split transactions in a shared account can only be managed by the owner"
+    "jointSplitDisabled": "Split transactions in a shared account can only be managed by the owner",
+    "warranties": {
+      "title": "Warranties",
+      "add": "Add warranty",
+      "expires": "Expires {date}",
+      "loading": "Loading warranties",
+      "loadError": "The warranties for this transaction could not be loaded."
+    }
   },
   "splitEditor": {
     "header": "Split Details",
@@ -627,7 +639,8 @@
       "amountRange": "Amount from 50 to 100",
       "datePeriod": "Any day in March 2026",
       "isSplit": "Split transactions",
-      "hasAttachment": "Has an attachment"
+      "hasAttachment": "Has an attachment",
+      "hasWarranty": "Has a warranty"
     }
   },
   "searchInterpretation": {
@@ -669,6 +682,7 @@
       },
       "has": {
         "attachment": "Has an attachment",
+        "warranty": "Has a warranty",
         "ref": "Has a reference number",
         "memo": "Has a memo",
         "tag": "Has a tag"

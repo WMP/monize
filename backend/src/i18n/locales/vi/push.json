@@ -47,6 +47,10 @@
     "ai_review": {
       "title": "Đề xuất xem xét của AI",
       "body": "Một số đề xuất xem xét của AI đang chờ quyết định của bạn. Mở Monize để xem chi tiết."
+    },
+    "warranties": {
+      "title": "Nhắc nhở bảo hành",
+      "body": "Một trong các bảo hành của bạn sắp hết hạn. Mở Monize để xem chi tiết."
     }
   },
   "actions": {

@@ -526,8 +526,11 @@ function detectDelimiter(content: string): string {
  * - Fields may be wrapped in double quotes
  * - Quoted fields can contain delimiters, newlines, and escaped quotes ("")
  * - Empty rows are skipped
+ *
+ * Exported for an importer whose columns a format fixes rather than a person
+ * maps (the warranty CSV, `warranty-csv.ts`), so the codebase keeps one reader.
  */
-function parseCsvRows(content: string, delimiter: string): string[][] {
+export function parseCsvRows(content: string, delimiter: string): string[][] {
   // Defensive: ensure we received a real string. An attacker could submit a
   // JSON body where `content` is an object like {length: 1e100}; iterating on
   // `.length` without this check is a CWE-834 loop-bound injection.

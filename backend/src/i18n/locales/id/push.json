@@ -47,6 +47,10 @@
     "ai_review": {
       "title": "Usulan tinjauan AI",
       "body": "Beberapa usulan tinjauan AI menunggu keputusan Anda. Buka Monize untuk melihat detailnya."
+    },
+    "warranties": {
+      "title": "Pengingat garansi",
+      "body": "Salah satu garansi Anda segera berakhir. Buka Monize untuk melihat detailnya."
     }
   },
   "actions": {
