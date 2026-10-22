@@ -13,14 +13,6 @@ import { withScopedDb } from "@/common/db/scoped-db";
 import { withSystemContext } from "@/common/db/with-context";
 import { User } from "@/users/entities/user.entity";
 import { NetWorthService } from "@/net-worth/net-worth.service";
-import { ScheduledTransactionsModule } from "@/scheduled-transactions/scheduled-transactions.module";
-import { ScheduledTransaction } from "@/scheduled-transactions/entities/scheduled-transaction.entity";
-import { ScheduledTransactionSplit } from "@/scheduled-transactions/entities/scheduled-transaction-split.entity";
-import { ScheduledTransactionOverride } from "@/scheduled-transactions/entities/scheduled-transaction-override.entity";
-import { Account } from "@/accounts/entities/account.entity";
-import { ScheduledTransactionsService } from "@/scheduled-transactions/scheduled-transactions.service";
-import { ScheduledTransactionOverrideService } from "@/scheduled-transactions/scheduled-transaction-override.service";
-import { ScheduledTransactionLoanService } from "@/scheduled-transactions/scheduled-transaction-loan.service";
 import type { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import * as bcrypt from "bcryptjs";
 import {
@@ -115,35 +107,17 @@ class TestI18nModule {}
 class TestClusterModule {}
 
 /**
- * What the real `ScheduledTransactionsModule` lets other modules inject, read
- * off its own metadata rather than restated here.
- *
- * The stub below stands in for that module, so its export list is a claim about
- * the real one -- and a hand-written copy of a list only fails when a consumer
- * appears. Issue #1247 added `ScheduledEffectiveAmountService` and
- * `ScheduledOccurrenceService` to those exports and gave
- * `NotificationsModule`/`BudgetsModule` a dependency on them; the stub went on
- * compiling until those consumers were reached, and then eighteen suites failed
- * with "argument ScheduledOccurrenceService at index [5] is available in the
- * NotificationsModule module". Derived, a new export is stubbed the day it
- * exists.
- */
-const SCHEDULED_TRANSACTIONS_EXPORTS: unknown[] =
-  Reflect.getMetadata("exports", ScheduledTransactionsModule) ?? [];
-
-/** Stubbed but deliberately not exported: internal collaborators the real module keeps to itself. */
-const SCHEDULED_TRANSACTIONS_INTERNALS: unknown[] = [
-  ScheduledTransactionOverrideService,
-  ScheduledTransactionLoanService,
-];
-
-/**
  * Creates a NestJS TestingModule wired to a real PostgreSQL database.
  * Uses `synchronize: true` and `dropSchema: true` so each test suite
  * starts with a clean schema derived from entity metadata.
  *
- * Replaces ScheduledTransactionsModule with a stub to break the
- * circular dependency (Transactions -> Accounts -> ScheduledTransactions -> Transactions).
+ * The module graph is the production one: `ScheduledTransactionsModule` is the
+ * real module wherever a suite's imports reach it, resolved through the same
+ * `forwardRef` edges the app uses (Transactions -> Accounts ->
+ * ScheduledTransactions -> Transactions). It used to be replaced by a stub
+ * whose services were empty objects, so the real `post()`, the auto-post cron
+ * and every consumer of the occurrence services could not run in any suite
+ * (A26-M42).
  *
  * NetWorthService.triggerDebouncedRecalc is mocked to a no-op to prevent
  * timer leaks in tests.
@@ -169,15 +143,7 @@ export async function createIntegrationModule(
   modules: any[],
   { typeOrmOptions = {}, applyRls = true }: IntegrationModuleOptions = {},
 ): Promise<TestingModule> {
-  if (!SCHEDULED_TRANSACTIONS_EXPORTS.includes(ScheduledTransactionsService)) {
-    // A floor on the derivation: an empty or unrecognisable metadata read would
-    // otherwise produce a stub that exports nothing and blame every consumer.
-    throw new Error(
-      "could not read ScheduledTransactionsModule's exports -- the integration stub would export nothing",
-    );
-  }
-
-  const moduleBuilder = Test.createTestingModule({
+  const module = await Test.createTestingModule({
     imports: [
       ConfigModule.forRoot({ isGlobal: true }),
       TestI18nModule,
@@ -188,31 +154,7 @@ export async function createIntegrationModule(
       } as never),
       ...modules,
     ],
-  })
-    // Replace ScheduledTransactionsModule to break circular dependency.
-    // AccountsModule imports ScheduledTransactionsModule (forwardRef),
-    // which imports TransactionsModule (forwardRef), causing undefined
-    // in the circular chain. We stub it with just the entity registrations
-    // and mock services.
-    .overrideModule(ScheduledTransactionsModule)
-    .useModule({
-      module: class StubScheduledTransactionsModule {},
-      imports: [
-        TypeOrmModule.forFeature([
-          ScheduledTransaction,
-          ScheduledTransactionSplit,
-          ScheduledTransactionOverride,
-          Account,
-        ]),
-      ],
-      providers: [
-        ...SCHEDULED_TRANSACTIONS_EXPORTS,
-        ...SCHEDULED_TRANSACTIONS_INTERNALS,
-      ].map((token) => ({ provide: token as never, useValue: {} })),
-      exports: SCHEDULED_TRANSACTIONS_EXPORTS as never[],
-    });
-
-  const module = await moduleBuilder.compile();
+  }).compile();
 
   // Bring the synchronize-built schema up to the real database's shape: runtime
   // role + grants, RLS helper functions and policies, updated_at triggers (T1).

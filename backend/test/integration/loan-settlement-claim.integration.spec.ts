@@ -48,10 +48,12 @@ import {
  * monthly, payment 1,500, so slot 1 books 500.00 principal and 1,000.00
  * interest, and the next slot on 199,500 books 502.50 and 997.50.
  *
- * **What this suite reaches, and what it does not.** The integration harness
- * replaces `ScheduledTransactionsModule` with a stub to break a require
- * cycle, so the real `ScheduledTransactionsService.post()` cannot be
- * constructed here. The two-connection case therefore drives the other side
+ * **What this suite reaches, and what it does not.** This suite was written
+ * while the integration harness replaced `ScheduledTransactionsModule` with a
+ * stub, so it does not call the real `ScheduledTransactionsService.post()`
+ * (the harness now builds the real module, and
+ * `scheduled-posting.integration.spec.ts` drives `post()` itself). The
+ * two-connection case here drives the other side
  * with the two statements `post()` takes before it writes money (the
  * schedule row lock, then its claim `INSERT ... ON CONFLICT DO NOTHING`), as
  * `scheduled-loan-pricing-concurrency.integration.spec.ts` does for the

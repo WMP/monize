@@ -26,9 +26,9 @@ import {
  * is left exactly as it was, and a category of another user is refused with
  * nothing written.
  *
- * The harness stubs `ScheduledTransactionsModule`, so the schedule is written
- * by fixture rather than by the loan create; the update reads and writes it
- * with its own manager.
+ * The schedule is written by fixture rather than by the loan create (this
+ * suite's module list does not reach the loan-create path); the update reads
+ * and writes it with its own manager.
  */
 describe("Loan interest category relink (integration)", () => {
   jest.setTimeout(120000);
