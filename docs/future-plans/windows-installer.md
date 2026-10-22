@@ -86,7 +86,7 @@ Read from the code on 2026-10-19.
 | Frontend | `output: 'standalone'`: a Node server is mandatory. `src/proxy.ts` forwards `/api/*`, `/oauth*` and the well-known paths to `INTERNAL_API_URL`; the browser only talks same-origin with httpOnly cookies. No WebAuthn. The VAPID public key is fetched at runtime from `GET /push/config`. | `frontend/next.config.js`, `frontend/src/proxy.ts`, `frontend/src/lib/backend-forward.ts`, `frontend/src/lib/push.ts` |
 | Frontend boot | `node --require ./server-log-format.cjs server.js` with `PORT`, `HOSTNAME`, `NODE_ENV=production`; `.next/static` and `public/` copied beside the standalone output. | `frontend/Dockerfile` |
 | Both | Plain HTTP is supported with `DISABLE_HTTPS_HEADERS=true` (drops HSTS and COOP; cookies lose `Secure`). `PUBLIC_APP_URL` must equal the origin the window loads: OIDC callbacks, the MCP OAuth issuer and email links are built from it. | `backend/src/main.ts`, `backend/src/auth/auth.controller.ts`, `backend/src/common/csrf.util.ts` |
-| Build | Both layers must be installed and built on Windows: the frontend's `node_modules` carries linux-only binaries for `@next/swc`, `lightningcss` and sharp, and the backend's Dockerfile passes `--libc=musl`. `patch-package` pins `next@16.3.4`. | `frontend/package.json`, `backend/Dockerfile` |
+| Build | Both layers must be installed and built on Windows: the frontend's `node_modules` carries linux-only binaries for `@next/swc`, `lightningcss` and sharp, and the backend's Dockerfile passes `--libc=musl`. `patch-package` pins `next@16.4.2`. | `frontend/package.json`, `backend/Dockerfile` |
 
 ## 5. Why this is non-trivial here (current state)
 
