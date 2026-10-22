@@ -395,7 +395,7 @@ db-init and db-migrate look for `schema.sql` and `migrations/` beside
 Dockerfiles copy; on Windows, D3's supervisor boots from `staging/` with no
 external install.
 
-**Traps:** `patch-package` pins `next@16.3.4`; the staged standalone output
+**Traps:** `patch-package` pins `next@16.4.2`; the staged standalone output
 carries the patched file, so staging must run after `npm ci` applied it.
 `@scarf/scarf` runs an install script (telemetry); set `SCARF_ANALYTICS=false`
 in the staging environment.
