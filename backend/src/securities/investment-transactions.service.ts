@@ -1166,6 +1166,8 @@ export class InvestmentTransactionsService {
         InvestmentAction.REINVEST,
         InvestmentAction.ADD_SHARES,
         InvestmentAction.REMOVE_SHARES,
+        // A return of capital reduces one security's basis, so it must name it.
+        InvestmentAction.RETURN_OF_CAPITAL,
       ].includes(baseInvestmentAction(createDto.action) as InvestmentAction) &&
       !createDto.securityId
     ) {
@@ -1650,6 +1652,7 @@ export class InvestmentTransactionsService {
       InvestmentAction.REINVEST,
       InvestmentAction.ADD_SHARES,
       InvestmentAction.REMOVE_SHARES,
+      InvestmentAction.RETURN_OF_CAPITAL,
     ];
     if (securityRequiredActions.includes(input.action) && !security) {
       throw new BadRequestException(
@@ -2596,6 +2599,7 @@ export class InvestmentTransactionsService {
       case InvestmentAction.DIVIDEND:
       case InvestmentAction.INTEREST:
       case InvestmentAction.CAPITAL_GAIN:
+      case InvestmentAction.RETURN_OF_CAPITAL:
         if (createCashSide && cashAccount) {
           cashTransactionId = await this.createCashTransactionInTransaction(
             manager,
@@ -2709,6 +2713,7 @@ export class InvestmentTransactionsService {
       InvestmentAction.REINVEST,
       InvestmentAction.DIVIDEND,
       InvestmentAction.CAPITAL_GAIN,
+      InvestmentAction.RETURN_OF_CAPITAL,
     ];
     if (securityRequiredActions.includes(dto.action) && !dto.securityId) {
       throw new BadRequestException(
@@ -4551,6 +4556,7 @@ export class InvestmentTransactionsService {
           InvestmentAction.REINVEST,
           InvestmentAction.ADD_SHARES,
           InvestmentAction.REMOVE_SHARES,
+          InvestmentAction.RETURN_OF_CAPITAL,
         ];
         const effectiveSecurityId =
           updateDto.securityId !== undefined

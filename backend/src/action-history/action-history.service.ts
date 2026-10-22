@@ -32,10 +32,14 @@ import { Account } from "../accounts/entities/account.entity";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { Tag } from "../tags/entities/tag.entity";
-import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
+import {
+  InvestmentAction,
+  InvestmentTransaction,
+} from "../securities/entities/investment-transaction.entity";
 import {
   acquisitionCost,
   applyActionToQuantity,
+  basisAfterReturnOfCapital,
   isQuantityOnlyAction,
   INVESTMENT_REPLAY_ORDER_SQL,
 } from "../securities/investment-replay.util";
@@ -1997,7 +2001,12 @@ export class ActionHistoryService {
       // canonically and stored 10 through this fold.
       const quantityChange =
         applyActionToQuantity(0, tx.action, qty) < 0 ? -qty : qty;
-      if (tx.action === "SPLIT") {
+      if (tx.action === InvestmentAction.RETURN_OF_CAPITAL) {
+        // As `computeHoldingsMap`: pays back cost, never below zero.
+        current.totalCost = basisAfterReturnOfCapital(current.totalCost, {
+          totalAmount: tx.total_amount,
+        });
+      } else if (tx.action === "SPLIT") {
         // Total basis is preserved across a split.
       } else if (isQuantityOnlyAction(tx.action)) {
         // ADD_SHARES / REMOVE_SHARES: quantity only, no cost basis change.
