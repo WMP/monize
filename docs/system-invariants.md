@@ -777,11 +777,23 @@ Enforcement         The balance decision is made once per pair, keyed on VOID.
                     state is per-ledger. Guards: deletion-balance.guard.spec.ts,
                     investment-void-classification.guard.spec.ts,
                     void-status-transition.util.ts.
+                    The crossing is decided on the LOCKED status, never on a read
+                    taken before the row lock (A26-M09): the bulk status update
+                    discovers its lock set structurally (every mirror leg and every
+                    leg of a selected split parent, whatever its status), takes the
+                    holdings advisory lock, locks the split parents and then the
+                    rest, and only then expands the crossing; a row the locked
+                    expansion names outside that set is refused with 409. addSplit
+                    and updateSplits write the new counterparts with the locked
+                    parent's status, not the caller's copy.
 Concurrency scope   per transfer pair
 Failure response    consistent balances across the pair on every VOID transition.
 Required tests      Per status-changing path, both legs' balances stay consistent
                     across a VOID transition, including the split-transfer variant
                     that links through the split parent rather than a mirror leg.
+                    Two connections, a status change committing between the
+                    caller's read and the row lock (bulk VOID of a pair, addSplit,
+                    updateSplits): backend/test/integration/void-crossing-lock.integration.spec.ts.
 Status              enforced
 ```
 

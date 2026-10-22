@@ -79,6 +79,9 @@ describe("TransactionSplitService", () => {
         amount: Number(transaction.amount ?? 0),
         transactionDate: String(transaction.transactionDate ?? "2026-01-15"),
         isSplit: transaction.isSplit ?? false,
+        // The counterparts take the LOCKED parent's status, not the caller's
+        // copy (A26-M09), so the committed row has to carry it.
+        status: transaction.status ?? TransactionStatus.UNRECONCILED,
         // The counterpart rows are built from the locked parent's payee too
         // (FV4-002), so the committed row has to carry it.
         payeeId: transaction.payeeId ?? null,
@@ -1016,6 +1019,7 @@ describe("TransactionSplitService", () => {
         ...mockTransaction,
         status: TransactionStatus.VOID,
       } as Transaction;
+      lockParent(transaction);
 
       splitsRepository.find.mockResolvedValue([]);
       accountsService.findOne.mockResolvedValue({
@@ -1925,6 +1929,7 @@ describe("TransactionSplitService", () => {
         transactionDate: "2026-01-15",
         payeeName: "Stale Payee",
         payeeId: "payee-stale",
+        status: TransactionStatus.UNRECONCILED,
       } as Transaction;
       stubLocks([
         lockedTransactionRow({
@@ -1935,6 +1940,8 @@ describe("TransactionSplitService", () => {
           isSplit: true,
           payeeId: "payee-committed",
           payeeName: "Committed Payee",
+          // Voided after the caller read it (A26-M09).
+          status: TransactionStatus.VOID,
         }),
       ]);
       splitsRepository.find.mockResolvedValue([]);
@@ -1958,12 +1965,12 @@ describe("TransactionSplitService", () => {
         "Committed Payee",
         "payee-committed",
         // The merged call also passes the parent's status option and the
-        // touched-accounts set for the post-commit net-worth fan-out. This
-        // fixture carries no status, so the option is { parentStatus: undefined };
+        // touched-accounts set for the post-commit net-worth fan-out. The status
+        // is the committed row's VOID, not the caller's UNRECONCILED (A26-M09);
         // the set is incidental to what this test pins down. `carriedSeries` is
         // the parent's embedded rows, read before the rebuild (none here).
         {
-          parentStatus: undefined,
+          parentStatus: TransactionStatus.VOID,
           carriedSeries: [],
           touchedSecurityIds: expect.any(Set),
         },
@@ -2833,7 +2840,7 @@ describe("TransactionSplitService", () => {
       );
 
       expect(createSplits.mock.calls[0][7]).toEqual({
-        parentStatus: undefined,
+        parentStatus: TransactionStatus.UNRECONCILED,
         carriedSeries: [
           {
             securityId: "sec-1",
