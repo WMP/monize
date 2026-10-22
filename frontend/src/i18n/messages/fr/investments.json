@@ -198,6 +198,7 @@
     "actionCapitalGainShort": "Plus-value à court terme",
     "actionCapitalGainLong": "Plus-value à long terme",
     "actionRedeem": "Remboursement CD/obligation",
+    "actionReturnOfCapital": "Remboursement de capital",
     "allActions": "Toutes les actions"
   },
   "transactionForm": {
@@ -218,6 +219,7 @@
     "actionCapitalGainShort": "Plus-value à court terme",
     "actionCapitalGainLong": "Plus-value à long terme",
     "actionRedeem": "Remboursement CD/obligation",
+    "actionReturnOfCapital": "Remboursement de capital",
     "actionTransfer": "Virement",
     "brokerageAccount": "Compte de courtage",
     "fromAccount": "Compte source",
@@ -262,6 +264,7 @@
     "sharesAt": "parts @",
     "avgCostSuffix": "coût moyen.",
     "transferCostNote": "Le coût par part (prérempli depuis le compte source) est transféré vers la destination afin que vos rapports de gains et bénéfices restent exacts. Cela déplace uniquement les parts — aucune liquidité ne change de main.",
+    "returnOfCapitalNote": "Un remboursement de capital n'est pas un revenu. Il restitue une partie de ce que les titres ont coûté, et réduit donc le prix de revient de votre position de ce montant. Tout ce qui dépasse le prix de revient restant est déclaré comme plus-value réalisée.",
     "totalAmount": "Montant total ({currency})",
     "sharesAtPrice": "{shares} parts @ {symbol}{price}",
     "commissionSuffix": "commission",

@@ -310,7 +310,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Langetermijnwinst herbeleggen",
       "CAPITAL_GAIN_SHORT": "Kortetermijnkapitaalwinst",
       "CAPITAL_GAIN_LONG": "Langetermijnkapitaalwinst",
-      "REDEEM": "CD/obligatie aflossen"
+      "REDEEM": "CD/obligatie aflossen",
+      "RETURN_OF_CAPITAL": "Kapitaalterugbetaling"
     },
     "toasts": {
       "loadHistoryFailed": "Historie laden mislukt",

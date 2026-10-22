@@ -491,6 +491,39 @@ describe("HoldingsService", () => {
       expect(result.averageCost).toBe(100);
     });
 
+    it("takes a return of capital off the basis without moving shares (#1800)", async () => {
+      investmentTransactionsRepository.find.mockResolvedValue([
+        {
+          id: "tx-buy",
+          action: InvestmentAction.BUY,
+          quantity: 10,
+          price: 100,
+          transactionDate: "2025-01-01",
+          createdAt: new Date("2025-01-01"),
+        },
+        {
+          id: "tx-roc",
+          action: InvestmentAction.RETURN_OF_CAPITAL,
+          quantity: null,
+          price: null,
+          totalAmount: 150,
+          transactionDate: "2025-02-01",
+          createdAt: new Date("2025-02-01"),
+        },
+      ]);
+
+      const result = await service.getHoldingAt(
+        "11111111-1111-1111-1111-111111111111",
+        "acc-1",
+        "sec-1",
+        "2025-03-01",
+      );
+
+      // 1,000 of basis less 150 returned, over the same 10 shares.
+      expect(result.quantity).toBe(10);
+      expect(result.averageCost).toBe(85);
+    });
+
     it("requires the user to own the account", async () => {
       accountsService.findOne.mockRejectedValue(
         new NotFoundException("Account not found"),
@@ -1285,6 +1318,72 @@ describe("HoldingsService", () => {
         }),
       );
       expect(result.holdingsCreated).toBe(1);
+    });
+
+    it("reduces the basis by a return of capital, never below zero (#1800)", async () => {
+      accountsRepository.find.mockResolvedValue([mockAccount]);
+
+      investmentTransactionsRepository.find.mockResolvedValue([
+        {
+          accountId: "acc-1",
+          securityId: "sec-1",
+          action: InvestmentAction.BUY,
+          quantity: 100,
+          price: 10,
+          transactionDate: "2025-01-01",
+          createdAt: new Date("2025-01-01"),
+        },
+        {
+          accountId: "acc-1",
+          securityId: "sec-1",
+          action: InvestmentAction.RETURN_OF_CAPITAL,
+          quantity: null,
+          price: null,
+          totalAmount: 200,
+          transactionDate: "2025-02-01",
+          createdAt: new Date("2025-02-01"),
+        },
+        {
+          accountId: "acc-1",
+          securityId: "sec-2",
+          action: InvestmentAction.BUY,
+          quantity: 10,
+          price: 5,
+          transactionDate: "2025-01-01",
+          createdAt: new Date("2025-01-01"),
+        },
+        {
+          // More than the 50 the position cost: the basis stops at zero.
+          accountId: "acc-1",
+          securityId: "sec-2",
+          action: InvestmentAction.RETURN_OF_CAPITAL,
+          quantity: null,
+          price: null,
+          totalAmount: 80,
+          transactionDate: "2025-02-01",
+          createdAt: new Date("2025-02-01"),
+        },
+      ]);
+
+      await service.rebuildFromTransactions(
+        "11111111-1111-1111-1111-111111111111",
+      );
+
+      // 1,000 - 200 = 800 over the same 100 shares.
+      expect(mockQrRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          securityId: "sec-1",
+          quantity: 100,
+          averageCost: 8,
+        }),
+      );
+      expect(mockQrRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          securityId: "sec-2",
+          quantity: 10,
+          averageCost: 0,
+        }),
+      );
     });
 
     it("handles REINVEST and TRANSFER_IN as positive quantity changes", async () => {
