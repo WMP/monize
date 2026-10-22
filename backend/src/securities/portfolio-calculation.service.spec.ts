@@ -149,8 +149,37 @@ describe("PortfolioCalculationService.calculateRealizedGains", () => {
 
     // Within the basis, the distribution realizes nothing on its own.
     expect(result.map((r) => r.transactionId)).toEqual(["sell"]);
+    expect(result[0].action).toBe(InvestmentAction.SELL);
     expect(result[0].costBasis).toBe(4000);
     expect(result[0].realizedGain).toBe(2000);
+  });
+
+  it("does not convert a return of capital at par when its stored rate is 0", async () => {
+    // A 0 rate cannot convert the distribution, so it is not taken off the
+    // basis at 1:1 -- the same as an unpriced acquisition, which this replay
+    // leaves out of the basis rather than guessing.
+    txRepo.find.mockResolvedValue([
+      makeTx({
+        id: "buy",
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-10",
+        quantity: 10,
+        price: 50,
+        totalAmount: 500,
+      }),
+      makeTx({
+        id: "roc",
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        transactionDate: "2024-03-10",
+        totalAmount: 700,
+        exchangeRate: 0,
+      }),
+    ]);
+
+    const result = await service.calculateRealizedGains(userId);
+
+    // At par it would have realized 200 beyond the 500 basis.
+    expect(result).toEqual([]);
   });
 
   it("realizes the part of a return of capital the basis cannot absorb", async () => {
@@ -178,6 +207,7 @@ describe("PortfolioCalculationService.calculateRealizedGains", () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       transactionId: "roc",
+      action: InvestmentAction.RETURN_OF_CAPITAL,
       quantity: 0,
       proceeds: 700,
       costBasis: 500,
@@ -602,6 +632,88 @@ describe("PortfolioCalculationService.calculateCapitalGainsByMonth", () => {
     expect(jan.totalCapitalGain).toBe(0);
     expect(jan.realizedGain).toBe(0);
     expect(jan.unrealizedGain).toBe(0);
+  });
+
+  it("reports the period unknown when a return of capital's stored rate is 0, never converting it at par", async () => {
+    // `Number(rate) || 1` would turn the 0 into 1 and report a confident
+    // figure; a rate that cannot convert is unknown (AGENTS.md: rate 1 means
+    // same currency, never no rate found).
+    txRepo.find.mockResolvedValue([
+      makeTx({
+        id: "buy",
+        action: InvestmentAction.BUY,
+        transactionDate: "2023-12-15",
+        quantity: 100,
+        price: 50,
+        totalAmount: 5000,
+      }),
+      makeTx({
+        id: "roc",
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        transactionDate: "2024-01-15",
+        totalAmount: 200,
+        exchangeRate: 0,
+      }),
+    ]);
+    priceRepo.query.mockResolvedValue(
+      priceRows([
+        { date: "2023-12-31", price: 50 },
+        { date: "2024-01-31", price: 48 },
+      ]),
+    );
+
+    const result = await service.calculateCapitalGainsByMonth(userId, {
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+    });
+
+    const jan = result.find((r) => r.month === "2024-01")!;
+    expect(jan.totalCapitalGain).toBeNull();
+    expect(jan.realizedGain).toBeNull();
+    expect(jan.unrealizedGain).toBeNull();
+  });
+
+  it("carries a return of capital from before the window into the basis a sale in it is measured against", async () => {
+    // Buy 100 @ 50 and get 1,000 back, both before January: the basis entering
+    // the window is 4,000, so selling all 100 for 6,000 realizes 2,000.
+    txRepo.find.mockResolvedValue([
+      makeTx({
+        id: "buy",
+        action: InvestmentAction.BUY,
+        transactionDate: "2023-11-15",
+        quantity: 100,
+        price: 50,
+        totalAmount: 5000,
+      }),
+      makeTx({
+        id: "roc",
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        transactionDate: "2023-12-15",
+        totalAmount: 1000,
+      }),
+      makeTx({
+        id: "sell",
+        action: InvestmentAction.SELL,
+        transactionDate: "2024-01-20",
+        quantity: 100,
+        price: 60,
+        totalAmount: 6000,
+      }),
+    ]);
+    priceRepo.query.mockResolvedValue(
+      priceRows([
+        { date: "2023-12-31", price: 55 },
+        { date: "2024-01-31", price: 60 },
+      ]),
+    );
+
+    const result = await service.calculateCapitalGainsByMonth(userId, {
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+    });
+
+    const jan = result.find((r) => r.month === "2024-01")!;
+    expect(jan.realizedGain).toBe(2000);
   });
 
   it("reports gains as unknown when the basis carries an unpriced acquisition", async () => {
@@ -2764,6 +2876,38 @@ describe("PortfolioCalculationService.calculateCostBasisLotsInAccountCurrency", 
       });
     });
 
+    it("leaves the basis unknown when a return of capital settled in another currency", async () => {
+      // The basis is in EUR (the linked cash account); the distribution paid
+      // into a USD account, converted at a USD rate. Subtracting it from a
+      // EUR basis would mix two currencies, so the basis is a gap instead.
+      const replayed = await lots(
+        [
+          buy(),
+          {
+            accountId: "acct-1",
+            securityId: "sec-a",
+            action: InvestmentAction.RETURN_OF_CAPITAL,
+            quantity: null,
+            price: null,
+            totalAmount: 50,
+            exchangeRate: 1.1,
+            fundingAccountId: "fund-usd",
+          } as unknown as InvestmentTransaction,
+        ],
+        [
+          brokerage("cash-eur", "PLN"),
+          { id: "cash-eur", currencyCode: "EUR", linkedAccountId: null },
+          { id: "fund-usd", currencyCode: "USD", linkedAccountId: null },
+        ],
+      );
+
+      expect(replayed.get("acct-1:sec-a")).toMatchObject({
+        costBasis: 900,
+        basisKnown: false,
+        basisGap: "mixed_basis_currency",
+      });
+    });
+
     it("reports the funding account's currency when the row names one", async () => {
       const replayed = await lots(
         [buy({ fundingAccountId: "fund-eur" })],
@@ -3552,5 +3696,32 @@ describe("PortfolioCalculationService.calculateHoldingsWithValues (bond-linked)"
 
     expect(result.holdingsWithValues[0].marketValue).toBe(500);
     expect(valueByAccount).not.toHaveBeenCalled();
+  });
+});
+
+describe("PortfolioCalculationService.computeInvestmentFlows", () => {
+  it("counts a return of capital with the sale proceeds, not with income (#1800)", async () => {
+    // Net invested is cash + buys - sells - income. A return of capital puts
+    // cash in the sleeve that no deposit put there, and it is capital coming
+    // back, not earnings: it belongs with the proceeds.
+    const rawQuery = jest
+      .fn()
+      .mockResolvedValue([
+        { account_id: "acct-1", buys: "1000", sells: "250", income: "40" },
+      ]);
+    const service = buildService([], {}, rawQuery);
+
+    const flows = await service.computeInvestmentFlows("user-1", ["acct-1"]);
+
+    const params = rawQuery.mock.calls[0][1] as unknown[];
+    expect(params[2]).toEqual(
+      expect.arrayContaining([
+        InvestmentAction.SELL,
+        InvestmentAction.REDEEM,
+        InvestmentAction.RETURN_OF_CAPITAL,
+      ]),
+    );
+    expect(params[3]).not.toContain(InvestmentAction.RETURN_OF_CAPITAL);
+    expect(flows.get("acct-1")).toEqual({ buys: 1000, sells: 250, income: 40 });
   });
 });

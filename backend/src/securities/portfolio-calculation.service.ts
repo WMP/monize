@@ -138,6 +138,12 @@ export interface RealizedGainEntry {
   symbol: string | null;
   securityName: string | null;
   securityCurrencyCode: string | null;
+  /**
+   * The row that realized the gain: a SELL or REDEEM disposes of `quantity`
+   * shares, and a RETURN_OF_CAPITAL realizes what it paid beyond the basis
+   * with no shares sold (`quantity` and `price` are 0).
+   */
+  action: InvestmentAction;
   quantity: number;
   price: number;
   commission: number;
@@ -1388,6 +1394,7 @@ export class PortfolioCalculationService {
                 symbol: tx.security?.symbol ?? null,
                 securityName: tx.security?.name ?? null,
                 securityCurrencyCode: tx.security?.currencyCode ?? null,
+                action: tx.action,
                 quantity: Math.abs(quantity),
                 price,
                 commission: Number(tx.commission) || 0,
@@ -1402,11 +1409,14 @@ export class PortfolioCalculationService {
         case InvestmentAction.RETURN_OF_CAPITAL: {
           // Comes off the basis; only what the basis could not absorb is a
           // gain, realized on the distribution's date with no shares sold.
-          // `exchangeRate` puts it in the holding account's currency, like a
-          // sale's proceeds above.
+          // The row's own rate puts it in the holding account's currency. It
+          // is the raw stored rate, not `exchangeRate` above: that one has
+          // already turned a stored 0 into 1, and a rate that cannot convert
+          // is unknown, never par. An unknown amount leaves the basis as it
+          // was, as an unpriced acquisition leaves it in this replay.
           const amount = returnOfCapitalAmount({
             totalAmount: tx.totalAmount,
-            exchangeRate,
+            exchangeRate: tx.exchangeRate,
           });
           if (amount === null) break;
           const effect = applyReturnOfCapital(entry.costBasis, amount);
@@ -1425,6 +1435,7 @@ export class PortfolioCalculationService {
               symbol: tx.security?.symbol ?? null,
               securityName: tx.security?.name ?? null,
               securityCurrencyCode: tx.security?.currencyCode ?? null,
+              action: tx.action,
               quantity: 0,
               price: 0,
               commission: Number(tx.commission) || 0,
@@ -1736,10 +1747,12 @@ export class PortfolioCalculationService {
             case InvestmentAction.RETURN_OF_CAPITAL: {
               // Capital coming back out: the price falls by what was paid,
               // so it nets against the value change as a sale's proceeds do,
-              // and only what exceeds the basis is realized.
+              // and only what exceeds the basis is realized. The raw stored
+              // rate, as `applyTxToState` reads it before the window: a 0 is
+              // unknown, and `exchangeRate` above would have made it 1.
               const amount = returnOfCapitalAmount({
                 totalAmount: tx.totalAmount,
-                exchangeRate,
+                exchangeRate: tx.exchangeRate,
               });
               if (amount === null) {
                 // Neither the cash nor the basis it returned is known, so
