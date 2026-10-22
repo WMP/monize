@@ -222,7 +222,7 @@ Causality: `PRE_EXISTING_UNREPORTED` (MON-M45 covers the git half only; S01 reco
 ```
 
 12. **Recommended regression test:** a production-image boot smoke (A26-S21-01) that mounts a fresh named volume at `/data/backups` and asserts the backup store reports `available: true`.
-13. **Suggested regression-test diff:** in the smoke overlay of A26-S21-01, `volumes: [smoke_backups:/data/backups]` and a step `curl -fsS .../api/v1/...` against the store status (endpoint name to be taken from `auto-backup.controller.ts`; not verified here).
+13. **Suggested regression-test diff:** in the smoke overlay of A26-S21-01, `volumes: [smoke_backups:/data/backups]` and a step `curl -fsS .../api/v1/...` against the store status (endpoint name to be taken from `backend/src/backup/auto-backup.controller.ts`; not verified here).
 14. **Verification method:** the two `docker run` probes above against the rebuilt image must print `WRITE_OK`.
 15. **Residual risks:** a pre-existing host directory owned by another uid still fails; rootless Docker and Docker Desktop map ownership differently and were not probed.
 
@@ -452,11 +452,11 @@ Secondary rows (not counted above; see the session reports): 32 rows "covered" o
 | `backend/src/backup/auto-backup.service.spec.ts:3870/3871`, `:3907` "counts files left flat in the base folder by an older version" | the cross-owner legacy sweep | A26-S06-01 | A26-S06-01, MON-M43 | S02, S06 |
 | `backend/src/auth/token.service.spec.ts:323` (replay detection), `:387` (user not found), `:408` (user inactive) | that `manager.update` was called, true while the revocation is rolled back | A26-S03-01 | A26-S03-01 | S03 |
 | `backend/src/securities/investment-transactions.service.spec.ts:5120` "converts cash amount using the latest market rate when currencies differ", and five sibling cases S12 M11 names but does not list | stub `getRateForDate` to null and `getLatestRate` to the answer | the `getLatestRate` fallback, `investment-transactions.service.ts:789-792` | A26-S12-02 | S12 |
-| `backend/src/common/db/rls-context-smoke.spec.ts` (path as S04 cites it) | "authorization under the caller, then bypass" order | A26-S04-01 | A26-S04-01 | S04 |
+| `backend/src/delegation/rls-context-smoke.spec.ts` (S04 D-S04-05) | "authorization under the caller, then bypass" order | A26-S04-01 | A26-S04-01 | S04 |
 | `backend/test/integration/backup-store-s3.integration.spec.ts:160-185` | unpadded day names, its own pruning wrong; never runs in CI | test defect | A26-S06-02 | S06 |
 | `backend/src/users/users.service.spec.ts:148` | mocks `ensureSystemCurrency`, so write-before-ensure passes | A26-S13-05 | A26-S13-05 | S13 |
 | `backend/src/transactions/transaction-bulk-update.service.spec.ts:2592-2643` | only that `updateBalance` was called | A26-S13-03 | A26-S13-03 | S13 |
-| `frontend` `loan-history.test.ts:2058` | the overpayment-takes-the-interest variant of a same-day pair | order dependence (D9) | -- | S15 |
+| `frontend/src/lib/loan-history.test.ts:2058` | the overpayment-takes-the-interest variant of a same-day pair | order dependence (D9) | -- | S15 |
 | `backend/src/ai/query/tool-executor.service.spec.ts:1345-1351`, `backend/src/mcp/tools/reports.tool.spec.ts:220-246` | `getSpendingAnomalies(userId, months)` | months passed as the z-score threshold | A26-S17-03 | S17 |
 
 The four "reported but not located" items of `docs/verification-contract.md` section 5: item 1 located (row 1); items 2 and 3 corrected (section 8); item 4 superseded by the A26-S06-01 tests.
