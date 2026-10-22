@@ -2,7 +2,6 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { ConfigModule } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { UnauthorizedException } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { TokenService } from "@/auth/token.service";
 import { hashToken } from "@/auth/crypto.util";
@@ -54,9 +53,10 @@ type TokenPair = { accessToken: string; refreshToken: string };
  * Catches: deleting BOTH the `lockTokenFamily` call and the
  * `lock: { mode: "pessimistic_write" }` option of the re-read in `refreshTokens`
  * (either alone is still serialized by the other).
- * It deliberately does not assert that the family ends revoked: the loser takes
- * the reuse branch, whose revocation is rolled back by the exception it then
- * throws (open defect A26-S03-01).
+ * The loser presents a predecessor whose successor is live and seconds old, so
+ * it gets the second-tab grace answer (A26-M03): an access token and
+ * `refreshToken: null`, nothing revoked and nothing minted. Both rotations
+ * fulfil; exactly one mints.
  */
 describe("refresh-token concurrency (integration, INV-AUTH-001, INV-AUTH-004)", () => {
   let module: TestingModule;
@@ -160,7 +160,7 @@ describe("refresh-token concurrency (integration, INV-AUTH-001, INV-AUTH-004)", 
   });
 
   describe("two concurrent rotations of one token (INV-AUTH-001)", () => {
-    it("yield exactly one live successor, the winner's", async () => {
+    it("yield exactly one live successor, the minting winner's", async () => {
       const pair: TokenPair = await asUser(() =>
         tokenService.generateTokenPair(user),
       );
@@ -179,20 +179,24 @@ describe("refresh-token concurrency (integration, INV-AUTH-001, INV-AUTH-004)", 
         },
       );
 
-      expect(outcome.fulfilled).toBe(1);
-      expect(outcome.reasons).toHaveLength(1);
-      expect(outcome.reasons[0]).toBeInstanceOf(UnauthorizedException);
+      expect(outcome.fulfilled).toBe(2);
+      expect(outcome.reasons).toHaveLength(0);
 
-      const winner = [outcome.a, outcome.b].find(
-        (r): r is PromiseFulfilledResult<TokenPair & { userId: string }> =>
-          r.status === "fulfilled",
-      );
-      expect(winner).toBeDefined();
+      const minted = [outcome.a, outcome.b]
+        .filter(
+          (
+            r,
+          ): r is PromiseFulfilledResult<{
+            accessToken: string;
+            refreshToken: string | null;
+          }> => r.status === "fulfilled",
+        )
+        .map((r) => r.value.refreshToken)
+        .filter((token): token is string => token !== null);
+      expect(minted).toHaveLength(1);
 
-      // Exactly one live row, and it is the token the winner was handed.
-      expect(await liveHashes(familyId)).toEqual([
-        hashToken(winner!.value.refreshToken),
-      ]);
+      // Exactly one live row, and it is the token the minting winner was handed.
+      expect(await liveHashes(familyId)).toEqual([hashToken(minted[0])]);
     });
   });
 });
