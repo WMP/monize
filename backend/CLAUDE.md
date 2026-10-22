@@ -56,6 +56,8 @@ Each module holds `{feature}.module.ts`, controller, service, their specs, `enti
 | Several queries in one transaction | `await` each in turn | `Promise.all` or `mapWithConcurrency` over the transaction's manager: one connection, and pg's client-side queue is deprecated |
 | A refusal (ownership, precondition, revision) | the check inside the same transaction as the write, before it | a check after a commit that a status code then contradicts |
 | A refusal whose point is a write (a revocation, a lockout, a spent attempt) | decide inside `withScopedDb`, return the outcome, throw after it resolves | a `throw` inside the callback, which rolls back the write it reports |
+| A row a SQL statement just wrote, on an entity read before it | `repo.update({ id }, { theColumnsThisPathOwns })` (CONC-008) | `repo.save(entity)`, which writes the stale snapshot back |
+| Ending a user's refresh sessions | `revokeAllUserRefreshTokens`, or `revokeRefreshSessionsAfterCommit` where `TokenService` cannot be injected, after the commit (CONC-009) | one blanket `UPDATE refresh_tokens ... WHERE user_id = ?`, which misses a concurrent rotation's successor |
 | A raw `SELECT` of a DATE or numeric | `TO_CHAR(col, 'YYYY-MM-DD')` and `Number(...)` at the boundary | trusting the entity transformer or the global DATE parser |
 | An optional DTO field with a format validator | `@ValidateIf((_o, v) => v !== null && v !== "")` beside `@IsOptional()` | `@IsOptional()` alone |
 | A request-supplied array | `@ArrayMaxSize(n)`; iterate with `entries()` | an unbounded array, `.length` as a loop bound in a scoped callback |

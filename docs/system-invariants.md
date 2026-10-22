@@ -4481,15 +4481,21 @@ Enforcement         An atomic CTE increments in the database. recordFailedLogin
                     lock expired more than 24 hours ago, so a stranger who knows
                     the address cannot extend a lockout without limit. A password
                     reset (email, admin, owner of a delegate, emergency claim)
-                    clears the counter and the lock. The success-path reset writes
-                    a fixed absolute value and was always safe.
+                    clears the counter and the lock. The success path resets the
+                    counter and the lock in SQL and then writes only last_login
+                    (AuthService.recordLastLogin); it used to save the entity read
+                    before bcrypt, which wrote the old count back over the reset
+                    (A26-M01, CONC-008).
 Concurrency scope   per account
 Failure response    the counter equals the number of failures; lockout is not
                     delayed.
 Required tests      Two connections: test/integration/login-lockout.integration.spec.ts
                     runs N concurrent failures on two pools and asserts the counter
                     equals N, and proves the cap and the decay against real
-                    PostgreSQL. Unit: login-lockout.spec.ts pins the parameters;
+                    PostgreSQL. test/integration/credential-writes-atomic.integration.spec.ts
+                    drives AuthService.login with four prior failures (plain and
+                    trusted-device 2FA) and asserts the counter is 0 and one later
+                    failure does not lock. Unit: login-lockout.spec.ts pins the parameters;
                     auth.service.spec.ts asserts the login emits the single
                     incrementing statement; auth-email.service.spec.ts asserts a
                     reset clears the lock.
@@ -4511,8 +4517,16 @@ Enforcement         backend/src/auth/credential-revocation.ts.
                     revokeStandingCredentials revokes PATs and deletes trusted
                     devices inside the password write's own withScopedDb
                     transaction, so a refused reset revokes nothing and a committed
-                    one leaves neither live. After the commit, refresh tokens go
-                    through each path's existing revocation and
+                    one leaves neither live; on every path, the admin reset and
+                    disable and the owner-of-delegate reset included (A26-L07).
+                    After the commit, refresh sessions go through the converging
+                    revocation under the family locks
+                    (TokenService.revokeAllUserRefreshTokens, or
+                    revokeRefreshSessionsAfterCommit where TokenService cannot be
+                    injected: change password, admin reset, disable and delete,
+                    owner-of-delegate reset); an in-transaction blanket UPDATE is
+                    a first pass only, since it misses a successor a concurrent
+                    rotation inserts after its snapshot (A26-M02, CONC-009).
                     revokeOAuthGrantsAfterCommit calls
                     OAuthProviderService.revokeAllForUser; a failure there is logged
                     at error with the account id and rethrown, never reported as a
@@ -4528,8 +4542,17 @@ Required tests      Unit: auth-email.service.spec.ts, users.service.spec.ts,
                     (confirmOidcLink) assert each path revokes PATs, trusted devices
                     and OAuth grants; credential-revocation.spec.ts covers the
                     helper's error path; pat.controller.spec.ts asserts the step-up
-                    metadata. Still owed: a real-database test that a PAT minted
-                    before a reset is refused by the bearer guard after it.
+                    metadata. Real database:
+                    test/integration/credential-writes-atomic.integration.spec.ts
+                    forces a rotation to commit while each path's revoking UPDATE
+                    waits on its row lock and asserts no refresh token is live
+                    afterwards (change password, admin reset, admin disable,
+                    owner-of-delegate reset), and installs a statement-level
+                    BEFORE UPDATE trigger on personal_access_tokens to assert a
+                    failed PAT revocation leaves the admin and delegate resets'
+                    password, and the disable, unchanged. Still owed: a
+                    real-database test that a PAT minted before a reset is refused
+                    by the bearer guard after it.
 Status              enforced
 ```
 

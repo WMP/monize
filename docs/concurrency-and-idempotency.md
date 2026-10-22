@@ -243,6 +243,26 @@ A comment claiming atomicity, a lock, or single-use consumption must name the
 mechanism. Two comments in this codebase claimed a guarantee the code beside
 them did not implement, and both were believed for as long as they existed. If
 the mechanism cannot be named, the comment is wrong, not merely vague.
+
+CONC-008
+An entity read before a SQL statement that writes the same row is not saved
+back whole. TypeORM's save diffs the snapshot against the row and writes every
+column that differs, so it reverts what the statement wrote. Write only the
+columns the path owns (repo.update({ id }, { lastLogin })), and keep the
+in-memory entity in step with the statement for the readers after it. The login
+success path wrote failed_login_attempts = 4 back over its own reset to 0
+(A26-M01; AuthService.recordLastLogin,
+test/integration/credential-writes-atomic.integration.spec.ts).
+
+CONC-009
+Ending a set of rows that a concurrent writer can extend is a converging
+protocol under that writer's lock, not one UPDATE. Blocked on a row a refresh
+rotation holds, UPDATE ... WHERE user_id = ? AND is_revoked = false resumes with
+its old snapshot and misses the successor the rotation inserted. A path that
+ends a user's sessions calls TokenService.revokeAllUserRefreshTokens, or
+revokeRefreshSessionsAfterCommit (auth/credential-revocation.ts) where
+TokenService cannot be injected, after its own commit; an in-transaction
+blanket UPDATE is a first pass only (A26-M02).
 ```
 
 ## 4. Retry semantics

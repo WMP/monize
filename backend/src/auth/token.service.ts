@@ -5,7 +5,6 @@ import {
   DataSource,
   EntityManager,
   EntityTarget,
-  In,
   LessThan,
   ObjectLiteral,
   Repository,
@@ -18,6 +17,7 @@ import * as crypto from "crypto";
 import { User } from "../users/entities/user.entity";
 import { RefreshToken } from "./entities/refresh-token.entity";
 import { hashToken } from "./crypto.util";
+import { revokeUserRefreshFamilies } from "./refresh-revocation";
 import { withSystemContext } from "../common/db/with-context";
 import { tr } from "../i18n/translate";
 
@@ -412,54 +412,19 @@ export class TokenService {
    * (resolved by the token's hash, and only among `userId`'s own rows), so "sign
    * out everywhere else" does not sign the caller out too. An unknown or absent
    * token keeps nothing, which is the safe direction.
+   *
+   * The mechanism is `revokeUserRefreshFamilies` (`./refresh-revocation`), shared
+   * with the services that cannot inject this one (users, admin, delegation).
    */
   async revokeAllUserRefreshTokens(
     userId: string,
     keepSessionOf?: string,
   ): Promise<void> {
-    const keepHash = keepSessionOf ? hashToken(keepSessionOf) : null;
-    // First round: the families this user has a live session in, captured before
-    // any revocation. This is the whole set the operation is allowed to touch.
-    const families = await withScopedDb(this.dataSource, async (manager) => {
-      const rows: { family_id: string }[] = await manager.query(
-        `SELECT DISTINCT family_id FROM refresh_tokens
-          WHERE user_id = $1 AND is_revoked = false
-            AND family_id IS DISTINCT FROM (
-              SELECT kept.family_id FROM refresh_tokens kept
-               WHERE kept.user_id = $1 AND kept.token_hash = $2
-               LIMIT 1)`,
-        [userId, keepHash],
-      );
-      // Ascending, the same fixed order every other multi-lock path uses, so a
-      // pass cannot deadlock against a rotation holding one family.
-      return rows.map((r) => r.family_id).sort((a, b) => a.localeCompare(b));
-    });
-    if (families.length === 0) return;
-
-    // Bounded: a legitimate client rotates once per refresh, so two passes is
-    // the realistic worst case. The cap stops a pathological caller spinning
-    // here forever rather than expressing a real expectation.
-    const MAX_PASSES = 10;
-    for (let pass = 0; pass < MAX_PASSES; pass++) {
-      const affected = await withScopedDb(this.dataSource, async (manager) => {
-        for (const familyId of families) {
-          await lockTokenFamily(manager, familyId);
-        }
-        // Scoped to `familyId IN (captured)`: never a blanket sweep of every
-        // unrevoked token, so a family opened mid-operation is left alone.
-        const result = await manager
-          .getRepository(RefreshToken)
-          .update(
-            { userId, familyId: In(families), isRevoked: false },
-            { isRevoked: true },
-          );
-        return result.affected ?? 0;
-      });
-      if (affected === 0) return;
-    }
-    this.logger.warn(
-      `Gave up revoking sessions for user ${userId} after ${MAX_PASSES} passes; ` +
-        "a client may be rotating refresh tokens in a loop",
+    await revokeUserRefreshFamilies(
+      this.dataSource,
+      userId,
+      this.logger,
+      keepSessionOf,
     );
   }
 
