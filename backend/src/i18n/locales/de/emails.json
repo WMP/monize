@@ -383,6 +383,12 @@
       "readyMessage": "Vorschläge, die auf Ihre Entscheidung warten: {{ count }}. Neu seit der letzten Benachrichtigung: {{ added }}. Öffnen Sie sie zur Prüfung.",
       "expiringTitle": "KI-Prüfvorschläge laufen bald ab",
       "expiringMessage": "Vorschläge, die innerhalb von 3 Tagen ablaufen: {{ count }}. Der erste läuft am {{ date }} ab. Öffnen Sie sie zur Prüfung."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: Garantie läuft bald ab",
+      "expiringMessage": "Die Garantie für {{ name }} läuft am {{ date }} ab. Öffnen Sie sie, um ihre Dokumente zu prüfen oder einen Anspruch zu erfassen.",
+      "todayTitle": "{{ name }}: Garantie läuft heute ab",
+      "todayMessage": "Die Garantie für {{ name }} läuft heute, am {{ date }}, ab. Öffnen Sie sie, um ihre Dokumente zu prüfen oder einen Anspruch zu erfassen."
     }
   },
   "backupOffsite": {

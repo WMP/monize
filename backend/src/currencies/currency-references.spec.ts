@@ -345,10 +345,11 @@ describe("currency global liveness", () => {
       "utf8",
     );
     // The restore's teardown, which is where the delete this predicate guards
-    // lives -- issue #1092 moved it out of `backup.service.ts`, and a guard left
-    // pointed at the facade would have gone on passing with nothing to find.
+    // lives -- issue #1092 moved it out of `backup.service.ts`, then it moved
+    // again into `restore-wipe.ts`, and a guard left pointed at the old file
+    // would have gone on passing with nothing to find.
     const backupService = readFileSync(
-      join(__dirname, "..", "backup", "backup-restore-database.service.ts"),
+      join(__dirname, "..", "backup", "restore-wipe.ts"),
       "utf8",
     );
     // Re-deriving the predicate at either call site is how it drifted the first
@@ -357,7 +358,7 @@ describe("currency global liveness", () => {
     expect(backupService).toContain("currency_code_in_use_globally");
     for (const [name, source] of [
       ["currencies.service.ts", currenciesService],
-      ["backup-restore-database.service.ts", backupService],
+      ["restore-wipe.ts", backupService],
     ] as const) {
       const spelledOut = /FROM exchange_rates[\s\S]{0,400}?FROM budgets/.test(
         source,

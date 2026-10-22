@@ -197,5 +197,11 @@
     "readyMessage": "AI 제안 {count, plural, other {#건}}이 승인을 기다리고 있습니다(새 제안 {added}건). AI 검토 받은편지함을 열어 승인하거나 거절하세요.",
     "expiringTitle": "AI 제안이 곧 만료됩니다",
     "expiringMessage": "AI 제안 {count, plural, other {#건}}이 곧 만료됩니다. 가장 먼저 만료되는 제안은 {date}에 만료됩니다. AI 검토 받은편지함을 열어 승인하거나 거절하세요."
+  },
+  "warranty": {
+    "expiringTitle": "{name}: 보증이 {days, plural, other {#일}} 안에 만료됩니다",
+    "expiringMessage": "{name}의 보증이 {date}에 만료됩니다. 열어서 문서를 검토하거나 보증 청구를 기록하세요.",
+    "todayTitle": "{name}: 보증이 오늘 만료됩니다",
+    "todayMessage": "{name}의 보증이 오늘({date}) 만료됩니다. 열어서 문서를 검토하거나 보증 청구를 기록하세요."
   }
 }

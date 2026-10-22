@@ -47,6 +47,10 @@
     "ai_review": {
       "title": "Propositions de revue IA",
       "body": "Des propositions de revue IA attendent votre décision. Ouvrez Monize pour les détails."
+    },
+    "warranties": {
+      "title": "Rappel de garantie",
+      "body": "L'une de vos garanties expire bientôt. Ouvrez Monize pour les détails."
     }
   },
   "actions": {

@@ -5,12 +5,107 @@ import {
   isStoreUnreachable,
 } from './attachments';
 import { attachmentsApi, ATTACHMENT_BYTES_TIMEOUT_MS } from './attachments';
+import { invalidateCache } from './apiCache';
 
 vi.mock('./api', () => ({
-  default: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
+  default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+}));
+
+vi.mock('./apiCache', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./apiCache')>()),
+  invalidateCache: vi.fn(),
 }));
 
 const mockGet = apiClient.get as ReturnType<typeof vi.fn>;
+const mockPost = apiClient.post as ReturnType<typeof vi.fn>;
+const mockPatch = apiClient.patch as ReturnType<typeof vi.fn>;
+const mockDelete = apiClient.delete as ReturnType<typeof vi.fn>;
+const mockInvalidate = invalidateCache as ReturnType<typeof vi.fn>;
+
+/** The multipart body a call posted, as name -> value pairs. */
+function postedFields(callIndex = 0): Array<[string, FormDataEntryValue]> {
+  const body = mockPost.mock.calls[callIndex][1] as FormData;
+  return Array.from(body.entries());
+}
+
+describe('attachmentsApi.list', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("reads a transaction's attachments from the transaction route", async () => {
+    mockGet.mockResolvedValue({ data: [] });
+    await attachmentsApi.list({ transactionId: 'tx-1' });
+    expect(mockGet).toHaveBeenCalledWith('/transactions/tx-1/attachments');
+  });
+
+  it("reads a warranty's documents from the warranty route", async () => {
+    mockGet.mockResolvedValue({ data: [{ id: 'a-1' }] });
+    const result = await attachmentsApi.list({ warrantyId: 'w-1' });
+    expect(mockGet).toHaveBeenCalledWith('/warranties/w-1/attachments');
+    expect(result).toEqual([{ id: 'a-1' }]);
+  });
+});
+
+describe('attachmentsApi.upload', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPost.mockResolvedValue({ data: { id: 'a-1' } });
+  });
+
+  const file = new File(['x'], 'receipt.png', { type: 'image/png' });
+  const original = new File(['y'], 'photo.jpg', { type: 'image/jpeg' });
+
+  it('posts a transaction attachment with no document kind, even when one is passed', async () => {
+    await attachmentsApi.upload({ transactionId: 'tx-1' }, file, original, 'receipt');
+
+    expect(mockPost.mock.calls[0][0]).toBe('/transactions/tx-1/attachments');
+    expect(postedFields().map(([name]) => name)).toEqual(['file', 'original']);
+    expect(mockInvalidate).toHaveBeenCalledWith('attachments:');
+    expect(mockInvalidate).not.toHaveBeenCalledWith('warranties:');
+  });
+
+  it('posts a warranty document with its kind and drops the cached warranty views', async () => {
+    const result = await attachmentsApi.upload({ warrantyId: 'w-1' }, file, undefined, 'manual');
+
+    expect(mockPost.mock.calls[0][0]).toBe('/warranties/w-1/attachments');
+    expect(postedFields()).toEqual([
+      ['file', expect.any(File)],
+      ['documentKind', 'manual'],
+    ]);
+    expect(mockInvalidate).toHaveBeenCalledWith('attachments:');
+    expect(mockInvalidate).toHaveBeenCalledWith('warranties:');
+    expect(result).toEqual({ id: 'a-1' });
+  });
+
+  it('leaves the kind to the server default when none is chosen', async () => {
+    await attachmentsApi.upload({ warrantyId: 'w-1' }, file);
+    expect(postedFields().map(([name]) => name)).toEqual(['file']);
+  });
+});
+
+describe('attachmentsApi.delete', () => {
+  it('drops the attachment and warranty caches, since the parent may be either', async () => {
+    vi.clearAllMocks();
+    mockDelete.mockResolvedValue({});
+    await attachmentsApi.delete('a-1');
+    expect(mockDelete).toHaveBeenCalledWith('/attachments/a-1');
+    expect(mockInvalidate).toHaveBeenCalledWith('attachments:');
+    expect(mockInvalidate).toHaveBeenCalledWith('warranties:');
+  });
+});
+
+describe('attachmentsApi.updateDocumentKind', () => {
+  it('patches the kind by id and drops the attachment and warranty caches', async () => {
+    vi.clearAllMocks();
+    mockPatch.mockResolvedValue({ data: { id: 'a-1', documentKind: 'manual' } });
+    const result = await attachmentsApi.updateDocumentKind('a-1', 'manual');
+    expect(mockPatch).toHaveBeenCalledWith('/attachments/a-1', { documentKind: 'manual' });
+    expect(result).toEqual({ id: 'a-1', documentKind: 'manual' });
+    expect(mockInvalidate).toHaveBeenCalledWith('attachments:');
+    expect(mockInvalidate).toHaveBeenCalledWith('warranties:');
+  });
+});
 
 describe('attachmentsApi.fetchBytes', () => {
   beforeEach(() => {

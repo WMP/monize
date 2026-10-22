@@ -847,6 +847,22 @@ export class UsersService {
     );
     deleted.transactionSplits = result[1] ?? 0;
 
+    // Warranties and their claims. The transaction link is ON DELETE SET NULL
+    // and the account survives this flow, so neither the transactions delete
+    // below nor a users(id) CASCADE reaches them: left here, every warranty the
+    // user recorded would outlive "delete my data". Claims first, for order's
+    // sake (they would cascade from the warranty anyway).
+    result = await manager.query(
+      "DELETE FROM warranty_claims WHERE user_id = $1",
+      [userId],
+    );
+    deleted.warrantyClaims = result[1] ?? 0;
+
+    result = await manager.query("DELETE FROM warranties WHERE user_id = $1", [
+      userId,
+    ]);
+    deleted.warranties = result[1] ?? 0;
+
     // Transactions
     result = await manager.query(
       "DELETE FROM transactions WHERE user_id = $1",

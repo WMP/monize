@@ -61,6 +61,7 @@ export const TOOLS_LINKS: NavLinkDef[] = [
   { href: '/institutions', labelKey: 'institutions' },
   { href: '/tags', labelKey: 'tags' },
   { href: '/rules', labelKey: 'rules' },
+  { href: '/warranties', labelKey: 'warranties' },
   { href: '/email-receipts', labelKey: 'emailReceipts', ownerOnly: true },
   { href: '/import', labelKey: 'import' },
 ];
@@ -99,6 +100,7 @@ export const NAV_ICONS: Record<string, NavIcon> = {
   '/institutions': BuildingOffice2Icon,
   '/tags': HashtagIcon,
   '/rules': BoltIcon,
+  '/warranties': ShieldCheckIcon,
   '/email-receipts': EnvelopeIcon,
   '/securities': BanknotesIcon,
   '/currencies': CurrencyDollarIcon,

@@ -93,6 +93,11 @@
     "viewAll": "Ver todas as análises",
     "activeCount": "{count} ativas"
   },
+  "warrantiesExpiring": {
+    "title": "Garantias expirando em breve",
+    "empty": "Nada expira nos próximos 30 dias",
+    "loadFailed": "Não foi possível carregar as garantias que estão expirando. Recarregue o painel para tentar novamente."
+  },
   "topMovers": {
     "title": "Maiores Variações",
     "empty": {

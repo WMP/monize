@@ -755,6 +755,30 @@ export function useNotificationCopy() {
     return null;
   };
 
+  /**
+   * The warranty reminder rows, composed from the producer's facts (name, expiry
+   * date, threshold). The title names the mark the reminder fired at, not a count
+   * from "now", so it reads the same on the day it is opened as on the day it was
+   * written. A row without valid facts falls back to the stored English.
+   */
+  const warrantyCopy = (notification: Notification, part: 'title' | 'message'): string | null => {
+    if (notification.type !== 'WARRANTY_EXPIRING' && notification.type !== 'WARRANTY_EXPIRES_TODAY') {
+      return null;
+    }
+    const data = notification.data ?? {};
+    const { name, expiresOn, threshold } = data;
+    if (typeof name !== 'string' || name === '') return null;
+    if (typeof expiresOn !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(expiresOn)) return null;
+    const date = formatDate(expiresOn);
+    if (notification.type === 'WARRANTY_EXPIRES_TODAY') {
+      return t(part === 'title' ? 'warranty.todayTitle' : 'warranty.todayMessage', { name, date });
+    }
+    if (typeof threshold !== 'number' || !Number.isInteger(threshold) || threshold < 1) return null;
+    return part === 'title'
+      ? t('warranty.expiringTitle', { name, days: threshold })
+      : t('warranty.expiringMessage', { name, date });
+  };
+
   return (notification: Notification) => ({
     title:
       priceCopy(notification, 'title') ??
@@ -766,6 +790,7 @@ export function useNotificationCopy() {
       bankSyncCopy(notification, 'title') ??
       emailReceiptsAttentionTitle(notification) ??
       aiReviewCopy(notification, 'title') ??
+      warrantyCopy(notification, 'title') ??
       bondCopy(notification, 'title') ??
       notification.title,
     message:
@@ -778,6 +803,7 @@ export function useNotificationCopy() {
       bankSyncCopy(notification, 'message') ??
       emailReceiptsAttentionMessage(notification) ??
       aiReviewCopy(notification, 'message') ??
+      warrantyCopy(notification, 'message') ??
       bondCopy(notification, 'message') ??
       notification.message,
   });

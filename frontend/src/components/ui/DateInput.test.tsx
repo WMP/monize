@@ -581,6 +581,40 @@ describe('DateInput', () => {
       expect(onDateChange).toHaveBeenCalledWith('2025-06-25');
     });
 
+    it('disables the calendar button with the field, so the popover cannot change it', () => {
+      const { getByLabelText, queryByText } = render(
+        <DateInput label="Date" value="2025-06-15" onDateChange={onDateChange} onChange={() => {}} disabled />,
+      );
+      expect(getByLabelText('Date')).toBeDisabled();
+      const calendarBtn = getByLabelText('Open date picker');
+      expect(calendarBtn).toBeDisabled();
+      fireEvent.click(calendarBtn);
+      expect(queryByText('Jun 2025')).not.toBeInTheDocument();
+      expect(onDateChange).not.toHaveBeenCalled();
+    });
+
+    it('disables the native picker with the field in touch mode', () => {
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(pointer: coarse)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+      try {
+        const { getByLabelText } = render(
+          <DateInput label="Date" value="2025-06-15" onDateChange={onDateChange} onChange={() => {}} disabled />,
+        );
+        expect(getByLabelText('Date')).toBeDisabled();
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    });
+
     it('shows formatted date in display on touch devices', () => {
       // Simulate a touch device by temporarily overriding matchMedia
       const originalMatchMedia = window.matchMedia;
