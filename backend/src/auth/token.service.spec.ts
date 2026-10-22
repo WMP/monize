@@ -125,6 +125,7 @@ describe("TokenService", () => {
       expect(jwtService.sign).toHaveBeenCalledWith(
         {
           sub: "user-1",
+          type: "access",
           email: "test@example.com",
           authProvider: "local",
           role: "user",
@@ -186,6 +187,7 @@ describe("TokenService", () => {
       expect(jwtService.sign).toHaveBeenCalledWith(
         {
           sub: "user-1",
+          type: "access",
           email: "test@example.com",
           authProvider: "local",
           role: "user",
@@ -290,6 +292,7 @@ describe("TokenService", () => {
       expect(jwtService.sign).toHaveBeenCalledWith(
         {
           sub: "user-1",
+          type: "access",
           email: "test@example.com",
           authProvider: "local",
           role: "user",

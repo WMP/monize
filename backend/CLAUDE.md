@@ -58,6 +58,8 @@ Each module holds `{feature}.module.ts`, controller, service, their specs, `enti
 | A refusal whose point is a write (a revocation, a lockout, a spent attempt) | decide inside `withScopedDb`, return the outcome, throw after it resolves | a `throw` inside the callback, which rolls back the write it reports |
 | A row a SQL statement just wrote, on an entity read before it | `repo.update({ id }, { theColumnsThisPathOwns })` (CONC-008) | `repo.save(entity)`, which writes the stale snapshot back |
 | Ending a user's refresh sessions | `revokeAllUserRefreshTokens`, or `revokeRefreshSessionsAfterCommit` where `TokenService` cannot be injected, after the commit (CONC-009) | one blanket `UPDATE refresh_tokens ... WHERE user_id = ?`, which misses a concurrent rotation's successor |
+| An attempt budget (TOTP, step-up, any lockout counter) | `AuthAttemptCounterService.increment` before the check, refusing a committed count over the cap (CONC-010) | `peek` then verify, which a concurrent burst reads past |
+| Authenticating a request with a JWT | `isAccessTokenPayload` (`src/auth/access-token.ts`), an allowlist of the access type | a deny-list of the other types, which accepts every type it does not name |
 | A raw `SELECT` of a DATE or numeric | `TO_CHAR(col, 'YYYY-MM-DD')` and `Number(...)` at the boundary | trusting the entity transformer or the global DATE parser |
 | An optional DTO field with a format validator | `@ValidateIf((_o, v) => v !== null && v !== "")` beside `@IsOptional()` | `@IsOptional()` alone |
 | A request-supplied array | `@ArrayMaxSize(n)`; iterate with `entries()` | an unbounded array, `.length` as a loop bound in a scoped callback |

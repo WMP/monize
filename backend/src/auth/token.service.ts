@@ -16,6 +16,7 @@ import * as crypto from "crypto";
 
 import { User } from "../users/entities/user.entity";
 import { RefreshToken } from "./entities/refresh-token.entity";
+import { ACCESS_TOKEN_TYPE } from "./access-token";
 import { hashToken } from "./crypto.util";
 import { revokeUserRefreshFamilies } from "./refresh-revocation";
 import { withSystemContext } from "../common/db/with-context";
@@ -102,6 +103,7 @@ export class TokenService {
     // the real user.
     const payload: Record<string, unknown> = {
       sub: user.id,
+      type: ACCESS_TOKEN_TYPE,
       email: user.email,
       authProvider: user.authProvider,
       role: user.role,
@@ -338,6 +340,7 @@ export class TokenService {
   private signAccessToken(user: User, token: RefreshToken): string {
     const payload: Record<string, unknown> = {
       sub: user.id,
+      type: ACCESS_TOKEN_TYPE,
       email: user.email,
       authProvider: user.authProvider,
       role: user.role,

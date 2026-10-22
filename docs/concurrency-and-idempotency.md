@@ -263,6 +263,17 @@ ends a user's sessions calls TokenService.revokeAllUserRefreshTokens, or
 revokeRefreshSessionsAfterCommit (auth/credential-revocation.ts) where
 TokenService cannot be injected, after its own commit; an in-transaction
 blanket UPDATE is a first pass only (A26-M02).
+
+CONC-010
+An attempt budget reserves before it checks. Count the attempt with the
+counter's single statement (AuthAttemptCounterService.increment, INSERT ... ON
+CONFLICT ... RETURNING), refuse when the committed count is over the cap, then
+check the code or password; a success resets the counter. A peek followed by an
+increment after a failed check lets K concurrent guesses read the same count
+before any of them is recorded, so all K reach the verifier (A26-L08:
+StepUpAuthService.reserveAttempt, TwoFactorService.reserveUserTotpAttempt;
+test/integration/two-factor-step-up-budget.integration.spec.ts). A peek may stay
+in front as an advisory early refusal.
 ```
 
 ## 4. Retry semantics
