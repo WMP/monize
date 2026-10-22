@@ -1611,6 +1611,8 @@ function InvestmentTransactionFormFields({
               min={0}
               error={errors.quantity?.message}
             />
+            {/* Read-only: the server carries the basis the source held on the
+                transfer date and ignores a figure sent from here (A26-M22). */}
             <NumericInput
               label={t('transactionForm.costPerShare', { currency: transactionCurrency })}
               prefix={currencySymbol}
@@ -1618,6 +1620,7 @@ function InvestmentTransactionFormFields({
               onChange={(value) => setValue('price', value, { shouldValidate: true })}
               decimalPlaces={6}
               min={0}
+              disabled
               error={errors.price?.message}
             />
           </div>

@@ -260,6 +260,9 @@ describe("InvestmentTransactionsService", () => {
     holdingsService = {
       rebuildScopesFromTransactions: jest.fn().mockResolvedValue(undefined),
       findByAccountAndSecurity: jest.fn().mockResolvedValue(null),
+      // null: the ledger cannot say what the OUT leg released (the real method
+      // returns number | null).
+      releasedBasisPerShare: jest.fn().mockResolvedValue(null),
       removeAllForUser: jest.fn().mockResolvedValue(5),
       rebuildFromTransactions: jest.fn().mockResolvedValue({
         holdingsCreated: 0,
@@ -6881,26 +6884,61 @@ describe("InvestmentTransactionsService", () => {
       expect(dataSource.transaction).toHaveBeenCalled();
     });
 
-    it("carries the source holding's average cost, ignoring the client value", async () => {
-      // The server is authoritative: when the source holds the security, both
-      // legs use its real blended average cost (here 4.25) so basis is
-      // conserved -- a stale/zero client costPerShare cannot poison it.
-      holdingsService.findByAccountAndSecurity.mockResolvedValue({
-        quantity: 200,
-        averageCost: 4.25,
-      } as any);
+    it("carries the basis the ledger says the OUT leg releases, ignoring the client value (A26-M22)", async () => {
+      // The server is authoritative: both legs take what the source position
+      // released at the transfer's own date (here 4.25 a share), read from the
+      // ledger under the lock -- a stale/zero client costPerShare cannot poison
+      // it, and neither can today's stored average.
+      holdingsService.releasedBasisPerShare.mockResolvedValue(4.25);
 
       await service.transferSecurity(userId, {
         ...transferDto,
         costPerShare: 0,
       });
 
-      // The carried basis reaches the ledger, which is what the rebuild then
-      // reads -- a stale client value cannot poison the destination.
-      const carriedPrices = mockQueryRunner.manager.create.mock.calls
+      const created = mockQueryRunner.manager.create.mock.calls
+        .filter(([entity]: any[]) => entity === InvestmentTransaction)
+        .map(([, data]: any[]) => data);
+      // The IN leg is written at the carried figure; the OUT leg is corrected
+      // by an update once the ledger has been read with it in.
+      expect(created[1].price).toBe(4.25);
+      const priceUpdates = mockQueryRunner.manager.update.mock.calls.filter(
+        (c: any[]) => c[0] === InvestmentTransaction && c[2] && "price" in c[2],
+      );
+      expect(priceUpdates).toHaveLength(1);
+      expect(priceUpdates[0][2]).toEqual({ price: 4.25 });
+      expect(holdingsService.releasedBasisPerShare).toHaveBeenCalledWith(
+        userId,
+        securityId,
+        expect.anything(),
+        mockQueryRunner.manager,
+      );
+    });
+
+    it("rounds the carried basis at the investment price scale, not 6 places", async () => {
+      holdingsService.releasedBasisPerShare.mockResolvedValue(1 / 3);
+
+      await service.transferSecurity(userId, transferDto);
+
+      const created = mockQueryRunner.manager.create.mock.calls
+        .filter(([entity]: any[]) => entity === InvestmentTransaction)
+        .map(([, data]: any[]) => data);
+      expect(created[1].price).toBe(0.3333333333);
+    });
+
+    it("no longer reads the stored holding, and keeps the client figure when the ledger cannot say", async () => {
+      holdingsService.findByAccountAndSecurity.mockResolvedValue({
+        quantity: 200,
+        averageCost: 4.25,
+      } as any);
+
+      await service.transferSecurity(userId, transferDto);
+
+      expect(holdingsService.findByAccountAndSecurity).not.toHaveBeenCalled();
+      const created = mockQueryRunner.manager.create.mock.calls
         .filter(([entity]: any[]) => entity === InvestmentTransaction)
         .map(([, data]: any[]) => data.price);
-      expect(carriedPrices).toEqual([4.25, 4.25]);
+      expect(created).toEqual([1.67, 1.67]);
     });
 
     it("rejects transferring into a non-brokerage (cash sleeve) account", async () => {
@@ -7026,6 +7064,54 @@ describe("InvestmentTransactionsService", () => {
       // Edit propagated to the linked leg too.
       expect(inLeg.quantity).toBe(50);
       expect(dataSource.transaction).toHaveBeenCalled();
+    });
+
+    it("update ignores a price the client sends and writes the carried basis on both legs (A26-M22)", async () => {
+      const { outLeg, inLeg } = makeLegs();
+      investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder(outLeg),
+      );
+      investmentTransactionsRepository.findOne.mockResolvedValue(inLeg);
+      holdingsService.releasedBasisPerShare.mockResolvedValue(150);
+
+      await service.update(userId, "leg-out", { price: 999 } as any);
+
+      expect(holdingsService.releasedBasisPerShare).toHaveBeenCalledWith(
+        userId,
+        securityId,
+        "leg-out",
+        mockQueryRunner.manager,
+      );
+      const priceUpdates = mockQueryRunner.manager.update.mock.calls.filter(
+        (c: any[]) => c[0] === InvestmentTransaction && c[2] && "price" in c[2],
+      );
+      expect(priceUpdates).toEqual([
+        [InvestmentTransaction, ["leg-out", "leg-in"], { price: 150 }],
+      ]);
+      expect(outLeg.price).toBe(150);
+      expect(inLeg.price).toBe(150);
+      // The carried basis is in the ledger before the rebuild reads it.
+      const updateOrder =
+        mockQueryRunner.manager.update.mock.invocationCallOrder[
+          mockQueryRunner.manager.update.mock.calls.indexOf(priceUpdates[0])
+        ];
+      expect(updateOrder).toBeLessThan(
+        holdingsService.rebuildAccountsFromTransactions.mock
+          .invocationCallOrder[0],
+      );
+    });
+
+    it("update keeps the stored price, not the client's, when the ledger cannot say what the OUT leg releases", async () => {
+      const { outLeg, inLeg } = makeLegs();
+      investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder(outLeg),
+      );
+      investmentTransactionsRepository.findOne.mockResolvedValue(inLeg);
+
+      await service.update(userId, "leg-out", { price: 999 } as any);
+
+      expect(outLeg.price).toBe(1.67);
+      expect(inLeg.price).toBe(1.67);
     });
 
     it("update keeps the stored series of both legs when the edit changes neither it, the security nor the date (INV-BOND-007)", async () => {

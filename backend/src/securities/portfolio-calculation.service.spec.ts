@@ -385,6 +385,142 @@ describe("PortfolioCalculationService.calculateRealizedGains", () => {
     expect(result[0].proceeds).toBe(500);
     expect(result[0].realizedGain).toBe(500);
   });
+
+  describe("a transferred-in lot (A26-M21)", () => {
+    const destinationId = "acct-2";
+    const transferAt = new Date("2024-02-10T12:00:00Z");
+    const cadAccount = (id: string) => ({
+      id,
+      name: id,
+      currencyCode: "CAD",
+    });
+
+    // USD security bought in CAD account A at 1.37, moved to CAD account B
+    // (carried per-share figure 100, rate 1 -- what transferSecurity writes),
+    // sold in B at 1.37.
+    const buyInA = () =>
+      makeTx({
+        id: "buy",
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-10",
+        quantity: 10,
+        price: 100,
+        totalAmount: 1000,
+        exchangeRate: 1.37,
+      });
+    const outInA = () =>
+      makeTx({
+        id: "out",
+        action: InvestmentAction.TRANSFER_OUT,
+        transactionDate: "2024-02-10",
+        createdAt: transferAt,
+        quantity: 10,
+        price: 100,
+        linkedTransactionId: "in",
+      });
+    const inInB = (currencyCode = "CAD") =>
+      makeTx({
+        id: "in",
+        accountId: destinationId,
+        action: InvestmentAction.TRANSFER_IN,
+        transactionDate: "2024-02-10",
+        createdAt: transferAt,
+        quantity: 10,
+        price: 100,
+        linkedTransactionId: "out",
+        account: { ...cadAccount(destinationId), currencyCode } as never,
+      });
+    const sellInB = () =>
+      makeTx({
+        id: "sell",
+        accountId: destinationId,
+        action: InvestmentAction.SELL,
+        transactionDate: "2024-03-10",
+        quantity: 10,
+        price: 140,
+        totalAmount: 1400,
+        exchangeRate: 1.37,
+        account: cadAccount(destinationId) as never,
+      });
+
+    it("is sold against the account-currency basis the OUT leg released, not the carried figure at rate 1", async () => {
+      // The IN leg is listed first: the two legs share `created_at`.
+      txRepo.find.mockResolvedValue([buyInA(), inInB(), outInA(), sellInB()]);
+
+      const result = await service.calculateRealizedGains(userId);
+
+      expect(result).toHaveLength(1);
+      // 10 x 140 x 1.37 = 1,918 of proceeds against 10 x 100 x 1.37 = 1,370.
+      expect(result[0].costBasis).toBe(1370);
+      expect(result[0].realizedGain).toBe(548);
+    });
+
+    it("keeps the carried basis when the caller asks only about the destination", async () => {
+      txRepo.find.mockResolvedValue([buyInA(), outInA(), inInB(), sellInB()]);
+
+      const result = await service.calculateRealizedGains(userId, {
+        accountIds: [destinationId],
+      });
+
+      // The source's rows are read for the replay and only the results are
+      // filtered, so the query itself carries no account filter.
+      expect(txRepo.find.mock.calls[0][0].where).not.toHaveProperty(
+        "accountId",
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0].accountId).toBe(destinationId);
+      expect(result[0].realizedGain).toBe(548);
+    });
+
+    it("carries nothing from a source whose basis holds an unpriced lot", async () => {
+      // An unpriced BUY makes the source's basis a subtotal: carrying it would
+      // report a confident cost for shares the ledger never priced.
+      const unpriced = makeTx({
+        id: "unpriced",
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-11",
+        quantity: 5,
+        price: null as never,
+        totalAmount: 0,
+        exchangeRate: 1.37,
+      });
+      txRepo.find.mockResolvedValue([
+        buyInA(),
+        unpriced,
+        outInA(),
+        inInB(),
+        sellInB(),
+      ]);
+
+      const result = await service.calculateRealizedGains(userId);
+
+      // The IN leg's own row: 10 x 100 at rate 1.
+      expect(result[0].costBasis).toBe(1000);
+    });
+
+    it("falls back to the leg's own price when the two accounts differ in currency (residual)", async () => {
+      txRepo.find.mockResolvedValue([
+        buyInA(),
+        outInA(),
+        inInB("USD"),
+        sellInB(),
+      ]);
+
+      const result = await service.calculateRealizedGains(userId);
+
+      // The leg's own 10 x 100 x 1 -- the pre-existing behaviour, named as the
+      // residual rather than guessed at.
+      expect(result[0].costBasis).toBe(1000);
+    });
+
+    it("falls back to the leg's own price when the OUT leg is not in the rows", async () => {
+      txRepo.find.mockResolvedValue([inInB(), sellInB()]);
+
+      const result = await service.calculateRealizedGains(userId);
+
+      expect(result[0].costBasis).toBe(1000);
+    });
+  });
 });
 
 describe("PortfolioCalculationService.calculateCapitalGainsByMonth", () => {
@@ -1077,6 +1213,93 @@ describe("PortfolioCalculationService.calculateCapitalGainsByMonth", () => {
       endDate: "2024-01-01",
     });
     expect(result).toEqual([]);
+  });
+
+  describe("a transferred-in lot (A26-M21)", () => {
+    const destinationId = "acct-2";
+    const transferAt = new Date("2024-02-10T12:00:00Z");
+    const accountB = { id: destinationId, name: "B", currencyCode: "CAD" };
+
+    const rows = () => [
+      // The destination group is listed first, so it is folded before its
+      // source group: the carry cannot depend on group order.
+      makeTx({
+        id: "in",
+        accountId: destinationId,
+        action: InvestmentAction.TRANSFER_IN,
+        transactionDate: "2024-02-10",
+        createdAt: transferAt,
+        quantity: 10,
+        price: 100,
+        linkedTransactionId: "out",
+        account: accountB as never,
+      }),
+      makeTx({
+        id: "buy",
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-10",
+        quantity: 10,
+        price: 100,
+        totalAmount: 1000,
+        exchangeRate: 1.37,
+      }),
+      makeTx({
+        id: "out",
+        action: InvestmentAction.TRANSFER_OUT,
+        transactionDate: "2024-02-10",
+        createdAt: transferAt,
+        quantity: 10,
+        price: 100,
+        linkedTransactionId: "in",
+      }),
+      makeTx({
+        id: "sell",
+        accountId: destinationId,
+        action: InvestmentAction.SELL,
+        transactionDate: "2024-03-10",
+        quantity: 10,
+        price: 140,
+        totalAmount: 1400,
+        exchangeRate: 1.37,
+        account: accountB as never,
+      }),
+    ];
+
+    it("reports the sale against the carried account-currency basis", async () => {
+      txRepo.find.mockResolvedValue(rows());
+
+      const result = await service.calculateCapitalGainsByMonth(userId, {
+        startDate: "2024-01-01",
+        endDate: "2024-04-30",
+      });
+
+      const march = result.find(
+        (r) => r.accountId === destinationId && r.month === "2024-03",
+      )!;
+      // 1,918 of proceeds against 1,370 -- not against 1,000.
+      expect(march.realizedGain).toBe(548);
+      const february = result.find(
+        (r) => r.accountId === destinationId && r.month === "2024-02",
+      )!;
+      expect(february.buys).toBe(1370);
+    });
+
+    it("keeps the carried basis when only the destination is requested", async () => {
+      txRepo.find.mockResolvedValue(rows());
+
+      const result = await service.calculateCapitalGainsByMonth(userId, {
+        accountIds: [destinationId],
+        startDate: "2024-01-01",
+        endDate: "2024-04-30",
+      });
+
+      expect(txRepo.find.mock.calls[0][0].where).not.toHaveProperty(
+        "accountId",
+      );
+      expect(result.every((r) => r.accountId === destinationId)).toBe(true);
+      const march = result.find((r) => r.month === "2024-03")!;
+      expect(march.realizedGain).toBe(548);
+    });
   });
 });
 

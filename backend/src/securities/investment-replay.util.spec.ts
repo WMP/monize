@@ -12,6 +12,7 @@ import {
   investedFlowKind,
   isQuantityOnlyAction,
   MARKET_PRICED_TRADE_ACTIONS,
+  orderTransferOutBeforeIn,
   reinvestedIncomeAmount,
   REINVESTED_INCOME_ACTIONS,
   SHARE_MOVING_ACTIONS,
@@ -561,5 +562,56 @@ describe("investmentIncomeAmount", () => {
         totalAmount: 10,
       }),
     ).toBe(0);
+  });
+});
+
+describe("orderTransferOutBeforeIn", () => {
+  const at = new Date("2025-02-10T12:00:00Z");
+  const row = (
+    id: string,
+    action: InvestmentAction,
+    transactionDate = "2025-02-10",
+    createdAt = at,
+  ) => ({ id, action, transactionDate, createdAt });
+
+  it("puts the OUT leg ahead of its IN leg at the same instant and moves nothing else", () => {
+    const input = [
+      row("in", InvestmentAction.TRANSFER_IN),
+      row("out", InvestmentAction.TRANSFER_OUT),
+    ];
+    expect(orderTransferOutBeforeIn(input).map((r) => r.id)).toEqual([
+      "out",
+      "in",
+    ]);
+    // The input is not modified.
+    expect(input.map((r) => r.id)).toEqual(["in", "out"]);
+  });
+
+  it("keeps date and created_at order ahead of the leg rank", () => {
+    const rows = [
+      row("in-early", InvestmentAction.TRANSFER_IN, "2025-02-09"),
+      row("out-late", InvestmentAction.TRANSFER_OUT, "2025-02-11"),
+      row(
+        "in-later-instant",
+        InvestmentAction.TRANSFER_IN,
+        "2025-02-10",
+        new Date("2025-02-10T12:00:01Z"),
+      ),
+      row("out-instant", InvestmentAction.TRANSFER_OUT),
+    ];
+    expect(orderTransferOutBeforeIn(rows).map((r) => r.id)).toEqual([
+      "in-early",
+      "out-instant",
+      "in-later-instant",
+      "out-late",
+    ]);
+  });
+
+  it("is stable for rows that are not transfer legs", () => {
+    const rows = [
+      row("b", InvestmentAction.BUY),
+      row("a", InvestmentAction.BUY),
+    ];
+    expect(orderTransferOutBeforeIn(rows).map((r) => r.id)).toEqual(["b", "a"]);
   });
 });

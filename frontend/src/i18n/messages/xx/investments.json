@@ -294,7 +294,7 @@
     "sourceHolds": "[XX-Source holds-XX]",
     "sharesAt": "[XX-shares @-XX]",
     "avgCostSuffix": "[XX-avg cost.-XX]",
-    "transferCostNote": "[XX-The cost per share (prefilled from the source account) is carried to the destination so your gain and profit reports stay correct. This moves shares only -- no cash changes hands.-XX]",
+    "transferCostNote": "[XX-The cost per share is what the shares cost in the source account on the transfer date. It is worked out when you save and carried to the destination, so your gain and profit reports stay correct. This moves shares only; no cash changes hands.-XX]",
     "totalAmount": "[XX-Total Amount ({currency})-XX]",
     "sharesAtPrice": "[XX-{shares} shares @ {symbol}{price}-XX]",
     "commissionSuffix": "[XX-commission-XX]",

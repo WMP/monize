@@ -2313,7 +2313,8 @@ export class InvestmentTransactionsService {
    * Move a security between two investment accounts while preserving cost
    * basis. Creates both legs atomically: a TRANSFER_OUT in the source account
    * (drawn down at the source's running average cost) and a TRANSFER_IN in the
-   * destination account at the source's carried average cost. No cash
+   * destination account at the per-share basis the source released at the
+   * transfer's date (A26-M22). No cash
    * transaction is created -- shares move only, no money changes hands -- so
    * both legs use exchangeRate 1 and have a null linked cash transaction.
    */
@@ -2367,24 +2368,6 @@ export class InvestmentTransactionsService {
 
     await this.securitiesService.findOne(userId, dto.securityId);
 
-    // Carry the source's actual blended average cost so basis is conserved.
-    // The client sends a prefilled costPerShare for display, but the server is
-    // authoritative here: a stale or zero client value (e.g. a UI race before
-    // holdings load, or a direct API call) must not be able to poison the
-    // destination's cost basis. When the source holds the security, its current
-    // average cost is exactly what the TRANSFER_OUT draws down, so using it for
-    // both legs conserves basis. With no existing holding the over-draw guard
-    // below rejects the transfer anyway, so the client value is a harmless
-    // fallback.
-    const sourceHolding = await this.holdingsService.findByAccountAndSecurity(
-      dto.fromAccountId,
-      dto.securityId,
-    );
-    const carriedCost =
-      sourceHolding && Number(sourceHolding.quantity) > 0
-        ? roundToDecimals(Number(sourceHolding.averageCost) || 0, 6)
-        : dto.costPerShare;
-
     // Transfer legs carry no cash, so totalAmount is 0 -- matching how
     // calculateTotalAmount() treats TRANSFER_IN/TRANSFER_OUT on the edit path.
     // Cost basis flows through quantity * price (per-share cost) instead.
@@ -2423,7 +2406,10 @@ export class InvestmentTransactionsService {
           action: InvestmentAction.TRANSFER_OUT,
           transactionDate: dto.transactionDate,
           quantity: dto.quantity,
-          price: carriedCost,
+          // Provisional: replaced below by the basis the ledger says this leg
+          // relieves. The client's figure is only the fallback for a source
+          // that does not hold the units on this date.
+          price: dto.costPerShare,
           commission: 0,
           totalAmount,
           exchangeRate: 1,
@@ -2437,6 +2423,32 @@ export class InvestmentTransactionsService {
           savedOut,
           false,
         );
+
+        // Carry the source's basis AT THE TRANSFER'S DATE, read from the ledger
+        // under the lock (A26-M22). The stored holding is today's average --
+        // after a later buy it is not what the source held on the transfer's
+        // date -- and the client's costPerShare is display only: a stale or zero
+        // value must not be able to poison the destination's basis. The server
+        // is authoritative: both legs take what the OUT leg relieves at its
+        // position in the replay, divided by the quantity. `null` (the source
+        // does not hold the units on that date) keeps the client figure; the
+        // over-draw guard below refuses that transfer anyway.
+        const releasedPerShare =
+          await this.holdingsService.releasedBasisPerShare(
+            userId,
+            dto.securityId,
+            outId,
+            manager,
+          );
+        const carriedCost =
+          releasedPerShare !== null
+            ? roundToDecimals(releasedPerShare, INVESTMENT_PRICE_DECIMALS)
+            : dto.costPerShare;
+        if (releasedPerShare !== null) {
+          await manager.update(InvestmentTransaction, outId, {
+            price: carriedCost,
+          });
+        }
 
         const transferIn = manager.create(InvestmentTransaction, {
           userId,
@@ -3997,7 +4009,9 @@ export class InvestmentTransactionsService {
             : (null as any);
         }
         if (updateDto.quantity !== undefined) leg.quantity = updateDto.quantity;
-        if (updateDto.price !== undefined) leg.price = updateDto.price;
+        // `updateDto.price` is deliberately not applied: a transfer leg's price
+        // is the basis the source released, recomputed from the ledger below
+        // (A26-M22), never a figure the client sends.
         if (updateDto.commission !== undefined)
           leg.commission = updateDto.commission;
         if (updateDto.transactionDate !== undefined)
@@ -4030,6 +4044,31 @@ export class InvestmentTransactionsService {
         savedLinked,
         false,
       );
+
+      // Both legs carry the basis the (new) OUT leg relieves at its position in
+      // the replay, now that the shared fields are saved (A26-M22). A date or
+      // quantity edit moves that position, so the old price would be stale; a
+      // source that does not hold the units on the date keeps the stored price
+      // and the negative-holdings check below refuses the edit.
+      const carriedPerShare = outLeg.securityId
+        ? await this.holdingsService.releasedBasisPerShare(
+            userId,
+            outLeg.securityId,
+            outLeg.id,
+            manager,
+          )
+        : null;
+      if (carriedPerShare !== null) {
+        const carriedCost = roundToDecimals(
+          carriedPerShare,
+          INVESTMENT_PRICE_DECIMALS,
+        );
+        await manager.update(InvestmentTransaction, [outLeg.id, inLeg.id], {
+          price: carriedCost,
+        });
+        outLeg.price = carriedCost;
+        inLeg.price = carriedCost;
+      }
 
       await this.holdingsService.validateNoNegativeHoldingsHistory(
         userId,

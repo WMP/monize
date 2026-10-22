@@ -59,6 +59,45 @@ export const INVESTMENT_REPLAY_ORDER_SQL =
   "transaction_date ASC, created_at ASC, id ASC";
 
 /**
+ * `rows` in replay order with the TRANSFER_OUT leg of a transfer ahead of its
+ * TRANSFER_IN leg (A26-M21, A26-M22).
+ *
+ * Both legs of a transfer are written in one transaction, so `created_at` -- a
+ * statement timestamp -- is identical on the pair and the SQL order between
+ * them is whatever the plan happens to produce. The OUT leg has to be seen
+ * first, because it is what tells the IN leg what the shares cost. Only the two
+ * legs are reordered: the comparator returns 0 for everything else at the same
+ * instant, and `sort` is stable, so nothing else moves. The input is not
+ * modified.
+ *
+ * Every fold that hands a transferred-in lot the basis its source released
+ * reads its rows through this, so the carry cannot depend on which leg the
+ * database happened to return first.
+ */
+export function orderTransferOutBeforeIn<
+  T extends {
+    transactionDate: string;
+    createdAt: Date;
+    action: InvestmentAction | string;
+  },
+>(rows: readonly T[]): T[] {
+  const legRank = (action: InvestmentAction | string): number =>
+    action === InvestmentAction.TRANSFER_OUT
+      ? -1
+      : action === InvestmentAction.TRANSFER_IN
+        ? 1
+        : 0;
+  return [...rows].sort((a, b) => {
+    if (a.transactionDate !== b.transactionDate) {
+      return a.transactionDate < b.transactionDate ? -1 : 1;
+    }
+    const created = Number(a.createdAt) - Number(b.createdAt);
+    if (created !== 0) return created;
+    return legRank(a.action) - legRank(b.action);
+  });
+}
+
+/**
  * The canonical share-count effect of one investment action.
  *
  * Every surface that reconstructs a position from its transaction history --

@@ -736,6 +736,19 @@ Enforcement         No path writes the columns incrementally. Every ledger write
                     save writes back are the locked row's, so a double-submitted
                     edit cannot post its cash twice and a delete behind an edit
                     cannot orphan the edit's cash row (A26-H04).
+                    A transfer is not a purchase: the fold hands a TRANSFER_IN the
+                    basis its paired TRANSFER_OUT relieved (orderTransferOutBeforeIn
+                    puts the OUT leg first when the two share an instant), and
+                    transferSecurity and updateLinkedTransfer write both legs'
+                    price from HoldingsService.releasedBasisPerShare inside their
+                    transaction -- the source's basis at the transfer's own place
+                    in the replay, never today's stored average and never a
+                    client price -- so a rebuild of the destination alone, which
+                    cannot see the OUT leg, falls back to the right figure
+                    (A26-M22). Residual: an IN leg's stored price is refreshed only
+                    when its transfer is written; a later back-dated change to the
+                    source's earlier rows reaches the destination at its next
+                    full or paired rebuild.
                     UNIQUE(account_id, security_id) still prevents duplicate rows.
                     A scope the ledger has no rows for projects to "no holding":
                     the row is deleted. Every writer takes that decision, and
@@ -771,15 +784,12 @@ Known gap           an unpriced acquisition (acquisitionCost returns null) adds
                     partial figure with nothing marking it as one. The column has
                     no completeness flag; the surfaces that need one derive it
                     from the ledger (docs/financial-calculation-contract.md).
-                    Four narrower risks are open and unclosed, recorded here
+                    Three narrower risks are open and unclosed, recorded here
                     rather than fixed in passing: action-history.service.ts keeps
                     a second fold over the ledger that does not filter by
                     SHARE_MOVING_ACTIONS, so its undo/redo rebuild and
                     computeHoldingsMap can disagree about a non-share-moving
-                    action; transferSecurity reads the source position's carried
-                    cost before the transaction it writes in, so a concurrent
-                    trade can move the basis between the read and the write;
-                    the security-transfer edit (updateLinkedTransfer) derives
+                    action; the security-transfer edit (updateLinkedTransfer) derives
                     both legs from snapshots loaded before its transaction; and a
                     security recorded in GBX normalizes to GBP for the provider
                     currency check (quote-currency.util.ts) while currency_code
@@ -791,6 +801,9 @@ Required tests      Two-connection (concurrent trades on one holding, the stored
                     Two-connection edit/edit and edit/delete of one BUY, the
                     funding account's cash rows and balance against its ledger:
                     backend/test/integration/investment-edit-race.integration.spec.ts.
+                    A back-dated transfer carries the source's basis on its date,
+                    follows a date edit, and ignores a client price:
+                    backend/test/integration/security-transfer-basis.integration.spec.ts.
                     Out-of-order entry through the real service, stored row
                     compared against the replay:
                     backend/test/integration/holding-ledger-projection.integration.spec.ts.

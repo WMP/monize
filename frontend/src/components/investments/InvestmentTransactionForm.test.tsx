@@ -872,6 +872,9 @@ describe('InvestmentTransactionForm', () => {
       await waitFor(() => {
         expect(screen.getByLabelText(/Cost per Share/)).toHaveValue('1.670000');
       });
+      // A26-S19-05: the server carries the source's basis, so the field is not
+      // offered as something the person can change.
+      expect(screen.getByLabelText(/Cost per Share/)).toBeDisabled();
     });
 
     it('submits a transfer with the correct payload', async () => {

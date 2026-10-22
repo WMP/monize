@@ -313,6 +313,34 @@ const costBasisSold = sellQty * avgCostPerShare;
 const realizedGain = proceeds - costBasisSold;
 ```
 
+### A transfer carries the basis the source released
+
+A security transfer (a TRANSFER_OUT paired with a TRANSFER_IN through
+`linkedTransactionId`) is neither a sale nor a purchase. The OUT leg relieves
+basis at the source's running average at its own place in the replay; the IN
+leg takes exactly that amount. Every fold that carries a basis does this, and
+reads the rows through `orderTransferOutBeforeIn`
+(`backend/src/securities/investment-replay.util.ts`), because both legs share
+`created_at` and the OUT leg has to be seen first:
+
+```text
+BUY 10 @ 100 on 2026-01-10, BUY 10 @ 200 on 2026-03-10 (today's average 150)
+Transfer 10 dated 2026-02-10:  destination 10 @ 100, source 10 @ 200 (3,000)
+Pricing the IN leg at today's average gave 10 @ 150: 3,500 of basis for 3,000 paid.
+
+Two CAD accounts, a USD security: BUY 10 @ USD 100 at 1.37 (CAD 1,370),
+transfer, SELL 10 @ USD 140 at 1.37 (CAD 1,918): realized gain CAD 548.
+Folding the IN leg as a purchase at its USD price and rate 1 gave CAD 918.
+```
+
+The holdings fold works in the security's currency; the realized-gain and
+capital-gains replays work in the account's, carrying the amount only between
+two accounts of the same currency (otherwise the IN leg's own row stands, a
+recorded residual). Both legs' `price` is written by the server from the
+source's ledger (`HoldingsService.releasedBasisPerShare`), so a replay that
+cannot see the OUT leg falls back to the right per-share figure; a client price
+on a transfer leg is never applied (A26-M21, A26-M22).
+
 ### A SPLIT multiplies
 
 ```text
