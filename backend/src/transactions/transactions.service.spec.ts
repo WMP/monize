@@ -7,6 +7,11 @@ import {
 import { Brackets, DataSource, QueryFailedError } from "typeorm";
 import { TransactionsService } from "./transactions.service";
 import { primaryAttachmentSql } from "../attachments/primary-attachment.util";
+import {
+  attachmentReachableFromTransactionSql,
+  reachedTransactionIdSql,
+  reachingWarrantyJoinSql,
+} from "../attachments/attachment-parent";
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
 import { TransactionSplit } from "./entities/transaction-split.entity";
 import { Category } from "../categories/entities/category.entity";
@@ -179,6 +184,7 @@ describe("TransactionsService", () => {
     // it to no rows so every existing findAll test yields attachmentCount 0.
     attachmentsRepository = {
       createQueryBuilder: jest.fn().mockReturnValue({
+        leftJoin: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -3111,6 +3117,24 @@ describe("TransactionsService", () => {
       );
     });
 
+    // A receipt on the row's warranty is one of the row's attachments (the
+    // maintainer's ruling, attachment-parent.ts), so the filter reaches it
+    // through the shared fragment rather than the row's own column alone.
+    it.each([true, false])(
+      "reaches the linked warranties' documents when hasAttachments is %s",
+      async (hasAttachments) => {
+        const mockQb = createMockQueryBuilder();
+        mockQb.getManyAndCount.mockResolvedValue([[], 0]);
+        await findAllWith({ hasAttachments }, mockQb);
+
+        expect(mockQb.andWhere).toHaveBeenCalledWith(
+          expect.stringContaining(
+            attachmentReachableFromTransactionSql("ta", "transaction.id"),
+          ),
+        );
+      },
+    );
+
     it("filters to transactions without attachments (NOT EXISTS)", async () => {
       const mockQb = createMockQueryBuilder();
       mockQb.getManyAndCount.mockResolvedValue([[], 0]);
@@ -3163,17 +3187,18 @@ describe("TransactionsService", () => {
       ]);
       transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
       investmentTxRepository.find.mockResolvedValue([]);
-      const attachmentCountAndWhere = jest.fn().mockReturnThis();
-      attachmentsRepository.createQueryBuilder.mockReturnValue({
+      const countQb = {
+        leftJoin: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
-        andWhere: attachmentCountAndWhere,
+        andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
         getRawMany: jest
           .fn()
           .mockResolvedValue([{ transactionId: "tx-1", count: "3" }]),
-      });
+      };
+      attachmentsRepository.createQueryBuilder.mockReturnValue(countQb);
 
       const result = await service.findAll("user-1");
 
@@ -3182,9 +3207,24 @@ describe("TransactionsService", () => {
       // The paperclip counts what the attachments list shows, and that list
       // hides a scan pair's original -- so the count is restricted to primaries
       // through the shared predicate.
-      expect(attachmentCountAndWhere).toHaveBeenCalledWith(
-        primaryAttachmentSql("ta"),
+      expect(countQb.andWhere).toHaveBeenCalledWith(primaryAttachmentSql("ta"));
+      // ... and that list carries the documents of every warranty linked to
+      // the row (the maintainer's ruling), so each attachment is keyed by the
+      // transaction it is reached from, own or through its warranty, in one
+      // grouped query over the page's ids.
+      const reachedFrom = reachedTransactionIdSql("ta", "w");
+      expect(countQb.leftJoin).toHaveBeenCalledWith(
+        Warranty,
+        "w",
+        reachingWarrantyJoinSql("ta", "w"),
       );
+      expect(countQb.select).toHaveBeenCalledWith(reachedFrom, "transactionId");
+      expect(countQb.where).toHaveBeenCalledWith(
+        `${reachedFrom} IN (:...transactionIds)`,
+        { transactionIds: ["tx-1", "tx-2"] },
+      );
+      expect(countQb.groupBy).toHaveBeenCalledWith(reachedFrom);
+      expect(attachmentsRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
     });
 
     it("annotates each transaction with its unarchived warranty count", async () => {

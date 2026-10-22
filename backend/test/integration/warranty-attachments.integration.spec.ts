@@ -255,7 +255,13 @@ describe("A warranty's documents under RLS enforcement (WTY-003)", () => {
     });
   });
 
-  describe("a warranty document never counts as a transaction's", () => {
+  /**
+   * The maintainer's ruling (2026-10-22): a document uploaded to a warranty
+   * that is linked to a transaction is one of that transaction's attachments.
+   * The row still has one parent, the warranty; the transaction reaches it
+   * through `warranties.transaction_id` (`attachment-parent.ts`).
+   */
+  describe("a linked warranty's document is one of the transaction's attachments", () => {
     async function uploadWarrantyScanPair(): Promise<string> {
       const visible = await asAlice(() =>
         attachments.create(
@@ -289,7 +295,26 @@ describe("A warranty's documents under RLS enforcement (WTY-003)", () => {
       return page.data;
     }
 
-    it("stores both halves of a scan pair under the warranty alone", async () => {
+    /** A warranty with no purchase; nothing reaches its documents. */
+    async function seedUnlinkedWarrantyWithDocument(): Promise<string> {
+      const [row] = await db.query(
+        `INSERT INTO warranties (user_id, name, purchase_date, expires_on)
+         VALUES ($1, 'Kettle', '2026-09-01', '2027-09-01') RETURNING id`,
+        [aliceId],
+      );
+      await asAlice(() =>
+        attachments.create(
+          aliceId,
+          { kind: "warranty", id: row.id },
+          upload("kettle.png", PNG),
+          undefined,
+          "photo",
+        ),
+      );
+      return row.id;
+    }
+
+    it("stores both halves of a scan pair under the warranty alone, and the transaction lists the document", async () => {
       const visibleId = await uploadWarrantyScanPair();
 
       const rows = await rowsOf("warranty_id", warrantyId);
@@ -313,18 +338,61 @@ describe("A warranty's documents under RLS enforcement (WTY-003)", () => {
         warranties.findOne(aliceId, warrantyId, { today: "2026-10-21" }),
       );
       expect(view.documentCount).toBe(1);
-      // The warranty's purchase is not the documents' parent.
+
+      // The purchase reaches the document through its warranty: the row
+      // stays the warranty's, and the list names the warranty.
+      const own = await asAlice(() =>
+        attachments.create(
+          aliceId,
+          { kind: "transaction", id: linkedTxId },
+          upload("invoice.png", PNG),
+        ),
+      );
+      const forTransaction = await asAlice(() =>
+        attachments.findAllFor(aliceId, {
+          kind: "transaction",
+          id: linkedTxId,
+        }),
+      );
+      expect(
+        forTransaction.map((a) => ({
+          id: a.id,
+          transactionId: a.transactionId,
+          warrantyId: a.warrantyId,
+          warrantyName: a.warrantyName,
+          documentKind: a.documentKind,
+          originalAttachmentId: a.originalAttachmentId,
+        })),
+      ).toEqual([
+        {
+          id: own.id,
+          transactionId: linkedTxId,
+          warrantyId: null,
+          warrantyName: null,
+          documentKind: "other",
+          originalAttachmentId: null,
+        },
+        {
+          id: visibleId,
+          transactionId: null,
+          warrantyId,
+          warrantyName: "Dishwasher",
+          documentKind: "receipt",
+          originalAttachmentId: expect.any(String),
+        },
+      ]);
+      // The other purchase reaches nothing.
       expect(
         await asAlice(() =>
           attachments.findAllFor(aliceId, {
             kind: "transaction",
-            id: linkedTxId,
+            id: otherTxId,
           }),
         ),
       ).toEqual([]);
     });
 
-    it("is absent from attachmentCount, has:attachment and the rule facts' presence", async () => {
+    it("is counted by attachmentCount, has:attachment and the rule facts' presence, archived or not", async () => {
       await uploadWarrantyScanPair();
       await asAlice(() =>
         attachments.create(
@@ -333,6 +401,10 @@ describe("A warranty's documents under RLS enforcement (WTY-003)", () => {
           upload("grocer.png", PNG),
         ),
       );
+      await seedUnlinkedWarrantyWithDocument();
+      // The linked purchase has no attachment of its own: what it counts is
+      // reached through the warranty.
+      expect(await rowsOf("transaction_id", linkedTxId)).toEqual([]);
 
       // Statistics, as autovacuum would have them. Without them the planner
       // costs the register's policy-laden join over default row estimates,
@@ -342,7 +414,7 @@ describe("A warranty's documents under RLS enforcement (WTY-003)", () => {
       const page = await register("");
       const byId = new Map(page.map((row) => [row.id, row]));
       expect(byId.get(linkedTxId)).toMatchObject({
-        attachmentCount: 0,
+        attachmentCount: 1,
         warrantyCount: 1,
       });
       expect(byId.get(otherTxId)).toMatchObject({
@@ -350,19 +422,70 @@ describe("A warranty's documents under RLS enforcement (WTY-003)", () => {
         warrantyCount: 0,
       });
 
-      expect((await register("has:attachment")).map((r) => r.id)).toEqual([
-        otherTxId,
-      ]);
-      expect((await register("-has:attachment")).map((r) => r.id)).toEqual([
-        linkedTxId,
-      ]);
+      expect(
+        (await register("has:attachment")).map((r) => r.id).sort(),
+      ).toEqual([linkedTxId, otherTxId].sort());
+      expect(await register("-has:attachment")).toEqual([]);
 
       const present = await asAlice(() =>
         withScopedDb(harness.app, (m) =>
           loadAttachmentPresence(m, aliceId, [linkedTxId, otherTxId]),
         ),
       );
-      expect([...present]).toEqual([otherTxId]);
+      expect([...present].sort()).toEqual([linkedTxId, otherTxId].sort());
+
+      // A receipt is a fact about the purchase: putting the warranty away
+      // drops it from the warranty badge, not from the attachments.
+      await db.query(
+        `UPDATE warranties SET archived_at = now() WHERE id = $1`,
+        [warrantyId],
+      );
+      const archived = new Map(
+        (await register("")).map((row) => [row.id, row]),
+      );
+      expect(archived.get(linkedTxId)).toMatchObject({
+        attachmentCount: 1,
+        warrantyCount: 0,
+      });
+      expect(
+        (await register("has:attachment")).map((r) => r.id).sort(),
+      ).toEqual([linkedTxId, otherTxId].sort());
+    });
+
+    it("changes a document's kind on both halves of its scan pair, never on a transaction's attachment", async () => {
+      const visibleId = await uploadWarrantyScanPair();
+      const own = await asAlice(() =>
+        attachments.create(
+          aliceId,
+          { kind: "transaction", id: linkedTxId },
+          upload("invoice.png", PNG),
+        ),
+      );
+
+      const updated = await asAlice(() =>
+        attachments.updateDocumentKind(aliceId, visibleId, "manual"),
+      );
+      expect(updated).toMatchObject({
+        id: visibleId,
+        documentKind: "manual",
+        warrantyName: "Dishwasher",
+        originalAttachmentId: expect.any(String),
+      });
+      const kinds = (await rowsOf("warranty_id", warrantyId)).map(
+        (r) => r.document_kind,
+      );
+      expect(kinds).toEqual(["manual", "manual"]);
+
+      await expect(
+        asAlice(() =>
+          attachments.updateDocumentKind(aliceId, own.id, "receipt"),
+        ),
+      ).rejects.toThrow(/document kind applies only to a warranty/);
+      expect(
+        (await rowsOf("transaction_id", linkedTxId)).map(
+          (r) => r.document_kind,
+        ),
+      ).toEqual(["other"]);
     });
   });
 
@@ -408,6 +531,29 @@ describe("A warranty's documents under RLS enforcement (WTY-003)", () => {
     expect(
       (await rowsOf("transaction_id", otherTxId)).map((r) => r.id),
     ).toEqual([receipt.id]);
+    // The purchase reached the manual only through the warranty, so it is
+    // out of the purchase's count with it.
+    await db.query(`ANALYZE`);
+    const page = await asAlice(() =>
+      module
+        .get(TransactionsService)
+        .findAll(
+          aliceId,
+          [accountId],
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          1,
+          50,
+        ),
+    );
+    const byId = new Map(page.data.map((row) => [row.id, row]));
+    expect(byId.get(linkedTxId)).toMatchObject({
+      attachmentCount: 0,
+      warrantyCount: 0,
+    });
+    expect(byId.get(otherTxId)).toMatchObject({ attachmentCount: 1 });
 
     // The sweep that reads the tombstones removes exactly those bytes.
     await withSystemContext(() => sweeper.sweep());

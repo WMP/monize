@@ -38,7 +38,11 @@ import {
   DEFAULT_DOCUMENT_KIND,
   DocumentKind,
   parentColumn,
+  reachedTransactionIdSql,
+  reachingWarrantyJoinSql,
 } from "./attachment-parent";
+import { Warranty } from "../warranties/entities/warranty.entity";
+import { AttachmentListItemDto } from "./dto/attachment-list-item.dto";
 
 /** Largest single attachment we accept (also enforced by the upload interceptor). */
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -85,11 +89,17 @@ interface ValidatedUpload {
 
 /**
  * A listed attachment: the visible row, plus the id of the original photo it
- * was scanned from when there is one. `null` means there is no original --
- * an ordinary upload, or a scan whose original the user chose not to keep.
+ * was scanned from when there is one (`null` means there is no original --
+ * an ordinary upload, or a scan whose original the user chose not to keep)
+ * and the name of the warranty a document hangs off (`null` on a
+ * transaction's own rows). The Swagger class is the one definition.
  */
-export interface AttachmentListItem extends TransactionAttachment {
-  originalAttachmentId: string | null;
+export type AttachmentListItem = AttachmentListItemDto;
+
+/** The raw columns the list read selects beside each entity row. */
+interface ListRawRow {
+  orig_id: string | null;
+  warranty_name: string | null;
 }
 
 /**
@@ -455,40 +465,112 @@ export class AttachmentsService {
    * List attachment metadata under one of the user's parents, a transaction or
    * a warranty (no bytes).
    *
+   * A transaction's list is its own attachments followed by the documents of
+   * every warranty linked to it, archived or not (the maintainer's ruling,
+   * `attachment-parent.ts`); each row names its warranty. A warranty's list is
+   * its own documents alone.
+   *
    * Primaries only: a scan pair is one attachment, and its original is reached
    * through `originalAttachmentId` rather than listed beside the row it belongs
-   * to. The id comes from one LEFT JOIN, not a query per row.
+   * to. The id and the warranty's name come from two LEFT JOINs, not a query
+   * per row.
    */
   async findAllFor(
     userId: string,
     parent: AttachmentParent,
   ): Promise<AttachmentListItem[]> {
     return withScopedDb(this.dataSource, async (m) => {
-      const rows = await m
-        .getRepository(TransactionAttachment)
-        .createQueryBuilder("ta")
-        .leftJoin(
-          TransactionAttachment,
-          "orig",
-          "orig.original_of_attachment_id = ta.id",
+      const rows = await this.listQuery(m)
+        .where(
+          parent.kind === "transaction"
+            ? `${reachedTransactionIdSql("ta", "w")} = :parentId`
+            : `ta.${parentColumn(parent)} = :parentId`,
+          { parentId: parent.id },
         )
-        .addSelect("orig.id", "orig_id")
-        .where(`ta.${parentColumn(parent)} = :parentId`, {
-          parentId: parent.id,
-        })
         .andWhere("ta.user_id = :userId", { userId })
         .andWhere(primaryAttachmentSql("ta"))
-        .orderBy("ta.created_at", "ASC")
+        // Own rows first (their warranty_id is NULL, and FALSE sorts before
+        // TRUE), then the warranties' documents; upload order within each.
+        .orderBy("ta.warranty_id IS NOT NULL", "ASC")
+        .addOrderBy("ta.created_at", "ASC")
         .getRawAndEntities();
 
-      return rows.entities.map((entity, index) => ({
-        ...entity,
+      return rows.entities.map((entity, index) =>
         // Raw and entity rows are the same query in the same order, so the
         // index pairs them; `getRawAndEntities` guarantees that alignment.
-        originalAttachmentId:
-          (rows.raw[index] as { orig_id: string | null } | undefined)
-            ?.orig_id ?? null,
-      }));
+        toListItem(entity, rows.raw[index] as ListRawRow | undefined),
+      );
+    });
+  }
+
+  /**
+   * The list read's shape, shared with the kind update's response: each
+   * attachment row beside the id of its scan original and the name of the
+   * warranty it hangs off. The caller adds the restriction.
+   */
+  private listQuery(m: EntityManager) {
+    return m
+      .getRepository(TransactionAttachment)
+      .createQueryBuilder("ta")
+      .leftJoin(
+        TransactionAttachment,
+        "orig",
+        "orig.original_of_attachment_id = ta.id",
+      )
+      .addSelect("orig.id", "orig_id")
+      .leftJoin(Warranty, "w", reachingWarrantyJoinSql("ta", "w"))
+      .addSelect("w.name", "warranty_name");
+  }
+
+  /**
+   * Change what a warranty's document is, after upload.
+   *
+   * A transaction's attachment has no kind to change (W4), so the refusal is
+   * the same 400 `create` gives a kind on a transaction parent. A scan pair is
+   * one document, so the hidden original takes the kind in the same statement
+   * as its visible row; a pair that disagreed would be two documents to the
+   * next read. The load, the refusal and the write share one transaction, so a
+   * refused request has written nothing.
+   */
+  async updateDocumentKind(
+    userId: string,
+    id: string,
+    documentKind: DocumentKind,
+  ): Promise<AttachmentListItem> {
+    return withScopedDb(this.dataSource, async (m) => {
+      const repo = m.getRepository(TransactionAttachment);
+      const row = await repo.findOne({ where: { id, userId } });
+      if (!row) {
+        throw new NotFoundException(
+          tr("errors.attachments.notFound", "Attachment not found"),
+        );
+      }
+      if (row.warrantyId === null) {
+        throw new BadRequestException(
+          tr(
+            "errors.attachments.documentKindNotForTransaction",
+            "A document kind applies only to a warranty's documents",
+          ),
+        );
+      }
+      await m.query(
+        `UPDATE transaction_attachments SET document_kind = $1
+          WHERE (id = $2 OR original_of_attachment_id = $2) AND user_id = $3`,
+        [documentKind, id, userId],
+      );
+      const updated = await this.listQuery(m)
+        .where("ta.id = :id", { id })
+        .andWhere("ta.user_id = :userId", { userId })
+        .getRawAndEntities();
+      const entity = updated.entities[0];
+      if (!entity) {
+        // Deleted between the lock-free load and the read-back: the row the
+        // caller named is gone, which is the not-found above, not a success.
+        throw new NotFoundException(
+          tr("errors.attachments.notFound", "Attachment not found"),
+        );
+      }
+      return toListItem(entity, updated.raw[0] as ListRawRow | undefined);
     });
   }
 
@@ -643,6 +725,18 @@ export class AttachmentsService {
       await this.orphanSweeper.sweepKey(key, provider);
     }
   }
+}
+
+/** One list row: the entity beside what the list's joins added. */
+function toListItem(
+  entity: TransactionAttachment,
+  raw: ListRawRow | undefined,
+): AttachmentListItem {
+  return {
+    ...entity,
+    originalAttachmentId: raw?.orig_id ?? null,
+    warrantyName: raw?.warranty_name ?? null,
+  };
 }
 
 /**

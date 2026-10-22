@@ -80,6 +80,68 @@ export function attachmentParentColumns(parent: AttachmentParent): {
   }
 }
 
+/**
+ * A transaction's attachments are its own rows plus the documents of every
+ * warranty linked to it.
+ *
+ * The maintainer's ruling (2026-10-22, reversing the consumer rule of design
+ * decision 7): a receipt uploaded to a warranty is a fact about the purchase,
+ * so it shows in the transaction's attachments list and is counted by the
+ * register's paperclip, the `has:attachment` search and the rule engine's
+ * attachment fact. The row still has exactly one parent (WTY-003), the
+ * warranty; the transaction reaches it through `warranties.transaction_id`.
+ * Every linked warranty counts, archived or not, because the document proves
+ * the purchase whether or not the warranty is put away.
+ *
+ * The rule is written here, once, in the two dialects the reads use: a
+ * predicate for an `EXISTS` about one transaction, and a join plus the
+ * "reached from" expression for a grouped read over a page of them.
+ * `attachment-parent.guard.spec.ts` fails a `transaction_attachments` read in
+ * the transaction-side consumers that answers for a transaction without one
+ * of them, so a count of own rows alone, or a reach into a warranty's
+ * documents that skips `warranties.transaction_id`, cannot come back.
+ */
+
+/**
+ * `transaction_attachments` aliased `taAlias` is reached from the transaction
+ * `txIdExpr` names: it is the transaction's own row, or a document of a
+ * warranty linked to that transaction. Self-contained, for an `EXISTS`.
+ */
+export function attachmentReachableFromTransactionSql(
+  taAlias: string,
+  txIdExpr: string,
+): string {
+  return (
+    `(${taAlias}.transaction_id = ${txIdExpr} OR ${taAlias}.warranty_id IN ` +
+    `(SELECT reach_w.id FROM warranties reach_w WHERE reach_w.transaction_id = ${txIdExpr}))`
+  );
+}
+
+/**
+ * The `LEFT JOIN warranties <wAlias>` condition a grouped read adds, so each
+ * attachment row sits beside the warranty it hangs off (none for a
+ * transaction's own row).
+ */
+export function reachingWarrantyJoinSql(
+  taAlias: string,
+  wAlias: string,
+): string {
+  return `${wAlias}.id = ${taAlias}.warranty_id`;
+}
+
+/**
+ * The transaction an attachment row is reached from, given the join above:
+ * its own, or the one its warranty links to. NULL for a document of a
+ * warranty with no purchase, which no transaction reaches. A grouped read
+ * selects and groups by this and restricts it to the page's ids.
+ */
+export function reachedTransactionIdSql(
+  taAlias: string,
+  wAlias: string,
+): string {
+  return `COALESCE(${taAlias}.transaction_id, ${wAlias}.transaction_id)`;
+}
+
 function unreachableParent(parent: never): never {
   throw new Error(`Unknown attachment parent kind: ${JSON.stringify(parent)}`);
 }

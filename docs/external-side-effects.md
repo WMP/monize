@@ -70,7 +70,12 @@ so everything below -- the upload intent, the tombstone trigger, the orphan
 sweep, the provider relocation -- is keyed by attachment id and knows nothing
 about the parent. The per-parent cap is counted under the parent's row lock
 (`lockTransactionRow` or `lockWarrantyRow`, one doctrine), and both halves of a
-scan pair carry the same parent and `document_kind`.
+scan pair carry the same parent and `document_kind` (a kind change,
+`AttachmentsService.updateDocumentKind`, writes both in one statement). One
+parent is not one reader: a transaction's attachments are its own rows plus the
+documents of every warranty linked to it, reached through
+`warranties.transaction_id` by the fragment in `attachment-parent.ts`
+(INV-WTY-003); nothing below depends on it, because none of it reads the parent.
 
 **One upload can write two objects.** A scanned document is stored as a pair --
 the enhanced image the user sees and the original photo it came from

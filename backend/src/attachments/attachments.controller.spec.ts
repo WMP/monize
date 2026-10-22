@@ -15,7 +15,11 @@ describe("AttachmentsController", () => {
   let service: jest.Mocked<
     Pick<
       AttachmentsService,
-      "create" | "findAllFor" | "getForDownload" | "remove"
+      | "create"
+      | "findAllFor"
+      | "getForDownload"
+      | "updateDocumentKind"
+      | "remove"
     >
   >;
   const req = { user: { id: "user-1" } };
@@ -25,6 +29,7 @@ describe("AttachmentsController", () => {
       create: jest.fn(),
       findAllFor: jest.fn(),
       getForDownload: jest.fn(),
+      updateDocumentKind: jest.fn(),
       remove: jest.fn(),
     };
     controller = new AttachmentsController(
@@ -88,7 +93,7 @@ describe("AttachmentsController", () => {
 
   it("delegates list to the service", async () => {
     const rows = [
-      { id: "a1", originalAttachmentId: null },
+      { id: "a1", originalAttachmentId: null, warrantyName: null },
     ] as AttachmentListItem[];
     service.findAllFor.mockResolvedValue(rows);
     const result = await controller.findAll(req, "txn-1");
@@ -221,12 +226,42 @@ describe("AttachmentsController", () => {
         Reflect.getMetadata(DELEGATE_SECTION_KEY, proto[name]),
       ]).toEqual([name, true, "warranties"]);
     }
-    for (const name of ["upload", "findAll", "uploadForWarranty", "remove"]) {
+    for (const name of [
+      "upload",
+      "findAll",
+      "uploadForWarranty",
+      "updateDocumentKind",
+      "remove",
+    ]) {
       expect([
         name,
         Reflect.getMetadata(ALLOW_DELEGATE_KEY, proto[name]),
       ]).toEqual([name, undefined]);
     }
+  });
+
+  // The kind is the one field a document carries that the user can change
+  // after upload; the service owns the parent check, so the controller hands
+  // the owner, the id and the kind down and answers with the list row.
+  it("delegates a document kind change to the service", async () => {
+    const updated = {
+      id: "a1",
+      documentKind: "manual",
+      originalAttachmentId: null,
+      warrantyName: "Dishwasher",
+    } as AttachmentListItem;
+    service.updateDocumentKind.mockResolvedValue(updated);
+
+    const result = await controller.updateDocumentKind(req, "a1", {
+      documentKind: "manual",
+    });
+
+    expect(result).toBe(updated);
+    expect(service.updateDocumentKind).toHaveBeenCalledWith(
+      "user-1",
+      "a1",
+      "manual",
+    );
   });
 
   it("delegates delete to the service", async () => {

@@ -115,7 +115,17 @@ and never contributes to a balance, a report or a total.
    change. The per-parent cap (`MAX_ATTACHMENTS_PER_TRANSACTION`, ten) applies
    to a warranty as well, under a `lockWarrantyRow` with the same doctrine as
    `lockTransactionRow`. The table keeps its name: the name is historical and
-   renaming it would touch every consumer for no behaviour.
+   renaming it would touch every consumer for no behaviour. **A transaction's
+   attachments are its own rows plus the documents of every warranty linked
+   to it**, archived or not (the maintainer's ruling, 2026-10-22, after
+   testing the first build, which kept the two apart): the transaction's
+   attachment list, the register's paperclip, `has:attachment` and the rule
+   engine's attachment fact reach a linked warranty's documents through
+   `warranties.transaction_id`, with one fragment
+   (`attachmentReachableFromTransactionSql` / `reachedTransactionIdSql` in
+   `backend/src/attachments/attachment-parent.ts`); each listed row names its
+   warranty (`warrantyName`). The row still has one parent, the warranty, and
+   the cap is still counted per parent.
 8. **Claims are a child table.** `warranty_claims` carries `claim_date`,
    `status` (`open | approved | denied | resolved`), `description`,
    `resolution` and `resolved_on`. A claim never changes the warranty's status.
@@ -197,6 +207,12 @@ specific than the text above or than sections 6 and 10:
 - **The delegate's account scope is resolved in the controller**, once per
   request, and the service narrows the purchase with `restrictToAccountScope`
   in `loadLinkedTransactions`, the one read of a warranty's purchase.
+- **Documents of a linked warranty are the transaction's attachments**, by
+  the maintainer's ruling of 2026-10-22, reversing decision 7's original
+  consumer rule ("a warranty document never appears in the register count,
+  `has:attachment` or the rule facts"); a document's kind can be changed after
+  upload (`PATCH attachments/:id`, `AttachmentsService.updateDocumentKind`,
+  both halves of a scan pair together).
 
 ## 4. Definitions
 
@@ -320,9 +336,10 @@ CREATE INDEX IF NOT EXISTS idx_transaction_attachments_warranty
 The entity gains `warrantyId: string | null` and `documentKind`;
 `transactionId` becomes `string | null`. `restore-references.ts` maps
 `warranty_id` to `warranties`. The register's count query, `has:attachment`
-and `loadAttachmentPresence` in `rule-facts.ts` keep their
-`transaction_id = ...` predicates and a test asserts a warranty document
-never appears in them.
+and `loadAttachmentPresence` in `rule-facts.ts` reach the transaction's own
+rows and its linked warranties' documents through the shared fragment
+(decision 7, as ruled), and a test asserts a linked warranty's document
+appears in each and an unlinked one's in none.
 
 ### 6.4 Column `account_delegates.warranties_can_read`
 
@@ -540,7 +557,7 @@ tick (the smallest mark at or above 20 is 30), then the 7-day one.
 | Expiry helper | term in years, months, days; month-end clamping (example 2); zero term refused |
 | Status (WTY-002) | truth table A, one test per row; `today` from the user's timezone at a day boundary |
 | Ownership (WTY-005) | foreign transaction id and foreign payee id are 404 inside the transaction; integration test asserts no row written |
-| Attachments (WTY-003) | CHECK refuses zero and two parents; create with a warranty parent stores both halves of a scan pair under it; the cap counts per parent; a warranty document never appears in the register count, `has:attachment` or `loadAttachmentPresence`; download by a delegate without the section is refused; delete cascades with the warranty and tombstones the bytes |
+| Attachments (WTY-003) | CHECK refuses zero and two parents; create with a warranty parent stores both halves of a scan pair under it; the cap counts per parent; a linked warranty's document is in the transaction's list (with `warrantyName`), the register count, `has:attachment` and `loadAttachmentPresence`, archived or not, and an unlinked warranty's in none of them; deleting the warranty drops it from the count; a kind change reaches both halves of a scan pair and refuses a transaction's attachment; download by a delegate without the section is refused; delete cascades with the warranty and tombstones the bytes |
 | Claims | CRUD under the parent's ownership; a claim on a foreign warranty is 404 |
 | Delegation (WTY-007) | truth table C, one test per row; write routes refuse a delegate; the Tools link appears only with the section |
 | Reminders (WTY-004) | truth table B; two concurrent ticks produce one row (the two-connection test `docs/verification-contract.md` asks for); a changed `expires_on` re-fires (example 4); archived and lifetime skipped; category `WARRANTIES` resolves in-app on and email per preference |

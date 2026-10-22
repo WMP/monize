@@ -1,4 +1,5 @@
 import { primaryAttachmentSql } from "../attachments/primary-attachment.util";
+import { attachmentReachableFromTransactionSql } from "../attachments/attachment-parent";
 import {
   investmentLinkedSplitExclusion,
   investmentLinkedTransactionExclusion,
@@ -289,9 +290,12 @@ export function uncategorizedSql(
   );
 }
 
-/** A transaction with at least one primary attachment. */
+/**
+ * A transaction with at least one primary attachment: its own, or a document
+ * of a warranty linked to it (`attachmentReachableFromTransactionSql`).
+ */
 export function hasAttachmentSql(transactionAlias: string): string {
-  return `EXISTS (SELECT 1 FROM transaction_attachments search_ta WHERE search_ta.transaction_id = ${transactionAlias}.id AND ${primaryAttachmentSql("search_ta")})`;
+  return `EXISTS (SELECT 1 FROM transaction_attachments search_ta WHERE ${attachmentReachableFromTransactionSql("search_ta", `${transactionAlias}.id`)} AND ${primaryAttachmentSql("search_ta")})`;
 }
 
 /**

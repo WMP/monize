@@ -203,7 +203,7 @@ implied.
 | INV-SEARCH-005 | The assistant's totals and rows read the search string alike | enforced |
 | INV-WTY-001 | A warranty never writes a ledger row, a balance or a holding | partial |
 | INV-WTY-002 | Every warranty status a surface prints is the server's, from one function | partial |
-| INV-WTY-003 | An attachment has exactly one parent, a transaction or a warranty, and a warranty's document never counts as a transaction's | enforced |
+| INV-WTY-003 | An attachment has exactly one parent, a transaction or a warranty; a transaction's attachments are its own rows plus the documents of warranties linked to it, through one fragment | enforced |
 | INV-WTY-004 | Each warranty reminder threshold notifies once per (warranty, expiry date, threshold), across replicas | enforced |
 | INV-WTY-005 | A warranty or claim write naming a row the caller does not own is refused before the write | enforced |
 | INV-WTY-006 | A warranty import's preview and commit are one computation | enforced |
@@ -7877,8 +7877,10 @@ and the widget.
 
 ```text
 Statement           Every transaction_attachments row belongs to exactly one
-                    parent, a transaction or a warranty, and a warranty's
-                    document never counts as a transaction's attachment.
+                    parent, a transaction or a warranty; a transaction's
+                    attachments are its own rows plus the documents of every
+                    warranty linked to it, archived or not, reached through
+                    warranties.transaction_id by one fragment.
 Source of truth     transaction_attachments.transaction_id and warranty_id
 Enforcement         chk_attachment_one_parent,
                     ((transaction_id IS NOT NULL)::int +
@@ -7890,13 +7892,19 @@ Enforcement         chk_attachment_one_parent,
                     two ids, and the controller has one route per parent; both
                     halves of a scan pair carry the parent, and the cap of ten
                     is counted per parent under lockTransactionRow or
-                    lockWarrantyRow. For the transaction-bound reads,
-                    attachment-parent.guard.spec.ts fails a
-                    transaction_attachments query in transactions.service.ts,
-                    transaction-search.util.ts or rule-facts.ts that does not
-                    restrict on transaction_id (the register's paperclip
-                    count, has:attachment, the rule engine's attachment fact);
-                    its failure message names WTY-003.
+                    lockWarrantyRow. The reach is written once,
+                    attachmentReachableFromTransactionSql and
+                    reachedTransactionIdSql in attachment-parent.ts, used by
+                    the transaction's attachment list (each row carrying
+                    warrantyName), the register's paperclip count and
+                    hasAttachments filter, has:attachment and the rule
+                    engine's attachment fact; attachment-parent.guard.spec.ts
+                    fails a transaction_attachments query in
+                    transactions.service.ts, transaction-search.util.ts or
+                    rule-facts.ts that does not call one of them, so a count
+                    of own rows alone, or a reach into warranty_id that skips
+                    warranties.transaction_id, cannot come back; its failure
+                    message names WTY-003 and the maintainer's ruling.
 Concurrency scope   the parent row (the cap)
 Retry semantics     --
 Crash semantics     --
@@ -7905,11 +7913,16 @@ Failure response    the CHECK refuses the INSERT or UPDATE; an eleventh
 Required tests      Present: warranty-attachments.integration.spec.ts (no
                     parent and two parents refused, a second parent added
                     later refused, a scan pair stored under the warranty
-                    alone, its absence from attachmentCount, has:attachment
-                    and the rule facts, the warranty's delete cascading its
-                    documents and tombstoning their bytes),
+                    alone and listed on the transaction with its warranty's
+                    name, its presence in attachmentCount, has:attachment
+                    and the rule facts whether or not the warranty is
+                    archived, an unlinked warranty's document in none of them,
+                    the warranty's delete cascading its documents, tombstoning
+                    their bytes and dropping the transaction's count, a kind
+                    change reaching both halves of a scan pair),
                     attachments.service.spec.ts (both parents, the cap per
-                    parent), the guard.
+                    parent, the list's reach and order, the kind change),
+                    the guard.
 Status              enforced
 ```
 

@@ -18,11 +18,12 @@ export function blankComments(source: string): string {
 }
 
 /**
- * The reads that answer a question about a TRANSACTION's attachments. Each
- * is transaction-bound by design and must stay so now that the table also
- * holds a warranty's documents (WTY-003): the register's paperclip count and
- * its `hasAttachments` filter, the `has:attachment` search term, and the
- * rule engine's attachment fact.
+ * The reads that answer a question about a TRANSACTION's attachments: the
+ * register's paperclip count and its `hasAttachments` filter, the
+ * `has:attachment` search term, and the rule engine's attachment fact. Each
+ * answers with the transaction's own rows plus the documents of every
+ * warranty linked to it (WTY-003's consumer side, as the maintainer ruled it
+ * on 2026-10-22), through the fragments in `attachment-parent.ts`.
  */
 const TRANSACTION_BOUND_FILES = [
   "transactions/transactions.service.ts",
@@ -34,8 +35,13 @@ const TRANSACTION_BOUND_FILES = [
 const QUERY_SITE =
   /getRepository\(\s*TransactionAttachment\s*\)|\btransaction_attachments\b/g;
 
-/** The restriction every site must carry, in either dialect. */
-const PARENT_RESTRICTION = /\btransaction_id\b|\btransactionId\b/;
+/**
+ * The reach every site must carry: the one-transaction predicate, or the
+ * "reached from" expression of a grouped read (which only makes sense beside
+ * `reachingWarrantyJoinSql`). Both live in `attachment-parent.ts`.
+ */
+const REACHABILITY =
+  /\battachmentReachableFromTransactionSql\s*\(|\breachedTransactionIdSql\s*\(/;
 
 /**
  * Where a site's statement ends: the next semicolon. Both dialects used in
@@ -54,9 +60,9 @@ interface Offender {
 
 /**
  * Every query site in `source` that names the attachments table or
- * repository without restricting on the transaction column.
+ * repository without reaching it through the shared fragment.
  */
-export function unboundAttachmentSites(
+export function unreachedAttachmentSites(
   source: string,
   file = "<source>",
 ): Offender[] {
@@ -64,7 +70,7 @@ export function unboundAttachmentSites(
   const offenders: Offender[] = [];
   for (const match of code.matchAll(QUERY_SITE)) {
     const index = match.index ?? 0;
-    if (PARENT_RESTRICTION.test(statementFrom(code, index))) continue;
+    if (REACHABILITY.test(statementFrom(code, index))) continue;
     const line = code.slice(0, index).split("\n").length;
     offenders.push({ file, line });
   }
@@ -72,18 +78,23 @@ export function unboundAttachmentSites(
 }
 
 /**
- * A warranty's document never counts as a transaction's.
+ * A transaction's attachments are its own rows plus the documents of the
+ * warranties linked to it, reached one way.
  *
  * `transaction_attachments` carries two parent columns and exactly one is
- * set (`chk_attachment_one_parent`). A read that filters on `user_id` alone,
- * or joins the table without naming `transaction_id`, now answers with a
- * warranty's receipts and manuals too -- a paperclip on a row that has no
- * attachment, a `has:attachment` match the register cannot show, a rule
- * that fires on a document the transaction never had. This scan fails the
- * moment one of the transaction-bound reads drops its `transaction_id` /
- * `transactionId` restriction.
+ * set (`chk_attachment_one_parent`). A document uploaded to a warranty that
+ * is linked to a transaction is one of that transaction's attachments (the
+ * maintainer's ruling), reached through `warranties.transaction_id`. A read
+ * that restricts on `transaction_id` alone answers with the row's own files
+ * and misses the receipt on its warranty: a paperclip that says 0 beside a
+ * list that shows one, a `has:attachment` that skips the row, a rule that
+ * never fires. A read that restricts on `user_id` alone, or reaches
+ * `warranty_id` without the warranties join, answers with every warranty's
+ * documents, linked or not. This scan fails the moment one of the
+ * transaction-bound reads spells the reach itself instead of calling the
+ * fragment in `attachment-parent.ts`.
  */
-describe("a transaction-bound attachment read restricts on transaction_id (WTY-003)", () => {
+describe("a transaction-bound attachment read reaches through the shared fragment (WTY-003)", () => {
   const sources = TRANSACTION_BOUND_FILES.map((rel) => ({
     rel,
     source: readFileSync(join(SRC_ROOT, rel), "utf8"),
@@ -98,17 +109,21 @@ describe("a transaction-bound attachment read restricts on transaction_id (WTY-0
     for (const { sites } of counts) expect(sites).toBeGreaterThan(0);
   });
 
-  it("names the transaction column at every site", () => {
+  it("calls a reachability fragment at every site", () => {
     // Each entry carries the rule, so the failure output says what to do: a
-    // read of transaction_attachments that answers for a transaction has to
-    // say which transaction, with the parent helper in attachment-parent.ts.
+    // read of transaction_attachments that answers for a transaction reaches
+    // its own rows and its linked warranties' documents through
+    // attachment-parent.ts, never by a predicate of its own.
     const offenders = sources.flatMap(({ rel, source }) =>
-      unboundAttachmentSites(source, rel).map(
+      unreachedAttachmentSites(source, rel).map(
         ({ file, line }) =>
-          `WTY-003: ${file}:${line} reads transaction_attachments without a ` +
-          `transaction_id / transactionId restriction, so a warranty's ` +
-          `documents would count as the transaction's; restrict on the ` +
-          `parent (attachments/attachment-parent.ts)`,
+          `WTY-003: ${file}:${line} reads transaction_attachments without ` +
+          `attachmentReachableFromTransactionSql or reachedTransactionIdSql ` +
+          `(attachments/attachment-parent.ts). A transaction's attachments ` +
+          `are its own rows plus the documents of every warranty linked to ` +
+          `it (the maintainer's ruling, 2026-10-22): a count of own rows ` +
+          `alone misses them, and a reach into warranty_id that skips ` +
+          `warranties.transaction_id counts every warranty's documents`,
       ),
     );
 
@@ -122,43 +137,69 @@ describe("a transaction-bound attachment read restricts on transaction_id (WTY-0
       const code =
         "const sql = `EXISTS (SELECT 1 FROM transaction_attachments ta " +
         "WHERE ta.user_id = :userId)`;";
-      expect(unboundAttachmentSites(code)).toEqual([
+      expect(unreachedAttachmentSites(code)).toEqual([
         { file: "<source>", line: 1 },
       ]);
     });
 
-    it("catches a repository read that filters on the user alone", () => {
-      const code =
-        "const n = await m.getRepository(TransactionAttachment)\n" +
-        "  .count({ where: { userId } });\n";
-      expect(unboundAttachmentSites(code)).toEqual([
-        { file: "<source>", line: 1 },
-      ]);
-    });
-
-    it("accepts a raw EXISTS restricted on transaction_id", () => {
+    it("catches the old own-rows-only restriction on transaction_id", () => {
+      // The form every consumer had before the ruling: it misses the receipt
+      // on the row's warranty.
       const code =
         "const sql = `EXISTS (SELECT 1 FROM transaction_attachments ta " +
         "WHERE ta.transaction_id = t.id)`;";
-      expect(unboundAttachmentSites(code)).toEqual([]);
+      expect(unreachedAttachmentSites(code)).toEqual([
+        { file: "<source>", line: 1 },
+      ]);
     });
 
-    it("accepts a query builder restricted on transactionId", () => {
+    it("catches a repository read restricted on transactionId alone", () => {
       const code =
-        "const rows = await m.getRepository(TransactionAttachment)\n" +
+        "const n = await m.getRepository(TransactionAttachment)\n" +
         '  .createQueryBuilder("ta")\n' +
         '  .where("ta.transactionId IN (:...ids)", { ids })\n' +
         "  .getRawMany();\n";
-      expect(unboundAttachmentSites(code)).toEqual([]);
+      expect(unreachedAttachmentSites(code)).toEqual([
+        { file: "<source>", line: 1 },
+      ]);
     });
 
-    it("does not read a restriction from the next statement", () => {
-      // The restriction has to be in the SAME statement; one that follows the
+    it("catches a reach into warranty_id spelled at the site", () => {
+      // Names both columns and the warranties table, but with a predicate of
+      // its own: the next edit to the rule would not reach it.
+      const code =
+        "const sql = `EXISTS (SELECT 1 FROM transaction_attachments ta " +
+        "WHERE ta.transaction_id = t.id OR ta.warranty_id IN " +
+        "(SELECT id FROM warranties WHERE transaction_id = t.id))`;";
+      expect(unreachedAttachmentSites(code)).toEqual([
+        { file: "<source>", line: 1 },
+      ]);
+    });
+
+    it("accepts a raw EXISTS over the one-transaction fragment", () => {
+      const code =
+        "const sql = `EXISTS (SELECT 1 FROM transaction_attachments ta WHERE " +
+        '${attachmentReachableFromTransactionSql("ta", "t.id")})`;';
+      expect(unreachedAttachmentSites(code)).toEqual([]);
+    });
+
+    it("accepts a grouped read keyed by the reached transaction", () => {
+      const code =
+        "const rows = await m.getRepository(TransactionAttachment)\n" +
+        '  .createQueryBuilder("ta")\n' +
+        '  .leftJoin(Warranty, "w", reachingWarrantyJoinSql("ta", "w"))\n' +
+        '  .where(`${reachedTransactionIdSql("ta", "w")} IN (:...ids)`, { ids })\n' +
+        "  .getRawMany();\n";
+      expect(unreachedAttachmentSites(code)).toEqual([]);
+    });
+
+    it("does not read a fragment call from the next statement", () => {
+      // The reach has to be in the SAME statement; one that follows the
       // semicolon belongs to another query.
       const code =
         "const a = `SELECT 1 FROM transaction_attachments ta WHERE ta.user_id = $1`;\n" +
-        "const b = `SELECT transaction_id FROM transactions`;\n";
-      expect(unboundAttachmentSites(code)).toEqual([
+        'const b = attachmentReachableFromTransactionSql("ta", "t.id");\n';
+      expect(unreachedAttachmentSites(code)).toEqual([
         { file: "<source>", line: 1 },
       ]);
     });
@@ -168,14 +209,14 @@ describe("a transaction-bound attachment read restricts on transaction_id (WTY-0
         "// an EXISTS against transaction_attachments\n" +
         "/* getRepository(TransactionAttachment) is read elsewhere */\n" +
         "const x = 1;\n";
-      expect(unboundAttachmentSites(code)).toEqual([]);
+      expect(unreachedAttachmentSites(code)).toEqual([]);
     });
 
     it("reports the line of the offending site", () => {
       const code =
         "const ok = 1;\n" +
         "const bad = `SELECT 1 FROM transaction_attachments WHERE user_id = $1`;\n";
-      expect(unboundAttachmentSites(code)).toEqual([
+      expect(unreachedAttachmentSites(code)).toEqual([
         { file: "<source>", line: 2 },
       ]);
     });

@@ -28,7 +28,12 @@ import {
 import { AttachmentStorageProvider } from "./storage/attachment-storage.interface";
 import { AttachmentOrphanSweeper } from "./attachment-orphan-sweeper.service";
 import { lockTransactionRow, lockWarrantyRow } from "../common/db/locks";
-import { AttachmentParent } from "./attachment-parent";
+import {
+  AttachmentParent,
+  reachedTransactionIdSql,
+  reachingWarrantyJoinSql,
+} from "./attachment-parent";
+import { Warranty } from "../warranties/entities/warranty.entity";
 import { requestContextStorage } from "../common/request-context";
 import {
   lockedTransactionRow,
@@ -142,6 +147,7 @@ describe("AttachmentsService", () => {
         return qb;
       }),
       orderBy: jest.fn(() => qb),
+      addOrderBy: jest.fn(() => qb),
       getRawAndEntities: jest.fn().mockResolvedValue({ entities: [], raw: [] }),
     };
     attRepo = {
@@ -790,22 +796,49 @@ describe("AttachmentsService", () => {
   });
 
   describe("findAllFor", () => {
-    it("lists metadata scoped to the user and transaction", async () => {
-      const rows = [{ id: "a1" }] as TransactionAttachment[];
+    // A transaction's attachments are its own rows plus the documents of
+    // every warranty linked to it (the maintainer's ruling,
+    // attachment-parent.ts): the read keys each row by the transaction it is
+    // reached from, and names the warranty a document hangs off.
+    it("lists the transaction's own rows and its linked warranties' documents, scoped to the user", async () => {
+      const rows = [{ id: "a1" }, { id: "d1" }] as TransactionAttachment[];
       qb.getRawAndEntities.mockResolvedValue({
         entities: rows,
-        raw: [{ orig_id: null }],
+        raw: [
+          { orig_id: null, warranty_name: null },
+          { orig_id: null, warranty_name: "Dishwasher" },
+        ],
       });
 
       const result = await service.findAllFor("user-1", TXN);
 
-      expect(result).toEqual([{ id: "a1", originalAttachmentId: null }]);
-      expect(qb.where).toHaveBeenCalledWith("ta.transaction_id = :parentId", {
-        parentId: "txn-1",
-      });
+      expect(result).toEqual([
+        { id: "a1", originalAttachmentId: null, warrantyName: null },
+        { id: "d1", originalAttachmentId: null, warrantyName: "Dishwasher" },
+      ]);
+      expect(qb.leftJoin).toHaveBeenCalledWith(
+        Warranty,
+        "w",
+        reachingWarrantyJoinSql("ta", "w"),
+      );
+      expect(qb.addSelect).toHaveBeenCalledWith("w.name", "warranty_name");
+      expect(qb.where).toHaveBeenCalledWith(
+        `${reachedTransactionIdSql("ta", "w")} = :parentId`,
+        { parentId: "txn-1" },
+      );
       expect(qb.andWhere).toHaveBeenCalledWith("ta.user_id = :userId", {
         userId: "user-1",
       });
+    });
+
+    it("orders the transaction's own rows before its warranties' documents", async () => {
+      await service.findAllFor("user-1", TXN);
+
+      expect(qb.orderBy).toHaveBeenCalledWith(
+        "ta.warranty_id IS NOT NULL",
+        "ASC",
+      );
+      expect(qb.addOrderBy).toHaveBeenCalledWith("ta.created_at", "ASC");
     });
 
     // The list is what the user sees, and a scan pair is one attachment: the
@@ -816,14 +849,17 @@ describe("AttachmentsService", () => {
           { id: "scan-1" },
           { id: "plain-1" },
         ] as TransactionAttachment[],
-        raw: [{ orig_id: "orig-1" }, { orig_id: null }],
+        raw: [
+          { orig_id: "orig-1", warranty_name: null },
+          { orig_id: null, warranty_name: null },
+        ],
       });
 
       const result = await service.findAllFor("user-1", TXN);
 
       expect(result).toEqual([
-        { id: "scan-1", originalAttachmentId: "orig-1" },
-        { id: "plain-1", originalAttachmentId: null },
+        { id: "scan-1", originalAttachmentId: "orig-1", warrantyName: null },
+        { id: "plain-1", originalAttachmentId: null, warrantyName: null },
       ]);
       // Not spelled out here: the shared predicate is the only place it is
       // written, and `primary-attachment.guard.spec.ts` fails a second copy.
@@ -832,15 +868,17 @@ describe("AttachmentsService", () => {
   });
 
   describe("findAllFor a warranty", () => {
-    it("lists under the warranty column, scoped to the user", async () => {
+    it("lists under the warranty column alone, scoped to the user", async () => {
       qb.getRawAndEntities.mockResolvedValue({
         entities: [{ id: "a1" }] as TransactionAttachment[],
-        raw: [{ orig_id: null }],
+        raw: [{ orig_id: null, warranty_name: "Dishwasher" }],
       });
 
       const result = await service.findAllFor("user-1", WTY);
 
-      expect(result).toEqual([{ id: "a1", originalAttachmentId: null }]);
+      expect(result).toEqual([
+        { id: "a1", originalAttachmentId: null, warrantyName: "Dishwasher" },
+      ]);
       expect(qb.where).toHaveBeenCalledWith("ta.warranty_id = :parentId", {
         parentId: "wty-1",
       });
@@ -848,6 +886,84 @@ describe("AttachmentsService", () => {
         userId: "user-1",
       });
       expect(qbConditions).toContain("ta.original_of_attachment_id IS NULL");
+    });
+  });
+
+  describe("updateDocumentKind", () => {
+    const document = {
+      id: "doc-1",
+      userId: "user-1",
+      transactionId: null,
+      warrantyId: "wty-1",
+      documentKind: "other",
+    } as TransactionAttachment;
+
+    it("changes the kind of the row and its scan original in one statement, and answers the list row", async () => {
+      attRepo.findOne.mockResolvedValue(document);
+      qb.getRawAndEntities.mockResolvedValue({
+        entities: [{ ...document, documentKind: "manual" }],
+        raw: [{ orig_id: "orig-1", warranty_name: "Dishwasher" }],
+      });
+
+      const result = await service.updateDocumentKind(
+        "user-1",
+        "doc-1",
+        "manual",
+      );
+
+      expect(attRepo.findOne).toHaveBeenCalledWith({
+        where: { id: "doc-1", userId: "user-1" },
+      });
+      // The pair is one document: the hidden original takes the kind in the
+      // same UPDATE as its visible row, under the owner's id.
+      const update = managerQuery.mock.calls.find(([sql]) =>
+        String(sql).includes("UPDATE transaction_attachments"),
+      );
+      expect(update).toBeDefined();
+      expect(String(update?.[0]).replace(/\s+/g, " ")).toContain(
+        "SET document_kind = $1 WHERE (id = $2 OR original_of_attachment_id = $2) AND user_id = $3",
+      );
+      expect(update?.[1]).toEqual(["manual", "doc-1", "user-1"]);
+      expect(result).toEqual({
+        ...document,
+        documentKind: "manual",
+        originalAttachmentId: "orig-1",
+        warrantyName: "Dishwasher",
+      });
+      expect(qb.where).toHaveBeenCalledWith("ta.id = :id", { id: "doc-1" });
+      expect(qb.andWhere).toHaveBeenCalledWith("ta.user_id = :userId", {
+        userId: "user-1",
+      });
+    });
+
+    it("refuses a row the caller does not own as not found, writing nothing", async () => {
+      attRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateDocumentKind("user-1", "doc-1", "manual"),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(
+        managerQuery.mock.calls.some(([sql]) => String(sql).includes("UPDATE")),
+      ).toBe(false);
+    });
+
+    // A transaction's attachment has no kind (W4): the refusal is the one
+    // `create` gives a kind on a transaction parent, and nothing is written.
+    it("refuses a transaction's attachment with a 400, writing nothing", async () => {
+      attRepo.findOne.mockResolvedValue({
+        ...document,
+        transactionId: "txn-1",
+        warrantyId: null,
+      });
+
+      await expect(
+        service.updateDocumentKind("user-1", "doc-1", "receipt"),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(
+        managerQuery.mock.calls.some(([sql]) => String(sql).includes("UPDATE")),
+      ).toBe(false);
     });
   });
 

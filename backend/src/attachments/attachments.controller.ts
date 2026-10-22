@@ -5,6 +5,7 @@ import {
   Post,
   Delete,
   Param,
+  Patch,
   Request,
   Res,
   UseGuards,
@@ -35,6 +36,8 @@ import {
 } from "./attachments.service";
 import { TransactionAttachment } from "./entities/transaction-attachment.entity";
 import { WarrantyAttachmentUploadDto } from "./dto/warranty-attachment-upload.dto";
+import { UpdateDocumentKindDto } from "./dto/update-document-kind.dto";
+import { AttachmentListItemDto } from "./dto/attachment-list-item.dto";
 
 /** The two named parts of one request, the same on every upload route. */
 interface UploadParts {
@@ -93,8 +96,15 @@ export class AttachmentsController {
   }
 
   @Get("transactions/:transactionId/attachments")
-  @ApiOperation({ summary: "List attachments for a transaction" })
-  @ApiResponse({ status: 200, description: "Attachment metadata list" })
+  @ApiOperation({
+    summary:
+      "List a transaction's attachments: its own, then the documents of every warranty linked to it",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Attachment metadata list",
+    type: [AttachmentListItemDto],
+  })
   findAll(
     @Request() req,
     @Param("transactionId", ParseUUIDPipe) transactionId: string,
@@ -133,7 +143,11 @@ export class AttachmentsController {
   @AllowDelegate()
   @DelegateRequiresSection("warranties")
   @ApiOperation({ summary: "List a warranty's documents" })
-  @ApiResponse({ status: 200, description: "Attachment metadata list" })
+  @ApiResponse({
+    status: 200,
+    description: "Attachment metadata list",
+    type: [AttachmentListItemDto],
+  })
   findAllForWarranty(
     @Request() req,
     @Param("warrantyId", ParseUUIDPipe) warrantyId: string,
@@ -181,6 +195,30 @@ export class AttachmentsController {
       "Cache-Control": "private, max-age=86400",
     });
     res.end(data);
+  }
+
+  @Patch("attachments/:id")
+  @ApiOperation({ summary: "Change what a warranty's document is" })
+  @ApiResponse({
+    status: 200,
+    description: "The updated attachment",
+    type: AttachmentListItemDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: "The attachment is a transaction's, which has no kind",
+  })
+  @ApiResponse({ status: 404, description: "Attachment not found" })
+  updateDocumentKind(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() body: UpdateDocumentKindDto,
+  ): Promise<AttachmentListItem> {
+    return this.attachmentsService.updateDocumentKind(
+      req.user.id,
+      id,
+      body.documentKind,
+    );
   }
 
   @Delete("attachments/:id")
