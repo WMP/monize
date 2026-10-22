@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
+import { cn } from '@/lib/utils';
 import { attachmentsApi, attachmentDownloadUrl } from '@/lib/attachments';
 import { AttachmentPreviewDialog, type PreviewTarget } from './AttachmentPreviewDialog';
 import { DocumentScanDialog, type ScanOutcome } from './DocumentScanDialog';
@@ -435,10 +436,15 @@ function SavedAttachments({
     const showThumb = isImage && !erroredImages[attachment.id];
     const isWarrantyDocument = isWarranty || attachment.warrantyId !== null;
     const kindEditable = isWarranty && !readOnly;
+    // With the kind picker beside it the name had little room on a phone, so
+    // there the name takes its own line and the picker and Delete wrap below.
     return (
       <li
         key={attachment.id}
-        className="flex items-center gap-3 rounded-md border border-gray-200 dark:border-gray-700 p-2"
+        className={cn(
+          'flex items-center gap-3 rounded-md border border-gray-200 dark:border-gray-700 p-2',
+          kindEditable && 'flex-wrap sm:flex-nowrap',
+        )}
       >
         {/* The row is the preview trigger: thumbnail, name and size
             in one button, with the filename as its accessible name.
@@ -448,7 +454,10 @@ function SavedAttachments({
           type="button"
           onClick={() => setPreview({ kind: 'saved', attachment })}
           aria-label={t('preview.open', { name: attachment.filename })}
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className={cn(
+            'flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+            kindEditable && 'basis-full sm:basis-auto',
+          )}
         >
           {showThumb ? (
             // Served from our own backend; next/image adds no value and
@@ -484,7 +493,7 @@ function SavedAttachments({
           </span>
         </button>
         {kindEditable && (
-          <div className="w-40 shrink-0">
+          <div className="min-w-0 flex-1 sm:w-40 sm:flex-none sm:shrink-0">
             <Select
               id={`document-kind-select-${attachment.id}`}
               aria-label={tw('documents.kindFor', { name: attachment.filename })}
