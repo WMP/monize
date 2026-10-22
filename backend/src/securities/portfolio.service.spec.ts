@@ -3715,7 +3715,16 @@ describe("PortfolioService", () => {
       ]);
 
       const result = await service.getAccountMarketValues(userId);
-      expect(result.get("acct-brokerage-1")).toBe(1000);
+      expect(result.get("acct-brokerage-1")).toEqual({
+        marketValue: 1000,
+        knownMarketValueSubtotal: 1000,
+        pricesComplete: true,
+        unpricedSecurityIds: [],
+        unpricedSymbols: [],
+        fxComplete: true,
+        missingRatePairs: [],
+        valuationComplete: true,
+      });
     });
 
     it("skips holdings with effectively zero quantity", async () => {
@@ -3735,7 +3744,7 @@ describe("PortfolioService", () => {
       expect(result.size).toBe(0);
     });
 
-    it("skips holdings without a current price", async () => {
+    it("records a holding without a current price as unknown, not as absent", async () => {
       accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
       holdingsRepository.find.mockResolvedValue([
         { ...mockHoldingVFV, quantity: "5" } as any,
@@ -3744,7 +3753,60 @@ describe("PortfolioService", () => {
       securityPriceRepository.query.mockResolvedValue([]);
 
       const result = await service.getAccountMarketValues(userId);
-      expect(result.size).toBe(0);
+      const row = result.get("acct-brokerage-1")!;
+      expect(row.marketValue).toBeNull();
+      expect(row.knownMarketValueSubtotal).toBe(0);
+      expect(row.pricesComplete).toBe(false);
+      expect(row.unpricedSecurityIds).toEqual(["sec-2"]);
+      expect(row.valuationComplete).toBe(false);
+    });
+
+    it("withholds the market value when one holding is priced and another is not", async () => {
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+      holdingsRepository.find.mockResolvedValue([
+        { ...mockHoldingVFV, quantity: "10" } as any, // 10 * 100 = 1000
+        {
+          ...mockHoldingVFV,
+          id: "hold-other",
+          securityId: "sec-3",
+          security: mockSecurityXIC,
+          quantity: "20",
+        } as any, // no price
+      ]);
+      securityPriceRepository.query.mockResolvedValue([
+        { security_id: "sec-2", close_price: "100", price_date: "2026-02-01" },
+      ]);
+
+      const row = (await service.getAccountMarketValues(userId)).get(
+        "acct-brokerage-1",
+      )!;
+      expect(row.marketValue).toBeNull();
+      expect(row.knownMarketValueSubtotal).toBe(1000);
+      expect(row.pricesComplete).toBe(false);
+      expect(row.unpricedSecurityIds).toEqual(["sec-3"]);
+      expect(row.unpricedSymbols).toEqual([mockSecurityXIC.symbol]);
+      expect(row.valuationComplete).toBe(false);
+    });
+
+    it("names the pair when the security's currency has no rate into the account's", async () => {
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]); // CAD
+      holdingsRepository.find.mockResolvedValue([
+        { ...mockHoldingAAPL, quantity: "10" } as any, // USD
+      ]);
+      securityPriceRepository.query.mockResolvedValue([
+        { security_id: "sec-1", close_price: "100", price_date: "2026-02-01" },
+      ]);
+      exchangeRateService.getLatestRate.mockResolvedValue(null);
+
+      const row = (await service.getAccountMarketValues(userId)).get(
+        "acct-brokerage-1",
+      )!;
+      expect(row.marketValue).toBeNull();
+      expect(row.knownMarketValueSubtotal).toBe(0);
+      expect(row.fxComplete).toBe(false);
+      expect(row.missingRatePairs).toEqual(["USD->CAD"]);
+      expect(row.pricesComplete).toBe(true);
+      expect(row.valuationComplete).toBe(false);
     });
 
     it("aggregates multiple holdings in the same account", async () => {
@@ -3765,7 +3827,7 @@ describe("PortfolioService", () => {
       ]);
 
       const result = await service.getAccountMarketValues(userId);
-      expect(result.get("acct-brokerage-1")).toBe(2000);
+      expect(result.get("acct-brokerage-1")?.marketValue).toBe(2000);
     });
 
     describe("a bond-linked holding", () => {
@@ -3815,12 +3877,12 @@ describe("PortfolioService", () => {
 
         const result = await service.getAccountMarketValues(userId);
 
-        expect(result.get("acct-brokerage-1")).toBe(1354);
-        expect(result.get("acct-brokerage-2")).toBe(1000.8);
+        expect(result.get("acct-brokerage-1")?.marketValue).toBe(1354);
+        expect(result.get("acct-brokerage-2")?.marketValue).toBe(1000.8);
         expect(bondValuation.valueByAccount).toHaveBeenCalledTimes(1);
       });
 
-      it("leaves out an account whose lots have an unknown value", async () => {
+      it("marks an account whose lots have an unknown value as unpriced", async () => {
         bondValuation.valueByAccount.mockResolvedValue({
           asOf: "2026-02-01",
           accounts: new Map([
@@ -3831,8 +3893,11 @@ describe("PortfolioService", () => {
 
         const result = await service.getAccountMarketValues(userId);
 
-        expect(result.has("acct-brokerage-1")).toBe(false);
-        expect(result.get("acct-brokerage-2")).toBe(1000.8);
+        const unknown = result.get("acct-brokerage-1")!;
+        expect(unknown.marketValue).toBeNull();
+        expect(unknown.pricesComplete).toBe(false);
+        expect(unknown.unpricedSecurityIds).toEqual(["sec-bond"]);
+        expect(result.get("acct-brokerage-2")?.marketValue).toBe(1000.8);
       });
     });
   });
@@ -4414,6 +4479,100 @@ describe("PortfolioService", () => {
       expect(result.points).toHaveLength(1);
       // 10 * 100 * 1.4 (AAPL intraday) + 50 * 80 (VFV stale) = 5400.
       expect(result.points[0].value).toBeCloseTo(5400, 4);
+    });
+
+    describe("completeness flags", () => {
+      const ts1 = new Date("2026-05-06T13:30:00.000Z");
+      const ts2 = new Date("2026-05-06T13:31:00.000Z");
+
+      it("reports every flag true for a series that valued every holding", async () => {
+        accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+        holdingsRepository.find.mockResolvedValue([mockHoldingAAPL]);
+        yahooFinanceService.fetchIntradaySeries.mockResolvedValue([
+          { timestamp: ts1, close: 100 },
+          { timestamp: ts2, close: 110 },
+        ]);
+        exchangeRateService.getLatestRate.mockResolvedValue(1.4);
+
+        const result = await service.getIntradayValueSeries(userId, {
+          range: "1d",
+        });
+
+        expect(result.points).toHaveLength(2);
+        for (const p of result.points) {
+          expect(p.fxComplete).toBe(true);
+          expect(p.pricesComplete).toBe(true);
+          expect(p.cashComplete).toBe(true);
+        }
+        expect(result.fxComplete).toBe(true);
+        expect(result.pricesComplete).toBe(true);
+        expect(result.valuationComplete).toBe(true);
+        expect(result.missingRatePairs).toEqual([]);
+        expect(result.unpricedSecurityIds).toEqual([]);
+      });
+
+      it("reports true and empty lists when there are no points", async () => {
+        accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+        holdingsRepository.find.mockResolvedValue([]);
+
+        const result = await service.getIntradayValueSeries(userId, {
+          range: "1d",
+        });
+
+        expect(result.points).toEqual([]);
+        expect(result.fxComplete).toBe(true);
+        expect(result.pricesComplete).toBe(true);
+        expect(result.valuationComplete).toBe(true);
+        expect(result.missingRatePairs).toEqual([]);
+        expect(result.unpricedSecurityIds).toEqual([]);
+      });
+
+      it("marks a bar fxComplete false and names the pair when a currency has no rate", async () => {
+        accountsRepository.find.mockResolvedValue([mockBrokerageAccount]); // CAD
+        holdingsRepository.find.mockResolvedValue([mockHoldingAAPL]); // USD
+        yahooFinanceService.fetchIntradaySeries.mockResolvedValue([
+          { timestamp: ts1, close: 100 },
+        ]);
+        exchangeRateService.getLatestRate.mockResolvedValue(null);
+
+        const result = await service.getIntradayValueSeries(userId, {
+          range: "1d",
+        });
+
+        expect(result.points).toHaveLength(1);
+        expect(result.points[0].fxComplete).toBe(false);
+        expect(result.points[0].pricesComplete).toBe(true);
+        expect(result.fxComplete).toBe(false);
+        expect(result.valuationComplete).toBe(false);
+        expect(result.missingRatePairs).toEqual(["USD->CAD"]);
+      });
+
+      it("marks a bar pricesComplete false and lists the holding whose fetch failed and has no stored close", async () => {
+        accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+        holdingsRepository.find.mockResolvedValue([
+          mockHoldingAAPL,
+          mockHoldingVFV,
+        ]);
+        yahooFinanceService.fetchIntradaySeries.mockImplementation(
+          async (symbol: string) => {
+            if (symbol === "AAPL") return [{ timestamp: ts1, close: 100 }];
+            throw new Error("yahoo 500");
+          },
+        );
+        // No stored close for VFV (sec-2): the position cannot be valued.
+        securityPriceRepository.query.mockResolvedValue([]);
+        exchangeRateService.getLatestRate.mockResolvedValue(1.4);
+
+        const result = await service.getIntradayValueSeries(userId, {
+          range: "1d",
+        });
+
+        expect(result.points[0].pricesComplete).toBe(false);
+        expect(result.points[0].fxComplete).toBe(true);
+        expect(result.pricesComplete).toBe(false);
+        expect(result.valuationComplete).toBe(false);
+        expect(result.unpricedSecurityIds).toEqual(["sec-2"]);
+      });
     });
 
     it("falls back only when EVERY intraday fetch fails", async () => {
@@ -5211,6 +5370,55 @@ describe("PortfolioService", () => {
       expect(result.points[1].value).toBe(111396.8957);
     });
 
+    it("marks a live bar pricesComplete false when a close-valued holding has no close", async () => {
+      netWorthService.getDailyInvestmentPositions.mockResolvedValue(
+        ledgerOf(
+          [
+            {
+              date: "2026-09-02",
+              quantities: { [xgro.id]: 10, [fund.id]: 5 },
+              closes: { [xgro.id]: 100, [fund.id]: null },
+              closeValues: { [xgro.id]: 1000, [fund.id]: null },
+              value: 1000,
+              securitiesValue: 1000,
+              pricesComplete: false,
+            },
+          ],
+          [xgro, fund],
+        ),
+      );
+      seriesBySymbol({
+        "XGRO.TO": [
+          bar("2026-09-02T19:30:00.000Z", 100),
+          bar("2026-09-02T19:45:00.000Z", 101),
+        ],
+      });
+
+      const result = await service.getIntradayValueSeries(userId, {
+        range: "1m",
+      });
+
+      const live = result.points.find(
+        (p) => p.timestamp === "2026-09-02T19:45:00.000Z",
+      )!;
+      expect(live.pricesComplete).toBe(false);
+      expect(live.fxComplete).toBe(true);
+      expect(live.cashComplete).toBe(true);
+      expect(result.pricesComplete).toBe(false);
+      expect(result.valuationComplete).toBe(false);
+      expect(result.unpricedSecurityIds).toEqual([fund.id]);
+
+      const breakdown = await service.getIntradayBreakdown(userId, {
+        range: "1m",
+      });
+      const liveBand = breakdown.points.find(
+        (p) => p.timestamp === "2026-09-02T19:45:00.000Z",
+      )!;
+      expect(liveBand.pricesComplete).toBe(false);
+      expect(breakdown.pricesComplete).toBe(false);
+      expect(breakdown.unpricedSecurityIds).toEqual([fund.id]);
+    });
+
     it("values a bond-linked holding at its stored close on the ledger path and never asks a provider for it (INV-BOND-005)", async () => {
       const bond = {
         id: "sec-bond",
@@ -5611,6 +5819,9 @@ describe("PortfolioService", () => {
           timestamp: "2026-09-18T20:00:00.000Z",
           value: 381,
           securitiesValue: 381,
+          fxComplete: true,
+          pricesComplete: true,
+          cashComplete: true,
           sessionClose: true,
         });
         expect(result.points[1].sessionClose).toBeUndefined();
@@ -5791,6 +6002,9 @@ describe("PortfolioService", () => {
           timestamp: "2026-09-30T20:00:00.000Z",
           value: 1000,
           securitiesValue: 1000,
+          fxComplete: true,
+          pricesComplete: true,
+          cashComplete: true,
           sessionClose: true,
         });
         expect(

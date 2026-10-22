@@ -1772,6 +1772,8 @@ describe("NetWorthService", () => {
           netWorth: 10,
           fxComplete: true,
           missingRatePairs: [],
+          assetsFxComplete: true,
+          liabilitiesFxComplete: true,
           byAccountType: { [AccountType.CHEQUING]: 10 },
         },
       ]);
@@ -1993,6 +1995,9 @@ describe("NetWorthService", () => {
       // The unconvertible component is excluded from the subtotal rather than
       // entered at face value.
       expect(result[0].assets).toBe(0);
+      // Which side is short: the assets, not the liabilities.
+      expect(result[0].assetsFxComplete).toBe(false);
+      expect(result[0].liabilitiesFxComplete).toBe(true);
     });
 
     it("a zero balance in an unrated currency is a settled zero, not a gap", async () => {
@@ -2282,6 +2287,10 @@ describe("NetWorthService", () => {
         assets: 5000,
         liabilities: 1500,
         netWorth: 3500,
+        fxComplete: true,
+        missingRatePairs: [],
+        assetsFxComplete: true,
+        liabilitiesFxComplete: true,
       });
       // The month range is bounded to the latest month so the snapshot query
       // does not replay the whole history.
@@ -2292,6 +2301,46 @@ describe("NetWorthService", () => {
         "2024-03-01",
         [],
       ]);
+    });
+
+    it("carries the completeness flags of the latest month (subtotals, not totals)", async () => {
+      mabRepository.count.mockResolvedValue(5);
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+      reportQuery
+        .mockResolvedValueOnce([{ month: "2024-03-01" }])
+        .mockResolvedValueOnce([
+          {
+            month: "2024-03-01",
+            balance: 1000,
+            market_value: null,
+            account_id: "checking",
+            account_type: AccountType.CHEQUING,
+            account_sub_type: null,
+            currency_code: "USD",
+          },
+          {
+            month: "2024-03-01",
+            balance: 1000000,
+            market_value: null,
+            account_id: "zzz",
+            account_type: AccountType.CHEQUING,
+            account_sub_type: null,
+            currency_code: "ZZZ",
+          },
+        ])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getLatestNetWorth("user-1");
+
+      expect(result).toEqual({
+        assets: 1000,
+        liabilities: 0,
+        netWorth: 1000,
+        fxComplete: false,
+        missingRatePairs: ["ZZZ->USD"],
+        assetsFxComplete: false,
+        liabilitiesFxComplete: true,
+      });
     });
 
     it("returns null when there are no snapshots", async () => {

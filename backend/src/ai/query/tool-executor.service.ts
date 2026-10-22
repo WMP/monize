@@ -2426,22 +2426,51 @@ export class ToolExecutorService {
     );
     const foreignPart = foreign.length
       ? ` Accounts in other currencies (own currency = ${data.defaultCurrency}): ${foreign
-          .map(
-            (a) =>
-              `${a.name}: ${a.balance.toFixed(2)} ${a.currency} = ${
-                a.balanceInDefaultCurrency === null
-                  ? "unknown (no rate)"
-                  : `${a.balanceInDefaultCurrency.toFixed(2)} ${data.defaultCurrency}`
-              }`,
-          )
+          .map((a) => {
+            // A brokerage with an unpriced or unconverted position has no
+            // balance: say so and give what did value, never a zero.
+            if (a.balance === null) {
+              return `${a.name}: unknown (holdings not priced); known subtotal ${a.knownBalanceSubtotal.toFixed(2)} ${a.currency}`;
+            }
+            return `${a.name}: ${a.balance.toFixed(2)} ${a.currency} = ${
+              a.balanceInDefaultCurrency === null
+                ? "unknown (no rate)"
+                : `${a.balanceInDefaultCurrency.toFixed(2)} ${data.defaultCurrency}`
+            }`;
+          })
           .join("; ")}.`
       : "";
     const missingRatePart = data.missingRatePairs.length
       ? ` No exchange rate for: ${data.missingRatePairs.join(", ")} (the user can add one on the Currencies page).`
       : "";
+    const unpricedPart = data.unpricedSymbols.length
+      ? ` No price for: ${data.unpricedSymbols.join(", ")} (the user can add one in the security's price history).`
+      : "";
+    // A total that is null is withheld, not zero: say why, and give the sum of
+    // what did convert under its own name.
+    const causes = [
+      ...(data.fxComplete === false
+        ? [
+            data.missingRatePairs.length
+              ? `no exchange rate for ${data.missingRatePairs.join(", ")}`
+              : "a component could not be converted",
+          ]
+        : []),
+      ...(data.pricesComplete === false
+        ? [
+            data.unpricedSymbols.length
+              ? `no price for ${data.unpricedSymbols.join(", ")}`
+              : "a position has no price",
+          ]
+        : []),
+    ];
+    const figure = (total: number | null, known: number): string =>
+      total === null
+        ? `withheld (incomplete: ${causes.join("; ") || "a component is unknown"}); known subtotal ${known.toFixed(2)} ${data.defaultCurrency}`
+        : `${total.toFixed(2)} ${data.defaultCurrency}`;
     return {
       data,
-      summary: `${data.totalAccounts} accounts. Net worth: ${data.netWorth.toFixed(2)} ${data.defaultCurrency}, Assets: ${data.totalAssets.toFixed(2)} ${data.defaultCurrency}, Liabilities: ${data.totalLiabilities.toFixed(2)} ${data.defaultCurrency}.${foreignPart}${missingRatePart}`,
+      summary: `${data.totalAccounts} accounts. Net worth: ${figure(data.netWorth, data.knownNetWorthSubtotal)}, Assets: ${figure(data.totalAssets, data.knownAssetsSubtotal)}, Liabilities: ${figure(data.totalLiabilities, data.knownLiabilitiesSubtotal)}.${foreignPart}${missingRatePart}${unpricedPart}`,
       sources: [
         {
           type: "accounts",
@@ -2955,9 +2984,19 @@ export class ToolExecutorService {
         userId,
         month,
       );
+      // A month with a component that did not convert has no net worth: the
+      // figures in `data.netWorth` are null and the pairs are named here too.
+      const netWorthNote =
+        data.netWorth.fxComplete === false
+          ? ` Net worth is withheld for an incomplete month: ${
+              data.netWorth.missingRatePairs.length
+                ? `no exchange rate for ${data.netWorth.missingRatePairs.join(", ")}`
+                : "a component could not be converted"
+            } (the user can add a rate on the Currencies page).`
+          : "";
       return {
         data,
-        summary: `Comparison of ${data.currentMonthLabel} vs ${data.previousMonthLabel}.`,
+        summary: `Comparison of ${data.currentMonthLabel} vs ${data.previousMonthLabel}.${netWorthNote}`,
         sources: [
           {
             type: "monthly_comparison",

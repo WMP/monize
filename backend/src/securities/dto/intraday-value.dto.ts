@@ -47,6 +47,19 @@ export interface IntradayValuePoint {
    */
   securitiesValue: number;
   /**
+   * Three completeness bits, for three different repairs, as on
+   * `DailyInvestmentValue`. `fxComplete` is false when a contribution at this
+   * bar had no exchange rate (it was left out, not valued at 1:1);
+   * `pricesComplete` is false when a held position had no price at this bar;
+   * `cashComplete` is false when a cash account had no balance for the day (a
+   * live bar always reports true). A session-close point carries the daily
+   * row's own flags. Read each as `=== false`: absent is an older backend
+   * saying nothing.
+   */
+  fxComplete: boolean;
+  pricesComplete: boolean;
+  cashComplete: boolean;
+  /**
    * Set on a session's closing point: the daily series' own figure for the
    * day, stamped at the session's close (INV-INTRADAY-001), which includes the
    * point the series opens on. Absent on a live bar. A client shaping the
@@ -75,6 +88,10 @@ export interface IntradayBreakdownPoint {
   total: number;
   /** Per-series value keyed by {@link IntradayBreakdownSeries.key}. */
   values: Record<string, number>;
+  /** As on {@link IntradayValuePoint}: what this bar could not value. */
+  fxComplete: boolean;
+  pricesComplete: boolean;
+  cashComplete: boolean;
   /** As on {@link IntradayValuePoint}: set on a session's closing point. */
   sessionClose?: true;
 }
@@ -96,6 +113,20 @@ export interface IntradayBreakdownResponse {
   skippedSymbols: string[];
   failedSymbols: string[];
   fallbackToDaily: boolean;
+  /**
+   * Completeness over every point, so `value` / `total` on each point is a
+   * SUBTOTAL whenever one is false (as `DailyInvestmentValue.value` is): a
+   * consumer that prints it under a total's caption must read the flags.
+   * `valuationComplete` is all three per-point bits over every point. An empty
+   * `points` array reports true and empty lists.
+   */
+  fxComplete: boolean;
+  pricesComplete: boolean;
+  valuationComplete: boolean;
+  /** `"CCY->DISPLAY"` for each pair with no rate at any bar, sorted. */
+  missingRatePairs: string[];
+  /** The securities behind `pricesComplete: false`, sorted. */
+  unpricedSecurityIds: string[];
 }
 
 export interface IntradayValueResponse {
@@ -126,4 +157,18 @@ export interface IntradayValueResponse {
    * In either case the points array is empty.
    */
   fallbackToDaily: boolean;
+  /**
+   * Completeness over every point, so `value` / `total` on each point is a
+   * SUBTOTAL whenever one is false (as `DailyInvestmentValue.value` is): a
+   * consumer that prints it under a total's caption must read the flags.
+   * `valuationComplete` is all three per-point bits over every point. An empty
+   * `points` array reports true and empty lists.
+   */
+  fxComplete: boolean;
+  pricesComplete: boolean;
+  valuationComplete: boolean;
+  /** `"CCY->DISPLAY"` for each pair with no rate at any bar, sorted. */
+  missingRatePairs: string[];
+  /** The securities behind `pricesComplete: false`, sorted. */
+  unpricedSecurityIds: string[];
 }

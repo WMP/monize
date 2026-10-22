@@ -140,6 +140,34 @@ describe("McpAccountsTools", () => {
       });
     });
 
+    it("carries the completeness flags and a withheld net worth through unformatted", async () => {
+      ctx.setUser({ userId: "u1", scopes: "read" });
+      accountsService.getLlmAccounts.mockResolvedValue({
+        accounts: [],
+        totalAssets: null,
+        totalLiabilities: 0,
+        netWorth: null,
+        knownNetWorthSubtotal: 1000,
+        fxComplete: false,
+        pricesComplete: true,
+        valuationComplete: false,
+        missingRatePairs: ["ZZZ->USD"],
+        totalAccounts: 0,
+      });
+
+      const result = await handlers["list_accounts"]({}, ctx);
+
+      expect(result.isError).toBeUndefined();
+      const parsed = result.structuredContent as any;
+      expect(parsed.netWorth).toBeNull();
+      expect(parsed.totalAssets).toBeNull();
+      expect(parsed.knownNetWorthSubtotal).toBe(1000);
+      expect(parsed.fxComplete).toBe(false);
+      expect(parsed.pricesComplete).toBe(true);
+      expect(parsed.valuationComplete).toBe(false);
+      expect(parsed.missingRatePairs).toEqual(["ZZZ->USD"]);
+    });
+
     it("returns error when no user context", async () => {
       ctx.setUser(undefined);
       const result = await handlers["list_accounts"]({}, ctx);

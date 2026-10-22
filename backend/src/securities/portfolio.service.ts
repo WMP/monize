@@ -74,6 +74,25 @@ import {
 // so a portfolio with many holdings does not open one connection per symbol.
 const INTRADAY_FETCH_CONCURRENCY = 6;
 
+/**
+ * What one brokerage or standalone investment account's holdings are worth, in
+ * the account's own currency, with the completeness `getAccountMarketValues`
+ * could establish. Read the flags before presenting `marketValue` as a total.
+ */
+export interface AccountMarketValue {
+  /** null unless every held position was priced AND converted into the account's currency. */
+  marketValue: number | null;
+  /** Sum of the positions that were priced and converted. */
+  knownMarketValueSubtotal: number;
+  pricesComplete: boolean;
+  unpricedSecurityIds: string[];
+  unpricedSymbols: string[];
+  fxComplete: boolean;
+  /** "SEC->ACCT" pairs with no rate. */
+  missingRatePairs: string[];
+  valuationComplete: boolean;
+}
+
 export interface TopMover {
   securityId: string;
   symbol: string;
@@ -486,6 +505,14 @@ interface IntradayLoaded {
     name: string;
     currencyCode: string;
   }>;
+  /**
+   * Without the ledger: held securities no bar could value at all -- a bond-
+   * linked or inactive security, or one whose fetch failed with no stored close.
+   * They are left out of every live bar, so every bar is `pricesComplete: false`.
+   * With the ledger this is empty and each bar finds its own unpriced positions
+   * (`IntradayBarPositions.unpricedSecurityIds`).
+   */
+  unpricedSecurityIds: string[];
 }
 
 interface IntradayCacheEntry {
@@ -508,6 +535,13 @@ interface IntradayHolding {
   fetchIntraday: boolean;
 }
 
+/** What one intraday bar could not value; see `IntradayValuePoint`. */
+interface IntradayBarFlags {
+  fxComplete: boolean;
+  pricesComplete: boolean;
+  cashComplete: boolean;
+}
+
 /** What the scope held at one intraday bar; see `makeIntradayPositionsAt`. */
 interface IntradayBarPositions {
   /** Shares of a security held at the bar; the legacy path answers today's. */
@@ -522,6 +556,8 @@ interface IntradayBarPositions {
     currencyCode: string;
     amount: number;
   }>;
+  /** Held securities this bar has no price for: left out, so unknown not zero. */
+  unpricedSecurityIds: string[];
 }
 
 /** One calendar day of the ledger fold, as the intraday series reads it. */
@@ -1483,12 +1519,18 @@ export class PortfolioService {
    * basis. Useful for balance-style queries where an account's current balance
    * should reflect its holdings, not just the cash side.
    *
-   * Only brokerage and standalone investment accounts contribute; cash-only
-   * accounts are omitted. Accounts whose holdings have no current price are
-   * also omitted (caller should treat "missing" as "no market-value info
-   * available" rather than zero).
+   * Only brokerage and standalone investment accounts contribute, and only
+   * those holding a position in a non-zero quantity: an account that is absent
+   * from the map holds nothing, which is zero rather than unknown. An account
+   * that is present carries its own completeness (`docs/financial-calculation-
+   * contract.md` section 1): `marketValue` is the total only when every held
+   * position was priced and converted into the account's currency, and is
+   * `null` otherwise, with the partial sum in `knownMarketValueSubtotal` and the
+   * unpriced securities and unconverted pairs named beside it.
    */
-  async getAccountMarketValues(userId: string): Promise<Map<string, number>> {
+  async getAccountMarketValues(
+    userId: string,
+  ): Promise<Map<string, AccountMarketValue>> {
     const accounts = await this.getInvestmentAccounts(userId);
     const { holdingsAccountIds } =
       this.calculationService.categoriseAccounts(accounts);
@@ -1515,37 +1557,72 @@ export class PortfolioService {
     for (const a of accounts) accountCurrency.set(a.id, a.currencyCode);
 
     const rateCache: FxRateCache = new Map();
-    const result = new Map<string, number>();
+    const perAccount = new Map<
+      string,
+      {
+        total: FxAggregate;
+        unpriced: Map<string, string>;
+      }
+    >();
     for (const h of holdings) {
       if (Math.abs(Number(h.quantity)) < 0.0001) continue;
-      let marketValue: number;
+      let entry = perAccount.get(h.accountId);
+      if (!entry) {
+        entry = { total: new FxAggregate(), unpriced: new Map() };
+        perAccount.set(h.accountId, entry);
+      }
+
+      let marketValue: number | null;
       if (h.security.bondProgramId) {
-        const own = bondValues.get(`${h.accountId}:${h.securityId}`);
-        if (!own) continue;
-        marketValue = own.marketValue;
+        marketValue =
+          bondValues.get(`${h.accountId}:${h.securityId}`)?.marketValue ?? null;
       } else {
         const price = priceMap.get(h.securityId);
-        if (price == null) continue;
-        marketValue = Number(h.quantity) * price;
+        marketValue = price == null ? null : Number(h.quantity) * price;
       }
+      if (marketValue === null) {
+        // Unpriced is unknown, not zero: the account's value is withheld and
+        // the security named so the reader can price it.
+        entry.total.addUnknown();
+        entry.unpriced.set(h.securityId, h.security.symbol);
+        continue;
+      }
+
       const securityCurrency = h.security.currencyCode;
       const acctCurrency = accountCurrency.get(h.accountId) ?? securityCurrency;
 
+      // Zero needs no rate.
       const valueInAccountCurrency =
-        await this.calculationService.convertToDefault(
-          marketValue,
-          securityCurrency,
-          acctCurrency,
-          rateCache,
-        );
+        marketValue === 0
+          ? 0
+          : await this.calculationService.convertToDefault(
+              marketValue,
+              securityCurrency,
+              acctCurrency,
+              rateCache,
+            );
 
-      // No rate for this security's currency into the account's: the position
-      // is left out rather than counted at face value in the wrong currency.
-      if (valueInAccountCurrency === null) continue;
-      result.set(
-        h.accountId,
-        (result.get(h.accountId) ?? 0) + valueInAccountCurrency,
-      );
+      // No rate for this security's currency into the account's: the pair is
+      // recorded rather than counting the position at face value in the wrong
+      // currency.
+      entry.total.add(valueInAccountCurrency, securityCurrency, acctCurrency);
+    }
+
+    const result = new Map<string, AccountMarketValue>();
+    for (const [accountId, { total, unpriced }] of perAccount) {
+      const pricesComplete = unpriced.size === 0;
+      const missingRatePairs = total.missingPairs;
+      const fxComplete = missingRatePairs.length === 0;
+      result.set(accountId, {
+        marketValue: total.isComplete ? roundMoney(total.knownSubtotal) : null,
+        knownMarketValueSubtotal: roundMoney(total.knownSubtotal),
+        pricesComplete,
+        unpricedSecurityIds: [...unpriced.keys()].sort(),
+        unpricedSymbols: [...unpriced.values()].sort(),
+        fxComplete,
+        missingRatePairs,
+        valuationComplete: pricesComplete && fxComplete,
+      });
     }
     return result;
   }
@@ -1803,7 +1880,11 @@ export class PortfolioService {
     };
 
     if (loaded.timestamps.length === 0) {
-      return { points: [], ...meta };
+      return {
+        points: [],
+        ...this.intradayCompleteness([], new Set(), new Set()),
+        ...meta,
+      };
     }
 
     const fxAt = this.makeIntradayFxAt(loaded);
@@ -1814,8 +1895,17 @@ export class PortfolioService {
     // rate is omitted rather than valued at 1:1 (audit P5-009), and named once
     // at the end rather than per bar.
     const unratedCurrencies = new Set<string>();
-    const contribution = this.makeIntradayContribution(fxAt, unratedCurrencies);
+    // The same, for the bar being built: it decides that point's `fxComplete`.
+    const barUnrated = new Set<string>();
+    const contribution = this.makeIntradayContribution(
+      fxAt,
+      unratedCurrencies,
+      barUnrated,
+    );
     const positionsAt = this.makeIntradayPositionsAt(loaded);
+    // What the points could not value, for the response's own lists.
+    const missingPairs = new Set<string>();
+    const unpricedIds = new Set<string>();
 
     for (const ts of loaded.timestamps) {
       // A finished session's closing point IS the daily series' figure for
@@ -1827,10 +1917,16 @@ export class PortfolioService {
           timestamp: new Date(ts).toISOString(),
           value: daily.value,
           securitiesValue: daily.securitiesValue,
+          fxComplete: daily.fxComplete,
+          pricesComplete: daily.pricesComplete,
+          cashComplete: daily.cashComplete,
           sessionClose: true,
         });
+        daily.missingRatePairs.forEach((pair) => missingPairs.add(pair));
+        daily.unpricedSecurityIds.forEach((id) => unpricedIds.add(id));
         continue;
       }
+      barUnrated.clear();
       const at = positionsAt(ts);
       let totalCents = 0; // integer arithmetic to avoid float drift
       // The INVESTED part of the same bar: the securities, with the cash
@@ -1866,10 +1962,16 @@ export class PortfolioService {
         totalCents += cents;
         securitiesCents += cents;
       }
+      at.unpricedSecurityIds.forEach((id) => unpricedIds.add(id));
       points.push({
         timestamp: new Date(ts).toISOString(),
         value: totalCents / 10000,
         securitiesValue: securitiesCents / 10000,
+        fxComplete: barUnrated.size === 0,
+        pricesComplete: at.unpricedSecurityIds.length === 0,
+        // A live bar's cash is the day's ledger balance or today's: it is
+        // never a cash account that produced no row.
+        cashComplete: true,
       });
     }
 
@@ -1878,8 +1980,48 @@ export class PortfolioService {
         `Intraday series omits holdings in ${[...unratedCurrencies].sort().join(", ")}: no exchange rate into ${loaded.currency}`,
       );
     }
+    for (const ccy of unratedCurrencies) {
+      missingPairs.add(`${ccy}->${loaded.currency}`);
+    }
 
-    return { points, ...meta };
+    return {
+      points,
+      ...this.intradayCompleteness(points, missingPairs, unpricedIds),
+      ...meta,
+    };
+  }
+
+  /**
+   * The response-level completeness of an intraday series, over every point: the
+   * three per-point bits, their conjunction, and the pairs and securities behind
+   * them. An empty series has nothing missing, which is true and empty rather
+   * than unknown.
+   */
+  private intradayCompleteness(
+    points: ReadonlyArray<{
+      fxComplete: boolean;
+      pricesComplete: boolean;
+      cashComplete: boolean;
+    }>,
+    missingPairs: ReadonlySet<string>,
+    unpricedIds: ReadonlySet<string>,
+  ): Pick<
+    IntradayValueResponse,
+    | "fxComplete"
+    | "pricesComplete"
+    | "valuationComplete"
+    | "missingRatePairs"
+    | "unpricedSecurityIds"
+  > {
+    return {
+      fxComplete: points.every((p) => p.fxComplete),
+      pricesComplete: points.every((p) => p.pricesComplete),
+      valuationComplete: points.every(
+        (p) => p.fxComplete && p.pricesComplete && p.cashComplete,
+      ),
+      missingRatePairs: [...missingPairs].sort(),
+      unpricedSecurityIds: [...unpricedIds].sort(),
+    };
   }
 
   /**
@@ -1911,7 +2053,12 @@ export class PortfolioService {
     };
 
     if (loaded.timestamps.length === 0) {
-      return { series: [], points: [], ...meta };
+      return {
+        series: [],
+        points: [],
+        ...this.intradayCompleteness([], new Set(), new Set()),
+        ...meta,
+      };
     }
 
     const fxAt = this.makeIntradayFxAt(loaded);
@@ -1923,7 +2070,16 @@ export class PortfolioService {
     const secMeta = new Map<string, { symbol: string; name: string }>();
     const cash = new Array<number>(n).fill(0);
     const unratedCurrencies = new Set<string>();
-    const contribution = this.makeIntradayContribution(fxAt, unratedCurrencies);
+    // The bar being built, for each point's `fxComplete`.
+    const barUnrated = new Set<string>();
+    const contribution = this.makeIntradayContribution(
+      fxAt,
+      unratedCurrencies,
+      barUnrated,
+    );
+    const barFlags: IntradayBarFlags[] = [];
+    const missingPairs = new Set<string>();
+    const unpricedIds = new Set<string>();
 
     const ensureSec = (id: string, symbol: string, name: string) => {
       if (!secValues.has(id)) {
@@ -1954,8 +2110,16 @@ export class PortfolioService {
           if (value === null || !secValues.has(id)) continue;
           secValues.get(id)![ti] = value;
         }
+        barFlags.push({
+          fxComplete: daily.fxComplete,
+          pricesComplete: daily.pricesComplete,
+          cashComplete: daily.cashComplete,
+        });
+        daily.missingRatePairs.forEach((pair) => missingPairs.add(pair));
+        daily.unpricedSecurityIds.forEach((id) => unpricedIds.add(id));
         continue;
       }
+      barUnrated.clear();
       const at = positionsAt(ts);
       let cashCents = 0;
       for (const [ccy, amount] of at.cash) {
@@ -1977,12 +2141,21 @@ export class PortfolioService {
         secValues.get(src.securityId)![ti] =
           contribution(quantity * price, src.currencyCode, ts) / 10000;
       }
+      at.unpricedSecurityIds.forEach((id) => unpricedIds.add(id));
+      barFlags.push({
+        fxComplete: barUnrated.size === 0,
+        pricesComplete: at.unpricedSecurityIds.length === 0,
+        cashComplete: true,
+      });
     }
 
     if (unratedCurrencies.size > 0) {
       this.logger.warn(
         `Intraday breakdown omits holdings in ${[...unratedCurrencies].sort().join(", ")}: no exchange rate into ${loaded.currency}`,
       );
+    }
+    for (const ccy of unratedCurrencies) {
+      missingPairs.add(`${ccy}->${loaded.currency}`);
     }
 
     const { series, points } = this.groupIntradayBreakdown(
@@ -1992,8 +2165,14 @@ export class PortfolioService {
       cash,
       query.limit ?? 10,
       loaded.sessionCloses,
+      barFlags,
     );
-    return { series, points, ...meta };
+    return {
+      series,
+      points,
+      ...this.intradayCompleteness(points, missingPairs, unpricedIds),
+      ...meta,
+    };
   }
 
   /**
@@ -2015,6 +2194,7 @@ export class PortfolioService {
         quantityOf: (_id, todayQuantity) => todayQuantity,
         cash: loaded.cashByCurrency,
         closeValued: loaded.staleSources,
+        unpricedSecurityIds: loaded.unpricedSecurityIds,
       };
       return () => legacy;
     }
@@ -2024,6 +2204,7 @@ export class PortfolioService {
       quantityOf: () => 0,
       cash: [],
       closeValued: [],
+      unpricedSecurityIds: [],
     };
     return (ts: number) => {
       const date = formatDateYMD(new Date(ts));
@@ -2038,12 +2219,15 @@ export class PortfolioService {
       }
       const { positions } = days[cursor];
       const closeValued: IntradayBarPositions["closeValued"] = [];
+      const unpricedSecurityIds: string[] = [];
       for (const h of loaded.closeValued) {
         const quantity = positions.quantities.get(h.securityId) ?? 0;
         const close = positions.closes.get(h.securityId);
+        if (Math.abs(quantity) < LEDGER_QUANTITY_EPSILON) continue;
         // An unpriced position is unknown, not zero; it is left out as the
-        // daily fold leaves it out (`pricesComplete`).
-        if (Math.abs(quantity) < LEDGER_QUANTITY_EPSILON || close == null) {
+        // daily fold leaves it out, and reported (`pricesComplete`).
+        if (close == null) {
+          unpricedSecurityIds.push(h.securityId);
           continue;
         }
         closeValued.push({ ...h, amount: quantity * close });
@@ -2052,6 +2236,7 @@ export class PortfolioService {
         quantityOf: (id) => positions.quantities.get(id) ?? 0,
         cash: [...positions.cashByCurrency],
         closeValued,
+        unpricedSecurityIds,
       };
       return lastAnswer;
     };
@@ -2095,18 +2280,25 @@ export class PortfolioService {
    *
    * Returns 0 and records the currency when no rate could be resolved for the
    * bar: a holding whose pair has no rate is left out of the series rather than
-   * valued at its face number, which is what an implicit 1:1 did. Shared by the
+   * valued at its face number, which is what an implicit 1:1 did. `unrated`
+   * collects the currencies over the whole series (for the warning and the
+   * response's pairs); `barUnrated` collects them for the bar being built (for
+   * the point's `fxComplete`). Shared by the
    * total series and the per-security breakdown so the two cannot disagree
    * about which bars a currency contributed to.
    */
   private makeIntradayContribution(
     fxAt: (currency: string, ts: number) => number | null,
     unrated: Set<string>,
+    barUnrated?: Set<string>,
   ): (amount: number, currency: string, ts: number) => number {
     return (amount: number, currency: string, ts: number): number => {
       const rate = fxAt(currency, ts);
       if (rate === null) {
         unrated.add(currency);
+        // The caller clears this set at the start of each bar, so it says which
+        // contributions of THIS bar were left out.
+        barUnrated?.add(currency);
         return 0;
       }
       return Math.round(amount * rate * 10000);
@@ -2168,6 +2360,7 @@ export class PortfolioService {
     cash: number[],
     limit: number,
     sessionCloses: ReadonlyMap<number, number>,
+    barFlags: ReadonlyArray<IntradayBarFlags>,
   ): { series: IntradayBreakdownSeries[]; points: IntradayBreakdownPoint[] } {
     const peak = new Map<string, number>();
     for (const [id, arr] of secValues) {
@@ -2231,6 +2424,7 @@ export class PortfolioService {
         timestamp: new Date(ts).toISOString(),
         total: round4(total),
         values,
+        ...barFlags[ti],
         ...(sessionCloses.has(ts) ? { sessionClose: true as const } : {}),
       };
     });
@@ -2318,6 +2512,9 @@ export class PortfolioService {
     );
 
     let activeHoldings: IntradayHolding[] = [];
+    // Without the ledger: held securities no bar can value, so every live bar
+    // is short of them (`IntradayLoaded.unpricedSecurityIds`).
+    const legacyUnpriced = new Set<string>();
     if (ledger) {
       // Every security held on any day of the window, not only today: a
       // position sold mid-window keeps its bars up to the sale. An inactive
@@ -2352,8 +2549,13 @@ export class PortfolioService {
       const aggregated = new Map<string, IntradayHolding>();
       for (const h of holdings) {
         const qty = Number(h.quantity);
-        if (!h.security || h.security.isActive === false) continue;
+        if (!h.security) continue;
         if (Math.abs(qty) < 0.0001) continue;
+        if (h.security.isActive === false) {
+          // Held, but with no quote feed to value it by: left out, not zero.
+          legacyUnpriced.add(h.securityId);
+          continue;
+        }
         const existing = aggregated.get(h.securityId);
         if (existing) {
           existing.quantity += qty;
@@ -2365,6 +2567,11 @@ export class PortfolioService {
         }
       }
       activeHoldings = [...aggregated.values()];
+      // A bond-linked holding has no quote feed and, without the ledger, no
+      // stored-close valuation either: it is dropped from every bar.
+      for (const h of activeHoldings) {
+        if (!h.fetchIntraday) legacyUnpriced.add(h.securityId);
+      }
     }
 
     const fetchedAt = new Date().toISOString();
@@ -2405,6 +2612,7 @@ export class PortfolioService {
       ledgerDays: null,
       sessionCloses: new Map(),
       closeValued: [],
+      unpricedSecurityIds: [],
       ...overrides,
     });
 
@@ -2591,7 +2799,10 @@ export class PortfolioService {
       );
       for (const h of failedHoldings) {
         const lastClose = latestPrices.get(h.securityId);
-        if (lastClose == null) continue;
+        if (lastClose == null) {
+          legacyUnpriced.add(h.securityId);
+          continue;
+        }
         const amount = h.quantity * lastClose;
         staleSources.push({
           securityId: h.securityId,
@@ -2716,6 +2927,7 @@ export class PortfolioService {
       ledgerDays: ledger?.days ?? null,
       sessionCloses,
       closeValued,
+      unpricedSecurityIds: [...legacyUnpriced].sort(),
     };
     this.intradayCache.set(cacheKey, {
       expiresAt: now + INTRADAY_CACHE_TTL_MS,

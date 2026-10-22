@@ -64,6 +64,11 @@ export const listAccountsOutput = toolOutput({
   defaultCurrency: str,
   missingRatePairs: z.array(str),
   totalAccounts: num,
+  // A null total is withheld: `fxComplete` / `pricesComplete` say which repair
+  // is open. `known*` subtotals stay undeclared (loose object).
+  fxComplete: bool,
+  pricesComplete: bool,
+  valuationComplete: bool,
 });
 
 // ---------------------------------------------------------------------------
