@@ -6,7 +6,7 @@
 **Audit mode:** read-only, fixed revision, executed: every HIGH candidate was run against the baseline (suite, mutation, probe or failpoint) or says why not
 **Sessions consumed:** S01-S22 (22 reports, `01-baseline.md` .. `22-delta-review.md`), the ledger, the prior-findings register
 **Companion:** [`remediation-tasks.md`](./remediation-tasks.md) (one task per PR, dependency-ordered)
-**Report status:** in-progress, remaining: remediation-tasks.md
+**Report status:** final (S23 complete; findings 96 canonical: 0 BLOCKER, 15 HIGH, 42 MEDIUM, 39 LOW; verdict REQUEST CHANGES)
 
 Reading guide. Sections 1 to 6 and 17 to 24 are the maintainer's summary. Section 7 carries every
 session finding in the protocol's 15-field format, verbatim from its session report under the
@@ -56,8 +56,8 @@ findings: 0 BLOCKER, 15 HIGH, 42 MEDIUM, 39 LOW**. The HIGH findings fall into f
    and dropped by the server before the AI/MCP tools see them (A26-H15, the upstream MON-H16).
 
 None of the HIGH findings is a regression of an upstream fix; three are in code written after the
-upstream audit (A26-H02, A26-H09 and the loan surface of A26-H06), five are upstream findings still
-open on a residual path, and seven were missed upstream. The MEDIUM register is dominated by the
+upstream audit (A26-H02, A26-H09, and A26-H11's 1.17 mirror row; A26-H06's loan surface is new code
+too), five are upstream findings still open on a residual path, and seven were missed upstream. The MEDIUM register is dominated by the
 same two shapes on narrower surfaces (check in one transaction and write in another; a figure
 computed without its completeness or its currency), plus the release path: the published image
 is never booted by a gate and is pushed before the CVE gate, and the audited revision itself has
