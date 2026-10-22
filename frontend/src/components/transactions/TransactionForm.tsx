@@ -19,6 +19,7 @@ import { exchangeRatesApi } from '@/lib/exchange-rates';
 import {
   FX_RATE_DISPLAY_DECIMALS,
   getCurrencySymbol,
+  roundMoney,
   roundToCents,
   roundToDecimals,
 } from '@/lib/format';
@@ -109,8 +110,9 @@ function transferSourceAmount(source: Transaction): number {
  * fields (payee, category, notes, reference) leaves the reconciliation intact
  * and should save without a warning. Returns true only when the submitted date
  * or amount differs from the original, in which case the edit is gated behind a
- * confirmation. Amounts are compared in integer cents at the same 2-decimal
- * precision the form loads them with, so float drift never triggers a warning.
+ * confirmation. Amounts are compared at the server's four decimals, the
+ * precision the form loads them with, so float drift never triggers a warning
+ * and a sub-cent change is not missed.
  */
 function reconciledEditAffectsReconciliation(
   original: Transaction,
@@ -120,10 +122,9 @@ function reconciledEditAffectsReconciliation(
   // Mirror the form's defaultValues normalization: transfers always load the
   // source leg's absolute amount, everything else keeps its sign.
   const originalAmount = original.isTransfer
-    ? Math.round(transferSourceAmount(original) * 100) / 100
-    : Math.round(Number(original.amount) * 100) / 100;
-  const amountChanged =
-    Math.round(Number(data.amount) * 100) !== Math.round(originalAmount * 100);
+    ? transferSourceAmount(original)
+    : Number(original.amount);
+  const amountChanged = roundMoney(Number(data.amount)) !== roundMoney(originalAmount);
   return dateChanged || amountChanged;
 }
 
@@ -349,10 +350,11 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
           payeeId: initSource.payeeId || '',
           payeeName: initSource.payeeName || '',
           categoryId: initSource.categoryId || '',
-          // For transfers, the source (FROM) leg's absolute amount
+          // As stored (four decimals), so an unedited save re-sends it. For
+          // transfers, the source (FROM) leg's absolute amount.
           amount: initSource.isTransfer
-            ? Math.round(transferSourceAmount(initSource) * 100) / 100
-            : Math.round(Number(initSource.amount) * 100) / 100,
+            ? roundMoney(transferSourceAmount(initSource))
+            : roundMoney(Number(initSource.amount)),
           currencyCode: initSource.currencyCode,
           description: initSource.description || '',
           referenceNumber: initSource.referenceNumber || '',
@@ -1328,9 +1330,12 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
 
       // Validate splits sum to amount if in split mode
       if (isSplitMode && splitsData) {
+        // At the server's precision: it requires the lines to equal the parent
+        // exactly at four decimals, so a one-cent tolerance here let through a
+        // set the server refuses and refused a stored four-decimal set.
         const splitsTotal = splitsData.reduce((sum, s) => sum + s.amount, 0);
-        const roundedSplitsTotal = Math.round(splitsTotal * 100) / 100;
-        const roundedAmount = Math.round(data.amount * 100) / 100;
+        const roundedSplitsTotal = roundMoney(splitsTotal);
+        const roundedAmount = roundMoney(data.amount);
         if (roundedSplitsTotal !== roundedAmount) {
           toast.error(t('form.toasts.splitsNotEqual', { splitTotal: roundedSplitsTotal, txAmount: roundedAmount }));
           setIsLoading(false);

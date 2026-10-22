@@ -322,6 +322,7 @@ vi.mock('@/lib/format', () => ({
   getCurrencySymbol: () => '$',
   getDecimalPlacesForCurrency: () => 2,
   roundToCents: (v: number) => Math.round(v * 100) / 100,
+  roundMoney: (v: number) => Math.round(v * 10000) / 10000,
   roundToDecimals: (v: number, d: number) => { const f = Math.pow(10, d); return Math.round(v * f) / f; },
   formatAmount: (v: number | undefined | null) => (v === undefined || v === null || isNaN(v)) ? '' : (Math.round(v * 100) / 100).toFixed(2),
   formatAmountWithCommas: (v: number | undefined | null) => (v === undefined || v === null || isNaN(v)) ? '' : (Math.round(v * 100) / 100).toFixed(2),
@@ -3317,6 +3318,127 @@ describe('TransactionForm', () => {
 
       await waitFor(() => expect(screen.getByText('Edit reconciled transaction?')).toBeInTheDocument());
       expect(mockUpdateTransfer).not.toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
+  // Four-decimal amounts (A26-M37): the server stores decimal(20,4) and writes
+  // sub-cent figures itself (FX conversions, a transfer's implied destination).
+  // The form loads them as stored, so an unedited save re-sends them, and its
+  // split check compares at the server's precision.
+  // =========================================================================
+  describe('four-decimal amounts round-trip', () => {
+    it('re-sends a four-decimal amount after a description-only edit', async () => {
+      const tx = createExistingTransaction({ amount: -3.3333 });
+      await act(async () => {
+        render(<TransactionForm transaction={tx} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      });
+      await waitFor(() => expect(screen.getByLabelText('Amount')).toBeInTheDocument());
+
+      // Tab through the amount (the field shows -3.33), then edit the note.
+      const amount = screen.getByLabelText('Amount');
+      fireEvent.focus(amount);
+      fireEvent.blur(amount);
+      fireEvent.change(screen.getByLabelText('Reference Number'), { target: { value: 'REF-EDITED' } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Transaction/i }));
+      });
+
+      await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+      expect(mockUpdate.mock.calls[0][1]).toEqual(expect.objectContaining({ amount: -3.3333 }));
+    });
+
+    it('saves a four-decimal split parent unedited', async () => {
+      const tx = createExistingTransaction({
+        amount: -12.3457,
+        isSplit: true,
+        categoryId: null,
+        category: null,
+        splits: [
+          { id: 'sp-1', transactionId: '123e4567-e89b-12d3-a456-426614174000', categoryId: 'cat-1', category: null, transferAccountId: null, transferAccount: null, linkedTransactionId: null, amount: -6.1728, memo: '', createdAt: '2024-01-15T00:00:00Z' },
+          { id: 'sp-2', transactionId: '123e4567-e89b-12d3-a456-426614174000', categoryId: 'cat-2', category: null, transferAccountId: null, transferAccount: null, linkedTransactionId: null, amount: -6.1729, memo: '', createdAt: '2024-01-15T00:00:00Z' },
+        ],
+      });
+      await act(async () => {
+        render(<TransactionForm transaction={tx} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      });
+      await waitFor(() => expect(screen.getByTestId('split-editor')).toBeInTheDocument());
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Transaction/i }));
+      });
+
+      await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+      expect(toast.error).not.toHaveBeenCalled();
+      const payload = mockUpdate.mock.calls[0][1];
+      expect(payload.amount).toBe(-12.3457);
+      expect(payload.splits.map((s: { amount: number }) => s.amount)).toEqual([-6.1728, -6.1729]);
+    });
+
+    it('refuses a split set that misses its parent by less than a cent', async () => {
+      const tx = createExistingTransaction({
+        amount: -12.3457,
+        isSplit: true,
+        categoryId: null,
+        category: null,
+        splits: [
+          { id: 'sp-1', transactionId: '123e4567-e89b-12d3-a456-426614174000', categoryId: 'cat-1', category: null, transferAccountId: null, transferAccount: null, linkedTransactionId: null, amount: -6.17, memo: '', createdAt: '2024-01-15T00:00:00Z' },
+          { id: 'sp-2', transactionId: '123e4567-e89b-12d3-a456-426614174000', categoryId: 'cat-2', category: null, transferAccountId: null, transferAccount: null, linkedTransactionId: null, amount: -6.18, memo: '', createdAt: '2024-01-15T00:00:00Z' },
+        ],
+      });
+      await act(async () => {
+        render(<TransactionForm transaction={tx} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      });
+      await waitFor(() => expect(screen.getByTestId('split-editor')).toBeInTheDocument());
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Transaction/i }));
+      });
+
+      // -12.35 against -12.3457: the server refuses it, so the form says so
+      // first instead of sending a request it knows will fail.
+      await waitFor(() => expect(toast.error).toHaveBeenCalled());
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it('re-sends a four-decimal transfer amount unedited', async () => {
+      const transferTx = createTransferTransaction() as any;
+      const fourDp = {
+        ...transferTx,
+        amount: -100.1234,
+        linkedTransaction: { ...transferTx.linkedTransaction, amount: 100.1234 },
+      };
+      await act(async () => {
+        render(<TransactionForm transaction={fourDp} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      });
+      await waitFor(() => expect(screen.getByText('From Account')).toBeInTheDocument());
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Transfer/i }));
+      });
+
+      await waitFor(() => expect(mockUpdateTransfer).toHaveBeenCalledTimes(1));
+      expect(mockUpdateTransfer.mock.calls[0][1]).toEqual(expect.objectContaining({ amount: 100.1234 }));
+    });
+
+    it('saves a reconciled four-decimal row unedited without the reconciliation warning', async () => {
+      const tx = createExistingTransaction({
+        amount: -3.3333,
+        status: TransactionStatus.RECONCILED,
+        isReconciled: true,
+      });
+      await act(async () => {
+        render(<TransactionForm transaction={tx} onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      });
+      await waitFor(() => expect(screen.getByLabelText('Amount')).toBeInTheDocument());
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Transaction/i }));
+      });
+
+      await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+      expect(screen.queryByText('Edit reconciled transaction?')).not.toBeInTheDocument();
+      expect(mockUpdate.mock.calls[0][1]).toEqual(expect.objectContaining({ amount: -3.3333 }));
     });
   });
 

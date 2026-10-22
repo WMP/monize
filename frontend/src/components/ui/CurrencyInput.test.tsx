@@ -170,6 +170,30 @@ describe('CurrencyInput', () => {
       expect(input).toHaveValue('-54.61');
     });
 
+    // The server writes four-decimal amounts (an FX conversion, a transfer's
+    // implied destination). The field shows two, so the untouched text parses
+    // to the display, not to the value; reporting it re-amounted the row on
+    // every cosmetic edit (A26-M37).
+    it('stays silent when a four-decimal value is blurred untouched', () => {
+      const onChange = vi.fn();
+      render(<CurrencyInput label="Total" value={-3.3333} onChange={onChange} />);
+      const input = screen.getByLabelText('Total');
+      fireEvent.focus(input);
+      fireEvent.blur(input);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(input).toHaveValue('-3.33');
+    });
+
+    it('still reports an edit away from a four-decimal value', () => {
+      const onChange = vi.fn();
+      render(<CurrencyInput label="Total" value={-3.3333} onChange={onChange} />);
+      const input = screen.getByLabelText('Total');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: '-3.34' } });
+      fireEvent.blur(input);
+      expect(onChange).toHaveBeenLastCalledWith(-3.34);
+    });
+
     it('stays silent when the typed text parses back to the same value', () => {
       const onChange = vi.fn();
       render(<CurrencyInput label="Total" value={-54.61} onChange={onChange} />);
