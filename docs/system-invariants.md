@@ -1388,6 +1388,19 @@ by the GBP/USD rate -- 23 to 35 per cent over the range in issue #1393 -- and
 nothing in the stored series says so, because the series is numbers and the
 currency is on another table's row.
 
+The transaction-derived writer (`upsertTransactionPrice` /
+`backfillTransactionPrices`) copies an investment row's average trade price into
+`security_prices`, so a trade price stored in another currency is the same defect
+by another path. The Money import stored a foreign-quoted trade's price and total
+in the account's currency at rate 1 until the 2026-10 audit (A26-M24): `mapInvestments`
+now converts them into the security's currency with the file's own rate for that
+date (`resolveFxRate` over the file's `CRNC_EXCHG` rows) and carries the rate as
+`exchange_rate`. Where the file has no rate near the date the row is still stored
+in the account's currency at rate 1, with a `crossCurrencyTradeUnconverted`
+warning. The guard that would keep such a row out of `security_prices` (average
+only rows whose rate is not 1 or whose account currency is the security's) belongs
+in `security-price.service.ts` and is left to the securities stream.
+
 ### INV-PORTRESULT-001 -- a period change is not a return
 
 ```text

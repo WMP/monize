@@ -8,6 +8,13 @@ import {
   supportsAccruedInterest,
 } from "../../../securities/accrued-interest.util";
 import { roundMoney, roundToDecimals } from "../../../common/round.util";
+import { roundFxRate } from "../../../common/fx-entry.util";
+import {
+  DatedRate,
+  FxObservationLookup,
+  resolveFxRate,
+} from "../../../common/time-series/fx-rate-resolver";
+import { derivePriceFromTotal } from "../../../securities/investment-amount.util";
 import {
   MappedAccounts,
   MappedInvestmentTransaction,
@@ -29,6 +36,7 @@ import { MnyWarning, MnyWarningRow } from "../model/mny-warnings";
 import { MnyInvestmentData } from "../tables/read-investments";
 import { cashKeyByAccountKey } from "./map-reference";
 import { MnyTransactionData } from "../tables/read-transactions";
+import { ExchangeRateRow } from "../writers/write-prices";
 
 /**
  * `TRN` rows carrying a security, mapped onto Monize investment transactions.
@@ -93,6 +101,11 @@ export interface MapInvestmentsInput {
   readonly securities: MappedSecurities;
   /** `BILL` rows, so their template transactions are not imported as postings. */
   readonly bills: readonly MnyBill[];
+  /**
+   * The file's canonical exchange-rate rows (`resolveExchangeRates`), used to
+   * convert a trade of a security quoted in another currency than its account.
+   */
+  readonly exchangeRates: readonly ExchangeRateRow[];
 }
 
 interface Context {
@@ -103,6 +116,8 @@ interface Context {
   readonly cashKeyByAccountKey: ReadonlyMap<string, string>;
   /** Account keys that are brokerage sides, so shares land somewhere real. */
   readonly brokerageKeys: ReadonlySet<string>;
+  /** The file's rate observations, for converting a foreign-quoted trade. */
+  readonly fxLookup: FxObservationLookup;
   readonly warnings: MnyWarning[];
 }
 
@@ -234,6 +249,109 @@ function positiveOrNull(value: number, decimals: number): number | null {
   return rounded > 0 ? rounded : null;
 }
 
+interface TradeFigures {
+  readonly action: InvestmentAction;
+  readonly quantity: number | null;
+  readonly price: number | null;
+  readonly commission: number;
+  readonly accruedInterest: number;
+  readonly totalAmount: number;
+}
+
+interface ConvertedFigures extends Omit<TradeFigures, "action" | "quantity"> {
+  readonly exchangeRate: number;
+  readonly securityCurrencyCode: string;
+}
+
+/**
+ * Puts a trade's figures in the security's currency.
+ *
+ * `TRN.amt` is in the account's currency, while the app reads an investment
+ * row's price and total as the security's and its `exchange_rate` as security ->
+ * cash account (INV-FX-002). For a security quoted in another currency than its
+ * account the file's rate converts the total, and the price is derived from the
+ * converted total (INV-TRADE-001). With no usable rate the figures stay in the
+ * account's currency at rate 1 and a warning says so: 1 there means "no rate
+ * found", which is the one reading the rule forbids staying silent about.
+ */
+function convertToSecurityCurrency(
+  row: MnyTransaction,
+  figures: TradeFigures,
+  accountCurrency: string,
+  context: Context,
+): ConvertedFigures {
+  const unconverted: ConvertedFigures = {
+    price: figures.price,
+    commission: figures.commission,
+    accruedInterest: figures.accruedInterest,
+    totalAmount: figures.totalAmount,
+    exchangeRate: 1,
+    securityCurrencyCode: accountCurrency,
+  };
+  const security = context.input.securities.byHandle.get(
+    row.security as number,
+  );
+  const securityCurrency = security?.currencyCode ?? "";
+  const hasMoney =
+    figures.totalAmount > 0 ||
+    figures.price !== null ||
+    figures.commission > 0 ||
+    figures.accruedInterest > 0;
+  if (
+    !securityCurrency ||
+    !accountCurrency ||
+    securityCurrency === accountCurrency ||
+    !hasMoney
+  ) {
+    return unconverted;
+  }
+
+  const date = row.date as string;
+  const resolution = resolveFxRate(
+    securityCurrency,
+    accountCurrency,
+    date,
+    context.fxLookup,
+  );
+  if (resolution.status !== "resolved" || resolution.rate === null) {
+    context.warnings.push({
+      code: "crossCurrencyTradeUnconverted",
+      subject: security?.symbol ?? `hsec=${row.security}`,
+      detail: `${securityCurrency}->${accountCurrency} on ${date}: ${resolution.reason}`,
+      row: warningRow(row, context.input),
+    });
+    return unconverted;
+  }
+
+  const rate = roundFxRate(resolution.rate);
+  const totalAmount = roundMoney(figures.totalAmount / rate);
+  const commission = roundMoney(figures.commission / rate);
+  const derived =
+    figures.price === null
+      ? null
+      : derivePriceFromTotal({
+          action: figures.action,
+          totalAmount,
+          quantity: figures.quantity,
+          commission,
+        });
+  const derivedPrice =
+    derived === null ? null : roundToDecimals(derived, PRICE_DECIMALS);
+  return {
+    price:
+      figures.price === null
+        ? null
+        : derivedPrice !== null && derivedPrice > 0
+          ? derivedPrice
+          : roundToDecimals(figures.price / rate, PRICE_DECIMALS),
+    commission,
+    accruedInterest: roundMoney(figures.accruedInterest / rate),
+    totalAmount,
+    exchangeRate: rate,
+    securityCurrencyCode: securityCurrency,
+  };
+}
+
 function mapOne(
   row: MnyTransaction,
   accountKey: string,
@@ -278,10 +396,25 @@ function mapOne(
     accruedInterest,
     supportsAccruedInterest(action),
   );
+  // The cash leg settles in the account's currency, so it is worked out from
+  // the account-currency total before any conversion into the security's.
   const cashAmount = cashAmountOf(mappedAction, totalAmount, accruedInterest);
   const id = randomUUID();
   const currencyCode =
     context.input.accounts.currencyByHandle.get(row.account as number) ?? "";
+  const converted = convertToSecurityCurrency(
+    row,
+    {
+      action: mappedAction,
+      quantity,
+      price,
+      commission,
+      accruedInterest,
+      totalAmount,
+    },
+    currencyCode,
+    context,
+  );
   const status = mapTransactionStatus(row.clearedStatus, row.flags);
   const companionId = accruedInterest > 0 ? randomUUID() : null;
 
@@ -303,14 +436,17 @@ function mapOne(
     action: mappedAction,
     transactionDate: row.date as string,
     quantity,
-    price,
-    commission,
-    accruedInterest,
-    totalAmount,
+    price: converted.price,
+    commission: converted.commission,
+    accruedInterest: converted.accruedInterest,
+    totalAmount: converted.totalAmount,
     currencyCode,
-    // A sleeve shares its brokerage's currency, so a trade settling there needs
-    // no conversion. Only an adopted funding row can make this anything else.
-    exchangeRate: 1,
+    securityCurrencyCode: converted.securityCurrencyCode,
+    // security -> cash account. 1 for a same-currency trade, which is every
+    // trade whose security is quoted in its account's currency; a trade of a
+    // foreign-quoted security carries the file's rate, and one with no rate
+    // stays at 1 with a warning. An adopted funding row can still replace it.
+    exchangeRate: converted.exchangeRate,
     cashAmount,
     status,
     payeeHandle: row.payee,
@@ -333,10 +469,10 @@ function mapOne(
       handle: null,
       action: InvestmentAction.INTEREST,
       quantity: null,
-      price: accruedInterest,
+      price: converted.accruedInterest,
       commission: 0,
       accruedInterest: 0,
-      totalAmount: accruedInterest,
+      totalAmount: converted.accruedInterest,
       // The redemption's own cash row carries the interest already.
       cashAccountKey: null,
       cashAmount: 0,
@@ -487,6 +623,24 @@ function reportUnappliedSplits(context: Context): void {
   }
 }
 
+/** The canonical rows as the resolver reads them, keyed `from->to`. */
+function fxLookupOf(rows: readonly ExchangeRateRow[]): FxObservationLookup {
+  const byPair = new Map<string, DatedRate[]>();
+  for (const row of rows) {
+    const key = `${row.fromCurrency}->${row.toCurrency}`;
+    const observations = byPair.get(key);
+    const observation = { date: row.rateDate, rate: row.rate };
+    if (observations === undefined) {
+      byPair.set(key, [observation]);
+    } else {
+      // Appended in place: a Money file can carry years of daily rates per
+      // pair, and copying the array per row would be quadratic in them.
+      observations.push(observation);
+    }
+  }
+  return (from, to) => byPair.get(`${from}->${to}`);
+}
+
 function buildContext(input: MapInvestmentsInput): Context {
   const brokerageKeys = new Set<string>();
   for (const account of input.accounts.accounts) {
@@ -502,6 +656,7 @@ function buildContext(input: MapInvestmentsInput): Context {
     // sleeve this puts trade cash legs in.
     cashKeyByAccountKey: cashKeyByAccountKey(input.accounts),
     brokerageKeys,
+    fxLookup: fxLookupOf(input.exchangeRates),
     warnings: [],
   };
 }

@@ -136,6 +136,13 @@ records were written (a final check, for example), the wizard tells you the reco
 are in your account and does not offer to try again: importing the same file again
 would duplicate them.
 
+**Securities quoted in another currency than their account.** Money records a
+trade in the account's currency. Monize stores the trade's price and total in the
+security's own currency, converted with the exchange rate your file holds for that
+date, and keeps the cash movement in the account's currency. If your file has no
+rate for that pair within 45 days before the trade, the trade is imported
+unconverted and the report lists it, so you can add the rate and correct the price.
+
 **Foreign-currency cost basis.** Money stores a foreign holding's cost basis
 converted to your base currency at the historical rate, not in the security's own
 currency. Monize imports what the file says; a holding bought in a currency other

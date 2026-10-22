@@ -530,6 +530,8 @@
     "unusableBill": "{count, plural, other {# hóa đơn theo lịch}} không có tài khoản, ngày dùng được hoặc chu kỳ nhận diện được, nên đã bị bỏ qua.",
     "billFrequencyApproximated": "{count, plural, other {# hóa đơn theo lịch}} dùng khoảng lặp mà Monize không thể diễn đạt chính xác, nên đã dùng khoảng ngắn hơn gần nhất.",
     "loanInterestCategoryUnclear": "{count, plural, other {# khoản thanh toán khoản vay}} bao gồm nhiều danh mục ngoài phần gốc, nên danh mục lãi của khoản vay chưa được đặt. Hãy kiểm tra xem khoản thanh toán có bao gồm escrow (ký quỹ) không và đặt danh mục lãi sau khi nhập.",
+    "transferAmountMismatch": "{count, plural, other {# giao dịch chuyển vào tài khoản đầu tư}} ghi nhận số tiền ở phía đầu tư khác với phía ngân hàng. Phía đầu tư được nhập đúng như đã ghi.",
+    "crossCurrencyTradeUnconverted": "{count, plural, other {# giao dịch chứng khoán niêm yết bằng loại tiền khác}} được lưu bằng loại tiền của tài khoản, vì tệp không có tỷ giá cho cặp tiền tệ đó gần ngày giao dịch. Hãy thêm tỷ giá, rồi sửa giá của từng giao dịch.",
     "showTransactions": "Hiện {count, plural, other {# giao dịch}}",
     "hideTransactions": "Ẩn giao dịch",
     "reviewInMoney": "Mở các giao dịch này trong Microsoft Money để kiểm tra hoặc sửa, sau đó xuất và nhập lại.",

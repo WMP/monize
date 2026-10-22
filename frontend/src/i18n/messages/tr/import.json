@@ -530,6 +530,8 @@
     "unusableBill": "{count, plural, other {# planlanmış faturanın}} hesabı, kullanılabilir tarihi veya tanınan bir yinelenmesi yoktu ve atlandı.",
     "billFrequencyApproximated": "{count, plural, other {# planlanmış fatura}} Monize'ın tam olarak ifade edemediği bir yineleme aralığı kullanıyor; en yakın daha kısa aralık kullanıldı.",
     "loanInterestCategoryUnclear": "{count, plural, other {# kredi ödemesi}} ana para dışında birden fazla kategori içeriyordu, bu yüzden kredinin faiz kategorisi ayarlanmadı. Ödemenin emanet (escrow) içerip içermediğini kontrol edin ve içe aktarmadan sonra faiz kategorisini ayarlayın.",
+    "transferAmountMismatch": "{count, plural, other {# yatırım hesabına transfer}} yatırım tarafında banka tarafından farklı bir tutar kaydetti. Yatırım tarafı kaydedildiği gibi içe aktarıldı.",
+    "crossCurrencyTradeUnconverted": "{count, plural, other {# başka para biriminde fiyatlanan menkul kıymet işlemi}} dosyada işlem tarihi civarında o para çifti için döviz kuru bulunmadığından hesabın para biriminde kaydedildi. Döviz kurunu ekleyin, sonra her işlemin fiyatını düzeltin.",
     "showTransactions": "{count, plural, other {# işlemi}} göster",
     "hideTransactions": "İşlemleri gizle",
     "reviewInMoney": "Bunları Microsoft Money içinde açıp kontrol edin veya düzeltin, ardından yeniden dışa aktarıp içe aktarın.",

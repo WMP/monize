@@ -56,6 +56,7 @@ import {
 } from "@/import/mny/__fixtures__/mny-row-builders";
 import {
   cashKeyByAccountKey,
+  currencyCodesByHandle,
   mapAccounts,
   mapCategories,
   mapPayees,
@@ -85,6 +86,7 @@ import {
   writeInvestments,
   writeSecurities,
 } from "@/import/mny/writers/write-investments";
+import { ExchangeRateRow } from "@/import/mny/writers/write-prices";
 import { writeBills } from "@/import/mny/writers/write-bills";
 import { writeLoans } from "@/import/mny/writers/write-loans";
 import { ScheduledTransaction } from "@/scheduled-transactions/entities/scheduled-transaction.entity";
@@ -857,8 +859,12 @@ describe("mny writers (integration)", () => {
     async function importRows(
       rows: ReturnType<typeof transactionData>,
       investmentTables: ReturnType<typeof investmentData>,
+      overrides: {
+        referenceRows?: ReturnType<typeof reference>;
+        exchangeRates?: readonly ExchangeRateRow[];
+      } = {},
     ) {
-      const referenceRows = reference();
+      const referenceRows = overrides.referenceRows ?? reference();
       const accounts = mapAccounts(
         referenceRows,
         DEFAULT_MNY_IMPORT_OPTIONS,
@@ -866,7 +872,7 @@ describe("mny writers (integration)", () => {
       );
       const securities = mapSecurities({
         securities: investmentTables.securities,
-        currencyByHandle: new Map(),
+        currencyByHandle: currencyCodesByHandle(referenceRows),
         baseCurrency: "USD",
         activeHandles: new Set([SECURITY_HANDLE]),
       });
@@ -876,6 +882,7 @@ describe("mny writers (integration)", () => {
         accounts,
         securities,
         bills: [],
+        exchangeRates: overrides.exchangeRates ?? [],
       });
       const transactions = mapTransactions({
         transactions: rows,
@@ -1019,6 +1026,142 @@ describe("mny writers (integration)", () => {
       expect(trade.transactionSplitId).toBe(investmentLeg!.id);
       expect(trade.transactionId).toBeNull();
       expect(trade.fundingAccountId).toBeNull();
+    });
+
+    describe("across currencies", () => {
+      const crossCurrencyReference = (accountCurrency: number) =>
+        referenceData({
+          currencies: [
+            mnyCurrency({ handle: 1, isoCode: "EUR" }),
+            mnyCurrency({ handle: 2, isoCode: "USD" }),
+            mnyCurrency({ handle: 3, isoCode: "CAD" }),
+          ],
+          defaults: mnyDefaults({ defaultCurrency: 2 }),
+          accounts: [
+            mnyAccount({
+              handle: CHEQUING,
+              type: 0,
+              name: "Chequing",
+              currency: 1,
+            }),
+            mnyAccount({
+              handle: BROKERAGE,
+              type: 5,
+              name: "Brokerage",
+              relatedAccount: SLEEVE,
+              currency: accountCurrency,
+            }),
+            mnyAccount({
+              handle: SLEEVE,
+              type: 0,
+              name: "Brokerage (Cash)",
+              relatedAccount: BROKERAGE,
+              currency: accountCurrency,
+            }),
+          ],
+        });
+
+      it("credits the USD sleeve with the investment side's own amount", async () => {
+        await ensureCurrency("EUR");
+        // A transfer into the brokerage that adds shares and moves no trade
+        // cash: the sleeve row is the only record of the money arriving. Money
+        // stores EUR 2400 out of chequing and USD 2640 on the investment side.
+        const { accountIdByKey } = await importRows(
+          transactionData({
+            transactions: [
+              mnyTransaction({
+                handle: 20,
+                account: CHEQUING,
+                amount: -2_400,
+              }),
+              mnyTransaction({
+                handle: 21,
+                account: BROKERAGE,
+                amount: 2_640,
+                security: SECURITY_HANDLE,
+                action: MNY_ACTION.ADD_SHARES,
+              }),
+            ],
+            transfers: [mnyTransfer({ from: 20, to: 21 })],
+          }),
+          detail(21),
+          { referenceRows: crossCurrencyReference(2) },
+        );
+
+        const bank = await rowsIn(accountIdByKey.get("acct-1")!);
+        const sleeve = await rowsIn(accountIdByKey.get("acct-6")!);
+        expect(bank).toHaveLength(1);
+        expect(bank[0]).toMatchObject({
+          amount: "-2400.0000",
+          currencyCode: "EUR",
+        });
+        expect(sleeve).toHaveLength(1);
+        expect(sleeve[0]).toMatchObject({
+          amount: "2640.0000",
+          currencyCode: "USD",
+          linkedTransactionId: bank[0].id,
+        });
+      });
+
+      it("stores a USD-quoted trade in a CAD account in USD with its rate", async () => {
+        await ensureCurrency("CAD");
+        const { accountIdByKey } = await importRows(
+          transactionData({
+            transactions: [
+              mnyTransaction({
+                handle: 21,
+                account: BROKERAGE,
+                amount: -1_250,
+                date: "2026-03-02",
+                security: SECURITY_HANDLE,
+                action: MNY_ACTION.BUY,
+              }),
+            ],
+          }),
+          investmentData({
+            securities: [
+              mnySecurity({
+                handle: SECURITY_HANDLE,
+                symbol: "VOO",
+                currency: 2,
+              }),
+            ],
+            investmentDetails: [
+              mnyInvestmentDetail({
+                transaction: 21,
+                price: 125,
+                quantity: 10,
+              }),
+            ],
+          }),
+          {
+            referenceRows: crossCurrencyReference(3),
+            exchangeRates: [
+              {
+                fromCurrency: "CAD",
+                toCurrency: "USD",
+                rate: 0.8,
+                rateDate: "2026-03-02",
+              },
+            ],
+          },
+        );
+
+        const trade = await dataSource
+          .getRepository(InvestmentTransaction)
+          .findOneOrFail({ where: { userId } });
+        expect(Number(trade.price)).toBe(100);
+        expect(Number(trade.totalAmount)).toBe(1000);
+        expect(Number(trade.exchangeRate)).toBe(1.25);
+
+        const cash = await rowsIn(accountIdByKey.get("acct-6")!);
+        expect(cash).toHaveLength(1);
+        expect(cash[0]).toMatchObject({
+          amount: "-1250.0000",
+          currencyCode: "CAD",
+        });
+        expect(trade.transactionId).toBe(cash[0].id);
+      });
     });
   });
 
