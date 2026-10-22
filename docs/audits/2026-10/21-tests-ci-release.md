@@ -464,6 +464,8 @@ The four "reported but not located" items of `docs/verification-contract.md` sec
 ### 10.2 Missing tests of this slice
 
 - A production-image boot in a gate (A26-S21-01); a release-workflow self-test (INV-RELEASE-001 "Required tests"; A26-S21-02); a bind-mount / named-volume writability check for the production image (A26-S21-03); a suite inventory (REL-002); a `failOnFlakyTests` guard (A26-S21-05); a `node --test` glob guard (A26-S21-06); MinIO and `BACKUP_STORE_S3_TEST_ENDPOINT` in `backend-integration-tests` so `backup-store-s3.integration.spec.ts` runs (A26-S06-02's CI half: today its `describe` is skipped in CI and counts as green); a kind/k3d chart install with persistence (`ci.yml:381-385`); the INV-HA-001 flip (a replica losing its channel goes 503), recorded as owed by the invariant itself; `e2e/` lint and type-check (no `tsconfig.json`, no ESLint config); the backend `test/*.e2e-spec.ts` suites run in no job (`backend/CLAUDE.md`: "three of five suites are broken").
+- **Unstable test observed (midnight crossing):** `backend/test/integration/bank-sync.integration.spec.ts:74` fixes `today` once for the suite (`daysAgo = (days) => addDaysYMD(today, -days)`), while the service computes its own date at call time. The full integration run started at 23:59:24 UTC; the suite (126.5 s) failed at `:2777` with `defaultSyncFromDate` expected `2026-07-24`, received `2026-07-25`, and in further cases of the same describe blocks. Any CI run that crosses UTC midnight fails it; the remedy is an injected clock in the service, or reading `today` per test.
+- **No integration suite goes through HTTP:** 0 of 118 import `supertest`, so `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`), guards and DTO constraints run only in unit DTO specs and the E2E suite (A26-S21-07 is one consequence).
 
 ## 11. Documentation inconsistencies
 
@@ -494,8 +496,16 @@ The four "reported but not located" items of `docs/verification-contract.md` sec
 
 ## 13. Adversarial approval challenge
 
-Pending at this commit.
+Assumption: "the pipeline gates what it publishes" is wrong; find the path. Started from the slice's own abstractions (the `needs:` graph, job `if:` conditions, soft-failure constructs, runner discovery, build targets, tags), not from the findings.
+
+- **`needs:` graph.** `prepare-release` and `prepare-preview` list the same 14 jobs (`ci.yml:856-872`, `:1246-1262`); `e2e-browsers` is reached transitively; `frontend-bundle-size` is pull-request only and reports, never gates. A skipped needed job skips its dependants (no `if: always()` on the publish jobs). No gap beyond A26-S21-01 (what the gates build) and A26-S21-02 (when the publish happens).
+- **Soft failures.** `continue-on-error: true` only on the informational dev-dependency audit (`:235`); `|| true` only on zizmor's SARIF producer (`:615`) and diagnostics. Trivy's first step is `exit-code: '0'` by design, its second is the gate (A26-S21-02 is about its position, not its exit code).
+- **Discovery.** Every runner checked for zero, all-skipped, missing-file and empty-file (section 12): one gap, A26-S21-06. Skips: 15 guard specs skip outside a checkout but run in CI; `backup-store-s3.integration.spec.ts` skips in CI (A26-S06-02); four E2E skip sites, one of them never runnable in CI (A26-S21-05).
+- **Clock.** The integration job sets no `TZ` (runners are UTC) and captures "today" once per suite: the full run started at 23:59:24 UTC in this session and `bank-sync.integration.spec.ts` failed on the date that turned during it (`defaultSyncFromDate` expected `2026-07-24`, received `2026-07-25`, `:2777`). A CI run crossing UTC midnight fails the same way (section 10.2).
+- **Tags and identity.** The version string is derived, not looked up; nothing refuses an existing version (A26-S21-02 (c)).
+- **Deployment.** The Helm defaults hold every protection checked (section 8); the Compose defaults do not provide a writable mount (A26-S21-03), and the only multi-replica test cannot see it (section 7).
+- **Found:** nothing beyond the seven findings; one new observation (the midnight flake) added to section 10.2.
 
 ## 14. Verdict
 
-Pending at this commit (no HIGH confirmed so far; four MEDIUM).
+`APPROVE` for the slice under plan section 3 (no BLOCKER or HIGH survived the challenge): the release-integrity gaps are MEDIUM because the image half is digest-bound and every failure mode found is visible to an operator, not silent corruption. New in S21: 0 BLOCKER, 0 HIGH, 4 MEDIUM (A26-S21-01, -02, -03, -04), 3 LOW (A26-S21-05, -06, -07). MON-M45 stays open as S02's A26-S02-10 (MEDIUM), confirmed again. The APPROVE is for the slice's severity gate only; A26-S21-04 means the program's HIGH fixes have no regression harness yet, which the remediation plan should schedule first.
