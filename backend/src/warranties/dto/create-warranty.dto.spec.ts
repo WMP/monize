@@ -1,3 +1,4 @@
+import { ValidationPipe } from "@nestjs/common";
 import { plainToInstance } from "class-transformer";
 import { validateSync } from "class-validator";
 
@@ -103,6 +104,19 @@ describe("CreateWarrantyDto", () => {
         serialNumbers: ["x".repeat(101)],
       }),
     ).toEqual(["serialNumbers"]);
+  });
+
+  it("refuses a null warranty kind, and takes an absent one as the default", () => {
+    expect(
+      refusedOn(CreateWarrantyDto, {
+        ...base,
+        isLifetime: true,
+        warrantyKind: null,
+      }),
+    ).toEqual(["warrantyKind"]);
+    expect(refusedOn(CreateWarrantyDto, { ...base, isLifetime: true })).toEqual(
+      [],
+    );
   });
 
   it("refuses a warranty kind outside the enum", () => {
@@ -214,6 +228,55 @@ describe("UpdateWarrantyDto", () => {
     expect(
       refusedOn(UpdateWarrantyDto, { purchasePrice: 5, currencyCode: "USD" }),
     ).toEqual([]);
+  });
+
+  describe("null on PATCH, through the global ValidationPipe", () => {
+    // main.ts's options, so a refusal here is the 400 the route returns.
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
+    const patch = (body: object) =>
+      pipe.transform(body, {
+        type: "body",
+        metatype: UpdateWarrantyDto,
+      }) as Promise<UpdateWarrantyDto>;
+
+    it.each([
+      [{ name: null }, "name"],
+      [{ warrantyKind: null }, "warrantyKind"],
+      [{ purchaseDate: null }, "purchaseDate"],
+    ])("refuses %j: the column is NOT NULL", async (body, property) => {
+      await expect(patch(body)).rejects.toMatchObject({ status: 400 });
+      expect(refusedOn(UpdateWarrantyDto, body)).toEqual([property]);
+    });
+
+    it.each([
+      ["vendorName"],
+      ["payeeId"],
+      ["transactionId"],
+      ["modelNumber"],
+      ["productUrl"],
+      ["notes"],
+      ["expiresOn"],
+    ])("accepts %s: null clears the nullable column", async (property) => {
+      await expect(patch({ [property]: null })).resolves.toMatchObject({
+        [property]: null,
+      });
+    });
+
+    it("accepts a price and its currency cleared together", async () => {
+      await expect(
+        patch({ purchasePrice: null, currencyCode: null }),
+      ).resolves.toMatchObject({ purchasePrice: null, currencyCode: null });
+    });
+
+    it("accepts a cleared expiry beside isLifetime: true", async () => {
+      await expect(
+        patch({ expiresOn: null, isLifetime: true }),
+      ).resolves.toMatchObject({ expiresOn: null, isLifetime: true });
+    });
   });
 });
 

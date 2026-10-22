@@ -31,7 +31,8 @@
     "swept": "Der Upload hat zu lange gedauert und sein Speicherplatz wurde freigegeben. Bitte versuchen Sie es erneut.",
     "pairRequiresImages": "Ein gescanntes Dokument und sein Original müssen beide Bilder sein",
     "warrantyNotFound": "Garantie nicht gefunden",
-    "tooManyForWarranty": "Diese Garantie hat bereits die maximale Anzahl von {{ max }} Anhängen"
+    "tooManyForWarranty": "Diese Garantie hat bereits die maximale Anzahl von {{ max }} Anhängen",
+    "documentKindNotForTransaction": "Eine Dokumentart gilt nur für die Dokumente einer Garantie"
   },
   "accounts": {
     "accountWithIdNotFound": "Konto mit ID {{ id }} nicht gefunden",

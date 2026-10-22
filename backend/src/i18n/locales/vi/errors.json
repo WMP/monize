@@ -31,7 +31,8 @@
     "swept": "Quá trình tải lên mất quá nhiều thời gian và bộ nhớ của nó đã được thu hồi. Vui lòng thử lại.",
     "pairRequiresImages": "Tài liệu đã quét và ảnh gốc của nó đều phải là hình ảnh",
     "warrantyNotFound": "Không tìm thấy bảo hành",
-    "tooManyForWarranty": "Bảo hành này đã có tối đa {{ max }} tệp đính kèm"
+    "tooManyForWarranty": "Bảo hành này đã có tối đa {{ max }} tệp đính kèm",
+    "documentKindNotForTransaction": "Loại tài liệu chỉ áp dụng cho tài liệu của bảo hành"
   },
   "accounts": {
     "accountWithIdNotFound": "Không tìm thấy tài khoản với ID {{ id }}",

@@ -31,7 +31,8 @@
     "swept": "Le téléversement a pris trop de temps et son stockage a été récupéré. Veuillez réessayer.",
     "pairRequiresImages": "Un document numérisé et son original doivent tous deux être des images",
     "warrantyNotFound": "Garantie introuvable",
-    "tooManyForWarranty": "Cette garantie a déjà le maximum de {{ max }} pièces jointes"
+    "tooManyForWarranty": "Cette garantie a déjà le maximum de {{ max }} pièces jointes",
+    "documentKindNotForTransaction": "Le type de document ne s'applique qu'aux documents d'une garantie"
   },
   "accounts": {
     "accountWithIdNotFound": "Compte avec l'ID {{ id }} introuvable",

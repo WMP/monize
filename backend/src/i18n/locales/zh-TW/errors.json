@@ -31,7 +31,8 @@
     "swept": "上傳耗時過長，其儲存空間已被回收。請重試。",
     "pairRequiresImages": "掃描的文件及其原圖都必須是圖片",
     "warrantyNotFound": "找不到保固",
-    "tooManyForWarranty": "此保固已達到最多 {{ max }} 個附件的上限"
+    "tooManyForWarranty": "此保固已達到最多 {{ max }} 個附件的上限",
+    "documentKindNotForTransaction": "文件類型僅適用於保固的文件"
   },
   "accounts": {
     "accountWithIdNotFound": "找不到 ID 為 {{ id }} 的科目",

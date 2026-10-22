@@ -31,7 +31,8 @@
     "swept": "[XX-The upload took too long and its storage was reclaimed. Please try again.-XX]",
     "pairRequiresImages": "[XX-A scanned document and its original must both be images-XX]",
     "warrantyNotFound": "[XX-Warranty not found-XX]",
-    "tooManyForWarranty": "[XX-This warranty already has the maximum of {{ max }} attachments-XX]"
+    "tooManyForWarranty": "[XX-This warranty already has the maximum of {{ max }} attachments-XX]",
+    "documentKindNotForTransaction": "[XX-A document kind applies only to a warranty's documents-XX]"
   },
   "accounts": {
     "accountWithIdNotFound": "[XX-Account with ID {{ id }} not found-XX]",

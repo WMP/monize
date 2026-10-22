@@ -266,6 +266,15 @@ describe("AttachmentsService", () => {
       expect(storage.save).toHaveBeenCalledWith(result.id, PNG_BYTES);
     });
 
+    it("refuses a non-default document kind under a transaction, before any write", async () => {
+      await expect(
+        service.create("user-1", TXN, pngFile(), undefined, "receipt"),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      // Refused before the upload intent: no transaction was opened at all.
+      expect(mockedTenantTx).not.toHaveBeenCalled();
+      expect(storage.save).not.toHaveBeenCalled();
+    });
+
     it("accepts PDFs", async () => {
       const result = await service.create(
         "user-1",

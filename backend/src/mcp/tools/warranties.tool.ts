@@ -20,7 +20,9 @@ import { READ_ONLY } from "../mcp-annotations";
  * read-only adapter over `WarrantiesService.getLlmWarranties`, the method the
  * assistant's executor calls too. An MCP credential is the owner's own (an
  * MCP request never acts as a delegate), so no account scope narrows the
- * linked purchase.
+ * linked purchase. The MCP transport seeds no request timezone, so `today`
+ * (which decides each row's status and days left) is the owner's own date in
+ * their effective timezone, read per call, not the process's.
  */
 @Injectable()
 export class McpWarrantiesTools {
@@ -43,9 +45,11 @@ export class McpWarrantiesTools {
         if (check.error) return check.result;
 
         try {
+          const today = await this.warrantiesService.todayForUser(user.userId);
           const data = await this.warrantiesService.getLlmWarranties(
             user.userId,
             args,
+            { today },
           );
           return toolResult(data);
         } catch (err: unknown) {

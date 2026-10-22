@@ -38,6 +38,7 @@ describe("McpWarrantiesTools", () => {
     getLlmWarranties: jest.MockedFunction<
       WarrantiesService["getLlmWarranties"]
     >;
+    todayForUser: jest.MockedFunction<WarrantiesService["todayForUser"]>;
   };
   let server: { registerTool: jest.Mock };
   let ctx: McpTestContext;
@@ -46,6 +47,7 @@ describe("McpWarrantiesTools", () => {
   beforeEach(() => {
     warrantiesService = {
       getLlmWarranties: jest.fn().mockResolvedValue(LIST),
+      todayForUser: jest.fn().mockResolvedValue("2026-10-20"),
     };
     const tool = new McpWarrantiesTools(warrantiesService as any);
     server = {
@@ -87,9 +89,28 @@ describe("McpWarrantiesTools", () => {
     const result = await handlers["list_warranties"](args, ctx);
 
     // The owner's own credential: no account scope narrows the purchase.
-    expect(warrantiesService.getLlmWarranties).toHaveBeenCalledWith("u1", args);
+    expect(warrantiesService.getLlmWarranties).toHaveBeenCalledWith(
+      "u1",
+      args,
+      { today: "2026-10-20" },
+    );
     expect(result.isError).toBeUndefined();
     expect(result.structuredContent).toEqual(LIST);
+  });
+
+  it("dates the list by the owner's timezone, not the process's", async () => {
+    // No request timezone reaches an MCP call; the service resolves the
+    // owner's own, and that date is what the list is judged against.
+    ctx.setUser({ userId: "u1", scopes: "read" });
+
+    await handlers["list_warranties"]({}, ctx);
+
+    expect(warrantiesService.todayForUser).toHaveBeenCalledWith("u1");
+    expect(warrantiesService.getLlmWarranties).toHaveBeenCalledWith(
+      "u1",
+      {},
+      { today: "2026-10-20" },
+    );
   });
 
   it("passes a 4xx message through", async () => {

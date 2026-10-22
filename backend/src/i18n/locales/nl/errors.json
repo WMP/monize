@@ -31,7 +31,8 @@
     "swept": "Het uploaden duurde te lang en de opslag is vrijgegeven. Probeer het opnieuw.",
     "pairRequiresImages": "Een gescand document en het origineel moeten allebei afbeeldingen zijn",
     "warrantyNotFound": "Garantie niet gevonden",
-    "tooManyForWarranty": "Deze garantie heeft al het maximum van {{ max }} bijlagen"
+    "tooManyForWarranty": "Deze garantie heeft al het maximum van {{ max }} bijlagen",
+    "documentKindNotForTransaction": "Een documentsoort geldt alleen voor de documenten van een garantie"
   },
   "accounts": {
     "accountWithIdNotFound": "Rekening met ID {{ id }} niet gevonden",

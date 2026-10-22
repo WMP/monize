@@ -6,11 +6,12 @@ import {
 import { DataSource, EntityManager } from "typeorm";
 
 import { withScopedDb } from "../common/db/scoped-db";
-import { todayYMD } from "../common/date-utils";
+import { todayInTimezone, todayYMD } from "../common/date-utils";
 import {
   buildPaginationMeta,
   clampPagination,
 } from "../common/dto/pagination-query.dto";
+import { getEffectiveTimezoneOfUser } from "../common/users-by-timezone.util";
 import { primaryAttachmentSql } from "../attachments/primary-attachment.util";
 import { Currency } from "../currencies/entities/currency.entity";
 import { tr } from "../i18n/translate";
@@ -347,17 +348,16 @@ export class WarrantiesService {
       const row = await this.loadOwned(m, userId, id);
       const next: Partial<Warranty> = {};
 
-      if (dto.name !== undefined && dto.name.trim() !== row.name) {
+      // The DTO refuses `null` for the two NOT NULL columns; the type checks
+      // here keep a null from reaching `trim()` or the write regardless.
+      if (typeof dto.name === "string" && dto.name.trim() !== row.name) {
         next.name = dto.name.trim();
       }
       this.diffText(row, next, "vendorName", dto.vendorName);
       this.diffText(row, next, "modelNumber", dto.modelNumber);
       this.diffText(row, next, "productUrl", dto.productUrl);
       this.diffText(row, next, "notes", dto.notes);
-      if (
-        dto.warrantyKind !== undefined &&
-        dto.warrantyKind !== row.warrantyKind
-      ) {
+      if (dto.warrantyKind != null && dto.warrantyKind !== row.warrantyKind) {
         next.warrantyKind = dto.warrantyKind;
       }
       if (dto.serialNumbers !== undefined) {
@@ -753,6 +753,21 @@ export class WarrantiesService {
    * `linkedTransactionId` is null both when there is no link and when the
    * reader may not see it. Unarchived rows only, soonest expiry first.
    */
+  /**
+   * Today in the user's effective timezone (`getEffectiveTimezoneOfUser`: the
+   * explicit preference, else the last client timezone seen, else UTC), for a
+   * caller with no request timezone to read, such as the MCP transport. A zone
+   * that does not resolve counts in UTC, as the expiry reminder does.
+   */
+  async todayForUser(userId: string, now: Date = new Date()): Promise<string> {
+    const timezone = await withScopedDb(this.dataSource, (m) =>
+      getEffectiveTimezoneOfUser(m, userId),
+    );
+    return (
+      todayInTimezone(timezone, now) ?? (todayInTimezone("UTC", now) as string)
+    );
+  }
+
   async getLlmWarranties(
     userId: string,
     query: LlmWarrantyQuery,

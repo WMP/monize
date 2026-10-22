@@ -8,6 +8,7 @@ import { Payee } from "../payees/entities/payee.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { CreateWarrantyDto } from "./dto/create-warranty.dto";
+import { UpdateWarrantyDto } from "./dto/update-warranty.dto";
 import { WarrantyClaim } from "./entities/warranty-claim.entity";
 import { Warranty } from "./entities/warranty.entity";
 import { WarrantiesService } from "./warranties.service";
@@ -886,6 +887,43 @@ describe("WarrantiesService", () => {
       );
     });
 
+    it("never writes a null name or warranty kind, whatever reaches it", async () => {
+      // The DTO refuses both with a 400; this holds the service's own guard.
+      await service.update(
+        USER,
+        W1,
+        {
+          name: null,
+          warrantyKind: null,
+          notes: "kept",
+        } as unknown as UpdateWarrantyDto,
+        { today: TODAY },
+      );
+      const saved = warrantyRepo.save.mock.calls[0][0] as Warranty;
+      expect(saved.name).toBe("Laptop");
+      expect(saved.warrantyKind).toBe("manufacturer");
+      expect(saved.notes).toBe("kept");
+    });
+
+    it("clears the vendor on a null", async () => {
+      await service.update(USER, W1, { vendorName: null }, { today: TODAY });
+      expect(warrantyRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ vendorName: null }),
+      );
+    });
+
+    it("takes a cleared expiry beside isLifetime: true", async () => {
+      await service.update(
+        USER,
+        W1,
+        { expiresOn: null, isLifetime: true },
+        { today: TODAY },
+      );
+      expect(warrantyRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ isLifetime: true, expiresOn: null }),
+      );
+    });
+
     it("makes a dated warranty lifetime, clearing the date", async () => {
       await service.update(USER, W1, { isLifetime: true }, { today: TODAY });
       expect(warrantyRepo.save).toHaveBeenCalledWith(
@@ -1116,6 +1154,39 @@ describe("WarrantiesService", () => {
       );
 
       expect(result.today).toBe("2026-10-20");
+    });
+  });
+
+  describe("todayForUser", () => {
+    const now = new Date("2026-10-21T03:00:00Z");
+
+    it("reads the user's effective timezone and answers today there", async () => {
+      mocks.manager.query.mockResolvedValue([
+        { timezone: "America/Toronto", last_client_timezone: null },
+      ]);
+
+      await expect(service.todayForUser(USER, now)).resolves.toBe("2026-10-20");
+      expect(mocks.manager.query).toHaveBeenCalledWith(
+        expect.stringContaining("user_preferences"),
+        [USER],
+      );
+    });
+
+    it("falls back to the last client timezone, then UTC", async () => {
+      mocks.manager.query.mockResolvedValue([
+        { timezone: "browser", last_client_timezone: "America/Vancouver" },
+      ]);
+      await expect(service.todayForUser(USER, now)).resolves.toBe("2026-10-20");
+
+      mocks.manager.query.mockResolvedValue([]);
+      await expect(service.todayForUser(USER, now)).resolves.toBe("2026-10-21");
+    });
+
+    it("counts an unresolvable zone in UTC", async () => {
+      mocks.manager.query.mockResolvedValue([
+        { timezone: "Not/AZone", last_client_timezone: null },
+      ]);
+      await expect(service.todayForUser(USER, now)).resolves.toBe("2026-10-21");
     });
   });
 });

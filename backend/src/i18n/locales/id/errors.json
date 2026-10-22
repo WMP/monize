@@ -31,7 +31,8 @@
     "swept": "Unggahan memakan waktu terlalu lama dan penyimpanannya telah dibebaskan. Silakan coba lagi.",
     "pairRequiresImages": "Dokumen yang dipindai dan aslinya harus sama-sama berupa gambar",
     "warrantyNotFound": "Garansi tidak ditemukan",
-    "tooManyForWarranty": "Garansi ini sudah memiliki maksimum {{ max }} lampiran"
+    "tooManyForWarranty": "Garansi ini sudah memiliki maksimum {{ max }} lampiran",
+    "documentKindNotForTransaction": "Jenis dokumen hanya berlaku untuk dokumen garansi"
   },
   "accounts": {
     "accountWithIdNotFound": "Akun dengan ID {{ id }} tidak ditemukan",

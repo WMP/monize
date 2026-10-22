@@ -14,6 +14,12 @@ import {
  * together in the payload; the rules that need the stored row as well (an
  * expiry on or after a purchase date the payload may not carry, a dated
  * warranty with a date) are the service's, against the row.
+ *
+ * `skipNullProperties: false`: the inherited fields become optional for an
+ * absent value only, so `null` still meets each field's own validators. A
+ * nullable column's field carries its own `@IsOptional()` and accepts `null`
+ * as "clear it"; `name`, `warrantyKind` and `purchaseDate` are NOT NULL and
+ * refuse it with a 400 rather than reaching the write.
  */
 @PayloadRule(
   "expirySource",
@@ -27,4 +33,6 @@ import {
     priceAndCurrencyAgree(dto),
   "purchasePrice and currencyCode are set together or not at all",
 )
-export class UpdateWarrantyDto extends PartialType(WarrantyFieldsDto) {}
+export class UpdateWarrantyDto extends PartialType(WarrantyFieldsDto, {
+  skipNullProperties: false,
+}) {}

@@ -31,7 +31,8 @@
     "swept": "Yükleme çok uzun sürdü ve depolama alanı geri alındı. Lütfen tekrar deneyin.",
     "pairRequiresImages": "Taranan bir belge ve orijinali ikisi de görsel olmalıdır",
     "warrantyNotFound": "Garanti bulunamadı",
-    "tooManyForWarranty": "Bu garantide zaten en fazla {{ max }} ek var"
+    "tooManyForWarranty": "Bu garantide zaten en fazla {{ max }} ek var",
+    "documentKindNotForTransaction": "Belge türü yalnızca bir garantinin belgeleri için geçerlidir"
   },
   "accounts": {
     "accountWithIdNotFound": "{{ id }} kimliğine sahip hesap bulunamadı",

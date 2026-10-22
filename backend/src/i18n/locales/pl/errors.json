@@ -31,7 +31,8 @@
     "swept": "Przesyłanie trwało zbyt długo i jego miejsce w magazynie zostało zwolnione. Spróbuj ponownie.",
     "pairRequiresImages": "Zeskanowany dokument i jego oryginał muszą być obrazami",
     "warrantyNotFound": "Nie znaleziono gwarancji",
-    "tooManyForWarranty": "Ta gwarancja ma już maksymalną liczbę {{ max }} załączników"
+    "tooManyForWarranty": "Ta gwarancja ma już maksymalną liczbę {{ max }} załączników",
+    "documentKindNotForTransaction": "Rodzaj dokumentu dotyczy wyłącznie dokumentów gwarancji"
   },
   "accounts": {
     "accountWithIdNotFound": "Nie znaleziono konta o ID {{ id }}",

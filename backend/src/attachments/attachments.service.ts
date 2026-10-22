@@ -175,6 +175,19 @@ export class AttachmentsService {
     original?: UploadedAttachmentFile | undefined,
     documentKind: DocumentKind = DEFAULT_DOCUMENT_KIND,
   ): Promise<TransactionAttachment> {
+    // A kind names a warranty's document; a transaction's attachment has none
+    // to name, so anything but the default is a malformed request.
+    if (
+      parent.kind === "transaction" &&
+      documentKind !== DEFAULT_DOCUMENT_KIND
+    ) {
+      throw new BadRequestException(
+        tr(
+          "errors.attachments.documentKindNotForTransaction",
+          "A document kind applies only to a warranty's documents",
+        ),
+      );
+    }
     const primary = this.validateUpload(file);
 
     // A scan pair: the enhanced image the user sees, plus the photo it came

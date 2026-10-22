@@ -124,8 +124,9 @@ export class WarrantyFieldsDto {
   @SanitizeHtml()
   serialNumbers?: string[];
 
+  // Absent means the default; `null` is refused, the column being NOT NULL.
   @ApiPropertyOptional({ enum: WARRANTY_KINDS, default: "manufacturer" })
-  @IsOptional()
+  @ValidateIf((_o, v) => v !== undefined)
   @IsIn(WARRANTY_KINDS)
   warrantyKind?: WarrantyKind;
 

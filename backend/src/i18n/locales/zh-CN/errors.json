@@ -31,7 +31,8 @@
     "swept": "上传耗时过长，其存储空间已被回收。请重试。",
     "pairRequiresImages": "扫描的文档及其原图都必须是图片",
     "warrantyNotFound": "未找到保修",
-    "tooManyForWarranty": "此保修已达到最多 {{ max }} 个附件的上限"
+    "tooManyForWarranty": "此保修已达到最多 {{ max }} 个附件的上限",
+    "documentKindNotForTransaction": "文档类型仅适用于保修的文档"
   },
   "accounts": {
     "accountWithIdNotFound": "未找到 ID 为 {{ id }} 的账户",

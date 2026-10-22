@@ -31,7 +31,8 @@
     "swept": "La subida tardó demasiado y su almacenamiento se liberó. Vuelve a intentarlo.",
     "pairRequiresImages": "Un documento escaneado y su original deben ser ambos imágenes",
     "warrantyNotFound": "Garantía no encontrada",
-    "tooManyForWarranty": "Esta garantía ya tiene el máximo de {{ max }} adjuntos"
+    "tooManyForWarranty": "Esta garantía ya tiene el máximo de {{ max }} adjuntos",
+    "documentKindNotForTransaction": "El tipo de documento solo se aplica a los documentos de una garantía"
   },
   "accounts": {
     "accountWithIdNotFound": "Cuenta con ID {{ id }} no encontrada",
