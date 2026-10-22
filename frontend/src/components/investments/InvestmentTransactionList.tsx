@@ -367,6 +367,7 @@ export function InvestmentTransactionList({
     { value: 'CAPITAL_GAIN_SHORT', label: t('transactionList.actionCapitalGainShort') },
     { value: 'CAPITAL_GAIN_LONG', label: t('transactionList.actionCapitalGainLong') },
     { value: 'REDEEM', label: t('transactionList.actionRedeem') },
+    { value: 'RETURN_OF_CAPITAL', label: t('transactionList.actionReturnOfCapital') },
   ];
   // "All actions" always stands, and so does whatever is currently selected --
   // a filter set before the rows changed must stay visible in the control that

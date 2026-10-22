@@ -85,7 +85,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Reinvest Long-Term Cap Gain",
       "CAPITAL_GAIN_SHORT": "Short-Term Capital Gain",
       "CAPITAL_GAIN_LONG": "Long-Term Capital Gain",
-      "REDEEM": "Redeem CD/Bond"
+      "REDEEM": "Redeem CD/Bond",
+      "RETURN_OF_CAPITAL": "Return of Capital"
     },
     "descriptions": {
       "createdAccount": "Created account \"{name}\"",

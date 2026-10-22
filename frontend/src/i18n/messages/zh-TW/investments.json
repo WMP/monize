@@ -198,6 +198,7 @@
     "actionCapitalGainShort": "短期資本利得",
     "actionCapitalGainLong": "長期資本利得",
     "actionRedeem": "贖回定存單/債券",
+    "actionReturnOfCapital": "資本返還",
     "allActions": "所有操作"
   },
   "transactionForm": {
@@ -218,6 +219,7 @@
     "actionCapitalGainShort": "短期資本利得",
     "actionCapitalGainLong": "長期資本利得",
     "actionRedeem": "贖回定存單/債券",
+    "actionReturnOfCapital": "資本返還",
     "actionTransfer": "轉帳",
     "brokerageAccount": "券商科目",
     "fromAccount": "來源科目",
@@ -262,6 +264,7 @@
     "sharesAt": "股 @",
     "avgCostSuffix": "平均成本。",
     "transferCostNote": "每股成本（從來源科目預填）將帶入目的科目，確保獲利和損益報表正確。此操作僅移轉股份，不涉及現金交易。",
+    "returnOfCapitalNote": "資本返還不是收入。它退還的是股票成本的一部分，因此會按此金額降低您持股的成本基礎。超出剩餘成本基礎的部分將記為已實現資本利得。",
     "totalAmount": "總金額（{currency}）",
     "sharesAtPrice": "{shares} 股 @ {symbol}{price}",
     "commissionSuffix": "手續費",
