@@ -76,11 +76,44 @@ transaction -- so an index on a large table blocks writes for its duration,
 which is a rollout cost rather than a correctness one), a new default, a
 relaxed constraint.
 
-The guards do not catch this. `migration:lint` reads one file, and
-`verify-schema.sh` replays every migration onto `schema.sql` in an empty
-database where no previous release exists. The only thing that catches a
-contract shipped too early is somebody asking, of each changed column, whether
-the currently deployed release still runs.
+### What the lint checks
+
+`migration:lint` carries the rule `contract-without-expand`. A statement that
+contracts the schema -- `DROP COLUMN`, `RENAME COLUMN`, `ALTER TABLE ... RENAME`
+(a table, or a column without the `COLUMN` keyword), `SET NOT NULL`,
+`ALTER COLUMN ... TYPE` -- is refused unless the file carries a marker line:
+
+```sql
+-- contract-after: 1.19.0
+```
+
+The value is the release whose code no longer reads or writes the old shape. A
+marker that is not `X.Y.Z` is a finding, and it admits nothing. The rule also
+reads inside `DO` blocks, and ignores words in comments and string literals.
+`migration-lint-disable-next-line` is refused for this rule: the marker is the
+structured claim, and a pragma would only say "trust me". `DROP TABLE`,
+`DROP INDEX`, `DROP CONSTRAINT` and `ADD ... CHECK` are not covered, nor is a
+contract written as dynamic SQL inside a string (`EXECUTE format(...)`).
+
+The contract statements that shipped before the rule existed are named, with a
+note each, in `GRANDFATHERED_CONTRACT_MIGRATIONS` in
+`backend/scripts/migration-lint.mjs`. The register is shrink-only: never add an
+entry, and the lint fails when a registered file is gone.
+
+**The limit.** The marker is a claim, not a proof. Nothing checks that the named
+release really stopped using the column, or that it has been rolled out
+everywhere. Only running the previous release against the new schema proves
+that. `verify-schema.sh` replays migrations onto `schema.sql` in an empty
+database where no previous release exists, so it does not.
+
+**A known case: `20260908120000_remove_notification_browser.sql`.** It dropped
+`user_preferences.notification_browser` in the same release that removed the
+entity property, while release 1.15.x still selects that column. During a
+RollingUpdate every `UserPreference` read on the old pod fails ("column
+UserPreference.notification_browser does not exist") for the length of the
+rollout (audit finding A26-L09). The migration is shipped and is not edited. If
+you upgrade from 1.15.x or earlier, upgrade through 1.16.x first, or use a
+`Recreate` rollout.
 
 ## Filenames
 

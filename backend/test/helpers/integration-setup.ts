@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { Global, Module } from "@nestjs/common";
-import type { Provider } from "@nestjs/common";
+import type { Provider, Type } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule } from "@nestjs/config";
 import { I18nService } from "nestjs-i18n";
@@ -23,6 +23,7 @@ import {
 import { settlePendingPriceWrites } from "@/securities/security-price.service";
 import { settlePendingHistoryWrites } from "@/action-history/action-history.service";
 import { DatabaseStorageProvider } from "@/attachments/storage/database-storage.provider";
+import type { AttachmentStorageProvider } from "@/attachments/storage/attachment-storage.interface";
 import { ATTACHMENT_STORAGE_PROVIDER } from "@/attachments/storage/attachment-storage.interface";
 import { AttachmentStorageRegistry } from "@/attachments/storage/attachment-storage.registry";
 import { CLUSTER_MODE } from "@/common/cluster/cluster-mode";
@@ -441,18 +442,24 @@ function restoreRlsMode(previous: string | undefined): void {
  * class over that one provider, so a row naming any other backend resolves to
  * `null` here exactly as it would in a deployment that has not configured it.
  */
-export function attachmentStorageProviders(): Provider[] {
+export function attachmentStorageProviders(
+  options: { provider?: Type<AttachmentStorageProvider> } = {},
+): Provider[] {
+  // A suite whose subject is an external provider (`local` over a real
+  // directory) names the class here, so the token and the registry still come
+  // from this one list rather than a second copy in the suite.
+  const bound = options.provider ?? DatabaseStorageProvider;
   return [
-    DatabaseStorageProvider,
+    bound,
     {
       provide: ATTACHMENT_STORAGE_PROVIDER,
-      useExisting: DatabaseStorageProvider,
+      useExisting: bound,
     },
     {
       provide: AttachmentStorageRegistry,
-      useFactory: (database: DatabaseStorageProvider) =>
-        new AttachmentStorageRegistry(database, [database]),
-      inject: [DatabaseStorageProvider],
+      useFactory: (provider: AttachmentStorageProvider) =>
+        new AttachmentStorageRegistry(provider, [provider]),
+      inject: [bound],
     },
   ];
 }

@@ -5290,7 +5290,12 @@ Enforcement         Ordered so a failure leaves recoverable bytes, never a row
                     exists: attachment-orphan-sweeper.service.ts (hourly, under
                     withSystemContext) claims tombstones and deletes leased-past
                     orphaned bytes. Local writes are crash-atomic
-                    (local-storage.provider.ts writeFileAtomic). "No bytes without
+                    (local-storage.provider.ts writeFileAtomic). A restore
+                    stages its objects under the same protocol
+                    (backup-attachment-transfer.service.ts: an intent with a
+                    two-hour lease before each put, cleared in the restore
+                    transaction, kept when a discard's delete fails; A26-L10;
+                    backup-restore-staging.integration.spec.ts). "No bytes without
                     metadata" holds eventually rather than instantaneously, which
                     is what the invariant asks.
 Concurrency scope   per attachment
@@ -7096,6 +7101,17 @@ carry an earlier prefix and replay first on a fresh install. A migration must
 not depend on the ordering of another in-flight migration; nothing checks that
 beyond review.
 
+
+Adjacent, and not claimed by this entry: expand before contract. A migration
+that drops, renames or retypes a column, or adds `SET NOT NULL`, breaks the
+previous release's pods for the length of a rolling update unless that release
+no longer uses the old shape (`20260908120000_remove_notification_browser.sql`
+did not wait, A26-L09). The migration lint now refuses such a statement
+(`contract-without-expand`) unless its file carries `-- contract-after: X.Y.Z`;
+the files before the rule are frozen by name in
+`GRANDFATHERED_CONTRACT_MIGRATIONS`. The marker is a claim, not a proof: only
+running the previous release against the new schema proves it, and no CI job
+does (`docs/database-migrations.md`).
 ### INV-HA-001 -- a replica serves only while what it shares is reachable
 
 ```text

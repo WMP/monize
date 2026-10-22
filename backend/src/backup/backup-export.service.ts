@@ -25,6 +25,7 @@ import {
 import { ExportBufferSink } from "./export-buffer-sink";
 import { collectExportTables, exportJsonChunks } from "./export-json-stream";
 import { readBondCatalogIdentity } from "./export-bond-catalog";
+import { readProducedBy } from "./export-produced-by";
 import { ExportWriter, RESPONSE_CLOSED_MESSAGE } from "./export-writer";
 import { BackupEncryptionInput } from "./backup-key-wrap";
 import {
@@ -292,6 +293,9 @@ export class BackupExportService {
           // deployment without them can fetch them from the official source.
           members: async (r) => ({
             bondCatalog: await readBondCatalogIdentity(r),
+            // Which schema wrote the rows, so a restore can tell an old meaning
+            // from a deliberate new value (restore-legacy-normalizations.ts).
+            producedBy: await readProducedBy(r),
           }),
         });
         for await (const chunk of chunks) {
