@@ -1851,6 +1851,10 @@
   "foreignCurrencyFees": {
     "noEligibleAccounts": "Không có tài khoản nào được cấu hình phí giao dịch nước ngoài. Đặt tỷ lệ phí phần trăm cho một tài khoản để theo dõi phí ngoại tệ của tài khoản đó tại đây."
   },
+  "partialData": {
+    "notice": "Một số số liệu chưa đầy đủ: {count, plural, other {# khoản tiền không thể quy đổi sang {displayCurrency} và}} đã bị loại ra. Không có tỷ giá cho {currencies}; hãy thêm trên trang Tiền tệ.",
+    "noticeExcluded": "Một số số liệu chưa đầy đủ: {count, plural, other {# khoản tiền không thể tính được và}} đã bị loại ra."
+  },
   "sankey": {
     "help": "Tiền vào chảy qua phần giữa tới những gì đã chi tiêu, phần đã tiết kiệm hoặc đầu tư và phần đã trả nợ. Theo mặc định, báo cáo bao gồm các tài khoản thanh toán, tiết kiệm, tiền mặt, thẻ tín dụng và hạn mức tín dụng đang mở của bạn, và chuyển khoản giữa hai tài khoản trong số đó không được hiển thị. Hãy bỏ một tài khoản tiết kiệm khỏi bộ lọc tài khoản để xem bạn đã chuyển bao nhiêu vào đó. Thanh toán thẻ tín dụng không bao giờ là trả nợ: các giao dịch mua mà nó tất toán đã được tính là chi tiêu.",
     "depthLabel": "Mức chi tiết",
