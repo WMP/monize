@@ -158,6 +158,7 @@
     "back": "Retour aux garanties",
     "loading": "Chargement de la garantie...",
     "loadFailed": "Cette garantie n'a pas pu être chargée.",
+    "notFound": "Cette garantie est introuvable.",
     "retry": "Réessayer",
     "archivedBadge": "Archivée",
     "card": {

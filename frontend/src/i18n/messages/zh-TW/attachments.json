@@ -11,6 +11,7 @@
   "uploaded": "已新增附件",
   "deleted": "已刪除附件",
   "loadFailed": "載入附件失敗",
+  "retry": "重試",
   "uploadFailed": "上傳附件失敗",
   "deleteFailed": "刪除附件失敗",
   "tooLarge": "檔案過大（最大 {max}）",

@@ -158,6 +158,7 @@
     "back": "Kembali ke Garansi",
     "loading": "Memuat garansi...",
     "loadFailed": "Garansi ini tidak dapat dimuat.",
+    "notFound": "Garansi ini tidak ditemukan.",
     "retry": "Coba lagi",
     "archivedBadge": "Diarsipkan",
     "card": {

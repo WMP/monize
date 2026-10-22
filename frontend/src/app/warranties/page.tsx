@@ -16,6 +16,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/Input';
 import { ListBottomPager } from '@/components/ui/ListBottomPager';
 import { LIST_TOOLBAR_BUTTON_CLASS } from '@/components/ui/ListTopToolbar';
+import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
 import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
@@ -117,9 +118,13 @@ function WarrantiesContent() {
   const requestKey = JSON.stringify(params);
   const [list, setList] = useState<{ key: string; result: WarrantyListResult } | null>(null);
   const [failedKey, setFailedKey] = useState<string | null>(null);
+  // `null` is a summary still loading; a failed one is `summaryFailed`.
   const [summary, setSummary] = useState<WarrantySummary | null>(null);
+  const [summaryFailed, setSummaryFailed] = useState(false);
+  const [summaryRetry, setSummaryRetry] = useState(0);
   const [reloadToken, setReloadToken] = useState(0);
   const latestRequest = useRef(0);
+  const latestSummaryRequest = useRef(0);
 
   useEffect(() => {
     const request = ++latestRequest.current;
@@ -140,14 +145,22 @@ function WarrantiesContent() {
   }, [params, requestKey, reloadToken]);
 
   useEffect(() => {
+    const request = ++latestSummaryRequest.current;
     warrantiesApi
       .summary()
-      .then(setSummary)
+      .then((result) => {
+        // Same rule as the list: a slow answer to an earlier reload must not
+        // replace the counts a later one already brought.
+        if (latestSummaryRequest.current !== request) return;
+        setSummary(result);
+        setSummaryFailed(false);
+      })
       .catch((error) => {
+        if (latestSummaryRequest.current !== request) return;
         logger.error(error);
-        setSummary(null);
+        setSummaryFailed(true);
       });
-  }, [reloadToken]);
+  }, [reloadToken, summaryRetry]);
 
   const reload = useCallback(() => setReloadToken((n) => n + 1), []);
   useOnUndoRedo(reload);
@@ -301,8 +314,14 @@ function WarrantiesContent() {
     router.replace('/warranties');
   };
 
-  const summaryValue = (count: number | undefined) =>
-    count === undefined ? t('page.summary.unavailable') : formatNumber(count, 0);
+  const summaryLoading = summary === null && !summaryFailed;
+  // Failed reads "Not loaded" (with a retry under the strip); still loading is
+  // a placeholder, never a figure.
+  const summaryValue = (count: number | undefined) => {
+    if (summaryFailed) return t('page.summary.unavailable');
+    if (count === undefined) return <Skeleton className="h-6 w-10" />;
+    return formatNumber(count, 0);
+  };
 
   const filtered = status !== 'all' || q !== '' || transactionFilter !== null;
   const empty = useMemo(() => {
@@ -395,11 +414,15 @@ function WarrantiesContent() {
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
         <PageHeader title={t('page.title')} subtitle={t('page.subtitle')} />
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div
+          className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${summaryFailed ? 'mb-3' : 'mb-6'}`}
+          aria-busy={summaryLoading}
+          data-testid="warranty-summary"
+        >
           <SummaryCard
             label={t('page.summary.expiring')}
             value={summaryValue(summary?.counts.expiring)}
-            hint={summary ? t('page.summary.expiringHint', { days: formatNumber(summary.windowDays, 0) }) : undefined}
+            hint={summary && !summaryFailed ? t('page.summary.expiringHint', { days: formatNumber(summary.windowDays, 0) }) : undefined}
             icon={SummaryIcons.clock}
             valueColor="yellow"
             onClick={() => changeStatus('expiring')}
@@ -426,6 +449,20 @@ function WarrantiesContent() {
             onClick={() => changeStatus('lifetime')}
           />
         </div>
+        {summaryFailed && (
+          <div className="mb-6">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSummaryFailed(false);
+                setSummaryRetry((n) => n + 1);
+              }}
+            >
+              {t('page.retry')}
+            </Button>
+          </div>
+        )}
 
         <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
           <div role="group" aria-label={t('page.filters.label')} className="flex flex-wrap items-center gap-2">

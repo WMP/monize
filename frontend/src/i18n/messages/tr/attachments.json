@@ -11,6 +11,7 @@
   "uploaded": "Ek eklendi",
   "deleted": "Ek silindi",
   "loadFailed": "Ekler yüklenemedi",
+  "retry": "Tekrar dene",
   "uploadFailed": "Ek yüklenemedi",
   "deleteFailed": "Ek silinemedi",
   "tooLarge": "Dosya çok büyük (en fazla {max})",

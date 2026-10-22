@@ -158,6 +158,7 @@
     "back": "返回保固",
     "loading": "正在載入保固...",
     "loadFailed": "無法載入此保固。",
+    "notFound": "找不到此保固。",
     "retry": "重試",
     "archivedBadge": "已封存",
     "card": {

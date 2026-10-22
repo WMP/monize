@@ -158,6 +158,7 @@
     "back": "Back to Warranties",
     "loading": "Loading warranty...",
     "loadFailed": "This warranty could not be loaded.",
+    "notFound": "This warranty was not found.",
     "retry": "Try again",
     "archivedBadge": "Archived",
     "card": {

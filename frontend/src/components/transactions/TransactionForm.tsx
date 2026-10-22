@@ -58,6 +58,7 @@ import { buildCategoryTree, signAmountByCategory } from '@/lib/categoryUtils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { useAuthStore } from '@/store/authStore';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import { AttachmentsSection } from './AttachmentsSection';
@@ -149,6 +150,13 @@ interface TransactionFormProps {
    * so each becomes a `StagedAttachment` carrying only `file`.
    */
   initialStagedFiles?: File[];
+  /**
+   * The Warranties line's "Add warranty": the host closes this form through
+   * its own close path (which asks about unsaved edits) and then opens the
+   * Warranties page's form prefilled from the transaction. Leave it off and
+   * the line offers no Add.
+   */
+  onAddWarranty?: (transaction: Transaction) => void;
 }
 
 interface TransactionFormFieldsProps extends TransactionFormProps {
@@ -159,8 +167,11 @@ interface TransactionFormFieldsProps extends TransactionFormProps {
 // Transaction mode type
 type TransactionMode = 'normal' | 'split' | 'transfer';
 
-function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, defaultDate, onSuccess, onCancel, onDirtyChange, submitRef, onCreateAnother, initialStagedFiles }: TransactionFormFieldsProps) {
+function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, defaultDate, onSuccess, onCancel, onDirtyChange, submitRef, onCreateAnother, initialStagedFiles, onAddWarranty }: TransactionFormFieldsProps) {
   const t = useTranslations('transactions');
+  // An acting delegate never sees the Warranties line: a warranty is the
+  // owner's to add, and the same rule makes the Warranties page read-only.
+  const actingAsDelegate = useAuthStore((s) => s.actingAsUserId) !== null;
   const { defaultCurrency, formatCurrency, formatNumber } = useNumberFormat();
   const showCreatedAt = usePreferencesStore((s) => s.preferences?.showCreatedAt ?? false);
   const timeFormat = usePreferencesStore((s) => s.preferences?.timeFormat ?? '24h');
@@ -1777,11 +1788,14 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
       )}
 
       {/* Warranties linked to this purchase, and Add warranty. A saved row
-          only (a warranty links to a transaction that exists), and not on a
-          joint account's row: a warranty is the reader's own, as attachments
-          are. */}
-      {transaction && !selectedIsJoint && (
-        <TransactionWarrantiesLine transaction={transaction} />
+          only (a warranty links to a transaction that exists), not on a joint
+          account's row (a warranty is the reader's own, as attachments are),
+          and not for an acting delegate. */}
+      {transaction && !selectedIsJoint && !actingAsDelegate && (
+        <TransactionWarrantiesLine
+          transaction={transaction}
+          onAddWarranty={onAddWarranty ? () => onAddWarranty(transaction) : undefined}
+        />
       )}
 
       {/* Actions. anchorProps, not a wrapper, so a guided tour rings the

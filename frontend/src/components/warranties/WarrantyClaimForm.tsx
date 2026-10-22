@@ -12,6 +12,7 @@ import { FormActions } from '@/components/ui/FormActions';
 import { useFormSubmitRef } from '@/hooks/useFormSubmitRef';
 import { useFormDirtyNotify } from '@/hooks/useFormDirtyNotify';
 import { isCalendarDate } from '@/lib/calendar-month';
+import { textOrNull } from '@/lib/form-text';
 import {
   WARRANTY_CLAIM_CLOSED_STATUSES,
   WARRANTY_CLAIM_STATUSES,
@@ -52,11 +53,6 @@ const buildClaimSchema = (t: (key: string) => string) =>
     });
 
 export type WarrantyClaimFormData = z.infer<ReturnType<typeof buildClaimSchema>>;
-
-function textOrNull(value: string): string | null {
-  const trimmed = value.trim();
-  return trimmed === '' ? null : trimmed;
-}
 
 /**
  * The request body for the form's values. Every field is sent, so an edit can

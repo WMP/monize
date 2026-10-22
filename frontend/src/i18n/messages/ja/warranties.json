@@ -158,6 +158,7 @@
     "back": "保証に戻る",
     "loading": "保証を読み込み中...",
     "loadFailed": "この保証を読み込めませんでした。",
+    "notFound": "この保証は見つかりませんでした。",
     "retry": "再試行",
     "archivedBadge": "アーカイブ済み",
     "card": {

@@ -158,6 +158,7 @@
     "back": "Garantilere dön",
     "loading": "Garanti yükleniyor...",
     "loadFailed": "Bu garanti yüklenemedi.",
+    "notFound": "Bu garanti bulunamadı.",
     "retry": "Yeniden dene",
     "archivedBadge": "Arşivlendi",
     "card": {

@@ -202,11 +202,32 @@ describe('AttachmentsSection', () => {
     expect(trigger.contains(remove)).toBe(false);
   });
 
-  it('reports failure to load', async () => {
-    mockList.mockRejectedValue(new Error('boom'));
+  it('reports failure to load with a retry, never as an empty list', async () => {
+    mockList.mockRejectedValueOnce(new Error('boom'));
     await renderSection();
-    await act(async () => {});
-    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to load attachments');
+    expect(screen.queryByText('No attachments yet')).not.toBeInTheDocument();
+    // The cap is checked against the list, so nothing can be added until one
+    // has loaded.
+    expect(screen.queryByRole('button', { name: 'Add attachment' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Scan document' })).not.toBeInTheDocument();
+
+    mockList.mockResolvedValueOnce([makeAttachment()]);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    });
+    expect(mockList).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Preview receipt.png' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add attachment' })).toBeInTheDocument();
+  });
+
+  it('holds the uploader back while the list is loading', async () => {
+    mockList.mockReturnValue(new Promise(() => {}));
+    await renderSection();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading...');
+    expect(screen.queryByText('No attachments yet')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add attachment' })).not.toBeInTheDocument();
   });
 
   it('uploads a valid file and refreshes', async () => {
@@ -552,6 +573,16 @@ describe('AttachmentsSection', () => {
       mockList.mockResolvedValue([]);
       await renderWarranty();
       expect(screen.getByText('No documents yet')).toBeInTheDocument();
+    });
+
+    it('says the documents failed to load rather than that there are none', async () => {
+      mockList.mockRejectedValue(new Error('boom'));
+      await renderWarranty();
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to load attachments');
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+      expect(screen.queryByText('No documents yet')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Add attachment' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     });
 
     it('uploads with the kind chosen, Other until one is', async () => {

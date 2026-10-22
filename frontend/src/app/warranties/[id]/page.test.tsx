@@ -14,10 +14,14 @@ const router = vi.hoisted(() => ({
   prefetch: vi.fn(),
   refresh: vi.fn(),
 }));
+// The route segment; a test of a malformed one swaps it and `beforeEach` puts
+// it back.
+const W_ID = '22222222-2222-4222-8222-222222222222';
+const route = vi.hoisted(() => ({ id: '22222222-2222-4222-8222-222222222222' }));
 vi.mock('next/navigation', () => ({
   useRouter: () => router,
-  useParams: () => ({ id: 'w-1' }),
-  usePathname: () => '/warranties/w-1',
+  useParams: () => ({ id: route.id }),
+  usePathname: () => `/warranties/${route.id}`,
   useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -90,7 +94,7 @@ vi.mock('@/lib/attachments', async (importOriginal) => ({
 
 function warranty(overrides: Partial<Warranty> = {}): Warranty {
   return {
-    id: 'w-1',
+    id: W_ID,
     name: 'Laptop',
     vendorName: 'Best Buy',
     payeeId: null,
@@ -128,7 +132,7 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
 
 const CLAIM: WarrantyClaim = {
   id: 'c-1',
-  warrantyId: 'w-1',
+  warrantyId: W_ID,
   claimDate: '2026-10-05',
   status: 'open',
   description: 'Screen flickers',
@@ -141,7 +145,7 @@ const CLAIM: WarrantyClaim = {
 const DOCUMENT: Attachment = {
   id: 'a-1',
   transactionId: null,
-  warrantyId: 'w-1',
+  warrantyId: W_ID,
   documentKind: 'receipt',
   filename: 'receipt.pdf',
   contentType: 'application/pdf',
@@ -160,6 +164,7 @@ async function renderPage() {
 describe('WarrantyDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    route.id = W_ID;
     mockGetById.mockResolvedValue(warranty());
     mockUpdate.mockResolvedValue(warranty());
     mockDelete.mockResolvedValue(undefined);
@@ -179,10 +184,31 @@ describe('WarrantyDetailPage', () => {
 
   it('heads the page with the name and status, under a way back to the list', async () => {
     await renderPage();
-    expect(mockGetById).toHaveBeenCalledWith('w-1');
+    expect(mockGetById).toHaveBeenCalledWith(W_ID);
     expect(screen.getByRole('heading', { level: 1, name: 'Laptop' })).toBeInTheDocument();
     expect(screen.getByText('Expiring soon')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Back to Warranties' })).toHaveAttribute('href', '/warranties');
+  });
+
+  it('sizes the title-row actions as a detail header does', async () => {
+    // docs/frontend/ui-conventions.md: a detail page's actions sit on the
+    // title row at `size="md"`.
+    await renderPage();
+    // The header comes first; a claim row below carries its own Edit/Delete.
+    for (const name of ['Edit', 'Archive', 'Delete']) {
+      expect(screen.getAllByRole('button', { name })[0]).toHaveClass('px-4', 'py-2', 'text-base');
+    }
+  });
+
+  it('renders a malformed route id as not found, without asking the server', async () => {
+    route.id = 'foo';
+    await renderPage();
+    expect(screen.getByRole('alert')).toHaveTextContent('This warranty was not found.');
+    expect(screen.getByRole('link', { name: 'Back to Warranties' })).toHaveAttribute('href', '/warranties');
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    expect(mockGetById).not.toHaveBeenCalled();
+    expect(mockListClaims).not.toHaveBeenCalled();
+    expect(mockListAttachments).not.toHaveBeenCalled();
   });
 
   it('shows the status card', async () => {
@@ -196,7 +222,7 @@ describe('WarrantyDetailPage', () => {
 
   it("lists the warranty's documents through the shared attachment section", async () => {
     await renderPage();
-    expect(mockListAttachments).toHaveBeenCalledWith({ warrantyId: 'w-1' });
+    expect(mockListAttachments).toHaveBeenCalledWith({ warrantyId: W_ID });
     const documents = screen.getByRole('region', { name: 'Documents' });
     expect(within(documents).getByRole('button', { name: 'Preview receipt.pdf' })).toBeInTheDocument();
     expect(within(documents).getByTestId('document-kind-a-1')).toHaveTextContent('Receipt');
@@ -215,7 +241,7 @@ describe('WarrantyDetailPage', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Submit claim stub' }));
     });
-    expect(mockCreateClaim).toHaveBeenCalledWith('w-1', CLAIM_PAYLOAD);
+    expect(mockCreateClaim).toHaveBeenCalledWith(W_ID, CLAIM_PAYLOAD);
     // The warranty is read again, so its counts follow the claim.
     expect(mockGetById).toHaveBeenCalledTimes(2);
   });
@@ -229,7 +255,7 @@ describe('WarrantyDetailPage', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Submit claim stub' }));
     });
-    expect(mockUpdateClaim).toHaveBeenCalledWith('w-1', 'c-1', CLAIM_PAYLOAD);
+    expect(mockUpdateClaim).toHaveBeenCalledWith(W_ID, 'c-1', CLAIM_PAYLOAD);
 
     await act(async () => {
       fireEvent.click(within(claims).getByRole('button', { name: 'Delete' }));
@@ -237,7 +263,7 @@ describe('WarrantyDetailPage', () => {
     await act(async () => {
       fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
     });
-    expect(mockDeleteClaim).toHaveBeenCalledWith('w-1', 'c-1');
+    expect(mockDeleteClaim).toHaveBeenCalledWith(W_ID, 'c-1');
   });
 
   it('links the purchase to the register', async () => {
@@ -303,7 +329,7 @@ describe('WarrantyDetailPage', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Submit warranty stub' }));
     });
-    expect(mockUpdate).toHaveBeenCalledWith('w-1', WARRANTY_PAYLOAD);
+    expect(mockUpdate).toHaveBeenCalledWith(W_ID, WARRANTY_PAYLOAD);
     expect(toast.success).toHaveBeenCalledWith('Warranty updated');
     expect(mockGetById).toHaveBeenCalledTimes(2);
   });
@@ -313,7 +339,7 @@ describe('WarrantyDetailPage', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
     });
-    expect(mockArchive).toHaveBeenCalledWith('w-1');
+    expect(mockArchive).toHaveBeenCalledWith(W_ID);
     expect(toast.success).toHaveBeenCalledWith('Warranty archived');
 
     cleanup();
@@ -323,7 +349,7 @@ describe('WarrantyDetailPage', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Unarchive' }));
     });
-    expect(mockUnarchive).toHaveBeenCalledWith('w-1');
+    expect(mockUnarchive).toHaveBeenCalledWith(W_ID);
   });
 
   it('deletes the warranty after confirmation and returns to the list', async () => {
@@ -337,7 +363,7 @@ describe('WarrantyDetailPage', () => {
     await act(async () => {
       fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
     });
-    expect(mockDelete).toHaveBeenCalledWith('w-1');
+    expect(mockDelete).toHaveBeenCalledWith(W_ID);
     expect(router.push).toHaveBeenCalledWith('/warranties');
   });
 

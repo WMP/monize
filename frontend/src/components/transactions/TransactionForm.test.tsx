@@ -9,6 +9,7 @@ import {
 } from '@/hooks/useTransactionSubmitMode';
 import toast from 'react-hot-toast';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { useAuthStore } from '@/store/authStore';
 
 // ---- Mock data ----
 
@@ -199,8 +200,21 @@ vi.mock('@/lib/attachments', async (importOriginal) => ({
 
 // The Warranties line has its own suite; here it only matters where it renders.
 vi.mock('./TransactionWarrantiesLine', () => ({
-  TransactionWarrantiesLine: ({ transaction }: { transaction: { id: string } }) => (
-    <div data-testid="warranties-line">{transaction.id}</div>
+  TransactionWarrantiesLine: ({
+    transaction,
+    onAddWarranty,
+  }: {
+    transaction: { id: string };
+    onAddWarranty?: () => void;
+  }) => (
+    <div data-testid="warranties-line">
+      {transaction.id}
+      {onAddWarranty && (
+        <button type="button" onClick={onAddWarranty}>
+          Add warranty
+        </button>
+      )}
+    </div>
   ),
 }));
 
@@ -566,6 +580,55 @@ describe('TransactionForm', () => {
       await waitFor(() => {
         expect(screen.getByTestId('warranties-line')).toHaveTextContent('123e4567-e89b-12d3-a456-426614174000');
       });
+    });
+
+    it("hands Add warranty to the host with the form's transaction", async () => {
+      const onAddWarranty = vi.fn();
+      const existing = createExistingTransaction();
+      render(
+        <TransactionForm
+          transaction={existing as any}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+          onAddWarranty={onAddWarranty}
+        />
+      );
+      await waitFor(() => expect(screen.getByTestId('warranties-line')).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: 'Add warranty' }));
+      expect(onAddWarranty).toHaveBeenCalledWith(existing);
+    });
+
+    it('offers no Add warranty when the host supplies no handler', async () => {
+      render(
+        <TransactionForm
+          transaction={createExistingTransaction() as any}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+        />
+      );
+      await waitFor(() => expect(screen.getByTestId('warranties-line')).toBeInTheDocument());
+      expect(screen.queryByRole('button', { name: 'Add warranty' })).not.toBeInTheDocument();
+    });
+
+    it('is absent for an acting delegate, as the Warranties page is read-only to one', async () => {
+      useAuthStore.setState({ actingAsUserId: 'owner-1' });
+      try {
+        render(
+          <TransactionForm
+            transaction={createExistingTransaction() as any}
+            onSuccess={mockOnSuccess}
+            onCancel={mockOnCancel}
+            onAddWarranty={vi.fn()}
+          />
+        );
+        await waitFor(() => expect(mockAccountsGetAll).toHaveBeenCalled());
+        await act(async () => {});
+        expect(screen.queryByTestId('warranties-line')).not.toBeInTheDocument();
+      } finally {
+        act(() => {
+          useAuthStore.setState({ actingAsUserId: null });
+        });
+      }
     });
 
     it('is absent from a new transaction', async () => {

@@ -25,6 +25,7 @@ import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
+import { isUuid } from '@/lib/uuid';
 import { warrantiesApi } from '@/lib/warranties';
 import { useAuthStore } from '@/store/authStore';
 import type { CreateWarrantyData, Warranty } from '@/types/warranty';
@@ -40,9 +41,30 @@ export default function WarrantyDetailPage() {
   const params = useParams<{ id: string }>();
   return (
     <ProtectedRoute>
-      {/* Another id is another warranty: start its page from scratch. */}
-      <WarrantyDetailContent key={params.id} warrantyId={params.id} />
+      {/* A route segment that is not an id names no warranty: nothing to
+          fetch and nothing a retry could find, as the list page drops a
+          malformed ?transactionId. Another id is another warranty: start its
+          page from scratch. */}
+      {isUuid(params.id) ? (
+        <WarrantyDetailContent key={params.id} warrantyId={params.id} />
+      ) : (
+        <WarrantyNotFound />
+      )}
     </ProtectedRoute>
+  );
+}
+
+function WarrantyNotFound() {
+  const t = useTranslations('warranties');
+  return (
+    <PageLayout>
+      <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
+        <BackToWarranties />
+        <div role="alert" className="py-12 text-center">
+          <p className="text-sm text-gray-700 dark:text-gray-300">{t('detail.notFound')}</p>
+        </div>
+      </main>
+    </PageLayout>
   );
 }
 
@@ -194,13 +216,13 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
           actions={
             readOnly ? undefined : (
               <>
-                <Button variant="outline" size="sm" disabled={busy} onClick={() => openEdit(warranty)}>
+                <Button variant="outline" size="md" disabled={busy} onClick={() => openEdit(warranty)}>
                   {tc('actions.edit')}
                 </Button>
-                <Button variant="outline" size="sm" disabled={busy} onClick={handleToggleArchive}>
+                <Button variant="outline" size="md" disabled={busy} onClick={handleToggleArchive}>
                   {archived ? t('list.actions.unarchive') : t('list.actions.archive')}
                 </Button>
-                <Button variant="outline" size="sm" disabled={busy} onClick={() => setConfirmDelete(true)}>
+                <Button variant="outline" size="md" disabled={busy} onClick={() => setConfirmDelete(true)}>
                   {tc('actions.delete')}
                 </Button>
               </>

@@ -11,6 +11,7 @@
   "uploaded": "첨부 파일이 추가되었습니다",
   "deleted": "첨부 파일이 삭제되었습니다",
   "loadFailed": "첨부 파일을 불러오지 못했습니다",
+  "retry": "다시 시도",
   "uploadFailed": "첨부 파일을 업로드하지 못했습니다",
   "deleteFailed": "첨부 파일을 삭제하지 못했습니다",
   "tooLarge": "파일이 너무 큽니다 (최대 {max})",

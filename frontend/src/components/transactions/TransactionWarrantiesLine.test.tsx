@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act } from '@/test/render';
+import { render, screen, act, fireEvent } from '@/test/render';
 import type { Warranty } from '@/types/warranty';
 import { TransactionWarrantiesLine } from './TransactionWarrantiesLine';
 
@@ -53,20 +53,36 @@ describe('TransactionWarrantiesLine', () => {
     mockList.mockReset();
   });
 
-  it('with no warranties renders the Add link alone and fetches nothing', () => {
-    render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 0 }} />);
-    expect(screen.getByRole('link', { name: 'Add warranty' })).toHaveAttribute(
-      'href',
-      '/warranties?new=1&transactionId=tx-1',
+  it('with no warranties renders the Add button alone and fetches nothing', () => {
+    render(
+      <TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 0 }} onAddWarranty={vi.fn()} />,
     );
-    expect(screen.getAllByRole('link')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Add warranty' })).toBeInTheDocument();
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
     expect(mockList).not.toHaveBeenCalled();
   });
 
   it('reads an absent count as none and fetches nothing', () => {
-    render(<TransactionWarrantiesLine transaction={{ id: 'tx-1' }} />);
-    expect(screen.getByRole('link', { name: 'Add warranty' })).toBeInTheDocument();
+    render(<TransactionWarrantiesLine transaction={{ id: 'tx-1' }} onAddWarranty={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Add warranty' })).toBeInTheDocument();
     expect(mockList).not.toHaveBeenCalled();
+  });
+
+  it('Add warranty hands the navigation to the host rather than linking away', () => {
+    // A link would leave the edit window without its unsaved-changes check;
+    // the host closes the window through its own close path first.
+    const onAddWarranty = vi.fn();
+    render(
+      <TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 0 }} onAddWarranty={onAddWarranty} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Add warranty' }));
+    expect(onAddWarranty).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('link', { name: 'Add warranty' })).not.toBeInTheDocument();
+  });
+
+  it('offers no Add when the host supplies no handler', () => {
+    render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 0 }} />);
+    expect(screen.queryByRole('button', { name: 'Add warranty' })).not.toBeInTheDocument();
   });
 
   it('lists the linked warranties, each a link to its detail', async () => {
@@ -78,7 +94,9 @@ describe('TransactionWarrantiesLine', () => {
       pagination: { page: 1, limit: 50, total: 2, totalPages: 1, hasMore: false },
     });
     await act(async () => {
-      render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 2 }} />);
+      render(
+        <TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 2 }} onAddWarranty={vi.fn()} />,
+      );
     });
     expect(mockList).toHaveBeenCalledWith({ transactionId: 'tx-1' });
     const dishwasher = screen.getByRole('link', { name: /Dishwasher/ });
@@ -89,7 +107,7 @@ describe('TransactionWarrantiesLine', () => {
     expect(drill).toHaveAttribute('href', '/warranties/w-2');
     expect(drill).toHaveTextContent('Lifetime');
     expect(drill).not.toHaveTextContent('Expires');
-    expect(screen.getByRole('link', { name: 'Add warranty' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add warranty' })).toBeInTheDocument();
   });
 
   it('says the list failed rather than showing an empty one', async () => {
@@ -100,7 +118,7 @@ describe('TransactionWarrantiesLine', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'The warranties for this transaction could not be loaded.',
     );
-    expect(screen.getAllByRole('link')).toHaveLength(1);
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
 
   it('shows a loading line until the list arrives', async () => {

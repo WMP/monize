@@ -158,6 +158,7 @@
     "back": "Voltar para Garantias",
     "loading": "Carregando garantia...",
     "loadFailed": "Não foi possível carregar esta garantia.",
+    "notFound": "Esta garantia não foi encontrada.",
     "retry": "Tentar novamente",
     "archivedBadge": "Arquivada",
     "card": {

@@ -11,6 +11,7 @@
   "uploaded": "[XX-Attachment added-XX]",
   "deleted": "[XX-Attachment deleted-XX]",
   "loadFailed": "[XX-Failed to load attachments-XX]",
+  "retry": "[XX-Try again-XX]",
   "uploadFailed": "[XX-Failed to upload attachment-XX]",
   "deleteFailed": "[XX-Failed to delete attachment-XX]",
   "tooLarge": "[XX-File is too large (maximum {max})-XX]",

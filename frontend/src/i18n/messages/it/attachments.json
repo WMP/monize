@@ -11,6 +11,7 @@
   "uploaded": "Allegato aggiunto",
   "deleted": "Allegato eliminato",
   "loadFailed": "Impossibile caricare gli allegati",
+  "retry": "Riprova",
   "uploadFailed": "Impossibile caricare l'allegato",
   "deleteFailed": "Impossibile eliminare l'allegato",
   "tooLarge": "Il file è troppo grande (massimo {max})",

@@ -11,6 +11,7 @@
   "uploaded": "Attachment added",
   "deleted": "Attachment deleted",
   "loadFailed": "Failed to load attachments",
+  "retry": "Try again",
   "uploadFailed": "Failed to upload attachment",
   "deleteFailed": "Failed to delete attachment",
   "tooLarge": "File is too large (maximum {max})",

@@ -158,6 +158,7 @@
     "back": "Terug naar Garanties",
     "loading": "Garantie laden...",
     "loadFailed": "Deze garantie kon niet worden geladen.",
+    "notFound": "Deze garantie is niet gevonden.",
     "retry": "Opnieuw proberen",
     "archivedBadge": "Gearchiveerd",
     "card": {

@@ -11,6 +11,7 @@
   "uploaded": "Anhang hinzugefügt",
   "deleted": "Anhang gelöscht",
   "loadFailed": "Anhänge konnten nicht geladen werden",
+  "retry": "Erneut versuchen",
   "uploadFailed": "Anhang konnte nicht hochgeladen werden",
   "deleteFailed": "Anhang konnte nicht gelöscht werden",
   "tooLarge": "Datei ist zu groß (maximal {max})",

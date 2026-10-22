@@ -11,6 +11,7 @@
   "uploaded": "Dodano załącznik",
   "deleted": "Usunięto załącznik",
   "loadFailed": "Nie udało się wczytać załączników",
+  "retry": "Spróbuj ponownie",
   "uploadFailed": "Nie udało się przesłać załącznika",
   "deleteFailed": "Nie udało się usunąć załącznika",
   "tooLarge": "Plik jest za duży (maksymalnie {max})",

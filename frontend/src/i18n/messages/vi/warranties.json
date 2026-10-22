@@ -158,6 +158,7 @@
     "back": "Quay lại Bảo hành",
     "loading": "Đang tải bảo hành...",
     "loadFailed": "Không thể tải bảo hành này.",
+    "notFound": "Không tìm thấy bảo hành này.",
     "retry": "Thử lại",
     "archivedBadge": "Đã lưu trữ",
     "card": {

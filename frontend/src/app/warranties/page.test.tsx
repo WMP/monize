@@ -186,6 +186,56 @@ describe('WarrantiesPage', () => {
     await renderPage();
     expect(screen.getAllByText('Not loaded')).toHaveLength(4);
     expect(screen.queryByText('Within 30 days')).not.toBeInTheDocument();
+    expect(screen.getByTestId('warranty-summary')).toHaveAttribute('aria-busy', 'false');
+  });
+
+  it('retries a failed summary from the strip', async () => {
+    mockSummary.mockRejectedValueOnce(new Error('500'));
+    await renderPage();
+    expect(screen.getAllByText('Not loaded')).toHaveLength(4);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    });
+    expect(mockSummary).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('Not loaded')).not.toBeInTheDocument();
+    expect(screen.getByText('Within 30 days')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+
+  it('shows a loading summary as loading, not as "Not loaded" or a figure', async () => {
+    mockSummary.mockReturnValue(new Promise(() => {}));
+    await renderPage();
+    const strip = screen.getByTestId('warranty-summary');
+    expect(strip).toHaveAttribute('aria-busy', 'true');
+    expect(within(strip).queryByText('Not loaded')).not.toBeInTheDocument();
+    expect(within(strip).queryByText(/\d/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the newer summary when an older one answers late', async () => {
+    let resolveFirst: (value: WarrantySummary) => void = () => {};
+    let resolveSecond: (value: WarrantySummary) => void = () => {};
+    mockSummary
+      .mockReturnValueOnce(new Promise<WarrantySummary>((r) => { resolveFirst = r; }))
+      .mockReturnValueOnce(new Promise<WarrantySummary>((r) => { resolveSecond = r; }));
+    await renderPage();
+    // A create reloads the summary while the first request is still out.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add warranty' }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Submit stub' }));
+    });
+    expect(mockSummary).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      resolveSecond({ ...SUMMARY, counts: { ...SUMMARY.counts, active: 8 } });
+    });
+    await act(async () => {
+      resolveFirst({ ...SUMMARY, counts: { ...SUMMARY.counts, active: 5 } });
+    });
+    const strip = screen.getByTestId('warranty-summary');
+    expect(within(strip).getByText('8')).toBeInTheDocument();
+    expect(within(strip).queryByText('5')).not.toBeInTheDocument();
   });
 
   it('offers to add the first warranty when there are none', async () => {

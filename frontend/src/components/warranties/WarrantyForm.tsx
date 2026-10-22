@@ -23,6 +23,7 @@ import { payeesApi } from '@/lib/payees';
 import { getCurrencySymbol } from '@/lib/format';
 import { isCalendarDate } from '@/lib/calendar-month';
 import { createLogger } from '@/lib/logger';
+import { textOrNull } from '@/lib/form-text';
 import { expiresBeforePurchase, warrantyTermEndDate } from '@/lib/warranties';
 import type { Payee } from '@/types/payee';
 import {
@@ -108,12 +109,6 @@ const buildWarrantySchema = (t: (key: string) => string) =>
     });
 
 export type WarrantyFormData = z.infer<ReturnType<typeof buildWarrantySchema>>;
-
-/** Blank text is no value. */
-function textOrNull(value: string): string | null {
-  const trimmed = value.trim();
-  return trimmed === '' ? null : trimmed;
-}
 
 /**
  * The request body for the form's values: one expiry source (a date or

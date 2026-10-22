@@ -11,6 +11,7 @@
   "uploaded": "Pièce jointe ajoutée",
   "deleted": "Pièce jointe supprimée",
   "loadFailed": "Échec du chargement des pièces jointes",
+  "retry": "Réessayer",
   "uploadFailed": "Échec du téléversement de la pièce jointe",
   "deleteFailed": "Échec de la suppression de la pièce jointe",
   "tooLarge": "Le fichier est trop volumineux (maximum {max})",

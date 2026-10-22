@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Select } from '@/components/ui/Select';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { getErrorMessage } from '@/lib/errors';
+import { createLogger } from '@/lib/logger';
 import { attachmentsApi, attachmentDownloadUrl } from '@/lib/attachments';
 import { AttachmentPreviewDialog, type PreviewTarget } from './AttachmentPreviewDialog';
 import { DocumentScanDialog, type ScanOutcome } from './DocumentScanDialog';
@@ -24,6 +25,8 @@ import {
   MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS_PER_TRANSACTION,
 } from '@/types/attachment';
+
+const logger = createLogger('AttachmentsSection');
 
 /**
  * Saved mode: manages the attachments of an existing transaction directly
@@ -219,6 +222,7 @@ function SavedAttachments({
 }) {
   const t = useTranslations('attachments');
   const tw = useTranslations('warranties');
+  const tc = useTranslations('common');
   const { formatBytes } = useNumberFormat();
   const isWarranty = parentKind === 'warranty';
   const parent = useMemo<AttachmentParent>(
@@ -231,7 +235,12 @@ function SavedAttachments({
   const [documentKind, setDocumentKind] = useState<DocumentKind>(
     initialDocumentKind ?? DEFAULT_DOCUMENT_KIND,
   );
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  // `null` until a list has loaded; a failed load is `loadFailed`, never an
+  // empty list, so neither "No documents yet" nor the cap check can be drawn
+  // from a list nobody has seen.
+  const [attachments, setAttachments] = useState<Attachment[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const latestLoad = useRef(0);
   const [uploading, setUploading] = useState(false);
   const [erroredImages, setErroredImages] = useState<Record<string, boolean>>(
     {},
@@ -252,23 +261,32 @@ function SavedAttachments({
   const load = useCallback(() => {
     // The writes live in the inner function so they run after the request,
     // not during the effect that starts it.
+    const request = ++latestLoad.current;
     const run = async () => {
       try {
         const list = await attachmentsApi.list(parent);
+        if (latestLoad.current !== request) return;
         setAttachments(list);
+        setLoadFailed(false);
       } catch (error) {
-        toast.error(getErrorMessage(error, t('loadFailed')));
+        if (latestLoad.current !== request) return;
+        logger.error('Failed to load attachments:', error);
+        setLoadFailed(true);
       }
     };
     return run();
-  }, [parent, t]);
+  }, [parent]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  /** The list the cap is checked against: only one that loaded. */
+  const known = loadFailed ? null : attachments;
+
   const handleFileSelected = async (file: File) => {
-    const error = validateSelection(file, attachments.length, t, formatBytes);
+    if (known === null) return;
+    const error = validateSelection(file, known.length, t, formatBytes);
     if (error) {
       toast.error(error);
       return;
@@ -306,7 +324,8 @@ function SavedAttachments({
    * path unreachable outside its unit test.
    */
   const handleScanSelected = (file: File) => {
-    if (attachments.length >= MAX_ATTACHMENTS_PER_TRANSACTION) {
+    if (known === null) return;
+    if (known.length >= MAX_ATTACHMENTS_PER_TRANSACTION) {
       toast.error(t('tooMany', { max: MAX_ATTACHMENTS_PER_TRANSACTION }));
       return;
     }
@@ -345,14 +364,47 @@ function SavedAttachments({
     }
   };
 
-  const atLimit = attachments.length >= MAX_ATTACHMENTS_PER_TRANSACTION;
+  const atLimit = known !== null && known.length >= MAX_ATTACHMENTS_PER_TRANSACTION;
+
+  let body;
+  if (loadFailed) {
+    body = (
+      <div role="alert" className="py-4 text-center space-y-3">
+        <p className="text-sm text-red-700 dark:text-red-300">{t('loadFailed')}</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setLoadFailed(false);
+            void load();
+          }}
+        >
+          {t('retry')}
+        </Button>
+      </div>
+    );
+  } else if (known === null) {
+    body = (
+      <p className="text-sm text-gray-500 dark:text-gray-400" role="status">
+        {tc('loading')}
+      </p>
+    );
+  } else if (known.length === 0) {
+    body = (
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        {isWarranty ? tw('documents.empty') : t('empty')}
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-2">
       <AttachmentsHeader
         heading={isWarranty ? tw('documents.title') : undefined}
       >
-        {!readOnly && (
+        {/* Hidden until a list has loaded: the cap is checked against it. */}
+        {!readOnly && known !== null && (
           <>
             <ScanDocumentControl
               onFileSelected={handleScanSelected}
@@ -368,7 +420,7 @@ function SavedAttachments({
         )}
       </AttachmentsHeader>
 
-      {isWarranty && !readOnly && (
+      {isWarranty && !readOnly && known !== null && (
         <DocumentKindPicker
           value={documentKind}
           onChange={setDocumentKind}
@@ -376,13 +428,9 @@ function SavedAttachments({
         />
       )}
 
-      {attachments.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {isWarranty ? tw('documents.empty') : t('empty')}
-        </p>
-      ) : (
+      {body ?? (
         <ul className="space-y-2">
-          {attachments.map((attachment) => {
+          {(known ?? []).map((attachment) => {
             const isImage = attachment.contentType.startsWith('image/');
             const showThumb = isImage && !erroredImages[attachment.id];
             return (

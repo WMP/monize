@@ -25,16 +25,22 @@ type LoadState =
 interface TransactionWarrantiesLineProps {
   /** A saved transaction; the form renders this only when editing one. */
   transaction: Pick<Transaction, 'id' | 'warrantyCount'>;
+  /**
+   * Opens the Warranties page's form prefilled from this transaction. The host
+   * owns it because leaving the edit window is the host's close, which asks
+   * about unsaved edits first; without it the line offers no Add.
+   */
+  onAddWarranty?: () => void;
 }
 
 /**
  * The Warranties line in the transaction edit form: the warranties linked to
- * this purchase, each a link to its detail page, and an "Add warranty" link to
- * the Warranties page's form prefilled from it. The list is fetched only when
+ * this purchase, each a link to its detail page, and an "Add warranty" button
+ * the host turns into its close-then-navigate. The list is fetched only when
  * the register row says the transaction has any (`warrantyCount`); with none
- * the line is the Add link alone and nothing is fetched.
+ * the line is the Add button alone and nothing is fetched.
  */
-export function TransactionWarrantiesLine({ transaction }: TransactionWarrantiesLineProps) {
+export function TransactionWarrantiesLine({ transaction, onAddWarranty }: TransactionWarrantiesLineProps) {
   const t = useTranslations('transactions');
   const { formatDate } = useDateFormat();
   const transactionId = transaction.id;
@@ -66,13 +72,16 @@ export function TransactionWarrantiesLine({ transaction }: TransactionWarranties
         <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {t('form.warranties.title')}
         </span>
-        <Link
-          href={`/warranties?new=1&transactionId=${transactionId}`}
-          className={`inline-flex items-center gap-1 text-sm ${LINK_CLASS}`}
-        >
-          <PlusIcon className="h-4 w-4" aria-hidden="true" />
-          {t('form.warranties.add')}
-        </Link>
+        {onAddWarranty && (
+          <button
+            type="button"
+            onClick={onAddWarranty}
+            className={`inline-flex items-center gap-1 text-sm ${LINK_CLASS}`}
+          >
+            <PlusIcon className="h-4 w-4" aria-hidden="true" />
+            {t('form.warranties.add')}
+          </button>
+        )}
       </div>
       {shouldFetch && current === null && (
         <p className="text-sm text-gray-500 dark:text-gray-400" role="status">

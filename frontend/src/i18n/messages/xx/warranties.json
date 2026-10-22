@@ -158,6 +158,7 @@
     "back": "[XX-Back to Warranties-XX]",
     "loading": "[XX-Loading warranty...-XX]",
     "loadFailed": "[XX-This warranty could not be loaded.-XX]",
+    "notFound": "[XX-This warranty was not found.-XX]",
     "retry": "[XX-Try again-XX]",
     "archivedBadge": "[XX-Archived-XX]",
     "card": {

@@ -158,6 +158,7 @@
     "back": "返回保修",
     "loading": "正在加载保修...",
     "loadFailed": "无法加载此保修。",
+    "notFound": "未找到此保修。",
     "retry": "重试",
     "archivedBadge": "已归档",
     "card": {

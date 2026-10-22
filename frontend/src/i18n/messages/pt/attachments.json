@@ -11,6 +11,7 @@
   "uploaded": "Anexo adicionado",
   "deleted": "Anexo eliminado",
   "loadFailed": "Falha ao carregar os anexos",
+  "retry": "Tentar novamente",
   "uploadFailed": "Falha ao carregar o anexo",
   "deleteFailed": "Falha ao eliminar o anexo",
   "tooLarge": "O ficheiro é demasiado grande (máximo {max})",

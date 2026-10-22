@@ -158,6 +158,7 @@
     "back": "Wróć do gwarancji",
     "loading": "Wczytywanie gwarancji...",
     "loadFailed": "Nie udało się wczytać tej gwarancji.",
+    "notFound": "Nie znaleziono tej gwarancji.",
     "retry": "Spróbuj ponownie",
     "archivedBadge": "Zarchiwizowana",
     "card": {

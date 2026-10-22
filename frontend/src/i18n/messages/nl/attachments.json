@@ -11,6 +11,7 @@
   "uploaded": "Bijlage toegevoegd",
   "deleted": "Bijlage verwijderd",
   "loadFailed": "Bijlagen laden mislukt",
+  "retry": "Opnieuw proberen",
   "uploadFailed": "Uploaden van bijlage mislukt",
   "deleteFailed": "Verwijderen van bijlage mislukt",
   "tooLarge": "Bestand is te groot (maximaal {max})",

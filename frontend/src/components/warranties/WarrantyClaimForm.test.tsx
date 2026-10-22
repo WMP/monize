@@ -97,6 +97,23 @@ describe('WarrantyClaimForm', () => {
     expect(resolvedOnInput()).toBeDisabled();
   });
 
+  it('cannot set the closing date through its calendar while the claim is open', async () => {
+    const { onSubmit } = await renderForm();
+    // Claim date first, Closed on second.
+    const [claimDatePicker, closedOnPicker] = screen.getAllByRole('button', { name: 'Open date picker' });
+    expect(claimDatePicker).not.toBeDisabled();
+    expect(closedOnPicker).toBeDisabled();
+    // An open popover adds its month controls and day cells as buttons.
+    const buttonsBefore = screen.getAllByRole('button').length;
+    fireEvent.click(closedOnPicker);
+    expect(screen.getAllByRole('button')).toHaveLength(buttonsBefore);
+    expect(resolvedOnInput().value).toBe('');
+
+    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'resolved' } });
+    expect(screen.getAllByRole('button', { name: 'Open date picker' })[1]).not.toBeDisabled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('edits a claim with every field, so a cleared one is cleared', async () => {
     const { onSubmit } = await renderForm({ claim: claim() });
     expect(resolvedOnInput()).not.toBeDisabled();
