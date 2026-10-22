@@ -302,6 +302,17 @@ into a different account cannot collide with that account's rows, and every tabl
 and column is checked against an allowlist. What it lacks is integrity
 verification of the payload, per EXT-002 above.
 
+Restore is also the **third writer of the object-intent protocol**, beside
+`AttachmentsService.create` and the storage migrator. For `local` and `s3`, staging
+writes the carried bytes before the restore transaction, so each staged key takes
+an upload intent first (`recordObjectIntent`, lease
+`RESTORE_STAGING_INTENT_LEASE_MS`), the transaction clears them all with the
+fenced `clearObjectIntent`, and a discard drops an intent only after its delete
+succeeded. A process death between staging and commit therefore leaves
+tombstones the orphan sweeper reclaims once the leases expire, where it used to
+leave bytes nothing could enumerate (A26-S06-03).
+`docs/backup-restore-contract.md` section 4 has the protocol.
+
 ### Off-machine copies
 
 A completed automatic backup is also copied to the user's off-machine

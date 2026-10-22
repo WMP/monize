@@ -292,7 +292,7 @@ describe("MnyImportService", () => {
     postProcessing = { run: jest.fn().mockResolvedValue(undefined) };
     usersService = { deleteData: jest.fn().mockResolvedValue(undefined) };
     currencies = {
-      ensureSystemCurrency: jest.fn().mockResolvedValue(undefined),
+      ensureCurrencyForUser: jest.fn().mockResolvedValue(undefined),
     };
 
     accountRepo = {
@@ -699,8 +699,14 @@ describe("MnyImportService", () => {
 
       await run();
 
-      expect(currencies.ensureSystemCurrency).toHaveBeenCalledWith("CAD");
-      expect(currencies.ensureSystemCurrency).toHaveBeenCalledWith("USD");
+      expect(currencies.ensureCurrencyForUser).toHaveBeenCalledWith(
+        context.userId,
+        "CAD",
+      );
+      expect(currencies.ensureCurrencyForUser).toHaveBeenCalledWith(
+        context.userId,
+        "USD",
+      );
     });
 
     it("writes reference data, then transactions, then balances, then closures", async () => {

@@ -51,6 +51,7 @@ import {
   RestoreBackupInput,
   RestoreResult,
 } from "./backup-format";
+import { applyLegacyNormalizations } from "./restore-legacy-normalizations";
 import { restoreAiProviderKey } from "./ai-provider-key-transport";
 import { keyBearingExportTables } from "./export-table-queries";
 import { BackupAttachmentTransferService } from "./backup-attachment-transfer.service";
@@ -364,6 +365,11 @@ export class BackupRestoreService {
                   );
                 }
 
+                // Phase 2c: rows from an artifact older than a migration that
+                // changed what a value means get that migration's backfill; the
+                // migration itself ran once, long before these rows arrived.
+                await applyLegacyNormalizations(manager, userId, data);
+
                 // Phase 3: Restore deferred FK columns that were stripped during insert
                 // to avoid circular/forward reference violations.
                 await this.db.restoreDeferredFkColumns(manager, data, userId);
@@ -371,6 +377,11 @@ export class BackupRestoreService {
                 // INV-BOND-007: whatever the file said, a row keeps a series
                 // only of its own security's program.
                 await clearForeignSeriesOfUser(manager, userId);
+
+                // The staged objects now have their metadata rows: drop their
+                // upload intents in the same transaction, so both commit or both
+                // roll back. Throws if the sweeper claimed one first.
+                await this.attachments.clearStagingIntents(manager, stagedKeys);
 
                 this.logger.log(`Backup restore completed for user ${userId}`);
                 // `skippedAttachments`, `unusableAiProviderKeys`,

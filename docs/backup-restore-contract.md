@@ -527,12 +527,39 @@ sites are handled so it does not:
   object before re-raising. The discard swallows its own delete failures, so a
   failed tidy-up cannot mask the error that aborted the restore.
 
-**Known gap:** this covers *catchable* failures only. A process crash or kill
-between staging and commit still orphans the staged objects, and there is no
-sweeper or recovery pass for them yet. It is a bounded storage cost, never a row
-promising bytes that are gone, so it is a leak to reclaim rather than a
-correctness hazard — tracked as a separate follow-up, not closed by the #1094
-fix.
+**A staged object carries an upload intent, so a process death leaves bytes the
+sweeper can find (INV-ATTACHMENT-001).** `tryStageAttachmentObject` follows the
+protocol of `AttachmentsService.create` through the helpers in
+`attachments/storage/object-intent.ts`, and does not hand-roll the SQL:
+
+- **Before each put**, `recordObjectIntent` commits an `attachment_blob_tombstones`
+  row for the staged key on its own connection, with the lease
+  `RESTORE_STAGING_INTENT_LEASE_MS` (two hours). It covers staging the rest of the
+  artifact, the 15-minute maintenance lease the transaction runs under
+  (`USER_MAINTENANCE_LEASE_MS`) and the transaction itself; the 15-minute upload
+  lease covers one put and is too short. The lease is a latency mechanism, not the
+  safety one: a longer value only delays reclaiming the bytes of a dead process.
+  The `database` provider records nothing (its bytes roll back with the
+  transaction). If the intent cannot be recorded, the bytes are not written and
+  the attachment is dropped exactly as one whose put failed (`skippedAttachments`).
+- **In the restore transaction**, `clearStagingIntents` runs `clearObjectIntent`
+  for every staged key, one statement after another on the transaction's manager,
+  after the rows are written. The delete is fenced on `swept_at IS NULL`: if the
+  sweeper claimed a key first it throws, the restore rolls back, and the existing
+  `.catch` discards the staged objects. The intents therefore commit away together
+  with the rows that now own the bytes, or not at all.
+- **On failure**, `discardStagedAttachmentObjects` drops an intent
+  (`dropCommittedObjectIntent`, best effort) only after the object's delete
+  succeeded. When the delete fails, or the process dies before the discard runs,
+  the intent stays and the hourly `AttachmentOrphanSweeper` removes the bytes once
+  the lease has expired (and re-deletes during its late-write quarantine).
+- Source keys read in place (`sourceKeys`) are never written, so they take no
+  intent; only keys the restore wrote (`stagedKeys`) do.
+
+`backend/test/integration/backup-restore-staging.integration.spec.ts` holds this
+on the `local` provider in a real temporary directory: a failure inside the
+transaction with the discard suppressed leaves the bytes and one intent per
+staged key, and one sweeper pass after the leases expire removes them.
 
 Operationally: for an artifact that carries its own bytes there is nothing to
 restore alongside it — that is the point. The sidecar directory or bucket only
@@ -1325,6 +1352,38 @@ Known and unresolved; none of these is a bug report waiting to be filed:
   `backend/src/common/db/migration-table-renames.spec.ts` reads the renames out
   of the migrations themselves, so the next rename is checked without being
   registered.
+- **A migration that changes what a stored value means is replayed on the
+  restored rows (A26-S06-04).** The migration backfills the rows the database
+  holds when it runs, once; a restore inserts rows as the file stores them, so an
+  older artifact brings the old meaning back. `LEGACY_NORMALIZATIONS`
+  (`backend/src/backup/restore-legacy-normalizations.ts`) is a registry of those
+  backfills keyed by the migration that introduced each change. It is applied
+  inside the restore transaction after the rows are inserted, scoped to
+  `user_id = $1`, with the `WHERE` mirroring the migration's. One entry exists:
+  `skip_price_updates` (`20261012131846`), which became the user's own switch, so
+  a pre-1.19 `true` on a security with a `quote_provider` or an
+  `msn_instrument_id` is cleared, as the migration did.
+
+  Whether an artifact is older is decided by `artifactPredates`. The export writes
+  an optional `producedBy: { schemaMigration }` member (`readProducedBy`,
+  `export-produced-by.ts`): the newest applied migration by
+  `compareMigrationFilenames`, read from `schema_migrations` (the runtime role may
+  `SELECT` it), or `null` when the ledger does not exist. With a usable marker the
+  artifact is older when the marker is strictly before the entry's migration. A
+  marker that is `null`, not a string, or not a migration filename is treated as
+  absent. `BACKUP_VERSION` stays `1`: the member is optional, and an artifact
+  without it restores as before.
+
+  Without a marker the artifact is older only on **positive evidence**, written on
+  each registry entry: its `user_preferences` rows exist and carry no
+  `hidden_table_columns` key. That column came from
+  `20261012133629_user_preferences_hidden_table_columns.sql`; both migrations
+  first shipped in release 1.19.0 and neither in 1.18.0, and the export is a
+  `SELECT *`, so a null value is still a key. A marker-less artifact that has the
+  key comes from 1.19.0, where `true` is a deliberate switch and is kept. With no
+  preference rows nothing is known, so nothing is normalized. A new entry states
+  its own evidence rule; a migration with no such column to lean on has no safe
+  marker-less rule and normalizes only artifacts that carry a marker.
 - **Delegation is reset.** `account_delegates`, `account_delegate_grants` and
   `delegate_account_favourites` are excluded by design, and cascade away when
   accounts are deleted. A restore therefore removes existing grants and

@@ -100,7 +100,7 @@ export interface MnyParsedFile {
   readonly baseCurrency: string;
   /**
    * Every ISO code the import touches -- accounts, securities and exchange-rate
-   * history -- so `ensureSystemCurrency` runs once per code before any row that
+   * history -- so `ensureCurrencyForUser` runs once per code before any row that
    * references it is written.
    */
   readonly currencyCodes: readonly string[];

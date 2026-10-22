@@ -133,7 +133,7 @@ implied.
 | INV-MCP-002 | An MCP request is answered by the MCP transport, never by the app shell | enforced |
 | INV-MCP-003 | A write confirmation is bound to one credential and one change | enforced |
 | INV-MCP-004 | A write happens only on the round a human answered | enforced |
-| INV-CURRENCY-001 | A shared currency is deleted only by its creator, on a global count | enforced |
+| INV-CURRENCY-001 | A shared currency is deleted only by its creator, on a global count; a user's action never creates or leaves one offered to every user | partial |
 | INV-ATTACHMENT-001 | Available metadata resolves to committed bytes | enforced |
 | INV-ATTACHMENT-002 | A scanned document and its original are one attachment | enforced |
 | INV-ATTACHMENT-003 | An attachment's bytes are read from the backend that holds them, and a provider switch moves them | enforced |
@@ -5323,6 +5323,18 @@ Enforcement         Creator-only, on a genuinely global count, under a lock.
                     function currency_code_in_use_globally (migration 137) which
                     covers every FK including budgets and both exchange_rates
                     columns -- not the caller's tenant-scoped count.
+                    No user action creates a currency offered to every user:
+                    a request path calls ensureCurrencyForUser, which writes a
+                    known ISO code as an inactive reference row and any other
+                    code as the user's own, and activates only that user's
+                    user_currency_preferences row; it runs inside the
+                    transaction that writes the reference, before it (the
+                    non-deferrable user_preferences.default_currency FK). A
+                    user's self-delete locks the currencies they created and
+                    removes the unreferenced ones after the user row goes; the
+                    trigger currencies_creator_cleared_deactivate (migration
+                    20261022133443) deactivates every currency whose creator is
+                    cleared, on every deletion path (A26-M17, A26-M25).
 Concurrency scope   global -- cross-tenant
 Failure response    non-creator deactivates without deleting; 409 while referenced.
 Required tests      Present: currency-references.spec.ts derives the reference list
@@ -5330,7 +5342,17 @@ Required tests      Present: currency-references.spec.ts derives the reference l
                     forgotten; currencies.service.spec.ts asserts a non-creator's
                     remove deletes only the preference and never the currency row.
                     A two-connection delete-versus-use test is still owed.
-Status              enforced
+                    currency-ownership.integration.spec.ts: a first default of
+                    PLN saves on a fresh instance and is offered to nobody else;
+                    a non-ISO code is its user's own; deleting the creator
+                    removes an unreferenced custom currency and deactivates a
+                    referenced one, also on a direct DELETE FROM users.
+Status              partial -- rows written before migration 20261022133443 are
+                    not repaired: an active system currency an earlier import,
+                    preference or deletion created stays offered to every user,
+                    and the admin delete path (admin.service.ts) deactivates a
+                    deleted user's currencies but does not remove the
+                    unreferenced ones.
 ```
 
 The global count is a SECURITY DEFINER function precisely so that under
@@ -5354,7 +5376,12 @@ Enforcement         Ordered so a failure leaves recoverable bytes, never a row
                     exists: attachment-orphan-sweeper.service.ts (hourly, under
                     withSystemContext) claims tombstones and deletes leased-past
                     orphaned bytes. Local writes are crash-atomic
-                    (local-storage.provider.ts writeFileAtomic). "No bytes without
+                    (local-storage.provider.ts writeFileAtomic). A restore
+                    stages its objects under the same protocol
+                    (backup-attachment-transfer.service.ts: an intent with a
+                    two-hour lease before each put, cleared in the restore
+                    transaction, kept when a discard's delete fails; A26-L10;
+                    backup-restore-staging.integration.spec.ts). "No bytes without
                     metadata" holds eventually rather than instantaneously, which
                     is what the invariant asks.
 Concurrency scope   per attachment
@@ -6967,6 +6994,17 @@ cross-user lookups (a candidate below) and whether `db-init` / `db-migrate` are
 serialized across replicas -- `common/db/advisory-locks.ts` now exists and that
 sub-point warrants its own re-check.
 
+A refusing role is only half the containment; the policies have to refuse too.
+The `account_delegates` and `account_delegate_grants` `WITH CHECK` repeated
+their `USING` read arms until migration `20261022142820`, so a delegate-side
+session could issue itself a delegation from any owner and read that owner's
+ledger through the joint read arms (A26-M06). They now admit a write only from
+the owner's own session and a grant only over the owner's own account
+(`docs/row-level-security-contract.md` section 5). The status above stays
+`enforced`: it covers the role check, which this did not change. The joint
+read arms still trust any active delegation whose delegate is the real user
+while that user acts for a different owner (D-S04-01, not closed here).
+
 ### INV-CACHE-001 -- a money-moving write invalidates its caches
 
 ```text
@@ -7149,6 +7187,17 @@ carry an earlier prefix and replay first on a fresh install. A migration must
 not depend on the ordering of another in-flight migration; nothing checks that
 beyond review.
 
+
+Adjacent, and not claimed by this entry: expand before contract. A migration
+that drops, renames or retypes a column, or adds `SET NOT NULL`, breaks the
+previous release's pods for the length of a rolling update unless that release
+no longer uses the old shape (`20260908120000_remove_notification_browser.sql`
+did not wait, A26-L09). The migration lint now refuses such a statement
+(`contract-without-expand`) unless its file carries `-- contract-after: X.Y.Z`;
+the files before the rule are frozen by name in
+`GRANDFATHERED_CONTRACT_MIGRATIONS`. The marker is a claim, not a proof: only
+running the previous release against the new schema proves it, and no CI job
+does (`docs/database-migrations.md`).
 ### INV-HA-001 -- a replica serves only while what it shares is reachable
 
 ```text

@@ -15,9 +15,11 @@ import { AttachmentBlobTombstone } from "../entities/attachment-blob-tombstone.e
  * references them", which is equally true of an upload in flight and of a
  * metadata row that is gone -- one row shape, one sweeper (audit FV4-003). The
  * three statements here are the writer's half of it, and they are in their own
- * file because there are now two writers: `AttachmentsService.create`, which puts
- * the bytes of a new attachment, and `AttachmentStorageMigrator`, which puts a
- * copy of an existing attachment's bytes in the backend a switch moved to. The
+ * file because there are now three writers: `AttachmentsService.create`, which puts
+ * the bytes of a new attachment, `AttachmentStorageMigrator`, which puts a
+ * copy of an existing attachment's bytes in the backend a switch moved to, and
+ * `BackupAttachmentTransferService`, which stages the objects of a restore before
+ * the restore transaction commits. The
  * fences below are subtle enough that a second hand-rolled copy is the likelier
  * defect than any of the code they guard.
  *

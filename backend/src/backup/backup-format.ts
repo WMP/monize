@@ -1,4 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
+import { parseMigrationPrefix } from "../common/db/migration-filename";
 
 /**
  * The backup file format: the envelope version, the shape of a parsed artifact,
@@ -156,6 +157,32 @@ export interface BackupBondCatalog {
   series: BackupBondSeriesIdentity[];
 }
 
+/**
+ * Which schema produced an artifact: the newest migration its database had
+ * applied when it was exported, or `null` when that could not be read (the
+ * ledger was absent). A document member beside `completeness`, not a table, and
+ * optional: an artifact written before it existed simply lacks it, and a
+ * restore treats absent and `null` alike as "not known" -- never as "old" and
+ * never as "current" (`restore-legacy-normalizations.ts`).
+ */
+export interface BackupProducedBy {
+  schemaMigration: string | null;
+}
+
+/**
+ * The producing migration an artifact declares, or `null` when it declares
+ * none. The document is untrusted: anything that is not a migration filename
+ * `compareMigrationFilenames` can order is treated as absent rather than
+ * half-read, because that comparison throws on a name it cannot parse.
+ */
+export function parseProducedBySchemaMigration(value: unknown): string | null {
+  if (typeof value !== "object" || value === null) return null;
+  const name = (value as { schemaMigration?: unknown }).schemaMigration;
+  if (typeof name !== "string") return null;
+  if (!/^[A-Za-z0-9._-]{1,200}$/.test(name)) return null;
+  return parseMigrationPrefix(name) === null ? null : name;
+}
+
 const IDENTITY_CODE = /^[A-Za-z0-9._-]{1,40}$/;
 const COUNTRY_CODE = /^[A-Za-z]{2}$/;
 
@@ -306,6 +333,13 @@ export interface BackupData {
    * `completeness` was.
    */
   bondCatalog?: BackupBondCatalog;
+  /**
+   * The newest migration the exporting database had applied (see
+   * `BackupProducedBy`). Absent from artifacts written before the member
+   * existed. Not a table, and not a version bump: an optional member, like
+   * `bondCatalog`.
+   */
+  producedBy?: BackupProducedBy;
   currencies: Record<string, unknown>[];
   user_preferences: Record<string, unknown>[];
   user_currency_preferences: Record<string, unknown>[];

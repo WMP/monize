@@ -58,7 +58,14 @@ describe("UsersService", () => {
   let demoModeService: { isDemo: boolean };
   let maintenance: UserMaintenanceMock;
   let exchangeRateService: { refreshAllRates: jest.Mock };
-  let currenciesService: { ensureSystemCurrency: jest.Mock };
+  let currenciesService: jest.Mocked<
+    Pick<
+      CurrenciesService,
+      | "ensureCurrencyForUser"
+      | "lockCurrenciesCreatedBy"
+      | "removeUnreferencedCurrencies"
+    >
+  >;
   let backupEncryptionService: { rewrapBackupKey: jest.Mock };
   let moduleRef: { get: jest.Mock };
   let emailService: { getStatus: jest.Mock; sendMail: jest.Mock };
@@ -145,7 +152,9 @@ describe("UsersService", () => {
     };
 
     currenciesService = {
-      ensureSystemCurrency: jest.fn().mockResolvedValue(undefined),
+      ensureCurrencyForUser: jest.fn().mockResolvedValue(undefined),
+      lockCurrenciesCreatedBy: jest.fn().mockResolvedValue([]),
+      removeUnreferencedCurrencies: jest.fn().mockResolvedValue(undefined),
     };
 
     // SMTP off by default: the email-change tests that need a confirmation
@@ -764,14 +773,34 @@ describe("UsersService", () => {
       expect(preferencesRow.row()!.defaultCurrency).toBe("EUR");
     });
 
-    it("ensures the chosen default currency exists when it changes", async () => {
+    it("ensures the chosen default currency for the user, before the preference is written", async () => {
       preferencesRow.seed(mockPreferences);
+      let patchesWhenEnsured = -1;
+      currenciesService.ensureCurrencyForUser.mockImplementation(async () => {
+        patchesWhenEnsured = preferencesRow.patches().length;
+      });
 
       await service.updatePreferences("user-1", { defaultCurrency: "EUR" });
 
-      expect(currenciesService.ensureSystemCurrency).toHaveBeenCalledWith(
+      expect(currenciesService.ensureCurrencyForUser).toHaveBeenCalledWith(
+        "user-1",
         "EUR",
       );
+      expect(patchesWhenEnsured).toBe(0);
+      expect(preferencesRow.row()!.defaultCurrency).toBe("EUR");
+    });
+
+    it("fails the request, writing nothing, when the currency cannot be ensured", async () => {
+      preferencesRow.seed(mockPreferences);
+      currenciesService.ensureCurrencyForUser.mockRejectedValue(
+        new Error("refused"),
+      );
+
+      await expect(
+        service.updatePreferences("user-1", { defaultCurrency: "EUR" }),
+      ).rejects.toThrow("refused");
+
+      expect(preferencesRow.patches()).toHaveLength(0);
     });
 
     it("does not ensure a currency when the default is unchanged", async () => {
@@ -779,7 +808,7 @@ describe("UsersService", () => {
 
       await service.updatePreferences("user-1", { defaultCurrency: "USD" });
 
-      expect(currenciesService.ensureSystemCurrency).not.toHaveBeenCalled();
+      expect(currenciesService.ensureCurrencyForUser).not.toHaveBeenCalled();
     });
 
     it("updates multiple fields at once", async () => {
@@ -1349,6 +1378,32 @@ describe("UsersService", () => {
         { isRevoked: true },
       );
       expect(usersRepository.remove).toHaveBeenCalled();
+    });
+
+    it("locks the user's custom currencies, then removes the unreferenced ones after the user row", async () => {
+      const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        passwordHash: hashedPassword,
+      });
+      currenciesService.lockCurrenciesCreatedBy.mockResolvedValue(["PTS"]);
+
+      await service.deleteAccount("user-1", { password: "CorrectPass123!" });
+
+      expect(currenciesService.lockCurrenciesCreatedBy).toHaveBeenCalledWith(
+        expect.anything(),
+        "user-1",
+      );
+      expect(
+        currenciesService.removeUnreferencedCurrencies,
+      ).toHaveBeenCalledWith(expect.anything(), ["PTS"]);
+      expect(
+        currenciesService.lockCurrenciesCreatedBy.mock.invocationCallOrder[0],
+      ).toBeLessThan(usersRepository.remove.mock.invocationCallOrder[0]);
+      expect(usersRepository.remove.mock.invocationCallOrder[0]).toBeLessThan(
+        currenciesService.removeUnreferencedCurrencies.mock
+          .invocationCallOrder[0],
+      );
     });
 
     it("deletes sessions and tokens so a non-cascading FK cannot block the delete", async () => {

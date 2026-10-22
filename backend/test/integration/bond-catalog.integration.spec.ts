@@ -495,7 +495,7 @@ describe("bond catalog and benchmark refresh (integration)", () => {
 
   describe("the currency of an instrument", () => {
     it("is created on a deployment that has no such currency, owned by no user", async () => {
-      // The only caller of ensureSystemCurrency's insert branch: the beforeEach
+      // The only caller of ensureCatalogCurrency's insert branch: the beforeEach
       // pre-inserts PLN, so remove it and seed on a fresh deployment.
       await dataSource.query(`DELETE FROM currencies WHERE code = 'PLN'`);
       await withSystemContext(() => catalog.seed());

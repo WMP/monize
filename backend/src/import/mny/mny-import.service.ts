@@ -278,12 +278,13 @@ export class MnyImportService {
     const parsedAt = Date.now();
     sampleRss();
 
-    // Currencies are global reference data with their own idempotent creation
-    // path, so they are ensured before the import transaction opens. Securities
-    // and exchange rates reference currencies no account need touch, which is
-    // why this list is not just the accounts'.
+    // Ensured before the import transaction opens, for this user only: a known
+    // ISO code becomes an inactive reference row, any other code is this user's
+    // own currency, so an import never offers one to everybody. Securities and
+    // exchange rates reference currencies no account need touch, which is why
+    // this list is not just the accounts'.
     for (const code of parsed.currencyCodes) {
-      await this.currencies.ensureSystemCurrency(code);
+      await this.currencies.ensureCurrencyForUser(userId, code);
     }
 
     const written = await this.writeAll(userId, parsed, context);

@@ -5,6 +5,7 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from "@nestjs/common";
 import { CurrenciesService } from "./currencies.service";
 import { Currency } from "./entities/currency.entity";
@@ -315,6 +316,7 @@ describe("CurrenciesService", () => {
         .mockResolvedValueOnce([]) // main query: empty
         .mockResolvedValueOnce([{ default_currency: "EUR" }]) // preference lookup
         .mockResolvedValueOnce([]) // INSERT currencies
+        .mockResolvedValueOnce([]) // INSERT user_currency_preferences
         .mockResolvedValueOnce([
           {
             code: "EUR",
@@ -334,7 +336,9 @@ describe("CurrenciesService", () => {
       // The INSERT (3rd query) sets the proper symbol, not the bare code.
       const insertCall = mockDataSource.query.mock.calls[2];
       expect(insertCall[0]).toContain("INSERT INTO currencies");
-      expect(insertCall[1]).toEqual(["EUR", "Euro", "€", 2]);
+      expect(insertCall[1]).toEqual(["EUR", "Euro", "€", 2, false, null]);
+      // ...and is activated for this user only (4th query).
+      expect(mockDataSource.query.mock.calls[3][1]).toEqual([userId, "EUR"]);
     });
   });
 
@@ -372,24 +376,118 @@ describe("CurrenciesService", () => {
     });
   });
 
-  describe("ensureSystemCurrency()", () => {
-    it("creates a missing currency as a system currency with a proper symbol", async () => {
+  describe("ensureCurrencyForUser()", () => {
+    const insertCall = () =>
+      mockDataSource.query.mock.calls.find(([sql]) =>
+        String(sql).includes("INSERT INTO currencies"),
+      );
+    const preferenceCall = () =>
+      mockDataSource.query.mock.calls.find(([sql]) =>
+        String(sql).includes("INSERT INTO user_currency_preferences"),
+      );
+
+    it("adds a known ISO code as an inactive system row and activates it for the user only", async () => {
       mockCurrencyRepo.findOne!.mockResolvedValue(null);
 
-      await service.ensureSystemCurrency("eur");
+      await service.ensureCurrencyForUser(userId, "pln");
 
-      expect(mockDataSource.query).toHaveBeenCalledWith(
-        expect.stringContaining("INSERT INTO currencies"),
-        ["EUR", "Euro", "€", 2],
+      expect(insertCall()![0]).toContain("ON CONFLICT (code) DO NOTHING");
+      expect(insertCall()![1]).toEqual([
+        "PLN",
+        "Polish Zloty",
+        "zł",
+        2,
+        false,
+        null,
+      ]);
+      expect(preferenceCall()![0]).toContain(
+        "ON CONFLICT (user_id, currency_code) DO UPDATE SET is_active = true",
       );
+      expect(preferenceCall()![1]).toEqual([userId, "PLN"]);
     });
 
-    it("is a no-op when the currency already exists", async () => {
+    it("adds a code outside ISO 4217 as the user's own active currency", async () => {
+      mockCurrencyRepo.findOne!.mockResolvedValue(null);
+
+      await service.ensureCurrencyForUser(userId, "ZZZ");
+
+      const params = insertCall()![1];
+      expect(params[0]).toBe("ZZZ");
+      expect(params[4]).toBe(true);
+      expect(params[5]).toBe(userId);
+      expect(preferenceCall()![1]).toEqual([userId, "ZZZ"]);
+    });
+
+    it("leaves an existing row alone and still activates it for the user", async () => {
       mockCurrencyRepo.findOne!.mockResolvedValue(mockCurrency);
 
-      await service.ensureSystemCurrency("CAD");
+      await service.ensureCurrencyForUser(userId, "CAD");
 
-      expect(mockDataSource.query).not.toHaveBeenCalled();
+      expect(insertCall()).toBeUndefined();
+      expect(preferenceCall()![1]).toEqual([userId, "CAD"]);
+    });
+
+    it.each(["q#!", "US", "USDD", "", "U5D"])(
+      "refuses %p before any write",
+      async (code) => {
+        await expect(
+          service.ensureCurrencyForUser(userId, code),
+        ).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(mockDataSource.query).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe("lockCurrenciesCreatedBy()", () => {
+    it("locks the user's currencies in code order and returns their codes", async () => {
+      const manager = { query: jest.fn().mockResolvedValue([{ code: "PTS" }]) };
+
+      const codes = await service.lockCurrenciesCreatedBy(
+        manager as never,
+        userId,
+      );
+
+      expect(codes).toEqual(["PTS"]);
+      expect(manager.query).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /WHERE created_by_user_id = \$1 ORDER BY code FOR UPDATE/,
+        ),
+        [userId],
+      );
+    });
+  });
+
+  describe("removeUnreferencedCurrencies()", () => {
+    it("deletes only the creatorless rows nothing references", async () => {
+      const manager = {
+        query: jest.fn((sql: string, params: string[]) => {
+          if (sql.includes("currency_code_in_use_globally")) {
+            return Promise.resolve([{ inUse: params[0] === "KEP" }]);
+          }
+          return Promise.resolve([]);
+        }),
+      };
+
+      await service.removeUnreferencedCurrencies(manager as never, [
+        "KEP",
+        "PTS",
+      ]);
+
+      const deletes = manager.query.mock.calls.filter(([sql]) =>
+        sql.includes("DELETE FROM currencies"),
+      );
+      expect(deletes).toHaveLength(1);
+      expect(deletes[0][0]).toContain("created_by_user_id IS NULL");
+      expect(deletes[0][1]).toEqual(["PTS"]);
+    });
+
+    it("does nothing for an empty list", async () => {
+      const manager = { query: jest.fn() };
+
+      await service.removeUnreferencedCurrencies(manager as never, []);
+
+      expect(manager.query).not.toHaveBeenCalled();
     });
   });
 
@@ -410,16 +508,6 @@ describe("CurrenciesService", () => {
       await service.ensureCatalogCurrency("CAD");
 
       expect(mockDataSource.query).not.toHaveBeenCalled();
-    });
-
-    it("ensureSystemCurrency still creates an active one", async () => {
-      mockCurrencyRepo.findOne!.mockResolvedValue(null);
-
-      await service.ensureSystemCurrency("eur");
-
-      expect(mockDataSource.query.mock.calls[0][0]).toMatch(
-        /VALUES \(\$1, \$2, \$3, \$4, true, NULL\)/,
-      );
     });
   });
 
