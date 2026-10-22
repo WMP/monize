@@ -18,7 +18,10 @@ import type {
   EmailReceipt,
   EmailReceiptStatus,
 } from "../entities/email-receipt.entity";
-import { effectiveReceiptDate } from "../imap/forwarded-receipt";
+import {
+  effectiveReceiptDate,
+  isForwardedReceipt,
+} from "../imap/forwarded-receipt";
 import {
   tradeExecutedTotalUnits,
   tradeMayAutoApply,
@@ -146,7 +149,10 @@ export class EmailReceiptTradeService {
         context.mailboxAutoApply &&
         context.parser.status === "approved" &&
         tradeMayAutoApply(trade) &&
-        !ledger.anyMatch;
+        !ledger.anyMatch &&
+        // The broker of a forward is a claim of the email's text: a person
+        // looks, seeing who forwarded it (A26-H02).
+        !isForwardedReceipt(receipt);
       return outcome("review", null, request.id, gate ? done.action : null);
     } catch (error) {
       if (!isRefusal(error)) throw error;
