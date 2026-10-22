@@ -50,15 +50,22 @@ import {
 } from "./warranty-import.service";
 
 /**
- * The content types a browser sends for a `.csv` file: `text/csv`, plain text,
- * and Excel's registration on Windows. A CSV has no magic bytes to sniff, so
- * the type is only a first filter; the size limit bounds the read and the
- * parser refuses what is not a table.
+ * The content types a browser sends for a `.csv` file: `text/csv` and its
+ * older spellings, plain text, Excel's registration on Windows, and
+ * `application/octet-stream`, which a browser sends for an extension the
+ * operating system has no type for (a `.csv` on a machine without a
+ * spreadsheet app). A CSV has no magic bytes to sniff, so the type is only a
+ * first filter; the size limit bounds the read and the parser refuses what is
+ * not a table.
  */
 const CSV_CONTENT_TYPES: ReadonlySet<string> = new Set([
   "text/csv",
+  "text/x-csv",
+  "text/comma-separated-values",
+  "application/csv",
   "text/plain",
   "application/vnd.ms-excel",
+  "application/octet-stream",
 ]);
 
 /**

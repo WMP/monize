@@ -13,6 +13,7 @@ import {
   resolvedOnFitsClaimDate,
   resolvedOnFitsStatus,
 } from "./dto/create-warranty-claim.dto";
+import { nullableText } from "./dto/create-warranty.dto";
 import { UpdateWarrantyClaimDto } from "./dto/update-warranty-claim.dto";
 import {
   WarrantyClaim,
@@ -38,13 +39,6 @@ interface ClaimShape {
   claimDate: string;
   status: WarrantyClaimStatus;
   resolvedOn: string | null;
-}
-
-/** A nullable text field: blank becomes null. */
-function nullableText(value: string | null | undefined): string | null {
-  if (value === undefined || value === null) return null;
-  const trimmed = value.trim();
-  return trimmed === "" ? null : trimmed;
 }
 
 /** A nullable date field: blank becomes null. */

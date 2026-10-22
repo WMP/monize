@@ -25,7 +25,7 @@ import { SEARCH_SYNTAX_SUMMARY } from "../../transactions/transaction-search-que
 import {
   LLM_WARRANTY_DEFAULT_LIMIT,
   LLM_WARRANTY_MAX_LIMIT,
-} from "../../warranties/warranties.service";
+} from "../../warranties/warranty-llm-shape";
 import { LIST_WARRANTIES_DESCRIPTION } from "./tool-input-schemas";
 
 export { RULE_LANGUAGE_GUIDE };

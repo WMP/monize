@@ -28,10 +28,8 @@ import { AiReviewWorkService } from "../../ai-review/ai-review-work.service";
 import { EmailReceiptParserToolsService } from "../../email-receipts/parsers/email-receipt-parser-tools.service";
 import { SeriesFetchError } from "../../bonds/bond-adapter";
 import { BondSeriesService } from "../../bonds/bond-series.service";
-import {
-  LlmWarrantyList,
-  WarrantiesService,
-} from "../../warranties/warranties.service";
+import { WarrantiesService } from "../../warranties/warranties.service";
+import { LlmWarrantyList } from "../../warranties/warranty-llm-shape";
 import { TransactionRuleToolPrepService } from "../../transaction-rules/rule-tool-prep.service";
 
 describe("ToolExecutorService", () => {

@@ -3,10 +3,8 @@ import { McpWarrantiesTools } from "./warranties.tool";
 import { mcpTestCtx, McpTestContext } from "../testing/mcp-test-context";
 import { READ_ONLY } from "../mcp-annotations";
 import { listWarrantiesSchema } from "../../ai/query/tool-input-schemas";
-import type {
-  LlmWarrantyList,
-  WarrantiesService,
-} from "../../warranties/warranties.service";
+import type { WarrantiesService } from "../../warranties/warranties.service";
+import type { LlmWarrantyList } from "../../warranties/warranty-llm-shape";
 
 /** What `WarrantiesService.getLlmWarranties` answers for one linked row. */
 const LIST: LlmWarrantyList = {

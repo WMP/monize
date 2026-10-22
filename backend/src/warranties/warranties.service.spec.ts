@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { DataSource } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 
 import { requestContextStorage } from "../common/request-context";
 import { Currency } from "../currencies/entities/currency.entity";
@@ -776,6 +776,35 @@ describe("WarrantiesService", () => {
         expect(warrantyRepo.save).not.toHaveBeenCalled();
       },
     );
+  });
+
+  describe("createRow", () => {
+    it("writes on the caller's manager and answers the entity without the view's reads", async () => {
+      const row = await service.createRow(
+        mocks.manager as unknown as EntityManager,
+        USER,
+        createDto({ purchasePrice: 10, currencyCode: "CAD" }),
+      );
+
+      expect(row).toMatchObject({ id: W1, userId: USER, name: "Laptop" });
+      expect(mocks.dataSource.transaction).not.toHaveBeenCalled();
+      expect(mocks.manager.query).not.toHaveBeenCalled();
+      expect(claimRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it("refuses another user's transaction before the write (WTY-005)", async () => {
+      await expect(
+        service.createRow(
+          mocks.manager as unknown as EntityManager,
+          USER,
+          createDto({ transactionId: TX }),
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(transactionRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: TX, userId: USER } }),
+      );
+      expect(warrantyRepo.save).not.toHaveBeenCalled();
+    });
   });
 
   describe("update", () => {

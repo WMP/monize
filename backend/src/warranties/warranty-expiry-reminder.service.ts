@@ -92,10 +92,18 @@ export class WarrantyExpiryReminderService {
    * once: see the class comment.
    */
   async evaluate(now: Date): Promise<WarrantyReminderTally> {
-    const { candidates, timezoneOf } = await withSystemContext(async () => ({
-      candidates: await this.candidates(now),
-      timezoneOf: await this.timezones(),
-    }));
+    // Every user's timezone is read only when there is a candidate to judge
+    // in it: most days there is none, and the users read is the larger one.
+    const { candidates, timezoneOf } = await withSystemContext(async () => {
+      const found = await this.candidates(now);
+      return {
+        candidates: found,
+        timezoneOf:
+          found.length === 0
+            ? new Map<string, string>()
+            : await this.timezones(),
+      };
+    });
 
     const byUser = new Map<string, WarrantyCandidate[]>();
     for (const candidate of candidates) {

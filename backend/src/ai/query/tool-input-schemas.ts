@@ -30,7 +30,7 @@ import { RULE_TRIGGERS } from "../../transaction-rules/rule-trigger.types";
 import {
   LLM_WARRANTY_DEFAULT_LIMIT,
   LLM_WARRANTY_MAX_LIMIT,
-} from "../../warranties/warranties.service";
+} from "../../warranties/warranty-llm-shape";
 import { MAX_RULE_ACTIONS } from "../../transaction-rules/rule-validation";
 import {
   MAX_RULE_RUN_ACCOUNTS,

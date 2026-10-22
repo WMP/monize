@@ -7806,8 +7806,9 @@ Enforcement         warranties.guard.spec.ts walks every non-spec source under
                     SecuritiesModule, and any mention of those four service
                     names; the failure message names WTY-001. The service
                     reaches a purchase and a payee through their entities, by
-                    read only (assertOwnedTransaction and
-                    loadLinkedTransactions in warranties.service.ts).
+                    read only (assertOwnedTransaction in
+                    warranties.service.ts, loadLinkedTransactions in
+                    warranty-linked-transaction.ts).
 Concurrency scope   --
 Retry semantics     --
 Crash semantics     --
@@ -7958,16 +7959,17 @@ Statement           A warranty or claim write that names a transaction, a
                     written.
 Source of truth     transactions, payees, currencies, warranties, read by
                     (id, user_id)
-Enforcement         WarrantiesService.create and update read the named
-                    transaction and payee by (id, userId), and the currency by
-                    code, inside the withScopedDb transaction that writes
-                    (assertOwnedTransaction, assertOwnedPayee,
+Enforcement         WarrantiesService.createRow (behind create) and update
+                    read the named transaction and payee by (id, userId), and
+                    the currency by code, inside the withScopedDb transaction
+                    that writes (assertOwnedTransaction, assertOwnedPayee,
                     assertKnownCurrency), and a miss is a NotFoundException
                     before the INSERT or UPDATE. Every claim write reads its
                     warranty by (id, userId) under lockWarrantyRow in the same
                     transaction (warranty-claims.service.ts). The CSV import
-                    writes each row through WarrantiesService.create inside one
-                    transaction, so a refused row writes nothing.
+                    writes each row through WarrantiesService.createRow on the
+                    manager of its one transaction, so a refused row writes
+                    nothing.
 Concurrency scope   the write's own transaction
 Retry semantics     a refused write wrote nothing, so a retry starts clean
 Crash semantics     --
@@ -8026,8 +8028,8 @@ Enforcement         The read routes carry @AllowDelegate() and
                     @DelegateRequiresSection("warranties"); every write route
                     is owner-only. WarrantiesController resolves
                     delegateReadableAccountScope once per request and passes
-                    it as accountScope; WarrantiesService.loadLinkedTransactions
-                    is the one read of a warranty's purchase and narrows it
+                    it as accountScope; loadLinkedTransactions
+                    (warranty-linked-transaction.ts) is the one read of a warranty's purchase and narrows it
                     with restrictToAccountScope (an empty scope reads nothing).
                     transactionId is set only for the owner or with the
                     purchase itself; linkedTransactionHidden says only that a

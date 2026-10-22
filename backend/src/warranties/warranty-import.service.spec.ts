@@ -3,14 +3,18 @@ import {
   NotFoundException,
   PayloadTooLargeException,
 } from "@nestjs/common";
-import { DataSource } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 
 import { resolveUserDefaultCurrency } from "../common/default-currency.util";
 import { Currency } from "../currencies/entities/currency.entity";
+import { Payee } from "../payees/entities/payee.entity";
+import { Transaction } from "../transactions/entities/transaction.entity";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { CreateWarrantyDto } from "./dto/create-warranty.dto";
-import { WarrantyView } from "./dto/warranty-response.dto";
+import { WarrantyClaim } from "./entities/warranty-claim.entity";
+import { Warranty } from "./entities/warranty.entity";
 import { WarrantiesService } from "./warranties.service";
+import * as warrantyCsv from "./warranty-csv";
 import {
   WARRANTY_IMPORT_MAX_BYTES,
   WARRANTY_IMPORT_MAX_ROWS,
@@ -37,13 +41,15 @@ const INVALID_ROW = "Toaster,2026-03-01,0,0,0,,false,25,,,,,,USD,,";
 const ALL_VALID = [HEADER, ...VALID_ROWS].join("\n");
 const WITH_INVALID = [HEADER, ...VALID_ROWS, INVALID_ROW].join("\n");
 
-/** What `WarrantiesService.create` answers, as the real method types it. */
-function view(id: string, dto: CreateWarrantyDto): WarrantyView {
+/** What `WarrantiesService.createRow` answers: the saved entity, no view. */
+function saved(id: string, dto: CreateWarrantyDto): Warranty {
   return {
     id,
+    userId: USER,
     name: dto.name,
     vendorName: dto.vendorName ?? null,
     payeeId: null,
+    transactionId: null,
     modelNumber: dto.modelNumber ?? null,
     serialNumbers: dto.serialNumbers ?? [],
     warrantyKind: dto.warrantyKind ?? "manufacturer",
@@ -54,25 +60,18 @@ function view(id: string, dto: CreateWarrantyDto): WarrantyView {
     currencyCode: dto.currencyCode ?? null,
     productUrl: dto.productUrl ?? null,
     notes: dto.notes ?? null,
-    today: "2026-10-21",
-    status: "active",
-    daysLeft: 100,
-    documentCount: 0,
-    openClaimCount: 0,
-    linkedTransaction: null,
-    linkedTransactionHidden: false,
     archivedAt: null,
-    createdAt: "2026-10-21T12:00:00.000Z",
-    updatedAt: "2026-10-21T12:00:00.000Z",
+    createdAt: new Date("2026-10-21T12:00:00.000Z"),
+    updatedAt: new Date("2026-10-21T12:00:00.000Z"),
   };
 }
 
 describe("WarrantyImportService", () => {
   let service: WarrantyImportService;
   let mocks: ReturnType<typeof createScopedDbMocks>;
-  let create: jest.Mock<
-    Promise<WarrantyView>,
-    Parameters<WarrantiesService["create"]>
+  let createRow: jest.Mock<
+    Promise<Warranty>,
+    Parameters<WarrantiesService["createRow"]>
   >;
   let currencyRepo: { find: jest.Mock };
 
@@ -84,13 +83,14 @@ describe("WarrantyImportService", () => {
     };
     mocks = createScopedDbMocks([[Currency, currencyRepo]]);
     let n = 0;
-    create = jest.fn(async (_userId: string, dto: CreateWarrantyDto) =>
-      view(`w-${++n}`, dto),
+    createRow = jest.fn(
+      async (_m: EntityManager, _userId: string, dto: CreateWarrantyDto) =>
+        saved(`w-${++n}`, dto),
     );
     (resolveUserDefaultCurrency as jest.Mock).mockResolvedValue("CAD");
     service = new WarrantyImportService(
       mocks.dataSource as unknown as DataSource,
-      { create } as unknown as WarrantiesService,
+      { createRow } as unknown as WarrantiesService,
     );
   });
 
@@ -110,7 +110,7 @@ describe("WarrantyImportService", () => {
       expect(result.rows[2].warnings).toEqual([
         'Currency "XYZ" is not known; CAD was used',
       ]);
-      expect(create).not.toHaveBeenCalled();
+      expect(createRow).not.toHaveBeenCalled();
       expect(resolveUserDefaultCurrency).toHaveBeenCalledWith(
         mocks.dataSource,
         USER,
@@ -119,15 +119,15 @@ describe("WarrantyImportService", () => {
   });
 
   describe("commit", () => {
-    it("creates every row through WarrantiesService.create inside one transaction", async () => {
+    it("writes every row through WarrantiesService.createRow on the one transaction's manager (WTY-005)", async () => {
       const result = await service.run(USER, ALL_VALID, { dryRun: false });
 
       expect(mocks.dataSource.transaction).toHaveBeenCalledTimes(1);
-      expect(create).toHaveBeenCalledTimes(3);
-      expect(create.mock.calls.map(([userId]) => userId)).toEqual([
-        USER,
-        USER,
-        USER,
+      expect(createRow).toHaveBeenCalledTimes(3);
+      expect(createRow.mock.calls.map(([m, userId]) => [m, userId])).toEqual([
+        [mocks.manager, USER],
+        [mocks.manager, USER],
+        [mocks.manager, USER],
       ]);
       expect(result).toMatchObject({ dryRun: false, created: 3 });
       expect(result.rows.map((r) => [r.outcome, r.warrantyId])).toEqual([
@@ -141,7 +141,7 @@ describe("WarrantyImportService", () => {
       const preview = await service.run(USER, ALL_VALID, { dryRun: true });
       const commit = await service.run(USER, ALL_VALID, { dryRun: false });
 
-      expect(create.mock.calls.map(([, dto]) => dto)).toEqual(
+      expect(createRow.mock.calls.map(([, , dto]) => dto)).toEqual(
         preview.rows.map((r) => r.warranty),
       );
       expect(
@@ -157,7 +157,7 @@ describe("WarrantyImportService", () => {
           "1 rows are invalid, so nothing was imported; fix them or skip them",
         ),
       );
-      expect(create).not.toHaveBeenCalled();
+      expect(createRow).not.toHaveBeenCalled();
     });
 
     it("imports the valid rows and reports the invalid ones with skipInvalid", async () => {
@@ -166,7 +166,7 @@ describe("WarrantyImportService", () => {
         skipInvalid: true,
       });
 
-      expect(create).toHaveBeenCalledTimes(3);
+      expect(createRow).toHaveBeenCalledTimes(3);
       expect(result.created).toBe(3);
       expect(result.rows[3]).toMatchObject({
         line: 5,
@@ -179,15 +179,108 @@ describe("WarrantyImportService", () => {
     });
 
     it("lets a refusal from the create path reject the whole import", async () => {
-      create.mockImplementationOnce(async (_u, dto) => view("w-1", dto));
-      create.mockRejectedValueOnce(
+      createRow.mockImplementationOnce(async (_m, _u, dto) =>
+        saved("w-1", dto),
+      );
+      createRow.mockRejectedValueOnce(
         new NotFoundException('Currency "CAD" not found'),
       );
 
       await expect(
         service.run(USER, ALL_VALID, { dryRun: false }),
       ).rejects.toBeInstanceOf(NotFoundException);
-      expect(create).toHaveBeenCalledTimes(2);
+      expect(createRow).toHaveBeenCalledTimes(2);
+      expect(mocks.dataSource.transaction).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  /**
+   * The importer over the real `WarrantiesService`: the refusals it relies on
+   * live in `createRow`, not in the view `create` builds, so a row the API
+   * would refuse is refused here too, and no row costs a view's reads.
+   */
+  describe("commit through the real createRow", () => {
+    const FOREIGN_TX = "44444444-4444-4444-8444-444444444444";
+    let warrantyRepo: Record<string, jest.Mock>;
+    let transactionRepo: { findOne: jest.Mock };
+    let claimRepo: { createQueryBuilder: jest.Mock };
+
+    beforeEach(() => {
+      warrantyRepo = {
+        create: jest.fn((value: Partial<Warranty>) => value),
+        save: jest.fn(async (value: Partial<Warranty>) => ({
+          ...value,
+          id: `w-${warrantyRepo.save.mock.calls.length}`,
+        })),
+      };
+      // Another user's transaction is invisible to (id, userId): no row.
+      transactionRepo = { findOne: jest.fn().mockResolvedValue(null) };
+      claimRepo = { createQueryBuilder: jest.fn() };
+      const currencies = {
+        ...currencyRepo,
+        findOne: jest.fn(async ({ where }: { where: { code: string } }) => ({
+          code: where.code,
+        })),
+      };
+      mocks = createScopedDbMocks([
+        [Currency, currencies],
+        [Warranty, warrantyRepo],
+        [Transaction, transactionRepo],
+        [Payee, { findOne: jest.fn().mockResolvedValue(null) }],
+        [WarrantyClaim, claimRepo],
+      ]);
+      const dataSource = mocks.dataSource as unknown as DataSource;
+      service = new WarrantyImportService(
+        dataSource,
+        new WarrantiesService(dataSource),
+      );
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("refuses a row naming another user's transaction and writes nothing", async () => {
+      // The Warracker file has no transaction column today; a mapping that
+      // ever carries one still meets WTY-005's ownership read before any
+      // INSERT, on the import's own transaction.
+      const mapWarrantyCsv = warrantyCsv.mapWarrantyCsv;
+      jest.spyOn(warrantyCsv, "mapWarrantyCsv").mockImplementation((t, c) => {
+        const mapping = mapWarrantyCsv(t, c);
+        const [first, ...rest] = mapping.rows;
+        return {
+          ...mapping,
+          rows: [
+            {
+              ...first,
+              warranty: Object.assign(new CreateWarrantyDto(), {
+                ...first.warranty,
+                transactionId: FOREIGN_TX,
+              }),
+            },
+            ...rest,
+          ],
+        };
+      });
+
+      await expect(
+        service.run(USER, ALL_VALID, { dryRun: false }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(transactionRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: FOREIGN_TX, userId: USER } }),
+      );
+      expect(warrantyRepo.save).not.toHaveBeenCalled();
+      expect(mocks.dataSource.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it("writes each row without reading back a view", async () => {
+      const result = await service.run(USER, ALL_VALID, { dryRun: false });
+
+      expect(result.created).toBe(3);
+      expect(warrantyRepo.save).toHaveBeenCalledTimes(3);
+      // The view's document-count, open-claim and linked-purchase reads.
+      expect(mocks.manager.query).not.toHaveBeenCalled();
+      expect(claimRepo.createQueryBuilder).not.toHaveBeenCalled();
       expect(mocks.dataSource.transaction).toHaveBeenCalledTimes(1);
     });
   });

@@ -43,12 +43,13 @@ export interface WarrantyImportResult {
  * The preview and the commit are one computation (WTY-006): both read the
  * file through `parseCsvRows`, map and validate every row with
  * `mapWarrantyCsv`, and differ only in whether the valid rows are then
- * written. Each row is written through `WarrantiesService.create`, so the
- * import refuses and derives exactly what the API does (WTY-005, the term
- * arithmetic, the price and currency rule). Every create joins the one
- * `withScopedDb` transaction the mapping ran in: a row the database refuses
- * rolls the whole file back, and a file with an invalid row writes nothing
- * unless the caller chose `skipInvalid`.
+ * written. Each row is written through `WarrantiesService.createRow`, the
+ * insert behind `create`, so the import refuses and derives exactly what the
+ * API does (WTY-005, the term arithmetic, the price and currency rule)
+ * without reading back a view per row. Every row is written on the manager
+ * of the one `withScopedDb` transaction the mapping ran in: a row the
+ * service or the database refuses rolls the whole file back, and a file with
+ * an invalid row writes nothing unless the caller chose `skipInvalid`.
  */
 @Injectable()
 export class WarrantyImportService {
@@ -116,8 +117,12 @@ export class WarrantyImportService {
           rows.push(row);
           continue;
         }
-        const view = await this.warrantiesService.create(userId, row.warranty);
-        rows.push({ ...row, outcome: "created", warrantyId: view.id });
+        const saved = await this.warrantiesService.createRow(
+          m,
+          userId,
+          row.warranty,
+        );
+        rows.push({ ...row, outcome: "created", warrantyId: saved.id });
         created += 1;
       }
       return {
@@ -131,14 +136,6 @@ export class WarrantyImportService {
 
   /** The file's limits and shape, refused before anything is read. */
   private readTable(content: string): string[][] {
-    if (typeof content !== "string") {
-      throw new BadRequestException(
-        tr(
-          "errors.warranties.import.emptyFile",
-          "The file must have a header row and at least one data row",
-        ),
-      );
-    }
     if (Buffer.byteLength(content, "utf8") > WARRANTY_IMPORT_MAX_BYTES) {
       throw new PayloadTooLargeException(
         tr(

@@ -78,10 +78,8 @@ import {
   LlmScheduledKind,
 } from "../../scheduled-transactions/scheduled-transactions.service";
 import { BuiltInReportsService } from "../../built-in-reports/built-in-reports.service";
-import {
-  LlmWarrantyQuery,
-  WarrantiesService,
-} from "../../warranties/warranties.service";
+import { WarrantiesService } from "../../warranties/warranties.service";
+import { LlmWarrantyQuery } from "../../warranties/warranty-llm-shape";
 import { validateToolInput } from "./tool-input-schemas";
 import { AttachmentDto } from "./dto/ai-query.dto";
 import {

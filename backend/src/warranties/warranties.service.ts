@@ -13,26 +13,35 @@ import {
 } from "../common/dto/pagination-query.dto";
 import { primaryAttachmentSql } from "../attachments/primary-attachment.util";
 import { Currency } from "../currencies/entities/currency.entity";
-import { restrictToAccountScope } from "../delegation/delegate-account-scope.util";
 import { tr } from "../i18n/translate";
 import { Payee } from "../payees/entities/payee.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { escapeLikePattern } from "../transactions/transaction-search.util";
-import { CreateWarrantyDto, isBlank } from "./dto/create-warranty.dto";
 import {
-  ListWarrantiesDto,
-  WarrantyStatusFilter,
-} from "./dto/list-warranties.dto";
+  CreateWarrantyDto,
+  isBlank,
+  nullableText,
+} from "./dto/create-warranty.dto";
+import { ListWarrantiesDto } from "./dto/list-warranties.dto";
 import { UpdateWarrantyDto } from "./dto/update-warranty.dto";
 import {
-  LinkedTransaction,
   WarrantyListResult,
   WarrantySummary,
   WarrantyView,
 } from "./dto/warranty-response.dto";
 import { WarrantyClaim } from "./entities/warranty-claim.entity";
-import { Warranty, WarrantyKind } from "./entities/warranty.entity";
+import { Warranty } from "./entities/warranty.entity";
 import { WarrantyTerm, termToExpiresOn } from "./warranty-expiry.util";
+import {
+  isTransactionInScope,
+  loadLinkedTransactions,
+} from "./warranty-linked-transaction";
+import {
+  LlmWarrantyList,
+  LlmWarrantyQuery,
+  llmWarrantyListQuery,
+  toLlmWarrantyList,
+} from "./warranty-llm-shape";
 import {
   WARRANTY_EXPIRING_WINDOW_DAYS,
   WARRANTY_STATUSES,
@@ -65,13 +74,6 @@ interface WarrantyShape {
   isLifetime: boolean;
   purchasePrice: number | null;
   currencyCode: string | null;
-}
-
-/** A nullable text field: absent stays absent, blank becomes null. */
-function nullableText(value: string | null | undefined): string | null {
-  if (value === undefined || value === null) return null;
-  const trimmed = value.trim();
-  return trimmed === "" ? null : trimmed;
 }
 
 function cleanSerialNumbers(values: string[] | undefined): string[] {
@@ -144,7 +146,7 @@ export class WarrantiesService {
       if (
         query.transactionId &&
         ctx.accountScope !== undefined &&
-        !(await this.isTransactionInScope(
+        !(await isTransactionInScope(
           m,
           userId,
           query.transactionId,
@@ -266,50 +268,67 @@ export class WarrantiesService {
   ): Promise<WarrantyView> {
     const today = ctx.today ?? todayYMD();
     return withScopedDb(this.dataSource, async (m) => {
-      const transactionId = nullableText(dto.transactionId);
-      const payeeId = nullableText(dto.payeeId);
-      const currencyCode = nullableText(dto.currencyCode);
-
-      if (transactionId !== null) {
-        await this.assertOwnedTransaction(m, userId, transactionId);
-      }
-      if (payeeId !== null) {
-        await this.assertOwnedPayee(m, userId, payeeId);
-      }
-      if (currencyCode !== null) {
-        await this.assertKnownCurrency(m, currencyCode);
-      }
-
-      const expiry = this.resolveExpiry(dto, dto.purchaseDate, null);
-      const shape: WarrantyShape = {
-        purchaseDate: dto.purchaseDate,
-        expiresOn: expiry?.expiresOn ?? null,
-        isLifetime: expiry?.isLifetime ?? false,
-        purchasePrice: dto.purchasePrice ?? null,
-        currencyCode,
-      };
-      this.assertShape(shape);
-
-      const repo = m.getRepository(Warranty);
-      const saved = await repo.save(
-        repo.create({
-          userId,
-          name: dto.name.trim(),
-          vendorName: nullableText(dto.vendorName),
-          payeeId,
-          transactionId,
-          modelNumber: nullableText(dto.modelNumber),
-          serialNumbers: cleanSerialNumbers(dto.serialNumbers),
-          warrantyKind: dto.warrantyKind ?? "manufacturer",
-          ...shape,
-          productUrl: nullableText(dto.productUrl),
-          notes: nullableText(dto.notes),
-          archivedAt: null,
-        }),
-      );
+      const saved = await this.createRow(m, userId, dto);
       const [view] = await this.toViews(m, userId, [saved], today);
       return view;
     });
+  }
+
+  /**
+   * The insert behind `create`, for a caller already inside a `withScopedDb`
+   * transaction that has no use for the view (the CSV import, which writes up
+   * to a file's worth of rows and reads none of them back). Every refusal
+   * lives here, on `m`, before the INSERT (WTY-005): the transaction and the
+   * payee loaded by (id, userId), the currency by code, the table's CHECKs
+   * re-validated on the merged shape. `m` must be the caller's transaction
+   * manager, so a refusal rolls back whatever the caller already wrote.
+   */
+  async createRow(
+    m: EntityManager,
+    userId: string,
+    dto: CreateWarrantyDto,
+  ): Promise<Warranty> {
+    const transactionId = nullableText(dto.transactionId);
+    const payeeId = nullableText(dto.payeeId);
+    const currencyCode = nullableText(dto.currencyCode);
+
+    if (transactionId !== null) {
+      await this.assertOwnedTransaction(m, userId, transactionId);
+    }
+    if (payeeId !== null) {
+      await this.assertOwnedPayee(m, userId, payeeId);
+    }
+    if (currencyCode !== null) {
+      await this.assertKnownCurrency(m, currencyCode);
+    }
+
+    const expiry = this.resolveExpiry(dto, dto.purchaseDate, null);
+    const shape: WarrantyShape = {
+      purchaseDate: dto.purchaseDate,
+      expiresOn: expiry?.expiresOn ?? null,
+      isLifetime: expiry?.isLifetime ?? false,
+      purchasePrice: dto.purchasePrice ?? null,
+      currencyCode,
+    };
+    this.assertShape(shape);
+
+    const repo = m.getRepository(Warranty);
+    return repo.save(
+      repo.create({
+        userId,
+        name: dto.name.trim(),
+        vendorName: nullableText(dto.vendorName),
+        payeeId,
+        transactionId,
+        modelNumber: nullableText(dto.modelNumber),
+        serialNumbers: cleanSerialNumbers(dto.serialNumbers),
+        warrantyKind: dto.warrantyKind ?? "manufacturer",
+        ...shape,
+        productUrl: nullableText(dto.productUrl),
+        notes: nullableText(dto.notes),
+        archivedAt: null,
+      }),
+    );
   }
 
   /**
@@ -668,12 +687,7 @@ export class WarrantiesService {
       claimRows.map((r) => [r.warrantyId, Number(r.count)]),
     );
 
-    const linked = await this.loadLinkedTransactions(
-      m,
-      userId,
-      rows,
-      accountScope,
-    );
+    const linked = await loadLinkedTransactions(m, userId, rows, accountScope);
 
     return rows.map((row) => {
       const { status, daysLeft } = warrantyStatus(
@@ -730,88 +744,6 @@ export class WarrantiesService {
   }
 
   /**
-   * The purchases the rows link to, keyed by transaction id, in one read.
-   * This is the only place a warranty reaches its purchase for a reader
-   * (WTY-007): an acting delegate's `accountScope` narrows the read to the
-   * accounts their delegation grants READ on, so a purchase in any other
-   * account is simply absent from the map, and an empty scope reads nothing.
-   * `undefined` is the owner and narrows nothing.
-   */
-  private async loadLinkedTransactions(
-    m: EntityManager,
-    userId: string,
-    rows: Warranty[],
-    accountScope: readonly string[] | undefined,
-  ): Promise<Map<string, LinkedTransaction>> {
-    const linked = new Map<string, LinkedTransaction>();
-    const transactionIds = [
-      ...new Set(
-        rows
-          .map((row) => row.transactionId)
-          .filter((id): id is string => id !== null),
-      ),
-    ];
-    if (transactionIds.length === 0 || accountScope?.length === 0) {
-      return linked;
-    }
-    const qb = m
-      .getRepository(Transaction)
-      .createQueryBuilder("t")
-      .leftJoin("t.payee", "p")
-      .select([
-        "t.id",
-        "t.transactionDate",
-        "t.payeeName",
-        "t.amount",
-        "t.currencyCode",
-        "t.accountId",
-        "p.id",
-        "p.name",
-      ])
-      .where("t.id IN (:...transactionIds)", { transactionIds })
-      .andWhere("t.user_id = :userId", { userId });
-    const transactions = await restrictToAccountScope(
-      qb,
-      "t.account_id",
-      accountScope,
-    ).getMany();
-    for (const t of transactions) {
-      linked.set(t.id, {
-        id: t.id,
-        transactionDate: t.transactionDate,
-        payeeName: t.payeeName ?? t.payee?.name ?? null,
-        amount: Number(t.amount),
-        currencyCode: t.currencyCode,
-        accountId: t.accountId,
-      });
-    }
-    return linked;
-  }
-
-  /**
-   * Whether the caller's purchase `transactionId` sits in an account the
-   * scope admits, read through `restrictToAccountScope` exactly as
-   * `loadLinkedTransactions` narrows the purchase itself (WTY-007). An empty
-   * scope admits nothing and reads nothing. Only `findAll`'s `transactionId`
-   * filter asks, and only for a delegate.
-   */
-  private async isTransactionInScope(
-    m: EntityManager,
-    userId: string,
-    transactionId: string,
-    accountScope: readonly string[],
-  ): Promise<boolean> {
-    if (accountScope.length === 0) return false;
-    const qb = m
-      .getRepository(Transaction)
-      .createQueryBuilder("t")
-      .select("t.id")
-      .where("t.id = :transactionId", { transactionId })
-      .andWhere("t.user_id = :userId", { userId });
-    return restrictToAccountScope(qb, "t.account_id", accountScope).getExists();
-  }
-
-  /**
    * The `list_warranties` tool on both AI surfaces (design decision 11): the
    * MCP tool and the assistant's executor are thin adapters over this one
    * method, so they answer the same shape. It reads through `findAll`, so the
@@ -827,83 +759,11 @@ export class WarrantiesService {
     ctx: WarrantyReadContext = {},
   ): Promise<LlmWarrantyList> {
     const today = ctx.today ?? todayYMD();
-    const limit = Math.min(
-      LLM_WARRANTY_MAX_LIMIT,
-      Math.max(1, Math.floor(query.limit ?? LLM_WARRANTY_DEFAULT_LIMIT)),
-    );
     const { data, pagination } = await this.findAll(
       userId,
-      {
-        status: query.status ?? "all",
-        q: query.q,
-        archived: false,
-        sort: "expiresOn",
-        page: 1,
-        limit,
-      },
+      llmWarrantyListQuery(query),
       { ...ctx, today },
     );
-    return {
-      today,
-      windowDays: WARRANTY_EXPIRING_WINDOW_DAYS,
-      warranties: data.map((view) => ({
-        id: view.id,
-        name: view.name,
-        vendorName: view.vendorName,
-        warrantyKind: view.warrantyKind,
-        purchaseDate: view.purchaseDate,
-        expiresOn: view.expiresOn,
-        isLifetime: view.isLifetime,
-        status: view.status,
-        daysLeft: view.daysLeft,
-        purchasePrice: view.purchasePrice,
-        currencyCode: view.currencyCode,
-        serialNumbers: view.serialNumbers,
-        linkedTransactionId: view.transactionId ?? null,
-        openClaimCount: view.openClaimCount,
-        documentCount: view.documentCount,
-        archived: false as const,
-      })),
-      total: pagination.total,
-    };
+    return toLlmWarrantyList(today, data, pagination.total);
   }
-}
-
-/** `list_warranties`: at most this many rows per call, 20 when unasked. */
-export const LLM_WARRANTY_MAX_LIMIT = 50;
-export const LLM_WARRANTY_DEFAULT_LIMIT = 20;
-
-/** The `list_warranties` tool's input, after its schema has validated it. */
-export interface LlmWarrantyQuery {
-  status?: WarrantyStatusFilter;
-  q?: string;
-  limit?: number;
-}
-
-/** One warranty as a model reads it: the server's status, never a date sum. */
-export interface LlmWarranty {
-  id: string;
-  name: string;
-  vendorName: string | null;
-  warrantyKind: WarrantyKind;
-  purchaseDate: string;
-  expiresOn: string | null;
-  isLifetime: boolean;
-  status: WarrantyStatus;
-  daysLeft: number | null;
-  purchasePrice: number | null;
-  currencyCode: string | null;
-  serialNumbers: string[];
-  linkedTransactionId: string | null;
-  openClaimCount: number;
-  documentCount: number;
-  archived: false;
-}
-
-/** `total` counts every match; `warranties` is the first `limit` of them. */
-export interface LlmWarrantyList {
-  today: string;
-  windowDays: number;
-  warranties: LlmWarranty[];
-  total: number;
 }

@@ -176,6 +176,17 @@ describe("WarrantiesController", () => {
       expect(importService.run).toHaveBeenCalled();
     });
 
+    it("accepts the type a browser sends for a .csv its OS cannot name, and the older CSV spellings", async () => {
+      for (const type of [
+        "application/octet-stream",
+        "application/csv",
+        "text/x-csv",
+      ]) {
+        await controller.importCsv(req, {}, csvFile(type));
+      }
+      expect(importService.run).toHaveBeenCalledTimes(3);
+    });
+
     it("refuses a missing file and a non-CSV content type before reading", () => {
       expect(() => controller.importCsv(req, {}, undefined)).toThrow(
         "Choose a CSV file to import",

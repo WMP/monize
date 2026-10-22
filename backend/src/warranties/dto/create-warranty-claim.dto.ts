@@ -13,10 +13,7 @@ import {
   WARRANTY_CLAIM_STATUSES,
   WarrantyClaimStatus,
 } from "../entities/warranty-claim.entity";
-import { PayloadRule, isBlank } from "./create-warranty.dto";
-
-/** A nullable optional field: absent, null and blank are no value. */
-const hasValue = (_o: unknown, v: unknown): boolean => v !== null && v !== "";
+import { PayloadRule, hasValue, isBlank } from "./create-warranty.dto";
 
 /** The outcomes a claim can be closed with; only these carry `resolvedOn`. */
 export const WARRANTY_CLAIM_CLOSED_STATUSES: readonly WarrantyClaimStatus[] = [

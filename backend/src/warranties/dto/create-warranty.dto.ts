@@ -31,7 +31,8 @@ import { WARRANTY_KINDS, WarrantyKind } from "../entities/warranty.entity";
 export const WARRANTY_MAX_SERIAL_NUMBERS = 10;
 
 /** A nullable optional field with a format: absent, null and blank are no value. */
-const hasValue = (_o: unknown, v: unknown): boolean => v !== null && v !== "";
+export const hasValue = (_o: unknown, v: unknown): boolean =>
+  v !== null && v !== "";
 
 /**
  * A duration from the purchase date, turned into `expiresOn` by
@@ -193,6 +194,13 @@ export class WarrantyFieldsDto {
 /** Null, undefined and the blank a cleared input sends are all "no value". */
 export function isBlank(value: unknown): boolean {
   return value === undefined || value === null || value === "";
+}
+
+/** A nullable text field as the services store it: blank becomes null, else trimmed. */
+export function nullableText(value: string | null | undefined): string | null {
+  if (value === undefined || value === null) return null;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
 }
 
 /**
