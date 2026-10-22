@@ -149,5 +149,93 @@
     "urlInvalid": "[XX-Enter a web address starting with http:// or https://-XX]",
     "urlTooLong": "[XX-Use 500 characters or fewer-XX]",
     "notesTooLong": "[XX-Use 2000 characters or fewer-XX]"
+  },
+  "detail": {
+    "back": "[XX-Back to Warranties-XX]",
+    "loading": "[XX-Loading warranty...-XX]",
+    "loadFailed": "[XX-This warranty could not be loaded.-XX]",
+    "retry": "[XX-Try again-XX]",
+    "archivedBadge": "[XX-Archived-XX]",
+    "card": {
+      "title": "[XX-Details-XX]",
+      "expires": "[XX-Expires-XX]",
+      "daysLeft": "[XX-Time left-XX]",
+      "kind": "[XX-Warranty type-XX]",
+      "vendor": "[XX-Vendor-XX]",
+      "purchaseDate": "[XX-Purchased-XX]",
+      "price": "[XX-Purchase price-XX]",
+      "serialNumbers": "[XX-Serial numbers-XX]",
+      "model": "[XX-Model number-XX]",
+      "productUrl": "[XX-Product page-XX]",
+      "notes": "[XX-Notes-XX]",
+      "none": "[XX-None-XX]",
+      "lifetime": "[XX-Lifetime-XX]"
+    },
+    "transaction": {
+      "title": "[XX-Purchase-XX]",
+      "open": "[XX-Open the transaction of {date}: {payee}, {amount}-XX]",
+      "none": "[XX-No linked transaction-XX]",
+      "unreadable": "[XX-The purchase is in an account you cannot read.-XX]",
+      "noPayee": "[XX-No payee-XX]"
+    }
+  },
+  "documents": {
+    "title": "[XX-Documents-XX]",
+    "empty": "[XX-No documents yet-XX]",
+    "kindLabel": "[XX-Document type-XX]",
+    "kinds": {
+      "receipt": "[XX-Receipt-XX]",
+      "manual": "[XX-Manual-XX]",
+      "photo": "[XX-Photo-XX]",
+      "other": "[XX-Other-XX]"
+    }
+  },
+  "claims": {
+    "title": "[XX-Claims-XX]",
+    "add": "[XX-Add claim-XX]",
+    "empty": "[XX-No claims yet-XX]",
+    "loading": "[XX-Loading claims...-XX]",
+    "loadFailed": "[XX-The claims could not be loaded.-XX]",
+    "retry": "[XX-Try again-XX]",
+    "statuses": {
+      "open": "[XX-Open-XX]",
+      "approved": "[XX-Approved-XX]",
+      "denied": "[XX-Denied-XX]",
+      "resolved": "[XX-Resolved-XX]"
+    },
+    "claimedOn": "[XX-Claimed {date}-XX]",
+    "resolvedOnLine": "[XX-Closed {date}-XX]",
+    "resolutionLine": "[XX-Resolution: {text}-XX]",
+    "modal": {
+      "newTitle": "[XX-New claim-XX]",
+      "editTitle": "[XX-Edit claim-XX]"
+    },
+    "form": {
+      "claimDateLabel": "[XX-Claim date-XX]",
+      "statusLabel": "[XX-Status-XX]",
+      "descriptionLabel": "[XX-What went wrong-XX]",
+      "resolutionLabel": "[XX-Resolution-XX]",
+      "resolvedOnLabel": "[XX-Closed on-XX]",
+      "resolvedOnHint": "[XX-Only for a resolved or denied claim-XX]",
+      "submitCreate": "[XX-Add claim-XX]",
+      "submitUpdate": "[XX-Save changes-XX]"
+    },
+    "validation": {
+      "claimDateRequired": "[XX-Enter the claim date-XX]",
+      "resolvedOnBeforeClaim": "[XX-A claim cannot close before it was made-XX]",
+      "textTooLong": "[XX-Use 2000 characters or fewer-XX]"
+    },
+    "delete": {
+      "title": "[XX-Delete claim-XX]",
+      "message": "[XX-Delete the claim made on {date}? This cannot be undone.-XX]"
+    },
+    "toasts": {
+      "created": "[XX-Claim added-XX]",
+      "updated": "[XX-Claim updated-XX]",
+      "deleted": "[XX-Claim deleted-XX]",
+      "createFailed": "[XX-The claim could not be added-XX]",
+      "updateFailed": "[XX-The claim could not be updated-XX]",
+      "deleteFailed": "[XX-The claim could not be deleted-XX]"
+    }
   }
 }

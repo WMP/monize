@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Select } from '@/components/ui/Select';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { getErrorMessage } from '@/lib/errors';
 import { attachmentsApi, attachmentDownloadUrl } from '@/lib/attachments';
@@ -14,23 +16,32 @@ import { ScanDocumentControl } from './ScanDocumentControl';
 import {
   StagedAttachment,
   Attachment,
+  AttachmentParent,
   ACCEPTED_ATTACHMENT_TYPES,
+  DEFAULT_DOCUMENT_KIND,
+  DOCUMENT_KINDS,
+  DocumentKind,
   MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS_PER_TRANSACTION,
 } from '@/types/attachment';
 
 /**
  * Saved mode: manages the attachments of an existing transaction directly
- * against the server. Staged mode: holds files client-side for a transaction
- * that does not exist yet (the New Transaction window); the parent form uploads
- * them once the transaction has been created.
+ * against the server. Warranty mode: the same saved list for a warranty's
+ * documents, with a document kind chosen on upload and shown on each row
+ * (`documentKind` is the kind the picker starts on). Staged mode: holds files
+ * client-side for a transaction that does not exist yet (the New Transaction
+ * window); the parent form uploads them once the transaction has been created.
  */
 type AttachmentsSectionProps =
   | { transactionId: string }
+  | { warrantyId: string; documentKind?: DocumentKind }
   | {
       stagedFiles: StagedAttachment[];
       onStagedFilesChange: (files: StagedAttachment[]) => void;
     };
+
+type SavedParentKind = 'transaction' | 'warranty';
 
 
 /**
@@ -70,16 +81,33 @@ function validateSelection(
  * is `display: none` and takes no cell. From `sm` up the title and the
  * buttons sit on one line as before.
  */
-function AttachmentsHeader({ children }: { children: React.ReactNode }) {
+function AttachmentsHeader({
+  children,
+  heading,
+}: {
+  children: React.ReactNode;
+  /**
+   * A section heading in place of the "Attachments" label, for a page where
+   * the list is a section of its own (a warranty's Documents) rather than a
+   * field of a form.
+   */
+  heading?: string;
+}) {
   const t = useTranslations('attachments');
   return (
     <div
       data-testid="attachments-header"
       className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
     >
-      <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-        {t('title')}
-      </span>
+      {heading ? (
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          {heading}
+        </h2>
+      ) : (
+        <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          {t('title')}
+        </span>
+      )}
       <div
         data-testid="attachments-actions"
         className="grid grid-cols-2 gap-2 sm:flex sm:items-center"
@@ -135,11 +163,64 @@ function UploadControl({
 }
 
 /**
- * Lists, uploads, and deletes the file attachments for a saved transaction.
+ * The kind picker a warranty's upload carries. The choice applies to the next
+ * file added or scanned, so it sits beside the controls rather than on a row.
  */
-function SavedAttachments({ transactionId }: { transactionId: string }) {
+function DocumentKindPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: DocumentKind;
+  onChange: (kind: DocumentKind) => void;
+  disabled?: boolean;
+}) {
+  const t = useTranslations('warranties');
+  return (
+    <div className="sm:max-w-xs">
+      <Select
+        id="attachment-document-kind"
+        label={t('documents.kindLabel')}
+        value={value}
+        disabled={disabled}
+        options={DOCUMENT_KINDS.map((kind) => ({
+          value: kind,
+          label: t(`documents.kinds.${kind}`),
+        }))}
+        onChange={(event) => onChange(event.target.value as DocumentKind)}
+      />
+    </div>
+  );
+}
+
+/**
+ * Lists, uploads, and deletes the saved attachments of one parent: a
+ * transaction, or a warranty (whose rows also say what kind of document each
+ * one is).
+ */
+function SavedAttachments({
+  parentKind,
+  parentId,
+  initialDocumentKind,
+}: {
+  parentKind: SavedParentKind;
+  parentId: string;
+  initialDocumentKind?: DocumentKind;
+}) {
   const t = useTranslations('attachments');
+  const tw = useTranslations('warranties');
   const { formatBytes } = useNumberFormat();
+  const isWarranty = parentKind === 'warranty';
+  const parent = useMemo<AttachmentParent>(
+    () =>
+      parentKind === 'warranty'
+        ? { warrantyId: parentId }
+        : { transactionId: parentId },
+    [parentKind, parentId],
+  );
+  const [documentKind, setDocumentKind] = useState<DocumentKind>(
+    initialDocumentKind ?? DEFAULT_DOCUMENT_KIND,
+  );
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [erroredImages, setErroredImages] = useState<Record<string, boolean>>(
@@ -163,14 +244,14 @@ function SavedAttachments({ transactionId }: { transactionId: string }) {
     // not during the effect that starts it.
     const run = async () => {
       try {
-        const list = await attachmentsApi.list(transactionId);
+        const list = await attachmentsApi.list(parent);
         setAttachments(list);
       } catch (error) {
         toast.error(getErrorMessage(error, t('loadFailed')));
       }
     };
     return run();
-  }, [transactionId, t]);
+  }, [parent, t]);
 
   useEffect(() => {
     load();
@@ -188,7 +269,12 @@ function SavedAttachments({ transactionId }: { transactionId: string }) {
   const upload = async (file: File, original?: File) => {
     setUploading(true);
     try {
-      await attachmentsApi.upload(transactionId, file, original);
+      // A transaction's upload carries no kind: its route takes none (W4).
+      if (isWarranty) {
+        await attachmentsApi.upload(parent, file, original, documentKind);
+      } else {
+        await attachmentsApi.upload(parent, file, original);
+      }
       toast.success(t('uploaded'));
       await load();
     } catch (err) {
@@ -253,7 +339,9 @@ function SavedAttachments({ transactionId }: { transactionId: string }) {
 
   return (
     <div className="space-y-2">
-      <AttachmentsHeader>
+      <AttachmentsHeader
+        heading={isWarranty ? tw('documents.title') : undefined}
+      >
         <ScanDocumentControl
           onFileSelected={handleScanSelected}
           onReady={rememberScanPicker}
@@ -266,8 +354,18 @@ function SavedAttachments({ transactionId }: { transactionId: string }) {
         />
       </AttachmentsHeader>
 
+      {isWarranty && (
+        <DocumentKindPicker
+          value={documentKind}
+          onChange={setDocumentKind}
+          disabled={uploading}
+        />
+      )}
+
       {attachments.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">{t('empty')}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {isWarranty ? tw('documents.empty') : t('empty')}
+        </p>
       ) : (
         <ul className="space-y-2">
           {attachments.map((attachment) => {
@@ -321,6 +419,15 @@ function SavedAttachments({ transactionId }: { transactionId: string }) {
                     </span>
                   </span>
                 </button>
+                {isWarranty && (
+                  <Badge
+                    variant="gray"
+                    data-testid={`document-kind-${attachment.id}`}
+                    className="shrink-0"
+                  >
+                    {tw(`documents.kinds.${attachment.documentKind}`)}
+                  </Badge>
+                )}
                 <Button
                   type="button"
                   variant="ghost"
@@ -548,13 +655,32 @@ function StagedAttachments({
 }
 
 /**
- * Attachment manager for a transaction. Renders in saved mode when a
- * transaction id is supplied, or in staged mode (client-side only) when given a
- * pending file list and change handler.
+ * Attachment manager for a transaction or a warranty. Renders in saved mode
+ * when a transaction or warranty id is supplied, or in staged mode
+ * (client-side only) when given a pending file list and change handler.
+ *
+ * A warranty's documents are this component with a warranty parent, never a
+ * second uploader: the limits, the scan pair and the preview are the same.
  */
 export function AttachmentsSection(props: AttachmentsSectionProps) {
   if ('transactionId' in props) {
-    return <SavedAttachments transactionId={props.transactionId} />;
+    return (
+      <SavedAttachments
+        key={`transaction:${props.transactionId}`}
+        parentKind="transaction"
+        parentId={props.transactionId}
+      />
+    );
+  }
+  if ('warrantyId' in props) {
+    return (
+      <SavedAttachments
+        key={`warranty:${props.warrantyId}`}
+        parentKind="warranty"
+        parentId={props.warrantyId}
+        initialDocumentKind={props.documentKind}
+      />
+    );
   }
   return (
     <StagedAttachments

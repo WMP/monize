@@ -1174,7 +1174,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
         // Both halves of a scan pair go in ONE request: the server writes them
         // in one transaction, so uploading the original separately would leave
         // a window where the pair is half stored.
-        await attachmentsApi.upload(newTransactionId, file, original);
+        await attachmentsApi.upload({ transactionId: newTransactionId }, file, original);
       } catch (error) {
         failed += 1;
         logger.error('Failed to upload staged attachment:', error);

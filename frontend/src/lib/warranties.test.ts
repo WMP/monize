@@ -99,6 +99,45 @@ describe('warrantiesApi', () => {
     await expect(warrantiesApi.create({ name: 'X', purchaseDate: '2026-10-01', isLifetime: true })).rejects.toThrow();
     expect(invalidateCache).not.toHaveBeenCalled();
   });
+
+  it('listClaims reads the claims route through the cache', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: [{ id: 'c-1' }] });
+    const result = await warrantiesApi.listClaims('w-1');
+    expect(apiClient.get).toHaveBeenCalledWith('/warranties/w-1/claims');
+    expect(vi.mocked(dedupe).mock.calls[0][0]).toBe('warranties:claims:w-1');
+    expect(result).toEqual([{ id: 'c-1' }]);
+  });
+
+  it('createClaim posts the claim and drops every cached warranty read', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 'c-1' } });
+    const data = { claimDate: '2026-10-21', status: 'open' as const };
+    await warrantiesApi.createClaim('w-1', data);
+    expect(apiClient.post).toHaveBeenCalledWith('/warranties/w-1/claims', data);
+    expect(invalidateCache).toHaveBeenCalledWith('warranties:');
+  });
+
+  it('updateClaim patches the claim and drops the cache', async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: { id: 'c-1' } });
+    await warrantiesApi.updateClaim('w-1', 'c-1', { status: 'open', resolvedOn: null });
+    expect(apiClient.patch).toHaveBeenCalledWith('/warranties/w-1/claims/c-1', {
+      status: 'open',
+      resolvedOn: null,
+    });
+    expect(invalidateCache).toHaveBeenCalledWith('warranties:');
+  });
+
+  it('deleteClaim removes the claim and drops the cache', async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: {} });
+    await warrantiesApi.deleteClaim('w-1', 'c-1');
+    expect(apiClient.delete).toHaveBeenCalledWith('/warranties/w-1/claims/c-1');
+    expect(invalidateCache).toHaveBeenCalledWith('warranties:');
+  });
+
+  it('a refused claim write leaves the cache alone', async () => {
+    vi.mocked(apiClient.patch).mockRejectedValue(new Error('400'));
+    await expect(warrantiesApi.updateClaim('w-1', 'c-1', { status: 'open' })).rejects.toThrow();
+    expect(invalidateCache).not.toHaveBeenCalled();
+  });
 });
 
 describe('warrantyTermEndDate', () => {

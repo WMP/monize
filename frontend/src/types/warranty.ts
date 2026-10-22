@@ -137,3 +137,54 @@ export interface CreateWarrantyData {
  * `term` or `isLifetime: true` (none keeps the stored expiry).
  */
 export type UpdateWarrantyData = Partial<CreateWarrantyData>;
+
+/** A claim's state (`warranty_claims.status`). A claim never moves its warranty's status. */
+export type WarrantyClaimStatus = 'open' | 'approved' | 'denied' | 'resolved';
+
+export const WARRANTY_CLAIM_STATUSES: readonly WarrantyClaimStatus[] = [
+  'open',
+  'approved',
+  'denied',
+  'resolved',
+];
+
+/** The statuses that close a claim, and the only ones a `resolvedOn` may carry. */
+export const WARRANTY_CLAIM_CLOSED_STATUSES: readonly WarrantyClaimStatus[] = ['resolved', 'denied'];
+
+/** The cap on a claim's description and resolution (`@MaxLength(2000)`). */
+export const WARRANTY_CLAIM_TEXT_MAX_LENGTH = 2000;
+
+/**
+ * One claim as the API answers it, mirrored from `WarrantyClaimView` in
+ * `backend/src/warranties/warranty-claims.service.ts`.
+ */
+export interface WarrantyClaim {
+  id: string;
+  warrantyId: string;
+  claimDate: string;
+  status: WarrantyClaimStatus;
+  description: string | null;
+  resolution: string | null;
+  resolvedOn: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * `POST /warranties/:id/claims`. `resolvedOn` only with a status of resolved
+ * or denied, and never before `claimDate`.
+ */
+export interface CreateWarrantyClaimData {
+  claimDate: string;
+  status?: WarrantyClaimStatus;
+  description?: string | null;
+  resolution?: string | null;
+  resolvedOn?: string | null;
+}
+
+/**
+ * `PATCH /warranties/:id/claims/:claimId`. Every field optional. Reopening a
+ * claim that has a stored `resolvedOn` must send `resolvedOn: null` with it;
+ * the server refuses the pair otherwise.
+ */
+export type UpdateWarrantyClaimData = Partial<CreateWarrantyClaimData>;

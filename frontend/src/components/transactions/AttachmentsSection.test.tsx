@@ -114,6 +114,8 @@ function makeAttachment(overrides: Partial<Attachment> = {}): Attachment {
   return {
     id: 'a-1',
     transactionId: 't-1',
+    warrantyId: null,
+    documentKind: 'other',
     filename: 'receipt.png',
     contentType: 'image/png',
     byteSize: 2048,
@@ -221,7 +223,7 @@ describe('AttachmentsSection', () => {
       // A plain upload carries no original: only a scan produces a pair, so
       // this path must never send a second file.
       expect(mockUpload).toHaveBeenCalledWith(
-        't-1',
+        { transactionId: 't-1' },
         expect.any(File),
         undefined,
       ),
@@ -318,8 +320,8 @@ describe('AttachmentsSection', () => {
       });
 
       await waitFor(() => expect(mockUpload).toHaveBeenCalledTimes(1));
-      const [transactionId, file, original] = mockUpload.mock.calls[0];
-      expect(transactionId).toBe('t-1');
+      const [parent, file, original] = mockUpload.mock.calls[0];
+      expect(parent).toEqual({ transactionId: 't-1' });
       expect((file as File).name).toBe('receipt-scan.jpg');
       expect((original as File).name).toBe('receipt.jpg');
     });
@@ -515,6 +517,108 @@ describe('AttachmentsSection', () => {
       expect(screen.getByText('invoice.pdf')).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
       expect(onChange).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe('with a warranty parent', () => {
+    async function renderWarranty(documentKind?: 'receipt' | 'manual' | 'photo' | 'other') {
+      await act(async () => {
+        render(<AttachmentsSection warrantyId="w-1" documentKind={documentKind} />);
+      });
+    }
+
+    const warrantyDoc = (overrides: Partial<Attachment> = {}) =>
+      makeAttachment({
+        transactionId: null,
+        warrantyId: 'w-1',
+        documentKind: 'manual',
+        filename: 'manual.pdf',
+        contentType: 'application/pdf',
+        ...overrides,
+      });
+
+    it("lists the warranty's documents with each one's kind", async () => {
+      mockList.mockResolvedValue([warrantyDoc()]);
+      await renderWarranty();
+      expect(mockList).toHaveBeenCalledWith({ warrantyId: 'w-1' });
+      expect(screen.getByRole('heading', { name: 'Documents' })).toBeInTheDocument();
+      expect(screen.getByTestId('document-kind-a-1')).toHaveTextContent('Manual');
+      expect(
+        screen.getByRole('button', { name: 'Preview manual.pdf' }),
+      ).toBeInTheDocument();
+    });
+
+    it('says there are no documents yet when the list is empty', async () => {
+      mockList.mockResolvedValue([]);
+      await renderWarranty();
+      expect(screen.getByText('No documents yet')).toBeInTheDocument();
+    });
+
+    it('uploads with the kind chosen, Other until one is', async () => {
+      mockList.mockResolvedValue([]);
+      mockUpload.mockResolvedValue(warrantyDoc());
+      await renderWarranty();
+
+      const kind = screen.getByLabelText('Document type') as HTMLSelectElement;
+      expect(kind.value).toBe('other');
+      fireEvent.change(kind, { target: { value: 'receipt' } });
+
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Add attachment'), {
+          target: { files: [fileOfType('application/pdf')] },
+        });
+      });
+      await waitFor(() =>
+        expect(mockUpload).toHaveBeenCalledWith(
+          { warrantyId: 'w-1' },
+          expect.any(File),
+          undefined,
+          'receipt',
+        ),
+      );
+    });
+
+    it('starts the picker on the kind the caller names', async () => {
+      mockList.mockResolvedValue([]);
+      await renderWarranty('photo');
+      expect((screen.getByLabelText('Document type') as HTMLSelectElement).value).toBe('photo');
+    });
+
+    it('uploads a scanned pair under the warranty with its kind', async () => {
+      mockList.mockResolvedValue([]);
+      mockUpload.mockResolvedValue(warrantyDoc());
+      await renderWarranty('receipt');
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Scan document'), {
+          target: { files: [fileOfType('image/jpeg')] },
+        });
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'accept-pair' }));
+      });
+      await waitFor(() => expect(mockUpload).toHaveBeenCalledTimes(1));
+      const [parent, file, original, documentKind] = mockUpload.mock.calls[0];
+      expect(parent).toEqual({ warrantyId: 'w-1' });
+      expect((file as File).name).toBe('receipt-scan.jpg');
+      expect(original).toBeInstanceOf(File);
+      expect(documentKind).toBe('receipt');
+    });
+
+    it('previews a document rather than downloading it', async () => {
+      mockList.mockResolvedValue([warrantyDoc()]);
+      await renderWarranty();
+      fireEvent.click(screen.getByRole('button', { name: 'Preview manual.pdf' }));
+      expect(screen.getByTestId('preview-target')).toHaveTextContent('saved:a-1:none');
+    });
+
+    it('leaves the transaction list exactly as it was: no kind picker, no kind badge', async () => {
+      mockList.mockResolvedValue([makeAttachment()]);
+      await renderSection();
+      expect(mockList).toHaveBeenCalledWith({ transactionId: 't-1' });
+      expect(screen.queryByLabelText('Document type')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('document-kind-a-1')).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Documents' })).not.toBeInTheDocument();
+      expect(screen.getByText('Attachments')).toBeInTheDocument();
     });
   });
 });

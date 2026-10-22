@@ -2,9 +2,12 @@ import apiClient from './api';
 import { dedupe, invalidateCache } from './apiCache';
 import { daysInMonth, isCalendarDate, monthOf, shiftDate, shiftMonth } from './calendar-month';
 import type {
+  CreateWarrantyClaimData,
   CreateWarrantyData,
+  UpdateWarrantyClaimData,
   UpdateWarrantyData,
   Warranty,
+  WarrantyClaim,
   WarrantyListParams,
   WarrantyListResult,
   WarrantySummary,
@@ -101,6 +104,40 @@ export const warrantiesApi = {
     const response = await apiClient.post<Warranty>(`/warranties/${id}/unarchive`);
     afterWrite();
     return response.data;
+  },
+
+  listClaims: async (warrantyId: string): Promise<WarrantyClaim[]> => {
+    return dedupe(
+      `warranties:claims:${warrantyId}`,
+      async () => {
+        const response = await apiClient.get<WarrantyClaim[]>(`/warranties/${warrantyId}/claims`);
+        return response.data;
+      },
+      READ_TTL_MS,
+    );
+  },
+
+  // A claim write moves the warranty's `openClaimCount`, so it drops every
+  // cached warranty read as well as the claim list.
+  createClaim: async (warrantyId: string, data: CreateWarrantyClaimData): Promise<WarrantyClaim> => {
+    const response = await apiClient.post<WarrantyClaim>(`/warranties/${warrantyId}/claims`, data);
+    afterWrite();
+    return response.data;
+  },
+
+  updateClaim: async (
+    warrantyId: string,
+    claimId: string,
+    data: UpdateWarrantyClaimData,
+  ): Promise<WarrantyClaim> => {
+    const response = await apiClient.patch<WarrantyClaim>(`/warranties/${warrantyId}/claims/${claimId}`, data);
+    afterWrite();
+    return response.data;
+  },
+
+  deleteClaim: async (warrantyId: string, claimId: string): Promise<void> => {
+    await apiClient.delete(`/warranties/${warrantyId}/claims/${claimId}`);
+    afterWrite();
   },
 };
 

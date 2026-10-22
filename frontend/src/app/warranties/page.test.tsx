@@ -282,11 +282,21 @@ describe('WarrantiesPage', () => {
     expect(screen.getByTestId('warranty-form')).toBeInTheDocument();
   });
 
-  it('edits a warranty from its row', async () => {
+  it('opens the detail page from a row', async () => {
     await renderPage();
     await act(async () => {
       fireEvent.click(screen.getByText('Laptop').closest('tr')!);
     });
+    expect(router.push).toHaveBeenCalledWith('/warranties/w-1');
+    expect(screen.queryByRole('dialog', { name: 'Edit warranty' })).not.toBeInTheDocument();
+  });
+
+  it('edits a warranty from its Edit action', async () => {
+    await renderPage();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    });
+    expect(router.push).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: 'Edit warranty' })).toBeInTheDocument();
     expect(screen.getByTestId('editing')).toHaveTextContent('Laptop');
     await act(async () => {

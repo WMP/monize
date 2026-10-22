@@ -5100,7 +5100,7 @@ describe('TransactionForm initialStagedFiles', () => {
 
     // Addressed to the created transaction, with no scan original beside them:
     // a shared file is one file, not half of a scan pair.
-    expect(mockAttachmentUpload.mock.calls[0][0]).toBe('tx-created');
+    expect(mockAttachmentUpload.mock.calls[0][0]).toEqual({ transactionId: 'tx-created' });
     expect(mockAttachmentUpload.mock.calls[0][1].name).toBe('receipt.png');
     expect(mockAttachmentUpload.mock.calls[0][2]).toBeUndefined();
     expect(mockAttachmentUpload.mock.calls[1][1].name).toBe('invoice.pdf');

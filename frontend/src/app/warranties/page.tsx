@@ -216,6 +216,11 @@ function WarrantiesContent() {
     }
   };
 
+  const openDetail = useCallback(
+    (warranty: Warranty) => router.push(`/warranties/${warranty.id}`),
+    [router],
+  );
+
   const handleArchive = useCallback(
     async (warranty: Warranty) => {
       try {
@@ -320,6 +325,7 @@ function WarrantiesContent() {
             {t('page.newButton')}
           </button>
         }
+        onOpen={openDetail}
         onEdit={openEdit}
         onArchive={handleArchive}
         onUnarchive={handleUnarchive}

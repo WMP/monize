@@ -47,6 +47,7 @@ function warranty(overrides: Partial<Warranty> = {}): Warranty {
 function renderList(props: Partial<WarrantyListProps> = {}) {
   const handlers = {
     onSort: vi.fn(),
+    onOpen: vi.fn(),
     onEdit: vi.fn(),
     onArchive: vi.fn(),
     onUnarchive: vi.fn(),
@@ -131,13 +132,19 @@ describe('WarrantyList', () => {
     expect(screen.getByRole('columnheader', { name: /Expires/ })).toHaveAttribute('aria-sort', 'none');
   });
 
-  it('opens the warranty on a row click and from the keyboard', () => {
-    const { onEdit } = renderList();
+  it('opens the warranty on a row click and from the keyboard, and leaves Edit to its action', () => {
+    const { onOpen, onEdit } = renderList();
     const row = screen.getByText('Laptop').closest('tr')!;
     fireEvent.click(row);
-    expect(onEdit).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'w-1' }));
     fireEvent.keyDown(row, { key: 'Enter' });
-    expect(onEdit).toHaveBeenCalledTimes(2);
+    expect(onOpen).toHaveBeenCalledTimes(2);
+    expect(onEdit).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'w-1' }));
+    expect(onOpen).toHaveBeenCalledTimes(2);
   });
 
   it('offers Archive on a current warranty and Unarchive on an archived one', () => {
@@ -152,6 +159,7 @@ describe('WarrantyList', () => {
         sort="expiresOn"
         empty={{ title: 'Nothing here' }}
         onSort={vi.fn()}
+        onOpen={vi.fn()}
         onEdit={vi.fn()}
         onArchive={onArchive}
         onUnarchive={onUnarchive}
@@ -164,10 +172,10 @@ describe('WarrantyList', () => {
   });
 
   it('asks the page to delete, without opening the row', () => {
-    const { onDelete, onEdit } = renderList();
+    const { onDelete, onOpen } = renderList();
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'w-1' }));
-    expect(onEdit).not.toHaveBeenCalled();
+    expect(onOpen).not.toHaveBeenCalled();
   });
 
   it('offers the same actions from the long-press sheet', () => {
@@ -181,10 +189,10 @@ describe('WarrantyList', () => {
   });
 
   it('keeps stale rows on screen but makes nothing on them act', () => {
-    const { onEdit, onDelete, container } = renderList({ stale: true });
+    const { onOpen, onDelete, container } = renderList({ stale: true });
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
     fireEvent.click(screen.getByText('Laptop').closest('tr')!);
-    expect(onEdit).not.toHaveBeenCalled();
+    expect(onOpen).not.toHaveBeenCalled();
     const del = screen.getByRole('button', { name: 'Delete' });
     expect(del).toBeDisabled();
     fireEvent.click(del);

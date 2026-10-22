@@ -224,6 +224,8 @@ export interface WarrantyListEmpty {
 
 export interface WarrantyListProps extends WarrantyActionHandlers {
   warranties: readonly Warranty[];
+  /** A row's primary action: open the warranty's detail page. Edit stays a row action. */
+  onOpen: (warranty: Warranty) => void;
   sort: WarrantySort;
   onSort: (sort: WarrantySort) => void;
   /** What an empty page says, decided by the page that knows which filters are on. */
@@ -255,6 +257,7 @@ export function WarrantyList({
   empty,
   toolbarActions,
   stale = false,
+  onOpen,
   onEdit,
   onArchive,
   onUnarchive,
@@ -290,9 +293,9 @@ export function WarrantyList({
 
   const open = useCallback(
     (warranty: Warranty) => {
-      if (!stale) onEdit(warranty);
+      if (!stale) onOpen(warranty);
     },
-    [stale, onEdit],
+    [stale, onOpen],
   );
 
   const { getRowHandlers } = useLongPress<Warranty>({

@@ -1,10 +1,30 @@
 /**
- * Metadata for a file attached to a transaction. The bytes themselves are never
- * part of this payload -- they are fetched from the download endpoint.
+ * What a document is. A warranty's documents carry the kind the reader picked
+ * on upload; a transaction's attachments are always `other`
+ * (docs/future-plans/warranty-tracker.md decision 7).
+ */
+export type DocumentKind = 'receipt' | 'manual' | 'photo' | 'other';
+
+export const DOCUMENT_KINDS: readonly DocumentKind[] = ['receipt', 'manual', 'photo', 'other'];
+
+export const DEFAULT_DOCUMENT_KIND: DocumentKind = 'other';
+
+/**
+ * The row an attachment hangs off: a transaction or a warranty, never both
+ * (WTY-003). A caller names one; the API module builds the route from it.
+ */
+export type AttachmentParent = { transactionId: string } | { warrantyId: string };
+
+/**
+ * Metadata for a file attached to a transaction or a warranty. The bytes
+ * themselves are never part of this payload -- they are fetched from the
+ * download endpoint. Exactly one of `transactionId` and `warrantyId` is set.
  */
 export interface Attachment {
   id: string;
-  transactionId: string;
+  transactionId: string | null;
+  warrantyId: string | null;
+  documentKind: DocumentKind;
   filename: string;
   contentType: string;
   byteSize: number;
