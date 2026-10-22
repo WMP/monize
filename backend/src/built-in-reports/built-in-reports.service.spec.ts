@@ -826,6 +826,9 @@ describe("BuiltInReportsService", () => {
           income: 0,
           expenses: 0,
           savings: 0,
+          knownIncome: 0,
+          knownExpenses: 0,
+          knownSavings: 0,
         });
       });
     });
@@ -1236,6 +1239,9 @@ describe("BuiltInReportsService", () => {
         income: 0,
         expenses: 0,
         deductible: 0,
+        knownIncome: 0,
+        knownExpenses: 0,
+        knownDeductible: 0,
       });
       expect(result.incomeBySource).toEqual([]);
       expect(result.deductibleExpenses).toEqual([]);
@@ -1353,7 +1359,9 @@ describe("BuiltInReportsService", () => {
       expect(result.data).toEqual([]);
       expect(result.summary).toEqual({
         totalRecurring: 0,
+        knownTotalRecurring: 0,
         monthlyEstimate: 0,
+        knownMonthlyEstimate: 0,
         monthCount: 6,
         uniquePayees: 0,
       });
@@ -1522,9 +1530,11 @@ describe("BuiltInReportsService", () => {
       expect(result.monthlyTotals).toEqual([]);
       expect(result.summary).toEqual({
         totalPaid: 0,
+        knownTotalPaid: 0,
         totalPayments: 0,
         uniqueBills: 0,
         monthlyAverage: 0,
+        knownMonthlyAverage: 0,
       });
     });
 
@@ -2148,7 +2158,11 @@ function yearData(
   result: {
     data: Array<{
       year: number;
-      totals: { income: number; expenses: number; savings: number };
+      totals: {
+        income: number | null;
+        expenses: number | null;
+        savings: number | null;
+      };
     }>;
   },
   year: number,

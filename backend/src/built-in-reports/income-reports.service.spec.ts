@@ -366,6 +366,53 @@ describe("IncomeReportsService", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // getIncomeBySource: a missing exchange rate is unknown, never 1:1 (INV-FX-001)
+  // ---------------------------------------------------------------------------
+  describe("getIncomeBySource with a currency that has no rate", () => {
+    it("withholds the total, keeps the converted subtotal and names the currency", async () => {
+      exchangeRateService.getLatestRates.mockResolvedValue([]);
+      scopedManager.query.mockResolvedValue([
+        { category_id: "cat-income", currency_code: "USD", total: "50.00" },
+        { category_id: "cat-parent", currency_code: "JPY", total: "100000" },
+      ]);
+      categoriesRepository.find.mockResolvedValue([
+        mockIncomeCategory,
+        mockParentCategory,
+      ]);
+
+      const result = await service.getIncomeBySource(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      expect(result.totalIncome).toBeNull();
+      expect(result.knownIncome).toBe(50);
+      expect(result.currency).toBe("USD");
+      expect(result.missingCurrencies).toEqual(["JPY"]);
+      expect(result.excludedCount).toBe(1);
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].total).toBe(50);
+      expect(JSON.stringify(result)).not.toContain("100000");
+    });
+
+    it("answers zero, not null, when there is nothing to convert", async () => {
+      scopedManager.query.mockResolvedValue([]);
+
+      const result = await service.getIncomeBySource(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      expect(result.totalIncome).toBe(0);
+      expect(result.knownIncome).toBe(0);
+      expect(result.missingCurrencies).toEqual([]);
+      expect(result.excludedCount).toBe(0);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // getIncomeVsExpenses
   // ---------------------------------------------------------------------------
   describe("getIncomeVsExpenses", () => {

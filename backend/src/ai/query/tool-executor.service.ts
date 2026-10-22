@@ -2914,7 +2914,7 @@ export class ToolExecutorService {
       const count = data.anomalies.length;
       return {
         data,
-        summary: `${count} spending anomal${count === 1 ? "y" : "ies"} detected over the last ${months} month${months === 1 ? "" : "s"}.`,
+        summary: `${count} spending anomal${count === 1 ? "y" : "ies"} detected over the last ${months} month${months === 1 ? "" : "s"}.${this.missingRateNote(data, "Transactions in those currencies were left out of the analysis")}`,
         sources: [
           {
             type: "anomalies",
@@ -2987,7 +2987,7 @@ export class ToolExecutorService {
 
     return {
       data,
-      summary: `Report "${type}" from ${startDate} to ${endDate}.`,
+      summary: `Report "${type}" from ${startDate} to ${endDate}.${this.missingRateNote(data)}`,
       sources: [
         {
           type: "report",
@@ -2996,6 +2996,30 @@ export class ToolExecutorService {
         },
       ],
     };
+  }
+
+  /**
+   * The clause a report summary carries when rows had no exchange rate. The
+   * structured payload names them in `missingCurrencies`, but a model that only
+   * reads the summary line would otherwise quote a short figure as the whole
+   * answer. Names each missing pair and where to fix it; empty when the report
+   * converted everything.
+   */
+  private missingRateNote(
+    data: unknown,
+    consequence = "Total withheld",
+  ): string {
+    const { missingCurrencies, currency } = (data ?? {}) as {
+      missingCurrencies?: unknown;
+      currency?: unknown;
+    };
+    if (!Array.isArray(missingCurrencies) || missingCurrencies.length === 0) {
+      return "";
+    }
+    const pairs = missingCurrencies.map((code) =>
+      typeof currency === "string" ? `${code}->${currency}` : String(code),
+    );
+    return ` ${consequence}: no exchange rate for ${pairs.join(", ")}; add it under Currencies.`;
   }
 
   private async calculate(input: Record<string, unknown>): Promise<ToolResult> {

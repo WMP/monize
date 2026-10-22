@@ -63,14 +63,31 @@ export class RecurringExpenseItem {
 }
 
 export class RecurringSummary {
-  @ApiProperty()
-  totalRecurring: number;
+  @ApiProperty({
+    nullable: true,
+    description:
+      "Total of the recurring payees, or null when a row could not be converted into the report currency (a missing rate makes it unknowable, never smaller); knownTotalRecurring carries the part that converted",
+  })
+  totalRecurring: number | null;
 
   @ApiProperty({
     description:
-      "totalRecurring spread over the months the window covers (monthCount)",
+      "The part of totalRecurring that converted; a subtotal whenever missingCurrencies is non-empty",
   })
-  monthlyEstimate: number;
+  knownTotalRecurring: number;
+
+  @ApiProperty({
+    nullable: true,
+    description:
+      "totalRecurring spread over the months the window covers (monthCount); null whenever totalRecurring is",
+  })
+  monthlyEstimate: number | null;
+
+  @ApiProperty({
+    description:
+      "The same spread over knownTotalRecurring; a subtotal whenever missingCurrencies is non-empty",
+  })
+  knownMonthlyEstimate: number;
 
   @ApiProperty({
     description:
@@ -88,4 +105,19 @@ export class RecurringExpensesResponse {
 
   @ApiProperty({ type: RecurringSummary })
   summary: RecurringSummary;
+
+  /** Reporting currency every amount above is expressed in. */
+  @ApiProperty({ example: "CAD" })
+  currency: string;
+
+  /**
+   * Source currencies with no usable rate into {@link currency}. A payee's
+   * `totalAmount` is only the part that converted when this is non-empty.
+   */
+  @ApiProperty({ type: [String], example: ["JPY"] })
+  missingCurrencies: string[];
+
+  /** How many aggregate rows were left out, by any cause. */
+  @ApiProperty({ example: 0 })
+  excludedCount: number;
 }

@@ -10,12 +10,13 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
+import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
 import { quoteSearchValue } from '@/lib/search-query';
 
 export function SpendingAnomaliesReport() {
   const t = useTranslations('reports');
   const router = useRouter();
-  const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, defaultCurrency } = useNumberFormat();
   const [threshold, setThreshold] = useState(2); // Standard deviations
 
   const { data: anomaliesData, isLoading, error, reload } = useReportData(
@@ -161,6 +162,14 @@ export function SpendingAnomaliesReport() {
           </div>
         </div>
       </div>
+
+      {/* The statistics, the anomalies and the counts leave out a transaction
+          whose currency has no rate, so a quiet result is not the whole answer. */}
+      <PartialDataNotice
+        missingCurrencies={anomaliesData?.missingCurrencies ?? []}
+        excludedCount={anomaliesData?.excludedCount ?? 0}
+        displayCurrency={anomaliesData?.currency ?? defaultCurrency}
+      />
 
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">

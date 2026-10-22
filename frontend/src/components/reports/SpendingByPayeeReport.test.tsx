@@ -305,4 +305,22 @@ describe("SpendingByPayeeReport", () => {
     }
     await act(async () => { fireEvent.click(screen.getByTestId("export-csv")); });
   });
+
+  it("marks the total a subtotal and shows no 0.00 when a payee row was left out", async () => {
+    mockGetSpendingByPayee.mockResolvedValue({
+      data: [{ payeeId: "p-1", payeeName: "Superstore", total: 50 }],
+      totalSpending: null,
+      knownSpending: 50,
+      currency: "CAD",
+      missingCurrencies: ["JPY"],
+      excludedCount: 1,
+    });
+    render(<SpendingByPayeeReport />);
+    expect(await screen.findByTestId("partial-total")).toBeInTheDocument();
+    expect(screen.getByTestId("partial-total")).toHaveTextContent("$50.00");
+    expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByTestId("toggle-table")); });
+    expect(await screen.findByTestId("partial-total")).toHaveTextContent("$50.00");
+    expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+  });
 });

@@ -471,6 +471,24 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
     },
   },
   {
+    // A total withheld for a missing rate (INV-FX-001): null, with the part that
+    // converted and the gap named beside it, carried by the loose object.
+    name: "generateReportOutput (aggregation type with a withheld total)",
+    schema: schemas.generateReportOutput,
+    raw: {
+      data: [
+        { categoryId: "c1", categoryName: "Food", color: null, total: 50 },
+      ],
+      totalSpending: null,
+      knownSpending: 50,
+      totalIncome: null,
+      knownIncome: 50,
+      currency: "USD",
+      missingCurrencies: ["JPY"],
+      excludedCount: 1,
+    },
+  },
+  {
     name: "generateReportOutput (month_comparison type)",
     schema: schemas.generateReportOutput,
     raw: {

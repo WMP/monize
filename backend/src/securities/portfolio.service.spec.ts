@@ -5972,4 +5972,52 @@ describe("PortfolioService", () => {
       });
     });
   });
+
+  // A currency with neither an intraday FX series nor a spot rate has no rate
+  // (INV-FX-001). The lookup answers `null`, the contribution leaves the holding
+  // out and records the currency for the warning, and nothing values it at 1.
+  describe("the intraday FX lookup for a currency with no series and no spot rate", () => {
+    type FxAt = (currency: string, ts: number) => number | null;
+    const privates = () =>
+      service as unknown as {
+        makeIntradayFxAt: (loaded: unknown) => FxAt;
+        makeIntradayContribution: (
+          fxAt: FxAt,
+          unrated: Set<string>,
+        ) => (amount: number, currency: string, ts: number) => number;
+      };
+    const loadedWith = (spot: Array<[string, number]>) => ({
+      currency: "CAD",
+      fxByCurrency: new Map(),
+      spotRate: new Map(spot),
+      dailyRateIndex: new Map(),
+    });
+    const ts = Date.parse("2026-05-06T13:30:00.000Z");
+
+    it("answers null, not 1, so the holding is not valued at its face number", () => {
+      const fxAt = privates().makeIntradayFxAt(loadedWith([]));
+
+      expect(fxAt("JPY", ts)).toBeNull();
+      // Rate 1 is only ever the display currency itself.
+      expect(fxAt("CAD", ts)).toBe(1);
+    });
+
+    it("uses the spot rate when there is one", () => {
+      const fxAt = privates().makeIntradayFxAt(loadedWith([["USD->CAD", 1.4]]));
+
+      expect(fxAt("USD", ts)).toBe(1.4);
+      expect(fxAt("JPY", ts)).toBeNull();
+    });
+
+    it("leaves the holding out of the point and records the currency for the warning", () => {
+      const unrated = new Set<string>();
+      const fxAt = privates().makeIntradayFxAt(loadedWith([["USD->CAD", 1.4]]));
+      const contribution = privates().makeIntradayContribution(fxAt, unrated);
+
+      // 100,000 JPY with no rate contributes nothing; it is not 100,000 CAD.
+      expect(contribution(100000, "JPY", ts)).toBe(0);
+      expect(contribution(100, "USD", ts)).toBe(1400000);
+      expect([...unrated]).toEqual(["JPY"]);
+    });
+  });
 });

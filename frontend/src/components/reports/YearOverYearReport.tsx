@@ -28,8 +28,33 @@ import { SortableHeader } from "@/components/ui/SortableHeader";
 import { exportToCsv } from "@/lib/csv-export";
 import { useReportData } from "@/hooks/useReportData";
 import { ReportError } from "@/components/reports/ReportError";
+import { PartialDataNotice } from "@/components/reports/PartialDataNotice";
+import { PartialTotal } from "@/components/ui/PartialTotal";
+import { UnknownAmount } from "@/components/ui/UnknownAmount";
+import { reportTotal, type ConvertedTotal } from "@/lib/currency-total";
 
 type YearOverYearSortField = string; // 'name' or any year as a string
+
+type YearMetric = "income" | "expenses" | "savings";
+
+/** The `known*` sibling the server sends beside each year total. */
+const KNOWN_FIELD = {
+  income: "knownIncome",
+  expenses: "knownExpenses",
+  savings: "knownSavings",
+} as const;
+
+/**
+ * One year's figure for one metric: the part that converted, whether the server
+ * knew the whole, and what to mark it with. A year's total is `null` when a row
+ * of THAT year could not be converted, and another year's gap does not blank
+ * it -- so a change between two years is a number only when both are known.
+ */
+interface YearMetricTotal {
+  /** False when the server withheld the total (`null`). */
+  known: boolean;
+  total: ConvertedTotal;
+}
 
 /**
  * The transactions range a clicked month bar links to, or `null` when the datum
@@ -83,8 +108,9 @@ function YearOverYearTooltip({ active, payload, label, formatCurrency }: YearOve
 export function YearOverYearReport() {
   const t = useTranslations('reports');
   const router = useRouter();
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatSignedPercent } =
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatSignedPercent, defaultCurrency } =
     useNumberFormat();
+  const tCommon = useTranslations('common');
   const formatChartDate = useChartDateFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [yearsToCompare, setYearsToCompare] = useState(2);
@@ -142,21 +168,37 @@ export function YearOverYearReport() {
   }, [chartData, sortField, sortDirection]);
 
   const yearTotals = useMemo(() => {
-    const totals: Record<
-      number,
-      { income: number; expenses: number; savings: number }
-    > = {};
+    const totals: Record<number, Record<YearMetric, YearMetricTotal>> = {};
+    const metricOf = (yd: YearData, m: YearMetric): YearMetricTotal => {
+      const exact = yd.totals[m];
+      // A total the server withheld is shown as the part that converted, marked
+      // with the response's own gaps; a total it sent is complete.
+      return exact === null
+        ? { known: false, total: reportTotal(yd.totals[KNOWN_FIELD[m]], response) }
+        : { known: true, total: { value: exact, missingCurrencies: [], excludedCount: 0 } };
+    };
 
     yearData.forEach((yd) => {
       totals[yd.year] = {
-        income: yd.totals.income,
-        expenses: yd.totals.expenses,
-        savings: yd.totals.savings,
+        income: metricOf(yd, "income"),
+        expenses: metricOf(yd, "expenses"),
+        savings: metricOf(yd, "savings"),
       };
     });
 
     return totals;
-  }, [yearData]);
+  }, [yearData, response]);
+  const reportingCurrency = response?.currency ?? defaultCurrency;
+  const valueOf = (year: number, m: YearMetric) => yearTotals[year]?.[m].total.value ?? 0;
+  const totalOf = (year: number, m: YearMetric): ConvertedTotal =>
+    yearTotals[year]?.[m].total ?? { value: 0, missingCurrencies: [], excludedCount: 0 };
+  const isKnown = (year: number, m: YearMetric) => yearTotals[year]?.[m].known ?? true;
+  // A figure in a file or an image has no tooltip, so the text itself carries
+  // the marker.
+  const moneyText = (year: number, m: YearMetric) =>
+    isKnown(year, m)
+      ? formatCurrency(valueOf(year, m))
+      : `${formatCurrency(valueOf(year, m))} ${tCommon("partialTotal.srSuffix")}`;
 
   const handleBarClick = (year: number, monthIndex: number) => {
     const range = monthClickRange(year, monthIndex);
@@ -171,7 +213,7 @@ export function YearOverYearReport() {
 
     const cards = years.map((year, index) => ({
       label: String(year),
-      value: formatCurrency(yearTotals[year]?.[metric] || 0),
+      value: moneyText(year, metric),
       color: resolvePdfColor(chartSeriesColor(index)),
     }));
 
@@ -180,8 +222,10 @@ export function YearOverYearReport() {
     const tableRows = (["income", "expenses", "savings"] as const).map((m) => {
       const label = t(`yearOverYear.${m}`);
       const cells = years.slice(1).map((_year, index) => {
-        const prevValue = yearTotals[years[index]]?.[m] || 0;
-        const currValue = yearTotals[_year]?.[m] || 0;
+        // The change between two years is a number only when both are known.
+        if (!isKnown(years[index], m) || !isKnown(_year, m)) return tCommon("unknownAmount.marker");
+        const prevValue = valueOf(years[index], m);
+        const currValue = valueOf(_year, m);
         const change = currValue - prevValue;
         const changePercent = prevValue !== 0 ? (change / Math.abs(prevValue)) * 100 : 0;
         return `${change >= 0 ? "+" : ""}${formatCurrency(change)} (${formatSignedPercent(changePercent, 1)})`;
@@ -193,9 +237,9 @@ export function YearOverYearReport() {
     const summaryHeaders = [t('yearOverYear.pdfColYear'), t('yearOverYear.pdfColIncome'), t('yearOverYear.pdfColExpenses'), t('yearOverYear.pdfColNet')];
     const summaryRows = years.map((year) => [
       String(year),
-      formatCurrency(yearTotals[year]?.income || 0),
-      formatCurrency(yearTotals[year]?.expenses || 0),
-      formatCurrency(yearTotals[year]?.savings || 0),
+      moneyText(year, "income"),
+      moneyText(year, "expenses"),
+      moneyText(year, "savings"),
     ]);
 
     await exportToPdf({
@@ -299,6 +343,12 @@ export function YearOverYearReport() {
         </div>
       </div>
 
+      <PartialDataNotice
+        missingCurrencies={response?.missingCurrencies ?? []}
+        excludedCount={response?.excludedCount ?? 0}
+        displayCurrency={reportingCurrency}
+      />
+
       {/* Year Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {years.map((year, index) => (
@@ -316,7 +366,9 @@ export function YearOverYearReport() {
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('yearOverYear.income')}</span>
                 <span className="text-green-600 dark:text-green-400">
-                  {formatCurrency(yearTotals[year]?.income || 0)}
+                  <PartialTotal total={totalOf(year, "income")} displayCurrency={reportingCurrency}>
+                    {formatCurrency(valueOf(year, "income"))}
+                  </PartialTotal>
                 </span>
               </div>
               <div className="flex justify-between">
@@ -324,19 +376,23 @@ export function YearOverYearReport() {
                   {t('yearOverYear.expenses')}
                 </span>
                 <span className="text-red-600 dark:text-red-400">
-                  {formatCurrency(yearTotals[year]?.expenses || 0)}
+                  <PartialTotal total={totalOf(year, "expenses")} displayCurrency={reportingCurrency}>
+                    {formatCurrency(valueOf(year, "expenses"))}
+                  </PartialTotal>
                 </span>
               </div>
               <div className="flex justify-between pt-1 border-t border-gray-200 dark:border-gray-700">
                 <span className="text-gray-500 dark:text-gray-400">{t('yearOverYear.net')}</span>
                 <span
                   className={
-                    (yearTotals[year]?.savings || 0) >= 0
+                    valueOf(year, "savings") >= 0
                       ? "text-blue-600 dark:text-blue-400"
                       : "text-orange-600 dark:text-orange-400"
                   }
                 >
-                  {formatCurrency(yearTotals[year]?.savings || 0)}
+                  <PartialTotal total={totalOf(year, "savings")} displayCurrency={reportingCurrency}>
+                    {formatCurrency(valueOf(year, "savings"))}
+                  </PartialTotal>
                 </span>
               </div>
             </div>
@@ -404,7 +460,9 @@ export function YearOverYearReport() {
                   <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">{t('yearOverYear.total')}</td>
                   {years.map((year) => (
                     <td key={year} className="px-4 py-3 text-right text-sm font-bold text-gray-900 dark:text-gray-100">
-                      {formatCurrency(yearTotals[year]?.[metric] || 0)}
+                      <PartialTotal total={totalOf(year, metric)} displayCurrency={reportingCurrency}>
+                        {formatCurrency(valueOf(year, metric))}
+                      </PartialTotal>
                     </td>
                   ))}
                 </tr>
@@ -479,8 +537,18 @@ export function YearOverYearReport() {
                     </td>
                     {years.slice(1).map((year, index) => {
                       const prevYear = years[index];
-                      const prevValue = yearTotals[prevYear]?.[m] || 0;
-                      const currValue = yearTotals[year]?.[m] || 0;
+                      // The change over a year whose total is unknown is not a
+                      // number: the known parts of two years differ by what each
+                      // left out, not by what the reader earned or spent.
+                      if (!isKnown(prevYear, m) || !isKnown(year, m)) {
+                        return (
+                          <td key={year} className="py-3 px-4 text-right">
+                            <UnknownAmount reason="displayFx" />
+                          </td>
+                        );
+                      }
+                      const prevValue = valueOf(prevYear, m);
+                      const currValue = valueOf(year, m);
                       const change = currValue - prevValue;
                       const changePercent =
                         prevValue !== 0

@@ -982,4 +982,27 @@ describe('MonthlyCategoryBreakdownReport', () => {
       );
     });
   });
+
+  it('names the currencies left out of the figures when a rate is missing', async () => {
+    mockGetMonthlyCategoryBreakdown.mockResolvedValue({
+      ...sampleResponse,
+      missingCurrencies: ['JPY'],
+      excludedCount: 2,
+    });
+    render(<MonthlyCategoryBreakdownReport />);
+    const notice = await screen.findByTestId('partial-data-notice');
+    expect(notice).toHaveTextContent('JPY');
+    expect(notice).toHaveTextContent('USD');
+  });
+
+  it('shows no partial-data note when every row converted', async () => {
+    mockGetMonthlyCategoryBreakdown.mockResolvedValue({
+      ...sampleResponse,
+      missingCurrencies: [],
+      excludedCount: 0,
+    });
+    render(<MonthlyCategoryBreakdownReport />);
+    await screen.findByText('Groceries');
+    expect(screen.queryByTestId('partial-data-notice')).not.toBeInTheDocument();
+  });
 });

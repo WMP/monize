@@ -1,7 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
-import { ReportCurrencyService } from "./report-currency.service";
+import {
+  ConversionGaps,
+  ReportCurrencyService,
+} from "./report-currency.service";
+import { FxAggregate } from "../common/fx-aggregate";
 import { roundMoney, sumMoney, toMoneyNumber } from "../common/round.util";
 import {
   UncategorizedTransactionsResponse,
@@ -109,23 +113,36 @@ export class DataQualityReportsService {
       (m) => m.query(query, params),
     );
 
-    const transactions: UncategorizedTransactionItem[] = rows.map((row) => ({
-      id: row.id,
-      transactionDate: new Date(row.transaction_date)
-        .toISOString()
-        .split("T")[0],
-      amount: this.currencyService.convertAmount(
-        toMoneyNumber(row.amount),
+    // The list is the work queue for filing these rows, so a row whose currency
+    // has no rate stays on it. It keeps its ORIGINAL amount under its OWN
+    // currency code: an unconverted amount under the reporting currency's name
+    // is the defect INV-FX-001 forbids. The summary totals below leave it out.
+    const transactions: UncategorizedTransactionItem[] = rows.map((row) => {
+      const amount = toMoneyNumber(row.amount);
+      const converted = this.currencyService.tryConvertAmount(
+        amount,
         row.currency_code,
         defaultCurrency,
         rateMap,
-      ),
-      currencyCode: defaultCurrency,
-      payeeName: row.payee_name,
-      description: row.description,
-      accountName: row.account_name,
-      accountId: row.account_id,
-    }));
+      );
+      // The amount and its label move together: either both converted, or
+      // both the row's own.
+      const shown =
+        converted === null
+          ? { amount, currencyCode: row.currency_code }
+          : { amount: converted, currencyCode: defaultCurrency };
+      return {
+        id: row.id,
+        transactionDate: new Date(row.transaction_date)
+          .toISOString()
+          .split("T")[0],
+        ...shown,
+        payeeName: row.payee_name,
+        description: row.description,
+        accountName: row.account_name,
+        accountId: row.account_id,
+      };
+    });
 
     // The reportable amount is derived ONCE, in a CTE: six of these in one
     // aggregate is six correlated sub-queries per split parent, and the six
@@ -188,37 +205,53 @@ export class DataQualityReportsService {
 
     let totalCount = 0;
     let expenseCount = 0;
-    let expenseTotal = 0;
+    const expenseTotal = new FxAggregate();
     let incomeCount = 0;
-    let incomeTotal = 0;
+    const incomeTotal = new FxAggregate();
+    const gaps = new ConversionGaps();
     for (const row of summaryRows) {
+      // A count needs no rate: a row in a currency with none still has to be
+      // filed, so it is counted. Its amount is in no total.
       totalCount += parseInt(row.total_count, 10);
       expenseCount += parseInt(row.expense_count, 10);
-      expenseTotal += this.currencyService.convertAmount(
+      incomeCount += parseInt(row.income_count, 10);
+      const expense = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.expense_total),
         row.currency_code,
         defaultCurrency,
         rateMap,
       );
-      incomeCount += parseInt(row.income_count, 10);
-      incomeTotal += this.currencyService.convertAmount(
+      const income = this.currencyService.tryConvertAmount(
         toMoneyNumber(row.income_total),
         row.currency_code,
         defaultCurrency,
         rateMap,
       );
+      if (expense === null || income === null) {
+        gaps.record(row.currency_code);
+        continue;
+      }
+      expenseTotal.addConverted(expense);
+      incomeTotal.addConverted(income);
     }
+    const knownExpenseTotal = roundMoney(expenseTotal.knownSubtotal);
+    const knownIncomeTotal = roundMoney(incomeTotal.knownSubtotal);
 
     return {
       transactions,
       summary: {
         totalCount,
         expenseCount,
-        expenseTotal: roundMoney(expenseTotal),
+        expenseTotal: gaps.headline(knownExpenseTotal),
+        knownExpenseTotal,
         incomeCount,
-        incomeTotal: roundMoney(incomeTotal),
+        incomeTotal: gaps.headline(knownIncomeTotal),
+        knownIncomeTotal,
         currencyCode: defaultCurrency,
       },
+      currency: defaultCurrency,
+      missingCurrencies: gaps.missingCurrencies,
+      excludedCount: gaps.excludedCount,
     };
   }
 

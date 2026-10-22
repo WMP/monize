@@ -35,6 +35,8 @@ import type {
 import { INTERACTIVE_ROW_FOCUS_CLASS, activateOnKey } from '@/components/ui/interactive-row';
 import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
 import { ReportError } from '@/components/reports/ReportError';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { isComplete, reportTotal } from '@/lib/currency-total';
 import { CHART_COLOURS_INCOME } from '@/lib/chart-colours';
 import { chartColors } from '@/lib/chart-colors';
 import { exportToCsv } from '@/lib/csv-export';
@@ -124,7 +126,8 @@ export function IncomeBySourceReport() {
   const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
-  const { formatCurrencyCompact: formatCurrency, formatPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatPercent, defaultCurrency } = useNumberFormat();
+  const tCommon = useTranslations('common');
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } = useDateRange({ defaultRange: '1y', alignment: 'day' });
   const [viewType, setViewType] = useState<'pie' | 'bar' | 'table'>('pie');
   const { sortField, sortDirection, handleSort } = useSortableTable<IncomeSourceSortField>(
@@ -163,7 +166,12 @@ export function IncomeBySourceReport() {
     });
   }, [response]);
 
-  const totalIncome = response?.totalIncome ?? 0;
+  // The server withholds `totalIncome` when a row could not be converted, so
+  // what is shown is the part that did convert, marked as a subtotal. It is also
+  // the denominator: percentages are shares of what is on screen.
+  const incomeTotal = reportTotal(response?.totalIncome ?? response?.knownIncome ?? 0, response);
+  const totalIncome = incomeTotal.value;
+  const reportingCurrency = response?.currency ?? defaultCurrency;
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -221,7 +229,14 @@ export function IncomeBySourceReport() {
     await exportToPdf({
       title: t('page.names.income-by-source' as Parameters<typeof t>[0]),
       summaryCards: [
-        { label: t('incomeBySource.totalIncome'), value: formatCurrency(totalIncome), color: '#16a34a' },
+        {
+          // A figure in a file has no tooltip, so the label carries the marker.
+          label: isComplete(incomeTotal)
+            ? t('incomeBySource.totalIncome')
+            : `${t('incomeBySource.totalIncome')} ${tCommon('partialTotal.srSuffix')}`,
+          value: formatCurrency(totalIncome),
+          color: '#16a34a',
+        },
       ],
       chartContainer: chartRef.current,
       chartLegend: legendItems.length > 0 ? legendItems : undefined,
@@ -422,7 +437,9 @@ export function IncomeBySourceReport() {
                     </td>
                     <td role="cell" className={`${CELL_PLACEMENT.value} font-bold text-green-600 dark:text-green-400 ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{columns.value.label}</CellLabel>
-                      {formatCurrency(totalIncome)}
+                      <PartialTotal total={incomeTotal} displayCurrency={reportingCurrency}>
+                        {formatCurrency(totalIncome)}
+                      </PartialTotal>
                     </td>
                     <td role="cell" className={`${CELL_PLACEMENT.percentage} font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
@@ -465,7 +482,9 @@ export function IncomeBySourceReport() {
                   label={t('incomeBySource.totalIncome')}
                   value={
                     <span className="text-green-600 dark:text-green-400">
-                      {formatCurrency(totalIncome)}
+                      <PartialTotal total={incomeTotal} displayCurrency={reportingCurrency}>
+                        {formatCurrency(totalIncome)}
+                      </PartialTotal>
                     </span>
                   }
                 />
@@ -515,7 +534,9 @@ export function IncomeBySourceReport() {
               <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
                 <div className="text-sm text-gray-500 dark:text-gray-400">{t('incomeBySource.totalIncome')}</div>
                 <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(totalIncome)}
+                  <PartialTotal total={incomeTotal} displayCurrency={reportingCurrency}>
+                    {formatCurrency(totalIncome)}
+                  </PartialTotal>
                 </div>
               </div>
             )}

@@ -1339,6 +1339,66 @@ describe("ToolExecutorService", () => {
       expect(result.summary).toContain("spending_by_category");
     });
 
+    it("generate_report names the missing rate and where to fix it in the summary (INV-FX-001)", async () => {
+      builtInReports.getSpendingByCategory.mockResolvedValueOnce({
+        data: [],
+        totalSpending: null,
+        knownSpending: 50,
+        currency: "USD",
+        missingCurrencies: ["JPY", "CHF"],
+        excludedCount: 2,
+      });
+
+      const result = await service.execute(userId, "generate_report", {
+        type: "spending_by_category",
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+      });
+
+      expect(result.summary).toContain(
+        "Total withheld: no exchange rate for JPY->USD, CHF->USD; add it under Currencies.",
+      );
+      // The payload is the report's own, untouched (MCP parity).
+      expect(
+        (result.data as { totalSpending: unknown }).totalSpending,
+      ).toBeNull();
+    });
+
+    it("generate_report adds no withheld clause when every row converted", async () => {
+      builtInReports.getSpendingByCategory.mockResolvedValueOnce({
+        data: [],
+        totalSpending: 0,
+        currency: "USD",
+        missingCurrencies: [],
+        excludedCount: 0,
+      });
+
+      const result = await service.execute(userId, "generate_report", {
+        type: "spending_by_category",
+      });
+
+      expect(result.summary).not.toContain("withheld");
+    });
+
+    it("generate_report spending_anomalies names the currencies it left out", async () => {
+      builtInReports.getSpendingAnomalies.mockResolvedValueOnce({
+        statistics: {},
+        anomalies: [],
+        counts: {},
+        currency: "USD",
+        missingCurrencies: ["JPY"],
+        excludedCount: 3,
+      });
+
+      const result = await service.execute(userId, "generate_report", {
+        type: "spending_anomalies",
+      });
+
+      expect(result.summary).toContain(
+        "Transactions in those currencies were left out of the analysis: no exchange rate for JPY->USD; add it under Currencies.",
+      );
+    });
+
     it("generate_report type spending_anomalies delegates to getSpendingAnomalies", async () => {
       const result = await service.execute(userId, "generate_report", {
         type: "spending_anomalies",

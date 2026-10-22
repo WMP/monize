@@ -287,4 +287,33 @@ describe("SpendingAnomaliesReport", () => {
       "/transactions?categoryId=cat-dining",
     );
   });
+
+  it("names the currencies left out of the analysis when a rate is missing", async () => {
+    mockGetSpendingAnomalies.mockResolvedValue({
+      statistics: { mean: 10, stdDev: 2 },
+      anomalies: [],
+      counts: { high: 0, medium: 0, low: 0 },
+      currency: "CAD",
+      missingCurrencies: ["JPY"],
+      excludedCount: 3,
+    });
+    render(<SpendingAnomaliesReport />);
+    const notice = await screen.findByTestId("partial-data-notice");
+    expect(notice).toHaveTextContent("JPY");
+    expect(notice).toHaveTextContent("CAD");
+  });
+
+  it("shows no partial-data note when every transaction converted", async () => {
+    mockGetSpendingAnomalies.mockResolvedValue({
+      statistics: { mean: 10, stdDev: 2 },
+      anomalies: [],
+      counts: { high: 0, medium: 0, low: 0 },
+      currency: "CAD",
+      missingCurrencies: [],
+      excludedCount: 0,
+    });
+    render(<SpendingAnomaliesReport />);
+    await screen.findByText(/No spending anomalies detected/);
+    expect(screen.queryByTestId("partial-data-notice")).not.toBeInTheDocument();
+  });
 });
