@@ -56,6 +56,7 @@ const NAMESPACES = [
   "tags",
   "tours",
   "transactions",
+  "warranties",
 ] as const;
 
 type Namespace = (typeof NAMESPACES)[number];

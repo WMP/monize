@@ -21,6 +21,17 @@ describe('ConfirmDialog', () => {
     expect(screen.getByText('Are you sure?')).toBeInTheDocument();
   });
 
+  it('wraps a long unbroken word instead of widening the dialog', () => {
+    const longName = `${'scan-of-the-original-receipt-'.repeat(6)}2026.pdf`;
+    render(<ConfirmDialog {...defaultProps} message={`"${longName}" will be permanently deleted.`} />);
+    // The text column may shrink inside its flex row (min-w-0) and breaks a
+    // word with no spaces (break-words), so a long file name wraps rather than
+    // pushing the dialog into a horizontal scroll.
+    const column = screen.getByTestId('confirm-dialog-text');
+    expect(column).toHaveClass('min-w-0', 'flex-1', 'break-words');
+    expect(column).toHaveTextContent(longName);
+  });
+
   it('renders default button labels', () => {
     render(<ConfirmDialog {...defaultProps} />);
     expect(screen.getByText('Confirm')).toBeInTheDocument();

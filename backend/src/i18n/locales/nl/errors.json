@@ -29,7 +29,10 @@
     "unsupportedType": "Niet-ondersteund bestandstype. Toegestane types: {{ types }}",
     "tooMany": "Deze transactie heeft al het maximum van {{ max }} bijlagen",
     "swept": "Het uploaden duurde te lang en de opslag is vrijgegeven. Probeer het opnieuw.",
-    "pairRequiresImages": "Een gescand document en het origineel moeten allebei afbeeldingen zijn"
+    "pairRequiresImages": "Een gescand document en het origineel moeten allebei afbeeldingen zijn",
+    "warrantyNotFound": "Garantie niet gevonden",
+    "tooManyForWarranty": "Deze garantie heeft al het maximum van {{ max }} bijlagen",
+    "documentKindNotForTransaction": "Een documentsoort geldt alleen voor de documenten van een garantie"
   },
   "accounts": {
     "accountWithIdNotFound": "Rekening met ID {{ id }} niet gevonden",
@@ -876,5 +879,47 @@
     "selectionNotNew": "Een geselecteerde transactie is geen nieuwe regel in de gegevens van de bank. Er is niets geïmporteerd; maak het voorbeeld opnieuw.",
     "selectionOverlap": "Een transactie kan niet tegelijk worden geïmporteerd en aan de uitzonderingen worden toegevoegd.",
     "nothingToUpdate": "Stuur autoSync, notifySuccess of tagOperationType om een bankkoppeling te wijzigen."
+  },
+  "warranties": {
+    "notFound": "Garantie met ID {{ id }} niet gevonden",
+    "transactionNotFound": "Transactie met ID {{ id }} niet gevonden",
+    "transactionIsSplitLine": "Een garantie hoort bij de hele aankoop, niet bij een van de gesplitste regels",
+    "payeeNotFound": "Begunstigde met ID {{ id }} niet gevonden",
+    "invalidTerm": "De looptijd van een garantie moet groter zijn dan nul",
+    "expiryRequired": "Een garantie die niet levenslang is, heeft een vervaldatum of een looptijd nodig",
+    "expiresBeforePurchase": "Een garantie kan niet verlopen vóór de aankoopdatum",
+    "priceNeedsCurrency": "Een aankoopprijs en de valuta ervan worden samen ingevuld of helemaal niet",
+    "claimNotFound": "Claim met ID {{ id }} niet gevonden",
+    "claimResolvedOnNeedsOutcome": "Een sluitingsdatum van een claim vereist de status afgehandeld of afgewezen",
+    "claimResolvedBeforeClaimDate": "Een claim kan niet worden gesloten vóór de claimdatum",
+    "import": {
+      "noFile": "Kies een CSV-bestand om te importeren",
+      "notCsv": "Het bestand moet een CSV-bestand zijn",
+      "fileTooLarge": "Het importbestand mag maximaal 1 MiB groot zijn",
+      "emptyFile": "Het bestand moet een kopregel en ten minste één gegevensregel hebben",
+      "tooManyRows": "Het importbestand heeft {{ count }} rijen; er zijn er maximaal {{ max }} toegestaan",
+      "missingColumns": "De kopregel van het bestand heeft geen kolom {{ columns }}",
+      "invalidRows": "{{ count }} rijen zijn ongeldig, dus er is niets geïmporteerd; corrigeer ze of sla ze over",
+      "nameRequired": "ProductName is verplicht",
+      "purchaseDateRequired": "PurchaseDate is verplicht",
+      "tooLong": "{{ column }} mag maximaal {{ max }} tekens bevatten",
+      "invalidDate": "{{ column }} moet een datum zijn in de vorm YYYY-MM-DD",
+      "invalidDuration": "{{ column }} moet een geheel getal van 0 tot en met {{ max }} zijn",
+      "invalidLifetime": "IsLifetime moet true, false, yes, no, 1 of 0 zijn",
+      "noExpirySource": "Vul ExpirationDate, een WarrantyDuration-kolom of IsLifetime in",
+      "lifetimeWithExpiry": "IsLifetime is true, maar de rij bevat ook ExpirationDate of een WarrantyDuration; vul er maar één in",
+      "durationIgnored": "ExpirationDate is gebruikt; de WarrantyDuration-kolommen ernaast zijn genegeerd",
+      "durationDisagrees": "ExpirationDate {{ expiresOn }} is gebruikt; de WarrantyDuration-kolommen geven {{ derived }}, wat daarvan afwijkt",
+      "negativePrice": "PurchasePrice mag niet negatief zijn",
+      "invalidPrice": "PurchasePrice moet een getal van 0 tot en met {{ max }} zijn met maximaal 4 decimalen",
+      "currencyWithoutPrice": "Currency is ingevuld, maar PurchasePrice is leeg",
+      "unknownCurrency": "Valuta \"{{ value }}\" is onbekend; {{ currency }} is gebruikt",
+      "unknownWarrantyType": "WarrantyType \"{{ value }}\" is niet manufacturer, extended, store of other; geïmporteerd als other",
+      "invalidSerialJson": "SerialNumber begint met [ maar is geen JSON-array van tekst",
+      "tooManySerials": "SerialNumber bevat {{ count }} waarden; er zijn er maximaal {{ max }} toegestaan",
+      "serialTooLong": "Elk serienummer mag maximaal {{ max }} tekens bevatten",
+      "invalidUrl": "ProductURL moet een http- of https-adres zijn",
+      "invalidField": "{{ field }} is ongeldig"
+    }
   }
 }

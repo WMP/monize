@@ -56,6 +56,12 @@ export const NOTIFICATION_EMAIL_MESSAGES = {
   "aiReview.expiringTitle": "AI review proposals expire soon",
   "aiReview.expiringMessage":
     "Proposals that expire within 3 days: {{ count }}. The first one expires on {{ date }}. Open to review.",
+  "warranty.expiringTitle": "{{ name }}: warranty expires soon",
+  "warranty.expiringMessage":
+    "The warranty for {{ name }} expires on {{ date }}. Open to review its documents or record a claim.",
+  "warranty.todayTitle": "{{ name }}: warranty expires today",
+  "warranty.todayMessage":
+    "The warranty for {{ name }} expires today, {{ date }}. Open to review its documents or record a claim.",
   "portfolioMovement.titleUp": "Investments up {{ percent }}%",
   "portfolioMovement.titleDown": "Investments down {{ percent }}%",
   "portfolioMovement.messageUp":

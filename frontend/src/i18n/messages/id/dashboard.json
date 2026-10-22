@@ -93,6 +93,11 @@
     "viewAll": "Lihat semua wawasan",
     "activeCount": "{count} aktif"
   },
+  "warrantiesExpiring": {
+    "title": "Garansi yang segera berakhir",
+    "empty": "Tidak ada yang berakhir dalam 30 hari ke depan",
+    "loadFailed": "Garansi Anda yang akan berakhir tidak dapat dimuat. Muat ulang dasbor untuk mencoba lagi."
+  },
   "topMovers": {
     "title": "Penggerak Teratas",
     "empty": {

@@ -135,6 +135,7 @@
       "toggleTitle": "तिथियों से वर्ष हटाएँ ताकि भुगतानकर्ता का नाम अधिक दिखे"
     },
     "attachmentsCount": "{count, plural, one {# अटैचमेंट} other {# अटैचमेंट}}",
+    "warrantiesCount": "{count, plural, one {# वारंटी} other {# वारंटी}}",
     "today": "आज",
     "export": {
       "button": "निर्यात",
@@ -198,7 +199,9 @@
       "duplicateTitle": "लेन-देन डुप्लिकेट करें",
       "copy": "कॉपी",
       "duplicate": "डुप्लिकेट",
-      "scheduleRecurring": "आवर्ती के रूप में शेड्यूल करें"
+      "scheduleRecurring": "आवर्ती के रूप में शेड्यूल करें",
+      "addWarranty": "वारंटी जोड़ें",
+      "viewWarranties": "वारंटी देखें"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "संपादित करें",
     "duplicate": "डुप्लिकेट",
     "scheduleRecurring": "आवर्ती के रूप में शेड्यूल करें",
+    "addWarranty": "वारंटी जोड़ें",
+    "viewWarranties": "वारंटी देखें",
     "delete": "हटाएं"
   },
   "filter": {
@@ -465,7 +470,14 @@
       },
       "feeCaption": "इसमें {percent}% विदेशी लेनदेन शुल्क ({fee}) शामिल है।"
     },
-    "jointSplitDisabled": "साझा खाते में विभाजित लेनदेन केवल स्वामी ही प्रबंधित कर सकता है"
+    "jointSplitDisabled": "साझा खाते में विभाजित लेनदेन केवल स्वामी ही प्रबंधित कर सकता है",
+    "warranties": {
+      "title": "वारंटी",
+      "add": "वारंटी जोड़ें",
+      "expires": "{date} को समाप्त",
+      "loading": "वारंटी लोड हो रही हैं",
+      "loadError": "इस लेनदेन की वारंटी लोड नहीं हो सकीं।"
+    }
   },
   "splitEditor": {
     "header": "विभाजन विवरण",
@@ -626,7 +638,8 @@
       "amountRange": "राशि 50 से 100 तक",
       "datePeriod": "मार्च 2026 का कोई भी दिन",
       "isSplit": "विभाजित लेन-देन",
-      "hasAttachment": "अनुलग्नक है"
+      "hasAttachment": "अनुलग्नक है",
+      "hasWarranty": "वारंटी है"
     }
   },
   "searchInterpretation": {
@@ -668,6 +681,7 @@
       },
       "has": {
         "attachment": "अनुलग्नक है",
+        "warranty": "वारंटी है",
         "ref": "संदर्भ संख्या है",
         "memo": "नोट है",
         "tag": "टैग है"

@@ -125,7 +125,8 @@ export function clearAllCache(): void {
  * applied to existing rows), because every converted total and every budget
  * roll-up is derived from them.
  *
- * Anything derived from transaction rows belongs on this list. Adding a new
+ * Anything derived from transaction rows belongs on this list, including a
+ * warranty's `linkedTransaction` (the purchase's date, payee and amount). Adding a new
  * cached family that reads them means adding its prefix here in the same
  * change; `balance-cache.guard.test.ts` holds the call sites, and
  * `apiCache.test.ts` holds the prefix set.
@@ -134,6 +135,7 @@ export function invalidateBalanceCaches(): void {
   invalidateCache('accounts:');
   invalidateCache('investments:');
   invalidateCache('budgets:');
+  invalidateCache('warranties:');
 }
 
 /**

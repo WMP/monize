@@ -85,7 +85,7 @@ describe('NotificationBell', () => {
 
   it('renders a read-only feed for a delegate with Budgets access', async () => {
     useAuthStore.setState({ actingAsUserId: 'owner-1', delegateSections: {
-      budgets: true, bills: false, investments: false, reports: false, ai: false,
+      budgets: true, bills: false, investments: false, reports: false, ai: false, warranties: false,
     } });
     mockGetAlerts.mockResolvedValue([makeNotification()]);
     render(<NotificationBell />);
@@ -120,7 +120,7 @@ describe('NotificationBell', () => {
     render(<NotificationBell />);
     mockGetAlerts.mockResolvedValueOnce([makeNotification({ id: 'current-owner-row' })]);
     act(() => useAuthStore.setState({ actingAsUserId: 'owner-2', delegateSections: {
-      budgets: true, bills: false, investments: false, reports: false, ai: false,
+      budgets: true, bills: false, investments: false, reports: false, ai: false, warranties: false,
     } }));
     await act(async () => {});
     await act(async () => { finishOld([makeNotification({ id: 'previous-context-row' })]); });
