@@ -683,6 +683,56 @@ describe("InvestmentReportDataService", () => {
     expect(v.totalReturn1Week).toBeCloseTo(22.2222, 4);
   });
 
+  it("treats a return of capital as capital paid back, not income (#1800)", async () => {
+    securitiesRepository.find.mockResolvedValue([
+      {
+        id: "sec1",
+        symbol: "AAA",
+        name: "Alpha",
+        securityType: "STOCK",
+        currencyCode: "USD",
+      },
+    ]);
+    holdingsRepository.find.mockResolvedValue([
+      holding({ quantity: 10, averageCost: 0 }),
+    ]);
+    txRepository.find.mockResolvedValue([
+      makeTx({
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-10",
+        quantity: 10,
+        price: 100,
+        totalAmount: 1000,
+      }),
+      // 120 a share paid back on 100 a share of cost: 1,000 comes off the
+      // basis and the 200 beyond it is realized.
+      makeTx({
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        transactionDate: "2024-06-05",
+        quantity: null,
+        price: null,
+        totalAmount: 1200,
+      }),
+    ]);
+    manager.query.mockResolvedValue([
+      priceRow({ price_date: "2024-06-01", close_price: "200" }),
+      priceRow({ price_date: "2024-06-10", close_price: "80" }),
+    ]);
+
+    const { rows } = await service.computeHoldings(
+      "u1",
+      ["acc1"],
+      "2024-06-10",
+      "USD",
+    );
+    const v = rows[0].values;
+    expect(v.income).toBe(0);
+    expect(v.realizedGains).toBe(200);
+    // 2,000 at the window's start became 800 of shares plus 1,200 of cash
+    // paid back: no return, where leaving the cash out read it as -60%.
+    expect(v.totalReturn1Week).toBe(0);
+  });
+
   it("keeps an imported reinvest that carries a total but no price in Reinvestments and Income", async () => {
     // A QIF ReinvDiv with no price line: the basis cannot price it, but the
     // distribution itself is the file's total.

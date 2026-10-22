@@ -146,7 +146,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Tái đầu tư lãi vốn dài hạn",
       "CAPITAL_GAIN_SHORT": "Lãi vốn ngắn hạn",
       "CAPITAL_GAIN_LONG": "Lãi vốn dài hạn",
-      "REDEEM": "Đáo hạn CD/trái phiếu"
+      "REDEEM": "Đáo hạn CD/trái phiếu",
+      "RETURN_OF_CAPITAL": "Hoàn vốn"
     },
     "createSecurityTitle": "Tạo chứng khoán này?",
     "createdSecurity": "Đã tạo chứng khoán",

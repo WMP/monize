@@ -226,7 +226,8 @@
       "REINVEST_CAPITAL_GAIN_LONG": "Uzun Vadeli Kazancı Yeniden Yatır",
       "CAPITAL_GAIN_SHORT": "Kısa Vadeli Sermaye Kazancı",
       "CAPITAL_GAIN_LONG": "Uzun Vadeli Sermaye Kazancı",
-      "REDEEM": "CD/Tahvil İtfası"
+      "REDEEM": "CD/Tahvil İtfası",
+      "RETURN_OF_CAPITAL": "Sermaye İadesi"
     },
     "submitCreate": "Oluştur",
     "submitUpdate": "Güncelle",
