@@ -1280,6 +1280,7 @@
     "colDate": "Data",
     "colShares": "Ações",
     "colPrice": "Preço",
+    "returnOfCapitalRow": "Devolução de capital acima do custo de aquisição",
     "pdfTitle": "Relatório de Ganhos Realizados",
     "pdfSubtitle": "{count} títulos | Ganho líquido: {gain}",
     "csvColSecurity": "Título",

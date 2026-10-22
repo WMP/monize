@@ -47,6 +47,7 @@ const INVESTMENT_ACTION_LABELS: Record<string, string> = {
   REINVEST: 'Reinvest',
   ADD_SHARES: 'Add Shares',
   REMOVE_SHARES: 'Remove Shares',
+  RETURN_OF_CAPITAL: 'Return of Capital',
 };
 
 function describeInvestmentSplit(split: TransactionSplit, uncategorizedLabel: string): string {

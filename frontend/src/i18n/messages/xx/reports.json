@@ -1280,6 +1280,7 @@
     "colDate": "[XX-Date-XX]",
     "colShares": "[XX-Shares-XX]",
     "colPrice": "[XX-Price-XX]",
+    "returnOfCapitalRow": "[XX-Return of capital beyond cost basis-XX]",
     "pdfTitle": "[XX-Realized Gains Report-XX]",
     "pdfSubtitle": "[XX-{count} securities | Net gain: {gain}-XX]",
     "csvColSecurity": "[XX-Security-XX]",

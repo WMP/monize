@@ -1280,6 +1280,7 @@
     "colDate": "日付",
     "colShares": "株数",
     "colPrice": "価格",
+    "returnOfCapitalRow": "取得原価を超える資本の払い戻し",
     "pdfTitle": "実現損益レポート",
     "pdfSubtitle": "{count} 種類の有価証券 | 純損益：{gain}",
     "csvColSecurity": "有価証券",

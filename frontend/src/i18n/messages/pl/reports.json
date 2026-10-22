@@ -1280,6 +1280,7 @@
     "colDate": "Data",
     "colShares": "Udziały",
     "colPrice": "Cena",
+    "returnOfCapitalRow": "Zwrot kapitału ponad koszt nabycia",
     "pdfTitle": "Raport zrealizowanych zysków",
     "pdfSubtitle": "{count} papierów | Zysk netto: {gain}",
     "csvColSecurity": "Papier wartościowy",

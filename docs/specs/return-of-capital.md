@@ -71,15 +71,30 @@ realized 0 and unrealized 0.
   the basis unknown (`mixed_basis_currency` in the cost-basis lots,
   `basisKnown = false` in the capital-gains replay) rather than leaving it
   unreduced.
+  The capital-gains-by-period replay reads the raw stored rate, never the
+  `|| 1` fallback its trades use, so the period's figures are `null` rather
+  than converted at par. The realized-gain replay, which has no completeness
+  flag, leaves the basis unreduced, exactly as it leaves an unpriced
+  acquisition out of the basis.
 - A return of capital that settled in a different currency from the basis it
   would reduce leaves that basis unknown, the same test an acquisition passes.
+
+## 4.1 Rows imported before this change
+
+QIF `RtrnCap` rows imported before this change were stored as `DIVIDEND`, and
+stay that way: nothing rewrites a stored action, because a dividend is a
+legitimate row and only the person who imported it knows which rows were
+really returns of capital. Until they are edited, those rows count as dividend
+income and leave the basis unreduced. Changing a row's action to Return of
+Capital in the transaction form corrects both; the holdings rebuild that every
+write runs recomputes the basis.
 
 ## 5. Where each surface reads it
 
 | Surface | Mechanism |
 | --- | --- |
 | Stored holdings (`computeHoldingsMap`), undo rebuild, SPLIT preview (`getHoldingAt`) | `applyReturnOfCapital` in the security's currency |
-| Cost-basis lots, realized gains, capital gains by period | `applyReturnOfCapital` in the holding account's currency |
+| Cost-basis lots, realized gains, capital gains by period | `applyReturnOfCapital` in the holding account's currency; a realized-gain row for the excess carries `action: RETURN_OF_CAPITAL`, `quantity` and `price` 0, and the report labels it |
 | Custom investment report | basis and realized gains through `applyReturnOfCapital`; period returns count the cash |
 | Net invested (`computeInvestmentFlows`) | with the sale proceeds |
 | Invested-capital flows | `capitalOut` |

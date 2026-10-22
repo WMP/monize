@@ -911,6 +911,12 @@ export interface RealizedGainEntry {
   symbol: string | null;
   securityName: string | null;
   securityCurrencyCode: string | null;
+  /**
+   * The row that realized the gain. A RETURN_OF_CAPITAL realizes what it paid
+   * beyond the cost basis with no shares sold, so its `quantity` and `price`
+   * are 0 and mean nothing (issue #1800).
+   */
+  action: InvestmentAction;
   quantity: number;
   price: number;
   commission: number;

@@ -1280,6 +1280,7 @@
     "colDate": "Ngày",
     "colShares": "Cổ phiếu",
     "colPrice": "Giá",
+    "returnOfCapitalRow": "Hoàn vốn vượt quá cơ sở chi phí",
     "pdfTitle": "Báo cáo lãi đã thực hiện",
     "pdfSubtitle": "{count} chứng khoán | Lãi ròng: {gain}",
     "csvColSecurity": "Chứng khoán",

@@ -1280,6 +1280,7 @@
     "colDate": "Datum",
     "colShares": "Aandelen",
     "colPrice": "Koers",
+    "returnOfCapitalRow": "Kapitaalterugbetaling boven de kostprijs",
     "pdfTitle": "Rapport gerealiseerde winsten",
     "pdfSubtitle": "{count} waardepapieren | Netto winst: {gain}",
     "csvColSecurity": "Waardepapier",

@@ -1280,6 +1280,7 @@
     "colDate": "तिथि",
     "colShares": "शेयर",
     "colPrice": "मूल्य",
+    "returnOfCapitalRow": "लागत आधार से अधिक पूंजी की वापसी",
     "pdfTitle": "वास्तविक लाभ रिपोर्ट",
     "pdfSubtitle": "{count} प्रतिभूतियाँ | निवल लाभ: {gain}",
     "csvColSecurity": "प्रतिभूति",

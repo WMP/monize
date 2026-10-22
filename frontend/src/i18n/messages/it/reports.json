@@ -1280,6 +1280,7 @@
     "colDate": "Data",
     "colShares": "Azioni",
     "colPrice": "Prezzo",
+    "returnOfCapitalRow": "Rimborso di capitale oltre il costo di acquisto",
     "pdfTitle": "Report plusvalenze realizzate",
     "pdfSubtitle": "{count} titoli | Guadagno netto: {gain}",
     "csvColSecurity": "Titolo",

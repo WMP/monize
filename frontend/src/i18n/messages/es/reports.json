@@ -1280,6 +1280,7 @@
     "colDate": "Fecha",
     "colShares": "Acciones",
     "colPrice": "Precio",
+    "returnOfCapitalRow": "Devolución de capital por encima de la base de costo",
     "pdfTitle": "Informe de ganancias realizadas",
     "pdfSubtitle": "{count} valores | Ganancia neta: {gain}",
     "csvColSecurity": "Valor",

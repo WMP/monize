@@ -1280,6 +1280,7 @@
     "colDate": "Datum",
     "colShares": "Anteile",
     "colPrice": "Kurs",
+    "returnOfCapitalRow": "Kapitalrückzahlung über den Anschaffungskosten",
     "pdfTitle": "Bericht realisierte Gewinne",
     "pdfSubtitle": "{count} Wertpapiere | Nettogewinn: {gain}",
     "csvColSecurity": "Wertpapier",

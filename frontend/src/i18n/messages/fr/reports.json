@@ -1280,6 +1280,7 @@
     "colDate": "Date",
     "colShares": "Parts",
     "colPrice": "Prix",
+    "returnOfCapitalRow": "Remboursement de capital au-delà du prix de revient",
     "pdfTitle": "Rapport des gains réalisés",
     "pdfSubtitle": "{count} titres | Gain net : {gain}",
     "csvColSecurity": "Titre",

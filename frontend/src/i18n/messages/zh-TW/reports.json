@@ -1280,6 +1280,7 @@
     "colDate": "日期",
     "colShares": "股數",
     "colPrice": "價格",
+    "returnOfCapitalRow": "超出成本基礎的資本返還",
     "pdfTitle": "已實現獲利報表",
     "pdfSubtitle": "{count} 個證券 | 淨獲利：{gain}",
     "csvColSecurity": "證券",

@@ -1280,6 +1280,7 @@
     "colDate": "Tanggal",
     "colShares": "Saham",
     "colPrice": "Harga",
+    "returnOfCapitalRow": "Pengembalian modal melebihi dasar biaya",
     "pdfTitle": "Laporan Keuntungan yang Direalisasi",
     "pdfSubtitle": "{count} keamanan dokumen | Keuntungan bersih: {gain}",
     "csvColSecurity": "Keamanan Dokumen",
