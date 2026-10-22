@@ -64,13 +64,14 @@ implied.
 | INV-BANKSYNC-003 | A synced row is written in the Monize account's currency or not at all | enforced |
 | INV-BANKSYNC-004 | Nothing imports a bank account awaiting its first preview except the confirmed single-account sync | enforced |
 | INV-API-001 | An API create carrying an `externalId` produces at most one row per account and key | partial |
-| INV-BALANCE-001 | `current_balance` equals opening balance plus included ledger rows | enforced |
+| INV-BALANCE-001 | `current_balance` equals opening balance plus included ledger rows | partial |
 | INV-HOLDING-001 | A holding equals a deterministic replay of the investment ledger | enforced |
 | INV-HOLDING-002 | Every view replays the ledger the same way | enforced |
 | INV-TRANSFER-001 | A transfer's two legs share the VOID boundary and one balance decision | enforced |
 | INV-REGISTER-001 | A row's running balance is the same figure whichever way the date register runs, and no balance is shown under any other order | enforced |
 | INV-REDEEM-001 | A redemption's accrued interest moves cash once and is income once | enforced |
 | INV-RECONCILE-001 | While the strict lock is on, a reconciled transaction is not altered | enforced |
+| INV-DELEGATION-001 | A grantee's write is authorized in the transaction that writes it, and a revoke is final | partial |
 | INV-FX-001 | An unavailable rate never becomes 1:1, a rate from after the date, or an unboundedly old one | partial |
 | INV-FX-002 | A row that carries its own exchange rate is converted at that rate on every surface | enforced |
 | INV-FX-003 | A currency pair is stored in one orientation | partial |
@@ -521,6 +522,32 @@ Enforcement         Every absolute recompute takes the account lock before readi
                     read and its write. The atomic delta path (updateBalance) is
                     unchanged. A VOID transfer moves neither balance
                     (transaction-transfer.service.ts skips both updateBalance calls).
+                    A deletion removes every row it would orphan: the bulk delete
+                    expands a selected split-transfer leg (whose link names its
+                    split parent, not a mirror) to the parent and every sibling
+                    leg, locks the parents before the legs and reverses each
+                    locked row through deletionBalanceEffect, as the single
+                    delete does (A26-H05).
+                    A transfer edit derives every delta from rows locked inside
+                    its own transaction and refuses with 409 when they differ
+                    from what the edit was built on: both legs ascending
+                    (same-owner and connected cross-owner, each under its own
+                    owner), and for a split-transfer leg the parent and then the
+                    leg (A26-H03). derived-state-writers.guard.spec.ts fails an
+                    update/remove/delete/bulk method that moves a balance
+                    without taking a lock itself, not only a file.
+                    Undo and redo of an account edit never write
+                    current_balance (nor is_closed, closed_date,
+                    linked_account_id) from the snapshot; a restored opening
+                    balance recomputes current_balance from the ledger under
+                    lockAccountsForBalanceWrite (A26-H06).
+                    No whole-entity save writes a snapshot's current_balance:
+                    the investment-pair rename and re-currency, and the account
+                    delete's unlink, update only the changed columns of the
+                    other half; an imported opening balance is
+                    applyOpeningBalanceChange (accounts.service.ts), a 4dp
+                    delta of new - old read under lockAccountsForBalanceWrite
+                    (A26-M13).
 Concurrency scope   per account
 Retry semantics     A recompute is idempotent against another recompute and, under
                     the lock, against a concurrent delta.
@@ -529,8 +556,26 @@ Required tests      Source scan: common/db/derived-state-writers.guard.spec.ts -
                     only sanctioned services write current_balance, and each reads
                     under a lock. Two-connection (delta interleaved with a recompute,
                     the delta must survive): backend/test/integration/balance-delta-recompute.integration.spec.ts.
-Status              enforced
+                    Bulk delete of a split-transfer leg, parent, both legs and a
+                    cross-owner leg, on the schema's ON DELETE actions:
+                    backend/test/integration/bulk-delete-split-leg.integration.spec.ts.
+                    Two concurrent transfer edits, same and different values, on a
+                    split-transfer leg and a connected cross-owner pair:
+                    backend/test/integration/transfer-edit-race.integration.spec.ts.
+                    Undo of a rename after an unrecorded movement, redo, and an
+                    opening-balance undo:
+                    backend/test/integration/account-undo.integration.spec.ts.
+                    A pair rename with a posting in its window, and an imported
+                    4dp opening balance beside a concurrent movement:
+                    backend/test/integration/investment-pair-stale-balance.integration.spec.ts,
+                    backend/test/integration/import-balance-delta.integration.spec.ts.
+Status              partial
 ```
+
+Open breach found by the 2026-10 audit, outside the ledger remediation stream: an
+investment transaction edited twice at once, or while it is deleted, duplicates or
+orphans its cash leg (A26-H04, task T10 of the securities stream). The status stays
+`partial` until that lands.
 
 See `docs/concurrency-and-idempotency.md` CONC-003. The former secondary breach --
 transfers created as `VOID` moving both balances -- is closed on the create path
@@ -780,11 +825,30 @@ Enforcement         The balance decision is made once per pair, keyed on VOID.
                     state is per-ledger. Guards: deletion-balance.guard.spec.ts,
                     investment-void-classification.guard.spec.ts,
                     void-status-transition.util.ts.
+                    The crossing is decided on the LOCKED status, never on a read
+                    taken before the row lock (A26-M09): the bulk status update
+                    discovers its lock set structurally (every mirror leg and every
+                    leg of a selected split parent, whatever its status), takes the
+                    holdings advisory lock, locks the split parents and then the
+                    rest, and only then expands the crossing; a row the locked
+                    expansion names outside that set is refused with 409. addSplit
+                    and updateSplits write the new counterparts with the locked
+                    parent's status, not the caller's copy.
+                    An account delete counts its rows again inside the deleting
+                    transaction, after lockAccountsForBalanceWrite on the account
+                    (the lock a row writer's balance update and FK check conflict
+                    with), so a sync or import that wrote a transfer leg into it
+                    is refused rather than cascaded away, leaving the other leg
+                    one-sided (A26-M19):
+                    backend/test/integration/account-delete-race.integration.spec.ts.
 Concurrency scope   per transfer pair
 Failure response    consistent balances across the pair on every VOID transition.
 Required tests      Per status-changing path, both legs' balances stay consistent
                     across a VOID transition, including the split-transfer variant
                     that links through the split parent rather than a mirror leg.
+                    Two connections, a status change committing between the
+                    caller's read and the row lock (bulk VOID of a pair, addSplit,
+                    updateSplits): backend/test/integration/void-crossing-lock.integration.spec.ts.
 Status              enforced
 ```
 
@@ -819,6 +883,45 @@ Required tests      docs/specs/redemption-accrued-interest.md section 6.
 Status              enforced
 ```
 
+### INV-DELEGATION-001 -- a grantee's write is authorized where it is written
+
+```text
+Statement           A write made on another owner's ledger by a grantee (a
+                    cross-owner transfer, a joint-register row) commits only if
+                    the grant that authorizes it is still held when it commits;
+                    once a revoke has committed, nothing the grantee started
+                    lands, and a revoked delegation is never re-instated by a
+                    settings save.
+Source of truth     account_delegates and account_delegate_grants.
+Enforcement         CrossOwnerAccessService.assertAccessStillHeld, on the
+                    write's own manager under the system bypass, after its row
+                    locks and before its first write: FOR SHARE on the
+                    delegation and grant rows, so a revoke (a DELETE of the
+                    delegation) waits for the write or the write sees the grant
+                    gone and refuses with the first check's 404 / 403. Called
+                    from writeTransferLegs, the connected cross-owner edit and
+                    delete, and the joint register's create, update, remove and
+                    cleared toggle (through the beforeWrite hook of the
+                    TransactionsService operation it reuses; update, remove and
+                    the toggle also refuse a row the owner moved out of the
+                    joint account). Delegation section and capability flags are
+                    one conditional UPDATE keyed on the owner (A26-M05);
+                    createDelegate's link reads the login FOR UPDATE.
+Concurrency scope   per delegation
+Failure response    404 / 403, nothing written.
+Required tests      Under the unprivileged role with RLS enforced, the owner's
+                    change committed between the grantee's authorization and the
+                    write: backend/test/integration/delegated-write-recheck.integration.spec.ts.
+Status              partial
+```
+
+Open, by design of the 2026-10 remediation split: the joint category create
+(`JointCategoriesService.create`) still writes under the bypass with no
+in-transaction re-check, since `CategoriesService.create` has no hook yet; and
+`resetDelegatePassword` still checks "no other owner" in one transaction and writes
+the credential in another (its write half is changed by the auth stream; the link
+side of the serialization, `createDelegate` locking the login, is in place).
+
 ### INV-RECONCILE-001 -- while the strict lock is on, a reconciled transaction is not altered
 
 ```text
@@ -846,7 +949,15 @@ Enforcement         assertReconciledRowsMutable / assertReconciledIdsMutable
                     resolver behind clear / reconcile / unreconcile and
                     PATCH :id/status) and its bulkReconcile,
                     TransactionTransferService.removeTransfer /
-                    updateTransfer, TransactionBulkUpdateService.bulkUpdate /
+                    updateTransfer and each branch they hand off to, scanned on
+                    its own (updateSplitTransferLeg,
+                    updateConnectedCrossOwnerTransfer, updateFrozenTransferLeg,
+                    removeCrossOwnerTransfer,
+                    removeTransferFromSplitInTransaction; an assertion in one
+                    branch no longer satisfies the whole route, A26-M11). A
+                    cross-owner leg is asked under its own owner's setting,
+                    since each owner reconciles their own statement.
+                    TransactionBulkUpdateService.bulkUpdate /
                     bulkDelete, TransactionSplitService.updateSplits / addSplit /
                     removeSplit, ActionHistoryService.undoTransactionUpdate (undo
                     and redo of a transaction edit) and
@@ -3036,6 +3147,15 @@ Enforcement         Creation: createLoanAccount, createMortgageAccount
                     identifyLoanTemplate reports the relinked template
                     managed; it is a no-op (logged) for a cleared category, no
                     schedule, or an ambiguous or already-unmanaged template.
+                    Undo and redo: ActionHistoryService refuses (409
+                    errors.actionHistory.loanEditNotUndoable), before any
+                    write, the undo or redo of an account edit that changed a
+                    template-coupled column (method, prepayment mode,
+                    amortization, original principal, payment, frequency,
+                    interest category, source account, schedule or matching
+                    rule) of a loan with a schedule; the column restore alone
+                    left the template unmanaged or priced for the other method
+                    (A26-H06). backend/test/integration/account-undo.integration.spec.ts.
 Concurrency scope   per loan: the update holds the account row lock, then the
                     plan takes the schedule row lock (pessimistic_write), the
                     order reassignLoanSourceAccount and the template

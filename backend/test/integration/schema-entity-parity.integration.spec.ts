@@ -23,7 +23,7 @@ import {
  * DELETE could only ever have raised a foreign-key error, so the data loss was
  * not reproducible in an integration test at all.
  *
- * 55 further foreign keys drift the same way today. Correcting them all is an
+ * 53 further foreign keys drift the same way today. Correcting them all is an
  * entity-wide change with its own review, so they are baselined here and the
  * list may only SHRINK: a new drift fails this test, and a fixed one fails it
  * too, with a message saying to delete the line. That is the same shrink-only
@@ -90,8 +90,6 @@ describe("entity/schema FK delete-rule drift (integration)", () => {
     "security_prices.security_id",
     "tags.user_id",
     "transaction_attachments.user_id",
-    "transaction_splits.transaction_id",
-    "transactions.account_id",
     "transactions.user_id",
     "trusted_devices.user_id",
     "user_preferences.user_id",

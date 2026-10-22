@@ -32,7 +32,11 @@ import { stripHtml } from "../common/sanitization.util";
 import { tr } from "../i18n/translate";
 import { getActiveScopedManager, withScopedDb } from "../common/db/scoped-db";
 import { isExternalIdConflict } from "./transaction-external-id";
-import { lockTransactionRow, lockTransactionRows } from "../common/db/locks";
+import {
+  lockTransactionRow,
+  lockTransactionRows,
+  type LockedTransactionRow,
+} from "../common/db/locks";
 import { assertReconciledRowsMutable } from "./reconciled-lock.util";
 import { removeLockedTransactionLeg } from "./remove-transaction-leg";
 import { autoTransferPayeeName } from "./transfer-payee-label.util";
@@ -639,8 +643,9 @@ export class TransactionTransferService {
    * authorization first, under scoped(), and let only the minimum out").
    *
    * Everything here is a read or a pure computation, so it is safe to run
-   * outside the caller's transaction: account ownership and delegation grants
-   * are not written by the posting that follows.
+   * outside the caller's transaction -- but a delegation grant read here can
+   * be revoked before the legs are written, so `writeTransferLegs` asserts it
+   * again inside the write's own transaction (A26-M04).
    */
   async prepareTransfer(
     userId: string,
@@ -794,6 +799,25 @@ export class TransactionTransferService {
     const writeLegsAtomically = async (
       m: EntityManager,
     ): Promise<WrittenTransfer> => {
+      // The grant prepareTransfer found was read in the grantee's identity, in
+      // an earlier transaction; re-assert it here, under the bypass, before
+      // the first write, so a revoke that committed in between refuses this
+      // write instead of watching it land (A26-M04).
+      if (hasForeignLeg) {
+        for (const [accountId, ownerId] of [
+          [fromAccountId, fromOwnerId],
+          [toAccountId, toOwnerId],
+        ] as const) {
+          if (ownerId !== prepared.realUserId) {
+            await this.crossOwnerAccess.assertAccessStillHeld(
+              m,
+              prepared.realUserId,
+              accountId,
+              "create",
+            );
+          }
+        }
+      }
       // Advisory, in the write's own transaction and identity: the unique
       // index refuses a second leg holding the key (caught below).
       if (externalId) {
@@ -1604,6 +1628,11 @@ export class TransactionTransferService {
     const removeLeg = async (m: EntityManager, leg: Transaction) => {
       const locked = await lockTransactionRow(m, leg.id, leg.userId);
       if (!locked) return;
+      // Strict reconciled lock, under the leg's own owner's setting: a
+      // reconciled leg refuses the deletion of the pair, as on the same-owner
+      // path (A26-M11). Both legs run in one transaction, so a refusal on the
+      // second rolls back the first.
+      await assertReconciledRowsMutable(m, leg.userId, [locked]);
       await removeLockedTransactionLeg(
         m,
         locked,
@@ -1624,6 +1653,17 @@ export class TransactionTransferService {
       );
       await withSystemContext(() =>
         withScopedDb(this.dataSource, async (m) => {
+          // The delete grant was decided before this system transaction; a
+          // revoke that committed since refuses here, before either leg goes
+          // (A26-M04).
+          for (const leg of ordered) {
+            await this.crossOwnerAccess.assertAccessStillHeld(
+              m,
+              realUserId,
+              leg.accountId,
+              "delete",
+            );
+          }
           for (const leg of ordered) {
             await removeLeg(m, leg);
           }
@@ -1676,6 +1716,17 @@ export class TransactionTransferService {
       m,
       [...siblingLegIds, transaction.id],
       userId,
+    );
+
+    // Strict reconciled lock over everything this deletion removes: the
+    // parent, its category lines with it, and every leg (A26-M11). The
+    // same-owner pair path asserts its two legs; this branch asserted nothing.
+    await assertReconciledRowsMutable(
+      m,
+      userId,
+      [parent, ...locked.values()].filter(
+        (row): row is LockedTransactionRow => row !== null,
+      ),
     );
 
     if (parent) {
@@ -2073,6 +2124,7 @@ export class TransactionTransferService {
     }
     return this.updateConnectedCrossOwnerTransfer(
       effectiveUserId,
+      realUserId,
       ownLeg,
       counterpart,
       updateDto,
@@ -2166,6 +2218,8 @@ export class TransactionTransferService {
             ),
           );
         }
+        // Strict reconciled lock on the one row this path writes (A26-M11).
+        await assertReconciledRowsMutable(m, effectiveUserId, [lockedLeg]);
         const wasVoid = lockedLeg.status === TransactionStatus.VOID;
         const isVoid =
           updateDto.status !== undefined
@@ -2218,6 +2272,7 @@ export class TransactionTransferService {
    */
   private async updateConnectedCrossOwnerTransfer(
     effectiveUserId: string,
+    realUserId: string,
     ownLeg: Transaction,
     counterpart: Transaction,
     updateDto: Partial<UpdateTransferDto>,
@@ -2349,33 +2404,84 @@ export class TransactionTransferService {
 
     await withSystemContext(() =>
       withScopedDb(this.dataSource, async (m) => {
+        // Both legs, ascending by id, each under its own owner -- the order
+        // removeCrossOwnerTransfer takes, so either owner's request queues the
+        // same way (RV4-005). Every delta below reverses `oldFromAmount` /
+        // `oldToAmount` and every inclusion decision reads the legs' statuses,
+        // all from rows loaded before this transaction: two identical edits
+        // each reversed the same old pair, leaving Bob's savings at 1,300.00
+        // beside a ledger of 1,400.00 and Alice's chequing 100.00 high
+        // (A26-H03). So the committed rows are compared with what this edit
+        // was built on, and a difference is a 409.
+        const ordered = [fromTransaction, toTransaction].sort((a, b) =>
+          a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
+        );
+        const lockedById = new Map<string, LockedTransactionRow>();
+        for (const leg of ordered) {
+          const locked = await lockTransactionRow(m, leg.id, leg.userId);
+          if (!locked) {
+            throw new NotFoundException(
+              tr(
+                "errors.transactions.notFoundById",
+                `Transaction with ID ${leg.id} not found`,
+                { id: leg.id },
+              ),
+            );
+          }
+          lockedById.set(leg.id, locked);
+        }
+        // Strict reconciled lock, per ledger: each leg under its own owner's
+        // setting, since each owner reconciles their own statement (A26-M11).
+        for (const leg of ordered) {
+          await assertReconciledRowsMutable(m, leg.userId, [
+            lockedById.get(leg.id)!,
+          ]);
+        }
+        // The edit grant resolveCounterpartAccess found was read before this
+        // system transaction opened; re-assert it on every leg the real user
+        // does not own, so a revoke that committed in between refuses the
+        // write (A26-M04).
+        for (const leg of ordered) {
+          await this.crossOwnerAccess.assertAccessStillHeld(
+            m,
+            realUserId,
+            leg.accountId,
+            "edit",
+          );
+        }
+        const lockedFrom = lockedById.get(fromTransaction.id)!;
+        const lockedTo = lockedById.get(toTransaction.id)!;
+        const unchanged =
+          roundMoney(Math.abs(lockedFrom.amount)) ===
+            roundMoney(oldFromAmount) &&
+          roundMoney(lockedTo.amount) === roundMoney(oldToAmount) &&
+          lockedFrom.accountId === fromTransaction.accountId &&
+          lockedTo.accountId === toTransaction.accountId &&
+          lockedFrom.transactionDate === oldDate &&
+          lockedTo.transactionDate === toTransaction.transactionDate &&
+          (lockedFrom.status === TransactionStatus.VOID) === fromVoid.wasVoid &&
+          (lockedTo.status === TransactionStatus.VOID) === toVoid.wasVoid;
+        if (!unchanged) {
+          throw new ConflictException(
+            tr(
+              "errors.transactions.transferChangedConcurrently",
+              "This transfer was changed by another request. Reload it and try again.",
+            ),
+          );
+        }
         // The VOID transition for the status-only branch below is decided from
         // the row THIS write replaces, read under its lock BEFORE the status
         // write -- two concurrent voids each deriving wasVoid from their
         // pre-transaction snapshots both saw ACTIVE and each moved the
         // balance, an idempotent status write beside a doubled move.
-        let lockedOwnLegVoidState: { wasVoid: boolean; amount: number } | null =
-          null;
-        if (updateDto.status !== undefined) {
-          const lockedOwn = await lockTransactionRow(
-            m,
-            ownLeg.id,
-            effectiveUserId,
-          );
-          if (!lockedOwn) {
-            throw new NotFoundException(
-              tr(
-                "errors.transactions.notFoundById",
-                `Transaction with ID ${ownLeg.id} not found`,
-                { id: ownLeg.id },
-              ),
-            );
-          }
-          lockedOwnLegVoidState = {
-            wasVoid: lockedOwn.status === TransactionStatus.VOID,
-            amount: lockedOwn.amount,
-          };
-        }
+        const lockedOwn = lockedById.get(ownLeg.id)!;
+        const lockedOwnLegVoidState =
+          updateDto.status !== undefined
+            ? {
+                wasVoid: lockedOwn.status === TransactionStatus.VOID,
+                amount: lockedOwn.amount,
+              }
+            : null;
 
         if ((updateFx.repriced || dateChanged) && !anyFuture) {
           // Reverse each leg only if that leg was actually included.
@@ -2680,6 +2786,55 @@ export class TransactionTransferService {
     // The leg edit, split-row mirror, parent re-total, and balance updates
     // commit atomically.
     await withScopedDb(this.dataSource, async (m) => {
+      // Every delta below is derived from `oldCounterpartAmount` and the
+      // parent's amount, both read before this transaction opened. Two
+      // identical edits each reversed the same old leg amount, so both
+      // accounts moved twice while the ledger moved once: 40.00 -> 50.00 sent
+      // twice left chequing at 4,880.00 beside a ledger of 4,890.00 (A26-H03).
+      // So lock the parent and then the leg -- the by-role order of
+      // common/db/locks.ts, the order removeSplit takes -- and refuse when the
+      // committed rows are not the ones this edit was built on.
+      const lockedParent = await lockTransactionRow(
+        m,
+        parentTransaction.id,
+        userId,
+      );
+      const lockedLeg = await lockTransactionRow(m, counterpart.id, userId);
+      if (!lockedParent || !lockedLeg) {
+        throw new NotFoundException(
+          tr(
+            "errors.transactions.notFoundById",
+            `Transaction with ID ${counterpart.id} not found`,
+            { id: counterpart.id },
+          ),
+        );
+      }
+      // Strict reconciled lock on the rows this edit writes: the leg, and the
+      // parent whenever its split row or total changes (A26-M11).
+      const writesParent = amountChanged || Object.keys(splitData).length > 0;
+      await assertReconciledRowsMutable(
+        m,
+        userId,
+        writesParent ? [lockedParent, lockedLeg] : [lockedLeg],
+      );
+      const unchanged =
+        roundMoney(lockedLeg.amount) === roundMoney(oldCounterpartAmount) &&
+        lockedLeg.accountId === counterpart.accountId &&
+        lockedLeg.transactionDate === oldDate &&
+        (lockedLeg.status === TransactionStatus.VOID) === counterpartIsVoid &&
+        roundMoney(lockedParent.amount) ===
+          roundMoney(Number(parentTransaction.amount)) &&
+        lockedParent.accountId === parentTransaction.accountId &&
+        (lockedParent.status === TransactionStatus.VOID) === parentIsVoid;
+      if (!unchanged) {
+        throw new ConflictException(
+          tr(
+            "errors.transactions.transferChangedConcurrently",
+            "This transfer was changed by another request. Reload it and try again.",
+          ),
+        );
+      }
+
       if (Object.keys(legData).length > 0) {
         await m.update(Transaction, counterpart.id, legData);
       }

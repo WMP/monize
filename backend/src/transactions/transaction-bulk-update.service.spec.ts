@@ -1,5 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ConflictException } from "@nestjs/common";
 import { TransactionBulkUpdateService } from "./transaction-bulk-update.service";
 import { buildTransactionSearchWhere } from "./transaction-search.util";
 import {
@@ -1004,6 +1004,8 @@ describe("TransactionBulkUpdateService", () => {
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
         .mockReturnValueOnce(classifyQb)
+        // The status lock set is discovered from the selection first (A26-M09).
+        .mockReturnValueOnce(classifyQb)
         .mockReturnValueOnce(transferLegsQb)
         .mockReturnValueOnce(splitParentsQb)
         .mockReturnValueOnce(balanceQb)
@@ -1081,6 +1083,8 @@ describe("TransactionBulkUpdateService", () => {
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
         .mockReturnValueOnce(exclusionsQb)
+        // The status lock set is discovered from the selection first (A26-M09).
+        .mockReturnValueOnce(exclusionsQb)
         .mockReturnValueOnce(transferLegsQb)
         .mockReturnValueOnce(splitParentsQb)
         .mockReturnValueOnce(balanceQb)
@@ -1129,6 +1133,57 @@ describe("TransactionBulkUpdateService", () => {
       );
     });
 
+    it("refuses with 409 when the locked expansion names a row the lock set did not cover (A26-M09)", async () => {
+      // A leg added under the parent after the structural discovery read would
+      // be written without its row lock; the batch refuses instead.
+      const parent = makeTransaction({
+        id: "parent-tx",
+        isSplit: true,
+        isTransfer: false,
+        status: TransactionStatus.UNRECONCILED,
+      });
+      const resolveQb = createMockQueryBuilder({
+        getMany: jest.fn().mockResolvedValue([{ id: "parent-tx" }]),
+      });
+      const exclusionsQb = createMockQueryBuilder({
+        getMany: jest.fn().mockResolvedValue([parent]),
+      });
+      const transferLegsQb = createMockQueryBuilder({
+        getMany: jest.fn().mockResolvedValue([]),
+      });
+      const splitParentsQb = createMockQueryBuilder({
+        getMany: jest
+          .fn()
+          .mockResolvedValue([
+            { id: "parent-tx", status: TransactionStatus.UNRECONCILED },
+          ]),
+      });
+      transactionsRepository.createQueryBuilder
+        .mockReturnValueOnce(resolveQb)
+        .mockReturnValueOnce(exclusionsQb)
+        .mockReturnValueOnce(exclusionsQb)
+        .mockReturnValueOnce(transferLegsQb)
+        .mockReturnValueOnce(splitParentsQb);
+      // Discovery saw no legs; under the lock the parent has one.
+      mockManagerFind
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: "s-1", linkedTransactionId: "new-leg" }]);
+      const updateQb = createMockQueryBuilder({
+        execute: jest.fn().mockResolvedValue({ affected: 1 }),
+      });
+      mockManagerCreateQueryBuilder.mockReturnValue(updateQb);
+
+      await expect(
+        service.bulkUpdate(userId, {
+          mode: "ids",
+          transactionIds: ["parent-tx"],
+          status: TransactionStatus.VOID,
+        } as BulkUpdateDto),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      expect(updateQb.execute).not.toHaveBeenCalled();
+    });
+
     it("invalidates the counterpart account's net worth, not just the parent's (RR4-003)", async () => {
       // The propagation helper moved the target account's live balance and told
       // nobody, so the batch invalidated only the accounts in `statusIds` -- the
@@ -1166,6 +1221,8 @@ describe("TransactionBulkUpdateService", () => {
       });
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
+        .mockReturnValueOnce(exclusionsQb)
+        // The status lock set is discovered from the selection first (A26-M09).
         .mockReturnValueOnce(exclusionsQb)
         .mockReturnValueOnce(transferLegsQb)
         .mockReturnValueOnce(splitParentsQb)
@@ -1265,6 +1322,8 @@ describe("TransactionBulkUpdateService", () => {
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
         .mockReturnValueOnce(exclusionsQb)
+        // The status lock set is discovered from the selection first (A26-M09).
+        .mockReturnValueOnce(exclusionsQb)
         .mockReturnValueOnce(transferLegsQb)
         .mockReturnValueOnce(splitParentsQb)
         .mockReturnValueOnce(balanceQb)
@@ -1307,6 +1366,8 @@ describe("TransactionBulkUpdateService", () => {
       });
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
+        .mockReturnValueOnce(exclusionsQb)
+        // The status lock set is discovered from the selection first (A26-M09).
         .mockReturnValueOnce(exclusionsQb)
         .mockReturnValue(expandQb);
       mockManagerFind.mockResolvedValue([
@@ -1606,6 +1667,8 @@ describe("TransactionBulkUpdateService", () => {
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
         .mockReturnValueOnce(exclusionsQb)
+        // The status lock set is discovered from the selection first (A26-M09).
+        .mockReturnValueOnce(exclusionsQb)
         .mockReturnValueOnce(transferLegsQb)
         .mockReturnValueOnce(splitParentsQb)
         .mockReturnValueOnce(balanceQb)
@@ -1672,6 +1735,8 @@ describe("TransactionBulkUpdateService", () => {
 
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
+        .mockReturnValueOnce(exclusionsQb)
+        // The status lock set is discovered from the selection first (A26-M09).
         .mockReturnValueOnce(exclusionsQb)
         .mockReturnValueOnce(transferLegsQb)
         .mockReturnValueOnce(splitParentsQb)
@@ -2108,6 +2173,8 @@ describe("TransactionBulkUpdateService", () => {
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
         .mockReturnValueOnce(exclusionsQb)
+        // The status lock set is discovered from the selection first (A26-M09).
+        .mockReturnValueOnce(exclusionsQb)
         .mockReturnValueOnce(transferLegsQb)
         .mockReturnValueOnce(splitParentsQb)
         .mockReturnValueOnce(balanceQb)
@@ -2184,6 +2251,8 @@ describe("TransactionBulkUpdateService", () => {
 
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
+        .mockReturnValueOnce(exclusionsQb)
+        // The status lock set is discovered from the selection first (A26-M09).
         .mockReturnValueOnce(exclusionsQb)
         .mockReturnValueOnce(transferLegsQb)
         .mockReturnValueOnce(splitParentsQb)
@@ -2592,17 +2661,16 @@ describe("TransactionBulkUpdateService", () => {
     it("deletes linked transactions from split transfers", async () => {
       const splitTx = makeTransaction({
         id: "tx-1",
+        accountId: "acc-1",
+        amount: -50,
         isSplit: true,
-        splits: [
-          {
-            id: "split-1",
-            linkedTransactionId: "split-linked-1",
-          } as any,
-          {
-            id: "split-2",
-            linkedTransactionId: null,
-          } as any,
-        ],
+      });
+      makeTransaction({
+        id: "split-linked-1",
+        accountId: "acc-2",
+        amount: 50,
+        isTransfer: true,
+        linkedTransactionId: "tx-1",
       });
 
       const resolveQb = createMockQueryBuilder({
@@ -2610,36 +2678,122 @@ describe("TransactionBulkUpdateService", () => {
       });
       const detailsQb = createMockQueryBuilder({
         getMany: jest.fn().mockResolvedValue([splitTx]),
-        leftJoinAndSelect: jest.fn().mockReturnThis(),
       });
-
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
         .mockReturnValueOnce(detailsQb);
 
-      // Load linked transaction details for balance adjustment
-      const linkedTx = makeTransaction({
-        id: "split-linked-1",
-        accountId: "acc-2",
-        amount: -50,
-      });
-      mockManagerCreateQueryBuilder.mockImplementation(() =>
-        createMockQueryBuilder({
+      // The parent's split rows are read under the parent's lock; the leg
+      // lookup (by linkedTransactionId) finds none for a selected parent.
+      mockManagerFind.mockImplementation(
+        async (_entity: unknown, opts: { where: Record<string, unknown> }) =>
+          "transactionId" in opts.where
+            ? [{ transactionId: "tx-1", linkedTransactionId: "split-linked-1" }]
+            : [],
+      );
+      const deletes: unknown[] = [];
+      mockManagerCreateQueryBuilder.mockImplementation(() => {
+        const qb = createMockQueryBuilder({
           delete: jest.fn().mockReturnThis(),
           from: jest.fn().mockReturnThis(),
           execute: jest.fn().mockResolvedValue({ affected: 1 }),
-          getMany: jest.fn().mockResolvedValue([linkedTx]),
-        }),
-      );
+        });
+        qb.where = jest.fn().mockImplementation((_sql, params) => {
+          deletes.push(params.ids);
+          return qb;
+        });
+        return qb;
+      });
 
       await service.bulkDelete(userId, {
         mode: "ids",
         transactionIds: ["tx-1"],
       });
 
-      // Should have balance adjustment for linked tx
-      expect(accountsService.updateBalance).toHaveBeenCalled();
-      expect(mockDataSource.transaction).toHaveBeenCalled();
+      // Each row reverses exactly its own amount: the parent's -50 and the
+      // leg's +50, never a blanket "something moved".
+      expect(accountsService.updateBalance).toHaveBeenCalledWith("acc-1", 50);
+      expect(accountsService.updateBalance).toHaveBeenCalledWith("acc-2", -50);
+      expect(accountsService.updateBalance).toHaveBeenCalledTimes(2);
+      expect(deletes).toEqual([["split-linked-1"], ["tx-1"]]);
+    });
+
+    it("expands a selected split-transfer leg to its parent and every sibling leg (A26-H05)", async () => {
+      // A -100 split to B (-60 line, +60 leg) and C (-40 line, +40 leg); the
+      // user selects B's leg only.
+      makeTransaction({
+        id: "parent",
+        accountId: "acc-a",
+        amount: -100,
+        isSplit: true,
+      });
+      const bLeg = makeTransaction({
+        id: "leg-b",
+        accountId: "acc-b",
+        amount: 60,
+        isTransfer: true,
+        linkedTransactionId: "parent",
+      });
+      makeTransaction({
+        id: "leg-c",
+        accountId: "acc-c",
+        amount: 40,
+        isTransfer: true,
+        linkedTransactionId: "parent",
+      });
+
+      const resolveQb = createMockQueryBuilder({
+        getMany: jest.fn().mockResolvedValue([{ id: "leg-b" }]),
+      });
+      const detailsQb = createMockQueryBuilder({
+        getMany: jest.fn().mockResolvedValue([bLeg]),
+      });
+      transactionsRepository.createQueryBuilder
+        .mockReturnValueOnce(resolveQb)
+        .mockReturnValueOnce(detailsQb);
+
+      mockManagerFind.mockImplementation(
+        async (_entity: unknown, opts: { where: Record<string, unknown> }) =>
+          "transactionId" in opts.where
+            ? [
+                { transactionId: "parent", linkedTransactionId: "leg-b" },
+                { transactionId: "parent", linkedTransactionId: "leg-c" },
+              ]
+            : [{ transactionId: "parent" }],
+      );
+      const deletes: unknown[] = [];
+      mockManagerCreateQueryBuilder.mockImplementation(() => {
+        const qb = createMockQueryBuilder({
+          delete: jest.fn().mockReturnThis(),
+          from: jest.fn().mockReturnThis(),
+          execute: jest.fn().mockResolvedValue({ affected: 1 }),
+        });
+        qb.where = jest.fn().mockImplementation((_sql, params) => {
+          deletes.push([...params.ids].sort());
+          return qb;
+        });
+        return qb;
+      });
+      (lockTransactionRows as jest.Mock).mockClear();
+
+      const result = await service.bulkDelete(userId, {
+        mode: "ids",
+        transactionIds: ["leg-b"],
+      });
+
+      expect(result).toEqual({ deleted: 1 });
+      expect(accountsService.updateBalance).toHaveBeenCalledWith("acc-a", 100);
+      expect(accountsService.updateBalance).toHaveBeenCalledWith("acc-b", -60);
+      expect(accountsService.updateBalance).toHaveBeenCalledWith("acc-c", -40);
+      expect(deletes).toEqual([["leg-c", "parent"], ["leg-b"]]);
+      // By role: the split parent is locked on its own before any leg.
+      const lockCalls = (lockTransactionRows as jest.Mock).mock.calls;
+      expect(lockCalls[0][1]).toEqual(["parent"]);
+      expect([...lockCalls[1][1]].sort()).toEqual(["leg-b", "leg-c"]);
+      expect(netWorthService.triggerDebouncedRecalc).toHaveBeenCalledWith(
+        "acc-c",
+        userId,
+      );
     });
 
     it("does not adjust balance for future-dated transactions", async () => {
@@ -2801,6 +2955,8 @@ describe("TransactionBulkUpdateService", () => {
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
         .mockReturnValueOnce(exclusionsQb)
+        // The status lock set is discovered from the selection first (A26-M09).
+        .mockReturnValueOnce(exclusionsQb)
         .mockReturnValueOnce(transferLegsQb)
         .mockReturnValueOnce(splitParentsQb)
         .mockReturnValueOnce(balanceQb)
@@ -2876,6 +3032,8 @@ describe("TransactionBulkUpdateService", () => {
 
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
+        .mockReturnValueOnce(exclusionsQb)
+        // The status lock set is discovered from the selection first (A26-M09).
         .mockReturnValueOnce(exclusionsQb)
         .mockReturnValueOnce(transferLegsQb)
         .mockReturnValueOnce(sameUserQb)
@@ -3527,6 +3685,8 @@ describe("TransactionBulkUpdateService", () => {
 
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
+        .mockReturnValueOnce(exclusionsQb)
+        // The status lock set is discovered from the selection first (A26-M09).
         .mockReturnValueOnce(exclusionsQb)
         .mockReturnValueOnce(transferLegsQb)
         .mockReturnValueOnce(splitParentsQb)
