@@ -234,10 +234,13 @@ leaves the machine (INV-BACKUP-002).
 `local` and as a key prefix on `s3`, because automatic backup filenames carry
 only a tier and a date. A flat folder gave every user the same name for the same
 day, so whoever's cron ran last overwrote the rest and one user's retention pass
-deleted another's files. `enforceRetention` still sweeps the old flat layout for
-files written before the fix -- a `local`-only concept, since the `s3` store has
-never had a layout without an owner in the key, and one the listing marks
-`legacy` so nothing downloadable is served from it. The folder browse and
+deleted another's files. Files written to the old flat layout before the fix are
+listed as `legacy` -- a `local`-only concept, since the `s3` store has never had a
+layout without an owner in the key -- and are never served, never counted against
+a user's retention and never deleted by any user's pass: a flat name carries no
+owner, so sweeping it could take another user's only pre-upgrade recovery point
+(A26-M07). `enforceRetention` skips them and logs how many remain;
+`LocalBackupStorageTarget.remove` refuses one. They are the operator's to remove. The folder browse and
 validate endpoints are admin-gated at the controller, and under an `s3` store
 they answer a typed refusal rather than walking a filesystem that has nothing to
 do with where the bytes are.

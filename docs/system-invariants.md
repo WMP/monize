@@ -5717,9 +5717,15 @@ Enforcement         Namespacing: userFolderPath uses shardedSegments(userId) for
 Concurrency scope   per user
 Crash semantics     A kill or ENOSPC mid-write leaves the temp file, never a
                     truncated final name -- the rename is the publish.
+                    A legacy flat-folder artifact names no owner, so retention
+                    never deletes it and the local target's remove refuses it
+                    (A26-M07).
 Required tests      Present: atomic-file.spec.ts and auto-backup.service.spec.ts
                     use a real mkdtemp; backup.service.spec.ts asserts restore
-                    honours the artifact's own completeness claim.
+                    honours the artifact's own completeness claim;
+                    auto-backup.service.spec.ts asserts a legacy flat file
+                    survives any user's retention while the user's own sharded
+                    files are still pruned.
 Status              enforced
 ```
 

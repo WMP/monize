@@ -72,7 +72,7 @@ Every storage touch in the automatic backup path goes through
 selected by `BACKUP_STORAGE_PROVIDER` and registered the way
 `ATTACHMENT_STORAGE_PROVIDER` is. `AutoBackupService` holds no path, no
 `BACKUP_ALLOWED_ROOTS` and no `fs` import: the containment model, the atomic
-write and the legacy flat-folder sweep are `LocalBackupStorageTarget`'s, which is
+write and the legacy flat-folder listing are `LocalBackupStorageTarget`'s, which is
 the default and is what ran before the seam existed. The download route and the
 off-machine reader take a stream from `open(location, filename)` rather than a
 path, because an object store has none. There is no `write` (only `publish`,
