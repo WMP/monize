@@ -29,6 +29,7 @@ import {
   resolveEmailReceiptPollLimits,
   type EmailReceiptPollLimits,
 } from "./email-receipt-poll-limits";
+import { loadOwnAddresses, ownAddressesOnce } from "./own-addresses";
 import {
   buildReceiptRow,
   insertReceiptRows,
@@ -394,6 +395,9 @@ export class EmailReceiptPollService {
     fetched: FetchSinceResult,
   ): Promise<{ stored: number; skipped: number }> {
     const now = new Date();
+    const ownAddresses = ownAddressesOnce(() =>
+      withScopedDb(this.dataSource, (m) => loadOwnAddresses(m, userId)),
+    );
     const rows: ReceiptRow[] = [];
     for (const message of fetched.messages) {
       rows.push(
@@ -402,6 +406,7 @@ export class EmailReceiptPollService {
           message.uid,
           message.internalDate,
           now,
+          ownAddresses,
         ),
       );
     }

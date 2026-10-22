@@ -29,7 +29,10 @@
     "unsupportedType": "Type de fichier non pris en charge. Types autorisés : {{ types }}",
     "tooMany": "Cette transaction a déjà le maximum de {{ max }} pièces jointes",
     "swept": "Le téléversement a pris trop de temps et son stockage a été récupéré. Veuillez réessayer.",
-    "pairRequiresImages": "Un document numérisé et son original doivent tous deux être des images"
+    "pairRequiresImages": "Un document numérisé et son original doivent tous deux être des images",
+    "warrantyNotFound": "Garantie introuvable",
+    "tooManyForWarranty": "Cette garantie a déjà le maximum de {{ max }} pièces jointes",
+    "documentKindNotForTransaction": "Le type de document ne s'applique qu'aux documents d'une garantie"
   },
   "accounts": {
     "accountWithIdNotFound": "Compte avec l'ID {{ id }} introuvable",
@@ -871,5 +874,47 @@
     "selectionNotNew": "Une transaction sélectionnée n'est pas une nouvelle ligne des données de la banque. Rien n'a été importé ; relancez l'aperçu.",
     "selectionOverlap": "Une transaction ne peut pas être à la fois importée et ajoutée aux exceptions.",
     "nothingToUpdate": "Envoyez autoSync, notifySuccess ou tagOperationType pour modifier une connexion bancaire."
+  },
+  "warranties": {
+    "notFound": "Garantie avec l'ID {{ id }} introuvable",
+    "transactionNotFound": "Transaction avec l'ID {{ id }} introuvable",
+    "transactionIsSplitLine": "Une garantie est liée à l'achat entier, pas à l'une de ses lignes de ventilation",
+    "payeeNotFound": "Bénéficiaire avec l'ID {{ id }} introuvable",
+    "invalidTerm": "La durée d'une garantie doit être supérieure à zéro",
+    "expiryRequired": "Une garantie qui n'est pas à vie nécessite une date d'expiration ou une durée",
+    "expiresBeforePurchase": "Une garantie ne peut pas expirer avant sa date d'achat",
+    "priceNeedsCurrency": "Le prix d'achat et sa devise se renseignent ensemble ou pas du tout",
+    "claimNotFound": "Réclamation avec l'ID {{ id }} introuvable",
+    "claimResolvedOnNeedsOutcome": "La date de clôture d'une réclamation exige le statut résolue ou refusée",
+    "claimResolvedBeforeClaimDate": "Une réclamation ne peut pas être clôturée avant sa date de dépôt",
+    "import": {
+      "noFile": "Choisissez un fichier CSV à importer",
+      "notCsv": "Le fichier doit être un fichier CSV",
+      "fileTooLarge": "Le fichier d'import ne doit pas dépasser 1 Mio",
+      "emptyFile": "Le fichier doit comporter une ligne d'en-tête et au moins une ligne de données",
+      "tooManyRows": "Le fichier d'import comporte {{ count }} lignes ; {{ max }} au maximum sont autorisées",
+      "missingColumns": "La ligne d'en-tête du fichier n'a pas de colonne {{ columns }}",
+      "invalidRows": "{{ count }} lignes sont invalides, rien n'a donc été importé ; corrigez-les ou ignorez-les",
+      "nameRequired": "ProductName est obligatoire",
+      "purchaseDateRequired": "PurchaseDate est obligatoire",
+      "tooLong": "{{ column }} ne doit pas dépasser {{ max }} caractères",
+      "invalidDate": "{{ column }} doit être une date au format YYYY-MM-DD",
+      "invalidDuration": "{{ column }} doit être un nombre entier de 0 à {{ max }}",
+      "invalidLifetime": "IsLifetime doit valoir true, false, yes, no, 1 ou 0",
+      "noExpirySource": "Renseignez ExpirationDate, une colonne WarrantyDuration ou IsLifetime",
+      "lifetimeWithExpiry": "IsLifetime vaut true, mais la ligne indique aussi ExpirationDate ou une WarrantyDuration ; n'en renseignez qu'un seul",
+      "durationIgnored": "ExpirationDate a été utilisée ; les colonnes WarrantyDuration à côté ont été ignorées",
+      "durationDisagrees": "ExpirationDate {{ expiresOn }} a été utilisée ; les colonnes WarrantyDuration donnent {{ derived }}, ce qui ne concorde pas",
+      "negativePrice": "PurchasePrice ne doit pas être négatif",
+      "invalidPrice": "PurchasePrice doit être un nombre de 0 à {{ max }} avec au plus 4 décimales",
+      "currencyWithoutPrice": "Currency est renseignée mais PurchasePrice est vide",
+      "unknownCurrency": "La devise « {{ value }} » est inconnue ; {{ currency }} a été utilisée",
+      "unknownWarrantyType": "WarrantyType « {{ value }} » n'est ni manufacturer, ni extended, ni store, ni other ; importé comme other",
+      "invalidSerialJson": "SerialNumber commence par [ mais n'est pas un tableau JSON de texte",
+      "tooManySerials": "SerialNumber contient {{ count }} valeurs ; {{ max }} au maximum sont autorisées",
+      "serialTooLong": "Chaque numéro de série ne doit pas dépasser {{ max }} caractères",
+      "invalidUrl": "ProductURL doit être une adresse http ou https",
+      "invalidField": "{{ field }} n'est pas valide"
+    }
   }
 }

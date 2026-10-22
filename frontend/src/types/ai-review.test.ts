@@ -45,7 +45,13 @@ describe('reviewItemLabel', () => {
 
   it('prefers the email subject, then the payee, then the rule', () => {
     const base = makeReviewItem();
-    const receipt = { id: 'r', subject: 'Order 1', fromAddress: 'a@b.c', receivedAt: '2026-09-01T10:00:00.000Z' };
+    const receipt = {
+      id: 'r',
+      subject: 'Order 1',
+      fromAddress: 'a@b.c',
+      forwardedBy: null,
+      receivedAt: '2026-09-01T10:00:00.000Z',
+    };
     expect(reviewItemLabel({ ...base, emailReceipt: receipt })).toBe('Order 1');
     expect(reviewItemLabel(base)).toBe('Allegro');
     expect(reviewItemLabel({ ...base, transaction: null })).toBe('Allegro orders');

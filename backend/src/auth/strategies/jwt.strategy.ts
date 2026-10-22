@@ -10,6 +10,7 @@ import {
   withUserContext,
 } from "../../common/db/with-context";
 import { tr } from "../../i18n/translate";
+import { isAccessTokenPayload } from "../access-token";
 import { jwtSecretFatalProblem } from "../../common/jwt-secret-policy";
 
 /**
@@ -68,6 +69,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           "errors.auth.twoFactorVerificationRequired",
           "2FA verification required",
         ),
+      );
+    }
+    // SECURITY: an allowlist, not a deny-list. Every token type shares
+    // JWT_SECRET, so anything that is not an access token (a step-up token,
+    // an OIDC re-auth marker or artifact) is refused here (`access-token.ts`).
+    if (!isAccessTokenPayload(payload)) {
+      throw new UnauthorizedException(
+        tr("errors.auth.invalidTokenType", "Invalid token type"),
       );
     }
     // mustChangePassword is intentionally NOT enforced here — the global

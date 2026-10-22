@@ -383,6 +383,12 @@
       "readyMessage": "Propuestas que esperan su decisión: {{ count }}. Nuevas desde el último aviso: {{ added }}. Ábralas para revisarlas.",
       "expiringTitle": "Propuestas de revisión de IA caducan pronto",
       "expiringMessage": "Propuestas que caducan en 3 días: {{ count }}. La primera caduca el {{ date }}. Ábralas para revisarlas."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: la garantía vence pronto",
+      "expiringMessage": "La garantía de {{ name }} vence el {{ date }}. Ábrala para revisar sus documentos o registrar una reclamación.",
+      "todayTitle": "{{ name }}: la garantía vence hoy",
+      "todayMessage": "La garantía de {{ name }} vence hoy, {{ date }}. Ábrala para revisar sus documentos o registrar una reclamación."
     }
   },
   "backupOffsite": {

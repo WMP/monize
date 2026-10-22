@@ -386,7 +386,8 @@
         "BANK_SYNC_ACTIVITY": "Résultats de la synchronisation bancaire",
         "EMAIL_RECEIPTS": "Reçus par courrier",
         "BONDS": "Obligations",
-        "AI_REVIEW": "Propositions de revue IA"
+        "AI_REVIEW": "Propositions de revue IA",
+        "WARRANTIES": "Rappels de garantie"
       },
       "channelNotApplicable": "Non applicable à ce type de notification",
       "emailToggleLabel": "E-mail (rapport) pour {category}",
@@ -984,7 +985,11 @@
     },
     "sections": {
       "description": "Accordez un accès en lecture seule à des sections entières de l'application. Les données liées à un compte nécessitent également un accès par compte.",
-      "aiRequiresFullAccess": "L'Assistant IA consulte l'ensemble des comptes et des sections ; il ne répond donc pour ce délégué qu'une fois que celui-ci peut lire tous vos comptes et toutes les autres sections."
+      "aiRequiresFullAccess": "L'Assistant IA consulte l'ensemble des comptes et des sections ; il ne répond donc pour ce délégué qu'une fois que celui-ci peut lire tous vos comptes et toutes les autres sections.",
+      "warranties": {
+        "label": "Garanties",
+        "description": "Les garanties, leurs documents et leurs réclamations. Un achat lié n'apparaît que pour un compte que le délégué peut consulter."
+      }
     },
     "accounts": {
       "noAccounts": "Aucun compte à accorder.",

@@ -10,6 +10,7 @@ import {
   type EmailReceiptPollLimits,
 } from "../poll/email-receipt-poll-limits";
 import { EmailReceiptPollService } from "../poll/email-receipt-poll.service";
+import { loadOwnAddresses, ownAddressesOnce } from "../poll/own-addresses";
 import {
   buildReceiptRow,
   insertReceiptRows,
@@ -158,6 +159,9 @@ export class EmailReceiptImportService {
       );
     }
     const now = new Date();
+    const ownAddresses = ownAddressesOnce(() =>
+      withScopedDb(this.dataSource, (m) => loadOwnAddresses(m, userId)),
+    );
     const state: RequestState = {
       remainingMessages: MAX_IMPORT_MESSAGES,
       truncated: 0,
@@ -174,7 +178,7 @@ export class EmailReceiptImportService {
       const found = this.collect(format, file.buffer, state, now);
       const rows: ReceiptRow[] = [];
       for (const candidate of found.candidates) {
-        rows.push(await this.toRow(candidate, now));
+        rows.push(await this.toRow(candidate, now, ownAddresses));
       }
       const counts = await withScopedDb(this.dataSource, (m) =>
         insertReceiptRows(m, userId, view.id, IMPORTED_UID_VALIDITY, rows),
@@ -284,6 +288,7 @@ export class EmailReceiptImportService {
   private async toRow(
     candidate: CandidateMessage,
     now: Date,
+    ownAddresses: () => Promise<ReadonlySet<string>>,
   ): Promise<ReceiptRow> {
     const { source, fallbackDate } = candidate;
     // A message above the poll's cap is not parsed: its identity is consumed
@@ -310,7 +315,13 @@ export class EmailReceiptImportService {
         fallbackDate,
       );
     }
-    const row = await buildReceiptRow(mime, "0", fallbackDate, now);
+    const row = await buildReceiptRow(
+      mime,
+      "0",
+      fallbackDate,
+      now,
+      ownAddresses,
+    );
     return { ...row, uid: deriveImportedUid(row.messageId, source) };
   }
 }

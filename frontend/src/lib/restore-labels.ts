@@ -25,6 +25,8 @@ export const RESTORE_LABELS: Record<string, string> = {
   holdings: 'Holdings',
   transactions: 'Transactions',
   transactionSplits: 'Transaction Splits',
+  warranties: 'Warranties',
+  warrantyClaims: 'Warranty Claims',
   transactionTags: 'Transaction Tags',
   transactionSplitTags: 'Transaction Split Tags',
   investmentTransactions: 'Investment Transactions',

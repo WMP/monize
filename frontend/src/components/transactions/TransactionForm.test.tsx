@@ -9,6 +9,7 @@ import {
 } from '@/hooks/useTransactionSubmitMode';
 import toast from 'react-hot-toast';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { useAuthStore } from '@/store/authStore';
 
 // ---- Mock data ----
 
@@ -195,6 +196,26 @@ vi.mock('@/lib/attachments', async (importOriginal) => ({
     upload: (...args: any[]) => mockAttachmentUpload(...args),
     delete: vi.fn().mockResolvedValue(undefined),
   },
+}));
+
+// The Warranties line has its own suite; here it only matters where it renders.
+vi.mock('./TransactionWarrantiesLine', () => ({
+  TransactionWarrantiesLine: ({
+    transaction,
+    onAddWarranty,
+  }: {
+    transaction: { id: string };
+    onAddWarranty?: () => void;
+  }) => (
+    <div data-testid="warranties-line">
+      {transaction.id}
+      {onAddWarranty && (
+        <button type="button" onClick={onAddWarranty}>
+          Add warranty
+        </button>
+      )}
+    </div>
+  ),
 }));
 
 vi.mock('@/lib/transactions', () => ({
@@ -547,6 +568,92 @@ describe('TransactionForm', () => {
   // Joint accounts: a joint row belongs to the sharing owner, so every category
   // picker on the form offers the OWNER's list -- the split lines included.
   // =========================================================================
+  describe('the Warranties line', () => {
+    it('renders for a saved transaction', async () => {
+      render(
+        <TransactionForm
+          transaction={createExistingTransaction() as any}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+        />
+      );
+      await waitFor(() => {
+        expect(screen.getByTestId('warranties-line')).toHaveTextContent('123e4567-e89b-12d3-a456-426614174000');
+      });
+    });
+
+    it("hands Add warranty to the host with the form's transaction", async () => {
+      const onAddWarranty = vi.fn();
+      const existing = createExistingTransaction();
+      render(
+        <TransactionForm
+          transaction={existing as any}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+          onAddWarranty={onAddWarranty}
+        />
+      );
+      await waitFor(() => expect(screen.getByTestId('warranties-line')).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: 'Add warranty' }));
+      expect(onAddWarranty).toHaveBeenCalledWith(existing);
+    });
+
+    it('offers no Add warranty when the host supplies no handler', async () => {
+      render(
+        <TransactionForm
+          transaction={createExistingTransaction() as any}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+        />
+      );
+      await waitFor(() => expect(screen.getByTestId('warranties-line')).toBeInTheDocument());
+      expect(screen.queryByRole('button', { name: 'Add warranty' })).not.toBeInTheDocument();
+    });
+
+    it('is absent for an acting delegate, as the Warranties page is read-only to one', async () => {
+      useAuthStore.setState({ actingAsUserId: 'owner-1' });
+      try {
+        render(
+          <TransactionForm
+            transaction={createExistingTransaction() as any}
+            onSuccess={mockOnSuccess}
+            onCancel={mockOnCancel}
+            onAddWarranty={vi.fn()}
+          />
+        );
+        await waitFor(() => expect(mockAccountsGetAll).toHaveBeenCalled());
+        await act(async () => {});
+        expect(screen.queryByTestId('warranties-line')).not.toBeInTheDocument();
+      } finally {
+        act(() => {
+          useAuthStore.setState({ actingAsUserId: null });
+        });
+      }
+    });
+
+    it('is absent from a new transaction', async () => {
+      render(<TransactionForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      await waitFor(() => expect(mockAccountsGetAll).toHaveBeenCalled());
+      expect(screen.queryByTestId('warranties-line')).not.toBeInTheDocument();
+    });
+
+    it("is absent from a joint account's row, as attachments are", async () => {
+      mockAccountsGetAll.mockResolvedValue([
+        ...mockAccounts,
+        { ...mockAccounts[0], id: 'acc-joint', name: 'Shared Chequing', isJoint: true, ownerLabel: 'Sam' },
+      ]);
+      render(
+        <TransactionForm
+          transaction={createExistingTransaction({ accountId: 'acc-joint' }) as any}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+        />
+      );
+      await waitFor(() => expect(mockGetJointReferenceData).toHaveBeenCalledWith('acc-joint'));
+      expect(screen.queryByTestId('warranties-line')).not.toBeInTheDocument();
+    });
+  });
+
   describe('joint accounts', () => {
     const jointAccount = {
       ...mockAccounts[0],
@@ -5100,7 +5207,7 @@ describe('TransactionForm initialStagedFiles', () => {
 
     // Addressed to the created transaction, with no scan original beside them:
     // a shared file is one file, not half of a scan pair.
-    expect(mockAttachmentUpload.mock.calls[0][0]).toBe('tx-created');
+    expect(mockAttachmentUpload.mock.calls[0][0]).toEqual({ transactionId: 'tx-created' });
     expect(mockAttachmentUpload.mock.calls[0][1].name).toBe('receipt.png');
     expect(mockAttachmentUpload.mock.calls[0][2]).toBeUndefined();
     expect(mockAttachmentUpload.mock.calls[1][1].name).toBe('invoice.pdf');

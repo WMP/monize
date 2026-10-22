@@ -383,6 +383,12 @@
       "readyMessage": "Propostas à espera da sua decisão: {{ count }}. Novas desde o último aviso: {{ added }}. Abra para rever.",
       "expiringTitle": "Propostas de revisão de IA expiram em breve",
       "expiringMessage": "Propostas que expiram em 3 dias: {{ count }}. A primeira expira em {{ date }}. Abra para rever."
+    },
+    "warranty": {
+      "expiringTitle": "{{ name }}: a garantia expira em breve",
+      "expiringMessage": "A garantia de {{ name }} expira em {{ date }}. Abra-a para rever os documentos ou registar uma reclamação.",
+      "todayTitle": "{{ name }}: a garantia expira hoje",
+      "todayMessage": "A garantia de {{ name }} expira hoje, {{ date }}. Abra-a para rever os documentos ou registar uma reclamação."
     }
   },
   "backupOffsite": {

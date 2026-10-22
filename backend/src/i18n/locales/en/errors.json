@@ -29,7 +29,10 @@
     "unsupportedType": "Unsupported file type. Allowed types: {{ types }}",
     "tooMany": "This transaction already has the maximum of {{ max }} attachments",
     "swept": "The upload took too long and its storage was reclaimed. Please try again.",
-    "pairRequiresImages": "A scanned document and its original must both be images"
+    "pairRequiresImages": "A scanned document and its original must both be images",
+    "warrantyNotFound": "Warranty not found",
+    "tooManyForWarranty": "This warranty already has the maximum of {{ max }} attachments",
+    "documentKindNotForTransaction": "A document kind applies only to a warranty's documents"
   },
   "accounts": {
     "accountWithIdNotFound": "Account with ID {{ id }} not found",
@@ -871,5 +874,47 @@
     "selectionNotNew": "A selected transaction is not a new row of the bank's data. Nothing was imported; preview again.",
     "selectionOverlap": "A transaction cannot be both imported and added to the exceptions.",
     "nothingToUpdate": "Send autoSync, notifySuccess or tagOperationType to change a bank connection."
+  },
+  "warranties": {
+    "notFound": "Warranty with ID {{ id }} not found",
+    "transactionNotFound": "Transaction with ID {{ id }} not found",
+    "transactionIsSplitLine": "A warranty links to the whole purchase, not to one of its split lines",
+    "payeeNotFound": "Payee with ID {{ id }} not found",
+    "invalidTerm": "A warranty term must be longer than zero",
+    "expiryRequired": "A warranty that is not lifetime needs an expiry date or a term",
+    "expiresBeforePurchase": "A warranty cannot expire before its purchase date",
+    "priceNeedsCurrency": "A purchase price and its currency are set together or not at all",
+    "claimNotFound": "Claim with ID {{ id }} not found",
+    "claimResolvedOnNeedsOutcome": "A claim's resolution date needs a status of resolved or denied",
+    "claimResolvedBeforeClaimDate": "A claim cannot be resolved before its claim date",
+    "import": {
+      "noFile": "Choose a CSV file to import",
+      "notCsv": "The file must be a CSV file",
+      "fileTooLarge": "The import file must be at most 1 MiB",
+      "emptyFile": "The file must have a header row and at least one data row",
+      "tooManyRows": "The import file has {{ count }} rows; at most {{ max }} are allowed",
+      "missingColumns": "The file's header row has no {{ columns }} column",
+      "invalidRows": "{{ count }} rows are invalid, so nothing was imported; fix them or skip them",
+      "nameRequired": "ProductName is required",
+      "purchaseDateRequired": "PurchaseDate is required",
+      "tooLong": "{{ column }} must be at most {{ max }} characters",
+      "invalidDate": "{{ column }} must be a date in YYYY-MM-DD form",
+      "invalidDuration": "{{ column }} must be a whole number from 0 to {{ max }}",
+      "invalidLifetime": "IsLifetime must be true, false, yes, no, 1 or 0",
+      "noExpirySource": "Fill ExpirationDate, a WarrantyDuration column or IsLifetime",
+      "lifetimeWithExpiry": "IsLifetime is true, but the row also gives ExpirationDate or a WarrantyDuration; fill only one",
+      "durationIgnored": "ExpirationDate was used; the WarrantyDuration columns beside it were ignored",
+      "durationDisagrees": "ExpirationDate {{ expiresOn }} was used; the WarrantyDuration columns give {{ derived }}, which disagrees",
+      "negativePrice": "PurchasePrice must not be negative",
+      "invalidPrice": "PurchasePrice must be a number from 0 to {{ max }} with at most 4 decimal places",
+      "currencyWithoutPrice": "Currency is set but PurchasePrice is blank",
+      "unknownCurrency": "Currency \"{{ value }}\" is not known; {{ currency }} was used",
+      "unknownWarrantyType": "WarrantyType \"{{ value }}\" is not manufacturer, extended, store or other; imported as other",
+      "invalidSerialJson": "SerialNumber starts with [ but is not a JSON array of text",
+      "tooManySerials": "SerialNumber holds {{ count }} values; at most {{ max }} are allowed",
+      "serialTooLong": "Each serial number must be at most {{ max }} characters",
+      "invalidUrl": "ProductURL must be an http or https address",
+      "invalidField": "{{ field }} is not valid"
+    }
   }
 }

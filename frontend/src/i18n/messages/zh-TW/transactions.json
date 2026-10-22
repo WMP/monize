@@ -135,6 +135,7 @@
       "toggleTitle": "日期中不顯示年份，為收款人留出更多空間"
     },
     "attachmentsCount": "{count, plural, other {# 個附件}}",
+    "warrantiesCount": "{count, plural, other {# 項保固}}",
     "today": "今天",
     "export": {
       "button": "匯出",
@@ -198,7 +199,9 @@
       "duplicateTitle": "複製交易",
       "copy": "複製",
       "duplicate": "複製",
-      "scheduleRecurring": "設為固定排程"
+      "scheduleRecurring": "設為固定排程",
+      "addWarranty": "新增保固",
+      "viewWarranties": "檢視保固"
     }
   },
   "actionSheet": {
@@ -211,6 +214,8 @@
     "edit": "編輯",
     "duplicate": "複製",
     "scheduleRecurring": "設為固定排程",
+    "addWarranty": "新增保固",
+    "viewWarranties": "檢視保固",
     "delete": "刪除"
   },
   "filter": {
@@ -465,7 +470,14 @@
       },
       "feeCaption": "包含 {percent}% 境外交易手續費（{fee}）。"
     },
-    "jointSplitDisabled": "共享帳戶中的分割交易只能由擁有者管理"
+    "jointSplitDisabled": "共享帳戶中的分割交易只能由擁有者管理",
+    "warranties": {
+      "title": "保固",
+      "add": "新增保固",
+      "expires": "{date} 到期",
+      "loading": "正在載入保固",
+      "loadError": "無法載入此交易的保固。"
+    }
   },
   "splitEditor": {
     "header": "分割詳情",
@@ -626,7 +638,8 @@
       "amountRange": "金額 50 至 100",
       "datePeriod": "2026 年 3 月的任何一天",
       "isSplit": "分割交易",
-      "hasAttachment": "有附件"
+      "hasAttachment": "有附件",
+      "hasWarranty": "有保固"
     }
   },
   "searchInterpretation": {
@@ -668,6 +681,7 @@
       },
       "has": {
         "attachment": "有附件",
+        "warranty": "有保固",
         "ref": "有參考號碼",
         "memo": "有備註",
         "tag": "有標籤"

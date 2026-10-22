@@ -153,7 +153,7 @@ export function OverrideEditorDialog({
   const isInvestmentAmountOnly =
     isInvestmentKind &&
     investmentAction != null &&
-    ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN'].includes(baseInvestmentAction(investmentAction));
+    ['DIVIDEND', 'INTEREST', 'CAPITAL_GAIN', 'RETURN_OF_CAPITAL'].includes(baseInvestmentAction(investmentAction));
 
   // Initialize form with base transaction or existing override values, again
   // whenever the dialog opens or what it edits changes. The "info from previous

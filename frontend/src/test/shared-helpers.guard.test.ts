@@ -75,6 +75,7 @@ const HELPERS: Record<string, string> = {
   withCurrencyCode: '/src/lib/format.ts',
   clamp: '/src/lib/clamp.ts',
   isUuid: '/src/lib/uuid.ts',
+  textOrNull: '/src/lib/form-text.ts',
 };
 
 /** Names that were only ever a local copy of a helper above. */
