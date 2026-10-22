@@ -1640,6 +1640,74 @@ describe("PortfolioService", () => {
       expect(result.valuationComplete).toBe(true);
     });
 
+    it("takes the gain over the priced holdings and reports the excluded cost apart (A26-M38)", async () => {
+      // AAPL priced: value 2362.5 CAD, cost 2025 CAD. VFV unpriced: cost 4000.
+      // Value less EVERY holding's cost read -3662.5 with no marker; the gain is
+      // over the holdings that have a value.
+      prefRepository.findOne.mockResolvedValue(mockPref);
+      accountsRepository.find.mockResolvedValue([
+        mockBrokerageAccount,
+        mockCashAccount,
+      ]);
+      holdingsRepository.find.mockResolvedValue([
+        mockHoldingAAPL,
+        mockHoldingVFV,
+      ]);
+      securityPriceRepository.query.mockResolvedValue([
+        { security_id: "sec-1", close_price: "175", price_date: "2026-02-07" },
+      ]);
+      exchangeRateService.getLatestRate.mockImplementation(
+        (from: string, to: string) =>
+          Promise.resolve(from === "USD" && to === "CAD" ? 1.35 : null),
+      );
+
+      const result = await service.getPortfolioSummary(userId);
+
+      expect(result.totalGainLoss).toBeCloseTo(337.5, 4);
+      expect(result.totalGainLossPercent).toBeCloseTo(16.6667, 3);
+      expect(result.gainCostBasis).toBe(2025);
+      expect(result.unpricedCostBasis).toBe(4000);
+      expect(result.totalCostBasis).toBe(6025);
+      expect(result.valuationComplete).toBe(false);
+
+      const acct = result.holdingsByAccount[0];
+      expect(acct.totalGainLoss).toBeCloseTo(337.5, 4);
+      expect(acct.totalGainLossPercent).toBeCloseTo(16.6667, 3);
+      expect(acct.gainCostBasis).toBe(2025);
+      expect(acct.unpricedCostBasis).toBe(4000);
+      expect(acct.totalCostBasis).toBe(6025);
+      expect(acct.valuationComplete).toBe(false);
+    });
+
+    it("leaves the gain of a complete portfolio as value less cost (A26-M38)", async () => {
+      prefRepository.findOne.mockResolvedValue(mockPref);
+      accountsRepository.find.mockResolvedValue([
+        mockBrokerageAccount,
+        mockCashAccount,
+      ]);
+      holdingsRepository.find.mockResolvedValue([
+        mockHoldingAAPL,
+        mockHoldingVFV,
+      ]);
+      securityPriceRepository.query.mockResolvedValue([
+        { security_id: "sec-1", close_price: "175", price_date: "2026-02-07" },
+        { security_id: "sec-2", close_price: "95", price_date: "2026-02-07" },
+      ]);
+      exchangeRateService.getLatestRate.mockImplementation(
+        (from: string, to: string) =>
+          Promise.resolve(from === "USD" && to === "CAD" ? 1.35 : null),
+      );
+
+      const result = await service.getPortfolioSummary(userId);
+
+      expect(result.totalGainLoss).toBeCloseTo(
+        result.totalHoldingsValue - result.totalCostBasis,
+        4,
+      );
+      expect(result.gainCostBasis).toBe(result.totalCostBasis);
+      expect(result.unpricedCostBasis).toBe(0);
+    });
+
     it("reports a per-account gap the global flag cannot see (RR3-005)", async () => {
       // The two conversions are different paths: the top-level total converts the
       // security straight into the user's default currency, the account total
@@ -1712,6 +1780,8 @@ describe("PortfolioService", () => {
         totalPortfolioValue: 1000,
         totalGainLoss: 100,
         totalGainLossPercent: 11.11,
+        gainCostBasis: 900,
+        unpricedCostBasis: 0,
         fxComplete: true,
         missingRatePairs: [],
         pricesComplete: true,
@@ -1761,6 +1831,8 @@ describe("PortfolioService", () => {
           totalPortfolioValue: 10000.6913,
           totalGainLoss: 900.5544,
           totalGainLossPercent: 10.123456,
+          gainCostBasis: 9000.1234,
+          unpricedCostBasis: 0,
           fxComplete: true,
           missingRatePairs: [],
           pricesComplete: true,
@@ -1853,6 +1925,8 @@ describe("PortfolioService", () => {
         totalPortfolioValue: 0,
         totalGainLoss: 0,
         totalGainLossPercent: 0,
+        gainCostBasis: 0,
+        unpricedCostBasis: 0,
         fxComplete: true,
         missingRatePairs: [],
         pricesComplete: true,
@@ -1889,6 +1963,8 @@ describe("PortfolioService", () => {
         totalPortfolioValue: 100,
         totalGainLoss: 0,
         totalGainLossPercent: 0,
+        gainCostBasis: 0,
+        unpricedCostBasis: 0,
         fxComplete: false,
         missingRatePairs: ["EUR->USD"],
         pricesComplete: true,
@@ -1921,6 +1997,8 @@ describe("PortfolioService", () => {
         totalPortfolioValue: 100,
         totalGainLoss: 0,
         totalGainLossPercent: 0,
+        gainCostBasis: 0,
+        unpricedCostBasis: 0,
         fxComplete: true,
         missingRatePairs: [],
         pricesComplete: true,
@@ -1974,6 +2052,8 @@ describe("PortfolioService", () => {
         totalPortfolioValue: 1800,
         totalGainLoss: 300,
         totalGainLossPercent: 20,
+        gainCostBasis: 1500,
+        unpricedCostBasis: 0,
         fxComplete: true,
         missingRatePairs: [],
         pricesComplete: true,
@@ -2020,6 +2100,8 @@ describe("PortfolioService", () => {
             unpricedHoldingsCount: 0,
             totalGainLoss: 300.4444,
             totalGainLossPercent: 20.123456,
+            gainCostBasis: 1500.1234,
+            unpricedCostBasis: 0,
             netInvested: 1500,
             // The real producer always sets these; a fixture without them is a row
             // the service could not have built.
@@ -4842,6 +4924,8 @@ describe("PortfolioService", () => {
         totalPortfolioValue: 200,
         totalGainLoss: 0,
         totalGainLossPercent: 0,
+        gainCostBasis: 0,
+        unpricedCostBasis: 0,
         fxComplete: true,
         missingRatePairs: [],
         pricesComplete: true,

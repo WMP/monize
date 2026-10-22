@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, act } from '@/test/render';
+import { render, screen, waitFor, fireEvent, act, within } from '@/test/render';
 import { PortfolioValueReport } from './PortfolioValueReport';
 import { renderChartFlagDot } from '@/components/investments/portfolio-chart-utils';
 import { chartColors } from '@/lib/chart-colors';
@@ -2267,7 +2267,7 @@ describe('PortfolioValueReport', () => {
     const rowFor = (name: string) =>
       screen.getByText(name).closest('tr') as HTMLElement;
 
-    it('marks holdings and total partial and withholds the gain when valuationComplete is false', async () => {
+    it('marks holdings, total and gain partial when valuationComplete is false (A26-M38)', async () => {
       arrange([
         accountRow({
           valuationComplete: false,
@@ -2279,12 +2279,14 @@ describe('PortfolioValueReport', () => {
       await screen.findByText('Partial Brokerage');
       const row = rowFor('Partial Brokerage');
       // Holdings and total are subtotals, so both carry the marker ...
-      expect(row.querySelectorAll('[data-testid="partial-total"]')).toHaveLength(2);
       // ... cash is a ledger balance and does not.
       expect(row).toHaveTextContent('$5000.00');
-      // The gain is over the same unknown value: withheld, never printed.
-      expect(row).not.toHaveTextContent('+$3000.00');
-      expect(row.querySelector('[data-testid="unknown-amount"]')).not.toBeNull();
+      // The server's gain is over the holdings that have a value, so it is a
+      // figure, marked partial like its neighbours -- no longer withheld.
+      expect(row.querySelectorAll('[data-testid="partial-total"]')).toHaveLength(3);
+      const gain = within(row).getByText('+$3000.00');
+      expect(gain.closest('[data-testid="partial-total"]')).not.toBeNull();
+      expect(row.querySelector('[data-testid="unknown-amount"]')).toBeNull();
     });
 
     it('reads an unpriced holding the same way when no flag is sent', async () => {
@@ -2292,8 +2294,10 @@ describe('PortfolioValueReport', () => {
       render(<PortfolioValueReport />);
       await screen.findByText('Partial Brokerage');
       const row = rowFor('Partial Brokerage');
-      expect(row.querySelectorAll('[data-testid="partial-total"]')).toHaveLength(2);
-      expect(row).not.toHaveTextContent('+$3000.00');
+      expect(row.querySelectorAll('[data-testid="partial-total"]')).toHaveLength(3);
+      expect(
+        within(row).getByText('+$3000.00').closest('[data-testid="partial-total"]'),
+      ).not.toBeNull();
     });
 
     it('leaves a complete account and an account with no flags as they were', async () => {
@@ -2310,7 +2314,7 @@ describe('PortfolioValueReport', () => {
       }
     });
 
-    it('writes no bare subtotal and no gain into the exported breakdown table', async () => {
+    it('writes no bare subtotal or bare gain into the exported breakdown table', async () => {
       const { exportToPdf } = await import('@/lib/pdf-export');
       (exportToPdf as any).mockClear();
       arrange([
@@ -2328,7 +2332,9 @@ describe('PortfolioValueReport', () => {
       const whole = rows.find((r) => r[0] === 'Whole Account')!;
       expect(partial[1]).toMatch(/partial/i);
       expect(partial[3]).toMatch(/partial/i);
-      expect(partial[4]).toBe('N/A');
+      // The gain is over the priced holdings only: printed, and suffixed.
+      expect(partial[4]).toContain('+$3000.00');
+      expect(partial[4]).toMatch(/partial/i);
       expect(whole[1]).not.toMatch(/partial/i);
       expect(whole[4]).toBe('+$3000.00');
     });

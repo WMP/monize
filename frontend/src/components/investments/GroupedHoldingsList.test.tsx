@@ -487,6 +487,64 @@ describe('GroupedHoldingsList', () => {
     ).toBeInTheDocument();
   });
 
+  it("marks an incomplete account's gain as over its priced holdings only (A26-M38)", () => {
+    const accounts = [
+      {
+        accountId: 'a1',
+        accountName: 'Mixed Brokerage',
+        currencyCode: 'CAD',
+        cashAccountId: null,
+        cashBalance: 0,
+        holdings: [
+          {
+            id: 'h1', securityId: 'sec-1', symbol: 'AAA', name: 'Alpha',
+            securityType: 'STOCK', currencyCode: 'CAD', quantity: 1000,
+            averageCost: 80, costBasis: 80000, costBasisAccountCurrency: 80000,
+            currentPrice: 100, marketValue: 100000, gainLoss: 20000,
+            gainLossPercent: 25,
+          },
+          {
+            id: 'h2', securityId: 'sec-2', symbol: 'BBB', name: 'Bravo',
+            securityType: 'STOCK', currencyCode: 'CAD', quantity: 500,
+            averageCost: 100, costBasis: 50000, costBasisAccountCurrency: 50000,
+            currentPrice: null, marketValue: null, gainLoss: null,
+            gainLossPercent: null,
+          },
+        ],
+        totalCostBasis: 130000,
+        gainCostBasis: 80000,
+        unpricedCostBasis: 50000,
+        totalMarketValue: 100000,
+        unpricedHoldingsCount: 1,
+        totalGainLoss: 20000,
+        totalGainLossPercent: 25,
+        netInvested: 0,
+        fxComplete: true,
+        missingRatePairs: [],
+        pricesComplete: false,
+        unpricedSecurityIds: ['sec-2'],
+        valuationComplete: false,
+      },
+    ];
+
+    render(
+      <GroupedHoldingsList
+        holdingsByAccount={accounts as never}
+        isLoading={false}
+        totalPortfolioValue={100000}
+        valuationComplete={false}
+      />,
+    );
+
+    expect(screen.queryByText(/-\$30000\.00/)).not.toBeInTheDocument();
+    // The header's gain figure and the account-total row's gain and return are
+    // all marked. (The AAA row's own gain is a single priced holding's, unmarked.)
+    const header = screen.getByText(/\$20000\.00 \(\+25\.00%\)/);
+    expect(header.closest('[data-testid="partial-total"]')).not.toBeNull();
+    expect(screen.getAllByTestId('partial-total')).toHaveLength(3);
+    expect(screen.getAllByText('Over priced holdings only').length).toBeGreaterThan(0);
+  });
+
   it("says nothing for an account whose own totals are complete", () => {
     const accounts = [
       {

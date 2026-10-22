@@ -765,6 +765,7 @@
     "totalValue": "Total Value",
     "costBasis": "Cost Basis",
     "totalGainLoss": "Total Gain/Loss",
+    "gainPartialCaption": "Over priced holdings only",
     "return": "Return",
     "viewHoldings": "Holdings",
     "viewAllocation": "Allocation",

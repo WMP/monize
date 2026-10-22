@@ -2597,6 +2597,22 @@ export class ToolExecutorService {
     const incompleteNote = data.valuationComplete
       ? ""
       : ` INCOMPLETE: ${incompleteReasons.join("; ")}, so every total above is a subtotal of what could be worked out. Say so rather than quoting these figures as complete.`;
+    // The gain is over the holdings that have a value, so say which cost it
+    // leaves out; "every total above is a subtotal" does not tell a model that
+    // the percentage is over a smaller base (A26-M38).
+    const gainLeftOut = [
+      ...(data.unpricedSymbols.length > 0
+        ? [`${data.unpricedSymbols.join(", ")} (no price)`]
+        : []),
+      ...(data.missingRatePairs.length > 0
+        ? [`holdings needing ${data.missingRatePairs.join(", ")} (no rate)`]
+        : []),
+    ];
+    const gainNote = data.valuationComplete
+      ? ""
+      : ` The unrealized gain/loss is over the priced holdings only; it leaves out ${
+          gainLeftOut.length > 0 ? gainLeftOut.join("; ") : "unvalued holdings"
+        }, and the cost of the unpriced holdings excluded from it is ${data.unpricedCostBasis.toFixed(2)}.`;
     // An account whose own totals could not be worked out is separately worth
     // saying: its figures are in its own currency, so the flags above do not
     // cover it (recheck RR3-005).
@@ -2609,7 +2625,7 @@ export class ToolExecutorService {
         : "";
     return {
       data,
-      summary: `${data.holdingCount} holding${data.holdingCount === 1 ? "" : "s"}, total portfolio value ${data.totalPortfolioValue.toFixed(2)}, unrealized gain/loss ${sign}${data.totalGainLoss.toFixed(2)} (${sign}${data.totalGainLossPercent.toFixed(2)}%).${lookThroughNote}${incompleteNote}${incompleteAccountsNote}`,
+      summary: `${data.holdingCount} holding${data.holdingCount === 1 ? "" : "s"}, total portfolio value ${data.totalPortfolioValue.toFixed(2)}, unrealized gain/loss ${sign}${data.totalGainLoss.toFixed(2)} (${sign}${data.totalGainLossPercent.toFixed(2)}%).${lookThroughNote}${incompleteNote}${gainNote}${incompleteAccountsNote}`,
       sources: [
         {
           type: "portfolio",

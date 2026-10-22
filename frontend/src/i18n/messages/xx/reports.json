@@ -765,6 +765,7 @@
     "totalValue": "[XX-Total Value-XX]",
     "costBasis": "[XX-Cost Basis-XX]",
     "totalGainLoss": "[XX-Total Gain/Loss-XX]",
+    "gainPartialCaption": "[XX-Over priced holdings only-XX]",
     "return": "[XX-Return-XX]",
     "viewHoldings": "[XX-Holdings-XX]",
     "viewAllocation": "[XX-Allocation-XX]",

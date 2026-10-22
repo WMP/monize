@@ -54,7 +54,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
 import { PartialTotal } from '@/components/ui/PartialTotal';
 import { usePartialTotalNote } from '@/hooks/usePartialTotalNote';
-import { isPortfolioPartial, portfolioPartialTotal } from '@/lib/net-worth-completeness';
+import { portfolioPartialTotal } from '@/lib/net-worth-completeness';
 
 type PortfolioBreakdownSortField = 'account' | 'holdings' | 'cash' | 'total' | 'gainLoss';
 type PortfolioChartSortField = 'name' | 'value';
@@ -1068,8 +1068,8 @@ export function PortfolioValueReport() {
       : t('portfolioValue.allAccounts');
     const breakdownHeaders = [t('portfolioValue.pdfColAccount'), t('portfolioValue.pdfColHoldings'), t('portfolioValue.pdfColCash'), t('portfolioValue.pdfColTotal'), t('portfolioValue.pdfColGainLoss')];
     // An account the server could not fully value exports what the table shows:
-    // its holdings and total are subtotals, suffixed as such, and its gain is
-    // withheld. A bare subtotal in a document that leaves the application is
+    // its holdings, total and gain (over the priced holdings only) are subtotals,
+    // suffixed as such. A bare subtotal in a document that leaves the application is
     // the same defect as one on screen.
     const breakdownRows = portfolio?.holdingsByAccount.map((acct) => [
       acct.accountName,
@@ -1079,9 +1079,10 @@ export function PortfolioValueReport() {
         fmtFull(acct.totalMarketValue + acct.cashBalance),
         accountPartial(acct, acct.totalMarketValue + acct.cashBalance),
       ),
-      isPortfolioPartial(acct)
-        ? t('portfolioValue.notAvailable')
-        : `${acct.totalGainLoss >= 0 ? '+' : ''}${fmtFull(acct.totalGainLoss)}`,
+      cellFor(
+        `${acct.totalGainLoss >= 0 ? '+' : ''}${fmtFull(acct.totalGainLoss)}`,
+        accountPartial(acct, acct.totalGainLoss),
+      ),
     ]) || [];
     await exportToPdf({
       title: t('portfolioValue.pdfTitle'),
@@ -1821,23 +1822,14 @@ export function PortfolioValueReport() {
                         {fmtFull(acct.totalMarketValue + acct.cashBalance)}
                       </PartialTotal>
                     </td>
-                    <td role="cell" className={`col-start-3 row-start-2 font-medium ${isPortfolioPartial(acct) ? '' : gainLossColor(acct.totalGainLoss)} ${MONEY_CELL}`}>
+                    <td role="cell" className={`col-start-3 row-start-2 font-medium ${gainLossColor(acct.totalGainLoss)} ${MONEY_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{breakdownColumns.gainLoss.label}</CellLabel>
-                      {isPortfolioPartial(acct) ? (
-                        // The gain is over a value the server could not work
-                        // out: a missing price and a missing rate are two
-                        // repairs, so the marker says which.
-                        <UnknownAmount
-                          reason={
-                            (acct.unpricedHoldingsCount ?? 0) > 0 || acct.pricesComplete === false
-                              ? 'noPrice'
-                              : 'displayFx'
-                          }
-                          className="font-normal"
-                        />
-                      ) : (
-                        <>{acct.totalGainLoss >= 0 ? '+' : ''}{fmtFull(acct.totalGainLoss)}</>
-                      )}
+                      {/* The server's gain is over the holdings that have a value
+                          (A26-M38), so an incomplete account shows it as a
+                          partial figure, marked like its neighbours. */}
+                      <PartialTotal total={accountPartial(acct, acct.totalGainLoss)} displayCurrency={acct.currencyCode}>
+                        {acct.totalGainLoss >= 0 ? '+' : ''}{fmtFull(acct.totalGainLoss)}
+                      </PartialTotal>
                     </td>
                   </tr>
                 ))}

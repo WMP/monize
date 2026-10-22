@@ -1255,6 +1255,8 @@ describe("ToolExecutorService", () => {
         totalPortfolioValue: 100,
         totalGainLoss: 0,
         totalGainLossPercent: 0,
+        gainCostBasis: 0,
+        unpricedCostBasis: 0,
         timeWeightedReturn: null,
         cagr: null,
         holdings: [],
@@ -1267,6 +1269,36 @@ describe("ToolExecutorService", () => {
       expect(result.summary).toContain("INCOMPLETE");
       expect(result.summary).toContain("EUR->USD");
       expect((result.data as { fxComplete: boolean }).fxComplete).toBe(false);
+    });
+
+    it("get_portfolio_summary says the gain is over the priced holdings only, naming the symbol and the excluded cost (A26-M38)", async () => {
+      portfolio.getLlmSummary.mockResolvedValueOnce({
+        holdingCount: 2,
+        fxComplete: true,
+        missingRatePairs: [],
+        pricesComplete: false,
+        unpricedSymbols: ["XYZ"],
+        valuationComplete: false,
+        totalCashValue: 0,
+        totalHoldingsValue: 100000,
+        totalCostBasis: 130000,
+        gainCostBasis: 80000,
+        unpricedCostBasis: 50000,
+        totalPortfolioValue: 100000,
+        totalGainLoss: 20000,
+        totalGainLossPercent: 25,
+        timeWeightedReturn: null,
+        cagr: null,
+        holdings: [],
+        holdingsByAccount: [],
+        allocation: [],
+      });
+
+      const result = await service.execute(userId, "get_portfolio_summary", {});
+
+      expect(result.summary).toContain("priced holdings only");
+      expect(result.summary).toContain("XYZ");
+      expect(result.summary).toContain("50000.00");
     });
 
     it("list_investment_transactions delegates to investmentTransactions.getLlmInvestmentTransactions", async () => {

@@ -187,8 +187,19 @@ export interface AccountHoldings {
    * rather than measured (`docs/financial-calculation-contract.md` section 1).
    */
   unpricedHoldingsCount: number;
+  /**
+   * Value less cost over the holdings that have a value (A26-M38): the cost of
+   * an unpriced holding is not charged against a value that never included it.
+   * Read with `gainCostBasis` and `unpricedCostBasis`, and mark it partial when
+   * `valuationComplete` is false.
+   */
   totalGainLoss: number;
+  /** Over `gainCostBasis`; 0 when that is 0. */
   totalGainLossPercent: number;
+  /** Cost of the holdings `totalGainLoss` is over (value converted, cost converted). */
+  gainCostBasis: number;
+  /** Cost of the holdings left out of the gain because they have no value. */
+  unpricedCostBasis: number;
   netInvested: number;
   /**
    * Completeness of *this account's* totals, which is a different question from
@@ -218,8 +229,21 @@ export interface PortfolioSummary {
   totalCostBasis: number;
   totalNetInvested: number;
   totalPortfolioValue: number;
+  /**
+   * The gain over the holdings that joined `totalHoldingsValue` and whose cost
+   * converted: their value less THEIR cost, never less every holding's cost
+   * (A26-M38). A partial figure whenever `valuationComplete` is false.
+   */
   totalGainLoss: number;
+  /** Over `gainCostBasis`; 0 when that is 0. */
   totalGainLossPercent: number;
+  /** Cost of the holdings `totalGainLoss` is over. */
+  gainCostBasis: number;
+  /**
+   * Cost of the holdings the gain leaves out because they have no value: the
+   * known subtotal of what converted.
+   */
+  unpricedCostBasis: number;
   /**
    * The invested part's time-weighted return since the portfolio's first
    * transaction, produced by the same path as "Portfolio performance"
@@ -352,8 +376,12 @@ export interface LlmAccountHoldings {
   cashBalance: number;
   totalCostBasis: number;
   totalMarketValue: number;
+  /** Over the account's holdings that have a value (`gainCostBasis`). */
   totalGainLoss: number;
   totalGainLossPercent: number;
+  gainCostBasis: number;
+  /** Cost the gain leaves out: holdings with no value. */
+  unpricedCostBasis: number;
   /**
    * This account's own completeness, carried for the same reason the top-level
    * flags are: a model reading `totalMarketValue: 0` for a JPY account cannot
@@ -390,8 +418,12 @@ export interface LlmPortfolioSummary {
   totalHoldingsValue: number;
   totalCostBasis: number;
   totalPortfolioValue: number;
+  /** Over the holdings that have a value (`gainCostBasis`); partial when `valuationComplete` is false. */
   totalGainLoss: number;
   totalGainLossPercent: number;
+  gainCostBasis: number;
+  /** Cost the gain leaves out: holdings with no value. */
+  unpricedCostBasis: number;
   /** The invested part's TWR since the first transaction; null is withheld. */
   timeWeightedReturn: number | null;
   /** Why it is withheld, so a model reports the cause rather than "n/a". */
@@ -937,11 +969,13 @@ export class PortfolioService {
 
     const totalPortfolioValue =
       totalCashValue + holdingsResult.totalHoldingsValue;
+    // Value less cost of the SAME holdings (A26-M38): `totalCostBasis` carries
+    // every holding's cost, `totalHoldingsValue` only the priced ones.
     const totalGainLoss =
-      holdingsResult.totalHoldingsValue - holdingsResult.totalCostBasis;
+      holdingsResult.gainMarketValue - holdingsResult.gainCostBasis;
     const totalGainLossPercent =
-      holdingsResult.totalCostBasis > 0
-        ? (totalGainLoss / holdingsResult.totalCostBasis) * 100
+      holdingsResult.gainCostBasis > 0
+        ? (totalGainLoss / holdingsResult.gainCostBasis) * 100
         : 0;
 
     // Calculate total net invested (converted to default currency)
@@ -1082,6 +1116,8 @@ export class PortfolioService {
       totalPortfolioValue,
       totalGainLoss,
       totalGainLossPercent,
+      gainCostBasis: holdingsResult.gainCostBasis,
+      unpricedCostBasis: holdingsResult.unpricedCostBasis,
       timeWeightedReturn,
       timeWeightedReturnReasons,
       timeWeightedReturnSince,
@@ -1211,6 +1247,8 @@ export class PortfolioService {
         totalMarketValue: roundMoneyValue(acct.totalMarketValue),
         totalGainLoss: roundMoneyValue(acct.totalGainLoss),
         totalGainLossPercent: roundPct(acct.totalGainLossPercent) ?? 0,
+        gainCostBasis: roundMoneyValue(acct.gainCostBasis),
+        unpricedCostBasis: roundMoneyValue(acct.unpricedCostBasis),
         fxComplete: acct.fxComplete,
         missingRatePairs: acct.missingRatePairs,
         pricesComplete: acct.pricesComplete,
@@ -1236,6 +1274,8 @@ export class PortfolioService {
       totalPortfolioValue: roundMoneyValue(summary.totalPortfolioValue),
       totalGainLoss: roundMoneyValue(summary.totalGainLoss),
       totalGainLossPercent: roundPct(summary.totalGainLossPercent) ?? 0,
+      gainCostBasis: roundMoneyValue(summary.gainCostBasis),
+      unpricedCostBasis: roundMoneyValue(summary.unpricedCostBasis),
       timeWeightedReturn: roundPct(summary.timeWeightedReturn),
       timeWeightedReturnReasons: summary.timeWeightedReturnReasons,
       timeWeightedReturnSince: summary.timeWeightedReturnSince,

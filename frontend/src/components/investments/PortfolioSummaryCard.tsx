@@ -17,6 +17,8 @@ import {
   type IncompleteDataCauses,
 } from '@/lib/incomplete-data-ranges';
 import { gainLossColor } from '@/lib/format';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { partialTotalFor } from '@/lib/net-worth-completeness';
 
 interface PortfolioSummaryCardProps {
   summary: PortfolioSummary | null;
@@ -57,15 +59,22 @@ export function PortfolioSummaryCard({
       let holdings = 0;
       let costBasis = 0;
       let netInvested = 0;
+      let gainLoss = 0;
+      let gainCostBasis = 0;
       for (const acct of summary.holdingsByAccount) {
         cash += acct.cashBalance;
         holdings += acct.totalMarketValue;
         costBasis += acct.totalCostBasis;
         netInvested += acct.netInvested;
+        // The server's gain is over the holdings that have a value; value less
+        // every cost charged an unpriced holding's cost against a value that
+        // never included it (A26-M38). An older backend sends no
+        // `gainCostBasis`, and its gain was value less the whole cost.
+        gainLoss += acct.totalGainLoss;
+        gainCostBasis += acct.gainCostBasis ?? acct.totalCostBasis;
       }
       const portfolio = cash + holdings;
-      const gainLoss = holdings - costBasis;
-      const gainLossPercent = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
+      const gainLossPercent = gainCostBasis > 0 ? (gainLoss / gainCostBasis) * 100 : 0;
       return { cash, holdings, costBasis, netInvested, portfolio, gainLoss, gainLossPercent };
     }
 
@@ -253,6 +262,14 @@ export function PortfolioSummaryCard({
     );
   }
   const valuationIncomplete = !completeness.valuationComplete;
+  // The gain and the simple return are over the holdings that have a value, so
+  // they are partial figures whenever the valuation is (A26-M38).
+  const gainPartial = partialTotalFor(
+    0,
+    completeness.valuationComplete,
+    completeness.missingRatePairs,
+  );
+  const gainDisplayCurrency = foreignCurrency ?? defaultCurrency;
 
   const gainLossVal = converted?.gainLoss ?? summary.totalGainLoss;
   const gainLossPercentVal = converted?.gainLossPercent ?? summary.totalGainLossPercent;
@@ -383,8 +400,15 @@ export function PortfolioSummaryCard({
                 <InfoTooltip placement="top" text={t('portfolioSummary.gainLossTooltip')} />
               </div>
               <div className={`text-base sm:text-lg font-semibold ${returnColorClass(gainLossVal)}`}>
-                {fmtVal(gainLossVal)}
+                <PartialTotal total={gainPartial} displayCurrency={gainDisplayCurrency}>
+                  {fmtVal(gainLossVal)}
+                </PartialTotal>
               </div>
+              {valuationIncomplete && (
+                <div className="text-xs text-amber-700 dark:text-amber-300">
+                  {t('portfolioSummary.gainPartialCaption')}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -401,8 +425,15 @@ export function PortfolioSummaryCard({
                 <InfoTooltip placement="top" text={t('portfolioSummary.simpleReturnTooltip')} />
               </div>
               <div className={`text-base sm:text-lg font-semibold ${returnColorClass(gainLossPercentVal)}`}>
-                {formatPercent(gainLossPercentVal)}
+                <PartialTotal total={gainPartial} displayCurrency={gainDisplayCurrency}>
+                  {formatPercent(gainLossPercentVal)}
+                </PartialTotal>
               </div>
+              {valuationIncomplete && (
+                <div className="text-xs text-amber-700 dark:text-amber-300">
+                  {t('portfolioSummary.gainPartialCaption')}
+                </div>
+              )}
             </div>
             <div>
               <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center">
