@@ -43,9 +43,9 @@ before auditing.
 | S18 | done | 2026-10-21 | 2026-10-21 | 76bb9c5 | 0/0/6/5 | `18-frontend-core.md` (child session_018vbbzt6wxobMRRSa69Nm2B); verdict APPROVE |
 | S19 | done | 2026-10-21 | 2026-10-22 | a9f53b1 | 0/2/2/3 | `19-frontend-forms.md` (child session_01LuCrA2Ko2LmWJpCCVZtqu1); verdict REQUEST CHANGES; the five largest forms sampled, Playwright not run |
 | S20 | done | 2026-10-21 | 2026-10-22 | c7a3707 | 0/1/3/4 | `20-frontend-figures.md` (child session_01VSrfzDF4F63zWMJY2giCfB); verdict REQUEST CHANGES; budgets, strategies, bonds, receipts, tours UI sampled by grep only |
-| S21 | in-progress | 2026-10-21 | | | | `21-tests-ci-release.md` (child session_01Xmf7H997Adk6ipvAx74awQ, claude-opus-5-5) |
+| S21 | done | 2026-10-21 | 2026-10-22 | 8ea9316 | 0/0/4/3 | `21-tests-ci-release.md` (child session_01Xmf7H997Adk6ipvAx74awQ); verdict APPROVE; program-wide mutation table in its section 6.2, known-wrong tests in 10.1 |
 | S22 | done | 2026-10-22 | 2026-10-22 | 59a1440 | 0/0/0/0 | `22-delta-review.md` (child session_014uWBGZjh8U2E8eYrTBBQUi); `MAIN_SHA` = `AUDIT_BASELINE_SHA`, empty delta; 8 re-check runs green |
-| S23 | open | | | | | `23-final-report.md`, `remediation-tasks.md` |
+| S23 | in-progress | 2026-10-22 | | | | `23-final-report.md`, `remediation-tasks.md` (child: see next ledger update) |
 
 Status values: `open`, `in-progress` (resume it first), `done`, `split` (see `sessions.md` for
 the two halves).
@@ -73,10 +73,10 @@ Filled by S01. Later sessions read it instead of re-discovering it.
 | --- | --- |
 | BLOCKER | 0 |
 | HIGH | 18 (S02: 2, S03: 1, S07: 2, S08: 1, S09: 1, S10: 1, S11: 1, S12: 1, S13: 3, S15: 1, S16: 1, S19: 2, S20: 1; S20-01 re-assesses and supersedes S02-03; S13-01 supersedes S02-02; S15-01 and S07-02 share `undoSimpleEntity`; S07-01, S08-01 and S09-01 supersede S02-01, -04 and -05) |
-| MEDIUM | 62 (S02: 8, S03: 3, S04: 4, S05: 1, S06: 2, S07: 5, S08: 2, S09: 3, S10: 2, S12: 6, S13: 2, S14: 1, S15: 4, S16: 5, S17: 3, S18: 6, S19: 2, S20: 3; S10-02 supersedes S02-09; S07-03 and -05 supersede S02-07 and -08) |
-| LOW | 56 (S01: 4, S02: 2, S03: 3, S05: 2, S06: 4, S07: 2, S08: 2, S09: 2, S10: 2, S11: 3, S12: 3, S13: 1, S14: 2, S15: 5, S16: 3, S17: 4, S18: 5, S19: 3, S20: 4) |
+| MEDIUM | 66 (S02: 8, S03: 3, S04: 4, S05: 1, S06: 2, S07: 5, S08: 2, S09: 3, S10: 2, S12: 6, S13: 2, S14: 1, S15: 4, S16: 5, S17: 3, S18: 6, S19: 2, S20: 3, S21: 4; S21-04 widens MON-M46 and merges the per-session test-coverage rows; S10-02 supersedes S02-09; S07-03 and -05 supersede S02-07 and -08) |
+| LOW | 59 (S01: 4, S02: 2, S03: 3, S05: 2, S06: 4, S07: 2, S08: 2, S09: 2, S10: 2, S11: 3, S12: 3, S13: 1, S14: 2, S15: 5, S16: 3, S17: 4, S18: 5, S19: 3, S20: 4, S21: 3) |
 
-Prior findings disposed (final, by the owning session): 66 of 70 (open: MON-M01, M11 Helm half, M44, M45, M46, L07 with S21; the client halves of H11, H14 and M28 are now disposed by S19). FIXED_VERIFIED: S01 (M02), S03 (H09, M03, M05, M07, M23, M24, M26, L01), S04 (M06, M14), S05 (M15, L02), S06 (H02, M08, M09, M10, M11 backup half, M12, M13, M16, M17, M18, L05), S07 (H07, M21, M27), S08 (M25 claim half, L06), S09 (H03), S12 (H08, M29, M30), S15 (M32), S13 (H13, M19, M33, M34, M41), S16 (M31, L03 with residuals), S17 (M04 with a test gap, M25 provider half), S18 (M36, M42). STILL_OPEN: S18 (M38 narrowed -> A26-S18-01), S20 (H16 -> A26-S20-01), S19 (M37 -> A26-S19-03, H11 client half -> A26-S19-01, H14 client half -> A26-S19-04). FIXED_VERIFIED also S19 (H15, M40). REJECTED also S19 (M28 client half). S13 (H12 -> A26-S13-01/-02, M39 relocated -> A26-S13-01), S12 (H14 server half residual, M35), S08 (H06 residual), S09 (H04 -> A26-S09-01, L04 narrowed), S06 (H01, M22, M43, M47), S07 (H05, H10 residual, H11 server half residual, M20 residual). REJECTED: S07 (M28 server half; the client half stays with S19). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
+Prior findings disposed (final, by the owning session): 70 of 70. S21: FIXED_VERIFIED M11 (Helm half), M44; STILL_OPEN M01 (narrowed, A26-S21-03), M45 (A26-S02-10), M46 (widened, A26-S21-04), L07 (narrowed). Raw counts before S23's consolidation: 32 FIXED_VERIFIED in full, 11 FIXED_VERIFIED with a residual or test gap, 24 STILL_OPEN in whole or part, 2 REJECTED (M28 both halves), 0 SUPERSEDED, 0 NOT_LOCATED; the register holds the per-row wording. FIXED_VERIFIED: S01 (M02), S03 (H09, M03, M05, M07, M23, M24, M26, L01), S04 (M06, M14), S05 (M15, L02), S06 (H02, M08, M09, M10, M11 backup half, M12, M13, M16, M17, M18, L05), S07 (H07, M21, M27), S08 (M25 claim half, L06), S09 (H03), S12 (H08, M29, M30), S15 (M32), S13 (H13, M19, M33, M34, M41), S16 (M31, L03 with residuals), S17 (M04 with a test gap, M25 provider half), S18 (M36, M42). STILL_OPEN: S18 (M38 narrowed -> A26-S18-01), S20 (H16 -> A26-S20-01), S19 (M37 -> A26-S19-03, H11 client half -> A26-S19-01, H14 client half -> A26-S19-04). FIXED_VERIFIED also S19 (H15, M40). REJECTED also S19 (M28 client half). S13 (H12 -> A26-S13-01/-02, M39 relocated -> A26-S13-01), S12 (H14 server half residual, M35), S08 (H06 residual), S09 (H04 -> A26-S09-01, L04 narrowed), S06 (H01, M22, M43, M47), S07 (H05, H10 residual, H11 server half residual, M20 residual). REJECTED: S07 (M28 server half; the client half stays with S19). S02 triaged 23 rows (12 FIXED_VERIFIED, 11 STILL_OPEN in whole or part); final call stays with the owning sessions, see the register.
 
 ## Open hypotheses handed between sessions
 
@@ -92,6 +92,7 @@ the line when it disposes of the hypothesis in its report.
 - from S02 to S13: MON-H12 built-in reports still 1:1 (A26-S02-02), guard blind spot (A26-S02-11), MON-M39 relocated to `report-currency.service.spec.ts:213`.
 - from S02 to S20: MON-H16 residual, FX-incomplete account and dashboard widget (A26-S02-03).
 - from S02 to S21: MON-M45 release job pushes an untested bump (A26-S02-10); A26-S02-12 integration race exercises a copy of the consume SQL.
+- from S21 to S23: merge A26-S21-04 with the per-session test-coverage findings it lists (Rule 7); A26-S21-01 and -03 share the "production image never exercised" root. Every "to S21" line above is disposed of in `21-tests-ci-release.md` (section 6.2 for the mutation rows, 10.1 for the known-wrong tests).
 - from S22 to S23: state in the final report that the audited revision has no hosted CI run (the commit carries `[skip ci]`; the fork's last push run on `main` is from 2026-10-16); re-fetch `main` before writing the final report and run a second delta review if it moved.
 - from S19 to S21: three undetected mutation rows and the known-wrong rate test (`19-frontend-forms.md` section 12). To S20/S23: the `toFixed` readouts (A26-S19-07) are figure surfaces. To S23: A26-S19-01 joins MON-H11's remediation task; A26-S19-04 joins A26-S12-02 and A26-S13-02 ("a rate for a date").
 - from S20 to S23: the country look-through aggregate carries no completeness (with S13); the intraday response needs a completeness flag before any frontend surface can mark a dropped bond (with S14/S13); `totalGainLoss` (A26-S20-02) is quoted by the AI and MCP portfolio tools (with S17); the bank-sync preview UI and the rules editor were not read (with S10). Coverage gap for S23's ledger: INV-SHARE-001..005 (PWA share target) were audited by neither S18 nor S20.
@@ -125,7 +126,7 @@ the line when it disposes of the hypothesis in its report.
 
 ## Program-wide mutation table (undetected rows only)
 
-Appended by each session; S21 merges it. `invariant | mutation (file:line, what) | test that
+Appended by each session; S21 merged it into `21-tests-ci-release.md` section 6.2 (A26-S21-04). `invariant | mutation (file:line, what) | test that
 should fail | session`.
 
 - `INV-AUTH-004 | token.service.ts:261 drop lockTokenFamily in revokeTokenFamily | a two-connection logout-vs-rotation test | S03`

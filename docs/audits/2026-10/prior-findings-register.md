@@ -45,7 +45,7 @@ session report, `NN-<slice>.md#...`).
 
 | ID | Title (abridged) | Owner | Disposition | Evidence |
 | --- | --- | --- | --- | --- |
-| MON-M01 | Deployment documentation and defaults do not match Compose and Helm manifests | S21 | open | |
+| MON-M01 | Deployment documentation and defaults do not match Compose and Helm manifests | S21 | STILL_OPEN (narrowed, A26-S21-03) | `21-tests-ci-release.md#5-prior-finding-dispositions` |
 | MON-M02 | Contributor guidance recommends transaction APIs the scoped rule prohibits | S01 | FIXED_VERIFIED | `01-baseline.md#5-prior-finding-dispositions` |
 | MON-M03 | Delegated `/users/me` responses expose fields outside the delegated profile | S03 | FIXED_VERIFIED | `03-security-auth.md#5-prior-finding-dispositions` |
 | MON-M04 | MCP sessions keep the scopes from session creation after the bearer is revalidated | S17 | FIXED_VERIFIED (test gap, A26-S17-05) | `17-ai-mcp-notifications.md#5-prior-finding-dispositions` |
@@ -55,7 +55,7 @@ session report, `NN-<slice>.md#...`).
 | MON-M08 | Restore ordering can fail linked asset/loan account relationships | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-M09 | Automatic-backup artifacts are published through non-crash-atomic final-file operations | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-M10 | Authenticated users can browse and select arbitrary server filesystem backup paths | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
-| MON-M11 | Default Helm deployment exposes automatic backup without a writable persistent mount | S06 (Helm half S21) | FIXED_VERIFIED (backup half; Helm half open, S21) | `06-backup-restore.md#5-prior-finding-dispositions` |
+| MON-M11 | Default Helm deployment exposes automatic backup without a writable persistent mount | S06 (Helm half S21) | FIXED_VERIFIED (backup half `06-backup-restore.md#5`; Helm half `21-tests-ci-release.md#5`) | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-M12 | Backup export reads tables through separate transactions, not one snapshot | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-M13 | Backup export buffers the whole database and archive in memory | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-M14 | RLS enforce mode can accept an unsafe runtime database role | S04 | FIXED_VERIFIED | `04-rls-tenancy.md#5-prior-finding-dispositions` |
@@ -88,9 +88,9 @@ session report, `NN-<slice>.md#...`).
 | MON-M41 | The historical stock-split fixture encodes additive shares (verification defect) | S13 | FIXED_VERIFIED | `13-valuation-fx-networth.md#5-prior-finding-dispositions` |
 | MON-M42 | The AppHeader test expects logout failure to look successful (verification defect) | S18 | FIXED_VERIFIED | `18-frontend-core.md#5-prior-finding-dispositions` |
 | MON-M43 | Automatic-backup tests expect generic cross-owner keys (verification defect) | S06 | STILL_OPEN | `06-backup-restore.md#5-prior-finding-dispositions` (A26-S06-01; S02 triage STILL_OPEN narrowed) |
-| MON-M44 | The backend integration CI command can succeed after discovering zero tests | S21 | open | S02 triage: FIXED_VERIFIED, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
-| MON-M45 | The release workflow pushes a `[skip ci]` bump after testing a different SHA | S21 | open | S02 triage: STILL_OPEN, see `02-prior-high-triage.md#5-prior-finding-dispositions` |
-| MON-M46 | Canonical concurrency defects lack deterministic tests at the production boundary (missing test) | S21 | open | |
+| MON-M44 | The backend integration CI command can succeed after discovering zero tests | S21 | FIXED_VERIFIED | `21-tests-ci-release.md#5-prior-finding-dispositions` |
+| MON-M45 | The release workflow pushes a `[skip ci]` bump after testing a different SHA | S21 | STILL_OPEN (A26-S02-10) | `21-tests-ci-release.md#5-prior-finding-dispositions` |
+| MON-M46 | Canonical concurrency defects lack deterministic tests at the production boundary (missing test) | S21 | STILL_OPEN (widened, A26-S21-04) | `21-tests-ci-release.md#5-prior-finding-dispositions` |
 | MON-M47 | No local/S3 attachment backup-restore round trip verifies bytes and remapping (missing test) | S06 | STILL_OPEN | `06-backup-restore.md#5-prior-finding-dispositions` |
 
 ## LOW
@@ -103,7 +103,7 @@ session report, `NN-<slice>.md#...`).
 | MON-L04 | Staged-file expiry can delete bytes a pending or running import still needs | S09 | STILL_OPEN (narrowed, A26-S09-04) | `09-import-mny.md#5-prior-finding-dispositions` |
 | MON-L05 | Concurrent attachment uploads can exceed the per-transaction cap | S06 | FIXED_VERIFIED | `06-backup-restore.md#5-prior-finding-dispositions` |
 | MON-L06 | Bill and mortgage reminder crons send duplicate email from every replica | S08 | FIXED_VERIFIED | `08-scheduler-cron.md#5-prior-finding-dispositions` |
-| MON-L07 | Test and CI documentation overstates enforcement | S21 | open | |
+| MON-L07 | Test and CI documentation overstates enforcement | S21 | STILL_OPEN (narrowed) | `21-tests-ci-release.md#5-prior-finding-dispositions` |
 
 ## Hints from the repository itself
 
