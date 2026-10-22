@@ -195,7 +195,13 @@ describe("AccountsService", () => {
     txManager.save.mockImplementation((data) => data);
     txManager.remove.mockImplementation((data) => data);
     txManager.count.mockResolvedValue(0);
-    txManager.query.mockResolvedValue([]);
+    // A COUNT always answers one row; the close path's pending-row count
+    // (A26-M12) reads it. Every other raw query answers no rows by default.
+    txManager.query.mockImplementation(async (sql: string) =>
+      typeof sql === "string" && sql.includes("count(*)::int AS n")
+        ? [{ n: 0 }]
+        : [],
+    );
     // Transaction-block tests address the manager through this legacy alias.
     mockQueryRunner = { manager: txManager, query: txManager.query };
 
@@ -1584,6 +1590,29 @@ describe("AccountsService", () => {
       expect(result.isClosed).toBe(true);
       expect(result.closedDate).toBeDefined();
       expect(mockDataSource.transaction).toHaveBeenCalled();
+    });
+
+    it("refuses to close over a non-VOID row dated after today, writing nothing (A26-M12)", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        currentBalance: 0,
+      });
+      mockQueryRunner.manager.query.mockImplementation(async (sql: string) =>
+        typeof sql === "string" && sql.includes("count(*)::int AS n")
+          ? [{ n: 1 }]
+          : [],
+      );
+
+      await expect(service.close("user-1", "account-1")).rejects.toThrow(
+        "Cannot close an account with future-dated transactions",
+      );
+      const [sql, params] = mockQueryRunner.manager.query.mock.calls.find(
+        ([q]: [string]) => q.includes("count(*)::int AS n"),
+      );
+      expect(sql).toContain("status IS DISTINCT FROM 'VOID'");
+      expect(sql).toContain("transaction_date > $3");
+      expect(params[0]).toEqual(["account-1"]);
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
     });
 
     it("throws when account already closed", async () => {

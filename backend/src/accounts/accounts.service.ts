@@ -1309,6 +1309,32 @@ export class AccountsService {
         }
       }
 
+      // A row dated after today is not in `current_balance` yet, so "zero now"
+      // is not "zero including what is already booked": an empty account with
+      // a -25.00 row dated next week closed, and on that date the due-balance
+      // pass moved the closed account to -25.00, a balance the user cannot
+      // touch without reopening it (A26-M12). Checked under the row lock
+      // above, over both halves of a pair; a VOID row moves nothing.
+      const [pending]: { n: number }[] = await m.query(
+        `SELECT count(*)::int AS n
+           FROM transactions
+          WHERE account_id = ANY($1)
+            AND user_id = $2
+            AND status IS DISTINCT FROM 'VOID'
+            AND parent_transaction_id IS NULL
+            AND transaction_date > $3`,
+        [halves.map((half) => half.id), userId, todayYMD()],
+      );
+      if (pending.n > 0) {
+        throw new BadRequestException(
+          tr(
+            "errors.accounts.closeWithFutureTransactions",
+            `Cannot close an account with future-dated transactions. It has ${pending.n} transaction(s) dated after today; delete or void them first.`,
+            { count: pending.n },
+          ),
+        );
+      }
+
       // A brokerage's `current_balance` is deliberately kept at 0 and its worth
       // lives in its holdings, so the balance check above says nothing about
       // whether it still holds securities. Without this, closing an account
