@@ -25,7 +25,10 @@ import { patchUserPreferences } from "../users/user-preference-writer";
 import { generateReadablePassword } from "./utils/password-generator";
 import { hashToken } from "../auth/crypto.util";
 import { OAuthProviderService } from "../oauth/oauth-provider.service";
-import { revokeStandingCredentials } from "../auth/credential-revocation";
+import {
+  revokeRefreshSessionsAfterCommit,
+  revokeStandingCredentials,
+} from "../auth/credential-revocation";
 import { UsersService } from "../users/users.service";
 import {
   lockAdminsForUpdate,
@@ -432,7 +435,12 @@ export class AdminService {
       }
 
       targetUser.isActive = isActive;
-      return repo.save(targetUser);
+      const updated = await repo.save(targetUser);
+      // A disable and the end of its standing credentials are one commit.
+      if (!isActive) {
+        await this.revokeStandingAccess(manager, targetUserId);
+      }
+      return updated;
     });
 
     // SECURITY: Revoke all refresh tokens, PATs, and OIDC artifacts when
@@ -442,7 +450,7 @@ export class AdminService {
     // grants, sessions). Without the OIDC sweep, an MCP client could keep
     // calling tools for up to the access-token TTL even after deactivation.
     if (!isActive) {
-      await this.revokeSessionsAndTokens(targetUserId);
+      await this.endSessionsAfterCommit(targetUserId);
     }
 
     return toUserProfile(saved);
@@ -600,13 +608,17 @@ export class AdminService {
     // An admin reset is a recovery action: the temporary password must work.
     targetUser.failedLoginAttempts = 0;
     targetUser.lockedUntil = null;
-    await withScopedDb(this.dataSource, (manager) =>
-      manager.getRepository(User).save(targetUser),
-    );
+    // The new password, its PATs and its trusted devices are one commit: a
+    // reset whose revocation fails leaves the old password in place rather than
+    // a new password with the old credentials still live (INV-AUTH-005).
+    await withScopedDb(this.dataSource, async (manager) => {
+      await manager.getRepository(User).save(targetUser);
+      await this.revokeStandingAccess(manager, targetUserId);
+    });
 
-    // SECURITY: Revoke all refresh tokens, PATs, and OIDC artifacts so the
-    // forced password change applies everywhere — web, CLI/API, and MCP.
-    await this.revokeSessionsAndTokens(targetUserId);
+    // SECURITY: then every refresh session and OIDC artifact, so the forced
+    // password change applies everywhere — web, CLI/API, and MCP.
+    await this.endSessionsAfterCommit(targetUserId);
 
     return { temporaryPassword };
   }
@@ -715,21 +727,38 @@ export class AdminService {
   }
 
   /**
-   * Revoke every authenticated surface for a user: web sessions (refresh
-   * tokens), CLI/API access (PATs), trusted devices and MCP/OAuth clients. The
-   * row revocations share one transaction so a user can never be left half
-   * revoked; the OIDC sweep runs after, as it always did.
+   * Revoking every authenticated surface for a user -- web sessions (refresh
+   * tokens), CLI/API access (PATs), trusted devices and MCP/OAuth clients -- is
+   * two halves, and this is the one that commits with the caller's write:
+   * a first-pass refresh revoke, PATs and trusted devices. The blanket refresh
+   * UPDATE misses a successor a concurrent rotation inserts after its snapshot,
+   * so `endSessionsAfterCommit` must follow the commit.
    */
-  private async revokeSessionsAndTokens(targetUserId: string): Promise<void> {
-    await withScopedDb(this.dataSource, async (manager: EntityManager) => {
-      await manager
-        .getRepository(RefreshToken)
-        .update(
-          { userId: targetUserId, isRevoked: false },
-          { isRevoked: true },
-        );
-      await revokeStandingCredentials(manager, targetUserId);
-    });
+  private async revokeStandingAccess(
+    manager: EntityManager,
+    targetUserId: string,
+  ): Promise<void> {
+    await manager
+      .getRepository(RefreshToken)
+      .update({ userId: targetUserId, isRevoked: false }, { isRevoked: true });
+    await revokeStandingCredentials(manager, targetUserId);
+  }
+
+  /** The half that runs after the commit: converging refresh revoke, OAuth. */
+  private async endSessionsAfterCommit(targetUserId: string): Promise<void> {
+    await revokeRefreshSessionsAfterCommit(
+      this.dataSource,
+      targetUserId,
+      this.logger,
+    );
     await this.oauthProviderService.revokeAllForUser(targetUserId);
+  }
+
+  /** Both halves, for a path with no credential write of its own (delete). */
+  private async revokeSessionsAndTokens(targetUserId: string): Promise<void> {
+    await withScopedDb(this.dataSource, (manager: EntityManager) =>
+      this.revokeStandingAccess(manager, targetUserId),
+    );
+    await this.endSessionsAfterCommit(targetUserId);
   }
 }
