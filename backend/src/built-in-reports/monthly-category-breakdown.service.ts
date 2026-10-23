@@ -78,7 +78,9 @@ export class MonthlyCategoryBreakdownService {
     userId: string,
     startDate: string | undefined,
     endDate: string,
+    options: { accountIds?: string[] } = {},
   ): Promise<MonthlyCategoryBreakdownResponse> {
+    const { accountIds } = options;
     const defaultCurrency =
       await this.currencyService.getDefaultCurrency(userId);
     const rateMap = await this.currencyService.buildRateMap(defaultCurrency);
@@ -135,11 +137,17 @@ export class MonthlyCategoryBreakdownService {
         )
     `;
 
-    const params: (string | undefined)[] = [userId, endDate];
+    const params: (string | string[] | undefined)[] = [userId, endDate];
 
     if (startDate) {
       query += ` AND t.transaction_date >= $3`;
       params.push(startDate);
+    }
+
+    // An empty selection is "every account", like every other report filter.
+    if (accountIds && accountIds.length > 0) {
+      query += ` AND t.account_id = ANY($${params.length + 1}::uuid[])`;
+      params.push(accountIds);
     }
 
     query += `
@@ -228,6 +236,7 @@ export class MonthlyCategoryBreakdownService {
       rateMap,
       monthSet,
       gaps,
+      accountIds,
     );
 
     const months = Array.from(monthSet).sort();
@@ -263,6 +272,7 @@ export class MonthlyCategoryBreakdownService {
     rateMap: Map<string, number>,
     monthSet: Set<string>,
     gaps: ConversionGaps,
+    accountIds?: string[],
   ): Promise<MonthlyBreakdownTransferRow[]> {
     let query = `
       SELECT
@@ -284,11 +294,18 @@ export class MonthlyCategoryBreakdownService {
         AND t.parent_transaction_id IS NULL
     `;
 
-    const params: (string | undefined)[] = [userId, endDate];
+    const params: (string | string[] | undefined)[] = [userId, endDate];
 
     if (startDate) {
       query += ` AND t.transaction_date >= $3`;
       params.push(startDate);
+    }
+
+    // The same scope as the category rows above: a transfer row is a row of
+    // one account, so it is kept or dropped with that account.
+    if (accountIds && accountIds.length > 0) {
+      query += ` AND t.account_id = ANY($${params.length + 1}::uuid[])`;
+      params.push(accountIds);
     }
 
     query += `
