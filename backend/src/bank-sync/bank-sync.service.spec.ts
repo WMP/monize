@@ -587,6 +587,7 @@ describe("BankSyncService", () => {
         skipped: 0,
         excluded: 0,
         refused: {
+          missing_identity: 0,
           missing_date: 0,
           future_date: 0,
           invalid_amount: 0,
@@ -750,6 +751,15 @@ describe("BankSyncService", () => {
       );
       const result = await sync();
       expect(result.bankBalance).toBeNull();
+      expect(result).not.toHaveProperty("balanceFailure");
+      expect(service["logger"].warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "could not be read: unavailable: balance endpoint down",
+        ),
+      );
+      expect(service["logger"].warn).toHaveBeenCalledWith(
+        expect.stringContaining(BANK_ACCOUNT_ID),
+      );
       expect(writer.write.mock.calls[0][0].balance).toBeNull();
     });
 
@@ -1470,6 +1480,7 @@ describe("BankSyncService", () => {
         skipped: 0,
         excluded: 0,
         refused: {
+          missing_identity: 0,
           missing_date: 0,
           future_date: 0,
           invalid_amount: 0,

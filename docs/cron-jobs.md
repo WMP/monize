@@ -126,3 +126,7 @@ second replica repeating the handler's effect -- a claim, a lease, a dedupe key,
 cron that emailed every user once per replica. Six handlers -- including this file's own subject, the automatic
 backup -- were absent before that guard existed, and one row claimed a midnight schedule for
 an hourly job; `backend/CLAUDE.md` sends readers here for the full schedule.
+
+### SimpleFIN daily bank reads
+
+The existing 05:17 UTC bank-sync job keeps its once-per-user/day JobClaimService claim. Its selected confirmed accounts run inside one SimplefinProvider read context: date ranges use the shared seven-day overlap and at most 90 days per request, transactions and balances share each Account Set, and all windows finish before any account receives a plan. Request reservations commit before HTTP and are not refunded. The context retains no payload after the user's run; per-account leases and writer/ledger constraints remain the write fences. A new SimpleFIN account is skipped until its preview is confirmed.

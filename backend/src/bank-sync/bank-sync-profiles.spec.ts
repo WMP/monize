@@ -1065,3 +1065,133 @@ describe("building the profile set", () => {
     ).not.toThrow();
   });
 });
+
+describe("countryless SimpleFIN profiles", () => {
+  const sourceDefault = () => ({
+    id: "simplefin/default",
+    version: 1,
+    source: "simplefin",
+    operation: { location: ["bank_transaction_code"] },
+    types: [],
+  });
+  const bank = () => ({
+    ...sourceDefault(),
+    id: "simplefin/example-bank",
+    institution: { names: ["Example Bank"] },
+  });
+  it("indexes normalized Bridge names without inventing a country", () => {
+    const set = buildProfileSet(
+      { origin: "default.json", raw: { ...sourceDefault(), id: "default" } },
+      [
+        { origin: "bank.json", raw: bank() },
+        { origin: "simplefin/default.json", raw: sourceDefault() },
+      ],
+    );
+    expect(set.byInstitution.get("simplefin||example bank")?.id).toBe(
+      "simplefin/example-bank",
+    );
+    expect(normalizeInstitutionName("  EXAMPLE   Bank ")).toBe("example bank");
+    expect(set.bySource.get("simplefin")?.id).toBe("simplefin/default");
+  });
+  it("uses the source default for unknown countryless banks and supplies API notes", () => {
+    const profile = resolveProfile("simplefin", "", "Unknown Bank");
+    expect(profile.id).toBe("simplefin/default");
+    expect(profile.source).toBe("simplefin");
+    expect(profile.types).toEqual([]);
+    expect(profileNotesView(profile, "fr-CA")).toHaveLength(7);
+    expect(
+      profileNotesView(profile, "fr-CA").every((note) => note.lang === "fr-CA"),
+    ).toBe(true);
+    expect(
+      profileNotesView(profile, "de").every((note) => note.lang === "en"),
+    ).toBe(true);
+    expect(() =>
+      assertNoPersonalData(profile, "simplefin/default.json"),
+    ).not.toThrow();
+  });
+  it("rejects a supplied country, country-prefix id, or institution on a source default", () => {
+    expect(() =>
+      validateBankSyncProfile(
+        { ...bank(), institution: { names: ["Example Bank"], country: "US" } },
+        "bank.json",
+      ),
+    ).toThrow(/must be omitted/);
+    expect(() =>
+      validateBankSyncProfile(
+        { ...bank(), id: "us/example-bank" },
+        "bank.json",
+      ),
+    ).toThrow(/must start/);
+    expect(() =>
+      validateBankSyncProfile(
+        { ...sourceDefault(), institution: { names: ["Example Bank"] } },
+        "bank.json",
+      ),
+    ).toThrow(/names none/);
+    expect(() =>
+      validateBankSyncProfile(
+        { ...bank(), source: "enable_banking" },
+        "bank.json",
+      ),
+    ).toThrow(/country/);
+  });
+});
+
+describe("SimpleFIN regional profile notes", () => {
+  const profile = resolveProfile("simplefin", "", "Example Bank");
+  it.each(["en-US", "en-CA", "fr-CA", "es-ES", "fr", "es"])(
+    "serves every note directly in %s",
+    (lang) => {
+      const notes = profileNotesView(profile, lang);
+      expect(notes).toHaveLength(7);
+      expect(notes.every((note) => note.lang === lang)).toBe(true);
+      expect(notes.map((note) => note.id)).toContain("manualAccountLinking");
+    },
+  );
+  it("removes the Polish SimpleFIN example and retains the English fallback", () => {
+    expect(profile.notes.every((note) => note.text.pl === undefined)).toBe(
+      true,
+    );
+    expect(
+      profileNotesView(profile, "pl").every((note) => note.lang === "en"),
+    ).toBe(true);
+  });
+  it.each([
+    ["fr-CA", "fr"],
+    ["es-ES", "es"],
+  ])(
+    "falls back from %s to %s when a profile omits the regional text",
+    (regional, base) => {
+      const raw = {
+        id: "simplefin/example-bank",
+        version: 1,
+        source: "simplefin",
+        institution: { names: ["Example Bank"] },
+        operation: { location: ["bank_transaction_code"] },
+        types: [],
+        notes: [
+          {
+            id: "example",
+            severity: "info",
+            text: { en: "English note", [base]: "Translated note" },
+          },
+        ],
+      };
+      const checked = validateBankSyncProfile(raw, "example.json");
+      expect(profileNotesView(checked, regional)[0]).toMatchObject({
+        lang: base,
+        text: "Translated note",
+      });
+    },
+  );
+  it("keeps note-only regional variants tied to supported base languages", () => {
+    expect(SUPPORTED_LOCALE_CODES).toEqual(
+      expect.arrayContaining(["fr", "es"]),
+    );
+    const note = profile.notes.find(
+      (note) => note.id === "manualAccountLinking",
+    )!;
+    expect(note.text["en-US"]).toContain("checking account");
+    expect(note.text["en-CA"]).toContain("chequing account");
+  });
+});

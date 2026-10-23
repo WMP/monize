@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, one {# avec un montant non valide} many {# avec un montant non valide} other {# avec un montant non valide}}",
         "unknown_direction": "{count, plural, one {# avec un sens inconnu} many {# avec un sens inconnu} other {# avec un sens inconnu}}",
         "currency_mismatch": "{count, plural, one {# dans une autre devise} many {# dans une autre devise} other {# dans une autre devise}}",
-        "other": "{count, plural, one {# pour une autre raison} many {# pour une autre raison} other {# pour une autre raison}}"
+        "other": "{count, plural, one {# pour une autre raison} many {# pour une autre raison} other {# pour une autre raison}}",
+        "missing_identity": "Identifiant de transaction bancaire manquant: {count, number}"
       },
       "needsPreview": "Ouvrez l'aperçu de {accounts} et confirmez le premier import",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "Montant non valide",
         "unknown_direction": "Sens inconnu",
         "currency_mismatch": "Autre devise",
-        "other": "Refusée"
+        "other": "Refusée",
+        "missing_identity": "Identifiant de transaction bancaire manquant"
       },
       "columns": {
         "date": "Date",
@@ -1786,7 +1788,47 @@
           "none": "Aucun tag de type d'opération pour cette transaction.",
           "tag": "Tag issu du type d'opération de la banque : {tag}"
         }
-      }
+      },
+      "historyBatch": "Lot d’historique : du {from} au {to}.",
+      "historyBatchRemaining": "Lot d’historique : du {from} au {to}. Il reste de l’historique. Après cet import, ouvrez l’aperçu du lot suivant."
+    },
+    "simplefin": {
+      "provider": "Fournisseur de données",
+      "description": "Connectez vos banques dans <bridge>SimpleFIN Bridge</bridge>, puis collez ici un jeton de configuration à usage unique. L’accès est en lecture seule.",
+      "openBridge": "Ouvrir SimpleFIN Bridge",
+      "setupToken": "Jeton de configuration",
+      "connect": "Connecter SimpleFIN",
+      "connected": "SimpleFIN est connecté.",
+      "savedDiscoveryFailed": "Connexion établie, mais la découverte des comptes nécessite une intervention. Relancez-la sans nouveau jeton.",
+      "refresh": "Actualiser les comptes",
+      "failed": "La demande n’a pas abouti. Vérifiez l’état de la connexion avant d’utiliser un nouveau jeton.",
+      "loadFailed": "Impossible de charger l’état de SimpleFIN.",
+      "encryptionRequired": "Demandez à un administrateur de configurer le chiffrement avant de connecter SimpleFIN.",
+      "remove": "Retirer SimpleFIN de Monize",
+      "removeTitle": "Retirer l’accès à tous les établissements ?",
+      "removeBody": "Cela désactive toute synchronisation SimpleFIN dans Monize et conserve votre historique. Révoquez le jeton d’application dans Bridge pour mettre fin à l’accès distant.",
+      "replaceTitle": "Remplacer l’accès SimpleFIN ?",
+      "replaceBody": "Cela remplace l’accès à tous les établissements. Les associations existantes sont conservées ; les identifiants modifiés doivent être vérifiés.",
+      "quota": "{remaining} demandes restantes",
+      "nextEligible": "Prochaine disponibilité : {date}",
+      "stopTitle": "Arrêter la synchronisation de {bank} ?",
+      "stopBody": "Les associations et transactions existantes sont conservées.",
+      "stop": "Arrêter la synchronisation",
+      "stopped": "Synchronisation arrêtée",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "Reconnectez-vous avec un nouveau jeton de configuration.",
+        "payment_required": "Vérifiez votre abonnement SimpleFIN Bridge.",
+        "rate_limited": "Limite de demandes atteinte. Patientez avant d’actualiser.",
+        "no_accounts": "Aucun compte n’a été partagé. Vérifiez l’accès dans Bridge.",
+        "partial_data": "Certaines données sont incomplètes. Vérifiez Bridge, puis actualisez.",
+        "identity_review": "Les identifiants des comptes ont changé. Vérifiez les associations avant d’activer la synchronisation.",
+        "invalid_response": "Bridge a renvoyé des données non prises en charge. Réessayez plus tard.",
+        "unavailable": "SimpleFIN n’a pas répondu. Réessayez plus tard."
+      },
+      "resume": "Reprendre la synchronisation",
+      "lastKnownConnected": "SimpleFIN était connecté lors de la dernière vérification réussie."
     }
   }
 }

@@ -1,42 +1,42 @@
-'use client';
+"use client";
 
-import { useId, useState } from 'react';
-import toast from 'react-hot-toast';
-import { useTranslations } from 'next-intl';
-import { ChevronDownIcon } from '@heroicons/react/24/outline';
-import { Badge, type BadgeVariant } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { InfoTooltip } from '@/components/ui/InfoTooltip';
-import { Select } from '@/components/ui/Select';
-import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
-import { useDateFormat } from '@/hooks/useDateFormat';
-import { bankSyncApi } from '@/lib/bank-sync';
-import { isUnknownSyncOutcome } from '@/lib/bank-sync-outcome';
-import { safeAuthorizationUrl } from '@/lib/bank-sync-redirect';
-import { getErrorMessage } from '@/lib/errors';
-import type { Account } from '@/types/account';
+import { useId, useState } from "react";
+import toast from "react-hot-toast";
+import { useTranslations } from "next-intl";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { Badge, type BadgeVariant } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { Select } from "@/components/ui/Select";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
+import { useDateFormat } from "@/hooks/useDateFormat";
+import { bankSyncApi } from "@/lib/bank-sync";
+import { isUnknownSyncOutcome } from "@/lib/bank-sync-outcome";
+import { safeAuthorizationUrl } from "@/lib/bank-sync-redirect";
+import { getErrorMessage } from "@/lib/errors";
+import type { Account } from "@/types/account";
 import {
   BANK_SYNC_NOTIFY_SUCCESS_MODES,
   type BankSyncConnection,
   type BankSyncConnectionStatus,
   type BankSyncNotifySuccessMode,
-} from '@/types/bank-sync';
-import { BankSyncAccountRow } from './BankSyncAccountRow';
-import { BankSyncProfileNotes } from './BankSyncProfileNotes';
-import { useBankSyncToast } from './useBankSyncToast';
+} from "@/types/bank-sync";
+import { BankSyncAccountRow } from "./BankSyncAccountRow";
+import { BankSyncProfileNotes } from "./BankSyncProfileNotes";
+import { useBankSyncToast } from "./useBankSyncToast";
 
 /** Consent that ends within this many days is flagged as expiring soon. */
 const EXPIRES_SOON_DAYS = 7;
 const DAY_MS = 86_400_000;
 
 const STATUS_VARIANTS: Record<BankSyncConnectionStatus, BadgeVariant> = {
-  pending: 'blue',
-  active: 'green',
-  expired: 'amber',
-  revoked: 'gray',
-  failed: 'red',
+  pending: "blue",
+  active: "green",
+  expired: "amber",
+  revoked: "gray",
+  failed: "red",
 };
 
 interface BankSyncConnectionCardProps {
@@ -65,10 +65,12 @@ export function BankSyncConnectionCard({
   disabled = false,
   onChanged,
 }: BankSyncConnectionCardProps) {
-  const t = useTranslations('settings.bankSync.connection');
-  const tConnect = useTranslations('settings.bankSync.connect');
-  const tSync = useTranslations('settings.bankSync.sync');
-  const tNotes = useTranslations('settings.bankSync.profileNotes');
+  const t = useTranslations("settings.bankSync.connection");
+  const simplefin = connection.provider === "simplefin";
+  const sf = useTranslations("settings.bankSync.simplefin");
+  const tConnect = useTranslations("settings.bankSync.connect");
+  const tSync = useTranslations("settings.bankSync.sync");
+  const tNotes = useTranslations("settings.bankSync.profileNotes");
   const { formatDate } = useDateFormat();
   const notifySync = useBankSyncToast();
   // Captured once: consent is measured in days, so a clock that stands still
@@ -87,7 +89,9 @@ export function BankSyncConnectionCard({
 
   const [notifySuccess, setNotifySuccess] = useState(connection.notifySuccess);
   const [savingNotifySuccess, setSavingNotifySuccess] = useState(false);
-  const [tagOperationType, setTagOperationType] = useState(connection.tagOperationType);
+  const [tagOperationType, setTagOperationType] = useState(
+    connection.tagOperationType,
+  );
   const [savingTagOperationType, setSavingTagOperationType] = useState(false);
 
   // The server's value wins whenever a reload brings a different one.
@@ -96,51 +100,66 @@ export function BankSyncConnectionCard({
     setSeenAutoSync(connection.autoSync);
     setAutoSync(connection.autoSync);
   }
-  const [seenTagOperationType, setSeenTagOperationType] = useState(connection.tagOperationType);
+  const [seenTagOperationType, setSeenTagOperationType] = useState(
+    connection.tagOperationType,
+  );
   if (seenTagOperationType !== connection.tagOperationType) {
     setSeenTagOperationType(connection.tagOperationType);
     setTagOperationType(connection.tagOperationType);
   }
-  const [seenNotifySuccess, setSeenNotifySuccess] = useState(connection.notifySuccess);
+  const [seenNotifySuccess, setSeenNotifySuccess] = useState(
+    connection.notifySuccess,
+  );
   if (seenNotifySuccess !== connection.notifySuccess) {
     setSeenNotifySuccess(connection.notifySuccess);
     setNotifySuccess(connection.notifySuccess);
   }
 
-  const validUntilMs = connection.validUntil ? Date.parse(connection.validUntil) : NaN;
-  const hasExpiry = Number.isFinite(validUntilMs);
+  const validUntilMs = connection.validUntil
+    ? Date.parse(connection.validUntil)
+    : NaN;
+  const hasExpiry = !simplefin && Number.isFinite(validUntilMs);
   const pastDue = hasExpiry && validUntilMs <= now;
   const expiresSoon =
-    connection.status === 'active' &&
+    connection.status === "active" &&
     hasExpiry &&
     !pastDue &&
     validUntilMs - now <= EXPIRES_SOON_DAYS * DAY_MS;
   const displayStatus: BankSyncConnectionStatus =
-    connection.status === 'active' && pastDue ? 'expired' : connection.status;
+    connection.status === "active" && pastDue ? "expired" : connection.status;
   // A renewal keeps the accounts, so it is the way out of every state that is
   // not a working connection: a lapsed consent, an authorization never
   // completed (`pending`) and one that ended in an error (`failed`).
   const canRenew =
-    displayStatus === 'expired' ||
-    displayStatus === 'pending' ||
-    displayStatus === 'failed' ||
+    displayStatus === "expired" ||
+    displayStatus === "pending" ||
+    displayStatus === "failed" ||
     expiresSoon;
 
-  const linkedCount = connection.accounts.filter((account) => account.accountId).length;
-  const canSyncAll = displayStatus === 'active' && linkedCount > 0;
+  const linkedCount = connection.accounts.filter(
+    (account) => account.accountId,
+  ).length;
+  const canSyncAll = displayStatus === "active" && linkedCount > 0;
   // A link nobody has confirmed yet is imported from its own preview, never as
   // part of "Sync all": that would write a first import nobody has looked at.
   const syncAllWaitsForPreview =
-    canSyncAll && connection.accounts.some((account) => account.accountId && account.needsPreview);
-  const showAutoSync = displayStatus === 'active' || displayStatus === 'expired';
+    canSyncAll &&
+    connection.accounts.some(
+      (account) => account.accountId && account.needsPreview,
+    );
+  const showAutoSync =
+    displayStatus === "active" || displayStatus === "expired";
   const busy = syncing || matching || renewing || disconnecting;
   // Matching has nothing to do once every bank account is linked.
   const canMatch =
-    displayStatus === 'active' && connection.accounts.some((account) => account.accountId === null);
+    displayStatus === "active" &&
+    connection.accounts.some((account) => account.accountId === null);
 
   // Accounts linked to a bank account of ANOTHER row stay off this row's
   // picker; its own link stays offered so it renders as selected.
-  const linkedElsewhereFor = (ownAccountId: string | null): ReadonlySet<string> => {
+  const linkedElsewhereFor = (
+    ownAccountId: string | null,
+  ): ReadonlySet<string> => {
     if (!ownAccountId) return linkedAccountIds;
     const others = new Set(linkedAccountIds);
     others.delete(ownAccountId);
@@ -154,11 +173,11 @@ export function BankSyncConnectionCard({
     setSavingAutoSync(true);
     try {
       await bankSyncApi.updateConnection(connection.id, { autoSync: next });
-      toast.success(next ? t('autoSyncOn') : t('autoSyncOff'));
+      toast.success(next ? t("autoSyncOn") : t("autoSyncOff"));
     } catch (error) {
       // Back to the value THIS change replaced.
       setAutoSync(previous);
-      toast.error(getErrorMessage(error, t('autoSyncFailed')));
+      toast.error(getErrorMessage(error, t("autoSyncFailed")));
     } finally {
       setSavingAutoSync(false);
     }
@@ -170,11 +189,13 @@ export function BankSyncConnectionCard({
     setTagOperationType(next);
     setSavingTagOperationType(true);
     try {
-      await bankSyncApi.updateConnection(connection.id, { tagOperationType: next });
-      toast.success(next ? t('tagOperationTypeOn') : t('tagOperationTypeOff'));
+      await bankSyncApi.updateConnection(connection.id, {
+        tagOperationType: next,
+      });
+      toast.success(next ? t("tagOperationTypeOn") : t("tagOperationTypeOff"));
     } catch (error) {
       setTagOperationType(previous);
-      toast.error(getErrorMessage(error, t('tagOperationTypeFailed')));
+      toast.error(getErrorMessage(error, t("tagOperationTypeFailed")));
     } finally {
       setSavingTagOperationType(false);
     }
@@ -188,11 +209,13 @@ export function BankSyncConnectionCard({
     setNotifySuccess(next);
     setSavingNotifySuccess(true);
     try {
-      await bankSyncApi.updateConnection(connection.id, { notifySuccess: next });
-      toast.success(t('notifySuccessSaved'));
+      await bankSyncApi.updateConnection(connection.id, {
+        notifySuccess: next,
+      });
+      toast.success(t("notifySuccessSaved"));
     } catch (error) {
       setNotifySuccess(previous);
-      toast.error(getErrorMessage(error, t('notifySuccessFailed')));
+      toast.error(getErrorMessage(error, t("notifySuccessFailed")));
     } finally {
       setSavingNotifySuccess(false);
     }
@@ -204,14 +227,14 @@ export function BankSyncConnectionCard({
       const { authorizationUrl } = await bankSyncApi.reauthorize(connection.id);
       const safeUrl = safeAuthorizationUrl(authorizationUrl);
       if (!safeUrl) {
-        toast.error(tConnect('unsafeUrl'));
+        toast.error(tConnect("unsafeUrl"));
         setRenewing(false);
         return;
       }
       // Leaves the app; `renewing` stays set so the button cannot fire twice.
       window.location.assign(safeUrl);
     } catch (error) {
-      toast.error(getErrorMessage(error, t('renewFailed')));
+      toast.error(getErrorMessage(error, t("renewFailed")));
       setRenewing(false);
     }
   };
@@ -219,12 +242,15 @@ export function BankSyncConnectionCard({
   const handleSyncAll = async () => {
     setSyncing(true);
     try {
-      notifySync(await bankSyncApi.syncConnection(connection.id), connection.accounts);
+      notifySync(
+        await bankSyncApi.syncConnection(connection.id),
+        connection.accounts,
+      );
     } catch (error) {
       toast.error(
         isUnknownSyncOutcome(error)
-          ? tSync('outcomeUnknown')
-          : getErrorMessage(error, t('syncAllFailed')),
+          ? tSync("outcomeUnknown")
+          : getErrorMessage(error, t("syncAllFailed")),
       );
     } finally {
       setSyncing(false);
@@ -238,20 +264,24 @@ export function BankSyncConnectionCard({
   const handleMatch = async () => {
     setMatching(true);
     try {
-      const { linked, suggestions } = await bankSyncApi.matchAccounts(connection.id);
-      const linkedText = t('matchLinked', { count: linked.length });
-      const suggestedText = t('matchSuggested', { count: suggestions.length });
+      const { linked, suggestions } = await bankSyncApi.matchAccounts(
+        connection.id,
+      );
+      const linkedText = t("matchLinked", { count: linked.length });
+      const suggestedText = t("matchSuggested", { count: suggestions.length });
       if (linked.length > 0 && suggestions.length > 0) {
-        toast.success(t('matchBoth', { linked: linkedText, suggested: suggestedText }));
+        toast.success(
+          t("matchBoth", { linked: linkedText, suggested: suggestedText }),
+        );
       } else if (linked.length > 0) {
         toast.success(linkedText);
       } else if (suggestions.length > 0) {
         toast(suggestedText, { duration: 8000 });
       } else {
-        toast(t('matchNone'));
+        toast(t("matchNone"));
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, t('matchFailed')));
+      toast.error(getErrorMessage(error, t("matchFailed")));
     } finally {
       setMatching(false);
       await onChanged();
@@ -262,13 +292,14 @@ export function BankSyncConnectionCard({
     setDisconnecting(true);
     try {
       await bankSyncApi.deleteConnection(connection.id);
-      toast.success(t('disconnected'));
+      toast.success(simplefin ? sf("stopped") : t("disconnected"));
       setShowDisconnect(false);
       await onChanged();
     } catch (error) {
-      toast.error(getErrorMessage(error, t('disconnectFailed')));
-      setDisconnecting(false);
+      toast.error(getErrorMessage(error, t("disconnectFailed")));
       setShowDisconnect(false);
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -280,20 +311,24 @@ export function BankSyncConnectionCard({
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
               {connection.institutionName}
             </h3>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {connection.institutionCountry}
-            </span>
+            {connection.institutionCountry && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {connection.institutionCountry}
+              </span>
+            )}
             <Badge variant={STATUS_VARIANTS[displayStatus]}>
-              {t(`status.${displayStatus}`)}
+              {simplefin && displayStatus === "revoked"
+                ? sf("stopped")
+                : t(`status.${displayStatus}`)}
             </Badge>
-            {expiresSoon && <Badge variant="amber">{t('expiresSoon')}</Badge>}
+            {expiresSoon && <Badge variant="amber">{t("expiresSoon")}</Badge>}
           </div>
           {connection.validUntil && hasExpiry && (
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              {t('validUntil', { date: formatDate(connection.validUntil) })}
+              {t("validUntil", { date: formatDate(connection.validUntil) })}
             </p>
           )}
-          {connection.status === 'failed' && connection.lastError && (
+          {connection.status === "failed" && connection.lastError && (
             <p className="mt-1 text-sm text-red-600 dark:text-red-400">
               {connection.lastError}
             </p>
@@ -301,7 +336,16 @@ export function BankSyncConnectionCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {canRenew && (
+          {simplefin && connection.status === "revoked" && (
+            <Button type="button" variant="outline" size="sm" disabled={disabled || busy}
+              onClick={async () => {
+                setRenewing(true);
+                try { await bankSyncApi.updateConnection(connection.id, { resume: true }); await onChanged(); }
+                catch (error) { toast.error(getErrorMessage(error, sf("failed"))); }
+                finally { setRenewing(false); }
+              }}>{sf("resume")}</Button>
+          )}
+          {!simplefin && canRenew && (
             <Button
               type="button"
               variant="outline"
@@ -309,10 +353,10 @@ export function BankSyncConnectionCard({
               onClick={handleRenew}
               disabled={disabled || busy}
             >
-              {t('renew')}
+              {t("renew")}
             </Button>
           )}
-          {canMatch && (
+          {!simplefin && canMatch && (
             <Button
               type="button"
               variant="outline"
@@ -320,7 +364,7 @@ export function BankSyncConnectionCard({
               onClick={handleMatch}
               disabled={disabled || busy}
             >
-              {matching ? t('matching') : t('matchAccounts')}
+              {matching ? t("matching") : t("matchAccounts")}
             </Button>
           )}
           {canSyncAll && (
@@ -330,9 +374,11 @@ export function BankSyncConnectionCard({
               size="sm"
               onClick={handleSyncAll}
               disabled={disabled || busy || syncAllWaitsForPreview}
-              aria-describedby={syncAllWaitsForPreview ? syncAllHintId : undefined}
+              aria-describedby={
+                syncAllWaitsForPreview ? syncAllHintId : undefined
+              }
             >
-              {syncing ? t('syncingAll') : t('syncAll')}
+              {syncing ? t("syncingAll") : t("syncAll")}
             </Button>
           )}
           <Button
@@ -342,14 +388,17 @@ export function BankSyncConnectionCard({
             onClick={() => setShowDisconnect(true)}
             disabled={disabled || busy}
           >
-            {t('disconnect')}
+            {simplefin ? sf("stop") : t("disconnect")}
           </Button>
         </div>
       </div>
 
       {syncAllWaitsForPreview && (
-        <p id={syncAllHintId} className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          {t('syncAllNeedsPreview')}
+        <p
+          id={syncAllHintId}
+          className="mt-2 text-sm text-gray-600 dark:text-gray-300"
+        >
+          {t("syncAllNeedsPreview")}
         </p>
       )}
 
@@ -359,25 +408,25 @@ export function BankSyncConnectionCard({
             checked={autoSync}
             onChange={handleAutoSync}
             disabled={disabled || savingAutoSync}
-            label={t('autoSync')}
+            label={t("autoSync")}
           />
           <span className="text-sm text-gray-700 dark:text-gray-300">
-            {t('autoSync')}
+            {t("autoSync")}
           </span>
         </div>
       )}
 
-      {showAutoSync && (
+      {!simplefin && showAutoSync && (
         <div className="mt-3 flex items-center gap-3">
           <ToggleSwitch
             checked={tagOperationType}
             onChange={handleTagOperationType}
             disabled={disabled || savingTagOperationType}
-            label={t('tagOperationType')}
+            label={t("tagOperationType")}
           />
           <span className="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300">
-            {t('tagOperationType')}
-            <InfoTooltip text={t('tagOperationTypeHelp')} usePortal />
+            {t("tagOperationType")}
+            <InfoTooltip text={t("tagOperationTypeHelp")} usePortal />
           </span>
         </div>
       )}
@@ -386,10 +435,12 @@ export function BankSyncConnectionCard({
         <div className="mt-3 max-w-md">
           <Select
             id={`notify-success-${connection.id}`}
-            label={t('notifySuccess')}
+            label={t("notifySuccess")}
             value={notifySuccess}
             onChange={(event) =>
-              void handleNotifySuccess(event.target.value as BankSyncNotifySuccessMode)
+              void handleNotifySuccess(
+                event.target.value as BankSyncNotifySuccessMode,
+              )
             }
             disabled={disabled || savingNotifySuccess}
             options={BANK_SYNC_NOTIFY_SUCCESS_MODES.map((mode) => ({
@@ -416,10 +467,10 @@ export function BankSyncConnectionCard({
             <ChevronDownIcon
               aria-hidden="true"
               className={`mr-1 h-4 w-4 transition-transform motion-reduce:transition-none ${
-                notesOpen ? 'rotate-180' : ''
+                notesOpen ? "rotate-180" : ""
               }`}
             />
-            {notesOpen ? tNotes('hide') : tNotes('show')}
+            {notesOpen ? tNotes("hide") : tNotes("show")}
           </Button>
           {notesOpen && (
             <div id={notesId} className="mt-2">
@@ -429,28 +480,28 @@ export function BankSyncConnectionCard({
         </div>
       )}
 
-      {connection.status === 'pending' && (
+      {connection.status === "pending" && (
         <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-          {t('pendingHint')}
+          {t("pendingHint")}
         </p>
       )}
       {connection.accounts.length === 0 ? (
-        connection.status !== 'pending' && (
+        connection.status !== "pending" && (
           <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-            {t('noAccounts')}
+            {t("noAccounts")}
           </p>
         )
       ) : (
         <div className="mt-4">
           <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            {t('accountsHeading')}
+            {t("accountsHeading")}
           </h4>
           <ul>
             {connection.accounts.map((bankAccount) => (
               <BankSyncAccountRow
                 key={bankAccount.id}
                 bankAccount={bankAccount}
-                connectionActive={displayStatus === 'active'}
+                connectionActive={displayStatus === "active"}
                 accounts={accounts}
                 linkedElsewhere={linkedElsewhereFor(bankAccount.accountId)}
                 disabled={disabled}
@@ -463,9 +514,13 @@ export function BankSyncConnectionCard({
 
       <ConfirmDialog
         isOpen={showDisconnect}
-        title={t('disconnectConfirm.title', { bank: connection.institutionName })}
-        message={t('disconnectConfirm.message')}
-        confirmLabel={t('disconnectConfirm.confirm')}
+        title={
+          simplefin
+            ? sf("stopTitle", { bank: connection.institutionName })
+            : t("disconnectConfirm.title", { bank: connection.institutionName })
+        }
+        message={simplefin ? sf("stopBody") : t("disconnectConfirm.message")}
+        confirmLabel={simplefin ? sf("stop") : t("disconnectConfirm.confirm")}
         onConfirm={handleDisconnect}
         onCancel={() => setShowDisconnect(false)}
         pushHistory

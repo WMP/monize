@@ -25,6 +25,7 @@ export const TRACKED_PROVIDERS = {
   deutsche_boerse: "Deutsche Börse",
   google_places: "Google Places",
   enable_banking: "Enable Banking",
+  simplefin: "SimpleFIN Bridge",
   frankfurter: "Frankfurter",
   nbp: "Narodowy Bank Polski",
   gus: "Główny Urząd Statystyczny",

@@ -9,6 +9,7 @@ import {
   type BankSyncProviderName,
 } from "./bank-sync.constants";
 import defaultProfileFile from "./profiles/default.json";
+import simplefinDefaultProfileFile from "./profiles/simplefin/default.json";
 import pkoBpProfileFile from "./profiles/pl/pko-bp.json";
 
 /**
@@ -112,13 +113,14 @@ export interface ProfileNoteView {
 
 /** A validated profile. Its order is match order: the first type that matches wins. */
 export interface BankSyncProfile {
-  /** `default`, or `<country>/<bank>` in lower case (`pl/pko-bp`). */
+  /** `default`, `simplefin/<bank>`, or `<country>/<bank>` in lower case (`pl/pko-bp`). */
   readonly id: string;
   /** Bumped when the file changes what a row is given. */
   readonly version: number;
   readonly source: BankSyncProviderName;
   /** The bank the profile is for; null for the default profile. */
   readonly institution: {
+    /** Empty internally for a source that supplies no country. */
     readonly country: string;
     readonly names: readonly string[];
   } | null;
@@ -198,7 +200,8 @@ export function assertNoPersonalData(raw: unknown, origin: string): void {
 
 // -- Shape ---------------------------------------------------------------------
 
-const PROFILE_ID = /^(?:default|[a-z]{2}\/[a-z0-9]+(?:-[a-z0-9]+)*)$/;
+const PROFILE_ID =
+  /^(?:default|(?:simplefin|[a-z]{2})\/[a-z0-9]+(?:-[a-z0-9]+)*)$/;
 const COUNTRY = /^[A-Z]{2}$/;
 const INSTITUTION_NAME = /^[\p{L}\p{N}][\p{L}\p{N} .,&'()/-]*$/u;
 const INSTITUTION_NAME_MAX_LENGTH = 100;
@@ -207,10 +210,17 @@ const MAX_TYPES = 200;
 const MAX_NOTES = 20;
 const NOTE_ID = /^[a-z][A-Za-z0-9]*$/;
 const NOTE_TEXT_MAX_LENGTH = 600;
-/** The languages a note may be written in: the supported locales, never the `xx` pseudo-locale. */
-const NOTE_LOCALES: readonly string[] = SUPPORTED_LOCALE_CODES.filter(
-  (code) => code !== "xx",
-);
+/** Regional note translations whose base languages already exist in the app. */
+const NOTE_LOCALE_BASES: Readonly<Record<string, string>> = {
+  "fr-CA": "fr",
+  "es-ES": "es",
+};
+
+/** Supported app locales and explicit note variants; never the pseudo-locale. */
+const NOTE_LOCALES: readonly string[] = [
+  ...SUPPORTED_LOCALE_CODES.filter((code) => code !== "xx"),
+  ...Object.keys(NOTE_LOCALE_BASES),
+];
 const TYPE_KEY = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$/;
 const EXACT_CODE = TYPE_KEY;
 const PREFIX_CODE = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-$/;
@@ -318,16 +328,23 @@ function validateMatch(
 function validateInstitution(
   value: unknown,
   origin: string,
+  source: BankSyncProviderName,
 ): NonNullable<BankSyncProfile["institution"]> {
   const institution = expectDict(value, origin, "institution");
   expectOnly(institution, ["country", "names"], origin, "institution");
-  const country = expectString(
-    institution.country,
-    COUNTRY,
-    origin,
-    "institution.country",
-    "an upper-case ISO 3166-1 alpha-2 country code",
-  );
+  if (source === "simplefin" && institution.country !== undefined) {
+    fail(origin, "institution.country", "must be omitted for SimpleFIN");
+  }
+  const country =
+    source === "simplefin"
+      ? ""
+      : expectString(
+          institution.country,
+          COUNTRY,
+          origin,
+          "institution.country",
+          "an upper-case ISO 3166-1 alpha-2 country code",
+        );
   const names = institution.names;
   if (
     !Array.isArray(names) ||
@@ -578,7 +595,7 @@ export function validateBankSyncProfile(
     PROFILE_ID,
     origin,
     "id",
-    "`default`, or `<country>/<bank>` in lower case, such as pl/pko-bp",
+    "`default`, `simplefin/<bank>`, or `<country>/<bank>` in lower case, such as pl/pko-bp",
   );
   if (
     typeof file.version !== "number" ||
@@ -593,7 +610,7 @@ export function validateBankSyncProfile(
   }
 
   let institution: BankSyncProfile["institution"] = null;
-  if (id === DEFAULT_PROFILE_ID) {
+  if (id === DEFAULT_PROFILE_ID || id === `${source}/default`) {
     if (file.institution !== undefined) {
       fail(
         origin,
@@ -602,9 +619,19 @@ export function validateBankSyncProfile(
       );
     }
   } else {
-    institution = validateInstitution(file.institution, origin);
-    if (id.slice(0, 2) !== institution.country.toLowerCase()) {
-      fail(origin, "id", "must start with the institution's country code");
+    institution = validateInstitution(
+      file.institution,
+      origin,
+      source as BankSyncProviderName,
+    );
+    const prefix =
+      source === "simplefin" ? "simplefin" : institution.country.toLowerCase();
+    if (!id.startsWith(`${prefix}/`)) {
+      fail(
+        origin,
+        "id",
+        "must start with the institution's country code or countryless source",
+      );
     }
   }
 
@@ -634,6 +661,7 @@ export interface ProfileFile {
 
 const BUILT_IN_FILES: readonly ProfileFile[] = [
   { origin: "pl/pko-bp.json", raw: pkoBpProfileFile },
+  { origin: "simplefin/default.json", raw: simplefinDefaultProfileFile },
 ];
 
 const DEFAULT_FILE: ProfileFile = {
@@ -649,7 +677,9 @@ export function normalizeInstitutionName(name: string): string {
 export interface LoadedProfiles {
   readonly defaultProfile: BankSyncProfile;
   readonly builtIn: readonly BankSyncProfile[];
-  /** `source|COUNTRY|normalized name` to the built-in profile of that bank. */
+  /** A provider-specific fallback, before the global default. */
+  readonly bySource: ReadonlyMap<string, BankSyncProfile>;
+  /** `source|COUNTRY|normalized name`; country is empty for SimpleFIN. */
   readonly byInstitution: ReadonlyMap<string, BankSyncProfile>;
 }
 
@@ -658,7 +688,7 @@ const institutionKey = (
   country: string,
   name: string,
 ): string =>
-  `${source}|${country.trim().toUpperCase()}|${normalizeInstitutionName(name)}`;
+  `${source}|${source === "simplefin" ? "" : country.trim().toUpperCase()}|${normalizeInstitutionName(name)}`;
 
 /**
  * Validate a default file and a list of built-in files and index them. Throws a
@@ -679,11 +709,12 @@ export function buildProfileSet(
     fail(defaultFile.origin, "id", `must be ${DEFAULT_PROFILE_ID}`);
   }
   const builtIn: BankSyncProfile[] = [];
+  const bySource = new Map<string, BankSyncProfile>();
   const byInstitution = new Map<string, BankSyncProfile>();
   const ids = new Set<string>([DEFAULT_PROFILE_ID]);
   for (const { origin, raw } of builtInFiles) {
     const profile = validateBankSyncProfile(raw, origin);
-    if (profile.institution === null) {
+    if (profile.institution === null && profile.id === DEFAULT_PROFILE_ID) {
       fail(
         origin,
         "id",
@@ -694,6 +725,11 @@ export function buildProfileSet(
       fail(origin, "id", "repeats the id of another profile");
     }
     ids.add(profile.id);
+    if (profile.institution === null) {
+      bySource.set(profile.source, profile);
+      builtIn.push(profile);
+      continue;
+    }
     for (const name of profile.institution.names) {
       const key = institutionKey(
         profile.source,
@@ -715,6 +751,7 @@ export function buildProfileSet(
     defaultProfile,
     builtIn: Object.freeze(builtIn),
     byInstitution,
+    bySource,
   });
 }
 
@@ -732,8 +769,8 @@ export function loadBankSyncProfiles(): LoadedProfiles {
 
 /**
  * The profile for a connection's institution: the built-in profile of that bank
- * when there is one, else the default. The institution is matched by the
- * provider, the country (upper-cased) and the name the provider uses, ignoring
+ * when there is one, else its source default or the global default. Matched by the
+ * provider, country (except countryless SimpleFIN) and provider name, ignoring
  * case and the spacing; it is never matched on a substring, so a profile is only
  * ever chosen for a bank it was written for.
  */
@@ -742,11 +779,13 @@ export function resolveProfile(
   institutionCountry: string,
   institutionName: string,
 ): BankSyncProfile {
-  const { byInstitution, defaultProfile } = loadBankSyncProfiles();
+  const { byInstitution, bySource, defaultProfile } = loadBankSyncProfiles();
   return (
     byInstitution.get(
       institutionKey(provider, institutionCountry, institutionName),
-    ) ?? defaultProfile
+    ) ??
+    bySource.get(provider) ??
+    defaultProfile
   );
 }
 
@@ -781,7 +820,11 @@ export function profileNotesView(
   profile: Pick<BankSyncProfile, "notes">,
   readerLang: string,
 ): ProfileNoteView[] {
-  const candidates = [readerLang, localeBase(readerLang), DEFAULT_LOCALE];
+  const candidates = [
+    readerLang,
+    NOTE_LOCALE_BASES[readerLang] ?? localeBase(readerLang),
+    DEFAULT_LOCALE,
+  ];
   return profile.notes.map(({ id, severity, text }) => {
     const lang = candidates.find(
       (code): code is string =>

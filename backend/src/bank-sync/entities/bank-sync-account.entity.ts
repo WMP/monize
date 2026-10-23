@@ -147,6 +147,15 @@ export class BankSyncAccount {
   })
   syncFromDate: string | null;
 
+  /** Last committed complete historical batch; null after history is complete. */
+  @Column({
+    type: "date",
+    name: "backfill_through",
+    nullable: true,
+    transformer: dateStringTransformer,
+  })
+  backfillThrough?: string | null;
+
   @Column({ type: "timestamptz", name: "last_synced_at", nullable: true })
   lastSyncedAt: Date | null;
 
@@ -204,6 +213,10 @@ export class BankSyncAccount {
     transformer: dateStringTransformer,
   })
   bankBalanceDate: string | null;
+
+  /** Source balance instant; never replaced by the sync completion time. */
+  @Column({ type: "timestamptz", name: "bank_balance_at", nullable: true })
+  bankBalanceAt?: Date | null;
 
   @CreateDateColumn({ type: "timestamptz", name: "created_at" })
   createdAt: Date;

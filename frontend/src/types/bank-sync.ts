@@ -11,18 +11,14 @@ import type {
   ImportPreviewPayeeVia,
   ImportPreviewRule,
   ImportPreviewRuleInput,
-} from '@/types/import-preview';
+} from "@/types/import-preview";
 
 /** The connection lifecycle. Mirrors the column's CHECK. */
 export type BankSyncConnectionStatus =
-  | 'pending'
-  | 'active'
-  | 'expired'
-  | 'revoked'
-  | 'failed';
+  "pending" | "active" | "expired" | "revoked" | "failed";
 
 /** The outcome of the last sync of one bank account. */
-export type BankSyncAccountSyncStatus = 'succeeded' | 'failed';
+export type BankSyncAccountSyncStatus = "succeeded" | "failed";
 
 /**
  * When the daily sync of a connection reports a successful run
@@ -30,11 +26,16 @@ export type BankSyncAccountSyncStatus = 'succeeded' | 'failed';
  * when transactions were imported, or never. Failures and consent reminders do
  * not depend on it. Mirrors the column's CHECK.
  */
-export const BANK_SYNC_NOTIFY_SUCCESS_MODES = ['always', 'when_imported', 'never'] as const;
-export type BankSyncNotifySuccessMode = (typeof BANK_SYNC_NOTIFY_SUCCESS_MODES)[number];
+export const BANK_SYNC_NOTIFY_SUCCESS_MODES = [
+  "always",
+  "when_imported",
+  "never",
+] as const;
+export type BankSyncNotifySuccessMode =
+  (typeof BANK_SYNC_NOTIFY_SUCCESS_MODES)[number];
 
 /** Whose account the consent is for. */
-export type BankSyncPsuType = 'personal' | 'business';
+export type BankSyncPsuType = "personal" | "business";
 
 /** The provider application this user registered. Never carries the key. */
 export interface BankSyncCredentialsView {
@@ -66,7 +67,7 @@ export interface BankSyncCredentialsTestResult {
 }
 
 /** How much a profile note matters: `warning` names a problem the reader may need to act on. */
-export type BankSyncProfileNoteSeverity = 'info' | 'warning';
+export type BankSyncProfileNoteSeverity = "info" | "warning";
 
 /**
  * One thing worth knowing about how a bank's API behaves. `text` is the server's
@@ -120,6 +121,7 @@ export interface BankSyncAccount {
   bankBalance: string | null;
   bankBalanceCurrency: string | null;
   bankBalanceDate: string | null;
+  bankBalanceAt?: string | null;
   /**
    * True while the account is linked and no sync has succeeded since the link
    * (or since its account or start date changed): the first import is confirmed
@@ -168,6 +170,7 @@ export interface BankSyncCallbackPayload {
 
 /** Send only the setting that changed; the server leaves the other as it is. */
 export interface UpdateBankSyncConnection {
+  resume?: boolean;
   autoSync?: boolean;
   notifySuccess?: BankSyncNotifySuccessMode;
   tagOperationType?: boolean;
@@ -213,13 +216,13 @@ export interface BankSyncLinkDefaults {
 
 /** What the preview says about one bank row (spec sections 7a and 7b). */
 export type BankSyncPreviewOutcome =
-  | 'new'
-  | 'duplicate'
+  | "new"
+  | "duplicate"
   /** An exception: added from the preview, so no sync imports it. */
-  | 'excluded'
-  | 'refused'
-  | 'pending'
-  | 'before_cutoff';
+  | "excluded"
+  | "refused"
+  | "pending"
+  | "before_cutoff";
 
 /** How a row's payee resolves (the neutral import preview's shape; see `types/import-preview.ts`). */
 export type BankSyncPayeeVia = ImportPreviewPayeeVia;
@@ -276,6 +279,7 @@ export interface BankSyncPreviewSummary {
 
 /** `POST /bank-sync/accounts/:id/preview`: nothing in it has been written. */
 export interface BankSyncPreview {
+  history?: { dateFrom: string; dateTo: string; remaining: boolean };
   bankAccountId: string;
   /** The Monize account's currency; every figure below is in it. */
   currencyCode: string;

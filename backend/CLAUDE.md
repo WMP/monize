@@ -34,6 +34,10 @@ npm run migration:lint:test # Self-test for the migration lint
 
 `npm test` takes no Jest arguments; a filtered run goes through `npm run test:unit -- <pattern>` or `npm run test:integration -- <pattern>`. The database-backed suites never run in parallel with anything, including each other; `docs/backend/testing.md` says why and `src/common/jest-config.guard.spec.ts` holds it.
 
+**Bank profiles follow provider identity:** SimpleFIN matches source and normalized name without a country, with a source default; dated refusals stay within the reviewed account window and nonfatal balance errors retain safe local diagnostics (`docs/specs/simplefin-bank-sync.md`).
+
+**Bank discovery preserves user decisions:** keep stops and daily-sync preferences separate from provider health, and require explicit review of linked-account currency changes (`docs/specs/simplefin-bank-sync.md`).
+
 ## Module Structure
 
 Each feature module under `src/` follows the standard layout. Use `ls src/` or LSP `workspaceSymbol` to discover modules; the cron schedule lives in `docs/cron-jobs.md`.

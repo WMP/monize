@@ -280,6 +280,7 @@ describe("BankSyncPreviewService", () => {
         excluded: 0,
         refused: 1,
         refusedByReason: {
+          missing_identity: 0,
           missing_date: 0,
           future_date: 0,
           invalid_amount: 0,

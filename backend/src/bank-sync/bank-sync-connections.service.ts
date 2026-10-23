@@ -491,11 +491,13 @@ export class BankSyncConnectionsService {
     connectionId: string,
     patch: {
       autoSync?: boolean;
+      resume?: boolean;
       notifySuccess?: BankSyncNotifySuccessMode;
       tagOperationType?: boolean;
     },
   ): Promise<BankSyncConnectionView> {
     if (
+      patch.resume !== true &&
       patch.autoSync === undefined &&
       patch.notifySuccess === undefined &&
       patch.tagOperationType === undefined
@@ -513,7 +515,8 @@ export class BankSyncConnectionsService {
           `UPDATE bank_sync_connections
               SET auto_sync = COALESCE($3, auto_sync),
                   notify_success = COALESCE($4, notify_success),
-                  tag_operation_type = COALESCE($5, tag_operation_type)
+                  tag_operation_type = COALESCE($5, tag_operation_type),
+                  status = CASE WHEN $6::boolean AND provider='simplefin' AND status='revoked' THEN 'active' ELSE status END
             WHERE id = $1 AND user_id = $2
         RETURNING id`,
           [
@@ -522,6 +525,7 @@ export class BankSyncConnectionsService {
             patch.autoSync ?? null,
             patch.notifySuccess ?? null,
             patch.tagOperationType ?? null,
+            patch.resume ?? false,
           ],
         ),
       ),
@@ -543,6 +547,17 @@ export class BankSyncConnectionsService {
     );
     if (!row) throw this.connectionNotFound(connectionId);
 
+    if (row.provider === "simplefin") {
+      await withScopedDb(this.dataSource, async (m) => {
+        await m
+          .getRepository(BankSyncConnection)
+          .update(
+            { id: connectionId, userId },
+            { autoSync: false, status: "revoked" },
+          );
+      });
+      return;
+    }
     if (row.externalSessionId) {
       await this.revokeBestEffort(userId, row.provider, row.externalSessionId);
     }

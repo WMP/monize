@@ -56,6 +56,7 @@ describe("BankSyncCredentialsService", () => {
       provider: "enable_banking",
       applicationId: "app-1",
       privateKeyEnc,
+      accessUrlEnc: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -198,7 +199,9 @@ describe("BankSyncCredentialsService", () => {
       });
       const saved = repo.save.mock.calls[0][0] as BankSyncCredential;
       expect(saved.privateKeyEnc).not.toBe("old-ciphertext");
-      expect(encryption.decrypt(saved.privateKeyEnc)).toBe(testRsaPem().trim());
+      expect(encryption.decrypt(saved.privateKeyEnc!)).toBe(
+        testRsaPem().trim(),
+      );
     });
 
     it("refuses inside the transaction when no key is stored and none supplied", async () => {

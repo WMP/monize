@@ -633,3 +633,11 @@ copy; it states its own rationale: these are "properties of Postgres, not of the
 service". `docs/verification-contract.md` records which invariant requires
 which kind of test, and `docs/testing-contract.md` section on asynchronous and
 concurrent operations lists the interleavings to pick from.
+
+## SimpleFIN credential and request-budget writers
+
+SimpleFIN first credential writes serialize on the existing users row, then lock the user/provider credential before replacement. Request reservations and local removal lock that same credential row. Reservations count and insert inside one withScopedDb transaction; HTTP callers must await its commit, and reserve rejects an already-active database transaction. No HTTP is performed by these storage services. The real PostgreSQL/RLS simplefin-storage integration suite exercises simultaneous first saves, the last of 24 rolling request slots, replacement retaining spent quota, and foreign-owner refusal.
+
+### SimpleFIN setup and discovery
+
+Setup/removal take JobClaimType.SimplefinSetup with key setup and a two-minute lease. Setup additionally records token:<SHA-256 claim URL> before HTTP. Persistence locks the live, matching lease row first, then the user, then the credential; a stale holder is refused. Cleanup uses the lease token and cannot release a successor. Discovery HTTP runs outside a scoped transaction after its committed budget reservation. Reconciliation locks the owner row, then the owned credential, verifies the current Access URL, and only then updates institution/account metadata. The owner lock serializes first-discovery inserts across replicas; no in-process lock or guessed matching participates. Missing IDs retain their historical rows and mappings and disable automatic sync for review.

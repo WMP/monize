@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, other {金額が無効 # 件}}",
         "unknown_direction": "{count, plural, other {方向が不明 # 件}}",
         "currency_mismatch": "{count, plural, other {別の通貨 # 件}}",
-        "other": "{count, plural, other {その他の理由 # 件}}"
+        "other": "{count, plural, other {その他の理由 # 件}}",
+        "missing_identity": "銀行取引IDがありません: {count, number}"
       },
       "needsPreview": "{accounts} のプレビューを開いて、最初のインポートを確認してください",
       "withNeedsPreview": "{message}。{needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "金額が無効",
         "unknown_direction": "方向が不明",
         "currency_mismatch": "別の通貨",
-        "other": "拒否"
+        "other": "拒否",
+        "missing_identity": "銀行取引IDがありません"
       },
       "columns": {
         "date": "日付",
@@ -1786,7 +1788,47 @@
           "none": "この取引には操作種別タグがありません。",
           "tag": "銀行の操作種別によるタグ: {tag}"
         }
-      }
+      },
+      "historyBatch": "履歴バッチ：{from}～{to}。",
+      "historyBatchRemaining": "履歴バッチ：{from}～{to}。 まだ履歴が残っています。このバッチのインポート後、次のバッチをプレビューしてください。"
+    },
+    "simplefin": {
+      "provider": "データプロバイダー",
+      "description": "<bridge>SimpleFIN Bridge</bridge> で銀行を接続し、ここに使い捨てのセットアップトークンを貼り付けてください。アクセスは読み取り専用です。",
+      "openBridge": "SimpleFIN Bridge を開く",
+      "setupToken": "セットアップトークン",
+      "connect": "SimpleFIN を接続",
+      "connected": "SimpleFIN は接続済みです。",
+      "savedDiscoveryFailed": "接続済みですが、口座の検出に対応が必要です。新しいトークンを使わずに検出を再試行してください。",
+      "refresh": "口座を更新",
+      "failed": "リクエストを完了できませんでした。新しいトークンを使う前に接続状態を確認してください。",
+      "loadFailed": "SimpleFIN の状態を読み込めませんでした。",
+      "encryptionRequired": "SimpleFIN に接続する前に、管理者に暗号化の設定を依頼してください。",
+      "remove": "Monize から SimpleFIN を削除",
+      "removeTitle": "すべての金融機関へのアクセスを削除しますか？",
+      "removeBody": "Monize の SimpleFIN 同期をすべて無効にし、履歴は保持します。リモートアクセスを終了するには、Bridge でアプリトークンを取り消してください。",
+      "replaceTitle": "SimpleFIN アクセスを置き換えますか？",
+      "replaceBody": "すべての金融機関へのアクセスを置き換えます。既存の口座の対応付けは保持されます。識別情報の変更は確認が必要です。",
+      "quota": "残り {remaining} リクエスト",
+      "nextEligible": "次回利用可能: {date}",
+      "stopTitle": "{bank} の同期を停止しますか？",
+      "stopBody": "既存の対応付けと取引は保持されます。",
+      "stop": "同期を停止",
+      "stopped": "同期停止中",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "新しいセットアップトークンで再接続してください。",
+        "payment_required": "SimpleFIN Bridge のサブスクリプションを確認してください。",
+        "rate_limited": "リクエスト上限に達しました。しばらく待ってから更新してください。",
+        "no_accounts": "共有された口座がありません。Bridge で口座のアクセスを確認してください。",
+        "partial_data": "一部の口座データが不完全です。Bridge を確認してから更新してください。",
+        "identity_review": "口座の識別情報が変わりました。同期を有効にする前に対応付けを確認してください。",
+        "invalid_response": "Bridge が未対応のデータを返しました。後で更新してください。",
+        "unavailable": "SimpleFIN が応答しませんでした。後で再試行してください。"
+      },
+      "resume": "同期を再開",
+      "lastKnownConnected": "前回の確認成功時にはSimpleFINに接続されていました。"
     }
   }
 }

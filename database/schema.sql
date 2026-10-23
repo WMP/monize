@@ -2795,15 +2795,30 @@ CREATE TABLE bank_sync_credentials (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     provider VARCHAR(30) NOT NULL DEFAULT 'enable_banking',
-    application_id VARCHAR(100) NOT NULL,
-    private_key_enc TEXT NOT NULL,
+    application_id VARCHAR(100),
+    private_key_enc TEXT,
+    access_url_enc TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_bank_sync_credentials_provider
-      CHECK (provider IN ('enable_banking')),
+      CHECK (provider IN ('enable_banking', 'simplefin')),
     CONSTRAINT uq_bank_sync_credentials_user_provider
-      UNIQUE (user_id, provider)
+      UNIQUE (user_id, provider),
+    CONSTRAINT uq_bank_sync_credentials_id_user
+      UNIQUE (id, user_id),
+    CONSTRAINT ck_bank_sync_credentials_shape CHECK ((provider = 'enable_banking' AND application_id IS NOT NULL AND private_key_enc IS NOT NULL AND access_url_enc IS NULL) OR (provider = 'simplefin' AND application_id IS NULL AND private_key_enc IS NULL AND access_url_enc IS NOT NULL))
 );
+
+CREATE TABLE bank_sync_provider_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    credential_id UUID NOT NULL,
+    requested_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_bank_sync_provider_requests_credential_owner
+      FOREIGN KEY (credential_id, user_id) REFERENCES bank_sync_credentials(id, user_id) ON DELETE CASCADE
+);
+CREATE INDEX idx_bank_sync_provider_requests_window
+    ON bank_sync_provider_requests(credential_id, requested_at);
 
 -- Connections: one authorization of one user at one institution.
 -- auth_state_hash is the SHA-256 hex of the one-time OAuth state; clearing it
@@ -2833,7 +2848,7 @@ CREATE TABLE bank_sync_connections (
     -- 20261002074622_bank_sync_exceptions_and_operation_tags.sql.
     tag_operation_type BOOLEAN NOT NULL DEFAULT true,
     CONSTRAINT ck_bank_sync_connections_provider
-      CHECK (provider IN ('enable_banking')),
+      CHECK (provider IN ('enable_banking', 'simplefin')),
     CONSTRAINT ck_bank_sync_connections_psu_type
       CHECK (psu_type IN ('personal', 'business')),
     CONSTRAINT ck_bank_sync_connections_status
@@ -2865,6 +2880,7 @@ CREATE TABLE bank_sync_accounts (
     currency_code VARCHAR(3),
     account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
     sync_from_date DATE,
+    backfill_through DATE,
     last_synced_at TIMESTAMPTZ,
     last_success_at TIMESTAMPTZ,
     last_sync_status VARCHAR(20),
@@ -2875,6 +2891,7 @@ CREATE TABLE bank_sync_accounts (
     bank_balance NUMERIC(20,4),
     bank_balance_currency VARCHAR(3),
     bank_balance_date DATE,
+    bank_balance_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_bank_sync_accounts_last_sync_status
@@ -3734,6 +3751,7 @@ DECLARE
         'bank_sync_accounts',
         'bank_sync_connections',
         'bank_sync_credentials',
+        'bank_sync_provider_requests',
         'bank_sync_imported_transactions',
         'budgets',
         'calendar_day_notes',
@@ -4606,3 +4624,6 @@ COMMENT ON FUNCTION currency_codes_referenced_by_user(uuid) IS
   'activated-but-unused currency definition still travels with the backup. '
   'Derives from currency_codes_referenced_by_user_data rather than repeating its '
   'branches -- that list has drifted three times.';
+
+-- SimpleFIN request reservations are direct user-owned instance state.
+ALTER TABLE bank_sync_provider_requests ENABLE ROW LEVEL SECURITY;

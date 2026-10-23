@@ -11,6 +11,14 @@ import type { BankSyncNotifySuccessMode } from "../bank-sync.constants";
  */
 export class UpdateBankSyncConnectionDto {
   @ApiPropertyOptional({
+    description:
+      "Explicitly resume a stopped SimpleFIN institution; does not enable daily sync.",
+  })
+  @ValidateIf((_o, value) => value !== undefined)
+  @IsBoolean()
+  resume?: boolean;
+
+  @ApiPropertyOptional({
     description: "Whether the daily sync reads this connection.",
   })
   @ValidateIf((_o, value) => value !== undefined)

@@ -32,6 +32,7 @@ const result = (bankAccountId: string, imported = 0): BankSyncResult => ({
   skipped: 0,
   excluded: 0,
   refused: {
+    missing_identity: 0,
     missing_date: 0,
     future_date: 0,
     invalid_amount: 0,
@@ -82,8 +83,10 @@ const accountRow = (
 
 describe("BankSyncCronService", () => {
   const { manager, dataSource } = createScopedDbMocks();
-  const bankSync: jest.Mocked<Pick<BankSyncService, "syncAccountEntry">> = {
+  const bankSync: jest.Mocked<Pick<BankSyncService, "syncAccountEntry">> &
+    Pick<BankSyncService, "withReadContext"> = {
     syncAccountEntry: jest.fn(),
+    withReadContext: (_user, _ids, run) => run(),
   };
   const notifier: jest.Mocked<Pick<BankSyncOutcomeNotifier, "report">> = {
     report: jest.fn(),

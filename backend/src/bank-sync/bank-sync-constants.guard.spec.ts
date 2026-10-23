@@ -28,6 +28,12 @@ const SCHEMA = readFileSync(join(DATABASE, "schema.sql"), "utf8");
 const MIGRATION_FILE = readdirSync(join(DATABASE, "migrations")).filter(
   (name) => name.endsWith("_bank_sync.sql"),
 );
+const SIMPLEFIN_MIGRATION_FILES = readdirSync(
+  join(DATABASE, "migrations"),
+).filter((name) => name.endsWith("_simplefin_provider_credentials.sql"));
+const SIMPLEFIN_MIGRATION = SIMPLEFIN_MIGRATION_FILES.map((name) =>
+  readFileSync(join(DATABASE, "migrations", name), "utf8"),
+).join("\n");
 const MIGRATION = MIGRATION_FILE.map((name) =>
   readFileSync(join(DATABASE, "migrations", name), "utf8"),
 ).join("\n");
@@ -59,15 +65,38 @@ describe("bank-sync constants match the database CHECK constraints", () => {
     expect(MIGRATION_FILE).toHaveLength(1);
   });
 
+  it("the SimpleFIN upgrade widens both provider constraints to the current list", () => {
+    expect(SIMPLEFIN_MIGRATION_FILES).toHaveLength(1);
+    for (const table of ["bank_sync_credentials", "bank_sync_connections"]) {
+      const match = new RegExp(
+        "ALTER TABLE " +
+          table +
+          " ADD CONSTRAINT ck_" +
+          table +
+          "_provider CHECK \\(provider IN \\(([^)]*)\\)\\)",
+      ).exec(SIMPLEFIN_MIGRATION);
+      expect(match).not.toBeNull();
+      expect(
+        match![1]
+          .split(",")
+          .map((value) => value.trim().replace(/^'|'$/g, ""))
+          .sort(),
+      ).toEqual([...BANK_SYNC_PROVIDERS].sort());
+    }
+  });
+
   describe.each([
     ["schema.sql", SCHEMA],
     ["the migration", MIGRATION],
   ])("%s", (_label, sql) => {
     it.each(["bank_sync_credentials", "bank_sync_connections"])(
-      "the %s provider CHECK lists exactly BANK_SYNC_PROVIDERS",
+      "the %s provider CHECK matches its schema generation",
       (table) => {
         expect(checkList(sql, table, "provider").sort()).toEqual(
-          [...BANK_SYNC_PROVIDERS].sort(),
+          (_label === "the migration"
+            ? ["enable_banking"]
+            : [...BANK_SYNC_PROVIDERS]
+          ).sort(),
         );
       },
     );

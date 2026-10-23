@@ -34,7 +34,7 @@ export interface TableCatalogEntry {
   name: string;
   columns: ColumnInfo[];
   primaryKey: string[];
-  /** Single-column foreign keys, keyed by the referencing column. */
+  /** Foreign-key column pairs, including composite keys, keyed by the referencing column. */
   foreignKeys: Map<string, ForeignKeyInfo>;
 }
 
@@ -118,10 +118,15 @@ export async function loadTableCatalog(
        JOIN LATERAL unnest(con.conkey, con.confkey) AS pairs(attnum, fattnum) ON true
        JOIN pg_attribute att ON att.attrelid = rel.oid AND att.attnum = pairs.attnum
        JOIN pg_attribute fatt ON fatt.attrelid = fref.oid AND fatt.attnum = pairs.fattnum
-      WHERE con.contype = 'f' AND ns.nspname = 'public'
-        AND array_length(con.conkey, 1) = 1`,
+      WHERE con.contype = 'f' AND ns.nspname = 'public'`,
   );
   for (const fk of fks) {
+    // Ownership can have both a users FK and an ownership-preserving composite
+    // FK. Keep the direct owner reference; other pairs resolve the seeded parent.
+    const existing = catalog
+      .get(fk.table_name)
+      ?.foreignKeys.get(fk.column_name);
+    if (existing?.refTable === "users" && fk.ref_table !== "users") continue;
     catalog.get(fk.table_name)?.foreignKeys.set(fk.column_name, {
       column: fk.column_name,
       refTable: fk.ref_table,
@@ -318,15 +323,28 @@ export class RlsRowSeeder {
     ownerId: string,
     explicit: Record<string, unknown> = {},
   ): BuiltInsert {
+    // The catalog cannot infer a valid branch of a discriminated CHECK.
+    // Supply one valid credential shape; every table/owner still participates
+    // in the catalog-driven visibility and WITH CHECK sweeps.
+    const rowDefaults: Record<string, unknown> =
+      table === "bank_sync_credentials"
+        ? {
+            provider: "simplefin",
+            application_id: null,
+            private_key_enc: null,
+            access_url_enc: "rls-fixture-ciphertext",
+          }
+        : {};
     const entry = this.entry(table);
     const overrides = { ...PRODUCTION_SHAPED_VALUES[table], ...explicit };
+    const rowValues = { ...rowDefaults, ...overrides };
     const columns: string[] = [];
     const values: unknown[] = [];
 
     for (const col of entry.columns) {
-      if (col.name in overrides) {
+      if (col.name in rowValues) {
         columns.push(col.name);
-        values.push(overrides[col.name]);
+        values.push(rowValues[col.name]);
         continue;
       }
 

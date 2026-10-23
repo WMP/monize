@@ -780,3 +780,9 @@ replica whose INSERT returned a row emails), and the bill reminder (a lease plus
 a delivery record written after the send, keyed on the run's date and the set of
 bills). Section 5's grant-commit-after-delivery belongs in the same category.
 Those are the patterns the rest of this table should be closed by imitating.
+
+## SimpleFIN setup tokens (EXT-001 / EXT-003)
+
+SimplefinSetupService serializes setup/removal with a two-minute per-user JobClaimService lease. Before POSTing a one-time setup token, it commits a SHA-256 attempt marker. This marker means attempted, not connected: ambiguous timeout/crash outcomes are never automatically replayed. Existing job-claim retention applies; a person starts recovery using a fresh Bridge token. The claimed Access URL is encrypted and committed before a separate discovery read. If saving cannot be confirmed after claim, the response instructs the owner to check status and revoke the remote app token if needed. Discovery retries do not consume another setup token, and all reads spend a committed rolling-budget reservation before HTTP.
+
+The persistence transaction locks and verifies the current unexpired lease token before credential writes. Discovery locks the owned credential after HTTP and compares it with the credential used for the request; replacement/removal makes a stale response ineligible to reconcile. Local removal disables sync and preserves history, and makes no claim of remote revocation.

@@ -59,3 +59,11 @@ Three parts, each a separate way to get it wrong:
 - **A failure after the checkpoint is a committed failure, on every surface, and the next start knows it.** `fail()` switches `error_key` and `error_detail` on `data_committed` exactly as the reaper does (`mnyImportFailedAfterCommit` beside `mnyJobStalledAfterCommit`), the job DTO carries `dataCommitted` and the wizard's copy follows it, never the generic "nothing was saved". The checkpoint also copies the staged file's digest into `import_jobs.content_sha256`, held by the partial unique index `idx_import_jobs_committed_content (user_id, content_sha256)`: `create` refuses, under the `UserImport` lock and before the job row exists, a start over bytes this user's ledger already holds (same staged id or a re-upload), naming the earlier import, and the index aborts the import transaction of anything that slips past. Only a start that replaces the user's data may import the same bytes again; its wipe releases the keys (`releaseCommittedContent`), after the wipe and never before (audit A26-H08).
 
 The integration suite installs the trigger via `findTriggerMigrations()` in `test/helpers/rls-setup.ts` -- `synchronize` creates no triggers, so without that step a mixed-version test reports the fence as working while nothing enforces it.
+
+## Persisted job messages use the owner's locale
+
+Bank sync scopes `tr` with `withTranslationLocale` from `src/i18n/translate.ts`
+after reading the owner's stored language. The async-local scope uses the public
+`I18nService.translate` API, keeps concurrent jobs' languages separate, and restores
+the surrounding locale after completion. Do not import formatter internals from
+`nestjs-i18n/dist` to create a request context for a background job.

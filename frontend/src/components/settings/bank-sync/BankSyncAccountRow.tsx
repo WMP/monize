@@ -1,38 +1,44 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import toast from 'react-hot-toast';
-import { useTranslations } from 'next-intl';
-import { AccountFormModal } from '@/components/accounts/AccountFormModal';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { InfoTooltip } from '@/components/ui/InfoTooltip';
-import { Select } from '@/components/ui/Select';
-import { useDateFormat } from '@/hooks/useDateFormat';
-import { useFormModal } from '@/hooks/useFormModal';
-import { useNumberFormat } from '@/hooks/useNumberFormat';
-import { useRelativeTime } from '@/hooks/useRelativeTime';
-import { buildAccountDropdownOptions, isInvestmentBrokerageAccount } from '@/lib/account-utils';
-import { bankSyncApi } from '@/lib/bank-sync';
-import { normalizeBankAccountType, suggestedAccountType } from '@/lib/bank-sync-account-type';
-import { isUnknownSyncOutcome } from '@/lib/bank-sync-outcome';
-import { getErrorMessage } from '@/lib/errors';
-import { sumMoney } from '@/lib/format';
-import type { Account } from '@/types/account';
-import type { BankSyncAccount } from '@/types/bank-sync';
-import { BankSyncLinkDialog } from './BankSyncLinkDialog';
-import { BankSyncPreviewModal } from './BankSyncPreviewModal';
-import { useAccountTypeMismatchMessage } from './useAccountTypeMismatchMessage';
-import { useBankAccountTypeLabel } from './useBankAccountTypeLabel';
-import { useBankSyncToast } from './useBankSyncToast';
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { useTranslations } from "next-intl";
+import { AccountFormModal } from "@/components/accounts/AccountFormModal";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { Select } from "@/components/ui/Select";
+import { useDateFormat } from "@/hooks/useDateFormat";
+import { useFormModal } from "@/hooks/useFormModal";
+import { useNumberFormat } from "@/hooks/useNumberFormat";
+import { useRelativeTime } from "@/hooks/useRelativeTime";
+import {
+  buildAccountDropdownOptions,
+  isInvestmentBrokerageAccount,
+} from "@/lib/account-utils";
+import { bankSyncApi } from "@/lib/bank-sync";
+import {
+  normalizeBankAccountType,
+  suggestedAccountType,
+} from "@/lib/bank-sync-account-type";
+import { isUnknownSyncOutcome } from "@/lib/bank-sync-outcome";
+import { getErrorMessage } from "@/lib/errors";
+import { sumMoney } from "@/lib/format";
+import type { Account } from "@/types/account";
+import type { BankSyncAccount } from "@/types/bank-sync";
+import { BankSyncLinkDialog } from "./BankSyncLinkDialog";
+import { BankSyncPreviewModal } from "./BankSyncPreviewModal";
+import { useAccountTypeMismatchMessage } from "./useAccountTypeMismatchMessage";
+import { useBankAccountTypeLabel } from "./useBankAccountTypeLabel";
+import { useBankSyncToast } from "./useBankSyncToast";
 
 /** The picker's "Create a new account" entry; no account id can equal it. */
-const CREATE_NEW_VALUE = '__create_new__';
+const CREATE_NEW_VALUE = "__create_new__";
 
 /** An amount the API sent as a decimal string, or null when there is none. */
 function parseAmount(value: string | number | null | undefined): number | null {
   if (value === null || value === undefined) return null;
-  if (typeof value === 'string' && value.trim() === '') return null;
+  if (typeof value === "string" && value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -84,11 +90,11 @@ export function BankSyncAccountRow({
   disabled = false,
   onChanged,
 }: BankSyncAccountRowProps) {
-  const t = useTranslations('settings.bankSync.account');
-  const tLink = useTranslations('settings.bankSync.link');
-  const tSync = useTranslations('settings.bankSync.sync');
+  const t = useTranslations("settings.bankSync.account");
+  const tLink = useTranslations("settings.bankSync.link");
+  const tSync = useTranslations("settings.bankSync.sync");
   const { formatCurrency, formatNumber } = useNumberFormat();
-  const { formatDate } = useDateFormat();
+  const { formatDate, formatDateTime } = useDateFormat();
   const relativeTime = useRelativeTime();
   const notifySync = useBankSyncToast();
   const bankTypeLabel = useBankAccountTypeLabel();
@@ -110,7 +116,8 @@ export function BankSyncAccountRow({
       !account.isClosed &&
       !isInvestmentBrokerageAccount(account) &&
       !linkedElsewhere.has(account.id) &&
-      (!bankAccount.currencyCode || account.currencyCode === bankAccount.currencyCode)
+      (!bankAccount.currencyCode ||
+        account.currencyCode === bankAccount.currencyCode)
     );
   };
   const accountOptions = buildAccountDropdownOptions(
@@ -123,15 +130,18 @@ export function BankSyncAccountRow({
   const typeLabel = bankTypeLabel(bankAccount.cashAccountType);
   // The label of an account the bank gave none to is its type, then its number.
   const name =
-    bankAccount.displayName || typeLabel || bankAccount.identifierMasked || t('unnamed');
+    bankAccount.displayName ||
+    typeLabel ||
+    bankAccount.identifierMasked ||
+    t("unnamed");
 
   const handleSelect = async (next: string) => {
     if (next === CREATE_NEW_VALUE) {
       accountModal.openCreate();
       return;
     }
-    if (next === (bankAccount.accountId ?? '')) return;
-    if (next !== '') {
+    if (next === (bankAccount.accountId ?? "")) return;
+    if (next !== "") {
       // The link is made from the dialog, once the start date is chosen.
       setDialog({ accountId: next, editing: false });
       return;
@@ -139,10 +149,10 @@ export function BankSyncAccountRow({
     setBusy(true);
     try {
       await bankSyncApi.updateAccount(bankAccount.id, { accountId: null });
-      toast.success(t('unlinked'));
+      toast.success(t("unlinked"));
       await onChanged();
     } catch (error) {
-      toast.error(getErrorMessage(error, t('unlinkFailed')));
+      toast.error(getErrorMessage(error, t("unlinkFailed")));
     } finally {
       setBusy(false);
     }
@@ -155,11 +165,11 @@ export function BankSyncAccountRow({
         accountId: dialog.accountId,
         ...(syncFromDate ? { syncFromDate } : {}),
       });
-      toast.success(dialog.editing ? tLink('editSaved') : tLink('saved'));
+      toast.success(dialog.editing ? tLink("editSaved") : tLink("saved"));
       setDialog(null);
       await onChanged();
     } catch (error) {
-      toast.error(getErrorMessage(error, tLink('saveFailed')));
+      toast.error(getErrorMessage(error, tLink("saveFailed")));
     }
   };
 
@@ -174,10 +184,12 @@ export function BankSyncAccountRow({
     }
     setBusy(true);
     try {
-      await bankSyncApi.updateAccount(bankAccount.id, { accountId: created.id });
-      toast.success(t('createdLinked'));
+      await bankSyncApi.updateAccount(bankAccount.id, {
+        accountId: created.id,
+      });
+      toast.success(t("createdLinked"));
     } catch (error) {
-      toast.error(getErrorMessage(error, t('createdLinkFailed')));
+      toast.error(getErrorMessage(error, t("createdLinkFailed")));
     } finally {
       setBusy(false);
       await onChanged();
@@ -191,10 +203,15 @@ export function BankSyncAccountRow({
     }
     setSyncing(true);
     try {
-      notifySync([await bankSyncApi.syncAccount(bankAccount.id)], [bankAccount]);
+      notifySync(
+        [await bankSyncApi.syncAccount(bankAccount.id)],
+        [bankAccount],
+      );
     } catch (error) {
       toast.error(
-        isUnknownSyncOutcome(error) ? tSync('outcomeUnknown') : getErrorMessage(error, t('syncFailed')),
+        isUnknownSyncOutcome(error)
+          ? tSync("outcomeUnknown")
+          : getErrorMessage(error, t("syncFailed")),
       );
     } finally {
       setSyncing(false);
@@ -206,30 +223,45 @@ export function BankSyncAccountRow({
   // Balances. Unknown is null and reads as unknown; a known zero is a number.
   const bankAmount = parseAmount(bankAccount.bankBalance);
   const bankCurrency = bankAccount.bankBalanceCurrency;
-  const monizeAmount = linkedAccount ? parseAmount(linkedAccount.currentBalance) : null;
+  const monizeAmount = linkedAccount
+    ? parseAmount(linkedAccount.currentBalance)
+    : null;
   const sameCurrency =
-    linkedAccount !== undefined && bankCurrency !== null && bankCurrency === linkedAccount.currencyCode;
+    linkedAccount !== undefined &&
+    bankCurrency !== null &&
+    bankCurrency === linkedAccount.currencyCode;
   const currenciesDiffer =
-    linkedAccount !== undefined && bankCurrency !== null && bankCurrency !== linkedAccount.currencyCode;
+    linkedAccount !== undefined &&
+    bankCurrency !== null &&
+    bankCurrency !== linkedAccount.currencyCode;
   const difference =
     bankAmount !== null && monizeAmount !== null && sameCurrency
       ? sumMoney([bankAmount, -monizeAmount])
       : null;
 
   const formatBank = (amount: number) =>
-    bankCurrency ? formatCurrency(amount, bankCurrency) : formatNumber(amount, 2);
+    bankCurrency
+      ? formatCurrency(amount, bankCurrency)
+      : formatNumber(amount, 2);
 
   let bankBalanceText: string;
   if (bankAmount !== null) {
-    bankBalanceText = bankAccount.bankBalanceDate
-      ? t('bankBalanceAsOf', {
+    bankBalanceText = bankAccount.bankBalanceAt
+      ? t("bankBalanceAsOf", {
           amount: formatBank(bankAmount),
-          date: formatDate(bankAccount.bankBalanceDate),
+          date: formatDateTime(bankAccount.bankBalanceAt),
         })
-      : formatBank(bankAmount);
+      : bankAccount.bankBalanceDate
+        ? t("bankBalanceAsOf", {
+            amount: formatBank(bankAmount),
+            date: formatDate(bankAccount.bankBalanceDate),
+          })
+        : formatBank(bankAmount);
   } else {
     // Null before the first sync is "not fetched yet", not "the bank has none".
-    bankBalanceText = bankAccount.lastSyncedAt ? t('balanceNotReported') : t('balanceNotSynced');
+    bankBalanceText = bankAccount.lastSyncedAt
+      ? t("balanceNotReported")
+      : t("balanceNotSynced");
   }
 
   // The counts describe the last sync: with none, they are zeros nobody counted.
@@ -238,15 +270,19 @@ export function BankSyncAccountRow({
     bankAccount.lastImportedCount !== null &&
     bankAccount.lastSkippedCount !== null &&
     bankAccount.lastRefusedCount !== null
-      ? tSync('summary', {
+      ? tSync("summary", {
           imported: bankAccount.lastImportedCount,
           skipped: bankAccount.lastSkippedCount,
           refused: bankAccount.lastRefusedCount,
         })
       : null;
   const controlsDisabled = disabled || busy || syncing;
-  const linkedMismatch = linkedAccount ? mismatchFor(bankAccount.cashAccountType, linkedAccount) : null;
-  const showMaskedLine = bankAccount.identifierMasked !== null && name !== bankAccount.identifierMasked;
+  const linkedMismatch = linkedAccount
+    ? mismatchFor(bankAccount.cashAccountType, linkedAccount)
+    : null;
+  const showMaskedLine =
+    bankAccount.identifierMasked !== null &&
+    name !== bankAccount.identifierMasked;
 
   // What a new account starts as (spec section 5a): the bank's label, else its
   // type and number; the bank's currency and number; the type the bank's maps
@@ -254,18 +290,26 @@ export function BankSyncAccountRow({
   const suggestedName =
     bankAccount.displayName ||
     (typeLabel && bankAccount.identifierMasked
-      ? t('suggestedName', { type: typeLabel, number: bankAccount.identifierMasked })
-      : typeLabel || bankAccount.identifierMasked || '');
+      ? t("suggestedName", {
+          type: typeLabel,
+          number: bankAccount.identifierMasked,
+        })
+      : typeLabel || bankAccount.identifierMasked || "");
   const initialValues = {
     ...(suggestedName ? { name: suggestedName } : {}),
-    ...(bankAccount.currencyCode ? { currencyCode: bankAccount.currencyCode } : {}),
-    ...(bankAccount.accountIdentifier ? { accountNumber: bankAccount.accountIdentifier } : {}),
+    ...(bankAccount.currencyCode
+      ? { currencyCode: bankAccount.currencyCode }
+      : {}),
+    ...(bankAccount.accountIdentifier
+      ? { accountNumber: bankAccount.accountIdentifier }
+      : {}),
     accountType: suggestedAccountType(bankAccount.cashAccountType),
     openingBalance: null,
   };
 
   const dialogAccount = dialog
-    ? (accounts.find((account) => account.id === dialog.accountId) ?? dialog.created)
+    ? (accounts.find((account) => account.id === dialog.accountId) ??
+      dialog.created)
     : undefined;
 
   return (
@@ -273,15 +317,30 @@ export function BankSyncAccountRow({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium text-gray-900 dark:text-gray-100">{name}</p>
-            {bankAccount.currencyCode && <Badge>{bankAccount.currencyCode}</Badge>}
-            <InfoTooltip text={t('deletedNote')} usePortal />
+            <p className="font-medium text-gray-900 dark:text-gray-100">
+              {name}
+            </p>
+            {bankAccount.currencyCode && (
+              <Badge>{bankAccount.currencyCode}</Badge>
+            )}
+            <InfoTooltip text={t("deletedNote")} usePortal />
           </div>
           {(showMaskedLine || typeLabel) && (
             <p className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-              {showMaskedLine && <span className="font-mono">{bankAccount.identifierMasked}</span>}
+              {showMaskedLine && (
+                <span className="font-mono">
+                  {bankAccount.identifierMasked}
+                </span>
+              )}
               {typeLabel && (
-                <Badge variant={normalizeBankAccountType(bankAccount.cashAccountType) === 'CARD' ? 'purple' : 'gray'}>
+                <Badge
+                  variant={
+                    normalizeBankAccountType(bankAccount.cashAccountType) ===
+                    "CARD"
+                      ? "purple"
+                      : "gray"
+                  }
+                >
                   {typeLabel}
                 </Badge>
               )}
@@ -295,10 +354,15 @@ export function BankSyncAccountRow({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setDialog({ accountId: bankAccount.accountId as string, editing: true })}
+              onClick={() =>
+                setDialog({
+                  accountId: bankAccount.accountId as string,
+                  editing: true,
+                })
+              }
               disabled={controlsDisabled}
             >
-              {t('changeCutoff')}
+              {t("changeCutoff")}
             </Button>
             {connectionActive && !bankAccount.needsPreview && (
               <Button
@@ -308,7 +372,7 @@ export function BankSyncAccountRow({
                 onClick={() => setPreviewOpen(true)}
                 disabled={controlsDisabled}
               >
-                {t('preview')}
+                {t("preview")}
               </Button>
             )}
             {connectionActive && (
@@ -318,7 +382,7 @@ export function BankSyncAccountRow({
                 onClick={handleSync}
                 disabled={controlsDisabled}
               >
-                {syncing ? t('syncing') : t('syncNow')}
+                {syncing ? t("syncing") : t("syncNow")}
               </Button>
             )}
           </div>
@@ -327,20 +391,20 @@ export function BankSyncAccountRow({
 
       <div className="mt-3 max-w-md">
         <Select
-          label={t('linkLabel')}
+          label={t("linkLabel")}
           id={`bank-sync-link-${bankAccount.id}`}
-          value={bankAccount.accountId ?? ''}
+          value={bankAccount.accountId ?? ""}
           onChange={(event) => handleSelect(event.target.value)}
           disabled={controlsDisabled}
           options={[
-            { value: '', label: t('notLinked') },
-            { value: CREATE_NEW_VALUE, label: t('createNew') },
+            { value: "", label: t("notLinked") },
+            { value: CREATE_NEW_VALUE, label: t("createNew") },
             ...accountOptions,
           ]}
         />
         {!hasChoice && !bankAccount.accountId && (
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {t('noEligibleAccounts')}
+            {t("noEligibleAccounts")}
           </p>
         )}
       </div>
@@ -356,42 +420,60 @@ export function BankSyncAccountRow({
 
       {bankAccount.accountId && bankAccount.syncFromDate && (
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          {t('syncFrom', { date: formatDate(bankAccount.syncFromDate) })}
+          {t("syncFrom", { date: formatDate(bankAccount.syncFromDate) })}
         </p>
       )}
-      {bankAccount.accountId && bankAccount.needsPreview && connectionActive && (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('firstSyncPreview')}</p>
-      )}
+      {bankAccount.accountId &&
+        bankAccount.needsPreview &&
+        connectionActive && (
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {t("firstSyncPreview")}
+          </p>
+        )}
 
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
         {bankAccount.lastSyncedAt ? (
           <>
-            <span>{t('lastSynced', { time: relativeTime(bankAccount.lastSyncedAt) })}</span>
+            <span>
+              {t("lastSynced", {
+                time: relativeTime(bankAccount.lastSyncedAt),
+              })}
+            </span>
             {bankAccount.lastSyncStatus && (
-              <Badge variant={bankAccount.lastSyncStatus === 'succeeded' ? 'green' : 'red'}>
-                {bankAccount.lastSyncStatus === 'succeeded' ? t('lastSyncOk') : t('lastSyncFailed')}
+              <Badge
+                variant={
+                  bankAccount.lastSyncStatus === "succeeded" ? "green" : "red"
+                }
+              >
+                {bankAccount.lastSyncStatus === "succeeded"
+                  ? t("lastSyncOk")
+                  : t("lastSyncFailed")}
               </Badge>
             )}
           </>
         ) : (
-          <span>{t('neverSynced')}</span>
+          <span>{t("neverSynced")}</span>
         )}
       </div>
       {lastCounts && (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{lastCounts}</p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {lastCounts}
+        </p>
       )}
-      {bankAccount.lastSyncStatus === 'failed' && bankAccount.lastSyncError && (
+      {bankAccount.lastSyncStatus === "failed" && bankAccount.lastSyncError && (
         <p className="mt-1 text-sm text-red-600 dark:text-red-400">
           {bankAccount.lastSyncError}
         </p>
       )}
 
       <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
-        <dt className="text-gray-500 dark:text-gray-400">{t('bankBalance')}</dt>
+        <dt className="text-gray-500 dark:text-gray-400">{t("bankBalance")}</dt>
         <dd className="text-gray-900 dark:text-gray-100">{bankBalanceText}</dd>
         {linkedAccount && monizeAmount !== null && (
           <>
-            <dt className="text-gray-500 dark:text-gray-400">{t('monizeBalance')}</dt>
+            <dt className="text-gray-500 dark:text-gray-400">
+              {t("monizeBalance")}
+            </dt>
             <dd className="text-gray-900 dark:text-gray-100">
               {formatCurrency(monizeAmount, linkedAccount.currencyCode)}
             </dd>
@@ -400,8 +482,8 @@ export function BankSyncAccountRow({
         {difference !== null && linkedAccount && (
           <>
             <dt className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-              {t('difference')}
-              <InfoTooltip text={t('differenceHelp')} usePortal />
+              {t("difference")}
+              <InfoTooltip text={t("differenceHelp")} usePortal />
             </dt>
             <dd className="text-gray-900 dark:text-gray-100">
               {formatCurrency(difference, linkedAccount.currencyCode)}
@@ -409,14 +491,17 @@ export function BankSyncAccountRow({
           </>
         )}
       </dl>
-      {currenciesDiffer && bankAmount !== null && linkedAccount && bankCurrency && (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {t('differenceHidden', {
-            bankCurrency,
-            monizeCurrency: linkedAccount.currencyCode,
-          })}
-        </p>
-      )}
+      {currenciesDiffer &&
+        bankAmount !== null &&
+        linkedAccount &&
+        bankCurrency && (
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {t("differenceHidden", {
+              bankCurrency,
+              monizeCurrency: linkedAccount.currencyCode,
+            })}
+          </p>
+        )}
 
       {dialog && (
         <BankSyncLinkDialog
@@ -451,7 +536,7 @@ export function BankSyncAccountRow({
           }}
           onOutcomeUnknown={() => {
             setPreviewOpen(false);
-            toast.error(tSync('outcomeUnknown'));
+            toast.error(tSync("outcomeUnknown"));
             void onChanged();
           }}
         />

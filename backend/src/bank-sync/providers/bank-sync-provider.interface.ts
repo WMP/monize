@@ -11,11 +11,22 @@ export type { BankSyncProviderName } from "../bank-sync.constants";
  */
 
 /** The provider application a user registered, decrypted for one call. */
-export interface BankSyncCredentials {
+export interface EnableBankingCredentials {
+  /** Omitted only by legacy Enable Banking callers. */
+  provider?: "enable_banking";
   applicationId: string;
   /** PEM. Never logged, never returned, never put in an error message. */
   privateKeyPem: string;
 }
+
+export interface SimplefinCredentials {
+  provider: "simplefin";
+  credentialId: string;
+  accessUrl: string;
+}
+
+export type BankSyncCredentials =
+  EnableBankingCredentials | SimplefinCredentials;
 
 /** A bank the provider can connect to. */
 export interface BankInstitution {
@@ -49,6 +60,10 @@ export interface BankAccountDescriptor {
 
 /** One transaction as the provider reported it, before any Monize rule. */
 export interface BankTransaction {
+  /** An adapter-proven refusal; never eligible for fallback identity. */
+  refusalReason?: "missing_identity" | "missing_date" | "invalid_amount";
+  /** Trusted adapter-provided stable identity; only the SimpleFIN namespace is accepted. */
+  externalKey?: string;
   /** Unique and immutable across sessions: the duplicate key's first choice. */
   entryReference: string | null;
   /**
@@ -79,6 +94,7 @@ export interface BankTransaction {
 
 /** One balance of one account, signed as the bank reported it. */
 export interface BankBalance {
+  reportedAt?: string | null;
   amount: string;
   currencyCode: string;
   referenceDate: string | null;
@@ -103,6 +119,24 @@ export interface StartAuthorizationInput {
   state: string;
   validUntil: Date;
   psuType: "personal" | "business";
+}
+
+export interface BankAccountRead {
+  /** Internal diagnostic only; never copied into client responses. */
+  balanceFailure?: unknown;
+  currencyCode: string | null;
+  transactions: BankTransaction[];
+  balance: BankBalance | null;
+  pending: number;
+}
+export interface BankReadProvider {
+  readAccount(
+    userId: string,
+    credentials: BankSyncCredentials,
+    accountId: string,
+    window: { dateFrom: string; dateTo: string },
+    psu?: PsuContext | null,
+  ): Promise<BankAccountRead>;
 }
 
 export interface BankSyncProvider {

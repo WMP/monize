@@ -135,3 +135,18 @@ describe("toBankInstitutionProfileView", () => {
     expect(Object.keys(view ?? {}).sort()).toEqual(["id", "notes"]);
   });
 });
+
+it("shows SimpleFIN API notes for an unknown countryless institution", () => {
+  const view = toBankSyncConnectionView(
+    connectionRow({
+      provider: "simplefin",
+      institutionCountry: "",
+      institutionName: "Unknown Bank",
+    }),
+    [],
+    "fr-CA",
+  );
+  expect(view.profile.id).toBe("simplefin/default");
+  expect(view.profile.notes).toHaveLength(7);
+  expect(view.profile.notes.every((note) => note.lang === "fr-CA")).toBe(true);
+});

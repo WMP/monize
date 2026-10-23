@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, one {# अमान्य राशि वाला} other {# अमान्य राशि वाले}}",
         "unknown_direction": "{count, plural, one {# अज्ञात दिशा वाला} other {# अज्ञात दिशा वाले}}",
         "currency_mismatch": "{count, plural, one {# दूसरी मुद्रा में} other {# दूसरी मुद्रा में}}",
-        "other": "{count, plural, one {# अन्य कारण से} other {# अन्य कारण से}}"
+        "other": "{count, plural, one {# अन्य कारण से} other {# अन्य कारण से}}",
+        "missing_identity": "बैंक लेन-देन आईडी मौजूद नहीं है: {count, number}"
       },
       "needsPreview": "{accounts} का पूर्वावलोकन खोलें और पहले आयात की पुष्टि करें",
       "withNeedsPreview": "{message}। {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "अमान्य राशि",
         "unknown_direction": "अज्ञात दिशा",
         "currency_mismatch": "दूसरी मुद्रा",
-        "other": "अस्वीकृत"
+        "other": "अस्वीकृत",
+        "missing_identity": "बैंक लेन-देन आईडी मौजूद नहीं है"
       },
       "columns": {
         "date": "तिथि",
@@ -1786,7 +1788,47 @@
           "none": "इस लेन-देन के लिए ऑपरेशन प्रकार का टैग नहीं है।",
           "tag": "बैंक के ऑपरेशन प्रकार से टैग: {tag}"
         }
-      }
+      },
+      "historyBatch": "इतिहास बैच: {from} से {to} तक।",
+      "historyBatchRemaining": "इतिहास बैच: {from} से {to} तक। और इतिहास बाकी है। यह बैच आयात करने के बाद अगले बैच का पूर्वावलोकन खोलें।"
+    },
+    "simplefin": {
+      "provider": "डेटा प्रदाता",
+      "description": "<bridge>SimpleFIN Bridge</bridge> में बैंक जोड़ें, फिर यहाँ एक बार उपयोग होने वाला सेटअप टोकन चिपकाएँ। पहुँच केवल पढ़ने के लिए है।",
+      "openBridge": "SimpleFIN Bridge खोलें",
+      "setupToken": "सेटअप टोकन",
+      "connect": "SimpleFIN कनेक्ट करें",
+      "connected": "SimpleFIN कनेक्ट है।",
+      "savedDiscoveryFailed": "कनेक्शन हो गया है, लेकिन खातों की खोज पर ध्यान देना आवश्यक है। नए टोकन के बिना खोज दोबारा करें।",
+      "refresh": "खाते रिफ्रेश करें",
+      "failed": "अनुरोध पूरा नहीं हुआ। नया टोकन उपयोग करने से पहले कनेक्शन की स्थिति जाँचें।",
+      "loadFailed": "SimpleFIN की स्थिति लोड नहीं हुई।",
+      "encryptionRequired": "SimpleFIN जोड़ने से पहले व्यवस्थापक से एन्क्रिप्शन कॉन्फ़िगर करने को कहें।",
+      "remove": "Monize से SimpleFIN हटाएँ",
+      "removeTitle": "सभी संस्थानों की पहुँच हटाएँ?",
+      "removeBody": "इससे Monize में पूरा SimpleFIN सिंक बंद होगा और इतिहास सुरक्षित रहेगा। दूरस्थ पहुँच समाप्त करने के लिए Bridge में ऐप टोकन रद्द करें।",
+      "replaceTitle": "SimpleFIN की पहुँच बदलें?",
+      "replaceBody": "इससे सभी संस्थानों की पहुँच बदलेगी। मौजूदा खाता मैपिंग बनी रहेंगी; बदली हुई पहचान की समीक्षा ज़रूरी है।",
+      "quota": "{remaining} अनुरोध शेष",
+      "nextEligible": "अगली उपलब्धता: {date}",
+      "stopTitle": "{bank} का सिंक बंद करें?",
+      "stopBody": "मौजूदा मैपिंग और लेन-देन सुरक्षित रहते हैं।",
+      "stop": "सिंक बंद करें",
+      "stopped": "सिंक बंद है",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "नए सेटअप टोकन से दोबारा कनेक्ट करें।",
+        "payment_required": "अपनी SimpleFIN Bridge सदस्यता जाँचें।",
+        "rate_limited": "अनुरोध सीमा पूरी हो गई। रिफ्रेश करने से पहले प्रतीक्षा करें।",
+        "no_accounts": "कोई खाता साझा नहीं किया गया। Bridge में खातों की पहुँच जाँचें।",
+        "partial_data": "कुछ खाता डेटा अधूरा है। Bridge जाँचें, फिर रिफ्रेश करें।",
+        "identity_review": "खातों की पहचान बदल गई है। सिंक चालू करने से पहले मैपिंग की समीक्षा करें।",
+        "invalid_response": "Bridge ने असमर्थित डेटा लौटाया। बाद में रिफ्रेश करें।",
+        "unavailable": "SimpleFIN ने उत्तर नहीं दिया। बाद में प्रयास करें।"
+      },
+      "resume": "सिंक फिर शुरू करें",
+      "lastKnownConnected": "पिछली सफल जाँच के समय SimpleFIN जुड़ा हुआ था।"
     }
   }
 }

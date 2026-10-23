@@ -31,6 +31,7 @@ describe("bank sync RLS context smoke (real withScopedDb)", () => {
     skipped: 0,
     excluded: 0,
     refused: {
+      missing_identity: 0,
       missing_date: 0,
       future_date: 0,
       invalid_amount: 0,
@@ -111,8 +112,10 @@ describe("bank sync RLS context smoke (real withScopedDb)", () => {
         return null;
       }),
     };
-    const bankSync: jest.Mocked<Pick<BankSyncService, "syncAccountEntry">> = {
+    const bankSync: jest.Mocked<Pick<BankSyncService, "syncAccountEntry">> &
+      Pick<BankSyncService, "withReadContext"> = {
       syncAccountEntry: jest.fn().mockResolvedValue(syncResult),
+      withReadContext: (_user, _ids, run) => run(),
     };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -160,6 +163,7 @@ describe("bank sync RLS context smoke (real withScopedDb)", () => {
       ]),
     ).toEqual([
       ["read", true, undefined],
+      ["read", false, USER_ID], // Resolve financial timezone under the same owner.
       ["claim", false, USER_ID],
       ["read", false, USER_ID],
       ["notify BANK_SYNC_IMPORTED", false, USER_ID],

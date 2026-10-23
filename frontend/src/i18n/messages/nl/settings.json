@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, one {# met een ongeldig bedrag} other {# met een ongeldig bedrag}}",
         "unknown_direction": "{count, plural, one {# met een onbekende richting} other {# met een onbekende richting}}",
         "currency_mismatch": "{count, plural, one {# in een andere valuta} other {# in een andere valuta}}",
-        "other": "{count, plural, one {# om een andere reden} other {# om een andere reden}}"
+        "other": "{count, plural, one {# om een andere reden} other {# om een andere reden}}",
+        "missing_identity": "Banktransactie-ID ontbreekt: {count, number}"
       },
       "needsPreview": "Open het voorbeeld voor {accounts} en bevestig de eerste import",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "Ongeldig bedrag",
         "unknown_direction": "Onbekende richting",
         "currency_mismatch": "Andere valuta",
-        "other": "Geweigerd"
+        "other": "Geweigerd",
+        "missing_identity": "Banktransactie-ID ontbreekt"
       },
       "columns": {
         "date": "Datum",
@@ -1786,7 +1788,47 @@
           "none": "Geen tag voor bewerkingstype bij deze transactie.",
           "tag": "Tag uit het bewerkingstype van de bank: {tag}"
         }
-      }
+      },
+      "historyBatch": "Geschiedenisbatch: {from} tot {to}.",
+      "historyBatchRemaining": "Geschiedenisbatch: {from} tot {to}. Er is meer geschiedenis. Open na deze import het voorbeeld van de volgende batch."
+    },
+    "simplefin": {
+      "provider": "Gegevensprovider",
+      "description": "Verbind banken in <bridge>SimpleFIN Bridge</bridge> en plak hier een eenmalig insteltoken. De toegang is alleen-lezen.",
+      "openBridge": "SimpleFIN Bridge openen",
+      "setupToken": "Insteltoken",
+      "connect": "SimpleFIN verbinden",
+      "connected": "SimpleFIN is verbonden.",
+      "savedDiscoveryFailed": "Verbonden, maar het vinden van rekeningen vereist aandacht. Probeer opnieuw zonder nieuw token.",
+      "refresh": "Rekeningen vernieuwen",
+      "failed": "De aanvraag kon niet worden voltooid. Controleer de verbindingsstatus voordat u een nieuw token gebruikt.",
+      "loadFailed": "De SimpleFIN-status kon niet worden geladen.",
+      "encryptionRequired": "Vraag een beheerder om versleuteling in te stellen voordat u SimpleFIN verbindt.",
+      "remove": "SimpleFIN uit Monize verwijderen",
+      "removeTitle": "Toegang voor alle instellingen verwijderen?",
+      "removeBody": "Dit schakelt alle SimpleFIN-synchronisatie in Monize uit en bewaart uw geschiedenis. Trek het apptoken in Bridge in om externe toegang te beëindigen.",
+      "replaceTitle": "SimpleFIN-toegang vervangen?",
+      "replaceBody": "Dit vervangt toegang voor alle instellingen. Bestaande rekeningkoppelingen blijven; gewijzigde identiteiten moeten worden gecontroleerd.",
+      "quota": "{remaining} aanvragen over",
+      "nextEligible": "Volgende beschikbaarheid: {date}",
+      "stopTitle": "Synchronisatie van {bank} stoppen?",
+      "stopBody": "Bestaande koppelingen en transacties blijven behouden.",
+      "stop": "Synchronisatie stoppen",
+      "stopped": "Synchronisatie gestopt",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "Verbind opnieuw met een nieuw insteltoken.",
+        "payment_required": "Controleer uw SimpleFIN Bridge-abonnement.",
+        "rate_limited": "Aanvraaglimiet bereikt. Wacht voordat u vernieuwt.",
+        "no_accounts": "Er zijn geen rekeningen gedeeld. Controleer de toegang in Bridge.",
+        "partial_data": "Sommige rekeninggegevens zijn onvolledig. Controleer Bridge en vernieuw daarna.",
+        "identity_review": "Rekeningidentiteiten zijn gewijzigd. Controleer de koppelingen voordat u synchronisatie inschakelt.",
+        "invalid_response": "Bridge gaf niet-ondersteunde gegevens terug. Vernieuw later.",
+        "unavailable": "SimpleFIN antwoordde niet. Probeer het later opnieuw."
+      },
+      "resume": "Synchronisatie hervatten",
+      "lastKnownConnected": "SimpleFIN was verbonden bij de laatste geslaagde controle."
     }
   }
 }

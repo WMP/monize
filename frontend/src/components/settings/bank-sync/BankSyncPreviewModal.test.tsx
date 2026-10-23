@@ -1627,3 +1627,12 @@ describe('BankSyncPreviewModal', () => {
     });
   });
 });
+
+it('shows the reviewed historical batch and explains that more history remains', async () => {
+  mockPreviewAccount.mockResolvedValue(preview({
+    history: { dateFrom: '2026-01-01', dateTo: '2026-02-14', remaining: true },
+  }));
+  await loaded();
+  expect(screen.getByText(/History batch: on 2026-01-01 to on 2026-02-14/)).toBeInTheDocument();
+  expect(screen.getByText(/More history remains; preview the next batch/)).toBeInTheDocument();
+});

@@ -100,6 +100,7 @@ export interface BankSyncAccountView {
   bankBalance: string | null;
   bankBalanceCurrency: string | null;
   bankBalanceDate: string | null;
+  bankBalanceAt?: string | null;
   /**
    * True while the bank account is linked and its link has no successful sync
    * yet: the first sync after a link, or after its account or cut-off date
@@ -268,6 +269,7 @@ export interface BankSyncPreviewRowView {
 
 /** `POST /bank-sync/accounts/:id/preview`: nothing in it was written. */
 export interface BankSyncPreviewView {
+  history?: { dateFrom: string; dateTo: string; remaining: boolean };
   bankAccountId: string;
   /** The Monize account's currency: every amount of a new row is in it. */
   currencyCode: string;

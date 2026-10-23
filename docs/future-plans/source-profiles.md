@@ -109,3 +109,20 @@ or structured.
 - **Transaction rules for all of it.** Rules cannot create a transfer or a
   split (INV-RULE-001) and run after the row is written; a profile decides the
   row's shape before it exists.
+
+### Countryless SimpleFIN profiles
+
+SimpleFIN Bridge supplies an institution name but no country. Match its profiles
+by source and the normalized institution name (NFC, trimmed, collapsed spaces,
+case ignored); never infer a country. A bank profile uses `simplefin/<bank>`
+and omits `institution.country`. Unknown banks use `simplefin/default` before
+the global `default`. The source default documents API-wide limits; a future
+bank profile must retain those notes alongside any verified bank-specific notes.
+Only the API-wide default ships until sanitized captures support bank profiles.
+Enable Banking continues to match source, country and normalized bank name.
+
+Profile notes accept the explicit `fr-CA` and `es-ES` variants in addition to
+supported app locales. They fall back to the existing `fr` and `es` base texts,
+then English; this does not register new app-wide locale catalogues. SimpleFIN's
+source default includes the requested North American and Spanish translations
+and discloses manual linking and unavailable account-type mismatch warnings.

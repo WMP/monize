@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, one {# z nieprawidłową kwotą} few {# z nieprawidłową kwotą} many {# z nieprawidłową kwotą} other {# z nieprawidłową kwotą}}",
         "unknown_direction": "{count, plural, one {# z nieznanym kierunkiem} few {# z nieznanym kierunkiem} many {# z nieznanym kierunkiem} other {# z nieznanym kierunkiem}}",
         "currency_mismatch": "{count, plural, one {# w innej walucie} few {# w innej walucie} many {# w innej walucie} other {# w innej walucie}}",
-        "other": "{count, plural, one {# z innego powodu} few {# z innego powodu} many {# z innego powodu} other {# z innego powodu}}"
+        "other": "{count, plural, one {# z innego powodu} few {# z innego powodu} many {# z innego powodu} other {# z innego powodu}}",
+        "missing_identity": "Brak identyfikatora transakcji bankowej: {count, number}"
       },
       "needsPreview": "Otwórz podgląd dla {accounts} i potwierdź pierwszy import",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "Nieprawidłowa kwota",
         "unknown_direction": "Nieznany kierunek",
         "currency_mismatch": "Inna waluta",
-        "other": "Odrzucona"
+        "other": "Odrzucona",
+        "missing_identity": "Brak identyfikatora transakcji bankowej"
       },
       "columns": {
         "date": "Data",
@@ -1786,7 +1788,47 @@
           "none": "Brak tagu typu operacji dla tej transakcji.",
           "tag": "Tag z typu operacji z banku: {tag}"
         }
-      }
+      },
+      "historyBatch": "Partia historii: od {from} do {to}.",
+      "historyBatchRemaining": "Partia historii: od {from} do {to}. Pozostała dalsza historia. Po imporcie tej partii otwórz podgląd następnej."
+    },
+    "simplefin": {
+      "provider": "Dostawca danych",
+      "description": "Połącz banki w <bridge>SimpleFIN Bridge</bridge>, a następnie wklej tutaj jednorazowy token konfiguracji. Dostęp jest tylko do odczytu.",
+      "openBridge": "Otwórz SimpleFIN Bridge",
+      "setupToken": "Token konfiguracji",
+      "connect": "Połącz SimpleFIN",
+      "connected": "SimpleFIN jest połączony.",
+      "savedDiscoveryFailed": "Połączono, ale wykrywanie kont wymaga uwagi. Ponów je bez nowego tokenu.",
+      "refresh": "Odśwież konta",
+      "failed": "Nie udało się wykonać żądania. Sprawdź stan połączenia przed użyciem nowego tokenu.",
+      "loadFailed": "Nie udało się wczytać stanu SimpleFIN.",
+      "encryptionRequired": "Poproś administratora o skonfigurowanie szyfrowania przed połączeniem SimpleFIN.",
+      "remove": "Usuń SimpleFIN z Monize",
+      "removeTitle": "Usunąć dostęp do wszystkich instytucji?",
+      "removeBody": "Wyłącza to całą synchronizację SimpleFIN w Monize i zachowuje historię. Unieważnij token aplikacji w Bridge, aby zakończyć dostęp zdalny.",
+      "replaceTitle": "Zastąpić dostęp SimpleFIN?",
+      "replaceBody": "Zastępuje to dostęp do wszystkich instytucji. Dotychczasowe powiązania kont pozostają; zmienione identyfikatory wymagają sprawdzenia.",
+      "quota": "Pozostało żądań: {remaining}",
+      "nextEligible": "Następna dostępność: {date}",
+      "stopTitle": "Zatrzymać synchronizację {bank}?",
+      "stopBody": "Istniejące powiązania i transakcje zostają zachowane.",
+      "stop": "Zatrzymaj synchronizację",
+      "stopped": "Synchronizacja zatrzymana",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "Połącz ponownie, używając nowego tokenu konfiguracji.",
+        "payment_required": "Sprawdź subskrypcję SimpleFIN Bridge.",
+        "rate_limited": "Osiągnięto limit żądań. Poczekaj przed odświeżeniem.",
+        "no_accounts": "Nie udostępniono kont. Sprawdź dostęp w Bridge.",
+        "partial_data": "Część danych kont jest niepełna. Sprawdź Bridge i odśwież.",
+        "identity_review": "Identyfikatory kont zmieniły się. Sprawdź powiązania przed włączeniem synchronizacji.",
+        "invalid_response": "Bridge zwrócił nieobsługiwane dane. Odśwież później.",
+        "unavailable": "SimpleFIN nie odpowiedział. Spróbuj później."
+      },
+      "resume": "Wznów synchronizację",
+      "lastKnownConnected": "Podczas ostatniej udanej kontroli SimpleFIN był połączony."
     }
   }
 }

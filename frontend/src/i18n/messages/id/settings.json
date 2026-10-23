@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, other {# dengan jumlah tidak valid}}",
         "unknown_direction": "{count, plural, other {# dengan arah tidak diketahui}}",
         "currency_mismatch": "{count, plural, other {# dalam mata uang lain}}",
-        "other": "{count, plural, other {# karena alasan lain}}"
+        "other": "{count, plural, other {# karena alasan lain}}",
+        "missing_identity": "ID transaksi bank tidak ada: {count, number}"
       },
       "needsPreview": "Buka pratinjau untuk {accounts} dan konfirmasikan impor pertama",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "Jumlah tidak valid",
         "unknown_direction": "Arah tidak diketahui",
         "currency_mismatch": "Mata uang lain",
-        "other": "Ditolak"
+        "other": "Ditolak",
+        "missing_identity": "ID transaksi bank tidak ada"
       },
       "columns": {
         "date": "Tanggal",
@@ -1786,7 +1788,47 @@
           "none": "Tidak ada tag jenis operasi untuk transaksi ini.",
           "tag": "Tag dari jenis operasi bank: {tag}"
         }
-      }
+      },
+      "historyBatch": "Kelompok riwayat: {from} hingga {to}.",
+      "historyBatchRemaining": "Kelompok riwayat: {from} hingga {to}. Masih ada riwayat lainnya. Setelah impor ini, buka pratinjau kelompok berikutnya."
+    },
+    "simplefin": {
+      "provider": "Penyedia data",
+      "description": "Hubungkan bank di <bridge>SimpleFIN Bridge</bridge>, lalu tempel token penyiapan sekali pakai di sini. Akses hanya untuk membaca.",
+      "openBridge": "Buka SimpleFIN Bridge",
+      "setupToken": "Token penyiapan",
+      "connect": "Hubungkan SimpleFIN",
+      "connected": "SimpleFIN terhubung.",
+      "savedDiscoveryFailed": "Terhubung, tetapi penemuan akun memerlukan perhatian. Ulangi tanpa token baru.",
+      "refresh": "Segarkan akun",
+      "failed": "Permintaan tidak dapat diselesaikan. Periksa status koneksi sebelum memakai token baru.",
+      "loadFailed": "Status SimpleFIN tidak dapat dimuat.",
+      "encryptionRequired": "Minta administrator mengonfigurasi enkripsi sebelum menghubungkan SimpleFIN.",
+      "remove": "Hapus SimpleFIN dari Monize",
+      "removeTitle": "Hapus akses untuk semua institusi?",
+      "removeBody": "Ini menonaktifkan semua sinkronisasi SimpleFIN di Monize dan mempertahankan riwayat. Cabut token aplikasi di Bridge untuk mengakhiri akses jarak jauh.",
+      "replaceTitle": "Ganti akses SimpleFIN?",
+      "replaceBody": "Ini mengganti akses semua institusi. Pemetaan akun yang ada tetap dipertahankan; identitas yang berubah perlu ditinjau.",
+      "quota": "{remaining} permintaan tersisa",
+      "nextEligible": "Tersedia berikutnya: {date}",
+      "stopTitle": "Hentikan sinkronisasi {bank}?",
+      "stopBody": "Pemetaan dan transaksi yang ada tetap disimpan.",
+      "stop": "Hentikan sinkronisasi",
+      "stopped": "Sinkronisasi dihentikan",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "Hubungkan kembali dengan token penyiapan baru.",
+        "payment_required": "Periksa langganan SimpleFIN Bridge Anda.",
+        "rate_limited": "Batas permintaan tercapai. Tunggu sebelum menyegarkan.",
+        "no_accounts": "Tidak ada akun yang dibagikan. Periksa akses akun di Bridge.",
+        "partial_data": "Sebagian data akun tidak lengkap. Periksa Bridge lalu segarkan.",
+        "identity_review": "Identitas akun berubah. Tinjau pemetaan sebelum mengaktifkan sinkronisasi.",
+        "invalid_response": "Bridge mengembalikan data yang tidak didukung. Segarkan nanti.",
+        "unavailable": "SimpleFIN tidak menjawab. Coba lagi nanti."
+      },
+      "resume": "Lanjutkan sinkronisasi",
+      "lastKnownConnected": "SimpleFIN terhubung saat pemeriksaan terakhir yang berhasil."
     }
   }
 }

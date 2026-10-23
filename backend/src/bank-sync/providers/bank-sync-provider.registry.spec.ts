@@ -1,4 +1,4 @@
-import { BANK_SYNC_PROVIDERS } from "../bank-sync.constants";
+import type { SimplefinProvider } from "./simplefin/simplefin.provider";
 import type { BankSyncProviderName } from "../bank-sync.constants";
 import { BankSyncProviderRegistry } from "./bank-sync-provider.registry";
 import type { EnableBankingProvider } from "./enable-banking/enable-banking.client";
@@ -8,7 +8,7 @@ describe("BankSyncProviderRegistry", () => {
   const registry = new BankSyncProviderRegistry(enableBanking);
 
   it("resolves every named provider", () => {
-    for (const name of BANK_SYNC_PROVIDERS) {
+    for (const name of registry.listNames()) {
       expect(registry.getByName(name).name).toBe(name);
     }
   });
@@ -25,5 +25,12 @@ describe("BankSyncProviderRegistry", () => {
 
   it("lists the provider names", () => {
     expect(registry.listNames()).toEqual(["enable_banking"]);
+  });
+  it("registers SimpleFIN for data reads without fabricating redirect methods", () => {
+    const simplefin = { name: "simplefin" } as SimplefinProvider;
+    const both = new BankSyncProviderRegistry(enableBanking, simplefin);
+    expect(both.listNames()).toEqual(["enable_banking", "simplefin"]);
+    expect(both.getReadProvider("simplefin")).toBe(simplefin);
+    expect(() => both.getByName("simplefin")).toThrow("setup token");
   });
 });

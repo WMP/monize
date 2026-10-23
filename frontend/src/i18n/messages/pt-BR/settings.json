@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, one {# com valor inválido} other {# com valor inválido}}",
         "unknown_direction": "{count, plural, one {# com sentido desconhecido} other {# com sentido desconhecido}}",
         "currency_mismatch": "{count, plural, one {# em outra moeda} other {# em outra moeda}}",
-        "other": "{count, plural, one {# por outro motivo} other {# por outro motivo}}"
+        "other": "{count, plural, one {# por outro motivo} other {# por outro motivo}}",
+        "missing_identity": "Falta o identificador da transação bancária: {count, number}"
       },
       "needsPreview": "Abra a pré-visualização de {accounts} e confirme a primeira importação",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "Valor inválido",
         "unknown_direction": "Sentido desconhecido",
         "currency_mismatch": "Outra moeda",
-        "other": "Recusada"
+        "other": "Recusada",
+        "missing_identity": "Falta o identificador da transação bancária"
       },
       "columns": {
         "date": "Data",
@@ -1786,7 +1788,47 @@
           "none": "Sem tag de tipo de operação para esta transação.",
           "tag": "Tag do tipo de operação do banco: {tag}"
         }
-      }
+      },
+      "historyBatch": "Lote do histórico: de {from} a {to}.",
+      "historyBatchRemaining": "Lote do histórico: de {from} a {to}. Há mais histórico. Após esta importação, abra a prévia do próximo lote."
+    },
+    "simplefin": {
+      "provider": "Provedor de dados",
+      "description": "Conecte bancos no <bridge>SimpleFIN Bridge</bridge> e cole aqui um token de configuração de uso único. O acesso é somente leitura.",
+      "openBridge": "Abrir SimpleFIN Bridge",
+      "setupToken": "Token de configuração",
+      "connect": "Conectar SimpleFIN",
+      "connected": "O SimpleFIN está conectado.",
+      "savedDiscoveryFailed": "Conectado, mas a descoberta de contas precisa de atenção. Tente novamente sem um token novo.",
+      "refresh": "Atualizar contas",
+      "failed": "Não foi possível concluir a solicitação. Confira o status da conexão antes de usar um token novo.",
+      "loadFailed": "Não foi possível carregar o status do SimpleFIN.",
+      "encryptionRequired": "Peça a um administrador para configurar a criptografia antes de conectar o SimpleFIN.",
+      "remove": "Remover SimpleFIN do Monize",
+      "removeTitle": "Remover o acesso a todas as instituições?",
+      "removeBody": "Isso desativa toda a sincronização SimpleFIN no Monize e preserva o histórico. Revogue o token do aplicativo no Bridge para encerrar o acesso remoto.",
+      "replaceTitle": "Substituir o acesso SimpleFIN?",
+      "replaceBody": "Isso substitui o acesso a todas as instituições. Os vínculos existentes são mantidos; identidades alteradas precisam ser revisadas.",
+      "quota": "{remaining} solicitações restantes",
+      "nextEligible": "Próxima disponibilidade: {date}",
+      "stopTitle": "Parar a sincronização de {bank}?",
+      "stopBody": "As associações e transações existentes são mantidas.",
+      "stop": "Parar sincronização",
+      "stopped": "Sincronização parada",
+      "title": "SimpleFIN",
+      "enableBanking": "Enable Banking",
+      "errors": {
+        "unauthorized": "Reconecte usando um token de configuração novo.",
+        "payment_required": "Confira sua assinatura do SimpleFIN Bridge.",
+        "rate_limited": "Limite de solicitações atingido. Aguarde antes de atualizar.",
+        "no_accounts": "Nenhuma conta foi compartilhada. Confira o acesso no Bridge.",
+        "partial_data": "Alguns dados estão incompletos. Confira o Bridge e atualize.",
+        "identity_review": "As identidades das contas mudaram. Revise os vínculos antes de ativar a sincronização.",
+        "invalid_response": "O Bridge retornou dados não compatíveis. Atualize mais tarde.",
+        "unavailable": "O SimpleFIN não respondeu. Tente mais tarde."
+      },
+      "resume": "Retomar sincronização",
+      "lastKnownConnected": "O SimpleFIN estava conectado na última verificação bem-sucedida."
     }
   }
 }

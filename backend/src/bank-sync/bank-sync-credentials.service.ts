@@ -1,3 +1,4 @@
+import { simplefinAccessRequest } from "./providers/simplefin/simplefin.urls";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { DataSource } from "typeorm";
@@ -20,7 +21,11 @@ import type {
   BankSyncCredentialsView,
   BankSyncStatusView,
 } from "./bank-sync.types";
-import type { BankSyncCredentials } from "./providers/bank-sync-provider.interface";
+import type {
+  BankSyncCredentials,
+  EnableBankingCredentials,
+  SimplefinCredentials,
+} from "./providers/bank-sync-provider.interface";
 import { isBankSyncProviderError } from "./providers/bank-sync-provider.errors";
 import { BankSyncProviderRegistry } from "./providers/bank-sync-provider.registry";
 import { parseRsaPrivateKey } from "./providers/enable-banking/enable-banking-jwt";
@@ -186,6 +191,18 @@ export class BankSyncCredentialsService {
    */
   async resolveCredentials(
     userId: string,
+    provider: "enable_banking",
+  ): Promise<EnableBankingCredentials>;
+  async resolveCredentials(
+    userId: string,
+    provider: "simplefin",
+  ): Promise<SimplefinCredentials>;
+  async resolveCredentials(
+    userId: string,
+    provider: BankSyncProviderName,
+  ): Promise<BankSyncCredentials>;
+  async resolveCredentials(
+    userId: string,
     provider: BankSyncProviderName,
   ): Promise<BankSyncCredentials> {
     const row = await withScopedDb(this.dataSource, (m) =>
@@ -196,16 +213,32 @@ export class BankSyncCredentialsService {
     if (!row) {
       throw new BankSyncCredentialsUnavailableException(
         tr(
-          "errors.bankSync.credentialsRequired",
-          "Enter your provider application id and private key in the bank sync settings first.",
+          provider === "simplefin"
+            ? "errors.bankSync.simplefinCredentialsMissing"
+            : "errors.bankSync.credentialsRequired",
+          provider === "simplefin"
+            ? "Connect SimpleFIN before syncing accounts."
+            : "Enter your provider application id and private key in the bank sync settings first.",
         ),
       );
     }
     try {
-      return {
-        applicationId: row.applicationId,
-        privateKeyPem: this.encryption.decrypt(row.privateKeyEnc),
-      };
+      const ciphertext =
+        provider === "simplefin" ? row.accessUrlEnc : row.privateKeyEnc;
+      if (!ciphertext)
+        throw new Error("Missing encrypted provider credentials");
+      const plaintext = this.encryption.decrypt(ciphertext);
+      if (provider === "simplefin") {
+        simplefinAccessRequest(plaintext);
+        return {
+          provider: "simplefin",
+          credentialId: row.id,
+          accessUrl: plaintext,
+        };
+      }
+      if (row.applicationId === null)
+        throw new Error("Missing Enable Banking application");
+      return { applicationId: row.applicationId, privateKeyPem: plaintext };
     } catch {
       this.logger.warn(
         `Bank sync credentials for user ${userId} could not be decrypted; ` +
@@ -213,8 +246,12 @@ export class BankSyncCredentialsService {
       );
       throw new BankSyncCredentialsUnavailableException(
         tr(
-          "errors.bankSync.credentialsUnreadable",
-          "The stored private key can no longer be read on this server. Enter the application id and the private key again.",
+          provider === "simplefin"
+            ? "errors.bankSync.simplefinCredentialsUnreadable"
+            : "errors.bankSync.credentialsUnreadable",
+          provider === "simplefin"
+            ? "The stored SimpleFIN credentials cannot be read. Reconnect using a new setup token from SimpleFIN Bridge."
+            : "The stored private key can no longer be read on this server. Enter the application id and the private key again.",
         ),
       );
     }
@@ -224,8 +261,8 @@ export class BankSyncCredentialsService {
     const credentials: BankSyncCredentialsView | null = row
       ? {
           provider: row.provider,
-          applicationId: row.applicationId,
-          privateKeySet: row.privateKeyEnc.length > 0,
+          applicationId: row.applicationId ?? "",
+          privateKeySet: !!row.privateKeyEnc?.length,
         }
       : null;
     return {

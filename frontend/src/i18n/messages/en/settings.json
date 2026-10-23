@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, one {# with an invalid amount} other {# with an invalid amount}}",
         "unknown_direction": "{count, plural, one {# with an unknown direction} other {# with an unknown direction}}",
         "currency_mismatch": "{count, plural, one {# in another currency} other {# in another currency}}",
-        "other": "{count, plural, one {# for another reason} other {# for another reason}}"
+        "other": "{count, plural, one {# for another reason} other {# for another reason}}",
+        "missing_identity": "{count, plural, one {# without a bank transaction ID} other {# without a bank transaction ID}}"
       },
       "needsPreview": "Open the preview for {accounts} and confirm the first import",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "Invalid amount",
         "unknown_direction": "Unknown direction",
         "currency_mismatch": "Other currency",
-        "other": "Refused"
+        "other": "Refused",
+        "missing_identity": "Missing bank transaction ID"
       },
       "columns": {
         "date": "Date",
@@ -1786,7 +1788,47 @@
           "none": "No operation type tag for this transaction.",
           "tag": "Tag from the bank's operation type: {tag}"
         }
-      }
+      },
+      "historyBatch": "History batch: {from} to {to}.",
+      "historyBatchRemaining": "History batch: {from} to {to}. More history remains; preview the next batch after importing this one."
+    },
+    "simplefin": {
+      "title": "SimpleFIN",
+      "provider": "Data provider",
+      "description": "Connect banks in <bridge>SimpleFIN Bridge</bridge>, then paste a one-time setup token here. Access is read-only.",
+      "openBridge": "Open SimpleFIN Bridge",
+      "setupToken": "Setup token",
+      "connect": "Connect SimpleFIN",
+      "connected": "SimpleFIN is connected.",
+      "savedDiscoveryFailed": "Connected, but account discovery needs attention. Retry discovery without a new token.",
+      "refresh": "Refresh accounts",
+      "failed": "Could not complete the request. Check connection status before using a new token.",
+      "loadFailed": "Could not load SimpleFIN status.",
+      "encryptionRequired": "Ask an administrator to configure encryption before connecting SimpleFIN.",
+      "remove": "Remove SimpleFIN from Monize",
+      "removeTitle": "Remove access for all institutions?",
+      "removeBody": "This disables all SimpleFIN syncing in Monize and preserves your history. Revoke the app token in Bridge to end remote access.",
+      "replaceTitle": "Replace SimpleFIN access?",
+      "replaceBody": "This replaces access for all institutions. Existing account mappings stay; changed identities need review.",
+      "quota": "{remaining} requests remaining",
+      "nextEligible": "Next available: {date}",
+      "stopTitle": "Stop syncing {bank}?",
+      "stopBody": "Existing mappings and transactions stay. Use Resume syncing to reconnect this institution.",
+      "stop": "Stop syncing",
+      "errors": {
+        "unauthorized": "Reconnect using a new setup token.",
+        "payment_required": "Check your SimpleFIN Bridge subscription.",
+        "rate_limited": "Request limit reached. Wait before refreshing.",
+        "no_accounts": "No accounts were shared. Check account access in Bridge.",
+        "partial_data": "Some account data is incomplete. Review Bridge, then refresh.",
+        "identity_review": "Account identities changed. Review mappings before enabling sync.",
+        "invalid_response": "Bridge returned unsupported data. Refresh later.",
+        "unavailable": "SimpleFIN did not answer. Try later."
+      },
+      "enableBanking": "Enable Banking",
+      "stopped": "Syncing stopped",
+      "resume": "Resume syncing",
+      "lastKnownConnected": "SimpleFIN was connected at the last successful check."
     }
   }
 }

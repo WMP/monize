@@ -264,7 +264,14 @@ export class BankSyncPreviewService {
         difference: comparable
           ? fromUnits(toUnits(bank.amount) - afterUnits)
           : null,
-        planFingerprint: planFingerprint(newRows),
+        planFingerprint: planFingerprint(newRows, plan.review),
+        history: plan.review
+          ? {
+              dateFrom: plan.review.dateFrom,
+              dateTo: plan.review.dateTo,
+              remaining: plan.review.remaining,
+            }
+          : undefined,
       };
     });
   }

@@ -51,6 +51,11 @@ import { RemoveBankSyncExceptionsDto } from "./dto/remove-bank-sync-exceptions.d
 import { SaveBankSyncCredentialsDto } from "./dto/save-bank-sync-credentials.dto";
 import { SyncBankSyncAccountDto } from "./dto/sync-bank-sync-account.dto";
 import { UpdateBankSyncConnectionDto } from "./dto/update-bank-sync-connection.dto";
+import {
+  SimplefinCredentialsService,
+  type SimplefinCredentialStatus,
+} from "./simplefin-credentials.service";
+import { BankSyncProviderQueryDto } from "./dto/bank-sync-provider-query.dto";
 import { psuContextOf } from "./psu-context.util";
 import { selectionOf } from "./bank-sync-selection";
 
@@ -74,14 +79,20 @@ export class BankSyncController {
     private readonly credentials: BankSyncCredentialsService,
     private readonly connections: BankSyncConnectionsService,
     private readonly bankSync: BankSyncService,
+    private readonly simplefinCredentials: SimplefinCredentialsService,
   ) {}
 
   @Get("status")
   @ApiOperation({
     summary: "Bank sync availability, credentials and redirect URL",
   })
-  getStatus(@Request() req: AuthedRequest): Promise<BankSyncStatusView> {
-    return this.credentials.getStatus(req.user.id);
+  getStatus(
+    @Request() req: AuthedRequest,
+    @Query() query?: BankSyncProviderQueryDto,
+  ): Promise<BankSyncStatusView | SimplefinCredentialStatus> {
+    return query?.provider === "simplefin"
+      ? this.simplefinCredentials.status(req.user.id)
+      : this.credentials.getStatus(req.user.id);
   }
 
   @Put("credentials")

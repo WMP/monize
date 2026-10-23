@@ -1951,6 +1951,22 @@ describe('BankSyncConnectionCard', () => {
       );
     });
 
+    it('shows source-default notes for a countryless SimpleFIN connection', async () => {
+      const text = 'SimpleFIN fournit une description, mais aucun champ distinct pour le bénéficiaire.';
+      renderCard(connection({
+        provider: 'simplefin', institutionCountry: '', validUntil: null,
+        profile: { id: 'simplefin/default', version: 1, notes: [
+          { id: 'descriptionPayees', severity: 'info', text, lang: 'fr-CA' },
+        ] },
+      }));
+      expect(screen.queryByText(text)).toBeNull();
+      await click("Show how this bank's API works");
+      expect(screen.getByText(text)).toBeInTheDocument();
+      expect(screen.getByText(text).closest('[lang]')).toHaveAttribute('lang', 'fr-CA');
+      await click("Hide how this bank's API works");
+      expect(screen.queryByText(text)).toBeNull();
+    });
+
     it('folds the notes again', async () => {
       renderCard(withNotes());
       await click("Show how this bank's API works");
@@ -1958,4 +1974,21 @@ describe('BankSyncConnectionCard', () => {
       expect(screen.queryByText('The bank joins town and merchant.')).toBeNull();
     });
   });
+});
+
+it('requires explicit resume before a stopped SimpleFIN institution becomes usable', async () => {
+  mockDeleteConnection.mockResolvedValue(undefined);
+  const conn = connection({provider:'simplefin', validUntil:null});
+  const {rerender,onChanged} = renderCard(conn);
+  expect(screen.queryByRole('button',{name:'Renew consent'})).toBeNull();
+  await click('Stop syncing');
+  expect(screen.getByText('Existing mappings and transactions stay. Use Resume syncing to reconnect this institution.')).toBeInTheDocument();
+  await act(async () => { fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Stop syncing'})); });
+  await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  rerender(<BankSyncConnectionCard connection={{...conn,status:'revoked'}} accounts={defaultAccounts} linkedAccountIds={new Set()} onChanged={onChanged} />);
+  expect(screen.getByText('Syncing stopped')).toBeInTheDocument();
+  await click('Resume syncing');
+  expect(mockUpdateConnection).toHaveBeenCalledWith(conn.id, { resume: true });
+  rerender(<BankSyncConnectionCard connection={conn} accounts={defaultAccounts} linkedAccountIds={new Set()} onChanged={onChanged} />);
+  expect(screen.getByRole('button',{name:'Stop syncing'})).toBeEnabled();
 });

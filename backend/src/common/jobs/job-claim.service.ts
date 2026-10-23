@@ -70,6 +70,8 @@ export const JobClaimType = {
   BankSyncAccount: "bank_sync_account",
   /** One user's daily bank sync, claimed once per UTC day (spec section 8). */
   BankSyncDaily: "bank_sync_daily",
+  /** Serializes setup and records hashed one-time SimpleFIN token attempts. */
+  SimplefinSetup: "simplefin_setup",
   EmailReceiptPoll: "email_receipt_poll",
   /**
    * One sender's parser draft, held across the provider call so a second poll
