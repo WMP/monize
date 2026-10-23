@@ -35,7 +35,7 @@ describe("mortgage method CHECKs (integration)", () => {
   const insertMortgage = (
     id: string,
     fields: {
-      mortgageType: string;
+      mortgageType: string | null;
       prepaymentMode?: string | null;
       paymentAmount?: number | null;
     },
@@ -108,10 +108,9 @@ describe("mortgage method CHECKs (integration)", () => {
       mortgageType: "ANNUITY",
       paymentAmount: 1108.8584,
     });
-    // The other annuity type stores its constant payment too. (The column is
-    // NOT NULL since the contract migration, so no row has a null type.)
+    // A mortgage written by a release before the type: null type, any payment.
     await insertMortgage("20000000-0000-4000-8000-000000000005", {
-      mortgageType: "CANADIAN_FIXED",
+      mortgageType: null,
       paymentAmount: 1500,
     });
   });

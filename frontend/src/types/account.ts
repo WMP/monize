@@ -178,9 +178,10 @@ export interface Account {
   linkedLoanAccountId: string | null;
   // Mortgage-specific fields
   // The stored type, read only on a mortgage; every other account carries the
-  // column default, `ANNUITY`, the engine a plain loan uses. Read it through
+  // column default, `ANNUITY`, the engine a plain loan uses. Null only on a row
+  // a 1.19.x rollback wrote, until the contract migration. Read it through
   // `mortgageTypeOf` (`lib/mortgage-type.ts`).
-  mortgageType: MortgageType;
+  mortgageType: MortgageType | null;
   // What an extra repayment does to a LINEAR mortgage's principal; null on
   // every other type. Read it through `prepaymentModeOf`, which reads a null
   // on a LINEAR mortgage as `SHORTEN_TERM`.

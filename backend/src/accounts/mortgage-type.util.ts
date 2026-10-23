@@ -128,13 +128,15 @@ export function storesConstantPayment(type: MortgageType): boolean {
 }
 
 /**
- * The type a stored account carries: `accounts.mortgage_type`, NOT NULL since
- * the contract migration (P3-B1). Read only on a MORTGAGE; every other account
- * carries the column's default, `ANNUITY`, the annuity engine a plain `LOAN`
- * uses. Every consumer of the type reads it through here.
+ * The type a stored account carries: `accounts.mortgage_type`. Read only on a
+ * MORTGAGE; every other account carries the column's default, `ANNUITY`, the
+ * annuity engine a plain `LOAN` uses. The column stays nullable until the
+ * contract migration so a 1.19.x rollback still runs, and a null that release
+ * wrote reads as that default. Every consumer of the type reads it through
+ * here.
  */
 export function mortgageTypeOf(row: {
-  mortgageType: MortgageType;
+  mortgageType: MortgageType | null;
 }): MortgageType {
-  return row.mortgageType;
+  return row.mortgageType ?? "ANNUITY";
 }

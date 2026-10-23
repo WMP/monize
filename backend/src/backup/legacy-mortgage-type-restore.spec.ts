@@ -4,16 +4,16 @@ import type { EntityManager } from "typeorm";
 import { parseSchemaColumns } from "../common/db/raw-sql-columns";
 import { BackupRestoreDatabaseService } from "./backup-restore-database.service";
 
-// The shipped column list, so the fixture cannot keep the dropped flags after
-// the contract migration removes them from real databases.
+// The shipped column list, so the fixture follows schema.sql as the contract
+// migration later removes the flags from it.
 const columns = parseSchemaColumns(
   readFileSync(join(__dirname, "../../../database/schema.sql"), "utf8"),
 ).get("accounts")!;
 
 /**
  * docs/specs/mortgage-types.md, task P3-B1: an `accounts` row from a backup
- * taken before the type was required is inserted with the type the contract
- * migration would have given it, and without the dropped flags. The real
+ * taken before the type was required is inserted with the type the default
+ * migration would have given it, and without the legacy flags. The real
  * database round trip is in `backup-restore.integration.spec.ts`.
  */
 describe("restoring accounts from before the mortgage-type contract", () => {
@@ -45,10 +45,12 @@ describe("restoring accounts from before the mortgage-type contract", () => {
     return Object.fromEntries(inserted.map((c, i) => [c, values[i]]));
   };
 
-  it("has dropped the flags from the schema", () => {
+  it("keeps the flags in the schema until the contract migration, and still leaves them out of a restore", () => {
+    // A 1.19.x rollback maps both columns, so they stay; no code reads them,
+    // so the restored row carries the type alone (the cases below).
     expect(columns.has("mortgage_type")).toBe(true);
-    expect(columns.has("is_canadian_mortgage")).toBe(false);
-    expect(columns.has("is_variable_rate")).toBe(false);
+    expect(columns.has("is_canadian_mortgage")).toBe(true);
+    expect(columns.has("is_variable_rate")).toBe(true);
   });
 
   it.each([

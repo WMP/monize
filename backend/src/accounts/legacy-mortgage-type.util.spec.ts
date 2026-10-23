@@ -4,9 +4,9 @@ import {
 } from "./legacy-mortgage-type.util";
 
 /**
- * A snapshot written before the contract migration resolves to the type the
- * migration gives a stored row (docs/specs/mortgage-types.md, table 4.2 and
- * task P3-B1), and loses the dropped flags.
+ * A snapshot written before the type was required resolves to the type the
+ * default migration gives a stored row (docs/specs/mortgage-types.md, table
+ * 4.2 and task P3-B1), and loses the legacy flags.
  */
 describe("withResolvedMortgageTypeColumn (backup rows)", () => {
   const mortgage = (fields: Record<string, unknown>) => ({

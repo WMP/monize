@@ -1578,11 +1578,10 @@ describe("Backup export/restore round-trip (integration)", () => {
     // docs/specs/mortgage-types.md, task P3-B1. A backup taken before Phase 1
     // carries is_canadian_mortgage / is_variable_rate and no mortgage_type; one
     // taken in Phases 1 and 2 carries a mortgage_type that is null on every
-    // non-mortgage row and on a mortgage a pre-Phase-1 pod wrote. The flags
-    // are gone from today's schema, so the restore resolves the type the
-    // contract migration would have given each row before its column filter
-    // drops them: the column default would turn a Canadian fixed-rate mortgage
-    // into ANNUITY, and an explicit null fails NOT NULL.
+    // non-mortgage row and on a mortgage a pre-Phase-1 pod wrote. No code
+    // reads the flags now, so the restore resolves the type the default
+    // migration would have given each row: the column default, or a null read
+    // as it, would turn a Canadian fixed-rate mortgage into ANNUITY.
     const userA = await createTestUserDirect(dataSource, {
       email: "legacy-type-a@example.com",
     });

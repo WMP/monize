@@ -11,9 +11,11 @@ import {
 /**
  * The two `accounts.mortgage_type` migrations against the legacy flag
  * combinations a deployed database holds (docs/specs/mortgage-types.md, table
- * 4.2): the Phase 1 expand migration's backfill, and the contract migration
- * (P3-B1) that re-derives any mortgage still null from the flags, makes the
- * column NOT NULL DEFAULT 'ANNUITY' and drops the flags.
+ * 4.2): the Phase 1 expand migration's backfill, and the default migration
+ * (P3-B1) that re-derives any mortgage still null from the flags, gives every
+ * other null row the default and defaults the column to 'ANNUITY'. It keeps
+ * the flags and leaves the column nullable, so a 1.19.x rollback still runs;
+ * NOT NULL and the drops are a later contract migration's.
  *
  * A unit test cannot check this, because the claim is about what a SQL `CASE`
  * concludes from production-shaped rows, including the NULL flags the columns
@@ -36,8 +38,8 @@ describe("mortgage_type migrations over the legacy flags", () => {
   };
   const applyExpand = () =>
     dataSource.query(migration("accounts_mortgage_type"));
-  const applyContract = () =>
-    dataSource.query(migration("accounts_mortgage_type_required"));
+  const applyDefault = () =>
+    dataSource.query(migration("accounts_mortgage_type_default"));
 
   /**
    * Rebuild the pre-Phase-1 table: no type column, and the two nullable flags
@@ -108,12 +110,12 @@ describe("mortgage_type migrations over the legacy flags", () => {
 
   afterAll(async () => {
     if (dataSource?.isInitialized) {
-      // Leave the shared schema as the entity maps it: the type NOT NULL
-      // DEFAULT 'ANNUITY', no flags.
+      // Leave the shared schema as schema.sql has it: the type nullable with
+      // DEFAULT 'ANNUITY', the flags kept.
       await cleanTables(dataSource, ["accounts", "users"]);
       await restorePrePhase1();
       await applyExpand();
-      await applyContract();
+      await applyDefault();
       await dataSource.destroy();
     }
   });
@@ -140,7 +142,7 @@ describe("mortgage_type migrations over the legacy flags", () => {
     }
 
     await applyExpand();
-    await applyContract();
+    await applyDefault();
 
     expect(await mortgageType(rows[0].id)).toBe("ANNUITY");
     expect(await mortgageType(rows[1].id)).toBe("ANNUITY");
@@ -150,10 +152,10 @@ describe("mortgage_type migrations over the legacy flags", () => {
     expect(await mortgageType(rows[3].id)).toBe("ANNUITY");
   });
 
-  it("re-derives a mortgage left null at the Phase 1 schema from its flags before dropping them", async () => {
+  it("re-derives a mortgage left null at the Phase 1 schema from its flags, keeping the flags", async () => {
     // A pre-Phase-1 pod serving during the Phase 1 rollout inserted mortgages
     // with the flags and no type; the expand migration had already run, so
-    // only the contract migration can still read their flags.
+    // only the default migration can still read their flags.
     await applyExpand();
     const fixed = "20000000-0000-4000-8000-000000000001";
     const variable = "20000000-0000-4000-8000-000000000002";
@@ -163,14 +165,15 @@ describe("mortgage_type migrations over the legacy flags", () => {
     await seedAccount(plain, { isCanadian: false, isVariable: false });
     expect(await mortgageType(fixed)).toBeNull();
 
-    await applyContract();
+    await applyDefault();
 
     expect(await mortgageType(fixed)).toBe("CANADIAN_FIXED");
     expect(await mortgageType(variable)).toBe("ANNUITY");
     expect(await mortgageType(plain)).toBe("ANNUITY");
+    // 1.19.x still maps both, so a rollback needs them.
     const columns = await accountColumns();
-    expect(columns).not.toContain("is_canadian_mortgage");
-    expect(columns).not.toContain("is_variable_rate");
+    expect(columns).toContain("is_canadian_mortgage");
+    expect(columns).toContain("is_variable_rate");
   });
 
   it("reads a NULL flag as false, as the pre-type periodic rate did", async () => {
@@ -192,7 +195,7 @@ describe("mortgage_type migrations over the legacy flags", () => {
       isCanadian: true,
       isVariable: null,
     });
-    await applyContract();
+    await applyDefault();
 
     expect(await mortgageType(canadianNullVariable)).toBe("CANADIAN_FIXED");
     expect(await mortgageType(nullCanadian)).toBe("ANNUITY");
@@ -216,7 +219,7 @@ describe("mortgage_type migrations over the legacy flags", () => {
     await applyExpand();
     // The expand migration types mortgages only.
     expect(await mortgageType(loan)).toBeNull();
-    await applyContract();
+    await applyDefault();
 
     expect(await mortgageType(loan)).toBe("ANNUITY");
     expect(await mortgageType(chequing)).toBe("ANNUITY");
@@ -226,21 +229,21 @@ describe("mortgage_type migrations over the legacy flags", () => {
     const id = "50000000-0000-4000-8000-000000000001";
     await seedAccount(id, { isCanadian: true, isVariable: false });
     await applyExpand();
-    // A type chosen after Phase 1 outlives the contract, even where it
+    // A type chosen after Phase 1 outlives the default migration, even where it
     // disagrees with the flags.
     await dataSource.query(
       `UPDATE accounts SET mortgage_type = 'LINEAR' WHERE id = $1`,
       [id],
     );
 
-    await applyContract();
+    await applyDefault();
 
     expect(await mortgageType(id)).toBe("LINEAR");
   });
 
-  it("leaves the column NOT NULL DEFAULT 'ANNUITY' under the CHECK", async () => {
+  it("leaves the column nullable with DEFAULT 'ANNUITY' under the CHECK", async () => {
     await applyExpand();
-    await applyContract();
+    await applyDefault();
 
     const defaulted = "60000000-0000-4000-8000-000000000001";
     await dataSource.query(
@@ -251,12 +254,12 @@ describe("mortgage_type migrations over the legacy flags", () => {
     );
     expect(await mortgageType(defaulted)).toBe("ANNUITY");
 
-    await expect(
-      dataSource.query(
-        `UPDATE accounts SET mortgage_type = NULL WHERE id = $1`,
-        [defaulted],
-      ),
-    ).rejects.toThrow(/null value/);
+    // A 1.19.x rollback writes null on a non-mortgage row, so it must land.
+    await dataSource.query(
+      `UPDATE accounts SET mortgage_type = NULL WHERE id = $1`,
+      [defaulted],
+    );
+    expect(await mortgageType(defaulted)).toBeNull();
     await expect(
       dataSource.query(
         `UPDATE accounts SET mortgage_type = 'CANADIAN_VARIABLE' WHERE id = $1`,
@@ -277,17 +280,16 @@ describe("mortgage_type migrations over the legacy flags", () => {
     }
   });
 
-  it("re-applies both migrations as no-ops once the flags are gone", async () => {
+  it("re-applies both migrations as no-ops", async () => {
     // A second apply, and a fresh install replaying every migration on top of
-    // a schema.sql that no longer has the flags: neither may name a dropped
-    // column outside its existence check.
+    // schema.sql.
     const id = "70000000-0000-4000-8000-000000000001";
     await seedAccount(id, { isCanadian: true, isVariable: false });
     await applyExpand();
-    await applyContract();
+    await applyDefault();
 
     await applyExpand();
-    await applyContract();
+    await applyDefault();
 
     expect(await mortgageType(id)).toBe("CANADIAN_FIXED");
   });

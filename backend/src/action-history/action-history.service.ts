@@ -1890,9 +1890,9 @@ export class ActionHistoryService {
 
   /**
    * A copy of a snapshot in today's column shape. An account snapshot recorded
-   * before the mortgage-type contract migration carries the dropped legacy
-   * flags and a null or missing type, which the NOT NULL column refuses; it is
-   * replayed with the type the migration would have given it.
+   * before the mortgage type was required carries the legacy flags, which no
+   * code reads now, and a null or missing type; it is replayed with the type
+   * the default migration would have given it.
    */
   private replayableSnapshot(
     tableName: string,

@@ -406,10 +406,10 @@ export class BackupRestoreDatabaseService {
 
     let count = 0;
     for (const row of rows) {
-      // An `accounts` row from a backup taken before the mortgage-type
-      // contract migration carries the dropped legacy flags and a null or
-      // missing type; it is given the type the migration would have given it
-      // before the column filter below drops the flags.
+      // An `accounts` row from a backup taken before the mortgage type was
+      // required carries the legacy flags and a null or missing type; nothing
+      // reads the flags now, so it is given the type the default migration
+      // would have given it, and the flags are left out.
       const filteredRow =
         table === "notifications"
           ? boundRestoredNotification(row, this.logger)

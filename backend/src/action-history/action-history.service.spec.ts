@@ -2070,7 +2070,7 @@ describe("ActionHistoryService", () => {
 
     it("re-inserts a deleted account recorded before the mortgage-type contract with its type", async () => {
       // docs/specs/mortgage-types.md, task P3-B1: the snapshot carries the
-      // dropped flags and a null type, which NOT NULL would refuse.
+      // legacy flags and a null type, which would read as ANNUITY.
       const action = {
         ...mockAction,
         entityType: "account",
