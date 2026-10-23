@@ -60,6 +60,8 @@ export interface BankAccountDescriptor {
 
 /** One transaction as the provider reported it, before any Monize rule. */
 export interface BankTransaction {
+  /** An adapter-proven refusal; never eligible for fallback identity. */
+  refusalReason?: "missing_identity" | "missing_date" | "invalid_amount";
   /** Trusted adapter-provided stable identity; only the SimpleFIN namespace is accepted. */
   externalKey?: string;
   /** Unique and immutable across sessions: the duplicate key's first choice. */
@@ -117,6 +119,22 @@ export interface StartAuthorizationInput {
   state: string;
   validUntil: Date;
   psuType: "personal" | "business";
+}
+
+export interface BankAccountRead {
+  currencyCode: string | null;
+  transactions: BankTransaction[];
+  balance: BankBalance | null;
+  pending: number;
+}
+export interface BankReadProvider {
+  readAccount(
+    userId: string,
+    credentials: BankSyncCredentials,
+    accountId: string,
+    window: { dateFrom: string; dateTo: string },
+    psu?: PsuContext | null,
+  ): Promise<BankAccountRead>;
 }
 
 export interface BankSyncProvider {

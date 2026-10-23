@@ -155,17 +155,22 @@ describe("SimpleFIN operation-scoped batch reader", () => {
     });
     expect(client.accounts).toHaveBeenCalledTimes(1);
   });
-  it("refuses missing transactions arrays and malformed booked rows", async () => {
+  it("refuses missing transaction arrays but isolates malformed booked rows", async () => {
     const data = payload();
     (data.accounts[0] as Record<string, unknown>).transactions = undefined;
     client.accounts.mockResolvedValue(data);
     await expect(
       service().readAccount("owner", creds, id("a"), range),
     ).rejects.toMatchObject({ kind: "invalid_response" });
-    data.accounts[0].transactions = [tx({ id: "" })];
-    await expect(
-      service().readAccount("owner", creds, id("a"), range),
-    ).rejects.toMatchObject({ kind: "invalid_response" });
+    data.accounts[0].transactions = [tx(), tx({ id: "" })];
+    const read = await service().readAccount("owner", creds, id("a"), range);
+    const plan = planBankImport(read.transactions, {
+      accountCurrencyCode: "USD",
+      syncFromDate: range.dateFrom,
+      today: range.dateTo,
+    });
+    expect(plan.planned).toHaveLength(1);
+    expect(plan.refused.missing_identity).toBe(1);
   });
   it("blocks only the affected account for a scoped provider error", async () => {
     const data = payload();
@@ -262,8 +267,13 @@ describe("SimpleFIN operation-scoped batch reader", () => {
     const data = payload();
     data.accounts[0].transactions[0].amount = "9999999999999999.9999";
     client.accounts.mockResolvedValue(data);
-    await expect(
-      service().readAccount("owner", creds, id("a"), range),
-    ).rejects.toMatchObject({ kind: "invalid_response" });
+    const read = await service().readAccount("owner", creds, id("a"), range);
+    const plan = planBankImport(read.transactions, {
+      accountCurrencyCode: "USD",
+      syncFromDate: range.dateFrom,
+      today: range.dateTo,
+    });
+    expect(plan.planned).toHaveLength(0);
+    expect(plan.refused.invalid_amount).toBe(1);
   });
 });

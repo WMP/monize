@@ -269,6 +269,7 @@ export interface BankSyncPreviewRowView {
 
 /** `POST /bank-sync/accounts/:id/preview`: nothing in it was written. */
 export interface BankSyncPreviewView {
+  history?: { dateFrom: string; dateTo: string; remaining: boolean };
   bankAccountId: string;
   /** The Monize account's currency: every amount of a new row is in it. */
   currencyCode: string;

@@ -306,4 +306,53 @@ describe("SimpleFIN storage and quota under real PostgreSQL/RLS", () => {
       await client.end();
     }
   });
+  it("admits complete multi-request reads atomically and prunes only expired quota", async () => {
+    await harness.owner.query(
+      "INSERT INTO bank_sync_provider_requests(user_id,credential_id) SELECT $1,$2 FROM generate_series(1,20)",
+      [alice, credentialId],
+    );
+    const results = await Promise.all([
+      scoped(alice, () => budget.reserve(alice, credentialId, 3)),
+      scoped(alice, () => budget.reserve(alice, credentialId, 3)),
+    ]);
+    expect(results.filter((x) => x.allowed)).toHaveLength(1);
+    expect(
+      (
+        await harness.owner.query(
+          "SELECT COUNT(*)::int AS n FROM bank_sync_provider_requests WHERE credential_id=$1",
+          [credentialId],
+        )
+      )[0].n,
+    ).toBe(23);
+    await harness.owner.query(
+      "INSERT INTO bank_sync_provider_requests(user_id,credential_id,requested_at) VALUES($1,$2,clock_timestamp()-INTERVAL '25 hours')",
+      [alice, credentialId],
+    );
+    await scoped(alice, () => budget.reserve(alice, credentialId));
+    expect(
+      (
+        await harness.owner.query(
+          "SELECT COUNT(*)::int AS n FROM bank_sync_provider_requests WHERE credential_id=$1",
+          [credentialId],
+        )
+      )[0].n,
+    ).toBe(24);
+  });
+  it("does not wait for a spending credential lock when polling status", async () => {
+    const runner = harness.owner.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    try {
+      await runner.query(
+        "SELECT id FROM bank_sync_credentials WHERE id=$1 FOR UPDATE",
+        [credentialId],
+      );
+      await expect(
+        scoped(alice, () => budget.status(alice, credentialId)),
+      ).resolves.toMatchObject({ remaining: 24 });
+    } finally {
+      await runner.rollbackTransaction();
+      await runner.release();
+    }
+  });
 });

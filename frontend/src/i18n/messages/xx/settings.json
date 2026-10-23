@@ -1676,7 +1676,8 @@
         "invalid_amount": "[XX-{count, plural, one {# with an invalid amount} other {# with an invalid amount}}-XX]",
         "unknown_direction": "[XX-{count, plural, one {# with an unknown direction} other {# with an unknown direction}}-XX]",
         "currency_mismatch": "[XX-{count, plural, one {# in another currency} other {# in another currency}}-XX]",
-        "other": "[XX-{count, plural, one {# for another reason} other {# for another reason}}-XX]"
+        "other": "[XX-{count, plural, one {# for another reason} other {# for another reason}}-XX]",
+        "missing_identity": "[XX-{count, plural, one {# without a bank transaction ID} other {# without a bank transaction ID}}-XX]"
       },
       "needsPreview": "[XX-Open the preview for {accounts} and confirm the first import-XX]",
       "withNeedsPreview": "[XX-{message}. {needsPreview}-XX]"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "[XX-Invalid amount-XX]",
         "unknown_direction": "[XX-Unknown direction-XX]",
         "currency_mismatch": "[XX-Other currency-XX]",
-        "other": "[XX-Refused-XX]"
+        "other": "[XX-Refused-XX]",
+        "missing_identity": "[XX-Missing bank transaction ID-XX]"
       },
       "columns": {
         "date": "[XX-Date-XX]",
@@ -1786,12 +1788,14 @@
           "none": "[XX-No operation type tag for this transaction.-XX]",
           "tag": "[XX-Tag from the bank's operation type: {tag}-XX]"
         }
-      }
+      },
+      "historyBatch": "[XX-History batch: {from} to {to}.-XX]",
+      "historyBatchRemaining": "[XX-History batch: {from} to {to}. More history remains; preview the next batch after importing this one.-XX]"
     },
     "simplefin": {
       "title": "[XX-SimpleFIN-XX]",
       "provider": "[XX-Data provider-XX]",
-      "description": "[XX-Connect banks in SimpleFIN Bridge, then paste a one-time setup token here. Access is read-only.-XX]",
+      "description": "[XX-Connect banks in <bridge>SimpleFIN Bridge</bridge>, then paste a one-time setup token here. Access is read-only.-XX]",
       "openBridge": "[XX-Open SimpleFIN Bridge-XX]",
       "setupToken": "[XX-Setup token-XX]",
       "connect": "[XX-Connect SimpleFIN-XX]",
@@ -1809,7 +1813,7 @@
       "quota": "[XX-{remaining} requests remaining-XX]",
       "nextEligible": "[XX-Next available: {date}-XX]",
       "stopTitle": "[XX-Stop syncing {bank}?-XX]",
-      "stopBody": "[XX-Existing mappings and transactions stay. Use Refresh accounts to reconnect this institution.-XX]",
+      "stopBody": "[XX-Existing mappings and transactions stay. Use Resume syncing to reconnect this institution.-XX]",
       "stop": "[XX-Stop syncing-XX]",
       "errors": {
         "unauthorized": "[XX-Reconnect using a new setup token.-XX]",
@@ -1822,7 +1826,8 @@
         "unavailable": "[XX-SimpleFIN did not answer. Try later.-XX]"
       },
       "enableBanking": "[XX-Enable Banking-XX]",
-      "stopped": "[XX-Syncing stopped-XX]"
+      "stopped": "[XX-Syncing stopped-XX]",
+      "resume": "[XX-Resume syncing-XX]"
     }
   }
 }

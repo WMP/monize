@@ -284,6 +284,13 @@ export class BankSyncWriterService {
       //     either committed (and its rows are held now) or waits behind it.
       //     A confirmed preview or a selection: what is about to be written is
       //     what was shown.
+      if (plan.review && (link.backfillThrough ?? null) !== plan.review.cursor)
+        throw new BankSyncPlanChangedException(
+          tr(
+            "errors.bankSync.planChanged",
+            "The bank's data changed since the preview. Nothing was imported; preview again.",
+          ),
+        );
       const { selection } = input;
       if (selection !== undefined) assertDisjointSelection(selection);
       const held = await findHeldRows(m, userId, accountId, plan.planned);
@@ -293,7 +300,7 @@ export class BankSyncWriterService {
         newKeys = new Set(newRows.map((row) => row.externalKey));
         if (
           input.expectedFingerprint !== undefined &&
-          planFingerprint(newRows) !== input.expectedFingerprint
+          planFingerprint(newRows, plan.review) !== input.expectedFingerprint
         ) {
           throw new BankSyncPlanChangedException(
             tr(
@@ -594,8 +601,9 @@ export class BankSyncWriterService {
       `UPDATE bank_sync_accounts
           SET last_synced_at = CURRENT_TIMESTAMP,
               last_success_at = CASE WHEN $6::boolean
-                                     THEN CURRENT_TIMESTAMP
+                                     THEN CASE WHEN $8::boolean THEN last_success_at ELSE CURRENT_TIMESTAMP END
                                      ELSE last_success_at END,
+              backfill_through = CASE WHEN $6::boolean THEN $7::date ELSE backfill_through END,
               last_sync_status = 'succeeded',
               last_sync_error = NULL,
               last_imported_count = $3,
@@ -609,6 +617,8 @@ export class BankSyncWriterService {
         skipped,
         refused,
         advanceWindow,
+        input.plan.review?.remaining ? input.plan.review.dateTo : null,
+        input.plan.review?.remaining ?? false,
       ],
     );
     // A balance the bank did not report leaves the stored one as it was: null is

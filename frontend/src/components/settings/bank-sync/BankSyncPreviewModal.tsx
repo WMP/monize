@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { isAxiosError } from 'axios';
 import { useTranslations } from 'next-intl';
 import { ImportPreviewRuleTestProvider } from '@/components/import-preview/ImportPreviewRuleTestProvider';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
@@ -63,6 +64,7 @@ export function BankSyncPreviewModal({
   onOutcomeUnknown,
 }: BankSyncPreviewModalProps) {
   const t = useTranslations('settings.bankSync.preview');
+  const { formatDate } = useDateFormat();
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [filter, setFilter] = useState<PreviewFilter>('all');
   const [importing, setImporting] = useState(false);
@@ -210,6 +212,14 @@ export function BankSyncPreviewModal({
       )}
       {ready && (
         <ImportPreviewRuleTestProvider scope={ready}>
+          {ready.history && (
+            <p role="status" className="mb-3 text-sm">
+              {t(ready.history.remaining ? 'historyBatchRemaining' : 'historyBatch', {
+                from: formatDate(ready.history.dateFrom),
+                to: formatDate(ready.history.dateTo),
+              })}
+            </p>
+          )}
           <BankSyncPreviewList
             preview={ready}
             filter={filter}

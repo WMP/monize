@@ -31,6 +31,6 @@ describe("BankSyncProviderRegistry", () => {
     const both = new BankSyncProviderRegistry(enableBanking, simplefin);
     expect(both.listNames()).toEqual(["enable_banking", "simplefin"]);
     expect(both.getReadProvider("simplefin")).toBe(simplefin);
-    expect(() => both.getByName("simplefin")).toThrow("setup-token");
+    expect(() => both.getByName("simplefin")).toThrow("setup token");
   });
 });

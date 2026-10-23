@@ -35,9 +35,12 @@ const iso = (value: Date | null): string | null =>
  * so nothing imports an account the user has not confirmed.
  */
 export function bankAccountNeedsPreview(
-  row: Pick<BankSyncAccount, "accountId" | "lastSuccessAt">,
+  row: Pick<BankSyncAccount, "accountId" | "lastSuccessAt" | "backfillThrough">,
 ): boolean {
-  return row.accountId !== null && row.lastSuccessAt === null;
+  return (
+    row.accountId !== null &&
+    (row.lastSuccessAt === null || !!row.backfillThrough)
+  );
 }
 
 export function toBankSyncAccountView(

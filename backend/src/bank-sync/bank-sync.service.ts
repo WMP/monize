@@ -1,5 +1,5 @@
 import { SimplefinProvider } from "./providers/simplefin/simplefin.provider";
-import { syncWindow } from "./bank-sync-window";
+import { syncWindow, simplefinBatchWindow } from "./bank-sync-window";
 import {
   BadRequestException,
   ConflictException,
@@ -67,7 +67,6 @@ import { BankSyncConnection } from "./entities/bank-sync-connection.entity";
 import type {
   BankBalance,
   BankSyncCredentials,
-  BankTransaction,
   PsuContext,
 } from "./providers/bank-sync-provider.interface";
 import { isBankSyncProviderError } from "./providers/bank-sync-provider.errors";
@@ -256,6 +255,7 @@ export class BankSyncService {
 
       if (accountChanged || cutoff !== row.syncFromDate) {
         row.lastSuccessAt = null;
+        row.backfillThrough = null;
         row.lastSyncedAt = null;
         row.lastSyncStatus = null;
         row.lastSyncError = null;
@@ -620,51 +620,36 @@ export class BankSyncService {
   }> {
     const { link, connection, account } = ctx;
     const today = todayYMD();
-    const window = syncWindow(link, today);
-    let rows: BankTransaction[];
-    let pending = 0;
-    let balance: NormalizedBankBalance | null = null;
-    if (connection.provider === "simplefin") {
-      if (!this.simplefin || credentials.provider !== "simplefin")
-        throw new Error("SimpleFIN reader is not configured");
-      const read = await this.registry
-        .getReadProvider("simplefin")
-        .readAccount(link.userId, credentials, link.externalAccountId, window);
-      if (read.currencyCode !== account.currencyCode.toUpperCase())
-        throw new BadRequestException(
-          tr(
-            "errors.bankSync.accountCurrencyMismatch",
-            "The bank account is in {{ bankCurrency }} but the account is in {{ accountCurrency }}. Link an account in the same currency.",
-            {
-              bankCurrency: read.currencyCode ?? "",
-              accountCurrency: account.currencyCode,
-            },
-          ),
-        );
-      rows = read.transactions;
-      pending = read.pending;
-      balance = normalizeBankBalance(read.balance);
-    } else {
-      const provider = this.registry.getByName(connection.provider);
-      // Step 3: read the bank, outside any transaction.
-      rows = await provider.fetchTransactions(
+    const window =
+      connection.provider === "simplefin"
+        ? simplefinBatchWindow(link, today)
+        : syncWindow(link, today);
+    const read = await this.registry
+      .getReadProvider(connection.provider)
+      .readAccount(
+        link.userId,
         credentials,
         link.externalAccountId,
         window,
         psu,
       );
-
-      try {
-        balance = normalizeBankBalance(
-          await provider.fetchBalance(credentials, link.externalAccountId, psu),
-        );
-      } catch (error) {
-        // A balance failure leaves the stored balance as it was.
-        this.logger.warn(
-          `Bank balance of bank account ${link.id} could not be read: ${describeSyncFailure(error)}`,
-        );
-      }
-    }
+    if (
+      read.currencyCode !== null &&
+      read.currencyCode !== account.currencyCode.toUpperCase()
+    )
+      throw new BadRequestException(
+        tr(
+          "errors.bankSync.accountCurrencyMismatch",
+          "The bank account is in {{ bankCurrency }} but the account is in {{ accountCurrency }}. Link an account in the same currency.",
+          {
+            bankCurrency: read.currencyCode,
+            accountCurrency: account.currencyCode,
+          },
+        ),
+      );
+    const rows = read.transactions;
+    const pending = read.pending;
+    const balance = normalizeBankBalance(read.balance);
 
     // Step 4: plan.
     const explained = explainBankImport(rows, {
@@ -673,6 +658,13 @@ export class BankSyncService {
       today,
     });
     explained.plan.pending += pending;
+    if (connection.provider === "simplefin")
+      explained.plan.review = {
+        ...window,
+        cursor: link.backfillThrough ?? null,
+        remaining: window.dateTo < today,
+        refused: explained.plan.refused,
+      };
     return { explained, balance };
   }
 

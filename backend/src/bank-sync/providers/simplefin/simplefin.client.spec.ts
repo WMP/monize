@@ -80,4 +80,20 @@ describe("SimpleFIN provider-health boundary", () => {
     await expect(async () => client().claim("invalid")).rejects.toThrow();
     expect(health.assertAvailable).not.toHaveBeenCalled();
   });
+  it("distinguishes breaker admission from ambiguous post-dispatch failure", async () => {
+    health.assertAvailable.mockImplementationOnce(() => {
+      throw new Error("open");
+    });
+    const first = await client()
+      .claim(token)
+      .catch((e) => e);
+    expect(first.constructor.name).toBe("SimplefinNotDispatchedError");
+    expect(transport.claim).not.toHaveBeenCalled();
+    await expect(client().claim(token)).resolves.toBe(access);
+    transport.claim.mockRejectedValueOnce(new Error("timeout after send"));
+    const ambiguous = await client()
+      .claim(token)
+      .catch((e) => e);
+    expect(ambiguous.constructor.name).toBe("SimplefinTransportError");
+  });
 });

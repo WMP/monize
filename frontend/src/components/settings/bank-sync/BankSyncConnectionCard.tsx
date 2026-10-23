@@ -336,6 +336,15 @@ export function BankSyncConnectionCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {simplefin && connection.status === "revoked" && (
+            <Button type="button" variant="outline" size="sm" disabled={disabled || busy}
+              onClick={async () => {
+                setRenewing(true);
+                try { await bankSyncApi.updateConnection(connection.id, { resume: true }); await onChanged(); }
+                catch (error) { toast.error(getErrorMessage(error, sf("failed"))); }
+                finally { setRenewing(false); }
+              }}>{sf("resume")}</Button>
+          )}
           {!simplefin && canRenew && (
             <Button
               type="button"

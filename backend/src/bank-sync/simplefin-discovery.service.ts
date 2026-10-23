@@ -118,6 +118,10 @@ export class SimplefinDiscoveryService {
 
       const connections = m.getRepository(BankSyncConnection);
       const accounts = m.getRepository(BankSyncAccount);
+      await m.query(
+        "SELECT id FROM bank_sync_connections WHERE user_id=$1 AND provider='simplefin' ORDER BY id FOR UPDATE",
+        [userId],
+      );
       const existing = await connections.find({
         where: { userId, provider: "simplefin" },
       });
@@ -200,8 +204,7 @@ export class SimplefinDiscoveryService {
           ) ||
           (set.errors.length > 0 && found.length === 0);
         if (missing || blocked || currencyChanged) {
-          connection.autoSync = false;
-          connection.status = "failed";
+          if (connection.status !== "revoked") connection.status = "failed";
           connection.lastError = reviewMessage;
           result.reviewRequired = true;
           result.ok = false;
@@ -210,7 +213,7 @@ export class SimplefinDiscoveryService {
             !result.errors.includes("identity_review")
           )
             result.errors.push("identity_review");
-        } else {
+        } else if (connection.status !== "revoked") {
           connection.status = "active";
           connection.lastError = null;
         }
@@ -245,17 +248,22 @@ export class SimplefinDiscoveryService {
           } else {
             // Deliberately preserve accountId, cut-off, history and import ledger.
             account.displayName = safeText(descriptor.displayName);
-            account.currencyCode = descriptor.currencyCode;
+            if (account.accountId === null)
+              account.currencyCode = descriptor.currencyCode;
           }
           account = await accounts.save(account);
-          if (remoteAccount.balance) {
+          const acceptedBalance =
+            account.currencyCode === descriptor.currencyCode
+              ? remoteAccount.balance
+              : null;
+          if (acceptedBalance) {
             await m.query(
               `UPDATE bank_sync_accounts SET bank_balance=$1::numeric,
                 bank_balance_currency=$2, bank_balance_date=$3::date, bank_balance_at=$6::timestamptz WHERE id=$4 AND user_id=$5`,
               [
-                remoteAccount.balance.amount,
-                remoteAccount.balance.currencyCode,
-                remoteAccount.balance.referenceDate,
+                acceptedBalance.amount,
+                acceptedBalance.currencyCode,
+                acceptedBalance.referenceDate,
                 account.id,
                 userId,
                 remoteAccount.balanceTimestamp === null
@@ -275,8 +283,9 @@ export class SimplefinDiscoveryService {
             id: account.id,
             name: account.displayName,
             currencyCode: account.currencyCode,
-            balance: remoteAccount.balance?.amount ?? null,
+            balance: acceptedBalance?.amount ?? null,
             balanceAt:
+              acceptedBalance === null ||
               remoteAccount.balanceTimestamp === null
                 ? null
                 : new Date(remoteAccount.balanceTimestamp * 1000).toISOString(),
@@ -290,8 +299,7 @@ export class SimplefinDiscoveryService {
           !seenConnections.has(old.externalSessionId)
         ) {
           // Absence is a review condition, never permission to erase or remap.
-          old.autoSync = false;
-          old.status = "failed";
+          if (old.status !== "revoked") old.status = "failed";
           old.lastError = reviewMessage;
           await connections.save(old);
           result.ok = false;

@@ -1,4 +1,6 @@
-import { formatDateYMD } from "../../../common/date-utils";
+import { formatDateYMD, todayInTimezone } from "../../../common/date-utils";
+import { getRequestTimezone } from "../../../common/request-context";
+import { tr } from "../../../i18n/translate";
 import { NO_BANK_OPERATION } from "../../bank-operation";
 import { BankSyncProviderError } from "../bank-sync-provider.errors";
 import type {
@@ -34,6 +36,7 @@ export interface SimplefinAccount {
   balanceTimestamp: number | null;
   transactions: SimplefinTransaction[];
   transactionsComplete: boolean;
+  refusals: BankTransaction[];
   pendingCount: number;
   refusedCount: number;
 }
@@ -49,7 +52,10 @@ function record(value: unknown): value is RecordValue {
 function invalid(): never {
   throw new BankSyncProviderError(
     "invalid_response",
-    "SimpleFIN returned an incomplete or unsupported response.",
+    tr(
+      "errors.bankSync.simplefinReadFailed",
+      "SimpleFIN could not provide complete account data. Review the connection in SimpleFIN Bridge.",
+    ),
   );
 }
 function text(value: unknown, max = 255): string | null {
@@ -95,7 +101,13 @@ function timestamp(value: unknown): number | null {
 }
 function utcDate(value: unknown): string | null {
   const seconds = timestamp(value);
-  return seconds === null ? null : formatDateYMD(new Date(seconds * 1000));
+  return seconds === null
+    ? null
+    : (todayInTimezone(
+        getRequestTimezone() ??
+          Intl.DateTimeFormat().resolvedOptions().timeZone,
+        new Date(seconds * 1000),
+      ) ?? formatDateYMD(new Date(seconds * 1000)));
 }
 
 /** Invalid booked rows remain explicit refusals, never fallback-hash imports. */
@@ -122,8 +134,7 @@ export function mapSimplefinTransaction(
   const signed = money(raw.amount);
   const bookingDate = utcDate(raw.posted);
   const description = text(raw.description, 750);
-  if (signed === null || bookingDate === null || description === null)
-    return null;
+  if (signed === null || bookingDate === null) return null;
   const absolute = signed.startsWith("-") ? signed.slice(1) : signed;
   const negative = signed.startsWith("-") && /[1-9]/.test(absolute);
   return {
@@ -139,7 +150,7 @@ export function mapSimplefinTransaction(
     valueDate: null,
     transactionDate: utcDate(raw.transacted_at),
     counterpartyName: null,
-    remittance: [description],
+    remittance: description === null ? [] : [description],
     operation: NO_BANK_OPERATION,
   };
 }
@@ -202,6 +213,7 @@ function mapAccount(
   const amount = money(raw.balance);
   const balanceTimestamp = timestamp(raw["balance-date"]);
   const transactions: SimplefinTransaction[] = [];
+  const refusals: BankTransaction[] = [];
   let refusedCount = 0;
   let pendingCount = 0;
   const transactionsComplete = Array.isArray(raw.transactions);
@@ -219,7 +231,36 @@ function mapAccount(
         currencyCode,
       );
       if (mapped) transactions.push(mapped);
-      else refusedCount++;
+      else {
+        refusedCount++;
+        const value = record(row) ? row : {};
+        let hasIdentity = true;
+        try {
+          identity(value.id);
+        } catch {
+          hasIdentity = false;
+        }
+        refusals.push({
+          refusalReason: !hasIdentity
+            ? "missing_identity"
+            : utcDate(value.posted) === null
+              ? "missing_date"
+              : "invalid_amount",
+          entryReference: null,
+          transactionId: null,
+          bankReference: null,
+          amount: null,
+          currencyCode,
+          direction: null,
+          booked: true,
+          bookingDate: utcDate(value.posted),
+          valueDate: null,
+          transactionDate: null,
+          counterpartyName: null,
+          remittance: [],
+          operation: NO_BANK_OPERATION,
+        });
+      }
     }
   }
   return {
@@ -248,6 +289,7 @@ function mapAccount(
     transactionsComplete,
     pendingCount,
     refusedCount,
+    refusals,
   };
 }
 

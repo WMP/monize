@@ -2880,6 +2880,7 @@ CREATE TABLE bank_sync_accounts (
     currency_code VARCHAR(3),
     account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
     sync_from_date DATE,
+    backfill_through DATE,
     last_synced_at TIMESTAMPTZ,
     last_success_at TIMESTAMPTZ,
     last_sync_status VARCHAR(20),

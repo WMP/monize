@@ -104,9 +104,12 @@ export function newPlannedRows(
  */
 export function planFingerprint(
   newRows: readonly Pick<PlannedBankRow, "externalKey" | "amount">[],
+  review?: unknown,
 ): string {
   const pairs = newRows
     .map((row): [string, string] => [row.externalKey, row.amount.toFixed(4)])
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  return createHash("sha256").update(JSON.stringify(pairs)).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(review === undefined ? pairs : { pairs, review }))
+    .digest("hex");
 }

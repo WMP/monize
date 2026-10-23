@@ -71,7 +71,7 @@ describe("SimpleFIN settings", () => {
     expect(screen.getByText(/Access is read-only/)).toBeInTheDocument();
     expect(screen.queryByText(/RSA/)).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Open SimpleFIN Bridge" }),
+      screen.getByRole("link", { name: "SimpleFIN Bridge" }),
     ).toHaveAttribute("rel", "noopener noreferrer");
   });
   it("clears the token at submission and sends it once in the request body", async () => {
@@ -195,5 +195,22 @@ describe("SimpleFIN settings", () => {
     expect(
       screen.getByRole("button", { name: "Connect SimpleFIN" }),
     ).toBeDisabled();
+  });
+  it("treats confirmed empty status as onboarding and retains disabled last-known state after a poll failure",async()=>{
+    let poll!:()=>void;
+    const timer=vi.spyOn(window,"setInterval").mockImplementation((handler)=>{poll=handler as ()=>void; return 123;});
+    try {
+      await mount();
+      expect(screen.queryByText("Could not load SimpleFIN status.")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button",{name:"Try again"})).not.toBeInTheDocument();
+      api.getStatus.mockResolvedValueOnce(status(true));
+      await act(async()=>poll());
+      expect(screen.getByText("SimpleFIN is connected.")).toBeInTheDocument();
+      api.getStatus.mockRejectedValueOnce(new Error("offline"));
+      await act(async()=>poll());
+      expect(screen.getByText("SimpleFIN is connected.")).toBeInTheDocument();
+      expect(screen.getByText("Could not load SimpleFIN status.")).toBeInTheDocument();
+      expect(screen.getByRole("button",{name:"Remove SimpleFIN from Monize"})).toBeDisabled();
+    } finally { timer.mockRestore(); }
   });
 });

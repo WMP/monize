@@ -1,3 +1,4 @@
+import { requestContextStorage } from "../../../common/request-context";
 import demo from "./fixtures/bridge-demo-v2.json";
 import {
   mapSimplefinAccountSet,
@@ -221,5 +222,33 @@ describe("SimpleFIN scoped failure handling", () => {
         "checking",
       ),
     ).toBe(true);
+  });
+  it.each([
+    ["America/Toronto", "2026-10-16T00:30:00Z", "2026-10-15"],
+    ["Asia/Tokyo", "2026-10-15T16:30:00Z", "2026-10-16"],
+    ["America/Toronto", "2026-03-08T07:30:00Z", "2026-03-08"],
+    ["America/Toronto", "2026-11-01T06:30:00Z", "2026-11-01"],
+  ])("uses %s for the booking date at %s", (timezone, at, expected) => {
+    requestContextStorage.run({ timezone }, () => {
+      const result = mapSimplefinTransaction(
+        transaction({ posted: Date.parse(at) / 1000 }),
+        origin,
+        "bank",
+        "checking",
+        "USD",
+      );
+      expect(result?.bookingDate).toBe(expected);
+    });
+  });
+  it("allows absent display text without inventing a financial fact", () => {
+    expect(
+      mapSimplefinTransaction(
+        transaction({ description: "" }),
+        origin,
+        "bank",
+        "checking",
+        "USD",
+      ),
+    ).toMatchObject({ remittance: [], amount: "12.34" });
   });
 });

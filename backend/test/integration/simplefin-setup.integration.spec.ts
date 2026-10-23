@@ -1,3 +1,4 @@
+import { SimplefinNotDispatchedError } from "@/bank-sync/providers/simplefin/simplefin.client";
 import { ConfigService } from "@nestjs/config";
 import { BankSyncCredentialsService } from "@/bank-sync/bank-sync-credentials.service";
 import { BankSyncProviderRegistry } from "@/bank-sync/providers/bank-sync-provider.registry";
@@ -214,5 +215,37 @@ describe("SimpleFIN setup leases on PostgreSQL with enforced RLS", () => {
       ),
     ).rejects.toThrow("outside an active");
     expect(client.claim).not.toHaveBeenCalled();
+  });
+  it("makes a proven unsent token retryable while retaining ambiguous-send protection", async () => {
+    client.claim
+      .mockRejectedValueOnce(new SimplefinNotDispatchedError("transport"))
+      .mockResolvedValueOnce(access);
+    const value = token("unsent");
+    await expect(
+      scoped(alice, () => service.connect(alice, value)),
+    ).rejects.toMatchObject({
+      status: 503,
+      message: expect.stringContaining("not sent"),
+    });
+    await expect(
+      scoped(alice, () => service.connect(alice, value)),
+    ).resolves.toBeUndefined();
+    expect((await resolve()).accessUrl).toBe(access);
+  });
+  it("does not let an expired worker remove its token fence", async () => {
+    client.claim.mockImplementationOnce(async () => {
+      await harness.owner.query(
+        "UPDATE job_claims SET expires_at=clock_timestamp()-INTERVAL '1 second' WHERE claim_key='setup'",
+      );
+      throw new SimplefinNotDispatchedError("transport");
+    });
+    const value = token("stale-unsent");
+    await expect(
+      scoped(alice, () => service.connect(alice, value)),
+    ).rejects.toMatchObject({ status: 503 });
+    await expect(
+      scoped(alice, () => service.connect(alice, value)),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(client.claim).toHaveBeenCalledTimes(1);
   });
 });

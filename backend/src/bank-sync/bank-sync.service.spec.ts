@@ -587,6 +587,7 @@ describe("BankSyncService", () => {
         skipped: 0,
         excluded: 0,
         refused: {
+          missing_identity: 0,
           missing_date: 0,
           future_date: 0,
           invalid_amount: 0,
@@ -1470,6 +1471,7 @@ describe("BankSyncService", () => {
         skipped: 0,
         excluded: 0,
         refused: {
+          missing_identity: 0,
           missing_date: 0,
           future_date: 0,
           invalid_amount: 0,

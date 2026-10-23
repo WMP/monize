@@ -396,4 +396,126 @@ describe("SimpleFIN discovery on PostgreSQL with enforced RLS", () => {
       errors: ["partial_data"],
     });
   });
+  it("preserves an explicit stop through refresh, token rotation and absence", async () => {
+    const first = await discover();
+    const id = first.connections[0].id;
+    await harness.owner.query(
+      "UPDATE bank_sync_connections SET status='revoked',auto_sync=false WHERE id=$1",
+      [id],
+    );
+    await discover();
+    await scoped(alice, () =>
+      storage.storeClaimedAccessUrl(
+        alice,
+        access.replace("discovery-password", "new-password"),
+        true,
+      ),
+    );
+    await discover();
+    client.accounts.mockResolvedValue({
+      connections: [],
+      accounts: [],
+      errlist: [],
+    });
+    await discover();
+    expect(
+      (
+        await harness.owner.query(
+          "SELECT status,auto_sync FROM bank_sync_connections WHERE id=$1",
+          [id],
+        )
+      )[0],
+    ).toMatchObject({ status: "revoked", auto_sync: false });
+  });
+  it.each([true, false])(
+    "preserves desired daily sync %s through a transient error and recovery",
+    async (desired) => {
+      const first = await discover();
+      const id = first.connections[0].id;
+      await harness.owner.query(
+        "UPDATE bank_sync_connections SET auto_sync=$1 WHERE id=$2",
+        [desired, id],
+      );
+      const failed = demo();
+      failed.errlist = [
+        {
+          code: "act.failed",
+          account_id: failed.accounts[0].id,
+          conn_id: failed.accounts[0].conn_id,
+        },
+      ];
+      client.accounts.mockResolvedValue(failed);
+      await discover();
+      expect(
+        (
+          await harness.owner.query(
+            "SELECT status,auto_sync FROM bank_sync_connections WHERE id=$1",
+            [id],
+          )
+        )[0],
+      ).toMatchObject({ status: "failed", auto_sync: desired });
+      expect(
+        await harness.owner.query(
+          "SELECT id FROM bank_sync_connections WHERE id=$1 AND status='active' AND auto_sync=true",
+          [id],
+        ),
+      ).toHaveLength(0);
+      client.accounts.mockResolvedValue(demo());
+      await discover();
+      expect(
+        (
+          await harness.owner.query(
+            "SELECT status,auto_sync FROM bank_sync_connections WHERE id=$1",
+            [id],
+          )
+        )[0],
+      ).toMatchObject({ status: "active", auto_sync: desired });
+    },
+  );
+  it("keeps currency review blocked across three discoveries and withholds the foreign balance", async () => {
+    const first = await discover();
+    const id = first.connections[0].accounts[0].id;
+    const local = await createTestAccount(harness.owner, alice, {
+      currencyCode: "USD",
+    });
+    await harness.owner.query(
+      "UPDATE bank_sync_accounts SET account_id=$1,sync_from_date='2026-01-01' WHERE id=$2",
+      [local.id, id],
+    );
+    await harness.owner.query(
+      "UPDATE bank_sync_connections SET auto_sync=true WHERE id=$1",
+      [first.connections[0].id],
+    );
+    const changed = demo();
+    changed.accounts[0].currency = "EUR";
+    client.accounts.mockResolvedValue(changed);
+    for (let n = 0; n < 3; n++) {
+      expect(await discover()).toMatchObject({
+        ok: false,
+        reviewRequired: true,
+      });
+      expect(
+        (
+          await harness.owner.query(
+            "SELECT currency_code,bank_balance FROM bank_sync_accounts WHERE id=$1",
+            [id],
+          )
+        )[0],
+      ).toMatchObject({ currency_code: "USD", bank_balance: null });
+    }
+    // Explicit unlink/review accepts fresh remote metadata without reusing the former mapping.
+    await harness.owner.query(
+      "UPDATE bank_sync_accounts SET account_id=NULL,sync_from_date=NULL WHERE id=$1",
+      [id],
+    );
+    expect(await discover()).toMatchObject({ ok: true });
+    expect(
+      (
+        await harness.owner.query(
+          "SELECT currency_code FROM bank_sync_accounts WHERE id=$1",
+          [id],
+        )
+      )[0].currency_code,
+    ).toBe("EUR");
+  });
 });

@@ -1241,6 +1241,7 @@ describe("BankSyncConnectionsService", () => {
         false,
         null,
         null,
+        false,
       ]);
       expect(view.autoSync).toBe(false);
     });
@@ -1262,6 +1263,7 @@ describe("BankSyncConnectionsService", () => {
         null,
         null,
         false,
+        false,
       ]);
       expect(view.tagOperationType).toBe(false);
     });
@@ -1278,6 +1280,7 @@ describe("BankSyncConnectionsService", () => {
         null,
         null,
         true,
+        false,
       ]);
     });
 
@@ -1307,6 +1310,7 @@ describe("BankSyncConnectionsService", () => {
         null,
         "never",
         null,
+        false,
       ]);
       expect(view.notifySuccess).toBe("never");
     });

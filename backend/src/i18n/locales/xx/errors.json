@@ -896,7 +896,10 @@
     "simplefinClaimUncertain": "[XX-SimpleFIN setup did not complete. The token may have been consumed. Check Bridge, revoke any unused app token, and generate a new setup token.-XX]",
     "simplefinClaimStorageFailed": "[XX-SimpleFIN consumed the setup token, but Monize could not confirm saving the credential. Check connection status first. If not connected, revoke the app token in Bridge and generate a new setup token.-XX]",
     "simplefinIdentityReview": "[XX-SimpleFIN account identities changed or are missing. Review the accounts before enabling syncing; existing mappings were preserved.-XX]",
-    "simplefinSubscriptionRequired": "[XX-SimpleFIN Bridge requires an active subscription. Review billing in SimpleFIN Bridge.-XX]"
+    "simplefinSubscriptionRequired": "[XX-SimpleFIN Bridge requires an active subscription. Review billing in SimpleFIN Bridge.-XX]",
+    "simplefinReadFailed": "[XX-SimpleFIN could not provide complete account data. Review the connection in SimpleFIN Bridge.-XX]",
+    "simplefinQuotaExhausted": "[XX-SimpleFIN request quota exhausted. Wait for quota to replenish and retry the current batch.-XX]",
+    "simplefinClaimNotSent": "[XX-SimpleFIN is temporarily unavailable. The setup token was not sent; try this token again later.-XX]"
   },
   "warranties": {
     "notFound": "[XX-Warranty with ID {{ id }} not found-XX]",

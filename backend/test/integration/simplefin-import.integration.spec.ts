@@ -1,3 +1,7 @@
+import {
+  requestContextStorage,
+  getRequestTimezone,
+} from "@/common/request-context";
 import { BankSyncConnectionsService } from "@/bank-sync/bank-sync-connections.service";
 import { NetWorthService } from "@/net-worth/net-worth.service";
 import { BankSyncModule } from "@/bank-sync/bank-sync.module";
@@ -231,13 +235,17 @@ describe("SimpleFIN through the real preview, planner, writer and scheduler", ()
   });
 
   it("does not import any partial backfill or advance success when a later window fails", async () => {
-    await scope(() =>
+    const localScope = <T>(run: () => Promise<T>) =>
+      scope(() =>
+        requestContextStorage.run({ userId, timezone: "America/Toronto" }, run),
+      );
+    await localScope(() =>
       sync.linkAccount(userId, bankId, {
         accountId: localId,
         syncFromDate: addDaysYMD(today, -120),
       }),
     );
-    const preview = await scope(() =>
+    const preview = await localScope(() =>
       sync.previewAccount(userId, bankId, null),
     );
     jest
@@ -246,7 +254,7 @@ describe("SimpleFIN through the real preview, planner, writer and scheduler", ()
       .mockResolvedValueOnce(payload())
       .mockRejectedValueOnce(new SimplefinTransportError("http", 503));
     await expect(
-      scope(() =>
+      localScope(() =>
         sync.syncAccount(userId, bankId, null, preview.planFingerprint),
       ),
     ).rejects.toMatchObject({ status: 503 });
@@ -358,5 +366,232 @@ describe("SimpleFIN through the real preview, planner, writer and scheduler", ()
       [connectionId],
     );
     expect(row).toMatchObject({ status: "revoked", auto_sync: false });
+  });
+  it("imports good rows around bad rows and keeps refusal counts visible and fingerprinted", async () => {
+    const data = payload();
+    data.accounts[0].transactions.push(
+      { id: "bad-date", posted: 0, amount: "5.00", description: "bad date" },
+      {
+        id: "bad-precision",
+        posted: Date.parse(date + "T12:00:00Z") / 1000,
+        amount: "5.12345",
+        description: "bad precision",
+      },
+      {
+        id: "",
+        posted: Date.parse(date + "T12:00:00Z") / 1000,
+        amount: "5.00",
+        description: "bad identity",
+      },
+    );
+    jest.mocked(client.accounts).mockResolvedValue(data);
+    const preview = await scope(() =>
+      sync.previewAccount(userId, bankId, null),
+    );
+    expect(preview.summary).toMatchObject({
+      new: 1,
+      refused: 3,
+      refusedByReason: {
+        missing_date: 1,
+        invalid_amount: 1,
+        missing_identity: 1,
+      },
+    });
+    const result = await scope(() =>
+      sync.syncAccount(userId, bankId, null, preview.planFingerprint),
+    );
+    expect(result).toMatchObject({
+      imported: 1,
+      refused: { missing_date: 1, invalid_amount: 1, missing_identity: 1 },
+    });
+    expect((await confirm()).imported).toBe(0);
+    data.accounts[0].transactions.pop();
+    const changed = await scope(() =>
+      sync.previewAccount(userId, bankId, null),
+    );
+    data.accounts[0].transactions.pop();
+    await expect(
+      scope(() =>
+        sync.syncAccount(userId, bankId, null, changed.planFingerprint),
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+  it("resumes two year-long histories after quota replenishes without restarting committed batches", async () => {
+    const start = addDaysYMD(today, -365);
+    const data = payload();
+    for (const remote of data.accounts)
+      remote.transactions = Array.from({ length: 366 }, (_, n) => ({
+        id: "history-" + n,
+        posted: Date.parse(addDaysYMD(start, n) + "T12:00:00Z") / 1000,
+        amount: "1.0000",
+        description: "History row",
+      }));
+    jest.mocked(client.accounts).mockResolvedValue(data);
+    const card = (
+      await harness.owner.query(
+        "SELECT id FROM bank_sync_accounts WHERE connection_id=$1 AND id<>$2",
+        [connectionId, bankId],
+      )
+    )[0].id;
+    const cardLocal = await createTestAccount(harness.owner, userId, {
+      currencyCode: "USD",
+    });
+    await scope(() =>
+      sync.linkAccount(userId, card, {
+        accountId: cardLocal.id,
+        syncFromDate: start,
+      }),
+    );
+    await scope(() =>
+      sync.linkAccount(userId, bankId, {
+        accountId: localId,
+        syncFromDate: start,
+      }),
+    );
+    let replenishments = 0;
+    for (const id of [bankId, card]) {
+      for (let batch = 0; batch < 9; batch++) {
+        const before = (
+          await harness.owner.query(
+            "SELECT backfill_through::text,last_success_at FROM bank_sync_accounts WHERE id=$1",
+            [id],
+          )
+        )[0];
+        let preview;
+        try {
+          preview = await scope(() => sync.previewAccount(userId, id, null));
+        } catch {
+          expect(
+            (
+              await harness.owner.query(
+                "SELECT backfill_through::text FROM bank_sync_accounts WHERE id=$1",
+                [id],
+              )
+            )[0].backfill_through,
+          ).toBe(before.backfill_through);
+          await harness.owner.query(
+            "UPDATE bank_sync_provider_requests SET requested_at=clock_timestamp()-INTERVAL '25 hours' WHERE user_id=$1",
+            [userId],
+          );
+          replenishments++;
+          preview = await scope(() => sync.previewAccount(userId, id, null));
+        }
+        expect(preview.history?.remaining).toBe(batch < 8);
+        try {
+          await scope(() =>
+            sync.syncAccount(userId, id, null, preview.planFingerprint),
+          );
+        } catch (error) {
+          expect(error).toMatchObject({ status: 429 });
+          expect(
+            (
+              await harness.owner.query(
+                "SELECT backfill_through::text FROM bank_sync_accounts WHERE id=$1",
+                [id],
+              )
+            )[0].backfill_through,
+          ).toBe(before.backfill_through);
+          await harness.owner.query(
+            "UPDATE bank_sync_provider_requests SET requested_at=clock_timestamp()-INTERVAL '25 hours' WHERE user_id=$1",
+            [userId],
+          );
+          replenishments++;
+          await scope(() =>
+            sync.syncAccount(userId, id, null, preview.planFingerprint),
+          );
+        }
+        const row = (
+          await harness.owner.query(
+            "SELECT backfill_through::text,last_success_at FROM bank_sync_accounts WHERE id=$1",
+            [id],
+          )
+        )[0];
+        if (batch < 8) {
+          expect(row.last_success_at).toBeNull();
+          expect(row.backfill_through).toBe(preview.history!.dateTo);
+        } else {
+          expect(row.backfill_through).toBeNull();
+          expect(row.last_success_at).not.toBeNull();
+        }
+      }
+    }
+    expect(replenishments).toBeGreaterThan(0);
+    expect(await count("bank_sync_imported_transactions")).toBe(732);
+    expect(await count("transactions")).toBe(732);
+  });
+  it("explicitly resumes a stopped institution without re-enabling daily sync", async () => {
+    const connections = harness.module.get(BankSyncConnectionsService);
+    await scope(() => connections.disconnect(userId, connectionId));
+    await scope(() => discovery.discover(userId));
+    expect(
+      (
+        await harness.owner.query(
+          "SELECT status FROM bank_sync_connections WHERE id=$1",
+          [connectionId],
+        )
+      )[0].status,
+    ).toBe("revoked");
+    await scope(() =>
+      connections.updateConnection(userId, connectionId, { resume: true }),
+    );
+    expect(
+      (
+        await harness.owner.query(
+          "SELECT status,auto_sync FROM bank_sync_connections WHERE id=$1",
+          [connectionId],
+        )
+      )[0],
+    ).toMatchObject({ status: "active", auto_sync: false });
+  });
+  it.each([true, false])(
+    "cron honors preserved daily-sync preference %s after provider recovery",
+    async (desired) => {
+      await confirm();
+      await harness.owner.query(
+        "UPDATE bank_sync_connections SET auto_sync=$1 WHERE id=$2",
+        [desired, connectionId],
+      );
+      const failed = payload();
+      failed.errlist = [
+        { code: "act.failed", conn_id: "bank", account_id: "checking" },
+      ];
+      jest.mocked(client.accounts).mockResolvedValue(failed);
+      await scope(() => discovery.discover(userId));
+      jest.mocked(client.accounts).mockClear();
+      await harness.module.get(BankSyncCronService).handleDailySync();
+      expect(client.accounts).not.toHaveBeenCalled();
+      jest.mocked(client.accounts).mockResolvedValue(payload());
+      await scope(() => discovery.discover(userId));
+      jest.mocked(client.accounts).mockClear();
+      await harness.module.get(BankSyncCronService).handleDailySync();
+      expect(jest.mocked(client.accounts).mock.calls.length > 0).toBe(desired);
+    },
+  );
+  it("uses the same stored financial timezone in manual and scheduled reads", async () => {
+    await harness.owner.query(
+      "INSERT INTO user_preferences(user_id,timezone,language) VALUES($1,'America/Toronto','de') ON CONFLICT(user_id) DO UPDATE SET timezone='America/Toronto',language='de'",
+      [userId],
+    );
+    const zones: Array<string | undefined> = [];
+    jest.mocked(client.accounts).mockImplementation(async () => {
+      zones.push(getRequestTimezone());
+      return payload();
+    });
+    const local = () =>
+      requestContextStorage.run(
+        { userId, timezone: "America/Toronto" },
+        async () => {
+          const preview = await sync.previewAccount(userId, bankId, null);
+          await sync.syncAccount(userId, bankId, null, preview.planFingerprint);
+        },
+      );
+    await local();
+    await harness.owner.query(
+      "UPDATE bank_sync_connections SET auto_sync=true WHERE id=$1",
+      [connectionId],
+    );
+    await harness.module.get(BankSyncCronService).handleDailySync();
+    expect(zones.length).toBeGreaterThan(2);
+    expect(zones.every((zone) => zone === "America/Toronto")).toBe(true);
   });
 });

@@ -37,6 +37,7 @@ import type { BankTransaction } from "./providers/bank-sync-provider.interface";
 
 /** The reasons a booked row is refused, each counted in `refused`. */
 export const BANK_IMPORT_REFUSAL_REASONS = [
+  "missing_identity",
   "missing_date",
   "future_date",
   "invalid_amount",
@@ -95,6 +96,13 @@ export interface PlannedBankRow {
 }
 
 export interface BankImportPlan {
+  review?: {
+    dateFrom: string;
+    dateTo: string;
+    cursor: string | null;
+    remaining: boolean;
+    refused: Record<RefusalReason, number>;
+  };
   planned: PlannedBankRow[];
   refused: Record<RefusalReason, number>;
   pending: number;
@@ -244,6 +252,7 @@ function sameCurrency(rowCurrency: string | null, accountCurrency: string) {
 
 function classify(row: BankTransaction, ctx: BankImportContext): Classified {
   if (!row.booked) return { kind: "pending" };
+  if (row.refusalReason) return { kind: "refused", reason: row.refusalReason };
 
   const transactionDate = firstValidDate(row);
   if (transactionDate === null) {

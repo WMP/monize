@@ -170,6 +170,7 @@ export interface BankSyncCallbackPayload {
 
 /** Send only the setting that changed; the server leaves the other as it is. */
 export interface UpdateBankSyncConnection {
+  resume?: boolean;
   autoSync?: boolean;
   notifySuccess?: BankSyncNotifySuccessMode;
   tagOperationType?: boolean;
@@ -278,6 +279,7 @@ export interface BankSyncPreviewSummary {
 
 /** `POST /bank-sync/accounts/:id/preview`: nothing in it has been written. */
 export interface BankSyncPreview {
+  history?: { dateFrom: string; dateTo: string; remaining: boolean };
   bankAccountId: string;
   /** The Monize account's currency; every figure below is in it. */
   currencyCode: string;

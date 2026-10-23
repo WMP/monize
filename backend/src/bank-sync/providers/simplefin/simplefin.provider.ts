@@ -57,7 +57,10 @@ function fitsPlanner(amount: string): boolean {
 function invalid(): never {
   throw new BankSyncProviderError(
     "invalid_response",
-    "SimpleFIN account data is incomplete. Review the connection in SimpleFIN Bridge.",
+    tr(
+      "errors.bankSync.simplefinReadFailed",
+      "SimpleFIN could not provide complete account data. Review the connection in SimpleFIN Bridge.",
+    ),
   );
 }
 
@@ -96,7 +99,7 @@ export class SimplefinProvider {
         FROM bank_sync_accounts a JOIN bank_sync_connections c ON c.id=a.connection_id
         WHERE a.user_id=$1 AND c.user_id=$1 AND a.id=ANY($2::uuid[])
           AND c.provider='simplefin' AND c.status='active' AND a.account_id IS NOT NULL
-          AND a.last_success_at IS NOT NULL`,
+          AND a.last_success_at IS NOT NULL AND a.backfill_through IS NULL`,
             [userId, accountIds],
           ),
         )) as Array<{ sync_from_date: string | null; last_success_at: Date }>)
@@ -113,7 +116,17 @@ export class SimplefinProvider {
       );
       if (!window || next.dateFrom < window.dateFrom) window = next;
     }
-    return this.scope.run({ userId, window, reads: new Map() }, run);
+    return this.scope.run(
+      {
+        userId,
+        window:
+          window && simplefinWindows(window.dateFrom, window.dateTo).length <= 2
+            ? window
+            : null,
+        reads: new Map(),
+      },
+      run,
+    );
   }
 
   async readAccount(
@@ -150,9 +163,10 @@ export class SimplefinProvider {
       currencyCode: account.currencyCode,
       transactions: account.transactions.filter(
         (row) =>
-          row.bookingDate !== null &&
-          row.bookingDate >= window.dateFrom &&
-          row.bookingDate <= window.dateTo,
+          row.refusalReason !== undefined ||
+          (row.bookingDate !== null &&
+            row.bookingDate >= window.dateFrom &&
+            row.bookingDate <= window.dateTo),
       ),
       balance: account.balance,
       pending: account.pending,
@@ -173,16 +187,28 @@ export class SimplefinProvider {
     let count = 0;
     // A failed later window rejects this promise before any account is handed
     // to the planner/writer. Reservations are durable and never refunded.
-    for (const window of windows) {
-      const reservation = await this.budget.reserve(
-        userId,
-        credentials.credentialId,
+    if (windows.length > 24)
+      throw new BankSyncProviderError(
+        "rate_limited",
+        tr(
+          "errors.bankSync.simplefinQuotaExhausted",
+          "SimpleFIN request quota exhausted. Wait for quota to replenish and retry the current batch.",
+        ),
       );
-      if (!reservation.allowed)
-        throw new BankSyncProviderError(
-          "rate_limited",
-          "SimpleFIN request quota exhausted.",
-        );
+    const reservation = await this.budget.reserve(
+      userId,
+      credentials.credentialId,
+      windows.length,
+    );
+    if (!reservation.allowed)
+      throw new BankSyncProviderError(
+        "rate_limited",
+        tr(
+          "errors.bankSync.simplefinQuotaExhausted",
+          "SimpleFIN request quota exhausted. Wait for quota to replenish and retry the current batch.",
+        ),
+      );
+    for (const window of windows) {
       let payload: unknown;
       try {
         payload = await this.client.accounts(credentials.accessUrl, window);
@@ -213,7 +239,10 @@ export class SimplefinProvider {
                   "errors.bankSync.simplefinSubscriptionRequired",
                   "SimpleFIN Bridge requires an active subscription. Review billing in SimpleFIN Bridge.",
                 )
-              : "SimpleFIN could not provide complete account data.",
+              : tr(
+                  "errors.bankSync.simplefinReadFailed",
+                  "SimpleFIN could not provide complete account data. Review the connection in SimpleFIN Bridge.",
+                ),
           status ?? null,
         );
       }
@@ -242,7 +271,6 @@ export class SimplefinProvider {
         }
         if (
           !remote.transactionsComplete ||
-          remote.refusedCount > 0 ||
           simplefinAccountBlocked(
             set.errors,
             remote.connectionId,
@@ -252,6 +280,7 @@ export class SimplefinProvider {
         )
           account.blocked = true;
         account.pending = Math.max(account.pending, remote.pendingCount);
+        account.transactions.push(...remote.refusals);
         if (
           remote.balanceTimestamp !== null &&
           (account.balanceAt === null ||
@@ -269,11 +298,17 @@ export class SimplefinProvider {
                       : new Date(remote.balanceTimestamp * 1000).toISOString(),
                 };
           if (remote.balance && !fitsPlanner(remote.balance.amount))
-            account.blocked = true;
+            account.balance = null;
         }
         for (const row of remote.transactions) {
-          if (row.amount === null || !fitsPlanner(row.amount))
-            account.blocked = true;
+          if (row.amount === null || !fitsPlanner(row.amount)) {
+            account.transactions.push({
+              ...row,
+              amount: null,
+              refusalReason: "invalid_amount",
+            });
+            continue;
+          }
           const content = JSON.stringify(row);
           const previous = seenRows.get(row.externalKey);
           if (previous !== undefined) {

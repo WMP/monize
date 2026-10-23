@@ -15,7 +15,10 @@ import {
 } from "../common/jobs/job-claim.service";
 import { tr } from "../i18n/translate";
 import { SimplefinCredentialsService } from "./simplefin-credentials.service";
-import { SimplefinClient } from "./providers/simplefin/simplefin.client";
+import {
+  SimplefinClient,
+  SimplefinNotDispatchedError,
+} from "./providers/simplefin/simplefin.client";
 import { simplefinClaimUrl } from "./providers/simplefin/simplefin.urls";
 
 export const SIMPLEFIN_SETUP_LEASE_MS = 120_000;
@@ -158,7 +161,36 @@ export class SimplefinSetupService {
       let accessUrl: string;
       try {
         accessUrl = await this.client.claim(setupToken);
-      } catch {
+      } catch (error) {
+        if (error instanceof SimplefinNotDispatchedError) {
+          // Same lock/order as credential storage. An expired worker cannot
+          // remove the permanent fence after a newer worker acquired the lease.
+          await withScopedDb(this.dataSource, async (m) => {
+            const current = returnedRows(
+              await m.query(
+                `SELECT id FROM job_claims WHERE claim_type=$1 AND user_id=$2 AND claim_key=$3
+               AND lease_token=$4::uuid AND expires_at > clock_timestamp() FOR UPDATE`,
+                [
+                  JobClaimType.SimplefinSetup,
+                  userId,
+                  SIMPLEFIN_SETUP_LEASE_KEY,
+                  lease,
+                ],
+              ),
+            );
+            if (current.length)
+              await m.query(
+                "DELETE FROM job_claims WHERE claim_type=$1 AND user_id=$2 AND claim_key=$3",
+                [JobClaimType.SimplefinSetup, userId, attemptKey],
+              );
+          });
+          throw new ServiceUnavailableException(
+            tr(
+              "errors.bankSync.simplefinClaimNotSent",
+              "SimpleFIN is temporarily unavailable. The setup token was not sent; try this token again later.",
+            ),
+          );
+        }
         throw new ServiceUnavailableException(
           tr(
             "errors.bankSync.simplefinClaimUncertain",

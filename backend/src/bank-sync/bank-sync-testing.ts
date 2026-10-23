@@ -1,3 +1,4 @@
+import { EnableBankingReader } from "./providers/enable-banking/enable-banking.reader";
 import { generateKeyPairSync } from "node:crypto";
 import type { ConfigService } from "@nestjs/config";
 import { EncryptionService } from "../common/encryption/encryption.service";
@@ -58,9 +59,14 @@ export function fakeProvider(): jest.Mocked<BankSyncProvider> {
 
 export function fakeRegistry(
   provider: BankSyncProvider,
-): jest.Mocked<Pick<BankSyncProviderRegistry, "getByName" | "listNames">> {
+): jest.Mocked<
+  Pick<BankSyncProviderRegistry, "getByName" | "listNames" | "getReadProvider">
+> {
   return {
     getByName: jest.fn().mockReturnValue(provider),
+    getReadProvider: jest
+      .fn()
+      .mockReturnValue(new EnableBankingReader(provider)),
     listNames: jest.fn().mockReturnValue(["enable_banking"] as const),
   };
 }

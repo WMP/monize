@@ -114,11 +114,11 @@ Canonical account identity is `(SimpleFIN server origin, conn_id, account.id)`. 
 | `connections[].conn_id` | Provider institution-connection identity; preserve local mappings on repeated discovery. |
 | Account `id`, `conn_id`, `name` | Scoped external identity and display name; missing required identity refuses the account. |
 | `currency` | Valid supported ISO code. Custom currency URLs are unsupported and reported; never fetched or replaced with USD. |
-| `balance`, `balance-date` | Signed decimal and source timestamp. Display the actual timestamp; derive the existing date field using UTC. Available balance is not substituted for ledger balance. |
+| `balance`, `balance-date` | Signed decimal and source timestamp. Display the actual timestamp; derive the existing date field using the resolved financial timezone. Available balance is not substituted for ledger balance. |
 | Transaction `id` | Required booked-row identity within the canonical account. |
 | Signed `amount` | Preserve decimal text; positive → credit, negative → debit, amount → absolute decimal text. Reject malformed/overflow/excess precision using Monize's supported money rules. |
-| `posted` | Required positive epoch timestamp for booked rows; convert to a UTC calendar date for `bookingDate`. Zero/invalid timestamp is refused, not changed to today. |
-| `transacted_at` | Optional transaction date using UTC; unknown stays null. |
+| `posted` | Required positive epoch timestamp for booked rows; convert to a calendar date in the resolved financial timezone for `bookingDate`. Zero/invalid timestamp is refused, not changed to today. |
+| `transacted_at` | Optional transaction date using the resolved financial timezone; unknown stays null. |
 | `pending` | `true` is excluded from imports; booked identity is established only when it posts. |
 | `description` | Bounded description/remittance; absent counterparty stays null. Provider-specific payee/extra fields require separate validated mappings. |
 
@@ -144,9 +144,9 @@ Token replacement with identical provider identities preserves mappings and keys
 
 Use one scheduled SimpleFIN batch per user per day, within the existing daily job-claim framework. Share reads across all that user's SimpleFIN institution connections; preserve current per-user job-claim semantics and user-context isolation. No polling, browser heartbeat requests, or webhooks.
 
-Each manual or scheduled operation takes the earliest required linked-account cutoff for its batch. Incremental windows overlap the last successful date by seven days, bounded by each account's cutoff. Convert inclusive UTC day ranges to epoch intervals `[start midnight, midnight after end day)`. Split requests into intervals no longer than 90 × 86,400 seconds; process longer backfills chronologically and stop cleanly when quota is exhausted. Default first preview is at most the latest 89 days, with an explicit older-history option.
+Each manual or scheduled operation takes the earliest required linked-account cutoff for its batch. Incremental windows overlap the last successful date by seven days, bounded by each account's cutoff. Convert inclusive financial-local day ranges to epoch intervals `[start midnight, midnight after end day)`. Use conservative UTC bounds padded to cover financial-local days, filter rows by their local booking date, and split into intervals no longer than 45 × 86,400 seconds. Process longer histories in separately reviewed complete batches, retaining committed progress when quota is exhausted. Default first preview is at most the latest 89 days, with an explicit older-history option.
 
-Before any `/accounts` request, acquire a row lock on the credential inside a short transaction, count request reservations in the preceding rolling 24 hours, and reserve one if fewer than 24 exist. Commit before network I/O. Count failed attempts as spent; concurrent workers cannot each spend the last slot. Treat this conservative local cap as a ceiling, not a guarantee the provider has quota. Observe provider throttling and do not automatically retry within an operation. Replenishment time is derived from the oldest relevant reservation.
+Before any `/accounts` request, acquire a row lock on the credential inside a short transaction, count request reservations in the preceding rolling 24 hours, and reserve all windows of the complete read only if they fit within 24. Commit before network I/O. Count failed attempts as spent; concurrent workers cannot each spend the last slot. Treat this conservative local cap as a ceiling, not a guarantee the provider has quota. Observe provider throttling and do not automatically retry within an operation. Replenishment time is derived from the oldest relevant reservation.
 
 Reuse one Account Set result for transaction and balance reads within an operation. Prefer a single all-account read per time window; never send one transactions call and one balance call for every account. Preview confirmation may fetch again and consumes another reservation; compare the existing plan fingerprint and require a renewed preview if it changed. Do not import a partial multi-window preview. A large backfill may be divided into explicitly reviewed complete batches, each with its own preview/fingerprint/cursor; advance only after commit.
 
@@ -190,7 +190,7 @@ Required tests must fail against the old implementation and pass with the change
 
 | Layer | Required cases |
 |---|---|
-| Pure mapper | Signed decimals, zero, precision limits, card signs, UTC midnight/leap-day boundaries, pending → booked, missing fields, custom currencies, scoped ID collisions, same ID with changed description. |
+| Pure mapper | Signed decimals, zero, precision limits, card signs, local midnight/leap-day and DST boundaries, pending → booked, missing fields, custom currencies, scoped ID collisions, same ID with changed description. |
 | HTTP client | Claim once, Basic Auth extraction, v2 requests, all HTTP/error-table cases, 90-day splits and exclusive end, malformed/oversized payload, deadline, redaction, host/port/redirect/DNS protections. |
 | Services | Persist-before-discover, ambiguous claim failure, credential replacement failure preserving old access, unchanged identities preserving mappings, changed identities requiring review, no fake revocation/consent expiry. |
 | Real PostgreSQL | Additive migration retaining Enable Banking, credential shape checks, RLS owner isolation, concurrent quota reservations at slot 24, duplicate concurrent imports, rollback on writer failure, tombstones and reconnect. |
@@ -230,7 +230,7 @@ Money precision and read contexts: the existing number-based planner/writer cann
 
 ## Provider request-window limit
 
-The public v2 demo returns unscoped gen.api for requests longer than 45 days: “Requested date range exceeds recommended range of 45 days. In the future, this may be capped.” Request windows are therefore capped at 45 inclusive calendar days (exclusive-end timestamps). This retains the original complete-history requirement and stays within the original 90-day maximum. Every window still reserves rolling quota and must complete before any import plan is returned. Global errors remain blocking; no warning text is allowlisted or silently ignored.
+The public v2 demo returns unscoped gen.api for requests longer than 45 days: “Requested date range exceeds recommended range of 45 days. In the future, this may be capped.” Request windows are therefore capped at 45 inclusive calendar days (exclusive-end timestamps). This retains the original complete-history requirement and stays within the original 90-day maximum. Every complete read reserves its windows together against rolling quota and must complete before any import plan is returned. Global errors remain blocking; no warning text is allowlisted or silently ignored.
 
 
 ## Review corrections: lifecycle, complete batches and dates

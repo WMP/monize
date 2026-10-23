@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, one {# with an invalid amount} other {# with an invalid amount}}",
         "unknown_direction": "{count, plural, one {# with an unknown direction} other {# with an unknown direction}}",
         "currency_mismatch": "{count, plural, one {# in another currency} other {# in another currency}}",
-        "other": "{count, plural, one {# for another reason} other {# for another reason}}"
+        "other": "{count, plural, one {# for another reason} other {# for another reason}}",
+        "missing_identity": "{count, plural, one {# without a bank transaction ID} other {# without a bank transaction ID}}"
       },
       "needsPreview": "Open the preview for {accounts} and confirm the first import",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "Invalid amount",
         "unknown_direction": "Unknown direction",
         "currency_mismatch": "Other currency",
-        "other": "Refused"
+        "other": "Refused",
+        "missing_identity": "Missing bank transaction ID"
       },
       "columns": {
         "date": "Date",
@@ -1786,12 +1788,14 @@
           "none": "No operation type tag for this transaction.",
           "tag": "Tag from the bank's operation type: {tag}"
         }
-      }
+      },
+      "historyBatch": "History batch: {from} to {to}.",
+      "historyBatchRemaining": "History batch: {from} to {to}. More history remains; preview the next batch after importing this one."
     },
     "simplefin": {
       "title": "SimpleFIN",
       "provider": "Data provider",
-      "description": "Connect banks in SimpleFIN Bridge, then paste a one-time setup token here. Access is read-only.",
+      "description": "Connect banks in <bridge>SimpleFIN Bridge</bridge>, then paste a one-time setup token here. Access is read-only.",
       "openBridge": "Open SimpleFIN Bridge",
       "setupToken": "Setup token",
       "connect": "Connect SimpleFIN",
@@ -1809,7 +1813,7 @@
       "quota": "{remaining} requests remaining",
       "nextEligible": "Next available: {date}",
       "stopTitle": "Stop syncing {bank}?",
-      "stopBody": "Existing mappings and transactions stay. Use Refresh accounts to reconnect this institution.",
+      "stopBody": "Existing mappings and transactions stay. Use Resume syncing to reconnect this institution.",
       "stop": "Stop syncing",
       "errors": {
         "unauthorized": "Reconnect using a new setup token.",
@@ -1822,7 +1826,8 @@
         "unavailable": "SimpleFIN did not answer. Try later."
       },
       "enableBanking": "Enable Banking",
-      "stopped": "Syncing stopped"
+      "stopped": "Syncing stopped",
+      "resume": "Resume syncing"
     }
   }
 }

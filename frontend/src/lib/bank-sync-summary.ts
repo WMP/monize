@@ -36,6 +36,7 @@ export interface BankSyncTotals {
 
 /** The refusal reasons the catalog has a sentence for. */
 export const KNOWN_REFUSAL_REASONS = [
+  'missing_identity',
   'missing_date',
   'future_date',
   'invalid_amount',

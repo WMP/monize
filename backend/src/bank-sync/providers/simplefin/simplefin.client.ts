@@ -7,6 +7,8 @@ import {
   SimplefinTransportError,
 } from "./simplefin.transport";
 
+export class SimplefinNotDispatchedError extends SimplefinTransportError {}
+
 @Injectable()
 export class SimplefinClient {
   private readonly logger = new Logger(SimplefinClient.name);
@@ -34,7 +36,7 @@ export class SimplefinClient {
     try {
       this.health.assertAvailable("simplefin");
     } catch {
-      throw new SimplefinTransportError("transport");
+      throw new SimplefinNotDispatchedError("transport");
     }
     try {
       const result = await operation();

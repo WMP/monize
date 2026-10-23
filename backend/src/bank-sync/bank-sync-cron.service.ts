@@ -1,4 +1,13 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
+import { I18nContext, I18nService } from "nestjs-i18n";
+import { I18nMessageFormat } from "nestjs-i18n/dist/utils/i18n-messageformat";
+import { getEffectiveTimezoneOfUser } from "../common/users-by-timezone.util";
+import {
+  requestContextStorage,
+  getRequestContext,
+} from "../common/request-context";
+import { UserPreference } from "../users/entities/user-preference.entity";
+import { resolveUserEmailLocale } from "../i18n/resolve-user-email-locale";
 import { Cron } from "@nestjs/schedule";
 import { DataSource } from "typeorm";
 import { returnedRows } from "../common/db/query-result";
@@ -57,6 +66,7 @@ export class BankSyncCronService {
     private readonly jobClaims: JobClaimService,
     private readonly bankSync: BankSyncService,
     private readonly notifier: BankSyncOutcomeNotifier,
+    @Optional() private readonly i18n?: I18nService,
   ) {}
 
   @Cron("17 5 * * *", { timeZone: "UTC" })
@@ -78,7 +88,7 @@ export class BankSyncCronService {
     for (const userId of userIds) {
       try {
         const ran = await withUserContext(userId, () =>
-          this.syncUser(userId, day),
+          this.withUserFormats(userId, () => this.syncUser(userId, day)),
         );
         if (ran) synced += 1;
       } catch (error) {
@@ -92,6 +102,32 @@ export class BankSyncCronService {
         `Daily bank sync: ${synced} of ${userIds.length} user(s) synced by this replica`,
       );
     }
+  }
+
+  private async withUserFormats<T>(
+    userId: string,
+    run: () => Promise<T>,
+  ): Promise<T> {
+    const formats = await withScopedDb(this.dataSource, async (m) => ({
+      timezone: await getEffectiveTimezoneOfUser(m, userId),
+      lang: this.i18n
+        ? await resolveUserEmailLocale(m.getRepository(UserPreference), userId)
+        : "en",
+    }));
+    return requestContextStorage.run(
+      { ...getRequestContext(), timezone: formats.timezone },
+      () =>
+        this.i18n
+          ? I18nContext.createAsync(
+              new I18nContext(
+                formats.lang,
+                this.i18n,
+                new I18nMessageFormat({ fallbackLanguage: "en" }),
+              ),
+              run,
+            )
+          : run(),
+    );
   }
 
   /**
@@ -211,6 +247,7 @@ export class BankSyncCronService {
         connection_id: string;
         account_id: string;
         last_success_at: Date | null;
+        backfill_through: string | null;
         display_name: string | null;
         identifier_masked: string | null;
         institution_name: string;
@@ -218,7 +255,7 @@ export class BankSyncCronService {
         valid_until: Date | null;
       }>(
         await m.query(
-          `SELECT a.id, a.connection_id, a.account_id, a.last_success_at,
+          `SELECT a.id, a.connection_id, a.account_id, a.last_success_at, a.backfill_through,
                   a.display_name, a.identifier_masked,
                   c.institution_name, c.notify_success, c.valid_until
              FROM bank_sync_accounts a
@@ -236,6 +273,7 @@ export class BankSyncCronService {
         connectionId: row.connection_id,
         accountId: row.account_id,
         lastSuccessAt: row.last_success_at,
+        backfillThrough: row.backfill_through,
         displayName: row.display_name,
         identifierMasked: row.identifier_masked,
         institutionName: row.institution_name,
@@ -252,6 +290,7 @@ interface LinkedBankAccount {
   connectionId: string;
   accountId: string;
   lastSuccessAt: Date | null;
+  backfillThrough?: string | null;
   displayName: string | null;
   identifierMasked: string | null;
   institutionName: string;

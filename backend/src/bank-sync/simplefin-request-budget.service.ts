@@ -22,7 +22,7 @@ export class SimplefinRequestBudgetService {
     credentialId: string,
   ): Promise<SimplefinRequestBudget> {
     return withScopedDb(this.dataSource, async (m) => {
-      await this.lockCredential(m, userId, credentialId);
+      await this.requireCredential(m, userId, credentialId, false);
       return this.readBudget(m, userId, credentialId);
     });
   }
@@ -31,31 +31,43 @@ export class SimplefinRequestBudgetService {
   async reserve(
     userId: string,
     credentialId: string,
+    count = 1,
   ): Promise<SimplefinReservation> {
     if (getActiveScopedManager())
       throw new Error(
         "Reserve SimpleFIN requests outside an active database transaction",
       );
+    if (
+      !Number.isInteger(count) ||
+      count < 1 ||
+      count > SIMPLEFIN_DAILY_REQUEST_LIMIT
+    )
+      throw new Error("Invalid SimpleFIN reservation size");
     return withScopedDb(this.dataSource, async (m) => {
-      await this.lockCredential(m, userId, credentialId);
-      const budget = await this.readBudget(m, userId, credentialId);
-      if (budget.remaining === 0) return { ...budget, allowed: false };
+      await this.requireCredential(m, userId, credentialId, true);
       await m.query(
-        "INSERT INTO bank_sync_provider_requests (user_id, credential_id, requested_at) VALUES ($1, $2, clock_timestamp())",
-        [userId, credentialId],
+        "DELETE FROM bank_sync_provider_requests WHERE credential_id=$1 AND user_id=$2 AND requested_at <= clock_timestamp() - INTERVAL '24 hours'",
+        [credentialId, userId],
+      );
+      const budget = await this.readBudget(m, userId, credentialId);
+      if (budget.remaining < count) return { ...budget, allowed: false };
+      await m.query(
+        "INSERT INTO bank_sync_provider_requests (user_id, credential_id, requested_at) SELECT $1, $2, clock_timestamp() FROM generate_series(1, $3::integer)",
+        [userId, credentialId, count],
       );
       const after = await this.readBudget(m, userId, credentialId);
       return { ...after, allowed: true };
     });
   }
 
-  private async lockCredential(
+  private async requireCredential(
     m: EntityManager,
     userId: string,
     credentialId: string,
+    lock: boolean,
   ): Promise<void> {
     const rows: { id: string }[] = await m.query(
-      "SELECT id FROM bank_sync_credentials WHERE id = $1 AND user_id = $2 AND provider = 'simplefin' FOR UPDATE",
+      `SELECT id FROM bank_sync_credentials WHERE id = $1 AND user_id = $2 AND provider = 'simplefin'${lock ? " FOR UPDATE" : ""}`,
       [credentialId, userId],
     );
     if (rows.length === 0)

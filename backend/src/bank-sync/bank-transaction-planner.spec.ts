@@ -220,6 +220,7 @@ describe("planBankImport", () => {
       expect(result.beforeCutoff).toBe(1);
       expect(result.refused).toEqual({
         ...noRefusals,
+        missing_identity: 0,
         missing_date: 1,
         currency_mismatch: 1,
       });

@@ -47,6 +47,7 @@ jest.mock("../common/db/scoped-db", () =>
 const PKO_BP = resolveProfile("enable_banking", "PL", "PKO Bank Polski");
 
 const emptyRefused = () => ({
+  missing_identity: 0,
   missing_date: 0,
   future_date: 0,
   invalid_amount: 0,
@@ -557,7 +558,16 @@ describe("BankSyncWriterService", () => {
       );
       const outcome = statements("last_sync_status = 'succeeded'")[0];
       expect(String(outcome[0])).toContain("last_sync_error = NULL");
-      expect(outcome[1]).toEqual([BANK_ACCOUNT_ID, USER_ID, 1, 1, 3, true]);
+      expect(outcome[1]).toEqual([
+        BANK_ACCOUNT_ID,
+        USER_ID,
+        1,
+        1,
+        3,
+        true,
+        null,
+        false,
+      ]);
     });
 
     it("writes the bank's balance only when one was fetched", async () => {
@@ -1266,7 +1276,7 @@ describe("BankSyncWriterService", () => {
           selection: { importKeys: ["ref:1"], excludeKeys: ["ref:2", "ref:3"] },
         }),
       );
-      expect(outcomeParams().slice(-1)[0]).toBe(true);
+      expect(outcomeParams()[5]).toBe(true);
       expect(
         String(statements("last_sync_status = 'succeeded'")[0][0]),
       ).toContain("last_success_at = CASE WHEN $6::boolean");
@@ -1282,7 +1292,7 @@ describe("BankSyncWriterService", () => {
       );
       expect(outcome.imported).toBe(1);
       expect(insertedKeys()).toEqual(["ref:1"]);
-      expect(outcomeParams().slice(-1)[0]).toBe(false);
+      expect(outcomeParams()[5]).toBe(false);
     });
 
     it("imports nothing for an empty importKeys, and does not mistake it for no selection", async () => {
@@ -1303,7 +1313,7 @@ describe("BankSyncWriterService", () => {
       expect(manager.create).not.toHaveBeenCalled();
       expect(insertedKeys()).toEqual([]);
       expect(accountsService.recalculateCurrentBalance).not.toHaveBeenCalled();
-      expect(outcomeParams().slice(-1)[0]).toBe(false);
+      expect(outcomeParams()[5]).toBe(false);
     });
 
     it("moves the window when nothing was new and nothing was chosen", async () => {
@@ -1314,7 +1324,7 @@ describe("BankSyncWriterService", () => {
           selection: { importKeys: [], excludeKeys: [] },
         }),
       );
-      expect(outcomeParams().slice(-1)[0]).toBe(true);
+      expect(outcomeParams()[5]).toBe(true);
     });
 
     it("works without a fingerprint, still refusing a key outside the plan", async () => {
