@@ -231,3 +231,32 @@ Money precision and read contexts: the existing number-based planner/writer cann
 ## Provider request-window limit
 
 The public v2 demo returns unscoped gen.api for requests longer than 45 days: “Requested date range exceeds recommended range of 45 days. In the future, this may be capped.” Request windows are therefore capped at 45 inclusive calendar days (exclusive-end timestamps). This retains the original complete-history requirement and stays within the original 90-day maximum. Every window still reserves rolling quota and must complete before any import plan is returned. Global errors remain blocking; no warning text is allowlisted or silently ignored.
+
+
+## Review corrections: lifecycle, complete batches and dates
+
+Discovery preserves explicit revoked status through refresh and credential replacement.
+Transient read failures pause execution through connection status, without changing the
+user's desired auto-sync preference. A linked account retains its accepted currency
+until explicit unlink/review; repeated discovery cannot accept a changed currency.
+Unapproved currency metadata withholds the reported balance.
+
+A historical import is reviewed in complete calendar batches of at most 45 days.
+Each preview states its bounds and remaining history; confirmation fingerprints the
+bounds, refusal counts and new ledger rows. A cursor advances only with the ledger
+commit, and incomplete history continues to require preview (including in daily jobs).
+Quota admission reserves every HTTP window of a read under the credential lock before
+any HTTP call; no failed admission spends part of an unfinished read. Expired budget
+entries are pruned under that lock; informational status does not lock it.
+
+A definitely unsent claim (validation or breaker admission) may be retried. The durable
+attempt fence still precedes HTTP; only a holder of the unexpired setup lease can remove
+its attempt marker after a typed pre-dispatch refusal. Ambiguous network failures retain
+it. The read adapter contract is shared by both providers, independently of authorization.
+
+Individually unreadable booked transactions are counted and shown as refusals alongside
+valid rows. Blank descriptions are allowed. Missing arrays, provider-declared incomplete
+responses, conflicting identities and unknown account currency still block the read.
+Booking dates and API range coverage use the same resolved financial timezone, including
+DST and exclusive end bounds. Scheduled reads resolve the explicit preference or last
+known client timezone. Existing imported transactions are not rewritten.
