@@ -52,7 +52,10 @@ export function SimplefinSettingsCard({
       })
       .catch(() => {
         if (active.current && request === statusRequest.current)
-          setStatus((previous) => ({ state: "failed", data: "data" in previous ? previous.data : undefined }));
+          setStatus((previous) => ({
+            state: "failed",
+            data: "data" in previous ? previous.data : undefined,
+          }));
       });
   }, []);
 
@@ -134,9 +137,13 @@ export function SimplefinSettingsCard({
     <Card padding="md" className="mb-6">
       <h2 className="text-lg font-semibold">{t("title")}</h2>
       <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-        {t.rich("description", { bridge: (chunks) => (
-          <BankSyncExternalLink href="https://bridge.simplefin.org/simplefin/create">{chunks}</BankSyncExternalLink>
-        ) })}
+        {t.rich("description", {
+          bridge: (chunks) => (
+            <BankSyncExternalLink href="https://bridge.simplefin.org/simplefin/create">
+              {chunks}
+            </BankSyncExternalLink>
+          ),
+        })}
       </p>
       {status.state === "loading" && <LoadingSpinner />}
       {status.state === "failed" && (
@@ -153,7 +160,7 @@ export function SimplefinSettingsCard({
       )}
       {configured && (
         <p role="status" className="mt-3 text-sm">
-          {t("connected")}
+          {t(status.state === "failed" ? "lastKnownConnected" : "connected")}
         </p>
       )}
       {status.state === "ready" && !allowed && (
@@ -182,7 +189,13 @@ export function SimplefinSettingsCard({
           <Button
             type="button"
             variant="outline"
-            disabled={disabled || busy || !configured || status.state !== "ready" || quota?.remaining === 0}
+            disabled={
+              disabled ||
+              busy ||
+              !configured ||
+              status.state !== "ready" ||
+              quota?.remaining === 0
+            }
             onClick={() => void run(() => simplefinApi.discover())}
           >
             {t("refresh")}
@@ -190,7 +203,9 @@ export function SimplefinSettingsCard({
           <Button
             type="button"
             variant="outline"
-            disabled={disabled || busy || !configured || status.state !== "ready"}
+            disabled={
+              disabled || busy || !configured || status.state !== "ready"
+            }
             onClick={() => setConfirm("remove")}
           >
             {t("remove")}

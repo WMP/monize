@@ -196,21 +196,40 @@ describe("SimpleFIN settings", () => {
       screen.getByRole("button", { name: "Connect SimpleFIN" }),
     ).toBeDisabled();
   });
-  it("treats confirmed empty status as onboarding and retains disabled last-known state after a poll failure",async()=>{
-    let poll!:()=>void;
-    const timer=vi.spyOn(window,"setInterval").mockImplementation((handler)=>{poll=handler as ()=>void; return 123;});
+  it("treats confirmed empty status as onboarding and retains disabled last-known state after a poll failure", async () => {
+    let poll!: () => void;
+    const timer = vi
+      .spyOn(window, "setInterval")
+      .mockImplementation((handler) => {
+        poll = handler as () => void;
+        return 123 as unknown as ReturnType<typeof window.setInterval>;
+      });
     try {
       await mount();
-      expect(screen.queryByText("Could not load SimpleFIN status.")).not.toBeInTheDocument();
-      expect(screen.queryByRole("button",{name:"Try again"})).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Could not load SimpleFIN status."),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Try again" }),
+      ).not.toBeInTheDocument();
       api.getStatus.mockResolvedValueOnce(status(true));
-      await act(async()=>poll());
+      await act(async () => poll());
       expect(screen.getByText("SimpleFIN is connected.")).toBeInTheDocument();
       api.getStatus.mockRejectedValueOnce(new Error("offline"));
-      await act(async()=>poll());
-      expect(screen.getByText("SimpleFIN is connected.")).toBeInTheDocument();
-      expect(screen.getByText("Could not load SimpleFIN status.")).toBeInTheDocument();
-      expect(screen.getByRole("button",{name:"Remove SimpleFIN from Monize"})).toBeDisabled();
-    } finally { timer.mockRestore(); }
+      await act(async () => poll());
+      expect(
+        screen.getByText(
+          "SimpleFIN was connected at the last successful check.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Could not load SimpleFIN status."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Remove SimpleFIN from Monize" }),
+      ).toBeDisabled();
+    } finally {
+      timer.mockRestore();
+    }
   });
 });

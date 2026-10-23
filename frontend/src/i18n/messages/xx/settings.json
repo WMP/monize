@@ -1827,7 +1827,8 @@
       },
       "enableBanking": "[XX-Enable Banking-XX]",
       "stopped": "[XX-Syncing stopped-XX]",
-      "resume": "[XX-Resume syncing-XX]"
+      "resume": "[XX-Resume syncing-XX]",
+      "lastKnownConnected": "[XX-SimpleFIN was connected at the last successful check.-XX]"
     }
   }
 }
