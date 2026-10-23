@@ -82,6 +82,10 @@ vi.mock("@/lib/built-in-reports", () => ({
   },
 }));
 
+vi.mock("@/lib/accounts", () => ({
+  accountsApi: { getAll: () => Promise.resolve([]) },
+}));
+
 vi.mock("@/lib/logger", () => ({
   createLogger: () => ({
     error: vi.fn(),

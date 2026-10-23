@@ -16,6 +16,7 @@ import {
   SpendingByCategoryResponse,
   SpendingByPayeeResponse,
   IncomeBySourceResponse,
+  IncomeBySourceQueryDto,
   MonthlySpendingTrendResponse,
   IncomeVsExpensesResponse,
   YearOverYearResponse,
@@ -35,6 +36,7 @@ import {
   CashFlowSankeyResponse,
   DEFAULT_RECURRING_EXPENSE_RANGE,
   isRecurringExpenseRange,
+  MonthlyCategoryBreakdownQueryDto,
 } from "./dto";
 
 @ApiTags("Built-in Reports")
@@ -55,7 +57,12 @@ export class BuiltInReportsController {
       req.user.id,
       query.startDate,
       query.endDate,
-      { rollupToParent: query.rollupToParent, accountIds: query.accountIds },
+      {
+        rollupToParent: query.rollupToParent,
+        accountIds: query.accountIds,
+        tagKey: query.tagKey,
+        tagValue: query.tagValue,
+      },
     );
   }
 
@@ -78,12 +85,13 @@ export class BuiltInReportsController {
   @ApiResponse({ status: 200, type: IncomeBySourceResponse })
   getIncomeBySource(
     @Request() req,
-    @Query() query: ReportQueryDto,
+    @Query() query: IncomeBySourceQueryDto,
   ): Promise<IncomeBySourceResponse> {
     return this.reportsService.getIncomeBySource(
       req.user.id,
       query.startDate,
       query.endDate,
+      { accountIds: query.accountIds },
     );
   }
 
@@ -119,6 +127,7 @@ export class BuiltInReportsController {
         bucket: query.bucket,
         weekStartsOn: query.weekStartsOn as WeekStartsOn | undefined,
         tagKey: query.tagKey,
+        transferScopeAccountIds: query.transferScopeAccountIds,
       },
     );
   }
@@ -135,7 +144,11 @@ export class BuiltInReportsController {
       req.user.id,
       query.startDate,
       query.endDate,
-      { tagKey: query.tagKey },
+      {
+        tagKey: query.tagKey,
+        accountIds: query.accountIds,
+        transferScopeAccountIds: query.transferScopeAccountIds,
+      },
     );
   }
 
@@ -296,12 +309,13 @@ export class BuiltInReportsController {
   @ApiResponse({ status: 200, type: MonthlyCategoryBreakdownResponse })
   getMonthlyCategoryBreakdown(
     @Request() req,
-    @Query() query: ReportQueryDto,
+    @Query() query: MonthlyCategoryBreakdownQueryDto,
   ): Promise<MonthlyCategoryBreakdownResponse> {
     return this.reportsService.getMonthlyCategoryBreakdown(
       req.user.id,
       query.startDate,
       query.endDate,
+      { accountIds: query.accountIds },
     );
   }
 }

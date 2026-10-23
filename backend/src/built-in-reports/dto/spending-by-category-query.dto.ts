@@ -4,8 +4,12 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsNotEmpty,
   IsOptional,
+  IsString,
   IsUUID,
+  MaxLength,
+  ValidateIf,
 } from "class-validator";
 import { ReportQueryDto } from "./report-query.dto";
 
@@ -18,6 +22,10 @@ function csv({ value }: { value: unknown }): unknown {
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
 }
+
+/** Surrounding whitespace is a paste artifact, never part of a tag key or value. */
+const trimmed = ({ value }: { value: unknown }) =>
+  typeof value === "string" ? value.trim() : value;
 
 /**
  * Spending by Category is the one answer the full report and the dashboard
@@ -48,4 +56,38 @@ export class SpendingByCategoryQueryDto extends ReportQueryDto {
   @IsBoolean()
   @Transform(({ value }) => value === "true" || value === true)
   rollupToParent?: boolean;
+
+  /**
+   * Restrict the report to rows carrying `tagKey:tagValue`
+   * (`docs/specs/report-tag-key-breakdown.md` section 11.4). The two travel
+   * together: validation runs on either as soon as one is present, so a
+   * half-specified filter is a 400 and never a silently unfiltered report.
+   */
+  @ApiPropertyOptional({
+    description:
+      "Bare KEY of a KEY:VALUE tag to filter by (e.g. 'scope'). Requires tagValue.",
+  })
+  @ValidateIf(
+    (o: SpendingByCategoryQueryDto) =>
+      o.tagKey !== undefined || o.tagValue !== undefined,
+  )
+  @Transform(trimmed)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  tagKey?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Value of the tag key to filter by (e.g. 'household'). Requires tagKey.",
+  })
+  @ValidateIf(
+    (o: SpendingByCategoryQueryDto) =>
+      o.tagKey !== undefined || o.tagValue !== undefined,
+  )
+  @Transform(trimmed)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  tagValue?: string;
 }

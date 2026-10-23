@@ -85,6 +85,31 @@ describe("BuiltInReportsController", () => {
     });
   });
 
+  describe("getSpendingByCategory() tag filter", () => {
+    it("passes the tag key and value through", async () => {
+      mockService.getSpendingByCategory.mockResolvedValue({ data: [] });
+
+      await controller.getSpendingByCategory(mockReq, {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        tagKey: "scope",
+        tagValue: "household",
+      } as any);
+
+      expect(mockService.getSpendingByCategory).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-12-31",
+        {
+          rollupToParent: undefined,
+          accountIds: undefined,
+          tagKey: "scope",
+          tagValue: "household",
+        },
+      );
+    });
+  });
+
   describe("getSpendingByPayee()", () => {
     it("delegates to service with userId, startDate, and endDate", async () => {
       const query = { startDate: "2024-01-01", endDate: "2024-12-31" };
@@ -115,6 +140,25 @@ describe("BuiltInReportsController", () => {
         "user-1",
         "2024-01-01",
         "2024-06-30",
+        { accountIds: undefined },
+      );
+    });
+
+    it("threads accountIds through to the service", async () => {
+      const query = {
+        startDate: "2024-01-01",
+        endDate: "2024-06-30",
+        accountIds: ["a1b2c3d4-0000-4000-8000-000000000001"],
+      };
+      mockService.getIncomeBySource.mockResolvedValue({ data: [] });
+
+      await controller.getIncomeBySource(mockReq, query as any);
+
+      expect(mockService.getIncomeBySource).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-06-30",
+        { accountIds: ["a1b2c3d4-0000-4000-8000-000000000001"] },
       );
     });
   });
@@ -203,6 +247,50 @@ describe("BuiltInReportsController", () => {
     });
   });
 
+  describe("transferScopeAccountIds (spec 10.8.1)", () => {
+    it("passes the tagged-transfer boundary through on Income vs Expenses", async () => {
+      mockService.getIncomeVsExpenses.mockResolvedValue({ data: [] });
+
+      await controller.getIncomeVsExpenses(mockReq, {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        tagKey: "scope",
+        transferScopeAccountIds: ["acct-1", "acct-2"],
+      } as any);
+
+      expect(mockService.getIncomeVsExpenses).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-12-31",
+        expect.objectContaining({
+          tagKey: "scope",
+          transferScopeAccountIds: ["acct-1", "acct-2"],
+        }),
+      );
+    });
+
+    it("passes the tagged-transfer boundary through on Cash Flow", async () => {
+      mockService.getIncomeVsExpenses.mockResolvedValue({ data: [] });
+
+      await controller.getCashFlow(mockReq, {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        tagKey: "scope",
+        transferScopeAccountIds: ["acct-1"],
+      } as any);
+
+      expect(mockService.getIncomeVsExpenses).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-12-31",
+        expect.objectContaining({
+          tagKey: "scope",
+          transferScopeAccountIds: ["acct-1"],
+        }),
+      );
+    });
+  });
+
   describe("getCashFlow()", () => {
     it("delegates to service.getIncomeVsExpenses (cash flow reuses same logic)", async () => {
       const query = { startDate: "2024-01-01", endDate: "2024-12-31" };
@@ -236,6 +324,27 @@ describe("BuiltInReportsController", () => {
         "2024-01-01",
         "2024-12-31",
         { tagKey: "scope" },
+      );
+    });
+
+    it("threads accountIds through to service.getIncomeVsExpenses", async () => {
+      const query = {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        accountIds: ["a1b2c3d4-0000-4000-8000-000000000001"],
+      };
+      mockService.getIncomeVsExpenses.mockResolvedValue({ months: [] });
+
+      await controller.getCashFlow(mockReq, query as any);
+
+      expect(mockService.getIncomeVsExpenses).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-12-31",
+        {
+          tagKey: undefined,
+          accountIds: ["a1b2c3d4-0000-4000-8000-000000000001"],
+        },
       );
     });
   });
@@ -548,6 +657,24 @@ describe("BuiltInReportsController", () => {
         "user-1",
         "2024-01-01",
         "2024-12-31",
+        { accountIds: undefined },
+      );
+    });
+
+    it("passes the account filter through", async () => {
+      mockService.getMonthlyCategoryBreakdown.mockResolvedValue({});
+
+      await controller.getMonthlyCategoryBreakdown(mockReq, {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        accountIds: ["acct-1"],
+      } as any);
+
+      expect(mockService.getMonthlyCategoryBreakdown).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-12-31",
+        { accountIds: ["acct-1"] },
       );
     });
   });
