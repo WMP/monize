@@ -27,8 +27,15 @@ import { MAX_PARSERS_PER_USER } from "../parsers/email-receipt-parsers.service";
 import {
   AUTOMATIC_AI_CALLS_PER_TICK,
   AUTOMATIC_DRAFTS_PER_TICK,
+  DRAFT_LEASE_MS,
   EmailReceiptAiService,
 } from "./email-receipt-ai.service";
+import {
+  createJobClaimMock,
+  TEST_LEASE_TOKEN,
+} from "../../test-helpers/job-claim-testing";
+import { PROVIDER_CALL_BUDGET_MS } from "../../ai/providers/provider-call-budget";
+import { JobClaimService } from "../../common/jobs/job-claim.service";
 
 jest.mock("../../common/db/scoped-db", () =>
   jest
@@ -178,12 +185,14 @@ function setup(over: Partial<World> = {}) {
     findOne: jest.fn(async () => transaction()),
   } as unknown as jest.Mocked<TransactionsService>;
 
+  const jobClaims = createJobClaimMock();
   const service = new EmailReceiptAiService(
     dataSource as never,
     ai,
     requests,
     work,
     transactions,
+    jobClaims as unknown as JobClaimService,
   );
   return {
     world,
@@ -196,6 +205,7 @@ function setup(over: Partial<World> = {}) {
     requests,
     work,
     transactions,
+    jobClaims,
   };
 }
 
@@ -1110,7 +1120,9 @@ describe("EmailReceiptAiService.runAutomaticStep", () => {
       async (sql: string, params: unknown[]) => {
         const text = String(sql);
         if (text.includes("FROM email_receipts r")) {
-          return draftRows(opts.drafts.slice(0, Number(params[1])));
+          return opts.drafts
+            .slice(0, Number(params[1]))
+            .map((id) => ({ id, from_domain: `${id}.example.com` }));
         }
         if (text.includes("FROM ai_review_requests")) {
           return draftRows(opts.requests.slice(0, Number(params[1])));
@@ -1150,6 +1162,65 @@ describe("EmailReceiptAiService.runAutomaticStep", () => {
       "email_receipt_review",
       "email_receipt_review",
     ]);
+  });
+
+  it("drafts each sender under its own claim, renewed while the call runs, and releases it (A26-S11-01)", async () => {
+    const h = stepSetup({ drafts: ["r1"], requests: [] });
+    await h.service.runAutomaticStep(USER);
+
+    expect(h.jobClaims.claimLease).toHaveBeenCalledWith(
+      "email_receipt_parser_draft",
+      USER,
+      "r1.example.com",
+      DRAFT_LEASE_MS,
+    );
+    expect(DRAFT_LEASE_MS).toBeGreaterThan(PROVIDER_CALL_BUDGET_MS);
+    expect(h.jobClaims.whileLeaseHeld).toHaveBeenCalledWith(
+      "email_receipt_parser_draft",
+      USER,
+      "r1.example.com",
+      TEST_LEASE_TOKEN,
+      DRAFT_LEASE_MS,
+      expect.any(Function),
+    );
+    expect(h.jobClaims.releaseLease).toHaveBeenCalledWith(
+      "email_receipt_parser_draft",
+      USER,
+      "r1.example.com",
+      TEST_LEASE_TOKEN,
+    );
+  });
+
+  it("skips a sender another poll is drafting: no provider call, nothing counted", async () => {
+    const h = stepSetup({ drafts: ["r1"], requests: [] });
+    h.jobClaims.claimLease.mockResolvedValue(null);
+
+    const result = await h.service.runAutomaticStep(USER);
+
+    expect(result.drafted).toBe(0);
+    expect(h.ai.complete).not.toHaveBeenCalled();
+  });
+
+  it("saves nothing when its draft claim was retaken during the call", async () => {
+    const h = stepSetup({ drafts: ["r1"], requests: [] });
+    h.jobClaims.holdsLease.mockResolvedValue(false);
+
+    const result = await h.service.runAutomaticStep(USER);
+
+    expect(h.ai.complete).toHaveBeenCalledTimes(1);
+    expect(result.drafted).toBe(0);
+    expect(h.parserRepo.save).not.toHaveBeenCalled();
+  });
+
+  it("starts no provider call once the poll's deadline has passed", async () => {
+    const h = stepSetup({ drafts: ["r1"], requests: ["q1"] });
+
+    const result = await h.service.runAutomaticStep(USER, {
+      deadline: Date.now() - 1,
+    });
+
+    expect(h.ai.complete).not.toHaveBeenCalled();
+    expect(result).toEqual({ proposed: 0, failed: 0, drafted: 0 });
   });
 
   it("asks the database for unclaimed, never-tried pending requests and one receipt per uncovered domain", async () => {

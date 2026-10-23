@@ -10,8 +10,15 @@ import {
   brokerageExclusionForEntity,
   investmentLinkedTransactionExclusion,
   ordinarySplitLines,
-  reportableTransactionAmount,
 } from "../common/investment-filter.util";
+import {
+  applyParsedSearch,
+  applyTransactionSearch,
+  resolveTransactionSearch,
+  searchNarrows,
+} from "../transactions/apply-transaction-search";
+import { ParsedSearch } from "../transactions/transaction-search-query.util";
+import { createNetCells, netLinesOf } from "./report-net-cells";
 import {
   CustomReport,
   TimeframeType,
@@ -36,7 +43,6 @@ import {
   ReportSummary,
 } from "./dto/execute-report.dto";
 import { roundMoney, sumMoney } from "../common/round.util";
-import { FxAggregate } from "../common/fx-aggregate";
 import {
   ConversionGaps,
   ReportCurrencyService,
@@ -69,12 +75,6 @@ interface RowConverter {
   readonly gaps: ConversionGaps;
   /** `null` when `currencyCode` has no rate into the reporting currency. */
   convert(amount: number, currencyCode: string): number | null;
-}
-
-/** A group's running sum, kept in integer ten-thousandths by `FxAggregate`. */
-interface Bucket {
-  agg: FxAggregate;
-  count: number;
 }
 
 @Injectable()
@@ -115,11 +115,6 @@ export class ReportsService {
    */
   private keepsUnconverted(metric: MetricType): boolean {
     return metric === MetricType.COUNT;
-  }
-
-  private addToBucket(bucket: Bucket, converted: number | null): void {
-    if (converted !== null) bucket.agg.addConverted(converted);
-    bucket.count += 1;
   }
 
   async create(
@@ -320,7 +315,7 @@ export class ReportsService {
     let data = this.aggregateData(
       transactions,
       report.groupBy,
-      report.config.metric,
+      report.config,
       categoryMap,
       payeeMap,
       converter,
@@ -462,9 +457,11 @@ export class ReportsService {
    * Two decisions the SQL could only make about the PARENT, and a split parent
    * is not its lines:
    *
-   * - **Direction.** `transaction.amount` is the sum of every line, so its sign
-   *   is nobody's direction: a -60 expense beside a +500 embedded SELL is a +440
-   *   parent (audit F-CUSTOM-DIR-001).
+   * - **Direction** (the NONE metric's list of transactions only; every other
+   *   metric nets both signs, see `report-net-cells.ts`). `transaction.amount`
+   *   is the sum of every line, so its sign is nobody's direction: a -60
+   *   expense beside a +500 embedded SELL is a +440 parent (audit
+   *   F-CUSTOM-DIR-001).
    * - **Transfers.** `transaction.isTransfer` is false on a split parent that
    *   carries a transfer LINE, so `includeTransfers: false` counted a -200
    *   transfer inside a -260 parent as 260 of spending.
@@ -479,7 +476,11 @@ export class ReportsService {
     transactions: Transaction[],
     config: ReportConfig,
   ): Transaction[] {
-    const narrowsDirection = config.direction !== DirectionFilter.BOTH;
+    // Only the list of single transactions judges a line by its own sign; every
+    // other metric nets a category's lines of both signs (audit A26-M33).
+    const narrowsDirection =
+      config.metric === MetricType.NONE &&
+      config.direction !== DirectionFilter.BOTH;
     if (!narrowsDirection && config.includeTransfers) return transactions;
 
     const wanted = (split: TransactionSplit): boolean => {
@@ -548,7 +549,7 @@ export class ReportsService {
     filters: CustomReport["filters"],
     config: ReportConfig,
   ): Promise<Transaction[]> {
-    return withScopedDb(this.dataSource, (m) => {
+    return withScopedDb(this.dataSource, async (m) => {
       const queryBuilder = m
         .getRepository(Transaction)
         .createQueryBuilder("transaction")
@@ -618,7 +619,26 @@ export class ReportsService {
 
       // Advanced filter groups take precedence over legacy filters
       if (filters.filterGroups && filters.filterGroups.length > 0) {
-        this.applyFilterGroups(queryBuilder, filters.filterGroups);
+        // Resolved once per text condition, in the user's number and date
+        // formats, so the Brackets below stay synchronous.
+        const textSearches = new Map<string, ParsedSearch | undefined>();
+        for (const [gi, group] of filters.filterGroups.entries()) {
+          for (const [ci, condition] of (group.conditions ?? []).entries()) {
+            if (condition.field !== "text") continue;
+            const raw = Array.isArray(condition.value)
+              ? condition.value[0] || ""
+              : condition.value;
+            textSearches.set(
+              `${gi}:${ci}`,
+              await resolveTransactionSearch(m, userId, raw),
+            );
+          }
+        }
+        this.applyFilterGroups(
+          queryBuilder,
+          filters.filterGroups,
+          textSearches,
+        );
       } else {
         // Legacy simple filters (backward compat)
         if (filters.accountIds && filters.accountIds.length > 0) {
@@ -640,29 +660,35 @@ export class ReportsService {
           });
         }
 
-        if (filters.searchText && filters.searchText.trim()) {
-          const searchTerm = `%${filters.searchText.trim().toLowerCase()}%`;
-          queryBuilder.andWhere(
-            "(LOWER(transaction.payeeName) LIKE :searchTerm OR LOWER(transaction.description) LIKE :searchTerm)",
-            { searchTerm },
-          );
-        }
+        // INV-SEARCH-001 (audit A26-L12): the one search door, so `%` and `_`
+        // are literals and the report reads the string as the register does.
+        await applyTransactionSearch(m, queryBuilder, filters.searchText, {
+          userId,
+          transaction: "transaction",
+          splits: "splits",
+          grain: "split",
+          paramPrefix: "rsrch",
+        });
       }
 
-      // Filter by direction. A split parent's own amount is the SUM of its
-      // lines, so its sign is not the direction of any particular line: a -60
-      // expense beside a +500 embedded SELL is a +440 parent, and rejecting it
-      // here threw away the expense before provenance ever ran (audit
-      // F-CUSTOM-DIR-001). Split parents therefore pass this gate and are
-      // narrowed per line in `applyDirectionToSplitLines`.
-      if (config.direction === DirectionFilter.INCOME_ONLY) {
-        queryBuilder.andWhere(
-          "(transaction.isSplit = true OR transaction.amount > 0)",
-        );
-      } else if (config.direction === DirectionFilter.EXPENSES_ONLY) {
-        queryBuilder.andWhere(
-          "(transaction.isSplit = true OR transaction.amount < 0)",
-        );
+      // Filter by direction, for the list of single transactions only: every
+      // other metric nets a category's rows of both signs, so a refund must
+      // reach the aggregators (audit A26-M33). A split parent's own amount is
+      // the SUM of its lines, so its sign is not the direction of any
+      // particular line: a -60 expense beside a +500 embedded SELL is a +440
+      // parent, and rejecting it here threw away the expense before provenance
+      // ever ran (audit F-CUSTOM-DIR-001). Split parents therefore pass this
+      // gate and are narrowed per line in `narrowSplitLines`.
+      if (config.metric === MetricType.NONE) {
+        if (config.direction === DirectionFilter.INCOME_ONLY) {
+          queryBuilder.andWhere(
+            "(transaction.isSplit = true OR transaction.amount > 0)",
+          );
+        } else if (config.direction === DirectionFilter.EXPENSES_ONLY) {
+          queryBuilder.andWhere(
+            "(transaction.isSplit = true OR transaction.amount < 0)",
+          );
+        }
       }
 
       // Filter transfers
@@ -683,6 +709,7 @@ export class ReportsService {
     filterGroups: Array<{
       conditions: Array<{ field: string; value: string | string[] }>;
     }>,
+    textSearches: Map<string, ParsedSearch | undefined>,
   ): void {
     for (let gi = 0; gi < filterGroups.length; gi++) {
       const group = filterGroups[gi];
@@ -789,23 +816,20 @@ export class ReportsService {
                 break;
               }
               case "text": {
-                const textValue = Array.isArray(condition.value)
-                  ? condition.value[0] || ""
-                  : condition.value;
-                const textParam = `%${textValue.trim().toLowerCase()}%`;
+                // Through the search door (audit A26-L12). A blank value, or one
+                // holding only empty terms, adds no condition: an empty
+                // Brackets would render `()`.
+                const parsed = textSearches.get(`${gi}:${ci}`);
+                if (!searchNarrows(parsed)) break;
                 qb[method](
-                  new Brackets((inner) => {
-                    inner
-                      .where(`LOWER(transaction.payeeName) LIKE :${param}`, {
-                        [param]: textParam,
-                      })
-                      .orWhere(
-                        `LOWER(transaction.description) LIKE :${param}`,
-                        {
-                          [param]: textParam,
-                        },
-                      );
-                  }),
+                  new Brackets((inner) =>
+                    applyParsedSearch(inner, parsed, {
+                      transaction: "transaction",
+                      splits: "splits",
+                      grain: "split",
+                      paramPrefix: `rsrch_g${gi}_c${ci}_`,
+                    }),
+                  ),
                 );
                 break;
               }
@@ -819,35 +843,49 @@ export class ReportsService {
   private aggregateData(
     transactions: Transaction[],
     groupBy: GroupByType,
-    metric: MetricType,
+    config: ReportConfig,
     categoryMap: Map<string, Category>,
     payeeMap: Map<string, Payee>,
     conv: RowConverter,
   ): AggregatedDataPoint[] {
+    const metric = config.metric;
     switch (groupBy) {
       case GroupByType.NONE:
-        return this.aggregateNoGrouping(transactions, metric, conv);
+        return this.aggregateNoGrouping(transactions, metric, config, conv);
       case GroupByType.CATEGORY:
         return this.aggregateByCategory(
           transactions,
           metric,
+          config,
           categoryMap,
           conv,
         );
       case GroupByType.PAYEE:
-        return this.aggregateByPayee(transactions, metric, payeeMap, conv);
+        return this.aggregateByPayee(
+          transactions,
+          metric,
+          config,
+          payeeMap,
+          conv,
+        );
       case GroupByType.YEAR:
-        return this.aggregateByTime(transactions, metric, "year", conv);
+        return this.aggregateByTime(transactions, metric, config, "year", conv);
       case GroupByType.MONTH:
-        return this.aggregateByTime(transactions, metric, "month", conv);
+        return this.aggregateByTime(
+          transactions,
+          metric,
+          config,
+          "month",
+          conv,
+        );
       case GroupByType.WEEK:
-        return this.aggregateByTime(transactions, metric, "week", conv);
+        return this.aggregateByTime(transactions, metric, config, "week", conv);
       case GroupByType.DAY:
-        return this.aggregateByTime(transactions, metric, "day", conv);
+        return this.aggregateByTime(transactions, metric, config, "day", conv);
       case GroupByType.TAG:
-        return this.aggregateByTag(transactions, metric, conv);
+        return this.aggregateByTag(transactions, metric, config, conv);
       default:
-        return this.aggregateNoGrouping(transactions, metric, conv);
+        return this.aggregateNoGrouping(transactions, metric, config, conv);
     }
   }
 
@@ -862,6 +900,7 @@ export class ReportsService {
   private aggregateNoGrouping(
     transactions: Transaction[],
     metric: MetricType,
+    config: ReportConfig,
     conv: RowConverter,
   ): AggregatedDataPoint[] {
     // For NONE metric, return individual transactions as data points
@@ -935,37 +974,30 @@ export class ReportsService {
     }
 
     // For other metrics, aggregate into a single total
-    const bucket: Bucket = { agg: new FxAggregate(), count: 0 };
-    const add = (amount: number, currencyCode: string) => {
-      const converted = conv.convert(Math.abs(amount), currencyCode);
-      if (converted === null && !this.keepsUnconverted(metric)) return;
-      this.addToBucket(bucket, converted);
-    };
-
+    const cells = createNetCells(
+      config.direction,
+      this.keepsUnconverted(metric),
+    );
     for (const tx of transactions) {
-      if (tx.isSplit && tx.splits && tx.splits.length > 0) {
-        for (const split of ordinarySplitLines(tx)) {
-          add(Number(split.amount), tx.currencyCode);
-        }
-      } else {
-        add(Number(tx.amount), tx.currencyCode);
+      for (const line of netLinesOf(tx, false)) {
+        cells.add("total", line, conv.convert(line.amount, tx.currencyCode));
       }
     }
 
-    const count = bucket.count;
-    const sum = bucket.agg.knownSubtotal;
-
-    if (count === 0) {
-      return [];
-    }
+    const bucket = cells.settle().get("total");
+    if (!bucket || bucket.count === 0) return [];
 
     return [
       {
         id: "total",
         label: "Total",
-        value: this.calculateMetricValue(sum, count, metric),
+        value: this.calculateMetricValue(
+          bucket.agg.knownSubtotal,
+          bucket.count,
+          metric,
+        ),
         percentage: 100,
-        count,
+        count: bucket.count,
       },
     ];
   }
@@ -973,44 +1005,27 @@ export class ReportsService {
   private aggregateByCategory(
     transactions: Transaction[],
     metric: MetricType,
+    config: ReportConfig,
     categoryMap: Map<string, Category>,
     conv: RowConverter,
   ): AggregatedDataPoint[] {
-    const dataMap = new Map<string, Bucket>();
-    const bucketFor = (key: string): Bucket => {
-      const existing = dataMap.get(key);
-      if (existing) return existing;
-      const created: Bucket = { agg: new FxAggregate(), count: 0 };
-      dataMap.set(key, created);
-      return created;
-    };
-    const add = (key: string, amount: number, currencyCode: string) => {
-      const converted = conv.convert(Math.abs(amount), currencyCode);
-      if (converted === null && !this.keepsUnconverted(metric)) return;
-      this.addToBucket(bucketFor(key), converted);
-    };
-
+    const cells = createNetCells(
+      config.direction,
+      this.keepsUnconverted(metric),
+    );
+    // An embedded investment line carries no category by definition, so
+    // `netLinesOf` leaves it out: counting it here filed a securities purchase
+    // under "Uncategorized" spending (re-audit F-CUSTOM-001).
     for (const tx of transactions) {
-      if (tx.isSplit && tx.splits && tx.splits.length > 0) {
-        // Handle split transactions. An embedded investment line carries no
-        // category by definition, so counting it here filed a securities
-        // purchase under "Uncategorized" spending (re-audit F-CUSTOM-001).
-        for (const split of ordinarySplitLines(tx)) {
-          add(
-            split.categoryId || "uncategorized",
-            Number(split.amount),
-            tx.currencyCode,
-          );
-        }
-      } else {
-        // Regular transaction
-        add(
-          tx.categoryId || "uncategorized",
-          Number(tx.amount),
-          tx.currencyCode,
+      for (const line of netLinesOf(tx, true)) {
+        cells.add(
+          line.category,
+          line,
+          conv.convert(line.amount, tx.currencyCode),
         );
       }
     }
+    const dataMap = cells.settle();
 
     // Shares of what converted: an excluded row is in no group's sum and in no
     // percentage, the same rule Spending by Category follows.
@@ -1050,31 +1065,30 @@ export class ReportsService {
   private aggregateByPayee(
     transactions: Transaction[],
     metric: MetricType,
+    config: ReportConfig,
     payeeMap: Map<string, Payee>,
     conv: RowConverter,
   ): AggregatedDataPoint[] {
-    const dataMap = new Map<string, Bucket & { payeeName?: string }>();
+    const cells = createNetCells(
+      config.direction,
+      this.keepsUnconverted(metric),
+    );
+    const payeeNames = new Map<string, string>();
 
     for (const tx of transactions) {
-      // `tx.amount` on a split parent is the sum of EVERY line, so a payee total
-      // has to ask for the ordinary part; `null` means this row represents no
-      // ordinary cash at all.
-      const reportable = reportableTransactionAmount(tx);
-      if (reportable === null) continue;
-      const converted = conv.convert(Math.abs(reportable), tx.currencyCode);
-      if (converted === null && !this.keepsUnconverted(metric)) continue;
+      // `tx.amount` on a split parent is the sum of EVERY line, so a payee's
+      // cells are read per ordinary line; a parent with none adds nothing.
+      const lines = netLinesOf(tx, false);
+      if (lines.length === 0) continue;
       const payeeId = tx.payeeId || "unknown";
-      const existing = dataMap.get(payeeId) || {
-        agg: new FxAggregate(),
-        count: 0,
-        payeeName: tx.payeeName ?? undefined,
-      };
-      this.addToBucket(existing, converted);
-      if (!existing.payeeName && tx.payeeName) {
-        existing.payeeName = tx.payeeName;
+      for (const line of lines) {
+        cells.add(payeeId, line, conv.convert(line.amount, tx.currencyCode));
       }
-      dataMap.set(payeeId, existing);
+      if (!payeeNames.has(payeeId) && tx.payeeName) {
+        payeeNames.set(payeeId, tx.payeeName);
+      }
     }
+    const dataMap = cells.settle();
 
     // Shares of what converted: an excluded row is in no group's sum and in no
     // percentage, the same rule Spending by Category follows.
@@ -1087,7 +1101,7 @@ export class ReportsService {
       const payee = payeeMap.get(payeeId);
       result.push({
         id: payeeId,
-        label: payee?.name || data.payeeName || "Unknown",
+        label: payee?.name || payeeNames.get(payeeId) || "Unknown",
         value: this.calculateMetricValue(
           data.agg.knownSubtotal,
           data.count,
@@ -1105,19 +1119,23 @@ export class ReportsService {
   private aggregateByTag(
     transactions: Transaction[],
     metric: MetricType,
+    config: ReportConfig,
     conv: RowConverter,
   ): AggregatedDataPoint[] {
-    const dataMap = new Map<
-      string,
-      Bucket & { tagName: string; color?: string }
-    >();
+    const cells = createNetCells(
+      config.direction,
+      this.keepsUnconverted(metric),
+    );
+    const tagInfo = new Map<string, { tagName: string; color?: string }>();
 
     for (const tx of transactions) {
-      const reportable = reportableTransactionAmount(tx);
-      if (reportable === null) continue;
-      // Converted once per row, so a row under several tags records one gap.
-      const converted = conv.convert(Math.abs(reportable), tx.currencyCode);
-      if (converted === null && !this.keepsUnconverted(metric)) continue;
+      const lines = netLinesOf(tx, false);
+      if (lines.length === 0) continue;
+      // Converted once per line, so a row under several tags records one gap.
+      const converted = lines.map((line) => ({
+        line,
+        value: conv.convert(line.amount, tx.currencyCode),
+      }));
       // Collect all tags: transaction-level + split-level. A tag on an embedded
       // investment line describes the trade, not ordinary cash, so the lines
       // that are not reportable do not open a bucket either.
@@ -1134,28 +1152,25 @@ export class ReportsService {
         }
       }
 
-      if (allTags.length === 0) {
-        // Untagged transactions
-        const existing = dataMap.get("untagged") || {
-          agg: new FxAggregate(),
-          count: 0,
-          tagName: "Untagged",
-        };
-        this.addToBucket(existing, converted);
-        dataMap.set("untagged", existing);
-      } else {
-        for (const tag of allTags) {
-          const existing = dataMap.get(tag.id) || {
-            agg: new FxAggregate(),
-            count: 0,
-            tagName: tag.name,
-            color: tag.color ?? undefined,
-          };
-          this.addToBucket(existing, converted);
-          dataMap.set(tag.id, existing);
+      const groups =
+        allTags.length === 0
+          ? ["untagged"]
+          : allTags.map((tag) => {
+              if (!tagInfo.has(tag.id)) {
+                tagInfo.set(tag.id, {
+                  tagName: tag.name,
+                  color: tag.color ?? undefined,
+                });
+              }
+              return tag.id;
+            });
+      for (const group of groups) {
+        for (const { line, value } of converted) {
+          cells.add(group, line, value);
         }
       }
     }
+    const dataMap = cells.settle();
 
     // Shares of what converted: an excluded row is in no group's sum and in no
     // percentage, the same rule Spending by Category follows.
@@ -1165,15 +1180,16 @@ export class ReportsService {
 
     const result: AggregatedDataPoint[] = [];
     for (const [tagId, data] of dataMap) {
+      const info = tagInfo.get(tagId);
       result.push({
         id: tagId,
-        label: data.tagName,
+        label: info?.tagName ?? "Untagged",
         value: this.calculateMetricValue(
           data.agg.knownSubtotal,
           data.count,
           metric,
         ),
-        color: data.color,
+        color: info?.color,
         percentage:
           totalSum > 0 ? (data.agg.knownSubtotal / totalSum) * 100 : 0,
         count: data.count,
@@ -1186,16 +1202,19 @@ export class ReportsService {
   private aggregateByTime(
     transactions: Transaction[],
     metric: MetricType,
+    config: ReportConfig,
     period: "year" | "month" | "week" | "day",
     conv: RowConverter,
   ): AggregatedDataPoint[] {
-    const dataMap = new Map<string, Bucket & { label: string }>();
+    const cells = createNetCells(
+      config.direction,
+      this.keepsUnconverted(metric),
+    );
+    const labels = new Map<string, string>();
 
     for (const tx of transactions) {
-      const reportable = reportableTransactionAmount(tx);
-      if (reportable === null) continue;
-      const converted = conv.convert(Math.abs(reportable), tx.currencyCode);
-      if (converted === null && !this.keepsUnconverted(metric)) continue;
+      const lines = netLinesOf(tx, false);
+      if (lines.length === 0) continue;
       const date = parseISO(tx.transactionDate);
       let key: string;
       let label: string;
@@ -1219,20 +1238,18 @@ export class ReportsService {
           break;
       }
 
-      const existing = dataMap.get(key) || {
-        agg: new FxAggregate(),
-        count: 0,
-        label,
-      };
-      this.addToBucket(existing, converted);
-      dataMap.set(key, existing);
+      labels.set(key, label);
+      for (const line of lines) {
+        cells.add(key, line, conv.convert(line.amount, tx.currencyCode));
+      }
     }
+    const dataMap = cells.settle();
 
     const result: AggregatedDataPoint[] = [];
     for (const [key, data] of dataMap) {
       result.push({
         id: key,
-        label: data.label,
+        label: labels.get(key) ?? key,
         value: this.calculateMetricValue(
           data.agg.knownSubtotal,
           data.count,

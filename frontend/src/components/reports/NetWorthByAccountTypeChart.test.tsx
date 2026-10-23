@@ -154,4 +154,13 @@ describe('NetWorthByAccountTypeChart', () => {
     renderChart({ formatYTick: (n) => String(n) });
     expect(screen.getByTestId('y-axis')).toHaveAttribute('data-hide', 'false');
   });
+
+  it('says why a withheld month has no figure instead of printing a zero', () => {
+    tooltipPoint.current = { key: '2024-03-01', name: 'Mar 2024', netWorth: null };
+    renderChart({ data: [...months, tooltipPoint.current as NetWorthByAccountTypePoint] });
+    expect(screen.getByText('Mar 2024')).toBeInTheDocument();
+    expect(screen.getByText(/Not shown/)).toBeInTheDocument();
+    expect(screen.queryByText('$0')).not.toBeInTheDocument();
+    expect(screen.queryByText('Net Worth')).not.toBeInTheDocument();
+  });
 });

@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "Terminierte Zahlungen für {count} Konto{plural} konfiguriert.",
     "viewInvestments": "Investitionen anzeigen",
     "viewTransactions": "Buchungen anzeigen",
-    "importMoreFiles": "Weitere Dateien importieren"
+    "importMoreFiles": "Weitere Dateien importieren",
+    "bondRowsWithoutSeries": "{count, plural, one {# Anleihekauf wurde ohne Serie importiert. Wählen Sie die Serie in den Anleihe-Tranchen des Wertpapiers.} other {# Anleihekäufe wurden ohne Serie importiert. Wählen Sie die Serien in den Anleihe-Tranchen des Wertpapiers.}}"
   },
   "multiAccountReview": {
     "heading": "Multi-Konto-QIF-Import",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "Hinweise zu diesem Import",
     "downloadReport": "Bericht herunterladen",
-    "done": "Fertig"
+    "done": "Fertig",
+    "bondRowsWithoutSeries": "{count, plural, one {# Anleihekauf wurde ohne Serie importiert. Wählen Sie die Serie in den Anleihe-Tranchen des Wertpapiers.} other {# Anleihekäufe wurden ohne Serie importiert. Wählen Sie die Serien in den Anleihe-Tranchen des Wertpapiers.}}"
   },
   "mnyWarnings": {
     "missingTable": "Diese Money-Version hat {count, plural, one {# Tabelle} other {# Tabellen}} nicht, die der Import verwendet.",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "Nicht geprüft: Eine vorherige Regel hat die Regelverarbeitung beendet.",
         "disabled": "Nicht geprüft: Die Regel ist ausgeschaltet.",
-        "invalid": "Nicht geprüft: Die Regel ist ungültig. Öffnen Sie sie, um sie zu reparieren."
+        "invalid": "Nicht geprüft: Die Regel ist ungültig. Öffnen Sie sie, um sie zu reparieren.",
+        "outside_active_window": "Nicht geprüft: Das Datum der Zeile liegt außerhalb des Gültigkeitszeitraums der Regel."
       },
       "condition": {
         "met": "Bedingung erfüllt",

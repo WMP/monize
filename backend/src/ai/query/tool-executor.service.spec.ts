@@ -268,6 +268,14 @@ describe("ToolExecutorService", () => {
         totalAssets: 20000,
         totalLiabilities: 1200,
         netWorth: 18800,
+        knownAssetsSubtotal: 20000,
+        knownLiabilitiesSubtotal: 1200,
+        knownNetWorthSubtotal: 18800,
+        fxComplete: true,
+        pricesComplete: true,
+        valuationComplete: true,
+        unpricedSecurityIds: [],
+        unpricedSymbols: [],
         defaultCurrency: "USD",
         missingRatePairs: ["JPY->USD"],
         totalAccounts: 3,
@@ -675,6 +683,17 @@ describe("ToolExecutorService", () => {
         currentMonthLabel: "April 2026",
         previousMonthLabel: "March 2026",
         currency: "USD",
+        netWorth: {
+          monthlyHistory: [],
+          currentNetWorth: 52000,
+          previousNetWorth: 50000,
+          knownCurrentNetWorth: 52000,
+          knownPreviousNetWorth: 50000,
+          netWorthChange: 2000,
+          netWorthChangePercent: 4,
+          fxComplete: true,
+          missingRatePairs: [],
+        },
       }),
     };
 
@@ -922,6 +941,53 @@ describe("ToolExecutorService", () => {
       expect(result.summary).toContain("No exchange rate for: JPY->USD");
       // The USD account is not listed as foreign.
       expect(result.summary).not.toContain("Checking:");
+    });
+
+    it("list_accounts withholds a net worth that is a subtotal and says why and where to fix it", async () => {
+      const complete = await accounts.getLlmAccounts();
+      accounts.getLlmAccounts.mockResolvedValueOnce({
+        ...complete,
+        totalAssets: null,
+        netWorth: null,
+        knownAssetsSubtotal: 1000,
+        knownNetWorthSubtotal: 1000,
+        fxComplete: false,
+        pricesComplete: false,
+        valuationComplete: false,
+        missingRatePairs: ["ZZZ->USD"],
+        unpricedSecurityIds: ["sec-abc"],
+        unpricedSymbols: ["ABC"],
+        accounts: [
+          {
+            ...complete.accounts[0],
+            id: "acc-4",
+            name: "Broker",
+            type: "INVESTMENT",
+            currency: "CAD",
+            balance: null,
+            knownBalanceSubtotal: 50,
+            valuationComplete: false,
+            balanceInDefaultCurrency: null,
+          },
+        ],
+      });
+
+      const result = await service.execute(userId, "list_accounts", {});
+
+      expect(result.isError).toBeFalsy();
+      expect(result.summary).toContain(
+        "Net worth: withheld (incomplete: no exchange rate for ZZZ->USD; no price for ABC); known subtotal 1000.00 USD",
+      );
+      expect(result.summary).toContain(
+        "Assets: withheld (incomplete: no exchange rate for ZZZ->USD; no price for ABC); known subtotal 1000.00 USD",
+      );
+      // Liabilities converted completely, so they stay a total.
+      expect(result.summary).toContain("Liabilities: 1200.00 USD");
+      expect(result.summary).toContain("Currencies page");
+      expect(result.summary).toContain("price history");
+      expect(result.summary).toContain(
+        "Broker: unknown (holdings not priced); known subtotal 50.00 CAD",
+      );
     });
 
     it("list_accounts passes status, accountTypes, accountIds, and nameQuery through", async () => {
@@ -1201,6 +1267,8 @@ describe("ToolExecutorService", () => {
         totalPortfolioValue: 100,
         totalGainLoss: 0,
         totalGainLossPercent: 0,
+        gainCostBasis: 0,
+        unpricedCostBasis: 0,
         timeWeightedReturn: null,
         cagr: null,
         holdings: [],
@@ -1213,6 +1281,36 @@ describe("ToolExecutorService", () => {
       expect(result.summary).toContain("INCOMPLETE");
       expect(result.summary).toContain("EUR->USD");
       expect((result.data as { fxComplete: boolean }).fxComplete).toBe(false);
+    });
+
+    it("get_portfolio_summary says the gain is over the priced holdings only, naming the symbol and the excluded cost (A26-M38)", async () => {
+      portfolio.getLlmSummary.mockResolvedValueOnce({
+        holdingCount: 2,
+        fxComplete: true,
+        missingRatePairs: [],
+        pricesComplete: false,
+        unpricedSymbols: ["XYZ"],
+        valuationComplete: false,
+        totalCashValue: 0,
+        totalHoldingsValue: 100000,
+        totalCostBasis: 130000,
+        gainCostBasis: 80000,
+        unpricedCostBasis: 50000,
+        totalPortfolioValue: 100000,
+        totalGainLoss: 20000,
+        totalGainLossPercent: 25,
+        timeWeightedReturn: null,
+        cagr: null,
+        holdings: [],
+        holdingsByAccount: [],
+        allocation: [],
+      });
+
+      const result = await service.execute(userId, "get_portfolio_summary", {});
+
+      expect(result.summary).toContain("priced holdings only");
+      expect(result.summary).toContain("XYZ");
+      expect(result.summary).toContain("50000.00");
     });
 
     it("list_investment_transactions delegates to investmentTransactions.getLlmInvestmentTransactions", async () => {
@@ -1579,14 +1677,30 @@ describe("ToolExecutorService", () => {
       );
     });
 
+    it("generate_report spending_anomalies defaults to the report's own window and threshold", async () => {
+      const result = await service.execute(userId, "generate_report", {
+        type: "spending_anomalies",
+      });
+
+      expect(builtInReports.getSpendingAnomalies).toHaveBeenCalledWith(
+        userId,
+        2,
+        6,
+      );
+      expect(result.summary).toContain("over the last 6 months");
+    });
+
     it("generate_report type spending_anomalies delegates to getSpendingAnomalies", async () => {
       const result = await service.execute(userId, "generate_report", {
         type: "spending_anomalies",
         months: 6,
       });
 
+      // Months are the window, never the z-score threshold (A26-M34): the
+      // threshold is the Reports page's own default.
       expect(builtInReports.getSpendingAnomalies).toHaveBeenCalledWith(
         userId,
+        2,
         6,
       );
       expect(result.sources[0].type).toBe("anomalies");
@@ -1605,6 +1719,32 @@ describe("ToolExecutorService", () => {
       );
       expect(result.sources[0].type).toBe("monthly_comparison");
       expect(result.summary).toContain("April 2026 vs March 2026");
+      expect(result.summary).not.toContain("withheld");
+    });
+
+    it("month_comparison says net worth is withheld for an incomplete month and names the pairs", async () => {
+      const complete = await builtInReports.getMonthlyComparison();
+      builtInReports.getMonthlyComparison.mockResolvedValueOnce({
+        ...complete,
+        netWorth: {
+          ...complete.netWorth,
+          currentNetWorth: null,
+          netWorthChange: null,
+          netWorthChangePercent: null,
+          fxComplete: false,
+          missingRatePairs: ["ZZZ->USD"],
+        },
+      });
+
+      const result = await service.execute(userId, "generate_report", {
+        type: "month_comparison",
+        month: "2026-04",
+      });
+
+      expect(result.summary).toContain("April 2026 vs March 2026");
+      expect(result.summary).toContain(
+        "Net worth is withheld for an incomplete month: no exchange rate for ZZZ->USD",
+      );
     });
 
     it("calculate runs locally without hitting any service", async () => {

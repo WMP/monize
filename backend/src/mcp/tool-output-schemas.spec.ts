@@ -109,6 +109,10 @@ const cases: Array<{ name: string; schema: OutputSchema; raw: unknown }> = [
       defaultCurrency: "USD",
       missingRatePairs: ["CAD->USD"],
       totalAccounts: 1,
+      // The totals are subtotals while any flag is false.
+      fxComplete: false,
+      pricesComplete: true,
+      valuationComplete: false,
     },
   },
   {

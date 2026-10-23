@@ -148,6 +148,7 @@
     "netWorthLabel": "Чисті активи",
     "assets": "Активи",
     "liabilities": "Зобов'язання",
+    "partialName": "{name} (неповні)",
     "viewCallouts": "Підписи",
     "viewLegend": "Умовні позначення"
   },

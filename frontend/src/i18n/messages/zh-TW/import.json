@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "已為 {count} 個科目{plural}設定排程還款。",
     "viewInvestments": "查看投資",
     "viewTransactions": "查看交易",
-    "importMoreFiles": "匯入更多檔案"
+    "importMoreFiles": "匯入更多檔案",
+    "bondRowsWithoutSeries": "{count, plural, other {有 # 筆債券買入在沒有系列的情況下匯入。請在該證券的債券批次中選擇系列。}}"
   },
   "multiAccountReview": {
     "heading": "多科目 QIF 匯入",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "關於本次匯入的說明",
     "downloadReport": "下載報告",
-    "done": "完成"
+    "done": "完成",
+    "bondRowsWithoutSeries": "{count, plural, other {有 # 筆債券買入在沒有系列的情況下匯入。請在該證券的債券批次中選擇系列。}}"
   },
   "mnyWarnings": {
     "missingTable": "此 Money 版本缺少匯入所需的 {count, plural, other {# 個表格}}。",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "未評估：前面的規則已停止後續規則。",
         "disabled": "未評估：規則已關閉。",
-        "invalid": "未評估：規則無效。請開啟它進行修復。"
+        "invalid": "未評估：規則無效。請開啟它進行修復。",
+        "outside_active_window": "未評估：該列的日期不在規則的生效日期內。"
       },
       "condition": {
         "met": "條件已滿足",

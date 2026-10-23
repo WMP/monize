@@ -316,6 +316,7 @@
     "totalInflows": "Gesamte Zuflüsse",
     "totalOutflows": "Gesamte Abflüsse",
     "netCashFlow": "Netto-Cashflow",
+    "notAvailable": "k. A.",
     "monthlyCashFlow": "Monatlicher Cashflow",
     "inflowsByCategory": "Zuflüsse nach Kategorie",
     "outflowsByCategory": "Abflüsse nach Kategorie",
@@ -764,6 +765,7 @@
     "totalValue": "Gesamtwert",
     "costBasis": "Einstandswert",
     "totalGainLoss": "Gewinn/Verlust gesamt",
+    "gainPartialCaption": "Nur über Positionen mit Kurs",
     "return": "Rendite",
     "viewHoldings": "Bestände",
     "viewAllocation": "Allokation",
@@ -1147,6 +1149,11 @@
     "vsMonth": "vs. {month}",
     "inMonth": "{amount} im {month}",
     "netWorthTotal": "Gesamt: {amount}",
+    "netWorthSummaryPartial": "Ihr Reinvermögen im {currentMonth} betrug <strong>{netWorth}</strong>. Die Veränderung gegenüber {previousMonth} lässt sich nicht ermitteln, weil für {pairs} kein Wechselkurs verfügbar ist; fügen Sie einen auf der Seite Währungen hinzu.",
+    "pdfPartialSuffix": "{amount} (unvollständig)",
+    "pdfNote": "Hinweis",
+    "pdfNotAvailable": "k. A.",
+    "pdfPartialNote": "Unvollständige Summe: kein Wechselkurs für {pairs}.",
     "netWorthSummary": "Ihr Reinvermögen im {currentMonth} betrug <strong>{netWorth}</strong>, was <delta>{changeAmount}</delta> im Vergleich zu {previousMonth} entspricht.",
     "pdfTitle": "Monatsvergleich",
     "pdfSubtitle": "{current} vs. {previous}",
@@ -1194,7 +1201,12 @@
     "colNetWorth": "Reinvermögen",
     "barStyle": "Balkenstil",
     "barStyleNetWorth": "Reinvermögen",
-    "barStyleAccountType": "Nach Kontotyp"
+    "barStyleAccountType": "Nach Kontotyp",
+    "notAvailable": "k. A.",
+    "colNote": "Hinweis",
+    "partialMonthNote": "Unvollständig: kein Wechselkurs für {pairs}",
+    "pdfPartialNote": "Unvollständige Summe: kein Wechselkurs für {pairs}. Fügen Sie einen auf der Seite Währungen hinzu.",
+    "partialMonth": "Nicht angezeigt: Einige Beträge in diesem Monat konnten nicht umgerechnet werden, daher ist das Reinvermögen unbekannt."
   },
   "portfolioValue": {
     "highestValue": "Höchstwert",
@@ -1855,7 +1867,10 @@
   },
   "partialData": {
     "notice": "Einige Werte sind unvollständig: {count, plural, one {# Betrag konnte nicht in {displayCurrency} umgerechnet werden und ist} other {# Beträge konnten nicht in {displayCurrency} umgerechnet werden und sind}} nicht enthalten. Für {currencies} ist kein Kurs verfügbar; fügen Sie ihn auf der Seite Währungen hinzu.",
-    "noticeExcluded": "Einige Werte sind unvollständig: {count, plural, one {# Betrag konnte nicht ermittelt werden und ist} other {# Beträge konnten nicht ermittelt werden und sind}} nicht enthalten."
+    "noticeExcluded": "Einige Werte sind unvollständig: {count, plural, one {# Betrag konnte nicht ermittelt werden und ist} other {# Beträge konnten nicht ermittelt werden und sind}} nicht enthalten.",
+    "pdfNote": "Unvollständige Summe: kein Wechselkurs für {currencies}",
+    "pdfNoteExcluded": "Unvollständige Summe: {count, plural, one {# Betrag} other {# Beträge}} nicht enthalten",
+    "pdfSuffix": "(unvollständig)"
   },
   "sankey": {
     "help": "Eingegangenes Geld fließt durch die Mitte in das, wofür es ausgegeben, gespart oder investiert wurde, und in die Tilgung von Schulden. Standardmäßig umfasst der Bericht Ihre offenen Giro-, Spar-, Bargeld-, Kreditkarten- und Kreditrahmenkonten, und eine Überweisung zwischen zwei dieser Konten wird nicht angezeigt. Nehmen Sie ein Sparkonto aus dem Kontofilter heraus, um zu sehen, was Sie darauf übertragen haben. Eine Kreditkartenzahlung ist nie eine Schuldenzahlung: Die damit beglichenen Käufe sind bereits als Ausgaben gezählt.",
@@ -1903,5 +1918,8 @@
       "residualDeficit": "Aus Guthaben entnommen",
       "unlinkedAccount": "(nicht verknüpftes Konto)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Erstellt: {timestamp}"
   }
 }

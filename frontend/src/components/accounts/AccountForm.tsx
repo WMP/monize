@@ -424,7 +424,7 @@ export function AccountForm({
             account.highBalanceThreshold != null
               ? Number(account.highBalanceThreshold)
               : undefined,
-          interestRate: account.interestRate || undefined,
+          interestRate: account.interestRate != null ? Number(account.interestRate) : undefined,
           description: account.description || undefined,
           accountNumber: account.accountNumber || undefined,
           institutionId: account.institutionId || undefined,

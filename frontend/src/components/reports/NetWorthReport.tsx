@@ -35,6 +35,15 @@ import { SortableHeader } from '@/components/ui/SortableHeader';
 import { exportToCsv } from '@/lib/csv-export';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
+import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { UnknownAmount } from '@/components/ui/UnknownAmount';
+import { isComplete } from '@/lib/currency-total';
+import {
+  missingCurrenciesFromPairs,
+  partialTotalFor,
+  unionPairs,
+} from '@/lib/net-worth-completeness';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { createLogger } from '@/lib/logger';
 
@@ -67,7 +76,7 @@ function NetWorthTooltip({ active, payload, formatCurrency }: NetWorthTooltipPro
 
 interface CompositionTooltipProps {
   active?: boolean;
-  payload?: Array<{ payload: { name: string; Assets: number; Liabilities: number } }>;
+  payload?: Array<{ payload: { name: string; Assets: number | null; Liabilities: number | null } }>;
   formatCurrency: (value: number) => string;
   formatPercent: (value: number, decimals?: number) => string;
   t: ReturnType<typeof useTranslations<'reports'>>;
@@ -76,8 +85,17 @@ interface CompositionTooltipProps {
 function CompositionTooltip({ active, payload, formatCurrency, formatPercent, t }: CompositionTooltipProps) {
   if (active && payload && payload.length) {
     const data = payload[0]?.payload;
-    const assets = data?.Assets ?? 0;
-    const liabilities = data?.Liabilities ?? 0;
+    // A withheld month has no split to print: a subtotal would read as a total.
+    if (data?.Assets == null || data?.Liabilities == null) {
+      return (
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+          <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">{data?.name}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 max-w-56">{t('netWorth.partialMonth')}</p>
+        </div>
+      );
+    }
+    const assets = data.Assets;
+    const liabilities = data.Liabilities;
     const total = assets + liabilities;
     const pct = (value: number) => (total > 0 ? formatPercent(((value / total) * 100), 1) : '0%');
     return (
@@ -101,7 +119,7 @@ function CompositionTooltip({ active, payload, formatCurrency, formatPercent, t 
 export function NetWorthReport() {
   const t = useTranslations('reports');
   const formatChartDate = useChartDateFormat();
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatCurrencyLabel, formatSignedPercent, formatPercent, formatPercentTrimmed } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatCurrencyLabel, formatSignedPercent, formatPercent, formatPercentTrimmed, defaultCurrency } = useNumberFormat();
   const isMobile = useIsMobile();
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [chartType, setChartType] = useLocalStorage<'line' | 'bar' | 'stacked' | 'table'>(
@@ -149,8 +167,13 @@ export function NetWorthReport() {
     }
   };
 
+  // A month with `fxComplete === false` holds SUBTOTALS: a component that could
+  // not be converted is missing from all three figures. It is drawn as `null`
+  // (a gap), never as a measured dip, and the line and area never bridge it.
   const chartData = useMemo(() =>
-    monthlyData.map((d) => ({
+    monthlyData.map((d) => {
+      const partial = d.fxComplete === false;
+      return {
       // `name` is the formatted display label; `sortKey` is the ISO month
       // (YYYY-MM) so the table can sort chronologically rather than
       // alphabetically by month-name ("Apr 2021" < "Aug 2020" lexically) and
@@ -158,10 +181,17 @@ export function NetWorthReport() {
       // value rather than splitting the localized label.
       name: formatChartDate(d.month, 'MMM yyyy'),
       sortKey: d.month,
-      Assets: Math.round(d.assets),
-      Liabilities: Math.round(d.liabilities),
-      NetWorth: Math.round(d.netWorth),
-    })),
+      partial,
+      // What the table prints: the subtotal, marked, where the chart has a gap.
+      assetsValue: Math.round(d.assets),
+      liabilitiesValue: Math.round(d.liabilities),
+      netWorthValue: Math.round(d.netWorth),
+      pairs: d.missingRatePairs ?? [],
+      Assets: partial ? null : Math.round(d.assets),
+      Liabilities: partial ? null : Math.round(d.liabilities),
+      NetWorth: partial ? null : Math.round(d.netWorth),
+    };
+    }),
   [monthlyData, formatChartDate]);
 
   // The bar view's points: the same months, keyed by the raw ISO month the
@@ -172,19 +202,38 @@ export function NetWorthReport() {
         key: d.month,
         name: chartData[i].name,
         netWorth: chartData[i].NetWorth,
-        byAccountType: d.byAccountType,
+        // A withheld month carries no breakdown either: its types are subtotals.
+        byAccountType: chartData[i].partial ? undefined : d.byAccountType,
       })),
     [monthlyData, chartData],
   );
 
+  // The headline and the change read the END months of the window. Either end
+  // being a subtotal makes the change unknown (the other end cannot vouch for
+  // it); the current figure is the latest month's, marked when it is partial.
   const summary = useMemo(() => {
-    if (chartData.length === 0) return { current: 0, change: 0, changePercent: 0 };
-    const current = chartData[chartData.length - 1]?.NetWorth || 0;
-    const initial = chartData[0]?.NetWorth || 0;
+    if (monthlyData.length === 0) {
+      return { current: 0, change: 0, changePercent: 0, currentTotal: partialTotalFor(0, undefined), pairs: [] as string[], currentPairs: [] as string[], anyPartial: false, changeKnown: true };
+    }
+    const last = monthlyData[monthlyData.length - 1];
+    const first = monthlyData[0];
+    const current = Math.round(last.netWorth);
+    const initial = Math.round(first.netWorth);
     const change = current - initial;
     const changePercent = initial !== 0 ? (change / Math.abs(initial)) * 100 : 0;
-    return { current, change, changePercent };
-  }, [chartData]);
+    const changeKnown = last.fxComplete !== false && first.fxComplete !== false;
+    return {
+      current,
+      change,
+      changePercent,
+      currentTotal: partialTotalFor(current, last.fxComplete, last.missingRatePairs),
+      currentPairs: last.missingRatePairs ?? [],
+      // Every pair either end month could not convert, for the notice.
+      pairs: unionPairs(monthlyData.filter((m) => m.fxComplete === false)),
+      anyPartial: monthlyData.some((m) => m.fxComplete === false),
+      changeKnown,
+    };
+  }, [monthlyData]);
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -195,13 +244,13 @@ export function NetWorthReport() {
           comparison = compareValues(a.sortKey, b.sortKey);
           break;
         case 'assets':
-          comparison = compareValues(a.Assets, b.Assets);
+          comparison = compareValues(a.assetsValue, b.assetsValue);
           break;
         case 'liabilities':
-          comparison = compareValues(a.Liabilities, b.Liabilities);
+          comparison = compareValues(a.liabilitiesValue, b.liabilitiesValue);
           break;
         case 'netWorth':
-          comparison = compareValues(a.NetWorth, b.NetWorth);
+          comparison = compareValues(a.netWorthValue, b.netWorthValue);
           break;
       }
       return sortDirection === 'asc' ? comparison : -comparison;
@@ -224,7 +273,9 @@ export function NetWorthReport() {
   const yAxisDomain = useMemo(() => {
     if (chartData.length === 0) return [0, 'auto'] as [number, 'auto'];
 
-    const values = chartData.map(d => d.NetWorth);
+    // A withheld (null) month is not a value of zero: it sets no bound.
+    const values = chartData.flatMap(d => (d.NetWorth === null ? [] : [d.NetWorth]));
+    if (values.length === 0) return [0, 'auto'] as [number, 'auto'];
     const minValue = Math.min(...values);
     const maxValue = Math.max(...values);
     const range = maxValue - minValue;
@@ -247,29 +298,52 @@ export function NetWorthReport() {
     return [Math.min(0, minValue), 'auto'] as [number, 'auto'];
   }, [chartData]);
 
+  // The extremes are ranked over complete months only; a withheld month is
+  // neither the high nor the low.
   const minMax = useMemo(() => {
-    if (chartData.length < 2) return null;
+    const known = chartData.flatMap((d) =>
+      d.NetWorth === null ? [] : [{ ...d, NetWorth: d.NetWorth }],
+    );
+    if (known.length < 2) return null;
     let minIdx = 0, maxIdx = 0;
-    for (let i = 1; i < chartData.length; i++) {
-      if (chartData[i].NetWorth < chartData[minIdx].NetWorth) minIdx = i;
-      if (chartData[i].NetWorth > chartData[maxIdx].NetWorth) maxIdx = i;
+    for (let i = 1; i < known.length; i++) {
+      if (known[i].NetWorth < known[minIdx].NetWorth) minIdx = i;
+      if (known[i].NetWorth > known[maxIdx].NetWorth) maxIdx = i;
     }
     if (minIdx === maxIdx) return null;
     return {
-      min: chartData[minIdx],
-      max: chartData[maxIdx],
+      min: known[minIdx],
+      max: known[maxIdx],
     };
   }, [chartData]);
 
+  // Pairs as the server names them, or a plain word when the flag came without any.
+  const partialPairsLabel = (pairs: readonly string[]) =>
+    pairs.length > 0 ? pairs.join(', ') : t('netWorth.notAvailable');
+
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
+    const currentIsPartial = !isComplete(summary.currentTotal);
+    const unknown = t('netWorth.notAvailable');
     await exportToPdf({
       title: t('netWorth.pdfTitle'),
       subtitle: `${chartData[0]?.name || ''} - ${chartData[chartData.length - 1]?.name || ''}`,
       summaryCards: [
-        { label: t('netWorth.currentNetWorth'), value: formatCurrency(summary.current), color: summary.current >= 0 ? '#16a34a' : '#dc2626' },
-        { label: t('netWorth.change'), value: `${summary.change >= 0 ? '+' : ''}${formatCurrency(summary.change)}`, color: summary.change >= 0 ? '#16a34a' : '#dc2626' },
-        { label: t('netWorth.changePct'), value: formatSignedPercent(summary.changePercent, 1), color: summary.changePercent >= 0 ? '#16a34a' : '#dc2626' },
+        {
+          label: t('netWorth.currentNetWorth'),
+          value: formatCurrency(summary.current),
+          color: summary.current >= 0 ? '#16a34a' : '#dc2626',
+          // A subtotal leaves the application labelled as one.
+          ...(currentIsPartial && {
+            note: t('netWorth.pdfPartialNote', { pairs: partialPairsLabel(summary.currentPairs) }),
+          }),
+        },
+        summary.changeKnown
+          ? { label: t('netWorth.change'), value: `${summary.change >= 0 ? '+' : ''}${formatCurrency(summary.change)}`, color: summary.change >= 0 ? '#16a34a' : '#dc2626' }
+          : { label: t('netWorth.change'), value: unknown },
+        summary.changeKnown
+          ? { label: t('netWorth.changePct'), value: formatSignedPercent(summary.changePercent, 1), color: summary.changePercent >= 0 ? '#16a34a' : '#dc2626' }
+          : { label: t('netWorth.changePct'), value: unknown },
       ],
       chartContainer: chartRef.current,
       filename: 'net-worth-report',
@@ -277,8 +351,16 @@ export function NetWorthReport() {
   };
 
   const handleExportCsv = () => {
-    const headers = [t('netWorth.colMonth'), t('netWorth.colAssets'), t('netWorth.colLiabilities'), t('netWorth.colNetWorth')];
-    const rows = sortedTableData.map((d) => [d.name, d.Assets, d.Liabilities, d.NetWorth]);
+    const headers = [t('netWorth.colMonth'), t('netWorth.colAssets'), t('netWorth.colLiabilities'), t('netWorth.colNetWorth'), t('netWorth.colNote')];
+    // A partial month's three figures are subtotals; the Note column says so,
+    // naming the pairs, so a spreadsheet never holds one unmarked.
+    const rows = sortedTableData.map((d) => [
+      d.name,
+      d.assetsValue,
+      d.liabilitiesValue,
+      d.netWorthValue,
+      d.partial ? t('netWorth.partialMonthNote', { pairs: partialPairsLabel(d.pairs) }) : '',
+    ]);
     exportToCsv('net-worth-report', headers, rows);
   };
 
@@ -331,22 +413,44 @@ export function NetWorthReport() {
           <div className={`text-2xl font-bold ${
             gainLossColor(summary.current)
           }`}>
-            {formatCurrency(summary.current)}
+            <PartialTotal total={summary.currentTotal} displayCurrency={defaultCurrency}>
+              {formatCurrency(summary.current)}
+            </PartialTotal>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('netWorth.change')}</div>
-          <div className={`text-2xl font-bold ${gainLossColor(summary.change)}`}>
-            {summary.change >= 0 ? '+' : ''}{formatCurrency(summary.change)}
-          </div>
+          {summary.changeKnown ? (
+            <div className={`text-2xl font-bold ${gainLossColor(summary.change)}`}>
+              {summary.change >= 0 ? '+' : ''}{formatCurrency(summary.change)}
+            </div>
+          ) : (
+            // A change between a subtotal and anything is not a change.
+            <div className="text-2xl font-bold text-gray-500 dark:text-gray-400">
+              <UnknownAmount reason="displayFx" />
+            </div>
+          )}
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('netWorth.changePct')}</div>
-          <div className={`text-2xl font-bold ${gainLossColor(summary.changePercent)}`}>
-            {formatSignedPercent(summary.changePercent, 1)}
-          </div>
+          {summary.changeKnown ? (
+            <div className={`text-2xl font-bold ${gainLossColor(summary.changePercent)}`}>
+              {formatSignedPercent(summary.changePercent, 1)}
+            </div>
+          ) : (
+            <div className="text-2xl font-bold text-gray-500 dark:text-gray-400">
+              <UnknownAmount reason="displayFx" />
+            </div>
+          )}
         </div>
       </div>
+      )}
+      {!dataUnavailable && summary.anyPartial && (
+        <PartialDataNotice
+          missingCurrencies={missingCurrenciesFromPairs(summary.pairs)}
+          excludedCount={Math.max(summary.pairs.length, 1)}
+          displayCurrency={defaultCurrency}
+        />
       )}
 
       {/* Controls -- always rendered so focus inside DateInput survives reloads */}
@@ -398,7 +502,7 @@ export function NetWorthReport() {
           <ReportToolbarActions
             onExportPdf={handleExportPdf}
             onExportCsv={handleExportCsv}
-            disabled={chartData.length === 0}
+            disabled={dataUnavailable || chartData.length === 0}
           />
         </div>
       </div>
@@ -469,13 +573,19 @@ export function NetWorthReport() {
                       {row.name}
                     </td>
                     <td className="px-4 py-3 text-right text-sm text-green-600 dark:text-green-400">
-                      {formatCurrency(row.Assets)}
+                      <PartialTotal total={partialTotalFor(row.assetsValue, row.partial ? false : undefined, row.pairs)} displayCurrency={defaultCurrency}>
+                        {formatCurrency(row.assetsValue)}
+                      </PartialTotal>
                     </td>
                     <td className="px-4 py-3 text-right text-sm text-red-600 dark:text-red-400">
-                      {formatCurrency(row.Liabilities)}
+                      <PartialTotal total={partialTotalFor(row.liabilitiesValue, row.partial ? false : undefined, row.pairs)} displayCurrency={defaultCurrency}>
+                        {formatCurrency(row.liabilitiesValue)}
+                      </PartialTotal>
                     </td>
-                    <td className={`px-4 py-3 text-right text-sm font-medium ${row.NetWorth >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-600 dark:text-red-400'}`}>
-                      {formatCurrency(row.NetWorth)}
+                    <td className={`px-4 py-3 text-right text-sm font-medium ${row.netWorthValue >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-600 dark:text-red-400'}`}>
+                      <PartialTotal total={partialTotalFor(row.netWorthValue, row.partial ? false : undefined, row.pairs)} displayCurrency={defaultCurrency}>
+                        {formatCurrency(row.netWorthValue)}
+                      </PartialTotal>
                     </td>
                   </tr>
                 ))}
@@ -526,6 +636,8 @@ export function NetWorthReport() {
                 <ReferenceLine y={0} stroke={chartColors.axis} strokeDasharray="3 3" />
                 <Area
                   type="monotone"
+                  // A withheld month is a gap, never a segment drawn through it.
+                  connectNulls={false}
                   dataKey="NetWorth"
                   stroke={chartColors.primary}
                   strokeWidth={2}

@@ -37,7 +37,12 @@ export interface NetWorthByAccountTypePoint {
   key: string;
   /** The month as the tooltip names it. */
   name: string;
-  netWorth: number;
+  /**
+   * `null` is a month the server could not fully convert: its figure would be a
+   * subtotal, so it draws no bar and no point rather than a measured dip. Such
+   * a month carries no `byAccountType` either.
+   */
+  netWorth: number | null;
   byAccountType?: MonthlyNetWorth['byAccountType'];
 }
 
@@ -65,6 +70,8 @@ interface TooltipBodyProps {
   types: readonly AccountType[];
   typeLabel: (type: AccountType) => string;
   netWorthLabel: string;
+  /** Why a month with no figure has none. */
+  withheldLabel: string;
   formatCurrency: (value: number) => string;
 }
 
@@ -75,10 +82,19 @@ function NetWorthByAccountTypeTooltip({
   types,
   typeLabel,
   netWorthLabel,
+  withheldLabel,
   formatCurrency,
 }: TooltipBodyProps) {
   const point = active ? (payload?.[0]?.payload as NetWorthByAccountTypePoint | undefined) : undefined;
   if (!point) return null;
+  if (point.netWorth === null) {
+    return (
+      <ChartTooltipPanel>
+        <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">{point.name}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 max-w-56">{withheldLabel}</p>
+      </ChartTooltipPanel>
+    );
+  }
   // Only what the month holds: a type at zero this month contributes nothing.
   const rows = types.filter((type) => {
     const value = point.byAccountType?.[type];
@@ -161,6 +177,7 @@ export function NetWorthByAccountTypeChart({
               types={types}
               typeLabel={typeLabel}
               netWorthLabel={netWorthLabel}
+              withheldLabel={t('netWorth.partialMonth')}
               formatCurrency={formatCurrency}
             />
           }
@@ -199,7 +216,11 @@ export function NetWorthByAccountTypeChart({
           // where net worth is printed whatever the bar is made of.
           <Line
             dataKey={(point: NetWorthByAccountTypePoint) =>
-              types.length === 0 ? point.netWorth : netWorthStackTop(point)
+              point.netWorth === null
+                ? null
+                : types.length === 0
+                  ? point.netWorth
+                  : netWorthStackTop({ ...point, netWorth: point.netWorth })
             }
             stroke="none"
             dot={false}
@@ -214,7 +235,11 @@ export function NetWorthByAccountTypeChart({
               angle={valueLabels === 'vertical' ? -90 : 0}
               offset={valueLabels === 'vertical' ? 6 : 5}
               textAnchor={valueLabels === 'vertical' ? 'start' : 'middle'}
-              formatter={(value: unknown) => formatValueLabel(Number(value))}
+              // A withheld month has no figure to label: `Number(null)` would
+              // print a measured zero above the gap.
+              formatter={(value: unknown) =>
+                value === null || value === undefined ? '' : formatValueLabel(Number(value))
+              }
               style={{
                 fill: chartColors.axis,
                 fontSize: 11,

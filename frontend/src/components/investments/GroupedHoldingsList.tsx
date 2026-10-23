@@ -7,6 +7,8 @@ import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { gainLossColor } from '@/lib/format';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { portfolioPartialTotal } from '@/lib/net-worth-completeness';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { CAPTION_CLASS, CellLabel } from '@/components/ui/Table';
 import { ColumnChooserMenu, type ColumnChooserItem } from '@/components/ui/ColumnChooserMenu';
@@ -28,7 +30,8 @@ const FIGURE_CELL =
 interface GroupedHoldingsListProps {
   holdingsByAccount: AccountHoldings[];
   isLoading: boolean;
-  totalPortfolioValue: number;
+  /** The portfolio's value, or `null` while it is not known (no summary yet, or a failed one). */
+  totalPortfolioValue: number | null;
   /**
    * False when `totalPortfolioValue` is a known subtotal rather than the whole
    * portfolio (a missing price or FX rate). A share of a subtotal is not a
@@ -137,7 +140,7 @@ export function GroupedHoldingsList({
   // (review #1133). getRate returns null for an unresolved pair, so the missing
   // conversion surfaces here rather than being silently dropped.
   const getPortfolioPercent = (value: number | null, currencyCode?: string): string => {
-    if (value === null || totalPortfolioValue === 0) return '-';
+    if (value === null || totalPortfolioValue === null || totalPortfolioValue === 0) return '-';
     if (valuationComplete === false) return '-';
     let converted = value;
     if (currencyCode && currencyCode !== defaultCurrency) {
@@ -240,6 +243,10 @@ export function GroupedHoldingsList({
           const defaultApprox = acctDisplayCurrency
             ? accountDefaultApprox(account, accountTotalValue)
             : null;
+          // The account's gain is over the holdings that have a value, so it is
+          // a partial figure whenever this account's own valuation is (A26-M38).
+          const accountGainPartial = portfolioPartialTotal(account.totalGainLoss, account);
+          const accountGainIsPartial = accountGainPartial.excludedCount > 0;
           const fmtAcct = (value: number | null) => {
             if (value === null) return '-';
             if (acctDisplayCurrency) return `${formatCurrencyBase(value, acctDisplayCurrency)} ${acctDisplayCurrency}`;
@@ -290,8 +297,15 @@ export function GroupedHoldingsList({
                     </div>
                   )}
                   <div className={`text-sm ${getGainLossColor(account.totalGainLoss)}`}>
-                    {fmtAcct(account.totalGainLoss)} ({formatPercent(account.totalGainLossPercent)})
+                    <PartialTotal total={accountGainPartial} displayCurrency={account.currencyCode}>
+                      {fmtAcct(account.totalGainLoss)} ({formatPercent(account.totalGainLossPercent)})
+                    </PartialTotal>
                   </div>
+                  {accountGainIsPartial && (
+                    <div className="text-xs text-amber-700 dark:text-amber-300">
+                      {t('groupedHoldings.gainPartialCaption')}
+                    </div>
+                  )}
                 </div>
               </button>
 
@@ -458,10 +472,14 @@ export function GroupedHoldingsList({
                           <td role="cell" className={`${placement.total.gainLoss} ${FIGURE_CELL}`}>
                             <CellLabel className={CAPTION_CLASS}>{t('groupedHoldings.gainLossColumn')}</CellLabel>
                             <div className={`text-sm ${getGainLossColor(account.totalGainLoss)}`}>
-                              {fmtAcct(account.totalGainLoss)}
+                              <PartialTotal total={accountGainPartial} displayCurrency={account.currencyCode}>
+                                {fmtAcct(account.totalGainLoss)}
+                              </PartialTotal>
                             </div>
                             <div className={`text-xs ${getGainLossColor(account.totalGainLossPercent)}`}>
-                              {formatPercent(account.totalGainLossPercent)}
+                              <PartialTotal total={accountGainPartial} displayCurrency={account.currencyCode}>
+                                {formatPercent(account.totalGainLossPercent)}
+                              </PartialTotal>
                             </div>
                           </td>
                         )}

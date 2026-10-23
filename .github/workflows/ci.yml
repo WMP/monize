@@ -1411,40 +1411,6 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Pre-download and cache the Playwright browsers ONCE, before the sharded
-  # test jobs run. The shards then restore from this cache (guaranteed hit) and
-  # never touch cdn.playwright.dev themselves. This avoids the failure we hit
-  # when four shards raced on a cold cache: the ones that missed downloaded
-  # browsers concurrently and some downloads stalled indefinitely (the Playwright
-  # downloader has no timeout), wedging the whole job. The download timeout below
-  # also caps any future CDN stall so this job fails fast and can be re-run
-  # instead of hanging.
-  e2e-browsers:
-    name: E2E Browser Cache
-    runs-on: ubuntu-latest
-    needs: [backend-unit-tests, frontend-unit-tests]
-    steps:
-      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version: 24
-      - name: Install E2E dependencies
-        working-directory: e2e
-        run: npm ci
-      - name: Cache Playwright browsers
-        id: pw-cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-firefox-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
-      - name: Download Playwright browsers
-        if: steps.pw-cache.outputs.cache-hit != 'true'
-        working-directory: e2e
-        timeout-minutes: 15
-        run: npx playwright install chromium firefox
-
   # Runs the Playwright suite against a full stack (postgres + backend +
   # frontend) brought up via docker-compose.e2e.yml. Runs chromium + firefox.
   # Gates releases: build-and-push lists this job in its needs, so a red E2E
@@ -1452,10 +1418,10 @@ jobs:
   e2e-tests:
     name: E2E Tests (shard ${{ matrix.shard }}/4${{ matrix.cluster == 'true' && ', cluster' || '' }})
     runs-on: ubuntu-latest
-    # Depends on e2e-browsers so the Playwright cache is fully populated before
-    # any shard starts; the backend/frontend unit-test gate is inherited
-    # transitively through e2e-browsers.
-    needs: [e2e-browsers]
+    # The backend/frontend unit-test gate. The browsers come from the pinned
+    # Playwright image (scripts/e2e-playwright.sh), so no job has to warm a
+    # browser cache first.
+    needs: [backend-unit-tests, frontend-unit-tests]
     # Shard across 4 runners. Each shard brings up its OWN isolated stack
     # (postgres + backend + frontend, plus a second backend and a load balancer
     # on the cluster shard) below, so there is no shared database state between
@@ -1506,6 +1472,11 @@ jobs:
         # the job on the first 429 (scripts/pull-ci-images.sh).
         run: scripts/pull-ci-images.sh -f docker-compose.e2e.yml
 
+      - name: Pull Playwright image
+        # Pinned by digest; retried with a cap per attempt
+        # (scripts/e2e-playwright.sh, docs/container-images.md).
+        run: scripts/e2e-playwright.sh pull
+
       - name: Start application stack
         run: docker compose -f docker-compose.e2e.yml up -d --wait --wait-timeout "$E2E_WAIT_TIMEOUT"
 
@@ -1513,34 +1484,14 @@ jobs:
         working-directory: e2e
         run: npm ci
 
-      - name: Restore Playwright browsers
-        id: pw-cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-firefox-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
-
-      # Browsers come from the cache populated by e2e-browsers, so normally only
-      # the apt system deps are installed here (fast, no CDN download). The else
-      # branch is a safety net for the rare case the cache was evicted between
-      # jobs; the timeout caps a stalled download instead of hanging the shard.
-      - name: Install Playwright system dependencies
-        working-directory: e2e
-        timeout-minutes: 10
-        env:
-          PW_CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
-        run: |
-          if [ "$PW_CACHE_HIT" = "true" ]; then
-            npx playwright install-deps chromium firefox
-          else
-            npx playwright install --with-deps chromium firefox
-          fi
-
+      # The browsers and their system libraries are in the Playwright image, so
+      # nothing is installed here. The apt install this replaces hung on a
+      # stalled Ubuntu mirror until its 10-minute timeout in about a third of
+      # the shards (scripts/e2e-playwright.sh).
       - name: Run Chromium push integration
         if: matrix.shard == 1
-        working-directory: e2e
         timeout-minutes: 5
-        run: npm run test:push
+        run: scripts/e2e-playwright.sh npm run test:push
 
       - name: Upload Chromium push report
         if: always() && matrix.shard == 1
@@ -1559,17 +1510,15 @@ jobs:
       # and prove nothing.
       - name: Run cluster tests (CLUSTER_MODE=multi)
         if: matrix.cluster == 'true'
-        working-directory: e2e
         timeout-minutes: 10
         env:
           BASE_URL: http://localhost:3001
           E2E_CLUSTER: multi
           E2E_LB_URL: http://localhost:3002
           CI: 'true'
-        run: npx playwright test tests/cluster.spec.ts --project=chromium
+        run: scripts/e2e-playwright.sh npx playwright test tests/cluster.spec.ts --project=chromium
 
       - name: Run E2E tests
-        working-directory: e2e
         timeout-minutes: 30
         env:
           BASE_URL: http://localhost:3001
@@ -1577,7 +1526,7 @@ jobs:
           SHARD: ${{ matrix.shard }}
         run: |
           set -o pipefail
-          npx playwright test --shard="${SHARD}/4" --max-failures=5 2>&1 | tee /tmp/pw-output.txt
+          scripts/e2e-playwright.sh npx playwright test --shard="${SHARD}/4" --max-failures=5 2>&1 | tee /tmp/pw-output.txt
 
       - name: Upload Playwright report
         if: always()

@@ -562,8 +562,15 @@ describe("NotificationService", () => {
       expect(String(dismissed)).toContain("starts_with(");
       expect(String(read)).toContain("starts_with(");
       expect(String(dismissed)).not.toContain("LIKE");
-      expect(dismissedArgs[1]).toEqual(["bond:unbooked:", "bond:missing:"]);
-      expect(readArgs[1]).toEqual(["bond:unbooked:", "bond:missing:"]);
+      // `gem:` too: the GEM signal-change row is the only memory that a
+      // period's change was announced, and the period outlives the window
+      // (A26-L24).
+      expect(dismissedArgs[1]).toEqual([
+        "bond:unbooked:",
+        "bond:missing:",
+        "gem:",
+      ]);
+      expect(readArgs[1]).toEqual(["bond:unbooked:", "bond:missing:", "gem:"]);
     });
 
     it("forgets a dismissed state-keyed row only after the long window", async () => {

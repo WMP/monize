@@ -3730,6 +3730,195 @@ describe("PortfolioCalculationService.calculateHoldingsWithValues", () => {
 });
 
 /**
+ * Invariant: a gain is the value of the holdings that joined the value total
+ * less the cost of THOSE SAME holdings (audit A26-M38). Canonical adversarial
+ * input: one priced and one unpriced holding. Minimal mutation: subtract
+ * `totalCostBasis` (every holding's cost) from `totalHoldingsValue` again.
+ * Test that fails under it: the first of these.
+ */
+describe("PortfolioCalculationService gain over the priced holdings (A26-M38)", () => {
+  const userId = "user-1";
+
+  const row = (
+    id: string,
+    securityId: string,
+    quantity: number,
+    averageCost: number,
+    currencyCode = "PLN",
+  ) => ({
+    id,
+    accountId: "acct-1",
+    securityId,
+    quantity,
+    averageCost,
+    security: {
+      id: securityId,
+      symbol: securityId.toUpperCase(),
+      name: securityId,
+      securityType: "STOCK",
+      currencyCode,
+    },
+    account: { id: "acct-1", currencyCode: "PLN" },
+  });
+
+  const run = async (
+    rows: ReturnType<typeof row>[],
+    prices: Array<[string, number]>,
+  ) => {
+    const service = buildService(
+      [
+        [Holding, { find: jest.fn().mockResolvedValue(rows) }],
+        [InvestmentTransaction, { find: jest.fn().mockResolvedValue([]) }],
+        [Account, { find: jest.fn().mockResolvedValue([]) }],
+      ],
+      { resolveStoredRate: storedRateDouble() },
+    );
+    jest
+      .spyOn(service, "calculateCostBasisLotsInAccountCurrency")
+      .mockResolvedValue(new Map());
+    return service.calculateHoldingsWithValues(
+      userId,
+      ["acct-1"],
+      "PLN",
+      new Map(),
+      async () => new Map(prices),
+    );
+  };
+
+  it("keeps an unpriced holding's cost out of the gain and reports it apart", async () => {
+    // A: 1000 x 100 = 100,000 value, 1000 x 80 = 80,000 cost. B: no price, 50,000 cost.
+    const result = await run(
+      [row("h-a", "sec-a", 1000, 80), row("h-b", "sec-b", 500, 100)],
+      [["sec-a", 100]],
+    );
+
+    expect(result.totalHoldingsValue).toBe(100000);
+    expect(result.totalCostBasis).toBe(130000);
+    expect(result.gainMarketValue).toBe(100000);
+    expect(result.gainCostBasis).toBe(80000);
+    expect(result.unpricedCostBasis).toBe(50000);
+    expect(result.pricesComplete).toBe(false);
+  });
+
+  it("leaves a holding whose cost did not convert out of both sides of the gain", async () => {
+    // B is USD in a PLN account with no USD->PLN rate: its value does not join
+    // the value total either, so neither side of the gain carries it.
+    const result = await run(
+      [row("h-a", "sec-a", 1000, 80), row("h-b", "sec-b", 10, 5, "USD")],
+      [
+        ["sec-a", 100],
+        ["sec-b", 7],
+      ],
+    );
+
+    expect(result.gainMarketValue).toBe(100000);
+    expect(result.gainCostBasis).toBe(80000);
+    expect(result.unpricedCostBasis).toBe(0);
+    expect(result.missingRatePairs).toContain("USD->PLN");
+  });
+
+  it("leaves a complete portfolio's gain as value less cost", async () => {
+    const result = await run(
+      [row("h-a", "sec-a", 1000, 80), row("h-b", "sec-b", 500, 100)],
+      [
+        ["sec-a", 100],
+        ["sec-b", 120],
+      ],
+    );
+
+    expect(result.gainMarketValue).toBe(result.totalHoldingsValue);
+    expect(result.gainCostBasis).toBe(result.totalCostBasis);
+    expect(result.unpricedCostBasis).toBe(0);
+    expect(result.pricesComplete).toBe(true);
+  });
+
+  describe("per account", () => {
+    const account = {
+      id: "acct-1",
+      name: "acct-1",
+      currencyCode: "CAD",
+      currentBalance: 0,
+      accountSubType: AccountSubType.INVESTMENT_BROKERAGE,
+      linkedAccountId: null,
+    } as unknown as Account;
+
+    const held = (
+      id: string,
+      marketValue: number | null,
+      cost: number,
+    ): HoldingWithMarketValue =>
+      ({
+        id,
+        accountId: "acct-1",
+        securityId: `sec-${id}`,
+        symbol: id,
+        name: id,
+        securityType: "STOCK",
+        currencyCode: "CAD",
+        quantity: 1,
+        averageCost: cost,
+        costBasis: cost,
+        costBasisAccountCurrency: cost,
+        currentPrice: marketValue,
+        marketValue,
+        gainLoss: null,
+        gainLossPercent: null,
+      }) as HoldingWithMarketValue;
+
+    const build = async (holdings: HoldingWithMarketValue[]) => {
+      const [result] = await buildService([], {}).buildHoldingsByAccount(
+        {
+          cashAccounts: [],
+          brokerageAccounts: [account],
+          standaloneAccounts: [],
+          holdingsAccountIds: [],
+        },
+        holdings,
+        new Map<string, number>(),
+        new Map(),
+        new Map<string, number>(),
+      );
+      return result;
+    };
+
+    it("takes the account's gain over its priced holdings only", async () => {
+      const result = await build([
+        held("a", 100000, 80000),
+        held("b", null, 50000),
+      ]);
+
+      expect(result.totalGainLoss).toBe(20000);
+      expect(result.totalGainLossPercent).toBe(25);
+      expect(result.gainCostBasis).toBe(80000);
+      expect(result.unpricedCostBasis).toBe(50000);
+      expect(result.totalCostBasis).toBe(130000);
+      expect(result.valuationComplete).toBe(false);
+    });
+
+    it("leaves a complete account unchanged", async () => {
+      const result = await build([
+        held("a", 100000, 80000),
+        held("b", 40000, 50000),
+      ]);
+
+      expect(result.totalGainLoss).toBe(10000);
+      expect(result.gainCostBasis).toBe(130000);
+      expect(result.unpricedCostBasis).toBe(0);
+      expect(result.valuationComplete).toBe(true);
+    });
+
+    it("reports a zero percent over a zero matched cost", async () => {
+      const result = await build([held("b", null, 50000)]);
+
+      expect(result.totalGainLoss).toBe(0);
+      expect(result.totalGainLossPercent).toBe(0);
+      expect(result.gainCostBasis).toBe(0);
+      expect(result.unpricedCostBasis).toBe(50000);
+    });
+  });
+});
+
+/**
  * Invariant: a bond-linked holding is worth its own account's lots, never
  * quantity x the program-wide blend (bond-program-securities.md 2.4, audit H2).
  * Minimal mutation: price a linked holding as `quantity x priceMap.get(...)`.

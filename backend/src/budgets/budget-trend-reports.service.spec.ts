@@ -558,6 +558,28 @@ describe("BudgetTrendReportsService", () => {
       expect(result).toEqual([]);
     });
 
+    it("should leave the budget's excluded accounts out of the live trend queries", async () => {
+      budgetsService.findOne.mockResolvedValueOnce({
+        ...mockBudget,
+        config: { excludedAccountIds: ["acc-x"] },
+        categories: [mockBudgetCategory],
+      });
+      periodsRepository.find.mockResolvedValueOnce([]);
+      const directQb = createMockQueryBuilder();
+      const splitQb = createMockQueryBuilder();
+      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
+      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
+
+      await service.getTrend("user-1", "budget-1", 3);
+
+      for (const qb of [directQb, splitQb]) {
+        expect(qb.andWhere).toHaveBeenCalledWith(
+          "t.account_id NOT IN (:...excludedAccountIds)",
+          { excludedAccountIds: ["acc-x"] },
+        );
+      }
+    });
+
     it("should compute live trend with category and split data", async () => {
       periodsRepository.find.mockResolvedValueOnce([]);
 

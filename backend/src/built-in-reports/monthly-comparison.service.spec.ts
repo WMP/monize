@@ -107,11 +107,42 @@ const mockPreviousSpending = {
   totalSpending: 2750,
 };
 
+const completeMonth = {
+  fxComplete: true,
+  missingRatePairs: [] as string[],
+  assetsFxComplete: true,
+  liabilitiesFxComplete: true,
+};
+
 const mockNetWorthHistory = [
-  { month: "2025-02-01", assets: 50000, liabilities: 10000, netWorth: 40000 },
-  { month: "2025-03-01", assets: 51000, liabilities: 10000, netWorth: 41000 },
-  { month: "2025-12-01", assets: 60000, liabilities: 10000, netWorth: 50000 },
-  { month: "2026-01-01", assets: 62000, liabilities: 10000, netWorth: 52000 },
+  {
+    month: "2025-02-01",
+    assets: 50000,
+    liabilities: 10000,
+    netWorth: 40000,
+    ...completeMonth,
+  },
+  {
+    month: "2025-03-01",
+    assets: 51000,
+    liabilities: 10000,
+    netWorth: 41000,
+    ...completeMonth,
+  },
+  {
+    month: "2025-12-01",
+    assets: 60000,
+    liabilities: 10000,
+    netWorth: 50000,
+    ...completeMonth,
+  },
+  {
+    month: "2026-01-01",
+    assets: 62000,
+    liabilities: 10000,
+    netWorth: 52000,
+    ...completeMonth,
+  },
 ];
 
 const mockTopMovers = [
@@ -337,6 +368,44 @@ describe("MonthlyComparisonService", () => {
       expect(result.netWorth.previousNetWorth).toBe(50000);
       expect(result.netWorth.netWorthChange).toBe(2000);
       expect(result.netWorth.netWorthChangePercent).toBe(4);
+      expect(result.netWorth.knownCurrentNetWorth).toBe(52000);
+      expect(result.netWorth.knownPreviousNetWorth).toBe(50000);
+      expect(result.netWorth.fxComplete).toBe(true);
+      expect(result.netWorth.missingRatePairs).toEqual([]);
+      expect(result.netWorth.monthlyHistory[0]).toEqual({
+        month: "2025-02-01",
+        netWorth: 40000,
+        fxComplete: true,
+        missingRatePairs: [],
+      });
+    });
+
+    it("withholds the net worth and its change when one compared month has no rate", async () => {
+      mockNetWorthService.getMonthlyNetWorth.mockResolvedValue([
+        mockNetWorthHistory[2],
+        {
+          ...mockNetWorthHistory[3],
+          fxComplete: false,
+          missingRatePairs: ["ZZZ->USD"],
+          assetsFxComplete: false,
+        },
+      ]);
+
+      const result = await service.getMonthlyComparison(mockUserId, mockMonth);
+
+      expect(result.netWorth.currentNetWorth).toBeNull();
+      expect(result.netWorth.knownCurrentNetWorth).toBe(52000);
+      expect(result.netWorth.previousNetWorth).toBe(50000);
+      expect(result.netWorth.knownPreviousNetWorth).toBe(50000);
+      expect(result.netWorth.netWorthChange).toBeNull();
+      expect(result.netWorth.netWorthChangePercent).toBeNull();
+      expect(result.netWorth.fxComplete).toBe(false);
+      expect(result.netWorth.missingRatePairs).toEqual(["ZZZ->USD"]);
+      // The history point keeps its own flags.
+      expect(result.netWorth.monthlyHistory[1]).toMatchObject({
+        fxComplete: false,
+        missingRatePairs: ["ZZZ->USD"],
+      });
     });
 
     it("maps top movers correctly", async () => {

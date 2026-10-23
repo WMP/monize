@@ -57,8 +57,6 @@ import type {
 import {
   clearAllCache,
   dedupe,
-  getCached,
-  setCache,
   invalidateBalanceCaches,
   invalidateCache,
   invalidateScheduledFxReadModel,
@@ -119,25 +117,23 @@ export const investmentsApi = {
   // Get portfolio summary
   getPortfolioSummary: async (accountIds?: string[]): Promise<PortfolioSummary> => {
     const cacheKey = `investments:summary:${accountIds?.join(',') || 'all'}`;
-    const cached = getCached<PortfolioSummary>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<PortfolioSummary>('/portfolio/summary', {
-      params: accountIds && accountIds.length > 0 ? { accountIds: accountIds.join(',') } : undefined,
-    });
-    setCache(cacheKey, response.data, 60_000);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<PortfolioSummary>('/portfolio/summary', {
+        params: accountIds && accountIds.length > 0 ? { accountIds: accountIds.join(',') } : undefined,
+      });
+      return response.data;
+    }, 60_000);
   },
 
   // Get asset allocation
   getAssetAllocation: async (accountIds?: string[]): Promise<AssetAllocation> => {
     const cacheKey = `investments:allocation:${accountIds?.join(',') || 'all'}`;
-    const cached = getCached<AssetAllocation>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<AssetAllocation>('/portfolio/allocation', {
-      params: accountIds && accountIds.length > 0 ? { accountIds: accountIds.join(',') } : undefined,
-    });
-    setCache(cacheKey, response.data, 60_000);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<AssetAllocation>('/portfolio/allocation', {
+        params: accountIds && accountIds.length > 0 ? { accountIds: accountIds.join(',') } : undefined,
+      });
+      return response.data;
+    }, 60_000);
   },
 
   // Get portfolio "exposure by tag" allocation. Overlapping exposure: a
@@ -145,13 +141,12 @@ export const investmentsApi = {
   // to more than 100%.
   getAllocationByTag: async (accountIds?: string[]): Promise<AssetAllocation> => {
     const cacheKey = `investments:allocation-by-tag:${accountIds?.join(',') || 'all'}`;
-    const cached = getCached<AssetAllocation>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<AssetAllocation>('/portfolio/allocation/by-tag', {
-      params: accountIds && accountIds.length > 0 ? { accountIds: accountIds.join(',') } : undefined,
-    });
-    setCache(cacheKey, response.data, 60_000);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<AssetAllocation>('/portfolio/allocation/by-tag', {
+        params: accountIds && accountIds.length > 0 ? { accountIds: accountIds.join(',') } : undefined,
+      });
+      return response.data;
+    }, 60_000);
   },
 
   // What the portfolio's held securities are tagged with: the KEY:VALUE keys
@@ -164,16 +159,15 @@ export const investmentsApi = {
     accountIds?: string[],
   ): Promise<PortfolioTagSummary> => {
     const cacheKey = `investments:tag-keys:${accountIds?.join(',') || 'all'}`;
-    const cached = getCached<PortfolioTagSummary>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<PortfolioTagSummary>('/portfolio/tag-keys', {
-      params:
-        accountIds && accountIds.length > 0
-          ? { accountIds: accountIds.join(',') }
-          : undefined,
-    });
-    setCache(cacheKey, response.data, 60_000);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<PortfolioTagSummary>('/portfolio/tag-keys', {
+        params:
+          accountIds && accountIds.length > 0
+            ? { accountIds: accountIds.join(',') }
+            : undefined,
+      });
+      return response.data;
+    }, 60_000);
   },
 
   // Get portfolio allocation aggregated by the value of one KEY:VALUE tag key
@@ -184,21 +178,20 @@ export const investmentsApi = {
     accountIds?: string[],
   ): Promise<AssetAllocation> => {
     const cacheKey = `investments:allocation-by-tag-key:${key}:${accountIds?.join(',') || 'all'}`;
-    const cached = getCached<AssetAllocation>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<AssetAllocation>(
-      '/portfolio/allocation/by-tag-key',
-      {
-        params: {
-          key,
-          ...(accountIds && accountIds.length > 0
-            ? { accountIds: accountIds.join(',') }
-            : {}),
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<AssetAllocation>(
+        '/portfolio/allocation/by-tag-key',
+        {
+          params: {
+            key,
+            ...(accountIds && accountIds.length > 0
+              ? { accountIds: accountIds.join(',') }
+              : {}),
+          },
         },
-      },
-    );
-    setCache(cacheKey, response.data, 60_000);
-    return response.data;
+      );
+      return response.data;
+    }, 60_000);
   },
 
   // Suggest a description and website for a security from the Yahoo provider
@@ -226,11 +219,10 @@ export const investmentsApi = {
   // Get all investment accounts
   getInvestmentAccounts: async (): Promise<Account[]> => {
     const cacheKey = 'investments:accounts';
-    const cached = getCached<Account[]>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<Account[]>('/portfolio/accounts');
-    setCache(cacheKey, response.data);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<Account[]>('/portfolio/accounts');
+      return response.data;
+    });
   },
 
   // Intraday portfolio value series (1D / 1W / MTD / 1M ranges).
@@ -249,6 +241,15 @@ export const investmentsApi = {
       value: number;
       securitiesValue?: number;
       /**
+       * Three completeness bits, as on `DailyInvestmentValue`: `value` and
+       * `securitiesValue` are SUBTOTALS on a bar where one is false. Optional
+       * and read as `=== false`: an older backend sends none, which is no
+       * information.
+       */
+      fxComplete?: boolean;
+      pricesComplete?: boolean;
+      cashComplete?: boolean;
+      /**
        * Set on a session's closing point, the daily series' figure for the
        * day, including the point a 1W / 1M series opens on. Absent on a bar.
        */
@@ -261,6 +262,14 @@ export const investmentsApi = {
     skippedSymbols: string[];
     failedSymbols: string[];
     fallbackToDaily: boolean;
+    /** Completeness over every point; optional, read as `=== false`. */
+    fxComplete?: boolean;
+    pricesComplete?: boolean;
+    valuationComplete?: boolean;
+    /** `"CCY->DISPLAY"` for each pair with no rate at any bar. */
+    missingRatePairs?: string[];
+    /** The securities behind `pricesComplete: false`. */
+    unpricedSecurityIds?: string[];
   }> => {
     const response = await apiClient.get('/portfolio/intraday-value', { params });
     return response.data;
@@ -285,11 +294,10 @@ export const investmentsApi = {
   // Get top movers (daily price changes)
   getTopMovers: async (): Promise<TopMover[]> => {
     const cacheKey = 'investments:topMovers';
-    const cached = getCached<TopMover[]>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<TopMover[]>('/portfolio/top-movers');
-    setCache(cacheKey, response.data, 60_000);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<TopMover[]>('/portfolio/top-movers');
+      return response.data;
+    }, 60_000);
   },
 
   // Get all holdings
@@ -584,11 +592,10 @@ export const investmentsApi = {
   // Get favourite securities with latest price and daily change (for the dashboard widget)
   getFavouriteSecurities: async (): Promise<FavouriteSecurityQuote[]> => {
     const cacheKey = 'investments:favouriteSecurities';
-    const cached = getCached<FavouriteSecurityQuote[]>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<FavouriteSecurityQuote[]>('/securities/favourites');
-    setCache(cacheKey, response.data, 60_000);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<FavouriteSecurityQuote[]>('/securities/favourites');
+      return response.data;
+    }, 60_000);
   },
 
   // Toggle a security's favourite flag. Invalidates the cached favourites list
@@ -663,9 +670,9 @@ export const investmentsApi = {
     // an un-invalidated branch here later. One semantic helper shared with the
     // account-update and rate-refresh paths.
     invalidateScheduledFxReadModel();
-    // Linking or unlinking a bond program writes or deletes the engine's
-    // prices on the server, so every cached price read is stale.
-    if (data.bondProgramId !== undefined) invalidateCache('investments:');
+    // A security's currency, type and tags feed every valuation and weighting,
+    // and linking or unlinking a bond program rewrites its stored prices.
+    invalidateBalanceCaches();
     return response.data;
   },
 
@@ -830,7 +837,8 @@ export const investmentsApi = {
       undefined,
       { timeout: 120_000, params: range ? { range } : undefined },
     );
-    invalidateCache('investments:');
+    // Stored closes value every holding, same as a manual price write.
+    invalidateBalanceCaches();
     return response.data;
   },
 
@@ -915,17 +923,16 @@ export const investmentsApi = {
   ): Promise<SecurityPrice[]> => {
     const { startDate = '', endDate = '', limit } = options;
     const cacheKey = `investments:prices:${securityId}:${startDate}:${endDate}:${limit ?? ''}`;
-    const cached = getCached<SecurityPrice[]>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<SecurityPrice[]>(`/securities/${securityId}/prices`, {
-      params: {
-        ...(startDate ? { startDate } : {}),
-        ...(endDate ? { endDate } : {}),
-        ...(limit !== undefined ? { limit } : {}),
-      },
-    });
-    setCache(cacheKey, response.data, 60_000);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<SecurityPrice[]>(`/securities/${securityId}/prices`, {
+        params: {
+          ...(startDate ? { startDate } : {}),
+          ...(endDate ? { endDate } : {}),
+          ...(limit !== undefined ? { limit } : {}),
+        },
+      });
+      return response.data;
+    }, 60_000);
   },
 
   /**
@@ -934,11 +941,10 @@ export const investmentsApi = {
    */
   getMarketIndexes: async (): Promise<MarketIndex[]> => {
     const cacheKey = 'investments:market-indexes';
-    const cached = getCached<MarketIndex[]>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<MarketIndex[]>('/investments/performance/indexes');
-    setCache(cacheKey, response.data, 300_000);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<MarketIndex[]>('/investments/performance/indexes');
+      return response.data;
+    }, 300_000);
   },
 
   /**
@@ -1159,21 +1165,22 @@ export const investmentsApi = {
   // Create a manual price entry for a security
   createSecurityPrice: async (securityId: string, data: CreateSecurityPriceData): Promise<SecurityPrice> => {
     const response = await apiClient.post<SecurityPrice>(`/securities/${securityId}/prices`, data);
-    invalidateCache('investments:prices:');
+    // A stored close values every holding, so every total is stale, not only the price reads.
+    invalidateBalanceCaches();
     return response.data;
   },
 
   // Update a price entry
   updateSecurityPrice: async (securityId: string, priceId: number, data: Partial<CreateSecurityPriceData>): Promise<SecurityPrice> => {
     const response = await apiClient.patch<SecurityPrice>(`/securities/${securityId}/prices/${priceId}`, data);
-    invalidateCache('investments:prices:');
+    invalidateBalanceCaches();
     return response.data;
   },
 
   // Delete a price entry
   deleteSecurityPrice: async (securityId: string, priceId: number): Promise<void> => {
     await apiClient.delete(`/securities/${securityId}/prices/${priceId}`);
-    invalidateCache('investments:prices:');
+    invalidateBalanceCaches();
   },
 
   // Get sector weightings
@@ -1182,13 +1189,12 @@ export const investmentsApi = {
     if (accountIds && accountIds.length > 0) params.accountIds = accountIds.join(',');
     if (securityIds && securityIds.length > 0) params.securityIds = securityIds.join(',');
     const cacheKey = `investments:sectorWeightings:${params.accountIds || 'all'}:${params.securityIds || 'all'}`;
-    const cached = getCached<SectorWeightingResult>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<SectorWeightingResult>('/portfolio/sector-weightings', {
-      params: Object.keys(params).length > 0 ? params : undefined,
-    });
-    setCache(cacheKey, response.data, 60_000);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<SectorWeightingResult>('/portfolio/sector-weightings', {
+        params: Object.keys(params).length > 0 ? params : undefined,
+      });
+      return response.data;
+    }, 60_000);
   },
 
   getCountryWeightings: async (accountIds?: string[], securityIds?: string[]): Promise<CountryWeightingResult> => {
@@ -1196,13 +1202,12 @@ export const investmentsApi = {
     if (accountIds && accountIds.length > 0) params.accountIds = accountIds.join(',');
     if (securityIds && securityIds.length > 0) params.securityIds = securityIds.join(',');
     const cacheKey = `investments:countryWeightings:${params.accountIds || 'all'}:${params.securityIds || 'all'}`;
-    const cached = getCached<CountryWeightingResult>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<CountryWeightingResult>('/portfolio/country-weightings', {
-      params: Object.keys(params).length > 0 ? params : undefined,
-    });
-    setCache(cacheKey, response.data, 60_000);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<CountryWeightingResult>('/portfolio/country-weightings', {
+        params: Object.keys(params).length > 0 ? params : undefined,
+      });
+      return response.data;
+    }, 60_000);
   },
 
   // Asset-class look-through: funds split by the manual asset allocation saved
@@ -1212,12 +1217,11 @@ export const investmentsApi = {
     if (accountIds && accountIds.length > 0) params.accountIds = accountIds.join(',');
     if (securityIds && securityIds.length > 0) params.securityIds = securityIds.join(',');
     const cacheKey = `investments:assetClassWeightings:${params.accountIds || 'all'}:${params.securityIds || 'all'}`;
-    const cached = getCached<AssetClassWeightingResult>(cacheKey);
-    if (cached) return cached;
-    const response = await apiClient.get<AssetClassWeightingResult>('/portfolio/asset-class-weightings', {
-      params: Object.keys(params).length > 0 ? params : undefined,
-    });
-    setCache(cacheKey, response.data, 60_000);
-    return response.data;
+    return dedupe(cacheKey, async () => {
+      const response = await apiClient.get<AssetClassWeightingResult>('/portfolio/asset-class-weightings', {
+        params: Object.keys(params).length > 0 ? params : undefined,
+      });
+      return response.data;
+    }, 60_000);
   },
 };

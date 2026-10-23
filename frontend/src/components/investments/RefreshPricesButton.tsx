@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
-import { formatRelativeTime } from '@/lib/format';
+import { useRelativeTime } from '@/hooks/useRelativeTime';
 
 interface RefreshPricesButtonProps {
   onClick: () => void;
@@ -36,6 +36,7 @@ export function RefreshPricesButton({
   className,
 }: RefreshPricesButtonProps) {
   const t = useTranslations('investments');
+  const formatRelativeTime = useRelativeTime();
 
   return (
     <Button

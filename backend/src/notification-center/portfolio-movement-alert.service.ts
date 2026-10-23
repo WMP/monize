@@ -229,6 +229,40 @@ export class PortfolioMovementAlertService {
     };
     const decision = decideMovement(inputs);
 
+    // Do the thing, then write down what happened (A26-L28): the alert is
+    // written BEFORE the baseline moves, so a failed write leaves the old
+    // baseline and the next run measures the same movement again. The
+    // per-day dedupe key makes that retry harmless.
+    let written: unknown = null;
+    // `decideMovement` replaces an undated baseline instead of comparing
+    // against it, so a fired decision always has a real opening date; the
+    // second arm is what proves it to the compiler, in place of a fallback
+    // that would stamp today's date over a period that did not start today.
+    if (decision.fire != null && baselineDate !== null) {
+      const prefs = await withScopedDb(this.dataSource, (m) =>
+        m.getRepository(UserPreference).findOne({ where: { userId } }),
+      );
+      written = await this.dispatch.notify(
+        userId,
+        buildPortfolioNotification(
+          decision.fire,
+          currency,
+          baselineDate,
+          today,
+          numberFormatterFor(prefs?.numberFormat, prefs?.language),
+          late.items.map((item) => ({
+            ...item,
+            symbol:
+              summary.holdings.find(
+                (holding) => holding.securityId === item.securityId,
+              )?.symbol ?? null,
+          })),
+        ),
+      );
+    }
+
+    // A null `written` means another replica already wrote today's alert by
+    // the dedupe key; the baseline still moves.
     if (decision.rebaselineTo != null) {
       const snapshot = snapshotPositions(summary.holdings, observationFor);
       if (snapshot === null) {
@@ -245,32 +279,6 @@ export class PortfolioMovementAlertService {
         snapshot,
       );
     }
-    // `decideMovement` replaces an undated baseline instead of comparing
-    // against it, so a fired decision always has a real opening date; the
-    // second arm is what proves it to the compiler, in place of a fallback
-    // that would stamp today's date over a period that did not start today.
-    if (decision.fire == null || baselineDate === null) return false;
-
-    const prefs = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(UserPreference).findOne({ where: { userId } }),
-    );
-    const written = await this.dispatch.notify(
-      userId,
-      buildPortfolioNotification(
-        decision.fire,
-        currency,
-        baselineDate,
-        today,
-        numberFormatterFor(prefs?.numberFormat, prefs?.language),
-        late.items.map((item) => ({
-          ...item,
-          symbol:
-            summary.holdings.find(
-              (holding) => holding.securityId === item.securityId,
-            )?.symbol ?? null,
-        })),
-      ),
-    );
     return written != null;
   }
 

@@ -2520,13 +2520,19 @@ CREATE INDEX idx_notifications_budget_period ON notifications(budget_id, period_
 --
 -- Duplicates predating the key are collapsed by the migration's preflight before
 -- it is created, keeping whichever row the user acted on.
+--
+-- A flex-group warning is budget-wide too, and the group it is about lives only
+-- in `data`, so the group is part of the key: two flex groups over 90 percent in
+-- one period are two alerts (audit A26-L39, migration
+-- 20261022103319_notifications_fingerprint_flex_group.sql).
 CREATE UNIQUE INDEX idx_notifications_fingerprint
     ON notifications(
         budget_id,
         period_start,
         alert_type,
         COALESCE(budget_category_id, '00000000-0000-0000-0000-000000000000'::uuid),
-        severity
+        severity,
+        COALESCE(data->>'flexGroup', '')
     );
 
 -- System-level alerts (BACKUP_FAILED, PROVIDER_OUTAGE, SMTP_FAILURE, ...) have

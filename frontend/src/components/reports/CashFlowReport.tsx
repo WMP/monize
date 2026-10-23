@@ -33,6 +33,9 @@ import { chartColors } from "@/lib/chart-colors";
 import { useTranslations } from 'next-intl';
 import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { useTagKeys } from "@/hooks/useTagKeys";
+import { PartialTotal } from "@/components/ui/PartialTotal";
+import { usePartialTotalNote } from "@/hooks/usePartialTotalNote";
+import { isComplete, reportTotal, type ConvertedTotal } from "@/lib/currency-total";
 import { TagKeyBreakdownSelect } from "@/components/reports/TagKeyBreakdownSelect";
 import { TagKeyBreakdownBuckets } from "@/components/reports/TagKeyBreakdownBuckets";
 
@@ -139,17 +142,33 @@ export function CashFlowReport() {
     () => response?.spendingResponse.data ?? [],
     [response],
   );
-  const totals = useMemo(
-    () => ({
-      totalIncome: response?.cashFlowResponse.totals.income ?? 0,
-      totalExpenses: response?.cashFlowResponse.totals.expenses ?? 0,
-      netCashFlow: response?.cashFlowResponse.totals.net ?? 0,
-    }),
-    [response],
-  );
+  // Each total is `null` when a row could not be converted -- a missing rate
+  // makes it unknowable, never smaller -- and the part that did convert comes as
+  // its `known*` sibling. What is shown is that subtotal, marked, and a total
+  // that did convert is complete whatever its neighbours are. No response at all
+  // is no figures, not three zeros.
+  const totals = useMemo(() => {
+    const cashFlow = response?.cashFlowResponse;
+    if (!cashFlow) return null;
+    const figure = (value: number | null, known: number): ConvertedTotal => {
+      if (value !== null) return { value, missingCurrencies: [], excludedCount: 0 };
+      const withheld = reportTotal(known, cashFlow);
+      // A withheld total is partial even if the response named nothing.
+      return isComplete(withheld) ? { ...withheld, excludedCount: 1 } : withheld;
+    };
+    return {
+      income: figure(cashFlow.totals.income, cashFlow.totals.knownIncome),
+      expenses: figure(cashFlow.totals.expenses, cashFlow.totals.knownExpenses),
+      net: figure(cashFlow.totals.net, cashFlow.totals.knownNet),
+    };
+  }, [response]);
+  const { noteFor, cellFor } = usePartialTotalNote();
   const reportingCurrency = response?.cashFlowResponse.currency ?? defaultCurrency;
 
   const handleExportPdf = async () => {
+    // The toolbar is disabled without a response; this is the same refusal for a
+    // caller that gets here another way, so no document carries three zeros.
+    if (!totals) return;
     const { exportToPdf } = await import("@/lib/pdf-export");
 
     const inflowRows = incomeItems.map((item) => [item.categoryName, formatCurrency(item.total)]);
@@ -158,9 +177,9 @@ export function CashFlowReport() {
     await exportToPdf({
       title: t('cashFlow.monthlyCashFlow'),
       summaryCards: [
-        { label: t('cashFlow.totalInflows'), value: formatCurrency(totals.totalIncome), color: "#16a34a" },
-        { label: t('cashFlow.totalOutflows'), value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
-        { label: t('cashFlow.netCashFlow'), value: `${totals.netCashFlow >= 0 ? "+" : ""}${formatCurrency(totals.netCashFlow)}`, color: totals.netCashFlow >= 0 ? "#2563eb" : "#ea580c" },
+        { label: t('cashFlow.totalInflows'), value: formatCurrency(totals.income.value), color: "#16a34a", note: noteFor(totals.income) },
+        { label: t('cashFlow.totalOutflows'), value: formatCurrency(totals.expenses.value), color: "#dc2626", note: noteFor(totals.expenses) },
+        { label: t('cashFlow.netCashFlow'), value: `${totals.net.value >= 0 ? "+" : ""}${formatCurrency(totals.net.value)}`, color: totals.net.value >= 0 ? "#2563eb" : "#ea580c", note: noteFor(totals.net) },
       ],
       chartContainer: chartRef.current,
       additionalTables: [
@@ -168,13 +187,13 @@ export function CashFlowReport() {
           title: t('cashFlow.inflowsByCategory'),
           headers: ["Category", "Amount"],
           rows: inflowRows,
-          totalRow: [t('cashFlow.totalInflows'), formatCurrency(totals.totalIncome)],
+          totalRow: [t('cashFlow.totalInflows'), cellFor(formatCurrency(totals.income.value), totals.income)],
         }] : []),
         ...(outflowRows.length > 0 ? [{
           title: t('cashFlow.outflowsByCategory'),
           headers: ["Category", "Amount"],
           rows: outflowRows,
-          totalRow: [t('cashFlow.totalOutflows'), formatCurrency(totals.totalExpenses)],
+          totalRow: [t('cashFlow.totalOutflows'), cellFor(formatCurrency(totals.expenses.value), totals.expenses)],
         }] : []),
       ],
       filename: "cash-flow",
@@ -206,6 +225,11 @@ export function CashFlowReport() {
   // second tree unmounts the controls block and ejects focus from the date
   // field being typed into (issue #1201).
   const dataUnavailable = isLoading || !!error;
+  // The export is refused while there is nothing true to export: loading, failed
+  // or absent (an invalid custom range answers `null`).
+  const exportDisabled = dataUnavailable || !response;
+  // No figures is neither a gain nor a loss; it takes the neutral colour.
+  const netIsNonNegative = totals === null || totals.net.value >= 0;
 
   return (
     <div className="space-y-6">
@@ -223,7 +247,13 @@ export function CashFlowReport() {
             {t('cashFlow.totalInflows')}
           </div>
           <div className="text-2xl font-bold text-green-700 dark:text-green-300">
-            {formatCurrency(totals.totalIncome)}
+            {totals ? (
+              <PartialTotal total={totals.income} displayCurrency={reportingCurrency}>
+                {formatCurrency(totals.income.value)}
+              </PartialTotal>
+            ) : (
+              t('cashFlow.notAvailable')
+            )}
           </div>
         </div>
         <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 sm:p-6">
@@ -231,19 +261,25 @@ export function CashFlowReport() {
             {t('cashFlow.totalOutflows')}
           </div>
           <div className="text-2xl font-bold text-red-700 dark:text-red-300">
-            {formatCurrency(totals.totalExpenses)}
+            {totals ? (
+              <PartialTotal total={totals.expenses} displayCurrency={reportingCurrency}>
+                {formatCurrency(totals.expenses.value)}
+              </PartialTotal>
+            ) : (
+              t('cashFlow.notAvailable')
+            )}
           </div>
         </div>
         <div
           className={`rounded-lg p-4 sm:p-6 ${
-            totals.netCashFlow >= 0
+            netIsNonNegative
               ? "bg-blue-50 dark:bg-blue-900/20"
               : "bg-orange-50 dark:bg-orange-900/20"
           }`}
         >
           <div
             className={`text-sm ${
-              totals.netCashFlow >= 0
+              netIsNonNegative
                 ? "text-blue-600 dark:text-blue-400"
                 : "text-orange-600 dark:text-orange-400"
             }`}
@@ -252,13 +288,19 @@ export function CashFlowReport() {
           </div>
           <div
             className={`text-2xl font-bold ${
-              totals.netCashFlow >= 0
+              netIsNonNegative
                 ? "text-blue-700 dark:text-blue-300"
                 : "text-orange-700 dark:text-orange-300"
             }`}
           >
-            {totals.netCashFlow >= 0 ? "+" : ""}
-            {formatCurrency(totals.netCashFlow)}
+            {totals ? (
+              <PartialTotal total={totals.net} displayCurrency={reportingCurrency}>
+                {netIsNonNegative ? "+" : ""}
+                {formatCurrency(totals.net.value)}
+              </PartialTotal>
+            ) : (
+              t('cashFlow.notAvailable')
+            )}
           </div>
         </div>
       </div>
@@ -281,7 +323,7 @@ export function CashFlowReport() {
             onCustomEndDateChange={setEndDate}
           />
           <TagKeyBreakdownSelect tagKeys={tagKeys} value={tagKey} onChange={setTagKey} />
-          <ReportToolbarActions onExportPdf={handleExportPdf} />
+          <ReportToolbarActions onExportPdf={handleExportPdf} disabled={exportDisabled} />
         </div>
       </div>
 

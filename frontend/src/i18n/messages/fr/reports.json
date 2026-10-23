@@ -316,6 +316,7 @@
     "totalInflows": "Total des entrées",
     "totalOutflows": "Total des sorties",
     "netCashFlow": "Flux de trésorerie net",
+    "notAvailable": "N/A",
     "monthlyCashFlow": "Flux de trésorerie mensuels",
     "inflowsByCategory": "Entrées par catégorie",
     "outflowsByCategory": "Sorties par catégorie",
@@ -764,6 +765,7 @@
     "totalValue": "Valeur totale",
     "costBasis": "Coût de revient",
     "totalGainLoss": "Gain/perte total",
+    "gainPartialCaption": "Uniquement sur les positions cotées",
     "return": "Rendement",
     "viewHoldings": "Positions",
     "viewAllocation": "Répartition",
@@ -1147,6 +1149,11 @@
     "vsMonth": "vs {month}",
     "inMonth": "{amount} en {month}",
     "netWorthTotal": "Total : {amount}",
+    "netWorthSummaryPartial": "Votre valeur nette en {currentMonth} était de <strong>{netWorth}</strong>. La variation par rapport à {previousMonth} ne peut pas être calculée, car aucun taux de change n'est disponible pour {pairs} ; ajoutez-en un sur la page Devises.",
+    "pdfPartialSuffix": "{amount} (partiel)",
+    "pdfNote": "Remarque",
+    "pdfNotAvailable": "N/A",
+    "pdfPartialNote": "Total partiel : aucun taux de change pour {pairs}.",
     "netWorthSummary": "Votre valeur nette en {currentMonth} était de <strong>{netWorth}</strong>, soit <delta>{changeAmount}</delta> par rapport à {previousMonth}.",
     "pdfTitle": "Comparaison mensuelle",
     "pdfSubtitle": "{current} vs {previous}",
@@ -1194,7 +1201,12 @@
     "colNetWorth": "Valeur nette",
     "barStyle": "Style des barres",
     "barStyleNetWorth": "Valeur nette",
-    "barStyleAccountType": "Par type de compte"
+    "barStyleAccountType": "Par type de compte",
+    "notAvailable": "N/A",
+    "colNote": "Remarque",
+    "partialMonthNote": "Partiel : aucun taux de change pour {pairs}",
+    "pdfPartialNote": "Total partiel : aucun taux de change pour {pairs}. Ajoutez-en un sur la page Devises.",
+    "partialMonth": "Non affiché : certains montants de ce mois n'ont pas pu être convertis, sa valeur nette est donc inconnue."
   },
   "portfolioValue": {
     "highestValue": "Valeur la plus haute",
@@ -1855,7 +1867,10 @@
   },
   "partialData": {
     "notice": "Certains montants sont partiels : {count, plural, one {# montant n'a pas pu être converti en {displayCurrency} et est} other {# montants n'ont pas pu être convertis en {displayCurrency} et sont}} exclus. Aucun taux n'est disponible pour {currencies} ; ajoutez-en un sur la page Devises.",
-    "noticeExcluded": "Certains montants sont partiels : {count, plural, one {# montant n'a pas pu être calculé et est} other {# montants n'ont pas pu être calculés et sont}} exclus."
+    "noticeExcluded": "Certains montants sont partiels : {count, plural, one {# montant n'a pas pu être calculé et est} other {# montants n'ont pas pu être calculés et sont}} exclus.",
+    "pdfNote": "Total partiel : aucun taux de change pour {currencies}",
+    "pdfNoteExcluded": "Total partiel : {count, plural, one {# montant exclu} other {# montants exclus}}",
+    "pdfSuffix": "(partiel)"
   },
   "sankey": {
     "help": "L’argent reçu passe par le centre vers ce à quoi il a été dépensé, ce qui a été épargné ou placé et ce qui a remboursé des dettes. Par défaut, le rapport couvre vos comptes chèques, d’épargne, d’espèces, de carte de crédit et de marge de crédit ouverts, et un virement entre deux d’entre eux n’est pas affiché. Retirez un compte d’épargne du filtre de comptes pour voir ce que vous y avez transféré. Un paiement de carte de crédit n’est jamais un remboursement de dette : les achats qu’il règle sont déjà comptés comme dépenses.",
@@ -1903,5 +1918,8 @@
       "residualDeficit": "Puisé dans les soldes",
       "unlinkedAccount": "(compte non lié)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Généré : {timestamp}"
   }
 }

@@ -1292,7 +1292,7 @@ export function MonthlyCategoryBreakdownReport() {
           </div>
           {/* CSV only: this view is a matrix of figures, with nothing to render
               as a picture. */}
-          <ReportToolbarActions onExportCsv={handleExportCsv} disabled={!hasData} />
+          <ReportToolbarActions onExportCsv={handleExportCsv} disabled={isLoading || !!error || !hasData} />
         </div>
       </div>
 

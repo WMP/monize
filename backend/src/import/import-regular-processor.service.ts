@@ -1,5 +1,5 @@
 import { statusFromQifFlags } from "./qif-status.util";
-import { Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { Account, AccountType } from "../accounts/entities/account.entity";
 import {
   Transaction,
@@ -24,14 +24,30 @@ import {
   isQuickenMergedSplitTransfer,
 } from "./import-transfer-dedupe";
 import { deletionBalanceEffect } from "../common/deletion-balance.util";
+import {
+  applyFxConversion,
+  resolveFxRateOrNull,
+} from "../common/fx-entry.util";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { tr } from "../i18n/translate";
 import { TransactionRulesApplierService } from "../transaction-rules/transaction-rules-applier.service";
+
+/**
+ * The flag on a cross-currency transfer leg whose amount is not the bank's own:
+ * importing the other account's file corrects it. The pending lookups below
+ * search for this text.
+ */
+const PENDING_IMPORT_NOTE =
+  "⚠️ PENDING IMPORT: Amount may need adjustment when importing the other account.";
 
 @Injectable()
 export class ImportRegularProcessorService {
   private readonly logger = new Logger(ImportRegularProcessorService.name);
 
-  constructor(private readonly rulesApplier: TransactionRulesApplierService) {}
+  constructor(
+    private readonly rulesApplier: TransactionRulesApplierService,
+    private readonly exchangeRateService: ExchangeRateService,
+  ) {}
 
   async processTransaction(ctx: ImportContext, qifTx: any): Promise<void> {
     // A row whose bank id the account already holds, on a row of the same date
@@ -505,7 +521,13 @@ export class ImportRegularProcessorService {
     baseTime: Date,
   ): Promise<void> {
     ctx.affectedAccountIds.add(splitTransferAccountId);
-    const linkedAmount = -split.amount;
+    const leg = await this.splitTransferLeg(
+      ctx,
+      splitTransferAccountId,
+      -split.amount,
+      qifTx.date,
+    );
+    const linkedAmount = leg.amount;
 
     // Check for existing linked transaction
     // Exclude transactions already linked to the current transaction (savedTx)
@@ -599,9 +621,12 @@ export class ImportRegularProcessorService {
       payeeName: isLoanPayment
         ? qifTx.payee || `Loan Payment from ${ctx.account.name}`
         : qifTx.payee || null,
-      description: split.memo || qifTx.memo,
+      description: leg.crossCurrency
+        ? `${split.memo || qifTx.memo || ""} ${PENDING_IMPORT_NOTE}`.trim()
+        : split.memo || qifTx.memo,
       status,
-      currencyCode: ctx.account.currencyCode,
+      currencyCode: leg.currencyCode,
+      exchangeRate: leg.exchangeRate,
       isTransfer: true,
       createdAt: new Date(baseTime.getTime() + 0.1),
     });
@@ -621,6 +646,70 @@ export class ImportRegularProcessorService {
       splitTransferAccountId,
       linkedAmount,
     );
+  }
+
+  /**
+   * The split-transfer leg as the target account holds it (A26-M18,
+   * INV-CURRENCY-001): a row's currency is its account's, so a split line
+   * into an account in another currency is converted at the stored rate for
+   * the row's date and carries that rate. QIF carries no rate of its own, and
+   * the market rate is not the bank's, so the caller flags the row with the
+   * plain transfer path's `PENDING IMPORT` note. Without a rate the row is
+   * refused (its savepoint rolls back and the result names the pair): a
+   * balance moved by a number in the wrong currency is worse than a row the
+   * user can re-import once a rate exists.
+   */
+  private async splitTransferLeg(
+    ctx: ImportContext,
+    targetAccountId: string,
+    sourceAmount: number,
+    date: string | Date,
+  ): Promise<{
+    amount: number;
+    currencyCode: string;
+    exchangeRate: number;
+    crossCurrency: boolean;
+  }> {
+    const sourceCurrency = ctx.account.currencyCode;
+    const target = await ctx.manager.findOne(Account, {
+      where: { id: targetAccountId },
+    });
+    const targetCurrency = target?.currencyCode ?? sourceCurrency;
+    if (targetCurrency === sourceCurrency) {
+      return {
+        amount: sourceAmount,
+        currencyCode: sourceCurrency,
+        exchangeRate: 1,
+        crossCurrency: false,
+      };
+    }
+
+    const dateStr =
+      typeof date === "string"
+        ? date.substring(0, 10)
+        : date.toISOString().substring(0, 10);
+    const rate = await resolveFxRateOrNull(
+      this.exchangeRateService,
+      sourceCurrency,
+      targetCurrency,
+      dateStr,
+    );
+    if (rate === null) {
+      const pair = `${sourceCurrency} -> ${targetCurrency}`;
+      throw new BadRequestException(
+        tr(
+          "errors.import.noRateForSplitTransfer",
+          `No exchange rate for ${pair} on ${dateStr}: a split line transfers into an account in another currency. Add an exchange rate for that pair and date, then import again.`,
+          { pair, date: dateStr },
+        ),
+      );
+    }
+    return {
+      amount: applyFxConversion(sourceAmount, rate).amount,
+      currencyCode: targetCurrency,
+      exchangeRate: rate,
+      crossCurrency: true,
+    };
   }
 
   private async linkExistingSplitTransfer(
@@ -714,8 +803,6 @@ export class ImportRegularProcessorService {
     baseTime: Date,
   ): Promise<void> {
     ctx.affectedAccountIds.add(transferAccountId);
-    const PENDING_IMPORT_NOTE =
-      "⚠️ PENDING IMPORT: Amount may need adjustment when importing the other account.";
 
     const targetAccount = await ctx.manager.findOne(Account, {
       where: { id: transferAccountId },

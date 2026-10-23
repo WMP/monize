@@ -3,6 +3,15 @@ import { Account } from '@/types/account';
 import { parseLocalDate } from '@/lib/utils';
 import { advanceByFrequency } from '@/lib/frequency';
 import { occurrenceSettlementAccountId } from '@/lib/scheduled-effective-amount';
+import { roundMoney, roundToCents } from '@/lib/format';
+
+/**
+ * A running balance is accumulated in integer units of 1/10000 (the storage
+ * precision) so a long series of 0.1-sized amounts cannot drift, and is rounded
+ * once, half away from zero, for display.
+ */
+const toUnits = (amount: number): number => Math.round(Number(amount) * 10000);
+const unitsToCents = (units: number): number => roundToCents(units / 10000);
 
 export interface FutureTransaction {
   id: string;
@@ -502,12 +511,12 @@ function normalizeInvestmentForForecast(
   }
   const convertOverride = <T extends { amount: number | null }>(o: T): T => ({
     ...o,
-    amount: o.amount != null ? Number(o.amount) * rate : o.amount,
+    amount: o.amount != null ? roundMoney(Number(o.amount) * rate) : o.amount,
   });
   return {
     ...transaction,
     accountId: cashAccountId,
-    amount: Number(transaction.amount) * rate,
+    amount: roundMoney(Number(transaction.amount) * rate),
     investmentForecastExchangeRate: rate,
     futureOverrides: transaction.futureOverrides?.map(convertOverride),
     nextOverride: transaction.nextOverride
@@ -652,17 +661,17 @@ export function buildForecast(
       missingRateCurrencies.add(currency);
       return 0;
     }
-    return converted;
+    return roundMoney(converted);
   };
 
-  const startingBalance = targetAccounts.reduce((sum, acc) => {
-    if (!convertAmount) return sum + Number(acc.currentBalance);
+  const startingUnits = targetAccounts.reduce((sum, acc) => {
+    if (!convertAmount) return sum + toUnits(Number(acc.currentBalance));
     const converted = convertAmount(Number(acc.currentBalance), acc.currencyCode);
     if (converted === null) {
       missingRateCurrencies.add(acc.currencyCode);
       return sum;
     }
-    return sum + converted;
+    return sum + toUnits(converted);
   }, 0);
 
   // Filter scheduled transactions by account
@@ -728,7 +737,7 @@ export function buildForecast(
 
   // Build data points
   const dataPoints: ForecastDataPoint[] = [];
-  let currentBalance = startingBalance;
+  let currentUnits = startingUnits;
   let lastAddedTime: number | null = null;
 
   // Iterate through each day in the forecast period
@@ -742,7 +751,7 @@ export function buildForecast(
 
     // Apply transactions for this day
     for (const tx of dayTransactions) {
-      currentBalance += tx.amount;
+      currentUnits += toUnits(tx.amount);
     }
 
     // Check if we should add a data point (based on granularity)
@@ -757,7 +766,7 @@ export function buildForecast(
     if (shouldAddPoint || dayTransactions.length > 0 || isLastDay) {
       dataPoints.push({
         date: dateKey,
-        balance: Math.round(currentBalance * 100) / 100,
+        balance: unitsToCents(currentUnits),
         transactions: dayTransactions,
       });
       lastAddedTime = currentTime;
@@ -831,16 +840,17 @@ export function buildMultiAccountForecast(
       missingRateCurrencies.add(currencyCode);
       return 0;
     }
-    return converted;
+    return roundMoney(converted);
   };
 
+  // Integer units of 1/10000, like the running balance below.
   const startingBalances = new Map<string, number>();
   const flowsByAccount = new Map<string, Map<string, ForecastTransaction[]>>();
 
   for (const account of targetAccounts) {
     startingBalances.set(
       account.id,
-      conv(Number(account.currentBalance), account.currencyCode),
+      toUnits(conv(Number(account.currentBalance), account.currencyCode)),
     );
 
     const byDate = new Map<string, ForecastTransaction[]>();
@@ -903,7 +913,7 @@ export function buildMultiAccountForecast(
       if (!dayFlows) continue;
       running.set(
         account.id,
-        dayFlows.reduce((sum, tx) => sum + tx.amount, running.get(account.id) ?? 0),
+        dayFlows.reduce((sum, tx) => sum + toUnits(tx.amount), running.get(account.id) ?? 0),
       );
       dayTransactions.push(...dayFlows);
     }
@@ -921,9 +931,9 @@ export function buildMultiAccountForecast(
       const balances: Record<string, number> = {};
       let totalCents = 0;
       for (const account of targetAccounts) {
-        const cents = Math.round((running.get(account.id) ?? 0) * 100);
-        balances[account.id] = cents / 100;
-        totalCents += cents;
+        const line = unitsToCents(running.get(account.id) ?? 0);
+        balances[account.id] = line;
+        totalCents += Math.round(line * 100);
       }
       points.push({
         date: dateKey,
@@ -984,12 +994,12 @@ export function getProjectedBalanceAtDate(
   const endDate = parseLocalDate(targetDate);
   endDate.setHours(0, 0, 0, 0);
 
-  let balance = Number(account.currentBalance);
+  let units = toUnits(Number(account.currentBalance));
 
   // Add future-dated posted transactions for this account up to targetDate
   for (const ft of futureTransactions) {
     if (ft.accountId === account.id && ft.date > todayKey && ft.date <= targetDate) {
-      balance += ft.amount;
+      units += toUnits(ft.amount);
     }
   }
 
@@ -1017,11 +1027,11 @@ export function getProjectedBalanceAtDate(
       // stale/raw security-currency amount (or 0) into a projected balance the
       // user approves a posting against.
       if (occ.unknown) return null;
-      balance += isInbound ? -occ.amount : occ.amount;
+      units += toUnits(isInbound ? -occ.amount : occ.amount);
     }
   }
 
-  return Math.round(balance * 100) / 100;
+  return unitsToCents(units);
 }
 
 /**
@@ -1041,10 +1051,10 @@ export function countOverdueOccurrences(transactions: ForecastTransaction[]): nu
   return keys.size;
 }
 
-/** The net of the overdue occurrences a forecast point carries. */
-function overdueNet(transactions: ForecastTransaction[]): number {
+/** The net of the overdue occurrences a forecast point carries, in 1/10000 units. */
+function overdueNetUnits(transactions: ForecastTransaction[]): number {
   return transactions.reduce(
-    (sum, tx) => (tx.overdueOriginalDate !== undefined ? sum + tx.amount : sum),
+    (sum, tx) => (tx.overdueOriginalDate !== undefined ? sum + toUnits(tx.amount) : sum),
     0,
   );
 }
@@ -1067,8 +1077,9 @@ export function getForecastSummary(dataPoints: ForecastDataPoint[]) {
   // "Starting" is where the forecast starts from, before the overdue occurrences
   // it applies on its first day (discussion #1784): those are a projection, and
   // the figure has to match the balance the account shows.
-  const startingBalance =
-    Math.round((balances[0] - overdueNet(dataPoints[0].transactions)) * 100) / 100;
+  const startingBalance = unitsToCents(
+    toUnits(balances[0]) - overdueNetUnits(dataPoints[0].transactions),
+  );
   const endingBalance = balances[balances.length - 1];
   const minBalance = Math.min(...balances);
   const maxBalance = Math.max(...balances);

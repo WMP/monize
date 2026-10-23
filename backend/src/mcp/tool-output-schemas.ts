@@ -64,6 +64,11 @@ export const listAccountsOutput = toolOutput({
   defaultCurrency: str,
   missingRatePairs: z.array(str),
   totalAccounts: num,
+  // A null total is withheld: `fxComplete` / `pricesComplete` say which repair
+  // is open. `known*` subtotals stay undeclared (loose object).
+  fxComplete: bool,
+  pricesComplete: bool,
+  valuationComplete: bool,
 });
 
 // ---------------------------------------------------------------------------
@@ -248,6 +253,11 @@ export const getPortfolioSummaryOutput = toolOutput({
   totalHoldingsValue: num,
   totalCostBasis: num,
   totalPortfolioValue: num,
+  // `totalGainLoss` is over the holdings that have a value (value less THEIR
+  // cost), a partial figure while `valuationComplete` is false. `gainCostBasis`
+  // (the cost it is over) and `unpricedCostBasis` (the cost it leaves out)
+  // reach the caller through the loose object rather than the schema, for the
+  // same budget reason as the fields below (A26-M38).
   totalGainLoss: num,
   totalGainLossPercent: numNull,
   // `timeWeightedReturn` is the invested part's TWR since the first

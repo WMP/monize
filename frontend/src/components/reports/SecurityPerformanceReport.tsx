@@ -167,6 +167,9 @@ export function SecurityPerformanceReport() {
   // Bumped on a manual price refresh so the comparison chart re-fetches its
   // (separately loaded) per-security price history.
   const [allRefreshKey, setAllRefreshKey] = useState(0);
+  // Whether the comparison chart (which owns its own request) holds the
+  // current selection's answer; it reports it, the toolbar below reads it.
+  const [comparisonExportable, setComparisonExportable] = useState(false);
   // The region rows in the index picker are grouping, not instruments:
   // `MultiSelect` adds a group's own value to the selection once all its
   // children are chosen, and sending `region:EUROPE` to the API would be
@@ -293,6 +296,7 @@ export function SecurityPerformanceReport() {
   const {
     data: detailData,
     isLoading: isLoadingDetail,
+    error: detailError,
     reload: reloadDetail,
   } = useReportData(
     async () => {
@@ -534,6 +538,15 @@ export function SecurityPerformanceReport() {
   };
   const dividendSortColumns: readonly DividendSortColumn[] = Object.values(dividendColumns);
 
+  // Every request feeding the export has to have answered without error: the
+  // hook keeps the previous payload through a pending or failed reload, so a
+  // document taken then would carry another selection's figures.
+  const exportUnavailable =
+    (!isSingle && !isComparison) ||
+    isLoading ||
+    !!error ||
+    (isComparison ? !comparisonExportable : isLoadingDetail || !!detailError);
+
   const handleExportPdf = async () => {
     if (isComparison) {
       await comparisonExportRef.current?.exportPdf();
@@ -680,7 +693,7 @@ export function SecurityPerformanceReport() {
           <ReportToolbarActions
             onRefreshComplete={() => { reloadBase(); reloadDetail(); setAllRefreshKey((k) => k + 1); }}
             onExportPdf={handleExportPdf}
-            disabled={!isSingle && !isComparison}
+            disabled={exportUnavailable}
           />
         </div>
 
@@ -732,6 +745,7 @@ export function SecurityPerformanceReport() {
           endDate={resolvedRange.end}
           reloadKey={allRefreshKey}
           exportRef={comparisonExportRef}
+          onExportableChange={setComparisonExportable}
         />
       ) : isLoadingDetail ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">

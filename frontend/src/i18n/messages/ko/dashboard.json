@@ -148,6 +148,7 @@
     "netWorthLabel": "순자산가액",
     "assets": "자산",
     "liabilities": "부채",
+    "partialName": "{name} (부분)",
     "viewCallouts": "레이블",
     "viewLegend": "범례"
   },

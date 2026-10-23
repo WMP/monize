@@ -1,6 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../../common/db/scoped-db";
+import { addDaysYMD, todayInTimezone } from "../../common/date-utils";
+import { getEffectiveTimezoneOfUser } from "../../common/users-by-timezone.util";
 import { Transaction } from "../../transactions/entities/transaction.entity";
 import { TransactionAnalyticsService } from "../../transactions/transaction-analytics.service";
 import { RecurringCharge } from "../../transactions/recurring-charges.util";
@@ -38,6 +40,22 @@ export interface SpendingAggregates {
   currency: string;
 }
 
+/** First day of the month `delta` months from `ymd`'s month; pure string arithmetic. */
+function firstOfMonthShifted(ymd: string, delta: number): string {
+  const total = Number(ymd.slice(0, 4)) * 12 + (Number(ymd.slice(5, 7)) - 1);
+  const shifted = total + delta;
+  const year = Math.floor(shifted / 12);
+  const month = (shifted % 12) + 1;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-01`;
+}
+
+/** Days in the month of a `YYYY-MM-DD` string (UTC arithmetic on a zoneless date). */
+function daysInMonthOf(ymd: string): number {
+  return new Date(
+    Date.UTC(Number(ymd.slice(0, 4)), Number(ymd.slice(5, 7)), 0),
+  ).getUTCDate();
+}
+
 @Injectable()
 export class InsightsAggregatorService {
   private readonly logger = new Logger(InsightsAggregatorService.name);
@@ -51,14 +69,16 @@ export class InsightsAggregatorService {
     userId: string,
     currency: string,
   ): Promise<SpendingAggregates> {
-    const now = new Date();
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      .toISOString()
-      .substring(0, 10);
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1)
-      .toISOString()
-      .substring(0, 10);
-    const today = now.toISOString().substring(0, 10);
+    // The user's financial today (A26-L29), never a local-midnight Date read
+    // back in UTC: the month a person is in follows their own zone.
+    const today = await withScopedDb(this.dataSource, async (manager) => {
+      const timezone = await getEffectiveTimezoneOfUser(manager, userId);
+      return (todayInTimezone(timezone) ?? todayInTimezone("UTC")) as string;
+    });
+    const currentMonthStart = `${today.slice(0, 7)}-01`;
+    const sixMonthsAgo = firstOfMonthShifted(currentMonthStart, -6);
+    const previousMonthStart = firstOfMonthShifted(currentMonthStart, -1);
+    const previousMonthEnd = addDaysYMD(currentMonthStart, -1);
 
     const [categorySpending, monthlySpending, recurringCharges] =
       await Promise.all([
@@ -67,6 +87,8 @@ export class InsightsAggregatorService {
           sixMonthsAgo,
           today,
           currentMonthStart,
+          previousMonthStart,
+          previousMonthEnd,
         ),
         this.getMonthlySpending(userId, sixMonthsAgo, today),
         this.transactionAnalytics.getRecurringCharges(
@@ -79,12 +101,7 @@ export class InsightsAggregatorService {
     const currentMonth = monthlySpending.find(
       (m) => m.month === currentMonthStart.substring(0, 7),
     );
-    const previousMonthDate = new Date(
-      now.getFullYear(),
-      now.getMonth() - 1,
-      1,
-    );
-    const previousMonthKey = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, "0")}`;
+    const previousMonthKey = previousMonthStart.substring(0, 7);
     const previousMonth = monthlySpending.find(
       (m) => m.month === previousMonthKey,
     );
@@ -101,12 +118,8 @@ export class InsightsAggregatorService {
           completedMonths.length
         : 0;
 
-    const daysElapsedInMonth = now.getDate();
-    const daysInMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0,
-    ).getDate();
+    const daysElapsedInMonth = Number(today.slice(8, 10));
+    const daysInMonth = daysInMonthOf(today);
 
     return {
       categorySpending,
@@ -126,19 +139,9 @@ export class InsightsAggregatorService {
     startDate: string,
     endDate: string,
     currentMonthStart: string,
+    previousMonthStart: string,
+    previousMonthEnd: string,
   ): Promise<CategorySpending[]> {
-    const now = new Date();
-    const previousMonthStart = new Date(
-      now.getFullYear(),
-      now.getMonth() - 1,
-      1,
-    )
-      .toISOString()
-      .substring(0, 10);
-    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
-      .toISOString()
-      .substring(0, 10);
-
     const rows = await withScopedDb(this.dataSource, (manager) =>
       manager
         .getRepository(Transaction)

@@ -6,6 +6,20 @@ export interface MonthlyNetWorth {
   liabilities: number;
   netWorth: number;
   /**
+   * False when a component of this month could not be converted into the
+   * reporting currency: `assets`, `liabilities` and `netWorth` are then
+   * SUBTOTALS of what did convert, not totals. Read as `=== false` -- optional
+   * because a response from an older backend mid-deploy carries none of the
+   * flags, and absent means no information, not "complete".
+   */
+  fxComplete?: boolean;
+  /** `"ZZZ->USD"` for each pair with no rate this month; empty when complete. */
+  missingRatePairs?: string[];
+  /** `assets` alone is complete when this is not `false`; falls back to `fxComplete`. */
+  assetsFxComplete?: boolean;
+  /** `liabilities` alone is complete when this is not `false`; falls back to `fxComplete`. */
+  liabilitiesFxComplete?: boolean;
+  /**
    * What each account type contributes to `netWorth`: an asset type's value,
    * a liability type's owed amount negated, so the entries sum to `netWorth`
    * (to rounding). Only the types the month holds appear. Optional because a
@@ -159,6 +173,33 @@ export type PeriodResultReason =
    */
   | 'windowTooShort';
 
+/** One cause of an incomplete window, over the run of points it affected. */
+export interface IncompleteDataRange {
+  /** A security id, a `"USD->PLN"` pair, or an account id. */
+  key: string;
+  /** First date of the run. */
+  start: string;
+  /** Last date of the run; equal to `start` for a single point. */
+  end: string;
+}
+
+/**
+ * The three causes of an incomplete window, each folded into its runs, with a
+ * flag per cause saying whether older runs were dropped to keep the payload
+ * bounded. Mirrors `IncompleteDataRanges` in
+ * `backend/src/net-worth/incomplete-data-ranges.util.ts`.
+ */
+export interface IncompleteDataRanges {
+  /** Securities with no usable price, by run. */
+  prices: IncompleteDataRange[];
+  /** Currency pairs with no rate, by run. */
+  rates: IncompleteDataRange[];
+  /** Cash accounts with no balance, by run. */
+  cash: IncompleteDataRange[];
+  /** Per cause: true when runs older than the ones listed were dropped. */
+  truncated: { prices: boolean; rates: boolean; cash: boolean };
+}
+
 /**
  * What GET /net-worth/investments-period-result answers: what the portfolio did
  * over the window, and how much of that was the reader's own money.
@@ -202,6 +243,13 @@ export interface PortfolioPeriodResult {
   missingRatePairs: string[];
   unpricedSecurityIds: string[];
   unknownCashAccountIds: string[];
+  /**
+   * The same three causes DATED: each key's runs of consecutive points over the
+   * window, rather than the union sets above, which say what is missing and not
+   * when. Bounded per cause; `truncated` says a list is the newest runs rather
+   * than all of them. Optional: an older backend omits it.
+   */
+  incompleteRanges?: IncompleteDataRanges;
 
   // The INVESTED part of the same window: securities only, cash excluded
   // entirely. These are what "Portfolio performance" and the investment charts
@@ -325,6 +373,13 @@ export interface IntradayBreakdownPoint {
   timestamp: string;
   total: number;
   values: Record<string, number>;
+  /**
+   * Three completeness bits, as on `InvestmentBreakdownPoint`: `total` is a
+   * SUBTOTAL on a bar where one is false. Optional and read as `=== false`.
+   */
+  fxComplete?: boolean;
+  pricesComplete?: boolean;
+  cashComplete?: boolean;
   /** Set on a session's closing point; see `getIntradayValue`. */
   sessionClose?: true;
 }
@@ -339,4 +394,12 @@ export interface IntradayBreakdown {
   skippedSymbols: string[];
   failedSymbols: string[];
   fallbackToDaily: boolean;
+  /** Completeness over every point; optional, read as `=== false`. */
+  fxComplete?: boolean;
+  pricesComplete?: boolean;
+  valuationComplete?: boolean;
+  /** `"CCY->DISPLAY"` for each pair with no rate at any bar. */
+  missingRatePairs?: string[];
+  /** The securities behind `pricesComplete: false`. */
+  unpricedSecurityIds?: string[];
 }

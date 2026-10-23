@@ -15,7 +15,10 @@ import { Institution } from "../institutions/entities/institution.entity";
 import { Category } from "../categories/entities/category.entity";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import { NetWorthService } from "../net-worth/net-worth.service";
-import { PortfolioService } from "../securities/portfolio.service";
+import {
+  AccountMarketValue,
+  PortfolioService,
+} from "../securities/portfolio.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { LoanMortgageAccountService } from "./loan-mortgage-account.service";
@@ -39,6 +42,40 @@ import {
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
+
+type LatestNetWorth = NonNullable<
+  Awaited<ReturnType<NetWorthService["getLatestNetWorth"]>>
+>;
+
+/** What `getLatestNetWorth` answers for a month that converted completely. */
+const latestNetWorth = (
+  overrides: Partial<LatestNetWorth> = {},
+): LatestNetWorth => ({
+  assets: 0,
+  liabilities: 0,
+  netWorth: 0,
+  fxComplete: true,
+  missingRatePairs: [],
+  assetsFxComplete: true,
+  liabilitiesFxComplete: true,
+  ...overrides,
+});
+
+/** A brokerage whose every position was priced and converted. */
+const marketValueOf = (
+  marketValue: number,
+  overrides: Partial<AccountMarketValue> = {},
+): AccountMarketValue => ({
+  marketValue,
+  knownMarketValueSubtotal: marketValue,
+  pricesComplete: true,
+  unpricedSecurityIds: [],
+  unpricedSymbols: [],
+  fxComplete: true,
+  missingRatePairs: [],
+  valuationComplete: true,
+  ...overrides,
+});
 
 describe("AccountsService", () => {
   /**
@@ -3646,17 +3683,173 @@ describe("AccountsService", () => {
       stubAccounts([{ ...mockAccount, id: "a1", currentBalance: 5000 }]);
       // getLatestNetWorth is the canonical source shared with the dashboard
       // widget and get_account_balances; getSummary must report its latest month.
-      netWorthService.getLatestNetWorth.mockResolvedValue({
-        assets: 25000,
-        liabilities: 302000,
-        netWorth: 25000 - 302000,
-      });
+      netWorthService.getLatestNetWorth.mockResolvedValue(
+        latestNetWorth({
+          assets: 25000,
+          liabilities: 302000,
+          netWorth: 25000 - 302000,
+        }),
+      );
 
       const result = await service.getSummary("user-1");
 
       expect(result.totalAssets).toBe(25000);
       expect(result.totalLiabilities).toBe(302000);
       expect(result.netWorth).toBe(25000 - 302000);
+      expect(result.knownNetWorthSubtotal).toBe(25000 - 302000);
+      expect(result.fxComplete).toBe(true);
+      expect(result.pricesComplete).toBe(true);
+      expect(result.valuationComplete).toBe(true);
+      expect(result.missingRatePairs).toEqual([]);
+      expect(result.unpricedSymbols).toEqual([]);
+    });
+
+    it("does not report a subtotal as net worth when a rate is missing", async () => {
+      stubAccounts([{ ...mockAccount, id: "a1", currentBalance: 1000 }]);
+      netWorthService.getLatestNetWorth.mockResolvedValue(
+        latestNetWorth({
+          assets: 1000,
+          liabilities: 0,
+          netWorth: 1000,
+          fxComplete: false,
+          missingRatePairs: ["ZZZ->USD"],
+          assetsFxComplete: false,
+        }),
+      );
+
+      const result = await service.getSummary("user-1");
+
+      expect(result.netWorth).toBeNull();
+      expect(result.totalAssets).toBeNull();
+      // Liabilities converted completely, so they are a total.
+      expect(result.totalLiabilities).toBe(0);
+      expect(result.knownNetWorthSubtotal).toBe(1000);
+      expect(result.knownAssetsSubtotal).toBe(1000);
+      expect(result.knownLiabilitiesSubtotal).toBe(0);
+      expect(result.fxComplete).toBe(false);
+      expect(result.valuationComplete).toBe(false);
+      expect(result.missingRatePairs).toEqual(["ZZZ->USD"]);
+    });
+
+    it("withholds net worth when a snapshot is complete but a brokerage holds an unpriced position", async () => {
+      const brokerage = {
+        ...mockAccount,
+        id: "b1",
+        accountType: AccountType.INVESTMENT,
+        accountSubType: AccountSubType.INVESTMENT_BROKERAGE,
+        excludeFromNetWorth: false,
+        currentBalance: 0,
+      };
+      stubAccounts([
+        { ...mockAccount, id: "a1", currentBalance: 1000 },
+        brokerage,
+      ]);
+      netWorthService.getLatestNetWorth.mockResolvedValue(
+        latestNetWorth({ assets: 1000, netWorth: 1000 }),
+      );
+      (
+        service["portfolioService"] as unknown as {
+          getAccountMarketValues: jest.Mock;
+        }
+      ).getAccountMarketValues = jest.fn().mockResolvedValue(
+        new Map([
+          [
+            "b1",
+            marketValueOf(0, {
+              marketValue: null,
+              knownMarketValueSubtotal: 0,
+              pricesComplete: false,
+              unpricedSecurityIds: ["sec-abc"],
+              unpricedSymbols: ["ABC"],
+              valuationComplete: false,
+            }),
+          ],
+        ]),
+      );
+
+      const result = await service.getSummary("user-1");
+
+      expect(result.pricesComplete).toBe(false);
+      expect(result.fxComplete).toBe(true);
+      expect(result.valuationComplete).toBe(false);
+      expect(result.netWorth).toBeNull();
+      expect(result.totalAssets).toBeNull();
+      expect(result.totalLiabilities).toBe(0);
+      expect(result.knownNetWorthSubtotal).toBe(1000);
+      expect(result.unpricedSymbols).toEqual(["ABC"]);
+      expect(result.unpricedSecurityIds).toEqual(["sec-abc"]);
+    });
+
+    it("withholds the assets when a brokerage position has no rate into the account's currency", async () => {
+      const brokerage = {
+        ...mockAccount,
+        id: "b1",
+        accountType: AccountType.INVESTMENT,
+        accountSubType: AccountSubType.INVESTMENT_BROKERAGE,
+        excludeFromNetWorth: false,
+        currentBalance: 0,
+      };
+      stubAccounts([brokerage]);
+      netWorthService.getLatestNetWorth.mockResolvedValue(latestNetWorth());
+      (
+        service["portfolioService"] as unknown as {
+          getAccountMarketValues: jest.Mock;
+        }
+      ).getAccountMarketValues = jest.fn().mockResolvedValue(
+        new Map([
+          [
+            "b1",
+            marketValueOf(0, {
+              marketValue: null,
+              fxComplete: false,
+              missingRatePairs: ["EUR->USD"],
+              valuationComplete: false,
+            }),
+          ],
+        ]),
+      );
+
+      const result = await service.getSummary("user-1");
+
+      expect(result.fxComplete).toBe(false);
+      expect(result.missingRatePairs).toEqual(["EUR->USD"]);
+      expect(result.netWorth).toBeNull();
+    });
+
+    it("ignores an excluded account's market value", async () => {
+      const excluded = {
+        ...mockAccount,
+        id: "b1",
+        accountType: AccountType.INVESTMENT,
+        accountSubType: AccountSubType.INVESTMENT_BROKERAGE,
+        excludeFromNetWorth: true,
+        currentBalance: 0,
+      };
+      stubAccounts([excluded]);
+      netWorthService.getLatestNetWorth.mockResolvedValue(latestNetWorth());
+      (
+        service["portfolioService"] as unknown as {
+          getAccountMarketValues: jest.Mock;
+        }
+      ).getAccountMarketValues = jest.fn().mockResolvedValue(
+        new Map([
+          [
+            "b1",
+            marketValueOf(0, {
+              marketValue: null,
+              pricesComplete: false,
+              unpricedSymbols: ["ABC"],
+              unpricedSecurityIds: ["sec-abc"],
+              valuationComplete: false,
+            }),
+          ],
+        ]),
+      );
+
+      const result = await service.getSummary("user-1");
+
+      expect(result.pricesComplete).toBe(true);
+      expect(result.netWorth).toBe(0);
     });
 
     it("returns zero net worth when no monthly snapshots exist", async () => {
@@ -3668,6 +3861,9 @@ describe("AccountsService", () => {
       expect(result.totalAssets).toBe(0);
       expect(result.totalLiabilities).toBe(0);
       expect(result.netWorth).toBe(0);
+      // No snapshot at all is a known zero, not an unknown one.
+      expect(result.knownNetWorthSubtotal).toBe(0);
+      expect(result.valuationComplete).toBe(true);
       // totalBalance still reflects the raw book balance
       expect(result.totalBalance).toBe(5000);
     });
@@ -4078,14 +4274,16 @@ describe("AccountsService", () => {
         netWorthService as unknown as Record<string, jest.Mock>
       ).getLatestNetWorth = jest
         .fn()
-        .mockResolvedValue({ assets: 800, liabilities: 0, netWorth: 800 });
+        .mockResolvedValue(
+          latestNetWorth({ assets: 800, liabilities: 0, netWorth: 800 }),
+        );
       (
         service["portfolioService"] as unknown as {
           getAccountMarketValues: jest.Mock;
         }
       ).getAccountMarketValues = jest
         .fn()
-        .mockResolvedValue(new Map([["a3", 750]]));
+        .mockResolvedValue(new Map([["a3", marketValueOf(750)]]));
       institutionsRepository.find = jest
         .fn()
         .mockResolvedValue([{ id: "inst-1", name: "Big Bank" }]);
@@ -4320,7 +4518,7 @@ describe("AccountsService", () => {
           }
         ).getAccountMarketValues = jest
           .fn()
-          .mockResolvedValue(new Map([["cad-brokerage", 2000]]));
+          .mockResolvedValue(new Map([["cad-brokerage", marketValueOf(2000)]]));
       });
 
       it("prices a foreign account at today's rate, once per currency", async () => {
@@ -4511,6 +4709,75 @@ describe("AccountsService", () => {
       expect(r.totalAssets).toBe(800);
       expect(r.totalLiabilities).toBe(0);
       expect(r.netWorth).toBe(800);
+    });
+
+    it("carries the same completeness totals as the summary, and a brokerage row with a null balance", async () => {
+      (
+        netWorthService as unknown as Record<string, jest.Mock>
+      ).getLatestNetWorth = jest.fn().mockResolvedValue(
+        latestNetWorth({
+          assets: 800,
+          netWorth: 800,
+          fxComplete: false,
+          missingRatePairs: ["ZZZ->USD"],
+          assetsFxComplete: false,
+        }),
+      );
+      (
+        service["portfolioService"] as unknown as {
+          getAccountMarketValues: jest.Mock;
+        }
+      ).getAccountMarketValues = jest.fn().mockResolvedValue(
+        new Map([
+          [
+            "a3",
+            marketValueOf(0, {
+              marketValue: null,
+              knownMarketValueSubtotal: 600,
+              pricesComplete: false,
+              unpricedSecurityIds: ["sec-abc"],
+              unpricedSymbols: ["ABC"],
+              valuationComplete: false,
+            }),
+          ],
+        ]),
+      );
+
+      const r = await service.getLlmAccounts("user-1");
+
+      expect(r.netWorth).toBeNull();
+      expect(r.totalAssets).toBeNull();
+      expect(r.totalLiabilities).toBe(0);
+      expect(r.knownNetWorthSubtotal).toBe(800);
+      expect(r.fxComplete).toBe(false);
+      expect(r.pricesComplete).toBe(false);
+      expect(r.valuationComplete).toBe(false);
+      expect(r.unpricedSymbols).toEqual(["ABC"]);
+      expect(r.missingRatePairs).toContain("ZZZ->USD");
+      const brokerage = r.accounts.find((a) => a.name === "Brokerage")!;
+      expect(brokerage.balance).toBeNull();
+      expect(brokerage.balanceInDefaultCurrency).toBeNull();
+      expect(brokerage.knownBalanceSubtotal).toBe(600);
+      expect(brokerage.valuationComplete).toBe(false);
+      const checking = r.accounts.find((a) => a.name === "Checking")!;
+      expect(checking.balance).toBe(100);
+      expect(checking.knownBalanceSubtotal).toBe(100);
+      expect(checking.valuationComplete).toBe(true);
+    });
+
+    it("treats a brokerage absent from the market-value map as holding nothing", async () => {
+      (
+        service["portfolioService"] as unknown as {
+          getAccountMarketValues: jest.Mock;
+        }
+      ).getAccountMarketValues = jest.fn().mockResolvedValue(new Map());
+
+      const r = await service.getLlmAccounts("user-1");
+
+      const brokerage = r.accounts.find((a) => a.name === "Brokerage")!;
+      expect(brokerage.balance).toBe(0);
+      expect(brokerage.knownBalanceSubtotal).toBe(0);
+      expect(brokerage.valuationComplete).toBe(true);
     });
 
     it("falls back to 0 totals when the net worth snapshot is null", async () => {

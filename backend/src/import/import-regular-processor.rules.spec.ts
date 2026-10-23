@@ -1,4 +1,5 @@
 import { ImportRegularProcessorService } from "./import-regular-processor.service";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { ImportContext } from "./import-context";
 import { ImportResultDto } from "./dto/import.dto";
 import { AccountType } from "../accounts/entities/account.entity";
@@ -117,6 +118,7 @@ describe("ImportRegularProcessorService import rules", () => {
     };
     service = new ImportRegularProcessorService(
       applier as unknown as TransactionRulesApplierService,
+      {} as ExchangeRateService,
     );
   });
 

@@ -234,8 +234,22 @@ export interface AccountHoldings {
    * so any total built on it is unknown too (see `buildLogicalAccounts`).
    */
   unpricedHoldingsCount: number;
+  /**
+   * Value less cost over the holdings that have a value (`gainCostBasis` is
+   * their cost), so the cost of an unpriced holding is not charged against a
+   * value that never included it. A partial figure while `valuationComplete`
+   * is `false`.
+   */
   totalGainLoss: number;
+  /** Over `gainCostBasis`; 0 when that is 0. */
   totalGainLossPercent: number;
+  /**
+   * Cost of the holdings `totalGainLoss` is over. Optional for the
+   * rolling-deploy reason `fxComplete` gives: absent is no information.
+   */
+  gainCostBasis?: number;
+  /** Cost of the holdings the gain leaves out because they have no value. */
+  unpricedCostBasis?: number;
   netInvested: number;
   /**
    * Whether every component of *this account's* totals is known. The totals above
@@ -311,8 +325,17 @@ export interface PortfolioSummary {
   totalCostBasis: number;
   totalNetInvested: number;
   totalPortfolioValue: number;
+  /**
+   * Value less cost over the holdings that have a value; a partial figure while
+   * `valuationComplete` is `false`, which `PartialTotal` marks.
+   */
   totalGainLoss: number;
+  /** Over `gainCostBasis`; 0 when that is 0. */
   totalGainLossPercent: number;
+  /** Cost of the holdings `totalGainLoss` is over. Optional: absent is no information. */
+  gainCostBasis?: number;
+  /** Cost of the holdings the gain leaves out because they have no value. */
+  unpricedCostBasis?: number;
   /**
    * The invested part's time-weighted return since the portfolio's first
    * transaction, from the same server measure "Portfolio performance" reports

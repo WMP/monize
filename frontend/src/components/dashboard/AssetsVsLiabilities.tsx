@@ -7,6 +7,13 @@ import { MonthlyNetWorth } from '@/types/net-worth';
 import { useNumberFormat, type NumberFormatters } from '@/hooks/useNumberFormat';
 import { useWidgetConfig } from '@/hooks/useWidgetConfig';
 import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import {
+  assetsFxComplete,
+  liabilitiesFxComplete,
+  netWorthIsPartial,
+  partialTotalFor,
+} from '@/lib/net-worth-completeness';
 import { WidgetCard, WidgetConfigRow, WidgetMessage } from './WidgetCard';
 import { WidgetSegmentedControl } from './WidgetSegmentedControl';
 import { DonutCalloutChart, DonutCalloutSlice, DonutCalloutViewHint } from './DonutCalloutChart';
@@ -17,6 +24,8 @@ const WIDGET_ID = 'assets-liabilities';
 interface AssetsVsLiabilitiesProps {
   data: MonthlyNetWorth[];
   isLoading: boolean;
+  /** The request failed: `data` is empty because nothing came back, not because there is no history. */
+  error?: boolean;
 }
 
 const ASSET_COLOUR = chartColors.income;
@@ -41,9 +50,9 @@ function AssetsTooltip({ slice, total, formatCurrency, formatPercent }: AssetsTo
   );
 }
 
-export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProps) {
+export function AssetsVsLiabilities({ data, isLoading, error = false }: AssetsVsLiabilitiesProps) {
   const t = useTranslations('dashboard');
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyTight, formatPercent } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyTight, formatPercent, defaultCurrency } = useNumberFormat();
   const { config, updateConfig } = useWidgetConfig<AssetsLiabilitiesConfig>(
     WIDGET_ID,
     ASSETS_LIABILITIES_DEFAULT,
@@ -53,13 +62,23 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
   // reflects the most recent month's split.
   const latest = useMemo(() => (data.length > 0 ? data[data.length - 1] : null), [data]);
 
+  // Each side reads its own flag, falling back to the month's. A side that is a
+  // subtotal says so in its name (text, not colour alone); net worth, which is
+  // partial when either side is, goes through `PartialTotal`.
   const chartData = useMemo<DonutCalloutSlice[]>(() => {
     if (!latest) return [];
+    const partialName = (name: string, complete: boolean | undefined) =>
+      complete === false ? t('assetsVsLiabilities.partialName', { name }) : name;
     return [
-      { key: 'assets', name: t('assetsVsLiabilities.assets'), value: Math.round(latest.assets), color: ASSET_COLOUR },
+      {
+        key: 'assets',
+        name: partialName(t('assetsVsLiabilities.assets'), assetsFxComplete(latest)),
+        value: Math.round(latest.assets),
+        color: ASSET_COLOUR,
+      },
       {
         key: 'liabilities',
-        name: t('assetsVsLiabilities.liabilities'),
+        name: partialName(t('assetsVsLiabilities.liabilities'), liabilitiesFxComplete(latest)),
         value: Math.round(latest.liabilities),
         color: LIABILITY_COLOUR,
       },
@@ -67,6 +86,11 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
   }, [latest, t]);
 
   const netWorth = latest ? Math.round(latest.netWorth) : 0;
+  const netWorthTotal = partialTotalFor(
+    netWorth,
+    latest && netWorthIsPartial(latest) ? false : undefined,
+    latest?.missingRatePairs,
+  );
   const total = chartData.reduce((sum, item) => sum + item.value, 0);
   const netWorthClass = netWorth >= 0 ? undefined : 'text-red-600 dark:text-red-400';
 
@@ -100,6 +124,8 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
         <div className="h-64 flex items-center justify-center">
           <div className="animate-pulse w-48 h-48 rounded-full bg-gray-200 dark:bg-gray-700" />
         </div>
+      ) : error ? (
+        <WidgetMessage>{t('netWorth.loadFailed')}</WidgetMessage>
       ) : chartData.length === 0 ? (
         <WidgetMessage>{t('assetsVsLiabilities.empty')}</WidgetMessage>
       ) : (
@@ -113,8 +139,16 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
           // donut's hole rather than in a row under the chart.
           center={{
             label: t('assetsVsLiabilities.netWorthLabel'),
-            value: <span className={netWorthClass}>{formatCurrency(netWorth)}</span>,
-            compactValue: <span className={netWorthClass}>{formatCurrencyTight(netWorth)}</span>,
+            value: (
+              <PartialTotal total={netWorthTotal} displayCurrency={defaultCurrency}>
+                <span className={netWorthClass}>{formatCurrency(netWorth)}</span>
+              </PartialTotal>
+            ),
+            compactValue: (
+              <PartialTotal total={netWorthTotal} displayCurrency={defaultCurrency}>
+                <span className={netWorthClass}>{formatCurrencyTight(netWorth)}</span>
+              </PartialTotal>
+            ),
           }}
           renderTooltip={(slice) => (
             <AssetsTooltip

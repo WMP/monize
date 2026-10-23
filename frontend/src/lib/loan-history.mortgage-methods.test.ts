@@ -11,6 +11,10 @@ import { solveRecurringForPayoffMonth } from '@/lib/loan-overpayment-solver';
 import type { Account } from '@/types/account';
 import type { LoanRateChange } from '@/types/loan-rate-change';
 
+// Every fixture is dated in the past; `todayYmd` is a required argument.
+const AFTER_ALL_FIXTURES = '2999-12-31';
+
+
 /**
  * The projection input and the current terms of a LINEAR or INTEREST_ONLY
  * mortgage (docs/specs/mortgage-types.md, sections 5.4 and 5.6), on the worked
@@ -62,7 +66,7 @@ const RATE_STEP: LoanRateChange[] = [
 ];
 
 function project(account: Account, rateChanges: LoanRateChange[] = RATE_STEP) {
-  const history = deriveLoanPaymentHistory(account, [], rateChanges);
+  const history = deriveLoanPaymentHistory(account, [], rateChanges, [], AFTER_ALL_FIXTURES);
   return buildLoanProjectionInput(account, history, rateChanges, ANCHOR, TODAY);
 }
 
@@ -128,7 +132,7 @@ describe('buildLoanProjectionInput: LINEAR and INTEREST_ONLY', () => {
     const account = mortgage({ mortgageType: 'INTEREST_ONLY' });
     const input = buildLoanProjectionInput(
       account,
-      deriveLoanPaymentHistory(account, []),
+      deriveLoanPaymentHistory(account, [], [], [], AFTER_ALL_FIXTURES),
       [],
       null,
       TODAY,
@@ -152,7 +156,7 @@ describe('diagnoseLoanProjection: the terms a method needs (spec section 8)', ()
   const reasonFor = (account: Account) =>
     diagnoseLoanProjection(
       account,
-      deriveLoanPaymentHistory(account, []),
+      deriveLoanPaymentHistory(account, [], [], [], AFTER_ALL_FIXTURES),
       [],
       ANCHOR,
       TODAY,
@@ -188,7 +192,7 @@ describe('resolveCurrentLoanTerms: LINEAR and INTEREST_ONLY', () => {
   const termsFor = (account: Account, rateChanges: LoanRateChange[] = []) =>
     resolveCurrentLoanTerms(
       account,
-      deriveLoanPaymentHistory(account, [], rateChanges),
+      deriveLoanPaymentHistory(account, [], rateChanges, [], AFTER_ALL_FIXTURES),
       rateChanges,
       ANCHOR,
       TODAY,
@@ -240,7 +244,7 @@ describe('computePastImpact: the contractual schedule is the method\'s', () => {
     ];
     const impact = computePastImpact(
       account,
-      deriveLoanPaymentHistory(account, [], history),
+      deriveLoanPaymentHistory(account, [], history, [], AFTER_ALL_FIXTURES),
       null,
       history,
     );
@@ -256,7 +260,7 @@ describe('computePastImpact: the contractual schedule is the method\'s', () => {
 
   it('runs an INTEREST_ONLY mortgage to its bullet', () => {
     const account = mortgage({ mortgageType: 'INTEREST_ONLY' });
-    const original = computePastImpact(account, deriveLoanPaymentHistory(account, []))!
+    const original = computePastImpact(account, deriveLoanPaymentHistory(account, [], [], [], AFTER_ALL_FIXTURES))!
       .originalSchedule;
     expect(original.rows[0]).toMatchObject({ principal: 0, interest: 500 });
     expect(original.rows[original.rows.length - 1]).toMatchObject({
@@ -268,7 +272,7 @@ describe('computePastImpact: the contractual schedule is the method\'s', () => {
 
   it('has no contractual baseline without the calendar it needs', () => {
     const account = mortgage({ paymentStartDate: null });
-    expect(computePastImpact(account, deriveLoanPaymentHistory(account, []))).toBeNull();
+    expect(computePastImpact(account, deriveLoanPaymentHistory(account, [], [], [], AFTER_ALL_FIXTURES))).toBeNull();
   });
 });
 

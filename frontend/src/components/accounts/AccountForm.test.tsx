@@ -830,6 +830,44 @@ describe('AccountForm', () => {
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
 
+  it('saves a stored 0% LOAN rate as 0 instead of treating it as empty', async () => {
+    const loanAccount = createExistingAccount({
+      accountType: 'LOAN',
+      name: 'Interest-free Loan',
+      interestRate: 0,
+      institutionId: 'inst-1',
+      paymentAmount: 200,
+      paymentFrequency: 'MONTHLY',
+      paymentStartDate: '2024-01-01',
+      sourceAccountId: 'chq-1',
+      interestCategoryId: 'cat-1',
+      openingBalance: -5000,
+    });
+
+    render(
+      <AccountForm account={loanAccount} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
+    );
+
+    const rate = (await screen.findByLabelText(/^Interest Rate/)) as HTMLInputElement;
+    expect(Number(rate.value)).toBe(0);
+    expect(rate.value).not.toBe('');
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Account Name'), {
+        target: { value: 'Interest-free Loan 2' },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Update Account/i }));
+    });
+
+    await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ interestRate: 0 }),
+      );
+    });
+  });
+
   it('does not show loan fields when editing existing LOAN account', async () => {
     const loanAccount = createExistingAccount({
       accountType: 'LOAN',

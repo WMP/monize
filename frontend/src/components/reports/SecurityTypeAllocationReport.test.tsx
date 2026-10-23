@@ -247,4 +247,35 @@ describe('SecurityTypeAllocationReport', () => {
       expect(mockGetPortfolioSummary).toHaveBeenCalledWith(['acc-1']);
     });
   });
+
+  describe('the footer total carries the marker the summary card carries', () => {
+    const unpriced = {
+      ...mockHoldings[0],
+      id: 'h-4',
+      securityId: 's-4',
+      symbol: 'NOPRICE',
+      name: 'No Price Corp.',
+      currentPrice: null,
+      marketValue: null,
+    };
+
+    it('marks the footer total partial when a holding is unpriced', async () => {
+      mockGetPortfolioSummary.mockResolvedValue({ holdings: [...mockHoldings, unpriced] });
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+      const { container } = render(<SecurityTypeAllocationReport />);
+      await waitFor(() => expect(screen.getByText('Total')).toBeInTheDocument());
+      // The card above the table says so ...
+      expect(screen.getAllByTestId('partial-total').length).toBeGreaterThan(0);
+      // ... and so does the footer that prints the same subtotal.
+      expect(container.querySelector('tfoot [data-testid="partial-total"]')).not.toBeNull();
+    });
+
+    it('leaves the footer bare when every holding is priced', async () => {
+      mockGetPortfolioSummary.mockResolvedValue({ holdings: mockHoldings });
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+      const { container } = render(<SecurityTypeAllocationReport />);
+      await waitFor(() => expect(screen.getByText('Total')).toBeInTheDocument());
+      expect(container.querySelector('[data-testid="partial-total"]')).toBeNull();
+    });
+  });
 });

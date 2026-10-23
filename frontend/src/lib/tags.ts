@@ -28,12 +28,16 @@ export const tagsApi = {
   update: async (id: string, data: UpdateTagData): Promise<Tag> => {
     const response = await apiClient.patch<Tag>(`/tags/${id}`, data);
     invalidateCache('tags:');
+    // The portfolio tag allocation is derived from tags.
+    invalidateCache('investments:');
     return response.data;
   },
 
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/tags/${id}`);
     invalidateCache('tags:');
+    // The portfolio tag allocation is derived from tags.
+    invalidateCache('investments:');
   },
 
   getTransactionCount: async (id: string): Promise<number> => {

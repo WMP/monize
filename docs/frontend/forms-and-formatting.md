@@ -115,6 +115,15 @@ from the diff it matched only the shapes the migration had just removed and
 reported clean over fourteen survivors, because the shape that actually
 dominates names no formatter at all. A scan written from a diff sees what was
 fixed; write it from the rule.
+**A readout inside a form is a figure too.** A split preview, a transfer's
+source holding or a "shares at price" line renders through `formatShareQuantity`,
+`formatPrice` and `formatCurrency(value, code, 4)`, and a catalog string takes
+the formatted figure, never a `{currency}{amount}` pair. The same guard fails a
+`.toFixed(` anywhere in components, app or hooks: machine-read sites are
+classified with their reason, and the readouts not yet migrated sit in a
+shrink-only baseline with an exact count per file. A relative time is
+`useRelativeTime()`, never the English-only `formatRelativeTime`
+(`ui-conventions.test.ts`).
 A component test must not build its expectation with the same helper the
 component uses -- `SecurityList.test.tsx` did, so it proved the component agreed
 with a hardcoded formatter while the screen disagreed with the user. Set a real

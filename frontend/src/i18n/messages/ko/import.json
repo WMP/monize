@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "{count}개 계정에 대한 예약 상환이 설정되었습니다.",
     "viewInvestments": "투자 보기",
     "viewTransactions": "거래 보기",
-    "importMoreFiles": "파일 더 가져오기"
+    "importMoreFiles": "파일 더 가져오기",
+    "bondRowsWithoutSeries": "{count, plural, other {채권 매수 #건이 시리즈 없이 가져와졌습니다. 증권의 채권 로트에서 시리즈를 선택하세요.}}"
   },
   "multiAccountReview": {
     "heading": "다중 계정 QIF 가져오기",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "이번 가져오기에 대한 참고 사항",
     "downloadReport": "보고서 다운로드",
-    "done": "완료"
+    "done": "완료",
+    "bondRowsWithoutSeries": "{count, plural, other {채권 매수 #건이 시리즈 없이 가져와졌습니다. 증권의 채권 로트에서 시리즈를 선택하세요.}}"
   },
   "mnyWarnings": {
     "missingTable": "이 Money 버전에는 가져오기에 사용하는 테이블 {count, plural, other {#개}}가 없습니다.",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "평가하지 않음: 앞의 규칙이 이후 규칙을 중단했습니다.",
         "disabled": "평가하지 않음: 규칙이 꺼져 있습니다.",
-        "invalid": "평가하지 않음: 규칙이 올바르지 않습니다. 열어서 고치세요."
+        "invalid": "평가하지 않음: 규칙이 올바르지 않습니다. 열어서 고치세요.",
+        "outside_active_window": "평가하지 않음: 행의 날짜가 규칙의 활성 기간을 벗어났습니다."
       },
       "condition": {
         "met": "조건 충족",

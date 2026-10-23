@@ -1,4 +1,5 @@
 import { ImportRegularProcessorService } from "./import-regular-processor.service";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { TransactionRulesApplierService } from "../transaction-rules/transaction-rules-applier.service";
 import { ImportContext } from "./import-context";
 import {
@@ -12,6 +13,10 @@ import { ImportResultDto } from "./dto/import.dto";
 
 describe("ImportRegularProcessorService", () => {
   let service: ImportRegularProcessorService;
+  let exchangeRateService: {
+    getRateForDate: jest.Mock;
+    getLatestRate: jest.Mock;
+  };
 
   const userId = "user-1";
   const accountId = "acc-1";
@@ -108,9 +113,16 @@ describe("ImportRegularProcessorService", () => {
   };
 
   beforeEach(() => {
-    service = new ImportRegularProcessorService({
-      applyToNew: jest.fn().mockResolvedValue([]),
-    } as unknown as TransactionRulesApplierService);
+    exchangeRateService = {
+      getRateForDate: jest.fn().mockResolvedValue(null),
+      getLatestRate: jest.fn().mockResolvedValue(null),
+    };
+    service = new ImportRegularProcessorService(
+      {
+        applyToNew: jest.fn().mockResolvedValue([]),
+      } as unknown as TransactionRulesApplierService,
+      exchangeRateService as unknown as ExchangeRateService,
+    );
   });
 
   describe("processTransaction", () => {
@@ -1674,6 +1686,66 @@ describe("ImportRegularProcessorService", () => {
 
       expect(ctx.importResult.imported).toBe(1);
       expect(ctx.affectedAccountIds.has("acc-savings")).toBe(true);
+    });
+
+    describe("a split transfer into an account in another currency (A26-M18)", () => {
+      const splitInto = () => {
+        const accountMap = new Map<string, string | null>();
+        accountMap.set("Savings USD", "acc-usd");
+        const ctx = makeContext({ accountMap });
+        managerOf(ctx).createQueryBuilder.mockReturnValue(
+          makeMockQueryBuilder(null),
+        );
+        managerOf(ctx).findOne.mockImplementation((_entity: any, opts: any) =>
+          Promise.resolve(
+            opts?.where?.id === "acc-usd"
+              ? { id: "acc-usd", currencyCode: "USD" }
+              : null,
+          ),
+        );
+        const qifTx = {
+          date: "2025-01-15",
+          amount: -100,
+          splits: [
+            { amount: -40, category: "Food" },
+            { amount: -60, isTransfer: true, transferAccount: "Savings USD" },
+          ],
+        };
+        return { ctx, qifTx };
+      };
+      const createdLeg = (ctx: ImportContext) =>
+        managerOf(ctx)
+          .create.mock.calls.map((call: any[]) => call[1])
+          .find((row: any) => row.accountId === "acc-usd");
+
+      it("converts the leg at the date's rate and writes it in the target's currency", async () => {
+        const { ctx, qifTx } = splitInto();
+        exchangeRateService.getRateForDate.mockResolvedValue(0.74);
+
+        await service.processTransaction(ctx, qifTx);
+
+        expect(exchangeRateService.getRateForDate).toHaveBeenCalledWith(
+          "CAD",
+          "USD",
+          "2025-01-15",
+        );
+        expect(createdLeg(ctx)).toMatchObject({
+          amount: 44.4,
+          currencyCode: "USD",
+          exchangeRate: 0.74,
+        });
+        expect(createdLeg(ctx).description).toContain("PENDING IMPORT");
+      });
+
+      it("refuses the row, naming the pair, when no rate covers the date", async () => {
+        const { ctx, qifTx } = splitInto();
+        exchangeRateService.getRateForDate.mockResolvedValue(null);
+
+        await expect(service.processTransaction(ctx, qifTx)).rejects.toThrow(
+          "CAD -> USD",
+        );
+        expect(createdLeg(ctx)).toBeUndefined();
+      });
     });
 
     it("should handle loan categories within splits", async () => {

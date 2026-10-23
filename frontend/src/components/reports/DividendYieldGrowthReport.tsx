@@ -629,6 +629,7 @@ export function DividendYieldGrowthReport() {
           <ReportToolbarActions
             onRefreshComplete={reload}
             onExportPdf={handleExportPdf}
+            disabled={isLoading || !!error}
           />
         </div>
       </div>

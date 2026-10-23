@@ -148,6 +148,7 @@
     "netWorthLabel": "Patrimonio netto",
     "assets": "Attività",
     "liabilities": "Passività",
+    "partialName": "{name} (parziale)",
     "viewCallouts": "Etichette",
     "viewLegend": "Legenda"
   },

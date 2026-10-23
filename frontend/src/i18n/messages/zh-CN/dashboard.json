@@ -148,6 +148,7 @@
     "netWorthLabel": "资产净值",
     "assets": "资产",
     "liabilities": "负债",
+    "partialName": "{name}（不完整）",
     "viewCallouts": "标签",
     "viewLegend": "图例"
   },

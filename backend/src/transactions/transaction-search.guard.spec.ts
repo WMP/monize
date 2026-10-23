@@ -135,11 +135,14 @@ describe("transaction search has one door (INV-SEARCH-001)", () => {
   });
 
   it("never hand-builds a LIKE pattern around a search string", () => {
-    // Scoped to the transactions module, where the search string lives. The
-    // custom-report `searchText` filter (reports/) is a separate feature with
-    // its own semantics; it is outside this invariant, not exempt from review.
+    // The transactions module, where the search string lives, and the custom
+    // report engine, whose text filters go through the door too (audit A26-L12).
     const offenders = files
-      .filter((file) => file.rel.startsWith("transactions/"))
+      .filter(
+        (file) =>
+          file.rel.startsWith("transactions/") ||
+          file.rel.startsWith("reports/"),
+      )
       .filter((file) => !DOOR.has(file.rel))
       .flatMap((file) =>
         file.lines

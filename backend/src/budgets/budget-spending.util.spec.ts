@@ -1,5 +1,7 @@
 import {
+  budgetExcludedAccountIds,
   CategorySpending,
+  excludeBudgetAccounts,
   queryCategorySpending,
   resolveCategoryName,
   resolveCategorySpent,
@@ -21,6 +23,42 @@ function makeBudgetCategory(
     ...overrides,
   } as unknown as BudgetCategory;
 }
+
+describe("budgetExcludedAccountIds", () => {
+  it("reads nothing excluded from a missing or empty config", () => {
+    expect(budgetExcludedAccountIds(null)).toEqual([]);
+    expect(budgetExcludedAccountIds({})).toEqual([]);
+  });
+
+  it("reads nothing excluded when the value is not an array", () => {
+    expect(budgetExcludedAccountIds({ excludedAccountIds: "x" })).toEqual([]);
+  });
+
+  it("keeps only the string entries of the array", () => {
+    expect(
+      budgetExcludedAccountIds({ excludedAccountIds: ["a", 3, "b"] }),
+    ).toEqual(["a", "b"]);
+  });
+});
+
+describe("excludeBudgetAccounts", () => {
+  it("adds no clause when no account is excluded", () => {
+    const qb: any = { andWhere: jest.fn().mockReturnThis() };
+
+    expect(excludeBudgetAccounts(qb, [])).toBe(qb);
+    expect(qb.andWhere).not.toHaveBeenCalled();
+  });
+
+  it("adds the NOT IN clause with the ids as its parameter", () => {
+    const qb: any = { andWhere: jest.fn().mockReturnThis() };
+
+    expect(excludeBudgetAccounts(qb, ["a"])).toBe(qb);
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      "t.account_id NOT IN (:...excludedAccountIds)",
+      { excludedAccountIds: ["a"] },
+    );
+  });
+});
 
 describe("resolveCategoryName", () => {
   it("returns the transfer account name for transfer categories", () => {
@@ -169,6 +207,44 @@ describe("queryCategorySpending", () => {
     expect(result.transferSpendingMap.size).toBe(0);
     expect(txRepo.createQueryBuilder).not.toHaveBeenCalled();
     expect(splitRepo.createQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it("passes the budget's excluded accounts into the direct and split queries", async () => {
+    const directQb = makeQbReturning([]);
+    const splitQb = makeQbReturning([]);
+    const manager = {
+      query: jest.fn().mockImplementation(async (sql: string) =>
+        sql.includes("FROM budgets")
+          ? [
+              {
+                currency_code: "CAD",
+                config: { excludedAccountIds: ["acc-x"] },
+              },
+            ]
+          : [],
+      ),
+    };
+    const txRepo: any = {
+      manager,
+      createQueryBuilder: jest.fn().mockReturnValue(directQb),
+    };
+    const splitRepo: any = {
+      createQueryBuilder: jest.fn().mockReturnValue(splitQb),
+    };
+
+    await queryCategorySpending(
+      txRepo,
+      splitRepo,
+      "user-1",
+      [makeBudgetCategory({ categoryId: "cat-1" })],
+      "2026-01-01",
+      "2026-01-31",
+    );
+
+    const clause = "t.account_id NOT IN (:...excludedAccountIds)";
+    const params = { excludedAccountIds: ["acc-x"] };
+    expect(directQb.andWhere).toHaveBeenCalledWith(clause, params);
+    expect(splitQb.andWhere).toHaveBeenCalledWith(clause, params);
   });
 
   it("aggregates transaction and split spending for category budgets", async () => {

@@ -318,7 +318,8 @@
     "scheduledPaymentsConfigured": "Đã cấu hình thanh toán định kỳ cho {count} tài khoản{plural}.",
     "viewInvestments": "Xem Đầu Tư",
     "viewTransactions": "Xem Giao Dịch",
-    "importMoreFiles": "Nhập Khẩu Thêm Tệp"
+    "importMoreFiles": "Nhập Khẩu Thêm Tệp",
+    "bondRowsWithoutSeries": "{count, plural, other {# giao dịch mua trái phiếu đã được nhập mà không có sê-ri. Hãy chọn sê-ri trong các lô trái phiếu của chứng khoán.}}"
   },
   "multiAccountReview": {
     "heading": "Nhập Khẩu QIF Nhiều Tài Khoản",
@@ -501,7 +502,8 @@
     },
     "warningsHeading": "Ghi chú về lần nhập này",
     "downloadReport": "Tải báo cáo",
-    "done": "Xong"
+    "done": "Xong",
+    "bondRowsWithoutSeries": "{count, plural, other {# giao dịch mua trái phiếu đã được nhập mà không có sê-ri. Hãy chọn sê-ri trong các lô trái phiếu của chứng khoán.}}"
   },
   "mnyWarnings": {
     "missingTable": "Phiên bản Money này thiếu {count, plural, other {# bảng}} mà quá trình nhập cần dùng.",
@@ -602,7 +604,8 @@
       "notEvaluated": {
         "afterStop": "Chưa đánh giá: một quy tắc trước đó đã dừng các quy tắc.",
         "disabled": "Chưa đánh giá: quy tắc đang tắt.",
-        "invalid": "Chưa đánh giá: quy tắc không hợp lệ. Hãy mở để sửa."
+        "invalid": "Chưa đánh giá: quy tắc không hợp lệ. Hãy mở để sửa.",
+        "outside_active_window": "Chưa đánh giá: ngày của dòng nằm ngoài khoảng ngày hiệu lực của quy tắc."
       },
       "condition": {
         "met": "Điều kiện đạt",

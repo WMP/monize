@@ -440,6 +440,7 @@ export function CurrencyExposureReport() {
           <ReportToolbarActions
             onRefreshComplete={reload}
             onExportPdf={handleExportPdf}
+            disabled={isLoading || !!error}
           />
         </div>
       </div>

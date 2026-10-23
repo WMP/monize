@@ -316,6 +316,7 @@
     "totalInflows": "Totale instroom",
     "totalOutflows": "Totale uitstroom",
     "netCashFlow": "Netto kasstroom",
+    "notAvailable": "N/B",
     "monthlyCashFlow": "Maandelijkse kasstroom",
     "inflowsByCategory": "Instroom per categorie",
     "outflowsByCategory": "Uitstroom per categorie",
@@ -764,6 +765,7 @@
     "totalValue": "Totale waarde",
     "costBasis": "Kostprijs",
     "totalGainLoss": "Totale winst/verlies",
+    "gainPartialCaption": "Alleen over posities met een koers",
     "return": "Rendement",
     "viewHoldings": "Posities",
     "viewAllocation": "Allocatie",
@@ -1147,6 +1149,11 @@
     "vsMonth": "vs {month}",
     "inMonth": "{amount} in {month}",
     "netWorthTotal": "Totaal: {amount}",
+    "netWorthSummaryPartial": "Jouw nettowaarde in {currentMonth} was <strong>{netWorth}</strong>. De verandering ten opzichte van {previousMonth} kan niet worden berekend omdat er geen wisselkoers is voor {pairs}; voeg er een toe op de pagina Valuta's.",
+    "pdfPartialSuffix": "{amount} (gedeeltelijk)",
+    "pdfNote": "Opmerking",
+    "pdfNotAvailable": "N/B",
+    "pdfPartialNote": "Gedeeltelijk totaal: geen wisselkoers voor {pairs}.",
     "netWorthSummary": "Jouw nettowaarde in {currentMonth} was <strong>{netWorth}</strong>, wat <delta>{changeAmount}</delta> was ten opzichte van {previousMonth}.",
     "pdfTitle": "Maandvergelijking",
     "pdfSubtitle": "{current} vs {previous}",
@@ -1194,7 +1201,12 @@
     "colNetWorth": "Nettowaarde",
     "barStyle": "Staafstijl",
     "barStyleNetWorth": "Nettowaarde",
-    "barStyleAccountType": "Per rekeningtype"
+    "barStyleAccountType": "Per rekeningtype",
+    "notAvailable": "N/B",
+    "colNote": "Opmerking",
+    "partialMonthNote": "Gedeeltelijk: geen wisselkoers voor {pairs}",
+    "pdfPartialNote": "Gedeeltelijk totaal: geen wisselkoers voor {pairs}. Voeg er een toe op de pagina Valuta's.",
+    "partialMonth": "Niet getoond: sommige bedragen in deze maand konden niet worden omgerekend, dus de nettowaarde is onbekend."
   },
   "portfolioValue": {
     "highestValue": "Hoogste waarde",
@@ -1855,7 +1867,10 @@
   },
   "partialData": {
     "notice": "Sommige cijfers zijn gedeeltelijk: {count, plural, one {# bedrag kon niet naar {displayCurrency} worden omgerekend en is} other {# bedragen konden niet naar {displayCurrency} worden omgerekend en zijn}} weggelaten. Er is geen koers voor {currencies}; voeg er een toe op de pagina Valuta's.",
-    "noticeExcluded": "Sommige cijfers zijn gedeeltelijk: {count, plural, one {# bedrag kon niet worden berekend en is} other {# bedragen konden niet worden berekend en zijn}} weggelaten."
+    "noticeExcluded": "Sommige cijfers zijn gedeeltelijk: {count, plural, one {# bedrag kon niet worden berekend en is} other {# bedragen konden niet worden berekend en zijn}} weggelaten.",
+    "pdfNote": "Gedeeltelijk totaal: geen wisselkoers voor {currencies}",
+    "pdfNoteExcluded": "Gedeeltelijk totaal: {count, plural, one {# bedrag} other {# bedragen}} weggelaten",
+    "pdfSuffix": "(gedeeltelijk)"
   },
   "sankey": {
     "help": "Binnengekomen geld stroomt door het midden naar waaraan het is uitgegeven, wat is gespaard of belegd en wat schulden heeft afgelost. Standaard omvat het rapport uw open betaal-, spaar-, contant-, creditcard- en kredietlijnrekeningen, en een overboeking tussen twee daarvan wordt niet getoond. Laat een spaarrekening weg uit het rekeningfilter om te zien wat u ernaar hebt overgemaakt. Een creditcardbetaling is nooit een aflossing: de aankopen die ze vereffent, zijn al als uitgaven geteld.",
@@ -1903,5 +1918,8 @@
       "residualDeficit": "Uit saldi opgenomen",
       "unlinkedAccount": "(niet-gekoppelde rekening)"
     }
+  },
+  "pdfExport": {
+    "generatedAt": "Gemaakt: {timestamp}"
   }
 }

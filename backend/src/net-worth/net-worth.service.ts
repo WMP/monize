@@ -859,9 +859,17 @@ export class NetWorthService {
         fetchMissing: false,
       },
     );
-    // The per-account-type split is drawing data for the chart; the tools'
-    // shape stays the three figures and their completeness.
-    return months.map(({ byAccountType: _byAccountType, ...month }) => month);
+    // The per-account-type split is drawing data for the chart, and the
+    // per-side completeness flags are for the dashboard's own readers; the
+    // tools' shape stays the three figures and their completeness.
+    return months.map(
+      ({
+        byAccountType: _byAccountType,
+        assetsFxComplete: _assetsFxComplete,
+        liabilitiesFxComplete: _liabilitiesFxComplete,
+        ...month
+      }) => month,
+    );
   }
 
   async getMonthlyNetWorth(
@@ -885,6 +893,13 @@ export class NetWorthService {
       fxComplete: boolean;
       /** `"JPY->USD"` for each pair with no available rate. */
       missingRatePairs: string[];
+      /**
+       * Which side of the month is short of a rate: `assets` and `liabilities`
+       * above are each a total only while their own flag is true, and a reader
+       * of one must not be told the other side's gap makes it a subtotal.
+       */
+      assetsFxComplete: boolean;
+      liabilitiesFxComplete: boolean;
       /**
        * What each account type contributes to `netWorth`: an asset type's
        * value, a liability type's owed amount negated, so the entries sum to
@@ -965,6 +980,8 @@ export class NetWorthService {
     netWorth: number;
     fxComplete: boolean;
     missingRatePairs: string[];
+    assetsFxComplete: boolean;
+    liabilitiesFxComplete: boolean;
     byAccountType: Partial<Record<AccountType, number>>;
   }[] {
     // Aggregate by month. Assets and liabilities each accumulate through an
@@ -1067,6 +1084,8 @@ export class NetWorthService {
           // missing rate silently became 1:1.
           fxComplete: missingRatePairs.length === 0,
           missingRatePairs,
+          assetsFxComplete: data.assets.missingPairs.length === 0,
+          liabilitiesFxComplete: data.liabilities.missingPairs.length === 0,
           byAccountType: Object.fromEntries(
             [...data.byAccountType].map(([type, total]) => [
               type,
@@ -1084,11 +1103,29 @@ export class NetWorthService {
    * query and rate index to a single month avoids replaying the entire
    * monthly_account_balances history just to read the last element. Returns
    * null when the user has no populated snapshots.
+   *
+   * `assets`, `liabilities` and `netWorth` are SUBTOTALS of what converted into
+   * the reporting currency, exactly as in `getMonthlyNetWorth`: the flags beside
+   * them say whether they are totals. A caller that presents one as a total
+   * reads `fxComplete` (everything converted), `assetsFxComplete` and
+   * `liabilitiesFxComplete` (which side is short), and names
+   * `missingRatePairs`. The snapshot stores one figure per account and month, so
+   * a gap between a security's currency and its account's, or a position with no
+   * price, is invisible here; `AccountsService` unions those in from
+   * `PortfolioService.getAccountMarketValues`.
    */
   async getLatestNetWorth(
     userId: string,
     jointScope?: JointNetWorthScope,
-  ): Promise<{ assets: number; liabilities: number; netWorth: number } | null> {
+  ): Promise<{
+    assets: number;
+    liabilities: number;
+    netWorth: number;
+    fxComplete: boolean;
+    missingRatePairs: string[];
+    assetsFxComplete: boolean;
+    liabilitiesFxComplete: boolean;
+  } | null> {
     await this.ensurePopulated(userId);
 
     const jointIds = jointScope?.accounts.map((a) => a.accountId) ?? [];
@@ -1113,6 +1150,10 @@ export class NetWorthService {
       assets: latest.assets,
       liabilities: latest.liabilities,
       netWorth: latest.netWorth,
+      fxComplete: latest.fxComplete,
+      missingRatePairs: latest.missingRatePairs,
+      assetsFxComplete: latest.assetsFxComplete,
+      liabilitiesFxComplete: latest.liabilitiesFxComplete,
     };
   }
 

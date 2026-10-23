@@ -103,6 +103,7 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-REPORT-001 report account scope | supporting | **required** | **required** | -- | -- | -- | -- | optional |
 | INV-REPORT-002 chart reduction | **required** | **required** | -- | -- | -- | -- | -- | -- |
 | INV-REPORT-003 a transfer leg is a named flow | **required** | -- | required | -- | -- | -- | -- | optional |
+| INV-REPORT-004 a category's cost is its signed sum | required | -- | **required** | -- | -- | -- | -- | -- |
 | INV-SANKEY-001 the Sankey closes | **required** | -- | required | -- | -- | -- | -- | -- |
 | INV-SANKEY-002 a leg counts once, by scope and class | required | -- | **required** | -- | -- | -- | -- | -- |
 | INV-SANKEY-003 linkage and VOID out of every branch | supporting | **required** | required | -- | -- | -- | -- | -- |
@@ -146,6 +147,7 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-ACTIVITY-001 activity attribution | supporting | -- | **required** | -- | -- | -- | -- | -- |
 | INV-PROFILE-001 allowlist | required | **required** | supporting | -- | -- | -- | -- | -- |
 | INV-DISPLAY-001 reader's number locale | **required** | **required** | -- | -- | -- | -- | -- | optional |
+| INV-DISPLAY-002 partial figure relabelled | **required** | **required** | **required** | -- | -- | -- | -- | optional |
 | INV-MCP-001 request identity | **required** | **required** | required | -- | -- | -- | -- | -- |
 | INV-MCP-002 transport answers MCP | **required** | -- | -- | -- | -- | -- | -- | optional |
 | INV-MCP-003 confirmation binding | **required** | **required** | -- | -- | -- | -- | -- | -- |
@@ -496,7 +498,10 @@ differences produce failures that look like regressions and are not.
 A container image CI pulls (a workflow's `image:`, the compose file CI runs,
 a script's `*_IMAGE=` default, a Dockerfile's `FROM`) comes from Google's mirror
 of the Docker Official Images, `mirror.gcr.io/library/<name>:<tag>` (the same
-content and digests as Docker Hub), or from `ghcr.io`, never from Docker Hub: an
+content and digests as Docker Hub), from `ghcr.io`, or -- for an image only
+Microsoft publishes, the Playwright image `scripts/e2e-playwright.sh` runs the E2E
+suites in -- from `mcr.microsoft.com`, which is not Docker Hub and needs no login;
+never from Docker Hub: an
 anonymous Docker Hub pull from a shared runner IP is rate-limited, and the login
 that avoids it needs `DOCKERHUB_*` secrets a fork's repository does not have, so
 the job fails before its own step runs (the schema-drift job did, with "Username
@@ -504,7 +509,8 @@ and password required"). `backend/src/common/ci-images.guard.spec.ts` scans the
 workflows, `docker-compose.e2e.yml`, `scripts/*.sh` and every `FROM` in a
 tracked Dockerfile (CI builds those images for the E2E, Lighthouse and ZAP jobs),
 and fails a workflow that still reads `DOCKERHUB_*` secrets: no job needs that
-login. `.hadolint.yaml` trusts the same two registries. Not the ECR Public
+login. `.hadolint.yaml` trusts `mirror.gcr.io` and `ghcr.io`, the registries
+the Dockerfiles use. Not the ECR Public
 mirror (`public.ecr.aws`): its anonymous pulls carry a data limit per source
 IP, which GitHub's shared runners exhaust, and the E2E build failed with
 "toomanyrequests: Data limit exceeded". A registry can still answer a burst of

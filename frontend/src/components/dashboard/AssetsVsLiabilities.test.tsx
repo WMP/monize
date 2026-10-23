@@ -20,6 +20,7 @@ vi.mock('@/hooks/useNumberFormat', async () => {
       ...numberFormatMockDefaults(),
       formatCurrencyCompact: (n: number) => `$${n.toFixed(0)}`,
       formatCurrencyTight: (n: number) => `$${(n / 1000).toFixed(1)}K`,
+      defaultCurrency: 'USD',
     }),
   };
 });
@@ -61,6 +62,19 @@ describe('AssetsVsLiabilities', () => {
     render(<AssetsVsLiabilities data={[]} isLoading={true} />);
     expect(screen.getByText('Assets vs Liabilities')).toBeInTheDocument();
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
+  });
+
+  it('says the load failed, not that there is no data, when the net worth request failed', () => {
+    render(<AssetsVsLiabilities data={[]} isLoading={false} error />);
+    expect(
+      screen.getByText("Couldn't load your net worth history. Reload the dashboard to try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('No net worth data available yet.')).not.toBeInTheDocument();
+  });
+
+  it('keeps the empty-state copy for a successful empty answer', () => {
+    render(<AssetsVsLiabilities data={[]} isLoading={false} error={false} />);
+    expect(screen.getByText('No net worth data available yet.')).toBeInTheDocument();
   });
 
   it('renders empty state when there is no data', () => {
@@ -156,5 +170,43 @@ describe('AssetsVsLiabilities', () => {
     expect(screen.getByText("Labels need a wider screen. Where they don't fit, the legend is shown.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Labels' }));
     expect(updateConfig).toHaveBeenCalledWith({ view: 'callouts' });
+  });
+
+  describe('a latest month the server could not fully convert', () => {
+    const partial = (over: Partial<MonthlyNetWorth>): MonthlyNetWorth[] => [
+      months[0],
+      { ...months[1], fxComplete: false, missingRatePairs: ['ZZZ->USD'], ...over },
+    ];
+
+    it('marks the net worth in the donut partial and names the currency', () => {
+      render(<AssetsVsLiabilities data={partial({})} isLoading={false} />);
+      const centre = within(screen.getByTestId('donut-chart-area'));
+      const marker = centre.getByTestId('partial-total');
+      expect(marker).toHaveTextContent('$90000');
+      expect(within(marker).getByRole('button').getAttribute('aria-label')).toContain('ZZZ');
+    });
+
+    it('labels the side whose flag is false as partial and not the other', () => {
+      render(
+        <AssetsVsLiabilities
+          data={partial({ assetsFxComplete: false, liabilitiesFxComplete: true })}
+          isLoading={false}
+        />,
+      );
+      expect(screen.getByRole('button', { name: /^Assets \(partial\)/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Liabilities/ })).not.toHaveTextContent('(partial)');
+    });
+
+    it('falls back to the month flag when the per-side flags are absent', () => {
+      render(<AssetsVsLiabilities data={partial({})} isLoading={false} />);
+      expect(screen.getByRole('button', { name: /^Assets \(partial\)/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Liabilities \(partial\)/ })).toBeInTheDocument();
+    });
+
+    it('marks nothing on a complete month', () => {
+      render(<AssetsVsLiabilities data={months} isLoading={false} />);
+      expect(screen.queryByTestId('partial-total')).not.toBeInTheDocument();
+      expect(screen.queryByText(/\(partial\)/)).not.toBeInTheDocument();
+    });
   });
 });

@@ -78,6 +78,10 @@ import {
   LlmScheduledKind,
 } from "../../scheduled-transactions/scheduled-transactions.service";
 import { BuiltInReportsService } from "../../built-in-reports/built-in-reports.service";
+import {
+  SPENDING_ANOMALY_DEFAULT_MONTHS,
+  SPENDING_ANOMALY_DEFAULT_THRESHOLD,
+} from "../../built-in-reports/anomaly-reports.service";
 import { WarrantiesService } from "../../warranties/warranties.service";
 import { LlmWarrantyQuery } from "../../warranties/warranty-llm-shape";
 import { validateToolInput } from "./tool-input-schemas";
@@ -2433,22 +2437,51 @@ export class ToolExecutorService {
     );
     const foreignPart = foreign.length
       ? ` Accounts in other currencies (own currency = ${data.defaultCurrency}): ${foreign
-          .map(
-            (a) =>
-              `${a.name}: ${a.balance.toFixed(2)} ${a.currency} = ${
-                a.balanceInDefaultCurrency === null
-                  ? "unknown (no rate)"
-                  : `${a.balanceInDefaultCurrency.toFixed(2)} ${data.defaultCurrency}`
-              }`,
-          )
+          .map((a) => {
+            // A brokerage with an unpriced or unconverted position has no
+            // balance: say so and give what did value, never a zero.
+            if (a.balance === null) {
+              return `${a.name}: unknown (holdings not priced); known subtotal ${a.knownBalanceSubtotal.toFixed(2)} ${a.currency}`;
+            }
+            return `${a.name}: ${a.balance.toFixed(2)} ${a.currency} = ${
+              a.balanceInDefaultCurrency === null
+                ? "unknown (no rate)"
+                : `${a.balanceInDefaultCurrency.toFixed(2)} ${data.defaultCurrency}`
+            }`;
+          })
           .join("; ")}.`
       : "";
     const missingRatePart = data.missingRatePairs.length
       ? ` No exchange rate for: ${data.missingRatePairs.join(", ")} (the user can add one on the Currencies page).`
       : "";
+    const unpricedPart = data.unpricedSymbols.length
+      ? ` No price for: ${data.unpricedSymbols.join(", ")} (the user can add one in the security's price history).`
+      : "";
+    // A total that is null is withheld, not zero: say why, and give the sum of
+    // what did convert under its own name.
+    const causes = [
+      ...(data.fxComplete === false
+        ? [
+            data.missingRatePairs.length
+              ? `no exchange rate for ${data.missingRatePairs.join(", ")}`
+              : "a component could not be converted",
+          ]
+        : []),
+      ...(data.pricesComplete === false
+        ? [
+            data.unpricedSymbols.length
+              ? `no price for ${data.unpricedSymbols.join(", ")}`
+              : "a position has no price",
+          ]
+        : []),
+    ];
+    const figure = (total: number | null, known: number): string =>
+      total === null
+        ? `withheld (incomplete: ${causes.join("; ") || "a component is unknown"}); known subtotal ${known.toFixed(2)} ${data.defaultCurrency}`
+        : `${total.toFixed(2)} ${data.defaultCurrency}`;
     return {
       data,
-      summary: `${data.totalAccounts} accounts. Net worth: ${data.netWorth.toFixed(2)} ${data.defaultCurrency}, Assets: ${data.totalAssets.toFixed(2)} ${data.defaultCurrency}, Liabilities: ${data.totalLiabilities.toFixed(2)} ${data.defaultCurrency}.${foreignPart}${missingRatePart}`,
+      summary: `${data.totalAccounts} accounts. Net worth: ${figure(data.netWorth, data.knownNetWorthSubtotal)}, Assets: ${figure(data.totalAssets, data.knownAssetsSubtotal)}, Liabilities: ${figure(data.totalLiabilities, data.knownLiabilitiesSubtotal)}.${foreignPart}${missingRatePart}${unpricedPart}`,
       sources: [
         {
           type: "accounts",
@@ -2575,6 +2608,22 @@ export class ToolExecutorService {
     const incompleteNote = data.valuationComplete
       ? ""
       : ` INCOMPLETE: ${incompleteReasons.join("; ")}, so every total above is a subtotal of what could be worked out. Say so rather than quoting these figures as complete.`;
+    // The gain is over the holdings that have a value, so say which cost it
+    // leaves out; "every total above is a subtotal" does not tell a model that
+    // the percentage is over a smaller base (A26-M38).
+    const gainLeftOut = [
+      ...(data.unpricedSymbols.length > 0
+        ? [`${data.unpricedSymbols.join(", ")} (no price)`]
+        : []),
+      ...(data.missingRatePairs.length > 0
+        ? [`holdings needing ${data.missingRatePairs.join(", ")} (no rate)`]
+        : []),
+    ];
+    const gainNote = data.valuationComplete
+      ? ""
+      : ` The unrealized gain/loss is over the priced holdings only; it leaves out ${
+          gainLeftOut.length > 0 ? gainLeftOut.join("; ") : "unvalued holdings"
+        }, and the cost of the unpriced holdings excluded from it is ${data.unpricedCostBasis.toFixed(2)}.`;
     // An account whose own totals could not be worked out is separately worth
     // saying: its figures are in its own currency, so the flags above do not
     // cover it (recheck RR3-005).
@@ -2587,7 +2636,7 @@ export class ToolExecutorService {
         : "";
     return {
       data,
-      summary: `${data.holdingCount} holding${data.holdingCount === 1 ? "" : "s"}, total portfolio value ${data.totalPortfolioValue.toFixed(2)}, unrealized gain/loss ${sign}${data.totalGainLoss.toFixed(2)} (${sign}${data.totalGainLossPercent.toFixed(2)}%).${lookThroughNote}${incompleteNote}${incompleteAccountsNote}`,
+      summary: `${data.holdingCount} holding${data.holdingCount === 1 ? "" : "s"}, total portfolio value ${data.totalPortfolioValue.toFixed(2)}, unrealized gain/loss ${sign}${data.totalGainLoss.toFixed(2)} (${sign}${data.totalGainLossPercent.toFixed(2)}%).${lookThroughNote}${incompleteNote}${gainNote}${incompleteAccountsNote}`,
       sources: [
         {
           type: "portfolio",
@@ -2920,7 +2969,8 @@ export class ToolExecutorService {
    * returns the same per-type data shape. The five aggregation types take a date
    * range (default last 30 days); 'net_worth_history' takes a date range
    * (default last 12 months); 'spending_anomalies' takes a months window
-   * (default 3); 'month_comparison' takes a month (default the previous month).
+   * (default 6, as the Reports page); 'month_comparison' takes a month
+   * (default the previous month).
    */
   private async generateReport(
     userId: string,
@@ -2973,9 +3023,14 @@ export class ToolExecutorService {
     }
 
     if (type === "spending_anomalies") {
-      const months = (input.months as number | undefined) ?? 3;
+      // The window and the threshold are two arguments: the months were once
+      // passed as the z-score threshold (audit A26-M34). The threshold is the
+      // Reports page's own default, so both surfaces answer alike.
+      const months =
+        (input.months as number | undefined) ?? SPENDING_ANOMALY_DEFAULT_MONTHS;
       const data = await this.builtInReportsService.getSpendingAnomalies(
         userId,
+        SPENDING_ANOMALY_DEFAULT_THRESHOLD,
         months,
       );
       const count = data.anomalies.length;
@@ -2997,9 +3052,19 @@ export class ToolExecutorService {
         userId,
         month,
       );
+      // A month with a component that did not convert has no net worth: the
+      // figures in `data.netWorth` are null and the pairs are named here too.
+      const netWorthNote =
+        data.netWorth.fxComplete === false
+          ? ` Net worth is withheld for an incomplete month: ${
+              data.netWorth.missingRatePairs.length
+                ? `no exchange rate for ${data.netWorth.missingRatePairs.join(", ")}`
+                : "a component could not be converted"
+            } (the user can add a rate on the Currencies page).`
+          : "";
       return {
         data,
-        summary: `Comparison of ${data.currentMonthLabel} vs ${data.previousMonthLabel}.`,
+        summary: `Comparison of ${data.currentMonthLabel} vs ${data.previousMonthLabel}.${netWorthNote}`,
         sources: [
           {
             type: "monthly_comparison",

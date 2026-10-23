@@ -1006,3 +1006,44 @@ describe('MonthlyCategoryBreakdownReport', () => {
     expect(screen.queryByTestId('partial-data-notice')).not.toBeInTheDocument();
   });
 });
+
+describe('MonthlyCategoryBreakdownReport: a reload is not the previous answer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsValid = true;
+    mockResolvedRange.start = '2025-01-01';
+    mockResolvedRange.end = '2025-06-30';
+    window.localStorage.clear();
+  });
+
+  async function loadThenChangeRange(next: () => unknown) {
+    mockGetMonthlyCategoryBreakdown.mockResolvedValue(sampleResponse);
+    let view!: ReturnType<typeof render>;
+    await act(async () => {
+      view = render(<MonthlyCategoryBreakdownReport />);
+    });
+    await screen.findByText('Groceries');
+    expect(screen.getByTitle('Export CSV')).toBeEnabled();
+
+    mockGetMonthlyCategoryBreakdown.mockImplementation(next);
+    mockResolvedRange.end = '2025-07-31';
+    await act(async () => {
+      view.rerender(<MonthlyCategoryBreakdownReport />);
+    });
+    await waitFor(() =>
+      expect(mockGetMonthlyCategoryBreakdown).toHaveBeenLastCalledWith(
+        expect.objectContaining({ endDate: '2025-07-31' }),
+      ),
+    );
+  }
+
+  it('disables the export while the next request has failed', async () => {
+    await loadThenChangeRange(() => Promise.reject(new Error('500')));
+    expect(screen.getByTitle('Export CSV')).toBeDisabled();
+  });
+
+  it('disables the export while the next request is pending', async () => {
+    await loadThenChangeRange(() => new Promise(() => {}));
+    expect(screen.getByTitle('Export CSV')).toBeDisabled();
+  });
+});

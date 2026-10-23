@@ -148,6 +148,7 @@
     "netWorthLabel": "Valeur nette",
     "assets": "Actifs",
     "liabilities": "Passifs",
+    "partialName": "{name} (partiel)",
     "viewCallouts": "Étiquettes",
     "viewLegend": "Légende"
   },

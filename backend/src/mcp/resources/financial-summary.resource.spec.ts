@@ -128,6 +128,38 @@ describe("McpFinancialSummaryResource", () => {
     );
   });
 
+  it("carries a withheld net worth and its completeness flags to the client", async () => {
+    ctx.setUser({ userId: "u1", scopes: "read" });
+    accountsService.getSummary.mockResolvedValue({
+      totalAccounts: 2,
+      totalBalance: 1000,
+      totalAssets: null,
+      totalLiabilities: 0,
+      netWorth: null,
+      knownNetWorthSubtotal: 1000,
+      fxComplete: false,
+      pricesComplete: true,
+      valuationComplete: false,
+      missingRatePairs: ["ZZZ->USD"],
+      unpricedSecurityIds: [],
+      unpricedSymbols: [],
+    });
+    analyticsService.getSummary.mockResolvedValue({
+      totalIncome: 0,
+      totalExpenses: 0,
+    });
+
+    const result = await handler("monize://financial-summary", ctx);
+    const nw = JSON.parse(result.contents[0].text).netWorth;
+
+    expect(nw.netWorth).toBeNull();
+    expect(nw.knownNetWorthSubtotal).toBe(1000);
+    expect(nw.fxComplete).toBe(false);
+    expect(nw.pricesComplete).toBe(true);
+    expect(nw.valuationComplete).toBe(false);
+    expect(nw.missingRatePairs).toEqual(["ZZZ->USD"]);
+  });
+
   it("excludes investment-linked cash transactions from the MCP summary", async () => {
     ctx.setUser({ userId: "u1", scopes: "read" });
     accountsService.getSummary.mockResolvedValue({

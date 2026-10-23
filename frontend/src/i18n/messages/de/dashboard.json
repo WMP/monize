@@ -148,6 +148,7 @@
     "netWorthLabel": "Reinvermögen",
     "assets": "Aktiva",
     "liabilities": "Verbindlichkeiten",
+    "partialName": "{name} (unvollständig)",
     "viewCallouts": "Beschriftungen",
     "viewLegend": "Legende"
   },
