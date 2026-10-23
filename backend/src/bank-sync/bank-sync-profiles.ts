@@ -210,10 +210,17 @@ const MAX_TYPES = 200;
 const MAX_NOTES = 20;
 const NOTE_ID = /^[a-z][A-Za-z0-9]*$/;
 const NOTE_TEXT_MAX_LENGTH = 600;
-/** The languages a note may be written in: the supported locales, never the `xx` pseudo-locale. */
-const NOTE_LOCALES: readonly string[] = SUPPORTED_LOCALE_CODES.filter(
-  (code) => code !== "xx",
-);
+/** Regional note translations whose base languages already exist in the app. */
+const NOTE_LOCALE_BASES: Readonly<Record<string, string>> = {
+  "fr-CA": "fr",
+  "es-ES": "es",
+};
+
+/** Supported app locales and explicit note variants; never the pseudo-locale. */
+const NOTE_LOCALES: readonly string[] = [
+  ...SUPPORTED_LOCALE_CODES.filter((code) => code !== "xx"),
+  ...Object.keys(NOTE_LOCALE_BASES),
+];
 const TYPE_KEY = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$/;
 const EXACT_CODE = TYPE_KEY;
 const PREFIX_CODE = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-$/;
@@ -813,7 +820,11 @@ export function profileNotesView(
   profile: Pick<BankSyncProfile, "notes">,
   readerLang: string,
 ): ProfileNoteView[] {
-  const candidates = [readerLang, localeBase(readerLang), DEFAULT_LOCALE];
+  const candidates = [
+    readerLang,
+    NOTE_LOCALE_BASES[readerLang] ?? localeBase(readerLang),
+    DEFAULT_LOCALE,
+  ];
   return profile.notes.map(({ id, severity, text }) => {
     const lang = candidates.find(
       (code): code is string =>

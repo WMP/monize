@@ -144,9 +144,9 @@ it("shows SimpleFIN API notes for an unknown countryless institution", () => {
       institutionName: "Unknown Bank",
     }),
     [],
-    "pl",
+    "fr-CA",
   );
   expect(view.profile.id).toBe("simplefin/default");
-  expect(view.profile.notes).toHaveLength(6);
-  expect(view.profile.notes.every((note) => note.lang === "pl")).toBe(true);
+  expect(view.profile.notes).toHaveLength(7);
+  expect(view.profile.notes.every((note) => note.lang === "fr-CA")).toBe(true);
 });

@@ -44,6 +44,18 @@ The generic provider interface still assumes RSA credentials and a redirect/sess
 
 All new user-facing strings use existing translation catalogs. Other locale translations and regenerated pseudo-locales are part of release completion.
 
+### Manual account linking and type selection
+
+SimpleFIN accounts must be linked to an existing Monize account or created by the
+user. Automatic identifier matching is intentionally hidden: Bridge's opaque
+account id is not a Monize account number, and the standard defines no reliable
+account-type or masked-number field. Names and optional provider-defined `extra`
+fields are not inferred into either value. The bank's display name and currency
+prefill a new account; its editable type defaults to chequing. The user must
+choose the correct type because provider-reported type mismatch warnings are
+unavailable. Ownership, currency, account closure, brokerage and existing-link
+checks still apply. The SimpleFIN source notes disclose these limitations.
+
 ## 4. Provider architecture
 
 Add `providers/simplefin/simplefin.client.ts`, `simplefin.mapper.ts`, and their tests. Register through `BankSyncProviderRegistry` and the existing module.
@@ -279,3 +291,8 @@ the internal failure object never appears in a client response.
 
 Canonical setup-token and stored connection-identifier comparisons use the shared
 length-checked `simplefinEqual` helper (`timingSafeEqual` over UTF-8 bytes).
+
+SimpleFIN profile notes include `en-US`, `en-CA`, `fr-CA` and `es-ES`, plus the
+required English source and the app's `fr` and `es` base translations. Regional
+note translations fall back to their supported base language, then English.
+These note-only variants do not add app-wide language options.

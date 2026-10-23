@@ -1098,9 +1098,9 @@ describe("countryless SimpleFIN profiles", () => {
     expect(profile.id).toBe("simplefin/default");
     expect(profile.source).toBe("simplefin");
     expect(profile.types).toEqual([]);
-    expect(profileNotesView(profile, "pl")).toHaveLength(6);
+    expect(profileNotesView(profile, "fr-CA")).toHaveLength(7);
     expect(
-      profileNotesView(profile, "pl").every((note) => note.lang === "pl"),
+      profileNotesView(profile, "fr-CA").every((note) => note.lang === "fr-CA"),
     ).toBe(true);
     expect(
       profileNotesView(profile, "de").every((note) => note.lang === "en"),
@@ -1134,5 +1134,64 @@ describe("countryless SimpleFIN profiles", () => {
         "bank.json",
       ),
     ).toThrow(/country/);
+  });
+});
+
+describe("SimpleFIN regional profile notes", () => {
+  const profile = resolveProfile("simplefin", "", "Example Bank");
+  it.each(["en-US", "en-CA", "fr-CA", "es-ES", "fr", "es"])(
+    "serves every note directly in %s",
+    (lang) => {
+      const notes = profileNotesView(profile, lang);
+      expect(notes).toHaveLength(7);
+      expect(notes.every((note) => note.lang === lang)).toBe(true);
+      expect(notes.map((note) => note.id)).toContain("manualAccountLinking");
+    },
+  );
+  it("removes the Polish SimpleFIN example and retains the English fallback", () => {
+    expect(profile.notes.every((note) => note.text.pl === undefined)).toBe(
+      true,
+    );
+    expect(
+      profileNotesView(profile, "pl").every((note) => note.lang === "en"),
+    ).toBe(true);
+  });
+  it.each([
+    ["fr-CA", "fr"],
+    ["es-ES", "es"],
+  ])(
+    "falls back from %s to %s when a profile omits the regional text",
+    (regional, base) => {
+      const raw = {
+        id: "simplefin/example-bank",
+        version: 1,
+        source: "simplefin",
+        institution: { names: ["Example Bank"] },
+        operation: { location: ["bank_transaction_code"] },
+        types: [],
+        notes: [
+          {
+            id: "example",
+            severity: "info",
+            text: { en: "English note", [base]: "Translated note" },
+          },
+        ],
+      };
+      const checked = validateBankSyncProfile(raw, "example.json");
+      expect(profileNotesView(checked, regional)[0]).toMatchObject({
+        lang: base,
+        text: "Translated note",
+      });
+    },
+  );
+  it("keeps note-only regional variants tied to supported base languages", () => {
+    expect(SUPPORTED_LOCALE_CODES).toEqual(
+      expect.arrayContaining(["fr", "es"]),
+    );
+    const note = profile.notes.find(
+      (note) => note.id === "manualAccountLinking",
+    )!;
+    expect(note.text["en-US"]).toContain("checking account");
+    expect(note.text["en-CA"]).toContain("chequing account");
   });
 });
