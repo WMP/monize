@@ -477,7 +477,8 @@
       "add": "Garanti ekle",
       "expires": "Bitiş: {date}",
       "loading": "Garantiler yükleniyor",
-      "loadError": "Bu işlemin garantileri yüklenemedi."
+      "loadError": "Bu işlemin garantileri yüklenemedi.",
+      "empty": "Henüz garanti yok"
     }
   },
   "splitEditor": {

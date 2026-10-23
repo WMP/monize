@@ -56,6 +56,11 @@ vi.mock('next/dynamic', () => ({
                 Form add warranty
               </button>
             )}
+            {props.onAddWarrantyAfterCreate && (
+              <button data-testid="form-add-warranty-after-create" onClick={() => props.onAddWarrantyAfterCreate({ id: 'tx-new' })}>
+                Form add warranty after create
+              </button>
+            )}
             {props.onOpenWarranty && (
               <button data-testid="form-open-warranty" onClick={() => props.onOpenWarranty('w-9')}>
                 Form open warranty
@@ -1849,6 +1854,7 @@ describe('TransactionsPage', () => {
         });
         expect(screen.getByTestId('dynamic-transaction-form')).toBeInTheDocument();
         expect(screen.queryByTestId('form-add-warranty')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('form-add-warranty-after-create')).not.toBeInTheDocument();
       });
     });
 
@@ -1897,6 +1903,30 @@ describe('TransactionsPage', () => {
         await waitFor(() =>
           expect(mockPush).toHaveBeenCalledWith('/warranties?new=1&transactionId=tx-1'),
         );
+      });
+
+      // On a new transaction the form calls Add only after it has saved the
+      // row, so the window's dirty flag is stale: no dialog, and no register
+      // reload behind a page that is being left.
+      it('on a new transaction, closes without asking and opens the warranty for the created row', async () => {
+        mockRealFormModal.value = true;
+        await act(async () => {
+          render(<TransactionsPage />);
+        });
+        await waitFor(() => expect(screen.getByText('+ New Transaction')).toBeInTheDocument());
+        await act(async () => {
+          fireEvent.click(screen.getByText('+ New Transaction'));
+        });
+        expect(screen.getByTestId('dynamic-transaction-form')).toBeInTheDocument();
+        const loadsBefore = mockGetAll.mock.calls.length;
+        fireEvent.click(screen.getByTestId('form-make-dirty'));
+        fireEvent.click(screen.getByTestId('form-add-warranty-after-create'));
+        expect(screen.queryByTestId('unsaved-dialog')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('dynamic-transaction-form')).not.toBeInTheDocument();
+        await waitFor(() =>
+          expect(mockPush).toHaveBeenCalledWith('/warranties?new=1&transactionId=tx-new'),
+        );
+        expect(mockGetAll.mock.calls.length).toBe(loadsBefore);
       });
 
       it('closes a clean form and navigates', async () => {

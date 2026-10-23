@@ -477,7 +477,8 @@
       "add": "添加保修",
       "expires": "{date} 到期",
       "loading": "正在加载保修",
-      "loadError": "无法加载此交易的保修。"
+      "loadError": "无法加载此交易的保修。",
+      "empty": "还没有保修"
     }
   },
   "splitEditor": {

@@ -477,7 +477,8 @@
       "add": "Tambah garansi",
       "expires": "Berakhir {date}",
       "loading": "Memuat garansi",
-      "loadError": "Garansi untuk transaksi ini tidak dapat dimuat."
+      "loadError": "Garansi untuk transaksi ini tidak dapat dimuat.",
+      "empty": "Belum ada garansi"
     }
   },
   "splitEditor": {

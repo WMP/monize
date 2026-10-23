@@ -477,7 +477,8 @@
       "add": "보증 추가",
       "expires": "{date} 만료",
       "loading": "보증을 불러오는 중",
-      "loadError": "이 거래의 보증을 불러올 수 없습니다."
+      "loadError": "이 거래의 보증을 불러올 수 없습니다.",
+      "empty": "아직 보증이 없습니다"
     }
   },
   "splitEditor": {

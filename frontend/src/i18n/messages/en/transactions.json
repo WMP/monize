@@ -477,7 +477,8 @@
       "add": "Add warranty",
       "expires": "Expires {date}",
       "loading": "Loading warranties",
-      "loadError": "The warranties for this transaction could not be loaded."
+      "loadError": "The warranties for this transaction could not be loaded.",
+      "empty": "No warranties yet"
     }
   },
   "splitEditor": {

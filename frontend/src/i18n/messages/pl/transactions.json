@@ -477,7 +477,8 @@
       "add": "Dodaj gwarancję",
       "expires": "Wygasa {date}",
       "loading": "Wczytywanie gwarancji",
-      "loadError": "Nie udało się wczytać gwarancji tej transakcji."
+      "loadError": "Nie udało się wczytać gwarancji tej transakcji.",
+      "empty": "Nie ma jeszcze gwarancji"
     }
   },
   "splitEditor": {

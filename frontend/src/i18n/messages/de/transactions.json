@@ -477,7 +477,8 @@
       "add": "Garantie hinzufügen",
       "expires": "Läuft ab am {date}",
       "loading": "Garantien werden geladen",
-      "loadError": "Die Garantien zu dieser Buchung konnten nicht geladen werden."
+      "loadError": "Die Garantien zu dieser Buchung konnten nicht geladen werden.",
+      "empty": "Noch keine Garantien"
     }
   },
   "splitEditor": {
