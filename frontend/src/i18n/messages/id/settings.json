@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, other {# dengan jumlah tidak valid}}",
         "unknown_direction": "{count, plural, other {# dengan arah tidak diketahui}}",
         "currency_mismatch": "{count, plural, other {# dalam mata uang lain}}",
-        "other": "{count, plural, other {# karena alasan lain}}"
+        "other": "{count, plural, other {# karena alasan lain}}",
+        "missing_identity": "ID transaksi bank tidak ada: {count, number}"
       },
       "needsPreview": "Buka pratinjau untuk {accounts} dan konfirmasikan impor pertama",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "Jumlah tidak valid",
         "unknown_direction": "Arah tidak diketahui",
         "currency_mismatch": "Mata uang lain",
-        "other": "Ditolak"
+        "other": "Ditolak",
+        "missing_identity": "ID transaksi bank tidak ada"
       },
       "columns": {
         "date": "Tanggal",
@@ -1786,11 +1788,13 @@
           "none": "Tidak ada tag jenis operasi untuk transaksi ini.",
           "tag": "Tag dari jenis operasi bank: {tag}"
         }
-      }
+      },
+      "historyBatch": "Kelompok riwayat: {from} hingga {to}.",
+      "historyBatchRemaining": "Kelompok riwayat: {from} hingga {to}. Masih ada riwayat lainnya. Setelah impor ini, buka pratinjau kelompok berikutnya."
     },
     "simplefin": {
       "provider": "Penyedia data",
-      "description": "Hubungkan bank di SimpleFIN Bridge, lalu tempel token penyiapan sekali pakai di sini. Akses hanya untuk membaca.",
+      "description": "Hubungkan bank di <bridge>SimpleFIN Bridge</bridge>, lalu tempel token penyiapan sekali pakai di sini. Akses hanya untuk membaca.",
       "openBridge": "Buka SimpleFIN Bridge",
       "setupToken": "Token penyiapan",
       "connect": "Hubungkan SimpleFIN",
@@ -1808,7 +1812,7 @@
       "quota": "{remaining} permintaan tersisa",
       "nextEligible": "Tersedia berikutnya: {date}",
       "stopTitle": "Hentikan sinkronisasi {bank}?",
-      "stopBody": "Pemetaan dan transaksi yang ada tetap disimpan. Segarkan akun untuk menghubungkan kembali institusi ini.",
+      "stopBody": "Pemetaan dan transaksi yang ada tetap disimpan.",
       "stop": "Hentikan sinkronisasi",
       "stopped": "Sinkronisasi dihentikan",
       "title": "SimpleFIN",
@@ -1822,7 +1826,9 @@
         "identity_review": "Identitas akun berubah. Tinjau pemetaan sebelum mengaktifkan sinkronisasi.",
         "invalid_response": "Bridge mengembalikan data yang tidak didukung. Segarkan nanti.",
         "unavailable": "SimpleFIN tidak menjawab. Coba lagi nanti."
-      }
+      },
+      "resume": "Lanjutkan sinkronisasi",
+      "lastKnownConnected": "SimpleFIN terhubung saat pemeriksaan terakhir yang berhasil."
     }
   }
 }

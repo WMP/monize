@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, other {# 笔金额无效}}",
         "unknown_direction": "{count, plural, other {# 笔方向未知}}",
         "currency_mismatch": "{count, plural, other {# 笔使用其他货币}}",
-        "other": "{count, plural, other {# 笔因其他原因}}"
+        "other": "{count, plural, other {# 笔因其他原因}}",
+        "missing_identity": "缺少银行交易标识: {count, number}"
       },
       "needsPreview": "请打开 {accounts} 的预览并确认首次导入",
       "withNeedsPreview": "{message}。{needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "金额无效",
         "unknown_direction": "方向未知",
         "currency_mismatch": "其他货币",
-        "other": "已拒绝"
+        "other": "已拒绝",
+        "missing_identity": "缺少银行交易标识"
       },
       "columns": {
         "date": "日期",
@@ -1786,11 +1788,13 @@
           "none": "这笔交易没有操作类型标签。",
           "tag": "来自银行操作类型的标签：{tag}"
         }
-      }
+      },
+      "historyBatch": "历史批次：{from} 至 {to}。",
+      "historyBatchRemaining": "历史批次：{from} 至 {to}。 仍有更多历史记录。导入此批次后，请预览下一批次。"
     },
     "simplefin": {
       "provider": "数据提供商",
-      "description": "在 SimpleFIN Bridge 中连接银行，然后在此粘贴一次性设置令牌。访问权限为只读。",
+      "description": "在 <bridge>SimpleFIN Bridge</bridge> 中连接银行，然后在此粘贴一次性设置令牌。访问权限为只读。",
       "openBridge": "打开 SimpleFIN Bridge",
       "setupToken": "设置令牌",
       "connect": "连接 SimpleFIN",
@@ -1808,7 +1812,7 @@
       "quota": "剩余 {remaining} 次请求",
       "nextEligible": "下次可用时间：{date}",
       "stopTitle": "停止同步 {bank}？",
-      "stopBody": "现有映射和交易会保留。刷新账户可重新连接此机构。",
+      "stopBody": "保留现有映射和交易。",
       "stop": "停止同步",
       "stopped": "已停止同步",
       "title": "SimpleFIN",
@@ -1822,7 +1826,9 @@
         "identity_review": "账户标识已更改。启用同步前请检查映射。",
         "invalid_response": "Bridge 返回了不受支持的数据。请稍后刷新。",
         "unavailable": "SimpleFIN 未响应。请稍后重试。"
-      }
+      },
+      "resume": "恢复同步",
+      "lastKnownConnected": "上次成功检查时 SimpleFIN 已连接。"
     }
   }
 }

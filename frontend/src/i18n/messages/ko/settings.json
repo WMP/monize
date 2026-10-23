@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, other {금액이 잘못됨 #건}}",
         "unknown_direction": "{count, plural, other {방향을 알 수 없음 #건}}",
         "currency_mismatch": "{count, plural, other {다른 통화 #건}}",
-        "other": "{count, plural, other {기타 사유 #건}}"
+        "other": "{count, plural, other {기타 사유 #건}}",
+        "missing_identity": "은행 거래 ID 누락: {count, number}"
       },
       "needsPreview": "{accounts}의 미리보기를 열어 첫 번째 가져오기를 확인하세요",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "금액이 잘못됨",
         "unknown_direction": "방향을 알 수 없음",
         "currency_mismatch": "다른 통화",
-        "other": "거부됨"
+        "other": "거부됨",
+        "missing_identity": "은행 거래 ID 누락"
       },
       "columns": {
         "date": "날짜",
@@ -1786,11 +1788,13 @@
           "none": "이 거래에는 작업 유형 태그가 없습니다.",
           "tag": "은행의 작업 유형에서 만든 태그: {tag}"
         }
-      }
+      },
+      "historyBatch": "거래 내역 묶음: {from}~{to}.",
+      "historyBatchRemaining": "거래 내역 묶음: {from}~{to}. 남은 내역이 있습니다. 이 묶음을 가져온 후 다음 묶음의 미리보기를 여세요."
     },
     "simplefin": {
       "provider": "데이터 제공자",
-      "description": "SimpleFIN Bridge에서 은행을 연결한 뒤 여기에 일회용 설정 토큰을 붙여 넣으세요. 읽기 전용 접근입니다.",
+      "description": "<bridge>SimpleFIN Bridge</bridge>에서 은행을 연결한 뒤 여기에 일회용 설정 토큰을 붙여 넣으세요. 읽기 전용 접근입니다.",
       "openBridge": "SimpleFIN Bridge 열기",
       "setupToken": "설정 토큰",
       "connect": "SimpleFIN 연결",
@@ -1808,7 +1812,7 @@
       "quota": "남은 요청 {remaining}회",
       "nextEligible": "다음 사용 가능: {date}",
       "stopTitle": "{bank} 동기화를 중지할까요?",
-      "stopBody": "기존 매핑과 거래는 유지됩니다. 계좌를 새로고침하여 이 기관을 다시 연결하세요.",
+      "stopBody": "기존 연결 관계와 거래는 유지됩니다.",
       "stop": "동기화 중지",
       "stopped": "동기화 중지됨",
       "title": "SimpleFIN",
@@ -1822,7 +1826,9 @@
         "identity_review": "계좌 식별자가 변경되었습니다. 동기화를 켜기 전에 매핑을 검토하세요.",
         "invalid_response": "Bridge가 지원하지 않는 데이터를 반환했습니다. 나중에 새로고침하세요.",
         "unavailable": "SimpleFIN이 응답하지 않았습니다. 나중에 다시 시도하세요."
-      }
+      },
+      "resume": "동기화 재개",
+      "lastKnownConnected": "마지막으로 확인에 성공했을 때 SimpleFIN이 연결되어 있었습니다."
     }
   }
 }

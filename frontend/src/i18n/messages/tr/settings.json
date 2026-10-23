@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, one {# tanesi geçersiz tutarlı} other {# tanesi geçersiz tutarlı}}",
         "unknown_direction": "{count, plural, one {# tanesi bilinmeyen yönlü} other {# tanesi bilinmeyen yönlü}}",
         "currency_mismatch": "{count, plural, one {# tanesi başka para biriminde} other {# tanesi başka para biriminde}}",
-        "other": "{count, plural, one {# tanesi başka bir nedenle} other {# tanesi başka bir nedenle}}"
+        "other": "{count, plural, one {# tanesi başka bir nedenle} other {# tanesi başka bir nedenle}}",
+        "missing_identity": "Banka işlem kimliği eksik: {count, number}"
       },
       "needsPreview": "{accounts} için önizlemeyi açın ve ilk içe aktarmayı onaylayın",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "Geçersiz tutar",
         "unknown_direction": "Bilinmeyen yön",
         "currency_mismatch": "Başka para birimi",
-        "other": "Reddedildi"
+        "other": "Reddedildi",
+        "missing_identity": "Banka işlem kimliği eksik"
       },
       "columns": {
         "date": "Tarih",
@@ -1786,11 +1788,13 @@
           "none": "Bu işlem için işlem türü etiketi yok.",
           "tag": "Bankanın işlem türünden etiket: {tag}"
         }
-      }
+      },
+      "historyBatch": "Geçmiş grubu: {from} – {to}.",
+      "historyBatchRemaining": "Geçmiş grubu: {from} – {to}. Daha fazla geçmiş var. Bu grubu içe aktardıktan sonra sonraki grubun önizlemesini açın."
     },
     "simplefin": {
       "provider": "Veri sağlayıcısı",
-      "description": "Bankaları SimpleFIN Bridge üzerinden bağlayın, ardından tek kullanımlık kurulum belirtecini buraya yapıştırın. Erişim salt okunurdur.",
+      "description": "Bankaları <bridge>SimpleFIN Bridge</bridge> üzerinden bağlayın, ardından tek kullanımlık kurulum belirtecini buraya yapıştırın. Erişim salt okunurdur.",
       "openBridge": "SimpleFIN Bridge'i aç",
       "setupToken": "Kurulum belirteci",
       "connect": "SimpleFIN'i bağla",
@@ -1808,7 +1812,7 @@
       "quota": "{remaining} istek kaldı",
       "nextEligible": "Sonraki kullanılabilirlik: {date}",
       "stopTitle": "{bank} eşitlemesi durdurulsun mu?",
-      "stopBody": "Mevcut eşleştirmeler ve işlemler korunur. Bu kurumu yeniden bağlamak için hesapları yenileyin.",
+      "stopBody": "Mevcut eşlemeler ve işlemler korunur.",
       "stop": "Eşitlemeyi durdur",
       "stopped": "Eşitleme durduruldu",
       "title": "SimpleFIN",
@@ -1822,7 +1826,9 @@
         "identity_review": "Hesap kimlikleri değişti. Eşitlemeyi etkinleştirmeden önce eşleştirmeleri inceleyin.",
         "invalid_response": "Bridge desteklenmeyen veriler döndürdü. Daha sonra yenileyin.",
         "unavailable": "SimpleFIN yanıt vermedi. Daha sonra deneyin."
-      }
+      },
+      "resume": "Eşitlemeyi sürdür",
+      "lastKnownConnected": "Son başarılı kontrolde SimpleFIN bağlıydı."
     }
   }
 }

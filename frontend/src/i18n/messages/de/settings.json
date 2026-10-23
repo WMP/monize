@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, one {# mit ungültigem Betrag} other {# mit ungültigem Betrag}}",
         "unknown_direction": "{count, plural, one {# mit unbekannter Richtung} other {# mit unbekannter Richtung}}",
         "currency_mismatch": "{count, plural, one {# in anderer Währung} other {# in anderer Währung}}",
-        "other": "{count, plural, one {# aus anderem Grund} other {# aus anderem Grund}}"
+        "other": "{count, plural, one {# aus anderem Grund} other {# aus anderem Grund}}",
+        "missing_identity": "Banktransaktions-ID fehlt: {count, number}"
       },
       "needsPreview": "Öffne die Vorschau für {accounts} und bestätige den ersten Import",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "Ungültiger Betrag",
         "unknown_direction": "Unbekannte Richtung",
         "currency_mismatch": "Andere Währung",
-        "other": "Abgelehnt"
+        "other": "Abgelehnt",
+        "missing_identity": "Banktransaktions-ID fehlt"
       },
       "columns": {
         "date": "Datum",
@@ -1786,11 +1788,13 @@
           "none": "Kein Vorgangsart-Tag für diese Buchung.",
           "tag": "Tag aus der Vorgangsart der Bank: {tag}"
         }
-      }
+      },
+      "historyBatch": "Verlaufsabschnitt: {from} bis {to}.",
+      "historyBatchRemaining": "Verlaufsabschnitt: {from} bis {to}. Weiterer Verlauf ist vorhanden. Öffnen Sie nach diesem Import die Vorschau des nächsten Abschnitts."
     },
     "simplefin": {
       "provider": "Datenanbieter",
-      "description": "Verbinden Sie Banken in SimpleFIN Bridge und fügen Sie hier ein einmaliges Einrichtungstoken ein. Der Zugriff ist schreibgeschützt.",
+      "description": "Verbinden Sie Banken in <bridge>SimpleFIN Bridge</bridge> und fügen Sie hier ein einmaliges Einrichtungstoken ein. Der Zugriff ist schreibgeschützt.",
       "openBridge": "SimpleFIN Bridge öffnen",
       "setupToken": "Einrichtungstoken",
       "connect": "SimpleFIN verbinden",
@@ -1808,7 +1812,7 @@
       "quota": "{remaining} Anfragen verbleiben",
       "nextEligible": "Nächste Verfügbarkeit: {date}",
       "stopTitle": "Synchronisierung von {bank} stoppen?",
-      "stopBody": "Bestehende Zuordnungen und Buchungen bleiben erhalten. Verwenden Sie Konten aktualisieren, um dieses Institut erneut zu verbinden.",
+      "stopBody": "Bestehende Zuordnungen und Transaktionen bleiben erhalten.",
       "stop": "Synchronisierung stoppen",
       "stopped": "Synchronisierung gestoppt",
       "title": "SimpleFIN",
@@ -1822,7 +1826,9 @@
         "identity_review": "Kontokennungen haben sich geändert. Prüfen Sie die Zuordnungen, bevor Sie die Synchronisierung aktivieren.",
         "invalid_response": "Bridge hat nicht unterstützte Daten zurückgegeben. Aktualisieren Sie später.",
         "unavailable": "SimpleFIN hat nicht geantwortet. Versuchen Sie es später."
-      }
+      },
+      "resume": "Synchronisierung fortsetzen",
+      "lastKnownConnected": "Bei der letzten erfolgreichen Prüfung war SimpleFIN verbunden."
     }
   }
 }

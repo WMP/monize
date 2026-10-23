@@ -896,7 +896,10 @@
     "simplefinClaimUncertain": "Thiết lập SimpleFIN chưa hoàn tất. Mã có thể đã được sử dụng. Kiểm tra Bridge, thu hồi mã ứng dụng không dùng và tạo mã thiết lập mới.",
     "simplefinClaimStorageFailed": "SimpleFIN đã sử dụng mã, nhưng Monize không thể xác nhận việc lưu thông tin xác thực. Trước tiên hãy kiểm tra trạng thái kết nối. Nếu chưa kết nối, hãy thu hồi mã ứng dụng trong Bridge và tạo mã thiết lập mới.",
     "simplefinIdentityReview": "Định danh tài khoản SimpleFIN đã thay đổi hoặc bị thiếu. Hãy kiểm tra tài khoản trước khi bật đồng bộ; các liên kết hiện có đã được giữ lại.",
-    "simplefinSubscriptionRequired": "SimpleFIN Bridge yêu cầu gói đăng ký đang hoạt động. Hãy kiểm tra thanh toán trong SimpleFIN Bridge."
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge yêu cầu gói đăng ký đang hoạt động. Hãy kiểm tra thanh toán trong SimpleFIN Bridge.",
+    "simplefinReadFailed": "SimpleFIN không cung cấp được dữ liệu tài khoản đầy đủ. Hãy kiểm tra kết nối trong SimpleFIN Bridge.",
+    "simplefinQuotaExhausted": "Đã hết hạn mức yêu cầu SimpleFIN. Chờ hạn mức được bổ sung rồi thử lại lô hiện tại.",
+    "simplefinClaimNotSent": "SimpleFIN tạm thời không khả dụng. Mã thiết lập chưa được gửi; hãy thử lại sau bằng chính mã này."
   },
   "warranties": {
     "notFound": "Không tìm thấy bảo hành với ID {{ id }}",

@@ -896,7 +896,10 @@
     "simplefinClaimUncertain": "SimpleFIN 设置未完成。令牌可能已被消耗。请检查 Bridge，撤销未使用的应用令牌，然后生成新的设置令牌。",
     "simplefinClaimStorageFailed": "SimpleFIN 已消耗设置令牌，但 Monize 无法确认凭据是否已保存。请先检查连接状态。如果尚未连接，请在 Bridge 中撤销应用令牌并生成新的设置令牌。",
     "simplefinIdentityReview": "SimpleFIN 账户标识已更改或缺失。启用同步前请检查账户；现有映射已保留。",
-    "simplefinSubscriptionRequired": "SimpleFIN Bridge 需要有效订阅。请在 SimpleFIN Bridge 中检查账单。"
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge 需要有效订阅。请在 SimpleFIN Bridge 中检查账单。",
+    "simplefinReadFailed": "SimpleFIN 未能提供完整的账户数据。请在 SimpleFIN Bridge 中检查连接。",
+    "simplefinQuotaExhausted": "SimpleFIN 请求配额已用尽。请等待配额恢复后重试当前批次。",
+    "simplefinClaimNotSent": "SimpleFIN 暂时不可用。设置令牌尚未发送；请稍后使用同一令牌重试。"
   },
   "warranties": {
     "notFound": "未找到 ID 为 {{ id }} 的保修",

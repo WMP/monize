@@ -896,7 +896,10 @@
     "simplefinClaimUncertain": "SimpleFIN सेटअप पूरा नहीं हुआ। संभव है कि टोकन इस्तेमाल हो चुका हो। Bridge जाँचें, अनुपयोगी ऐप टोकन रद्द करें और नया सेटअप टोकन बनाएँ।",
     "simplefinClaimStorageFailed": "SimpleFIN ने सेटअप टोकन इस्तेमाल कर लिया, लेकिन Monize क्रेडेंशियल सहेजे जाने की पुष्टि नहीं कर सका। पहले कनेक्शन की स्थिति जाँचें। कनेक्शन न हो तो Bridge में ऐप टोकन रद्द करके नया सेटअप टोकन बनाएँ।",
     "simplefinIdentityReview": "SimpleFIN खातों की पहचान बदल गई है या उपलब्ध नहीं है। सिंक चालू करने से पहले खातों की समीक्षा करें; मौजूदा मैपिंग सुरक्षित रखी गई हैं।",
-    "simplefinSubscriptionRequired": "SimpleFIN Bridge के लिए सक्रिय सदस्यता आवश्यक है। SimpleFIN Bridge में बिलिंग जाँचें।"
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge के लिए सक्रिय सदस्यता आवश्यक है। SimpleFIN Bridge में बिलिंग जाँचें।",
+    "simplefinReadFailed": "SimpleFIN खाते का पूरा डेटा नहीं दे सका। SimpleFIN Bridge में कनेक्शन की जाँच करें।",
+    "simplefinQuotaExhausted": "SimpleFIN अनुरोध सीमा समाप्त हो गई है। सीमा फिर उपलब्ध होने पर वर्तमान बैच को दोबारा आज़माएँ।",
+    "simplefinClaimNotSent": "SimpleFIN अस्थायी रूप से उपलब्ध नहीं है। सेटअप टोकन नहीं भेजा गया; बाद में इसी टोकन से दोबारा कोशिश करें।"
   },
   "warranties": {
     "notFound": "ID {{ id }} वाली वारंटी नहीं मिली",

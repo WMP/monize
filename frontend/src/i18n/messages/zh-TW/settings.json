@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, other {# 筆金額無效}}",
         "unknown_direction": "{count, plural, other {# 筆方向未知}}",
         "currency_mismatch": "{count, plural, other {# 筆使用其他貨幣}}",
-        "other": "{count, plural, other {# 筆因其他原因}}"
+        "other": "{count, plural, other {# 筆因其他原因}}",
+        "missing_identity": "缺少銀行交易識別碼: {count, number}"
       },
       "needsPreview": "請開啟 {accounts} 的預覽並確認首次匯入",
       "withNeedsPreview": "{message}。{needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "金額無效",
         "unknown_direction": "方向未知",
         "currency_mismatch": "其他貨幣",
-        "other": "已拒絕"
+        "other": "已拒絕",
+        "missing_identity": "缺少銀行交易識別碼"
       },
       "columns": {
         "date": "日期",
@@ -1786,11 +1788,13 @@
           "none": "這筆交易沒有操作類型標籤。",
           "tag": "來自銀行操作類型的標籤：{tag}"
         }
-      }
+      },
+      "historyBatch": "歷史批次：{from} 至 {to}。",
+      "historyBatchRemaining": "歷史批次：{from} 至 {to}。 仍有更多歷史記錄。匯入此批次後，請預覽下一批次。"
     },
     "simplefin": {
       "provider": "資料提供者",
-      "description": "在 SimpleFIN Bridge 中連接銀行，然後在此貼上一次性設定權杖。存取權限為唯讀。",
+      "description": "在 <bridge>SimpleFIN Bridge</bridge> 中連接銀行，然後在此貼上一次性設定權杖。存取權限為唯讀。",
       "openBridge": "開啟 SimpleFIN Bridge",
       "setupToken": "設定權杖",
       "connect": "連接 SimpleFIN",
@@ -1808,7 +1812,7 @@
       "quota": "剩餘 {remaining} 次要求",
       "nextEligible": "下次可用時間：{date}",
       "stopTitle": "停止同步 {bank}？",
-      "stopBody": "現有對應與交易會保留。重新整理帳戶即可重新連接此機構。",
+      "stopBody": "保留現有對應和交易。",
       "stop": "停止同步",
       "stopped": "已停止同步",
       "title": "SimpleFIN",
@@ -1822,7 +1826,9 @@
         "identity_review": "帳戶識別資訊已變更。啟用同步前請檢查對應。",
         "invalid_response": "Bridge 傳回不支援的資料。請稍後重新整理。",
         "unavailable": "SimpleFIN 未回應。請稍後重試。"
-      }
+      },
+      "resume": "恢復同步",
+      "lastKnownConnected": "上次成功檢查時 SimpleFIN 已連線。"
     }
   }
 }

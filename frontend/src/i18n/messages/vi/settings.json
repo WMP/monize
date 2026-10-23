@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, other {# giao dịch có số tiền không hợp lệ}}",
         "unknown_direction": "{count, plural, other {# giao dịch không rõ chiều}}",
         "currency_mismatch": "{count, plural, other {# giao dịch bằng loại tiền tệ khác}}",
-        "other": "{count, plural, other {# giao dịch vì lý do khác}}"
+        "other": "{count, plural, other {# giao dịch vì lý do khác}}",
+        "missing_identity": "Thiếu mã giao dịch ngân hàng: {count, number}"
       },
       "needsPreview": "Mở bản xem trước của {accounts} và xác nhận lần nhập đầu tiên",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "Số tiền không hợp lệ",
         "unknown_direction": "Chiều không rõ",
         "currency_mismatch": "Loại tiền tệ khác",
-        "other": "Bị từ chối"
+        "other": "Bị từ chối",
+        "missing_identity": "Thiếu mã giao dịch ngân hàng"
       },
       "columns": {
         "date": "Ngày",
@@ -1786,11 +1788,13 @@
           "none": "Giao dịch này không có thẻ loại thao tác.",
           "tag": "Thẻ từ loại thao tác của ngân hàng: {tag}"
         }
-      }
+      },
+      "historyBatch": "Lô lịch sử: từ {from} đến {to}.",
+      "historyBatchRemaining": "Lô lịch sử: từ {from} đến {to}. Vẫn còn lịch sử. Sau khi nhập lô này, hãy mở bản xem trước của lô tiếp theo."
     },
     "simplefin": {
       "provider": "Nhà cung cấp dữ liệu",
-      "description": "Kết nối ngân hàng trong SimpleFIN Bridge rồi dán mã thiết lập dùng một lần tại đây. Quyền truy cập chỉ để đọc.",
+      "description": "Kết nối ngân hàng trong <bridge>SimpleFIN Bridge</bridge> rồi dán mã thiết lập dùng một lần tại đây. Quyền truy cập chỉ để đọc.",
       "openBridge": "Mở SimpleFIN Bridge",
       "setupToken": "Mã thiết lập",
       "connect": "Kết nối SimpleFIN",
@@ -1808,7 +1812,7 @@
       "quota": "Còn {remaining} yêu cầu",
       "nextEligible": "Lần khả dụng tiếp theo: {date}",
       "stopTitle": "Dừng đồng bộ {bank}?",
-      "stopBody": "Liên kết và giao dịch hiện có được giữ lại. Làm mới tài khoản để kết nối lại tổ chức này.",
+      "stopBody": "Các liên kết và giao dịch hiện có được giữ nguyên.",
       "stop": "Dừng đồng bộ",
       "stopped": "Đã dừng đồng bộ",
       "title": "SimpleFIN",
@@ -1822,7 +1826,9 @@
         "identity_review": "Định danh tài khoản đã thay đổi. Kiểm tra liên kết trước khi bật đồng bộ.",
         "invalid_response": "Bridge trả về dữ liệu chưa được hỗ trợ. Hãy làm mới sau.",
         "unavailable": "SimpleFIN không phản hồi. Hãy thử lại sau."
-      }
+      },
+      "resume": "Tiếp tục đồng bộ",
+      "lastKnownConnected": "SimpleFIN đã kết nối ở lần kiểm tra thành công gần nhất."
     }
   }
 }

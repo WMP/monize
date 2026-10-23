@@ -896,7 +896,10 @@
     "simplefinClaimUncertain": "Налаштування SimpleFIN не завершено. Токен міг бути використаний. Перевірте Bridge, відкличте невикористані токени застосунку та створіть новий токен налаштування.",
     "simplefinClaimStorageFailed": "SimpleFIN використав токен, але Monize не зміг підтвердити збереження облікових даних. Спочатку перевірте стан підключення. Якщо його немає, відкличте токен застосунку в Bridge та створіть новий токен налаштування.",
     "simplefinIdentityReview": "Ідентифікатори рахунків SimpleFIN змінилися або відсутні. Перевірте рахунки перед увімкненням синхронізації; наявні зв’язки збережено.",
-    "simplefinSubscriptionRequired": "Для SimpleFIN Bridge потрібна активна підписка. Перевірте оплату в SimpleFIN Bridge."
+    "simplefinSubscriptionRequired": "Для SimpleFIN Bridge потрібна активна підписка. Перевірте оплату в SimpleFIN Bridge.",
+    "simplefinReadFailed": "SimpleFIN не надав повні дані рахунків. Перевірте підключення в SimpleFIN Bridge.",
+    "simplefinQuotaExhausted": "Ліміт запитів SimpleFIN вичерпано. Дочекайтеся його відновлення та повторіть поточний пакет.",
+    "simplefinClaimNotSent": "SimpleFIN тимчасово недоступний. Токен налаштування не було надіслано; спробуйте пізніше з тим самим токеном."
   },
   "warranties": {
     "notFound": "Гарантію з ідентифікатором {{ id }} не знайдено",

@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, one {# con un importe no válido} many {# con un importe no válido} other {# con un importe no válido}}",
         "unknown_direction": "{count, plural, one {# con una dirección desconocida} many {# con una dirección desconocida} other {# con una dirección desconocida}}",
         "currency_mismatch": "{count, plural, one {# en otra moneda} many {# en otra moneda} other {# en otra moneda}}",
-        "other": "{count, plural, one {# por otro motivo} many {# por otro motivo} other {# por otro motivo}}"
+        "other": "{count, plural, one {# por otro motivo} many {# por otro motivo} other {# por otro motivo}}",
+        "missing_identity": "Falta el identificador de la transacción bancaria: {count, number}"
       },
       "needsPreview": "Abre la vista previa de {accounts} y confirma la primera importación",
       "withNeedsPreview": "{message}. {needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "Importe no válido",
         "unknown_direction": "Dirección desconocida",
         "currency_mismatch": "Otra moneda",
-        "other": "Rechazada"
+        "other": "Rechazada",
+        "missing_identity": "Falta el identificador de la transacción bancaria"
       },
       "columns": {
         "date": "Fecha",
@@ -1786,11 +1788,13 @@
           "none": "No hay etiqueta de tipo de operación para esta transacción.",
           "tag": "Etiqueta del tipo de operación del banco: {tag}"
         }
-      }
+      },
+      "historyBatch": "Lote del historial: del {from} al {to}.",
+      "historyBatchRemaining": "Lote del historial: del {from} al {to}. Queda más historial. Después de importar este lote, abre la vista previa del siguiente."
     },
     "simplefin": {
       "provider": "Proveedor de datos",
-      "description": "Conecte sus bancos en SimpleFIN Bridge y pegue aquí un token de configuración de un solo uso. El acceso es de solo lectura.",
+      "description": "Conecte sus bancos en <bridge>SimpleFIN Bridge</bridge> y pegue aquí un token de configuración de un solo uso. El acceso es de solo lectura.",
       "openBridge": "Abrir SimpleFIN Bridge",
       "setupToken": "Token de configuración",
       "connect": "Conectar SimpleFIN",
@@ -1808,7 +1812,7 @@
       "quota": "{remaining} solicitudes restantes",
       "nextEligible": "Próxima disponibilidad: {date}",
       "stopTitle": "¿Detener la sincronización de {bank}?",
-      "stopBody": "Se conservan las vinculaciones y transacciones existentes. Use Actualizar cuentas para reconectar esta institución.",
+      "stopBody": "Se conservan las asociaciones y transacciones existentes.",
       "stop": "Detener sincronización",
       "stopped": "Sincronización detenida",
       "title": "SimpleFIN",
@@ -1822,7 +1826,9 @@
         "identity_review": "Los identificadores cambiaron. Revise las vinculaciones antes de activar la sincronización.",
         "invalid_response": "Bridge devolvió datos no compatibles. Actualice más tarde.",
         "unavailable": "SimpleFIN no respondió. Inténtelo más tarde."
-      }
+      },
+      "resume": "Reanudar sincronización",
+      "lastKnownConnected": "SimpleFIN estaba conectado en la última comprobación correcta."
     }
   }
 }

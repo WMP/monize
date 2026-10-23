@@ -896,7 +896,10 @@
     "simplefinClaimUncertain": "Penyiapan SimpleFIN tidak selesai. Token mungkin sudah terpakai. Periksa Bridge, cabut token aplikasi yang tidak digunakan, lalu buat token penyiapan baru.",
     "simplefinClaimStorageFailed": "SimpleFIN telah memakai token, tetapi Monize tidak dapat memastikan kredensial tersimpan. Periksa status koneksi terlebih dahulu. Jika belum terhubung, cabut token aplikasi di Bridge dan buat token penyiapan baru.",
     "simplefinIdentityReview": "Identitas akun SimpleFIN berubah atau tidak ditemukan. Tinjau akun sebelum mengaktifkan sinkronisasi; pemetaan yang ada tetap dipertahankan.",
-    "simplefinSubscriptionRequired": "SimpleFIN Bridge memerlukan langganan aktif. Periksa penagihan di SimpleFIN Bridge."
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge memerlukan langganan aktif. Periksa penagihan di SimpleFIN Bridge.",
+    "simplefinReadFailed": "SimpleFIN tidak dapat menyediakan data rekening lengkap. Periksa koneksi di SimpleFIN Bridge.",
+    "simplefinQuotaExhausted": "Kuota permintaan SimpleFIN habis. Tunggu hingga kuota tersedia kembali lalu coba ulang kelompok saat ini.",
+    "simplefinClaimNotSent": "SimpleFIN sementara tidak tersedia. Token penyiapan belum dikirim; coba lagi nanti dengan token yang sama."
   },
   "warranties": {
     "notFound": "Garansi dengan ID {{ id }} tidak ditemukan",

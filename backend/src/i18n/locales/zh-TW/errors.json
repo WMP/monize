@@ -896,7 +896,10 @@
     "simplefinClaimUncertain": "SimpleFIN 設定未完成。權杖可能已被耗用。請檢查 Bridge，撤銷未使用的應用程式權杖，再產生新的設定權杖。",
     "simplefinClaimStorageFailed": "SimpleFIN 已耗用設定權杖，但 Monize 無法確認憑證是否已儲存。請先檢查連線狀態。如果尚未連線，請在 Bridge 中撤銷應用程式權杖並產生新的設定權杖。",
     "simplefinIdentityReview": "SimpleFIN 帳戶識別資訊已變更或遺失。啟用同步前請檢查帳戶；現有對應已保留。",
-    "simplefinSubscriptionRequired": "SimpleFIN Bridge 需要有效訂閱。請在 SimpleFIN Bridge 中檢查帳單。"
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge 需要有效訂閱。請在 SimpleFIN Bridge 中檢查帳單。",
+    "simplefinReadFailed": "SimpleFIN 未能提供完整的帳戶資料。請在 SimpleFIN Bridge 中檢查連線。",
+    "simplefinQuotaExhausted": "SimpleFIN 請求配額已用盡。請等待配額恢復後重試目前批次。",
+    "simplefinClaimNotSent": "SimpleFIN 暫時無法使用。設定權杖尚未傳送；請稍後使用同一權杖重試。"
   },
   "warranties": {
     "notFound": "找不到 ID 為 {{ id }} 的保固",

@@ -896,7 +896,10 @@
     "simplefinClaimUncertain": "SimpleFIN kurulumu tamamlanamadı. Belirteç kullanılmış olabilir. Bridge'i kontrol edin, kullanılmayan uygulama belirteçlerini iptal edin ve yeni bir kurulum belirteci oluşturun.",
     "simplefinClaimStorageFailed": "SimpleFIN belirteci kullandı ancak Monize kimlik bilgilerinin kaydedildiğini doğrulayamadı. Önce bağlantı durumunu kontrol edin. Bağlantı yoksa Bridge üzerinden uygulama belirtecini iptal edip yeni bir kurulum belirteci oluşturun.",
     "simplefinIdentityReview": "SimpleFIN hesap kimlikleri değişti veya eksik. Eşitlemeyi etkinleştirmeden önce hesapları inceleyin; mevcut eşleştirmeler korundu.",
-    "simplefinSubscriptionRequired": "SimpleFIN Bridge için etkin bir abonelik gerekir. SimpleFIN Bridge üzerinden faturalandırmayı kontrol edin."
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge için etkin bir abonelik gerekir. SimpleFIN Bridge üzerinden faturalandırmayı kontrol edin.",
+    "simplefinReadFailed": "SimpleFIN eksiksiz hesap verileri sağlayamadı. SimpleFIN Bridge bağlantısını kontrol edin.",
+    "simplefinQuotaExhausted": "SimpleFIN istek kotası tükendi. Kota yenilendiğinde geçerli grubu yeniden deneyin.",
+    "simplefinClaimNotSent": "SimpleFIN geçici olarak kullanılamıyor. Kurulum belirteci gönderilmedi; aynı belirteçle daha sonra yeniden deneyin."
   },
   "warranties": {
     "notFound": "{{ id }} kimliğine sahip garanti bulunamadı",

@@ -1676,7 +1676,8 @@
         "invalid_amount": "{count, plural, other {金額が無効 # 件}}",
         "unknown_direction": "{count, plural, other {方向が不明 # 件}}",
         "currency_mismatch": "{count, plural, other {別の通貨 # 件}}",
-        "other": "{count, plural, other {その他の理由 # 件}}"
+        "other": "{count, plural, other {その他の理由 # 件}}",
+        "missing_identity": "銀行取引IDがありません: {count, number}"
       },
       "needsPreview": "{accounts} のプレビューを開いて、最初のインポートを確認してください",
       "withNeedsPreview": "{message}。{needsPreview}"
@@ -1749,7 +1750,8 @@
         "invalid_amount": "金額が無効",
         "unknown_direction": "方向が不明",
         "currency_mismatch": "別の通貨",
-        "other": "拒否"
+        "other": "拒否",
+        "missing_identity": "銀行取引IDがありません"
       },
       "columns": {
         "date": "日付",
@@ -1786,11 +1788,13 @@
           "none": "この取引には操作種別タグがありません。",
           "tag": "銀行の操作種別によるタグ: {tag}"
         }
-      }
+      },
+      "historyBatch": "履歴バッチ：{from}～{to}。",
+      "historyBatchRemaining": "履歴バッチ：{from}～{to}。 まだ履歴が残っています。このバッチのインポート後、次のバッチをプレビューしてください。"
     },
     "simplefin": {
       "provider": "データプロバイダー",
-      "description": "SimpleFIN Bridge で銀行を接続し、ここに使い捨てのセットアップトークンを貼り付けてください。アクセスは読み取り専用です。",
+      "description": "<bridge>SimpleFIN Bridge</bridge> で銀行を接続し、ここに使い捨てのセットアップトークンを貼り付けてください。アクセスは読み取り専用です。",
       "openBridge": "SimpleFIN Bridge を開く",
       "setupToken": "セットアップトークン",
       "connect": "SimpleFIN を接続",
@@ -1808,7 +1812,7 @@
       "quota": "残り {remaining} リクエスト",
       "nextEligible": "次回利用可能: {date}",
       "stopTitle": "{bank} の同期を停止しますか？",
-      "stopBody": "既存の対応付けと取引は保持されます。口座を更新すると、この金融機関を再接続できます。",
+      "stopBody": "既存の対応付けと取引は保持されます。",
       "stop": "同期を停止",
       "stopped": "同期停止中",
       "title": "SimpleFIN",
@@ -1822,7 +1826,9 @@
         "identity_review": "口座の識別情報が変わりました。同期を有効にする前に対応付けを確認してください。",
         "invalid_response": "Bridge が未対応のデータを返しました。後で更新してください。",
         "unavailable": "SimpleFIN が応答しませんでした。後で再試行してください。"
-      }
+      },
+      "resume": "同期を再開",
+      "lastKnownConnected": "前回の確認成功時にはSimpleFINに接続されていました。"
     }
   }
 }

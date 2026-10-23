@@ -896,7 +896,10 @@
     "simplefinClaimUncertain": "La configurazione SimpleFIN non è stata completata. Il token potrebbe essere stato consumato. Controlla Bridge, revoca i token applicazione inutilizzati e genera un nuovo token di configurazione.",
     "simplefinClaimStorageFailed": "SimpleFIN ha consumato il token, ma Monize non ha potuto confermare il salvataggio delle credenziali. Controlla prima lo stato della connessione. Se non sei connesso, revoca il token applicazione in Bridge e genera un nuovo token di configurazione.",
     "simplefinIdentityReview": "Gli identificativi dei conti SimpleFIN sono cambiati o mancano. Controlla i conti prima di attivare la sincronizzazione; le associazioni esistenti sono state mantenute.",
-    "simplefinSubscriptionRequired": "SimpleFIN Bridge richiede un abbonamento attivo. Controlla la fatturazione in SimpleFIN Bridge."
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge richiede un abbonamento attivo. Controlla la fatturazione in SimpleFIN Bridge.",
+    "simplefinReadFailed": "SimpleFIN non ha fornito dati completi dei conti. Controlla la connessione in SimpleFIN Bridge.",
+    "simplefinQuotaExhausted": "Quota di richieste SimpleFIN esaurita. Attendi che si ripristini e riprova il lotto corrente.",
+    "simplefinClaimNotSent": "SimpleFIN è temporaneamente indisponibile. Il token di configurazione non è stato inviato; riprova più tardi con lo stesso token."
   },
   "warranties": {
     "notFound": "Garanzia con ID {{ id }} non trovata",

@@ -896,7 +896,10 @@
     "simplefinClaimUncertain": "La configuration SimpleFIN n’a pas abouti. Le jeton a peut-être été consommé. Vérifiez Bridge, révoquez les jetons d’application inutilisés et générez un nouveau jeton de configuration.",
     "simplefinClaimStorageFailed": "SimpleFIN a consommé le jeton, mais Monize n’a pas pu confirmer l’enregistrement des identifiants. Vérifiez d’abord l’état de la connexion. Si elle n’existe pas, révoquez le jeton d’application dans Bridge et générez un nouveau jeton de configuration.",
     "simplefinIdentityReview": "Les identifiants des comptes SimpleFIN ont changé ou sont absents. Vérifiez les comptes avant d’activer la synchronisation ; les associations existantes ont été conservées.",
-    "simplefinSubscriptionRequired": "SimpleFIN Bridge nécessite un abonnement actif. Vérifiez la facturation dans SimpleFIN Bridge."
+    "simplefinSubscriptionRequired": "SimpleFIN Bridge nécessite un abonnement actif. Vérifiez la facturation dans SimpleFIN Bridge.",
+    "simplefinReadFailed": "SimpleFIN n’a pas pu fournir les données complètes des comptes. Vérifiez la connexion dans SimpleFIN Bridge.",
+    "simplefinQuotaExhausted": "Le quota de requêtes SimpleFIN est épuisé. Attendez son renouvellement et réessayez le lot actuel.",
+    "simplefinClaimNotSent": "SimpleFIN est temporairement indisponible. Le jeton de configuration n’a pas été envoyé ; réessayez plus tard avec ce même jeton."
   },
   "warranties": {
     "notFound": "Garantie avec l'ID {{ id }} introuvable",
