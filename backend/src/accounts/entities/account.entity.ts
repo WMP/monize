@@ -329,19 +329,15 @@ export class Account {
   linkedLoanAccount: Account | null;
 
   // Mortgage-specific fields
-  @Column({ name: "is_canadian_mortgage", default: false })
-  isCanadianMortgage: boolean;
-
-  @Column({ name: "is_variable_rate", default: false })
-  isVariableRate: boolean;
-
-  // Null on non-mortgage rows, and on a mortgage written by a release that
-  // predates the column; such a row is read from the two flags above.
+  // Read only on a MORTGAGE; every other account carries the default, the
+  // annuity engine a plain LOAN uses. Nullable until the contract migration
+  // (a 1.19.x rollback may write null); read it through `mortgageTypeOf`.
   @Column({
     type: "varchar",
     length: 20,
     name: "mortgage_type",
     nullable: true,
+    default: "ANNUITY",
   })
   mortgageType: MortgageType | null;
 

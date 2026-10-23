@@ -71,8 +71,6 @@ describe("planLoanSettlement", () => {
       interestBookingMode: "AUTO",
       mortgageType: "LINEAR",
       prepaymentMode: null,
-      isCanadianMortgage: false,
-      isVariableRate: false,
       interestRate: 2,
       paymentAmount: null,
       extraPaymentAmount: null,
@@ -90,7 +88,7 @@ describe("planLoanSettlement", () => {
   const annuityAccount = (overrides: Partial<Account> = {}): Account =>
     linearAccount({
       accountType: AccountType.LOAN,
-      mortgageType: null,
+      mortgageType: "ANNUITY",
       interestRate: 6,
       paymentAmount: 1500,
       paymentStartDate: null,

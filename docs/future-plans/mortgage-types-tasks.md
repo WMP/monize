@@ -6,7 +6,7 @@
 
 - **One task per session/PR.** Each task lists its files. Touching files outside the task's scope is a scope violation -- stop and leave a note on the task's issue instead.
 - **The spec is the authority on every number.** A fixture is copied from spec section 7, never from the implementation's own output. If the code and the spec disagree, the spec is changed first, in its own commit, with the reason.
-- **The governing invariant applies to every task:** one amortization method per mortgage type (INV-LOAN-007). A consumer reads the type's traits; a new two-flag call of `getPeriodicRate` or `calculateEffectiveAnnualRate` fails the flags guard from P1-B2 on, and a new read of `isCanadianMortgage` or `isVariableRate` is a review finding.
+- **The governing invariant applies to every task:** one amortization method per mortgage type (INV-LOAN-007). A consumer reads the type's traits; a new two-flag call of `getPeriodicRate` or `calculateEffectiveAnnualRate` fails the flags guard from P1-B2 until P3-B1 deletes the overloads and the guard, and a new read of `isCanadianMortgage` or `isVariableRate` is a review finding.
 - **Definition of done for every task** (in addition to per-task acceptance):
   - `backend/`: `npm run lint && npx tsc --noEmit && npm run typecheck`, `TZ=UTC npm run test:unit -- --coverage`; plus `npm run build && npm run test:integration` when a query, an entity or a migration changed; `npm run migration:lint` when a migration changed.
   - `frontend/`: `npm run lint && npm run type-check && npm run i18n:check`, `npm run test:cov`, `npm run build`.
@@ -25,7 +25,7 @@
 | **inert** | Ships a column, a constant or a code path that changes nothing until a user selects a new type (or until a later task calls it). |
 | **neutral** | Rewrites a live code path. Designed behaviour-preserving for every existing account (spec section 4.2); the full unit suite of the touched module is the gate. |
 
-Every task is safe to merge in any order that respects its dependencies: the column is nullable and read with a flags fallback until P3-B1, Phase 1 offers only the two values that exist today, and the new methods are unreachable until P2-B1 lets the DTOs accept them.
+Every task is safe to merge in any order that respects its dependencies: the column is read with a flags fallback until P3-B1 and is nullable until P3-B2, Phase 1 offers only the two values that exist today, and the new methods are unreachable until P2-B1 lets the DTOs accept them.
 
 ## Task graph
 
@@ -43,9 +43,10 @@ Every task is safe to merge in any order that respects its dependencies: the col
 | P2-B2 | #1511 | Detect mortgage type from sample installments and from history (backend) | P2-B1 | inert | [x] | #1529 |
 | P2-F2 | #1512 | Type detection UI | P2-B2 | inert | [x] | #1530 |
 | P2-Q | #1513 | Phase 2 acceptance: spec, invariants, locales | P2-F1, P2-F2 | none | [x] | the PR closing #1513 |
-| P3-B1 | #1514 | Contract migration: NOT NULL default, drop the booleans, delete overloads and guard | P2-Q, one release after P1 | neutral | [ ] | -- |
+| P3-B1 | #1514 | Type default `'ANNUITY'`; stop reading and writing the booleans; delete overloads and guard | P2-Q, one release after P1 | neutral | [x] | the PR closing #1514 |
+| P3-B2 | #1841 | Contract migration: NOT NULL, drop the booleans | P3-B1, one release after P3-B1 | neutral | [ ] | -- |
 
-**Why P3-B1 waits a release:** a rollback to the image before Phase 1 reads the two booleans; dropping them in the same release that stopped writing them leaves no image to roll back to.
+**Why P3-B1 waits a release:** a rollback to the image before Phase 1 reads the two booleans; dropping them in the same release that stopped writing them leaves no image to roll back to. **P3-B2 waits a release after P3-B1 for the same reason:** 1.19.x maps both booleans and may write a null `mortgage_type`, so the contract ships only once 1.20.0 (P3-B1) is the rollback target.
 
 ---
 
@@ -148,7 +149,16 @@ Every task is safe to merge in any order that respects its dependencies: the col
 
 ### P3-B1 -- Contract migration
 
-**Files:** a new migration and `database/schema.sql` (`NOT NULL DEFAULT 'ANNUITY'`, drop `is_canadian_mortgage` and `is_variable_rate`), the entity, the DTOs (the booleans no longer accepted), `backend/src/accounts/mortgage-amortization.util.ts` (overloads deleted), `backend/src/accounts/mortgage-type-flags.guard.spec.ts` (deleted with its last caller), the frontend type, backup rules, action history, demo seed.
+**Files:** a new migration and `database/schema.sql` (`DEFAULT 'ANNUITY'`; `NOT NULL` and dropping `is_canadian_mortgage` and `is_variable_rate` moved to P3-B2), the entity, the DTOs (the booleans no longer accepted), `backend/src/accounts/mortgage-amortization.util.ts` (overloads deleted), `backend/src/accounts/mortgage-type-flags.guard.spec.ts` (deleted with its last caller), the frontend type, backup rules, action history, demo seed.
 
-- Before `NOT NULL` and before the booleans are dropped, the migration re-derives every MORTGAGE row whose type is still null from the flags (the P1-B1 backfill `CASE`): a previous-release insert and a P1-B1 flag change both leave one.
+- The migration re-derives every MORTGAGE row whose type is still null from the flags (the P1-B1 backfill `CASE`): a previous-release insert and a P1-B1 flag change both leave one.
 - Restoring a backup taken before Phase 1 maps the booleans through `mortgageTypeFromFlags`; a backup integration case asserts it.
+- Done (1.20.0): `20261003152748_accounts_mortgage_type_default.sql` re-derives a null MORTGAGE type from the flags (a NULL flag reads as false), gives every other null row `ANNUITY` (so a plain `LOAN` reads as the annuity engine it uses) and sets the default; it does not set NOT NULL or drop the flags. `database/schema.sql` keeps both flags (`BOOLEAN DEFAULT false`, unused) and a nullable `mortgage_type VARCHAR(20) DEFAULT 'ANNUITY'`, because 1.19.x maps both flags in its entity and may write a null type on a non-mortgage row (its backup restore inserts them explicitly), so a 1.19.x rollback has to run against this schema. The entity, DTOs, demo seed, import, action-history allowlist and support-backup rules drop the flags (no export carries them, so the columns need no classification). `mortgageTypeFromFlags`, `flagsFromMortgageType`, `requestedMortgageType`, `mortgageTypeColumns`, the two-flag overloads and the flags guard are deleted, and `mortgageTypeOf` on both layers reads a null as `ANNUITY` (`Account.mortgageType` is `MortgageType | null`): only a 1.19.x rollback writes one. `mortgageTypeFromFlags` itself went with the rest: a backup restore and an action-history undo resolve a pre-contract account snapshot through `backend/src/accounts/legacy-mortgage-type.util.ts`, the one source file that still names the flags, with the migration's rule (a stored type stands; a null MORTGAGE type is the flags' type; any other account `ANNUITY`), asserted by `backup-restore.integration.spec.ts` and `legacy-mortgage-type-restore.spec.ts`. On the client, the reconstructed-rate history no longer reads the variable flag: with no rate history a principal-only row shows the configured rate.
+
+### P3-B2 -- Contract migration
+
+**Files:** a new migration marked `-- contract-after: 1.20.0` and `database/schema.sql` (`NOT NULL`, drop `is_canadian_mortgage` and `is_variable_rate`), `mortgageTypeOf` on both layers (a plain read again), `backend/test/integration/mortgage-type-backfill.integration.spec.ts`.
+
+- Ships in a release after 1.20.0 (1.21.0 or later), once a rollback to 1.19.x is no longer needed.
+- Before `NOT NULL` and before the booleans are dropped, the migration re-runs the P3-B1 backfill for rows a 1.19.x rollback wrote (a null MORTGAGE type from the flags, every other null row `ANNUITY`).
+- A fresh install replays every migration on top of `schema.sql`, so once `schema.sql` drops the flags the Phase 1 migration's unguarded backfill `UPDATE` (`database/migrations/20261002151116_accounts_mortgage_type.sql`) fails on replay. Solve that without renaming a merged migration (`docs/database-migrations.md`, `database/CLAUDE.md`); P3-B1's PR first edited that file and the edit was reverted from it for this reason.

@@ -30,6 +30,7 @@ import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { assertReconciledRowsMutable } from "../transactions/reconciled-lock.util";
 import { Account } from "../accounts/entities/account.entity";
+import { withResolvedMortgageTypeProperty } from "../accounts/legacy-mortgage-type.util";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
 import { Tag } from "../tags/entities/tag.entity";
@@ -253,8 +254,6 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
     "interest_category_id",
     "asset_category_id",
     "date_acquired",
-    "is_canadian_mortgage",
-    "is_variable_rate",
     "mortgage_type",
     "prepayment_mode",
     "term_months",
@@ -1841,7 +1840,10 @@ export class ActionHistoryService {
         break;
       case "update":
         if (action.entityId && action.beforeData) {
-          const updateFields = { ...action.beforeData };
+          const updateFields = this.replayableSnapshot(
+            tableName,
+            action.beforeData,
+          );
           // Remove fields that shouldn't be directly updated
           delete updateFields.id;
           delete updateFields.userId;
@@ -1867,7 +1869,7 @@ export class ActionHistoryService {
         break;
       case "delete":
         if (action.beforeData) {
-          const data = { ...action.beforeData };
+          const data = this.replayableSnapshot(tableName, action.beforeData);
           // Ensure userId is set from the action
           data.userId = action.userId;
           await this.reinsertEntity(manager, tableName, data);
@@ -1885,6 +1887,21 @@ export class ActionHistoryService {
   }
 
   // --- Utility methods ---
+
+  /**
+   * A copy of a snapshot in today's column shape. An account snapshot recorded
+   * before the mortgage type was required carries the legacy flags, which no
+   * code reads now, and a null or missing type; it is replayed with the type
+   * the default migration would have given it.
+   */
+  private replayableSnapshot(
+    tableName: string,
+    snapshot: Record<string, any>,
+  ): Record<string, any> {
+    return tableName === "accounts"
+      ? withResolvedMortgageTypeProperty(snapshot)
+      : { ...snapshot };
+  }
 
   /**
    * The two balance operations `removeLockedTransactionLeg` needs, on the

@@ -26,6 +26,11 @@ test.describe('Guided tours', () => {
     // between screens as it goes).
     const advanceUntil = async (text: string) => {
       for (let i = 0; i < 10; i++) {
+        // Wait for the step to render before deciding: `isVisible()` does not
+        // wait, and the last step has no Next (its button is Done), so a Next
+        // clicked before that step's copy is on screen waits for a button
+        // that never comes.
+        await expect(page.getByText(text).or(next).first()).toBeVisible();
         if (await page.getByText(text).isVisible()) return;
         await next.click();
         await page.waitForTimeout(500);

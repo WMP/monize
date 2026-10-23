@@ -24,7 +24,6 @@ import {
 import {
   PREPAYMENT_MODES,
   compoundingFor,
-  flagsFromMortgageType,
   storesConstantPayment,
   type PrepaymentMode,
 } from '@/lib/mortgage-type';
@@ -389,9 +388,7 @@ export function LoanPaymentSetupDialog({
       }
 
       if (isMortgage) {
-        // The type and the flags it maps to travel together.
         data.mortgageType = mortgageType;
-        Object.assign(data, flagsFromMortgageType(mortgageType));
         if (mortgageType === 'LINEAR') data.prepaymentMode = prepaymentMode;
         data.amortizationMonths = amortizationMonths;
         data.termMonths = termMonths;

@@ -30,8 +30,6 @@ describe("projectLoanOccurrences", () => {
       name: "Mortgage",
       mortgageType: "ANNUITY",
       prepaymentMode: null,
-      isCanadianMortgage: false,
-      isVariableRate: false,
       interestRate: 5,
       paymentAmount: 584.59,
       extraPaymentAmount: null,
@@ -649,7 +647,7 @@ describe("projectLoanOccurrences", () => {
     it("keeps a line of credit's schedule running at a settled debt and prices it again once it is drawn on", () => {
       const lineOfCredit = makeMortgage({
         accountType: "LINE_OF_CREDIT",
-        mortgageType: null,
+        mortgageType: "ANNUITY",
         paymentAmount: 100,
       } as Partial<Account>);
       const schedule = makeSchedule({ amount: -100 });

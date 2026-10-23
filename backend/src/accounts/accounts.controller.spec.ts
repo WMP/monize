@@ -363,8 +363,7 @@ describe("AccountsController", () => {
         amortizationMonths: 300,
         paymentFrequency: "monthly",
         paymentStartDate: "2024-01-01",
-        isCanadian: true,
-        isVariableRate: false,
+        mortgageType: "CANADIAN_FIXED",
       };
       mockAccountsService.previewMortgageAmortization!.mockReturnValue({
         paymentAmount: 1500,
@@ -387,7 +386,7 @@ describe("AccountsController", () => {
       );
     });
 
-    it("passes the requested type, which wins over the legacy flags", () => {
+    it("passes the requested type, else the default type", () => {
       mockAccountsService.previewMortgageAmortization!.mockReturnValue({
         paymentAmount: 1500,
         endDate: new Date("2049-01-01"),
@@ -408,8 +407,6 @@ describe("AccountsController", () => {
       controller.previewMortgageAmortization({
         ...base,
         mortgageType: "ANNUITY",
-        isCanadian: true,
-        isVariableRate: false,
       } as any);
       expect(typeArg()).toBe("ANNUITY");
 
@@ -419,7 +416,7 @@ describe("AccountsController", () => {
       } as any);
       expect(typeArg()).toBe("CANADIAN_FIXED");
 
-      // Neither the type nor a flag: the default type.
+      // No type: the default type.
       controller.previewMortgageAmortization(base as any);
       expect(typeArg()).toBe("ANNUITY");
     });

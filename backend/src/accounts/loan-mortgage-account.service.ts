@@ -52,10 +52,8 @@ import { withScopedDb } from "../common/db/scoped-db";
 import { datedLoanDebt } from "./dated-loan-debt.util";
 import {
   MortgageType,
-  mortgageTypeColumns,
   mortgageTypeOf,
   prepaymentModeColumn,
-  requestedMortgageType,
   storesConstantPayment,
 } from "./mortgage-type.util";
 import {
@@ -369,8 +367,6 @@ export class LoanMortgageAccountService {
       institution,
       mortgageType: requestedType,
       prepaymentMode,
-      isCanadianMortgage,
-      isVariableRate,
       termMonths,
       amortizationMonths,
       ...accountData
@@ -440,14 +436,8 @@ export class LoanMortgageAccountService {
       accountData.currencyCode,
     );
 
-    // The type wins over the legacy flags; a request naming neither is the
-    // default type, as the flags' `false` defaults always denoted.
-    const mortgageType =
-      requestedMortgageType({
-        mortgageType: requestedType,
-        isCanadianMortgage,
-        isVariableRate,
-      }) ?? "ANNUITY";
+    // A request naming no type is the default type.
+    const mortgageType = requestedType ?? "ANNUITY";
     const mortgageAmount = Math.abs(openingBalance);
     const amortizationInput: MortgageAmortizationInput = {
       principal: mortgageAmount,
@@ -529,7 +519,7 @@ export class LoanMortgageAccountService {
         paymentStartDate: localDateForColumn(paymentStartDate),
         sourceAccountId,
         interestCategoryId: interestCatId,
-        ...mortgageTypeColumns(mortgageType),
+        mortgageType,
         prepaymentMode: prepaymentModeColumn(mortgageType, prepaymentMode),
         termMonths: termMonths || null,
         termEndDate,

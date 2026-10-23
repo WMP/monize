@@ -178,8 +178,6 @@ describe("LoanMortgageAccountService: mortgage type from history", () => {
       userId,
       accountType: AccountType.MORTGAGE,
       mortgageType: "CANADIAN_FIXED",
-      isCanadianMortgage: true,
-      isVariableRate: false,
       interestRate: 5.24,
       paymentFrequency: "MONTHLY",
       interestBookingMode: "SPLIT",
@@ -339,7 +337,6 @@ describe("LoanMortgageAccountService: mortgage type from history", () => {
     useLedger(installments);
     const account = makeMortgage({
       mortgageType: "INTEREST_ONLY",
-      isCanadianMortgage: false,
       interestRate: 2,
       currentBalance: -300000,
     });
@@ -460,7 +457,6 @@ describe("LoanMortgageAccountService: mortgage type from history", () => {
     const result = await service.detectMortgageTypeFromHistory(
       makeMortgage({
         mortgageType: "LINEAR",
-        isCanadianMortgage: false,
         interestRate: 2,
         currentBalance: -endDebt,
       }),
@@ -496,7 +492,6 @@ describe("LoanMortgageAccountService: mortgage type from history", () => {
     useLedger(installments);
     const account = makeMortgage({
       mortgageType: "LINEAR",
-      isCanadianMortgage: false,
       interestRate: 2,
       currentBalance: -endDebt,
     });
