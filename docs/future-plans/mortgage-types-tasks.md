@@ -44,7 +44,7 @@ Every task is safe to merge in any order that respects its dependencies: the col
 | P2-F2 | #1512 | Type detection UI | P2-B2 | inert | [x] | #1530 |
 | P2-Q | #1513 | Phase 2 acceptance: spec, invariants, locales | P2-F1, P2-F2 | none | [x] | the PR closing #1513 |
 | P3-B1 | #1514 | Type default `'ANNUITY'`; stop reading and writing the booleans; delete overloads and guard | P2-Q, one release after P1 | neutral | [x] | the PR closing #1514 |
-| P3-B2 | TBD | Contract migration: NOT NULL, drop the booleans | P3-B1, one release after P3-B1 | neutral | [ ] | -- |
+| P3-B2 | #1841 | Contract migration: NOT NULL, drop the booleans | P3-B1, one release after P3-B1 | neutral | [ ] | -- |
 
 **Why P3-B1 waits a release:** a rollback to the image before Phase 1 reads the two booleans; dropping them in the same release that stopped writing them leaves no image to roll back to. **P3-B2 waits a release after P3-B1 for the same reason:** 1.19.x maps both booleans and may write a null `mortgage_type`, so the contract ships only once 1.20.0 (P3-B1) is the rollback target.
 
