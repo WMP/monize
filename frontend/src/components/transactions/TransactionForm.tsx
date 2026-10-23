@@ -1475,7 +1475,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   const onSubmit = (data: TransactionFormData) => submitThen(data);
 
   /** Save, or a new transaction's save-then-Add-warranty: one at a time. */
-  const guardedSubmit = (then?: AfterCreate) => (event?: BaseSyntheticEvent) => {
+  const guardedSubmit = (then: AfterCreate | undefined, event?: BaseSyntheticEvent) => {
     event?.preventDefault();
     if (submitInFlight.current) return;
     submitInFlight.current = true;
@@ -1490,11 +1490,13 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   // transaction's saves it first, as the warranty links to the row it creates.
   const addWarranty = transaction
     ? onAddWarranty && (() => onAddWarranty(transaction))
-    : onAddWarrantyAfterCreate && guardedSubmit('addWarranty');
+    : onAddWarrantyAfterCreate && (() => guardedSubmit('addWarranty'));
   const showWarrantiesLine =
     !selectedIsJoint &&
     !actingAsDelegate &&
-    (addWarranty !== undefined || (transaction !== undefined && rowHasWarranties(transaction)));
+    // From the props, not `addWarranty`: that closes over the submit guard's ref.
+    ((transaction ? onAddWarranty : onAddWarrantyAfterCreate) !== undefined ||
+      (transaction !== undefined && rowHasWarranties(transaction)));
 
   const handleReconciledConfirm = async () => {
     const data = reconciledConfirmData;
@@ -1607,7 +1609,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   return (
     <form
       {...tourAnchor(TOUR_ANCHORS.transactionForm)}
-      onSubmit={guardedSubmit()}
+      onSubmit={(event) => guardedSubmit(undefined, event)}
       className="space-y-4"
     >
       {/* Mode selector - show for new/duplicate transactions, or non-transfer
