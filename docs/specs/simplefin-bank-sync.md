@@ -152,6 +152,17 @@ Reuse one Account Set result for transaction and balance reads within an operati
 
 Show `last fetched` separately from source `balance-date` and last successful import. A new fetch does not imply the bank refreshed. Never infer coverage before the earliest returned transaction: an empty history is not proof that older history exists or does not exist. Explain institution-dependent history limits.
 
+### Countryless SimpleFIN profiles
+
+SimpleFIN Bridge supplies an institution name but no country. Match its profiles
+by source and the normalized institution name (NFC, trimmed, collapsed spaces,
+case ignored); never infer a country. A bank profile uses `simplefin/<bank>`
+and omits `institution.country`. Unknown banks use `simplefin/default` before
+the global `default`. The source default documents API-wide limits; a future
+bank profile must retain those notes alongside any verified bank-specific notes.
+Only the API-wide default ships until sanitized captures support bank profiles.
+Enable Banking continues to match source, country and normalized bank name.
+
 ## 10. Failure truth table
 
 | Condition | Required behavior |
@@ -260,3 +271,11 @@ responses, conflicting identities and unknown account currency still block the r
 Booking dates and API range coverage use the same resolved financial timezone, including
 DST and exclusive end bounds. Scheduled reads resolve the explicit preference or last
 known client timezone. Existing imported transactions are not rewritten.
+
+Dated refused rows count only inside the account's reviewed window; an undatable
+refusal remains visible. Independent balance failures remain nonfatal and log
+the local bank-link identifier and the existing safe provider failure description;
+the internal failure object never appears in a client response.
+
+Canonical setup-token and stored connection-identifier comparisons use the shared
+length-checked `simplefinEqual` helper (`timingSafeEqual` over UTF-8 bytes).
