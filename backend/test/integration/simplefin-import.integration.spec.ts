@@ -416,6 +416,38 @@ describe("SimpleFIN through the real preview, planner, writer and scheduler", ()
       ),
     ).rejects.toMatchObject({ status: 409 });
   });
+  it("refuses confirmation if the history cursor changes during the provider read", async () => {
+    await scope(() =>
+      sync.linkAccount(userId, bankId, {
+        accountId: localId,
+        syncFromDate: addDaysYMD(today, -100),
+      }),
+    );
+    const preview = await scope(() =>
+      sync.previewAccount(userId, bankId, null),
+    );
+    const newerCursor = preview.history!.dateTo;
+    jest.mocked(client.accounts).mockImplementationOnce(async () => {
+      await harness.owner.query(
+        "UPDATE bank_sync_accounts SET backfill_through=$2 WHERE id=$1",
+        [bankId, newerCursor],
+      );
+      return payload();
+    });
+    await expect(
+      scope(() =>
+        sync.syncAccount(userId, bankId, null, preview.planFingerprint),
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(await count("transactions")).toBe(0);
+    expect(await count("bank_sync_imported_transactions")).toBe(0);
+    const [row] = await harness.owner.query(
+      "SELECT backfill_through::text,last_success_at FROM bank_sync_accounts WHERE id=$1",
+      [bankId],
+    );
+    expect(row.backfill_through).toBe(newerCursor);
+    expect(row.last_success_at).toBeNull();
+  });
   it("resumes two year-long histories after quota replenishes without restarting committed batches", async () => {
     const start = addDaysYMD(today, -365);
     const data = payload();

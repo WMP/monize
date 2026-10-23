@@ -1065,3 +1065,74 @@ describe("building the profile set", () => {
     ).not.toThrow();
   });
 });
+
+describe("countryless SimpleFIN profiles", () => {
+  const sourceDefault = () => ({
+    id: "simplefin/default",
+    version: 1,
+    source: "simplefin",
+    operation: { location: ["bank_transaction_code"] },
+    types: [],
+  });
+  const bank = () => ({
+    ...sourceDefault(),
+    id: "simplefin/example-bank",
+    institution: { names: ["Example Bank"] },
+  });
+  it("indexes normalized Bridge names without inventing a country", () => {
+    const set = buildProfileSet(
+      { origin: "default.json", raw: { ...sourceDefault(), id: "default" } },
+      [
+        { origin: "bank.json", raw: bank() },
+        { origin: "simplefin/default.json", raw: sourceDefault() },
+      ],
+    );
+    expect(set.byInstitution.get("simplefin||example bank")?.id).toBe(
+      "simplefin/example-bank",
+    );
+    expect(normalizeInstitutionName("  EXAMPLE   Bank ")).toBe("example bank");
+    expect(set.bySource.get("simplefin")?.id).toBe("simplefin/default");
+  });
+  it("uses the source default for unknown countryless banks and supplies API notes", () => {
+    const profile = resolveProfile("simplefin", "", "Unknown Bank");
+    expect(profile.id).toBe("simplefin/default");
+    expect(profile.source).toBe("simplefin");
+    expect(profile.types).toEqual([]);
+    expect(profileNotesView(profile, "pl")).toHaveLength(6);
+    expect(
+      profileNotesView(profile, "pl").every((note) => note.lang === "pl"),
+    ).toBe(true);
+    expect(
+      profileNotesView(profile, "de").every((note) => note.lang === "en"),
+    ).toBe(true);
+    expect(() =>
+      assertNoPersonalData(profile, "simplefin/default.json"),
+    ).not.toThrow();
+  });
+  it("rejects a supplied country, country-prefix id, or institution on a source default", () => {
+    expect(() =>
+      validateBankSyncProfile(
+        { ...bank(), institution: { names: ["Example Bank"], country: "US" } },
+        "bank.json",
+      ),
+    ).toThrow(/must be omitted/);
+    expect(() =>
+      validateBankSyncProfile(
+        { ...bank(), id: "us/example-bank" },
+        "bank.json",
+      ),
+    ).toThrow(/must start/);
+    expect(() =>
+      validateBankSyncProfile(
+        { ...sourceDefault(), institution: { names: ["Example Bank"] } },
+        "bank.json",
+      ),
+    ).toThrow(/names none/);
+    expect(() =>
+      validateBankSyncProfile(
+        { ...bank(), source: "enable_banking" },
+        "bank.json",
+      ),
+    ).toThrow(/country/);
+  });
+});

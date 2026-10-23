@@ -255,6 +255,60 @@ describe("SimpleFIN operation-scoped batch reader", () => {
     });
     expect(client.accounts).toHaveBeenCalledTimes(1);
   });
+  it("counts dated refusals only inside each account window, retaining undatable refusals", async () => {
+    const data = payload();
+    const rows = [
+      tx({
+        id: "early-refusal",
+        amount: "bad",
+        posted: Date.parse("2026-10-12T12:00:00Z") / 1000,
+      }),
+      tx({
+        id: "inside-refusal",
+        amount: "bad",
+        posted: Date.parse("2026-10-17T12:00:00Z") / 1000,
+      }),
+      tx({ id: "undated-refusal", posted: 0 }),
+      tx({
+        id: "padded-refusal",
+        amount: "bad",
+        posted: Date.parse("2026-10-20T12:00:00Z") / 1000,
+      }),
+      tx({
+        id: "inside-good",
+        posted: Date.parse("2026-10-18T12:00:00Z") / 1000,
+      }),
+    ];
+    data.accounts.forEach((account) => {
+      account.transactions = rows;
+    });
+    client.accounts.mockResolvedValue(data);
+    const reader = service();
+    await reader.withReadContext("owner", ["one", "two"], async () => {
+      const earlier = await reader.readAccount("owner", creds, id("a"), {
+        dateFrom: "2026-10-10",
+        dateTo: "2026-10-19",
+      });
+      const later = await reader.readAccount("owner", creds, id("b"), {
+        dateFrom: "2026-10-16",
+        dateTo: "2026-10-19",
+      });
+      expect(earlier.transactions).toHaveLength(4);
+      expect(later.transactions).toHaveLength(3);
+      expect(
+        later.transactions.filter((row) => row.refusalReason !== undefined),
+      ).toHaveLength(2);
+      const next = await reader.readAccount("owner", creds, id("b"), {
+        dateFrom: "2026-10-20",
+        dateTo: "2026-10-21",
+      });
+      expect(
+        next.transactions.filter(
+          (row) => row.refusalReason === "invalid_amount",
+        ),
+      ).toHaveLength(1);
+    });
+  });
   it("redacts credentials echoed in transaction descriptions before preview or writing", async () => {
     const data = payload();
     data.accounts[0].transactions[0].description = "Echo " + creds.accessUrl;

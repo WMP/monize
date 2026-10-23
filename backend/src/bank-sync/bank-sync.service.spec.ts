@@ -751,6 +751,15 @@ describe("BankSyncService", () => {
       );
       const result = await sync();
       expect(result.bankBalance).toBeNull();
+      expect(result).not.toHaveProperty("balanceFailure");
+      expect(service["logger"].warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "could not be read: unavailable: balance endpoint down",
+        ),
+      );
+      expect(service["logger"].warn).toHaveBeenCalledWith(
+        expect.stringContaining(BANK_ACCOUNT_ID),
+      );
       expect(writer.write.mock.calls[0][0].balance).toBeNull();
     });
 

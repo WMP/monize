@@ -5,13 +5,15 @@ describe("Enable Banking common read contract", () => {
   it("retains complete transactions when an independent balance read fails", async () => {
     const provider = fakeProvider();
     provider.fetchTransactions.mockResolvedValue([bankTransaction()]);
-    provider.fetchBalance.mockRejectedValue(new Error("balance unavailable"));
+    const failure = new Error("balance unavailable");
+    provider.fetchBalance.mockRejectedValue(failure);
     const read = await new EnableBankingReader(provider).readAccount(
       "owner",
       { applicationId: "test", privateKeyPem: "synthetic" },
       "account",
       { dateFrom: "2026-01-01", dateTo: "2026-01-02" },
     );
+    expect(read.balanceFailure).toBe(failure);
     expect(read).toMatchObject({
       transactions: [bankTransaction()],
       balance: null,

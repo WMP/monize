@@ -1,3 +1,4 @@
+import { simplefinEqual } from "./providers/simplefin/simplefin-equal";
 import { simplefinRedactor } from "./providers/simplefin/simplefin-redact";
 import { ConflictException, Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
@@ -150,7 +151,9 @@ export class SimplefinDiscoveryService {
             .digest("hex");
         seenConnections.add(externalSessionId);
         let connection = existing.find(
-          (row) => row.externalSessionId === externalSessionId,
+          (row) =>
+            row.externalSessionId !== null &&
+            simplefinEqual(row.externalSessionId, externalSessionId),
         );
         if (!connection) {
           connection = connections.create({

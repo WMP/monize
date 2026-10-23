@@ -122,6 +122,8 @@ export interface StartAuthorizationInput {
 }
 
 export interface BankAccountRead {
+  /** Internal diagnostic only; never copied into client responses. */
+  balanceFailure?: unknown;
   currencyCode: string | null;
   transactions: BankTransaction[];
   balance: BankBalance | null;

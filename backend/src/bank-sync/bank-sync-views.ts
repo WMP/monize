@@ -75,7 +75,7 @@ export function toBankSyncAccountView(
 /**
  * The profile a connection's rows are read by, with its notes in `readerLang`
  * (English where a note has no text in it). Always present: a bank with no
- * profile of its own has the default, which carries no notes.
+ * profile of its own has the source default, or the global default.
  */
 export function toBankSyncConnectionProfileView(
   row: Pick<

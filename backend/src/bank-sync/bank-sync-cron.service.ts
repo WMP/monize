@@ -1,6 +1,6 @@
 import { Injectable, Logger, Optional } from "@nestjs/common";
-import { I18nContext, I18nService } from "nestjs-i18n";
-import { I18nMessageFormat } from "nestjs-i18n/dist/utils/i18n-messageformat";
+import { I18nService } from "nestjs-i18n";
+import { withTranslationLocale } from "../i18n/translate";
 import { getEffectiveTimezoneOfUser } from "../common/users-by-timezone.util";
 import {
   requestContextStorage,
@@ -117,16 +117,7 @@ export class BankSyncCronService {
     return requestContextStorage.run(
       { ...getRequestContext(), timezone: formats.timezone },
       () =>
-        this.i18n
-          ? I18nContext.createAsync(
-              new I18nContext(
-                formats.lang,
-                this.i18n,
-                new I18nMessageFormat({ fallbackLanguage: "en" }),
-              ),
-              run,
-            )
-          : run(),
+        this.i18n ? withTranslationLocale(this.i18n, formats.lang, run) : run(),
     );
   }
 

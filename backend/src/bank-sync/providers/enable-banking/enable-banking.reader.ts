@@ -1,4 +1,3 @@
-import { Logger } from "@nestjs/common";
 import type {
   BankReadProvider,
   BankSyncProvider,
@@ -9,7 +8,6 @@ import type {
 
 /** Transactions must be complete; an independent balance failure means unknown balance. */
 export class EnableBankingReader implements BankReadProvider {
-  private readonly logger = new Logger(EnableBankingReader.name);
   constructor(private readonly provider: BankSyncProvider) {}
   async readAccount(
     _userId: string,
@@ -25,13 +23,18 @@ export class EnableBankingReader implements BankReadProvider {
       psu,
     );
     let balance: BankBalance | null = null;
+    let balanceFailure: unknown;
     try {
       balance = await this.provider.fetchBalance(credentials, accountId, psu);
-    } catch {
-      this.logger.warn(
-        "Bank balance could not be read; transaction data is complete",
-      );
+    } catch (error) {
+      balanceFailure = error;
     }
-    return { transactions, balance, currencyCode: null, pending: 0 };
+    return {
+      transactions,
+      balance,
+      currencyCode: null,
+      pending: 0,
+      ...(balanceFailure !== undefined ? { balanceFailure } : {}),
+    };
   }
 }

@@ -163,7 +163,7 @@ export class SimplefinProvider {
       currencyCode: account.currencyCode,
       transactions: account.transactions.filter(
         (row) =>
-          row.refusalReason !== undefined ||
+          (row.bookingDate === null && row.refusalReason !== undefined) ||
           (row.bookingDate !== null &&
             row.bookingDate >= window.dateFrom &&
             row.bookingDate <= window.dateTo),

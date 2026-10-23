@@ -1951,6 +1951,22 @@ describe('BankSyncConnectionCard', () => {
       );
     });
 
+    it('shows source-default notes for a countryless SimpleFIN connection', async () => {
+      const text = 'SimpleFIN udostępnia opis, ale nie osobne pole odbiorcy.';
+      renderCard(connection({
+        provider: 'simplefin', institutionCountry: '', validUntil: null,
+        profile: { id: 'simplefin/default', version: 1, notes: [
+          { id: 'descriptionPayees', severity: 'info', text, lang: 'pl' },
+        ] },
+      }));
+      expect(screen.queryByText(text)).toBeNull();
+      await click("Show how this bank's API works");
+      expect(screen.getByText(text)).toBeInTheDocument();
+      expect(screen.getByText(text).closest('[lang]')).toHaveAttribute('lang', 'pl');
+      await click("Hide how this bank's API works");
+      expect(screen.queryByText(text)).toBeNull();
+    });
+
     it('folds the notes again', async () => {
       renderCard(withNotes());
       await click("Show how this bank's API works");

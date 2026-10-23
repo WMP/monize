@@ -1,3 +1,5 @@
+import { simplefinEqual } from "./simplefin-equal";
+
 const BRIDGE_HOSTS = new Set([
   "bridge.simplefin.org",
   "beta-bridge.simplefin.org",
@@ -39,7 +41,7 @@ export function simplefinClaimUrl(setupToken: string): URL {
     throw new Error("Invalid SimpleFIN setup token");
   }
   const bytes = Buffer.from(token, "base64");
-  if (bytes.toString("base64") !== token)
+  if (!simplefinEqual(bytes.toString("base64"), token))
     throw new Error("Invalid SimpleFIN setup token");
   const value = bytes.toString("utf8");
   if (!Buffer.from(value, "utf8").equals(bytes))

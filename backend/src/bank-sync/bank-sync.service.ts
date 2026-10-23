@@ -647,6 +647,11 @@ export class BankSyncService {
           },
         ),
       );
+    if (read.balanceFailure !== undefined) {
+      this.logger.warn(
+        `Bank balance of bank account ${link.id} could not be read: ${describeSyncFailure(read.balanceFailure)}`,
+      );
+    }
     const rows = read.transactions;
     const pending = read.pending;
     const balance = normalizeBankBalance(read.balance);
