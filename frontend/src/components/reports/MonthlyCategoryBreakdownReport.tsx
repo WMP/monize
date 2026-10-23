@@ -31,6 +31,9 @@ import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
 import { exportToCsv } from '@/lib/csv-export';
 import { roundMoney, sumMoney } from '@/lib/format';
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
+import { FundingReportControls } from '@/components/reports/FundingReportControls';
+import { MonthlyTaggedBalanceSummary } from '@/components/reports/MonthlyTaggedBalanceSummary';
+import { useFundingReportControls } from '@/hooks/useFundingReportControls';
 
 const RANGE_STORAGE_KEY = 'monize-reports-monthly-category-breakdown-range';
 const PERCENTAGES_STORAGE_KEY =
@@ -493,15 +496,25 @@ export function MonthlyCategoryBreakdownReport() {
   // across presets. An empty start ("all") stays empty.
   const reportStart = rangeStart ? `${rangeStart.slice(0, 7)}-01` : '';
 
+  // Account filter, tag controls and the funding fetch (spec section 11.5).
+  const funds = useFundingReportControls({
+    reportKey: 'monthly-category-breakdown',
+    startDate: reportStart || undefined,
+    endDate: rangeEnd,
+    enabled: isValid,
+  });
+  const accountIds = funds.scope.selectedAccountIds;
+
   const { data, isLoading, error, reload } = useReportData(
     () =>
       isValid
         ? builtInReportsApi.getMonthlyCategoryBreakdown({
             startDate: reportStart || undefined,
             endDate: rangeEnd,
+            ...(accountIds.length > 0 ? { accountIds } : {}),
           })
         : Promise.resolve(null),
-    [isValid, reportStart, rangeEnd],
+    [isValid, reportStart, rangeEnd, funds.scope.accountIdsKey],
   );
 
   const currency = data?.currency;
@@ -1251,6 +1264,7 @@ export function MonthlyCategoryBreakdownReport() {
       {/* Controls -- always rendered so focus inside DateInput survives reloads */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-4 items-center justify-between">
+          <FundingReportControls controls={funds} />
           <DateRangeSelector
             ranges={['3m', '6m', '1y', 'ytd']}
             value={dateRange}
@@ -1620,6 +1634,7 @@ export function MonthlyCategoryBreakdownReport() {
           </div>
         )}
       </div>
+      <MonthlyTaggedBalanceSummary controls={funds} months={months} />
     </div>
   );
 }

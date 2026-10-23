@@ -47,6 +47,43 @@ describe('builtInReportsApi', () => {
     expect(apiClient.get).toHaveBeenCalledWith('/built-in-reports/cash-flow', { params });
   });
 
+  it('getSpendingByCategory sends the tag filter and nothing else new', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
+    await builtInReportsApi.getSpendingByCategory({ ...params, tagKey: 'scope', tagValue: 'household' });
+    expect(apiClient.get).toHaveBeenLastCalledWith('/built-in-reports/spending-by-category', {
+      params: { ...params, tagKey: 'scope', tagValue: 'household' },
+    });
+  });
+
+  it.each([
+    ['getIncomeBySource', '/built-in-reports/income-by-source'],
+    ['getCashFlow', '/built-in-reports/cash-flow'],
+    ['getIncomeVsExpenses', '/built-in-reports/income-vs-expenses'],
+    ['getSpendingByCategory', '/built-in-reports/spending-by-category'],
+    ['getMonthlyCategoryBreakdown', '/built-in-reports/monthly-category-breakdown'],
+  ] as const)('%s sends accountIds as one comma-separated value and omits an empty selection', async (method, url) => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
+    await builtInReportsApi[method]({ ...params, accountIds: ['a1', 'a2'] });
+    expect(apiClient.get).toHaveBeenLastCalledWith(url, {
+      params: { ...params, accountIds: 'a1,a2' },
+    });
+    await builtInReportsApi[method]({ ...params, accountIds: [] });
+    expect(apiClient.get).toHaveBeenLastCalledWith(url, { params });
+  });
+
+  it.each([
+    ['getCashFlow', '/built-in-reports/cash-flow'],
+    ['getIncomeVsExpenses', '/built-in-reports/income-vs-expenses'],
+  ] as const)('%s sends transferScopeAccountIds as one comma-separated value and omits an empty one', async (method, url) => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
+    await builtInReportsApi[method]({ ...params, transferScopeAccountIds: ['a1', 'a2'] });
+    expect(apiClient.get).toHaveBeenLastCalledWith(url, {
+      params: { ...params, transferScopeAccountIds: 'a1,a2' },
+    });
+    await builtInReportsApi[method]({ ...params, transferScopeAccountIds: [] });
+    expect(apiClient.get).toHaveBeenLastCalledWith(url, { params });
+  });
+
   it('getYearOverYear defaults to 2 years', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
     await builtInReportsApi.getYearOverYear();

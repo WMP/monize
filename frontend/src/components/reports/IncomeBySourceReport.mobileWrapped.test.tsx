@@ -101,6 +101,15 @@ const placement = (cell: Element) => {
   return `c${col}/r${line}`;
 };
 
+// The account filter and the tag controls read these on mount; the report is
+// the unchanged one while no key is chosen.
+vi.mock("@/lib/accounts", () => ({
+  accountsApi: { getAll: () => Promise.resolve([]) },
+}));
+vi.mock("@/lib/tags", () => ({
+  tagsApi: { getAll: () => Promise.resolve([]) },
+}));
+
 describe('IncomeBySourceReport (phone wrapped table)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
