@@ -54,11 +54,12 @@ describe('TransactionWarrantiesLine', () => {
     mockList.mockReset();
   });
 
-  it('with no warranties renders the Add button alone and fetches nothing', () => {
+  it('with no warranties says there are none yet and fetches nothing', () => {
     render(
       <TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 0 }} onAddWarranty={vi.fn()} />,
     );
     expect(screen.getByRole('button', { name: 'Add warranty' })).toBeInTheDocument();
+    expect(screen.getByText('No warranties yet')).toBeInTheDocument();
     expect(screen.queryAllByRole('link')).toHaveLength(0);
     expect(mockList).not.toHaveBeenCalled();
   });
@@ -113,6 +114,19 @@ describe('TransactionWarrantiesLine', () => {
     expect(drill).toHaveTextContent('Lifetime');
     expect(drill).not.toHaveTextContent('Expires');
     expect(screen.getByRole('button', { name: 'Add warranty' })).toBeInTheDocument();
+    expect(screen.queryByText('No warranties yet')).not.toBeInTheDocument();
+  });
+
+  it('says there are none yet when the count was stale and the list comes back empty', async () => {
+    mockList.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, limit: 50, total: 0, totalPages: 0, hasMore: false },
+    });
+    await act(async () => {
+      render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 1 }} onOpenWarranty={vi.fn()} />);
+    });
+    expect(screen.getByText('No warranties yet')).toBeInTheDocument();
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
 
   it('says the list failed rather than showing an empty one', async () => {
@@ -124,6 +138,7 @@ describe('TransactionWarrantiesLine', () => {
       'The warranties for this transaction could not be loaded.',
     );
     expect(screen.queryAllByRole('link')).toHaveLength(0);
+    expect(screen.queryByText('No warranties yet')).not.toBeInTheDocument();
   });
 
   it('shows a loading line until the list arrives', async () => {
@@ -131,6 +146,7 @@ describe('TransactionWarrantiesLine', () => {
     mockList.mockReturnValue(new Promise((r) => { resolve = r; }));
     render(<TransactionWarrantiesLine transaction={{ id: 'tx-1', warrantyCount: 1 }} onOpenWarranty={vi.fn()} />);
     expect(screen.getByRole('status')).toHaveTextContent('Loading warranties');
+    expect(screen.queryByText('No warranties yet')).not.toBeInTheDocument();
     await act(async () => {
       resolve({ data: [makeWarranty()], pagination: { page: 1, limit: 50, total: 1, totalPages: 1, hasMore: false } });
     });

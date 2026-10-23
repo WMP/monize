@@ -477,7 +477,8 @@
       "add": "[XX-Add warranty-XX]",
       "expires": "[XX-Expires {date}-XX]",
       "loading": "[XX-Loading warranties-XX]",
-      "loadError": "[XX-The warranties for this transaction could not be loaded.-XX]"
+      "loadError": "[XX-The warranties for this transaction could not be loaded.-XX]",
+      "empty": "[XX-No warranties yet-XX]"
     }
   },
   "splitEditor": {

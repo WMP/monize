@@ -44,8 +44,6 @@ describe("priceInstallment", () => {
       name: "Hypotheek",
       mortgageType: "LINEAR",
       prepaymentMode: null,
-      isCanadianMortgage: false,
-      isVariableRate: false,
       interestRate: 2,
       paymentAmount: null,
       extraPaymentAmount: null,
@@ -377,7 +375,7 @@ describe("priceInstallment", () => {
     const annuityLoan = (overrides: Partial<Account> = {}): Account =>
       makeMortgage({
         accountType: AccountType.LOAN,
-        mortgageType: null,
+        mortgageType: "ANNUITY",
         interestRate: 6,
         paymentAmount: 1500,
         paymentStartDate: null,
@@ -492,7 +490,7 @@ describe("priceInstallment", () => {
     const annuityLoan = (overrides: Partial<Account> = {}): Account =>
       makeMortgage({
         accountType: AccountType.LOAN,
-        mortgageType: null,
+        mortgageType: "ANNUITY",
         interestRate: 6,
         paymentAmount: 1500,
         paymentStartDate: null,
@@ -830,7 +828,7 @@ describe("priceInstallment", () => {
         splits: template.splits as ScheduledTransactionSplit[],
         loanAccount: makeMortgage({
           accountType: AccountType.LOAN,
-          mortgageType: null,
+          mortgageType: "ANNUITY",
           paymentAmount: null,
         }),
         asOfDate: "2024-02-01",
@@ -1439,7 +1437,7 @@ describe("priceInstallment", () => {
     // LOAN 400,000.00 at 6 % paid monthly: 2,000.00 accrues against 1,500.00.
     const loan = makeMortgage({
       accountType: "LOAN" as AccountType,
-      mortgageType: null,
+      mortgageType: "ANNUITY",
       interestRate: 6,
       paymentAmount: 1500,
       currentBalance: -400000,

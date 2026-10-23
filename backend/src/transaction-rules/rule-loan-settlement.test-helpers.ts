@@ -44,8 +44,6 @@ export const linearLoanAccount = (over: Partial<Account> = {}): Account =>
     interestBookingMode: "AUTO",
     mortgageType: "LINEAR",
     prepaymentMode: null,
-    isCanadianMortgage: false,
-    isVariableRate: false,
     interestRate: 2,
     paymentAmount: null,
     extraPaymentAmount: null,

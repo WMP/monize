@@ -12,7 +12,7 @@ number.
 
 Status: **approved** in discussion #1486 (with input from WMP), tracked by
 issue #1501. Each task is a sub-issue (#1502 to #1514), one PR each.
-Phases 1 and 2 are implemented (through P2-Q); Phase 3 (P3-B1) remains.
+Phases 1 and 2 and P3-B1 are implemented; the contract migration (P3-B2) remains.
 
 ## 1. Goal
 
@@ -56,8 +56,9 @@ The eleven decisions are in spec section 3. The ones that decide the shape of th
 work:
 
 1. The column is nullable in Phase 1 and read through `mortgageTypeFromFlags`
-   when null; Phase 3 makes it `NOT NULL DEFAULT 'ANNUITY'` and drops the
-   booleans (expand now, contract later, `database/CLAUDE.md`).
+   when null; Phase 3 gives it `DEFAULT 'ANNUITY'` and stops reading and
+   writing the booleans (P3-B1), then a release later makes it `NOT NULL` and
+   drops them (P3-B2) (expand now, contract later, `database/CLAUDE.md`).
 2. Traits are written once per layer (`MORTGAGE_TYPE_TRAITS`) and consumers
    branch on a trait. Parity between the layers is a shared JSON fixture.
 3. The boolean overloads of `getPeriodicRate` and
@@ -77,13 +78,14 @@ work:
 | 0 | S1 | This plan and the spec | none |
 | 1 | P1-B1 to P1-Q | The column, the type-keyed math, the dropdown with two working values (`ANNUITY`, `CANADIAN_FIXED`), Term Length for every type, dated debt on the rate-change path, copy fixes | Canadian variable-rate inference moves to day count; a future-dated rate change prices the debt at its date |
 | 2 | P2-B1 to P2-Q | `LINEAR` and `INTEREST_ONLY` on both layers, `prepayment_mode`, the detector | New types selectable |
-| 3 | P3-B1 | `NOT NULL DEFAULT 'ANNUITY'`, the booleans dropped, overloads and guard deleted | none |
+| 3 | P3-B1, P3-B2 | P3-B1: `DEFAULT 'ANNUITY'`, the booleans no longer read or written, overloads and guard deleted; P3-B2: `NOT NULL`, the booleans dropped | none |
 
 Phase 1 offers only `ANNUITY` and `CANADIAN_FIXED` in the select; the DTOs
 refuse `LINEAR` and `INTEREST_ONLY` until P2-B1 (the CHECK accepts all four
 from P1-B1, so no second migration is needed to widen it). P3-B1 waits one
 release after Phase 1 shipped, so a rollback to the previous image still finds
-the booleans it reads.
+the booleans it reads; P3-B2 waits one release after P3-B1 (1.20.0) for the
+same reason, since 1.19.x still maps both booleans.
 
 ## 5. Where each rule is held
 
@@ -92,7 +94,7 @@ the booleans it reads.
 | The database accepts only the four types | CHECK on `accounts.mortgage_type`, reconciled with `MORTGAGE_TYPES` by a contract spec in both directions | P1-B1, P1-B2 |
 | `prepayment_mode` only on LINEAR | CHECK `prepayment_mode IS NULL OR mortgage_type = 'LINEAR'`; the service writes null for other types | P2-B1 |
 | One method per type (INV-LOAN-007) | `MORTGAGE_TYPE_TRAITS` per layer, `mortgage-type-cases.json` parity, the method branch on each surface | P1-B2, P1-F1, P2-B1, P2-F1 |
-| A stored type never disagrees with the flags | from P1-B1, a save that changes either flag cleared the type (a helper P1-B3 removed), so the reader falls back to the flags; from P1-B3, every writer stores the type and the flags it maps to together (`mortgageTypeColumns`), and every reader goes through `mortgageTypeOf` | P1-B1, P1-B3 |
+| A stored type never disagrees with the flags | from P1-B1, a save that changes either flag cleared the type (a helper P1-B3 removed), so the reader falls back to the flags; from P1-B3, every writer stores the type and the flags it maps to together (`mortgageTypeColumns`), and every reader goes through `mortgageTypeOf`; from P3-B1 nothing reads or writes the flags | P1-B1, P1-B3, P3-B1 |
 | No new boolean caller | shrink-only flags guard (`mortgage-type-flags.guard.spec.ts`) | P1-B2, deleted in P3-B1 |
 | Dated debt on a rate change | `datedLoanDebt` (`backend/src/accounts/dated-loan-debt.util.ts`) called from both rate-change paths and the mortgage rate update | P1-B3 |
 | Every figure matches the spec | fixtures copied from spec section 7 | P2-B1, P2-F1 |
@@ -117,7 +119,7 @@ the booleans it reads.
 | Risk | Mitigation |
 | --- | --- |
 | A consumer keeps reading the booleans and disagrees with the type after a save | `flagsFromMortgageType` writes both columns on every save in Phases 1 and 2; the flags guard names every remaining reader |
-| A rollback after P3-B1 finds no booleans | P3-B1 waits one release after Phase 1 (section 4) |
+| A rollback finds no booleans | P3-B1 waits one release after Phase 1 and keeps the booleans and a nullable column; P3-B2, which drops them, waits one release after P3-B1 (section 4) |
 | A surface shows the first installment as "the payment" of a LINEAR mortgage long after it fell | `payment_amount` is null for these methods (spec decision 11) and spec table 5.6 assigns every reader to P2-B1 or P2-F1 |
 | A LINEAR installment grows after a rate rise and the posting refuses to grow the parent | spec 5.2: the confirmed sync and template advancement target the method installment; P2-B1 tests the sequence |
 | A residue payment of a fraction of a cent after the last LINEAR installment | spec decision 8, asserted by the 7.1 fixture |

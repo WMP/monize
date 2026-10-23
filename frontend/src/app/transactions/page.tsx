@@ -743,6 +743,14 @@ function TransactionsContent() {
     navigateFromForm(`/warranties?new=1&transactionId=${transaction.id}`);
   };
 
+  // A new transaction's Add arrives once the form has saved it, so there is
+  // nothing unsaved to ask about, and no register to refresh behind a page
+  // that is about to be left: close and go on to the warranty.
+  const handleAddWarrantyAfterCreate = (created: Transaction) => {
+    handleClose();
+    navigateAfterFormCloses(`/warranties?new=1&transactionId=${created.id}`);
+  };
+
   const handleOpenWarrantyFromForm = (warrantyId: string) => {
     navigateFromForm(`/warranties/${warrantyId}`);
   };
@@ -1509,6 +1517,7 @@ function TransactionsContent() {
             onDirtyChange={setFormDirty}
             submitRef={formSubmitRef}
             onAddWarranty={actingAsDelegate ? undefined : handleAddWarrantyFromForm}
+            onAddWarrantyAfterCreate={actingAsDelegate ? undefined : handleAddWarrantyAfterCreate}
             onOpenWarranty={handleOpenWarrantyFromForm}
           />
         </Modal>

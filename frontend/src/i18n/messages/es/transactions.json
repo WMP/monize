@@ -477,7 +477,8 @@
       "add": "Añadir garantía",
       "expires": "Vence el {date}",
       "loading": "Cargando garantías",
-      "loadError": "No se pudieron cargar las garantías de esta transacción."
+      "loadError": "No se pudieron cargar las garantías de esta transacción.",
+      "empty": "Aún no hay garantías"
     }
   },
   "splitEditor": {

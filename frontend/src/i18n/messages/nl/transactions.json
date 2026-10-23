@@ -477,7 +477,8 @@
       "add": "Garantie toevoegen",
       "expires": "Verloopt op {date}",
       "loading": "Garanties laden",
-      "loadError": "De garanties bij deze transactie konden niet worden geladen."
+      "loadError": "De garanties bij deze transactie konden niet worden geladen.",
+      "empty": "Nog geen garanties"
     }
   },
   "splitEditor": {

@@ -46,8 +46,7 @@ describe("LoanRateChangesService", () => {
       paymentFrequency: "MONTHLY",
       paymentStartDate: "2022-01-01",
       amortizationMonths: 300,
-      isCanadianMortgage: true,
-      isVariableRate: true,
+      mortgageType: "ANNUITY",
       isClosed: false,
       scheduledTransactionId: "sched-1",
       interestCategoryId: "cat-interest",
@@ -360,12 +359,8 @@ describe("LoanRateChangesService", () => {
       );
     });
 
-    it("recalculates by the stored type over the flags", async () => {
-      const account = makeAccount({
-        mortgageType: "CANADIAN_FIXED",
-        isCanadianMortgage: false,
-        isVariableRate: false,
-      });
+    it("recalculates by the stored type", async () => {
+      const account = makeAccount({ mortgageType: "CANADIAN_FIXED" });
       accountsRepository.findOne.mockResolvedValue(account);
 
       const result = await service.create(userId, accountId, {
@@ -496,8 +491,6 @@ describe("LoanRateChangesService", () => {
     const loan = (overrides: Partial<Account> = {}): Account =>
       makeAccount({
         mortgageType: "ANNUITY",
-        isCanadianMortgage: false,
-        isVariableRate: false,
         interestRate: 5,
         paymentAmount: 584.59,
         extraPaymentAmount: null,

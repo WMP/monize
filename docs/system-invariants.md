@@ -2639,15 +2639,12 @@ Enforcement         The convention is the nominal annual rate divided by the
                     compoundingFor in backend/src/accounts/mortgage-type.util.ts
                     and frontend/src/lib/mortgage-type.ts, Records over the type
                     so a type without a row is a compile error, read through
-                    mortgageTypeOf (the column, else the type the two legacy
-                    flags denote while the column is nullable). getPeriodicRate
-                    and calculateEffectiveAnnualRate on the backend, and
+                    mortgageTypeOf from accounts.mortgage_type, DEFAULT
+                    'ANNUITY' (a null, which only a 1.19.x rollback writes,
+                    reads as ANNUITY). getPeriodicRate and
+                    calculateEffectiveAnnualRate on the backend, and
                     getPeriodicRate and effectiveAnnualRate in
-                    frontend/src/lib/loan-frequency.ts, are keyed on the type;
-                    the backend's two-flag overloads delegate through
-                    mortgageTypeFromFlags and have no production caller
-                    (mortgage-type-flags.guard.spec.ts fails a new one; the
-                    overloads and the guard go with the booleans).
+                    frontend/src/lib/loan-frequency.ts, take only the type.
                     The EAR takes periodsPerYear and compounds at the payment
                     frequency, so the displayed EAR describes the rate the
                     schedule charges rather than a monthly one nothing used.
@@ -2720,8 +2717,7 @@ Required tests      Present: the "periodic-rate convention" block in
                     and checks the frontend engine -- and the effectiveAnnualRate
                     block in loan-schedule.test.ts. Plus the two mortgage-type
                     contract specs (mortgage-type.contract.spec.ts,
-                    mortgage-type.contract.test.ts) and the flags guard
-                    (mortgage-type-flags.guard.spec.ts).
+                    mortgage-type.contract.test.ts).
 Status              enforced
 ```
 
@@ -3094,11 +3090,9 @@ Enforcement         amortizationMethodFor over MORTGAGE_TYPE_TRAITS
                     the same contract spec; the CHECKs keeping
                     accounts.payment_amount null for LINEAR and INTEREST_ONLY
                     (no stored constant payment can disagree with the method)
-                    and accounts.prepayment_mode null off LINEAR. The two legacy
-                    booleans have no production caller of the overloads that
-                    read them: mortgage-type-flags.guard.spec.ts, shrink-only
-                    with an empty baseline, fails a new one until P3-B1 drops
-                    them. Type detection (detectMortgageType,
+                    and accounts.prepayment_mode null off LINEAR; the column
+                    defaults to ANNUITY and mortgageTypeOf reads a null as
+                    ANNUITY, so every mortgage names its method. Type detection (detectMortgageType,
                     backend/src/accounts/mortgage-type-detection.util.ts) only
                     suggests: neither detection route writes a row, and the
                     user confirms the type in the account form.
@@ -3111,8 +3105,7 @@ Failure response    A LINEAR or INTEREST_ONLY mortgage without
                     amounts post), per the spec's missing-data policy.
 Required tests      Present: mortgage-type.util.spec.ts, the CHECK and parity
                     contract specs (mortgage-type.contract.spec.ts,
-                    mortgage-type.contract.test.ts), the flags guard
-                    (mortgage-type-flags.guard.spec.ts), and on the backend the
+                    mortgage-type.contract.test.ts), and on the backend the
                     spec's section 7 fixtures row by row
                     (mortgage-installment.util.spec.ts,
                     mortgage-amortization.util.spec.ts,
@@ -3433,10 +3426,12 @@ Statement           Interest attributed to a historical loan payment is a
                     transfer". Changing the order of a payment's split lines must
                     not change Interest Paid.
                     The rate is a separate fact from the interest and does not
-                    fall with it: a fixed-rate loan with no recorded rate
-                    history keeps its configured rate on a zero-interest row,
-                    while a variable-rate loan's rate for that date stays null
-                    rather than inheriting today's scalar.
+                    fall with it: a loan with no recorded rate history keeps
+                    its configured rate on a zero-interest row, the only rate on
+                    record for that date. Nothing marks a rate as variable since
+                    1.20.0 stopped reading the variable-rate flag, so a variable loan whose
+                    changes were never recorded shows its current rate there;
+                    recorded rate history replaces it with the dated rate.
                     And 0% is a rate, distinct from "no rate recorded", at every
                     step: a fixed interest-free loan carries 0 on every row
                     (`Number(null)` is also 0, so the test is `!= null`, never
@@ -3493,10 +3488,9 @@ Failure response    The rejection propagates to the caller's error-and-retry
                     unavailable after recovery.
 Required tests      Present: the principal-only matrix in
                     frontend/src/lib/loan-history.test.ts (every account type x
-                    mortgage type, stored or as its legacy flags denote it, x
-                    frequency x rate-timeline presence -- each was a separate
-                    door into the estimate), the
-                    fixed-rate and variable-rate Rate-column cases, the
+                    mortgage type x frequency x rate-timeline presence -- each
+                    was a separate door into the estimate), the
+                    configured-rate Rate-column cases, the
                     reconstruction paths re-pinned against RECORDED interest so
                     the Canadian semi-annual and day-count annualizations stay
                     covered, the split-provenance group (escrow before interest

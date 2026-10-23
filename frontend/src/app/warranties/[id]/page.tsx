@@ -335,7 +335,8 @@ function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
           isOpen={purchaseModal.showForm}
           onClose={handleClosePurchase}
           {...purchaseModal.modalProps}
-          maxWidth="2xl"
+          maxWidth="6xl"
+          className="!max-w-[69rem]"
           padding="md"
           title={tt('page.editModal.editTitle')}
         >

@@ -41,8 +41,7 @@ const mockAccounts = [
     scheduledTransactionId: null,
     assetCategoryId: null,
     dateAcquired: null,
-    isCanadianMortgage: false,
-    isVariableRate: false,
+    mortgageType: 'ANNUITY',
     termMonths: null,
     termEndDate: null,
     amortizationMonths: null,
@@ -77,8 +76,7 @@ const mockAccounts = [
     scheduledTransactionId: null,
     assetCategoryId: null,
     dateAcquired: null,
-    isCanadianMortgage: false,
-    isVariableRate: false,
+    mortgageType: 'ANNUITY',
     termMonths: null,
     termEndDate: null,
     amortizationMonths: null,
@@ -113,8 +111,7 @@ const mockAccounts = [
     scheduledTransactionId: null,
     assetCategoryId: null,
     dateAcquired: null,
-    isCanadianMortgage: false,
-    isVariableRate: false,
+    mortgageType: 'ANNUITY',
     termMonths: null,
     termEndDate: null,
     amortizationMonths: null,
@@ -203,12 +200,14 @@ vi.mock('./TransactionWarrantiesLine', () => ({
   TransactionWarrantiesLine: ({
     transaction,
     onAddWarranty,
+    isAdding,
   }: {
-    transaction: { id: string };
+    transaction?: { id: string };
     onAddWarranty?: () => void;
+    isAdding?: boolean;
   }) => (
-    <div data-testid="warranties-line">
-      {transaction.id}
+    <div data-testid="warranties-line" data-adding={String(Boolean(isAdding))}>
+      {transaction?.id ?? 'new'}
       {onAddWarranty && (
         <button type="button" onClick={onAddWarranty}>
           Add warranty
@@ -573,7 +572,7 @@ describe('TransactionForm', () => {
     it('renders for a saved transaction', async () => {
       render(
         <TransactionForm
-          transaction={createExistingTransaction() as any}
+          transaction={createExistingTransaction({ warrantyCount: 1 }) as any}
           onSuccess={mockOnSuccess}
           onCancel={mockOnCancel}
         />
@@ -599,16 +598,30 @@ describe('TransactionForm', () => {
       expect(onAddWarranty).toHaveBeenCalledWith(existing);
     });
 
-    it('offers no Add warranty when the host supplies no handler', async () => {
+    it('lists without an Add warranty when the host supplies no handler', async () => {
       render(
         <TransactionForm
-          transaction={createExistingTransaction() as any}
+          transaction={createExistingTransaction({ warrantyCount: 1 }) as any}
           onSuccess={mockOnSuccess}
           onCancel={mockOnCancel}
         />
       );
       await waitFor(() => expect(screen.getByTestId('warranties-line')).toBeInTheDocument());
       expect(screen.queryByRole('button', { name: 'Add warranty' })).not.toBeInTheDocument();
+    });
+
+    // Nothing to list and nothing to do would be a dead end in the window.
+    it('is absent when the row has no warranties and the host cannot add one', async () => {
+      render(
+        <TransactionForm
+          transaction={createExistingTransaction({ warrantyCount: 0 }) as any}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+        />
+      );
+      await waitFor(() => expect(mockAccountsGetAll).toHaveBeenCalled());
+      await act(async () => {});
+      expect(screen.queryByTestId('warranties-line')).not.toBeInTheDocument();
     });
 
     it('is absent for an acting delegate, as the Warranties page is read-only to one', async () => {
@@ -632,10 +645,109 @@ describe('TransactionForm', () => {
       }
     });
 
-    it('is absent from a new transaction', async () => {
-      render(<TransactionForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+    it('is absent from a new transaction when the host cannot add one after creating it', async () => {
+      // The edit handler alone does not count: it navigates, it does not save.
+      render(<TransactionForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} onAddWarranty={vi.fn()} />);
       await waitFor(() => expect(mockAccountsGetAll).toHaveBeenCalled());
       expect(screen.queryByTestId('warranties-line')).not.toBeInTheDocument();
+    });
+
+    describe('on a new transaction', () => {
+      async function renderNew(onAddWarrantyAfterCreate: (created: any) => void) {
+        render(
+          <TransactionForm
+            onSuccess={mockOnSuccess}
+            onCancel={mockOnCancel}
+            defaultAccountId="acc-1"
+            onAddWarranty={vi.fn()}
+            onAddWarrantyAfterCreate={onAddWarrantyAfterCreate}
+          />
+        );
+        await waitFor(() => expect(screen.getByTestId('combobox-input-Payee')).toBeInTheDocument());
+        fireEvent.change(screen.getByTestId('combobox-input-Payee'), { target: { value: 'Employer Inc' } });
+      }
+
+      it('saves it first, then hands Add warranty the row it created instead of closing', async () => {
+        const created = { id: 'tx-new' };
+        mockCreate.mockResolvedValueOnce(created);
+        const onAddWarranty = vi.fn();
+        await renderNew(onAddWarranty);
+        expect(screen.getByTestId('warranties-line')).toHaveTextContent('new');
+        fireEvent.click(screen.getByRole('button', { name: 'Add warranty' }));
+        await waitFor(() => expect(onAddWarranty).toHaveBeenCalledWith(created));
+        expect(mockCreate).toHaveBeenCalledTimes(1);
+        expect(mockOnSuccess).not.toHaveBeenCalled();
+      });
+
+      it('does not hand Add on when the save fails', async () => {
+        mockCreate.mockRejectedValueOnce(new Error('Network error'));
+        const onAddWarranty = vi.fn();
+        await renderNew(onAddWarranty);
+        fireEvent.click(screen.getByRole('button', { name: 'Add warranty' }));
+        await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+        await act(async () => {});
+        expect(onAddWarranty).not.toHaveBeenCalled();
+        expect(mockOnSuccess).not.toHaveBeenCalled();
+      });
+
+      it('leaves a plain Save to close as it always did', async () => {
+        const onAddWarranty = vi.fn();
+        await renderNew(onAddWarranty);
+        fireEvent.click(screen.getByRole('button', { name: /Create Transaction/i }));
+        await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
+        expect(onAddWarranty).not.toHaveBeenCalled();
+      });
+
+      // The busy flag is set only after validation resolves, so a second click
+      // before then must be refused by the click guard, not by a disabled button.
+      it('creates the row once when Add is clicked twice', async () => {
+        const created = { id: 'tx-new' };
+        mockCreate.mockResolvedValueOnce(created);
+        const onAddWarranty = vi.fn();
+        await renderNew(onAddWarranty);
+        const add = screen.getByRole('button', { name: 'Add warranty' });
+        fireEvent.click(add);
+        fireEvent.click(add);
+        await waitFor(() => expect(onAddWarranty).toHaveBeenCalledTimes(1));
+        expect(mockCreate).toHaveBeenCalledTimes(1);
+      });
+
+      it('creates the row once when Add is followed by Create', async () => {
+        mockCreate.mockResolvedValueOnce({ id: 'tx-new' });
+        const onAddWarranty = vi.fn();
+        await renderNew(onAddWarranty);
+        fireEvent.click(screen.getByRole('button', { name: 'Add warranty' }));
+        fireEvent.click(screen.getByRole('button', { name: /Create Transaction/i }));
+        await waitFor(() => expect(onAddWarranty).toHaveBeenCalledTimes(1));
+        expect(mockCreate).toHaveBeenCalledTimes(1);
+        expect(mockOnSuccess).not.toHaveBeenCalled();
+      });
+
+      it('shows Add as busy only while Add is saving, not during a plain Create', async () => {
+        let resolveCreate: (value: unknown) => void = () => {};
+        mockCreate.mockReturnValueOnce(new Promise((r) => { resolveCreate = r; }));
+        await renderNew(vi.fn());
+        fireEvent.click(screen.getByRole('button', { name: /Create Transaction/i }));
+        await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+        expect(screen.getByTestId('warranties-line')).toHaveAttribute('data-adding', 'false');
+        await act(async () => {
+          resolveCreate({ id: 'tx-new' });
+        });
+      });
+
+      it('shows Add as busy while it saves', async () => {
+        let resolveCreate: (value: unknown) => void = () => {};
+        mockCreate.mockReturnValueOnce(new Promise((r) => { resolveCreate = r; }));
+        const onAddWarranty = vi.fn();
+        await renderNew(onAddWarranty);
+        fireEvent.click(screen.getByRole('button', { name: 'Add warranty' }));
+        await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+        expect(screen.getByTestId('warranties-line')).toHaveAttribute('data-adding', 'true');
+        await act(async () => {
+          resolveCreate({ id: 'tx-new' });
+        });
+        expect(onAddWarranty).toHaveBeenCalledWith({ id: 'tx-new' });
+      });
     });
 
     it("is absent from a joint account's row, as attachments are", async () => {
