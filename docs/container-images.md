@@ -27,7 +27,10 @@ The digest is the multi-architecture **image index** digest (what
 | Image | Tag | Digest | Used in |
 | --- | --- | --- | --- |
 | `mcr.microsoft.com/playwright` | `v1.64.0-noble` | `sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f` | `scripts/e2e-playwright.sh` (E2E shards in `.github/workflows/ci.yml`) |
-| `mirror.gcr.io/library/postgres` | `16-alpine` | `sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229` | `.github/workflows/ci.yml` (integration-test service), `scripts/verify-schema.sh` |
+| `mirror.gcr.io/library/postgres` | `16-alpine` | `sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229` | `.github/workflows/ci.yml` (integration-test service), `scripts/verify-schema.sh`, `docker-compose.e2e.yml` |
+| `mirror.gcr.io/library/nginx` | `1.29-alpine` | `sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de` | `docker-compose.e2e.yml` (cluster-shard load balancer) |
+| `mirror.gcr.io/library/node` | `24-alpine` | `sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53` | `backend/Dockerfile`, `frontend/Dockerfile` (`development` and `production` stages) |
+| `mirror.gcr.io/library/node` | `24-slim` | `sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205` | `backend/Dockerfile` (`builder` and `deps` stages), `frontend/Dockerfile` (`builder` stage) |
 
 Per-platform manifests of the Playwright index, for reference when comparing a
 pulled image (`docker image inspect --format '{{index .RepoDigests 0}}'` shows
@@ -82,12 +85,23 @@ two disagree, naming both versions.
 2. Change `IMAGE` in `scripts/e2e-playwright.sh` -- tag and digest together.
 3. Change the Playwright rows of the tables above in the same commit.
 
+## The guard
+
+`backend/src/common/image-digest-pin.guard.spec.ts` scans every tracked
+Dockerfile, `docker-compose.e2e.yml`, and every workflow and shell script (the
+same files `ci-images.guard.spec.ts` scans for the registry allowlist). It
+fails when a `mirror.gcr.io` or `mcr.microsoft.com` reference has no
+`@sha256:` digest, when a pinned digest has no row in the "Pinned images"
+table above, or when a row in that table is not actually pinned anywhere --
+so this file cannot go stale silently in either direction. Adding a reference
+or moving a digest means updating both in the same commit.
+
 ## Not yet pinned
 
-These references still pull by tag alone. Pinning them, and a guard that keeps
-this file and the references in step, is tracked separately:
+These references still pull by tag alone, deliberately: they are this
+project's own images in the user-facing compose files and the Helm chart,
+where `:latest` is a convenience for self-hosters, and pinning them is a
+separate decision (issue #1837, item 5).
 
-- `backend/Dockerfile`, `frontend/Dockerfile`: `mirror.gcr.io/library/node:24-alpine`, `mirror.gcr.io/library/node:24-slim`
-- `docker-compose.e2e.yml`: `mirror.gcr.io/library/postgres:16-alpine`, `mirror.gcr.io/library/nginx:1.29-alpine`
 - `docker-compose.dev.yml`, `docker-compose.prod.yml`, `docker-compose.ha.yml`: `postgres:16-alpine`, `caddy:2-alpine`, and the project's own `ghcr.io/kenlasko/monize-*:latest`
 - `helm/values.yaml`: the project's own images, by tag
