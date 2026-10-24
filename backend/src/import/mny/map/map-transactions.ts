@@ -23,6 +23,7 @@ import {
 } from "../model/mny-model";
 import { MnyWarning, MnyWarningRow } from "../model/mny-warnings";
 import { MnyTransactionData } from "../tables/read-transactions";
+import { transactionTagHandles } from "./map-classifications";
 import { TransferIndex, indexTransfers } from "./map-transfers";
 
 /**
@@ -496,6 +497,9 @@ function buildCashCounterparts(
       linkedTransactionId: nearId,
       splits: [],
       collapsedTradeHandle: null,
+      // Money's classification sits on the bank row, which keeps it; the
+      // synthesized sleeve side is Monize's own row and carries none.
+      tagHandles: [],
     });
   }
 
@@ -552,6 +556,7 @@ function mapSplitChild(
       investmentHandle: embeddedTrade,
       amount: child.amount,
       memo: child.memo,
+      tagHandles: transactionTagHandles(child),
     };
   }
 
@@ -578,6 +583,7 @@ function mapSplitChild(
       investmentHandle: null,
       amount: child.amount,
       memo: child.memo,
+      tagHandles: transactionTagHandles(child),
     };
   }
 
@@ -601,6 +607,7 @@ function mapSplitChild(
     investmentHandle: null,
     amount: child.amount,
     memo: child.memo,
+    tagHandles: transactionTagHandles(child),
   };
 }
 
@@ -750,6 +757,7 @@ function mapOne(
     linkedTransactionId,
     splits,
     collapsedTradeHandle,
+    tagHandles: transactionTagHandles(row),
   };
 }
 
@@ -973,6 +981,13 @@ export function mapTransactions(
       .filter((handle): handle is number => handle !== null),
   );
 
+  const referencedTags = new Set(
+    transactions.flatMap((transaction) => [
+      ...transaction.tagHandles,
+      ...transaction.splits.flatMap((split) => split.tagHandles),
+    ]),
+  );
+
   const transferSplits = transactions.reduce(
     (count, transaction) =>
       count +
@@ -985,6 +1000,7 @@ export function mapTransactions(
     transactions,
     referencedPayees,
     referencedCategories,
+    referencedTags,
     transfersLinked: countPlainTransferPairs(context) + transferSplits,
     skipped: reportUnusable(rows, indexes, input, warnings),
     tradeCashLegs: indexes.tradeCashLegs.size,

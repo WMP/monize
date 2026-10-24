@@ -59,9 +59,11 @@ describe("computeExpectedBalances", () => {
         linkedTransactionId: null,
         splits: [],
         collapsedTradeHandle: null,
+        tagHandles: [],
       })),
       referencedPayees: new Set(),
       referencedCategories: new Set(),
+      referencedTags: new Set(),
       transfersLinked: 0,
       skipped: 0,
       deferredInvestments: 0,
@@ -432,6 +434,15 @@ describe("buildPreview", () => {
     expect(counts.accountsIncluded).toBeGreaterThan(0);
   });
 
+  it("reports no tags for a file without classifications", () => {
+    // No committed fixture defines a classification; the shape is pinned by
+    // map-classifications.spec.ts over plain rows.
+    const counts = preview().counts;
+
+    expect(counts.tagsInFile).toBe(0);
+    expect(counts.tagsToCreate).toBe(0);
+  });
+
   it("surfaces the file's defaulted fields as a notice", () => {
     // money2002 has no CRNC.fHidden column.
     expect(preview().missingFields).toContain("CRNC.hidden");
@@ -480,6 +491,7 @@ describe("buildPreview", () => {
         transferAccountKey: null,
         investment: null,
         splits: [],
+        tagHandles: [],
         ...overrides,
       };
     }

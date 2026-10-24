@@ -1,6 +1,7 @@
 import {
   MnyAccount,
   MnyCategory,
+  MnyClassification,
   MnyCurrency,
   MnyExchangeRate,
   MnyFileDefaults,
@@ -16,12 +17,13 @@ import {
   toOptionalText,
   toText,
 } from "../model/mny-values";
+import { MNY_CATEGORY_TREE } from "../model/mny-model";
 import { MnyDatabase } from "../msisam/open-mny";
 import { RowSpec, TableAvailability, readTableByName } from "./table-reader";
 
 /**
  * Readers for Money's reference tables: file defaults, currencies, exchange
- * rates, accounts, payees and categories.
+ * rates, accounts, payees, categories and classifications.
  */
 
 const FILE_DEFAULTS_SPEC: RowSpec<MnyFileDefaults> = {
@@ -73,8 +75,17 @@ const CATEGORY_SPEC: RowSpec<MnyCategory> = {
   name: { from: "szFull", as: toText },
   parent: { from: "hcatParent", as: toHandle },
   level: { from: "nLevel", as: toInteger },
+  // Defaults to 0, the category tree: a file too old to carry `hct` has no
+  // classifications, so every row it holds is a category.
+  classification: { from: "hct", as: toInteger },
   categoryType: { from: "lType", as: (value) => toInteger(value, -1) },
   taxRelated: { from: "fTax", as: toBoolean },
+};
+
+/** `CT`: `hct` 0 is the category tree; the rest are user classifications. */
+const CLASSIFICATION_SPEC: RowSpec<MnyClassification> = {
+  handle: { from: "hct", as: (value) => toInteger(value, -1) },
+  name: { from: "szFull", as: toText },
 };
 
 export interface MnyReferenceData {
@@ -84,8 +95,13 @@ export interface MnyReferenceData {
   readonly exchangeRates: MnyExchangeRate[];
   readonly accounts: MnyAccount[];
   readonly payees: MnyPayee[];
-  /** Sorted by `level` so a parent is always read before its children. */
+  /**
+   * Sorted by `level` so a parent is always read before its children. Holds the
+   * items of every classification too (`classification !== 0`).
+   */
   readonly categories: MnyCategory[];
+  /** User-defined classifications only: the category tree's own `CT` row is dropped. */
+  readonly classifications: MnyClassification[];
   readonly availability: readonly TableAvailability[];
 }
 
@@ -96,6 +112,7 @@ export function readReferenceData(db: MnyDatabase): MnyReferenceData {
   const accounts = readTableByName(db, "ACCT", ACCOUNT_SPEC);
   const payees = readTableByName(db, "PAY", PAYEE_SPEC);
   const categories = readTableByName(db, "CAT", CATEGORY_SPEC);
+  const classifications = readTableByName(db, "CT", CLASSIFICATION_SPEC);
 
   return {
     defaults: defaults.rows[0] ?? null,
@@ -104,6 +121,9 @@ export function readReferenceData(db: MnyDatabase): MnyReferenceData {
     accounts: accounts.rows,
     payees: payees.rows,
     categories: [...categories.rows].sort((a, b) => a.level - b.level),
+    classifications: classifications.rows.filter(
+      (row) => row.handle !== MNY_CATEGORY_TREE,
+    ),
     availability: [
       defaults.availability,
       currencies.availability,
@@ -111,6 +131,7 @@ export function readReferenceData(db: MnyDatabase): MnyReferenceData {
       accounts.availability,
       payees.availability,
       categories.availability,
+      classifications.availability,
     ],
   };
 }

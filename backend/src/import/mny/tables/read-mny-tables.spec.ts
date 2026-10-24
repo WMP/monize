@@ -188,6 +188,8 @@ describe("transaction data", () => {
       reference: null,
       memo: "Positions adjusted to match statement.",
       billSeries: null,
+      classification1: null,
+      classification2: null,
     });
   });
 });

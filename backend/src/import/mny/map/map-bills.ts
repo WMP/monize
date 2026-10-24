@@ -19,6 +19,7 @@ import {
 import { CADENCE_DAYS, inferFrequencyFromDueDates } from "./bill-cadence";
 import { MnyBill, MnyPayee, MnyTransaction } from "../model/mny-rows";
 import { MnyWarning } from "../model/mny-warnings";
+import { transactionTagHandles } from "./map-classifications";
 import { isDegeneratePayeeName } from "./map-reference";
 import { MnyBillData } from "../tables/read-bills";
 import { MnyInvestmentData } from "../tables/read-investments";
@@ -553,6 +554,7 @@ function mapOne(
     transferAccountKey,
     investment,
     splits,
+    tagHandles: transactionTagHandles(template),
   };
 }
 
@@ -679,8 +681,10 @@ export function mapBills(input: MapBillsInput): MappedBills {
 export function billReferences(bills: readonly MappedBill[]): {
   payees: ReadonlySet<number>;
   categories: ReadonlySet<number>;
+  tags: ReadonlySet<number>;
 } {
   return {
+    tags: new Set(bills.flatMap((bill) => bill.tagHandles)),
     payees: new Set(
       bills
         .map((bill) => bill.payeeHandle)

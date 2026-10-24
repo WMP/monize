@@ -60,7 +60,8 @@ trust-builder both PR testers said they needed.
   profile, or an explicit opt-in wipe using the existing delete-my-data operation. Accounts are
   still find-or-create by name, so a re-import into a wiped profile is clean.
 - Money budgets (`BGT` tables — no clean mapping to Monize budgets), savings goals (no Monize
-  entity), classifications beyond standard categories, embedded attachments.
+  entity), embedded attachments. (Classifications were a non-goal for v1 and are now imported as
+  `key:value` tags; see 8.1.)
 - Writing `.mny` files, or reading `.mbf` backup archives.
 - Money 97/98 files (Jet 3 era). Detect and reject with a clear message suggesting an upgrade
   through the free Money Plus Sunset edition (which opens and converts old files).
@@ -537,6 +538,7 @@ real mappers and, in the integration spec, the real INSERT path.
 | `CRNC_EXCHG` | `exchange_rates` | Additive insert on `(from, to, rate_date)` that never replaces an existing row, because the table is shared by every user (INV-FX-004); toggle-controlled |
 | `PAY` | `payees` | Referenced-only (default), degenerate-name filter, existing-payee find-or-create by name |
 | `CAT` | `categories` | Parents before children (`nLevel`); flatten deeper than two levels into `Parent:Child` names; `is_income` derived per spike (root-ancestor classification, transaction-sign heuristic as fallback); referenced-only default |
+| `CT` + `CAT` (`hct != 0`) + `TRN.lHcls1`/`lHcls2` | `tags`, `transaction_tags`, `transaction_split_tags`, `scheduled_transactions.tag_ids` | A classification (`CT`) is the tag's key and each of its items (`CAT` rows with that `hct`) a value: `Properties:20 Spring Apartment`, nested items keeping their path. Referenced items only; find-or-create by name through `TagsService.findOrCreateByNames`; each `TRN` row's own slots decide which tags it carries, so a transfer's two sides are tagged independently. Items are never imported as categories (`isClassificationItem`) |
 | `SEC` (`sct != 4`) | `securities` | Per-user unique symbol; collision suffixing (`VOO-2`) + warning; empty symbols get unique placeholders with `skip_price_updates`; currency via `CRNC` map |
 | `SP` | `security_prices` | Dedupe `(hsec, dt)` keep-latest; batch upsert; `source` marks the import |
 | `ACCT` | `accounts` | `at` map: 0 bank -> CHEQUING, 1 -> CREDIT_CARD, 2 -> CASH, 3 -> ASSET, 4 -> LOAN, 5 -> INVESTMENT (paired), 6 -> MORTGAGE. `amtOpen` -> opening balance; `fFavorite` -> favourite; `hacctRel` on `at=5` -> linked cash/brokerage pair (reusing the entity creator's pair logic); `fClosed` -> closed **after** transactions are written |

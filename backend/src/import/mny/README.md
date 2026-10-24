@@ -62,6 +62,21 @@ A missing table yields zero rows; a missing column yields the converter's defaul
 reported in `TableAvailability` (`missingTables` / `missingFields`) so the wizard can say "this
 file has no scheduled bills" instead of failing.
 
+### A row in `CAT` is not necessarily a category
+
+`CAT` holds the items of Money's two user-named classifications beside the
+categories, told apart only by `hct` (`CT.hct`; 0 is the category tree). A
+classification's top-level item is `nLevel` 0 with a null parent, exactly like
+the INCOME and EXPENSE roots, so the level filter alone hides it -- but a nested
+item is `nLevel` 1 under it and would import as a top-level category named after
+it. `mapCategories` filters on `isClassificationItem` first, and
+`map/map-classifications.ts` turns the items a row references into tags named
+`<classification>:<item path>` (`Properties:20 Spring Apartment`), the
+`key:value` shape `tag-key-value.util.ts` already groups by. `TRN.lHcls1` /
+`lHcls2` name the item per row, so each side of a transfer and each split leg is
+tagged on its own; a trade's cash leg takes the investment row's item when this
+writer creates the leg, and keeps the banking row's own when it adopts one.
+
 ## Inspecting a real file
 
 ```bash

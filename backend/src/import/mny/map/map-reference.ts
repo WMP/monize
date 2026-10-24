@@ -17,6 +17,7 @@ import {
 } from "../model/mny-import-model";
 import {
   MNY_ACCOUNT_TYPE,
+  isClassificationItem,
   isIncomeCategoryType,
   mapAccountType,
 } from "../model/mny-model";
@@ -404,7 +405,9 @@ function ancestorsOf(
  * Maps `CAT` onto Monize's two-level tree.
  *
  * Money's own INCOME and EXPENSE roots are structure, not categories, so they
- * are dropped and their children become Monize's top level. A tree deeper than
+ * are dropped and their children become Monize's top level. The items of a
+ * classification share the table (`hct != 0`) and are not categories either:
+ * `mapClassificationTags` turns those into tags. A tree deeper than
  * that flattens: the level-1 ancestor stays the parent and the remaining path is
  * colon-joined into the child name, which keeps the distinction visible instead
  * of merging two subcategories into one.
@@ -430,7 +433,11 @@ export function mapCategories(
 
   // Sorted by level upstream, so a parent is always seen before its children.
   for (const category of reference.categories) {
-    if (category.handle === null || category.level <= CATEGORY_ROOT_LEVEL) {
+    if (
+      category.handle === null ||
+      category.level <= CATEGORY_ROOT_LEVEL ||
+      isClassificationItem(category)
+    ) {
       continue;
     }
     if (referenced && !referenced.has(category.handle)) {

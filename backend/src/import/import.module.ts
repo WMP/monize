@@ -15,6 +15,7 @@ import { SecuritiesModule } from "../securities/securities.module";
 import { CurrenciesModule } from "../currencies/currencies.module";
 import { UsersModule } from "../users/users.module";
 import { TransactionRulesModule } from "../transaction-rules/transaction-rules.module";
+import { TagsModule } from "../tags/tags.module";
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { TransactionRulesModule } from "../transaction-rules/transaction-rules.m
     forwardRef(() => CurrenciesModule),
     forwardRef(() => UsersModule),
     TransactionRulesModule,
+    TagsModule,
   ],
   controllers: [ImportController, MnyImportController],
   providers: [

@@ -124,6 +124,13 @@ export function MnyReviewStep({
             total: preview.accounts.length,
           })}
         />
+        {counts.tagsInFile > 0 && (
+          <SummaryTile
+            label={t('mnyReview.counts.tags')}
+            value={String(counts.tagsToCreate)}
+            detail={t('mnyReview.counts.ofTotal', { total: counts.tagsInFile })}
+          />
+        )}
       </div>
 
       {/* Investments */}

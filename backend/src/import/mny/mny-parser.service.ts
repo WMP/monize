@@ -18,6 +18,10 @@ import {
   mapPayees,
 } from "./map/map-reference";
 import { mapTransactions } from "./map/map-transactions";
+import {
+  mapClassificationTags,
+  tagHandlesByTransaction,
+} from "./map/map-classifications";
 import { mapSecurities, tradedSecurityHandles } from "./map/map-securities";
 import { mapInvestments } from "./map/map-investments";
 import { resolveExchangeRates } from "./writers/write-prices";
@@ -38,6 +42,7 @@ import {
   MappedInvestments,
   MappedPayees,
   MappedSecurities,
+  MappedTags,
   MappedTransactions,
   MnyHoldingCheck,
 } from "./model/mny-import-model";
@@ -108,6 +113,13 @@ export interface MnyParsedFile {
   readonly transactions: MappedTransactions;
   readonly categories: MappedCategories;
   readonly payees: MappedPayees;
+  /** Money's classification items, as the tags imported rows carry. */
+  readonly tags: MappedTags;
+  /**
+   * `TRN.htrn` -> classification items that row carries, for the rows whose
+   * Monize transaction another writer creates (a trade's cash leg).
+   */
+  readonly tagHandlesByTransaction: ReadonlyMap<number, readonly number[]>;
   readonly securities: MappedSecurities;
   readonly investments: MappedInvestments;
   /**
@@ -479,6 +491,30 @@ export class MnyParserService {
           )
         : null,
     );
+    // A classification is referenced by a banking row or split leg, by a
+    // selected bill's template, or by a trade whose cash leg this import
+    // writes itself (a trade funded from a banking row left the tag on that
+    // row). Nothing else gets a tag, so there is no "all items" option: a
+    // classification is a handful of values, not Money's seeded category tree.
+    const classificationsByRow = tagHandlesByTransaction(
+      tables.transactions.transactions,
+    );
+    const tradeTags = new Set(
+      investments.transactions
+        .filter(
+          (investment) =>
+            investment.handle !== null &&
+            investmentWritesOwnCashRow(investment),
+        )
+        .flatMap(
+          (investment) =>
+            classificationsByRow.get(investment.handle as number) ?? [],
+        ),
+    );
+    const tags = mapClassificationTags(
+      tables.reference,
+      union(union(transactions.referencedTags, tradeTags), billRefs.tags),
+    );
 
     const absentTables = missingTables(tables);
     const defaultedFields = missingFields(tables);
@@ -508,6 +544,8 @@ export class MnyParserService {
       transactions,
       categories,
       payees,
+      tags,
+      tagHandlesByTransaction: classificationsByRow,
       securities,
       investments,
       bills,
@@ -545,6 +583,7 @@ export class MnyParserService {
         ...loans.warnings,
         ...categories.warnings,
         ...payees.warnings,
+        ...tags.warnings,
       ],
     };
   }

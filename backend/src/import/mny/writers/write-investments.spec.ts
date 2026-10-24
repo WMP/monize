@@ -243,6 +243,43 @@ describe("writeInvestments", () => {
     });
   });
 
+  it("puts the trade's Money classification on the cash leg it writes", async () => {
+    const { manager, transactions } = doubles();
+
+    await writeInvestments(manager, "user-1", {
+      ...baseInput,
+      transactions: [investment({ handle: 90 })],
+      tagIdsByTransactionHandle: new Map([[90, ["tag-552"]]]),
+    });
+
+    // The doubles hand every other entity the transactions repository, so the
+    // link insert is the second call on it, after the cash row.
+    const cashRow = transactions.insert.mock.calls[0][0][0];
+    expect(transactions.insert).toHaveBeenCalledTimes(2);
+    expect(transactions.insert.mock.calls[1][0]).toEqual([
+      { transactionId: cashRow.id, tagId: "tag-552" },
+    ]);
+  });
+
+  it("writes no tag link when the trade has no cash leg of its own", async () => {
+    const { manager, transactions } = doubles();
+
+    await writeInvestments(manager, "user-1", {
+      ...baseInput,
+      transactions: [
+        investment({
+          handle: 90,
+          action: InvestmentAction.ADD_SHARES,
+          cashAmount: 0,
+          cashAccountKey: null,
+        }),
+      ],
+      tagIdsByTransactionHandle: new Map([[90, ["tag-552"]]]),
+    });
+
+    expect(transactions.insert).not.toHaveBeenCalled();
+  });
+
   it("persists the mapped status on the investment row, not only the cash leg", async () => {
     // The writer used to carry the status onto the cash leg alone, so a
     // Money-voided trade's shares stayed counted while its cash claimed not to

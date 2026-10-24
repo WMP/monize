@@ -614,6 +614,21 @@ const EXPENSE_TYPES: ReadonlySet<number> = new Set([
 ]);
 
 /**
+ * The `CAT.hct` of the category tree. Every other value names a user-defined
+ * classification (`CT`), whose items share the `CAT` table with the categories
+ * and must never be imported as categories: they become tags instead
+ * (`map/map-classifications.ts`).
+ */
+export const MNY_CATEGORY_TREE = 0;
+
+/** True for a `CAT` row that is a classification item rather than a category. */
+export function isClassificationItem(category: {
+  readonly classification: number;
+}): boolean {
+  return category.classification !== MNY_CATEGORY_TREE;
+}
+
+/**
  * Whether a category is income, from `lType` alone; null for the roots and for
  * codes outside the confirmed set, where the caller falls back to walking to
  * the root ancestor (`INCOME` `hcat` 130 versus `EXPENSE` 131 in every

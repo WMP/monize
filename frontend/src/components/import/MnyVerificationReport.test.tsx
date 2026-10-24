@@ -43,6 +43,7 @@ function result(overrides: Partial<MnyImportResult> = {}): MnyImportResult {
     accountsCreated: 3,
     payeesCreated: 40,
     categoriesCreated: 30,
+    tagsCreated: 0,
     transactionsCreated: 120,
     splitsCreated: 8,
     transfersLinked: 12,
@@ -51,7 +52,14 @@ function result(overrides: Partial<MnyImportResult> = {}): MnyImportResult {
     pricesImported: 0,
     exchangeRatesImported: 0,
     billsCreated: 0,
-    skipped: { accounts: 0, payees: 0, categories: 0, transactions: 0, bills: 0 },
+    skipped: {
+      accounts: 0,
+      payees: 0,
+      categories: 0,
+      tags: 0,
+      transactions: 0,
+      bills: 0,
+    },
     existingDataRemoved: false,
     holdings: [],
     verification: [line()],
@@ -133,6 +141,22 @@ describe('MnyVerificationReport', () => {
     expect(tileValue('Transfers')).toContain('12');
     expect(tileValue('Split legs')).toContain('8');
     expect(tileValue('Payees')).toContain('40');
+  });
+
+  it('shows the tags tile only when Money classifications produced tags', () => {
+    const { unmount } = render(<MnyVerificationReport {...defaultProps} />);
+    expect(screen.queryByText('Tags from classifications')).toBeNull();
+    unmount();
+
+    render(
+      <MnyVerificationReport
+        {...defaultProps}
+        result={result({ tagsCreated: 2 })}
+      />,
+    );
+    const tileValue = (label: string) =>
+      screen.getByText(label).parentElement?.textContent;
+    expect(tileValue('Tags from classifications')).toContain('2');
   });
 
   it('says so when existing data was wiped first', () => {

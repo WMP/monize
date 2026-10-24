@@ -541,6 +541,7 @@ describe("mny writers (integration)", () => {
             ]),
           ),
           payeeNameByHandle: payees.nameByHandle,
+          tagIdByHandle: new Map<number, string>(),
         },
       };
     }
@@ -915,6 +916,7 @@ describe("mny writers (integration)", () => {
           categoryIdByHandle: new Map(),
           payeeIdByHandle: new Map(),
           payeeNameByHandle: new Map(),
+          tagIdByHandle: new Map(),
         });
         await writeInvestments(manager, userId, {
           transactions: investments.transactions,
@@ -1382,6 +1384,7 @@ describe("mny writers (integration)", () => {
           categoryIdByHandle,
           securityIdByHandle: new Map<number, string>(),
           linkedKeyByKey: new Map<string, string>(),
+          tagIdByHandle: new Map<number, string>(),
         },
       };
     }

@@ -38,6 +38,9 @@ const TRANSACTION_SPEC: RowSpec<MnyTransaction> = {
   reference: { from: "szId", as: toOptionalText },
   memo: { from: "mMemo", as: toOptionalText },
   billSeries: { from: "hbillHead", as: toHandle },
+  // Money writes -1 for "no classification", which `toHandle` reads as null.
+  classification1: { from: "lHcls1", as: toHandle },
+  classification2: { from: "lHcls2", as: toHandle },
 };
 
 const SPLIT_SPEC: RowSpec<MnyTransactionSplit> = {

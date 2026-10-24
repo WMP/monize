@@ -17,6 +17,7 @@ import {
 } from "../model/mny-import-model";
 import { investmentWritesOwnCashRow } from "../map/investment-cash";
 import { INSERT_CHUNK_SIZE, chunk } from "./chunk";
+import { TagLink, writeTransactionTagLinks } from "./write-tags";
 
 /**
  * Bulk writers for securities, investment transactions and their cash legs.
@@ -141,6 +142,13 @@ export interface WriteInvestmentsInput {
    */
   readonly writtenTransactionIds?: ReadonlySet<string>;
   readonly writtenSplitIds?: ReadonlySet<string>;
+  /**
+   * `TRN.htrn` of the investment row -> the Monize tag ids its Money
+   * classification resolved to. The cash leg this writer creates for the trade
+   * carries them; an adopted banking row or an embedding split leg brought its
+   * own when `writeTransactions` wrote it.
+   */
+  readonly tagIdsByTransactionHandle?: ReadonlyMap<number, readonly string[]>;
   readonly onProgress?: (processed: number, total: number) => Promise<void>;
 }
 
@@ -222,6 +230,7 @@ export async function writeInvestments(
   for (const batch of chunk(writable, INSERT_CHUNK_SIZE)) {
     const cashRows: Record<string, unknown>[] = [];
     const investmentRows: Record<string, unknown>[] = [];
+    const cashTagLinks: TagLink[] = [];
 
     for (const transaction of batch) {
       const accountId = input.accountIdByKey.get(
@@ -307,6 +316,13 @@ export async function writeInvestments(
           isTransfer: false,
           linkedTransactionId: null,
         });
+        const tagIds =
+          transaction.handle === null
+            ? undefined
+            : input.tagIdsByTransactionHandle?.get(transaction.handle);
+        for (const tagId of tagIds ?? []) {
+          cashTagLinks.push({ rowId: newCashTransactionId, tagId });
+        }
       }
 
       const securityId =
@@ -362,6 +378,7 @@ export async function writeInvestments(
     if (cashRows.length > 0) {
       await transactionRepo.insert(cashRows);
       cashTransactionsCreated += cashRows.length;
+      await writeTransactionTagLinks(manager, cashTagLinks);
     }
     await investmentRepo.insert(investmentRows);
 
