@@ -18,6 +18,7 @@ import { roundMoney, roundToDecimals } from "../../common/round.util";
 import { tr } from "../../i18n/translate";
 import { ImportPostProcessingService } from "../import-post-processing.service";
 import { TransactionRulesApplierService } from "../../transaction-rules/transaction-rules-applier.service";
+import { TagsService } from "../../tags/tags.service";
 import { ImportJob } from "./entities/import-job.entity";
 import { MnyStagedFileMissingError } from "./mny-errors";
 import {
@@ -59,6 +60,7 @@ import { applyImportRules } from "./writers/apply-import-rules";
 import { writeBills } from "./writers/write-bills";
 import { throttleProgress } from "./writers/progress-throttle";
 import { writeLoans } from "./writers/write-loans";
+import { writeTags } from "./writers/write-tags";
 import { selectedBills } from "./map/map-bills";
 import {
   writeExchangeRates,
@@ -125,6 +127,7 @@ export class MnyImportService {
     @Inject(forwardRef(() => HoldingsService))
     private holdings: HoldingsService,
     private rulesApplier: TransactionRulesApplierService,
+    private tags: TagsService,
   ) {}
 
   /**
@@ -363,6 +366,8 @@ export class MnyImportService {
       accountsCreated: written.accountsCreated,
       payeesCreated: written.payeesCreated,
       categoriesCreated: written.categoriesCreated,
+      tagsCreated: written.tagsCreated,
+      tagLinksApplied: written.tagLinksApplied,
       transactionsCreated: written.transactionsCreated,
       splitsCreated: written.splitsCreated,
       transfersLinked: parsed.transactions.transfersLinked,
@@ -378,6 +383,7 @@ export class MnyImportService {
         accounts: parsed.accounts.skipped,
         payees: parsed.payees.skipped,
         categories: parsed.categories.skipped,
+        tags: parsed.tags.skipped,
         transactions: parsed.transactions.skipped + parsed.investments.skipped,
         bills: parsed.bills.skipped,
       },
@@ -440,6 +446,8 @@ export class MnyImportService {
     accountsCreated: number;
     categoriesCreated: number;
     payeesCreated: number;
+    tagsCreated: number;
+    tagLinksApplied: number;
     transactionsCreated: number;
     splitsCreated: number;
     securitiesCreated: number;
@@ -470,6 +478,14 @@ export class MnyImportService {
         parsed.categories.categories,
       );
       const payees = await writePayees(manager, userId, parsed.payees.payees);
+      // Money's classifications, as tags: find-or-create by name like the
+      // payees, so a second import merges rather than duplicates.
+      const tags = await writeTags(
+        manager,
+        this.tags,
+        userId,
+        parsed.tags.tags,
+      );
 
       await context.reportProgress({
         phase: "transactions",
@@ -492,6 +508,7 @@ export class MnyImportService {
         categoryIdByHandle,
         payeeIdByHandle,
         payeeNameByHandle: parsed.payees.nameByHandle,
+        tagIdByHandle: tags.idByHandle,
         onProgress: (processed, total) =>
           reportTransactions({ phase: "transactions", processed, total }),
       });
@@ -545,6 +562,7 @@ export class MnyImportService {
         // writer is told which ids actually landed.
         writtenTransactionIds: transactions.writtenTransactionIds,
         writtenSplitIds: transactions.writtenSplitIds,
+        tagIdByHandle: tags.idByHandle,
         onProgress: (processed, total) =>
           reportInvestments({ phase: "investments", processed, total }),
       });
@@ -585,6 +603,7 @@ export class MnyImportService {
             .filter((account) => account.linkedKey !== null)
             .map((account) => [account.key, account.linkedKey as string]),
         ),
+        tagIdByHandle: tags.idByHandle,
       });
 
       await context.reportProgress({
@@ -651,6 +670,9 @@ export class MnyImportService {
         accountsCreated: accounts.created,
         categoriesCreated: categories.created,
         payeesCreated: payees.created,
+        tagsCreated: tags.created,
+        tagLinksApplied:
+          transactions.tagLinksApplied + investments.tagLinksApplied,
         transactionsCreated: transactions.transactionsCreated,
         splitsCreated: transactions.splitsCreated,
         securitiesCreated: securities.created,

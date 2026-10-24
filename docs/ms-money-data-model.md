@@ -125,14 +125,15 @@ file. Monize's reader takes a list of column aliases, newest first.
 Money keeps degenerate rows -- `#`, `*`, names that are empty once trimmed --
 which are internal placeholders and never real payees.
 
-## CAT (categories)
+## CAT (categories, and classification items)
 
 | Field | Description |
 |-------|-------------|
 | `hcat` | Primary key |
+| `hct` | Which tree the row belongs to: `CT.hct`. 0 is the category tree; see CT below |
 | `szFull` | Category name |
-| `hcatParent` | FK to parent category (null for the two roots) |
-| `nLevel` | Depth (0 = root) |
+| `hcatParent` | FK to parent category (null for the two roots, and for a classification's top-level items) |
+| `nLevel` | Depth (0 = root, and 0 for a classification's top-level items) |
 | `lType` | Income/expense classification -- see below |
 | `fTax` | Tax-related flag |
 
@@ -146,6 +147,38 @@ Every tree descends from one of two roots: `INCOME` (`hcat` 130) and `EXPENSE`
 > roots themselves. Cross-tabbed against root ancestry over 349 categories in
 > three Money vintages, there is no crossover. Root-ancestor classification is
 > the fallback for the roots, not the primary signal.
+
+> **Addition.** `hct` is missing from the original too, and it is what keeps a
+> classification's items out of the category tree. Only `hct = 0` rows are
+> categories; filter on it before anything else (`isClassificationItem`). The
+> two-roots rule above holds for `hct = 0` only: a classification's top-level
+> item is also `nLevel` 0 with a null parent (`hcat` 552, "20 Spring Apartment",
+> `hct` 1, `lType` -1 in the maintainer's file).
+
+## CT (category types: the category tree plus each classification)
+
+| Field | Description |
+|-------|-------------|
+| `hct` | Primary key; `CAT.hct` points here. 0 is the ordinary category tree ("Category") |
+| `szFull` | The name the user gave the classification, e.g. "Properties" |
+| `ctid` | Classification slot; 1 and 2 are Money's "Classification 1" and "Classification 2" |
+
+Money offers two user-named classifications, a second and third way to label a
+transaction beside its category. Each is one `CT` row, and its items live in
+`CAT` with that `hct`, nesting through `hcatParent` like categories. Every file
+seen has the `hct = 0` row; a file whose user never created a classification has
+nothing else (all five fixtures), and the maintainer's file has one, `hct` 1
+"Properties" with a single item.
+
+A transaction names its item in `TRN.lHcls1` (classification 1) and `lHcls2`
+(classification 2), `-1` for none; `lHclsKak` is always `-1` in every file seen
+and is not read. Split children carry their own slots, and in the maintainer's
+file a classified split parent's legs carry the same item as the parent (67 rows
+across top-level postings, split legs and recurrence templates, none on an
+investment row). Monize has no second axis of categorisation, so the importer
+writes each item as a tag named `<classification>:<item path>`
+(`map/map-classifications.ts`), which the `key:value` tag convention groups
+under the classification.
 
 ## CRNC (currencies)
 
@@ -710,5 +743,5 @@ apart" in data nothing was reading.
   meaning of `act` 5 and `act` 14. Each needs one run of `npm run mny:inspect`
   against a large real file.
 - Money's tables carry far more than the importer reads. Budgets (`BGT*`),
-  savings goals, classifications and attachments are all out of scope, and are
-  not described here.
+  savings goals and attachments are all out of scope, and are not described
+  here.

@@ -26,6 +26,11 @@ export const MNY_WARNING_CODES = [
   "categoryTypeInferred",
   /** A payee named `#`, `*` or blank: Money's degenerate rows, never imported. */
   "degeneratePayeeSkipped",
+  /**
+   * `TRN.lHcls1` / `lHcls2` named a handle that is not a classification item
+   * in `CAT`, so the row imports without that tag.
+   */
+  "unknownClassificationItem",
   /** A `TRN` row with no account, or a date outside the representable range. */
   "unusableTransaction",
   /** A `TRN_XFER` side whose counterpart is missing or excluded from the import. */

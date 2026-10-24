@@ -92,6 +92,7 @@ function tx(
     categoryHandle: null,
     description: null,
     linkedInvestmentId: null,
+    tagHandles: [],
     ...overrides,
   };
 }

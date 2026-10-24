@@ -115,6 +115,35 @@ export interface MappedPayee {
   readonly name: string;
 }
 
+// ---------------------------------------------------------------------------
+// Classifications (Money) -> tags (Monize)
+// ---------------------------------------------------------------------------
+
+/**
+ * One classification item, as the Monize tag it becomes. Money's classification
+ * is the tag's key and the item its value (`Properties:20 Spring Apartment`),
+ * which is the `key:value` convention `tag-key-value.util.ts` already reads, so
+ * the imported tags group under the classification they came from.
+ */
+export interface MappedTag {
+  /** `CAT.hcat` of the classification item. */
+  readonly handle: number;
+  /** Tag name Monize will use, within the `tags.name` column width. */
+  readonly name: string;
+}
+
+export interface MappedTags {
+  /** Unique by name (case-insensitively), referenced items only. */
+  readonly tags: readonly MappedTag[];
+  /** Every referenced item handle that maps to a tag. */
+  readonly byHandle: ReadonlyMap<number, MappedTag>;
+  /** Classification items the file defines, referenced or not. */
+  readonly inFile: number;
+  /** Items no imported row references, so no tag is created for them. */
+  readonly skipped: number;
+  readonly warnings: readonly MnyWarning[];
+}
+
 export interface MappedPayees {
   /** Unique by name, since `payees` is unique on `(user_id, name)`. */
   readonly payees: readonly MappedPayee[];
@@ -152,6 +181,8 @@ export interface MappedSplit {
   readonly investmentHandle: number | null;
   readonly amount: number;
   readonly memo: string | null;
+  /** Classification items (`CAT.hcat`) the leg carries, written as split tags. */
+  readonly tagHandles: readonly number[];
 }
 
 export interface MappedTransaction {
@@ -180,6 +211,12 @@ export interface MappedTransaction {
    * INTEREST companion records it.
    */
   readonly collapsedTradeHandle: number | null;
+  /**
+   * Classification items (`CAT.hcat`) the row carries in `TRN.lHcls1` /
+   * `lHcls2`, written as the transaction's tags. Each side of a transfer
+   * carries its own, exactly as Money records them.
+   */
+  readonly tagHandles: readonly number[];
 }
 
 export interface MappedTransactions {
@@ -188,6 +225,14 @@ export interface MappedTransactions {
   readonly referencedPayees: ReadonlySet<number>;
   /** Category handles an imported transaction or split actually uses. */
   readonly referencedCategories: ReadonlySet<number>;
+  /** Classification item handles an imported transaction or split carries. */
+  readonly referencedTags: ReadonlySet<number>;
+  /**
+   * Trade `TRN.htrn` -> the classification items on Money's own sleeve-side
+   * cash row for that trade. Those rows are not imported (`writeInvestments`
+   * writes the leg from the trade), so their tags move to the trade's leg.
+   */
+  readonly tradeCashLegTagHandles: ReadonlyMap<number, readonly number[]>;
   /** Transfer pairs fully linked in both directions. */
   readonly transfersLinked: number;
   /** `TRN` rows that are real postings but could not be imported. */
@@ -404,6 +449,12 @@ export interface MappedInvestmentTransaction {
    * `investment_transactions.linked_transaction_id` by the back-patch pass.
    */
   readonly linkedInvestmentId: string | null;
+  /**
+   * Classification items (`CAT.hcat`) the trade's cash leg carries when this
+   * import writes that leg: the investment row's own, plus those of Money's
+   * sleeve-side cash row it replaces (`adoptCashLegTags`).
+   */
+  readonly tagHandles: readonly number[];
 }
 
 export interface MappedInvestments {
@@ -476,6 +527,8 @@ export interface MappedBill {
   readonly transferAccountKey: string | null;
   readonly investment: MappedBillInvestment | null;
   readonly splits: readonly MappedBillSplit[];
+  /** Classification items the template carries; the schedule's `tag_ids`. */
+  readonly tagHandles: readonly number[];
 }
 
 export interface MappedBills {

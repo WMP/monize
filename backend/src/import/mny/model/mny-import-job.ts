@@ -90,6 +90,10 @@ export interface MnyImportResult {
   readonly accountsCreated: number;
   readonly payeesCreated: number;
   readonly categoriesCreated: number;
+  /** Tags created for Money's classification items; a reused tag is not counted. */
+  readonly tagsCreated: number;
+  /** Tag links written onto transactions and split legs, new tags or reused. */
+  readonly tagLinksApplied: number;
   readonly transactionsCreated: number;
   readonly splitsCreated: number;
   readonly transfersLinked: number;
@@ -109,6 +113,8 @@ export interface MnyImportResult {
     readonly accounts: number;
     readonly payees: number;
     readonly categories: number;
+    /** Classification items no imported row references. */
+    readonly tags: number;
     readonly transactions: number;
     /** Bill series with no usable template or date -- not unticked ones. */
     readonly bills: number;

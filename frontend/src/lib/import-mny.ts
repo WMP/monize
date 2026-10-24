@@ -106,6 +106,10 @@ export interface MnyPreviewCounts {
   payeesInFile: number;
   categoriesToCreate: number;
   categoriesInFile: number;
+  /** Tags Money's classification items become; referenced items only. */
+  tagsToCreate: number;
+  /** Classification items in the file; 0 when it has no classifications. */
+  tagsInFile: number;
   transactionsToCreate: number;
   transfersToLink: number;
   transactionsSkipped: number;
@@ -228,6 +232,10 @@ export interface MnyImportResult {
   accountsCreated: number;
   payeesCreated: number;
   categoriesCreated: number;
+  /** Tags created for Money's classification items; a reused tag is not counted. */
+  tagsCreated: number;
+  /** Tag links written onto transactions and split legs, new tags or reused. */
+  tagLinksApplied: number;
   transactionsCreated: number;
   splitsCreated: number;
   transfersLinked: number;
@@ -246,6 +254,8 @@ export interface MnyImportResult {
     accounts: number;
     payees: number;
     categories: number;
+    /** Classification items no imported row references. */
+    tags: number;
     transactions: number;
     /** Bill series with no usable template or date -- not unticked ones. */
     bills: number;

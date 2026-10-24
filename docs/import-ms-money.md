@@ -49,8 +49,8 @@ and import the resulting `.mny`.
    - Untick any account you do not want. Closed accounts are included by
      default and stay closed; they still hold history worth keeping.
    - Override an account's currency if Money had it wrong.
-   - Counts for payees, categories, securities, prices, rates and bills, each
-     shown against the total in the file, so "40 of 500 payees" is visible
+   - Counts for payees, categories, tags, securities, prices, rates and bills,
+     each shown against the total in the file, so "40 of 500 payees" is visible
      before rather than after.
    - **Scheduled bills** appear as a checkbox list. Money keeps one row per
      occurrence, so a long history holds thousands of them for a handful of real
@@ -112,12 +112,19 @@ and import the resulting `.mny`.
   replaces one already stored, and the import reports how many it added.
 - **Scheduled bills** you ticked, created active and set not to post
   automatically, so nothing lands in your accounts without you.
+- **Classifications**, as tags. Money's two user-named classifications
+  ("Classification 1" and "2", which you may have called *Properties* or
+  *Projects*) become Monize tags named `Classification:Item`, for example
+  `Properties:20 Spring Apartment`, so they group under the classification in
+  the tag picker and reports. Every transaction, split leg and scheduled bill
+  that carried the item in Money carries the tag in Monize. Only items a
+  transaction actually uses are created; the review step shows how many of the
+  file's items that is.
 
 ## What is not imported (v1)
 
 - **Budgets.** Money's budget tables have no clean equivalent in Monize's.
 - **Savings goals.** No equivalent entity.
-- **Classifications** beyond ordinary categories.
 - **Attachments** embedded in the file.
 - **Categories deeper than two levels** are flattened into `Parent:Child` names;
   Monize's category tree is two levels deep.

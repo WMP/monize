@@ -24,6 +24,11 @@ import { InvestmentTransaction } from "@/securities/entities/investment-transact
 import { HoldingsService } from "@/securities/holdings.service";
 import { TransactionRulesApplierService } from "@/transaction-rules/transaction-rules-applier.service";
 import { ExchangeRate } from "@/currencies/entities/exchange-rate.entity";
+import { Tag } from "@/tags/entities/tag.entity";
+import { TransactionTag } from "@/tags/entities/transaction-tag.entity";
+import { TransactionSplitTag } from "@/tags/entities/transaction-split-tag.entity";
+import { TagsService } from "@/tags/tags.service";
+import { ActionHistoryService } from "@/action-history/action-history.service";
 import { ImportPostProcessingService } from "@/import/import-post-processing.service";
 import { ImportJob } from "@/import/mny/entities/import-job.entity";
 import { ImportStagedFile } from "@/import/mny/entities/import-staged-file.entity";
@@ -43,6 +48,7 @@ import {
   mnyAccount,
   mnyBill,
   mnyCategory,
+  mnyClassification,
   mnyCurrency,
   mnyDefaults,
   mnyPayee,
@@ -62,6 +68,8 @@ import {
   mapPayees,
 } from "@/import/mny/map/map-reference";
 import { mapTransactions } from "@/import/mny/map/map-transactions";
+import { mapClassificationTags } from "@/import/mny/map/map-classifications";
+import { writeTags } from "@/import/mny/writers/write-tags";
 import { mapBills } from "@/import/mny/map/map-bills";
 import { mapLoans } from "@/import/mny/map/map-loans";
 import { mapSecurities } from "@/import/mny/map/map-securities";
@@ -162,6 +170,9 @@ describe("mny writers (integration)", () => {
           Holding,
           InvestmentTransaction,
           ExchangeRate,
+          Tag,
+          TransactionTag,
+          TransactionSplitTag,
         ]),
       ],
       providers: [
@@ -172,6 +183,11 @@ describe("mny writers (integration)", () => {
         // Real: its balance recalculation is the cross-check the verification
         // report compares against.
         ImportPostProcessingService,
+        // Real: the import creates tags through its find-or-create, and the
+        // `transaction_tags` writes below are what this suite is for. Its
+        // history recorder only needs the DataSource and ModuleRef.
+        TagsService,
+        ActionHistoryService,
         // Stubbed: these reach external price and FX providers.
         {
           provide: NetWorthService,
@@ -487,7 +503,18 @@ describe("mny writers (integration)", () => {
           }),
           mnyCategory({ handle: 60, name: "Interest", level: 1, parent: 131 }),
           mnyCategory({ handle: 61, name: "Groceries", level: 1, parent: 131 }),
+          // A classification item shares the table: Money's real shape, from
+          // the maintainer's file.
+          mnyCategory({
+            handle: 552,
+            name: "20 Spring Apartment",
+            level: 0,
+            parent: null,
+            classification: 1,
+            categoryType: -1,
+          }),
         ],
+        classifications: [mnyClassification({ handle: 1, name: "Properties" })],
       });
       const accounts = mapAccounts(
         reference,
@@ -504,6 +531,10 @@ describe("mny writers (integration)", () => {
       });
       const categories = mapCategories(reference, null);
       const payees = mapPayees(reference.payees, null);
+      const tags = mapClassificationTags(
+        reference,
+        transactions.referencedTags,
+      );
 
       const written = await inTransaction(async (manager) => {
         const writtenAccounts = await writeAccounts(
@@ -517,7 +548,18 @@ describe("mny writers (integration)", () => {
           categories.categories,
         );
         const writtenPayees = await writePayees(manager, userId, payees.payees);
-        return { writtenAccounts, writtenCategories, writtenPayees };
+        const writtenTags = await writeTags(
+          manager,
+          module.get(TagsService),
+          userId,
+          tags.tags,
+        );
+        return {
+          writtenAccounts,
+          writtenCategories,
+          writtenPayees,
+          writtenTags,
+        };
       });
 
       return {
@@ -525,6 +567,8 @@ describe("mny writers (integration)", () => {
         transactions,
         categories,
         payees,
+        tags,
+        writtenTags: written.writtenTags,
         input: {
           transactions: transactions.transactions,
           accountIdByKey: written.writtenAccounts.idByKey,
@@ -541,6 +585,7 @@ describe("mny writers (integration)", () => {
             ]),
           ),
           payeeNameByHandle: payees.nameByHandle,
+          tagIdByHandle: written.writtenTags.idByHandle,
         },
       };
     }
@@ -583,6 +628,81 @@ describe("mny writers (integration)", () => {
       });
       expect(row!.payee!.name).toBe("Bank");
       expect(row!.category!.name).toBe("Groceries");
+    });
+
+    it("tags a classified row and a classified split leg with the classification's key:value tag", async () => {
+      const { tags, writtenTags, input } = await setup(
+        transactionData({
+          transactions: [
+            mnyTransaction({
+              handle: 1,
+              account: 1,
+              amount: -100,
+              classification1: 552,
+            }),
+            mnyTransaction({
+              handle: 2,
+              account: 1,
+              amount: -70,
+              category: 61,
+              classification1: 552,
+            }),
+            mnyTransaction({
+              handle: 3,
+              account: 1,
+              amount: -30,
+              category: 60,
+            }),
+            mnyTransaction({ handle: 4, account: 2, amount: 5 }),
+          ],
+          splits: [
+            mnySplit({ parent: 1, child: 2, position: 0 }),
+            mnySplit({ parent: 1, child: 3, position: 1 }),
+          ],
+        }),
+      );
+
+      expect(tags.tags).toEqual([
+        { handle: 552, name: "Properties:20 Spring Apartment" },
+      ]);
+      expect(writtenTags.created).toBe(1);
+
+      const written = await inTransaction((manager) =>
+        writeTransactions(manager, userId, input),
+      );
+      expect(written.tagLinksApplied).toBe(2);
+
+      const tag = await dataSource
+        .getRepository(Tag)
+        .findOneByOrFail({ userId, name: "Properties:20 Spring Apartment" });
+      const rowLinks = await dataSource
+        .getRepository(TransactionTag)
+        .find({ where: { tagId: tag.id }, relations: { transaction: true } });
+      expect(rowLinks.map((link) => link.transaction.amount)).toEqual([
+        "-100.0000",
+      ]);
+      const legLinks = await dataSource
+        .getRepository(TransactionSplitTag)
+        .find({
+          where: { tagId: tag.id },
+          relations: { transactionSplit: true },
+        });
+      expect(legLinks.map((link) => link.transactionSplit.amount)).toEqual([
+        "-70.0000",
+      ]);
+      // The item itself is never a category.
+      expect(
+        await dataSource
+          .getRepository(Category)
+          .findOneBy({ userId, name: "20 Spring Apartment" }),
+      ).toBeNull();
+
+      // A second import finds the tag instead of creating a twin.
+      const again = await inTransaction((manager) =>
+        writeTags(manager, module.get(TagsService), userId, tags.tags),
+      );
+      expect(again.created).toBe(0);
+      expect(again.idByHandle.get(552)).toBe(tag.id);
     });
 
     it("cross-links a transfer pair, which a per-row insert could not do", async () => {
@@ -915,6 +1035,7 @@ describe("mny writers (integration)", () => {
           categoryIdByHandle: new Map(),
           payeeIdByHandle: new Map(),
           payeeNameByHandle: new Map(),
+          tagIdByHandle: new Map(),
         });
         await writeInvestments(manager, userId, {
           transactions: investments.transactions,
@@ -926,6 +1047,7 @@ describe("mny writers (integration)", () => {
           symbolByHandle: new Map([[SECURITY_HANDLE, "VOO"]]),
           writtenTransactionIds: writtenTransactions.writtenTransactionIds,
           writtenSplitIds: writtenTransactions.writtenSplitIds,
+          tagIdByHandle: new Map(),
         });
         return { accountIdByKey: writtenAccounts.idByKey };
       });
@@ -1382,6 +1504,7 @@ describe("mny writers (integration)", () => {
           categoryIdByHandle,
           securityIdByHandle: new Map<number, string>(),
           linkedKeyByKey: new Map<string, string>(),
+          tagIdByHandle: new Map<number, string>(),
         },
       };
     }

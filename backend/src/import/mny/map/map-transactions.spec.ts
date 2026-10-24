@@ -668,6 +668,7 @@ describe("mapTransactions", () => {
             investmentHandle: null,
             amount: -100,
             memo: null,
+            tagHandles: [],
           },
         ]);
         // A leg's counterpart points back at the parent payment, the same
@@ -731,6 +732,63 @@ describe("mapTransactions", () => {
     });
   });
 
+  describe("classifications", () => {
+    it("carries a row's classification items as its tag handles", () => {
+      const result = mapTransactions(
+        input({
+          transactions: transactionData({
+            transactions: [
+              mnyTransaction({ handle: 1, amount: -50, classification1: 552 }),
+              mnyTransaction({
+                handle: 2,
+                amount: -20,
+                classification1: 552,
+                classification2: 700,
+              }),
+              mnyTransaction({ handle: 3, amount: -10 }),
+            ],
+          }),
+        }),
+      );
+
+      expect(
+        result.transactions.map((transaction) => transaction.tagHandles),
+      ).toEqual([[552], [552, 700], []]);
+      expect([...result.referencedTags].sort()).toEqual([552, 700]);
+    });
+
+    it("keeps a split leg's own classification on the leg, and counts it as referenced", () => {
+      const result = mapTransactions(
+        input({
+          transactions: transactionData({
+            transactions: [
+              mnyTransaction({ handle: 1, amount: -100, classification1: 552 }),
+              mnyTransaction({
+                handle: 2,
+                amount: -70,
+                category: 51,
+                classification1: 560,
+              }),
+              mnyTransaction({ handle: 3, amount: -30, category: 52 }),
+            ],
+            splits: [
+              mnySplit({ parent: 1, child: 2, position: 0 }),
+              mnySplit({ parent: 1, child: 3, position: 1 }),
+            ],
+          }),
+        }),
+      );
+
+      const [parent] = result.transactions;
+      expect(parent.tagHandles).toEqual([552]);
+      expect(parent.splits.map((split) => split.tagHandles)).toEqual([
+        [560],
+        [],
+      ]);
+      expect([...result.referencedTags].sort()).toEqual([552, 560]);
+    });
+  });
+
   describe("splits", () => {
     it("maps category legs from the child rows", () => {
       const result = mapTransactions(
@@ -770,6 +828,7 @@ describe("mapTransactions", () => {
           investmentHandle: null,
           amount: -70,
           memo: "Food",
+          tagHandles: [],
         },
         {
           id: expect.any(String),
@@ -780,6 +839,7 @@ describe("mapTransactions", () => {
           investmentHandle: null,
           amount: -30,
           memo: "Household",
+          tagHandles: [],
         },
       ]);
     });

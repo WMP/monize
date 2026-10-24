@@ -17,6 +17,7 @@ const tx = (
     isTransfer: false,
     linkedTransactionId: null,
     collapsedTradeHandle: null,
+    tagHandles: [],
     splits: [],
     ...over,
   }) as unknown as MappedTransaction;

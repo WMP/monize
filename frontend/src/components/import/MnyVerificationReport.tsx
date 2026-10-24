@@ -123,6 +123,12 @@ export function MnyVerificationReport({
           label={t('mnyComplete.counts.categories')}
           value={result.categoriesCreated}
         />
+        {result.tagLinksApplied > 0 && (
+          <Tile
+            label={t('mnyComplete.counts.taggedRows')}
+            value={result.tagLinksApplied}
+          />
+        )}
         {result.securitiesCreated > 0 && (
           <Tile
             label={t('mnyComplete.counts.securities')}

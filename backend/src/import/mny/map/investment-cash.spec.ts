@@ -6,8 +6,10 @@ import {
   MnyInvestmentCashSource,
 } from "../model/mny-import-model";
 import {
+  adoptCashLegTags,
   applyInvestmentCashSources,
   investmentWritesOwnCashRow,
+  referencedTradeTags,
   tradesByHandle,
 } from "./investment-cash";
 
@@ -48,6 +50,7 @@ function trade(
     categoryHandle: null,
     description: null,
     linkedInvestmentId: null,
+    tagHandles: [],
     ...overrides,
   };
 }
@@ -268,5 +271,44 @@ describe("applyInvestmentCashSources", () => {
 
     expect(result.transactions[1].cashTransactionId).toBeNull();
     expect(result.transactions[1].cashAccountKey).toBe("acct-6");
+  });
+});
+
+describe("adoptCashLegTags", () => {
+  it("unions the sleeve row's items onto the trade that replaces it, each once", () => {
+    const result = adoptCashLegTags(
+      investments([
+        trade({ handle: 21, tagHandles: [552] }),
+        trade({ id: "22222222-2222-2222-2222-222222222222", handle: 22 }),
+      ]),
+      new Map([[21, [552, 700]]]),
+    );
+
+    expect(result.transactions.map((row) => row.tagHandles)).toEqual([
+      [552, 700],
+      [],
+    ]);
+  });
+
+  it("returns the input untouched when no sleeve row carried anything", () => {
+    const input = investments([trade()]);
+
+    expect(adoptCashLegTags(input, new Map())).toBe(input);
+  });
+});
+
+describe("referencedTradeTags", () => {
+  it("counts only trades whose cash leg this import writes", () => {
+    const result = referencedTradeTags(
+      investments([
+        trade({ tagHandles: [552] }),
+        // Funded from a banking row: that row carried its own tags.
+        trade({ cashTransactionId: "tx-1", tagHandles: [700] }),
+        // Share-only: no cash leg for a tag to land on.
+        trade({ cashAccountKey: null, cashAmount: 0, tagHandles: [701] }),
+      ]),
+    );
+
+    expect([...result]).toEqual([552]);
   });
 });

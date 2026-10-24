@@ -17,6 +17,7 @@ import {
 } from "../model/mny-import-model";
 import { investmentWritesOwnCashRow } from "../map/investment-cash";
 import { INSERT_CHUNK_SIZE, chunk } from "./chunk";
+import { TagLink, tagIdsFor, writeTransactionTagLinks } from "./write-tags";
 
 /**
  * Bulk writers for securities, investment transactions and their cash legs.
@@ -141,6 +142,13 @@ export interface WriteInvestmentsInput {
    */
   readonly writtenTransactionIds?: ReadonlySet<string>;
   readonly writtenSplitIds?: ReadonlySet<string>;
+  /**
+   * Classification item (`CAT.hcat`) -> Monize tag id, from `writeTags`. The
+   * cash leg this writer creates carries the trade's `tagHandles`; an adopted
+   * banking row or an embedding split leg brought its own when
+   * `writeTransactions` wrote it.
+   */
+  readonly tagIdByHandle: ReadonlyMap<number, string>;
   readonly onProgress?: (processed: number, total: number) => Promise<void>;
 }
 
@@ -148,6 +156,8 @@ export interface WrittenInvestments {
   readonly investmentTransactionsCreated: number;
   readonly cashTransactionsCreated: number;
   readonly linksApplied: number;
+  /** Tag links written onto the cash legs this writer created. */
+  readonly tagLinksApplied: number;
   /** Every account id that received a row, for post-processing. */
   readonly affectedAccountIds: ReadonlySet<string>;
   /** Brokerage account ids whose holdings need rebuilding. */
@@ -218,10 +228,12 @@ export async function writeInvestments(
 
   let processed = 0;
   let cashTransactionsCreated = 0;
+  let tagLinksApplied = 0;
 
   for (const batch of chunk(writable, INSERT_CHUNK_SIZE)) {
     const cashRows: Record<string, unknown>[] = [];
     const investmentRows: Record<string, unknown>[] = [];
+    const cashTagLinks: TagLink[] = [];
 
     for (const transaction of batch) {
       const accountId = input.accountIdByKey.get(
@@ -307,6 +319,12 @@ export async function writeInvestments(
           isTransfer: false,
           linkedTransactionId: null,
         });
+        for (const tagId of tagIdsFor(
+          transaction.tagHandles,
+          input.tagIdByHandle,
+        )) {
+          cashTagLinks.push({ rowId: newCashTransactionId, tagId });
+        }
       }
 
       const securityId =
@@ -362,6 +380,7 @@ export async function writeInvestments(
     if (cashRows.length > 0) {
       await transactionRepo.insert(cashRows);
       cashTransactionsCreated += cashRows.length;
+      tagLinksApplied += await writeTransactionTagLinks(manager, cashTagLinks);
     }
     await investmentRepo.insert(investmentRows);
 
@@ -377,6 +396,7 @@ export async function writeInvestments(
   return {
     investmentTransactionsCreated: writable.length,
     cashTransactionsCreated,
+    tagLinksApplied,
     linksApplied,
     affectedAccountIds,
     brokerageAccountIds,

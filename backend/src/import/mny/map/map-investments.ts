@@ -35,6 +35,7 @@ import { MnyBill, MnyTransaction } from "../model/mny-rows";
 import { MnyWarning, MnyWarningRow } from "../model/mny-warnings";
 import { MnyInvestmentData } from "../tables/read-investments";
 import { cashKeyByAccountKey } from "./map-reference";
+import { transactionTagHandles } from "./map-classifications";
 import { MnyTransactionData } from "../tables/read-transactions";
 import { ExchangeRateRow } from "../writers/write-prices";
 
@@ -453,6 +454,7 @@ function mapOne(
     categoryHandle: row.category,
     description: row.memo,
     linkedInvestmentId: companionId,
+    tagHandles: transactionTagHandles(row),
   };
 
   if (companionId === null) {

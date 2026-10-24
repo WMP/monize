@@ -18,13 +18,16 @@ import {
   mapPayees,
 } from "./map/map-reference";
 import { mapTransactions } from "./map/map-transactions";
+import { mapClassificationTags } from "./map/map-classifications";
 import { mapSecurities, tradedSecurityHandles } from "./map/map-securities";
 import { mapInvestments } from "./map/map-investments";
 import { resolveExchangeRates } from "./writers/write-prices";
 import {
+  adoptCashLegTags,
   applyInvestmentCashSources,
   investmentWritesOwnCashRow,
   reconcileEmbeddedAccruedInterest,
+  referencedTradeTags,
   tradesByHandle,
 } from "./map/investment-cash";
 import { billReferences, mapBills, selectedBills } from "./map/map-bills";
@@ -38,6 +41,7 @@ import {
   MappedInvestments,
   MappedPayees,
   MappedSecurities,
+  MappedTags,
   MappedTransactions,
   MnyHoldingCheck,
 } from "./model/mny-import-model";
@@ -47,7 +51,10 @@ import {
 } from "./model/mny-import-options";
 import { MnyWarning } from "./model/mny-warnings";
 import { MnyExchangeRate, MnySecurityPrice } from "./model/mny-rows";
-import { isCurrencyPseudoSecurity } from "./model/mny-model";
+import {
+  isClassificationItem,
+  isCurrencyPseudoSecurity,
+} from "./model/mny-model";
 import { TransactionStatus } from "../../transactions/entities/transaction.entity";
 import { roundMoney } from "../../common/round.util";
 
@@ -108,6 +115,8 @@ export interface MnyParsedFile {
   readonly transactions: MappedTransactions;
   readonly categories: MappedCategories;
   readonly payees: MappedPayees;
+  /** Money's classification items, as the tags imported rows carry. */
+  readonly tags: MappedTags;
   readonly securities: MappedSecurities;
   readonly investments: MappedInvestments;
   /**
@@ -341,9 +350,10 @@ function fileCounts(tables: MnyTables): MnyFileCounts {
   return {
     accounts: tables.reference.accounts.length,
     payees: tables.reference.payees.length,
-    // Money's two structural roots are not categories.
+    // Money's two structural roots are not categories, and neither are the
+    // items of a classification, which share the table.
     categories: tables.reference.categories.filter(
-      (category) => category.level > 0,
+      (category) => category.level > 0 && !isClassificationItem(category),
     ).length,
     securities: tables.investments.securities.filter(
       (security) => !isCurrencyPseudoSecurity(security.symbol),
@@ -414,11 +424,14 @@ export class MnyParserService {
       cashKeyByAccountKey: cashKeyByAccountKey(accounts),
       tradesByHandle: tradesByHandle(mappedInvestments),
     });
-    const investments = reconcileEmbeddedAccruedInterest(
-      applyInvestmentCashSources(
-        mappedInvestments,
-        transactions.investmentCashSources,
+    const investments = adoptCashLegTags(
+      reconcileEmbeddedAccruedInterest(
+        applyInvestmentCashSources(
+          mappedInvestments,
+          transactions.investmentCashSources,
+        ),
       ),
+      transactions.tradeCashLegTagHandles,
     );
     const holdings = crossCheckHoldings({
       transactions: investments.transactions,
@@ -479,6 +492,18 @@ export class MnyParserService {
           )
         : null,
     );
+    // A classification is referenced by a banking row or split leg, by a
+    // selected bill's template, or by a trade whose cash leg this import
+    // writes itself (a trade funded from a banking row left the tag on that
+    // row). Nothing else gets a tag, so there is no "all items" option: a
+    // classification is a handful of values, not Money's seeded category tree.
+    const tags = mapClassificationTags(
+      tables.reference,
+      union(
+        union(transactions.referencedTags, referencedTradeTags(investments)),
+        billRefs.tags,
+      ),
+    );
 
     const absentTables = missingTables(tables);
     const defaultedFields = missingFields(tables);
@@ -508,6 +533,7 @@ export class MnyParserService {
       transactions,
       categories,
       payees,
+      tags,
       securities,
       investments,
       bills,
@@ -545,6 +571,7 @@ export class MnyParserService {
         ...loans.warnings,
         ...categories.warnings,
         ...payees.warnings,
+        ...tags.warnings,
       ],
     };
   }

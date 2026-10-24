@@ -264,6 +264,7 @@ describe("Transaction rules on the import paths (integration)", () => {
         linkedTransactionId: null,
         splits: [],
         collapsedTradeHandle: null,
+        tagHandles: [],
         ...over,
       }) as MappedTransaction;
 
@@ -292,6 +293,7 @@ describe("Transaction rules on the import paths (integration)", () => {
             categoryIdByHandle: new Map(),
             payeeIdByHandle: new Map([[5, payeeId]]),
             payeeNameByHandle: new Map([[5, "BIEDRONKA 123"]]),
+            tagIdByHandle: new Map(),
           });
           return applyImportRules(manager, applier, aliceId, {
             transactions,
@@ -332,6 +334,7 @@ describe("Transaction rules on the import paths (integration)", () => {
               categoryIdByHandle: new Map(),
               payeeIdByHandle: new Map(),
               payeeNameByHandle: new Map([[5, "BIEDRONKA 123"]]),
+              tagIdByHandle: new Map(),
             });
             await applyImportRules(manager, applier, aliceId, {
               transactions,
