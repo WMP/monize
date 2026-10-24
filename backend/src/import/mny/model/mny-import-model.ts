@@ -227,6 +227,12 @@ export interface MappedTransactions {
   readonly referencedCategories: ReadonlySet<number>;
   /** Classification item handles an imported transaction or split carries. */
   readonly referencedTags: ReadonlySet<number>;
+  /**
+   * Trade `TRN.htrn` -> the classification items on Money's own sleeve-side
+   * cash row for that trade. Those rows are not imported (`writeInvestments`
+   * writes the leg from the trade), so their tags move to the trade's leg.
+   */
+  readonly tradeCashLegTagHandles: ReadonlyMap<number, readonly number[]>;
   /** Transfer pairs fully linked in both directions. */
   readonly transfersLinked: number;
   /** `TRN` rows that are real postings but could not be imported. */
@@ -443,6 +449,12 @@ export interface MappedInvestmentTransaction {
    * `investment_transactions.linked_transaction_id` by the back-patch pass.
    */
   readonly linkedInvestmentId: string | null;
+  /**
+   * Classification items (`CAT.hcat`) the trade's cash leg carries when this
+   * import writes that leg: the investment row's own, plus those of Money's
+   * sleeve-side cash row it replaces (`adoptCashLegTags`).
+   */
+  readonly tagHandles: readonly number[];
 }
 
 export interface MappedInvestments {

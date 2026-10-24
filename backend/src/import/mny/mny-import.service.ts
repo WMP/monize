@@ -60,7 +60,7 @@ import { applyImportRules } from "./writers/apply-import-rules";
 import { writeBills } from "./writers/write-bills";
 import { throttleProgress } from "./writers/progress-throttle";
 import { writeLoans } from "./writers/write-loans";
-import { tagIdsFor, writeTags } from "./writers/write-tags";
+import { writeTags } from "./writers/write-tags";
 import { selectedBills } from "./map/map-bills";
 import {
   writeExchangeRates,
@@ -367,6 +367,7 @@ export class MnyImportService {
       payeesCreated: written.payeesCreated,
       categoriesCreated: written.categoriesCreated,
       tagsCreated: written.tagsCreated,
+      tagLinksApplied: written.tagLinksApplied,
       transactionsCreated: written.transactionsCreated,
       splitsCreated: written.splitsCreated,
       transfersLinked: parsed.transactions.transfersLinked,
@@ -446,6 +447,7 @@ export class MnyImportService {
     categoriesCreated: number;
     payeesCreated: number;
     tagsCreated: number;
+    tagLinksApplied: number;
     transactionsCreated: number;
     splitsCreated: number;
     securitiesCreated: number;
@@ -560,10 +562,7 @@ export class MnyImportService {
         // writer is told which ids actually landed.
         writtenTransactionIds: transactions.writtenTransactionIds,
         writtenSplitIds: transactions.writtenSplitIds,
-        tagIdsByTransactionHandle: this.tagIdsByTransactionHandle(
-          parsed,
-          tags.idByHandle,
-        ),
+        tagIdByHandle: tags.idByHandle,
         onProgress: (processed, total) =>
           reportInvestments({ phase: "investments", processed, total }),
       });
@@ -672,6 +671,8 @@ export class MnyImportService {
         categoriesCreated: categories.created,
         payeesCreated: payees.created,
         tagsCreated: tags.created,
+        tagLinksApplied:
+          transactions.tagLinksApplied + investments.tagLinksApplied,
         transactionsCreated: transactions.transactionsCreated,
         splitsCreated: transactions.splitsCreated,
         securitiesCreated: securities.created,
@@ -725,25 +726,6 @@ export class MnyImportService {
           idByFullName.get(category.fullName),
         ])
         .filter((entry): entry is [number, string] => entry[1] !== undefined),
-    );
-  }
-
-  /**
-   * `TRN.htrn` -> the tag ids its classification items resolved to, for the
-   * trades whose cash leg `writeInvestments` creates. Rows with nothing to
-   * carry are absent.
-   */
-  private tagIdsByTransactionHandle(
-    parsed: MnyParsedFile,
-    tagIdByHandle: ReadonlyMap<number, string>,
-  ): Map<number, readonly string[]> {
-    return new Map(
-      [...parsed.tagHandlesByTransaction]
-        .map(([handle, tagHandles]): [number, readonly string[]] => [
-          handle,
-          tagIdsFor(tagHandles, tagIdByHandle),
-        ])
-        .filter(([, ids]) => ids.length > 0),
     );
   }
 

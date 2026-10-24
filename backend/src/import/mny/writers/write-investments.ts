@@ -17,7 +17,7 @@ import {
 } from "../model/mny-import-model";
 import { investmentWritesOwnCashRow } from "../map/investment-cash";
 import { INSERT_CHUNK_SIZE, chunk } from "./chunk";
-import { TagLink, writeTransactionTagLinks } from "./write-tags";
+import { TagLink, tagIdsFor, writeTransactionTagLinks } from "./write-tags";
 
 /**
  * Bulk writers for securities, investment transactions and their cash legs.
@@ -143,12 +143,12 @@ export interface WriteInvestmentsInput {
   readonly writtenTransactionIds?: ReadonlySet<string>;
   readonly writtenSplitIds?: ReadonlySet<string>;
   /**
-   * `TRN.htrn` of the investment row -> the Monize tag ids its Money
-   * classification resolved to. The cash leg this writer creates for the trade
-   * carries them; an adopted banking row or an embedding split leg brought its
-   * own when `writeTransactions` wrote it.
+   * Classification item (`CAT.hcat`) -> Monize tag id, from `writeTags`. The
+   * cash leg this writer creates carries the trade's `tagHandles`; an adopted
+   * banking row or an embedding split leg brought its own when
+   * `writeTransactions` wrote it.
    */
-  readonly tagIdsByTransactionHandle?: ReadonlyMap<number, readonly string[]>;
+  readonly tagIdByHandle: ReadonlyMap<number, string>;
   readonly onProgress?: (processed: number, total: number) => Promise<void>;
 }
 
@@ -156,6 +156,8 @@ export interface WrittenInvestments {
   readonly investmentTransactionsCreated: number;
   readonly cashTransactionsCreated: number;
   readonly linksApplied: number;
+  /** Tag links written onto the cash legs this writer created. */
+  readonly tagLinksApplied: number;
   /** Every account id that received a row, for post-processing. */
   readonly affectedAccountIds: ReadonlySet<string>;
   /** Brokerage account ids whose holdings need rebuilding. */
@@ -226,6 +228,7 @@ export async function writeInvestments(
 
   let processed = 0;
   let cashTransactionsCreated = 0;
+  let tagLinksApplied = 0;
 
   for (const batch of chunk(writable, INSERT_CHUNK_SIZE)) {
     const cashRows: Record<string, unknown>[] = [];
@@ -316,11 +319,10 @@ export async function writeInvestments(
           isTransfer: false,
           linkedTransactionId: null,
         });
-        const tagIds =
-          transaction.handle === null
-            ? undefined
-            : input.tagIdsByTransactionHandle?.get(transaction.handle);
-        for (const tagId of tagIds ?? []) {
+        for (const tagId of tagIdsFor(
+          transaction.tagHandles,
+          input.tagIdByHandle,
+        )) {
           cashTagLinks.push({ rowId: newCashTransactionId, tagId });
         }
       }
@@ -378,7 +380,7 @@ export async function writeInvestments(
     if (cashRows.length > 0) {
       await transactionRepo.insert(cashRows);
       cashTransactionsCreated += cashRows.length;
-      await writeTransactionTagLinks(manager, cashTagLinks);
+      tagLinksApplied += await writeTransactionTagLinks(manager, cashTagLinks);
     }
     await investmentRepo.insert(investmentRows);
 
@@ -394,6 +396,7 @@ export async function writeInvestments(
   return {
     investmentTransactionsCreated: writable.length,
     cashTransactionsCreated,
+    tagLinksApplied,
     linksApplied,
     affectedAccountIds,
     brokerageAccountIds,

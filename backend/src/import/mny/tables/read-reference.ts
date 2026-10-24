@@ -17,7 +17,6 @@ import {
   toOptionalText,
   toText,
 } from "../model/mny-values";
-import { MNY_CATEGORY_TREE } from "../model/mny-model";
 import { MnyDatabase } from "../msisam/open-mny";
 import { RowSpec, TableAvailability, readTableByName } from "./table-reader";
 
@@ -82,9 +81,13 @@ const CATEGORY_SPEC: RowSpec<MnyCategory> = {
   taxRelated: { from: "fTax", as: toBoolean },
 };
 
-/** `CT`: `hct` 0 is the category tree; the rest are user classifications. */
+/**
+ * `CT`: `hct` 0 is the category tree; the rest are user classifications.
+ * `toHandle` reads 0 as null, so the tree's own row drops out with the rows
+ * that have no usable handle.
+ */
 const CLASSIFICATION_SPEC: RowSpec<MnyClassification> = {
-  handle: { from: "hct", as: (value) => toInteger(value, -1) },
+  handle: { from: "hct", as: toHandle },
   name: { from: "szFull", as: toText },
 };
 
@@ -121,9 +124,7 @@ export function readReferenceData(db: MnyDatabase): MnyReferenceData {
     accounts: accounts.rows,
     payees: payees.rows,
     categories: [...categories.rows].sort((a, b) => a.level - b.level),
-    classifications: classifications.rows.filter(
-      (row) => row.handle !== MNY_CATEGORY_TREE,
-    ),
+    classifications: classifications.rows.filter((row) => row.handle !== null),
     availability: [
       defaults.availability,
       currencies.availability,

@@ -480,7 +480,7 @@
       "splits": "[XX-Split legs-XX]",
       "payees": "[XX-Payees-XX]",
       "categories": "[XX-Categories-XX]",
-      "tags": "[XX-Tags from classifications-XX]",
+      "taggedRows": "[XX-Rows tagged from classifications-XX]",
       "securities": "[XX-Securities-XX]",
       "investments": "[XX-Investment transactions-XX]",
       "prices": "[XX-Prices-XX]",

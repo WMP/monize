@@ -981,6 +981,18 @@ export function mapTransactions(
       .filter((handle): handle is number => handle !== null),
   );
 
+  // Money's own sleeve-side cash rows are not imported; the trade writes the
+  // leg. Their classification goes with it (`adoptCashLegTags`).
+  const tradeCashLegTagHandles = new Map<number, readonly number[]>();
+  for (const handle of indexes.tradeCashLegs) {
+    const row = indexes.byHandle.get(handle);
+    const trade = indexes.transfers.partnerByHandle.get(handle);
+    const handles = row === undefined ? [] : transactionTagHandles(row);
+    if (trade !== undefined && handles.length > 0) {
+      tradeCashLegTagHandles.set(trade, handles);
+    }
+  }
+
   const referencedTags = new Set(
     transactions.flatMap((transaction) => [
       ...transaction.tagHandles,
@@ -1001,6 +1013,7 @@ export function mapTransactions(
     referencedPayees,
     referencedCategories,
     referencedTags,
+    tradeCashLegTagHandles,
     transfersLinked: countPlainTransferPairs(context) + transferSplits,
     skipped: reportUnusable(rows, indexes, input, warnings),
     tradeCashLegs: indexes.tradeCashLegs.size,

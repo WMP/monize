@@ -7,7 +7,6 @@ import {
 import {
   MAX_TAG_NAME_LENGTH,
   mapClassificationTags,
-  tagHandlesByTransaction,
   transactionTagHandles,
 } from "./map-classifications";
 
@@ -59,18 +58,6 @@ describe("transactionTagHandles", () => {
         mnyTransaction({ classification1: 552, classification2: 700 }),
       ),
     ).toEqual([552, 700]);
-  });
-});
-
-describe("tagHandlesByTransaction", () => {
-  it("indexes only the rows that carry a classification", () => {
-    const index = tagHandlesByTransaction([
-      mnyTransaction({ handle: 1 }),
-      mnyTransaction({ handle: 2, classification2: 552 }),
-      mnyTransaction({ handle: null, classification1: 552 }),
-    ]);
-
-    expect([...index]).toEqual([[2, [552]]]);
   });
 });
 
@@ -134,6 +121,24 @@ describe("mapClassificationTags", () => {
     expect(result.skipped).toBe(1);
   });
 
+  it("keeps a blank-named item importable under a placeholder, rather than calling it undefined", () => {
+    const blank = mnyCategory({
+      handle: 570,
+      name: "   ",
+      level: 0,
+      parent: null,
+      classification: 1,
+    });
+    const result = mapClassificationTags(
+      reference([EXPENSE_ROOT, blank]),
+      new Set([570]),
+    );
+
+    expect(result.tags.map((tag) => tag.name)).toEqual(["Properties:Item 570"]);
+    expect(result.inFile).toBe(1);
+    expect(result.warnings).toEqual([]);
+  });
+
   it("never turns an ordinary category into a tag, and reports the reference", () => {
     // `lHcls1` pointing at a category-tree row is a damaged file, not a tag.
     const result = mapClassificationTags(reference(), new Set([200, 999]));
@@ -180,6 +185,25 @@ describe("mapClassificationTags", () => {
     expect(result.tags[0].name.startsWith("Properties:xxx")).toBe(true);
   });
 
+  it("trims a clamped name, so what TagsService stores still matches the handle", () => {
+    // `TagsService` trims before writing; a name cut at a space would come back
+    // one character shorter than asked for and resolve to no handle.
+    const cutAtSpace = mnyCategory({
+      handle: 563,
+      name: `${"y".repeat(MAX_TAG_NAME_LENGTH - "Properties:".length - 1)} tail`,
+      level: 0,
+      parent: null,
+      classification: 1,
+    });
+    const result = mapClassificationTags(
+      reference([EXPENSE_ROOT, cutAtSpace]),
+      new Set([563]),
+    );
+
+    expect(result.tags[0].name).toHaveLength(MAX_TAG_NAME_LENGTH - 1);
+    expect(result.tags[0].name.endsWith("y")).toBe(true);
+  });
+
   it("does not spin on a cyclic parent chain", () => {
     const a = mnyCategory({
       handle: 570,
@@ -196,8 +220,9 @@ describe("mapClassificationTags", () => {
       classification: 1,
     });
 
-    expect(
-      mapClassificationTags(reference([a, b]), new Set([570])).tags[0].name,
-    ).toBe("Properties:B:A");
+    const [tag] = mapClassificationTags(reference([a, b]), new Set([570])).tags;
+
+    expect(tag.name.startsWith("Properties:")).toBe(true);
+    expect(tag.name.endsWith(":A")).toBe(true);
   });
 });

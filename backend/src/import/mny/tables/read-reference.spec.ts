@@ -39,6 +39,8 @@ describe("readReferenceData", () => {
         rows: [
           { hct: 0, szFull: "Category" },
           { hct: 1, szFull: "Properties" },
+          // No usable handle: nothing in CAT can point at it.
+          { hct: null, szFull: "damaged" },
         ],
       },
     });

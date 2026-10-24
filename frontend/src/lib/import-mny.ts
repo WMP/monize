@@ -234,6 +234,8 @@ export interface MnyImportResult {
   categoriesCreated: number;
   /** Tags created for Money's classification items; a reused tag is not counted. */
   tagsCreated: number;
+  /** Tag links written onto transactions and split legs, new tags or reused. */
+  tagLinksApplied: number;
   transactionsCreated: number;
   splitsCreated: number;
   transfersLinked: number;

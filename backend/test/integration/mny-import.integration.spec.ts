@@ -928,6 +928,7 @@ describe("mny writers (integration)", () => {
           symbolByHandle: new Map([[SECURITY_HANDLE, "VOO"]]),
           writtenTransactionIds: writtenTransactions.writtenTransactionIds,
           writtenSplitIds: writtenTransactions.writtenSplitIds,
+          tagIdByHandle: new Map(),
         });
         return { accountIdByKey: writtenAccounts.idByKey };
       });

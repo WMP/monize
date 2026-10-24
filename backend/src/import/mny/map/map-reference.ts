@@ -381,8 +381,12 @@ export function mapAccounts(
 // Categories
 // ---------------------------------------------------------------------------
 
-/** Ancestors of a category, root first, excluding the category itself. */
-function ancestorsOf(
+/**
+ * Ancestors of a category (or classification item), root first, excluding the
+ * row itself. Shared with `map-classifications.ts`, which builds an item's path
+ * from it.
+ */
+export function ancestorsOf(
   category: MnyCategory,
   byHandle: ReadonlyMap<number, MnyCategory>,
 ): MnyCategory[] {

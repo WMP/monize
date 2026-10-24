@@ -23,6 +23,7 @@ import { mapSecurities } from "./map-securities";
 import { mapTransactions } from "./map-transactions";
 import { mapInvestments } from "./map-investments";
 import {
+  adoptCashLegTags,
   applyInvestmentCashSources,
   investmentWritesOwnCashRow,
   reconcileEmbeddedAccruedInterest,
@@ -125,11 +126,14 @@ function mapAll(
     cashKeyByAccountKey: cashKeyByAccountKey(mappedAccounts),
     tradesByHandle: tradesByHandle(mappedInvestments),
   });
-  const investments = reconcileEmbeddedAccruedInterest(
-    applyInvestmentCashSources(
-      mappedInvestments,
-      banking.investmentCashSources,
+  const investments = adoptCashLegTags(
+    reconcileEmbeddedAccruedInterest(
+      applyInvestmentCashSources(
+        mappedInvestments,
+        banking.investmentCashSources,
+      ),
     ),
+    banking.tradeCashLegTagHandles,
   );
 
   /** Every row a given account's register will hold, from both writers. */
@@ -178,6 +182,39 @@ describe("a trade funded from the brokerage's own cash account", () => {
       }),
     ],
     transfers: [mnyTransfer({ from: 20, to: 21 })],
+  });
+
+  it("carries a classification Money put on the dropped sleeve row onto the trade's own leg", () => {
+    // The user classified the cash row, not the trade. The row is correctly
+    // not imported, so without this the tag would vanish with nothing to warn.
+    const classifiedSleeve = transactionData({
+      transactions: [
+        mnyTransaction({
+          handle: 20,
+          account: SLEEVE,
+          amount: -PURCHASE,
+          classification1: 552,
+        }),
+        mnyTransaction({
+          handle: 21,
+          account: BROKERAGE,
+          amount: PURCHASE,
+          security: SECURITY,
+          action: MNY_ACTION.BUY,
+          classification2: 700,
+        }),
+      ],
+      transfers: [mnyTransfer({ from: 20, to: 21 })],
+    });
+
+    const { banking, investments } = mapAll(
+      classifiedSleeve,
+      purchaseDetail(21),
+    );
+
+    expect([...banking.tradeCashLegTagHandles]).toEqual([[21, [552]]]);
+    expect(banking.referencedTags.size).toBe(0);
+    expect(investments.transactions[0].tagHandles).toEqual([700, 552]);
   });
 
   it("puts exactly one row in the cash register, the trade's own leg", () => {

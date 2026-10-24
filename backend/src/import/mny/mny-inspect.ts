@@ -28,7 +28,9 @@ import { mapSecurities, tradedSecurityHandles } from "./map/map-securities";
 import { mapInvestments } from "./map/map-investments";
 import { resolveExchangeRates } from "./writers/write-prices";
 import {
+  adoptCashLegTags,
   applyInvestmentCashSources,
+  referencedTradeTags,
   reconcileEmbeddedAccruedInterest,
   tradesByHandle,
 } from "./map/investment-cash";
@@ -212,11 +214,14 @@ export function mappingSummary(tables: MnyTables): string[] {
     cashKeyByAccountKey: cashKeyByAccountKey(accounts),
     tradesByHandle: tradesByHandle(mappedInvestments),
   });
-  const investments = reconcileEmbeddedAccruedInterest(
-    applyInvestmentCashSources(
-      mappedInvestments,
-      transactions.investmentCashSources,
+  const investments = adoptCashLegTags(
+    reconcileEmbeddedAccruedInterest(
+      applyInvestmentCashSources(
+        mappedInvestments,
+        transactions.investmentCashSources,
+      ),
     ),
+    transactions.tradeCashLegTagHandles,
   );
   const holdings = crossCheckHoldings({
     transactions: investments.transactions,
@@ -234,10 +239,12 @@ export function mappingSummary(tables: MnyTables): string[] {
     asOf: todayIsoDate(),
   });
   const loans = mapLoans({ accounts, transactions, bills: bills.bills });
-  // Banking rows and legs only: enough to see what the file classifies.
   const tags = mapClassificationTags(
     tables.reference,
-    transactions.referencedTags,
+    new Set([
+      ...transactions.referencedTags,
+      ...referencedTradeTags(investments),
+    ]),
   );
   const balances = computeExpectedBalances(
     accounts,

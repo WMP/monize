@@ -78,9 +78,6 @@ jest.mock("./writers/write-loans", () => ({
 
 jest.mock("./writers/write-tags", () => ({
   writeTags: jest.fn(),
-  // The real helper: it is pure, and the service's handle -> id derivation is
-  // what the investment writer receives.
-  tagIdsFor: jest.requireActual("./writers/write-tags").tagIdsFor,
 }));
 
 const mockedScopedDb = withScopedDb as jest.MockedFunction<typeof withScopedDb>;
@@ -161,6 +158,7 @@ function parsedFile(overrides: Partial<MnyParsedFile> = {}): MnyParsedFile {
       referencedPayees: new Set(),
       referencedCategories: new Set(),
       referencedTags: new Set([552]),
+      tradeCashLegTagHandles: new Map(),
       transfersLinked: 4,
       skipped: 1,
       deferredInvestments: 2,
@@ -207,7 +205,6 @@ function parsedFile(overrides: Partial<MnyParsedFile> = {}): MnyParsedFile {
       skipped: 1,
       warnings: [],
     },
-    tagHandlesByTransaction: new Map([[90, [552]]]),
     securities: {
       securities: [
         {
@@ -370,6 +367,7 @@ describe("MnyImportService", () => {
       investmentTransactionsCreated: 3,
       cashTransactionsCreated: 2,
       linksApplied: 1,
+      tagLinksApplied: 1,
       bondRowsWithoutSeries: 0,
       affectedAccountIds: new Set(["account-1"]),
       brokerageAccountIds: new Set(["account-1"]),
@@ -874,6 +872,8 @@ describe("MnyImportService", () => {
         // Phase 3 fills this; reported as zero so the shape does not change.
         billsCreated: 0,
         tagsCreated: 1,
+        // The transaction writer's links plus the investment writer's.
+        tagLinksApplied: 1,
         existingDataRemoved: false,
         skipped: {
           accounts: 0,
@@ -901,11 +901,9 @@ describe("MnyImportService", () => {
       expect(mockedWriteBills.mock.calls[0][2].tagIdByHandle).toEqual(
         idByHandle,
       );
-      // The investment writer gets the ids per Money row, for the cash legs it
-      // creates itself.
-      expect(
-        mockedWriteInvestments.mock.calls[0][2].tagIdsByTransactionHandle,
-      ).toEqual(new Map([[90, ["tag-1"]]]));
+      expect(mockedWriteInvestments.mock.calls[0][2].tagIdByHandle).toEqual(
+        idByHandle,
+      );
     });
 
     it("verifies each account's balance against the file", async () => {
@@ -1211,6 +1209,7 @@ describe("MnyImportService", () => {
         investmentTransactionsCreated: 0,
         cashTransactionsCreated: 0,
         linksApplied: 0,
+        tagLinksApplied: 0,
         bondRowsWithoutSeries: 0,
         affectedAccountIds: new Set<string>(),
         brokerageAccountIds: new Set<string>(),

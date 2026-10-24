@@ -52,6 +52,7 @@ describe("MnyImportJobService (integration)", () => {
     payeesCreated: 0,
     categoriesCreated: 0,
     tagsCreated: 0,
+    tagLinksApplied: 0,
     transactionsCreated: 0,
     splitsCreated: 0,
     transfersLinked: 0,

@@ -92,6 +92,8 @@ export interface MnyImportResult {
   readonly categoriesCreated: number;
   /** Tags created for Money's classification items; a reused tag is not counted. */
   readonly tagsCreated: number;
+  /** Tag links written onto transactions and split legs, new tags or reused. */
+  readonly tagLinksApplied: number;
   readonly transactionsCreated: number;
   readonly splitsCreated: number;
   readonly transfersLinked: number;

@@ -44,6 +44,7 @@ function result(overrides: Partial<MnyImportResult> = {}): MnyImportResult {
     payeesCreated: 40,
     categoriesCreated: 30,
     tagsCreated: 0,
+    tagLinksApplied: 0,
     transactionsCreated: 120,
     splitsCreated: 8,
     transfersLinked: 12,
@@ -143,20 +144,22 @@ describe('MnyVerificationReport', () => {
     expect(tileValue('Payees')).toContain('40');
   });
 
-  it('shows the tags tile only when Money classifications produced tags', () => {
+  it('shows how many rows were tagged from classifications, even when every tag already existed', () => {
     const { unmount } = render(<MnyVerificationReport {...defaultProps} />);
-    expect(screen.queryByText('Tags from classifications')).toBeNull();
+    expect(screen.queryByText('Rows tagged from classifications')).toBeNull();
     unmount();
 
+    // A re-import into a populated profile creates no tag but links rows to
+    // the existing ones; the count of links is what tells the user it worked.
     render(
       <MnyVerificationReport
         {...defaultProps}
-        result={result({ tagsCreated: 2 })}
+        result={result({ tagsCreated: 0, tagLinksApplied: 67 })}
       />,
     );
     const tileValue = (label: string) =>
       screen.getByText(label).parentElement?.textContent;
-    expect(tileValue('Tags from classifications')).toContain('2');
+    expect(tileValue('Rows tagged from classifications')).toContain('67');
   });
 
   it('says so when existing data was wiped first', () => {

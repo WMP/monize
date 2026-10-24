@@ -128,6 +128,7 @@ function transactionsFixture(
     referencedPayees: new Set(),
     referencedCategories: new Set(),
     referencedTags: new Set(),
+    tradeCashLegTagHandles: new Map(),
     transfersLinked: 0,
     skipped: 0,
     deferredInvestments: 0,

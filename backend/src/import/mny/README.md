@@ -74,7 +74,8 @@ it. `mapCategories` filters on `isClassificationItem` first, and
 `<classification>:<item path>` (`Properties:20 Spring Apartment`), the
 `key:value` shape `tag-key-value.util.ts` already groups by. `TRN.lHcls1` /
 `lHcls2` name the item per row, so each side of a transfer and each split leg is
-tagged on its own; a trade's cash leg takes the investment row's item when this
+tagged on its own; a trade's cash leg takes the investment row's item, plus the item
+on Money's own sleeve-side cash row it replaces (`adoptCashLegTags`), when this
 writer creates the leg, and keeps the banking row's own when it adopts one.
 
 ## Inspecting a real file

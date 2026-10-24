@@ -3,6 +3,7 @@ import { MappedTag, MappedTags } from "../model/mny-import-model";
 import { isClassificationItem } from "../model/mny-model";
 import { MnyWarning } from "../model/mny-warnings";
 import { MnyReferenceData } from "../tables/read-reference";
+import { ancestorsOf } from "./map-reference";
 
 /**
  * Money's classifications mapped onto Monize tags.
@@ -37,27 +38,18 @@ export function transactionTagHandles(row: MnyTransaction): number[] {
   );
 }
 
-/** Item path from the top-level item down, `Parent:Child`, trimmed. */
+/**
+ * Item path from the top-level item down, `Parent:Child`, trimmed. An item
+ * Money let be saved blank keeps a place in the path under its handle, so it
+ * is still importable and still distinguishable from its siblings.
+ */
 function itemPath(
   item: MnyCategory,
   byHandle: ReadonlyMap<number, MnyCategory>,
 ): string {
-  const parts: string[] = [];
-  const seen = new Set<number>();
-  let current: MnyCategory | undefined = item;
-
-  // `seen` guards against a cyclic parent chain in a damaged file.
-  while (current && current.handle !== null && !seen.has(current.handle)) {
-    seen.add(current.handle);
-    const name = current.name.trim();
-    if (name !== "") {
-      parts.unshift(name);
-    }
-    current =
-      current.parent === null ? undefined : byHandle.get(current.parent);
-  }
-
-  return parts.join(TAG_PATH_SEPARATOR);
+  return [...ancestorsOf(item, byHandle), item]
+    .map((part) => part.name.trim() || `Item ${part.handle}`)
+    .join(TAG_PATH_SEPARATOR);
 }
 
 /**
@@ -73,7 +65,9 @@ export function classificationTagName(
   const path = itemPath(item, byHandle);
   const key = classificationName?.trim() ?? "";
   const name = key === "" ? path : `${key}${TAG_PATH_SEPARATOR}${path}`;
-  return name.slice(0, MAX_TAG_NAME_LENGTH);
+  // Trimmed after the cut: `TagsService` trims what it stores, and a name that
+  // came back shorter than the one asked for would not match its handle.
+  return name.slice(0, MAX_TAG_NAME_LENGTH).trim();
 }
 
 /**
@@ -107,10 +101,7 @@ export function mapClassificationTags(
       ]),
   );
   const items = reference.categories.filter(
-    (category) =>
-      category.handle !== null &&
-      isClassificationItem(category) &&
-      category.name.trim() !== "",
+    (category) => category.handle !== null && isClassificationItem(category),
   );
 
   const mappedByHandle = new Map<number, MappedTag>();
@@ -152,26 +143,4 @@ export function mapClassificationTags(
     skipped,
     warnings,
   };
-}
-
-/**
- * Tag handles carried by every `TRN` row, keyed by `htrn`, for the rows whose
- * Monize transaction is written from somewhere other than the transaction
- * mapper -- a trade's cash leg, which `writeInvestments` creates from the
- * investment row. Rows carrying nothing are absent.
- */
-export function tagHandlesByTransaction(
-  rows: readonly MnyTransaction[],
-): ReadonlyMap<number, readonly number[]> {
-  const byHandle = new Map<number, readonly number[]>();
-  for (const row of rows) {
-    if (row.handle === null) {
-      continue;
-    }
-    const handles = transactionTagHandles(row);
-    if (handles.length > 0) {
-      byHandle.set(row.handle, handles);
-    }
-  }
-  return byHandle;
 }
