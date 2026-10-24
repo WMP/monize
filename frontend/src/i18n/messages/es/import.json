@@ -480,7 +480,7 @@
       "splits": "Líneas desglosadas",
       "payees": "Beneficiarios",
       "categories": "Categorías",
-      "tags": "Etiquetas de clasificaciones",
+      "taggedRows": "Filas etiquetadas desde clasificaciones",
       "securities": "Valores",
       "investments": "Transacciones de inversión",
       "prices": "Precios",

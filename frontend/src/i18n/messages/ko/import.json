@@ -480,7 +480,7 @@
       "splits": "분할 항목",
       "payees": "거래처",
       "categories": "범주",
-      "tags": "분류에서 만든 태그",
+      "taggedRows": "분류에서 태그를 지정한 행",
       "securities": "증권",
       "investments": "투자 거래",
       "prices": "가격",

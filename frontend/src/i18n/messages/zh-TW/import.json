@@ -480,7 +480,7 @@
       "splits": "拆分明細",
       "payees": "收款人",
       "categories": "類別",
-      "tags": "來自分類的標籤",
+      "taggedRows": "依分類加上標籤的列",
       "securities": "證券",
       "investments": "投資交易",
       "prices": "價格",

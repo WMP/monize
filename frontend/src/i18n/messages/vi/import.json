@@ -480,7 +480,7 @@
       "splits": "Dòng phân tách",
       "payees": "Người nhận",
       "categories": "Danh mục",
-      "tags": "Thẻ từ phân loại",
+      "taggedRows": "Dòng được gắn thẻ từ phân loại",
       "securities": "Chứng khoán",
       "investments": "Giao dịch đầu tư",
       "prices": "Giá",

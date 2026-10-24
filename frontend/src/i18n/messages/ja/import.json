@@ -480,7 +480,7 @@
       "splits": "分割行",
       "payees": "支払先",
       "categories": "カテゴリ",
-      "tags": "分類から作成したタグ",
+      "taggedRows": "分類からタグ付けした行",
       "securities": "有価証券",
       "investments": "投資取引",
       "prices": "価格",

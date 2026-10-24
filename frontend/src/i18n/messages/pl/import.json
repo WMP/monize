@@ -480,7 +480,7 @@
       "splits": "Pozycje podziału",
       "payees": "Odbiorcy",
       "categories": "Kategorie",
-      "tags": "Tagi z klasyfikacji",
+      "taggedRows": "Wiersze otagowane z klasyfikacji",
       "securities": "Papiery wartościowe",
       "investments": "Transakcje inwestycyjne",
       "prices": "Ceny",

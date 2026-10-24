@@ -480,7 +480,7 @@
       "splits": "Linhas divididas",
       "payees": "Beneficiários",
       "categories": "Categorias",
-      "tags": "Etiquetas de classificações",
+      "taggedRows": "Linhas etiquetadas a partir de classificações",
       "securities": "Títulos",
       "investments": "Transações de investimento",
       "prices": "Preços",

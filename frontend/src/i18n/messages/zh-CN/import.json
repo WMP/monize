@@ -480,7 +480,7 @@
       "splits": "拆分明细",
       "payees": "收款人",
       "categories": "类别",
-      "tags": "来自分类的标签",
+      "taggedRows": "按分类打上标签的行",
       "securities": "证券",
       "investments": "投资交易",
       "prices": "价格",

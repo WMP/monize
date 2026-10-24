@@ -480,7 +480,7 @@
       "splits": "Lignes ventilées",
       "payees": "Bénéficiaires",
       "categories": "Catégories",
-      "tags": "Tags issus des classifications",
+      "taggedRows": "Lignes taguées depuis les classifications",
       "securities": "Titres",
       "investments": "Transactions de placement",
       "prices": "Cours",

@@ -480,7 +480,7 @@
       "splits": "Righe suddivise",
       "payees": "Beneficiari",
       "categories": "Categorie",
-      "tags": "Tag dalle classificazioni",
+      "taggedRows": "Righe taggate dalle classificazioni",
       "securities": "Titoli",
       "investments": "Transazioni di investimento",
       "prices": "Prezzi",

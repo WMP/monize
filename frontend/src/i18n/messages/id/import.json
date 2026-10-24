@@ -480,7 +480,7 @@
       "splits": "Baris pemecahan",
       "payees": "Penerima",
       "categories": "Kategori",
-      "tags": "Tag dari klasifikasi",
+      "taggedRows": "Baris yang diberi tag dari klasifikasi",
       "securities": "Efek",
       "investments": "Transaksi investasi",
       "prices": "Harga",

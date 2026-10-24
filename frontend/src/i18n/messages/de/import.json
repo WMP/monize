@@ -480,7 +480,7 @@
       "splits": "Splitbuchungen",
       "payees": "Zahlungsempfänger",
       "categories": "Kategorien",
-      "tags": "Tags aus Klassifizierungen",
+      "taggedRows": "Aus Klassifizierungen getaggte Buchungen",
       "securities": "Wertpapiere",
       "investments": "Investitionstransaktionen",
       "prices": "Kurse",
