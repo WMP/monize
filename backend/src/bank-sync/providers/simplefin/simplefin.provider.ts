@@ -2,8 +2,8 @@ import { simplefinRedactor } from "./simplefin-redact";
 import { tr } from "../../../i18n/translate";
 import { Injectable } from "@nestjs/common";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { createHash } from "node:crypto";
 import { DataSource } from "typeorm";
+import { hashToken } from "../../../auth/crypto.util";
 import {
   withScopedDb,
   getActiveScopedManager,
@@ -148,7 +148,7 @@ export class SimplefinProvider {
         : window;
     const key = JSON.stringify([
       credentials.credentialId,
-      createHash("sha256").update(credentials.accessUrl).digest("hex"),
+      hashToken(credentials.accessUrl),
       range,
     ]);
     let read = scope?.reads.get(key);
