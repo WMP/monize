@@ -121,7 +121,7 @@ function statusPredicate(
 
 /**
  * Warranties: a purchased item, when its cover ends, and the proof of it
- * (docs/future-plans/warranty-tracker.md).
+ * (docs/specs/warranty-tracker.md).
  *
  * A warranty never writes a ledger row, a balance or a holding (WTY-001,
  * held by `warranties.guard.spec.ts`): it reads a transaction and a payee to

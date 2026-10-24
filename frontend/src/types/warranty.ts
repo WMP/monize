@@ -3,7 +3,7 @@ import type { PaginationInfo } from './transaction';
 /**
  * A warranty as the API answers it, mirrored from
  * `backend/src/warranties/dto/warranty-response.dto.ts`
- * (docs/future-plans/warranty-tracker.md section 6.5).
+ * (docs/specs/warranty-tracker.md section 6.5).
  *
  * `status` and `daysLeft` are the server's, computed against `today`, the
  * reader's own date in their timezone (WTY-002). A component formats them and

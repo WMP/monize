@@ -90,7 +90,7 @@ export enum NotificationType {
   // A warranty reaches a reminder mark (WARRANTIES category): 30 or 7 days
   // before `expires_on`, or the day itself. The date is part of the dedupe key,
   // so a changed `expires_on` earns a fresh set. See
-  // `docs/future-plans/warranty-tracker.md` section 6.6.
+  // `docs/specs/warranty-tracker.md` section 6.6.
   WARRANTY_EXPIRING = "WARRANTY_EXPIRING",
   WARRANTY_EXPIRES_TODAY = "WARRANTY_EXPIRES_TODAY",
 }

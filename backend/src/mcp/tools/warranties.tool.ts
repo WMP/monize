@@ -16,7 +16,7 @@ import { listWarrantiesOutput } from "../tool-output-schemas";
 import { READ_ONLY } from "../mcp-annotations";
 
 /**
- * `list_warranties` (docs/future-plans/warranty-tracker.md decision 11): a
+ * `list_warranties` (docs/specs/warranty-tracker.md decision 11): a
  * read-only adapter over `WarrantiesService.getLlmWarranties`, the method the
  * assistant's executor calls too. An MCP credential is the owner's own (an
  * MCP request never acts as a delegate), so no account scope narrows the

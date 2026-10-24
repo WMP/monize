@@ -69,7 +69,7 @@ const CSV_CONTENT_TYPES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * A user's warranties (docs/future-plans/warranty-tracker.md section 6.5).
+ * A user's warranties (docs/specs/warranty-tracker.md section 6.5).
  *
  * The read routes carry `@AllowDelegate()` with
  * `@DelegateRequiresSection("warranties")` (design decision 9): a delegate the

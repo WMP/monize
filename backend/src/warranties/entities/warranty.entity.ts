@@ -43,7 +43,7 @@ const dateTransformer = {
 };
 
 /**
- * One purchased item under warranty (docs/future-plans/warranty-tracker.md
+ * One purchased item under warranty (docs/specs/warranty-tracker.md
  * section 6.1). A warranty never moves money: `purchasePrice` is informational
  * and nothing sums it, and the transaction link is ON DELETE SET NULL, so
  * deleting the purchase keeps the warranty.

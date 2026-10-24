@@ -1,20 +1,21 @@
 # Warranty tracker
 
-Design for a warranty tracker: a purchased item, the date it was bought, when
-its warranty ends (or that it never does), who sold it, its serial and model
-numbers, the receipt, manual and photos that prove it, the claims made against
-it, and a reminder before it runs out. The task list is
-[`warranty-tracker-tasks.md`](./warranty-tracker-tasks.md).
-
-Status: **built** on branch `feat/warranty-tracker` (2026-10-21), approved
-directly by the maintainer on 2026-10-21 rather than through a discussion;
+Specification of the warranty tracker: a purchased item, the date it was
+bought, when its warranty ends (or that it never does), who sold it, its
+serial and model numbers, the receipt, manual and photos that prove it, the
+claims made against it, and a reminder before it runs out. Approved directly
+by the maintainer on 2026-10-21 rather than through a Discussion, it shipped
+from branch `feat/warranty-tracker` on 2026-10-21 and 2026-10-22, one commit
+per task of the retired task list (B1 b0ea503fc through D1 527b03545, the
+locale pass in 17d9e51d1), with the maintainer's rulings of 2026-10-22 on a
+linked warranty's documents landing in 09ffe7ca5, 9f3ef9f2e and 81e608917:
 `backend/src/warranties/`, the Warranties page (route /warranties), and the
-invariants as `INV-WTY-001` to `INV-WTY-007` in `docs/system-invariants.md`.
-Open: the open questions W1 to W4 in section
-13, which stand as this plan answered them. Where the build differs from the
-text, "As built" at the end of section 3 says how. A warranty moves no money,
-so sections 4 to 9 are short; they are kept so the plan reads like every other
-plan in this directory.
+invariants `INV-WTY-001` to `INV-WTY-007` in `docs/system-invariants.md`.
+Where the build is more specific than the text, "As built" at the end of
+section 3 says how. A warranty moves no money, so sections 4 to 9 are short.
+The plan is retired and this document is kept as the specification the code
+is held to; the questions it answered "not in v1" are recorded under
+Follow-ups at the end.
 
 Inspiration: Warracker (https://github.com/sassanix/Warracker), a standalone
 warranty manager. Inside Monize most warranties start as a transaction that is
@@ -52,7 +53,7 @@ and never contributes to a balance, a report or a total.
 | Need | Existing piece | Notes |
 |---|---|---|
 | A purchase in the ledger | `Transaction` (`backend/src/transactions/entities/transaction.entity.ts`): `transactionDate`, `payeeId`, `payeeName`, `description`, `amount`, `currencyCode`; `transactionsApi.getById` (`frontend/src/lib/transactions.ts`) | The prefill source when a warranty is created from a row. |
-| Files on a transaction | `transaction_attachments`, `attachment_blobs` (`database/schema.sql`), `AttachmentsService` (`backend/src/attachments/attachments.service.ts`), `attachmentsApi` (`frontend/src/lib/attachments.ts`), `AttachmentsSection.tsx`, `AttachmentPreviewDialog.tsx`, `ScanDocumentControl.tsx` (`frontend/src/components/transactions/`) | Bound to `transaction_id NOT NULL` today; generalised by this plan (decision 7). Ownership is `user_id`; the blob policy, the tombstone trigger, `AttachmentOrphanSweeperService` and `AttachmentStorageMigratorService` are keyed by attachment id and do not change. |
+| Files on a transaction | `transaction_attachments`, `attachment_blobs` (`database/schema.sql`), `AttachmentsService` (`backend/src/attachments/attachments.service.ts`), `attachmentsApi` (`frontend/src/lib/attachments.ts`), `AttachmentsSection.tsx`, `AttachmentPreviewDialog.tsx`, `ScanDocumentControl.tsx` (`frontend/src/components/transactions/`) | Bound to `transaction_id NOT NULL` today; generalised by decision 7. Ownership is `user_id`; the blob policy, the tombstone trigger, `AttachmentOrphanSweeperService` and `AttachmentStorageMigratorService` are keyed by attachment id and do not change. |
 | The register's per-row counts | `attachmentCount` enrichment in `TransactionsService` (`backend/src/transactions/transactions.service.ts`), `AttachmentBadge` in `TransactionRow.tsx` | `warrantyCount` joins it, one more grouped count over the page's ids. |
 | Row actions on the register | `TransactionActionSheet.tsx`, `CopyDropdown` in `TransactionRow.tsx`, `TransactionList.tsx` props (`frontend/src/components/transactions/`) | Optional callbacks; every other `TransactionList` consumer keeps working. |
 | `has:attachment` search | `transaction-search.util.ts` (`backend/src/transactions/`) | `has:warranty` is the same shape. |
@@ -66,7 +67,7 @@ and never contributes to a balance, a report or a total.
 | Delegate sections | `account_delegates.*_can_read`, `DelegateSection`, `DelegateRequiresSection` (`backend/src/delegation/decorators/delegate-access.decorator.ts`), `SECTION_FIELD` (`backend/src/delegation/delegation.service.ts`), `DelegateSectionGuard.tsx` (`frontend/src/components/auth/`), `DelegateAccessModal.tsx` (`frontend/src/components/settings/`) | A sixth section, `warranties`. |
 | Narrowing a read to a delegate's accounts | `delegateReadableAccountScope` (`backend/src/delegation/delegate-account-scope.util.ts`) | Decides whether the linked transaction is shown. |
 | Dashboard widget registry | `DASHBOARD_WIDGETS` (`frontend/src/components/dashboard/widget-registry.tsx`), `WIDGET_ICONS` (`widget-meta.tsx`) | Template: `InsightsWidget.tsx` (self-fetching). No backend change for a new id. |
-| Tools menu | `TOOLS_LINKS`, `NAV_ICONS` (`frontend/src/lib/nav-links.ts`); `AppHeader.tsx`, `MobileNavDrawer.tsx` (`frontend/src/components/layout/`) | Tools links are gated for delegates by capability today; this plan adds a section gate beside it. |
+| Tools menu | `TOOLS_LINKS`, `NAV_ICONS` (`frontend/src/lib/nav-links.ts`); `AppHeader.tsx`, `MobileNavDrawer.tsx` (`frontend/src/components/layout/`) | Tools links are gated for delegates by capability today; decision 9 adds a section gate beside it. |
 | List chrome | `Table.tsx`, `SortableHeader.tsx`, `ListTopToolbar.tsx`, `ListBottomPager.tsx`, `EmptyState.tsx`, `Modal.tsx`, `ConfirmDialog.tsx`, `row-actions/` (`frontend/src/components/ui/`), `useLongPress` (`frontend/src/hooks/useLongPress.ts`), `useFormModal` (`frontend/src/hooks/useFormModal.ts`) | Page to mirror: `PayeeList.tsx` (`frontend/src/components/payees/`) for rows, the Tags page for the shell. |
 | The one CSV writer | `csv-export.ts` (`frontend/src/lib/`) | `ui-conventions.test.ts` fails a second one. |
 | An RFC 4180 reader | `parseCsv`, `validateCsvContent` (`backend/src/import/csv-parser.ts`) | Reused by the warranty importer. |
@@ -595,16 +596,29 @@ tick (the smallest mark at or above 20 is 30), then the 7-day one.
 ## 13. Open questions
 
 - **W1.** Should the expiring window and the reminder thresholds be a user
-  preference? This plan says no in v1: 30 / 7 / 0 fixed, a preference later.
-- **W2.** Should the page show a "value under warranty" figure? This plan
+  preference? This document says no in v1: 30 / 7 / 0 fixed, a preference later.
+- **W2.** Should the page show a "value under warranty" figure? This document
   says no: it needs `FxAggregate`, the missing-rate policy and a reporting
   currency for an informational number.
 - **W3.** Should the email-receipts pipeline offer "create warranty" when a
-  receipt email is linked to a transaction? This plan says later: the action
+  receipt email is linked to a transaction? This document says later: the action
   sheet covers the manual path and the receipt is already attached.
 - **W4.** Should `document_kind` be offered on a transaction's attachments
-  too (receipt against other)? This plan says no; it stays `other` there.
+  too (receipt against other)? This document says no; it stays `other` there.
 
-## 14. Companion task list
+## 14. Follow-ups
 
-[`warranty-tracker-tasks.md`](./warranty-tracker-tasks.md).
+Every task of the retired task list is built; its S1 (a Discussion agreeing
+the design) was never opened because the maintainer approved the design
+directly. The four questions of section 13 stand as this document answered
+them, each a proposal of its own if it is ever wanted:
+
+- **W1:** a per-user expiring window and reminder thresholds, in place of the
+  fixed 30 / 7 / 0 (decision 3).
+- **W2:** a "value under warranty" figure on the page, which needs
+  `FxAggregate`, the missing-rate policy and a reporting currency
+  (decision 6).
+- **W3:** "create warranty" offered by the email-receipts pipeline when a
+  receipt email is linked to a transaction.
+- **W4:** `document_kind` offered on a transaction's own attachments; it
+  stays `other` there.

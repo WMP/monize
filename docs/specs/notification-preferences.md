@@ -111,7 +111,7 @@ the global defaults, as `email_receipts` has them. Its two types
 (`AI_REVIEW_PROPOSALS_READY`, `AI_REVIEW_PROPOSALS_EXPIRING`) send to
 `/ai-reviews`, and the push copy names the category only.
 
-`warranties` (`WARRANTIES`, `docs/future-plans/warranty-tracker.md` section 6.6)
+`warranties` (`WARRANTIES`, `docs/specs/warranty-tracker.md` section 6.6)
 follows the same convention: every channel a live control and the global
 defaults, so the bell always shows the reminder, the report email carries it,
 and the alert email and push stay off until the user turns them on. Its two

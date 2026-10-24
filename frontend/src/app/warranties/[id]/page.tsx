@@ -92,7 +92,7 @@ function BackToWarranties() {
 
 /**
  * One warranty: its details, its documents, its claims and the purchase it
- * came from (docs/future-plans/warranty-tracker.md section 10).
+ * came from (docs/specs/warranty-tracker.md section 10).
  */
 function WarrantyDetailContent({ warrantyId }: { warrantyId: string }) {
   const t = useTranslations('warranties');

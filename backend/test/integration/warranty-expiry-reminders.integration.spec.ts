@@ -13,7 +13,7 @@ import {
 
 /**
  * Warranty expiry reminders against a real PostgreSQL enforcing RLS
- * (docs/future-plans/warranty-tracker.md section 6.7, WTY-004, test matrix
+ * (docs/specs/warranty-tracker.md section 6.7, WTY-004, test matrix
  * "Reminders").
  *
  * What a mock cannot show and these do: that each threshold is written once

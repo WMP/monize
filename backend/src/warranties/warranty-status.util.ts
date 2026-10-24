@@ -3,7 +3,7 @@ import { daysBetweenYMD } from "../bank-sync/bank-sync-notifications";
 
 /**
  * The status of a warranty, derived and never stored
- * (docs/future-plans/warranty-tracker.md decision 2, truth table A).
+ * (docs/specs/warranty-tracker.md decision 2, truth table A).
  */
 export type WarrantyStatus = "lifetime" | "active" | "expiring" | "expired";
 

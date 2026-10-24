@@ -81,7 +81,7 @@ const WITH_CONTEXT_ALLOWLIST = [
   // system-context fan-out over every user's unarchived warranties near their
   // expiry (and every user's timezone), then a per-user body (withUserContext)
   // that dispatches the 30, 7 and 0-day reminders
-  // (docs/future-plans/warranty-tracker.md section 6.7).
+  // (docs/specs/warranty-tracker.md section 6.7).
   "src/warranties/warranty-expiry-reminder.service.ts",
   "src/budgets/budget-alert.service.ts",
   "src/budgets/budget-period-cron.service.ts",

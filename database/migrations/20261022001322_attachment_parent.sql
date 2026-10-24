@@ -1,4 +1,4 @@
--- Attachments gain a second parent (docs/future-plans/warranty-tracker.md,
+-- Attachments gain a second parent (docs/specs/warranty-tracker.md,
 -- decision 7 and section 6.3; invariant WTY-003).
 --
 -- A warranty's receipt, manual and photos are attachments too, stored in the

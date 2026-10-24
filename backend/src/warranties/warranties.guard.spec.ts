@@ -3,7 +3,7 @@ import { join, posix, relative } from "path";
 
 /**
  * WTY-001: a warranty never writes a ledger row, a balance or a holding
- * (docs/future-plans/warranty-tracker.md section 5). A warranty carries a
+ * (docs/specs/warranty-tracker.md section 5). A warranty carries a
  * purchase price for reference and links to a transaction by id; nothing in
  * `backend/src/warranties/` has any reason to reach a service that posts a
  * transaction, moves a balance or rebuilds a holding, so an import of one is
@@ -153,7 +153,7 @@ describe("WTY-001: the warranties module never reaches a ledger, balance or hold
     if (offenders.length > 0) {
       throw new Error(
         "WTY-001: a warranty never writes a ledger row, a balance or a holding " +
-          "(docs/future-plans/warranty-tracker.md section 5). Read the linked " +
+          "(docs/specs/warranty-tracker.md section 5). Read the linked " +
           "transaction through its entity instead of calling a writer:\n" +
           offenders
             .map(([name, offences]) => `  ${name}: ${offences.join("; ")}`)

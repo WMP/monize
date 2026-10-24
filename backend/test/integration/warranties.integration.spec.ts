@@ -28,7 +28,7 @@ import {
 
 /**
  * Warranties and their claims against a real PostgreSQL enforcing RLS
- * (docs/future-plans/warranty-tracker.md section 11: Ownership, Delegation,
+ * (docs/specs/warranty-tracker.md section 11: Ownership, Delegation,
  * Import; WTY-005, WTY-006, WTY-007).
  *
  * What a mocked manager cannot show and these do: that another user's

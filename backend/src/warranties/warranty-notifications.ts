@@ -5,7 +5,7 @@ import {
 import type { CreateNotificationInput } from "../notification-center/notification.service";
 
 /**
- * The expiry reminders a warranty raises (docs/future-plans/warranty-tracker.md
+ * The expiry reminders a warranty raises (docs/specs/warranty-tracker.md
  * decisions 3 and 10, sections 6.6 and 6.7), as pure functions of the facts
  * they report. Nothing here reads a clock or a database: the reminder service
  * reads the warranty and the reader's today and passes them in, so the

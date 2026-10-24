@@ -8,8 +8,8 @@ import {
 } from "./support-backup-rule-kinds";
 
 /**
- * The warranty tables' de-identification rules (docs/future-plans/
- * warranty-tracker.md sections 6.1 and 6.2).
+ * The warranty tables' de-identification rules
+ * (`docs/specs/warranty-tracker.md` sections 6.1 and 6.2).
  *
  * In their own file because one more table would push
  * `support-backup-rules.ts` past the repository's 800-line ceiling, and a

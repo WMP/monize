@@ -33,7 +33,7 @@ const dateTransformer = {
 };
 
 /**
- * One claim made against a warranty (docs/future-plans/warranty-tracker.md
+ * One claim made against a warranty (docs/specs/warranty-tracker.md
  * section 6.2). A claim never changes the warranty's status; deleting the
  * warranty deletes its claims (ON DELETE CASCADE).
  */

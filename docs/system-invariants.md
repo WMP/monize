@@ -8443,7 +8443,7 @@ Status              enforced
 
 ## Warranties
 
-Design: `docs/future-plans/warranty-tracker.md` (section 5), where these seven
+Specification: `docs/specs/warranty-tracker.md` (section 5), where these seven
 are WTY-001 to WTY-007. The code, its specs and the other contract documents
 cite that short form, which is the tail of each ID here, so a search for either
 finds both.

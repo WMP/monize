@@ -1,4 +1,4 @@
--- Delegate READ section `warranties` (docs/future-plans/warranty-tracker.md,
+-- Delegate READ section `warranties` (docs/specs/warranty-tracker.md,
 -- decision 9 and section 6.4): the sixth app section an owner can share with
 -- a delegate, beside the five of 071_account_delegate_sections.sql. It gates
 -- the warranty read routes, a warranty's documents and its claims; every

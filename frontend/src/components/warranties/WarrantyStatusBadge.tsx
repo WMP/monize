@@ -52,7 +52,7 @@ interface WarrantyStatusBadgeProps {
 
 /**
  * A warranty's status pill, fed by the server's `status` and `daysLeft`
- * (docs/future-plans/warranty-tracker.md WTY-002). Every surface that shows a
+ * (docs/specs/warranty-tracker.md WTY-002). Every surface that shows a
  * warranty's status draws it through this, so the colour and the copy for a
  * status are decided once.
  */

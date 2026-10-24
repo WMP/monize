@@ -2,7 +2,7 @@
  * What a document is. A warranty's new document is stored as `other` and the
  * reader sets its kind on its row (`warranty` is the warranty certificate
  * itself); a transaction's attachments are always `other`
- * (docs/future-plans/warranty-tracker.md decision 7).
+ * (docs/specs/warranty-tracker.md decision 7).
  */
 export type DocumentKind = 'receipt' | 'manual' | 'photo' | 'warranty' | 'other';
 

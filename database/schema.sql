@@ -448,7 +448,7 @@ CREATE INDEX idx_transaction_splits_linked ON transaction_splits(linked_transact
 --
 -- An attachment has exactly one parent (chk_attachment_one_parent, WTY-003):
 -- the transaction whose receipt it is, or the warranty whose receipt, manual
--- or photo it is (docs/future-plans/warranty-tracker.md decision 7). The
+-- or photo it is (docs/specs/warranty-tracker.md decision 7). The
 -- table keeps its historical name. Ownership is user_id on this row whichever
 -- parent it has, so the attachment_blobs policy, the tombstone trigger, the
 -- orphan sweeper and the storage migrator never look at the parent.
@@ -3535,7 +3535,7 @@ CREATE TABLE calendar_day_notes (
 );
 
 -- ---------------------------------------------------------------------------
--- Warranties (docs/future-plans/warranty-tracker.md sections 6.1 and 6.2)
+-- Warranties (docs/specs/warranty-tracker.md sections 6.1 and 6.2)
 --
 -- One purchased item: its expiry, vendor, serial and model numbers and an
 -- informational purchase price, optionally linked to the transaction that

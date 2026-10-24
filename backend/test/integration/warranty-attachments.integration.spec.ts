@@ -47,7 +47,7 @@ import { applyRlsPolicies } from "../helpers/rls-setup";
 
 /**
  * A warranty's documents against a real PostgreSQL
- * (docs/future-plans/warranty-tracker.md section 6.3 and section 11:
+ * (docs/specs/warranty-tracker.md section 6.3 and section 11:
  * Attachments, Backup; WTY-003).
  *
  * `chk_attachment_one_parent` is declared in SQL only, so a schema

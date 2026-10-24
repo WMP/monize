@@ -13,7 +13,7 @@ import { WarrantyExpiryReminderService } from "./warranty-expiry-reminder.servic
 import { WarrantyImportService } from "./warranty-import.service";
 
 /**
- * Warranties and their claims (docs/future-plans/warranty-tracker.md). The
+ * Warranties and their claims (docs/specs/warranty-tracker.md). The
  * module reads the linked transaction and payee through their entities inside
  * its own transaction and never reaches a ledger writer (WTY-001,
  * `warranties.guard.spec.ts`). Its feature imports are `DelegationModule`,

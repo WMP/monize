@@ -32,7 +32,7 @@ import {
 
 /**
  * The claims made against one warranty
- * (docs/future-plans/warranty-tracker.md section 6.5).
+ * (docs/specs/warranty-tracker.md section 6.5).
  *
  * The GET carries `@AllowDelegate()` with
  * `@DelegateRequiresSection("warranties")`: a delegate with the section reads

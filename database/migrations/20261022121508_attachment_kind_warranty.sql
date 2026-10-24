@@ -1,5 +1,5 @@
 -- A warranty's documents gain a fifth kind, `warranty`: the warranty
--- certificate itself (docs/future-plans/warranty-tracker.md, decision 7 and
+-- certificate itself (docs/specs/warranty-tracker.md, decision 7 and
 -- section 6.3).
 --
 -- `chk_attachment_document_kind` is dropped and added again with the wider

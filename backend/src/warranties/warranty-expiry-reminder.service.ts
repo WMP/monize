@@ -39,7 +39,7 @@ export interface WarrantyReminderTally {
 }
 
 /**
- * Warranty expiry reminders (docs/future-plans/warranty-tracker.md section
+ * Warranty expiry reminders (docs/specs/warranty-tracker.md section
  * 6.7), once a day at 06:17 UTC. A warranty is reminded of when 30, 7 and 0
  * days remain, in the owner's timezone; nothing fires after the day of expiry.
  *

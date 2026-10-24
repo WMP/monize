@@ -1,4 +1,4 @@
--- Warranty tracker tables (docs/future-plans/warranty-tracker.md sections 6.1
+-- Warranty tracker tables (docs/specs/warranty-tracker.md sections 6.1
 -- and 6.2): `warranties`, one purchased item with its expiry, vendor, serial
 -- and model numbers and an informational purchase price; and `warranty_claims`,
 -- the claims made against one warranty.

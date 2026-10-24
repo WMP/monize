@@ -61,7 +61,7 @@ function toView(row: WarrantyClaim): WarrantyClaimView {
 }
 
 /**
- * Claims made against a warranty (docs/future-plans/warranty-tracker.md
+ * Claims made against a warranty (docs/specs/warranty-tracker.md
  * decision 8, section 6.2). A claim never changes its warranty's status.
  *
  * Every route names its warranty, and every method loads that warranty by
