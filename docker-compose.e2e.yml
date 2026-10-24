@@ -98,7 +98,7 @@ x-backend: &backend
 
 services:
   postgres:
-    image: mirror.gcr.io/library/postgres:16-alpine
+    image: mirror.gcr.io/library/postgres:16-alpine@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
     environment:
       POSTGRES_DB: monize
       POSTGRES_USER: monize_user
@@ -130,7 +130,7 @@ services:
   # frontend's INTERNAL_API_URL points here in the cluster shard, so every API
   # call the browser makes alternates replicas.
   api-lb:
-    image: mirror.gcr.io/library/nginx:1.29-alpine
+    image: mirror.gcr.io/library/nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
     profiles:
       - cluster
     depends_on:

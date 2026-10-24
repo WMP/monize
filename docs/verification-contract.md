@@ -510,7 +510,11 @@ workflows, `docker-compose.e2e.yml`, `scripts/*.sh` and every `FROM` in a
 tracked Dockerfile (CI builds those images for the E2E, Lighthouse and ZAP jobs),
 and fails a workflow that still reads `DOCKERHUB_*` secrets: no job needs that
 login. `.hadolint.yaml` trusts `mirror.gcr.io` and `ghcr.io`, the registries
-the Dockerfiles use. Not the ECR Public
+the Dockerfiles use. A tag alone is a name, not content, so the same files are
+also scanned by `backend/src/common/image-digest-pin.guard.spec.ts`, which
+fails a `mirror.gcr.io` or `mcr.microsoft.com` reference with no `@sha256:`
+digest and keeps `docs/container-images.md`'s digest map from drifting from
+the references in either direction. Not the ECR Public
 mirror (`public.ecr.aws`): its anonymous pulls carry a data limit per source
 IP, which GitHub's shared runners exhaust, and the E2E build failed with
 "toomanyrequests: Data limit exceeded". A registry can still answer a burst of

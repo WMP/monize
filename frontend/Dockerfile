@@ -1,5 +1,5 @@
 # Development stage
-FROM mirror.gcr.io/library/node:24-alpine AS development
+FROM mirror.gcr.io/library/node:24-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS development
 
 WORKDIR /app
 
@@ -18,7 +18,7 @@ EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
 # Builder stage (uses slim/glibc to avoid Alpine musl SIGSEGV during next build)
-FROM mirror.gcr.io/library/node:24-slim AS builder
+FROM mirror.gcr.io/library/node:24-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS builder
 
 WORKDIR /app
 
@@ -32,7 +32,7 @@ COPY . .
 RUN npm run build
 
 # Production stage (uses standalone output)
-FROM mirror.gcr.io/library/node:24-alpine AS production
+FROM mirror.gcr.io/library/node:24-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS production
 ARG GIT_SHA
 ARG BUILD_DATE
 ARG VERSION
