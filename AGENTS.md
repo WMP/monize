@@ -6,7 +6,7 @@ This is the canonical instruction file for every coding agent; `CLAUDE.md` impor
 
 ## How the instruction files are organised
 
-This file and the layer files are read on every task, so they hold only what nearly every task needs, each rule in one or two sentences naming the thing to use and the thing not to. Codex reads `AGENTS.md` files with a combined 32 KiB default cap, and Claude Code loads imports at launch, so nothing here is free.
+This file and the layer files are read on every task, so they hold only what nearly every task needs, each rule in one or two sentences naming the thing to use and the thing not to.
 
 - **Reading.** Before working in a layer, read its `CLAUDE.md`, then only the rows of its "Read when the work touches it" table that match the task.
 - **Writing a rule.** A new rule is one line in the layer index (or one sentence in this file) plus the full entry in the matching `docs/<layer>/*.md` or contract document. If it does not fit in a sentence, it belongs in `docs/`.
@@ -122,7 +122,7 @@ One sentence each; the reasoning and the guard that holds each one are in the co
 
 ## Follow the existing pattern, and pin it down when you miss it
 
-Before writing a UI control, a data access path, or anything a user interacts with, find how the codebase already does it and do it the same way. This project has one way to make a table row clickable, one date input, one money formatter, one door to the database; the generic solution looks fine in isolation and wrong in place.
+Before writing a UI control, a data access path, or anything a user interacts with, find how the codebase already does it and do it the same way. This project has one way to make a table row clickable, one date input, one money formatter, one door to the database; the generic solution looks fine in isolation and wrong in place. Generic helpers live once per layer: `ls backend/src/common/helpers/` or `frontend/src/lib/helpers/` before writing one.
 
 **When a human points out a defect in code an AI wrote, that is a missing rule, not just a bug.** Fix it, switch to the existing helper that should have been used, add a regression test that fails on the original mistake (a source-scanning guard where the mistake is mechanical), and write the rule down as one sentence in the right instruction file plus its full entry in `docs/`.
 
