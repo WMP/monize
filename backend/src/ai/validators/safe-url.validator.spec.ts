@@ -177,6 +177,29 @@ describe("IsSafeUrl validator", () => {
     it("rejects 169.254.x.x (link-local)", async () => {
       await expectInvalid("https://169.254.1.1/api");
     });
+
+    // 100.64.0.0/10 (CGNAT, Tailscale) and 198.18.0.0/15 (benchmarking) are not
+    // public hosts; the edges prove the ranges are not wider than their CIDRs.
+    it.each([
+      "100.64.0.1",
+      "100.100.100.100",
+      "100.127.255.254",
+      "198.18.0.1",
+      "198.19.255.255",
+    ])("rejects %s (CGNAT / benchmark range)", async (ip) => {
+      await expectInvalid(`http://${ip}:8080/v1`);
+    });
+
+    it("rejects an IPv4-mapped CGNAT address", async () => {
+      await expectInvalid("http://[::ffff:100.100.100.100]:8080/v1");
+    });
+
+    it.each(["100.63.255.255", "100.128.0.1", "198.17.0.1", "198.20.0.1"])(
+      "still allows %s (outside the blocked ranges)",
+      async (ip) => {
+        await expectValid(`http://${ip}:8080/v1`);
+      },
+    );
   });
 
   // `URL.hostname` keeps the brackets on an IPv6 literal, and every check in the
