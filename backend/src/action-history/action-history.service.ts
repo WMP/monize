@@ -1676,6 +1676,19 @@ export class ActionHistoryService {
     if (!action.beforeData || !Array.isArray(action.beforeData.transactions))
       return;
 
+    // INV-RECONCILE-001: the restore rewrites every row's status and fields
+    // (redo reaches here too, via `executeRedo`), so a reconciled locked row
+    // refuses the whole batch, as the single-row undo does. Locked first, and
+    // checked before the first write.
+    const locked = await lockTransactionRows(
+      manager,
+      action.beforeData.transactions.map((txData: { id: string }) => txData.id),
+      action.userId,
+    );
+    await assertReconciledRowsMutable(manager, action.userId, [
+      ...locked.values(),
+    ]);
+
     const accountIds = new Set<string>();
 
     for (const txData of action.beforeData.transactions) {

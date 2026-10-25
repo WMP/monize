@@ -2114,6 +2114,49 @@ describe("ActionHistoryService", () => {
       expect(splitCalls).toHaveLength(0);
     });
 
+    it.each(["undo", "redo"] as const)(
+      "refuses the %s of a bulk update that touches a reconciled row under the lock, before any write",
+      async (which) => {
+        const rows = [
+          { id: "tx-1", accountId: "acc-1", status: "UNRECONCILED" },
+          { id: "tx-2", accountId: "acc-1", status: "RECONCILED" },
+        ];
+        mockRepository.findOne.mockResolvedValue({
+          ...mockAction,
+          entityType: "bulk_transaction",
+          action: "bulk_update",
+          entityId: null,
+          beforeData: { transactions: rows },
+          afterData: {
+            transactions: rows.map((r) => ({ ...r, status: "UNRECONCILED" })),
+          },
+        });
+        mockQueryRunner.manager.update.mockResolvedValue({ affected: 1 });
+        mockLockedRows({
+          "tx-1": { account_id: "acc-1", amount: "-5" },
+          "tx-2": { account_id: "acc-1", amount: "-5", status: "RECONCILED" },
+        });
+        const routeRepository =
+          mockQueryRunner.manager.getRepository.getMockImplementation();
+        mockQueryRunner.manager.getRepository.mockImplementation(
+          (entity: unknown) =>
+            entity === UserPreference
+              ? {
+                  findOne: jest
+                    .fn()
+                    .mockResolvedValue({ lockReconciledTransactions: true }),
+                }
+              : routeRepository(entity),
+        );
+
+        await expect(
+          which === "undo" ? service.undo(userId) : service.redo(userId),
+        ).rejects.toBeInstanceOf(ConflictException);
+
+        expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      },
+    );
+
     it("should restore split-line categories through the user-scoped parent join", async () => {
       const bulkAction = {
         ...mockAction,
