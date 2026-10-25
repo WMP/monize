@@ -5,7 +5,6 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
-import { LocalStrategy } from "./strategies/local.strategy";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { OidcService } from "./oidc/oidc.service";
 import { OidcReauthService } from "./oidc/oidc-reauth.service";
@@ -54,7 +53,6 @@ import { DelegationModule } from "../delegation/delegation.module";
     TokenService,
     TwoFactorService,
     AuthEmailService,
-    LocalStrategy,
     JwtStrategy,
     OidcService,
     OidcReauthService,

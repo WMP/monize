@@ -11,7 +11,7 @@
  *
  * `read` and `write` are the whole set. A PAT presents them bare; an OAuth client
  * presents them resource-prefixed (`monize:read`) and `OAuthProviderService`
- * strips the prefix, so both surfaces reach `requireScope` and `PatScopeGuard`
+ * strips the prefix, so both surfaces reach `requireScope`
  * with the same strings. Adding a scope means adding it here and to
  * `frontend/src/components/settings/ApiAccessSection.tsx`; `scopes.spec.ts`
  * checks that every consumer in this repository agrees.

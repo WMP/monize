@@ -18,7 +18,6 @@ import { rateLimit } from "./common/throttle.util";
 import { CsrfGuard } from "./common/guards/csrf.guard";
 import { DemoModeGuard } from "./common/guards/demo-mode.guard";
 import { MustChangePasswordGuard } from "./auth/guards/must-change-password.guard";
-import { PatScopeGuard } from "./auth/guards/pat-scope.guard";
 import { CsrfRefreshInterceptor } from "./common/interceptors/csrf-refresh.interceptor";
 import { RequestContextInterceptor } from "./common/interceptors/request-context.interceptor";
 import { parseRlsMode, resolveRlsDatabaseAuth } from "./common/db/rls-config";
@@ -232,7 +231,6 @@ import { I18nModule } from "./i18n/i18n.module";
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },
-    { provide: APP_GUARD, useClass: PatScopeGuard },
     { provide: APP_GUARD, useClass: DemoModeGuard },
     { provide: APP_INTERCEPTOR, useClass: RequestContextInterceptor },
     { provide: APP_INTERCEPTOR, useClass: CsrfRefreshInterceptor },
