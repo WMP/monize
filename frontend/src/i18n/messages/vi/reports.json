@@ -1326,7 +1326,11 @@
     "csvColCostBasis": "Cơ sở chi phí",
     "csvColGainLoss": "Lãi/Lỗ",
     "csvColReturn": "Lợi nhuận %",
-    "csvNoRate": "Không có tỷ giá"
+    "csvNoRate": "Không có tỷ giá",
+    "csvUnknownCost": "Không rõ",
+    "unknownBasisReason": "Không thể tính khoản lãi/lỗ này: vị thế có cổ phiếu được thêm vào mà không có chi phí, nên không biết chi phí của số cổ phiếu đã bán. Hãy mở giao dịch đã thêm chúng và nhập giá.",
+    "knownPart": "Phần đã biết: {amount}",
+    "unknownCostNotice": "{count, plural, one {# giao dịch bán} other {# giao dịch bán}} có chi phí không rõ, vì cổ phiếu được thêm vào mà không có giá. Không có lãi/lỗ nào được đưa ra cho {count, plural, one {giao dịch đó} other {các giao dịch đó}}, nên tổng lãi/lỗ chỉ hiển thị phần đã biết."
   },
   "recurringExpenses": {
     "recurringExpenses": "Chi phí định kỳ",

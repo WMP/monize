@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "Il prestito è stato salvato, ma non è stato possibile creare la sua regola di abbinamento dei pagamenti. Creala dai dettagli del prestito."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "Questa modifica ha cambiato righe di suddivisione che spostano denaro su altri conti, quindi non può essere annullata automaticamente. Modifica la transazione per ripristinarla.",
+    "undoVoidWithLegs": "Questa modifica ha annullato o ripristinato voci in altri conti, quindi non può essere annullata automaticamente. Ripristina invece lo stato.",
     "loanEditNotUndoable": "Questa modifica al prestito non può essere annullata automaticamente. Modifica il prestito per ripristinarla.",
     "nothingToUndo": "Niente da annullare",
     "nothingToRedo": "Niente da ripristinare",
@@ -194,6 +196,8 @@
     "deviceNotFound": "Dispositivo non trovato",
     "unableToCompleteRegistration": "Impossibile completare la registrazione",
     "delegateClaimPasswordRequired": "Esiste già un account con questo indirizzo email come utente condiviso. Inserisci la password temporanea fornita dall'amministratore per reclamare l'account.",
+    "delegateClaimRequiresTwoFactorSignIn": "Questo account condiviso usa l'autenticazione a due fattori. Accedi con la password e il codice di autenticazione invece di registrarti.",
+    "twoFactorAlreadyEnabled": "L'autenticazione a due fattori è già abilitata. Reimpostala per usare un altro autenticatore.",
     "passwordBreached": "Questa password è stata trovata in una violazione dei dati. Scegli una password diversa.",
     "invalidCredentials": "Credenziali non valide",
     "accountTemporarilyLocked": "L'account è temporaneamente bloccato a causa di troppi tentativi di accesso falliti. Riprova più tardi.",

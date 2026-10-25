@@ -126,6 +126,7 @@
     "fees": "費用",
     "realizedPl": "已實現損益",
     "realizedMixed": "以 {currencies} 實現，因此不做合計",
+    "realizedUnknownReason": "無法計算此收益：該持倉包含未記錄成本而新增的股份，因此已賣出股份的成本未知。請開啟新增這些股份的交易並輸入其價格。",
     "totalReturn": "總報酬",
     "totalReturnValue": "{amount}（{percent}）",
     "totalReturnTitle": "未實現收益，加上賣出時已實現的金額和收到的收益，減去費用，相對於你投入的資本。這是該資本上的簡單報酬：沒有換算成年化，也沒有按各筆買進的持有時間加權。",
@@ -152,6 +153,7 @@
     "title": "部位已了結",
     "description": "你已不再持有該證券。它的歷史仍保留在下方。",
     "realizedPl": "已實現損益",
+    "realizedUnknownReason": "無法計算此收益：該持倉曾包含未記錄成本而新增的股份，因此已賣出股份的成本未知。請開啟新增這些股份的交易並輸入其價格。",
     "heldFrom": "持有起始",
     "heldRange": "{start} 至 {end}"
   },

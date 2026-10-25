@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "대출은 저장되었지만 결제 매칭 규칙을 만들 수 없습니다. 대출 세부 정보에서 만드세요."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "이 편집으로 다른 계좌로 돈을 이동하는 분할 줄이 변경되어 자동으로 실행 취소할 수 없습니다. 되돌리려면 거래를 편집하세요.",
+    "undoVoidWithLegs": "이 변경으로 다른 계좌의 항목이 무효 처리되거나 복원되어 자동으로 실행 취소할 수 없습니다. 대신 상태를 다시 변경하세요.",
     "loanEditNotUndoable": "이 대출 변경은 자동으로 실행 취소할 수 없습니다. 되돌리려면 대출을 편집하세요.",
     "nothingToUndo": "실행 취소할 항목이 없습니다",
     "nothingToRedo": "다시 실행할 항목이 없습니다",
@@ -194,6 +196,8 @@
     "deviceNotFound": "기기를 찾을 수 없습니다",
     "unableToCompleteRegistration": "등록을 완료할 수 없습니다",
     "delegateClaimPasswordRequired": "이 이메일을 가진 계정이 이미 공유 사용자로 존재합니다. 이를 클레임하려면 관리자가 제공한 임시 비밀번호를 입력하세요.",
+    "delegateClaimRequiresTwoFactorSignIn": "이 공유 계정은 2단계 인증을 사용합니다. 등록하지 말고 비밀번호와 인증 코드로 로그인하세요.",
+    "twoFactorAlreadyEnabled": "2단계 인증이 이미 활성화되어 있습니다. 다른 인증 앱을 사용하려면 재설정하세요.",
     "passwordBreached": "이 비밀번호는 데이터 유출에서 발견되었습니다. 다른 비밀번호를 선택하세요.",
     "invalidCredentials": "유효하지 않은 자격 증명입니다",
     "accountTemporarilyLocked": "로그인 실패 횟수가 너무 많아 계정이 일시적으로 잠겼습니다. 나중에 다시 시도하세요.",

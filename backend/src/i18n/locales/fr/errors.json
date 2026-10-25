@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "Le prêt a été enregistré, mais sa règle de rapprochement des paiements n'a pas pu être créée. Créez-la depuis les détails du prêt."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "Cette modification a changé des lignes de ventilation qui déplacent de l'argent vers d'autres comptes, elle ne peut donc pas être annulée automatiquement. Modifiez la transaction pour la rétablir.",
+    "undoVoidWithLegs": "Ce changement a annulé ou rétabli des écritures dans d'autres comptes, il ne peut donc pas être annulé automatiquement. Rétablissez plutôt le statut précédent.",
     "loanEditNotUndoable": "Cette modification du prêt ne peut pas être annulée automatiquement. Modifiez le prêt pour la rétablir.",
     "nothingToUndo": "Rien à annuler",
     "nothingToRedo": "Rien à rétablir",
@@ -194,6 +196,8 @@
     "deviceNotFound": "Appareil introuvable",
     "unableToCompleteRegistration": "Impossible de finaliser l'inscription",
     "delegateClaimPasswordRequired": "Un compte avec cet e-mail existe déjà en tant qu'utilisateur partagé. Fournissez le mot de passe temporaire que votre administrateur vous a donné pour le réclamer.",
+    "delegateClaimRequiresTwoFactorSignIn": "Ce compte partagé utilise l'authentification à deux facteurs. Connectez-vous avec votre mot de passe et votre code d'authentification au lieu de vous inscrire.",
+    "twoFactorAlreadyEnabled": "L'authentification à deux facteurs est déjà activée. Réinitialisez-la pour utiliser un autre authentificateur.",
     "passwordBreached": "Ce mot de passe a été trouvé dans une fuite de données. Veuillez choisir un mot de passe différent.",
     "invalidCredentials": "Identifiants invalides",
     "accountTemporarilyLocked": "Le compte est temporairement verrouillé en raison de trop nombreuses tentatives de connexion échouées. Veuillez réessayer plus tard.",

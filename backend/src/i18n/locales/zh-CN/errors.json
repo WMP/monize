@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "贷款已保存，但无法创建其付款匹配规则。请在贷款详情中创建。"
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "此次编辑更改了将资金转入其他账户的拆分行，因此无法自动撤销。请编辑交易以改回。",
+    "undoVoidWithLegs": "此更改作废或恢复了其他账户中的条目，因此无法自动撤销。请改为把状态改回。",
     "loanEditNotUndoable": "此贷款更改无法自动撤销。请编辑贷款以改回。",
     "nothingToUndo": "没有可撤销的操作",
     "nothingToRedo": "没有可重做的操作",
@@ -194,6 +196,8 @@
     "deviceNotFound": "未找到设备",
     "unableToCompleteRegistration": "无法完成注册",
     "delegateClaimPasswordRequired": "此邮箱已存在作为共享用户的账户。请提供管理员给您的临时密码以认领。",
+    "delegateClaimRequiresTwoFactorSignIn": "此共享账户使用双重身份验证。请使用密码和验证码登录，而不是注册。",
+    "twoFactorAlreadyEnabled": "双重身份验证已启用。如需使用其他验证器，请先重置。",
     "passwordBreached": "此密码已在数据泄露中被发现。请选择其他密码。",
     "invalidCredentials": "凭据无效",
     "accountTemporarilyLocked": "由于多次登录失败，账户已被暂时锁定。请稍后再试。",

@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "Kredi kaydedildi, ancak ödeme eşleştirme kuralı oluşturulamadı. Kredi ayrıntılarından oluşturun."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "Bu düzenleme, parayı başka hesaplara taşıyan bölme satırlarını değiştirdi, bu yüzden otomatik olarak geri alınamaz. Geri almak için işlemi düzenleyin.",
+    "undoVoidWithLegs": "Bu değişiklik başka hesaplardaki kayıtları geçersiz kıldı veya geri yükledi, bu yüzden otomatik olarak geri alınamaz. Bunun yerine durumu geri değiştirin.",
     "loanEditNotUndoable": "Bu kredi değişikliği otomatik olarak geri alınamaz. Geri almak için krediyi düzenleyin.",
     "nothingToUndo": "Geri alınacak işlem yok",
     "nothingToRedo": "Yeniden yapılacak işlem yok",
@@ -194,6 +196,8 @@
     "deviceNotFound": "Cihaz bulunamadı",
     "unableToCompleteRegistration": "Kayıt tamamlanamıyor",
     "delegateClaimPasswordRequired": "Bu e-postaya sahip bir hesap zaten paylaşılan kullanıcı olarak mevcut. Talep etmek için yöneticinizin verdiği geçici şifreyi girin.",
+    "delegateClaimRequiresTwoFactorSignIn": "Bu paylaşılan hesap iki faktörlü kimlik doğrulama kullanıyor. Kaydolmak yerine şifreniz ve kimlik doğrulama kodunuzla oturum açın.",
+    "twoFactorAlreadyEnabled": "İki faktörlü kimlik doğrulama zaten etkin. Farklı bir kimlik doğrulayıcı kullanmak için sıfırlayın.",
     "passwordBreached": "Bu şifre bir veri ihlalinde bulundu. Lütfen farklı bir şifre seçin.",
     "invalidCredentials": "Geçersiz kimlik bilgileri",
     "accountTemporarilyLocked": "Hesap, çok fazla başarısız giriş denemesi nedeniyle geçici olarak kilitlendi. Lütfen daha sonra tekrar deneyin.",

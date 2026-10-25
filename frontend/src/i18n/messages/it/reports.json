@@ -1326,7 +1326,11 @@
     "csvColCostBasis": "Costo di acquisto",
     "csvColGainLoss": "Guadagno/Perdita",
     "csvColReturn": "Rendimento %",
-    "csvNoRate": "Nessun tasso"
+    "csvNoRate": "Nessun tasso",
+    "csvUnknownCost": "Sconosciuto",
+    "unknownBasisReason": "Questo utile non può essere calcolato: la posizione contiene azioni aggiunte senza costo, quindi il costo delle azioni vendute è sconosciuto. Apri la transazione che le ha aggiunte e inserisci il loro prezzo.",
+    "knownPart": "Parte nota: {amount}",
+    "unknownCostNotice": "{count, plural, one {# vendita ha} other {# vendite hanno}} un costo sconosciuto, perché le azioni sono state aggiunte senza prezzo. Per {count, plural, one {essa} other {esse}} non viene indicato alcun utile, quindi i totali degli utili mostrano solo la parte nota."
   },
   "recurringExpenses": {
     "recurringExpenses": "Spese ricorrenti",

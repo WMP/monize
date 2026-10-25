@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "De lening is opgeslagen, maar de regel voor betalingskoppeling kon niet worden aangemaakt. Maak deze aan via de details van de lening."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "Deze bewerking heeft splitsregels gewijzigd die geld naar andere rekeningen verplaatsen, dus ze kan niet automatisch ongedaan worden gemaakt. Bewerk de transactie om haar terug te zetten.",
+    "undoVoidWithLegs": "Deze wijziging heeft boekingen op andere rekeningen geannuleerd of hersteld, dus ze kan niet automatisch ongedaan worden gemaakt. Zet in plaats daarvan de status terug.",
     "loanEditNotUndoable": "Deze leningwijziging kan niet automatisch ongedaan worden gemaakt. Bewerk de lening om haar terug te zetten.",
     "nothingToUndo": "Niets om ongedaan te maken",
     "nothingToRedo": "Niets om opnieuw te doen",
@@ -194,6 +196,8 @@
     "deviceNotFound": "Apparaat niet gevonden",
     "unableToCompleteRegistration": "Registratie voltooien niet mogelijk",
     "delegateClaimPasswordRequired": "Er bestaat al een account met dit e-mailadres als gedeelde gebruiker. Voer het tijdelijke wachtwoord van je beheerder in om het te claimen.",
+    "delegateClaimRequiresTwoFactorSignIn": "Dit gedeelde account gebruikt tweestapsverificatie. Meld je aan met je wachtwoord en verificatiecode in plaats van je te registreren.",
+    "twoFactorAlreadyEnabled": "Tweestapsverificatie is al ingeschakeld. Stel het opnieuw in om een andere authenticator te gebruiken.",
     "passwordBreached": "Dit wachtwoord is aangetroffen in een datalek. Kies een ander wachtwoord.",
     "invalidCredentials": "Ongeldige inloggegevens",
     "accountTemporarilyLocked": "Account is tijdelijk vergrendeld vanwege te veel mislukte inlogpogingen. Probeer het later opnieuw.",

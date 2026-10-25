@@ -1326,7 +1326,11 @@
     "csvColCostBasis": "Kostprijs",
     "csvColGainLoss": "Winst/verlies",
     "csvColReturn": "Rendement %",
-    "csvNoRate": "Geen koers"
+    "csvNoRate": "Geen koers",
+    "csvUnknownCost": "Onbekend",
+    "unknownBasisReason": "Deze winst kan niet worden berekend: de positie bevat aandelen die zonder kosten zijn toegevoegd, dus de kostprijs van de verkochte aandelen is onbekend. Open de transactie die ze heeft toegevoegd en voer hun prijs in.",
+    "knownPart": "Bekend deel: {amount}",
+    "unknownCostNotice": "{count, plural, one {# verkoop heeft} other {# verkopen hebben}} een onbekende kostprijs, omdat aandelen zonder prijs zijn toegevoegd. Voor {count, plural, one {deze} other {deze}} wordt geen winst opgegeven, dus de winsttotalen tonen alleen het bekende deel."
   },
   "recurringExpenses": {
     "recurringExpenses": "Terugkerende uitgaven",

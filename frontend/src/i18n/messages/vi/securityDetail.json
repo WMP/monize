@@ -126,6 +126,7 @@
     "fees": "Phí",
     "realizedPl": "Lãi/lỗ đã thực hiện",
     "realizedMixed": "Thực hiện bằng {currencies}, nên không cộng gộp",
+    "realizedUnknownReason": "Không thể tính khoản lãi/lỗ này: vị thế có cổ phiếu được thêm vào mà không có chi phí, nên không biết chi phí của số cổ phiếu đã bán. Hãy mở giao dịch đã thêm chúng và nhập giá.",
     "totalReturn": "Tổng lợi nhuận",
     "totalReturnValue": "{amount} ({percent})",
     "totalReturnTitle": "Lãi chưa thực hiện, cộng phần bạn đã thực hiện khi bán và nhận được từ thu nhập, trừ phí, so với số vốn bạn đã bỏ ra. Đây là lợi nhuận đơn giản trên số vốn đó: không quy về năm và không tính theo thời gian nắm giữ của từng lần mua.",
@@ -152,6 +153,7 @@
     "title": "Vị thế đã đóng",
     "description": "Bạn không còn nắm giữ chứng khoán này. Lịch sử của nó vẫn còn ở bên dưới.",
     "realizedPl": "Lãi/lỗ đã thực hiện",
+    "realizedUnknownReason": "Không thể tính khoản lãi/lỗ này: vị thế từng có cổ phiếu được thêm vào mà không có chi phí, nên không biết chi phí của số cổ phiếu đã bán. Hãy mở giao dịch đã thêm chúng và nhập giá.",
     "heldFrom": "Nắm giữ từ",
     "heldRange": "{start} đến {end}"
   },

@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "ローンは保存されましたが、支払い照合ルールを作成できませんでした。ローンの詳細から作成してください。"
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "この編集により、他の口座へ資金を移動する分割行が変更されたため、自動的に元に戻せません。元に戻すには取引を編集してください。",
+    "undoVoidWithLegs": "この変更により、他の口座のエントリが無効化または復元されたため、自動的に元に戻せません。代わりにステータスを元に戻してください。",
     "loanEditNotUndoable": "このローンの変更は自動的に元に戻せません。元に戻すにはローンを編集してください。",
     "nothingToUndo": "元に戻すものがありません",
     "nothingToRedo": "やり直すものがありません",
@@ -194,6 +196,8 @@
     "deviceNotFound": "デバイスが見つかりません",
     "unableToCompleteRegistration": "登録を完了できません",
     "delegateClaimPasswordRequired": "このメールアドレスのアカウントはすでに共有ユーザーとして存在します。取得するには管理者から提供された仮パスワードを入力してください。",
+    "delegateClaimRequiresTwoFactorSignIn": "この共有アカウントは二要素認証を使用しています。登録せずに、パスワードと認証コードでサインインしてください。",
+    "twoFactorAlreadyEnabled": "二要素認証はすでに有効です。別の認証アプリを使うには、リセットしてください。",
     "passwordBreached": "このパスワードはデータ侵害で発見されています。別のパスワードを選択してください。",
     "invalidCredentials": "認証情報が無効です",
     "accountTemporarilyLocked": "ログイン試行が多すぎるため、アカウントが一時的にロックされています。後で再試行してください。",

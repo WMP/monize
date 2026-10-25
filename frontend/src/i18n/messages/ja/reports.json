@@ -1326,7 +1326,11 @@
     "csvColCostBasis": "取得原価",
     "csvColGainLoss": "損益",
     "csvColReturn": "リターン率",
-    "csvNoRate": "レートなし"
+    "csvNoRate": "レートなし",
+    "csvUnknownCost": "不明",
+    "unknownBasisReason": "この損益は算出できません。このポジションには取得原価なしで追加された株式があるため、売却した株式の原価が不明です。それらを追加した取引を開いて、価格を入力してください。",
+    "knownPart": "判明分: {amount}",
+    "unknownCostNotice": "{count, plural, one {# 件の売却} other {# 件の売却}}は原価が不明です。価格なしで株式が追加されたためです。{count, plural, one {これら} other {これら}}には損益が表示されないため、損益の合計には判明分のみが表示されます。"
   },
   "recurringExpenses": {
     "recurringExpenses": "定期費用",

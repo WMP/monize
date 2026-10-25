@@ -126,6 +126,7 @@
     "fees": "Comisiones",
     "realizedPl": "P/G realizada",
     "realizedMixed": "Realizada en {currencies}, por lo que no se suma",
+    "realizedUnknownReason": "Esta ganancia no se puede calcular: la posición contiene acciones que se añadieron sin costo, por lo que se desconoce el costo de las acciones vendidas. Abre la transacción que las añadió e introduce su precio.",
     "totalReturn": "Rentabilidad total",
     "totalReturnValue": "{amount} ({percent})",
     "totalReturnTitle": "La ganancia no realizada, más lo que has realizado en ventas y recibido en ingresos, menos comisiones, sobre el capital aportado. Una rentabilidad simple sobre ese capital: no está anualizada y no pondera los tramos por el tiempo que los has mantenido.",
@@ -152,6 +153,7 @@
     "title": "Posición cerrada",
     "description": "Ya no tienes este valor. Su historial sigue disponible más abajo.",
     "realizedPl": "P/G realizada",
+    "realizedUnknownReason": "Esta ganancia no se puede calcular: la posición contenía acciones que se añadieron sin costo, por lo que se desconoce el costo de las acciones vendidas. Abre la transacción que las añadió e introduce su precio.",
     "heldFrom": "En cartera desde",
     "heldRange": "{start} a {end}"
   },

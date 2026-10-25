@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "Khoản vay đã được lưu, nhưng không thể tạo quy tắc đối chiếu thanh toán. Hãy tạo nó từ chi tiết khoản vay."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "Chỉnh sửa này đã thay đổi các dòng chia nhỏ chuyển tiền sang tài khoản khác, nên không thể tự động hoàn tác. Hãy chỉnh sửa giao dịch để đổi lại.",
+    "undoVoidWithLegs": "Thay đổi này đã hủy hoặc khôi phục các mục ở tài khoản khác, nên không thể tự động hoàn tác. Hãy đổi lại trạng thái.",
     "loanEditNotUndoable": "Không thể tự động hoàn tác thay đổi khoản vay này. Hãy chỉnh sửa khoản vay để đổi lại.",
     "nothingToUndo": "Không có gì để hoàn tác",
     "nothingToRedo": "Không có gì để làm lại",
@@ -194,6 +196,8 @@
     "deviceNotFound": "Không tìm thấy thiết bị",
     "unableToCompleteRegistration": "Không thể hoàn tất đăng ký",
     "delegateClaimPasswordRequired": "Tài khoản với email này đã tồn tại dưới dạng người dùng được chia sẻ. Cung cấp mật khẩu tạm thời mà quản trị viên đã cấp để xác nhận quyền sở hữu.",
+    "delegateClaimRequiresTwoFactorSignIn": "Tài khoản dùng chung này sử dụng xác thực hai yếu tố. Hãy đăng nhập bằng mật khẩu và mã xác thực thay vì đăng ký.",
+    "twoFactorAlreadyEnabled": "Xác thực hai yếu tố đã được bật. Hãy đặt lại để dùng một ứng dụng xác thực khác.",
     "passwordBreached": "Mật khẩu này đã bị phát hiện trong một vụ rò rỉ dữ liệu. Vui lòng chọn mật khẩu khác.",
     "invalidCredentials": "Thông tin đăng nhập không hợp lệ",
     "accountTemporarilyLocked": "Tài khoản bị khóa tạm thời do quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau.",

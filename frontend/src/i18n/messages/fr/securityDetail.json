@@ -126,6 +126,7 @@
     "fees": "Frais",
     "realizedPl": "P/P réalisé",
     "realizedMixed": "Réalisé en {currencies}, donc non additionné",
+    "realizedUnknownReason": "Ce gain ne peut pas être calculé : la position contient des titres ajoutés sans coût, le coût de revient des titres vendus est donc inconnu. Ouvrez la transaction qui les a ajoutés et saisissez leur prix.",
     "totalReturn": "Rendement total",
     "totalReturnValue": "{amount} ({percent})",
     "totalReturnTitle": "Le gain latent, plus ce que vous avez réalisé sur les ventes et perçu en revenus, moins les frais, rapporté au capital engagé. Un rendement simple sur ce capital : il n'est pas annualisé et ne pondère pas les tranches selon leur durée de détention.",
@@ -152,6 +153,7 @@
     "title": "Position clôturée",
     "description": "Vous ne détenez plus ce titre. Son historique reste disponible ci-dessous.",
     "realizedPl": "P/P réalisé",
+    "realizedUnknownReason": "Ce gain ne peut pas être calculé : la position contenait des titres ajoutés sans coût, le coût de revient des titres vendus est donc inconnu. Ouvrez la transaction qui les a ajoutés et saisissez leur prix.",
     "heldFrom": "Détenu depuis",
     "heldRange": "{start} au {end}"
   },

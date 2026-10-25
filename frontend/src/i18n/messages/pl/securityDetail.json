@@ -126,6 +126,7 @@
     "fees": "Opłaty",
     "realizedPl": "Zrealizowany zysk/strata",
     "realizedMixed": "Zrealizowane w {currencies}, więc nie zsumowano",
+    "realizedUnknownReason": "Nie można obliczyć tego zysku: pozycja zawiera akcje dodane bez kosztu, więc koszt sprzedanych akcji jest nieznany. Otwórz transakcję, która je dodała, i wpisz ich cenę.",
     "totalReturn": "Zwrot całkowity",
     "totalReturnValue": "{amount} ({percent})",
     "totalReturnTitle": "Niezrealizowany zysk plus to, co zrealizowałeś na sprzedażach i otrzymałeś w przychodach, minus opłaty, w stosunku do wpłaconego kapitału. Prosty zwrot z tego kapitału: nie jest annualizowany i nie waży transz czasem ich trzymania.",
@@ -152,6 +153,7 @@
     "title": "Pozycja zamknięta",
     "description": "Nie trzymasz już tego papieru wartościowego. Jego historia pozostaje dostępna poniżej.",
     "realizedPl": "Zrealizowany zysk/strata",
+    "realizedUnknownReason": "Nie można obliczyć tego zysku: pozycja zawierała akcje dodane bez kosztu, więc koszt sprzedanych akcji jest nieznany. Otwórz transakcję, która je dodała, i wpisz ich cenę.",
     "heldFrom": "Trzymane od",
     "heldRange": "{start} do {end}"
   },

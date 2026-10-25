@@ -1326,7 +1326,11 @@
     "csvColCostBasis": "Base de costo",
     "csvColGainLoss": "Ganancia/pérdida",
     "csvColReturn": "Retorno %",
-    "csvNoRate": "Sin tipo"
+    "csvNoRate": "Sin tipo",
+    "csvUnknownCost": "Desconocido",
+    "unknownBasisReason": "Esta ganancia no se puede calcular: la posición contiene acciones que se añadieron sin costo, por lo que se desconoce el costo de las acciones vendidas. Abre la transacción que las añadió e introduce su precio.",
+    "knownPart": "Parte conocida: {amount}",
+    "unknownCostNotice": "{count, plural, one {# venta tiene} other {# ventas tienen}} un costo desconocido, porque se añadieron acciones sin precio. No se indica ganancia para {count, plural, one {ella} other {ellas}}, así que los totales de ganancias muestran solo la parte conocida."
   },
   "recurringExpenses": {
     "recurringExpenses": "Gastos recurrentes",

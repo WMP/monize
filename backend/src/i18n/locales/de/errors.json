@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "Der Kredit wurde gespeichert, aber seine Regel für den Zahlungsabgleich konnte nicht erstellt werden. Erstellen Sie sie in den Kreditdetails."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "Diese Bearbeitung hat Aufteilungszeilen geändert, die Geld auf andere Konten verschieben, daher kann sie nicht automatisch rückgängig gemacht werden. Bearbeiten Sie die Transaktion, um sie zurückzusetzen.",
+    "undoVoidWithLegs": "Diese Änderung hat Einträge in anderen Konten annulliert oder wiederhergestellt, daher kann sie nicht automatisch rückgängig gemacht werden. Setzen Sie stattdessen den Status zurück.",
     "loanEditNotUndoable": "Diese Kreditänderung kann nicht automatisch rückgängig gemacht werden. Bearbeiten Sie den Kredit, um sie zurückzusetzen.",
     "nothingToUndo": "Nichts rückgängig zu machen",
     "nothingToRedo": "Nichts zu wiederholen",
@@ -194,6 +196,8 @@
     "deviceNotFound": "Gerät nicht gefunden",
     "unableToCompleteRegistration": "Registrierung kann nicht abgeschlossen werden",
     "delegateClaimPasswordRequired": "Ein Konto mit dieser E-Mail-Adresse existiert bereits als geteilter Benutzer. Geben Sie das temporäre Passwort ein, das Ihnen Ihr Administrator gegeben hat, um es zu beanspruchen.",
+    "delegateClaimRequiresTwoFactorSignIn": "Dieses gemeinsame Konto verwendet die Zwei-Faktor-Authentifizierung. Melden Sie sich mit Ihrem Passwort und Ihrem Authentifizierungscode an, statt sich zu registrieren.",
+    "twoFactorAlreadyEnabled": "Die Zwei-Faktor-Authentifizierung ist bereits aktiviert. Setzen Sie sie zurück, um eine andere Authentifizierungs-App zu verwenden.",
     "passwordBreached": "Dieses Passwort wurde in einem Datenleck gefunden. Bitte wählen Sie ein anderes Passwort.",
     "invalidCredentials": "Ungültige Anmeldedaten",
     "accountTemporarilyLocked": "Konto ist aufgrund zu vieler fehlgeschlagener Anmeldeversuche vorübergehend gesperrt. Bitte versuchen Sie es später erneut.",
