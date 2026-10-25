@@ -25,7 +25,6 @@
     "manual": "Manuale",
     "manualTitle": "Richiede registrazione manuale",
     "negativeBalanceWarning": "Questa transazione porterà il saldo del conto sotto zero",
-    "viewAll": "Visualizza tutte le fatture e i versamenti",
     "moreItems": "+{count} altri",
     "overdue": "Scaduta",
     "today": "Oggi",
@@ -90,7 +89,6 @@
     "title": "Analisi delle spese",
     "empty": "Nessuna analisi disponibile. Visita la pagina Analisi per generare la prima.",
     "goToInsights": "Vai ad Analisi",
-    "viewAll": "Visualizza tutte le analisi",
     "activeCount": "{count} attive"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "Variazione giornaliera",
     "dailyChangeOn": "Variazione giornaliera · {date}",
     "openPriceHistory": "Storico prezzi di {symbol}",
-    "refreshPrices": "Aggiorna quotazioni",
-    "manage": "Gestisci titoli"
+    "refreshPrices": "Aggiorna quotazioni"
   },
   "netWorth": {
     "title": "Patrimonio netto",

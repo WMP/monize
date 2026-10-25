@@ -311,17 +311,6 @@ describe('UpcomingBills', () => {
     ).toHaveAttribute('href', '/bills');
   });
 
-  it('navigates to bills page on View all bills link click', () => {
-    const dateStr = futureDateStr(1);
-    const transactions = [
-      { id: '1', name: 'Netflix', amount: -15.99, currencyCode: 'CAD', nextDueDate: dateStr, isActive: true, autoPost: true },
-    ] as any[];
-
-    render(<UpcomingBills accounts={[]} scheduledTransactions={transactions} isLoading={false} maxItems={defaultMaxItems} />);
-    fireEvent.click(screen.getByText('View all bills & deposits'));
-    expect(mockPush).toHaveBeenCalledWith('/bills');
-  });
-
   it('navigates to bills page with postBillId when a bill row is clicked', () => {
     const transactions = [
       { id: 'bill-42', name: 'Netflix', amount: -15.99, currencyCode: 'CAD', nextDueDate: futureDateStr(1), isActive: true, autoPost: false },

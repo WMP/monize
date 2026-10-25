@@ -25,7 +25,6 @@
     "manual": "मैन्युअल",
     "manualTitle": "मैन्युअल पोस्टिंग आवश्यक है",
     "negativeBalanceWarning": "इस लेनदेन से खाते का शेष शून्य से नीचे चला जाएगा",
-    "viewAll": "सभी बिल और जमा देखें",
     "moreItems": "+{count} और",
     "overdue": "अतिदेय",
     "today": "आज",
@@ -90,7 +89,6 @@
     "title": "खर्च अंतर्दृष्टि",
     "empty": "कोई अंतर्दृष्टि उपलब्ध नहीं। अपना पहला विश्लेषण उत्पन्न करने के लिए अंतर्दृष्टि पृष्ठ पर जाएं।",
     "goToInsights": "अंतर्दृष्टि पर जाएं",
-    "viewAll": "सभी अंतर्दृष्टि देखें",
     "activeCount": "{count} सक्रिय"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "दैनिक परिवर्तन",
     "dailyChangeOn": "दैनिक परिवर्तन · {date}",
     "openPriceHistory": "{symbol} का मूल्य इतिहास",
-    "refreshPrices": "मूल्य रीफ्रेश करें",
-    "manage": "प्रतिभूतियां प्रबंधित करें"
+    "refreshPrices": "मूल्य रीफ्रेश करें"
   },
   "netWorth": {
     "title": "शुद्ध संपत्ति",

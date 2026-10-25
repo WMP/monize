@@ -25,7 +25,6 @@
     "manual": "Handmatig",
     "manualTitle": "Vereist handmatige boeking",
     "negativeBalanceWarning": "Deze transactie zorgt ervoor dat het rekeningsaldo onder nul komt",
-    "viewAll": "Alle facturen en stortingen bekijken",
     "moreItems": "+{count} meer",
     "overdue": "Achterstallig",
     "today": "Vandaag",
@@ -90,7 +89,6 @@
     "title": "Uitgaveninzichten",
     "empty": "Geen inzichten beschikbaar. Ga naar de pagina Inzichten om je eerste analyse te genereren.",
     "goToInsights": "Naar inzichten",
-    "viewAll": "Alle inzichten bekijken",
     "activeCount": "{count} actief"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "Dagelijkse wijziging",
     "dailyChangeOn": "Dagelijkse wijziging · {date}",
     "openPriceHistory": "Koersgeschiedenis van {symbol}",
-    "refreshPrices": "Koersen vernieuwen",
-    "manage": "Waardepapieren beheren"
+    "refreshPrices": "Koersen vernieuwen"
   },
   "netWorth": {
     "title": "Nettowaarde",

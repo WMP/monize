@@ -25,7 +25,6 @@
     "manual": "Manual",
     "manualTitle": "Membutuhkan posting manual",
     "negativeBalanceWarning": "Transaksi ini akan menyebabkan saldo akun menjadi di bawah nol",
-    "viewAll": "Lihat semua tagihan & setoran",
     "moreItems": "+{count} lagi",
     "overdue": "Lewat jatuh tempo",
     "today": "Hari ini",
@@ -90,7 +89,6 @@
     "title": "Wawasan Pengeluaran",
     "empty": "Tidak ada wawasan tersedia. Kunjungi halaman Wawasan untuk menghasilkan analisis pertama Anda.",
     "goToInsights": "Pergi ke Wawasan",
-    "viewAll": "Lihat semua wawasan",
     "activeCount": "{count} aktif"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "Perubahan harian",
     "dailyChangeOn": "Perubahan harian · {date}",
     "openPriceHistory": "Riwayat harga {symbol}",
-    "refreshPrices": "Perbarui harga",
-    "manage": "Kelola sekuritas"
+    "refreshPrices": "Perbarui harga"
   },
   "netWorth": {
     "title": "Nilai Bersih",

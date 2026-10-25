@@ -146,14 +146,12 @@ describe('FavouriteSecurities', () => {
     expect(screen.queryByTitle('Refresh prices')).not.toBeInTheDocument();
   });
 
-  it('reaches securities from the title link and the footer button', () => {
+  it('reaches securities from the title link', () => {
     render(<FavouriteSecurities securities={[quote()]} isLoading={false} />);
     expect(screen.getByRole('link', { name: 'Favourite Securities' })).toHaveAttribute(
       'href',
       '/securities',
     );
-    fireEvent.click(screen.getByText('Manage securities'));
-    expect(mockPush).toHaveBeenCalledWith('/securities');
   });
 
   it('opens the price history for the clicked row, like Top Movers', () => {

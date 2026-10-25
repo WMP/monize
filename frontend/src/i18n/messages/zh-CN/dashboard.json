@@ -25,7 +25,6 @@
     "manual": "手动",
     "manualTitle": "需要手动过账",
     "negativeBalanceWarning": "此交易将导致账户余额低于零",
-    "viewAll": "查看所有账单与存款",
     "moreItems": "+{count} 条",
     "overdue": "已逾期",
     "today": "今天",
@@ -90,7 +89,6 @@
     "title": "消费洞察",
     "empty": "暂无洞察。请前往洞察页面生成您的第一次分析。",
     "goToInsights": "前往洞察",
-    "viewAll": "查看所有洞察",
     "activeCount": "{count} 条活跃"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "日涨跌",
     "dailyChangeOn": "日涨跌 · {date}",
     "openPriceHistory": "{symbol} 的价格历史",
-    "refreshPrices": "刷新价格",
-    "manage": "管理证券"
+    "refreshPrices": "刷新价格"
   },
   "netWorth": {
     "title": "资产净值",

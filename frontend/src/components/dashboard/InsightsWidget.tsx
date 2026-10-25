@@ -104,12 +104,6 @@ export function InsightsWidget({ isLoading: parentLoading }: InsightsWidgetProps
           );
         })}
       </div>
-      <button
-        onClick={() => router.push('/insights')}
-        className="mt-3 w-full text-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-      >
-        {t('insights.viewAll')}
-      </button>
     </div>
   );
 }

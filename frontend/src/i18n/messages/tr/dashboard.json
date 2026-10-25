@@ -25,7 +25,6 @@
     "manual": "Manuel",
     "manualTitle": "Manuel kayıt gerektirir",
     "negativeBalanceWarning": "Bu işlem hesap bakiyesinin sıfırın altına düşmesine yol açacak",
-    "viewAll": "Tüm fatura ve ödemeleri görüntüle",
     "moreItems": "+{count} daha",
     "overdue": "Vadesi geçmiş",
     "today": "Bugün",
@@ -90,7 +89,6 @@
     "title": "Harcama Analizleri",
     "empty": "Analiz bulunamadı. İlk analizinizi oluşturmak için Analizler sayfasını ziyaret edin.",
     "goToInsights": "Analizlere Git",
-    "viewAll": "Tüm analizleri görüntüle",
     "activeCount": "{count} aktif"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "Günlük değişim",
     "dailyChangeOn": "Günlük değişim · {date}",
     "openPriceHistory": "{symbol} fiyat geçmişi",
-    "refreshPrices": "Fiyatları yenile",
-    "manage": "Menkul kıymetleri yönet"
+    "refreshPrices": "Fiyatları yenile"
   },
   "netWorth": {
     "title": "Net Değer",

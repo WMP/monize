@@ -144,6 +144,18 @@ describe('ExpensesPieChart', () => {
     expect(screen.getByText('Transport')).toBeInTheDocument();
   });
 
+  it('shows each category total beside its legend row', async () => {
+    await renderChart(
+      report([
+        category('cat1', 'Food', 50, '#ef4444'),
+        category('cat2', 'Transport', 30, '#3b82f6'),
+      ]),
+    );
+
+    expect(screen.getByRole('button', { name: /Food/ })).toHaveTextContent('$50.00');
+    expect(screen.getByRole('button', { name: /Transport/ })).toHaveTextContent('$30.00');
+  });
+
   it('shows the report total, not a sum it worked out itself', async () => {
     await renderChart(
       report([category('cat1', 'Food', 50), category('cat2', 'Transport', 30)]),
@@ -209,8 +221,8 @@ describe('ExpensesPieChart', () => {
 
     // The figure shown is the part that converted, marked rather than presented
     // as the whole.
-    expect(screen.getByText('$50.00')).toBeInTheDocument();
-    expect(screen.getByTestId('partial-total')).toBeInTheDocument();
+    const partialTotal = screen.getByTestId('partial-total');
+    expect(within(partialTotal).getByText('$50.00')).toBeInTheDocument();
   });
 
   it('leaves a complete total unmarked', async () => {
@@ -306,7 +318,7 @@ describe('ExpensesPieChart', () => {
         ...Array.from({ length: 12 }, (_, i) => category(`c${i}`, `Cat ${i}`, 200 - i)),
       ]),
     );
-    expect(screen.getByRole('button', { name: 'Uncategorized' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Uncategorized/ })).toBeDisabled();
     fireEvent.click(screen.getByTestId('pie-slice-Uncategorized'));
     expect(screen.queryByText(/categories in Other/)).not.toBeInTheDocument();
   });
@@ -378,7 +390,7 @@ describe('ExpensesPieChart', () => {
       observeAs(300, 300);
       await renderChart(overflowReport(14));
       expect(screen.queryByRole('list', { name: 'Expenses by Category' })).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Cat 0' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Cat 0/ })).toHaveTextContent('$140.00');
     });
   });
 

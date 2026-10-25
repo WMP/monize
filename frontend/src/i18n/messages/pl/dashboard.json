@@ -25,7 +25,6 @@
     "manual": "Ręczne",
     "manualTitle": "Wymaga ręcznego zaksięgowania",
     "negativeBalanceWarning": "Ta transakcja spowoduje, że saldo konta spadnie poniżej zera",
-    "viewAll": "Zobacz wszystkie rachunki i wpłaty",
     "moreItems": "+{count} więcej",
     "overdue": "Zaległe",
     "today": "Dzisiaj",
@@ -90,7 +89,6 @@
     "title": "Analiza wydatków",
     "empty": "Brak dostępnych analiz. Odwiedź stronę analiz, aby wygenerować pierwszą analizę.",
     "goToInsights": "Przejdź do analiz",
-    "viewAll": "Zobacz wszystkie analizy",
     "activeCount": "aktywne: {count}"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "Zmiana dzienna",
     "dailyChangeOn": "Zmiana dzienna · {date}",
     "openPriceHistory": "Historia ceny: {symbol}",
-    "refreshPrices": "Odśwież ceny",
-    "manage": "Zarządzaj papierami wartościowymi"
+    "refreshPrices": "Odśwież ceny"
   },
   "netWorth": {
     "title": "Wartość netto",

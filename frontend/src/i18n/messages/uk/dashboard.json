@@ -25,7 +25,6 @@
     "manual": "Вручну",
     "manualTitle": "Потребує ручного проведення",
     "negativeBalanceWarning": "Ця транзакція призведе до від'ємного балансу рахунку",
-    "viewAll": "Переглянути всі рахунки та надходження",
     "moreItems": "+{count} ще",
     "overdue": "Прострочено",
     "today": "Сьогодні",
@@ -90,7 +89,6 @@
     "title": "Аналіз витрат",
     "empty": "Немає доступних аналізів. Відвідайте сторінку аналізу, щоб створити перший звіт.",
     "goToInsights": "Перейти до аналізу",
-    "viewAll": "Переглянути всі аналізи",
     "activeCount": "{count} активних"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "Денна зміна",
     "dailyChangeOn": "Денна зміна · {date}",
     "openPriceHistory": "Історія ціни: {symbol}",
-    "refreshPrices": "Оновити ціни",
-    "manage": "Керувати цінними паперами"
+    "refreshPrices": "Оновити ціни"
   },
   "netWorth": {
     "title": "Чисті активи",
