@@ -158,4 +158,17 @@ describe("Undo of an edit of a split with a transfer line (integration)", () => 
     });
     expect(await balances()).toEqual(settled);
   });
+
+  it("refuses the undo of a VOID that reached the legs, with every balance unchanged", async () => {
+    const id = await createSplit();
+    await asUser(() => transactions.update(userId, id, { status: "VOID" }));
+    const settled = await balances();
+
+    await expect(settledUndo()).rejects.toMatchObject({
+      response: { errorCode: "UNDO_VOID_WITH_LEGS" },
+    });
+    expect(await balances()).toEqual(settled);
+    const row = await db.manager.findOneByOrFail(Transaction, { id });
+    expect(row.status).toBe("VOID");
+  });
 });

@@ -820,6 +820,71 @@ describe("ActionHistoryService", () => {
         expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
       });
 
+      it.each([
+        ["undo", "UNRECONCILED", "VOID"],
+        ["redo", "VOID", "UNRECONCILED"],
+      ])(
+        "refuses the %s of a status change that voided or restored legs, before any write",
+        async (which, beforeStatus, afterStatus) => {
+          const action = splitAction(
+            transferSplits("leg-1"),
+            transferSplits("leg-1"),
+          );
+          action.beforeData = { ...action.beforeData, status: beforeStatus };
+          action.afterData = { ...action.afterData, status: afterStatus };
+          arrange(action);
+
+          await expect(
+            which === "undo" ? service.undo(userId) : service.redo(userId),
+          ).rejects.toMatchObject({
+            response: { errorCode: "UNDO_VOID_WITH_LEGS" },
+          });
+          expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+          expect(mockQueryRunner.manager.delete).not.toHaveBeenCalled();
+        },
+      );
+
+      it("refuses an undo of a VOID of a transfer leg", async () => {
+        const action = {
+          ...splitAction(undefined, undefined),
+          beforeData: {
+            accountId: "acc-1",
+            status: "UNRECONCILED",
+            isTransfer: true,
+            linkedTransactionId: "tx-2",
+          },
+          afterData: {
+            accountId: "acc-1",
+            status: "VOID",
+            isTransfer: true,
+            linkedTransactionId: "tx-2",
+          },
+        };
+        arrange(action);
+
+        await expect(service.undo(userId)).rejects.toMatchObject({
+          response: { errorCode: "UNDO_VOID_WITH_LEGS" },
+        });
+        expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      });
+
+      it("still undoes a VOID of a row without legs", async () => {
+        const action = {
+          ...splitAction(undefined, undefined),
+          beforeData: { accountId: "acc-1", status: "UNRECONCILED" },
+          afterData: { accountId: "acc-1", status: "VOID" },
+        };
+        arrange(action);
+
+        await service.undo(userId);
+
+        expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+          expect.any(Function),
+          "tx-1",
+          expect.objectContaining({ status: "UNRECONCILED" }),
+        );
+      });
+
       it("sets the kind of a re-created category line from the snapshot", async () => {
         arrange(
           splitAction(

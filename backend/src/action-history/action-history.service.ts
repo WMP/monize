@@ -209,6 +209,35 @@ function assertSplitLegsUndoable(
   });
 }
 
+/**
+ * Refuses, before anything is written, the undo or redo of a status edit that
+ * voided or restored a row with legs: the edit propagated VOID to the
+ * counterparts in other accounts, but history holds only the edited row, so a
+ * replay would move one side of the pair. The user changes the status back.
+ */
+function assertVoidChangeUndoable(
+  before: Record<string, any>,
+  after: Record<string, any>,
+): void {
+  if ((before.status === "VOID") === (after.status === "VOID")) return;
+  const hasLegs = [before, after].some(
+    (snap) =>
+      (snap.isTransfer === true && !!snap.linkedTransactionId) ||
+      (Array.isArray(snap.splits) &&
+        (snap.splits as SplitSnapshot[]).some(
+          (split) => !!split.linkedTransactionId || !!split.transferAccountId,
+        )),
+  );
+  if (!hasLegs) return;
+  throw new ConflictException({
+    message: tr(
+      "errors.actionHistory.undoVoidWithLegs",
+      "This change voided or restored entries in other accounts, so it cannot be undone automatically. Change the status back instead.",
+    ),
+    errorCode: "UNDO_VOID_WITH_LEGS",
+  });
+}
+
 export interface RecordActionParams {
   entityType: string;
   entityId: string | null;
@@ -959,6 +988,7 @@ export class ActionHistoryService {
     await assertReconciledRowsMutable(manager, action.userId, [transaction]);
 
     const before = action.beforeData;
+    assertVoidChangeUndoable(before, action.afterData ?? {});
 
     // A change is a value difference: a form resends every split, so equal
     // lines leave the rows (and the legs they link) alone. Changed lines that
