@@ -2779,33 +2779,25 @@ describe("AuthService", () => {
   // ---------------------------------------------------------------
 
   describe("purgeExpiredRefreshTokens", () => {
-    it("deletes expired and revoked tokens", async () => {
-      refreshTokensRepository.delete
-        .mockResolvedValueOnce({ affected: 5 })
-        .mockResolvedValueOnce({ affected: 3 });
+    it("deletes only expired tokens, keeping revoked rows for reuse detection", async () => {
+      refreshTokensRepository.delete.mockResolvedValue({ affected: 5 });
 
       await service.purgeExpiredRefreshTokens();
 
+      expect(refreshTokensRepository.delete).toHaveBeenCalledTimes(1);
       expect(refreshTokensRepository.delete).toHaveBeenCalledWith(
         expect.objectContaining({
           expiresAt: expect.anything(),
         }),
       );
-      expect(refreshTokensRepository.delete).toHaveBeenCalledWith(
-        expect.objectContaining({
-          isRevoked: true,
-        }),
-      );
     });
 
     it("does not log when no tokens purged", async () => {
-      refreshTokensRepository.delete
-        .mockResolvedValueOnce({ affected: 0 })
-        .mockResolvedValueOnce({ affected: 0 });
+      refreshTokensRepository.delete.mockResolvedValue({ affected: 0 });
 
       await service.purgeExpiredRefreshTokens();
 
-      expect(refreshTokensRepository.delete).toHaveBeenCalledTimes(2);
+      expect(refreshTokensRepository.delete).toHaveBeenCalledTimes(1);
     });
   });
 

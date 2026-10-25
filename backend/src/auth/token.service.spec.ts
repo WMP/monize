@@ -738,40 +738,34 @@ describe("TokenService", () => {
   });
 
   describe("purgeExpiredRefreshTokens", () => {
-    it("should delete expired and revoked tokens", async () => {
-      refreshTokensRepository.delete
-        .mockResolvedValueOnce({ affected: 3 })
-        .mockResolvedValueOnce({ affected: 5 });
+    // A rotated row stays as the evidence reuse detection needs: replaying a
+    // stolen, already-rotated token must find it to revoke the family.
+    it("deletes only expired tokens, never by isRevoked", async () => {
+      refreshTokensRepository.delete.mockResolvedValue({ affected: 3 });
 
       await service.purgeExpiredRefreshTokens();
 
-      expect(refreshTokensRepository.delete).toHaveBeenCalledTimes(2);
+      expect(refreshTokensRepository.delete).toHaveBeenCalledTimes(1);
       expect(refreshTokensRepository.delete).toHaveBeenCalledWith({
         expiresAt: expect.anything(),
       });
-      expect(refreshTokensRepository.delete).toHaveBeenCalledWith({
-        isRevoked: true,
-      });
+      expect(refreshTokensRepository.delete).not.toHaveBeenCalledWith(
+        expect.objectContaining({ isRevoked: expect.anything() }),
+      );
     });
 
-    it("should log when totalPurged > 0", async () => {
-      refreshTokensRepository.delete
-        .mockResolvedValueOnce({ affected: 2 })
-        .mockResolvedValueOnce({ affected: 3 });
+    it("should log when tokens were purged", async () => {
+      refreshTokensRepository.delete.mockResolvedValue({ affected: 5 });
 
       const logSpy = jest.spyOn(service["logger"], "log");
 
       await service.purgeExpiredRefreshTokens();
 
-      expect(logSpy).toHaveBeenCalledWith(
-        "Purged 5 expired/revoked refresh tokens",
-      );
+      expect(logSpy).toHaveBeenCalledWith("Purged 5 expired refresh tokens");
     });
 
-    it("should not log when totalPurged is 0", async () => {
-      refreshTokensRepository.delete
-        .mockResolvedValueOnce({ affected: 0 })
-        .mockResolvedValueOnce({ affected: 0 });
+    it("should not log when nothing was purged", async () => {
+      refreshTokensRepository.delete.mockResolvedValue({ affected: 0 });
 
       const logSpy = jest.spyOn(service["logger"], "log");
 
@@ -781,9 +775,9 @@ describe("TokenService", () => {
     });
 
     it("should handle undefined affected counts", async () => {
-      refreshTokensRepository.delete
-        .mockResolvedValueOnce({ affected: undefined })
-        .mockResolvedValueOnce({ affected: undefined });
+      refreshTokensRepository.delete.mockResolvedValue({
+        affected: undefined,
+      });
 
       const logSpy = jest.spyOn(service["logger"], "log");
 
