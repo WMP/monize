@@ -491,6 +491,22 @@ describe("TwoFactorService", () => {
       );
     });
 
+    it("refuses to replace an active authenticator, before the password is checked", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        twoFactorSecret: encrypt("TESTSECRET", TEST_TOTP_KEY),
+      });
+      preferencesRow.seed({ userId: "user-1", twoFactorEnabled: true });
+      const compare = jest.spyOn(bcrypt, "compare");
+      compare.mockClear();
+
+      await expect(
+        service.setup2FA("user-1", "correct-password"),
+      ).rejects.toThrow(/already enabled/i);
+      expect(compare).not.toHaveBeenCalled();
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
     it("should reject incorrect current password", async () => {
       usersRepository.findOne.mockResolvedValue({ ...mockUser });
       jest.spyOn(bcrypt, "compare").mockResolvedValueOnce(false as never);
@@ -503,6 +519,21 @@ describe("TwoFactorService", () => {
   });
 
   describe("confirmSetup2FA", () => {
+    it("refuses to confirm over an active authenticator", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        twoFactorSecret: encrypt("OLDSECRET", TEST_TOTP_KEY),
+        pendingTwoFactorSecret: encrypt("TESTSECRET", TEST_TOTP_KEY),
+      });
+      preferencesRow.seed({ userId: "user-1", twoFactorEnabled: true });
+      (otplib.verifySync as jest.Mock).mockReturnValue({ valid: true });
+
+      await expect(service.confirmSetup2FA("user-1", "123456")).rejects.toThrow(
+        /already enabled/i,
+      );
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
     it("should promote pending secret to active on valid code", async () => {
       const pendingSecret = encrypt("TESTSECRET", TEST_TOTP_KEY);
       usersRepository.findOne.mockResolvedValue({

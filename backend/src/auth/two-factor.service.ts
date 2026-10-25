@@ -32,6 +32,7 @@ import { encrypt, decrypt, derivePurposeKey, hashToken } from "./crypto.util";
 import { TokenService } from "./token.service";
 import { tr } from "../i18n/translate";
 import { patchUserPreferences } from "../users/user-preference-writer";
+import { isTwoFactorActive } from "./two-factor-state";
 import { AuthAttemptCounterService } from "./auth-attempt-counter.service";
 import { SingleUseTokenService } from "./single-use-token.service";
 
@@ -543,6 +544,24 @@ export class TwoFactorService {
     return true;
   }
 
+  /**
+   * Enrolment never replaces a live authenticator: a stolen session plus the
+   * password could otherwise swap it. `reset2FA` does that, behind the old code.
+   */
+  private async refuseWhenTwoFactorActive(user: User) {
+    const preferences = await this.scoped(UserPreference, (repo) =>
+      repo.findOne({ where: { userId: user.id } }),
+    );
+    if (isTwoFactorActive(preferences, user)) {
+      throw new BadRequestException(
+        tr(
+          "errors.auth.twoFactorAlreadyEnabled",
+          "Two-factor authentication is already enabled. Reset it to use a different authenticator.",
+        ),
+      );
+    }
+  }
+
   async setup2FA(userId: string, currentPassword: string) {
     const user = await this.scoped(User, (repo) =>
       repo.findOne({
@@ -564,6 +583,8 @@ export class TwoFactorService {
         ),
       );
     }
+
+    await this.refuseWhenTwoFactorActive(user);
 
     // SECURITY: Re-verify the current password before generating (and
     // displaying) a new TOTP secret. Without this a session-hijacker could
@@ -619,6 +640,8 @@ export class TwoFactorService {
         tr("errors.auth.twoFactorSetupNotInitiated", "2FA setup not initiated"),
       );
     }
+
+    await this.refuseWhenTwoFactorActive(user);
 
     const secret = decrypt(user.pendingTwoFactorSecret, this.totpEncryptionKey);
     const isValid = otplib.verifySync({ token: code, secret }).valid;
