@@ -6,7 +6,10 @@ import {
 } from "@/action-history/action-history.service";
 import { TransactionsService } from "@/transactions/transactions.service";
 import { TransactionsModule } from "@/transactions/transactions.module";
-import { Transaction } from "@/transactions/entities/transaction.entity";
+import {
+  Transaction,
+  TransactionStatus,
+} from "@/transactions/entities/transaction.entity";
 import { Account } from "@/accounts/entities/account.entity";
 import { withUserContext } from "@/common/db/with-context";
 import {
@@ -161,7 +164,9 @@ describe("Undo of an edit of a split with a transfer line (integration)", () => 
 
   it("refuses the undo of a VOID that reached the legs, with every balance unchanged", async () => {
     const id = await createSplit();
-    await asUser(() => transactions.update(userId, id, { status: "VOID" }));
+    await asUser(() =>
+      transactions.update(userId, id, { status: TransactionStatus.VOID }),
+    );
     const settled = await balances();
 
     await expect(settledUndo()).rejects.toMatchObject({

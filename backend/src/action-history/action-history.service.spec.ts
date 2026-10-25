@@ -743,7 +743,10 @@ describe("ActionHistoryService", () => {
           memo: null,
         },
       ];
-      const splitAction = (beforeSplits: unknown, afterSplits: unknown) => ({
+      const splitAction = (
+        beforeSplits: unknown,
+        afterSplits: unknown,
+      ): Record<string, any> => ({
         ...mockAction,
         entityType: "transaction",
         action: "update",
