@@ -48,6 +48,8 @@ describe("EmergencyAccessClaimController", () => {
   const RAW_TOKEN = "a".repeat(64);
   /** Whether the conditional consume returns a row this run. */
   let claimWins: boolean;
+  /** Whether the owner came back since the grant (the cron has not run yet). */
+  let ownerReturned: boolean;
   const TOKEN_HASH = hashToken(RAW_TOKEN);
 
   beforeEach(async () => {
@@ -126,7 +128,10 @@ describe("EmergencyAccessClaimController", () => {
      * answers the way that statement does.
      */
     claimWins = true;
+    ownerReturned = false;
     scoped.manager.query.mockImplementation(async (sql: string) => {
+      if (String(sql).includes("SELECT id FROM emergency_access_contacts"))
+        return ownerReturned ? [] : [{ id: "c1" }];
       if (!String(sql).includes("UPDATE emergency_access_contacts")) return [];
       return claimWins ? [[{ id: "c1", owner_user_id: ownerId }], 1] : [[], 0];
     });
@@ -216,6 +221,26 @@ describe("EmergencyAccessClaimController", () => {
     });
   });
 
+  describe("an owner who returned since the grant", () => {
+    it("reads as an invalid link in preview, with the usual refusal", async () => {
+      ownerReturned = true;
+      await expect(controller.preview({ token: RAW_TOKEN })).rejects.toThrow(
+        "This emergency access link is invalid, expired, or has already been used.",
+      );
+    });
+
+    it("reads as an invalid link in complete, before any breach lookup", async () => {
+      ownerReturned = true;
+      await expect(
+        controller.complete(
+          { token: RAW_TOKEN, newPassword: "Password12345!" },
+          { cookie: jest.fn(), json: jest.fn() } as never,
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(passwordBreach.isBreached).not.toHaveBeenCalled();
+    });
+  });
+
   describe("complete", () => {
     function makeRes(): {
       cookie: jest.Mock;
@@ -244,8 +269,17 @@ describe("EmergencyAccessClaimController", () => {
         res as never,
       );
 
-      const [sql, params] = queryRunner.manager.query.mock.calls[0];
+      const consumeIndex = queryRunner.manager.query.mock.calls.findIndex(
+        ([text]) => String(text).includes("UPDATE emergency_access_contacts"),
+      );
+      const [sql, params] = queryRunner.manager.query.mock.calls[consumeIndex];
       expect(sql).toContain("UPDATE emergency_access_contacts");
+      // An owner who came back since the grant voids the link at once, not at the
+      // next daily cron: the predicate is part of the consume statement.
+      expect(sql).toContain("NOT EXISTS");
+      expect(sql).toContain("emergency_access_settings");
+      expect(sql).toContain("COALESCE(u.last_activity_at, u.last_login)");
+      expect(sql).toContain("< s.grant_after_days");
       expect(sql).toContain("claim_token_used_at IS NULL");
       expect(sql).toContain("claim_token_expires_at >= CURRENT_TIMESTAMP");
       expect(sql).toContain("RETURNING");
@@ -255,7 +289,7 @@ describe("EmergencyAccessClaimController", () => {
       const credentialWrite =
         queryRunner.manager.createQueryBuilder.mock.invocationCallOrder[0];
       expect(
-        queryRunner.manager.query.mock.invocationCallOrder[0],
+        queryRunner.manager.query.mock.invocationCallOrder[consumeIndex],
       ).toBeLessThan(credentialWrite);
     });
 
