@@ -578,6 +578,69 @@ describe("AuthService", () => {
       ).rejects.toThrow(/temporary password/i);
     });
 
+    describe("delegate claim hardening", () => {
+      const claimRow = async (extra: Record<string, unknown> = {}) => {
+        const row = {
+          id: "deleg-guard",
+          email: "shared-guard@example.com",
+          authProvider: "local",
+          passwordHash: await bcrypt.hash("Temp-Pw-9!aB", 4),
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+          ...extra,
+        };
+        usersRepository.findOne.mockResolvedValue(row);
+        delegationService.isDelegateUser.mockResolvedValue(true);
+        delegationService.isFullAccount.mockResolvedValue(false);
+        passwordBreachService.isBreached.mockResolvedValue(false);
+        usersRepository.save.mockImplementation(async (u: any) => u);
+        return row;
+      };
+      const claim = (currentPassword = "Temp-Pw-9!aB") =>
+        service.register({
+          email: "shared-guard@example.com",
+          password: "StrongPass123!",
+          currentPassword,
+        });
+      const failedAttemptWrites = () =>
+        scopedManager.query.mock.calls.filter(
+          (c) =>
+            String(c[0]).includes("failed_login_attempts") &&
+            String(c[0]).includes("RETURNING"),
+        );
+
+      it("refuses a locked delegate row without issuing tokens", async () => {
+        await claimRow({ lockedUntil: new Date(Date.now() + 60_000) });
+
+        await expect(claim()).rejects.toThrow(ForbiddenException);
+        expect(usersRepository.save).not.toHaveBeenCalled();
+        expect(refreshTokensRepository.save).not.toHaveBeenCalled();
+      });
+
+      it("counts a wrong claim password as a failed attempt", async () => {
+        await claimRow();
+
+        await expect(claim("WrongPassword!")).rejects.toThrow(
+          UnauthorizedException,
+        );
+        expect(failedAttemptWrites()).toHaveLength(1);
+        expect(failedAttemptWrites()[0][1][0]).toBe("deleg-guard");
+      });
+
+      it("refuses a claim on a delegate with active 2FA, with no tokens and no save", async () => {
+        await claimRow({ twoFactorSecret: "encrypted-secret" });
+        preferencesRepository.findOne.mockResolvedValue({
+          twoFactorEnabled: true,
+        });
+
+        await expect(claim()).rejects.toThrow(
+          /two-factor authentication.*Sign in/i,
+        );
+        expect(usersRepository.save).not.toHaveBeenCalled();
+        expect(refreshTokensRepository.save).not.toHaveBeenCalled();
+      });
+    });
+
     it("never claims a row that already owns data (full account)", async () => {
       usersRepository.findOne.mockResolvedValue({
         id: "full-1",
