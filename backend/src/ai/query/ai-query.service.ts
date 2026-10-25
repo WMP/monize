@@ -56,13 +56,16 @@ export interface QueryRunOptions {
  * `email_receipt_parsers` (save_draft writes; stored order emails),
  * `ai_review_requests` (claim returns owner-only email content; reject and
  * submit write), `fetch_bond_series` (writes the catalog) and
- * `list_transaction_rules` (the rules controller is owner-only).
+ * `list_transaction_rules` and `manage_transaction_rules` (the rules
+ * controller is owner-only, and preparing an edit, delete or run reads the
+ * owner's rules into the reply).
  */
 export const DELEGATE_EXCLUDED_AI_TOOLS: readonly string[] = [
   "email_receipt_parsers",
   "ai_review_requests",
   "fetch_bond_series",
   "list_transaction_rules",
+  "manage_transaction_rules",
 ];
 
 /**

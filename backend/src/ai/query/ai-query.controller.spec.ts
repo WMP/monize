@@ -107,6 +107,7 @@ describe("AiQueryController", () => {
           "email_receipt_parsers",
           "ai_review_requests",
           "fetch_bond_series",
+          "manage_transaction_rules",
         ]),
       );
     });
@@ -148,6 +149,7 @@ describe("AiQueryController", () => {
           "email_receipt_parsers",
           "ai_review_requests",
           "fetch_bond_series",
+          "manage_transaction_rules",
         ]),
       );
     });
