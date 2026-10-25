@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Sparkline } from './Sparkline';
-import { getCurrencySymbol, formatAmount, getDecimalPlacesForCurrency, gainLossColor } from '@/lib/format';
+import { getCurrencySymbol, formatAmount, getDecimalPlacesForCurrency, gainLossColor, roundToDecimals } from '@/lib/format';
+import { parseLocaleNumber, formatNumberForEdit } from '@/lib/number-parse';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { WizardState } from './BudgetWizard';
 import type { BudgetProfile, CategoryGroup, TransferAnalysis } from '@/types/budget';
@@ -23,6 +24,7 @@ function BudgetAmountInput({
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
 
+  const { numberSeparators } = useNumberFormat();
   const decimals = getDecimalPlacesForCurrency(currencyCode);
   const displayValue = editing ? editValue : formatAmount(amount, decimals);
 
@@ -37,13 +39,13 @@ function BudgetAmountInput({
         value={displayValue}
         onFocus={() => {
           setEditing(true);
-          setEditValue(formatAmount(amount, decimals));
+          setEditValue(formatNumberForEdit(amount, decimals, numberSeparators));
         }}
         onBlur={() => {
           setEditing(false);
-          const parsed = parseFloat(editValue);
-          if (!isNaN(parsed) && parsed >= 0) {
-            onChange(categoryId, Math.round(parsed * 100) / 100);
+          const parsed = parseLocaleNumber(editValue, numberSeparators);
+          if (parsed !== undefined && parsed >= 0) {
+            onChange(categoryId, roundToDecimals(parsed, decimals));
           }
         }}
         onChange={(e) => {
