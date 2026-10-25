@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import { ArrayMaxSize, IsArray, IsOptional, IsUUID } from "class-validator";
-import { csv } from "./income-vs-expenses-query.dto";
+import { splitCsv } from "../../common/helpers/split-csv";
 import { ReportQueryDto } from "./report-query.dto";
 
 /**
@@ -15,7 +15,7 @@ export class IncomeBySourceQueryDto extends ReportQueryDto {
     type: [String],
   })
   @IsOptional()
-  @Transform(csv)
+  @Transform(splitCsv)
   @IsArray()
   // Bounded because an unbounded array is a lever on the query planner, and
   // `common/array-bound-dto.spec.ts` fails a new one without a cap.

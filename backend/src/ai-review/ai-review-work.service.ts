@@ -50,6 +50,7 @@ import {
   StoredAiReviewProposal,
   StoredAiReviewTradeProposal,
 } from "./ai-review-work.types";
+import { hasControlCharacter } from "../common/helpers/has-control-character";
 
 /** Inbox page size when the caller names none, and its ceiling. */
 export const DEFAULT_AI_REVIEW_INBOX_LIMIT = 50;
@@ -57,15 +58,6 @@ export const DEFAULT_AI_REVIEW_INBOX_LIMIT = 50;
 /** Statuses an inbox shows: everything still waiting, plus what ran out. */
 const INBOX_STATUSES = ["pending", "claimed", "proposed", "expired"] as const;
 const OPEN_STATUSES = ["pending", "claimed", "proposed"] as const;
-
-/** Whether a text holds a control character (a line break included). */
-function hasControlCharacter(text: string): boolean {
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    if (code < 0x20 || code === 0x7f) return true;
-  }
-  return false;
-}
 
 interface AgentNote {
   reason: string;

@@ -25,6 +25,7 @@ import {
 } from "./rule-glob-capture";
 import { TEMPLATE_BUILTINS, parseTemplate } from "./rule-template";
 import { validateSettleLoanInstallment } from "./rule-validation.loan-settlement";
+import { isRecord } from "../common/helpers/is-record";
 
 /** Bounds from design section 4. The DTO layer and the validator share them. */
 export const MAX_RULE_CONDITION_DEPTH = 4;
@@ -107,9 +108,6 @@ export interface RuleReferencedIds {
 
 const CURRENCY_CODE = /^[A-Za-z]{3}$/;
 const MONEY_SCALE = 10000;
-
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null && !Array.isArray(v);
 
 const hasKey = (o: Record<string, unknown>, k: string): boolean =>
   Object.prototype.hasOwnProperty.call(o, k);

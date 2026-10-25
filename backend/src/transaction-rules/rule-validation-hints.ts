@@ -13,6 +13,7 @@ import {
   RuleValidationCode,
   RuleValidationError,
 } from "./rule-validation";
+import { isRecord } from "../common/helpers/is-record";
 
 /**
  * A short English sentence per validation code: what is wrong and the correct
@@ -91,9 +92,6 @@ function nodeAt(root: unknown, segments: readonly Segment[]): unknown {
   }
   return node;
 }
-
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null && !Array.isArray(v);
 
 export interface RuleHintDefinition {
   readonly condition?: unknown;

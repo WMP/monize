@@ -1,4 +1,5 @@
 import { maskText, scaleMoney } from "./support-backup.util";
+import { isRecord } from "../../common/helpers/is-record";
 
 /**
  * Per-key obfuscation for JSONB columns. The column-level allowlist
@@ -122,8 +123,4 @@ export function applyJsonbHandler(
   multiplier: number,
 ): unknown {
   return HANDLERS[name](value, multiplier);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

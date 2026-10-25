@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { formatDateYMDLocal } from "./date-utils";
 
 /**
  * Shared Zod primitives for tool inputs exposed to LLMs, used by both
@@ -119,19 +120,6 @@ export const DEFAULT_LOOKBACK_DAYS = 30;
 export const DEFAULT_TOP_N = 10;
 
 /**
- * Format a local Date as YYYY-MM-DD using local-time components.
- * Defaults work with calendar dates from the server's perspective,
- * so local components avoid an off-by-one shift that UTC formatting
- * would introduce in non-UTC timezones.
- */
-function localYMD(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-/**
  * Return a {startDate, endDate} pair covering the last `lookbackDays`
  * days (inclusive of today). Used when the model omits a date range.
  */
@@ -141,7 +129,10 @@ export function getDefaultDateRange(
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate() - lookbackDays);
-  return { startDate: localYMD(start), endDate: localYMD(end) };
+  return {
+    startDate: formatDateYMDLocal(start),
+    endDate: formatDateYMDLocal(end),
+  };
 }
 
 export interface ComparePeriods {
@@ -164,10 +155,10 @@ export function getDefaultComparePeriods(): ComparePeriods {
   // Day 0 of the current month = last day of the previous month
   const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
   return {
-    period1Start: localYMD(prevStart),
-    period1End: localYMD(prevEnd),
-    period2Start: localYMD(currentStart),
-    period2End: localYMD(now),
+    period1Start: formatDateYMDLocal(prevStart),
+    period1End: formatDateYMDLocal(prevEnd),
+    period2Start: formatDateYMDLocal(currentStart),
+    period2End: formatDateYMDLocal(now),
   };
 }
 

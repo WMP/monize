@@ -13,6 +13,7 @@ import {
   type ParsedReceiptReason,
   type ReceiptLinkReport,
 } from '@/types/email-receipts';
+import { isRecord } from '@/lib/helpers/is-record';
 
 /** A parsed receipt's amounts are integers in 1/10000 units (`decimal(20,4)`'s scale). */
 const RECEIPT_UNITS_PER_CURRENCY_UNIT = 10_000;
@@ -26,9 +27,6 @@ const RECEIPT_UNITS_PER_CURRENCY_UNIT = 10_000;
 export function fromReceiptUnits(units: number): number {
   return units / RECEIPT_UNITS_PER_CURRENCY_UNIT;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** A stated amount, or `null` for "the email did not say". Zero is a stated amount. */
 const readAmount = (value: unknown): number | null =>

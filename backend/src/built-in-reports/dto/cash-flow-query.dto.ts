@@ -8,7 +8,7 @@ import {
   IsUUID,
   MaxLength,
 } from "class-validator";
-import { csv } from "./income-vs-expenses-query.dto";
+import { splitCsv } from "../../common/helpers/split-csv";
 import { ReportQueryDto } from "./report-query.dto";
 
 /** Surrounding whitespace is a paste artifact, never part of a tag key. */
@@ -30,7 +30,7 @@ export class CashFlowQueryDto extends ReportQueryDto {
     type: [String],
   })
   @IsOptional()
-  @Transform(csv)
+  @Transform(splitCsv)
   @IsArray()
   // Bounded because an unbounded array is a lever on the query planner, and
   // `common/array-bound-dto.spec.ts` fails a new one without a cap.
@@ -45,7 +45,7 @@ export class CashFlowQueryDto extends ReportQueryDto {
     type: [String],
   })
   @IsOptional()
-  @Transform(csv)
+  @Transform(splitCsv)
   @IsArray()
   @ArrayMaxSize(200)
   @IsUUID("4", { each: true })

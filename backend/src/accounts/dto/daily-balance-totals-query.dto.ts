@@ -15,16 +15,7 @@ import {
   CALENDAR_RANGE_MAX_DAYS,
   IsCalendarRangeEnd,
 } from "../../common/validators/calendar-range.validator";
-
-/** A comma-separated query parameter, as a trimmed non-empty array. */
-function csv({ value }: { value: unknown }): unknown {
-  if (Array.isArray(value)) return value;
-  if (typeof value !== "string") return value;
-  return value
-    .split(",")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-}
+import { splitCsv } from "../../common/helpers/split-csv";
 
 /**
  * The window a calendar's Balances layer asks for: one month's grid, which is
@@ -64,7 +55,7 @@ export class DailyBalanceTotalsQueryDto {
     type: [String],
   })
   @IsOptional()
-  @Transform(csv)
+  @Transform(splitCsv)
   @IsArray()
   // Bounded because an unbounded array is a lever on the query planner, and
   // `common/array-bound-dto.spec.ts` fails a new one without a cap.

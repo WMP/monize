@@ -6,6 +6,7 @@ import {
 } from "../../categories/category-name.util";
 import { Category } from "../../categories/entities/category.entity";
 import { tr } from "../../i18n/translate";
+import { isRecord } from "../../common/helpers/is-record";
 
 /**
  * A profile names its default categories by NAME (`defaultCategory`, ...) and
@@ -20,9 +21,6 @@ export const PARSER_CATEGORY_NAME_FIELDS = [
   { name: "shippingCategory", id: "shippingCategoryId" },
   { name: "feesCategory", id: "feesCategoryId" },
 ] as const;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 /**
  * The definition with every category name replaced by the id of the user's
