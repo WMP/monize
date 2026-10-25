@@ -543,38 +543,6 @@ export function acquisitionCost(tx: {
 }
 
 /**
- * The per-share cost of an acquisition, commission included.
- *
- * `Holding.averageCost` is maintained incrementally on every acquisition, and it
- * was fed the raw market price -- so the live holding said 100.00 per share while
- * a rebuild, which goes through `acquisitionCost`, said 101.00 for the same buy.
- * The two disagreed until something unrelated triggered a rebuild, and the
- * holdings screen showed whichever had run last (review finding FR-008).
- *
- * Falls back to the price when there are no shares to divide by, and when the
- * row cannot say what it cost -- an unpriced acquisition has no per-share cost to
- * derive, and the caller's existing price guard decides what to do about that.
- */
-export function acquisitionUnitCost(tx: {
-  quantity?: number | string | null;
-  price?: number | string | null;
-  commission?: number | string | null;
-}): number {
-  const quantity = Number(tx.quantity) || 0;
-  const price = Number(tx.price) || 0;
-  if (quantity === 0) return price;
-
-  const cost = acquisitionCost({
-    quantity,
-    price: tx.price,
-    commission: tx.commission,
-  });
-  if (cost === null) return price;
-
-  return cost / quantity;
-}
-
-/**
  * Below this many shares a replayed position is not a holding at all: the
  * stored quantity scale is 8 decimal places, so anything smaller is a rounding
  * residue of the fold rather than a share somebody owns.

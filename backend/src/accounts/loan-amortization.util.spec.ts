@@ -4,7 +4,6 @@ import {
   calculateTotalPayments,
   calculateEndDate,
   calculateAmortization,
-  calculateFinalPayment,
   calculatePaymentForTerm,
   PaymentFrequency,
 } from "./loan-amortization.util";
@@ -258,25 +257,6 @@ describe("Loan Amortization Utility", () => {
       const result = calculateAmortization(100, 0, 500, "MONTHLY", startDate);
 
       expect(result.remainingBalance).toBeGreaterThanOrEqual(0);
-    });
-  });
-
-  describe("calculateFinalPayment", () => {
-    it("includes one period of interest", () => {
-      // $100 balance at 12% annual, monthly
-      const result = calculateFinalPayment(100, 12, "MONTHLY");
-      // Interest for one month: 100 * (12/100/12) = 1.00
-      expect(result).toBe(101.0);
-    });
-
-    it("returns just the balance for zero interest", () => {
-      const result = calculateFinalPayment(100, 0, "MONTHLY");
-      expect(result).toBe(100.0);
-    });
-
-    it("rounds to 4 decimal places (storage precision)", () => {
-      const result = calculateFinalPayment(333.33, 7.77, "MONTHLY");
-      expect(result).toBe(Math.round(result * 10000) / 10000);
     });
   });
 

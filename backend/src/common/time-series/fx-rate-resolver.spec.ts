@@ -3,7 +3,6 @@ import {
   FX_MAX_RATE_AGE_DAYS,
   describeFxGap,
   resolveFxRate,
-  resolveFxRateValue,
 } from "./fx-rate-resolver";
 
 /**
@@ -468,18 +467,6 @@ describe("resolveFxRate", () => {
     }, 30_000);
   });
 
-  it("resolveFxRateValue is the rate alone", () => {
-    expect(
-      resolveFxRateValue(
-        "EUR",
-        "USD",
-        "2026-06-22",
-        lookupFrom({ "EUR->USD": [{ date: "2026-06-18", rate: 1.2 }] }),
-        { today: TODAY },
-      ),
-    ).toBe(1.2);
-  });
-
   it("names each gap differently so a reader learns which repair applies", () => {
     const lines = (
       [
@@ -542,18 +529,6 @@ describe("resolveFxRate", () => {
           }),
         ).toMatchObject({ rate: null, reason: "invalid_date" });
       }
-    });
-
-    it("keeps refusing it through resolveFxRateValue", () => {
-      expect(
-        resolveFxRateValue(
-          "EUR",
-          "USD",
-          ["2026-06-22"] as unknown as string,
-          lookupFrom(stored),
-          { today: TODAY },
-        ),
-      ).toBeNull();
     });
   });
 });

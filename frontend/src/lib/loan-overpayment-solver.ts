@@ -194,32 +194,6 @@ function snapToStep(multiple: number, step: number): number {
   return Number((multiple * step).toFixed(9));
 }
 
-/**
- * Smallest recurring extra whose schedule leaves total interest at or below
- * `targetInterest`.
- * - `already-met`: the loan already costs that little (or less) with no extra.
- * - `unreachable`: even the maximum extra cannot get interest that low (the
- *   target is below the interest of a near-immediate payoff).
- * - `baseline-incomplete`: the loan does not pay off inside the projection
- *   horizon, so what it costs over its life is unknown.
- */
-export function solveRecurringForTargetInterest(
-  base: LoanScheduleInput,
-  targetInterest: number,
-  mode: OverpaymentMode = 'SHORTEN_TERM',
-  step = 1,
-  window: SolveWindow = {},
-): SolveResult {
-  return solveTargetInterestWithBaseline(
-    base,
-    scheduleWith(base, 0, mode),
-    targetInterest,
-    mode,
-    step,
-    window,
-  );
-}
-
 /** Core of the target-interest solve, reusing an already-computed baseline so
  *  callers that derive the target from the baseline don't run it twice. */
 function solveTargetInterestWithBaseline(

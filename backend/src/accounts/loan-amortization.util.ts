@@ -275,26 +275,3 @@ export function calculatePaymentForTerm(
     (balance * periodicRate) / (1 - Math.pow(1 + periodicRate, -periods)),
   );
 }
-
-/**
- * Calculate the final payment amount when loan balance is less than regular payment
- *
- * @param remainingBalance - Current loan balance
- * @param annualRate - Annual interest rate as percentage
- * @param frequency - Payment frequency
- * @returns The final payment amount needed to pay off the loan
- */
-export function calculateFinalPayment(
-  remainingBalance: number,
-  annualRate: number,
-  frequency: PaymentFrequency,
-): number {
-  const periodsPerYear = getPeriodsPerYear(frequency);
-  const periodicRate = annualRate / 100 / periodsPerYear;
-
-  // Final payment = remaining balance + one period's interest
-  const interest = remainingBalance * periodicRate;
-  const finalPayment = remainingBalance + interest;
-
-  return roundMoney(finalPayment);
-}
