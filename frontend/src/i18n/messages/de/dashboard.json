@@ -25,7 +25,6 @@
     "manual": "Manuell",
     "manualTitle": "Erfordert manuelle Buchung",
     "negativeBalanceWarning": "Diese Buchung bringt den Kontosaldo unter null",
-    "viewAll": "Alle Rechnungen und Einzahlungen anzeigen",
     "moreItems": "+{count} weitere",
     "overdue": "Überfällig",
     "today": "Heute",
@@ -90,7 +89,6 @@
     "title": "Ausgaben-Einblicke",
     "empty": "Keine Einblicke verfügbar. Besuchen Sie die Einblicke-Seite, um Ihre erste Analyse zu generieren.",
     "goToInsights": "Zu Einblicken",
-    "viewAll": "Alle Einblicke anzeigen",
     "activeCount": "{count} aktiv"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "Tagesveränderung",
     "dailyChangeOn": "Tagesveränderung · {date}",
     "openPriceHistory": "Kursverlauf für {symbol}",
-    "refreshPrices": "Kurse aktualisieren",
-    "manage": "Wertpapiere verwalten"
+    "refreshPrices": "Kurse aktualisieren"
   },
   "netWorth": {
     "title": "Reinvermögen",

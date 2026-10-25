@@ -25,7 +25,6 @@
     "manual": "[XX-Manual-XX]",
     "manualTitle": "[XX-Requires manual posting-XX]",
     "negativeBalanceWarning": "[XX-This transaction will cause the account balance to go below zero-XX]",
-    "viewAll": "[XX-View all bills & deposits-XX]",
     "moreItems": "[XX-+{count} more-XX]",
     "overdue": "[XX-Overdue-XX]",
     "today": "[XX-Today-XX]",
@@ -90,7 +89,6 @@
     "title": "[XX-Spending Insights-XX]",
     "empty": "[XX-No insights available. Visit the Insights page to generate your first analysis.-XX]",
     "goToInsights": "[XX-Go to Insights-XX]",
-    "viewAll": "[XX-View all insights-XX]",
     "activeCount": "[XX-{count} active-XX]"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "[XX-Daily change-XX]",
     "dailyChangeOn": "[XX-Daily change · {date}-XX]",
     "openPriceHistory": "[XX-Price history for {symbol}-XX]",
-    "refreshPrices": "[XX-Refresh prices-XX]",
-    "manage": "[XX-Manage securities-XX]"
+    "refreshPrices": "[XX-Refresh prices-XX]"
   },
   "netWorth": {
     "title": "[XX-Net Worth-XX]",

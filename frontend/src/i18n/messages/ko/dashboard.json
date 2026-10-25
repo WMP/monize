@@ -25,7 +25,6 @@
     "manual": "수동",
     "manualTitle": "수동 등록 필요",
     "negativeBalanceWarning": "이 거래로 인해 계정 잔액이 0 미만이 됩니다",
-    "viewAll": "모든 청구서 및 입금 보기",
     "moreItems": "+{count}개 더",
     "overdue": "연체",
     "today": "오늘",
@@ -90,7 +89,6 @@
     "title": "지출 인사이트",
     "empty": "인사이트가 없습니다. 인사이트 페이지를 방문하여 첫 번째 분석을 생성하세요.",
     "goToInsights": "인사이트로 이동",
-    "viewAll": "모든 인사이트 보기",
     "activeCount": "{count}개 활성"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "일일 변동",
     "dailyChangeOn": "일일 변동 · {date}",
     "openPriceHistory": "{symbol} 가격 이력",
-    "refreshPrices": "가격 새로고침",
-    "manage": "유가증권 관리"
+    "refreshPrices": "가격 새로고침"
   },
   "netWorth": {
     "title": "순자산가액",

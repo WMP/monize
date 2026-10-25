@@ -45,7 +45,7 @@ describe('InsightsWidget', () => {
     expect(screen.getByText('Spending Insights')).toBeInTheDocument();
   });
 
-  it('renders insights and navigates on click', async () => {
+  it('renders insights and links the title to Insights', async () => {
     getInsightsMock.mockResolvedValue({ insights: sampleInsights });
     await renderWidget(false);
 
@@ -59,11 +59,6 @@ describe('InsightsWidget', () => {
       'href',
       '/insights',
     );
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('View all insights'));
-    });
-    expect(pushMock).toHaveBeenCalledWith('/insights');
   });
 
   it('renders empty state when no insights', async () => {

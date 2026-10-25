@@ -274,7 +274,6 @@ export function ExpensesPieChart({ accounts, isLoading }: ExpensesPieChartProps)
             view={view}
             label={t('expensesPieChart.title')}
             formatValue={(value) => formatCurrency(value)}
-            legendValues={false}
             // One vertical column on a phone, three from `sm` up -- the desktop
             // density this legend carried before the mobile-first redesign.
             legendColumnsClassName="sm:grid-cols-3"

@@ -25,7 +25,6 @@
     "manual": "Thủ công",
     "manualTitle": "Yêu cầu đăng thủ công",
     "negativeBalanceWarning": "Giao dịch này sẽ khiến số dư tài khoản xuống dưới không",
-    "viewAll": "Xem tất cả hóa đơn & tiền gửi",
     "moreItems": "+{count} thêm",
     "overdue": "Quá hạn",
     "today": "Hôm nay",
@@ -90,7 +89,6 @@
     "title": "Thông tin chi tiêu",
     "empty": "Chưa có thông tin chi tiết. Truy cập trang Thông tin chi tiết để tạo phân tích đầu tiên.",
     "goToInsights": "Đến Thông tin chi tiết",
-    "viewAll": "Xem tất cả thông tin",
     "activeCount": "{count} đang hoạt động"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "Thay đổi hàng ngày",
     "dailyChangeOn": "Thay đổi hàng ngày · {date}",
     "openPriceHistory": "Lịch sử giá của {symbol}",
-    "refreshPrices": "Làm mới giá",
-    "manage": "Quản lý chứng khoán"
+    "refreshPrices": "Làm mới giá"
   },
   "netWorth": {
     "title": "Tài sản ròng",

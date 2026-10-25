@@ -195,12 +195,6 @@ export function FavouriteSecurities({ securities, isLoading, onRefresh, isRefres
           );
         })}
       </div>
-      <button
-        onClick={() => router.push('/securities')}
-        className="mt-3 w-full text-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-      >
-        {t('favouriteSecurities.manage')}
-      </button>
     </div>
   );
 }

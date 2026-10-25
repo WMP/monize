@@ -442,12 +442,6 @@ export function UpcomingBills({ scheduledTransactions, accounts, isLoading, maxI
       )}
       </>
       )}
-      <button
-        onClick={() => router.push('/bills')}
-        className="mt-3 w-full text-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-      >
-        {t('upcomingBills.viewAll')}
-      </button>
     </div>
   );
 }

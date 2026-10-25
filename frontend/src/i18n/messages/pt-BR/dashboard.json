@@ -25,7 +25,6 @@
     "manual": "Manual",
     "manualTitle": "Requer lançamento manual",
     "negativeBalanceWarning": "Esta transação irá colocar o saldo da conta abaixo de zero",
-    "viewAll": "Ver todas as faturas e depósitos",
     "moreItems": "+{count} mais",
     "overdue": "Em atraso",
     "today": "Hoje",
@@ -90,7 +89,6 @@
     "title": "Análise de Despesas",
     "empty": "Sem análises disponíveis. Visite a página de Análises para gerar a sua primeira análise.",
     "goToInsights": "Ir para Análises",
-    "viewAll": "Ver todas as análises",
     "activeCount": "{count} ativas"
   },
   "warrantiesExpiring": {
@@ -130,8 +128,7 @@
     "dailyChange": "Variação diária",
     "dailyChangeOn": "Variação diária · {date}",
     "openPriceHistory": "Histórico de preços de {symbol}",
-    "refreshPrices": "Atualizar cotações",
-    "manage": "Gerenciar títulos"
+    "refreshPrices": "Atualizar cotações"
   },
   "netWorth": {
     "title": "Patrimônio Líquido",
