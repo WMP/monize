@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import { useTranslations } from 'next-intl';
 import { AccountHoldings, HoldingWithMarketValue } from '@/types/investment';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
@@ -10,7 +10,15 @@ import { gainLossColor } from '@/lib/format';
 import { PartialTotal } from '@/components/ui/PartialTotal';
 import { portfolioPartialTotal } from '@/lib/net-worth-completeness';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
-import { CAPTION_CLASS, CellLabel } from '@/components/ui/Table';
+import {
+  CAPTION_CLASS,
+  CellLabel,
+  PHONE_HEADER_CLASS,
+  type SortColumn as TableSortColumn,
+  type SortColumnsByField as TableSortColumnsByField,
+} from '@/components/ui/Table';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+import { useSortableTable } from '@/hooks/useSortableTable';
 import { ColumnChooserMenu, type ColumnChooserItem } from '@/components/ui/ColumnChooserMenu';
 import { useHiddenColumns } from '@/hooks/useHiddenColumns';
 import { useColumnHeaderActions } from '@/hooks/useColumnHeaderActions';
@@ -19,6 +27,16 @@ import {
   type HoldingsColumn,
   type HoldingsPhonePlacement,
 } from '@/lib/holdings-phone-grid';
+import {
+  DEFAULT_HOLDINGS_SORT,
+  holdingGainLossInAccountCurrency,
+  holdingMarketValueInAccountCurrency,
+  holdingMarketValueInDefaultCurrency,
+  resolveHoldingsSort,
+  sortAccountsByName,
+  sortHoldings,
+  type HoldingsSortField,
+} from '@/lib/holdings-sort';
 
 // A wrapped figure cell: no padding on phones (the card's grid spaces the
 // cells), the table cell's own padding and right alignment from `sm` up. The
@@ -26,6 +44,21 @@ import {
 // one line; the per-row caption gives itself back `whitespace-normal`.
 const FIGURE_CELL =
   'p-0 text-right text-xs whitespace-nowrap sm:table-cell sm:px-4 sm:py-3 sm:text-sm';
+
+// The column header cells from `sm` up: Symbol on the left, the figures right.
+const SYMBOL_HEADER_CLASS =
+  'px-2 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider';
+const FIGURE_HEADER_CLASS =
+  'px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider';
+
+/**
+ * One column of the holdings table, declared once over the sort field union
+ * and rendered by BOTH header rows -- the column header row from `sm` up and
+ * the phone sort strip -- so a new column cannot ship with no control in
+ * either, and each entry must name its own key.
+ */
+type SortColumn = TableSortColumn<HoldingsSortField, 'right'>;
+type SortColumnsByField = TableSortColumnsByField<HoldingsSortField, SortColumn>;
 
 interface GroupedHoldingsListProps {
   holdingsByAccount: AccountHoldings[];
@@ -67,24 +100,65 @@ export function GroupedHoldingsList({
     showAll: showAllColumns,
     hideable,
   } = useHiddenColumns('investmentHoldings');
-  const hideableColumns = useMemo<ColumnChooserItem<HoldingsColumn>[]>(() => {
-    const labels: Record<HoldingsColumn, string> = {
-      shares: t('groupedHoldings.sharesColumn'),
-      avgCost: t('groupedHoldings.avgCostColumn'),
-      price: t('groupedHoldings.priceColumn'),
-      costBasis: t('groupedHoldings.costBasisColumn'),
-      mktValue: t('groupedHoldings.mktValueColumn'),
-      gainLoss: t('groupedHoldings.gainLossColumn'),
-      portfolioPercent: t('groupedHoldings.portfolioPercentColumn'),
-    };
-    return hideable.map((id) => ({ id, label: labels[id] }));
-  }, [hideable, t]);
-  // The headers do not sort, so a plain click on one does nothing; a
-  // long-press or right-click opens the "Hide column" sheet.
+  // Exhaustive over the sort field union; its declaration order is the
+  // column order, and the labels are also the phone captions.
+  const columns = useMemo<SortColumnsByField>(
+    () => ({
+      symbol: { field: 'symbol', label: t('groupedHoldings.symbolColumn') },
+      shares: { field: 'shares', label: t('groupedHoldings.sharesColumn'), align: 'right' },
+      avgCost: { field: 'avgCost', label: t('groupedHoldings.avgCostColumn'), align: 'right' },
+      price: { field: 'price', label: t('groupedHoldings.priceColumn'), align: 'right' },
+      costBasis: { field: 'costBasis', label: t('groupedHoldings.costBasisColumn'), align: 'right' },
+      mktValue: { field: 'mktValue', label: t('groupedHoldings.mktValueColumn'), align: 'right' },
+      gainLoss: { field: 'gainLoss', label: t('groupedHoldings.gainLossColumn'), align: 'right' },
+      portfolioPercent: {
+        field: 'portfolioPercent',
+        label: t('groupedHoldings.portfolioPercentColumn'),
+        align: 'right',
+      },
+    }),
+    [t],
+  );
+  const hideableColumns = useMemo<ColumnChooserItem<HoldingsColumn>[]>(
+    () => hideable.map((id) => ({ id, label: columns[id].label })),
+    [hideable, columns],
+  );
+  // A hidden column has no header at any width and no chip on a phone.
+  const visibleColumns = Object.values(columns).filter(
+    (col) => col.field === 'symbol' || isVisible(col.field),
+  );
+
+  // Every column sorts, largest position first by default. The stored choice
+  // is this browser's; the applied one falls back while its column is hidden.
+  const { sortField, sortDirection, setSort } = useSortableTable<HoldingsSortField>(
+    'investments.holdings.sort',
+    DEFAULT_HOLDINGS_SORT,
+  );
+  const sort = resolveHoldingsSort({ field: sortField, direction: sortDirection }, hiddenColumns);
+  // Toggles against the sort on screen rather than the stored one, so a click
+  // on the column the fallback chose reverses what the reader sees.
+  const handleSort = useCallback(
+    (field: HoldingsSortField) =>
+      setSort(
+        sort.field === field
+          ? { field, direction: sort.direction === 'asc' ? 'desc' : 'asc' }
+          : { field, direction: 'asc' },
+      ),
+    [setSort, sort.field, sort.direction],
+  );
+
+  // A plain click on a figure header sorts; a long-press or right-click opens
+  // the "Hide column" sheet. Symbol is structural, so it sorts on its own click.
   const { headerHandlers, sheet: columnHeaderSheet } = useColumnHeaderActions({
     columns: hideableColumns,
     onHide: hideColumn,
+    onHeaderClick: handleSort,
   });
+
+  const sortedAccounts = useMemo(
+    () => sortAccountsByName(holdingsByAccount),
+    [holdingsByAccount],
+  );
   // Where each visible figure sits in a row's phone card; a reference stable
   // while the set is, so the memoised holding row is not re-rendered by it.
   const placement = useMemo(() => holdingsPhonePlacement(hiddenColumns), [hiddenColumns]);
@@ -234,7 +308,7 @@ export function GroupedHoldingsList({
       </div>
 
       <div className="divide-y divide-gray-200 dark:divide-gray-700">
-        {holdingsByAccount.map((account) => {
+        {sortedAccounts.map((account) => {
           const isExpanded = expandedAccounts.has(account.accountId);
           const accountTotalValue = account.totalMarketValue + account.cashBalance;
           const acctDisplayCurrency = account.currencyCode !== defaultCurrency
@@ -319,49 +393,42 @@ export function GroupedHoldingsList({
                 <div className="overflow-x-auto">
                   <table role="table" className="block min-w-full sm:table">
                     <thead role="rowgroup" className="block bg-gray-50 dark:bg-gray-700/50 sm:table-header-group">
+                      {/* Phone sort strip: the column header row is hidden
+                          below `sm`, so its sort controls come back here as
+                          chips, one per visible column. */}
+                      <tr role="row" className="flex flex-wrap gap-x-2 gap-y-1 px-2 py-2 sm:hidden">
+                        {visibleColumns.map((col) => (
+                          <SortableHeader<HoldingsSortField>
+                            key={col.field}
+                            field={col.field}
+                            sortField={sort.field}
+                            sortDirection={sort.direction}
+                            onSort={handleSort}
+                            className={PHONE_HEADER_CLASS}
+                          >
+                            {col.label}
+                          </SortableHeader>
+                        ))}
+                      </tr>
                       <tr role="row" className="hidden sm:table-row">
-                        <th role="columnheader" className="px-2 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          {t('groupedHoldings.symbolColumn')}
-                        </th>
-                        {isVisible('shares') && (
-                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('shares')}>
-                            {t('groupedHoldings.sharesColumn')}
-                          </th>
-                        )}
-                        {isVisible('avgCost') && (
-                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('avgCost')}>
-                            {t('groupedHoldings.avgCostColumn')}
-                          </th>
-                        )}
-                        {isVisible('price') && (
-                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('price')}>
-                            {t('groupedHoldings.priceColumn')}
-                          </th>
-                        )}
-                        {isVisible('costBasis') && (
-                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('costBasis')}>
-                            {t('groupedHoldings.costBasisColumn')}
-                          </th>
-                        )}
-                        {isVisible('mktValue') && (
-                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('mktValue')}>
-                            {t('groupedHoldings.mktValueColumn')}
-                          </th>
-                        )}
-                        {isVisible('gainLoss') && (
-                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('gainLoss')}>
-                            {t('groupedHoldings.gainLossColumn')}
-                          </th>
-                        )}
-                        {isVisible('portfolioPercent') && (
-                          <th role="columnheader" className="px-1.5 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" {...headerHandlers('portfolioPercent')}>
-                            {t('groupedHoldings.portfolioPercentColumn')}
-                          </th>
-                        )}
+                        {visibleColumns.map((col) => (
+                          <SortableHeader<HoldingsSortField>
+                            key={col.field}
+                            field={col.field}
+                            sortField={sort.field}
+                            sortDirection={sort.direction}
+                            onSort={handleSort}
+                            align={col.align}
+                            className={col.align === 'right' ? FIGURE_HEADER_CLASS : SYMBOL_HEADER_CLASS}
+                            pressHandlers={headerHandlers(col.field)}
+                          >
+                            {col.label}
+                          </SortableHeader>
+                        ))}
                       </tr>
                     </thead>
                     <tbody role="rowgroup" className="block divide-y divide-gray-100 dark:divide-gray-700/50 sm:table-row-group">
-                      {account.holdings.map((holding) => (
+                      {sortHoldings(account.holdings, sort, account.currencyCode, defaultCurrency).map((holding) => (
                         <HoldingRow
                           key={holding.id}
                           holding={holding}
@@ -569,26 +636,18 @@ const HoldingRow = memo(function HoldingRow({
   // server's `marketValueAccountCurrency`, which is `null` when the pair had no
   // rate: unknown, so the ≈ sub-line stays absent, never an implicit 1:1
   // (review #1133).
-  const marketValueAcct = !isForeignToAccount
-    ? holding.marketValue
-    : holding.marketValueAccountCurrency ?? null;
+  const marketValueAcct = holdingMarketValueInAccountCurrency(holding, accountCurrency);
   // Unknown basis or unknown market value makes the gain unknown, not equal to
   // the market value. Both sides are the server's, so their difference shares
   // one snapshot too.
-  const gainLossAcct =
-    marketValueAcct !== null && holding.costBasisAccountCurrency !== null
-      ? marketValueAcct - holding.costBasisAccountCurrency
-      : null;
+  const gainLossAcct = holdingGainLossInAccountCurrency(holding, accountCurrency);
 
   // The market value in the reporting currency the portfolio total is in, for
   // the share of the portfolio: the security's own value when it already is
   // that currency, otherwise the server's converted figure from the same
   // snapshot as the total, never a client-side re-conversion. `null` when the
   // pair is unresolved -- an unknown share, not a wrong-denominator percent.
-  const marketValueInDefault =
-    holding.currencyCode === defaultCurrency
-      ? holding.marketValue
-      : holding.marketValueDefaultCurrency ?? null;
+  const marketValueInDefault = holdingMarketValueInDefaultCurrency(holding, defaultCurrency);
 
   const fmtAcctConverted = (value: number | null) => {
     if (value === null || !isForeignToAccount) return null;

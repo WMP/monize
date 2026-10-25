@@ -15,7 +15,7 @@ interface UseColumnHeaderActionsOptions<C extends string> {
    * A plain click or tap on the header: the sort it always did. A sortable
    * header given these handlers drops its own `onClick`, so it must pass this
    * or it would sort from the keyboard and never from a click; a table whose
-   * headers do not sort (the holdings table) omits it.
+   * headers do not sort (the investment register) omits it.
    */
   onHeaderClick?: (id: C) => void;
 }
