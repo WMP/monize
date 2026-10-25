@@ -981,6 +981,50 @@ describe("BudgetsService", () => {
       expect(result.budgetTotal).toBe(100);
     });
 
+    describe("period day count", () => {
+      const velocityAt = async (iso: string) => {
+        jest.useFakeTimers({
+          now: new Date(iso),
+          doNotFake: ["nextTick", "setImmediate", "queueMicrotask"],
+        });
+        try {
+          budgetsRepository.findOne.mockResolvedValue({
+            ...mockBudget,
+            categories: [],
+          });
+          transactionsRepository.createQueryBuilder.mockReturnValue(
+            createMockQueryBuilder({
+              getRawMany: jest.fn().mockResolvedValue([]),
+            }),
+          );
+          splitsRepository.createQueryBuilder.mockReturnValue(
+            createMockQueryBuilder({
+              getRawMany: jest.fn().mockResolvedValue([]),
+            }),
+          );
+          return await service.getVelocity("user-1", "budget-1");
+        } finally {
+          jest.useRealTimers();
+        }
+      };
+
+      it("counts the inclusive last day: October has 31 days", async () => {
+        const result = await velocityAt("2026-10-10T12:00:00");
+        expect(result.totalDays).toBe(31);
+      });
+
+      it("leaves one day remaining on the 30th of a 31-day month", async () => {
+        const result = await velocityAt("2026-10-30T12:00:00");
+        expect(result.daysRemaining).toBe(1);
+      });
+
+      it("leaves none remaining on the last day", async () => {
+        const result = await velocityAt("2026-10-31T12:00:00");
+        expect(result.daysElapsed).toBe(31);
+        expect(result.daysRemaining).toBe(0);
+      });
+    });
+
     // ---- Effective amounts and completeness (issue #1247) ----
 
     /**

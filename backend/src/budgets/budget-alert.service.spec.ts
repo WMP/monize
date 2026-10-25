@@ -1147,6 +1147,66 @@ describe("BudgetAlertService", () => {
       expect(result.emailsSent).toBe(0);
     });
 
+    describe("period day count", () => {
+      const milestoneArgsAt = async (iso: string) => {
+        jest.useFakeTimers({
+          now: new Date(iso),
+          doNotFake: ["nextTick", "setImmediate", "queueMicrotask"],
+        });
+        const spy = jest.spyOn(service, "checkPositiveMilestones");
+        try {
+          const qb = {
+            select: jest.fn().mockReturnThis(),
+            addSelect: jest.fn().mockReturnThis(),
+            where: jest.fn().mockReturnThis(),
+            andWhere: jest.fn().mockReturnThis(),
+            innerJoin: jest.fn().mockReturnThis(),
+            groupBy: jest.fn().mockReturnThis(),
+            addGroupBy: jest.fn().mockReturnThis(),
+            getRawMany: jest.fn().mockResolvedValue([]),
+          };
+          transactionsRepository.createQueryBuilder.mockReturnValue(qb);
+          splitsRepository.createQueryBuilder.mockReturnValue(qb);
+          alertsRepository.find.mockResolvedValue([]);
+          await service.processAlerts(
+            makeBudget({
+              categories: [
+                makeCategory({
+                  id: "bc-1",
+                  categoryId: "cat-1",
+                  category: {
+                    id: "cat-1",
+                    name: "Groceries",
+                    isIncome: false,
+                  } as any,
+                  amount: 500,
+                }),
+              ],
+            }),
+          );
+          return spy.mock.calls[0];
+        } finally {
+          spy.mockRestore();
+          jest.useRealTimers();
+        }
+      };
+
+      it("keeps periodProgress at 1 on the last day of the period", async () => {
+        const [, periodProgress, daysRemaining] = await milestoneArgsAt(
+          "2026-10-31T12:00:00",
+        );
+        expect(periodProgress).toBe(1);
+        expect(daysRemaining).toBe(0);
+      });
+
+      it("leaves one day remaining on the 30th of a 31-day month", async () => {
+        const [, , daysRemaining] = await milestoneArgsAt(
+          "2026-10-30T12:00:00",
+        );
+        expect(daysRemaining).toBe(1);
+      });
+    });
+
     it("creates threshold alerts for over-budget categories", async () => {
       const budget = makeBudget({
         categories: [
