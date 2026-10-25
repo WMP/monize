@@ -440,6 +440,17 @@ export class AuthService {
       );
     }
 
+    // An SSO account signs in through its provider; the hash a link keeps is
+    // not a login credential (the OIDC login drops the TOTP secret).
+    if (user.authProvider === "oidc") {
+      this.logger.warn(
+        `Login failed: password sign-in refused for SSO user ${user.id}`,
+      );
+      throw new UnauthorizedException(
+        tr("errors.auth.invalidCredentials", "Invalid credentials"),
+      );
+    }
+
     // Check account lockout
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       this.logger.warn(`Login failed: account locked for user ${user.id}`);

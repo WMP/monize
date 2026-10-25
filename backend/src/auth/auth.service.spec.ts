@@ -939,6 +939,26 @@ describe("AuthService", () => {
       expect(result.accessToken).toBeDefined();
     });
 
+    it("refuses password login for an SSO account that kept a local password hash", async () => {
+      // An SSO link keeps passwordHash, but the OIDC login strips the TOTP
+      // secret, so the local password must never sign in with no second factor.
+      const hashedPassword = await bcrypt.hash("ValidPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: hashedPassword,
+      });
+      const compare = jest.spyOn(bcrypt, "compare");
+      compare.mockClear();
+
+      await expect(
+        service.login({ email: "test@example.com", password: "ValidPass123!" }),
+      ).rejects.toThrow(/Invalid credentials/);
+      expect(compare).not.toHaveBeenCalled();
+      expect(usersRepository.save).not.toHaveBeenCalled();
+      expect(refreshTokensRepository.save).not.toHaveBeenCalled();
+    });
+
     it("throws for non-existent user", async () => {
       usersRepository.findOne.mockResolvedValue(null);
 
