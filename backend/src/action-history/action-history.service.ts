@@ -28,6 +28,7 @@ import {
 } from "../transactions/remove-transaction-leg";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
+import { SplitKind } from "../transactions/entities/split-kind.enum";
 import { assertReconciledRowsMutable } from "../transactions/reconciled-lock.util";
 import { Account } from "../accounts/entities/account.entity";
 import { withResolvedMortgageTypeProperty } from "../accounts/legacy-mortgage-type.util";
@@ -134,6 +135,77 @@ function assertAccountEditUndoable(action: ActionHistory): void {
       "This loan change cannot be undone automatically. Edit the loan to change it back.",
     ),
     errorCode: "LOAN_EDIT_NOT_UNDOABLE",
+  });
+}
+
+interface SplitSnapshot {
+  kind?: string | null;
+  categoryId?: string | null;
+  transferAccountId?: string | null;
+  linkedTransactionId?: string | null;
+  amount?: number | string | null;
+  memo?: string | null;
+}
+
+function splitKindOf(split: SplitSnapshot): SplitKind {
+  return (
+    (split.kind as SplitKind | null | undefined) ??
+    (split.transferAccountId ? SplitKind.TRANSFER : SplitKind.CATEGORY)
+  );
+}
+
+/** A split line that moves money outside its own row (a leg in another account). */
+function isLegSplit(split: SplitSnapshot): boolean {
+  return (
+    !!split.transferAccountId ||
+    !!split.linkedTransactionId ||
+    splitKindOf(split) !== SplitKind.CATEGORY
+  );
+}
+
+/**
+ * Whether two split snapshots hold the same lines by value, order aside. Ids
+ * and linked leg ids are left out: an edit that resends the splits re-creates
+ * both, and that is not a change the user made.
+ */
+function splitsEqualByValue(a: unknown, b: unknown): boolean {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  const keys = (list: SplitSnapshot[]) =>
+    list
+      .map((s) =>
+        JSON.stringify([
+          splitKindOf(s),
+          s.categoryId ?? null,
+          s.transferAccountId ?? null,
+          Math.round(Number(s.amount) * 10000),
+          s.memo || null,
+        ]),
+      )
+      .sort();
+  return JSON.stringify(keys(a)) === JSON.stringify(keys(b));
+}
+
+/**
+ * Refuses, before anything is written, the undo or redo of an edit that
+ * changed split lines which move money to other accounts: the edit deleted
+ * and re-created the counterpart legs, so the recorded lines name rows that
+ * are gone. The user edits the transaction back instead.
+ */
+function assertSplitLegsUndoable(
+  beforeSplits: unknown,
+  afterSplits: unknown,
+): void {
+  const lists = [beforeSplits, afterSplits].map((list) =>
+    Array.isArray(list) ? (list as SplitSnapshot[]) : [],
+  );
+  if (!lists.some((list) => list.some(isLegSplit))) return;
+  throw new ConflictException({
+    message: tr(
+      "errors.actionHistory.undoSplitLegsChanged",
+      "This edit changed split lines that move money to other accounts, so it cannot be undone automatically. Edit the transaction to change it back.",
+    ),
+    errorCode: "UNDO_SPLIT_LEGS_CHANGED",
   });
 }
 
@@ -888,6 +960,16 @@ export class ActionHistoryService {
 
     const before = action.beforeData;
 
+    // A change is a value difference: a form resends every split, so equal
+    // lines leave the rows (and the legs they link) alone. Changed lines that
+    // carry a leg cannot be replayed from the snapshot; refuse before a write.
+    const restoreSplits =
+      before.splits !== undefined &&
+      !splitsEqualByValue(before.splits, action.afterData?.splits);
+    if (restoreSplits) {
+      assertSplitLegsUndoable(before.splits, action.afterData?.splits);
+    }
+
     // Restore transaction fields
     const updateFields: Partial<Transaction> = {};
     const fieldKeys = [
@@ -914,8 +996,8 @@ export class ActionHistoryService {
       await manager.update(Transaction, action.entityId, updateFields);
     }
 
-    // Restore splits if they were captured
-    if (before.splits !== undefined) {
+    // Restore splits if they were captured and the edit changed them
+    if (restoreSplits) {
       await manager.delete(TransactionSplit, {
         transactionId: action.entityId,
       });
@@ -925,6 +1007,7 @@ export class ActionHistoryService {
           const split = manager.create(TransactionSplit, {
             id: splitData.id,
             transactionId: action.entityId,
+            kind: splitKindOf(splitData),
             categoryId: splitData.categoryId,
             transferAccountId: splitData.transferAccountId || null,
             linkedTransactionId: splitData.linkedTransactionId || null,

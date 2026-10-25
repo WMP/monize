@@ -722,6 +722,120 @@ describe("ActionHistoryService", () => {
       expect(mockQueryRunner.manager.save).toHaveBeenCalledTimes(2);
     });
 
+    describe("a split transaction with a transfer line", () => {
+      const transferSplits = (linked: string) => [
+        {
+          id: "s1",
+          kind: "category",
+          categoryId: "cat-1",
+          transferAccountId: null,
+          linkedTransactionId: null,
+          amount: -60,
+          memo: null,
+        },
+        {
+          id: "s2",
+          kind: "transfer",
+          categoryId: null,
+          transferAccountId: "acc-2",
+          linkedTransactionId: linked,
+          amount: -40,
+          memo: null,
+        },
+      ];
+      const splitAction = (beforeSplits: unknown, afterSplits: unknown) => ({
+        ...mockAction,
+        entityType: "transaction",
+        action: "update",
+        entityId: "tx-1",
+        beforeData: {
+          accountId: "acc-1",
+          description: "old",
+          splits: beforeSplits,
+        },
+        afterData: {
+          accountId: "acc-1",
+          description: "new",
+          splits: afterSplits,
+        },
+      });
+      const arrange = (action: unknown) => {
+        mockRepository.findOne.mockResolvedValue(action);
+        mockQueryRunner.manager.findOne.mockResolvedValue({
+          id: "tx-1",
+          userId,
+          accountId: "acc-1",
+        });
+        mockQueryRunner.manager.update.mockResolvedValue({ affected: 1 });
+        mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
+        mockQueryRunner.manager.create.mockImplementation((_, data) => data);
+        mockQueryRunner.query.mockResolvedValue([
+          { opening_balance: "0", tx_sum: "0" },
+        ]);
+      };
+
+      it("leaves the split rows alone when the edit resent the same lines", async () => {
+        // The re-created lines carry new ids and new counterpart ids.
+        arrange(
+          splitAction(transferSplits("leg-old"), [
+            ...transferSplits("leg-new").reverse(),
+          ]),
+        );
+
+        await service.undo(userId);
+
+        expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+          expect.any(Function),
+          "tx-1",
+          expect.objectContaining({ description: "old" }),
+        );
+        expect(mockQueryRunner.manager.delete).not.toHaveBeenCalled();
+        expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+      });
+
+      it("refuses, before any write, when the edit changed a transfer line", async () => {
+        arrange(
+          splitAction(transferSplits("leg-old"), [
+            { ...transferSplits("leg-new")[0], amount: -50 },
+            { ...transferSplits("leg-new")[1], amount: -50 },
+          ]),
+        );
+
+        await expect(service.undo(userId)).rejects.toMatchObject({
+          response: { errorCode: "UNDO_SPLIT_LEGS_CHANGED" },
+        });
+        expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+        expect(mockQueryRunner.manager.delete).not.toHaveBeenCalled();
+        expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+      });
+
+      it("refuses the redo of an edit that added a transfer line", async () => {
+        arrange(
+          splitAction([transferSplits("x")[0]], transferSplits("leg-new")),
+        );
+
+        await expect(service.redo(userId)).rejects.toMatchObject({
+          response: { errorCode: "UNDO_SPLIT_LEGS_CHANGED" },
+        });
+        expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      });
+
+      it("sets the kind of a re-created category line from the snapshot", async () => {
+        arrange(
+          splitAction(
+            [{ id: "s1", categoryId: "cat-1", amount: 10 }],
+            [{ id: "s1", categoryId: "cat-2", amount: 10 }],
+          ),
+        );
+
+        await service.undo(userId);
+
+        expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+          expect.objectContaining({ kind: "category", categoryId: "cat-1" }),
+        );
+      });
+    });
+
     it("should restore tags when beforeData contains tagIds", async () => {
       const updateAction = {
         ...mockAction,

@@ -86,6 +86,7 @@
     "paymentMatchingFailed": "The loan was saved, but its payment matching rule could not be created. Create it from the loan's details."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "This edit changed split lines that move money to other accounts, so it cannot be undone automatically. Edit the transaction to change it back.",
     "loanEditNotUndoable": "This loan change cannot be undone automatically. Edit the loan to change it back.",
     "nothingToUndo": "Nothing to undo",
     "nothingToRedo": "Nothing to redo",

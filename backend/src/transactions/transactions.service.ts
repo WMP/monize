@@ -3931,6 +3931,7 @@ export class TransactionsService {
       createdAt: tx.createdAt,
       splits: tx.splits?.map((s) => ({
         id: s.id,
+        kind: s.kind,
         categoryId: s.categoryId,
         transferAccountId: s.transferAccountId,
         linkedTransactionId: s.linkedTransactionId,
