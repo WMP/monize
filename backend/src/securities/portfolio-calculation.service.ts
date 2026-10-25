@@ -40,6 +40,7 @@ import {
   baseInvestmentAction,
   CASH_INCOME_ACTIONS,
   HOLDING_QUANTITY_EPSILON,
+  isQuantityOnlyAction,
   INVESTMENT_REPLAY_ORDER,
   orderTransferOutBeforeIn,
   applyReturnOfCapital,
@@ -150,8 +151,14 @@ export interface RealizedGainEntry {
   price: number;
   commission: number;
   proceeds: number;
-  costBasis: number;
-  realizedGain: number;
+  /**
+   * `null` when the position held shares whose cost the ledger cannot state
+   * (ADD_SHARES with no price, an unpriced acquisition): what was relieved is
+   * then a share of a subtotal, not of what the position cost.
+   */
+  costBasis: number | null;
+  /** `null` with `costBasis`; the proceeds stay known. */
+  realizedGain: number | null;
 }
 
 /**
@@ -1411,7 +1418,12 @@ export class PortfolioCalculationService {
     const requestedAccounts =
       accountIds && accountIds.length > 0 ? new Set(accountIds) : null;
 
-    const state = new Map<string, { quantity: number; costBasis: number }>();
+    // `basisKnown` goes false when shares join without a stated cost and back
+    // to true when the position closes, as in `applyTxToState`.
+    const state = new Map<
+      string,
+      { quantity: number; costBasis: number; basisKnown: boolean }
+    >();
     const results: RealizedGainEntry[] = [];
 
     for (const tx of transactions) {
@@ -1420,7 +1432,7 @@ export class PortfolioCalculationService {
       const key = `${tx.accountId}:${tx.securityId}`;
       let entry = state.get(key);
       if (!entry) {
-        entry = { quantity: 0, costBasis: 0 };
+        entry = { quantity: 0, costBasis: 0, basisKnown: true };
         state.set(key, entry);
       }
 
@@ -1437,6 +1449,7 @@ export class PortfolioCalculationService {
           // report and the holdings page cannot disagree about the same buy.
           const cost = acquisitionCost(tx);
           if (cost !== null) entry.costBasis += cost;
+          else entry.basisKnown = false;
           entry.quantity = applyActionToQuantity(
             entry.quantity,
             tx.action,
@@ -1453,6 +1466,7 @@ export class PortfolioCalculationService {
           // what the shares cost.
           const cost = carriedIn.get(tx.id) ?? acquisitionCost(tx);
           if (cost !== null) entry.costBasis += cost;
+          else entry.basisKnown = false;
           entry.quantity = applyActionToQuantity(
             entry.quantity,
             tx.action,
@@ -1477,6 +1491,8 @@ export class PortfolioCalculationService {
             // the gain calculation in the holding account's currency.
             const proceeds = Number(tx.totalAmount) * exchangeRate;
             const realizedGain = proceeds - costBasisSold;
+            // A basis holding shares of unknown cost cannot price what left.
+            const known = entry.basisKnown;
 
             if (
               (!startDate || tx.transactionDate >= startDate) &&
@@ -1497,8 +1513,8 @@ export class PortfolioCalculationService {
                 price,
                 commission: Number(tx.commission) || 0,
                 proceeds: roundMoney(proceeds),
-                costBasis: roundMoney(costBasisSold),
-                realizedGain: roundMoney(realizedGain),
+                costBasis: known ? roundMoney(costBasisSold) : null,
+                realizedGain: known ? roundMoney(realizedGain) : null,
               });
             }
           }
@@ -1516,7 +1532,10 @@ export class PortfolioCalculationService {
             totalAmount: tx.totalAmount,
             exchangeRate: tx.exchangeRate,
           });
-          if (amount === null) break;
+          if (amount === null) {
+            entry.basisKnown = false;
+            break;
+          }
           const effect = applyReturnOfCapital(entry.costBasis, amount);
           entry.costBasis = effect.costBasis;
           if (
@@ -1538,13 +1557,21 @@ export class PortfolioCalculationService {
               price: 0,
               commission: Number(tx.commission) || 0,
               proceeds: roundMoney(amount),
-              costBasis: roundMoney(effect.basisReturned),
-              realizedGain: roundMoney(effect.realizedGain),
+              costBasis: entry.basisKnown
+                ? roundMoney(effect.basisReturned)
+                : null,
+              realizedGain: entry.basisKnown
+                ? roundMoney(effect.realizedGain)
+                : null,
             });
           }
           break;
         }
         default:
+          // ADD_SHARES / REMOVE_SHARES move units with no cost in the ledger.
+          if (isQuantityOnlyAction(tx.action) && quantity !== 0) {
+            entry.basisKnown = false;
+          }
           entry.quantity = applyActionToQuantity(
             entry.quantity,
             tx.action,
@@ -1556,6 +1583,7 @@ export class PortfolioCalculationService {
       if (Math.abs(entry.quantity) < 0.0001) {
         entry.quantity = 0;
         entry.costBasis = 0;
+        entry.basisKnown = true;
       }
     }
 

@@ -667,6 +667,28 @@ describe("SecurityDetailService", () => {
       expect(activity.realizedGainCurrencies).toEqual(["EUR", "PLN"]);
     });
 
+    it("does not total gains when one sale's gain is unknown, and names the known part", async () => {
+      investmentTransactionsService.getRealizedGains.mockResolvedValue([
+        {
+          securityId: SECURITY_ID,
+          realizedGain: 1000,
+          accountCurrencyCode: "PLN",
+        },
+        {
+          securityId: SECURITY_ID,
+          realizedGain: null,
+          accountCurrencyCode: "PLN",
+        },
+      ]);
+
+      const { activity } = await getDetail();
+      expect(activity.realizedGain).toBeNull();
+      expect(activity.realizedGainComplete).toBe(false);
+      expect(activity.realizedGainKnownSubtotal).toBe(1000);
+      expect(activity.realizedGainCurrency).toBe("PLN");
+      expect(activity.realizedSaleCount).toBe(2);
+    });
+
     it("reports nothing when the security was never sold", async () => {
       const { activity } = await getDetail();
       expect(activity.realizedGain).toBeNull();

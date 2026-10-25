@@ -45,6 +45,11 @@ interface UnknownAmountProps {
     | 'staleQuote'
     | 'noCashBalance'
     | 'unknownCurrency';
+  /**
+   * A tooltip the caller composed from its own catalog, for a cause that has no
+   * entry under `common.unknownAmount`. Wins over `reason`.
+   */
+  reasonText?: string;
   /** Extra classes for the wrapper, so a table cell can keep its alignment. */
   className?: string;
 }
@@ -61,7 +66,7 @@ interface UnknownAmountProps {
  * The marker is a visible glyph plus a tooltip that says why, never colour
  * alone, and the reason is available to assistive technology.
  */
-export function UnknownAmount({ reason = 'scheduledFx', className }: UnknownAmountProps) {
+export function UnknownAmount({ reason = 'scheduledFx', reasonText, className }: UnknownAmountProps) {
   const t = useTranslations('common');
 
   return (
@@ -73,7 +78,7 @@ export function UnknownAmount({ reason = 'scheduledFx', className }: UnknownAmou
         {t('unknownAmount.marker')}
       </span>
       <span className="sr-only">{t('unknownAmount.srLabel')}</span>
-      <InfoTooltip placement="top" text={t(`unknownAmount.${reason}`)} usePortal />
+      <InfoTooltip placement="top" text={reasonText ?? t(`unknownAmount.${reason}`)} usePortal />
     </span>
   );
 }

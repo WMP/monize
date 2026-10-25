@@ -115,6 +115,70 @@ describe("PortfolioCalculationService.calculateRealizedGains", () => {
     expect(sell.realizedGain).toBe(990); // 5990 - 5000
   });
 
+  describe("a position holding shares of unknown cost", () => {
+    const addShares = makeTx({
+      id: "add",
+      action: InvestmentAction.ADD_SHARES,
+      transactionDate: "2024-01-05",
+      quantity: 10,
+      price: null as never,
+      totalAmount: 0,
+    });
+    const buy = (id: string, date: string) =>
+      makeTx({
+        id,
+        action: InvestmentAction.BUY,
+        transactionDate: date,
+        quantity: 10,
+        price: 100,
+        totalAmount: 1000,
+      });
+    const sell = (id: string, date: string, quantity: number, total: number) =>
+      makeTx({
+        id,
+        action: InvestmentAction.SELL,
+        transactionDate: date,
+        quantity,
+        price: total / quantity,
+        totalAmount: total,
+      });
+
+    it("reports a sale's cost and gain as unknown, with the proceeds still known", async () => {
+      // 10 shares of unknown cost plus 10 bought for 1,000: selling all 20 for
+      // 3,000 would read as a 2,000 gain against a 1,000 basis that is only
+      // the priced half.
+      txRepo.find.mockResolvedValue([
+        addShares,
+        buy("buy", "2024-02-01"),
+        sell("sell", "2024-03-01", 20, 3000),
+      ]);
+
+      const result = await service.calculateRealizedGains(userId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        transactionId: "sell",
+        proceeds: 3000,
+        costBasis: null,
+        realizedGain: null,
+      });
+    });
+
+    it("knows the basis again once the position has gone back to zero", async () => {
+      txRepo.find.mockResolvedValue([
+        addShares,
+        sell("sell-1", "2024-02-01", 10, 1200),
+        buy("buy", "2024-03-01"),
+        sell("sell-2", "2024-04-01", 10, 1500),
+      ]);
+
+      const result = await service.calculateRealizedGains(userId);
+
+      expect(result.map((r) => r.realizedGain)).toEqual([null, 500]);
+      expect(result[1].costBasis).toBe(1000);
+    });
+  });
+
   it("measures a later sale against the basis a return of capital left (#1800)", async () => {
     // Buy 100 @ 50 = 5,000; 1,000 of capital returned leaves 4,000 of basis;
     // selling all 100 for 6,000 realizes 2,000, not 1,000.
@@ -368,8 +432,10 @@ describe("PortfolioCalculationService.calculateRealizedGains", () => {
 
     const result = await service.calculateRealizedGains(userId);
     // The shares still joined the position, so the sale is still reported --
-    // but no cost was invented for them.
-    expect(result[0].costBasis).toBe(0);
+    // but no cost was invented for them, and the gain is unknown, not 1,100.
+    expect(result[0].proceeds).toBe(1100);
+    expect(result[0].costBasis).toBeNull();
+    expect(result[0].realizedGain).toBeNull();
   });
 
   it("multiplies the position by a split ratio when relieving basis", async () => {

@@ -652,6 +652,14 @@ export interface SecurityDetailActivity {
    * added into a single figure.
    */
   realizedGain: number | null;
+  /**
+   * `false` when a sale drew on shares of unknown cost, which is the other
+   * reason `realizedGain` is null; read as `=== false`, absent means no
+   * information.
+   */
+  realizedGainComplete?: boolean;
+  /** The gains that are known, when `realizedGainComplete` is `false`. */
+  realizedGainKnownSubtotal?: number | null;
   realizedGainCurrency: string | null;
   /** Currencies the security was sold from, for naming them when they differ. */
   realizedGainCurrencies: string[];
@@ -944,8 +952,13 @@ export interface RealizedGainEntry {
   price: number;
   commission: number;
   proceeds: number;
-  costBasis: number;
-  realizedGain: number;
+  /**
+   * `null` when the position held shares of unknown cost (added with no price,
+   * or an unpriced acquisition): what was sold cost an unknown amount, so the
+   * gain is unknown too. The proceeds stay known.
+   */
+  costBasis: number | null;
+  realizedGain: number | null;
 }
 
 /**

@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { UnknownAmount } from '@/components/ui/UnknownAmount';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { gainLossColor } from '@/lib/format';
@@ -77,6 +78,16 @@ export function SecurityPositionState({ detail }: SecurityPositionStateProps) {
               </div>
             </div>
           )}
+        {activity.realizedGainComplete === false && (
+          <div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {t('closed.realizedPl')}
+            </div>
+            <div className="text-lg font-bold">
+              <UnknownAmount reasonText={t('closed.realizedUnknownReason')} />
+            </div>
+          </div>
+        )}
         {heldRange && (
           <div>
             <div className="text-sm text-gray-500 dark:text-gray-400">

@@ -171,6 +171,61 @@ describe('RealizedGainsReport', () => {
     expect(screen.getByText('Securities Sold')).toBeInTheDocument();
   });
 
+  describe('a sale of unknown cost', () => {
+    const unknownEntry = () =>
+      gainEntry({
+        transactionId: 'sell-unknown',
+        symbol: 'MSFT',
+        securityName: 'Microsoft Corp.',
+        proceeds: 3500,
+        costBasis: null,
+        realizedGain: null,
+      });
+
+    it('shows the total gain as unknown and names the known part separately', async () => {
+      mockGetRealizedGains.mockResolvedValue([gainEntry(), unknownEntry()]);
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+      render(<RealizedGainsReport />);
+      await waitFor(() => {
+        expect(screen.getByText('Realized Gain/Loss')).toBeInTheDocument();
+      });
+      // The gain card holds the unknown marker, not the 500 of the other sale.
+      const card = screen.getByText('Realized Gain/Loss').parentElement as HTMLElement;
+      expect(within(card).getByTestId('unknown-amount')).toBeInTheDocument();
+      expect(within(card).queryByText('+$500.00')).not.toBeInTheDocument();
+      expect(within(card).getByText('Known part: $500.00')).toBeInTheDocument();
+      expect(screen.getByText(/1 sale has an unknown cost/)).toBeInTheDocument();
+    });
+
+    it('shows the unknown marker beside a symbol whose sale has no known cost', async () => {
+      mockGetRealizedGains.mockResolvedValue([gainEntry(), unknownEntry()]);
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+      render(<RealizedGainsReport />);
+      await waitFor(() => {
+        expect(screen.getByTitle('Table')).toBeInTheDocument();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTitle('Table'));
+      });
+      expect(screen.getAllByTestId('unknown-amount').length).toBeGreaterThanOrEqual(2);
+      expect(screen.getAllByText('MSFT').length).toBeGreaterThan(0);
+    });
+
+    it('exports the unknown cost as a marker, not a number', async () => {
+      mockGetRealizedGains.mockResolvedValue([unknownEntry()]);
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+      render(<RealizedGainsReport />);
+      await waitFor(() => {
+        expect(screen.getByTestId('export-csv')).toBeInTheDocument();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('export-csv'));
+      });
+      const rows = mockExportToCsv.mock.calls[0][2] as (string | number)[][];
+      expect(rows[0].slice(3, 6)).toEqual([3500, 'Unknown', 'Unknown']);
+    });
+  });
+
   it('renders view type toggle buttons', async () => {
     mockGetRealizedGains.mockResolvedValue([]);
     mockGetInvestmentAccounts.mockResolvedValue([]);

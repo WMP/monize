@@ -1326,7 +1326,11 @@
     "csvColCostBasis": "Cost Basis",
     "csvColGainLoss": "Gain/Loss",
     "csvColReturn": "Return %",
-    "csvNoRate": "No rate"
+    "csvNoRate": "No rate",
+    "csvUnknownCost": "Unknown",
+    "unknownBasisReason": "This gain cannot be worked out: the position holds shares that were added with no cost, so what the sold shares cost is unknown. Open the transaction that added them and enter their price.",
+    "knownPart": "Known part: {amount}",
+    "unknownCostNotice": "{count, plural, one {# sale has} other {# sales have}} an unknown cost, because shares were added with no price. No gain is given for {count, plural, one {it} other {them}}, so the gain totals show only the known part."
   },
   "recurringExpenses": {
     "recurringExpenses": "Recurring Expenses",

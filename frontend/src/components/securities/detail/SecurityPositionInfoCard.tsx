@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { KeyValueList, type KeyValueRow } from '@/components/ui/KeyValueList';
+import { UnknownAmount } from '@/components/ui/UnknownAmount';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { gainLossColor } from '@/lib/format';
@@ -106,6 +107,10 @@ export function SecurityPositionInfoCard({
               activity.realizedGainCurrency,
             )}
           </span>
+        ) : activity.realizedGainComplete === false ? (
+          // A sale drew on shares of unknown cost: its gain is unknown, which
+          // is not the same statement as "sold across currencies".
+          <UnknownAmount reasonText={t('positionInfo.realizedUnknownReason')} />
         ) : activity.realizedSaleCount > 0 ? (
           <span className="text-gray-500 dark:text-gray-400">
             {t('positionInfo.realizedMixed', {
