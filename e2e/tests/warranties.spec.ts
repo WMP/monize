@@ -27,10 +27,24 @@ async function openActionSheet(page: Page, payeeName: string) {
   return sheet;
 }
 
+/**
+ * Click a register row's amount until its edit window opens. The amount cell
+ * does not stop propagation, and the list hydrates late, so a single click can
+ * land before the row's handler exists.
+ */
+async function openEditWindow(page: Page, payeeName: string, amountText: string) {
+  const dialog = page.getByRole('dialog');
+  await expect(async () => {
+    await registerRow(page, payeeName).getByText(amountText).first().click();
+    await expect(dialog).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 30000 });
+  return dialog;
+}
+
 // Seeded through the API, driven through the UI, and re-checked after a reload
 // so a passing step is the server's state rather than an optimistic render.
 test.describe('Warranties', () => {
-  test('adds a warranty from a register row and shows its badge', async ({
+  test("adds a warranty from a transaction's edit window and shows its badge", async ({
     authedPage: page,
     api,
   }) => {
@@ -43,9 +57,11 @@ test.describe('Warranties', () => {
     const amount = -randomInt(10000, 99999) / 100;
     await createTransaction(api, { accountId: account.id, payeeName, amount });
 
+    const amountText = Math.abs(amount).toFixed(2);
+
     await page.goto('/transactions');
-    const sheet = await openActionSheet(page, payeeName);
-    await sheet.getByRole('button', { name: 'Add warranty', exact: true }).click();
+    const editWindow = await openEditWindow(page, payeeName, amountText);
+    await editWindow.getByRole('button', { name: 'Add warranty', exact: true }).click();
 
     // The form opens filled from the purchase.
     await expect(page).toHaveURL(/\/warranties/);
@@ -64,10 +80,17 @@ test.describe('Warranties', () => {
     await page.reload();
     await expect(badge).toBeVisible({ timeout: 15000 });
 
-    // A row with a warranty offers to view it rather than add another.
-    const again = await openActionSheet(page, payeeName);
-    await expect(again.getByRole('button', { name: 'View warranties', exact: true })).toBeVisible();
-    await expect(again.getByRole('button', { name: 'Add warranty', exact: true })).toHaveCount(0);
+    // The edit window lists the linked warranty.
+    const again = await openEditWindow(page, payeeName, amountText);
+    await expect(again.getByRole('link', { name: new RegExp(payeeName) })).toBeVisible({ timeout: 15000 });
+    await again.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(again).toHaveCount(0);
+
+    // A row's action sheet offers no warranty action: the shield says one
+    // exists, and adding one goes through the form or the Warranties page.
+    const sheet = await openActionSheet(page, payeeName);
+    await expect(sheet.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
+    await expect(sheet.getByRole('button', { name: /warrant/i })).toHaveCount(0);
   });
 
   test('uploads a receipt on the detail page and lists it with its kind', async ({

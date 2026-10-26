@@ -332,8 +332,7 @@ vi.mock('@/components/transactions/TransactionList', () => ({
           <span data-testid={`tx-${t.id}-attachments`}>{t.attachmentCount ?? 'none'}</span>
         </div>
       ))}
-      {props.onAddWarranty && <button data-testid="add-warranty-btn" onClick={() => props.onAddWarranty({ id: 'tx-1' })}>Add warranty</button>}
-      {props.onViewWarranties && <button data-testid="view-warranties-btn" onClick={() => props.onViewWarranties({ id: 'tx-1' })}>View warranties</button>}
+      {(props.onAddWarranty || props.onViewWarranties) && <span data-testid="row-warranty-actions" />}
       {props.onPayeeClick && <button data-testid="payee-click-btn" onClick={() => props.onPayeeClick('payee-1')}>Payee</button>}
       {props.onTransferClick && <button data-testid="transfer-click-btn" onClick={() => props.onTransferClick('acc-2', 'tx-linked')}>Transfer</button>}
       {props.onCategoryClick && <button data-testid="category-click-btn" onClick={() => props.onCategoryClick('cat-1')}>Category</button>}
@@ -1797,7 +1796,7 @@ describe('TransactionsPage', () => {
   });
 
   describe('Warranties', () => {
-    // A warranty lives on its own page; the register only routes there.
+    // A warranty is added from the transaction's form or the Warranties page.
     beforeEach(() => {
       mockGetAll.mockResolvedValue({
         data: mockTransactions,
@@ -1806,42 +1805,15 @@ describe('TransactionsPage', () => {
       mockGetSummary.mockResolvedValue({ totalIncome: 0, totalExpenses: 0, netCashFlow: 0, transactionCount: 0 });
     });
 
-    it('Add warranty opens the Warranties form prefilled from the row', async () => {
-      render(<TransactionsPage />);
-      await waitFor(() => expect(screen.getByTestId('add-warranty-btn')).toBeInTheDocument());
-      fireEvent.click(screen.getByTestId('add-warranty-btn'));
-      expect(mockPush).toHaveBeenCalledWith('/warranties?new=1&transactionId=tx-1');
-    });
-
-    it("View warranties lists the row's warranties", async () => {
-      render(<TransactionsPage />);
-      await waitFor(() => expect(screen.getByTestId('view-warranties-btn')).toBeInTheDocument());
-      fireEvent.click(screen.getByTestId('view-warranties-btn'));
-      expect(mockPush).toHaveBeenCalledWith('/warranties?transactionId=tx-1');
+    it('gives the register rows no warranty action', async () => {
+      await act(async () => {
+        render(<TransactionsPage />);
+      });
+      await waitFor(() => expect(screen.getByTestId('tx-count')).toHaveTextContent('3 transactions'));
+      expect(screen.queryByTestId('row-warranty-actions')).not.toBeInTheDocument();
     });
 
     describe('for an acting delegate', () => {
-      it('offers neither warranty action without the Warranties section', async () => {
-        mockActing.actingAsUserId = 'owner-1';
-        mockActing.delegateSections = { warranties: false };
-        await act(async () => {
-          render(<TransactionsPage />);
-        });
-        await waitFor(() => expect(screen.getByTestId('tx-count')).toHaveTextContent('3 transactions'));
-        expect(screen.queryByTestId('add-warranty-btn')).not.toBeInTheDocument();
-        expect(screen.queryByTestId('view-warranties-btn')).not.toBeInTheDocument();
-      });
-
-      it('offers View only with the Warranties section', async () => {
-        mockActing.actingAsUserId = 'owner-1';
-        mockActing.delegateSections = { warranties: true };
-        await act(async () => {
-          render(<TransactionsPage />);
-        });
-        await waitFor(() => expect(screen.getByTestId('view-warranties-btn')).toBeInTheDocument());
-        expect(screen.queryByTestId('add-warranty-btn')).not.toBeInTheDocument();
-      });
-
       it("gives the edit window no Add warranty", async () => {
         mockRealFormModal.value = true;
         mockActing.actingAsUserId = 'owner-1';

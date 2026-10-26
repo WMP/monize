@@ -32,10 +32,10 @@ the reminder are one record.
   archive, export and import.
 - A **warranty detail** page: the status card, the documents (receipt, manual,
   photo, other), the claims log, and the linked transaction.
-- **From the register**: "Add warranty" and "View warranties" on a row's
-  action sheet (never on its Copy dropdown: a warranty is not a copy), a
-  shield badge on rows that have one, and a
-  Warranties line in the transaction edit form. The register's own behaviour
+- **From the register**: a shield badge on rows that have one, and a
+  Warranties line in the transaction edit form. A row's action sheet and
+  Copy dropdown offer no warranty action: the form and the Warranties page
+  are where one is added. The register's own behaviour
   does not change.
 - **Reminders** 30 and 7 days before expiry and on the day, under a new
   `warranties` notification category, with snooze and repeat from the
@@ -56,7 +56,6 @@ and never contributes to a balance, a report or a total.
 | A purchase in the ledger | `Transaction` (`backend/src/transactions/entities/transaction.entity.ts`): `transactionDate`, `payeeId`, `payeeName`, `description`, `amount`, `currencyCode`; `transactionsApi.getById` (`frontend/src/lib/transactions.ts`) | The prefill source when a warranty is created from a row. |
 | Files on a transaction | `transaction_attachments`, `attachment_blobs` (`database/schema.sql`), `AttachmentsService` (`backend/src/attachments/attachments.service.ts`), `attachmentsApi` (`frontend/src/lib/attachments.ts`), `AttachmentsSection.tsx`, `AttachmentPreviewDialog.tsx`, `ScanDocumentControl.tsx` (`frontend/src/components/transactions/`) | Bound to `transaction_id NOT NULL` today; generalised by decision 7. Ownership is `user_id`; the blob policy, the tombstone trigger, `AttachmentOrphanSweeperService` and `AttachmentStorageMigratorService` are keyed by attachment id and do not change. |
 | The register's per-row counts | `attachmentCount` enrichment in `TransactionsService` (`backend/src/transactions/transactions.service.ts`), `AttachmentBadge` in `TransactionRow.tsx` | `warrantyCount` joins it, one more grouped count over the page's ids. |
-| Row actions on the register | `TransactionActionSheet.tsx`, `TransactionList.tsx` props (`frontend/src/components/transactions/`) | Optional callbacks; every other `TransactionList` consumer keeps working. |
 | `has:attachment` search | `transaction-search.util.ts` (`backend/src/transactions/`) | `has:warranty` is the same shape. |
 | Vendor | `payees` (`backend/src/payees/entities/payee.entity.ts`), `usePayeeDisplay` (`frontend/src/hooks/usePayeeDisplay.ts`) | A warranty carries `payee_id` plus a free-text `vendor_name`, as a transaction does. |
 | The one date input, the one money input | `DateInput.tsx`, `CurrencyInput.tsx`, `CurrencyPickerButton.tsx` (`frontend/src/components/ui/`, `frontend/src/components/transactions/`) | `docs/frontend/forms-and-formatting.md`. |
@@ -531,9 +530,7 @@ tick (the smallest mark at or above 20 is 30), then the 7-day one.
   transaction row linking to `/transactions?targetTransactionId=<id>` (the
   existing flash deep link). A warranties layout wraps the section in
   `DelegateSectionGuard section="warranties"`.
-- Register: `TransactionActionSheet` gains optional `onAddWarranty` and
-  `onViewWarranties` (`CopyDropdown` takes neither); `TransactionList` threads one
-  optional prop so every other consumer is untouched; `TransactionRow` shows
+- Register: `TransactionRow` shows
   `WarrantyBadge` (`ShieldCheckIcon`, count) beside `AttachmentBadge` when
   `warrantyCount > 0`, on the phone card and the table alike;
   `TransactionForm` renders `TransactionWarrantiesLine.tsx` beside
@@ -574,14 +571,14 @@ tick (the smallest mark at or above 20 is 30), then the 7-day one.
 | Claims | CRUD under the parent's ownership; a claim on a foreign warranty is 404 |
 | Delegation (WTY-007) | truth table C, one test per row; write routes refuse a delegate; the Tools link appears only with the section |
 | Reminders (WTY-004) | truth table B; two concurrent ticks produce one row (the two-connection test `docs/verification-contract.md` asks for); a changed `expires_on` re-fires (example 4); archived and lifetime skipped; category `WARRANTIES` resolves in-app on and email per preference |
-| Register | `warrantyCount` on a page with and without warranties; `has:warranty` and its `searchInterpretation`; the action sheet shows Add / View by count; every other `TransactionList` consumer renders without the prop |
+| Register | `warrantyCount` on a page with and without warranties; `has:warranty` and its `searchInterpretation`; neither the action sheet nor the Copy dropdown offers a warranty action |
 | Import (WTY-006) | dry run and commit agree on the same file; comma-separated and JSON serial numbers; `Tags` reported as skipped; unknown currency falls back; a row with no expiry source is invalid; limits refused with a message; the Warracker sample file round-trips through export |
 | RLS | both tables land in the direct bucket (`rls-enforcement.integration.spec.ts`) |
 | Backup | export and restore round-trip includes warranties, claims and a warranty's attachment with its bytes; `restore-plan.spec.ts` ordering; support-backup golden test with the masking decided |
 | Currency references | `currency-references.spec.ts` sees `warranties.currency_code` in both the constant and the SQL function |
 | Frontend | page loading / empty / list / filters; form validation; the badge and action-sheet items; the widget renders the server's `status` and `daysLeft` and never compares dates; `nav-links.test.ts`, `section-layouts.test.tsx`, `density-preference.guard.test.ts`, `notification-target` and `notification-preferences` contract tests |
 | AI | `list_warranties` on both surfaces returns the same shape; `EXPECTED_TOOL_COUNT` and the byte budget |
-| E2E | from a register row, add a warranty, upload a receipt, see the badge, find it on the page, archive it; reload and re-assert |
+| E2E | from a transaction's edit window, add a warranty, upload a receipt, see the badge, find it on the page, archive it; reload and re-assert |
 
 ## 12. Explicit v1 scope cuts
 
