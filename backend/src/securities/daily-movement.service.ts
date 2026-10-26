@@ -33,6 +33,7 @@ import {
   decideDailyMovement,
   valueReasons,
 } from "./daily-movement.util";
+import { enumerateDaysYMD } from "../net-worth/series-dates.util";
 
 export { DailyMovementReason };
 
@@ -145,7 +146,7 @@ export class DailyMovementService {
   ): Promise<DailyMovementsResponse> {
     const today = todayYMD();
     const currencyCode = await this.reportingCurrency(userId, displayCurrency);
-    const dates = enumerateDates(startDate, endDate);
+    const dates = enumerateDaysYMD(startDate, endDate);
     // Days after today are not evaluated: there is no future close, and a
     // projected market movement is not something this app claims to know.
     const evaluated = dates.filter((date) => date <= today);
@@ -616,7 +617,7 @@ function replayHoldings(
   const running = new Map<string, number>();
   let index = 0;
 
-  for (const date of enumerateDates(startDate, endDate)) {
+  for (const date of enumerateDaysYMD(startDate, endDate)) {
     while (index < rows.length && rows[index].transaction_date <= date) {
       const row = rows[index];
       if (row.security_id) {
@@ -634,15 +635,6 @@ function replayHoldings(
     byDate.set(date, new Map(running));
   }
   return byDate;
-}
-
-/** Every calendar date from `from` to `to` inclusive, by string arithmetic. */
-function enumerateDates(from: string, to: string): string[] {
-  const dates: string[] = [];
-  for (let date = from; date <= to; date = addDaysYMD(date, 1)) {
-    dates.push(date);
-  }
-  return dates;
 }
 
 /** A day with nothing to report: blank, not unknown. */

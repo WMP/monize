@@ -61,6 +61,8 @@ import {
   MAX_TRADE_ACCOUNT_RULES,
   MAX_TRADE_CURRENCY_MARKERS,
 } from "./receipt-parser.types";
+import { isRecord } from "../../common/helpers/is-record";
+import { hasControlCharacter } from "../../common/helpers/has-control-character";
 
 /**
  * The one validator of a receipt parser definition (design 5.2 and 5.4). The
@@ -243,9 +245,6 @@ const RECORD_STEP_KEYS: readonly string[] = ["line", "optional"];
 const NO_CAPTURES: FieldCaptures = { allowed: [], required: [] };
 const CATEGORY_RULE_KEYS: readonly string[] = ["match", "categoryId", "field"];
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
 /** Collects errors up to the cap; a full collector ignores further reports. */
 class Errors {
   readonly list: ReceiptParserValidationError[] = [];
@@ -279,14 +278,6 @@ function asArray(
     return null;
   }
   return value;
-}
-
-function hasControlCharacter(text: string): boolean {
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    if (code < 0x20 || code === 0x7f) return true;
-  }
-  return false;
 }
 
 /**
@@ -413,7 +404,7 @@ function checkPatternList(
   const out: ReceiptFieldEntry[] = [];
   list.forEach((entry, index) => {
     const entryPath = `${path}[${index}]`;
-    if (labelled && isPlainObject(entry)) {
+    if (labelled && isRecord(entry)) {
       const parsed = checkLabelled(entry, entryPath, captures, errors);
       if (parsed !== null) out.push(parsed);
       else valid = false;
@@ -578,7 +569,7 @@ function checkRecord(
   const seen = new Set<string>();
   value.forEach((entry, index) => {
     const stepPath = `${path}[${index}]`;
-    if (!isPlainObject(entry)) {
+    if (!isRecord(entry)) {
       errors.add(stepPath, "invalid_type");
       return;
     }
@@ -604,7 +595,7 @@ function checkRecord(
 
 /** The `single` of items: one item whose `name` glob captures `{name}`. */
 function checkSingle(value: unknown, errors: Errors): { name: string } | null {
-  if (!isPlainObject(value)) {
+  if (!isRecord(value)) {
     errors.add("items.single", "invalid_type");
     return null;
   }
@@ -629,7 +620,7 @@ function checkItems(
   settlement: boolean,
   errors: Errors,
 ): ItemsDefinition | null {
-  if (!isPlainObject(value)) {
+  if (!isRecord(value)) {
     errors.add("items", "invalid_type");
     return null;
   }
@@ -751,7 +742,7 @@ function checkCategoryRules(
   const out: ReceiptCategoryRule[] = [];
   value.forEach((entry, index) => {
     const path = `categoryRules[${index}]`;
-    if (!isPlainObject(entry)) {
+    if (!isRecord(entry)) {
       errors.add(path, "invalid_type");
       return;
     }
@@ -865,7 +856,7 @@ function checkMatch(
   hasReferenceField: boolean,
   errors: Errors,
 ): ReceiptMatchDefinition | null {
-  if (!isPlainObject(value)) {
+  if (!isRecord(value)) {
     errors.add("match", "invalid_type");
     return null;
   }
@@ -941,7 +932,7 @@ function checkLink(
   value: unknown,
   errors: Errors,
 ): ReceiptLinkDefinition | null {
-  if (!isPlainObject(value)) {
+  if (!isRecord(value)) {
     errors.add("link", "invalid_type");
     return null;
   }
@@ -1066,7 +1057,7 @@ function checkTradeAccountRules(
   const out: ReceiptTradeAccountRule[] = [];
   value.forEach((entry, index) => {
     const entryPath = `${path}[${index}]`;
-    if (!isPlainObject(entry)) {
+    if (!isRecord(entry)) {
       errors.add(entryPath, "invalid_type");
       return;
     }
@@ -1132,7 +1123,7 @@ function checkTradeCurrencyMarkers(
   const out: ReceiptTradeCurrencyMarker[] = [];
   value.forEach((entry, index) => {
     const entryPath = `${path}[${index}]`;
-    if (!isPlainObject(entry)) {
+    if (!isRecord(entry)) {
       errors.add(entryPath, "invalid_type");
       return;
     }
@@ -1166,7 +1157,7 @@ function checkTrade(
   value: unknown,
   errors: Errors,
 ): ReceiptTradeDefinition | null {
-  if (!isPlainObject(value)) {
+  if (!isRecord(value)) {
     errors.add("trade", "invalid_type");
     return null;
   }
@@ -1239,7 +1230,7 @@ export function validateReceiptParserDefinition(
   input: unknown,
 ): ReceiptParserValidation {
   const errors = new Errors();
-  if (!isPlainObject(input)) {
+  if (!isRecord(input)) {
     errors.add("", "not_object");
     return { ok: false, errors: errors.list };
   }

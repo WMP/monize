@@ -19,6 +19,8 @@ import { accountsApi } from '@/lib/accounts';
 import {
   computeCreditRows,
   computeCreditTotals,
+  isCreditAccount,
+  utilizationColour,
   type CreditUtilizationRow,
 } from '@/lib/credit-utilization';
 import { Account } from '@/types/account';
@@ -39,14 +41,6 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { ReportError } from '@/components/reports/ReportError';
 import { useTranslations } from 'next-intl';
 import { chartColors } from '@/lib/chart-colors';
-
-// Only credit cards and lines of credit with a credit limit can have a
-// meaningful utilization figure (used / available credit).
-const isCreditAccount = (account: Account) =>
-  (account.accountType === 'CREDIT_CARD' || account.accountType === 'LINE_OF_CREDIT') &&
-  account.creditLimit != null &&
-  account.creditLimit > 0 &&
-  !account.isClosed;
 
 type CreditUtilizationSortField =
   | 'name'
@@ -77,14 +71,6 @@ type SortColumn = TableSortColumn<CreditUtilizationSortField, 'right'>;
  * stay right. Here it is a compile error instead.
  */
 type SortColumnsByField = TableSortColumnsByField<CreditUtilizationSortField, SortColumn>;
-
-// Utilization thresholds drive the bar colour: low (green), moderate (amber),
-// high (red). 30% / 75% mirror the common "keep utilization under 30%" guidance.
-function utilizationColour(percent: number): string {
-  if (percent >= 75) return chartColors.expense;
-  if (percent >= 30) return chartColors.warning;
-  return chartColors.income;
-}
 
 // Today's header cell, unchanged.
 const HEADER_CLASS =

@@ -12,16 +12,7 @@ import {
   ValidateIf,
 } from "class-validator";
 import { ReportQueryDto } from "./report-query.dto";
-
-/** A comma-separated query parameter, as a trimmed non-empty array. */
-function csv({ value }: { value: unknown }): unknown {
-  if (Array.isArray(value)) return value;
-  if (typeof value !== "string") return value;
-  return value
-    .split(",")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-}
+import { splitCsv } from "../../common/helpers/split-csv";
 
 /** Surrounding whitespace is a paste artifact, never part of a tag key or value. */
 const trimmed = ({ value }: { value: unknown }) =>
@@ -39,7 +30,7 @@ export class SpendingByCategoryQueryDto extends ReportQueryDto {
     type: [String],
   })
   @IsOptional()
-  @Transform(csv)
+  @Transform(splitCsv)
   @IsArray()
   // Bounded because an unbounded array is a lever on the query planner, and
   // `common/array-bound-dto.spec.ts` fails a new one without a cap. No user has

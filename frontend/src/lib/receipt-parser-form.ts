@@ -20,6 +20,7 @@ import {
   type ReceiptTradeCurrencyMarker,
   type ReceiptTradeDefinition,
 } from '@/types/email-receipts';
+import { isRecord } from '@/lib/helpers/is-record';
 
 /**
  * The parser editor's form state and its conversion to and from the stored
@@ -437,9 +438,6 @@ export function buildParserPayload(
     definition,
   };
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const stringList = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];

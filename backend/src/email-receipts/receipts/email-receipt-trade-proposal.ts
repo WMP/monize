@@ -2,9 +2,7 @@ import { tradeActionOf } from "../../ai-review/trade-action";
 import { roundMoney } from "../../common/round.util";
 import { tradeActionMovesShares } from "../parsing/receipt-parser.types";
 import type { EmailReceiptTradeProposal } from "./email-receipt.view";
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+import { isRecord } from "../../common/helpers/is-record";
 
 const finite = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;

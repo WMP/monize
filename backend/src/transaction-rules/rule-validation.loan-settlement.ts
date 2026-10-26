@@ -5,6 +5,7 @@ import {
 } from "./rule-action.types";
 import type { RuleValidationCode } from "./rule-validation";
 import { MAX_LOAN_SETTLEMENT_WINDOW_DAYS } from "./transaction-rules.limits";
+import { isRecord } from "../common/helpers/is-record";
 
 type Sink = (path: string, code: RuleValidationCode) => void;
 
@@ -17,9 +18,6 @@ const SETTLE_KEYS = [
   "interestCategoryId",
 ] as const;
 const WINDOW_KEYS = ["daysBefore", "daysAfter"] as const;
-
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null && !Array.isArray(v);
 
 const hasKey = (o: Record<string, unknown>, k: string): boolean =>
   Object.prototype.hasOwnProperty.call(o, k);

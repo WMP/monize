@@ -9,16 +9,7 @@ import {
   IsUUID,
 } from "class-validator";
 import { InvestmentAction } from "../../securities/entities/investment-transaction.entity";
-
-/** A comma-separated query parameter, as a trimmed non-empty array. */
-function csv({ value }: { value: unknown }): unknown {
-  if (Array.isArray(value)) return value;
-  if (typeof value !== "string") return value;
-  return value
-    .split(",")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-}
+import { splitCsv } from "../../common/helpers/split-csv";
 
 /**
  * What the Investment Transaction History report is filtered by. The summary is
@@ -31,7 +22,7 @@ export class InvestmentTransactionSummaryQueryDto {
     type: [String],
   })
   @IsOptional()
-  @Transform(csv)
+  @Transform(splitCsv)
   @IsArray()
   // Bounded for the reason `common/array-bound-dto.spec.ts` enforces: an
   // unbounded array is a lever on the query planner.
@@ -57,7 +48,7 @@ export class InvestmentTransactionSummaryQueryDto {
     isArray: true,
   })
   @IsOptional()
-  @Transform(csv)
+  @Transform(splitCsv)
   @IsArray()
   @ArrayMaxSize(50)
   @IsEnum(InvestmentAction, { each: true })

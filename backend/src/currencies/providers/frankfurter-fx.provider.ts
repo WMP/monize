@@ -9,6 +9,7 @@ import {
   FxProviderName,
   FxRateProvider,
 } from "./fx-provider.interface";
+import { isRecord } from "../../common/helpers/is-record";
 
 /** The id this adapter reports under. Must match `TRACKED_PROVIDERS`. */
 export const FRANKFURTER_PROVIDER = "frankfurter";
@@ -105,10 +106,6 @@ interface CachedCurrencyList {
 /** A published rate is a positive finite number; anything else is not an observation. */
 function isUsableRate(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** `{ date, rates: { Q: rate } }`, the shape of `/latest` and of a single date. */

@@ -11,6 +11,7 @@ import {
   MAX_RULE_CONDITION_NODES,
   MAX_RULE_SPLIT_PARTS,
 } from "./rule-validation";
+import { isRecord } from "../common/helpers/is-record";
 
 /**
  * The name form of a rule definition, which is what a model reads and writes:
@@ -101,9 +102,6 @@ const SPLIT_PART_NAME_KEYS: readonly ActionNameKey[] = [
 
 /** The most parts read for names; the validator refuses more (`MAX_RULE_SPLIT_PARTS`). */
 const MAX_NAMED_SPLIT_PARTS = MAX_RULE_SPLIT_PARTS;
-
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null && !Array.isArray(v);
 
 const stringsOf = (value: unknown): string[] =>
   (Array.isArray(value) ? value : [value]).filter(

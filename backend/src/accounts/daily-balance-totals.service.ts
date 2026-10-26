@@ -16,6 +16,7 @@ import { UserPreference } from "../users/entities/user-preference.entity";
 import { AccountsService } from "./accounts.service";
 import { BalanceForecastService } from "./balance-forecast.service";
 import { BalanceForecastGap } from "./balance-forecast.util";
+import { enumerateDaysYMD } from "../net-worth/series-dates.util";
 
 /** One day of the range, as the calendar's Balances layer reads it. */
 export interface DailyBalanceTotalPoint {
@@ -142,7 +143,7 @@ export class DailyBalanceTotalsService {
     const fallbackCurrency = displayCurrency || preferredCurrency(pref);
 
     const scope = await this.resolveScope(userId, accountIds, jointAccountIds);
-    const dates = enumerateDates(startDate, endDate);
+    const dates = enumerateDaysYMD(startDate, endDate);
 
     if (scope.length === 0) {
       return {
@@ -374,7 +375,7 @@ export class DailyBalanceTotalsService {
   }> {
     const today = todayYMD();
     const horizonDays = Math.max(1, calendarRangeDays(today, endDate) - 1);
-    const projectedDates = enumerateDates(projectionStart, endDate);
+    const projectedDates = enumerateDaysYMD(projectionStart, endDate);
 
     const byAccount = new Map<string, Map<string, number>>();
     const gaps: BalanceForecastGap[] = [];
@@ -425,15 +426,6 @@ export class DailyBalanceTotalsService {
 
     return { byAccount, complete, gaps, unforecastableAccountIds };
   }
-}
-
-/** Every calendar date from `from` to `to` inclusive, by string arithmetic. */
-function enumerateDates(from: string, to: string): string[] {
-  const dates: string[] = [];
-  for (let date = from; date <= to; date = addDaysYMD(date, 1)) {
-    dates.push(date);
-  }
-  return dates;
 }
 
 /**

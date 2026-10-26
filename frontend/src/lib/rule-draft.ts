@@ -9,6 +9,7 @@
  * editor says so. Writing is the opposite: `draftToPayload` emits exactly what
  * the create and update DTOs accept, and the server validates it again.
  */
+import { isRecord } from '@/lib/helpers/is-record';
 import {
   DEFAULT_LOAN_SETTLEMENT_DAYS_AFTER,
   DEFAULT_LOAN_SETTLEMENT_DAYS_BEFORE,
@@ -79,7 +80,6 @@ export function emptyDraft(): RuleDraft {
 
 type Record_ = Record<string, unknown>;
 
-const isRecord = (v: unknown): v is Record_ => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isStringList = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
 const isNumberList = (v: unknown): v is number[] => Array.isArray(v) && v.every((x) => typeof x === 'number');
 
