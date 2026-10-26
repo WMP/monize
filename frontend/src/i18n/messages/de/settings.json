@@ -242,7 +242,13 @@
       "applyHere": "Diese Standards in diesem Browser verwenden",
       "applyHereHelp": "Löscht die Ansichtseinstellungen, die dieser Browser gespeichert hat, damit die obigen Standards auch hier gelten.",
       "appliedHere": "Dieser Browser verwendet jetzt Ihre Standardansichten"
-    }
+    },
+    "reportingBasisLabel": "Standard-Erfassungsbasis",
+    "reportingAccrual": "Periodenabgrenzung",
+    "reportingCash": "Zahlungsbasis",
+    "reportingBasisHelp": "Berichte einschließlich Kategorie- und Zahlungsempfängertrends verwenden standardmäßig die Periodenabgrenzung. Zahlungsbezogene Ansichten behalten ihre Zahlungsdaten.",
+    "accrualEnabledLabel": "Periodenabgrenzung aktivieren",
+    "accrualEnabledTooltip": "Aktiviert den Reiter „Abgrenzung“ bei Transaktionen, die Abgrenzungssalden unter Konten / Sonstige und den Umschalter „Zahlungsbasis / Periodenabgrenzung“ in Berichten. Standardmäßig deaktiviert, damit nichts unnötig überladen wirkt, bis Sie es aktivieren."
   },
   "notifications": {
     "heading": "Benachrichtigungen",
@@ -836,7 +842,10 @@
       },
       "doneButton": "Fertig",
       "unlinkedBondSecuritiesList": "Betroffene Wertpapiere: {symbols}.",
-      "unlinkedBondSecuritiesMore": "und {count} weitere"
+      "unlinkedBondSecuritiesMore": "und {count} weitere",
+      "accrualSystemAccounts": "Systemkonten für Periodenabgrenzungen",
+      "accrualSchedules": "Abgrenzungspläne",
+      "accrualAllocations": "Abgrenzungsbeträge"
     },
     "storedBackups": {
       "heading": "Automatische Sicherungen",

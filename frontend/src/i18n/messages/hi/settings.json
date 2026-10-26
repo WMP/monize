@@ -242,7 +242,13 @@
       "applyHere": "इस ब्राउज़र में ये डिफ़ॉल्ट उपयोग करें",
       "applyHereHelp": "इस ब्राउज़र द्वारा सहेजी गई दृश्य सेटिंग्स साफ़ करता है, ताकि ऊपर के डिफ़ॉल्ट यहाँ भी लागू हों।",
       "appliedHere": "यह ब्राउज़र अब आपके डिफ़ॉल्ट दृश्य उपयोग करता है"
-    }
+    },
+    "reportingBasisLabel": "डिफ़ॉल्ट रिपोर्टिंग आधार",
+    "reportingAccrual": "उपार्जन",
+    "reportingCash": "नकद",
+    "reportingBasisHelp": "श्रेणी और प्राप्तकर्ता रुझानों सहित रिपोर्टों के लिए डिफ़ॉल्ट रूप से उपार्जन का उपयोग करें। नकद-विशिष्ट दृश्य भुगतान की तारीखें बनाए रखते हैं।",
+    "accrualEnabledLabel": "प्रोद्भवन लेखांकन सक्षम करें",
+    "accrualEnabledTooltip": "लेन-देन में प्रोद्भवन टैब, खाते / अन्य में प्रोद्भवन शेष, और रिपोर्ट में नकद/प्रोद्भवन स्विच को सक्षम करता है। डिफ़ॉल्ट रूप से बंद रहता है जब तक आप इसे चालू न करें।"
   },
   "notifications": {
     "heading": "सूचनाएं",
@@ -836,7 +842,10 @@
       },
       "doneButton": "हो गया",
       "unlinkedBondSecuritiesList": "प्रभावित प्रतिभूतियाँ: {symbols}।",
-      "unlinkedBondSecuritiesMore": "और {count} अन्य"
+      "unlinkedBondSecuritiesMore": "और {count} अन्य",
+      "accrualSystemAccounts": "प्रोद्भवन के सिस्टम खाते",
+      "accrualSchedules": "प्रोद्भवन अनुसूचियाँ",
+      "accrualAllocations": "प्रोद्भवन आवंटन"
     },
     "storedBackups": {
       "heading": "स्वचालित बैकअप",

@@ -242,7 +242,13 @@
       "applyHere": "Deze standaarden in deze browser gebruiken",
       "applyHereHelp": "Wist de weergave-instellingen die deze browser heeft opgeslagen, zodat de standaarden hierboven ook hier gelden.",
       "appliedHere": "Deze browser gebruikt nu je standaardweergaven"
-    }
+    },
+    "reportingBasisLabel": "Standaard rapportagebasis",
+    "reportingAccrual": "Toerekening",
+    "reportingCash": "Kasbasis",
+    "reportingBasisHelp": "Gebruik standaard toerekening voor rapporten, inclusief trends per categorie en begunstigde. Kasgerichte weergaven behouden de betaaldatums.",
+    "accrualEnabledLabel": "Overlopende posten inschakelen",
+    "accrualEnabledTooltip": "Schakelt het tabblad Overlopende posten bij transacties, de saldi onder Rekeningen / Overige en de schakelaar Contant/Overlopend in rapporten in. Standaard uit, zodat er geen extra rommel ontstaat totdat u het inschakelt."
   },
   "notifications": {
     "heading": "Meldingen",
@@ -836,7 +842,10 @@
       },
       "doneButton": "Gereed",
       "unlinkedBondSecuritiesList": "Betrokken effecten: {symbols}.",
-      "unlinkedBondSecuritiesMore": "en nog {count}"
+      "unlinkedBondSecuritiesMore": "en nog {count}",
+      "accrualSystemAccounts": "Systeemrekeningen voor overlopende posten",
+      "accrualSchedules": "Toerekeningsschema’s",
+      "accrualAllocations": "Periodetoerekeningen"
     },
     "storedBackups": {
       "heading": "Automatische back-ups",

@@ -242,7 +242,13 @@
       "applyHere": "Usar estes padrões neste navegador",
       "applyHereHelp": "Limpa as configurações de visualização salvas por este navegador, para que os padrões acima também valham aqui.",
       "appliedHere": "Este navegador agora usa suas visualizações padrão"
-    }
+    },
+    "reportingBasisLabel": "Base de relatório padrão",
+    "reportingAccrual": "Competência",
+    "reportingCash": "Caixa",
+    "reportingBasisHelp": "Use competência por padrão nos relatórios, incluindo tendências por categoria e favorecido. As telas de caixa mantêm as datas dos pagamentos.",
+    "accrualEnabledLabel": "Ativar contabilidade por competência",
+    "accrualEnabledTooltip": "Ativa a aba Competência nas transações, os saldos de competência em Contas / Outras e o alternador Caixa/Competência nos relatórios. Desativado por padrão para não adicionar nada até que você o ative."
   },
   "notifications": {
     "heading": "Notificações",
@@ -836,7 +842,10 @@
       },
       "doneButton": "Concluído",
       "unlinkedBondSecuritiesList": "Ativos afetados: {symbols}.",
-      "unlinkedBondSecuritiesMore": "e mais {count}"
+      "unlinkedBondSecuritiesMore": "e mais {count}",
+      "accrualSystemAccounts": "Contas de competência do sistema",
+      "accrualSchedules": "Cronogramas de competência",
+      "accrualAllocations": "Alocações por competência"
     },
     "storedBackups": {
       "heading": "Backups automáticos",

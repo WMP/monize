@@ -242,7 +242,13 @@
       "applyHere": "이 브라우저에서 이 기본값 사용",
       "applyHereHelp": "이 브라우저에 저장된 보기 설정을 지워 위의 기본값이 여기에서도 적용되도록 합니다.",
       "appliedHere": "이제 이 브라우저에서 기본 보기를 사용합니다"
-    }
+    },
+    "reportingBasisLabel": "기본 보고 기준",
+    "reportingAccrual": "발생주의",
+    "reportingCash": "현금주의",
+    "reportingBasisHelp": "카테고리 및 수취인별 추세를 포함한 보고서에 기본으로 발생주의를 사용합니다. 현금 전용 화면은 결제일을 유지합니다.",
+    "accrualEnabledLabel": "발생주의 회계 사용",
+    "accrualEnabledTooltip": "거래의 발생주의 탭, 계정/기타의 발생주의 잔액, 보고서의 현금/발생주의 전환 스위치를 활성화합니다. 사용자가 켜기 전까지는 기본적으로 꺼져 있어 화면을 복잡하게 만들지 않습니다."
   },
   "notifications": {
     "heading": "알림",
@@ -836,7 +842,10 @@
       },
       "doneButton": "완료",
       "unlinkedBondSecuritiesList": "영향받은 종목: {symbols}.",
-      "unlinkedBondSecuritiesMore": "외 {count}개"
+      "unlinkedBondSecuritiesMore": "외 {count}개",
+      "accrualSystemAccounts": "발생주의 시스템 계정",
+      "accrualSchedules": "발생주의 배분 일정",
+      "accrualAllocations": "발생주의 배분"
     },
     "storedBackups": {
       "heading": "자동 백업",

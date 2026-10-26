@@ -242,7 +242,13 @@
       "applyHere": "Usa queste impostazioni in questo browser",
       "applyHereHelp": "Cancella le impostazioni di visualizzazione salvate da questo browser, così le impostazioni predefinite qui sopra valgono anche qui.",
       "appliedHere": "Questo browser ora usa le tue viste predefinite"
-    }
+    },
+    "reportingBasisLabel": "Base contabile predefinita",
+    "reportingAccrual": "Competenza",
+    "reportingCash": "Cassa",
+    "reportingBasisHelp": "Usa la competenza come impostazione predefinita per i report, incluse le tendenze per categoria e beneficiario. Le viste di cassa mantengono le date dei pagamenti.",
+    "accrualEnabledLabel": "Attiva la contabilità per competenza",
+    "accrualEnabledTooltip": "Attiva la scheda Competenza nelle transazioni, i saldi di competenza in Conti / Altro e l'interruttore Cassa/Competenza nei report. Disattivato per impostazione predefinita, così non aggiunge nulla finché non lo attivi."
   },
   "notifications": {
     "heading": "Notifiche",
@@ -836,7 +842,10 @@
       },
       "doneButton": "Fatto",
       "unlinkedBondSecuritiesList": "Titoli interessati: {symbols}.",
-      "unlinkedBondSecuritiesMore": "e altri {count}"
+      "unlinkedBondSecuritiesMore": "e altri {count}",
+      "accrualSystemAccounts": "Conti di competenza del sistema",
+      "accrualSchedules": "Piani di competenza",
+      "accrualAllocations": "Ripartizioni di competenza"
     },
     "storedBackups": {
       "heading": "Backup automatici",

@@ -242,7 +242,13 @@
       "applyHere": "Utiliser ces réglages dans ce navigateur",
       "applyHereHelp": "Efface les réglages d’affichage enregistrés par ce navigateur, pour que les valeurs ci-dessus s’appliquent ici aussi.",
       "appliedHere": "Ce navigateur utilise maintenant vos vues par défaut"
-    }
+    },
+    "reportingBasisLabel": "Base comptable par défaut",
+    "reportingAccrual": "Engagement",
+    "reportingCash": "Trésorerie",
+    "reportingBasisHelp": "Utiliser l’engagement par défaut pour les rapports, y compris les tendances par catégorie et bénéficiaire. Les vues de trésorerie conservent les dates de paiement.",
+    "accrualEnabledLabel": "Activer la comptabilité de régularisation",
+    "accrualEnabledTooltip": "Active l'onglet Régularisation dans les transactions, les soldes de régularisation sous Comptes / Autres, et le commutateur Trésorerie / Régularisation dans les rapports. Désactivé par défaut pour ne rien surcharger avant que vous ne l'activiez."
   },
   "notifications": {
     "heading": "Notifications",
@@ -836,7 +842,10 @@
       },
       "doneButton": "Terminer",
       "unlinkedBondSecuritiesList": "Titres concernés : {symbols}.",
-      "unlinkedBondSecuritiesMore": "et {count} de plus"
+      "unlinkedBondSecuritiesMore": "et {count} de plus",
+      "accrualSystemAccounts": "Comptes de régularisation système",
+      "accrualSchedules": "Échéanciers de régularisation",
+      "accrualAllocations": "Répartitions de régularisation"
     },
     "storedBackups": {
       "heading": "Sauvegardes automatiques",

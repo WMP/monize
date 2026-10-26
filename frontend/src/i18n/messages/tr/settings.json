@@ -242,7 +242,13 @@
       "applyHere": "Bu varsayılanları bu tarayıcıda kullan",
       "applyHereHelp": "Bu tarayıcının kaydettiği görünüm ayarlarını temizler, böylece yukarıdaki varsayılanlar burada da geçerli olur.",
       "appliedHere": "Bu tarayıcı artık varsayılan görünümlerinizi kullanıyor"
-    }
+    },
+    "reportingBasisLabel": "Varsayılan raporlama esası",
+    "reportingAccrual": "Tahakkuk",
+    "reportingCash": "Nakit",
+    "reportingBasisHelp": "Kategori ve alıcı eğilimleri dahil raporlarda varsayılan olarak tahakkuk kullanın. Nakit görünümleri ödeme tarihlerini korur.",
+    "accrualEnabledLabel": "Tahakkuk esaslı muhasebeyi etkinleştir",
+    "accrualEnabledTooltip": "İşlemlerde Tahakkuk sekmesini, Hesaplar / Diğer altındaki tahakkuk bakiyelerini ve raporlardaki Nakit/Tahakkuk anahtarını etkinleştirir. Siz açana kadar fazladan karmaşıklık eklememek için varsayılan olarak kapalıdır."
   },
   "notifications": {
     "heading": "Bildirimler",
@@ -836,7 +842,10 @@
       },
       "doneButton": "Tamam",
       "unlinkedBondSecuritiesList": "Etkilenen menkul kıymetler: {symbols}.",
-      "unlinkedBondSecuritiesMore": "ve {count} tane daha"
+      "unlinkedBondSecuritiesMore": "ve {count} tane daha",
+      "accrualSystemAccounts": "Sistem tahakkuk hesapları",
+      "accrualSchedules": "Tahakkuk planları",
+      "accrualAllocations": "Tahakkuk dağılımları"
     },
     "storedBackups": {
       "heading": "Otomatik Yedekler",
