@@ -34,6 +34,7 @@ import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { PAGE_SIZE } from '@/lib/constants';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
+import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { transactionsApi } from '@/lib/transactions';
 import { isUuid } from '@/lib/uuid';
 import { warrantiesApi } from '@/lib/warranties';
@@ -396,11 +397,21 @@ function WarrantiesContent() {
             </button>
             {readOnly ? undefined : (
               <>
-                <button type="button" onClick={() => setImportOpen(true)} className={LIST_TOOLBAR_BUTTON_CLASS}>
+                <button
+                  type="button"
+                  onClick={() => setImportOpen(true)}
+                  className={LIST_TOOLBAR_BUTTON_CLASS}
+                  {...tourAnchor(TOUR_ANCHORS.warrantiesImportButton)}
+                >
                   <ArrowUpTrayIcon className="h-4 w-4 mr-1" aria-hidden="true" />
                   {t('page.importButton')}
                 </button>
-                <button type="button" onClick={openNew} className={LIST_TOOLBAR_BUTTON_CLASS}>
+                <button
+                  type="button"
+                  onClick={openNew}
+                  className={LIST_TOOLBAR_BUTTON_CLASS}
+                  {...tourAnchor(TOUR_ANCHORS.warrantiesAddButton)}
+                >
                   <PlusIcon className="h-4 w-4 mr-1" aria-hidden="true" />
                   {t('page.newButton')}
                 </button>
@@ -431,6 +442,7 @@ function WarrantiesContent() {
           className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${summaryFailed ? 'mb-3' : 'mb-6'}`}
           aria-busy={summaryLoading}
           data-testid="warranty-summary"
+          {...tourAnchor(TOUR_ANCHORS.warrantiesSummary)}
         >
           <SummaryCard
             label={t('page.summary.expiring')}

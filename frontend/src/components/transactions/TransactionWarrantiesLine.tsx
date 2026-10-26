@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { WarrantyStatusBadge } from '@/components/warranties/WarrantyStatusBadge';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { createLogger } from '@/lib/logger';
+import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { warrantiesApi } from '@/lib/warranties';
 import type { Transaction } from '@/types/transaction';
 import type { Warranty } from '@/types/warranty';
@@ -88,7 +89,7 @@ export function TransactionWarrantiesLine({ transaction, onAddWarranty, isAdding
   const current = shouldFetch && loaded?.transactionId === fetchId ? loaded : null;
 
   return (
-    <div className="space-y-2" data-testid="transaction-warranties">
+    <div className="space-y-2" data-testid="transaction-warranties" {...tourAnchor(TOUR_ANCHORS.transactionWarrantiesLine)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {t('form.warranties.title')}
