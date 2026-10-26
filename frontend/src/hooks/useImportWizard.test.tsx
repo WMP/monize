@@ -356,6 +356,22 @@ describe('useImportWizard - QIF file upload', () => {
     expect(result.current.importFiles).toHaveLength(2);
   });
 
+  it('reads a Quicken for Mac .qmtf file as QIF, alongside .qif files', async () => {
+    mockParseQif.mockResolvedValue(baseParsedQif({ categories: [] }));
+    const { result } = renderHook(() => useImportWizard());
+    await waitFor(() => expect(mockGetCurrencies).toHaveBeenCalled());
+
+    await act(async () => {
+      await result.current.handleFileSelect(
+        fileEvent([makeFile('Export.QMTF', '1'), makeFile('b.qif', '2')]),
+      );
+    });
+
+    expect(result.current.fileType).toBe('qif');
+    expect(mockParseQif).toHaveBeenCalledTimes(2);
+    expect(result.current.importFiles).toHaveLength(2);
+  });
+
   it('handles QIF parse error', async () => {
     mockParseQif.mockRejectedValue(new Error('bad'));
     const { result } = renderHook(() => useImportWizard());
@@ -1625,15 +1641,23 @@ describe('useImportWizard - derived options', () => {
     expect(result.current.categoryOptions.length).toBeGreaterThan(0);
   });
 
-  it('produces parentCategoryOptions from top-level categories only', async () => {
+  it('produces parentCategoryOptions from every level, labelled with the full path', async () => {
+    // A three-level QIF category is suggested under its deepest existing
+    // level, so a nested category must be selectable as a parent.
     mockGetCategories.mockResolvedValue([
       baseCategory({ id: 'c1', name: 'A' }),
       baseCategory({ id: 'c2', name: 'B', parentId: 'c1' }),
+      baseCategory({ id: 'c3', name: 'C', parentId: 'c2' }),
     ]);
     const { result } = renderHook(() => useImportWizard());
-    await waitFor(() => expect(result.current.categories).toHaveLength(2));
-    expect(result.current.parentCategoryOptions.find(o => o.value === 'c1')).toBeTruthy();
-    expect(result.current.parentCategoryOptions.find(o => o.value === 'c2')).toBeFalsy();
+    await waitFor(() => expect(result.current.categories).toHaveLength(3));
+    expect(result.current.parentCategoryOptions).toEqual([
+      { value: '', label: 'No parent (top-level)' },
+      { value: 'c1', label: 'A' },
+      { value: 'c2', label: 'A: B' },
+      { value: 'c3', label: 'A: B: C' },
+    ]);
+    expect(result.current.categoryOptions.find(o => o.value === 'c3')?.label).toBe('A: B: C');
   });
 
   it('getAccountOptions excludes loan/mortgage/brokerage accounts', async () => {

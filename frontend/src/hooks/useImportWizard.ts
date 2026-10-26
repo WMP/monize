@@ -50,6 +50,7 @@ import {
   buildAccountMappings,
   buildSecurityMappings,
   findMatchingSecurityBySymbol,
+  getCategoryPath,
 } from '@/app/import/import-matching';
 import { preferredCurrency } from '@/lib/default-currency';
 
@@ -62,6 +63,8 @@ function detectFileType(fileName: string): ImportFileType {
   // Checked before anything reads the file: a .mny is a Jet database, and the
   // QIF fallback would hand its bytes to File.text().
   if (ext === 'mny') return 'mny';
+  // .qif, and Quicken for Mac's .qmtf transfer file, which is QIF under
+  // another extension.
   return 'qif';
 }
 
@@ -1110,20 +1113,17 @@ export function useImportWizard() {
     const options = [{ value: '', label: 'Skip (no category)' }];
     const tree = buildCategoryTree(categories);
     tree.forEach(({ category }) => {
-      const parentCategory = category.parentId
-        ? categories.find((c) => c.id === category.parentId) : null;
-      options.push({
-        value: category.id,
-        label: parentCategory ? `${parentCategory.name}: ${category.name}` : category.name,
-      });
+      options.push({ value: category.id, label: getCategoryPath(category, categories) });
     });
     return options;
   }, [categories]);
 
+  // Every category, not only the top-level ones: a QIF path three or four
+  // levels deep is suggested under its deepest existing level.
   const parentCategoryOptions = useMemo(() => {
     const options = [{ value: '', label: 'No parent (top-level)' }];
-    categories.filter((c) => !c.parentId).forEach((c) => {
-      options.push({ value: c.id, label: c.name });
+    buildCategoryTree(categories).forEach(({ category }) => {
+      options.push({ value: category.id, label: getCategoryPath(category, categories) });
     });
     return options;
   }, [categories]);

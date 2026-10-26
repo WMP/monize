@@ -34,18 +34,18 @@
   },
   "page": {
     "title": "Impor Transaksi",
-    "subtitle": "Impor transaksi dari file QIF, OFX/QFX, atau CSV, atau bawa satu berkas Microsoft Money (.mny) utuh"
+    "subtitle": "Impor transaksi dari file QIF/QMTF, OFX/QFX, atau CSV, atau bawa satu berkas Microsoft Money (.mny) utuh"
   },
   "upload": {
     "heading": "Unggah File Transaksi",
-    "instructions": "Pilih satu atau lebih file untuk diimpor. Format yang didukung: QIF, OFX/QFX, CSV, dan Microsoft Money (.mny).\nAnda dapat memilih beberapa file dengan tipe yang sama untuk impor massal. Impor berkas Microsoft Money satu per satu — berkas .mny memuat satu profil utuh.",
+    "instructions": "Pilih satu atau lebih file untuk diimpor. Format yang didukung: QIF/QMTF, OFX/QFX, CSV, dan Microsoft Money (.mny).\nAnda dapat memilih beberapa file dengan tipe yang sama untuk impor massal. Impor berkas Microsoft Money satu per satu — berkas .mny memuat satu profil utuh.",
     "importingTo": "Mengimpor ke:",
     "clickToSelect": "Klik untuk memilih file",
     "orDragAndDrop": "atau seret dan lepas di sini",
     "dropToImport": "Lepas untuk mengimpor",
-    "unsupportedDrop": "File ini tidak dapat diimpor: {names}. Gunakan file QIF, OFX, QFX, CSV, atau Microsoft Money (.mny).",
+    "unsupportedDrop": "File ini tidak dapat diimpor: {names}. Gunakan file QIF/QMTF, OFX, QFX, CSV, atau Microsoft Money (.mny).",
     "processing": "Memproses...",
-    "acceptedFormats": "QIF, OFX, QFX, CSV, atau Microsoft Money (.mny)",
+    "acceptedFormats": "QIF/QMTF, OFX, QFX, CSV, atau Microsoft Money (.mny)",
     "mnyFailedHeading": "Berkas Microsoft Money itu tidak dapat dibuka",
     "wikiNotice": {
       "title": "Sebelum Anda mengimpor",

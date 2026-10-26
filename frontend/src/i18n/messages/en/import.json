@@ -34,18 +34,18 @@
   },
   "page": {
     "title": "Import Transactions",
-    "subtitle": "Import transactions from QIF, OFX/QFX, or CSV files, or bring across a whole Microsoft Money (.mny) file"
+    "subtitle": "Import transactions from QIF/QMTF, OFX/QFX, or CSV files, or bring across a whole Microsoft Money (.mny) file"
   },
   "upload": {
     "heading": "Upload Transaction Files",
-    "instructions": "Select one or more files to import. Supported formats: QIF, OFX/QFX, CSV, and Microsoft Money (.mny).\nYou can select multiple files of the same type for bulk import. Import Microsoft Money files one at a time — a .mny file holds a whole profile.",
+    "instructions": "Select one or more files to import. Supported formats: QIF/QMTF, OFX/QFX, CSV, and Microsoft Money (.mny).\nYou can select multiple files of the same type for bulk import. Import Microsoft Money files one at a time — a .mny file holds a whole profile.",
     "importingTo": "Importing to:",
     "clickToSelect": "Click to select file(s)",
     "orDragAndDrop": "or drag and drop them here",
     "dropToImport": "Drop to import",
-    "unsupportedDrop": "These files cannot be imported: {names}. Use QIF, OFX, QFX, CSV, or Microsoft Money (.mny) files.",
+    "unsupportedDrop": "These files cannot be imported: {names}. Use QIF/QMTF, OFX, QFX, CSV, or Microsoft Money (.mny) files.",
     "processing": "Processing...",
-    "acceptedFormats": "QIF, OFX, QFX, CSV, or Microsoft Money (.mny)",
+    "acceptedFormats": "QIF/QMTF, OFX, QFX, CSV, or Microsoft Money (.mny)",
     "mnyFailedHeading": "That Microsoft Money file could not be opened",
     "wikiNotice": {
       "title": "Before you import",

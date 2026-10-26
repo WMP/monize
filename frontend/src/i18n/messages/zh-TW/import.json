@@ -34,18 +34,18 @@
   },
   "page": {
     "title": "匯入交易",
-    "subtitle": "從 QIF、OFX/QFX 或 CSV 檔案匯入交易，或整份匯入 Microsoft Money (.mny) 檔案"
+    "subtitle": "從 QIF/QMTF、OFX/QFX 或 CSV 檔案匯入交易，或整份匯入 Microsoft Money (.mny) 檔案"
   },
   "upload": {
     "heading": "上傳交易檔案",
-    "instructions": "選取一個或多個檔案進行匯入。支援格式：QIF、OFX/QFX、CSV 和 Microsoft Money (.mny)。\n您可以選取多個相同類型的檔案以進行批次匯入。請一次匯入一個 Microsoft Money 檔案——一個 .mny 檔案包含完整的帳務資料。",
+    "instructions": "選取一個或多個檔案進行匯入。支援格式：QIF/QMTF、OFX/QFX、CSV 和 Microsoft Money (.mny)。\n您可以選取多個相同類型的檔案以進行批次匯入。請一次匯入一個 Microsoft Money 檔案——一個 .mny 檔案包含完整的帳務資料。",
     "importingTo": "匯入至：",
     "clickToSelect": "點擊以選取檔案",
     "orDragAndDrop": "或將檔案拖放到此處",
     "dropToImport": "放開以匯入",
-    "unsupportedDrop": "無法匯入下列檔案：{names}。請使用 QIF、OFX、QFX、CSV 或 Microsoft Money (.mny) 檔案。",
+    "unsupportedDrop": "無法匯入下列檔案：{names}。請使用 QIF/QMTF、OFX、QFX、CSV 或 Microsoft Money (.mny) 檔案。",
     "processing": "處理中...",
-    "acceptedFormats": "QIF、OFX、QFX、CSV 或 Microsoft Money (.mny)",
+    "acceptedFormats": "QIF/QMTF、OFX、QFX、CSV 或 Microsoft Money (.mny)",
     "mnyFailedHeading": "無法開啟這個 Microsoft Money 檔案",
     "wikiNotice": {
       "title": "匯入之前",
