@@ -34,18 +34,18 @@
   },
   "page": {
     "title": "Nhập Khẩu Giao Dịch",
-    "subtitle": "Nhập khẩu giao dịch từ các tệp QIF, OFX/QFX hoặc CSV, hoặc mang sang toàn bộ một tệp Microsoft Money (.mny)"
+    "subtitle": "Nhập khẩu giao dịch từ các tệp QIF/QMTF, OFX/QFX hoặc CSV, hoặc mang sang toàn bộ một tệp Microsoft Money (.mny)"
   },
   "upload": {
     "heading": "Tải Lên Tệp Giao Dịch",
-    "instructions": "Chọn một hoặc nhiều tệp để nhập khẩu. Các định dạng được hỗ trợ: QIF, OFX/QFX, CSV và Microsoft Money (.mny).\nBạn có thể chọn nhiều tệp cùng loại để nhập khẩu hàng loạt. Hãy nhập từng tệp Microsoft Money một — một tệp .mny chứa toàn bộ một hồ sơ.",
+    "instructions": "Chọn một hoặc nhiều tệp để nhập khẩu. Các định dạng được hỗ trợ: QIF/QMTF, OFX/QFX, CSV và Microsoft Money (.mny).\nBạn có thể chọn nhiều tệp cùng loại để nhập khẩu hàng loạt. Hãy nhập từng tệp Microsoft Money một — một tệp .mny chứa toàn bộ một hồ sơ.",
     "importingTo": "Đang nhập khẩu vào:",
     "clickToSelect": "Nhấp để chọn tệp",
     "orDragAndDrop": "hoặc kéo và thả tệp vào đây",
     "dropToImport": "Thả để nhập",
-    "unsupportedDrop": "Không thể nhập các tệp sau: {names}. Hãy dùng tệp QIF, OFX, QFX, CSV hoặc Microsoft Money (.mny).",
+    "unsupportedDrop": "Không thể nhập các tệp sau: {names}. Hãy dùng tệp QIF/QMTF, OFX, QFX, CSV hoặc Microsoft Money (.mny).",
     "processing": "Đang xử lý...",
-    "acceptedFormats": "QIF, OFX, QFX, CSV hoặc Microsoft Money (.mny)",
+    "acceptedFormats": "QIF/QMTF, OFX, QFX, CSV hoặc Microsoft Money (.mny)",
     "mnyFailedHeading": "Không thể mở tệp Microsoft Money đó",
     "wikiNotice": {
       "title": "Trước khi nhập khẩu",
