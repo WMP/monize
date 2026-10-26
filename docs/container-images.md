@@ -7,7 +7,7 @@ means without querying a registry.
 
 ## Why a digest
 
-A tag such as `v1.64.0-noble` or `16-alpine` is a name. Whoever controls the
+A tag such as `v1.64.1-noble` or `16-alpine` is a name. Whoever controls the
 publishing account -- or a compromised registry, mirror or CI token -- can point
 that name at different content at any time, and every later pull silently gets
 the new content. A digest (`sha256:...`) is the hash of the image index itself:
@@ -26,7 +26,7 @@ The digest is the multi-architecture **image index** digest (what
 
 | Image | Tag | Digest | Used in |
 | --- | --- | --- | --- |
-| `mcr.microsoft.com/playwright` | `v1.64.0-noble` | `sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f` | `scripts/e2e-playwright.sh` (E2E shards in `.github/workflows/ci.yml`) |
+| `mcr.microsoft.com/playwright` | `v1.64.1-noble` | `sha256:47b510dd9230bf0b9bfc9b20102241e577ea7a99334ab4c3ca19f19770e9b8ea` | `scripts/e2e-playwright.sh` (E2E shards in `.github/workflows/ci.yml`) |
 | `mirror.gcr.io/library/postgres` | `16-alpine` | `sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229` | `.github/workflows/ci.yml` (integration-test service), `scripts/verify-schema.sh`, `docker-compose.e2e.yml` |
 | `mirror.gcr.io/library/nginx` | `1.29-alpine` | `sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de` | `docker-compose.e2e.yml` (cluster-shard load balancer) |
 | `mirror.gcr.io/library/node` | `24-alpine` | `sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53` | `backend/Dockerfile`, `frontend/Dockerfile` (`development` and `production` stages) |
@@ -38,8 +38,8 @@ the platform manifest on some engines):
 
 | Tag | Platform | Manifest digest |
 | --- | --- | --- |
-| `v1.64.0-noble` | `linux/amd64` | `sha256:bc72a8df40831ded821e3cbc79c318c21b44d6e51dff9fd89ace7a8249c5b462` |
-| `v1.64.0-noble` | `linux/arm64` | `sha256:4109b399f6d3de22a133ab935df0d7614ed0de9195d529f0ebc6255655cdb495` |
+| `v1.64.1-noble` | `linux/amd64` | `sha256:d65108d1a8095d8b0c4a5e32bf1807a40a5ce90ff0c78473e1116b1c243235e8` |
+| `v1.64.1-noble` | `linux/arm64` | `sha256:969a9e3655576186a7f3b3d85502f8c4041f4afce571df7aadba6384d93ee61f` |
 
 ## When to move a digest
 
@@ -64,11 +64,11 @@ Either command prints the index digest for a tag; run it, compare, and only
 then change a reference:
 
 ```sh
-docker buildx imagetools inspect mcr.microsoft.com/playwright:v1.64.0-noble   # "Digest:" line
+docker buildx imagetools inspect mcr.microsoft.com/playwright:v1.64.1-noble   # "Digest:" line
 
 curl -sI \
   -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' \
-  https://mcr.microsoft.com/v2/playwright/manifests/v1.64.0-noble | grep -i docker-content-digest
+  https://mcr.microsoft.com/v2/playwright/manifests/v1.64.1-noble | grep -i docker-content-digest
 ```
 
 A digest copied from a pull request or a chat is not evidence; read it from the
