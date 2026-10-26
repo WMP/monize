@@ -4355,6 +4355,62 @@ describe("ImportService", () => {
       expect(result.categoriesCreated).toBe(7);
     });
 
+    it("never resolves a bare level name to a category on another branch", async () => {
+      // Each level used to be mapped by its bare name, so a top-level
+      // "Interest" read as Housing > Mortgage > Interest, and the step that
+      // creates transaction-only categories filed "Mortgage:Extra" under
+      // Housing > Mortgage.
+      mockedValidateQifContent.mockReturnValue({ valid: true });
+      const parsed = makeFullParseResult({
+        categoryDefs: [
+          {
+            name: "Housing:Mortgage:Interest",
+            description: "",
+            isIncome: false,
+            taxRelated: false,
+            taxSchedule: "",
+          },
+        ],
+      });
+      parsed.accountBlocks[0].categories = ["Interest", "Mortgage:Extra"];
+      parsed.accountBlocks[0].transactions[0].category = "Interest";
+      mockedParseQifFull.mockReturnValue(parsed);
+      mockQueryRunner.manager.findOne.mockImplementation((entity) => {
+        if (entity === Account) {
+          return Promise.resolve({
+            id: "acct-1",
+            userId,
+            name: "Checking",
+            accountType: AccountType.CHEQUING,
+            currencyCode: "CAD",
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      await service.importQifMultiAccountFile(userId, baseDto);
+
+      const inserts = mockQueryRunner.query.mock.calls
+        .filter(
+          (call: unknown[]) =>
+            typeof call[0] === "string" &&
+            call[0].includes("INSERT INTO categories"),
+        )
+        .map((call: unknown[]) => (call[1] as unknown[]).slice(1, 3));
+      expect(inserts).toEqual([
+        ["Housing", null],
+        ["Mortgage", "cat-1"],
+        ["Interest", "cat-2"],
+        ["Interest", null],
+        ["Mortgage", null],
+        ["Extra", "cat-5"],
+      ]);
+      const txCreateCall = mockQueryRunner.manager.create.mock.calls.find(
+        (call: unknown[]) => call[0] === Transaction,
+      );
+      expect(txCreateCall[1].categoryId).toBe("cat-4");
+    });
+
     it("creates non-investment accounts with correct type and currency", async () => {
       mockedValidateQifContent.mockReturnValue({ valid: true });
       mockedParseQifFull.mockReturnValue(

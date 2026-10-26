@@ -305,13 +305,17 @@ export class ImportService {
           "import",
         );
 
-        // Step 1: Create categories from !Type:Cat definitions
+        // Step 1: Create categories from !Type:Cat definitions. `categoryMap`
+        // is keyed by the full path a transaction names; `processedCategories`
+        // by one level ("name|parentId"), shared so step 1b reuses step 1's.
         const categoryMap = new Map<string, string | null>();
+        const processedCategories = new Map<string, string>();
         await this.createCategoriesFromDefs(
           manager,
           userId,
           result.categoryDefs,
           categoryMap,
+          processedCategories,
           importResult,
         );
 
@@ -322,6 +326,7 @@ export class ImportService {
           userId,
           result.accountBlocks,
           categoryMap,
+          processedCategories,
           importResult,
         );
 
@@ -572,11 +577,9 @@ export class ImportService {
     userId: string,
     categoryDefs: QifFullParseResult["categoryDefs"],
     categoryMap: Map<string, string | null>,
+    processedCategories: Map<string, string>,
     importResult: ImportResultDto,
   ): Promise<void> {
-    // Cache to avoid duplicate creation: "name|parentId" -> categoryId
-    const processedCategories = new Map<string, string>();
-
     for (const def of categoryDefs) {
       // For Quicken categories starting with underscore, use description as name
       const effectiveName =
@@ -590,7 +593,6 @@ export class ImportService {
         splitCategoryPath(effectiveName),
         def.isIncome,
         processedCategories,
-        categoryMap,
         importResult,
       );
       if (leafId === null) continue;
@@ -607,6 +609,11 @@ export class ImportService {
   /**
    * Find or create every level of a category path, root first, and return the
    * id of the last one; null for a path with no segments.
+   *
+   * The caller maps the id to the full path. No level is mapped by its bare
+   * name: "Interest" under "Housing:Mortgage" is not the top-level "Interest",
+   * and a bare-name entry would file transactions and later paths under the
+   * wrong branch.
    */
   private async findOrCreateCategoryPath(
     manager: EntityManager,
@@ -614,7 +621,6 @@ export class ImportService {
     segments: readonly string[],
     isIncome: boolean,
     processedCategories: Map<string, string>,
-    categoryMap: Map<string, string | null>,
     importResult: ImportResultDto,
   ): Promise<string | null> {
     let parentId: string | null = null;
@@ -626,7 +632,6 @@ export class ImportService {
         parentId,
         isIncome,
         processedCategories,
-        categoryMap,
         importResult,
       );
     }
@@ -640,7 +645,6 @@ export class ImportService {
     parentId: string | null,
     isIncome: boolean,
     processedCategories: Map<string, string>,
-    categoryMap: Map<string, string | null>,
     importResult: ImportResultDto,
   ): Promise<string> {
     const cacheKey = `${name}|${parentId || "null"}`;
@@ -662,7 +666,6 @@ export class ImportService {
 
     if (existing) {
       processedCategories.set(cacheKey, existing.id);
-      categoryMap.set(name, existing.id);
       return existing.id;
     }
 
@@ -675,7 +678,6 @@ export class ImportService {
       isIncome,
     });
     processedCategories.set(cacheKey, saved.id);
-    categoryMap.set(name, saved.id);
     if (saved.inserted) {
       importResult.categoriesCreated++;
     }
@@ -693,17 +695,9 @@ export class ImportService {
     userId: string,
     blocks: QifFullParseResult["accountBlocks"],
     categoryMap: Map<string, string | null>,
+    processedCategories: Map<string, string>,
     importResult: ImportResultDto,
   ): Promise<void> {
-    const processedCategories = new Map<string, string>();
-
-    // Copy existing categoryMap entries into processedCategories for dedup
-    for (const [name, id] of categoryMap) {
-      if (id) {
-        processedCategories.set(`${name}|null`, id);
-      }
-    }
-
     // Collect all unique category names from all blocks
     const allCategories = new Set<string>();
     for (const block of blocks) {
@@ -721,7 +715,6 @@ export class ImportService {
         splitCategoryPath(categoryName),
         false,
         processedCategories,
-        categoryMap,
         importResult,
       );
       if (leafId !== null) {
