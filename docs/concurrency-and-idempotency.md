@@ -636,7 +636,7 @@ concurrent operations lists the interleavings to pick from.
 
 ## SimpleFIN credential and request-budget writers
 
-SimpleFIN first credential writes serialize on the existing users row, then lock the user/provider credential before replacement. Request reservations and local removal lock that same credential row. Reservations count and insert inside one withScopedDb transaction; HTTP callers must await its commit, and reserve rejects an already-active database transaction. No HTTP is performed by these storage services. The real PostgreSQL/RLS simplefin-storage integration suite exercises simultaneous first saves, the last of 24 rolling request slots, replacement retaining spent quota, and foreign-owner refusal.
+SimpleFIN first credential writes serialize on the existing users row, then lock the user/provider credential before replacement. Request reservations take the users row FOR KEY SHARE before that same credential row (the lock their INSERT's foreign key takes anyway, moved ahead of the credential so a reservation and a discovery holding the user FOR UPDATE cannot deadlock), and local removal locks the credential row. Reservations count and insert inside one withScopedDb transaction; HTTP callers must await its commit, and reserve rejects an already-active database transaction. No HTTP is performed by these storage services. The real PostgreSQL/RLS simplefin-storage integration suite exercises simultaneous first saves, the last of 24 rolling request slots, replacement retaining spent quota, and foreign-owner refusal.
 
 ### SimpleFIN setup and discovery
 

@@ -16,6 +16,7 @@ import {
   createTestUserDirect,
   type EnforcedIntegrationHarness,
 } from "../helpers/integration-setup";
+import { waitForLockWaiters } from "../helpers/race";
 
 describe("SimpleFIN storage and quota under real PostgreSQL/RLS", () => {
   jest.setTimeout(180000);
@@ -127,6 +128,40 @@ describe("SimpleFIN storage and quota under real PostgreSQL/RLS", () => {
     expect(
       await scoped(alice, () => budget.reserve(alice, credentialId)),
     ).toMatchObject({ allowed: true, remaining: 23, nextEligibleAt: null });
+  });
+  it("locks the owner before the credential, the order discovery takes them", async () => {
+    // Discovery reconciles under users FOR UPDATE, then the credential FOR
+    // UPDATE. A reservation that locked the credential first and reached the
+    // users row only through its INSERT's foreign key closed a cycle with it
+    // (40P01 on one side, seen in simplefin-discovery's concurrent case).
+    const discovery = new Client({
+      host: process.env.DATABASE_HOST,
+      port: Number(process.env.DATABASE_PORT),
+      user: process.env.DATABASE_USER,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE_NAME,
+    });
+    await discovery.connect();
+    try {
+      await discovery.query("BEGIN");
+      await discovery.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [
+        alice,
+      ]);
+      const reservation = scoped(alice, () =>
+        budget.reserve(alice, credentialId),
+      );
+      reservation.catch(() => undefined);
+      await waitForLockWaiters(harness.owner, 1);
+      await discovery.query(
+        "SELECT id FROM bank_sync_credentials WHERE id=$1 FOR UPDATE",
+        [credentialId],
+      );
+      await discovery.query("COMMIT");
+      await expect(reservation).resolves.toMatchObject({ allowed: true });
+    } finally {
+      await discovery.query("ROLLBACK").catch(() => undefined);
+      await discovery.end();
+    }
   });
   it("refuses reservations in an outer transaction so HTTP cannot precede commit", async () => {
     await expect(
