@@ -5,19 +5,21 @@ import type { TourDefinition } from '../types';
 export const RELEASE_1_20_MINOR = '1.20';
 
 /**
- * Warranties: the four ways a warranty is created and every place it shows up
+ * Warranties: the three ways a warranty is created and every place it shows up
  * afterwards. A warranty never moves money; it hangs off a purchase.
  *
  * The order is where a reader finds the feature (Tools), the page and its
- * status cards, the two ways in from that page (Add warranty, Import CSV), the
- * two ways in from the register (a row's Copy menu, then the New Transaction
- * window's Warranties line), and finally the two places a warranty finds the
- * reader again: the opt-in dashboard widget and the expiry reminders.
+ * status cards, the two ways in from that page (Add warranty, Import CSV), how
+ * the register shows a purchase that has one, the way in from the register
+ * (the New Transaction window's Warranties line), and finally the two places a
+ * warranty finds the reader again: the opt-in dashboard widget and the expiry
+ * reminders.
  *
- * **No row is anchored.** The register's Add warranty sits in each row's Copy
- * menu, and one anchor across rows would break the anchor-uniqueness rule and
- * move under sorting and filtering, so that step is an anchorless coach mark
- * parked bottom-LEFT, clear of the right-aligned row actions it names.
+ * **No row is anchored.** The shield and View warranties repeat on every row
+ * that has a warranty, and one anchor across rows would break the
+ * anchor-uniqueness rule and move under sorting and filtering, so that step is
+ * an anchorless coach mark parked bottom-LEFT, clear of the right-aligned row
+ * actions it names.
  *
  * **The New Transaction detour** opens the form as the introduction tour does
  * (`click` on the button, advancing when the form appears) and `requires`
@@ -84,7 +86,7 @@ export const RELEASE_1_20_WARRANTIES_TOUR: TourDefinition = {
     {
       // Bottom-LEFT: the Copy menu the copy names is in the right-aligned row
       // actions, where the default corner would park the card.
-      id: 'fromRegister',
+      id: 'inRegister',
       route: '/transactions',
       anchorId: null,
       unobtrusive: true,

@@ -451,12 +451,12 @@
             "title": "Cách 2: nhập tệp CSV",
             "body": "**Nhập CSV** đọc một tệp theo các cột của Warracker, chẳng hạn tệp xuất từ Warracker hoặc từ trang này. Bạn sẽ thấy mọi dòng và mọi vấn đề trước khi có gì được lưu."
           },
-          "fromRegister": {
-            "title": "Cách 3: từ một giao dịch mua trong sổ giao dịch",
-            "body": "Trên một dòng giao dịch, mở menu **Sao chép** trong các thao tác của dòng và chọn **Thêm bảo hành**. Trên điện thoại, nhấn giữ dòng đó. Biểu mẫu mở ra với thông tin điền sẵn từ giao dịch mua và vẫn liên kết với giao dịch đó. Dòng có bảo hành hiển thị biểu tượng chiếc khiên, và khi đó cùng menu có thêm **Xem bảo hành**. Tìm kiếm **has:warranty** để liệt kê các dòng đó."
+          "inRegister": {
+            "title": "Bảo hành trong sổ giao dịch",
+            "body": "Giao dịch có bảo hành hiển thị biểu tượng chiếc khiên trong sổ giao dịch. Khi đó menu **Sao chép** của giao dịch có thêm **Xem bảo hành**, mở danh sách bảo hành trên trang Bảo hành. Tìm **has:warranty** để thấy mọi giao dịch như vậy."
           },
           "newTransaction": {
-            "title": "Cách 4: khi bạn ghi một giao dịch mua",
+            "title": "Cách 3: khi bạn ghi một giao dịch mua",
             "body": "Chọn **+ Giao tác mới** để mở biểu mẫu."
           },
           "warrantiesLine": {

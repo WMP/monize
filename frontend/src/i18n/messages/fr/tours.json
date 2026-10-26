@@ -451,12 +451,12 @@
             "title": "Méthode 2 : importer un fichier CSV",
             "body": "**Importer un CSV** lit un fichier aux colonnes de Warracker, comme un export de Warracker ou de cette page. Vous voyez chaque ligne et chaque problème avant que quoi que ce soit ne soit enregistré."
           },
-          "fromRegister": {
-            "title": "Méthode 3 : depuis un achat du registre",
-            "body": "Sur une ligne de transaction, ouvrez le menu **Copier** dans les actions de la ligne et choisissez **Ajouter une garantie**. Sur mobile, appuyez longuement sur la ligne. Le formulaire s’ouvre prérempli à partir de l’achat et reste lié à celui-ci. Une ligne avec une garantie affiche un bouclier, et le même menu propose alors **Voir les garanties**. Recherchez **has:warranty** pour lister ces lignes."
+          "inRegister": {
+            "title": "Les garanties dans le registre",
+            "body": "Une transaction avec une garantie affiche un bouclier dans le registre. Son menu **Copier** propose alors **Voir les garanties**, qui les liste sur la page des garanties. Recherchez **has:warranty** pour trouver toutes ces transactions."
           },
           "newTransaction": {
-            "title": "Méthode 4 : en saisissant un achat",
+            "title": "Méthode 3 : en saisissant un achat",
             "body": "Choisissez **+ Nouvelle transaction** pour ouvrir le formulaire."
           },
           "warrantiesLine": {

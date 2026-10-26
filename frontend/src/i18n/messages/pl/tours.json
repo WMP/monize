@@ -451,12 +451,12 @@
             "title": "Sposób 2: zaimportuj plik CSV",
             "body": "**Importuj CSV** wczytuje plik w układzie kolumn Warracker, na przykład eksport z aplikacji Warracker lub z tej strony. Zanim cokolwiek zostanie zapisane, zobaczysz każdy wiersz i ewentualne problemy."
           },
-          "fromRegister": {
-            "title": "Sposób 3: z zakupu w rejestrze",
-            "body": "W wierszu transakcji otwórz menu **Kopiuj** wśród akcji wiersza i wybierz **Dodaj gwarancję**. Na telefonie przytrzymaj wiersz. Formularz otworzy się wypełniony danymi zakupu i pozostanie z nim powiązany. Wiersz z gwarancją ma ikonę tarczy, a to samo menu oferuje wtedy **Pokaż gwarancje**. Wyszukaj **has:warranty**, aby wyświetlić takie wiersze."
+          "inRegister": {
+            "title": "Gwarancje w rejestrze transakcji",
+            "body": "Transakcja z gwarancją ma w rejestrze ikonę tarczy. Jej menu **Kopiuj** oferuje wtedy **Pokaż gwarancje**, co wyświetla je na stronie gwarancji. Wyszukaj **has:warranty**, aby znaleźć wszystkie takie transakcje."
           },
           "newTransaction": {
-            "title": "Sposób 4: podczas zapisywania zakupu",
+            "title": "Sposób 3: podczas zapisywania zakupu",
             "body": "Wybierz **+ Nowa transakcja**, aby otworzyć formularz."
           },
           "warrantiesLine": {

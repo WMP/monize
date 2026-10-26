@@ -451,12 +451,12 @@
             "title": "Forma 2: importa un archivo CSV",
             "body": "**Importar CSV** lee un archivo con las columnas de Warracker, como una exportación de Warracker o de esta página. Verás cada fila y cualquier problema antes de que se guarde nada."
           },
-          "fromRegister": {
-            "title": "Forma 3: desde una compra en el registro",
-            "body": "En una fila de transacción, abre el menú **Copiar** de las acciones de la fila y elige **Añadir garantía**. En el móvil, mantén pulsada la fila. El formulario se abre con los datos de la compra y queda vinculado a ella. Una fila con garantía muestra un escudo, y ese mismo menú ofrece entonces **Ver garantías**. Busca **has:warranty** para listar esas filas."
+          "inRegister": {
+            "title": "Garantías en el registro",
+            "body": "Una transacción con garantía muestra un escudo en el registro. Su menú **Copiar** ofrece entonces **Ver garantías**, que las muestra en la página de garantías. Busca **has:warranty** para encontrar todas esas transacciones."
           },
           "newTransaction": {
-            "title": "Forma 4: mientras registras una compra",
+            "title": "Forma 3: mientras registras una compra",
             "body": "Elige **+ Nueva transacción** para abrir el formulario."
           },
           "warrantiesLine": {

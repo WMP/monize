@@ -451,12 +451,12 @@
             "title": "Cara 2: impor file CSV",
             "body": "**Impor CSV** membaca file dengan kolom Warracker, misalnya ekspor dari Warracker atau dari halaman ini. Anda melihat setiap baris dan masalah apa pun sebelum ada yang disimpan."
           },
-          "fromRegister": {
-            "title": "Cara 3: dari pembelian di daftar transaksi",
-            "body": "Pada baris transaksi, buka menu **Salin** di tindakan baris itu dan pilih **Tambah garansi**. Di ponsel, tekan lama barisnya. Formulir terbuka dengan data dari pembelian dan tetap tertaut dengannya. Baris yang memiliki garansi menampilkan ikon perisai, dan menu yang sama lalu menawarkan **Lihat garansi**. Cari **has:warranty** untuk menampilkan baris-baris tersebut."
+          "inRegister": {
+            "title": "Garansi di daftar transaksi",
+            "body": "Transaksi yang punya garansi menampilkan ikon perisai di daftar transaksi. Menu **Salin** pada transaksi itu lalu menawarkan **Lihat garansi**, yang menampilkannya di halaman Garansi. Cari **has:warranty** untuk menemukan semua transaksi seperti itu."
           },
           "newTransaction": {
-            "title": "Cara 4: saat mencatat pembelian",
+            "title": "Cara 3: saat mencatat pembelian",
             "body": "Pilih **+ Transaksi Baru** untuk membuka formulir."
           },
           "warrantiesLine": {

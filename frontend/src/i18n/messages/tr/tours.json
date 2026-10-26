@@ -451,12 +451,12 @@
             "title": "2. yol: CSV dosyası içe aktarın",
             "body": "**CSV içe aktar**, Warracker sütunlarını kullanan bir dosyayı okur; örneğin Warracker’dan ya da bu sayfadan alınmış bir dışa aktarma. Hiçbir şey kaydedilmeden önce her satırı ve tüm sorunları görürsünüz."
           },
-          "fromRegister": {
-            "title": "3. yol: kayıt defterindeki bir satın almadan",
-            "body": "Bir işlem satırında, satır eylemlerindeki **Kopyala** menüsünü açın ve **Garanti ekle**’yi seçin. Telefonda satıra basılı tutun. Form, satın alma bilgileriyle doldurulmuş olarak açılır ve bu işleme bağlı kalır. Garantisi olan bir satırda kalkan simgesi görünür ve aynı menüde artık **Garantileri görüntüle** de bulunur. Bu satırları listelemek için **has:warranty** araması yapın."
+          "inRegister": {
+            "title": "Kayıt defterindeki garantiler",
+            "body": "Garantisi olan bir işlem, kayıt defterinde bir kalkan simgesiyle görünür. Bu işlemin **Kopyala** menüsü o zaman **Garantileri görüntüle** seçeneğini sunar ve garantileri Garantiler sayfasında listeler. Bu tür tüm işlemleri bulmak için **has:warranty** araması yapın."
           },
           "newTransaction": {
-            "title": "4. yol: satın almayı kaydederken",
+            "title": "3. yol: satın almayı kaydederken",
             "body": "Formu açmak için **+ Yeni İşlem**’i seçin."
           },
           "warrantiesLine": {

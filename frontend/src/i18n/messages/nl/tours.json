@@ -451,12 +451,12 @@
             "title": "Manier 2: een CSV-bestand importeren",
             "body": "**CSV importeren** leest een bestand met de kolommen van Warracker, zoals een export uit Warracker of van deze pagina. Je ziet elke rij en eventuele problemen voordat er iets wordt opgeslagen."
           },
-          "fromRegister": {
-            "title": "Manier 3: vanuit een aankoop in het transactieoverzicht",
-            "body": "Open op een transactierij het menu **Kopiëren** bij de acties van de rij en kies **Garantie toevoegen**. Houd op een telefoon de rij ingedrukt. Het formulier opent ingevuld met de gegevens van de aankoop en blijft eraan gekoppeld. Een rij met een garantie toont een schild, en hetzelfde menu biedt dan **Garanties bekijken**. Zoek op **has:warranty** om die rijen te tonen."
+          "inRegister": {
+            "title": "Garanties in het transactieoverzicht",
+            "body": "Een transactie met een garantie toont een schild in het transactieoverzicht. Het menu **Kopiëren** van die transactie biedt dan **Garanties bekijken**, dat ze op de pagina Garanties toont. Zoek op **has:warranty** om al zulke transacties te vinden."
           },
           "newTransaction": {
-            "title": "Manier 4: terwijl je een aankoop vastlegt",
+            "title": "Manier 3: terwijl je een aankoop vastlegt",
             "body": "Kies **+ Nieuwe transactie** om het formulier te openen."
           },
           "warrantiesLine": {

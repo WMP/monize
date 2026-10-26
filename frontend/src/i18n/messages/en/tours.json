@@ -451,12 +451,12 @@
             "title": "Way 2: import a CSV file",
             "body": "**Import CSV** reads a file in Warracker's columns, such as an export from Warracker or from this page. You see every row and any problems before anything is saved."
           },
-          "fromRegister": {
-            "title": "Way 3: from a purchase in the register",
-            "body": "On a transaction row, open the **Copy** menu in the row's actions and choose **Add warranty**. On a phone, press and hold the row. The form opens filled in from the purchase and stays linked to it. A row with a warranty shows a shield, and the same menu then offers **View warranties**. Search for **has:warranty** to list those rows."
+          "inRegister": {
+            "title": "Warranties in the register",
+            "body": "A transaction with a warranty shows a shield in the register. Its **Copy** menu then offers **View warranties**, which lists them on the Warranties page. Search for **has:warranty** to find every such transaction."
           },
           "newTransaction": {
-            "title": "Way 4: while you record a purchase",
+            "title": "Way 3: while you record a purchase",
             "body": "Choose **+ New Transaction** to open the form."
           },
           "warrantiesLine": {

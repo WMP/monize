@@ -451,12 +451,12 @@
             "title": "Weg 2: eine CSV-Datei importieren",
             "body": "**CSV importieren** liest eine Datei mit den Spalten von Warracker, etwa einen Export aus Warracker oder von dieser Seite. Sie sehen jede Zeile und alle Probleme, bevor etwas gespeichert wird."
           },
-          "fromRegister": {
-            "title": "Weg 3: aus einem Kauf im Buchungsregister",
-            "body": "Öffnen Sie in einer Buchungszeile das Menü **Kopieren** in den Aktionen der Zeile und wählen Sie **Garantie hinzufügen**. Auf dem Handy tippen Sie lange auf die Zeile. Das Formular öffnet sich mit den Angaben aus dem Kauf und bleibt mit ihm verknüpft. Eine Zeile mit Garantie zeigt ein Schild, und dasselbe Menü bietet dann **Garantien anzeigen**. Suchen Sie nach **has:warranty**, um diese Zeilen aufzulisten."
+          "inRegister": {
+            "title": "Garantien im Buchungsregister",
+            "body": "Eine Buchung mit Garantie zeigt im Buchungsregister ein Schild. Ihr Menü **Kopieren** bietet dann **Garantien anzeigen**, das sie auf der Garantien-Seite auflistet. Suchen Sie nach **has:warranty**, um alle solchen Buchungen zu finden."
           },
           "newTransaction": {
-            "title": "Weg 4: beim Erfassen eines Kaufs",
+            "title": "Weg 3: beim Erfassen eines Kaufs",
             "body": "Wählen Sie **+ Neue Buchung**, um das Formular zu öffnen."
           },
           "warrantiesLine": {

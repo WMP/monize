@@ -451,12 +451,12 @@
             "title": "Modo 2: importa un file CSV",
             "body": "**Importa CSV** legge un file con le colonne di Warracker, come un’esportazione da Warracker o da questa pagina. Vedi ogni riga ed eventuali problemi prima che venga salvato qualcosa."
           },
-          "fromRegister": {
-            "title": "Modo 3: da un acquisto nel registro",
-            "body": "Su una riga di transazione, apri il menu **Copia** tra le azioni della riga e scegli **Aggiungi garanzia**. Su mobile, tieni premuta la riga. Il modulo si apre compilato con i dati dell’acquisto e resta collegato a esso. Una riga con una garanzia mostra uno scudo, e lo stesso menu offre allora **Visualizza garanzie**. Cerca **has:warranty** per elencare quelle righe."
+          "inRegister": {
+            "title": "Le garanzie nel registro",
+            "body": "Una transazione con una garanzia mostra uno scudo nel registro. Il suo menu **Copia** offre allora **Visualizza garanzie**, che le elenca nella pagina delle garanzie. Cerca **has:warranty** per trovare tutte queste transazioni."
           },
           "newTransaction": {
-            "title": "Modo 4: mentre registri un acquisto",
+            "title": "Modo 3: mentre registri un acquisto",
             "body": "Scegli **+ Nuova transazione** per aprire il modulo."
           },
           "warrantiesLine": {

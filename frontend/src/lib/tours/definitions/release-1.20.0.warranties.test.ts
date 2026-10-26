@@ -32,14 +32,14 @@ describe('warranties release tour', () => {
     expect(getReleaseTours('1.19.0').map((t) => t.id)).not.toContain(tour.id);
   });
 
-  it('walks the page, the four ways to add one, then where they show up', () => {
+  it('walks the page, the three ways to add one, then where they show up', () => {
     expect(tour.steps.map((s) => s.id)).toEqual([
       'welcome',
       'warrantiesLink',
       'overview',
       'addWarranty',
       'importCsv',
-      'fromRegister',
+      'inRegister',
       'newTransaction',
       'warrantiesLine',
       'closeForm',
@@ -86,7 +86,7 @@ describe('warranties release tour', () => {
   it('describes the register row without anchoring one, parked clear of row actions', () => {
     // An anchor on a row repeats on every row; the card parks bottom-LEFT so
     // it does not cover the Copy menu the copy names.
-    const s = step('fromRegister');
+    const s = step('inRegister');
     expect(s?.route).toBe('/transactions');
     expect(s?.anchorId).toBeNull();
     expect(s?.unobtrusive).toBe(true);
@@ -190,7 +190,9 @@ describe('warranties tour copy', () => {
     const t = createTranslator({ locale: 'en', messages, namespace: undefined });
     const translate = t as unknown as (key: string) => string;
     const steps = `${tour.i18nPrefix}.steps`;
-    expect(translate(`${steps}.fromRegister.body`)).toContain('**has:warranty**');
+    expect(translate(`${steps}.inRegister.body`)).toContain('**has:warranty**');
+    // The Copy menu no longer adds a warranty, so the tour must not say it does.
+    expect(translate(`${steps}.inRegister.body`)).not.toMatch(/add warranty/i);
     expect(translate(`${steps}.reminders.body`)).toMatch(/30 days and 7 days/);
     for (const s of tour.steps) {
       expect(translate(`${steps}.${s.id}.body`)).not.toContain('--');
