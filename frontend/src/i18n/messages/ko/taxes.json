@@ -1,0 +1,89 @@
+{
+  "landing": {
+    "title": "세금",
+    "subtitle": "급여를 결정하는 공제와 세금을 위한 도구",
+    "tools": {
+      "payrollDeductions": {
+        "title": "급여 공제",
+        "description": "연금, 고용보험 같은 공제에 연간 상한액을 설정하고, 상한에 도달하면 급여에서 더 이상 공제하지 않도록 합니다."
+      }
+    }
+  },
+  "payroll": {
+    "title": "급여 공제",
+    "subtitle": "급여 청구의 공제 항목에 대한 연간 상한액",
+    "backToTaxes": "세금",
+    "newButton": "+ 새 규칙",
+    "loading": "급여 공제를 불러오는 중...",
+    "emptyState": {
+      "title": "아직 공제 규칙이 없습니다",
+      "body": "급여에 해당하는 예정 청구를 선택하고 공제 카테고리와 연간 상한액을 설정하세요. 상한에 도달하면 청구는 공제를 멈추고 초기화 날짜에 다시 시작합니다.",
+      "createButton": "첫 규칙 만들기"
+    },
+    "yearToDate": {
+      "show": "연초 누계 표시",
+      "hide": "연초 누계 숨기기",
+      "title": "이번 기간 납부액",
+      "help": "오늘이 속한 기간에 이 카테고리가 모든 계좌에서 청구 통화로 공제한 금액입니다.",
+      "foreignRows": "다른 통화의 {count, plural, other {#개 항목}}은 집계되지 않음"
+    },
+    "list": {
+      "bill": "청구",
+      "category": "카테고리",
+      "yearlyMaximum": "연간 상한액",
+      "resetsOn": "초기화 날짜",
+      "perPaycheque": "급여당",
+      "period": "기간",
+      "paid": "납부",
+      "remaining": "잔여",
+      "actions": "작업",
+      "fromLine": "청구 항목에서",
+      "entered": "입력값",
+      "expectedMissing": "예상 금액 필요",
+      "periodRange": "{start} ~ {end}"
+    },
+    "modal": {
+      "newTitle": "새 공제 규칙",
+      "editTitle": "공제 규칙 편집"
+    },
+    "form": {
+      "billLabel": "급여 예정 청구",
+      "billPlaceholder": "급여에 해당하는 청구를 선택하세요",
+      "billHelp": "공제 항목을 포함하는 예정 입금입니다. 카테고리 항목만 상한을 적용할 수 있습니다.",
+      "categoryLabel": "공제 카테고리",
+      "categoryPlaceholder": "카테고리 선택",
+      "yearlyMaximumLabel": "연간 상한액",
+      "yearlyMaximumHelp": "이 카테고리가 한 기간에 공제하는 최대 금액(청구 통화)입니다. 항목은 남은 여유까지, 최소 0으로 줄어듭니다.",
+      "resetPeriodLabel": "초기화",
+      "resetDateLabel": "초기화 날짜",
+      "resetDateHelp": "매년 이 날에 집계가 다시 시작됩니다. 보통 연초 첫날입니다.",
+      "expectedLabel": "급여당 예상액",
+      "expectedHelp": "청구에 이 카테고리의 항목이 없으므로 예측에는 각 급여에서 공제되는 금액이 필요합니다.",
+      "expectedFromLine": "청구 항목은 급여당 {amount}을(를) 공제합니다.",
+      "expectedSuggested": "이 카테고리의 최근 거래를 바탕으로 제안되었습니다.",
+      "periods": {
+        "YEARLY": "매년"
+      },
+      "validation": {
+        "billRequired": "급여 청구를 선택하세요",
+        "categoryRequired": "카테고리를 선택하세요",
+        "yearlyMaximumRequired": "연간 상한액을 입력하세요",
+        "resetDateRequired": "초기화 날짜를 입력하세요",
+        "expectedRequired": "급여당 예상 금액을 입력하세요"
+      }
+    },
+    "delete": {
+      "title": "공제 규칙 삭제",
+      "message": "{bill}의 {category} 규칙을 삭제할까요? 기록된 거래는 바뀌지 않으며, 다음 급여는 항목 전액을 기록합니다."
+    },
+    "toasts": {
+      "created": "공제 규칙을 만들었습니다",
+      "updated": "공제 규칙을 업데이트했습니다",
+      "deleted": "공제 규칙을 삭제했습니다",
+      "loadFailed": "급여 공제를 불러오지 못했습니다",
+      "createFailed": "공제 규칙을 만들지 못했습니다",
+      "updateFailed": "공제 규칙을 업데이트하지 못했습니다",
+      "deleteFailed": "공제 규칙을 삭제하지 못했습니다"
+    }
+  }
+}

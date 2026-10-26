@@ -308,6 +308,11 @@
     "noOpenPeriod": "Aucune période ouverte à clôturer",
     "categoryIdsNotOwned": "IDs de catégorie introuvables ou n'appartenant pas à l'utilisateur : {{ ids }}"
   },
+  "payrollDeductions": {
+    "notFound": "Règle de retenue salariale {{ id }} introuvable",
+    "duplicate": "Cette facture a déjà une règle pour cette catégorie",
+    "expectedRequired": "La facture n'a pas de ligne pour cette catégorie ; saisissez le montant attendu par paie"
+  },
   "categories": {
     "notFound": "Catégorie avec l'ID {{ id }} introuvable",
     "cannotModifySystem": "Impossible de modifier les catégories système",

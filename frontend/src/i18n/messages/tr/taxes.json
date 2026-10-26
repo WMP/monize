@@ -1,0 +1,89 @@
+{
+  "landing": {
+    "title": "Vergiler",
+    "subtitle": "Maaşınızı şekillendiren kesintiler ve vergiler için araçlar",
+    "tools": {
+      "payrollDeductions": {
+        "title": "Bordro Kesintileri",
+        "description": "Emeklilik ve işsizlik sigortası gibi kesintiler için yıllık üst sınırlar belirleyin; üst sınıra ulaşıldığında maaş bunları kesmeyi bıraksın."
+      }
+    }
+  },
+  "payroll": {
+    "title": "Bordro Kesintileri",
+    "subtitle": "Bordro faturanızın kesinti satırları için yıllık üst sınırlar",
+    "backToTaxes": "Vergiler",
+    "newButton": "+ Yeni Kural",
+    "loading": "Bordro kesintileri yükleniyor...",
+    "emptyState": {
+      "title": "Henüz kesinti kuralı yok",
+      "body": "Maaşınız olan planlı faturayı seçin, bir kesinti kategorisi belirleyin ve yıllık üst sınırını girin. Üst sınıra ulaşıldığında fatura kesintiyi durdurur ve sıfırlama tarihinde yeniden başlar.",
+      "createButton": "İlk Kuralınızı Oluşturun"
+    },
+    "yearToDate": {
+      "show": "Yıl başından bugüne göster",
+      "hide": "Yıl başından bugüne gizle",
+      "title": "Bu dönemde ödenen",
+      "help": "Kategorinin bugünü içeren dönemde tüm hesaplarda, fatura para biriminde kestiği tutar.",
+      "foreignRows": "Başka para birimindeki {count, plural, one {# satır} other {# satır}} sayılmadı"
+    },
+    "list": {
+      "bill": "Fatura",
+      "category": "Kategori",
+      "yearlyMaximum": "Yıllık üst sınır",
+      "resetsOn": "Sıfırlanma tarihi",
+      "perPaycheque": "Maaş başına",
+      "period": "Dönem",
+      "paid": "Ödenen",
+      "remaining": "Kalan",
+      "actions": "İşlemler",
+      "fromLine": "Faturanın satırından",
+      "entered": "Girilen",
+      "expectedMissing": "Beklenen tutar gerekli",
+      "periodRange": "{start} - {end}"
+    },
+    "modal": {
+      "newTitle": "Yeni Kesinti Kuralı",
+      "editTitle": "Kesinti Kuralını Düzenle"
+    },
+    "form": {
+      "billLabel": "Planlı bordro faturası",
+      "billPlaceholder": "Maaşınız olan faturayı seçin",
+      "billHelp": "Satırları kesintileri taşıyan planlı yatırma. Yalnızca kategori satırları sınırlandırılabilir.",
+      "categoryLabel": "Kesinti kategorisi",
+      "categoryPlaceholder": "Bir kategori seçin",
+      "yearlyMaximumLabel": "Yıllık üst sınır",
+      "yearlyMaximumHelp": "Bu kategorinin bir dönemde kestiği en yüksek tutar, fatura para biriminde. Satır kalan paya kadar, sıfıra dek azaltılır.",
+      "resetPeriodLabel": "Sıfırlama",
+      "resetDateLabel": "Sıfırlama tarihi",
+      "resetDateHelp": "Sayım her yıl bu gün yeniden başlar. Genellikle yılın ilk günü.",
+      "expectedLabel": "Maaş başına beklenen",
+      "expectedHelp": "Faturada bu kategori için satır yok; bu nedenle tahmin, her maaştan kesilen tutara ihtiyaç duyar.",
+      "expectedFromLine": "Faturanın satırı maaş başına {amount} keser.",
+      "expectedSuggested": "Bu kategorideki en son işleminize göre önerildi.",
+      "periods": {
+        "YEARLY": "Yıllık"
+      },
+      "validation": {
+        "billRequired": "Bordro faturasını seçin",
+        "categoryRequired": "Bir kategori seçin",
+        "yearlyMaximumRequired": "Yıllık üst sınırı girin",
+        "resetDateRequired": "Sıfırlama tarihini girin",
+        "expectedRequired": "Maaş başına beklenen tutarı girin"
+      }
+    },
+    "delete": {
+      "title": "Kesinti Kuralını Sil",
+      "message": "{bill} üzerindeki {category} kuralı silinsin mi? Kaydedilmiş işlemler değişmez; sonraki maaş satırının tamamını kaydeder."
+    },
+    "toasts": {
+      "created": "Kesinti kuralı oluşturuldu",
+      "updated": "Kesinti kuralı güncellendi",
+      "deleted": "Kesinti kuralı silindi",
+      "loadFailed": "Bordro kesintileri yüklenemedi",
+      "createFailed": "Kesinti kuralı oluşturulamadı",
+      "updateFailed": "Kesinti kuralı güncellenemedi",
+      "deleteFailed": "Kesinti kuralı silinemedi"
+    }
+  }
+}

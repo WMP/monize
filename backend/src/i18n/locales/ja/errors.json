@@ -308,6 +308,11 @@
     "noOpenPeriod": "閉鎖するオープン期間がありません",
     "categoryIdsNotOwned": "カテゴリIDが見つからないか、ユーザーが所有していません：{{ ids }}"
   },
+  "payrollDeductions": {
+    "notFound": "給与控除ルール {{ id }} が見つかりません",
+    "duplicate": "この請求にはそのカテゴリのルールが既にあります",
+    "expectedRequired": "この請求にはこのカテゴリの行がありません。給与ごとの予定額を入力してください"
+  },
   "categories": {
     "notFound": "ID {{ id }} のカテゴリが見つかりません",
     "cannotModifySystem": "システムカテゴリは変更できません",

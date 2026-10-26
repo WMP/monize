@@ -1,0 +1,89 @@
+{
+  "landing": {
+    "title": "Podatki",
+    "subtitle": "Narzędzia do potrąceń i podatków kształtujących Twoje wynagrodzenie",
+    "tools": {
+      "payrollDeductions": {
+        "title": "Potrącenia z wynagrodzenia",
+        "description": "Ustaw roczne maksima dla potrąceń takich jak emerytura i ubezpieczenie od bezrobocia, a wypłata przestanie je pobierać po osiągnięciu maksimum."
+      }
+    }
+  },
+  "payroll": {
+    "title": "Potrącenia z wynagrodzenia",
+    "subtitle": "Roczne maksima dla pozycji potrąceń w rachunku wynagrodzenia",
+    "backToTaxes": "Podatki",
+    "newButton": "+ Nowa reguła",
+    "loading": "Ładowanie potrąceń z wynagrodzenia...",
+    "emptyState": {
+      "title": "Brak reguł potrąceń",
+      "body": "Wybierz zaplanowany rachunek będący Twoją wypłatą, kategorię potrącenia i jej roczne maksimum. Rachunek przestaje je pobierać po osiągnięciu maksimum i zaczyna od nowa w dniu resetu.",
+      "createButton": "Utwórz pierwszą regułę"
+    },
+    "yearToDate": {
+      "show": "Pokaż narastająco w roku",
+      "hide": "Ukryj narastająco w roku",
+      "title": "Zapłacono w tym okresie",
+      "help": "Ile kategoria pobrała w okresie obejmującym dzisiaj, na wszystkich kontach, w walucie rachunku.",
+      "foreignRows": "{count, plural, one {# pozycja} few {# pozycje} many {# pozycji} other {# pozycji}} w innej walucie nie policzono"
+    },
+    "list": {
+      "bill": "Rachunek",
+      "category": "Kategoria",
+      "yearlyMaximum": "Roczne maksimum",
+      "resetsOn": "Reset",
+      "perPaycheque": "Na wypłatę",
+      "period": "Okres",
+      "paid": "Zapłacono",
+      "remaining": "Pozostało",
+      "actions": "Akcje",
+      "fromLine": "Z pozycji rachunku",
+      "entered": "Wpisane",
+      "expectedMissing": "Wymagana oczekiwana kwota",
+      "periodRange": "Od {start} do {end}"
+    },
+    "modal": {
+      "newTitle": "Nowa reguła potrącenia",
+      "editTitle": "Edytuj regułę potrącenia"
+    },
+    "form": {
+      "billLabel": "Zaplanowany rachunek wynagrodzenia",
+      "billPlaceholder": "Wybierz rachunek będący Twoją wypłatą",
+      "billHelp": "Zaplanowana wpłata, której pozycje zawierają potrącenia. Ograniczyć można tylko jej pozycje kategorii.",
+      "categoryLabel": "Kategoria potrącenia",
+      "categoryPlaceholder": "Wybierz kategorię",
+      "yearlyMaximumLabel": "Roczne maksimum",
+      "yearlyMaximumHelp": "Najwięcej, ile ta kategoria pobiera w jednym okresie, w walucie rachunku. Pozycja jest zmniejszana do pozostałego zapasu, aż do zera.",
+      "resetPeriodLabel": "Reset",
+      "resetDateLabel": "Data resetu",
+      "resetDateHelp": "Liczenie zaczyna się od nowa tego dnia każdego roku. Zwykle pierwszy dzień roku.",
+      "expectedLabel": "Oczekiwane na wypłatę",
+      "expectedHelp": "Rachunek nie ma pozycji dla tej kategorii, więc prognoza potrzebuje kwoty potrącanej z każdej wypłaty.",
+      "expectedFromLine": "Pozycja rachunku potrąca {amount} na wypłatę.",
+      "expectedSuggested": "Zasugerowano na podstawie Twojej ostatniej transakcji w tej kategorii.",
+      "periods": {
+        "YEARLY": "Rocznie"
+      },
+      "validation": {
+        "billRequired": "Wybierz rachunek wynagrodzenia",
+        "categoryRequired": "Wybierz kategorię",
+        "yearlyMaximumRequired": "Wpisz roczne maksimum",
+        "resetDateRequired": "Wpisz datę resetu",
+        "expectedRequired": "Wpisz oczekiwaną kwotę na wypłatę"
+      }
+    },
+    "delete": {
+      "title": "Usuń regułę potrącenia",
+      "message": "Usunąć regułę {category} w {bill}? Zaksięgowane transakcje się nie zmieniają; następna wypłata zaksięguje pełną pozycję."
+    },
+    "toasts": {
+      "created": "Utworzono regułę potrącenia",
+      "updated": "Zaktualizowano regułę potrącenia",
+      "deleted": "Usunięto regułę potrącenia",
+      "loadFailed": "Nie udało się załadować potrąceń z wynagrodzenia",
+      "createFailed": "Nie udało się utworzyć reguły potrącenia",
+      "updateFailed": "Nie udało się zaktualizować reguły potrącenia",
+      "deleteFailed": "Nie udało się usunąć reguły potrącenia"
+    }
+  }
+}

@@ -203,5 +203,9 @@
     "expiringMessage": "{name} 的保修将于 {date} 到期。打开即可查看其文档或记录保修申请。",
     "todayTitle": "{name}：保修今天到期",
     "todayMessage": "{name} 的保修于今天（{date}）到期。打开即可查看其文档或记录保修申请。"
+  },
+  "payrollDeduction": {
+    "resetTitle": "{category}：请确认明年的上限",
+    "resetMessage": "{bill} 上的 {category} 扣款将于 {date} 重置。如果年度上限有变化请更新；否则 {amount} 将再次适用。"
   }
 }

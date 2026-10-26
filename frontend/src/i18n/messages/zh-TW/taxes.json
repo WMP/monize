@@ -1,0 +1,89 @@
+{
+  "landing": {
+    "title": "稅務",
+    "subtitle": "用於影響您薪資的扣款與稅務的工具",
+    "tools": {
+      "payrollDeductions": {
+        "title": "薪資扣款",
+        "description": "為退休金、就業保險等扣款設定年度上限，達到上限後薪資將停止扣除。"
+      }
+    }
+  },
+  "payroll": {
+    "title": "薪資扣款",
+    "subtitle": "薪資帳單扣款項目的年度上限",
+    "backToTaxes": "稅務",
+    "newButton": "+ 新增規則",
+    "loading": "正在載入薪資扣款...",
+    "emptyState": {
+      "title": "尚無扣款規則",
+      "body": "選擇作為您薪資的排程帳單，選擇扣款類別並設定年度上限。達到上限後帳單停止扣除，並在重設日期重新開始。",
+      "createButton": "建立您的第一條規則"
+    },
+    "yearToDate": {
+      "show": "顯示年初至今",
+      "hide": "隱藏年初至今",
+      "title": "本期已付",
+      "help": "該類別在包含今天的期間內，於所有帳戶中以帳單幣別扣除的金額。",
+      "foreignRows": "其他幣別的 {count, plural, other {# 筆}}未計入"
+    },
+    "list": {
+      "bill": "帳單",
+      "category": "類別",
+      "yearlyMaximum": "年度上限",
+      "resetsOn": "重設日期",
+      "perPaycheque": "每次發薪",
+      "period": "期間",
+      "paid": "已付",
+      "remaining": "剩餘",
+      "actions": "操作",
+      "fromLine": "來自帳單的項目",
+      "entered": "已輸入",
+      "expectedMissing": "需要預期金額",
+      "periodRange": "{start} 至 {end}"
+    },
+    "modal": {
+      "newTitle": "新增扣款規則",
+      "editTitle": "編輯扣款規則"
+    },
+    "form": {
+      "billLabel": "薪資排程帳單",
+      "billPlaceholder": "選擇作為您薪資的帳單",
+      "billHelp": "其項目包含扣款的排程存款。只有其類別項目可以設定上限。",
+      "categoryLabel": "扣款類別",
+      "categoryPlaceholder": "選擇類別",
+      "yearlyMaximumLabel": "年度上限",
+      "yearlyMaximumHelp": "該類別在一個期間內扣除的最高金額，以帳單幣別計。該項目會減少到剩餘額度，最低為零。",
+      "resetPeriodLabel": "重設",
+      "resetDateLabel": "重設日期",
+      "resetDateHelp": "每年在這一天重新開始計算。通常是一年的第一天。",
+      "expectedLabel": "每次發薪的預期金額",
+      "expectedHelp": "帳單中沒有此類別的項目，因此預測需要每次發薪扣除的金額。",
+      "expectedFromLine": "帳單的項目每次發薪扣除 {amount}。",
+      "expectedSuggested": "根據您在此類別中的最近一筆交易建議。",
+      "periods": {
+        "YEARLY": "每年"
+      },
+      "validation": {
+        "billRequired": "請選擇薪資帳單",
+        "categoryRequired": "請選擇類別",
+        "yearlyMaximumRequired": "請輸入年度上限",
+        "resetDateRequired": "請輸入重設日期",
+        "expectedRequired": "請輸入每次發薪的預期金額"
+      }
+    },
+    "delete": {
+      "title": "刪除扣款規則",
+      "message": "刪除 {bill} 上的 {category} 規則？已記帳的交易不會改變；下一次發薪將記入完整的項目。"
+    },
+    "toasts": {
+      "created": "扣款規則已建立",
+      "updated": "扣款規則已更新",
+      "deleted": "扣款規則已刪除",
+      "loadFailed": "無法載入薪資扣款",
+      "createFailed": "無法建立扣款規則",
+      "updateFailed": "無法更新扣款規則",
+      "deleteFailed": "無法刪除扣款規則"
+    }
+  }
+}

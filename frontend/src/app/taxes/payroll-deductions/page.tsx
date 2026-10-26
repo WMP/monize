@@ -1,0 +1,223 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import toast from 'react-hot-toast';
+import { ArrowLeftIcon, ChevronDownIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { PageLayout } from '@/components/layout/PageLayout';
+import { PayrollDeductionRuleList } from '@/components/taxes/PayrollDeductionRuleList';
+import { PayrollDeductionYearToDate } from '@/components/taxes/PayrollDeductionYearToDate';
+import { Button } from '@/components/ui/Button';
+import { CARD_CLASS } from '@/components/ui/Card';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Modal } from '@/components/ui/Modal';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
+import { useFormModal } from '@/hooks/useFormModal';
+import { useOnAiAction } from '@/hooks/useOnAiAction';
+import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
+import { categoriesApi } from '@/lib/categories';
+import { getErrorMessage } from '@/lib/errors';
+import { createLogger } from '@/lib/logger';
+import { payrollDeductionsApi } from '@/lib/payroll-deductions';
+import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
+import type { Category } from '@/types/category';
+import type { CreatePayrollDeductionRuleData, PayrollDeductionRule } from '@/types/payroll-deduction';
+import type { ScheduledTransaction } from '@/types/scheduled-transaction';
+
+const PayrollDeductionRuleForm = dynamic(
+  () => import('@/components/taxes/PayrollDeductionRuleForm').then((m) => m.PayrollDeductionRuleForm),
+  { ssr: false },
+);
+
+const logger = createLogger('PayrollDeductions');
+
+export default function PayrollDeductionsPage() {
+  return (
+    <ProtectedRoute>
+      <PayrollDeductionsContent />
+    </ProtectedRoute>
+  );
+}
+
+function PayrollDeductionsContent() {
+  const t = useTranslations('taxes.payroll');
+  const tc = useTranslations('common');
+  const [rules, setRules] = useState<PayrollDeductionRule[]>([]);
+  const [scheduled, setScheduled] = useState<ScheduledTransaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showYearToDate, setShowYearToDate] = useState(false);
+  const [deleteRule, setDeleteRule] = useState<PayrollDeductionRule | null>(null);
+  const {
+    showForm,
+    editingItem,
+    openCreate,
+    openEdit,
+    close,
+    isEditing,
+    modalProps,
+    setFormDirty,
+    unsavedChangesDialog,
+    formSubmitRef,
+  } = useFormModal<PayrollDeductionRule>();
+
+  const fetchAll = useCallback(() => {
+    const run = async () => {
+      try {
+        const [ruleRows, scheduledRows, categoryRows] = await Promise.all([
+          payrollDeductionsApi.list(),
+          scheduledTransactionsApi.getAll(),
+          categoriesApi.getAll(),
+        ]);
+        setRules(ruleRows);
+        setScheduled(scheduledRows);
+        setCategories(categoryRows);
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('toasts.loadFailed')));
+        logger.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    return run();
+  }, [t]);
+
+  const reload = useCallback(() => {
+    setIsLoading(true);
+    return fetchAll();
+  }, [fetchAll]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  useOnUndoRedo(reload);
+  useOnAiAction(reload);
+
+  const handleFormSubmit = async (data: CreatePayrollDeductionRuleData) => {
+    try {
+      if (editingItem) {
+        await payrollDeductionsApi.update(editingItem.id, data);
+        toast.success(t('toasts.updated'));
+      } else {
+        await payrollDeductionsApi.create(data);
+        toast.success(t('toasts.created'));
+      }
+      close();
+      reload();
+    } catch (error) {
+      toast.error(getErrorMessage(error, editingItem ? t('toasts.updateFailed') : t('toasts.createFailed')));
+      throw error;
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteRule) return;
+    try {
+      await payrollDeductionsApi.delete(deleteRule.id);
+      toast.success(t('toasts.deleted'));
+      setRules((prev) => prev.filter((r) => r.id !== deleteRule.id));
+    } catch (error) {
+      toast.error(getErrorMessage(error, t('toasts.deleteFailed')));
+      logger.error(error);
+    } finally {
+      setDeleteRule(null);
+    }
+  };
+
+  return (
+    <PageLayout>
+      <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
+        <Link
+          href="/taxes"
+          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 mb-2"
+        >
+          <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />
+          {t('backToTaxes')}
+        </Link>
+        <PageHeader
+          title={t('title')}
+          subtitle={t('subtitle')}
+          actions={<Button onClick={openCreate}>{t('newButton')}</Button>}
+        />
+
+        <Modal
+          isOpen={showForm}
+          onClose={close}
+          {...modalProps}
+          maxWidth="lg"
+          padding="md"
+          allowOverflow
+          title={isEditing ? t('modal.editTitle') : t('modal.newTitle')}
+        >
+          <PayrollDeductionRuleForm
+            rule={editingItem}
+            scheduledTransactions={scheduled}
+            categories={categories}
+            onSubmit={handleFormSubmit}
+            onCancel={close}
+            onDirtyChange={setFormDirty}
+            submitRef={formSubmitRef}
+          />
+        </Modal>
+        <UnsavedChangesDialog {...unsavedChangesDialog} />
+
+        <ConfirmDialog
+          isOpen={deleteRule !== null}
+          title={t('delete.title')}
+          message={t('delete.message', {
+            category: deleteRule?.categoryName ?? '',
+            bill: deleteRule?.scheduledTransactionName ?? '',
+          })}
+          confirmLabel={tc('delete')}
+          variant="danger"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeleteRule(null)}
+        />
+
+        <div className={`${CARD_CLASS} overflow-hidden`}>
+          {isLoading ? (
+            <LoadingSpinner text={t('loading')} />
+          ) : rules.length === 0 ? (
+            <EmptyState
+              icon={<ReceiptPercentIcon />}
+              title={t('emptyState.title')}
+              description={t('emptyState.body')}
+              action={<Button onClick={openCreate}>{t('emptyState.createButton')}</Button>}
+            />
+          ) : (
+            <PayrollDeductionRuleList rules={rules} onEdit={openEdit} onDelete={setDeleteRule} />
+          )}
+        </div>
+
+        {!isLoading && rules.length > 0 && (
+          <div className="mt-4">
+            {/* Collapsed by default: the figures are a detail behind the rules. */}
+            <Button
+              variant="outline"
+              onClick={() => setShowYearToDate((open) => !open)}
+              aria-expanded={showYearToDate}
+            >
+              <ChevronDownIcon
+                className={`h-4 w-4 mr-1 transition-transform motion-reduce:transition-none ${showYearToDate ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+              />
+              {showYearToDate ? t('yearToDate.hide') : t('yearToDate.show')}
+            </Button>
+            {showYearToDate && (
+              <div className={`${CARD_CLASS} overflow-hidden mt-4`}>
+                <PayrollDeductionYearToDate rules={rules} />
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+    </PageLayout>
+  );
+}

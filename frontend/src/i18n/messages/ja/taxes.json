@@ -1,0 +1,89 @@
+{
+  "landing": {
+    "title": "税金",
+    "subtitle": "給与を左右する控除と税金のためのツール",
+    "tools": {
+      "payrollDeductions": {
+        "title": "給与控除",
+        "description": "年金や雇用保険などの控除に年間上限額を設定し、上限に達したら給与からの徴収を止めます。"
+      }
+    }
+  },
+  "payroll": {
+    "title": "給与控除",
+    "subtitle": "給与請求の控除行に対する年間上限額",
+    "backToTaxes": "税金",
+    "newButton": "+ 新しいルール",
+    "loading": "給与控除を読み込んでいます...",
+    "emptyState": {
+      "title": "控除ルールはまだありません",
+      "body": "給与に当たる予定請求を選び、控除カテゴリとその年間上限額を設定します。上限に達すると請求はその控除を止め、リセット日に再開します。",
+      "createButton": "最初のルールを作成"
+    },
+    "yearToDate": {
+      "show": "年初来を表示",
+      "hide": "年初来を非表示",
+      "title": "今期の支払額",
+      "help": "今日を含む期間にこのカテゴリが全口座で徴収した額（請求の通貨）。",
+      "foreignRows": "別の通貨の {count, plural, other {# 行}}は集計対象外"
+    },
+    "list": {
+      "bill": "請求",
+      "category": "カテゴリ",
+      "yearlyMaximum": "年間上限額",
+      "resetsOn": "リセット日",
+      "perPaycheque": "給与ごと",
+      "period": "期間",
+      "paid": "支払済",
+      "remaining": "残り",
+      "actions": "操作",
+      "fromLine": "請求の行から",
+      "entered": "入力値",
+      "expectedMissing": "予定額が必要です",
+      "periodRange": "{start} から {end}"
+    },
+    "modal": {
+      "newTitle": "新しい控除ルール",
+      "editTitle": "控除ルールを編集"
+    },
+    "form": {
+      "billLabel": "給与の予定請求",
+      "billPlaceholder": "給与に当たる請求を選択",
+      "billHelp": "控除を行に持つ予定入金です。上限を適用できるのはそのカテゴリ行だけです。",
+      "categoryLabel": "控除カテゴリ",
+      "categoryPlaceholder": "カテゴリを選択",
+      "yearlyMaximumLabel": "年間上限額",
+      "yearlyMaximumHelp": "このカテゴリが1期間に徴収する最大額（請求の通貨）。行は残りの余地まで、ゼロを下限に減らされます。",
+      "resetPeriodLabel": "リセット",
+      "resetDateLabel": "リセット日",
+      "resetDateHelp": "毎年この日に集計がやり直されます。通常は年の初日です。",
+      "expectedLabel": "給与ごとの予定額",
+      "expectedHelp": "この請求にはこのカテゴリの行がないため、予測には各給与で控除される額が必要です。",
+      "expectedFromLine": "請求の行は給与ごとに {amount} を控除します。",
+      "expectedSuggested": "このカテゴリの直近の取引から提案されました。",
+      "periods": {
+        "YEARLY": "毎年"
+      },
+      "validation": {
+        "billRequired": "給与請求を選んでください",
+        "categoryRequired": "カテゴリを選んでください",
+        "yearlyMaximumRequired": "年間上限額を入力してください",
+        "resetDateRequired": "リセット日を入力してください",
+        "expectedRequired": "給与ごとの予定額を入力してください"
+      }
+    },
+    "delete": {
+      "title": "控除ルールを削除",
+      "message": "{bill} の {category} ルールを削除しますか？記帳済みの取引は変わりません。次の給与は行の全額を記帳します。"
+    },
+    "toasts": {
+      "created": "控除ルールを作成しました",
+      "updated": "控除ルールを更新しました",
+      "deleted": "控除ルールを削除しました",
+      "loadFailed": "給与控除を読み込めませんでした",
+      "createFailed": "控除ルールを作成できませんでした",
+      "updateFailed": "控除ルールを更新できませんでした",
+      "deleteFailed": "控除ルールを削除できませんでした"
+    }
+  }
+}

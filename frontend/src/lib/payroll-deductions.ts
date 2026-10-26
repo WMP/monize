@@ -1,0 +1,63 @@
+import apiClient from './api';
+import { dedupe, invalidateCache } from './apiCache';
+import type {
+  CreatePayrollDeductionRuleData,
+  ExpectedAmountSuggestion,
+  PayrollDeductionRule,
+  UpdatePayrollDeductionRuleData,
+} from '@/types/payroll-deduction';
+
+/**
+ * Short-lived: every rule carries today's `paidToDate` and `remaining`, and a
+ * post or a register edit elsewhere moves them.
+ */
+const READ_TTL_MS = 30_000;
+
+/**
+ * A rule changes what the forecast projects and what the next posting books,
+ * and the scheduled read model carries the figures, so a write drops both
+ * caches.
+ */
+function afterWrite(): void {
+  invalidateCache('payroll-deductions:');
+  invalidateCache('scheduled:');
+}
+
+export const payrollDeductionsApi = {
+  list: async (): Promise<PayrollDeductionRule[]> =>
+    dedupe(
+      'payroll-deductions:list',
+      async () => {
+        const response = await apiClient.get<PayrollDeductionRule[]>('/payroll-deductions');
+        return response.data;
+      },
+      READ_TTL_MS,
+    ),
+
+  suggest: async (
+    scheduledTransactionId: string,
+    categoryId: string,
+  ): Promise<ExpectedAmountSuggestion> => {
+    const response = await apiClient.get<ExpectedAmountSuggestion>('/payroll-deductions/suggest', {
+      params: { scheduledTransactionId, categoryId },
+    });
+    return response.data;
+  },
+
+  create: async (data: CreatePayrollDeductionRuleData): Promise<PayrollDeductionRule> => {
+    const response = await apiClient.post<PayrollDeductionRule>('/payroll-deductions', data);
+    afterWrite();
+    return response.data;
+  },
+
+  update: async (id: string, data: UpdatePayrollDeductionRuleData): Promise<PayrollDeductionRule> => {
+    const response = await apiClient.patch<PayrollDeductionRule>(`/payroll-deductions/${id}`, data);
+    afterWrite();
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await apiClient.delete(`/payroll-deductions/${id}`);
+    afterWrite();
+  },
+};

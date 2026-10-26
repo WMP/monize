@@ -308,6 +308,11 @@
     "noOpenPeriod": "Kein offener Zeitraum zum Schließen",
     "categoryIdsNotOwned": "Kategorie-IDs nicht gefunden oder nicht im Besitz des Benutzers: {{ ids }}"
   },
+  "payrollDeductions": {
+    "notFound": "Lohnabzugsregel {{ id }} nicht gefunden",
+    "duplicate": "Diese Buchung hat bereits eine Regel für diese Kategorie",
+    "expectedRequired": "Die Buchung hat keine Zeile für diese Kategorie; geben Sie den erwarteten Betrag pro Gehaltsabrechnung ein"
+  },
   "categories": {
     "notFound": "Kategorie mit ID {{ id }} nicht gefunden",
     "cannotModifySystem": "Systemkategorien können nicht geändert werden",

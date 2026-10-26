@@ -1,0 +1,89 @@
+{
+  "landing": {
+    "title": "Impuestos",
+    "subtitle": "Herramientas para las deducciones e impuestos que determinan su salario",
+    "tools": {
+      "payrollDeductions": {
+        "title": "Deducciones de nómina",
+        "description": "Defina máximos anuales para deducciones como pensión y seguro de desempleo, y deje que la nómina deje de cobrarlas cuando se alcance el máximo."
+      }
+    }
+  },
+  "payroll": {
+    "title": "Deducciones de nómina",
+    "subtitle": "Máximos anuales en las líneas de deducción de su factura de nómina",
+    "backToTaxes": "Impuestos",
+    "newButton": "+ Nueva regla",
+    "loading": "Cargando deducciones de nómina...",
+    "emptyState": {
+      "title": "Aún no hay reglas de deducción",
+      "body": "Elija la factura programada que es su nómina, una categoría de deducción y su máximo anual. La factura deja de cobrarla cuando se alcanza el máximo y vuelve a empezar en la fecha de reinicio.",
+      "createButton": "Crear su primera regla"
+    },
+    "yearToDate": {
+      "show": "Mostrar acumulado del año",
+      "hide": "Ocultar acumulado del año",
+      "title": "Pagado en este período",
+      "help": "Lo que la categoría ha cobrado en el período que contiene hoy, en todas las cuentas, en la moneda de la factura.",
+      "foreignRows": "{count, plural, one {# fila} other {# filas}} en otra moneda sin contar"
+    },
+    "list": {
+      "bill": "Factura",
+      "category": "Categoría",
+      "yearlyMaximum": "Máximo anual",
+      "resetsOn": "Se reinicia el",
+      "perPaycheque": "Por nómina",
+      "period": "Período",
+      "paid": "Pagado",
+      "remaining": "Restante",
+      "actions": "Acciones",
+      "fromLine": "De la línea de la factura",
+      "entered": "Introducido",
+      "expectedMissing": "Falta el importe previsto",
+      "periodRange": "{start} a {end}"
+    },
+    "modal": {
+      "newTitle": "Nueva regla de deducción",
+      "editTitle": "Editar regla de deducción"
+    },
+    "form": {
+      "billLabel": "Factura programada de nómina",
+      "billPlaceholder": "Seleccione la factura que es su nómina",
+      "billHelp": "El depósito programado cuyas líneas llevan las deducciones. Solo sus líneas de categoría pueden limitarse.",
+      "categoryLabel": "Categoría de deducción",
+      "categoryPlaceholder": "Seleccione una categoría",
+      "yearlyMaximumLabel": "Máximo anual",
+      "yearlyMaximumHelp": "Lo máximo que esta categoría cobra en un período, en la moneda de la factura. La línea se reduce al margen restante, hasta cero.",
+      "resetPeriodLabel": "Se reinicia",
+      "resetDateLabel": "Fecha de reinicio",
+      "resetDateHelp": "El cómputo vuelve a empezar este día cada año. Normalmente el primer día del año.",
+      "expectedLabel": "Previsto por nómina",
+      "expectedHelp": "La factura no tiene una línea para esta categoría, así que la previsión necesita el importe que deduce cada nómina.",
+      "expectedFromLine": "La línea de la factura deduce {amount} por nómina.",
+      "expectedSuggested": "Sugerido a partir de su transacción más reciente en esta categoría.",
+      "periods": {
+        "YEARLY": "Anual"
+      },
+      "validation": {
+        "billRequired": "Elija la factura de nómina",
+        "categoryRequired": "Elija una categoría",
+        "yearlyMaximumRequired": "Introduzca el máximo anual",
+        "resetDateRequired": "Introduzca la fecha de reinicio",
+        "expectedRequired": "Introduzca el importe previsto por nómina"
+      }
+    },
+    "delete": {
+      "title": "Eliminar regla de deducción",
+      "message": "¿Eliminar la regla {category} en {bill}? Las transacciones registradas no cambian; la próxima nómina registra su línea completa."
+    },
+    "toasts": {
+      "created": "Regla de deducción creada",
+      "updated": "Regla de deducción actualizada",
+      "deleted": "Regla de deducción eliminada",
+      "loadFailed": "No se pudieron cargar las deducciones de nómina",
+      "createFailed": "No se pudo crear la regla de deducción",
+      "updateFailed": "No se pudo actualizar la regla de deducción",
+      "deleteFailed": "No se pudo eliminar la regla de deducción"
+    }
+  }
+}

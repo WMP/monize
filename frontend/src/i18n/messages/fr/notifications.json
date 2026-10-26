@@ -203,5 +203,9 @@
     "expiringMessage": "La garantie de {name} expire le {date}. Ouvrez-la pour consulter ses documents ou enregistrer une réclamation.",
     "todayTitle": "{name} : la garantie expire aujourd'hui",
     "todayMessage": "La garantie de {name} expire aujourd'hui, le {date}. Ouvrez-la pour consulter ses documents ou enregistrer une réclamation."
+  },
+  "payrollDeduction": {
+    "resetTitle": "{category} : confirmez le maximum de l'an prochain",
+    "resetMessage": "La retenue {category} sur {bill} se réinitialise le {date}. Mettez à jour le maximum annuel s'il change ; sinon {amount} s'applique de nouveau."
   }
 }

@@ -308,6 +308,11 @@
     "noOpenPeriod": "Nessun periodo aperto da chiudere",
     "categoryIdsNotOwned": "ID categoria non trovati o non di proprietà dell'utente: {{ ids }}"
   },
+  "payrollDeductions": {
+    "notFound": "Regola di trattenuta sullo stipendio {{ id }} non trovata",
+    "duplicate": "Questa fattura ha già una regola per quella categoria",
+    "expectedRequired": "La fattura non ha una riga per questa categoria; inserisci l'importo previsto per busta paga"
+  },
   "categories": {
     "notFound": "Categoria con ID {{ id }} non trovata",
     "cannotModifySystem": "Impossibile modificare le categorie di sistema",

@@ -203,5 +203,9 @@
     "expiringMessage": "{name}의 보증이 {date}에 만료됩니다. 열어서 문서를 검토하거나 보증 청구를 기록하세요.",
     "todayTitle": "{name}: 보증이 오늘 만료됩니다",
     "todayMessage": "{name}의 보증이 오늘({date}) 만료됩니다. 열어서 문서를 검토하거나 보증 청구를 기록하세요."
+  },
+  "payrollDeduction": {
+    "resetTitle": "{category}: 내년 상한액을 확인하세요",
+    "resetMessage": "{bill}의 {category} 공제가 {date}에 초기화됩니다. 연간 상한액이 바뀌면 업데이트하세요. 그렇지 않으면 {amount}이(가) 다시 적용됩니다."
   }
 }

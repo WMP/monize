@@ -308,6 +308,11 @@
     "noOpenPeriod": "Tidak ada periode yang terbuka untuk ditutup",
     "categoryIdsNotOwned": "ID kategori tidak ditemukan atau bukan milik pengguna: {{ ids }}"
   },
+  "payrollDeductions": {
+    "notFound": "Aturan potongan gaji {{ id }} tidak ditemukan",
+    "duplicate": "Tagihan ini sudah memiliki aturan untuk kategori tersebut",
+    "expectedRequired": "Tagihan tidak memiliki baris untuk kategori ini; masukkan jumlah yang diharapkan per gaji"
+  },
   "categories": {
     "notFound": "Kategori dengan ID {{ id }} tidak ditemukan",
     "cannotModifySystem": "Tidak dapat mengubah kategori sistem",

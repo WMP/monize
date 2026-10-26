@@ -87,6 +87,12 @@ import { withScopedDb } from "../common/db/scoped-db";
 import { returnedRows } from "../common/db/query-result";
 import { validateSplitAmountSum } from "../common/split-amount.util";
 import { roundMoney, sumMoney } from "../common/round.util";
+import { PayrollDeductionRule } from "../payroll-deductions/entities/payroll-deduction-rule.entity";
+import { applyPayrollDeductionCaps } from "../payroll-deductions/payroll-deduction-cap";
+import {
+  loadScheduledPayrollDeductions,
+  ScheduledPayrollDeduction,
+} from "../payroll-deductions/payroll-deduction-read-model";
 import {
   applyFxConversion,
   assertTransactionCurrencyMatchesAccount,
@@ -240,6 +246,12 @@ export type ScheduledTransactionReadModel = ScheduledTransaction & {
    * what makes the addition sound.
    */
   settlementAccountId: string;
+  /**
+   * The payroll deduction rules on this bill with their figures as of today
+   * (docs/specs/payroll-deductions.md section 5.3): what the forecast spends
+   * occurrence by occurrence. Empty for a bill without a rule.
+   */
+  payrollDeductions: ScheduledPayrollDeduction[];
 };
 
 /**
@@ -1706,11 +1718,21 @@ export class ScheduledTransactionsService {
         }
       }
 
+      // The payroll deduction figures ride the same read so the forecast
+      // needs no second fetch (docs/specs/payroll-deductions.md section 5.3).
+      const payrollDeductions = await loadScheduledPayrollDeductions(
+        m,
+        userId,
+        transactions,
+        todayYMD(),
+      );
+
       return transactions.map((transaction) => ({
         ...transaction,
         overrideCount: countMap.get(transaction.id) || 0,
         nextOverride: nextOverrideMap.get(transaction.id) || null,
         futureOverrides: futureOverridesMap.get(transaction.id) || [],
+        payrollDeductions: payrollDeductions.get(transaction.id) ?? [],
       }));
     });
 
@@ -3712,6 +3734,41 @@ export class ScheduledTransactionsService {
               transactionPayload.splits.map((s: any) => Number(s.amount)),
             );
           }
+        }
+      }
+
+      // A deduction line a payroll rule names is reduced to the room left
+      // under its yearly maximum on the posting date, whichever path built
+      // the lines (base, override or the dialog's echo): the cap is a
+      // ceiling, read under this lock from the ledger as it stands
+      // (docs/specs/payroll-deductions.md decision 5, INV-PAYROLL-002). An
+      // FX, investment or transfer posting carries no such line and is left
+      // alone; a re-summed parent keeps the split validator satisfied.
+      if (
+        useSplits &&
+        !current.isInvestment &&
+        !preparedTransfer &&
+        !fx &&
+        !skipFinancialWrite &&
+        Array.isArray(transactionPayload.splits) &&
+        !transactionPayload.splits.some((s: any) => s.investment)
+      ) {
+        const rules = await m
+          .getRepository(PayrollDeductionRule)
+          .find({ where: { scheduledTransactionId: id, userId } });
+        const capped = await applyPayrollDeductionCaps(
+          m,
+          userId,
+          rules,
+          current.currencyCode,
+          postDate,
+          transactionPayload.splits as any[],
+        );
+        if (capped.changed) {
+          transactionPayload.splits = capped.splits;
+          transactionPayload.amount = sumMoney(
+            capped.splits.map((s: any) => Number(s.amount)),
+          );
         }
       }
 

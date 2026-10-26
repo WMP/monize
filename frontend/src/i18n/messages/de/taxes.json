@@ -1,0 +1,89 @@
+{
+  "landing": {
+    "title": "Steuern",
+    "subtitle": "Werkzeuge für die Abzüge und Steuern, die Ihr Gehalt bestimmen",
+    "tools": {
+      "payrollDeductions": {
+        "title": "Lohnabzüge",
+        "description": "Legen Sie Jahreshöchstbeträge für Abzüge wie Rente und Arbeitslosenversicherung fest, und lassen Sie die Gehaltsabrechnung sie nicht mehr einziehen, sobald der Höchstbetrag erreicht ist."
+      }
+    }
+  },
+  "payroll": {
+    "title": "Lohnabzüge",
+    "subtitle": "Jahreshöchstbeträge für die Abzugszeilen Ihrer Gehaltsbuchung",
+    "backToTaxes": "Steuern",
+    "newButton": "+ Neue Regel",
+    "loading": "Lohnabzüge werden geladen...",
+    "emptyState": {
+      "title": "Noch keine Abzugsregeln",
+      "body": "Wählen Sie die geplante Buchung, die Ihre Gehaltsabrechnung ist, eine Abzugskategorie und deren Jahreshöchstbetrag. Die Buchung zieht den Betrag nicht mehr ein, sobald der Höchstbetrag erreicht ist, und beginnt am Rücksetzdatum neu.",
+      "createButton": "Erste Regel erstellen"
+    },
+    "yearToDate": {
+      "show": "Jahresstand anzeigen",
+      "hide": "Jahresstand ausblenden",
+      "title": "In diesem Zeitraum gezahlt",
+      "help": "Was die Kategorie im Zeitraum, der den heutigen Tag enthält, über alle Konten in der Währung der Buchung eingezogen hat.",
+      "foreignRows": "{count, plural, one {# Zeile} other {# Zeilen}} in einer anderen Währung nicht gezählt"
+    },
+    "list": {
+      "bill": "Buchung",
+      "category": "Kategorie",
+      "yearlyMaximum": "Jahreshöchstbetrag",
+      "resetsOn": "Zurücksetzung am",
+      "perPaycheque": "Pro Gehaltsabrechnung",
+      "period": "Zeitraum",
+      "paid": "Gezahlt",
+      "remaining": "Verbleibend",
+      "actions": "Aktionen",
+      "fromLine": "Aus der Zeile der Buchung",
+      "entered": "Eingegeben",
+      "expectedMissing": "Erwarteter Betrag erforderlich",
+      "periodRange": "{start} bis {end}"
+    },
+    "modal": {
+      "newTitle": "Neue Abzugsregel",
+      "editTitle": "Abzugsregel bearbeiten"
+    },
+    "form": {
+      "billLabel": "Geplante Gehaltsbuchung",
+      "billPlaceholder": "Wählen Sie die Buchung, die Ihre Gehaltsabrechnung ist",
+      "billHelp": "Die geplante Einzahlung, deren Zeilen die Abzüge enthalten. Nur ihre Kategoriezeilen können begrenzt werden.",
+      "categoryLabel": "Abzugskategorie",
+      "categoryPlaceholder": "Kategorie wählen",
+      "yearlyMaximumLabel": "Jahreshöchstbetrag",
+      "yearlyMaximumHelp": "Der Höchstbetrag, den diese Kategorie in einem Zeitraum einzieht, in der Währung der Buchung. Die Zeile wird auf den verbleibenden Spielraum reduziert, bis auf null.",
+      "resetPeriodLabel": "Zurücksetzung",
+      "resetDateLabel": "Rücksetzdatum",
+      "resetDateHelp": "Die Zählung beginnt jedes Jahr an diesem Tag neu. Meist der erste Tag des Jahres.",
+      "expectedLabel": "Erwartet pro Gehaltsabrechnung",
+      "expectedHelp": "Die Buchung hat keine Zeile für diese Kategorie, daher braucht die Prognose den Betrag, den jede Gehaltsabrechnung abzieht.",
+      "expectedFromLine": "Die Zeile der Buchung zieht {amount} pro Gehaltsabrechnung ab.",
+      "expectedSuggested": "Vorgeschlagen anhand Ihrer letzten Transaktion in dieser Kategorie.",
+      "periods": {
+        "YEARLY": "Jährlich"
+      },
+      "validation": {
+        "billRequired": "Wählen Sie die Gehaltsbuchung",
+        "categoryRequired": "Wählen Sie eine Kategorie",
+        "yearlyMaximumRequired": "Geben Sie den Jahreshöchstbetrag ein",
+        "resetDateRequired": "Geben Sie das Rücksetzdatum ein",
+        "expectedRequired": "Geben Sie den erwarteten Betrag pro Gehaltsabrechnung ein"
+      }
+    },
+    "delete": {
+      "title": "Abzugsregel löschen",
+      "message": "Die Regel {category} auf {bill} löschen? Gebuchte Transaktionen bleiben unverändert; die nächste Gehaltsabrechnung bucht ihre volle Zeile."
+    },
+    "toasts": {
+      "created": "Abzugsregel erstellt",
+      "updated": "Abzugsregel aktualisiert",
+      "deleted": "Abzugsregel gelöscht",
+      "loadFailed": "Lohnabzüge konnten nicht geladen werden",
+      "createFailed": "Abzugsregel konnte nicht erstellt werden",
+      "updateFailed": "Abzugsregel konnte nicht aktualisiert werden",
+      "deleteFailed": "Abzugsregel konnte nicht gelöscht werden"
+    }
+  }
+}

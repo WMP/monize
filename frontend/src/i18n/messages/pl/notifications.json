@@ -203,5 +203,9 @@
     "expiringMessage": "Gwarancja na {name} wygasa {date}. Otwórz ją, aby przejrzeć dokumenty lub zapisać zgłoszenie.",
     "todayTitle": "{name}: gwarancja wygasa dzisiaj",
     "todayMessage": "Gwarancja na {name} wygasa dzisiaj, {date}. Otwórz ją, aby przejrzeć dokumenty lub zapisać zgłoszenie."
+  },
+  "payrollDeduction": {
+    "resetTitle": "{category}: potwierdź maksimum na przyszły rok",
+    "resetMessage": "Potrącenie {category} w {bill} resetuje się {date}. Zaktualizuj roczne maksimum, jeśli się zmienia; w przeciwnym razie ponownie obowiązuje {amount}."
   }
 }

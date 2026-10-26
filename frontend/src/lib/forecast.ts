@@ -176,6 +176,53 @@ interface OverrideLookup {
   investmentForecastAmount?: number | null;
 }
 
+/** `ymd` one year on, the day clamped to the month (a leap day becomes the 28th). */
+function advanceOneYear(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const lastDay = new Date(y + 1, m, 0).getDate();
+  return `${y + 1}-${String(m).padStart(2, '0')}-${String(Math.min(d, lastDay)).padStart(2, '0')}`;
+}
+
+/**
+ * The payroll deduction rules on a bill, spent occurrence by occurrence
+ * (docs/specs/payroll-deductions.md decision 7, INV-PAYROLL-003).
+ *
+ * Each rule starts from the server's `remaining` -- the room left under the
+ * yearly maximum as of today, read from the ledger -- and every occurrence
+ * walked spends the expected deduction against it. The part the room cannot
+ * cover is what the paycheque stops deducting, so it is added back to the
+ * occurrence's amount; an occurrence on or after the reset date refills the
+ * room to the maximum first. A rule with no expected figure (no line on the
+ * bill and nothing entered) projects nothing, and a bill without rules walks
+ * unchanged. `null` when there is nothing to spend.
+ */
+function deductionWalker(
+  transaction: ScheduledTransaction,
+): ((dateKey: string, projectAddBack: boolean) => number) | null {
+  const state = (transaction.payrollDeductions ?? [])
+    .filter(r => r.expectedPerPaycheque != null && Number(r.expectedPerPaycheque) > 0)
+    .map(r => ({
+      expected: Number(r.expectedPerPaycheque),
+      maximum: Number(r.yearlyMaximum),
+      remaining: Number(r.remaining),
+      nextResetOn: r.nextResetOn,
+    }));
+  if (state.length === 0) return null;
+  return (dateKey, projectAddBack) => {
+    let addBack = 0;
+    for (const rule of state) {
+      while (dateKey >= rule.nextResetOn) {
+        rule.remaining = rule.maximum;
+        rule.nextResetOn = advanceOneYear(rule.nextResetOn);
+      }
+      const applied = Math.min(rule.expected, Math.max(0, rule.remaining));
+      rule.remaining = roundMoney(rule.remaining - applied);
+      if (projectAddBack) addBack += rule.expected - applied;
+    }
+    return roundMoney(addBack);
+  };
+}
+
 /**
  * Generate all occurrence dates for a scheduled transaction within a date range.
  * Uses override data (amount, date) from futureOverrides for each occurrence.
@@ -230,6 +277,8 @@ function generateOccurrences(
   // total). Every base occurrence inherits it; so does an override that falls
   // through to the base amount.
   const baseUnknown = hasUnknownForecastRate(transaction);
+  // Spent in walk order, only for occurrences the window keeps.
+  const spendDeductions = deductionWalker(transaction);
 
   // Build override lookup map: originalDate -> override
   const overrideMap = new Map<string, OverrideLookup>();
@@ -266,18 +315,30 @@ function generateOccurrences(
   const baseIsInvestment = transaction.isInvestment === true;
   const resolveOccurrence = (
     override: OverrideLookup | undefined,
-  ): { amount: number; unknown: boolean } => {
+  ): { amount: number; unknown: boolean; stated: boolean } => {
     if (override && (baseIsInvestment || override.hasInvestmentSplits)) {
       if (override.investmentForecastAmount == null) {
-        return { amount: 0, unknown: true };
+        return { amount: 0, unknown: true, stated: true };
       }
-      return { amount: override.investmentForecastAmount, unknown: false };
+      return { amount: override.investmentForecastAmount, unknown: false, stated: true };
     }
     if (override && override.amount != null) {
-      return { amount: Number(override.amount), unknown: false };
+      return { amount: Number(override.amount), unknown: false, stated: true };
     }
     // No override, or an override that reuses the base amount.
-    return { amount: baseAmount, unknown: baseUnknown };
+    return { amount: baseAmount, unknown: baseUnknown, stated: false };
+  };
+
+  // The occurrence's amount once its deductions are spent against the room
+  // left: an amount an override states is projected as stated and still
+  // spends; the base amount rises by what the room cannot cover.
+  const withDeductions = (
+    resolved: { amount: number; unknown: boolean; stated: boolean },
+    dateKey: string,
+  ): { amount: number; unknown: boolean } => {
+    if (!spendDeductions) return resolved;
+    const addBack = spendDeductions(dateKey, !resolved.stated);
+    return { amount: roundMoney(resolved.amount + addBack), unknown: resolved.unknown };
   };
 
   // For ONCE frequency, just check if it's in range
@@ -285,10 +346,11 @@ function generateOccurrences(
     const slotKey = formatDateKey(currentDate);
     const override = overrideMap.get(slotKey);
     const effectiveDate = override?.overrideDate ? parseLocalDate(override.overrideDate) : currentDate;
-    const { amount, unknown } = resolveOccurrence(override);
     const effectiveTime = effectiveDate.getTime();
-    const placed = place(effectiveTime, formatDateKey(effectiveDate), slotKey);
+    const effectiveKey = formatDateKey(effectiveDate);
+    const placed = place(effectiveTime, effectiveKey, slotKey);
     if (placed && (!txEndTime || effectiveTime <= txEndTime)) {
+      const { amount, unknown } = withDeductions(resolveOccurrence(override), effectiveKey);
       occurrences.push({ ...placed, amount, unknown });
     }
     return occurrences;
@@ -319,12 +381,11 @@ function generateOccurrences(
     const effectiveDateKey = override?.overrideDate && override.overrideDate !== currentDateKey
       ? formatDateKey(effectiveDate)
       : currentDateKey;
-    const { amount, unknown } = resolveOccurrence(override);
-
     // Only include if effective date is within our forecast range (or, when
     // carrying, before it)
     const placed = place(effectiveTime, effectiveDateKey, currentDateKey);
     if (placed) {
+      const { amount, unknown } = withDeductions(resolveOccurrence(override), effectiveDateKey);
       occurrences.push({ ...placed, amount, unknown });
     }
 

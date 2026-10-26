@@ -24,6 +24,10 @@ Paths beginning with `src/` or `scripts/`, and layer configuration filenames, ar
 
 `lib/scheduled-effective-amount.guard.test.ts` scans `src/` for the `override.amount ?? …amount` fingerprint, for a client-side recurrence expansion outside those exemptions, and for the report actually calling `getOccurrences` -- import presence is not proof, since the report imported this helper throughout the period it was applying one amount to every occurrence. `PostTransactionDialog` is the one fallback exemption: it seeds the POST form's editable field, which is the write path. Issue #1247, INV-OCCURRENCE-003.
 
+## A paycheque's deduction lines are capped by the server's `payrollDeductions`, never by a client sum
+
+A scheduled bill carries `payrollDeductions` (`docs/specs/payroll-deductions.md` section 5.3): per rule, the room left under the yearly maximum as of today (`remaining`, read from the ledger), the expected deduction per paycheque and the next reset date. `lib/forecast.ts` spends that room occurrence by occurrence, adds what the room cannot cover back to the paycheque, and refills it on the reset date (`deductionWalker`). No surface re-derives `paidToDate` or `remaining` from transactions, and an absent field (an older backend) or a rule with no expected figure leaves the bill projected as stored. The posting applies the same `capDeductionLine` on the server, so the projection and the booked line agree (INV-PAYROLL-003).
+
 ## The calendar prints figures; it never works one out
 
 Every number a month grid shows is one the server already decided: a row's own `amount` and `currencyCode` from `GET /transactions`, an occurrence's from `GET /scheduled-transactions/occurrences`. `components/calendar/` adds nothing up -- no day total, no per-account subtotal, no conversion. A day holding a CAD row beside a USD one shows two chips, not one sum, because a sum would need a rate the grid has no business fetching and no honest way to withhold at chip size.

@@ -4,6 +4,7 @@ import { Category } from './category';
 import { Tag } from './tag';
 import { InvestmentAction, Security } from './investment';
 import { SplitKind, InvestmentSplitDetails } from './transaction';
+import type { ScheduledPayrollDeduction } from './payroll-deduction';
 
 /**
  * Every frequency a scheduled transaction can have, ordered shortest period
@@ -158,6 +159,11 @@ export interface ScheduledTransaction {
   // onto `accountId`, which charged the brokerage for cash it never moved
   // (issue #1247).
   settlementAccountId?: string;
+  // Read-only, server-resolved: the payroll deduction rules on this bill with
+  // their figures as of today (docs/specs/payroll-deductions.md section 5.3).
+  // The forecast spends `remaining` occurrence by occurrence and never
+  // re-derives it. Absent on an older backend; empty for a bill without a rule.
+  payrollDeductions?: ScheduledPayrollDeduction[];
   tagIds?: string[];
   splits?: ScheduledTransactionSplit[];
   overrideCount?: number;

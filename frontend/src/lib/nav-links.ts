@@ -18,6 +18,7 @@ import {
   HashtagIcon,
   InboxStackIcon,
   LightBulbIcon,
+  ReceiptPercentIcon,
   ServerStackIcon,
   ShieldCheckIcon,
   Squares2X2Icon,
@@ -63,6 +64,8 @@ export const TOOLS_LINKS: NavLinkDef[] = [
   { href: '/rules', labelKey: 'rules' },
   { href: '/warranties', labelKey: 'warranties' },
   { href: '/email-receipts', labelKey: 'emailReceipts', ownerOnly: true },
+  // Owner-only: every /payroll-deductions route refuses a delegate session.
+  { href: '/taxes', labelKey: 'taxes', ownerOnly: true },
   { href: '/import', labelKey: 'import' },
 ];
 
@@ -102,6 +105,7 @@ export const NAV_ICONS: Record<string, NavIcon> = {
   '/rules': BoltIcon,
   '/warranties': ShieldCheckIcon,
   '/email-receipts': EnvelopeIcon,
+  '/taxes': ReceiptPercentIcon,
   '/securities': BanknotesIcon,
   '/currencies': CurrencyDollarIcon,
   '/import': ArrowDownTrayIcon,

@@ -54,6 +54,7 @@ const NAMESPACES = [
   "share",
   "strategies",
   "tags",
+  "taxes",
   "tours",
   "transactions",
   "warranties",

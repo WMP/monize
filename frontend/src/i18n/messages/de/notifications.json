@@ -203,5 +203,9 @@
     "expiringMessage": "Die Garantie für {name} läuft am {date} ab. Öffnen Sie sie, um ihre Dokumente zu prüfen oder einen Anspruch zu erfassen.",
     "todayTitle": "{name}: Garantie läuft heute ab",
     "todayMessage": "Die Garantie für {name} läuft heute, am {date}, ab. Öffnen Sie sie, um ihre Dokumente zu prüfen oder einen Anspruch zu erfassen."
+  },
+  "payrollDeduction": {
+    "resetTitle": "{category}: Höchstbetrag für das nächste Jahr bestätigen",
+    "resetMessage": "Der Abzug {category} auf {bill} wird am {date} zurückgesetzt. Aktualisieren Sie den Jahreshöchstbetrag, falls er sich ändert; andernfalls gilt wieder {amount}."
   }
 }

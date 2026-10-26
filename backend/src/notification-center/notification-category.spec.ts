@@ -126,6 +126,7 @@ describe("notification type partition", () => {
       [
         NotificationType.BILL_DUE,
         NotificationType.SCHEDULED_POST_FAILED,
+        NotificationType.PAYROLL_DEDUCTION_RESET_DUE,
       ].sort(),
     );
     expect(byCategory[NotificationCategory.SYSTEM].sort()).toEqual(
@@ -185,6 +186,7 @@ describe("notification type partition", () => {
         (t) =>
           t !== NotificationType.BILL_DUE &&
           t !== NotificationType.SCHEDULED_POST_FAILED &&
+          t !== NotificationType.PAYROLL_DEDUCTION_RESET_DUE &&
           !SYSTEM_NOTIFICATION_TYPES.includes(t) &&
           !BALANCE_NOTIFICATION_TYPES.includes(t) &&
           !INVESTMENT_NOTIFICATION_TYPES.includes(t) &&

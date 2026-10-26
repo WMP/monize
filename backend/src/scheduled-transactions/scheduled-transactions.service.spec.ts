@@ -11,6 +11,7 @@ import { ScheduledOccurrenceService } from "./scheduled-occurrence.service";
 import { ScheduledTransaction } from "./entities/scheduled-transaction.entity";
 import { ScheduledTransactionSplit } from "./entities/scheduled-transaction-split.entity";
 import { ScheduledTransactionOverride } from "./entities/scheduled-transaction-override.entity";
+import { PayrollDeductionRule } from "../payroll-deductions/entities/payroll-deduction-rule.entity";
 import { Account } from "../accounts/entities/account.entity";
 import { LoanRateChange } from "../loan-rate-changes/entities/loan-rate-change.entity";
 import { Tag } from "../tags/entities/tag.entity";
@@ -47,6 +48,7 @@ describe("ScheduledTransactionsService", () => {
   let accountsRepo: Record<string, jest.Mock>;
   let tagRepo: Record<string, jest.Mock>;
   let preferencesRepo: Record<string, jest.Mock>;
+  let payrollRulesRepo: Record<string, jest.Mock>;
   let accountsService: Record<string, jest.Mock>;
   let transactionsService: Record<string, jest.Mock>;
   // The FX trio the effective-amount resolver reads, plus the `create` the
@@ -227,6 +229,7 @@ describe("ScheduledTransactionsService", () => {
     preferencesRepo = {
       findOne: jest.fn().mockResolvedValue({ defaultCurrency: "USD" }),
     };
+    payrollRulesRepo = { find: jest.fn().mockResolvedValue([]) };
 
     const tenantMocks = createScopedDbMocks([
       [ScheduledTransaction, scheduledRepo],
@@ -239,6 +242,9 @@ describe("ScheduledTransactionsService", () => {
       [LoanRateChange, { find: jest.fn().mockResolvedValue([]) }],
       [Tag, tagRepo],
       [UserPreference, preferencesRepo],
+      // No payroll deduction rule on any fixture: the posting cap and the
+      // read model's figures find nothing to apply.
+      [PayrollDeductionRule, payrollRulesRepo],
     ]);
     mockDataSource = tenantMocks.dataSource;
     // The timezone fan-out now runs through withScopedDb too, so its raw SQL
@@ -3689,6 +3695,71 @@ describe("ScheduledTransactionsService", () => {
       const payload = transactionsService.create.mock.calls[0][1];
       expect(payload.splits).toHaveLength(2);
       expect(payload.splits[0].amount).toBe(-700);
+    });
+
+    it("caps a deduction line a payroll rule names and re-sums the parent (INV-PAYROLL-002)", async () => {
+      const scheduled = makeScheduled({
+        isSplit: true,
+        amount: 2436,
+        splits: [
+          {
+            id: "s1",
+            scheduledTransactionId: stId,
+            categoryId: "cat-gross",
+            transferAccountId: null,
+            amount: 2500,
+            memo: null,
+          } as any,
+          {
+            id: "s2",
+            scheduledTransactionId: stId,
+            categoryId: "cat-ei",
+            transferAccountId: null,
+            amount: -64,
+            memo: null,
+          } as any,
+        ],
+      });
+      stubFindOne(scheduled);
+      const overrideQb = mockQueryBuilder(null);
+      overrideQb.getOne.mockResolvedValue(null);
+      overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+      accountsRepo.findOne.mockResolvedValue(null);
+      payrollRulesRepo.find.mockResolvedValue([
+        {
+          id: "rule-1",
+          categoryId: "cat-ei",
+          yearlyMaximum: 1077.48,
+          resetDate: "2025-01-01",
+          expectedPerPaycheque: null,
+        },
+      ]);
+      // The ledger already holds 1,024 of EI in the posting date's period.
+      const base = mockDataSource.query.getMockImplementation()!;
+      mockDataSource.query.mockImplementation(
+        async (sql: string, params?: unknown[]) => {
+          if (String(sql).includes("foreign_rows")) {
+            expect(params).toEqual([
+              userId,
+              "cat-ei",
+              "2025-01-01",
+              "2025-12-31",
+              "USD",
+            ]);
+            return [{ total: "-1024", foreign_rows: "0" }];
+          }
+          return base(sql, params);
+        },
+      );
+
+      await service.post(userId, stId);
+
+      expect(payrollRulesRepo.find).toHaveBeenCalledWith({
+        where: { scheduledTransactionId: stId, userId },
+      });
+      const payload = transactionsService.create.mock.calls[0][1];
+      expect(payload.splits.map((s: any) => s.amount)).toEqual([2500, -53.48]);
+      expect(payload.amount).toBe(2446.52);
     });
 
     it("should use postDto.transactionDate when provided", async () => {

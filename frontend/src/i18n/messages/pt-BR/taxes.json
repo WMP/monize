@@ -1,0 +1,89 @@
+{
+  "landing": {
+    "title": "Impostos",
+    "subtitle": "Ferramentas para as deduções e impostos que moldam o seu salário",
+    "tools": {
+      "payrollDeductions": {
+        "title": "Deduções salariais",
+        "description": "Defina máximos anuais para deduções como pensão e seguro de desemprego, e deixe o salário parar de as cobrar quando o máximo for atingido."
+      }
+    }
+  },
+  "payroll": {
+    "title": "Deduções salariais",
+    "subtitle": "Máximos anuais nas linhas de dedução da sua fatura de salário",
+    "backToTaxes": "Impostos",
+    "newButton": "+ Nova regra",
+    "loading": "Carregando deduções salariais...",
+    "emptyState": {
+      "title": "Ainda sem regras de dedução",
+      "body": "Escolha a fatura agendada que é o seu salário, uma categoria de dedução e o seu máximo anual. A fatura deixa de a cobrar quando o máximo é atingido e recomeça na data de reinício.",
+      "createButton": "Criar a sua primeira regra"
+    },
+    "yearToDate": {
+      "show": "Mostrar acumulado do ano",
+      "hide": "Ocultar acumulado do ano",
+      "title": "Pago neste período",
+      "help": "O que a categoria cobrou no período que contém hoje, em todas as contas, na moeda da fatura.",
+      "foreignRows": "{count, plural, one {# linha} other {# linhas}} em outra moeda não contadas"
+    },
+    "list": {
+      "bill": "Fatura",
+      "category": "Categoria",
+      "yearlyMaximum": "Máximo anual",
+      "resetsOn": "Reinicia em",
+      "perPaycheque": "Por salário",
+      "period": "Período",
+      "paid": "Pago",
+      "remaining": "Restante",
+      "actions": "Ações",
+      "fromLine": "Da linha da fatura",
+      "entered": "Informado",
+      "expectedMissing": "Montante previsto necessário",
+      "periodRange": "{start} a {end}"
+    },
+    "modal": {
+      "newTitle": "Nova regra de dedução",
+      "editTitle": "Editar regra de dedução"
+    },
+    "form": {
+      "billLabel": "Fatura de salário agendada",
+      "billPlaceholder": "Selecione a fatura que é o seu salário",
+      "billHelp": "O depósito agendado cujas linhas contêm as deduções. Só as suas linhas de categoria podem ser limitadas.",
+      "categoryLabel": "Categoria de dedução",
+      "categoryPlaceholder": "Selecione uma categoria",
+      "yearlyMaximumLabel": "Máximo anual",
+      "yearlyMaximumHelp": "O máximo que esta categoria cobra em um período, na moeda da fatura. A linha é reduzida à margem restante, até zero.",
+      "resetPeriodLabel": "Reinicia",
+      "resetDateLabel": "Data de reinício",
+      "resetDateHelp": "A contagem recomeça neste dia todos os anos. Normalmente o primeiro dia do ano.",
+      "expectedLabel": "Previsto por salário",
+      "expectedHelp": "A fatura não tem uma linha para esta categoria, por isso a previsão precisa do montante que cada salário deduz.",
+      "expectedFromLine": "A linha da fatura deduz {amount} por salário.",
+      "expectedSuggested": "Sugerido a partir da sua transação mais recente nesta categoria.",
+      "periods": {
+        "YEARLY": "Anual"
+      },
+      "validation": {
+        "billRequired": "Escolha a fatura de salário",
+        "categoryRequired": "Escolha uma categoria",
+        "yearlyMaximumRequired": "Informe o máximo anual",
+        "resetDateRequired": "Informe a data de reinício",
+        "expectedRequired": "Informe o montante previsto por salário"
+      }
+    },
+    "delete": {
+      "title": "Eliminar regra de dedução",
+      "message": "Eliminar a regra {category} em {bill}? As transações registradas não mudam; o próximo salário registra a sua linha completa."
+    },
+    "toasts": {
+      "created": "Regra de dedução criada",
+      "updated": "Regra de dedução atualizada",
+      "deleted": "Regra de dedução eliminada",
+      "loadFailed": "Não foi possível carregar as deduções salariais",
+      "createFailed": "Não foi possível criar a regra de dedução",
+      "updateFailed": "Não foi possível atualizar a regra de dedução",
+      "deleteFailed": "Não foi possível eliminar a regra de dedução"
+    }
+  }
+}

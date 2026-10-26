@@ -1,0 +1,89 @@
+{
+  "landing": {
+    "title": "Belastingen",
+    "subtitle": "Hulpmiddelen voor de inhoudingen en belastingen die uw loon bepalen",
+    "tools": {
+      "payrollDeductions": {
+        "title": "Looninhoudingen",
+        "description": "Stel jaarmaxima in voor inhoudingen zoals pensioen en werkloosheidsverzekering, en laat de loonstrook ze niet meer innen zodra het maximum is bereikt."
+      }
+    }
+  },
+  "payroll": {
+    "title": "Looninhoudingen",
+    "subtitle": "Jaarmaxima op de inhoudingsregels van uw loonrekening",
+    "backToTaxes": "Belastingen",
+    "newButton": "+ Nieuwe regel",
+    "loading": "Looninhoudingen laden...",
+    "emptyState": {
+      "title": "Nog geen inhoudingsregels",
+      "body": "Kies de geplande rekening die uw loonstrook is, een inhoudingscategorie en het jaarmaximum ervan. De rekening stopt met innen zodra het maximum is bereikt en begint opnieuw op de resetdatum.",
+      "createButton": "Maak uw eerste regel"
+    },
+    "yearToDate": {
+      "show": "Jaar tot nu toe tonen",
+      "hide": "Jaar tot nu toe verbergen",
+      "title": "Betaald deze periode",
+      "help": "Wat de categorie heeft geïnd in de periode die vandaag bevat, over alle rekeningen, in de valuta van de rekening.",
+      "foreignRows": "{count, plural, one {# regel} other {# regels}} in een andere valuta niet meegeteld"
+    },
+    "list": {
+      "bill": "Rekening",
+      "category": "Categorie",
+      "yearlyMaximum": "Jaarmaximum",
+      "resetsOn": "Reset op",
+      "perPaycheque": "Per loonstrook",
+      "period": "Periode",
+      "paid": "Betaald",
+      "remaining": "Resterend",
+      "actions": "Acties",
+      "fromLine": "Uit de regel van de rekening",
+      "entered": "Ingevoerd",
+      "expectedMissing": "Verwacht bedrag nodig",
+      "periodRange": "{start} tot {end}"
+    },
+    "modal": {
+      "newTitle": "Nieuwe inhoudingsregel",
+      "editTitle": "Inhoudingsregel bewerken"
+    },
+    "form": {
+      "billLabel": "Geplande loonrekening",
+      "billPlaceholder": "Selecteer de rekening die uw loonstrook is",
+      "billHelp": "De geplande storting waarvan de regels de inhoudingen bevatten. Alleen de categorieregels ervan kunnen worden begrensd.",
+      "categoryLabel": "Inhoudingscategorie",
+      "categoryPlaceholder": "Selecteer een categorie",
+      "yearlyMaximumLabel": "Jaarmaximum",
+      "yearlyMaximumHelp": "Het meeste dat deze categorie in één periode int, in de valuta van de rekening. De regel wordt verlaagd tot de resterende ruimte, tot nul.",
+      "resetPeriodLabel": "Reset",
+      "resetDateLabel": "Resetdatum",
+      "resetDateHelp": "De telling begint elk jaar op deze dag opnieuw. Meestal de eerste dag van het jaar.",
+      "expectedLabel": "Verwacht per loonstrook",
+      "expectedHelp": "De rekening heeft geen regel voor deze categorie, dus de prognose heeft het bedrag nodig dat elke loonstrook inhoudt.",
+      "expectedFromLine": "De regel van de rekening houdt {amount} per loonstrook in.",
+      "expectedSuggested": "Voorgesteld op basis van uw meest recente transactie in deze categorie.",
+      "periods": {
+        "YEARLY": "Jaarlijks"
+      },
+      "validation": {
+        "billRequired": "Kies de loonrekening",
+        "categoryRequired": "Kies een categorie",
+        "yearlyMaximumRequired": "Voer het jaarmaximum in",
+        "resetDateRequired": "Voer de resetdatum in",
+        "expectedRequired": "Voer het verwachte bedrag per loonstrook in"
+      }
+    },
+    "delete": {
+      "title": "Inhoudingsregel verwijderen",
+      "message": "De regel {category} op {bill} verwijderen? Geboekte transacties veranderen niet; de volgende loonstrook boekt de volledige regel."
+    },
+    "toasts": {
+      "created": "Inhoudingsregel aangemaakt",
+      "updated": "Inhoudingsregel bijgewerkt",
+      "deleted": "Inhoudingsregel verwijderd",
+      "loadFailed": "Looninhoudingen konden niet worden geladen",
+      "createFailed": "Inhoudingsregel kon niet worden aangemaakt",
+      "updateFailed": "Inhoudingsregel kon niet worden bijgewerkt",
+      "deleteFailed": "Inhoudingsregel kon niet worden verwijderd"
+    }
+  }
+}

@@ -256,6 +256,10 @@
       "todayTitle": "[XX-{{ name }}: warranty expires today-XX]",
       "todayMessage": "[XX-The warranty for {{ name }} expires today, {{ date }}. Open to review its documents or record a claim.-XX]"
     },
+    "payrollDeduction": {
+      "resetTitle": "[XX-{{ category }}: confirm next year's maximum-XX]",
+      "resetMessage": "[XX-The {{ category }} deduction on {{ bill }} resets on {{ date }}. Update the yearly maximum if it changes; otherwise {{ amount }} applies again.-XX]"
+    },
     "portfolioMovement": {
       "titleUp": "[XX-Investments up {{ percent }}%-XX]",
       "titleDown": "[XX-Investments down {{ percent }}%-XX]",

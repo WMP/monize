@@ -2451,3 +2451,123 @@ describe('forecast money arithmetic (integer 1/10000 units, one rounding for dis
     });
   });
 });
+
+/**
+ * Payroll deduction rules (docs/specs/payroll-deductions.md decision 7,
+ * INV-PAYROLL-003): the walk spends the server's `remaining` occurrence by
+ * occurrence, adds the uncollected part back to the paycheque, and refills
+ * the room on the reset date. The spec's section 7 example, on a biweekly
+ * paycheque of 2,436 net whose EI line is 64.
+ */
+describe('buildForecast with payroll deductions', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 3, 10)); // Apr 10, 2026
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const eiRule = (remaining: number) => ({
+    ruleId: 'rule-ei',
+    categoryId: 'cat-ei',
+    categoryName: 'EI',
+    yearlyMaximum: 1077.48,
+    expectedPerPaycheque: 64,
+    expectedSource: 'line' as const,
+    periodStart: '2026-01-01',
+    periodEnd: '2026-12-31',
+    nextResetOn: '2027-01-01',
+    paidToDate: 1077.48 - remaining,
+    remaining,
+    foreignCurrencyRows: 0,
+    currencyCode: 'USD',
+  });
+
+  const paycheque = (overrides: Partial<ScheduledTransaction> = {}) =>
+    makeScheduled({
+      id: 'st-pay',
+      name: 'Paycheque',
+      amount: 2436,
+      frequency: 'BIWEEKLY',
+      nextDueDate: '2026-04-24',
+      ...overrides,
+    });
+
+  /** The paycheque's amount on each occurrence the window holds, by date. */
+  const paycheques = (points: ReturnType<typeof forecastPoints>) =>
+    points
+      .flatMap(p => p.transactions.map(tx => [p.date, tx.amount] as const))
+      .filter(([, amount]) => amount !== 0 || true);
+
+  it('reduces the paycheque by nothing while the room covers the deduction', () => {
+    const points = forecastPoints([makeAccount()], [paycheque({ payrollDeductions: [eiRule(1000)] })], 'month', 'all');
+    expect(paycheques(points)).toEqual([['2026-04-24', 2436], ['2026-05-08', 2436]]);
+  });
+
+  it('adds the uncollected part back once the room runs out (spec section 7)', () => {
+    const points = forecastPoints([makeAccount()], [paycheque({ payrollDeductions: [eiRule(53.48)] })], 'month', 'all');
+    expect(paycheques(points)).toEqual([
+      ['2026-04-24', 2446.52],
+      ['2026-05-08', 2500],
+    ]);
+  });
+
+  it('refills the room on the reset date', () => {
+    vi.setSystemTime(new Date(2026, 11, 10)); // Dec 10, 2026
+    const points = forecastPoints(
+      [makeAccount()],
+      [paycheque({ nextDueDate: '2026-12-18', payrollDeductions: [eiRule(0)] })],
+      'month',
+      'all',
+    );
+    expect(paycheques(points)).toEqual([
+      ['2026-12-18', 2500],
+      ['2027-01-01', 2436],
+    ]);
+  });
+
+  it('projects an overridden amount as stated and still spends the room', () => {
+    const points = forecastPoints(
+      [makeAccount()],
+      [
+        paycheque({
+          payrollDeductions: [eiRule(53.48)],
+          futureOverrides: [
+            { originalDate: '2026-04-24', overrideDate: '2026-04-24', amount: 3000 } as never,
+          ],
+        }),
+      ],
+      'month',
+      'all',
+    );
+    expect(paycheques(points)).toEqual([
+      ['2026-04-24', 3000],
+      ['2026-05-08', 2500],
+    ]);
+  });
+
+  it('leaves a bill alone when the rule has no expected figure or the field is absent', () => {
+    const unknown = { ...eiRule(53.48), expectedPerPaycheque: null, expectedSource: null };
+    const withUnknown = forecastPoints([makeAccount()], [paycheque({ payrollDeductions: [unknown] })], 'month', 'all');
+    expect(paycheques(withUnknown)).toEqual([['2026-04-24', 2436], ['2026-05-08', 2436]]);
+    const older = forecastPoints([makeAccount()], [paycheque()], 'month', 'all');
+    expect(paycheques(older)).toEqual([['2026-04-24', 2436], ['2026-05-08', 2436]]);
+  });
+
+  it('shares one walk between the single and the per-account forecasts', () => {
+    const multi = buildMultiAccountForecast(
+      [makeAccount()],
+      [paycheque({ payrollDeductions: [eiRule(53.48)] })],
+      'month',
+      ['acc-1'],
+    );
+    expect(
+      multi.points.flatMap(p => p.transactions.map(tx => [p.date, tx.amount])),
+    ).toEqual([
+      ['2026-04-24', 2446.52],
+      ['2026-05-08', 2500],
+    ]);
+  });
+});

@@ -308,6 +308,11 @@
     "noOpenPeriod": "Geen open periode om te sluiten",
     "categoryIdsNotOwned": "Categorie-ID's niet gevonden of niet eigendom van gebruiker: {{ ids }}"
   },
+  "payrollDeductions": {
+    "notFound": "Looninhoudingsregel {{ id }} niet gevonden",
+    "duplicate": "Deze rekening heeft al een regel voor die categorie",
+    "expectedRequired": "De rekening heeft geen regel voor deze categorie; voer het verwachte bedrag per loonstrook in"
+  },
   "categories": {
     "notFound": "Categorie met ID {{ id }} niet gevonden",
     "cannotModifySystem": "Systeemcategorieën kunnen niet worden gewijzigd",
