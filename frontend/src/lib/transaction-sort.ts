@@ -53,6 +53,16 @@ export function nextTransactionSort(
 }
 
 /**
+ * The sortable fields the phone card does not show. The card carries date,
+ * payee, amount, balance, category, status and account, and leaves out
+ * description and ref #, so the phone sort strip offers no chip for either.
+ */
+export const PHONE_CARD_OMITTED_SORT_FIELDS: ReadonlySet<TransactionSortField> = new Set([
+  'description',
+  'refNumber',
+]);
+
+/**
  * The sort actually in force, which is not always the one that was stored.
  *
  * On a single account's page the Account column is not rendered at all, so a
@@ -69,6 +79,12 @@ export function nextTransactionSort(
  * same way, storage untouched -- showing the column again restores the
  * remembered sort on the next render.
  *
+ * The phone card (a phone at Normal density, `useRegisterPhoneCard`) is the
+ * same shape for the fields it does not show, `PHONE_CARD_OMITTED_SORT_FIELDS`:
+ * the card has no column for them and the strip no chip, so a sort remembered
+ * from the tier table falls back while the card is drawn, storage untouched --
+ * switching back to Compact or a wider window restores it.
+ *
  * A remembered value the server would refuse falls back the same way. Browser
  * storage outlives the code that wrote it: a field this build dropped, a
  * hand-edited entry or one from a future build all come back verbatim, and
@@ -79,6 +95,7 @@ export function resolveRegisterSort(
   sort: TransactionSort,
   isSingleAccountView: boolean,
   hiddenColumns: ReadonlySet<string>,
+  phoneCard: boolean,
 ): TransactionSort {
   const usable =
     !!sort &&
@@ -91,6 +108,9 @@ export function resolveRegisterSort(
     return DEFAULT_TRANSACTION_SORT;
   }
   if (hiddenColumns.has(sort.field)) {
+    return DEFAULT_TRANSACTION_SORT;
+  }
+  if (phoneCard && PHONE_CARD_OMITTED_SORT_FIELDS.has(sort.field)) {
     return DEFAULT_TRANSACTION_SORT;
   }
   return sort;

@@ -32,12 +32,13 @@ import { useFinancialToday } from '@/hooks/useFinancialToday';
 import { useTableDensity } from '@/hooks/useTableDensity';
 import { useDensityPreference, type DensityView } from '@/store/densityStore';
 import { useCompactMobileDates } from '@/store/dateDisplayStore';
-import { useIsMobile } from '@/hooks/useIsMobile';
+import { useRegisterPhoneCard } from '@/hooks/useRegisterPhoneCard';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import {
   isSortedByDate,
+  PHONE_CARD_OMITTED_SORT_FIELDS,
   TRANSACTION_SORT_FIELDS,
   type TransactionSort,
   type TransactionSortField,
@@ -316,17 +317,9 @@ export function TransactionList({
   const { formatCurrency } = useNumberFormat();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const { density } = useDensityPreference(densityView);
-  // Model B: on a phone, density picks the LAYOUT rather than only the row
-  // height. At Normal each row is a wrapped two-line card that shows more of
-  // the register than a phone-width tier table can without scrolling
-  // sideways; Compact and Dense keep the tier table, unchanged, and so does
-  // every non-phone width. Exactly one branch renders per row, chosen here.
-  const isMobile = useIsMobile();
-  // The foreign-currency fee surfaces (`showFxColumns`) keep the tier table on
-  // a phone: their whole subject is the paid-currency, paid-amount and fee
-  // columns, which the card does not carry, so wrapping there would hide the
-  // very data the surface exists to show.
-  const wrapped = isMobile && density === 'normal' && !showFxColumns;
+  // Model B: the phone card or the tier table. Exactly one branch renders per
+  // row, chosen here.
+  const wrapped = useRegisterPhoneCard(densityView, showFxColumns);
   const { compactMobileDates, toggleCompactMobileDates } = useCompactMobileDates();
   const compactPadding = registerDateColumnPadding(compactMobileDates);
 
@@ -607,9 +600,14 @@ export function TransactionList({
   // The Account column is not drawn on a single account's page, so it gets no
   // chip there either (the page resolves a remembered account sort away). A
   // hidden column's chip is omitted the same way: the page resolves a
-  // remembered sort on it to the date sort.
+  // remembered sort on it to the date sort. The strip is drawn only above the
+  // phone card, which shows no description or ref #, so those two get no chip
+  // either, and the page resolves a remembered sort on them the same way.
   const sortChipFields = TRANSACTION_SORT_FIELDS.filter(
-    (field) => (field !== 'account' || !isSingleAccountView) && isVisible(field),
+    (field) =>
+      (field !== 'account' || !isSingleAccountView) &&
+      isVisible(field) &&
+      !PHONE_CARD_OMITTED_SORT_FIELDS.has(field),
   );
 
   // The rows' own order, not the headers': turning the column back on the

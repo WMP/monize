@@ -68,11 +68,11 @@ describe('resolveRegisterSort', () => {
     // The column is not rendered on a single account's page, so a stored
     // account sort would order the register by a header nobody can reach.
     const stored: TransactionSort = { field: 'account', direction: 'asc' };
-    expect(resolveRegisterSort(stored, true, nothingHidden)).toEqual(
+    expect(resolveRegisterSort(stored, true, nothingHidden, false)).toEqual(
       DEFAULT_TRANSACTION_SORT,
     );
     // Storage is untouched, so widening the filter brings it back.
-    expect(resolveRegisterSort(stored, false, nothingHidden)).toBe(stored);
+    expect(resolveRegisterSort(stored, false, nothingHidden, false)).toBe(stored);
   });
 
   it('leaves every other field alone on either kind of page', () => {
@@ -80,8 +80,8 @@ describe('resolveRegisterSort', () => {
       (f) => f !== 'account',
     )) {
       const sort: TransactionSort = { field, direction: 'asc' };
-      expect(resolveRegisterSort(sort, true, nothingHidden)).toBe(sort);
-      expect(resolveRegisterSort(sort, false, nothingHidden)).toBe(sort);
+      expect(resolveRegisterSort(sort, true, nothingHidden, false)).toBe(sort);
+      expect(resolveRegisterSort(sort, false, nothingHidden, false)).toBe(sort);
     }
   });
 
@@ -94,19 +94,40 @@ describe('resolveRegisterSort', () => {
     for (const field of ['description', 'refNumber', 'status'] as const) {
       const stored: TransactionSort = { field, direction: 'asc' };
       const hidden = new Set<string>([field]);
-      expect(resolveRegisterSort(stored, false, hidden)).toEqual(
+      expect(resolveRegisterSort(stored, false, hidden, false)).toEqual(
         DEFAULT_TRANSACTION_SORT,
       );
-      expect(resolveRegisterSort(stored, true, hidden)).toEqual(
+      expect(resolveRegisterSort(stored, true, hidden, false)).toEqual(
         DEFAULT_TRANSACTION_SORT,
       );
-      expect(resolveRegisterSort(stored, false, nothingHidden)).toBe(stored);
+      expect(resolveRegisterSort(stored, false, nothingHidden, false)).toBe(stored);
     }
     // A hidden column the sort is not on changes nothing.
     const byPayee: TransactionSort = { field: 'payee', direction: 'asc' };
     expect(
-      resolveRegisterSort(byPayee, false, new Set(['status', 'tags'])),
+      resolveRegisterSort(byPayee, false, new Set(['status', 'tags']), false),
     ).toBe(byPayee);
+  });
+
+  it('drops a description or ref # sort while the phone card is drawn, storage untouched', () => {
+    // The card shows neither column and the phone strip offers no chip for
+    // them, so a sort remembered from the tier table (Compact, or a wider
+    // window) would order the card by a field the reader cannot see. The
+    // fallback is for this render only: back at the tier table, it returns.
+    for (const field of ['description', 'refNumber'] as const) {
+      const stored: TransactionSort = { field, direction: 'asc' };
+      expect(resolveRegisterSort(stored, false, nothingHidden, true)).toEqual(
+        DEFAULT_TRANSACTION_SORT,
+      );
+      expect(resolveRegisterSort(stored, false, nothingHidden, false)).toBe(stored);
+    }
+    // Every field the card does show keeps its sort.
+    for (const field of TRANSACTION_SORT_FIELDS.filter(
+      (f) => f !== 'description' && f !== 'refNumber',
+    )) {
+      const sort: TransactionSort = { field, direction: 'asc' };
+      expect(resolveRegisterSort(sort, false, nothingHidden, true)).toBe(sort);
+    }
   });
 
   it('refuses a remembered value the server would refuse', () => {
@@ -121,10 +142,10 @@ describe('resolveRegisterSort', () => {
       null,
     ];
     for (const stored of cases) {
-      expect(resolveRegisterSort(stored as never, false, nothingHidden)).toEqual(
+      expect(resolveRegisterSort(stored as never, false, nothingHidden, false)).toEqual(
         DEFAULT_TRANSACTION_SORT,
       );
-      expect(resolveRegisterSort(stored as never, true, nothingHidden)).toEqual(
+      expect(resolveRegisterSort(stored as never, true, nothingHidden, false)).toEqual(
         DEFAULT_TRANSACTION_SORT,
       );
     }
