@@ -444,11 +444,11 @@
             "body": "Estas tarjetas cuentan tus garantías en **Vencen pronto**, **Activas**, **Vencidas** y **De por vida**. Elige una tarjeta para filtrar la lista de abajo. También puedes buscar, ordenar y mostrar las garantías archivadas. Elige una garantía de la lista para abrir su página, con sus documentos, sus reclamaciones y la compra a la que está vinculada."
           },
           "addWarranty": {
-            "title": "Forma 1: añádela aquí",
+            "title": "Método 1: añádela aquí",
             "body": "**Añadir garantía** abre un formulario en blanco. Introduce el producto, el vendedor y la fecha de compra, y luego cuándo termina la cobertura: **En una fecha**, **Tras un plazo** o **Nunca** para una garantía de por vida. Puedes adjuntar el recibo o el manual antes de guardar."
           },
           "importCsv": {
-            "title": "Forma 2: importa un archivo CSV",
+            "title": "Método 2: importa un archivo CSV",
             "body": "**Importar CSV** lee un archivo con las columnas de Warracker, como una exportación de Warracker o de esta página. Verás cada fila y cualquier problema antes de que se guarde nada."
           },
           "inRegister": {
@@ -456,7 +456,7 @@
             "body": "Una transacción con garantía muestra un escudo en el registro. Su menú **Copiar** ofrece entonces **Ver garantías**, que las muestra en la página de garantías. Busca **has:warranty** para encontrar todas esas transacciones."
           },
           "newTransaction": {
-            "title": "Forma 3: mientras registras una compra",
+            "title": "Método 3: mientras registras una compra",
             "body": "Elige **+ Nueva transacción** para abrir el formulario."
           },
           "warrantiesLine": {

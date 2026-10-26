@@ -444,11 +444,11 @@
             "body": "Queste schede contano le tue garanzie **In scadenza**, **Attive**, **Scadute** e **A vita**. Scegli una scheda per filtrare l’elenco sottostante. Puoi anche cercare, ordinare e mostrare le garanzie archiviate. Scegli una garanzia nell’elenco per aprirne la pagina, con i documenti, le richieste di assistenza e l’acquisto a cui è collegata."
           },
           "addWarranty": {
-            "title": "Modo 1: aggiungila qui",
+            "title": "Metodo 1: aggiungila qui",
             "body": "**Aggiungi garanzia** apre un modulo vuoto. Inserisci il prodotto, il venditore e la data di acquisto, poi quando finisce la copertura: **A una data**, **Dopo una durata** oppure **Mai** per una garanzia a vita. Puoi allegare la ricevuta o il manuale prima di salvare."
           },
           "importCsv": {
-            "title": "Modo 2: importa un file CSV",
+            "title": "Metodo 2: importa un file CSV",
             "body": "**Importa CSV** legge un file con le colonne di Warracker, come un’esportazione da Warracker o da questa pagina. Vedi ogni riga ed eventuali problemi prima che venga salvato qualcosa."
           },
           "inRegister": {
@@ -456,7 +456,7 @@
             "body": "Una transazione con una garanzia mostra uno scudo nel registro. Il suo menu **Copia** offre allora **Visualizza garanzie**, che le elenca nella pagina delle garanzie. Cerca **has:warranty** per trovare tutte queste transazioni."
           },
           "newTransaction": {
-            "title": "Modo 3: mentre registri un acquisto",
+            "title": "Metodo 3: mentre registri un acquisto",
             "body": "Scegli **+ Nuova transazione** per aprire il modulo."
           },
           "warrantiesLine": {

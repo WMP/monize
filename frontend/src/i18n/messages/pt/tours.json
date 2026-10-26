@@ -444,11 +444,11 @@
             "body": "Estes cartões contam as suas garantias **A expirar em breve**, **Ativas**, **Expiradas** e **Vitalícias**. Escolha um cartão para filtrar a lista abaixo. Também pode pesquisar, ordenar e mostrar as garantias arquivadas. Escolha uma garantia na lista para abrir a respetiva página, com os documentos, as reclamações e a compra a que está associada."
           },
           "addWarranty": {
-            "title": "Forma 1: adicionar aqui",
+            "title": "Método 1: adicionar aqui",
             "body": "**Adicionar garantia** abre um formulário em branco. Introduza o produto, o vendedor e a data de compra e, depois, quando termina a cobertura: **Numa data**, **Após um prazo** ou **Nunca** para uma garantia vitalícia. Pode anexar o recibo ou o manual antes de guardar."
           },
           "importCsv": {
-            "title": "Forma 2: importar um ficheiro CSV",
+            "title": "Método 2: importar um ficheiro CSV",
             "body": "**Importar CSV** lê um ficheiro com as colunas do Warracker, como uma exportação do Warracker ou desta página. Vê todas as linhas e eventuais problemas antes de algo ser guardado."
           },
           "inRegister": {
@@ -456,7 +456,7 @@
             "body": "Uma transação com garantia mostra um escudo no registo. O menu **Copiar** dessa transação passa a oferecer **Ver garantias**, que as lista na página de garantias. Pesquise **has:warranty** para encontrar todas essas transações."
           },
           "newTransaction": {
-            "title": "Forma 3: ao registar uma compra",
+            "title": "Método 3: ao registar uma compra",
             "body": "Escolha **+ Nova Transação** para abrir o formulário."
           },
           "warrantiesLine": {

@@ -444,11 +444,11 @@
             "body": "Các thẻ này đếm số bảo hành của bạn đang ở trạng thái **Sắp hết hạn**, **Còn hiệu lực**, **Đã hết hạn** và **Trọn đời**. Chọn một thẻ để lọc danh sách bên dưới. Bạn cũng có thể tìm kiếm, sắp xếp và hiển thị các bảo hành đã lưu trữ. Chọn một bảo hành trong danh sách để mở trang của nó, với tài liệu, các yêu cầu bảo hành và giao dịch mua được liên kết."
           },
           "addWarranty": {
-            "title": "Cách 1: thêm tại đây",
+            "title": "Phương pháp 1: thêm tại đây",
             "body": "**Thêm bảo hành** mở một biểu mẫu trống. Nhập sản phẩm, người bán và ngày mua, rồi chọn khi nào bảo hành kết thúc: **Vào một ngày**, **Sau một khoảng thời gian**, hoặc **Không bao giờ** cho bảo hành trọn đời. Bạn có thể đính kèm biên lai hoặc sách hướng dẫn trước khi lưu."
           },
           "importCsv": {
-            "title": "Cách 2: nhập tệp CSV",
+            "title": "Phương pháp 2: nhập tệp CSV",
             "body": "**Nhập CSV** đọc một tệp theo các cột của Warracker, chẳng hạn tệp xuất từ Warracker hoặc từ trang này. Bạn sẽ thấy mọi dòng và mọi vấn đề trước khi có gì được lưu."
           },
           "inRegister": {
@@ -456,7 +456,7 @@
             "body": "Giao dịch có bảo hành hiển thị biểu tượng chiếc khiên trong sổ giao dịch. Khi đó menu **Sao chép** của giao dịch có thêm **Xem bảo hành**, mở danh sách bảo hành trên trang Bảo hành. Tìm **has:warranty** để thấy mọi giao dịch như vậy."
           },
           "newTransaction": {
-            "title": "Cách 3: khi bạn ghi một giao dịch mua",
+            "title": "Phương pháp 3: khi bạn ghi một giao dịch mua",
             "body": "Chọn **+ Giao tác mới** để mở biểu mẫu."
           },
           "warrantiesLine": {

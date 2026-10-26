@@ -444,11 +444,11 @@
             "body": "Deze kaarten tellen je garanties per status: **Verloopt binnenkort**, **Actief**, **Verlopen** en **Levenslang**. Kies een kaart om de lijst hieronder te filteren. Je kunt ook zoeken, sorteren en gearchiveerde garanties tonen. Kies een garantie in de lijst om de pagina ervan te openen, met de documenten, de claims en de aankoop waaraan hij gekoppeld is."
           },
           "addWarranty": {
-            "title": "Manier 1: hier toevoegen",
+            "title": "Methode 1: hier toevoegen",
             "body": "**Garantie toevoegen** opent een leeg formulier. Vul het product, de verkoper en de aankoopdatum in, en daarna wanneer de dekking eindigt: **Op een datum**, **Na een looptijd** of **Nooit** voor een levenslange garantie. Je kunt de bon of de handleiding bijvoegen voordat je opslaat."
           },
           "importCsv": {
-            "title": "Manier 2: een CSV-bestand importeren",
+            "title": "Methode 2: een CSV-bestand importeren",
             "body": "**CSV importeren** leest een bestand met de kolommen van Warracker, zoals een export uit Warracker of van deze pagina. Je ziet elke rij en eventuele problemen voordat er iets wordt opgeslagen."
           },
           "inRegister": {
@@ -456,7 +456,7 @@
             "body": "Een transactie met een garantie toont een schild in het transactieoverzicht. Het menu **Kopiëren** van die transactie biedt dan **Garanties bekijken**, dat ze op de pagina Garanties toont. Zoek op **has:warranty** om al zulke transacties te vinden."
           },
           "newTransaction": {
-            "title": "Manier 3: terwijl je een aankoop vastlegt",
+            "title": "Methode 3: terwijl je een aankoop vastlegt",
             "body": "Kies **+ Nieuwe transactie** om het formulier te openen."
           },
           "warrantiesLine": {

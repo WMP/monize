@@ -444,11 +444,11 @@
             "body": "Bu kartlar **Süresi yakında doluyor**, **Geçerli**, **Süresi dolmuş** ve **Ömür boyu** durumundaki garantilerinizi sayar. Aşağıdaki listeyi filtrelemek için bir kart seçin. Ayrıca arama yapabilir, sıralayabilir ve arşivlenen garantileri gösterebilirsiniz. Belgeleri, talepleri ve bağlı olduğu satın alma işlemiyle birlikte sayfasını açmak için listeden bir garanti seçin."
           },
           "addWarranty": {
-            "title": "1. yol: buradan ekleyin",
+            "title": "Yöntem 1: buradan ekleyin",
             "body": "**Garanti ekle** boş bir form açar. Ürünü, satıcıyı ve satın alma tarihini girin; ardından kapsamın ne zaman biteceğini seçin: **Belirli bir tarihte**, **Belirli bir süre sonra** ya da ömür boyu garanti için **Hiçbir zaman**. Kaydetmeden önce fişi veya kılavuzu ekleyebilirsiniz."
           },
           "importCsv": {
-            "title": "2. yol: CSV dosyası içe aktarın",
+            "title": "Yöntem 2: CSV dosyası içe aktarın",
             "body": "**CSV içe aktar**, Warracker sütunlarını kullanan bir dosyayı okur; örneğin Warracker’dan ya da bu sayfadan alınmış bir dışa aktarma. Hiçbir şey kaydedilmeden önce her satırı ve tüm sorunları görürsünüz."
           },
           "inRegister": {
@@ -456,7 +456,7 @@
             "body": "Garantisi olan bir işlem, kayıt defterinde bir kalkan simgesiyle görünür. Bu işlemin **Kopyala** menüsü o zaman **Garantileri görüntüle** seçeneğini sunar ve garantileri Garantiler sayfasında listeler. Bu tür tüm işlemleri bulmak için **has:warranty** araması yapın."
           },
           "newTransaction": {
-            "title": "3. yol: satın almayı kaydederken",
+            "title": "Yöntem 3: satın almayı kaydederken",
             "body": "Formu açmak için **+ Yeni İşlem**’i seçin."
           },
           "warrantiesLine": {

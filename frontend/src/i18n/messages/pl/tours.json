@@ -444,11 +444,11 @@
             "body": "Te karty liczą Twoje gwarancje w grupach **Wkrótce wygasają**, **Aktywne**, **Wygasłe** i **Dożywotnie**. Wybierz kartę, aby przefiltrować listę poniżej. Możesz też wyszukiwać, sortować i pokazywać zarchiwizowane gwarancje. Wybierz gwarancję z listy, aby otworzyć jej stronę z dokumentami, zgłoszeniami i powiązanym zakupem."
           },
           "addWarranty": {
-            "title": "Sposób 1: dodaj tutaj",
+            "title": "Metoda 1: dodaj tutaj",
             "body": "**Dodaj gwarancję** otwiera pusty formularz. Wpisz produkt, sprzedawcę i datę zakupu, a potem wybierz, kiedy kończy się ochrona: **W wybranym dniu**, **Po upływie okresu** albo **Nigdy** dla gwarancji dożywotniej. Przed zapisaniem możesz dołączyć paragon lub instrukcję."
           },
           "importCsv": {
-            "title": "Sposób 2: zaimportuj plik CSV",
+            "title": "Metoda 2: zaimportuj plik CSV",
             "body": "**Importuj CSV** wczytuje plik w układzie kolumn Warracker, na przykład eksport z aplikacji Warracker lub z tej strony. Zanim cokolwiek zostanie zapisane, zobaczysz każdy wiersz i ewentualne problemy."
           },
           "inRegister": {
@@ -456,7 +456,7 @@
             "body": "Transakcja z gwarancją ma w rejestrze ikonę tarczy. Jej menu **Kopiuj** oferuje wtedy **Pokaż gwarancje**, co wyświetla je na stronie gwarancji. Wyszukaj **has:warranty**, aby znaleźć wszystkie takie transakcje."
           },
           "newTransaction": {
-            "title": "Sposób 3: podczas zapisywania zakupu",
+            "title": "Metoda 3: podczas zapisywania zakupu",
             "body": "Wybierz **+ Nowa transakcja**, aby otworzyć formularz."
           },
           "warrantiesLine": {

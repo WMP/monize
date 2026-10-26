@@ -444,11 +444,11 @@
             "body": "Diese Karten zählen Ihre Garantien nach **Läuft bald ab**, **Aktiv**, **Abgelaufen** und **Lebenslang**. Wählen Sie eine Karte, um die Liste darunter zu filtern. Sie können auch suchen, sortieren und archivierte Garantien anzeigen. Wählen Sie eine Garantie in der Liste, um ihre Seite mit ihren Dokumenten, ihren Ansprüchen und dem verknüpften Kauf zu öffnen."
           },
           "addWarranty": {
-            "title": "Weg 1: hier anlegen",
+            "title": "Methode 1: hier anlegen",
             "body": "**Garantie hinzufügen** öffnet ein leeres Formular. Geben Sie Produkt, Verkäufer und Kaufdatum ein, dann, wann der Schutz endet: **An einem Datum**, **Nach einer Laufzeit** oder **Nie** für eine lebenslange Garantie. Beleg oder Handbuch können Sie vor dem Speichern anhängen."
           },
           "importCsv": {
-            "title": "Weg 2: eine CSV-Datei importieren",
+            "title": "Methode 2: eine CSV-Datei importieren",
             "body": "**CSV importieren** liest eine Datei mit den Spalten von Warracker, etwa einen Export aus Warracker oder von dieser Seite. Sie sehen jede Zeile und alle Probleme, bevor etwas gespeichert wird."
           },
           "inRegister": {
@@ -456,7 +456,7 @@
             "body": "Eine Buchung mit Garantie zeigt im Buchungsregister ein Schild. Ihr Menü **Kopieren** bietet dann **Garantien anzeigen**, das sie auf der Garantien-Seite auflistet. Suchen Sie nach **has:warranty**, um alle solchen Buchungen zu finden."
           },
           "newTransaction": {
-            "title": "Weg 3: beim Erfassen eines Kaufs",
+            "title": "Methode 3: beim Erfassen eines Kaufs",
             "body": "Wählen Sie **+ Neue Buchung**, um das Formular zu öffnen."
           },
           "warrantiesLine": {

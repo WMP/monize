@@ -444,11 +444,11 @@
             "body": "These cards count your warranties that are **Expiring soon**, **Active**, **Expired** and **Lifetime**. Choose a card to filter the list below. You can also search, sort and show archived warranties. Choose a warranty in the list to open its page, with its documents, its claims and the purchase it is linked to."
           },
           "addWarranty": {
-            "title": "Way 1: add one here",
+            "title": "Method 1: add one here",
             "body": "**Add warranty** opens a blank form. Enter the product, the vendor and the purchase date, then when the coverage ends: **On a date**, **After a duration**, or **Never** for a lifetime warranty. You can attach the receipt or the manual before you save."
           },
           "importCsv": {
-            "title": "Way 2: import a CSV file",
+            "title": "Method 2: import a CSV file",
             "body": "**Import CSV** reads a file in Warracker's columns, such as an export from Warracker or from this page. You see every row and any problems before anything is saved."
           },
           "inRegister": {
@@ -456,7 +456,7 @@
             "body": "A transaction with a warranty shows a shield in the register. Its **Copy** menu then offers **View warranties**, which lists them on the Warranties page. Search for **has:warranty** to find every such transaction."
           },
           "newTransaction": {
-            "title": "Way 3: while you record a purchase",
+            "title": "Method 3: while you record a purchase",
             "body": "Choose **+ New Transaction** to open the form."
           },
           "warrantiesLine": {
