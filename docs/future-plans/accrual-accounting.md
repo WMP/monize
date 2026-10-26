@@ -4,7 +4,7 @@ The feature contract is `docs/specs/accrual-accounting.md`. Tasks are in `docs/f
 
 ## Assumptions
 
-Port the existing local accrual implementation onto current upstream `main`, independently of the earlier SimpleFIN branch. Preserve current upstream warranty, import, reporting, cache, reconciliation and delegation behavior. This branch is preparation for review; it is not an authorized production deployment or a published pull request.
+Port the existing local accrual implementation onto current upstream `main`, independently of the earlier SimpleFIN branch. Preserve current upstream warranty, import, reporting, cache, reconciliation and delegation behavior. The feature is published for review as upstream PR #1883. Production deployment remains outside this preparation task.
 
 ## Integration areas
 
@@ -18,7 +18,7 @@ Port the existing local accrual implementation onto current upstream `main`, ind
 
 Follow `AGENTS.md` and each layer's index. Run backend lint, both backend type checks, changed tests, build and serial PostgreSQL integration tests. Run frontend lint, types, locale/pseudo checks, changed tests and build. Run migration lint, schema replay, migration-prefix, environment documentation and document-manifest checks. Stage new files before guards. Do not weaken guards, thresholds or allowlists.
 
-Expected observations: one original cash payment, exactly conserved month-end allocations, stable bank balances, rejected stale reviews leaving stored state unchanged, no cross-owner data, and identical selected-basis amounts across supported display and export surfaces. Keep test evidence outside the product source and state any failures before requesting review.
+Expected observations: one original cash payment, exactly conserved monthly allocations on month-end or the selected first-business-day rule, stable bank balances, rejected stale reviews leaving stored state unchanged, no cross-owner data, and identical selected-basis amounts across supported display and export surfaces. Keep test evidence outside the product source and state any failures before requesting review.
 
 ## Concurrency
 
