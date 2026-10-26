@@ -1,5 +1,6 @@
 import { lockTransactionRows } from "../common/db/locks";
 import { createHash } from "node:crypto";
+import { tokenHashesEqual } from "../auth/crypto.util";
 import type { EntityManager } from "typeorm";
 import {
   resolveSourceAccrualEdit,
@@ -262,7 +263,12 @@ export async function assertRuleAccrualHistory(
     if (target.structure || !value || !target.ruleAccrual)
       throw accrualErrors.conflict();
     await assertAccrualHistoryState(m, userId, target.id, value.state);
-    if ((await sourceHash(m, userId, target.id)) !== value.sourceHash)
+    if (
+      !tokenHashesEqual(
+        await sourceHash(m, userId, target.id),
+        value.sourceHash ?? null,
+      )
+    )
       throw accrualErrors.conflict();
     refresh.push(target.id);
   }

@@ -1,5 +1,6 @@
 import type { EntityManager } from "typeorm";
 import { accrualErrors } from "../accruals/accrual-errors";
+import { LEDGER_TOP_LEVEL_ONLY } from "../common/ledger-balance.sql";
 import type { ImportContext } from "./import-context";
 
 const prepared = new WeakMap<
@@ -17,11 +18,11 @@ export async function prepareImportAccrualSources(
     return previous.ids;
   }
   const parents: { id: string }[] = await m.query(
-    "SELECT id FROM transactions WHERE user_id=$1 AND parent_transaction_id IS NULL AND NOT EXISTS(SELECT 1 FROM transaction_splits leg_split WHERE leg_split.linked_transaction_id=transactions.id) ORDER BY id FOR UPDATE",
+    `SELECT t.id FROM transactions t WHERE t.user_id=$1 AND ${LEDGER_TOP_LEVEL_ONLY} AND NOT EXISTS(SELECT 1 FROM transaction_splits leg_split WHERE leg_split.linked_transaction_id=t.id) ORDER BY t.id FOR UPDATE`,
     [userId],
   );
   const legs: { id: string }[] = await m.query(
-    "SELECT id FROM transactions WHERE user_id=$1 AND (parent_transaction_id IS NOT NULL OR EXISTS(SELECT 1 FROM transaction_splits leg_split WHERE leg_split.linked_transaction_id=transactions.id)) ORDER BY id FOR UPDATE",
+    `SELECT t.id FROM transactions t WHERE t.user_id=$1 AND (NOT (${LEDGER_TOP_LEVEL_ONLY}) OR EXISTS(SELECT 1 FROM transaction_splits leg_split WHERE leg_split.linked_transaction_id=t.id)) ORDER BY t.id FOR UPDATE`,
     [userId],
   );
   const ids = new Set([...parents, ...legs].map((row) => row.id));

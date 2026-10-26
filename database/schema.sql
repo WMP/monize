@@ -4459,6 +4459,88 @@ BEGIN
     END LOOP;
 END $$;
 
+-- One global answer to "is this currency code still referenced?" (migration 136)
+-- and which currency codes one user references (migration 137) are defined
+-- further below, once accrual_system_accounts exists -- see the note there.
+
+-- SimpleFIN request reservations are direct user-owned instance state.
+ALTER TABLE bank_sync_provider_requests ENABLE ROW LEVEL SECURITY;
+
+-- Add owner-scoped accrual schedules and derived timing-account identities.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_accrual_transaction_owner ON transactions(id, user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_accrual_split_parent ON transaction_splits(id, transaction_id);
+
+CREATE TABLE IF NOT EXISTS accrual_system_accounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    family VARCHAR(10) NOT NULL,
+    currency_code VARCHAR(3) NOT NULL REFERENCES currencies(code),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_accrual_system_identity UNIQUE (user_id, family, currency_code),
+    CONSTRAINT ck_accrual_system_family CHECK (family IN ('expense', 'income'))
+);
+CREATE TABLE IF NOT EXISTS accrual_schedules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_transaction_id UUID NOT NULL,
+    source_split_id UUID,
+    family VARCHAR(10) NOT NULL,
+    currency_code VARCHAR(3) NOT NULL,
+    preset VARCHAR(10) NOT NULL,
+    recognition_date_rule VARCHAR(20) NOT NULL DEFAULT 'MONTH_END',
+    start_month DATE NOT NULL,
+    month_count INTEGER NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 1,
+    source_fingerprint CHAR(64) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_accrual_schedule_owner UNIQUE (id, user_id),
+    CONSTRAINT fk_accrual_schedule_source FOREIGN KEY (source_transaction_id, user_id) REFERENCES transactions(id, user_id) ON DELETE CASCADE,
+    CONSTRAINT fk_accrual_schedule_split FOREIGN KEY (source_split_id, source_transaction_id) REFERENCES transaction_splits(id, transaction_id) ON DELETE CASCADE,
+    CONSTRAINT fk_accrual_schedule_system FOREIGN KEY (user_id, family, currency_code) REFERENCES accrual_system_accounts(user_id, family, currency_code),
+    CONSTRAINT ck_accrual_schedule_count CHECK (month_count BETWEEN 1 AND 600),
+    CONSTRAINT ck_accrual_schedule_start CHECK (EXTRACT(DAY FROM start_month) = 1 AND start_month >= DATE '0001-01-01' AND start_month <= DATE '9999-12-01'),
+    CONSTRAINT ck_accrual_schedule_end CHECK (start_month + (month_count - 1) * INTERVAL '1 month' <= DATE '9999-12-01'),
+    CONSTRAINT ck_accrual_schedule_preset CHECK (preset IN ('LTM', 'NTM', 'CUSTOM')),
+    CONSTRAINT ck_accrual_schedule_date_rule CHECK (recognition_date_rule IN ('MONTH_END', 'FIRST_BUSINESS_DAY')),
+    CONSTRAINT ck_accrual_schedule_revision CHECK (revision > 0),
+    CONSTRAINT ck_accrual_schedule_fingerprint CHECK (source_fingerprint ~ '^[a-f0-9]{64}$')
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_accrual_schedule_transaction ON accrual_schedules(source_transaction_id) WHERE source_split_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_accrual_schedule_split ON accrual_schedules(source_split_id) WHERE source_split_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_accrual_schedule_user ON accrual_schedules(user_id);
+
+CREATE TABLE IF NOT EXISTS accrual_allocations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    schedule_id UUID NOT NULL,
+    period_index INTEGER NOT NULL,
+    recognition_date DATE NOT NULL,
+    amount NUMERIC(20,4) NOT NULL,
+    CONSTRAINT fk_accrual_allocation_owner FOREIGN KEY (schedule_id, user_id) REFERENCES accrual_schedules(id, user_id) ON DELETE CASCADE,
+    CONSTRAINT uq_accrual_allocation_period UNIQUE (schedule_id, period_index),
+    CONSTRAINT ck_accrual_allocation_period CHECK (period_index BETWEEN 0 AND 599),
+    CONSTRAINT ck_accrual_allocation_date CHECK (recognition_date >= DATE '0001-01-01' AND recognition_date <= DATE '9999-12-31' AND recognition_date = (date_trunc('month', recognition_date::timestamp) + INTERVAL '1 month - 1 day')::date)
+);
+CREATE INDEX IF NOT EXISTS idx_accrual_allocation_user_date ON accrual_allocations(user_id, recognition_date);
+
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS reporting_basis VARCHAR(10) NOT NULL DEFAULT 'accrual';
+ALTER TABLE user_preferences DROP CONSTRAINT IF EXISTS ck_user_preferences_reporting_basis;
+ALTER TABLE user_preferences ADD CONSTRAINT ck_user_preferences_reporting_basis CHECK (reporting_basis IN ('cash', 'accrual'));
+
+ALTER TABLE accrual_allocations DROP CONSTRAINT IF EXISTS ck_accrual_allocation_date;
+ALTER TABLE accrual_allocations ADD CONSTRAINT ck_accrual_allocation_date CHECK (
+  recognition_date >= DATE '0001-01-01' AND recognition_date <= DATE '9999-12-31' AND (
+    recognition_date = (date_trunc('month', recognition_date::timestamp) + INTERVAL '1 month - 1 day')::date
+    OR (
+      (EXTRACT(DAY FROM recognition_date) = 1 AND EXTRACT(ISODOW FROM recognition_date) BETWEEN 1 AND 5)
+      OR (EXTRACT(DAY FROM recognition_date) IN (2, 3) AND EXTRACT(ISODOW FROM recognition_date) = 1)
+    )
+  )
+);
+
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS accrual_enabled BOOLEAN NOT NULL DEFAULT false;
+
 -- -------------------------------------------------------------------------
 -- One global answer to "is this currency code still referenced?" (migration 136).
 --
@@ -4489,6 +4571,12 @@ END $$;
 --
 -- `currency-references.spec.ts` fails when a FK to `currencies(code)` is not
 -- consulted below, so a migration adding one cannot leave this behind.
+--
+-- Defined here rather than immediately after migration 136/137's own section
+-- above: both functions now consult accrual_system_accounts, created only
+-- later in this file, and `LANGUAGE sql` functions are parsed -- object
+-- references and all -- at CREATE time, so a fresh install reading this file
+-- top to bottom needs the table to exist first.
 CREATE OR REPLACE FUNCTION currency_code_in_use_globally(p_code VARCHAR)
 RETURNS boolean
 LANGUAGE sql
@@ -4512,6 +4600,7 @@ AS $$
       WHERE currency_code = p_code OR original_currency_code = p_code
     UNION ALL SELECT 1 FROM budgets WHERE currency_code = p_code
     UNION ALL SELECT 1 FROM warranties WHERE currency_code = p_code
+    UNION ALL SELECT 1 FROM accrual_system_accounts WHERE currency_code = p_code
     UNION ALL SELECT 1 FROM user_preferences WHERE default_currency = p_code
   )
 $$;
@@ -4595,6 +4684,7 @@ AS $$
     UNION SELECT original_currency_code FROM scheduled_transactions WHERE user_id = p_user_id
     UNION SELECT currency_code FROM budgets WHERE user_id = p_user_id
     UNION SELECT currency_code FROM warranties WHERE user_id = p_user_id
+    UNION SELECT currency_code FROM accrual_system_accounts WHERE user_id = p_user_id
   ) referenced
   WHERE code IS NOT NULL
 $$;
@@ -4624,86 +4714,6 @@ COMMENT ON FUNCTION currency_codes_referenced_by_user(uuid) IS
   'activated-but-unused currency definition still travels with the backup. '
   'Derives from currency_codes_referenced_by_user_data rather than repeating its '
   'branches -- that list has drifted three times.';
-
--- SimpleFIN request reservations are direct user-owned instance state.
-ALTER TABLE bank_sync_provider_requests ENABLE ROW LEVEL SECURITY;
-
--- Add owner-scoped accrual schedules and derived timing-account identities.
-CREATE UNIQUE INDEX IF NOT EXISTS uq_accrual_transaction_owner ON transactions(id, user_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_accrual_split_parent ON transaction_splits(id, transaction_id);
-
-CREATE TABLE IF NOT EXISTS accrual_system_accounts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    family VARCHAR(10) NOT NULL,
-    currency_code VARCHAR(3) NOT NULL REFERENCES currencies(code),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_accrual_system_identity UNIQUE (user_id, family, currency_code),
-    CONSTRAINT ck_accrual_system_family CHECK (family IN ('expense', 'income'))
-);
-CREATE TABLE IF NOT EXISTS accrual_schedules (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    source_transaction_id UUID NOT NULL,
-    source_split_id UUID,
-    family VARCHAR(10) NOT NULL,
-    currency_code VARCHAR(3) NOT NULL,
-    preset VARCHAR(10) NOT NULL,
-    start_month DATE NOT NULL,
-    month_count INTEGER NOT NULL,
-    revision INTEGER NOT NULL DEFAULT 1,
-    source_fingerprint CHAR(64) NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_accrual_schedule_owner UNIQUE (id, user_id),
-    CONSTRAINT fk_accrual_schedule_source FOREIGN KEY (source_transaction_id, user_id) REFERENCES transactions(id, user_id) ON DELETE CASCADE,
-    CONSTRAINT fk_accrual_schedule_split FOREIGN KEY (source_split_id, source_transaction_id) REFERENCES transaction_splits(id, transaction_id) ON DELETE CASCADE,
-    CONSTRAINT fk_accrual_schedule_system FOREIGN KEY (user_id, family, currency_code) REFERENCES accrual_system_accounts(user_id, family, currency_code),
-    CONSTRAINT ck_accrual_schedule_count CHECK (month_count BETWEEN 1 AND 600),
-    CONSTRAINT ck_accrual_schedule_start CHECK (EXTRACT(DAY FROM start_month) = 1 AND start_month >= DATE '0001-01-01' AND start_month <= DATE '9999-12-01'),
-    CONSTRAINT ck_accrual_schedule_end CHECK (start_month + (month_count - 1) * INTERVAL '1 month' <= DATE '9999-12-01'),
-    CONSTRAINT ck_accrual_schedule_preset CHECK (preset IN ('LTM', 'NTM', 'CUSTOM')),
-    CONSTRAINT ck_accrual_schedule_revision CHECK (revision > 0),
-    CONSTRAINT ck_accrual_schedule_fingerprint CHECK (source_fingerprint ~ '^[a-f0-9]{64}$')
-);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_accrual_schedule_transaction ON accrual_schedules(source_transaction_id) WHERE source_split_id IS NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS uq_accrual_schedule_split ON accrual_schedules(source_split_id) WHERE source_split_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_accrual_schedule_user ON accrual_schedules(user_id);
-
-CREATE TABLE IF NOT EXISTS accrual_allocations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    schedule_id UUID NOT NULL,
-    period_index INTEGER NOT NULL,
-    recognition_date DATE NOT NULL,
-    amount NUMERIC(20,4) NOT NULL,
-    CONSTRAINT fk_accrual_allocation_owner FOREIGN KEY (schedule_id, user_id) REFERENCES accrual_schedules(id, user_id) ON DELETE CASCADE,
-    CONSTRAINT uq_accrual_allocation_period UNIQUE (schedule_id, period_index),
-    CONSTRAINT ck_accrual_allocation_period CHECK (period_index BETWEEN 0 AND 599),
-    CONSTRAINT ck_accrual_allocation_date CHECK (recognition_date >= DATE '0001-01-01' AND recognition_date <= DATE '9999-12-31' AND recognition_date = (date_trunc('month', recognition_date::timestamp) + INTERVAL '1 month - 1 day')::date)
-);
-CREATE INDEX IF NOT EXISTS idx_accrual_allocation_user_date ON accrual_allocations(user_id, recognition_date);
-
-ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS reporting_basis VARCHAR(10) NOT NULL DEFAULT 'accrual';
-ALTER TABLE user_preferences DROP CONSTRAINT IF EXISTS ck_user_preferences_reporting_basis;
-ALTER TABLE user_preferences ADD CONSTRAINT ck_user_preferences_reporting_basis CHECK (reporting_basis IN ('cash', 'accrual'));
-
-ALTER TABLE accrual_schedules ADD COLUMN IF NOT EXISTS recognition_date_rule VARCHAR(20) NOT NULL DEFAULT 'MONTH_END';
-ALTER TABLE accrual_schedules DROP CONSTRAINT IF EXISTS ck_accrual_schedule_date_rule;
-ALTER TABLE accrual_schedules ADD CONSTRAINT ck_accrual_schedule_date_rule CHECK (recognition_date_rule IN ('MONTH_END', 'FIRST_BUSINESS_DAY'));
-
-ALTER TABLE accrual_allocations DROP CONSTRAINT IF EXISTS ck_accrual_allocation_date;
-ALTER TABLE accrual_allocations ADD CONSTRAINT ck_accrual_allocation_date CHECK (
-  recognition_date >= DATE '0001-01-01' AND recognition_date <= DATE '9999-12-31' AND (
-    recognition_date = (date_trunc('month', recognition_date::timestamp) + INTERVAL '1 month - 1 day')::date
-    OR (
-      (EXTRACT(DAY FROM recognition_date) = 1 AND EXTRACT(ISODOW FROM recognition_date) BETWEEN 1 AND 5)
-      OR (EXTRACT(DAY FROM recognition_date) IN (2, 3) AND EXTRACT(ISODOW FROM recognition_date) = 1)
-    )
-  )
-);
-
-ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS accrual_enabled BOOLEAN NOT NULL DEFAULT false;
 
 DROP POLICY IF EXISTS accrual_system_accounts_isolation ON accrual_system_accounts;
 CREATE POLICY accrual_system_accounts_isolation ON accrual_system_accounts
