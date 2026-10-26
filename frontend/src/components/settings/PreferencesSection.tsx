@@ -149,6 +149,8 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
     [onPreferencesUpdated, updatePreferencesStore, t],
   );
 
+  const reportingBasis = useSavedPreference('reportingBasis', preferences.reportingBasis ?? 'accrual', commitPreference);
+  const accrualEnabled = useSavedPreference('accrualEnabled', preferences.accrualEnabled ?? false, commitPreference);
   const dateFormat = useSavedPreference('dateFormat', preferences.dateFormat, commitPreference);
   const numberFormat = useSavedPreference(
     'numberFormat',
@@ -253,6 +255,36 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
           </h3>
           <div className="space-y-4">
             <LanguageSelector value={language} onChange={setLanguage} />
+
+            <div className="flex items-center">
+              <label
+                htmlFor="accrualEnabled"
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <ToggleSwitch
+                  checked={accrualEnabled.value}
+                  onChange={accrualEnabled.set}
+                  label={t('accrualEnabledLabel')}
+                />
+                <span className="text-sm text-gray-900 dark:text-gray-100">
+                  {t('accrualEnabledLabel')}
+                </span>
+              </label>
+              <InfoTooltip text={t('accrualEnabledTooltip')} />
+            </div>
+
+            {accrualEnabled.value && (
+              <>
+                <Select
+                  label={t('reportingBasisLabel')}
+                  value={reportingBasis.value}
+                  options={[{ value: 'accrual', label: t('reportingAccrual') }, { value: 'cash', label: t('reportingCash') }]}
+                  onChange={(event) => reportingBasis.set(event.target.value as 'cash' | 'accrual')}
+                />
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('reportingBasisHelp')}</p>
+              </>
+            )}
+
 
             <Select
               label={t('defaultCurrencyLabel')}

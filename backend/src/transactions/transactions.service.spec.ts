@@ -5850,6 +5850,12 @@ describe("TransactionsService", () => {
   });
 
   describe("getSummary", () => {
+    beforeEach(() => {
+      userPreferenceRepository.findOne.mockResolvedValue({
+        defaultCurrency: "USD",
+        reportingBasis: "cash",
+      });
+    });
     const createMockQueryBuilder = (overrides?: Record<string, jest.Mock>) => {
       const mockQb: Record<string, jest.Mock> = {} as Record<string, jest.Mock>;
       const executeBrackets = (condition: unknown) => {
@@ -5858,6 +5864,10 @@ describe("TransactionsService", () => {
         }
       };
       Object.assign(mockQb, {
+        alias: "transaction",
+        expressionMap: { joinAttributes: [], selects: [] },
+        clone: jest.fn().mockReturnValue(mockQb),
+        addGroupBy: jest.fn().mockReturnValue(mockQb),
         leftJoinAndSelect: jest.fn().mockReturnValue(mockQb),
         leftJoin: jest.fn().mockReturnValue(mockQb),
         where: jest.fn().mockImplementation((condition: unknown) => {
@@ -5901,12 +5911,17 @@ describe("TransactionsService", () => {
       mockQb.getRawMany.mockResolvedValue([
         {
           currencyCode: "USD",
+          __moneyDate: "2026-06-15",
           totalIncome: "500",
           totalExpenses: "200",
           transactionCount: "10",
         },
         {
           currencyCode: "CAD",
+          __moneyDate: "2026-06-15",
+          __moneyOriginal: "USD",
+          __moneyRate: "1", // explicit fixture entry rate; never a missing-rate fallback
+
           totalIncome: "300",
           totalExpenses: "100",
           transactionCount: "5",
@@ -6087,11 +6102,12 @@ describe("TransactionsService", () => {
       );
     });
 
-    it("skips null currencyCode rows", async () => {
+    it("refuses to value nonzero rows with an unknown currency", async () => {
       const mockQb = createMockQueryBuilder();
       mockQb.getRawMany.mockResolvedValue([
         {
           currencyCode: null,
+          __moneyDate: "2026-06-15",
           totalIncome: "100",
           totalExpenses: "50",
           transactionCount: "3",
@@ -6099,11 +6115,9 @@ describe("TransactionsService", () => {
       ]);
       transactionsRepository.createQueryBuilder.mockReturnValue(mockQb);
 
-      const result = await service.getSummary("user-1");
-
-      expect(result.totalIncome).toBe(100);
-      expect(result.totalExpenses).toBe(50);
-      expect(result.byCurrency).toEqual({});
+      await expect(service.getSummary("user-1")).rejects.toMatchObject({
+        response: expect.objectContaining({ code: "REPORTING_FX_INCOMPLETE" }),
+      });
     });
   });
 

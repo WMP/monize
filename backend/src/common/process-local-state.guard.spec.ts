@@ -274,11 +274,6 @@ const ALLOWED = new Map<string, string>([
       "computations of the same summary, never a stale one past the announcement",
   ],
   [
-    "budgets/budgets.service.ts#categoryActualsCache",
-    "already stale within one replica for its TTL, so multi-replica does not " +
-      "change the contract it offers",
-  ],
-  [
     "backup/support-backup/support-backup.service.ts#rawCache",
     "preview and generate landing on different replicas degrade to two " +
       "exports; documented on the endpoint",

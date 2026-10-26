@@ -242,7 +242,13 @@
       "applyHere": "[XX-Use these defaults in this browser-XX]",
       "applyHereHelp": "[XX-Clears the view settings this browser has saved, so the defaults above take effect here too.-XX]",
       "appliedHere": "[XX-This browser now uses your default views-XX]"
-    }
+    },
+    "reportingBasisLabel": "[XX-Default reporting basis-XX]",
+    "reportingAccrual": "[XX-Accrual-XX]",
+    "reportingCash": "[XX-Cash-XX]",
+    "reportingBasisHelp": "[XX-Use accrual by default for reports, including category and payee trends. Cash-specific views keep their payment dates.-XX]",
+    "accrualEnabledLabel": "[XX-Enable accrual accounting-XX]",
+    "accrualEnabledTooltip": "[XX-Turns on the Accrual tab in transactions, the Accounts / Other accrual balances, and the Cash / Accrual switch in reports. Off by default so it never adds clutter unless you turn it on.-XX]"
   },
   "notifications": {
     "heading": "[XX-Notifications-XX]",
@@ -836,7 +842,10 @@
       },
       "doneButton": "[XX-Done-XX]",
       "unlinkedBondSecuritiesList": "[XX-Affected securities: {symbols}.-XX]",
-      "unlinkedBondSecuritiesMore": "[XX-and {count} more-XX]"
+      "unlinkedBondSecuritiesMore": "[XX-and {count} more-XX]",
+      "accrualSystemAccounts": "[XX-Accrual System Accounts-XX]",
+      "accrualSchedules": "[XX-Accrual Schedules-XX]",
+      "accrualAllocations": "[XX-Accrual Allocations-XX]"
     },
     "storedBackups": {
       "heading": "[XX-Automatic Backups-XX]",

@@ -29,6 +29,8 @@ Existing contracts touched: INV-BALANCE-001, INV-REGISTER-001, INV-TRANSFER-001,
 | Missing conversion rate                                           | Disclose incomplete conversion or refuse the unsupported result; never substitute rate 1     |
 | Transfer or investment-linked source                              | No independently editable accrual schedule                                                   |
 
+Count metrics count recognition events by their own selected direction without requiring FX. They do not sum native currencies. Monetary metrics retain category netting, including refunds.
+
 ## Verification matrix
 
 Pure tests cover exact division, remainder, calendar boundaries, signs, fingerprints and timing balances. Enforced PostgreSQL suites cover ownership, policies, lifecycle, source/split mutations, bulk operations, history, imports, reporting, budgets, FX and system movements. Frontend tests cover editor draft/review/save, context and request isolation, linked register rows, basis controls, exports, settings and system-account detail. Validation after porting to upstream must be recorded separately from historical local results.

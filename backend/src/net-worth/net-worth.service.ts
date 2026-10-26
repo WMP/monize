@@ -1,4 +1,11 @@
 import {
+  ReportingRead,
+  currentReportingRead,
+  reportingResultCurrency,
+} from "../accruals/reporting-basis";
+import { accrualNetWorthSnapshots } from "../accruals/reporting-net-worth";
+import { ServiceUnavailableException } from "@nestjs/common";
+import {
   Inject,
   Injectable,
   Logger,
@@ -819,6 +826,7 @@ export class NetWorthService {
    * both surfaces return the same data with the same default range (last 12
    * months if no dates provided).
    */
+  @ReportingRead()
   async getLlmHistory(
     userId: string,
     startDate?: string,
@@ -872,6 +880,7 @@ export class NetWorthService {
     );
   }
 
+  @ReportingRead()
   async getMonthlyNetWorth(
     userId: string,
     startDate?: string,
@@ -919,6 +928,7 @@ export class NetWorthService {
       m.getRepository(UserPreference).findOne({ where: { userId } }),
     );
     const defaultCurrency = preferredCurrency(pref);
+    reportingResultCurrency(userId, defaultCurrency);
 
     const start = startDate || "1990-01-01";
     const end = endDate || new Date().toISOString().slice(0, 10);
@@ -927,7 +937,7 @@ export class NetWorthService {
     // rows are governed solely by the pre-filtered scope (see
     // JointNetWorthScope). One predicate for the series and (via
     // getLatestNetWorth) the latest month, so the two can never disagree.
-    const snapshots = await this.scopedQuery<MonthlySnapshotRow>(
+    let snapshots = await this.scopedQuery<MonthlySnapshotRow>(
       `SELECT mab.month, mab.balance, mab.market_value,
               a.id as account_id, a.account_type, a.account_sub_type, a.currency_code
        FROM monthly_account_balances mab
@@ -940,6 +950,18 @@ export class NetWorthService {
       [userId, start, end, jointIds],
     );
 
+    const accrual = currentReportingRead(userId)?.basis === "accrual";
+    if (accrual)
+      snapshots = await withScopedDb(this.dataSource, (manager) =>
+        accrualNetWorthSnapshots(
+          manager,
+          userId,
+          snapshots,
+          start,
+          end,
+          jointIds,
+        ),
+      );
     if (snapshots.length === 0) return [];
 
     // Collect currencies that need conversion
@@ -950,7 +972,7 @@ export class NetWorthService {
       }
     }
 
-    return this.computeWithRateFill(
+    const months = await this.computeWithRateFill(
       async () =>
         this.foldMonthlyNetWorth(
           snapshots,
@@ -964,8 +986,25 @@ export class NetWorthService {
           date: m.month,
           missingRatePairs: m.missingRatePairs,
         })),
-      options,
+      accrual && !startDate ? { ...options, fetchMissing: false } : options,
     );
+    if (accrual && months.some((month) => !month.fxComplete))
+      throw new ServiceUnavailableException({
+        code: "REPORTING_FX_INCOMPLETE",
+        fxComplete: false,
+        missingRatePairs: months
+          .filter((month) => !month.fxComplete)
+          .map((month) => ({
+            date:
+              this.monthEndDate(month.month) >
+              new Date().toISOString().slice(0, 10)
+                ? new Date().toISOString().slice(0, 10)
+                : this.monthEndDate(month.month),
+            pairs: month.missingRatePairs,
+          })),
+        repair: "currency_rate_history",
+      });
+    return months;
   }
 
   /** The month-by-month fold of `getMonthlyNetWorth`, at one rate index. */
@@ -1029,14 +1068,17 @@ export class NetWorthService {
       }
 
       // Compute month-end date for rate lookup
-      const monthEnd = this.monthEndDate(monthKey);
-      const converted = this.convertCurrency(
-        rawValue,
-        s.currency_code,
-        defaultCurrency,
-        monthEnd,
-        rateIndex,
-      );
+      const monthEnd = s.valuation_date ?? this.monthEndDate(monthKey);
+      const converted =
+        rawValue === 0
+          ? 0
+          : this.convertCurrency(
+              rawValue,
+              s.currency_code,
+              defaultCurrency,
+              monthEnd,
+              rateIndex,
+            );
 
       const accountType = s.account_type as AccountType;
       if (!entry.byAccountType.has(accountType)) {
@@ -1044,7 +1086,12 @@ export class NetWorthService {
       }
       const typeTotal = entry.byAccountType.get(accountType)!;
       if (LIABILITY_TYPES.includes(accountType)) {
-        const owed = converted === null ? null : Math.abs(converted);
+        const owed =
+          converted === null
+            ? null
+            : s.timing_family === "income"
+              ? converted
+              : Math.abs(converted);
         entry.liabilities.add(owed, s.currency_code, defaultCurrency);
         typeTotal.add(
           owed === null ? null : -owed,
@@ -1057,6 +1104,7 @@ export class NetWorthService {
       }
     }
 
+    const rounded = roundMoney;
     return Array.from(monthMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([month, data]) => {
@@ -1071,9 +1119,9 @@ export class NetWorthService {
         ].sort();
         return {
           month,
-          assets: Math.round(data.assets.knownSubtotal),
-          liabilities: Math.round(data.liabilities.knownSubtotal),
-          netWorth: Math.round(
+          assets: rounded(data.assets.knownSubtotal),
+          liabilities: rounded(data.liabilities.knownSubtotal),
+          netWorth: rounded(
             data.assets.knownSubtotal - data.liabilities.knownSubtotal,
           ),
           // Stage 1 of docs/specs/fx-conversion-completeness.md: the three
@@ -1114,6 +1162,7 @@ export class NetWorthService {
    * price, is invisible here; `AccountsService` unions those in from
    * `PortfolioService.getAccountMarketValues`.
    */
+  @ReportingRead()
   async getLatestNetWorth(
     userId: string,
     jointScope?: JointNetWorthScope,
@@ -1129,9 +1178,13 @@ export class NetWorthService {
     await this.ensurePopulated(userId);
 
     const jointIds = jointScope?.accounts.map((a) => a.accountId) ?? [];
+    const accrual = currentReportingRead(userId)?.basis === "accrual";
     const latestRows: { month: string | Date }[] = await this.scopedQuery(
-      `SELECT MAX(month) AS month FROM monthly_account_balances
-        WHERE user_id = $1 OR account_id = ANY($2::UUID[])`,
+      accrual
+        ? `SELECT TO_CHAR(date_trunc('month',CURRENT_DATE),'YYYY-MM-DD') AS month FROM accounts
+            WHERE (user_id=$1 AND NOT exclude_from_net_worth) OR id=ANY($2::uuid[]) LIMIT 1`
+        : `SELECT MAX(month) AS month FROM monthly_account_balances
+            WHERE user_id = $1 OR account_id = ANY($2::UUID[])`,
       [userId, jointIds],
     );
     const latestMonth = latestRows[0]?.month;
@@ -1143,6 +1196,7 @@ export class NetWorthService {
       monthStr,
       monthStr,
       jointScope,
+      accrual ? { fetchMissing: false } : undefined,
     );
     const latest = months[months.length - 1];
     if (!latest) return null;

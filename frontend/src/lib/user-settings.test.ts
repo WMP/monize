@@ -39,6 +39,14 @@ describe('userSettingsApi', () => {
     expect(apiClient.patch).toHaveBeenCalledWith('/users/preferences', { theme: 'light' });
   });
 
+  it('clears report caches when the reporting basis changes successfully', async () => {
+    setCache('budgets:summary', { totalSpent: 1200 });
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: { reportingBasis: 'accrual' } });
+    await userSettingsApi.updatePreferences({ reportingBasis: 'accrual' });
+    expect(getCached('budgets:summary')).toBeUndefined();
+    expect(apiClient.patch).toHaveBeenLastCalledWith('/users/preferences', { reportingBasis: 'accrual' });
+  });
+
   it('changePassword posts to /users/change-password', async () => {
     vi.mocked(apiClient.post).mockResolvedValue({});
     await userSettingsApi.changePassword({ currentPassword: 'old', newPassword: 'new' } as any);
