@@ -453,7 +453,7 @@
           },
           "inRegister": {
             "title": "Garanties in het transactieoverzicht",
-            "body": "Een transactie met een garantie toont een schild in het transactieoverzicht. Het menu **Kopiëren** van die transactie biedt dan **Garanties bekijken**, dat ze op de pagina Garanties toont. Zoek op **has:warranty** om al zulke transacties te vinden."
+            "body": "Een transactie met een garantie toont een schild in het transactieoverzicht. Zoek op **has:warranty** om al zulke transacties te vinden."
           },
           "newTransaction": {
             "title": "Methode 3: terwijl je een aankoop vastlegt",

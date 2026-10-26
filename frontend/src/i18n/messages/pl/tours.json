@@ -453,7 +453,7 @@
           },
           "inRegister": {
             "title": "Gwarancje w rejestrze transakcji",
-            "body": "Transakcja z gwarancją ma w rejestrze ikonę tarczy. Jej menu **Kopiuj** oferuje wtedy **Pokaż gwarancje**, co wyświetla je na stronie gwarancji. Wyszukaj **has:warranty**, aby znaleźć wszystkie takie transakcje."
+            "body": "Transakcja z gwarancją ma w rejestrze ikonę tarczy. Wyszukaj **has:warranty**, aby znaleźć wszystkie takie transakcje."
           },
           "newTransaction": {
             "title": "Metoda 3: podczas zapisywania zakupu",

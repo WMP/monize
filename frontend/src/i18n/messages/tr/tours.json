@@ -453,7 +453,7 @@
           },
           "inRegister": {
             "title": "Kayıt defterindeki garantiler",
-            "body": "Garantisi olan bir işlem, kayıt defterinde bir kalkan simgesiyle görünür. Bu işlemin **Kopyala** menüsü o zaman **Garantileri görüntüle** seçeneğini sunar ve garantileri Garantiler sayfasında listeler. Bu tür tüm işlemleri bulmak için **has:warranty** araması yapın."
+            "body": "Garantisi olan bir işlem, kayıt defterinde bir kalkan simgesiyle görünür. Bu tür tüm işlemleri bulmak için **has:warranty** araması yapın."
           },
           "newTransaction": {
             "title": "Yöntem 3: satın almayı kaydederken",

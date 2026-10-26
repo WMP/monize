@@ -453,7 +453,7 @@
           },
           "inRegister": {
             "title": "Les garanties dans le registre",
-            "body": "Une transaction avec une garantie affiche un bouclier dans le registre. Son menu **Copier** propose alors **Voir les garanties**, qui les liste sur la page des garanties. Recherchez **has:warranty** pour trouver toutes ces transactions."
+            "body": "Une transaction avec une garantie affiche un bouclier dans le registre. Recherchez **has:warranty** pour trouver toutes ces transactions."
           },
           "newTransaction": {
             "title": "Méthode 3 : en saisissant un achat",

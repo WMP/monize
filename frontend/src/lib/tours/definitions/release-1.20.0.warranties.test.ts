@@ -83,14 +83,13 @@ describe('warranties release tour', () => {
     expect(step('importCsv')?.anchorId).toBe(TOUR_ANCHORS.warrantiesImportButton);
   });
 
-  it('describes the register row without anchoring one, parked clear of row actions', () => {
-    // An anchor on a row repeats on every row; the card parks bottom-LEFT so
-    // it does not cover the Copy menu the copy names.
+  it('describes the register without anchoring a row', () => {
+    // An anchor on a row repeats on every row; the coach mark leaves the
+    // register in view instead.
     const s = step('inRegister');
     expect(s?.route).toBe('/transactions');
     expect(s?.anchorId).toBeNull();
     expect(s?.unobtrusive).toBe(true);
-    expect(s?.placement).toBe('left');
     expect(s?.advance).toBeUndefined();
   });
 
@@ -191,8 +190,9 @@ describe('warranties tour copy', () => {
     const translate = t as unknown as (key: string) => string;
     const steps = `${tour.i18nPrefix}.steps`;
     expect(translate(`${steps}.inRegister.body`)).toContain('**has:warranty**');
-    // The Copy menu no longer adds a warranty, so the tour must not say it does.
-    expect(translate(`${steps}.inRegister.body`)).not.toMatch(/add warranty/i);
+    // The Copy menu offers no warranty action, so the tour must not send the
+    // reader there.
+    expect(translate(`${steps}.inRegister.body`)).not.toMatch(/add warranty|view warranties|\*\*Copy\*\*/i);
     expect(translate(`${steps}.reminders.body`)).toMatch(/30 days and 7 days/);
     for (const s of tour.steps) {
       expect(translate(`${steps}.${s.id}.body`)).not.toContain('--');

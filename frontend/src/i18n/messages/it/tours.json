@@ -453,7 +453,7 @@
           },
           "inRegister": {
             "title": "Le garanzie nel registro",
-            "body": "Una transazione con una garanzia mostra uno scudo nel registro. Il suo menu **Copia** offre allora **Visualizza garanzie**, che le elenca nella pagina delle garanzie. Cerca **has:warranty** per trovare tutte queste transazioni."
+            "body": "Una transazione con una garanzia mostra uno scudo nel registro. Cerca **has:warranty** per trovare tutte queste transazioni."
           },
           "newTransaction": {
             "title": "Metodo 3: mentre registri un acquisto",

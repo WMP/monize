@@ -15,11 +15,10 @@ export const RELEASE_1_20_MINOR = '1.20';
  * warranty finds the reader again: the opt-in dashboard widget and the expiry
  * reminders.
  *
- * **No row is anchored.** The shield and View warranties repeat on every row
- * that has a warranty, and one anchor across rows would break the
- * anchor-uniqueness rule and move under sorting and filtering, so that step is
- * an anchorless coach mark parked bottom-LEFT, clear of the right-aligned row
- * actions it names.
+ * **No row is anchored.** The shield repeats on every row that has a
+ * warranty, and one anchor across rows would break the anchor-uniqueness rule
+ * and move under sorting and filtering, so that step is an anchorless coach
+ * mark that leaves the register in view.
  *
  * **The New Transaction detour** opens the form as the introduction tour does
  * (`click` on the button, advancing when the form appears) and `requires`
@@ -84,13 +83,10 @@ export const RELEASE_1_20_WARRANTIES_TOUR: TourDefinition = {
       placement: 'bottom',
     },
     {
-      // Bottom-LEFT: the Copy menu the copy names is in the right-aligned row
-      // actions, where the default corner would park the card.
       id: 'inRegister',
       route: '/transactions',
       anchorId: null,
       unobtrusive: true,
-      placement: 'left',
     },
     {
       // Interactive: clicking New Transaction opens the form; the step advances

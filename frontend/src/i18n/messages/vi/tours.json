@@ -453,7 +453,7 @@
           },
           "inRegister": {
             "title": "Bảo hành trong sổ giao dịch",
-            "body": "Giao dịch có bảo hành hiển thị biểu tượng chiếc khiên trong sổ giao dịch. Khi đó menu **Sao chép** của giao dịch có thêm **Xem bảo hành**, mở danh sách bảo hành trên trang Bảo hành. Tìm **has:warranty** để thấy mọi giao dịch như vậy."
+            "body": "Giao dịch có bảo hành hiển thị biểu tượng chiếc khiên trong sổ giao dịch. Tìm **has:warranty** để thấy mọi giao dịch như vậy."
           },
           "newTransaction": {
             "title": "Phương pháp 3: khi bạn ghi một giao dịch mua",

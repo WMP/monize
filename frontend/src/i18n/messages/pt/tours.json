@@ -453,7 +453,7 @@
           },
           "inRegister": {
             "title": "Garantias no registo",
-            "body": "Uma transação com garantia mostra um escudo no registo. O menu **Copiar** dessa transação passa a oferecer **Ver garantias**, que as lista na página de garantias. Pesquise **has:warranty** para encontrar todas essas transações."
+            "body": "Uma transação com garantia mostra um escudo no registo. Pesquise **has:warranty** para encontrar todas essas transações."
           },
           "newTransaction": {
             "title": "Método 3: ao registar uma compra",

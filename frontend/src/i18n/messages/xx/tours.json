@@ -453,7 +453,7 @@
           },
           "inRegister": {
             "title": "[XX-Warranties in the register-XX]",
-            "body": "[XX-A transaction with a warranty shows a shield in the register. Its **Copy** menu then offers **View warranties**, which lists them on the Warranties page. Search for **has:warranty** to find every such transaction.-XX]"
+            "body": "[XX-A transaction with a warranty shows a shield in the register. Search for **has:warranty** to find every such transaction.-XX]"
           },
           "newTransaction": {
             "title": "[XX-Method 3: while you record a purchase-XX]",

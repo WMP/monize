@@ -453,7 +453,7 @@
           },
           "inRegister": {
             "title": "Garantien im Buchungsregister",
-            "body": "Eine Buchung mit Garantie zeigt im Buchungsregister ein Schild. Ihr Menü **Kopieren** bietet dann **Garantien anzeigen**, das sie auf der Garantien-Seite auflistet. Suchen Sie nach **has:warranty**, um alle solchen Buchungen zu finden."
+            "body": "Eine Buchung mit Garantie zeigt im Buchungsregister ein Schild. Suchen Sie nach **has:warranty**, um alle solchen Buchungen zu finden."
           },
           "newTransaction": {
             "title": "Methode 3: beim Erfassen eines Kaufs",

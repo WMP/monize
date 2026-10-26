@@ -453,7 +453,7 @@
           },
           "inRegister": {
             "title": "Garansi di daftar transaksi",
-            "body": "Transaksi yang punya garansi menampilkan ikon perisai di daftar transaksi. Menu **Salin** pada transaksi itu lalu menawarkan **Lihat garansi**, yang menampilkannya di halaman Garansi. Cari **has:warranty** untuk menemukan semua transaksi seperti itu."
+            "body": "Transaksi yang punya garansi menampilkan ikon perisai di daftar transaksi. Cari **has:warranty** untuk menemukan semua transaksi seperti itu."
           },
           "newTransaction": {
             "title": "Metode 3: saat mencatat pembelian",
