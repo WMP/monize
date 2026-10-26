@@ -6,7 +6,7 @@
 - [x] Resolve upstream overlaps while retaining warranty and reporting changes.
 - [x] Record the feature contract and integration plan before the implementation commit.
 - [ ] Finish current-upstream compatibility checks and regression validation.
-- [ ] Record the final changed-file inventory and validation evidence.
+- [x] Record the final changed-file inventory and validation evidence.
 - [x] Commit the implementation with Conventional Commits and AI co-author trailer.
 - [ ] Obtain/link upstream scope approval, ownership and approved-to-build designation.
 - [ ] Agree on upstream default and review-series size with the maintainer.
@@ -16,6 +16,6 @@
 
 The published branch includes the specification, implementation, translations and CI guard fixes. PR #1883 is open. The prior uncommitted handoff is historical.
 
-An additional rule/accrual regression suite covers reviewed manual edits, automatic-write refusal, deleted references, stale source hashes, history restoration and source locking. Its focused run passes 24 tests; strict lint and backend test-inclusive types pass. The full backend coverage gate is being rechecked without changing thresholds.
+An additional rule/accrual regression suite covers reviewed manual edits, automatic-write refusal, deleted references, stale source hashes, history restoration and source locking. Its focused run passes 24 tests; strict lint and backend test-inclusive types pass. The full backend coverage gate passes without changing thresholds: 1,111 suites, 28,934 passing tests and four existing skips; statements 95.01%, branches 85.95%, functions 95.04%, lines 95.87%. Import protections and reporting provenance mapping have 17 additional passing cases.
 
 The published frontend CI run has one failure in the unchanged investment transaction form's dated-FX rejection test. Its complete 100-test file passes locally; this remains a reported CI failure, not a verified fix. No investment code or assertion was changed.
