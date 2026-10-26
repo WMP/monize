@@ -77,6 +77,7 @@ import { TransactionSplit } from "../transactions/entities/transaction-split.ent
 import { tr } from "../i18n/translate";
 import { TransactionRulesApplierService } from "../transaction-rules/transaction-rules-applier.service";
 import { insertCategoryIfAbsent } from "./insert-category-if-absent";
+import { splitCategoryPath } from "./category-path.util";
 
 @Injectable()
 export class ImportService {
@@ -562,7 +563,8 @@ export class ImportService {
 
   /**
    * Create categories from !Type:Cat definitions.
-   * Handles parent:child hierarchy (e.g., "Utilities:Electricity").
+   * Every colon is a level (e.g., "Housing:Mortgage:Interest" is three
+   * categories, each the parent of the next); see `splitCategoryPath`.
    * Sets isIncome based on QIF I/E flags.
    */
   private async createCategoriesFromDefs(
@@ -581,62 +583,54 @@ export class ImportService {
         def.name.startsWith("_") && def.description
           ? def.description
           : def.name;
-      const parts = effectiveName.split(":");
-      const isSubcategory = parts.length > 1;
 
-      if (isSubcategory) {
-        const parentName = parts[0].trim();
-        const childName = parts.slice(1).join(":").trim();
+      const leafId = await this.findOrCreateCategoryPath(
+        manager,
+        userId,
+        splitCategoryPath(effectiveName),
+        def.isIncome,
+        processedCategories,
+        categoryMap,
+        importResult,
+      );
+      if (leafId === null) continue;
 
-        // Find or create parent
-        const parentId = await this.findOrCreateCategoryDef(
-          manager,
-          userId,
-          parentName,
-          null,
-          def.isIncome,
-          processedCategories,
-          categoryMap,
-          importResult,
-        );
-
-        // Find or create child
-        await this.findOrCreateCategoryDef(
-          manager,
-          userId,
-          childName,
-          parentId,
-          def.isIncome,
-          processedCategories,
-          categoryMap,
-          importResult,
-        );
-
-        // Map the full effective name for transaction category resolution
-        const childId = processedCategories.get(`${childName}|${parentId}`)!;
-        categoryMap.set(effectiveName, childId);
-        // Also map the original QIF name if it differs (underscore substitution)
-        if (def.name !== effectiveName) {
-          categoryMap.set(def.name, childId);
-        }
-      } else {
-        // Top-level category
-        const catId = await this.findOrCreateCategoryDef(
-          manager,
-          userId,
-          effectiveName,
-          null,
-          def.isIncome,
-          processedCategories,
-          categoryMap,
-          importResult,
-        );
-        // Also map the original QIF name if it differs (underscore substitution)
-        if (def.name !== effectiveName) {
-          categoryMap.set(def.name, catId);
-        }
+      // Map the full effective name for transaction category resolution
+      categoryMap.set(effectiveName, leafId);
+      // Also map the original QIF name if it differs (underscore substitution)
+      if (def.name !== effectiveName) {
+        categoryMap.set(def.name, leafId);
       }
     }
+  }
+
+  /**
+   * Find or create every level of a category path, root first, and return the
+   * id of the last one; null for a path with no segments.
+   */
+  private async findOrCreateCategoryPath(
+    manager: EntityManager,
+    userId: string,
+    segments: readonly string[],
+    isIncome: boolean,
+    processedCategories: Map<string, string>,
+    categoryMap: Map<string, string | null>,
+    importResult: ImportResultDto,
+  ): Promise<string | null> {
+    let parentId: string | null = null;
+    for (const segment of segments) {
+      parentId = await this.findOrCreateCategoryDef(
+        manager,
+        userId,
+        segment,
+        parentId,
+        isIncome,
+        processedCategories,
+        categoryMap,
+        importResult,
+      );
+    }
+    return parentId;
   }
 
   private async findOrCreateCategoryDef(
@@ -721,48 +715,17 @@ export class ImportService {
     }
 
     for (const categoryName of allCategories) {
-      const parts = categoryName.split(":");
-      const isSubcategory = parts.length > 1;
-
-      if (isSubcategory) {
-        const parentName = parts[0].trim();
-        const childName = parts.slice(1).join(":").trim();
-
-        const parentId = await this.findOrCreateCategoryDef(
-          manager,
-          userId,
-          parentName,
-          null,
-          false,
-          processedCategories,
-          categoryMap,
-          importResult,
-        );
-
-        await this.findOrCreateCategoryDef(
-          manager,
-          userId,
-          childName,
-          parentId,
-          false,
-          processedCategories,
-          categoryMap,
-          importResult,
-        );
-
-        const childId = processedCategories.get(`${childName}|${parentId}`)!;
-        categoryMap.set(categoryName, childId);
-      } else {
-        await this.findOrCreateCategoryDef(
-          manager,
-          userId,
-          categoryName,
-          null,
-          false,
-          processedCategories,
-          categoryMap,
-          importResult,
-        );
+      const leafId = await this.findOrCreateCategoryPath(
+        manager,
+        userId,
+        splitCategoryPath(categoryName),
+        false,
+        processedCategories,
+        categoryMap,
+        importResult,
+      );
+      if (leafId !== null) {
+        categoryMap.set(categoryName, leafId);
       }
     }
   }

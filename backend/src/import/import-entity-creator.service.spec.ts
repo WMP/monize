@@ -335,6 +335,88 @@ describe("ImportEntityCreatorService", () => {
       expect(categoryMap.get("Taxes:CPP")).toBe("cat-3");
     });
 
+    it("creates every level of a colon-delimited parent path", async () => {
+      // A three-level QIF category ("Housing:Mortgage:Interest") used to land
+      // as a top-level category literally named "Housing:Mortgage".
+      manager.findOne.mockResolvedValue(null);
+      categoryIdQueue.push("housing", "mortgage", "interest", "principal");
+
+      const categoryMap = new Map<string, string | null>();
+      const categoriesToCreate: CategoryMappingDto[] = [
+        {
+          originalName: "Housing:Mortgage:Interest",
+          createNew: "Interest",
+          createNewParentCategoryName: "Housing:Mortgage",
+        },
+        {
+          originalName: "Housing:Mortgage:Principal",
+          createNew: "Principal",
+          createNewParentCategoryName: "Housing: Mortgage",
+        },
+      ];
+
+      await service.createCategories(
+        manager as any,
+        userId,
+        categoriesToCreate,
+        categoryMap,
+        importResult,
+      );
+
+      const inserts = manager.query.mock.calls
+        .filter((call: unknown[]) =>
+          String(call[0]).includes("INSERT INTO categories"),
+        )
+        .map((call: unknown[]) => call[1]);
+      expect(inserts).toEqual([
+        [userId, "Housing", null],
+        [userId, "Mortgage", "housing"],
+        [userId, "Interest", "mortgage"],
+        [userId, "Principal", "mortgage"],
+      ]);
+      expect(categoryMap.get("Housing:Mortgage:Interest")).toBe("interest");
+      expect(categoryMap.get("Housing:Mortgage:Principal")).toBe("principal");
+      expect(importResult.categoriesCreated).toBe(4);
+    });
+
+    it("reuses the existing levels of a parent path and creates the rest", async () => {
+      manager.findOne.mockImplementation((_entity: any, opts: any) => {
+        const where = opts?.where ?? {};
+        if (where.name === "Housing" && typeof where.parentId !== "string") {
+          return Promise.resolve({ id: "housing-existing", name: "Housing" });
+        }
+        return Promise.resolve(null);
+      });
+      categoryIdQueue.push("mortgage-new", "interest-new");
+
+      const categoryMap = new Map<string, string | null>();
+      await service.createCategories(
+        manager as any,
+        userId,
+        [
+          {
+            originalName: "Housing:Mortgage:Interest",
+            createNew: "Interest",
+            createNewParentCategoryName: "Housing:Mortgage",
+          },
+        ],
+        categoryMap,
+        importResult,
+      );
+
+      const inserts = manager.query.mock.calls
+        .filter((call: unknown[]) =>
+          String(call[0]).includes("INSERT INTO categories"),
+        )
+        .map((call: unknown[]) => call[1]);
+      expect(inserts).toEqual([
+        [userId, "Mortgage", "housing-existing"],
+        [userId, "Interest", "mortgage-new"],
+      ]);
+      expect(categoryMap.get("Housing:Mortgage:Interest")).toBe("interest-new");
+      expect(importResult.categoriesCreated).toBe(2);
+    });
+
     it("should prefer parentCategoryId over createNewParentCategoryName", async () => {
       manager.findOne.mockResolvedValue(null);
       categoryIdQueue.push("child-id");
