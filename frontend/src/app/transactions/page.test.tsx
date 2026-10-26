@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@/test/render';
 import TransactionsPage from './page';
 import { TRANSACTION_SORT_STORAGE_KEY } from '@/lib/transaction-sort';
+import { useDensityStore } from '@/store/densityStore';
 
 // The global setup mock builds a fresh router per call, so pushes cannot be
 // observed. This one keeps a stable `push` for the navigation assertions.
@@ -3231,6 +3232,62 @@ describe('TransactionsPage register sorting', () => {
       expect(lastGetAllParams()).toMatchObject({ sortBy: 'date', sortDirection: 'desc' });
     } finally {
       mockPreferences.value = undefined;
+    }
+  });
+
+  it('falls back to the date sort on the phone card for a column the card does not show', async () => {
+    // The phone card (a phone at Normal density) shows no description or
+    // ref #, and its sort strip offers no chip for either, so a sort
+    // remembered from the tier table is resolved away while the card is
+    // drawn: this render only, storage untouched.
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 639px)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+    const originalDensities = useDensityStore.getState().densities;
+    useDensityStore.setState({ densities: { transactions: 'normal' } });
+    mockUseLocalStorage.mockImplementation((key: string, defaultValue: any) => {
+      const [value, setValue] = React.useState(
+        key === TRANSACTION_SORT_STORAGE_KEY
+          ? { field: 'refNumber', direction: 'asc' }
+          : defaultValue,
+      );
+      return [value, setValue];
+    });
+
+    let unmount: (() => void) | undefined;
+    try {
+      ({ unmount } = render(<TransactionsPage />));
+      await waitFor(() => expect(mockGetAll).toHaveBeenCalled());
+      expect(screen.getByTestId('sort')).toHaveTextContent('date:desc');
+      expect(lastGetAllParams()).toMatchObject({ sortBy: 'date', sortDirection: 'desc' });
+      await waitFor(() => {
+        expect(screen.getByTestId('rows-sort')).toHaveTextContent('date:desc');
+      });
+
+      // Compact keeps the tier table on a phone, Ref # column and all, so the
+      // remembered sort comes back, and the rows are read again in it: the
+      // switch is no click, so only the page's own watch on it can reload.
+      await act(async () => {
+        useDensityStore.setState({ densities: { transactions: 'compact' } });
+      });
+      expect(screen.getByTestId('sort')).toHaveTextContent('refNumber:asc');
+      await waitFor(() => {
+        expect(screen.getByTestId('rows-sort')).toHaveTextContent('refNumber:asc');
+      });
+      expect(lastGetAllParams()).toMatchObject({ sortBy: 'refNumber', sortDirection: 'asc', page: 1 });
+    } finally {
+      // Unmounted first: putting the store back re-renders a mounted page.
+      unmount?.();
+      window.matchMedia = originalMatchMedia;
+      useDensityStore.setState({ densities: originalDensities });
     }
   });
 

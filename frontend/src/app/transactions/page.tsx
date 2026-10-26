@@ -46,6 +46,7 @@ import { useTransactionFilters } from '@/hooks/useTransactionFilters';
 import { useSortableTable } from '@/hooks/useSortableTable';
 import {
   DEFAULT_TRANSACTION_SORT,
+  PHONE_CARD_OMITTED_SORT_FIELDS,
   TRANSACTION_SORT_STORAGE_KEY,
   nextTransactionSort,
   resolveRegisterSort,
@@ -53,6 +54,7 @@ import {
   type TransactionSortField,
 } from '@/lib/transaction-sort';
 import { useHiddenColumns } from '@/hooks/useHiddenColumns';
+import { useRegisterPhoneCard } from '@/hooks/useRegisterPhoneCard';
 import { BulkSelectionBanner } from '@/components/transactions/BulkSelectionBanner';
 import { Account, isLiabilityAccountType } from '@/types/account';
 import { Institution } from '@/types/institution';
@@ -291,12 +293,22 @@ function TransactionsContent() {
   // remembered account sort would order the register by a header nobody can
   // reach. Storage is left alone: widening the filter brings it back. A column
   // the reader has hidden is the same shape (the register reads the same
-  // stored set), and showing it again brings that sort back.
+  // stored set), and showing it again brings that sort back. A description or
+  // ref # sort is the same while the phone card is drawn: the card shows
+  // neither, and its sort strip offers no chip for them.
   const { hidden: hiddenColumns } = useHiddenColumns('transactions');
+  const phoneCard = useRegisterPhoneCard('transactions', false);
   const registerSort = useMemo(
-    () => resolveRegisterSort(storedSort, isSingleAccountView, hiddenColumns),
-    [storedSort, isSingleAccountView, hiddenColumns],
+    () => resolveRegisterSort(storedSort, isSingleAccountView, hiddenColumns, phoneCard),
+    [storedSort, isSingleAccountView, hiddenColumns, phoneCard],
   );
+  // Whether the phone card is what holds the remembered sort back. A layout
+  // switch (a phone's density, a window crossing `sm`) changes the resolved
+  // sort with no click and so no tick, so the reload effect watches this too
+  // and reads a switch as a new order, from page 1.
+  const phoneCardHoldsSortBack =
+    phoneCard && PHONE_CARD_OMITTED_SORT_FIELDS.has(storedSort.field);
+  const phoneCardHoldsSortBackRef = useRef(phoneCardHoldsSortBack);
   // The loader reads the sort from here rather than closing over it, so
   // remembering a deep link's fallback order does not re-run the reload effect
   // and fire a second read for the same click. Every other thing the effect
@@ -581,7 +593,12 @@ function TransactionsContent() {
 
   // Update URL and load transactions when page or filters change
   useEffect(() => {
+    // Tracked even before the filters are ready, so only a switch after the
+    // first load counts as a new order.
+    const sortLayoutChanged = phoneCardHoldsSortBackRef.current !== phoneCardHoldsSortBack;
+    phoneCardHoldsSortBackRef.current = phoneCardHoldsSortBack;
     if (!filters.filtersInitialized) return;
+    if (sortLayoutChanged) isFilterChangeRef.current = true;
 
     // Reload static data if invalidated (e.g. after undo/redo)
     loadStaticData();
@@ -623,7 +640,7 @@ function TransactionsContent() {
     } else {
       loadTransactions(page);
     }
-  }, [filters.currentPage, filters.filterAccountIds, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.filterOriginalCurrencyCodes, filters.filterTagKey, filters.filterTagKeyOp, filters.filterTagKeyValue, filters.filterHasAttachments, filters.updateUrl, loadTransactions, filters.filtersInitialized, undoRedoTick, sortRequestTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filters.currentPage, filters.filterAccountIds, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.filterOriginalCurrencyCodes, filters.filterTagKey, filters.filterTagKeyOp, filters.filterTagKeyValue, filters.filterHasAttachments, filters.updateUrl, loadTransactions, filters.filtersInitialized, undoRedoTick, sortRequestTick, phoneCardHoldsSortBack]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Once the deep-linked transaction is actually on the page, let the flash
   // linger briefly then clear it, so the highlight does not stick around on
