@@ -199,8 +199,7 @@
       "duplicateTitle": "Duplicate transaction",
       "copy": "Copy",
       "duplicate": "Duplicate",
-      "scheduleRecurring": "Schedule as Recurring",
-      "viewWarranties": "View warranties"
+      "scheduleRecurring": "Schedule as Recurring"
     }
   },
   "actionSheet": {

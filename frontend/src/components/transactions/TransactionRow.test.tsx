@@ -1361,55 +1361,21 @@ describe('TransactionRow warranties', () => {
     expect(screen.queryByTestId('warranty-badge')).not.toBeInTheDocument();
   });
 
-  it('offers no warranty action in the Copy menu on a row with none', () => {
-    const onViewWarranties = vi.fn();
-    renderRow({ onDuplicate: vi.fn(), onScheduleRecurring: vi.fn(), onViewWarranties }, { warrantyCount: 0 });
-    fireEvent.click(screen.getByText('Copy'));
-    expect(screen.getByText('Duplicate')).toBeInTheDocument();
-    // Adding a warranty is not a copy; it lives in the form and the Warranties page.
-    expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
-    expect(screen.queryByText('View warranties')).not.toBeInTheDocument();
+  it('offers no warranty action in the Copy menu, with or without warranties', () => {
+    // A warranty is not a copy: it is added from the transaction's form or the
+    // Warranties page, and the row's shield says one exists.
+    for (const warrantyCount of [0, 1]) {
+      const view = renderRow({ onDuplicate: vi.fn(), onScheduleRecurring: vi.fn() }, { warrantyCount });
+      fireEvent.click(screen.getByText('Copy'));
+      expect(screen.getByText('Duplicate')).toBeInTheDocument();
+      expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
+      expect(screen.queryByText('View warranties')).not.toBeInTheDocument();
+      view.unmount();
+    }
   });
 
-  it('offers View warranties in the Copy menu on a row with some', () => {
-    const onViewWarranties = vi.fn();
-    const { props } = renderRow({ onDuplicate: vi.fn(), onViewWarranties }, { warrantyCount: 1 });
-    fireEvent.click(screen.getByText('Copy'));
-    expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('View warranties'));
-    expect(onViewWarranties).toHaveBeenCalledWith(props.transaction);
-    expect(props.onRowClick).not.toHaveBeenCalled();
-  });
-
-  it('keeps every press on the menu item from the row', () => {
-    const { props } = renderRow({ onDuplicate: vi.fn(), onViewWarranties: vi.fn() }, { warrantyCount: 1 });
-    fireEvent.click(screen.getByText('Copy'));
-    const item = screen.getByText('View warranties');
-    fireEvent.mouseDown(item);
-    fireEvent.touchStart(item);
-    fireEvent.contextMenu(item);
-    expect(props.onLongPressStart).not.toHaveBeenCalled();
-    expect(props.onLongPressStartTouch).not.toHaveBeenCalled();
-    expect(props.onContextMenu).not.toHaveBeenCalled();
-  });
-
-  it('opens the Copy menu for View warranties alone, rather than the single Duplicate button', () => {
-    renderRow({ onDuplicate: vi.fn(), onViewWarranties: vi.fn() }, { warrantyCount: 1 });
-    expect(screen.getByTitle('Copy options')).toBeInTheDocument();
-    expect(screen.queryByTitle('Duplicate transaction')).not.toBeInTheDocument();
-  });
-
-  it('keeps the single Duplicate button when no warranty handler is passed', () => {
+  it('keeps the single Duplicate button on a row with warranties', () => {
     renderRow({ onDuplicate: vi.fn() }, { warrantyCount: 2 });
     expect(screen.getByTitle('Duplicate transaction')).toBeInTheDocument();
-  });
-
-  it('offers no warranty action on a linked investment row', () => {
-    renderRow(
-      { onDuplicate: vi.fn(), onViewWarranties: vi.fn() },
-      { linkedInvestmentTransactionId: 'inv-1', warrantyCount: 1 },
-    );
-    expect(screen.queryByText('Copy')).not.toBeInTheDocument();
-    expect(screen.queryByText('View warranties')).not.toBeInTheDocument();
   });
 });

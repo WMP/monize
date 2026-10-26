@@ -199,8 +199,7 @@
       "duplicateTitle": "[XX-Duplicate transaction-XX]",
       "copy": "[XX-Copy-XX]",
       "duplicate": "[XX-Duplicate-XX]",
-      "scheduleRecurring": "[XX-Schedule as Recurring-XX]",
-      "viewWarranties": "[XX-View warranties-XX]"
+      "scheduleRecurring": "[XX-Schedule as Recurring-XX]"
     }
   },
   "actionSheet": {

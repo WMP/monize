@@ -199,8 +199,7 @@
       "duplicateTitle": "거래 복사",
       "copy": "복사",
       "duplicate": "복사본 만들기",
-      "scheduleRecurring": "반복 거래로 예약",
-      "viewWarranties": "보증 보기"
+      "scheduleRecurring": "반복 거래로 예약"
     }
   },
   "actionSheet": {

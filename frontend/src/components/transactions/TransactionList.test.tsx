@@ -3803,18 +3803,20 @@ describe('TransactionList warranties', () => {
     expect(onAddWarranty).toHaveBeenCalledWith(transaction);
   });
 
-  it('threads View warranties on a row that has some', async () => {
+  it('threads View warranties to the action sheet but not the Copy menu', async () => {
     const onViewWarranties = vi.fn();
     const transaction = createTransaction({ warrantyCount: 2 });
     render(
       <TransactionList
         transactions={[transaction]}
         onEdit={vi.fn()}
+        onDuplicate={vi.fn()}
         onAddWarranty={vi.fn()}
         onViewWarranties={onViewWarranties}
       />,
     );
     expect(screen.getByRole('img', { name: '2 warranties' })).toBeInTheDocument();
+    expect(screen.getByTitle('Duplicate transaction')).toBeInTheDocument();
     fireEvent.contextMenu(screen.getByText('Grocery Store').closest('tr')!);
     await waitFor(() => expect(screen.getByText('View warranties')).toBeInTheDocument());
     expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();

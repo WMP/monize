@@ -199,8 +199,7 @@
       "duplicateTitle": "複製交易",
       "copy": "複製",
       "duplicate": "複製",
-      "scheduleRecurring": "設為固定排程",
-      "viewWarranties": "檢視保固"
+      "scheduleRecurring": "設為固定排程"
     }
   },
   "actionSheet": {

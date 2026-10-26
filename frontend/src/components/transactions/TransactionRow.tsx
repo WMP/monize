@@ -28,7 +28,6 @@ import { usePayeeDisplay } from '@/hooks/usePayeeDisplay';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useLocalizedAmount } from '@/hooks/useLocalizedAmount';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
-import { ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { WarrantyBadge, rowHasWarranties } from '@/components/transactions/WarrantyBadge';
 
 /**
@@ -82,24 +81,10 @@ function AttachmentBadge({ count }: { count: number }) {
   );
 }
 
-/**
- * Every pointer event a control inside a row must keep from the row: the row
- * opens the editor on click and the action sheet on a long press or a
- * right-click, and the dropdown below is portalled, so React still bubbles its
- * events up to the row's handlers.
- */
-const STOP_ROW_PRESS = {
-  onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
-  onTouchStart: (e: React.TouchEvent) => e.stopPropagation(),
-  onContextMenu: (e: React.MouseEvent) => e.stopPropagation(),
-};
-
-function CopyDropdown({ density, onDuplicate, onScheduleRecurring, onViewWarranties }: {
+function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
   density: DensityLevel;
   onDuplicate?: () => void;
   onScheduleRecurring?: () => void;
-  /** Passed only for a row that has warranties. */
-  onViewWarranties?: () => void;
 }) {
   const t = useTranslations('transactions');
   const [isOpen, setIsOpen] = useState(false);
@@ -125,7 +110,7 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring, onViewWarrant
   }, [isOpen, updatePosition]);
 
   // If only one action is available, render a simple button
-  if (onDuplicate && !onScheduleRecurring && !onViewWarranties) {
+  if (onDuplicate && !onScheduleRecurring) {
     return (
       <button
         onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
@@ -186,16 +171,6 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring, onViewWarrant
               {t('row.copyOptions.scheduleRecurring')}
             </button>
           )}
-          {onViewWarranties && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setIsOpen(false); onViewWarranties(); }}
-              {...STOP_ROW_PRESS}
-              className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 whitespace-nowrap"
-            >
-              <ShieldCheckIcon className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
-              {t('row.copyOptions.viewWarranties')}
-            </button>
-          )}
         </div>,
         document.body
       )}
@@ -250,13 +225,6 @@ export interface TransactionRowProps {
   onEdit?: (transaction: Transaction) => void;
   onDuplicate?: (transaction: Transaction) => void;
   onScheduleRecurring?: (transaction: Transaction) => void;
-  /**
-   * Warranties: the Copy menu offers "View warranties" on a row with some, and
-   * nothing on a row with none (a warranty is added from the transaction's
-   * form or the Warranties page, not from a Copy menu). The list leaves it out
-   * on a joint row; a linked investment row has no Copy menu.
-   */
-  onViewWarranties?: (transaction: Transaction) => void;
   onDeleteClick: (transaction: Transaction) => void;
   isSelected?: boolean;
   selectionMode?: boolean;
@@ -313,7 +281,6 @@ export const TransactionRow = memo(function TransactionRow({
   onEdit,
   onDuplicate,
   onScheduleRecurring,
-  onViewWarranties,
   onDeleteClick,
   isSelected,
   selectionMode,
@@ -338,7 +305,6 @@ export const TransactionRow = memo(function TransactionRow({
   const formatAmountLocal = useLocalizedAmount();
   const isVoid = transaction.status === TransactionStatus.VOID;
   const hasWarranties = rowHasWarranties(transaction);
-  const viewWarranties = hasWarranties ? onViewWarranties : undefined;
 
   // When this row is the deep-link target, scroll it into view once it mounts
   // so the user lands on it rather than hunting through the page.
@@ -1040,12 +1006,11 @@ export const TransactionRow = memo(function TransactionRow({
               : (density === 'dense' ? '\u270E' : tc('edit'))}
           </button>
         )}
-        {!transaction.linkedInvestmentTransactionId && (onDuplicate || onScheduleRecurring || viewWarranties) && (
+        {!transaction.linkedInvestmentTransactionId && (onDuplicate || onScheduleRecurring) && (
           <CopyDropdown
             density={density}
             onDuplicate={onDuplicate ? () => onDuplicate(transaction) : undefined}
             onScheduleRecurring={onScheduleRecurring ? () => onScheduleRecurring(transaction) : undefined}
-            onViewWarranties={viewWarranties ? () => viewWarranties(transaction) : undefined}
           />
         )}
         {!transaction.linkedInvestmentTransactionId && !hideDelete && (

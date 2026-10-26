@@ -33,8 +33,8 @@ the reminder are one record.
 - A **warranty detail** page: the status card, the documents (receipt, manual,
   photo, other), the claims log, and the linked transaction.
 - **From the register**: "Add warranty" and "View warranties" on a row's
-  action sheet, "View warranties" alone on its Copy dropdown (adding a
-  warranty is not a copy), a shield badge on rows that have one, and a
+  action sheet (never on its Copy dropdown: a warranty is not a copy), a
+  shield badge on rows that have one, and a
   Warranties line in the transaction edit form. The register's own behaviour
   does not change.
 - **Reminders** 30 and 7 days before expiry and on the day, under a new
@@ -56,7 +56,7 @@ and never contributes to a balance, a report or a total.
 | A purchase in the ledger | `Transaction` (`backend/src/transactions/entities/transaction.entity.ts`): `transactionDate`, `payeeId`, `payeeName`, `description`, `amount`, `currencyCode`; `transactionsApi.getById` (`frontend/src/lib/transactions.ts`) | The prefill source when a warranty is created from a row. |
 | Files on a transaction | `transaction_attachments`, `attachment_blobs` (`database/schema.sql`), `AttachmentsService` (`backend/src/attachments/attachments.service.ts`), `attachmentsApi` (`frontend/src/lib/attachments.ts`), `AttachmentsSection.tsx`, `AttachmentPreviewDialog.tsx`, `ScanDocumentControl.tsx` (`frontend/src/components/transactions/`) | Bound to `transaction_id NOT NULL` today; generalised by decision 7. Ownership is `user_id`; the blob policy, the tombstone trigger, `AttachmentOrphanSweeperService` and `AttachmentStorageMigratorService` are keyed by attachment id and do not change. |
 | The register's per-row counts | `attachmentCount` enrichment in `TransactionsService` (`backend/src/transactions/transactions.service.ts`), `AttachmentBadge` in `TransactionRow.tsx` | `warrantyCount` joins it, one more grouped count over the page's ids. |
-| Row actions on the register | `TransactionActionSheet.tsx`, `CopyDropdown` in `TransactionRow.tsx`, `TransactionList.tsx` props (`frontend/src/components/transactions/`) | Optional callbacks; every other `TransactionList` consumer keeps working. |
+| Row actions on the register | `TransactionActionSheet.tsx`, `TransactionList.tsx` props (`frontend/src/components/transactions/`) | Optional callbacks; every other `TransactionList` consumer keeps working. |
 | `has:attachment` search | `transaction-search.util.ts` (`backend/src/transactions/`) | `has:warranty` is the same shape. |
 | Vendor | `payees` (`backend/src/payees/entities/payee.entity.ts`), `usePayeeDisplay` (`frontend/src/hooks/usePayeeDisplay.ts`) | A warranty carries `payee_id` plus a free-text `vendor_name`, as a transaction does. |
 | The one date input, the one money input | `DateInput.tsx`, `CurrencyInput.tsx`, `CurrencyPickerButton.tsx` (`frontend/src/components/ui/`, `frontend/src/components/transactions/`) | `docs/frontend/forms-and-formatting.md`. |
@@ -532,7 +532,7 @@ tick (the smallest mark at or above 20 is 30), then the 7-day one.
   existing flash deep link). A warranties layout wraps the section in
   `DelegateSectionGuard section="warranties"`.
 - Register: `TransactionActionSheet` gains optional `onAddWarranty` and
-  `onViewWarranties`, `CopyDropdown` only `onViewWarranties`; `TransactionList` threads one
+  `onViewWarranties` (`CopyDropdown` takes neither); `TransactionList` threads one
   optional prop so every other consumer is untouched; `TransactionRow` shows
   `WarrantyBadge` (`ShieldCheckIcon`, count) beside `AttachmentBadge` when
   `warrantyCount > 0`, on the phone card and the table alike;

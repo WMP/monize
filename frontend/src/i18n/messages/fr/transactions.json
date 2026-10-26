@@ -199,8 +199,7 @@
       "duplicateTitle": "Dupliquer la transaction",
       "copy": "Copier",
       "duplicate": "Dupliquer",
-      "scheduleRecurring": "Planifier comme récurrente",
-      "viewWarranties": "Voir les garanties"
+      "scheduleRecurring": "Planifier comme récurrente"
     }
   },
   "actionSheet": {

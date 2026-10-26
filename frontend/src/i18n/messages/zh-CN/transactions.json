@@ -199,8 +199,7 @@
       "duplicateTitle": "复制交易",
       "copy": "复制",
       "duplicate": "复制",
-      "scheduleRecurring": "设为定期计划",
-      "viewWarranties": "查看保修"
+      "scheduleRecurring": "设为定期计划"
     }
   },
   "actionSheet": {
