@@ -387,16 +387,21 @@ describe('the sort strip on a phone', () => {
     }
   });
 
-  it('keeps the slim control header beside it', async () => {
+  it('leads the strip with the date toggle and select-all, on one header row', async () => {
     const { container } = renderPhone({ selectionMode: true, onToggleAllOnPage: vi.fn() });
 
     await waitFor(() => {
       expect(screen.getByText('Grocery Store')).toBeInTheDocument();
     });
 
+    // A slim control row above the strip spent a second line of a phone
+    // screen on one small button.
     const head = container.querySelector('thead')!;
-    expect(head.querySelector('input[type="checkbox"]')).toBeTruthy();
-    expect(screen.getByRole('button', { name: /hide the year/i })).toBeInTheDocument();
+    expect(head.querySelectorAll('tr')).toHaveLength(1);
+    const strip = head.querySelector('tr[aria-label="Sort by"]')!;
+    expect(strip.querySelector('input[type="checkbox"]')).toBeTruthy();
+    const toggle = screen.getByRole('button', { name: /hide the year/i });
+    expect(strip.contains(toggle)).toBe(true);
   });
 
   it('sorts from a chip', async () => {

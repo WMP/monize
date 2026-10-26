@@ -710,6 +710,28 @@ export function TransactionList({
     );
   }
 
+  // The phone card's header controls: the select-all-on-page box in selection
+  // mode and the day/month date toggle. They lead the sort strip where the
+  // surface sorts, and stand in a slim row of their own where it does not.
+  const wrappedHeaderControls = (
+    <>
+      {selectionMode && (
+        <input
+          type="checkbox"
+          checked={isAllOnPageSelected || false}
+          onChange={() => onToggleAllOnPage?.()}
+          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+        />
+      )}
+      <CompactDatesToggle
+        active={compactMobileDates}
+        onToggle={toggleCompactMobileDates}
+        label={t('list.dateDisplay.toggleLabel')}
+        title={t('list.dateDisplay.toggleTitle')}
+      />
+    </>
+  );
+
   return (
     <div>
       {/* Density toggle and top pagination */}
@@ -777,41 +799,22 @@ export function TransactionList({
               column header is dropped -- but the two controls that live in the
               header row must not go with it: the day/month date toggle (the
               register keeps it selectable at every width) and, in selection
-              mode, the select-all-on-page box. A slim control header carries
-              exactly those. */}
+              mode, the select-all-on-page box. They share one row with the
+              sort chips where there are any, so the header costs a phone a
+              single line. */}
           <thead className="bg-gray-50 dark:bg-gray-800">
             {wrapped ? (
-              <>
-              <tr>
-                {/* Controls only, no column label: the single card cell below
-                    carries payee, amount, status and the rest, so naming this
-                    header "Date" would misdescribe the column to a screen
-                    reader. The toggle names itself through its own aria-label. */}
-                <th className={`${headerPadding} text-left`}>
-                  <div className="flex items-center gap-3">
-                    {selectionMode && (
-                      <input
-                        type="checkbox"
-                        checked={isAllOnPageSelected || false}
-                        onChange={() => onToggleAllOnPage?.()}
-                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
-                      />
-                    )}
-                    <CompactDatesToggle
-                      active={compactMobileDates}
-                      onToggle={toggleCompactMobileDates}
-                      label={t('list.dateDisplay.toggleLabel')}
-                      title={t('list.dateDisplay.toggleTitle')}
-                    />
-                  </div>
-                </th>
-              </tr>
-              {/* A header that holds controls is replaced, never hidden: the
-                  card labels its own values, but the sort controls have to
-                  come back or a phone can be left in an order it cannot
-                  change. Same component as the column headers, at chip size. */}
-              {sort && onSortChange && (
-                <tr role="row" aria-label={t('list.sort.stripLabel')} className="flex flex-wrap gap-x-2 gap-y-1 px-4 py-2">
+              // A header that holds controls is replaced, never hidden: the
+              // card labels its own values, but the sort controls have to
+              // come back or a phone can be left in an order it cannot
+              // change. Same component as the column headers, at chip size.
+              sort && onSortChange ? (
+                <tr role="row" aria-label={t('list.sort.stripLabel')} className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2">
+                  {/* The same controls-only cell as the slim row below, its
+                      role restated because the flex row drops the implicit one. */}
+                  <th role="columnheader" className="flex items-center gap-3 pr-1">
+                    {wrappedHeaderControls}
+                  </th>
                   {sortChipFields.map((field) => (
                     <SortableHeader<TransactionSortField>
                       key={field}
@@ -825,8 +828,17 @@ export function TransactionList({
                     </SortableHeader>
                   ))}
                 </tr>
-              )}
-              </>
+              ) : (
+                <tr>
+                  {/* Controls only, no column label: the single card cell below
+                      carries payee, amount, status and the rest, so naming this
+                      header "Date" would misdescribe the column to a screen
+                      reader. The toggle names itself through its own aria-label. */}
+                  <th className={`${headerPadding} text-left`}>
+                    <div className="flex items-center gap-3">{wrappedHeaderControls}</div>
+                  </th>
+                </tr>
+              )
             ) : (
             <tr>
               {selectionMode && (
