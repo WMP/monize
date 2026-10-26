@@ -63,6 +63,8 @@ function detectFileType(fileName: string): ImportFileType {
   // Checked before anything reads the file: a .mny is a Jet database, and the
   // QIF fallback would hand its bytes to File.text().
   if (ext === 'mny') return 'mny';
+  // .qif, and Quicken for Mac's .qmtf transfer file, which is QIF under
+  // another extension.
   return 'qif';
 }
 

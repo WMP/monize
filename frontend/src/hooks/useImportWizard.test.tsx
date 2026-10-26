@@ -356,6 +356,22 @@ describe('useImportWizard - QIF file upload', () => {
     expect(result.current.importFiles).toHaveLength(2);
   });
 
+  it('reads a Quicken for Mac .qmtf file as QIF, alongside .qif files', async () => {
+    mockParseQif.mockResolvedValue(baseParsedQif({ categories: [] }));
+    const { result } = renderHook(() => useImportWizard());
+    await waitFor(() => expect(mockGetCurrencies).toHaveBeenCalled());
+
+    await act(async () => {
+      await result.current.handleFileSelect(
+        fileEvent([makeFile('Export.QMTF', '1'), makeFile('b.qif', '2')]),
+      );
+    });
+
+    expect(result.current.fileType).toBe('qif');
+    expect(mockParseQif).toHaveBeenCalledTimes(2);
+    expect(result.current.importFiles).toHaveLength(2);
+  });
+
   it('handles QIF parse error', async () => {
     mockParseQif.mockRejectedValue(new Error('bad'));
     const { result } = renderHook(() => useImportWizard());
