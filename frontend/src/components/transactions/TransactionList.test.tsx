@@ -3780,7 +3780,7 @@ describe('TransactionList warranties', () => {
     vi.clearAllMocks();
   });
 
-  it('threads Add warranty to the Copy menu and the action sheet', async () => {
+  it('threads Add warranty to the action sheet but not the Copy menu', async () => {
     const onAddWarranty = vi.fn();
     const transaction = createTransaction({ warrantyCount: 0 });
     render(
@@ -3792,14 +3792,15 @@ describe('TransactionList warranties', () => {
         onViewWarranties={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByText('Copy'));
-    fireEvent.click(screen.getByText('Add warranty'));
-    expect(onAddWarranty).toHaveBeenCalledWith(transaction);
+    // Adding a warranty is not a copy: with nothing else to offer, Duplicate
+    // stays the single button rather than opening a menu.
+    expect(screen.getByTitle('Duplicate transaction')).toBeInTheDocument();
+    expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
 
     fireEvent.contextMenu(screen.getByText('Grocery Store').closest('tr')!);
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Add warranty'));
-    expect(onAddWarranty).toHaveBeenCalledTimes(2);
+    expect(onAddWarranty).toHaveBeenCalledWith(transaction);
   });
 
   it('threads View warranties on a row that has some', async () => {

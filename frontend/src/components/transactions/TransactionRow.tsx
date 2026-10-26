@@ -94,12 +94,11 @@ const STOP_ROW_PRESS = {
   onContextMenu: (e: React.MouseEvent) => e.stopPropagation(),
 };
 
-function CopyDropdown({ density, onDuplicate, onScheduleRecurring, onAddWarranty, onViewWarranties }: {
+function CopyDropdown({ density, onDuplicate, onScheduleRecurring, onViewWarranties }: {
   density: DensityLevel;
   onDuplicate?: () => void;
   onScheduleRecurring?: () => void;
-  /** At most one of the two warranty actions is passed, chosen by the row's count. */
-  onAddWarranty?: () => void;
+  /** Passed only for a row that has warranties. */
   onViewWarranties?: () => void;
 }) {
   const t = useTranslations('transactions');
@@ -125,10 +124,8 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring, onAddWarranty
     return () => window.removeEventListener('scroll', handleScroll, true);
   }, [isOpen, updatePosition]);
 
-  const warrantyAction = onViewWarranties ?? onAddWarranty;
-
   // If only one action is available, render a simple button
-  if (onDuplicate && !onScheduleRecurring && !warrantyAction) {
+  if (onDuplicate && !onScheduleRecurring && !onViewWarranties) {
     return (
       <button
         onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
@@ -189,14 +186,14 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring, onAddWarranty
               {t('row.copyOptions.scheduleRecurring')}
             </button>
           )}
-          {warrantyAction && (
+          {onViewWarranties && (
             <button
-              onClick={(e) => { e.stopPropagation(); setIsOpen(false); warrantyAction(); }}
+              onClick={(e) => { e.stopPropagation(); setIsOpen(false); onViewWarranties(); }}
               {...STOP_ROW_PRESS}
               className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 whitespace-nowrap"
             >
               <ShieldCheckIcon className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
-              {onViewWarranties ? t('row.copyOptions.viewWarranties') : t('row.copyOptions.addWarranty')}
+              {t('row.copyOptions.viewWarranties')}
             </button>
           )}
         </div>,
@@ -254,11 +251,11 @@ export interface TransactionRowProps {
   onDuplicate?: (transaction: Transaction) => void;
   onScheduleRecurring?: (transaction: Transaction) => void;
   /**
-   * Warranties: the Copy menu offers "Add warranty" on a row with none and
-   * "View warranties" on a row with some. The list leaves both out on a joint
-   * row; a linked investment row has no Copy menu.
+   * Warranties: the Copy menu offers "View warranties" on a row with some, and
+   * nothing on a row with none (a warranty is added from the transaction's
+   * form or the Warranties page, not from a Copy menu). The list leaves it out
+   * on a joint row; a linked investment row has no Copy menu.
    */
-  onAddWarranty?: (transaction: Transaction) => void;
   onViewWarranties?: (transaction: Transaction) => void;
   onDeleteClick: (transaction: Transaction) => void;
   isSelected?: boolean;
@@ -316,7 +313,6 @@ export const TransactionRow = memo(function TransactionRow({
   onEdit,
   onDuplicate,
   onScheduleRecurring,
-  onAddWarranty,
   onViewWarranties,
   onDeleteClick,
   isSelected,
@@ -342,7 +338,7 @@ export const TransactionRow = memo(function TransactionRow({
   const formatAmountLocal = useLocalizedAmount();
   const isVoid = transaction.status === TransactionStatus.VOID;
   const hasWarranties = rowHasWarranties(transaction);
-  const onWarrantyAction = hasWarranties ? onViewWarranties : onAddWarranty;
+  const viewWarranties = hasWarranties ? onViewWarranties : undefined;
 
   // When this row is the deep-link target, scroll it into view once it mounts
   // so the user lands on it rather than hunting through the page.
@@ -1044,13 +1040,12 @@ export const TransactionRow = memo(function TransactionRow({
               : (density === 'dense' ? '\u270E' : tc('edit'))}
           </button>
         )}
-        {!transaction.linkedInvestmentTransactionId && (onDuplicate || onScheduleRecurring || onWarrantyAction) && (
+        {!transaction.linkedInvestmentTransactionId && (onDuplicate || onScheduleRecurring || viewWarranties) && (
           <CopyDropdown
             density={density}
             onDuplicate={onDuplicate ? () => onDuplicate(transaction) : undefined}
             onScheduleRecurring={onScheduleRecurring ? () => onScheduleRecurring(transaction) : undefined}
-            onAddWarranty={!hasWarranties && onAddWarranty ? () => onAddWarranty(transaction) : undefined}
-            onViewWarranties={hasWarranties && onViewWarranties ? () => onViewWarranties(transaction) : undefined}
+            onViewWarranties={viewWarranties ? () => viewWarranties(transaction) : undefined}
           />
         )}
         {!transaction.linkedInvestmentTransactionId && !hideDelete && (

@@ -200,7 +200,6 @@
       "copy": "[XX-Copy-XX]",
       "duplicate": "[XX-Duplicate-XX]",
       "scheduleRecurring": "[XX-Schedule as Recurring-XX]",
-      "addWarranty": "[XX-Add warranty-XX]",
       "viewWarranties": "[XX-View warranties-XX]"
     }
   },

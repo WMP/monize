@@ -52,10 +52,10 @@ interface TransactionListProps {
   onDuplicate?: (transaction: Transaction) => void;
   onScheduleRecurring?: (transaction: Transaction) => void;
   /**
-   * Warranties, offered on a row's Copy menu and action sheet: "Add warranty"
-   * on a row with none, "View warranties" on a row with some. Only the
-   * Transactions page passes them; a joint row never offers them, as its edit
-   * form never offers attachments.
+   * Warranties: the action sheet offers "Add warranty" on a row with none and
+   * "View warranties" on a row with some; the Copy menu offers only "View
+   * warranties". Only the Transactions page passes them; a joint row never
+   * offers them, as its edit form never offers attachments.
    */
   onAddWarranty?: (transaction: Transaction) => void;
   onViewWarranties?: (transaction: Transaction) => void;
@@ -1034,7 +1034,6 @@ export function TransactionList({
                     }
                     onDuplicate={onDuplicate}
                     onScheduleRecurring={onScheduleRecurring}
-                    onAddWarranty={isJointRow(transaction) ? undefined : onAddWarranty}
                     onViewWarranties={isJointRow(transaction) ? undefined : onViewWarranties}
                     onDeleteClick={handleDeleteClick}
                     hideDelete={

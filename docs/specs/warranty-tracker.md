@@ -33,7 +33,8 @@ the reminder are one record.
 - A **warranty detail** page: the status card, the documents (receipt, manual,
   photo, other), the claims log, and the linked transaction.
 - **From the register**: "Add warranty" and "View warranties" on a row's
-  action sheet and Copy dropdown, a shield badge on rows that have one, and a
+  action sheet, "View warranties" alone on its Copy dropdown (adding a
+  warranty is not a copy), a shield badge on rows that have one, and a
   Warranties line in the transaction edit form. The register's own behaviour
   does not change.
 - **Reminders** 30 and 7 days before expiry and on the day, under a new
@@ -530,8 +531,8 @@ tick (the smallest mark at or above 20 is 30), then the 7-day one.
   transaction row linking to `/transactions?targetTransactionId=<id>` (the
   existing flash deep link). A warranties layout wraps the section in
   `DelegateSectionGuard section="warranties"`.
-- Register: `TransactionActionSheet` and `CopyDropdown` gain optional
-  `onAddWarranty` and `onViewWarranties`; `TransactionList` threads one
+- Register: `TransactionActionSheet` gains optional `onAddWarranty` and
+  `onViewWarranties`, `CopyDropdown` only `onViewWarranties`; `TransactionList` threads one
   optional prop so every other consumer is untouched; `TransactionRow` shows
   `WarrantyBadge` (`ShieldCheckIcon`, count) beside `AttachmentBadge` when
   `warrantyCount > 0`, on the phone card and the table alike;
