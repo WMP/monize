@@ -2,12 +2,10 @@
 
 import { useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { Transaction } from '@/types/transaction';
 import { Category } from '@/types/category';
 import { Modal } from '@/components/ui/Modal';
 import { usePayeeDisplay } from '@/hooks/usePayeeDisplay';
-import { rowHasWarranties } from './WarrantyBadge';
 
 interface TransactionActionSheetProps {
   isOpen: boolean;
@@ -17,13 +15,6 @@ interface TransactionActionSheetProps {
   onEdit?: (transaction: Transaction) => void;
   onDuplicate?: (transaction: Transaction) => void;
   onScheduleRecurring?: (transaction: Transaction) => void;
-  /**
-   * Warranties: "Add warranty" on a row with none, "View warranties" on a row
-   * with some (`warrantyCount`). The list leaves both out on a joint row, as
-   * the form leaves out attachments; a linked investment row never shows them.
-   */
-  onAddWarranty?: (transaction: Transaction) => void;
-  onViewWarranties?: (transaction: Transaction) => void;
   onDeleteClick: (transaction: Transaction) => void;
   onDateFilterClick?: (date: string) => void;
   onAccountFilterClick?: (accountId: string) => void;
@@ -42,8 +33,6 @@ export function TransactionActionSheet({
   onEdit,
   onDuplicate,
   onScheduleRecurring,
-  onAddWarranty,
-  onViewWarranties,
   onDeleteClick,
   onDateFilterClick,
   onAccountFilterClick,
@@ -122,14 +111,6 @@ export function TransactionActionSheet({
       onTagFilterClick(tagId);
     }
   }, [onClose, onTagFilterClick]);
-
-  // Which warranty action the row offers: View once it has any, Add before.
-  const hasWarranties = transaction !== null && rowHasWarranties(transaction);
-  const warrantyAction = transaction?.linkedInvestmentTransactionId
-    ? undefined
-    : hasWarranties
-      ? onViewWarranties
-      : onAddWarranty;
 
   const handleDelete = useCallback(() => {
     if (!transaction) return;
@@ -250,15 +231,6 @@ export function TransactionActionSheet({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             {t('actionSheet.scheduleRecurring')}
-          </button>
-        )}
-        {warrantyAction && transaction && (
-          <button
-            onClick={() => { onClose(); warrantyAction(transaction); }}
-            className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
-          >
-            <ShieldCheckIcon className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
-            {hasWarranties ? t('actionSheet.viewWarranties') : t('actionSheet.addWarranty')}
           </button>
         )}
         {!transaction?.linkedInvestmentTransactionId && (

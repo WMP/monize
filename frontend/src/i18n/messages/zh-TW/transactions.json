@@ -199,9 +199,7 @@
       "duplicateTitle": "複製交易",
       "copy": "複製",
       "duplicate": "複製",
-      "scheduleRecurring": "設為固定排程",
-      "addWarranty": "新增保固",
-      "viewWarranties": "檢視保固"
+      "scheduleRecurring": "設為固定排程"
     }
   },
   "actionSheet": {
@@ -214,8 +212,6 @@
     "edit": "編輯",
     "duplicate": "複製",
     "scheduleRecurring": "設為固定排程",
-    "addWarranty": "新增保固",
-    "viewWarranties": "檢視保固",
     "delete": "刪除"
   },
   "filter": {

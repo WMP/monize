@@ -426,6 +426,58 @@
           }
         }
       }
+    },
+    "v1_20_0": {
+      "warranties": {
+        "title": "Garantias",
+        "steps": {
+          "welcome": {
+            "title": "Acompanhe as suas garantias",
+            "body": "Uma garantia regista o que comprou, quando termina a cobertura e quem lho vendeu, com o recibo, o manual e eventuais reclamações. Pode ser associada à compra no seu registo de transações. Uma garantia nunca altera um saldo, um relatório ou um total. Esta visita mostra as formas de adicionar uma e onde aparecem depois."
+          },
+          "warrantiesLink": {
+            "title": "As garantias estão em Ferramentas",
+            "body": "Abra **Ferramentas** e escolha **Garantias** para ver todas as suas garantias."
+          },
+          "overview": {
+            "title": "A cobertura num relance",
+            "body": "Estes cartões contam as suas garantias **A expirar em breve**, **Ativas**, **Expiradas** e **Vitalícias**. Escolha um cartão para filtrar a lista abaixo. Também pode pesquisar, ordenar e mostrar as garantias arquivadas. Escolha uma garantia na lista para abrir a respetiva página, com os documentos, as reclamações e a compra a que está associada."
+          },
+          "addWarranty": {
+            "title": "Método 1: adicionar aqui",
+            "body": "**Adicionar garantia** abre um formulário em branco. Introduza o produto, o vendedor e a data de compra e, depois, quando termina a cobertura: **Numa data**, **Após um prazo** ou **Nunca** para uma garantia vitalícia. Pode anexar o recibo ou o manual antes de guardar."
+          },
+          "importCsv": {
+            "title": "Método 2: importar um ficheiro CSV",
+            "body": "**Importar CSV** lê um ficheiro com as colunas do Warracker, como uma exportação do Warracker ou desta página. Vê todas as linhas e eventuais problemas antes de algo ser guardado."
+          },
+          "inRegister": {
+            "title": "Garantias no registo",
+            "body": "Uma transação com garantia mostra um escudo no registo. Pesquise **has:warranty** para encontrar todas essas transações."
+          },
+          "newTransaction": {
+            "title": "Método 3: ao registar uma compra",
+            "body": "Escolha **+ Nova Transação** para abrir o formulário."
+          },
+          "warrantiesLine": {
+            "title": "A linha Garantias",
+            "body": "Aqui, **Adicionar garantia** guarda primeiro a nova transação e depois abre o formulário da garantia preenchido com os dados dela. Quando editar a transação mais tarde, esta linha lista as respetivas garantias, e cada uma abre a sua página.",
+            "fallbackBody": "A linha Garantias não aparece numa conta conjunta, porque uma garantia é só sua. Escolha uma das suas contas e o formulário mostra uma linha **Garantias** acima dos botões. Aí, **Adicionar garantia** guarda primeiro a nova transação e depois abre o formulário da garantia preenchido com os dados dela. Quando editar a transação mais tarde, a linha lista as respetivas garantias."
+          },
+          "closeForm": {
+            "title": "Fechar o formulário",
+            "body": "Escolha **Cancelar** para o fechar sem guardar, ou guarde a transação se introduziu uma verdadeira."
+          },
+          "dashboardWidget": {
+            "title": "Ver no painel o que está a expirar",
+            "body": "Escolha **Personalizar** e ative **Garantias a expirar em breve**. Lista as próximas garantias a expirar, e o título abre a página Garantias."
+          },
+          "reminders": {
+            "title": "Lembretes antes do fim da cobertura",
+            "body": "O Monize envia um lembrete 30 dias e 7 dias antes de uma garantia expirar, e no próprio dia. Os lembretes chegam aqui, e pode adiar um deles ou abrir a garantia a partir dele. Escolha como lhe chegam em **Definições**, em **Notificações**, como **Lembretes de garantia**."
+          }
+        }
+      }
     }
   },
   "emailReceipts": {

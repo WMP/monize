@@ -199,9 +199,7 @@
       "duplicateTitle": "लेन-देन डुप्लिकेट करें",
       "copy": "कॉपी",
       "duplicate": "डुप्लिकेट",
-      "scheduleRecurring": "आवर्ती के रूप में शेड्यूल करें",
-      "addWarranty": "वारंटी जोड़ें",
-      "viewWarranties": "वारंटी देखें"
+      "scheduleRecurring": "आवर्ती के रूप में शेड्यूल करें"
     }
   },
   "actionSheet": {
@@ -214,8 +212,6 @@
     "edit": "संपादित करें",
     "duplicate": "डुप्लिकेट",
     "scheduleRecurring": "आवर्ती के रूप में शेड्यूल करें",
-    "addWarranty": "वारंटी जोड़ें",
-    "viewWarranties": "वारंटी देखें",
     "delete": "हटाएं"
   },
   "filter": {

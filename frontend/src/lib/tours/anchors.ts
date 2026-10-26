@@ -23,6 +23,7 @@ export const TOUR_ANCHORS = {
   navTools: 'nav-tools',
   navToolsMenu: 'nav-tools-menu',
   navRules: 'nav-rules',
+  navWarranties: 'nav-warranties',
 
   // Dashboard
   dashboardWidgets: 'dashboard-widgets',
@@ -45,6 +46,7 @@ export const TOUR_ANCHORS = {
   transactionConvertedAmount: 'transaction-converted-amount',
   transactionFxConversion: 'transaction-fx-conversion',
   transactionFormActions: 'transaction-form-actions',
+  transactionWarrantiesLine: 'transaction-warranties-line',
 
   // Securities (the detail page)
   securityDetailSummary: 'security-detail-summary',
@@ -107,6 +109,13 @@ export const TOUR_ANCHORS = {
   emailReceiptsTabs: 'email-receipts-tabs',
   emailReceiptsUncovered: 'email-receipts-uncovered',
   emailReceiptsProfiles: 'email-receipts-profiles',
+
+  // Warranties (the page's status cards and its toolbar buttons). The two
+  // buttons render with the list, in its empty state too, and only for the
+  // owner, as the tour that points at them is.
+  warrantiesSummary: 'warranties-summary',
+  warrantiesAddButton: 'warranties-add-button',
+  warrantiesImportButton: 'warranties-import-button',
 } as const;
 
 export type TourAnchorId = (typeof TOUR_ANCHORS)[keyof typeof TOUR_ANCHORS];

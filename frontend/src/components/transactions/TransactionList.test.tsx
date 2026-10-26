@@ -3780,69 +3780,17 @@ describe('TransactionList warranties', () => {
     vi.clearAllMocks();
   });
 
-  it('threads Add warranty to the Copy menu and the action sheet', async () => {
-    const onAddWarranty = vi.fn();
-    const transaction = createTransaction({ warrantyCount: 0 });
+  it('shows the shield but offers no warranty action in the Copy menu or the action sheet', async () => {
     render(
       <TransactionList
-        transactions={[transaction]}
+        transactions={[createTransaction({ warrantyCount: 2 })]}
         onEdit={vi.fn()}
         onDuplicate={vi.fn()}
-        onAddWarranty={onAddWarranty}
-        onViewWarranties={vi.fn()}
-      />,
-    );
-    fireEvent.click(screen.getByText('Copy'));
-    fireEvent.click(screen.getByText('Add warranty'));
-    expect(onAddWarranty).toHaveBeenCalledWith(transaction);
-
-    fireEvent.contextMenu(screen.getByText('Grocery Store').closest('tr')!);
-    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Add warranty'));
-    expect(onAddWarranty).toHaveBeenCalledTimes(2);
-  });
-
-  it('threads View warranties on a row that has some', async () => {
-    const onViewWarranties = vi.fn();
-    const transaction = createTransaction({ warrantyCount: 2 });
-    render(
-      <TransactionList
-        transactions={[transaction]}
-        onEdit={vi.fn()}
-        onAddWarranty={vi.fn()}
-        onViewWarranties={onViewWarranties}
       />,
     );
     expect(screen.getByRole('img', { name: '2 warranties' })).toBeInTheDocument();
-    fireEvent.contextMenu(screen.getByText('Grocery Store').closest('tr')!);
-    await waitFor(() => expect(screen.getByText('View warranties')).toBeInTheDocument());
-    expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('View warranties'));
-    expect(onViewWarranties).toHaveBeenCalledWith(transaction);
-  });
-
-  it('offers no warranty action on a joint row', async () => {
-    const transaction = createTransaction({ warrantyCount: 0 });
-    render(
-      <TransactionList
-        transactions={[transaction]}
-        onEdit={vi.fn()}
-        onDuplicate={vi.fn()}
-        onAddWarranty={vi.fn()}
-        onViewWarranties={vi.fn()}
-        jointPermissionsByAccount={new Map([['acc-1', { canCreate: true, canEdit: true, canDelete: true }]])}
-      />,
-    );
-    // Duplicate alone is the single button again, not a menu.
+    // Duplicate alone is the single button, not a menu.
     expect(screen.getByTitle('Duplicate transaction')).toBeInTheDocument();
-    fireEvent.contextMenu(screen.getByText('Grocery Store').closest('tr')!);
-    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
-    expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();
-    expect(screen.queryByText('View warranties')).not.toBeInTheDocument();
-  });
-
-  it('renders no warranty action for a consumer that passes neither prop', async () => {
-    render(<TransactionList transactions={[createTransaction({ warrantyCount: 1 })]} onEdit={vi.fn()} />);
     fireEvent.contextMenu(screen.getByText('Grocery Store').closest('tr')!);
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
     expect(screen.queryByText('Add warranty')).not.toBeInTheDocument();

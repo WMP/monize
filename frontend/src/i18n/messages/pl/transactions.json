@@ -199,9 +199,7 @@
       "duplicateTitle": "Duplikuj transakcję",
       "copy": "Kopiuj",
       "duplicate": "Duplikuj",
-      "scheduleRecurring": "Zaplanuj jako cykliczną",
-      "addWarranty": "Dodaj gwarancję",
-      "viewWarranties": "Pokaż gwarancje"
+      "scheduleRecurring": "Zaplanuj jako cykliczną"
     }
   },
   "actionSheet": {
@@ -214,8 +212,6 @@
     "edit": "Edytuj",
     "duplicate": "Duplikuj",
     "scheduleRecurring": "Zaplanuj jako cykliczną",
-    "addWarranty": "Dodaj gwarancję",
-    "viewWarranties": "Pokaż gwarancje",
     "delete": "Usuń"
   },
   "filter": {

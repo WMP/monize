@@ -199,9 +199,7 @@
       "duplicateTitle": "Дублировать проводку",
       "copy": "Копировать",
       "duplicate": "Дублировать",
-      "scheduleRecurring": "Запланировать как повторяющуюся",
-      "addWarranty": "Добавить гарантию",
-      "viewWarranties": "Показать гарантии"
+      "scheduleRecurring": "Запланировать как повторяющуюся"
     }
   },
   "actionSheet": {
@@ -214,8 +212,6 @@
     "edit": "Изменить",
     "duplicate": "Дублировать",
     "scheduleRecurring": "Запланировать как повторяющуюся",
-    "addWarranty": "Добавить гарантию",
-    "viewWarranties": "Показать гарантии",
     "delete": "Удалить"
   },
   "filter": {

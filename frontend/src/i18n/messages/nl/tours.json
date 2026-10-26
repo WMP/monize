@@ -426,6 +426,58 @@
           }
         }
       }
+    },
+    "v1_20_0": {
+      "warranties": {
+        "title": "Garanties",
+        "steps": {
+          "welcome": {
+            "title": "Houd je garanties bij",
+            "body": "Een garantie legt vast wat je hebt gekocht, wanneer de dekking afloopt en wie het heeft verkocht, met de bon, de handleiding en eventuele claims. Je kunt hem koppelen aan de aankoop in je transactieoverzicht. Een garantie wijzigt nooit een saldo, een rapport of een totaal. Deze rondleiding laat zien hoe je er een toevoegt en waar ze daarna verschijnen."
+          },
+          "warrantiesLink": {
+            "title": "Garanties vind je onder Hulpmiddelen",
+            "body": "Open **Hulpmiddelen** en kies **Garanties** om al je garanties te zien."
+          },
+          "overview": {
+            "title": "De dekking in één oogopslag",
+            "body": "Deze kaarten tellen je garanties per status: **Verloopt binnenkort**, **Actief**, **Verlopen** en **Levenslang**. Kies een kaart om de lijst hieronder te filteren. Je kunt ook zoeken, sorteren en gearchiveerde garanties tonen. Kies een garantie in de lijst om de pagina ervan te openen, met de documenten, de claims en de aankoop waaraan hij gekoppeld is."
+          },
+          "addWarranty": {
+            "title": "Methode 1: hier toevoegen",
+            "body": "**Garantie toevoegen** opent een leeg formulier. Vul het product, de verkoper en de aankoopdatum in, en daarna wanneer de dekking eindigt: **Op een datum**, **Na een looptijd** of **Nooit** voor een levenslange garantie. Je kunt de bon of de handleiding bijvoegen voordat je opslaat."
+          },
+          "importCsv": {
+            "title": "Methode 2: een CSV-bestand importeren",
+            "body": "**CSV importeren** leest een bestand met de kolommen van Warracker, zoals een export uit Warracker of van deze pagina. Je ziet elke rij en eventuele problemen voordat er iets wordt opgeslagen."
+          },
+          "inRegister": {
+            "title": "Garanties in het transactieoverzicht",
+            "body": "Een transactie met een garantie toont een schild in het transactieoverzicht. Zoek op **has:warranty** om al zulke transacties te vinden."
+          },
+          "newTransaction": {
+            "title": "Methode 3: terwijl je een aankoop vastlegt",
+            "body": "Kies **+ Nieuwe transactie** om het formulier te openen."
+          },
+          "warrantiesLine": {
+            "title": "De regel Garanties",
+            "body": "**Garantie toevoegen** slaat hier eerst de nieuwe transactie op en opent daarna het garantieformulier, ingevuld met de gegevens ervan. Bewerk je de transactie later, dan toont deze regel de garanties ervan, en elke garantie opent haar eigen pagina.",
+            "fallbackBody": "De regel Garanties wordt niet getoond bij een gezamenlijke rekening, omdat een garantie alleen van jou is. Kies een van je eigen rekeningen en het formulier toont een regel **Garanties** boven de knoppen. **Garantie toevoegen** slaat daar eerst de nieuwe transactie op en opent daarna het garantieformulier, ingevuld met de gegevens ervan. Bewerk je de transactie later, dan toont de regel de garanties ervan."
+          },
+          "closeForm": {
+            "title": "Sluit het formulier",
+            "body": "Kies **Annuleren** om het te sluiten zonder op te slaan, of sla de transactie op als je een echte hebt ingevoerd."
+          },
+          "dashboardWidget": {
+            "title": "Zie op het dashboard wat er verloopt",
+            "body": "Kies **Aanpassen** en zet **Garanties die binnenkort verlopen** aan. Het toont de garanties die als eerste verlopen, en de titel opent de pagina Garanties."
+          },
+          "reminders": {
+            "title": "Herinneringen voordat de dekking afloopt",
+            "body": "Monize herinnert je 30 dagen en 7 dagen voordat een garantie verloopt, en op de dag zelf. De herinneringen komen hier binnen, en je kunt er een uitstellen of de garantie ervan openen. Kies onder **Instellingen**, in **Meldingen**, bij **Garantieherinneringen** hoe ze je bereiken."
+          }
+        }
+      }
     }
   },
   "emailReceipts": {

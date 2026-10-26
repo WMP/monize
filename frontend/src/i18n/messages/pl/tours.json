@@ -426,6 +426,58 @@
           }
         }
       }
+    },
+    "v1_20_0": {
+      "warranties": {
+        "title": "Gwarancje",
+        "steps": {
+          "welcome": {
+            "title": "Miej oko na swoje gwarancje",
+            "body": "Gwarancja zapisuje, co kupiłeś, kiedy kończy się ochrona i kto to sprzedał, razem z paragonem, instrukcją i ewentualnymi zgłoszeniami. Można ją powiązać z zakupem w rejestrze transakcji. Gwarancja nigdy nie zmienia salda, raportu ani sumy. Ten przewodnik pokazuje, jak ją dodać i gdzie potem się pojawia."
+          },
+          "warrantiesLink": {
+            "title": "Gwarancje są w menu Narzędzia",
+            "body": "Otwórz **Narzędzia** i wybierz **Gwarancje**, aby zobaczyć wszystkie swoje gwarancje."
+          },
+          "overview": {
+            "title": "Ochrona w skrócie",
+            "body": "Te karty liczą Twoje gwarancje w grupach **Wkrótce wygasają**, **Aktywne**, **Wygasłe** i **Dożywotnie**. Wybierz kartę, aby przefiltrować listę poniżej. Możesz też wyszukiwać, sortować i pokazywać zarchiwizowane gwarancje. Wybierz gwarancję z listy, aby otworzyć jej stronę z dokumentami, zgłoszeniami i powiązanym zakupem."
+          },
+          "addWarranty": {
+            "title": "Metoda 1: dodaj tutaj",
+            "body": "**Dodaj gwarancję** otwiera pusty formularz. Wpisz produkt, sprzedawcę i datę zakupu, a potem wybierz, kiedy kończy się ochrona: **W wybranym dniu**, **Po upływie okresu** albo **Nigdy** dla gwarancji dożywotniej. Przed zapisaniem możesz dołączyć paragon lub instrukcję."
+          },
+          "importCsv": {
+            "title": "Metoda 2: zaimportuj plik CSV",
+            "body": "**Importuj CSV** wczytuje plik w układzie kolumn Warracker, na przykład eksport z aplikacji Warracker lub z tej strony. Zanim cokolwiek zostanie zapisane, zobaczysz każdy wiersz i ewentualne problemy."
+          },
+          "inRegister": {
+            "title": "Gwarancje w rejestrze transakcji",
+            "body": "Transakcja z gwarancją ma w rejestrze ikonę tarczy. Wyszukaj **has:warranty**, aby znaleźć wszystkie takie transakcje."
+          },
+          "newTransaction": {
+            "title": "Metoda 3: podczas zapisywania zakupu",
+            "body": "Wybierz **+ Nowa transakcja**, aby otworzyć formularz."
+          },
+          "warrantiesLine": {
+            "title": "Wiersz Gwarancje",
+            "body": "**Dodaj gwarancję** w tym miejscu najpierw zapisuje nową transakcję, a potem otwiera formularz gwarancji wypełniony jej danymi. Gdy później edytujesz transakcję, ten wiersz pokazuje jej gwarancje, a każda z nich otwiera swoją stronę.",
+            "fallbackBody": "Wiersz Gwarancje nie jest widoczny dla konta wspólnego, ponieważ gwarancja należy tylko do Ciebie. Wybierz jedno ze swoich kont, a formularz pokaże wiersz **Gwarancje** nad przyciskami. **Dodaj gwarancję** w tym wierszu najpierw zapisuje nową transakcję, a potem otwiera formularz gwarancji wypełniony jej danymi. Gdy później edytujesz transakcję, wiersz pokazuje jej gwarancje."
+          },
+          "closeForm": {
+            "title": "Zamknij formularz",
+            "body": "Wybierz **Anuluj**, aby zamknąć go bez zapisywania, albo zapisz transakcję, jeśli jest prawdziwa."
+          },
+          "dashboardWidget": {
+            "title": "Sprawdź na pulpicie, co wygasa",
+            "body": "Wybierz **Dostosuj** i włącz **Gwarancje wkrótce wygasające**. Widżet pokazuje gwarancje, które wygasną najwcześniej, a jego tytuł otwiera stronę Gwarancje."
+          },
+          "reminders": {
+            "title": "Przypomnienia przed końcem ochrony",
+            "body": "Monize przypomina 30 dni i 7 dni przed wygaśnięciem gwarancji oraz w dniu jej wygaśnięcia. Przypomnienia trafiają tutaj, a każde z nich możesz odłożyć na później albo otworzyć z niego gwarancję. Sposób ich dostarczania wybierzesz w **Ustawienia**, w sekcji **Powiadomienia**, jako **Przypomnienia o gwarancjach**."
+          }
+        }
+      }
     }
   },
   "emailReceipts": {

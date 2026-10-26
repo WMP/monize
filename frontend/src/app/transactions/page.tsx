@@ -129,11 +129,9 @@ function TransactionsContent() {
     usePreferencesStore((s) => s.preferences?.defaultCurrency),
   );
   const { convertToDefault } = useExchangeRates();
-  // An acting delegate never adds a warranty (every warranty write is the
-  // owner's), and lists one only with the Warranties section granted.
+  // An acting delegate never adds a warranty: every warranty write is the
+  // owner's.
   const actingAsDelegate = useAuthStore((s) => s.actingAsUserId) !== null;
-  const delegateSections = useAuthStore((s) => s.delegateSections);
-  const canViewWarranties = !actingAsDelegate || delegateSections?.warranties === true;
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   // Joint accounts: effective write permissions per shared account, used to
@@ -723,16 +721,6 @@ function TransactionsContent() {
       setSchedulingFrom(transaction);
     }
     setShowScheduleForm(true);
-  };
-
-  // A warranty lives on its own page: Add opens its form prefilled from this
-  // row, View lists the warranties linked to it.
-  const handleAddWarranty = (transaction: Transaction) => {
-    router.push(`/warranties?new=1&transactionId=${transaction.id}`);
-  };
-
-  const handleViewWarranties = (transaction: Transaction) => {
-    router.push(`/warranties?transactionId=${transaction.id}`);
   };
 
   // Add warranty, or a linked warranty, from inside the edit window leaves the
@@ -1729,8 +1717,6 @@ function TransactionsContent() {
               onEdit={handleEdit}
               onDuplicate={handleDuplicate}
               onScheduleRecurring={handleScheduleRecurring}
-              onAddWarranty={actingAsDelegate ? undefined : handleAddWarranty}
-              onViewWarranties={canViewWarranties ? handleViewWarranties : undefined}
               onRefresh={loadAllData}
               onTransactionUpdate={handleTransactionUpdate}
               onPayeeClick={handlePayeeView}

@@ -426,6 +426,58 @@
           }
         }
       }
+    },
+    "v1_20_0": {
+      "warranties": {
+        "title": "Garanzie",
+        "steps": {
+          "welcome": {
+            "title": "Tieni traccia delle tue garanzie",
+            "body": "Una garanzia registra cosa hai comprato, quando finisce la copertura e chi te lo ha venduto, con la ricevuta, il manuale ed eventuali richieste di assistenza. Può essere collegata all’acquisto nel tuo registro delle transazioni. Una garanzia non modifica mai un saldo, un report o un totale. Questo tour mostra i modi per aggiungerne una e dove compaiono dopo."
+          },
+          "warrantiesLink": {
+            "title": "Le garanzie sono nel menu Strumenti",
+            "body": "Apri **Strumenti** e scegli **Garanzie** per vedere tutte le tue garanzie."
+          },
+          "overview": {
+            "title": "La copertura a colpo d’occhio",
+            "body": "Queste schede contano le tue garanzie **In scadenza**, **Attive**, **Scadute** e **A vita**. Scegli una scheda per filtrare l’elenco sottostante. Puoi anche cercare, ordinare e mostrare le garanzie archiviate. Scegli una garanzia nell’elenco per aprirne la pagina, con i documenti, le richieste di assistenza e l’acquisto a cui è collegata."
+          },
+          "addWarranty": {
+            "title": "Metodo 1: aggiungila qui",
+            "body": "**Aggiungi garanzia** apre un modulo vuoto. Inserisci il prodotto, il venditore e la data di acquisto, poi quando finisce la copertura: **A una data**, **Dopo una durata** oppure **Mai** per una garanzia a vita. Puoi allegare la ricevuta o il manuale prima di salvare."
+          },
+          "importCsv": {
+            "title": "Metodo 2: importa un file CSV",
+            "body": "**Importa CSV** legge un file con le colonne di Warracker, come un’esportazione da Warracker o da questa pagina. Vedi ogni riga ed eventuali problemi prima che venga salvato qualcosa."
+          },
+          "inRegister": {
+            "title": "Le garanzie nel registro",
+            "body": "Una transazione con una garanzia mostra uno scudo nel registro. Cerca **has:warranty** per trovare tutte queste transazioni."
+          },
+          "newTransaction": {
+            "title": "Metodo 3: mentre registri un acquisto",
+            "body": "Scegli **+ Nuova transazione** per aprire il modulo."
+          },
+          "warrantiesLine": {
+            "title": "La riga Garanzie",
+            "body": "Qui **Aggiungi garanzia** salva prima la nuova transazione, poi apre il modulo della garanzia compilato con i suoi dati. Quando modifichi una transazione in seguito, questa riga elenca le sue garanzie, e ognuna apre la propria pagina.",
+            "fallbackBody": "La riga Garanzie non compare per un conto cointestato, perché una garanzia è solo tua. Scegli uno dei tuoi conti e il modulo mostra una riga **Garanzie** sopra i pulsanti. Lì **Aggiungi garanzia** salva prima la nuova transazione, poi apre il modulo della garanzia compilato con i suoi dati. Quando modifichi una transazione in seguito, la riga elenca le sue garanzie."
+          },
+          "closeForm": {
+            "title": "Chiudi il modulo",
+            "body": "Scegli **Annulla** per chiuderlo senza salvare, oppure salva la transazione se ne hai inserita una vera."
+          },
+          "dashboardWidget": {
+            "title": "Guarda cosa scade nel pannello di controllo",
+            "body": "Scegli **Personalizza** e attiva **Garanzie in scadenza**. Elenca le prossime garanzie in scadenza, e il suo titolo apre la pagina Garanzie."
+          },
+          "reminders": {
+            "title": "Promemoria prima della fine della copertura",
+            "body": "Monize ti avvisa 30 giorni e 7 giorni prima della scadenza di una garanzia, e il giorno stesso. I promemoria arrivano qui, e puoi posticiparne uno o aprire la garanzia da lì. Scegli come ti raggiungono nelle **Impostazioni**, in **Notifiche**, alla voce **Promemoria delle garanzie**."
+          }
+        }
+      }
     }
   },
   "emailReceipts": {

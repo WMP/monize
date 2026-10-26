@@ -199,9 +199,7 @@
       "duplicateTitle": "取引を複製",
       "copy": "コピー",
       "duplicate": "複製",
-      "scheduleRecurring": "定期取引としてスケジュール",
-      "addWarranty": "保証を追加",
-      "viewWarranties": "保証を表示"
+      "scheduleRecurring": "定期取引としてスケジュール"
     }
   },
   "actionSheet": {
@@ -214,8 +212,6 @@
     "edit": "編集",
     "duplicate": "複製",
     "scheduleRecurring": "定期取引としてスケジュール",
-    "addWarranty": "保証を追加",
-    "viewWarranties": "保証を表示",
     "delete": "削除"
   },
   "filter": {

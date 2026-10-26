@@ -426,6 +426,58 @@
           }
         }
       }
+    },
+    "v1_20_0": {
+      "warranties": {
+        "title": "Warranties",
+        "steps": {
+          "welcome": {
+            "title": "Keep track of your warranties",
+            "body": "A warranty records what you bought, when its coverage ends and who sold it, with its receipt, manual and any claims. It can be linked to the purchase in your register. A warranty never changes a balance, a report or a total. This tour shows the ways to add one and where they show up afterwards."
+          },
+          "warrantiesLink": {
+            "title": "Warranties are in the Tools menu",
+            "body": "Open **Tools** and choose **Warranties** to see every warranty you have."
+          },
+          "overview": {
+            "title": "Coverage at a glance",
+            "body": "These cards count your warranties that are **Expiring soon**, **Active**, **Expired** and **Lifetime**. Choose a card to filter the list below. You can also search, sort and show archived warranties. Choose a warranty in the list to open its page, with its documents, its claims and the purchase it is linked to."
+          },
+          "addWarranty": {
+            "title": "Method 1: add one here",
+            "body": "**Add warranty** opens a blank form. Enter the product, the vendor and the purchase date, then when the coverage ends: **On a date**, **After a duration**, or **Never** for a lifetime warranty. You can attach the receipt or the manual before you save."
+          },
+          "importCsv": {
+            "title": "Method 2: import a CSV file",
+            "body": "**Import CSV** reads a file in Warracker's columns, such as an export from Warracker or from this page. You see every row and any problems before anything is saved."
+          },
+          "inRegister": {
+            "title": "Warranties in the register",
+            "body": "A transaction with a warranty shows a shield in the register. Search for **has:warranty** to find every such transaction."
+          },
+          "newTransaction": {
+            "title": "Method 3: while you record a purchase",
+            "body": "Choose **+ New Transaction** to open the form."
+          },
+          "warrantiesLine": {
+            "title": "The Warranties line",
+            "body": "**Add warranty** here saves the new transaction first, then opens the warranty form filled in from it. When you edit a transaction later, this line lists its warranties, and each one opens its page.",
+            "fallbackBody": "The Warranties line is not shown for a joint account, because a warranty is your own. Choose one of your own accounts and the form shows a **Warranties** line above its buttons. **Add warranty** there saves the new transaction first, then opens the warranty form filled in from it. When you edit a transaction later, the line lists its warranties."
+          },
+          "closeForm": {
+            "title": "Close the form",
+            "body": "Choose **Cancel** to close it without saving, or save the transaction if you entered a real one."
+          },
+          "dashboardWidget": {
+            "title": "See what is expiring on the dashboard",
+            "body": "Choose **Customize** and turn on **Warranties expiring soon**. It lists the next warranties to expire, and its title opens the Warranties page."
+          },
+          "reminders": {
+            "title": "Reminders before coverage ends",
+            "body": "Monize reminds you 30 days and 7 days before a warranty expires, and on the day. The reminders arrive here, and you can snooze one or open the warranty from it. Choose how they reach you under **Settings**, in **Notifications**, as **Warranty reminders**."
+          }
+        }
+      }
     }
   },
   "emailReceipts": {

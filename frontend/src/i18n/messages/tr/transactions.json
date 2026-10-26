@@ -199,9 +199,7 @@
       "duplicateTitle": "İşlemi çoğalt",
       "copy": "Kopyala",
       "duplicate": "Çoğalt",
-      "scheduleRecurring": "Tekrarlayan Olarak Zamanla",
-      "addWarranty": "Garanti ekle",
-      "viewWarranties": "Garantileri görüntüle"
+      "scheduleRecurring": "Tekrarlayan Olarak Zamanla"
     }
   },
   "actionSheet": {
@@ -214,8 +212,6 @@
     "edit": "Düzenle",
     "duplicate": "Çoğalt",
     "scheduleRecurring": "Tekrarlayan Olarak Zamanla",
-    "addWarranty": "Garanti ekle",
-    "viewWarranties": "Garantileri görüntüle",
     "delete": "Sil"
   },
   "filter": {

@@ -426,6 +426,58 @@
           }
         }
       }
+    },
+    "v1_20_0": {
+      "warranties": {
+        "title": "Bảo hành",
+        "steps": {
+          "welcome": {
+            "title": "Theo dõi các bảo hành của bạn",
+            "body": "Một bảo hành ghi lại bạn đã mua gì, khi nào hết thời hạn bảo hành và ai đã bán, kèm theo biên lai, sách hướng dẫn và mọi yêu cầu bảo hành. Bảo hành có thể được liên kết với giao dịch mua trong sổ giao dịch của bạn. Bảo hành không bao giờ thay đổi số dư, báo cáo hay tổng số. Phần hướng dẫn này cho bạn thấy các cách thêm bảo hành và nơi chúng xuất hiện sau đó."
+          },
+          "warrantiesLink": {
+            "title": "Bảo hành nằm trong menu Công cụ",
+            "body": "Mở **Công cụ** và chọn **Bảo hành** để xem mọi bảo hành của bạn."
+          },
+          "overview": {
+            "title": "Thời hạn bảo hành trong nháy mắt",
+            "body": "Các thẻ này đếm số bảo hành của bạn đang ở trạng thái **Sắp hết hạn**, **Còn hiệu lực**, **Đã hết hạn** và **Trọn đời**. Chọn một thẻ để lọc danh sách bên dưới. Bạn cũng có thể tìm kiếm, sắp xếp và hiển thị các bảo hành đã lưu trữ. Chọn một bảo hành trong danh sách để mở trang của nó, với tài liệu, các yêu cầu bảo hành và giao dịch mua được liên kết."
+          },
+          "addWarranty": {
+            "title": "Phương pháp 1: thêm tại đây",
+            "body": "**Thêm bảo hành** mở một biểu mẫu trống. Nhập sản phẩm, người bán và ngày mua, rồi chọn khi nào bảo hành kết thúc: **Vào một ngày**, **Sau một khoảng thời gian**, hoặc **Không bao giờ** cho bảo hành trọn đời. Bạn có thể đính kèm biên lai hoặc sách hướng dẫn trước khi lưu."
+          },
+          "importCsv": {
+            "title": "Phương pháp 2: nhập tệp CSV",
+            "body": "**Nhập CSV** đọc một tệp theo các cột của Warracker, chẳng hạn tệp xuất từ Warracker hoặc từ trang này. Bạn sẽ thấy mọi dòng và mọi vấn đề trước khi có gì được lưu."
+          },
+          "inRegister": {
+            "title": "Bảo hành trong sổ giao dịch",
+            "body": "Giao dịch có bảo hành hiển thị biểu tượng chiếc khiên trong sổ giao dịch. Tìm **has:warranty** để thấy mọi giao dịch như vậy."
+          },
+          "newTransaction": {
+            "title": "Phương pháp 3: khi bạn ghi một giao dịch mua",
+            "body": "Chọn **+ Giao tác mới** để mở biểu mẫu."
+          },
+          "warrantiesLine": {
+            "title": "Dòng Bảo hành",
+            "body": "**Thêm bảo hành** ở đây sẽ lưu giao dịch mới trước, rồi mở biểu mẫu bảo hành được điền sẵn từ giao dịch đó. Khi bạn sửa giao dịch sau này, dòng này liệt kê các bảo hành của giao dịch, và mỗi mục mở trang của nó.",
+            "fallbackBody": "Dòng Bảo hành không hiển thị với tài khoản chung, vì bảo hành là của riêng bạn. Hãy chọn một tài khoản của riêng bạn, biểu mẫu sẽ hiển thị dòng **Bảo hành** phía trên các nút. **Thêm bảo hành** ở đó sẽ lưu giao dịch mới trước, rồi mở biểu mẫu bảo hành được điền sẵn từ giao dịch đó. Khi bạn sửa giao dịch sau này, dòng này liệt kê các bảo hành của giao dịch."
+          },
+          "closeForm": {
+            "title": "Đóng biểu mẫu",
+            "body": "Chọn **Hủy** để đóng mà không lưu, hoặc lưu giao dịch nếu bạn đã nhập một giao dịch thật."
+          },
+          "dashboardWidget": {
+            "title": "Xem bảo hành sắp hết hạn trên trang Tổng quan",
+            "body": "Chọn **Tùy chỉnh** và bật **Bảo hành sắp hết hạn**. Tiện ích này liệt kê các bảo hành sắp hết hạn tiếp theo, và tiêu đề của nó mở trang Bảo hành."
+          },
+          "reminders": {
+            "title": "Nhắc nhở trước khi hết bảo hành",
+            "body": "Monize nhắc bạn 30 ngày và 7 ngày trước khi bảo hành hết hạn, và vào đúng ngày hết hạn. Các lời nhắc đến đây, và bạn có thể tạm hoãn một lời nhắc hoặc mở bảo hành từ đó. Chọn cách chúng đến với bạn trong **Cài đặt**, mục **Thông báo**, tại **Nhắc nhở bảo hành**."
+          }
+        }
+      }
     }
   },
   "emailReceipts": {

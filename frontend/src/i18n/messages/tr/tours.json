@@ -426,6 +426,58 @@
           }
         }
       }
+    },
+    "v1_20_0": {
+      "warranties": {
+        "title": "Garantiler",
+        "steps": {
+          "welcome": {
+            "title": "Garantilerinizi takip edin",
+            "body": "Bir garanti; ne satın aldığınızı, kapsamının ne zaman bittiğini ve kimden aldığınızı fişi, kılavuzu ve tüm garanti talepleriyle birlikte kaydeder. Kayıt defterinizdeki satın alma işlemine bağlanabilir. Bir garanti hiçbir zaman bakiyeyi, raporu veya toplamı değiştirmez. Bu tur, garanti eklemenin yollarını ve garantilerin sonra nerede göründüğünü gösterir."
+          },
+          "warrantiesLink": {
+            "title": "Garantiler Araçlar menüsünde",
+            "body": "Tüm garantilerinizi görmek için **Araçlar**’ı açın ve **Garantiler**’i seçin."
+          },
+          "overview": {
+            "title": "Garantilerinize bir bakışta",
+            "body": "Bu kartlar **Süresi yakında doluyor**, **Geçerli**, **Süresi dolmuş** ve **Ömür boyu** durumundaki garantilerinizi sayar. Aşağıdaki listeyi filtrelemek için bir kart seçin. Ayrıca arama yapabilir, sıralayabilir ve arşivlenen garantileri gösterebilirsiniz. Belgeleri, talepleri ve bağlı olduğu satın alma işlemiyle birlikte sayfasını açmak için listeden bir garanti seçin."
+          },
+          "addWarranty": {
+            "title": "Yöntem 1: buradan ekleyin",
+            "body": "**Garanti ekle** boş bir form açar. Ürünü, satıcıyı ve satın alma tarihini girin; ardından kapsamın ne zaman biteceğini seçin: **Belirli bir tarihte**, **Belirli bir süre sonra** ya da ömür boyu garanti için **Hiçbir zaman**. Kaydetmeden önce fişi veya kılavuzu ekleyebilirsiniz."
+          },
+          "importCsv": {
+            "title": "Yöntem 2: CSV dosyası içe aktarın",
+            "body": "**CSV içe aktar**, Warracker sütunlarını kullanan bir dosyayı okur; örneğin Warracker’dan ya da bu sayfadan alınmış bir dışa aktarma. Hiçbir şey kaydedilmeden önce her satırı ve tüm sorunları görürsünüz."
+          },
+          "inRegister": {
+            "title": "Kayıt defterindeki garantiler",
+            "body": "Garantisi olan bir işlem, kayıt defterinde bir kalkan simgesiyle görünür. Bu tür tüm işlemleri bulmak için **has:warranty** araması yapın."
+          },
+          "newTransaction": {
+            "title": "Yöntem 3: satın almayı kaydederken",
+            "body": "Formu açmak için **+ Yeni İşlem**’i seçin."
+          },
+          "warrantiesLine": {
+            "title": "Garantiler satırı",
+            "body": "Buradaki **Garanti ekle**, önce yeni işlemi kaydeder, ardından garanti formunu bu işlemin bilgileriyle doldurulmuş olarak açar. Bir işlemi daha sonra düzenlediğinizde bu satır işlemin garantilerini listeler ve her biri kendi sayfasını açar.",
+            "fallbackBody": "Garanti yalnızca size ait olduğu için Garantiler satırı ortak hesaplarda gösterilmez. Kendi hesaplarınızdan birini seçtiğinizde form, düğmelerinin üstünde bir **Garantiler** satırı gösterir. Oradaki **Garanti ekle**, önce yeni işlemi kaydeder, ardından garanti formunu bu işlemin bilgileriyle doldurulmuş olarak açar. Bir işlemi daha sonra düzenlediğinizde satır, işlemin garantilerini listeler."
+          },
+          "closeForm": {
+            "title": "Formu kapatın",
+            "body": "Kaydetmeden kapatmak için **İptal**’i seçin ya da gerçek bir işlem girdiyseniz işlemi kaydedin."
+          },
+          "dashboardWidget": {
+            "title": "Süresi dolacakları panoda görün",
+            "body": "**Özelleştir**’i seçin ve **Süresi yakında dolacak garantiler**’i açın. Süresi ilk dolacak garantileri listeler ve başlığı Garantiler sayfasını açar."
+          },
+          "reminders": {
+            "title": "Kapsam bitmeden önce hatırlatıcılar",
+            "body": "Monize, bir garantinin süresi dolmadan 30 gün ve 7 gün önce ve dolduğu gün size hatırlatır. Hatırlatıcılar buraya gelir; birini erteleyebilir ya da garantiyi oradan açabilirsiniz. Size nasıl ulaşacaklarını **Ayarlar** içinde, **Bildirimler** bölümünde, **Garanti hatırlatıcıları** altında seçin."
+          }
+        }
+      }
     }
   },
   "emailReceipts": {

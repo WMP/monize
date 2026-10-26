@@ -426,6 +426,58 @@
           }
         }
       }
+    },
+    "v1_20_0": {
+      "warranties": {
+        "title": "Garanties",
+        "steps": {
+          "welcome": {
+            "title": "Suivez vos garanties",
+            "body": "Une garantie indique ce que vous avez acheté, quand sa couverture prend fin et qui vous l’a vendu, avec le reçu, le mode d’emploi et les éventuelles réclamations. Elle peut être liée à l’achat dans votre registre de transactions. Une garantie ne modifie jamais un solde, un rapport ni un total. Cette visite montre les façons d’en ajouter une et où elles apparaissent ensuite."
+          },
+          "warrantiesLink": {
+            "title": "Les garanties sont dans le menu Outils",
+            "body": "Ouvrez **Outils** et choisissez **Garanties** pour voir toutes vos garanties."
+          },
+          "overview": {
+            "title": "La couverture en un coup d’œil",
+            "body": "Ces cartes comptent vos garanties par état : **Expirent bientôt**, **Actives**, **Expirées** et **À vie**. Choisissez une carte pour filtrer la liste en dessous. Vous pouvez aussi rechercher, trier et afficher les garanties archivées. Choisissez une garantie dans la liste pour ouvrir sa page, avec ses documents, ses réclamations et l’achat auquel elle est liée."
+          },
+          "addWarranty": {
+            "title": "Méthode 1 : en ajouter une ici",
+            "body": "**Ajouter une garantie** ouvre un formulaire vide. Saisissez le produit, le vendeur et la date d’achat, puis quand la couverture prend fin : **À une date**, **Après une durée**, ou **Jamais** pour une garantie à vie. Vous pouvez joindre le reçu ou le mode d’emploi avant d’enregistrer."
+          },
+          "importCsv": {
+            "title": "Méthode 2 : importer un fichier CSV",
+            "body": "**Importer un CSV** lit un fichier aux colonnes de Warracker, comme un export de Warracker ou de cette page. Vous voyez chaque ligne et chaque problème avant que quoi que ce soit ne soit enregistré."
+          },
+          "inRegister": {
+            "title": "Les garanties dans le registre",
+            "body": "Une transaction avec une garantie affiche un bouclier dans le registre. Recherchez **has:warranty** pour trouver toutes ces transactions."
+          },
+          "newTransaction": {
+            "title": "Méthode 3 : en saisissant un achat",
+            "body": "Choisissez **+ Nouvelle transaction** pour ouvrir le formulaire."
+          },
+          "warrantiesLine": {
+            "title": "La ligne Garanties",
+            "body": "Ici, **Ajouter une garantie** enregistre d’abord la nouvelle transaction, puis ouvre le formulaire de garantie prérempli à partir de celle-ci. Quand vous modifiez une transaction plus tard, cette ligne liste ses garanties, et chacune ouvre sa page.",
+            "fallbackBody": "La ligne Garanties n’apparaît pas pour un compte joint, car une garantie n’appartient qu’à vous. Choisissez l’un de vos propres comptes et le formulaire affiche une ligne **Garanties** au-dessus de ses boutons. À cet endroit, **Ajouter une garantie** enregistre d’abord la nouvelle transaction, puis ouvre le formulaire de garantie prérempli à partir de celle-ci. Quand vous modifiez une transaction plus tard, la ligne liste ses garanties."
+          },
+          "closeForm": {
+            "title": "Fermer le formulaire",
+            "body": "Choisissez **Annuler** pour le fermer sans enregistrer, ou enregistrez la transaction si vous en avez saisi une vraie."
+          },
+          "dashboardWidget": {
+            "title": "Voir ce qui expire sur le tableau de bord",
+            "body": "Choisissez **Personnaliser** et activez **Garanties bientôt expirées**. Le widget liste les prochaines garanties à expirer, et son titre ouvre la page Garanties."
+          },
+          "reminders": {
+            "title": "Des rappels avant la fin de la couverture",
+            "body": "Monize vous prévient 30 jours et 7 jours avant l’expiration d’une garantie, puis le jour même. Les rappels arrivent ici, et vous pouvez en reporter un ou ouvrir la garantie depuis celui-ci. Choisissez comment ils vous parviennent dans les **Paramètres**, section **Notifications**, sous **Rappels de garantie**."
+          }
+        }
+      }
     }
   },
   "emailReceipts": {

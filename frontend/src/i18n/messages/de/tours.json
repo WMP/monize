@@ -426,6 +426,58 @@
           }
         }
       }
+    },
+    "v1_20_0": {
+      "warranties": {
+        "title": "Garantien",
+        "steps": {
+          "welcome": {
+            "title": "Behalten Sie Ihre Garantien im Blick",
+            "body": "Eine Garantie hält fest, was Sie gekauft haben, wann der Schutz endet und wer es verkauft hat, samt Beleg, Handbuch und etwaigen Ansprüchen. Sie lässt sich mit dem Kauf in Ihrem Buchungsregister verknüpfen. Eine Garantie ändert nie einen Saldo, einen Bericht oder eine Summe. Diese Tour zeigt, wie Sie eine anlegen und wo sie danach erscheint."
+          },
+          "warrantiesLink": {
+            "title": "Garantien finden Sie im Menü Tools",
+            "body": "Öffnen Sie **Tools** und wählen Sie **Garantien**, um alle Ihre Garantien zu sehen."
+          },
+          "overview": {
+            "title": "Ihr Garantieschutz auf einen Blick",
+            "body": "Diese Karten zählen Ihre Garantien nach **Läuft bald ab**, **Aktiv**, **Abgelaufen** und **Lebenslang**. Wählen Sie eine Karte, um die Liste darunter zu filtern. Sie können auch suchen, sortieren und archivierte Garantien anzeigen. Wählen Sie eine Garantie in der Liste, um ihre Seite mit ihren Dokumenten, ihren Ansprüchen und dem verknüpften Kauf zu öffnen."
+          },
+          "addWarranty": {
+            "title": "Methode 1: hier anlegen",
+            "body": "**Garantie hinzufügen** öffnet ein leeres Formular. Geben Sie Produkt, Verkäufer und Kaufdatum ein, dann, wann der Schutz endet: **An einem Datum**, **Nach einer Laufzeit** oder **Nie** für eine lebenslange Garantie. Beleg oder Handbuch können Sie vor dem Speichern anhängen."
+          },
+          "importCsv": {
+            "title": "Methode 2: eine CSV-Datei importieren",
+            "body": "**CSV importieren** liest eine Datei mit den Spalten von Warracker, etwa einen Export aus Warracker oder von dieser Seite. Sie sehen jede Zeile und alle Probleme, bevor etwas gespeichert wird."
+          },
+          "inRegister": {
+            "title": "Garantien im Buchungsregister",
+            "body": "Eine Buchung mit Garantie zeigt im Buchungsregister ein Schild. Suchen Sie nach **has:warranty**, um alle solchen Buchungen zu finden."
+          },
+          "newTransaction": {
+            "title": "Methode 3: beim Erfassen eines Kaufs",
+            "body": "Wählen Sie **+ Neue Buchung**, um das Formular zu öffnen."
+          },
+          "warrantiesLine": {
+            "title": "Die Zeile Garantien",
+            "body": "**Garantie hinzufügen** speichert hier zuerst die neue Buchung und öffnet dann das Garantieformular mit ihren Angaben. Wenn Sie eine Buchung später bearbeiten, listet diese Zeile ihre Garantien auf, und jede öffnet ihre Seite.",
+            "fallbackBody": "Bei einem Gemeinschaftskonto wird die Zeile Garantien nicht angezeigt, weil eine Garantie allein Ihnen gehört. Wählen Sie eines Ihrer eigenen Konten, dann zeigt das Formular über seinen Schaltflächen eine Zeile **Garantien**. **Garantie hinzufügen** speichert dort zuerst die neue Buchung und öffnet dann das Garantieformular mit ihren Angaben. Wenn Sie eine Buchung später bearbeiten, listet die Zeile ihre Garantien auf."
+          },
+          "closeForm": {
+            "title": "Formular schließen",
+            "body": "Wählen Sie **Abbrechen**, um es ohne Speichern zu schließen, oder speichern Sie die Buchung, wenn Sie eine echte eingegeben haben."
+          },
+          "dashboardWidget": {
+            "title": "Ablaufende Garantien im Dashboard sehen",
+            "body": "Wählen Sie **Anpassen** und schalten Sie **Bald ablaufende Garantien** ein. Das Widget listet die nächsten ablaufenden Garantien auf, und sein Titel öffnet die Seite Garantien."
+          },
+          "reminders": {
+            "title": "Erinnerungen vor Ablauf des Schutzes",
+            "body": "Monize erinnert Sie 30 Tage und 7 Tage vor Ablauf einer Garantie sowie am Ablauftag selbst. Die Erinnerungen erscheinen hier, und Sie können eine zurückstellen oder die Garantie direkt daraus öffnen. Wie sie Sie erreichen, legen Sie in den **Einstellungen** unter **Benachrichtigungen** bei **Garantie-Erinnerungen** fest."
+          }
+        }
+      }
     }
   },
   "emailReceipts": {

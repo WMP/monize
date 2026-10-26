@@ -426,6 +426,58 @@
           }
         }
       }
+    },
+    "v1_20_0": {
+      "warranties": {
+        "title": "Garansi",
+        "steps": {
+          "welcome": {
+            "title": "Pantau garansi Anda",
+            "body": "Garansi mencatat apa yang Anda beli, kapan perlindungannya berakhir, dan siapa penjualnya, beserta struk, buku panduan, dan klaim apa pun. Garansi dapat ditautkan ke pembelian di daftar transaksi Anda. Garansi tidak pernah mengubah saldo, laporan, atau total. Tur ini menunjukkan cara-cara menambahkan garansi dan di mana garansi itu muncul setelahnya."
+          },
+          "warrantiesLink": {
+            "title": "Garansi ada di menu Alat",
+            "body": "Buka **Alat** dan pilih **Garansi** untuk melihat semua garansi Anda."
+          },
+          "overview": {
+            "title": "Perlindungan dalam sekilas",
+            "body": "Kartu-kartu ini menghitung garansi Anda yang **Segera berakhir**, **Aktif**, **Berakhir**, dan **Seumur hidup**. Pilih sebuah kartu untuk memfilter daftar di bawahnya. Anda juga dapat mencari, mengurutkan, dan menampilkan garansi yang diarsipkan. Pilih garansi di daftar untuk membuka halamannya, dengan dokumen, klaim, dan pembelian yang tertaut dengannya."
+          },
+          "addWarranty": {
+            "title": "Metode 1: tambahkan di sini",
+            "body": "**Tambah garansi** membuka formulir kosong. Masukkan produk, penjual, dan tanggal pembelian, lalu kapan perlindungannya berakhir: **Pada tanggal tertentu**, **Setelah jangka waktu**, atau **Tidak pernah** untuk garansi seumur hidup. Anda dapat melampirkan struk atau buku panduan sebelum menyimpan."
+          },
+          "importCsv": {
+            "title": "Metode 2: impor file CSV",
+            "body": "**Impor CSV** membaca file dengan kolom Warracker, misalnya ekspor dari Warracker atau dari halaman ini. Anda melihat setiap baris dan masalah apa pun sebelum ada yang disimpan."
+          },
+          "inRegister": {
+            "title": "Garansi di daftar transaksi",
+            "body": "Transaksi yang punya garansi menampilkan ikon perisai di daftar transaksi. Cari **has:warranty** untuk menemukan semua transaksi seperti itu."
+          },
+          "newTransaction": {
+            "title": "Metode 3: saat mencatat pembelian",
+            "body": "Pilih **+ Transaksi Baru** untuk membuka formulir."
+          },
+          "warrantiesLine": {
+            "title": "Baris Garansi",
+            "body": "**Tambah garansi** di sini menyimpan transaksi baru terlebih dahulu, lalu membuka formulir garansi yang terisi dari transaksi itu. Saat Anda mengedit transaksi nanti, baris ini menampilkan garansinya, dan masing-masing membuka halamannya.",
+            "fallbackBody": "Baris Garansi tidak ditampilkan untuk akun bersama, karena garansi adalah milik Anda sendiri. Pilih salah satu akun Anda sendiri, dan formulir akan menampilkan baris **Garansi** di atas tombol-tombolnya. **Tambah garansi** di sana menyimpan transaksi baru terlebih dahulu, lalu membuka formulir garansi yang terisi dari transaksi itu. Saat Anda mengedit transaksi nanti, baris itu menampilkan garansinya."
+          },
+          "closeForm": {
+            "title": "Tutup formulir",
+            "body": "Pilih **Batal** untuk menutupnya tanpa menyimpan, atau simpan transaksinya jika Anda memasukkan transaksi sungguhan."
+          },
+          "dashboardWidget": {
+            "title": "Lihat yang segera berakhir di dasbor",
+            "body": "Pilih **Sesuaikan** dan aktifkan **Garansi yang segera berakhir**. Widget ini menampilkan garansi berikutnya yang akan berakhir, dan judulnya membuka halaman Garansi."
+          },
+          "reminders": {
+            "title": "Pengingat sebelum perlindungan berakhir",
+            "body": "Monize mengingatkan Anda 30 hari dan 7 hari sebelum garansi berakhir, serta pada hari itu juga. Pengingat muncul di sini, dan Anda dapat menunda pengingat atau membuka garansinya dari situ. Pilih cara pengingat sampai kepada Anda di **Pengaturan**, di bagian **Notifikasi**, sebagai **Pengingat garansi**."
+          }
+        }
+      }
     }
   },
   "emailReceipts": {
