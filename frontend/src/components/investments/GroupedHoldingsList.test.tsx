@@ -872,7 +872,14 @@ describe('GroupedHoldingsList hidden columns', () => {
 
   const rowWith = (text: string) =>
     screen.getAllByRole('row').find((row) => row.textContent?.includes(text))!;
-  const headerLabels = () => screen.getAllByRole('columnheader').map((th) => th.textContent);
+  // jsdom applies no media queries, so the phone sort strip and the column
+  // header row are both in the DOM; address the column header row (hidden
+  // below `sm`) by its displaying class, and strip the sort glyph.
+  const columnRow = () => document.querySelector<HTMLElement>('thead tr.sm\\:table-row')!;
+  const headerLabels = () =>
+    within(columnRow())
+      .getAllByRole('columnheader')
+      .map((th) => th.textContent?.replace(/[↑↓↕]/g, ''));
   const totalLabelSpan = () =>
     Number(screen.getByText('Account Total').closest('td')!.getAttribute('colspan'));
 
@@ -947,7 +954,7 @@ describe('GroupedHoldingsList hidden columns', () => {
     await waitFor(() => {
       expect(useHiddenColumnsStore.getState().columns).toEqual({ investmentHoldings: ['gainLoss'] });
     });
-    expect(screen.queryByRole('columnheader', { name: 'Gain/Loss' })).not.toBeInTheDocument();
+    expect(within(columnRow()).queryByRole('columnheader', { name: 'Gain/Loss' })).not.toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Gain/Loss' }));
@@ -956,17 +963,17 @@ describe('GroupedHoldingsList hidden columns', () => {
       expect(useHiddenColumnsStore.getState().columns).toEqual({ investmentHoldings: [] });
     });
     expect(mockUpdatePreferences).not.toHaveBeenCalled();
-    expect(screen.getByRole('columnheader', { name: 'Gain/Loss' })).toBeInTheDocument();
+    expect(within(columnRow()).getByRole('columnheader', { name: 'Gain/Loss' })).toBeInTheDocument();
   });
 
   it('hides a column from its header by right-click, and Symbol offers no sheet', async () => {
     seed(undefined);
     renderList();
 
-    fireEvent.contextMenu(screen.getByRole('columnheader', { name: 'Symbol' }));
+    fireEvent.contextMenu(within(columnRow()).getByRole('columnheader', { name: 'Symbol' }));
     expect(screen.queryByRole('button', { name: /hide column/i })).not.toBeInTheDocument();
 
-    fireEvent.contextMenu(screen.getByRole('columnheader', { name: 'Shares' }));
+    fireEvent.contextMenu(within(columnRow()).getByRole('columnheader', { name: 'Shares' }));
     const hide = await screen.findByRole('button', { name: /hide column/i });
     await act(async () => {
       fireEvent.click(hide);
@@ -974,7 +981,114 @@ describe('GroupedHoldingsList hidden columns', () => {
     await waitFor(() => {
       expect(useHiddenColumnsStore.getState().columns).toEqual({ investmentHoldings: ['shares'] });
     });
-    expect(screen.queryByRole('columnheader', { name: 'Shares' })).not.toBeInTheDocument();
+    expect(within(columnRow()).queryByRole('columnheader', { name: 'Shares' })).not.toBeInTheDocument();
     expect(totalLabelSpan()).toBe(3);
+  });
+});
+
+describe('GroupedHoldingsList sorting', () => {
+  // Every column sorts with the shared `SortableHeader`, largest market value
+  // first by default, and the accounts are listed by name (issue #1856).
+  const holding = (over: Record<string, unknown>) => ({
+    securityId: `s-${over.id}`, name: `${over.symbol} Fund`, averageCost: 10,
+    currentPrice: 10, costBasis: 1000, costBasisAccountCurrency: 1000,
+    gainLoss: 0, gainLossPercent: 0, currencyCode: 'CAD', ...over,
+  });
+  const holdingsByAccount = [
+    {
+      accountId: 'a2', accountName: 'TFSA', currencyCode: 'CAD',
+      totalMarketValue: 100, totalCostBasis: 100, totalGainLoss: 0,
+      totalGainLossPercent: 0, cashBalance: 0, cashAccountId: null, holdings: [
+        holding({ id: 'h9', symbol: 'ZZZ', quantity: 1, marketValue: 100 }),
+      ],
+    },
+    {
+      accountId: 'a1', accountName: 'RRSP', currencyCode: 'CAD',
+      totalMarketValue: 9000, totalCostBasis: 3000, totalGainLoss: 6000,
+      totalGainLossPercent: 200, cashBalance: 0, cashAccountId: null, holdings: [
+        holding({ id: 'h1', symbol: 'BBB', quantity: 30, marketValue: 1000 }),
+        // USD 4000 is CAD 5400 in the account: larger than CAD 5000 though its
+        // bare number is smaller.
+        holding({ id: 'h2', symbol: 'AAA', quantity: 10, marketValue: 4000, marketValueAccountCurrency: 5400, marketValueDefaultCurrency: 5400, currencyCode: 'USD' }),
+        holding({ id: 'h3', symbol: 'CCC', quantity: 20, marketValue: 5000 }),
+        holding({ id: 'h4', symbol: 'DDD', quantity: 5, marketValue: null, currentPrice: null }),
+      ],
+    },
+  ] as any[];
+
+  const renderList = () =>
+    render(
+      <GroupedHoldingsList holdingsByAccount={holdingsByAccount} isLoading={false} totalPortfolioValue={11500} />,
+    );
+
+  const accountOrder = () =>
+    screen.getAllByRole('button', { name: /RRSP|TFSA/ }).map((b) => b.textContent?.match(/RRSP|TFSA/)?.[0]);
+  // The RRSP table's holding rows, in DOM order, by symbol.
+  const rrspOrder = () => {
+    const table = screen.getAllByRole('table')[0];
+    return Array.from(table.querySelectorAll('tbody tr'))
+      .map((row) => row.querySelector('button div')?.textContent)
+      .filter((text): text is string => !!text && /^[A-Z]{3}$/.test(text));
+  };
+  const columnRowOf = (table: HTMLElement) => table.querySelector<HTMLElement>('thead tr.sm\\:table-row')!;
+  const phoneStripOf = (table: HTMLElement) => table.querySelector<HTMLElement>('thead tr.sm\\:hidden')!;
+  const header = (name: string) =>
+    within(columnRowOf(screen.getAllByRole('table')[0])).getByRole('columnheader', { name });
+
+  afterEach(() => {
+    cleanup();
+    usePreferencesStore.setState({ preferences: null });
+    useHiddenColumnsStore.setState({ columns: {} } as any);
+  });
+
+  it('lists accounts by name and holdings by account-currency market value, unknown last', () => {
+    renderList();
+    expect(accountOrder()).toEqual(['RRSP', 'TFSA']);
+    expect(rrspOrder()).toEqual(['AAA', 'CCC', 'BBB', 'DDD']);
+    expect(header('Mkt Value').getAttribute('aria-sort')).toBe('descending');
+  });
+
+  it('sorts by Symbol from its header, toggling the direction', async () => {
+    renderList();
+    await act(async () => { fireEvent.click(header('Symbol')); });
+    expect(rrspOrder()).toEqual(['AAA', 'BBB', 'CCC', 'DDD']);
+    await act(async () => { fireEvent.click(header('Symbol')); });
+    expect(rrspOrder()).toEqual(['DDD', 'CCC', 'BBB', 'AAA']);
+    expect(window.localStorage.getItem('investments.holdings.sort')).toContain('symbol');
+  });
+
+  it('sorts a hideable figure column from a plain click on its header', async () => {
+    renderList();
+    await act(async () => { fireEvent.click(header('Shares')); });
+    expect(rrspOrder()).toEqual(['DDD', 'AAA', 'CCC', 'BBB']);
+    // A click on the column already sorted reverses it; unknown stays last.
+    await act(async () => { fireEvent.click(header('Mkt Value')); });
+    expect(rrspOrder()).toEqual(['BBB', 'CCC', 'AAA', 'DDD']);
+    expect(screen.queryByRole('button', { name: /hide column/i })).not.toBeInTheDocument();
+  });
+
+  it('offers the same sort controls in the phone strip and sorts from there', async () => {
+    renderList();
+    const table = screen.getAllByRole('table')[0];
+    const labelsOf = (row: HTMLElement) =>
+      Array.from(row.querySelectorAll('th')).map((th) => th.textContent?.replace(/[↑↓↕]/g, ''));
+    expect(labelsOf(phoneStripOf(table))).toEqual(labelsOf(columnRowOf(table)));
+    expect(labelsOf(phoneStripOf(table))).toHaveLength(8);
+
+    await act(async () => { fireEvent.click(phoneStripOf(table).querySelectorAll('th')[0]); });
+    expect(rrspOrder()).toEqual(['AAA', 'BBB', 'CCC', 'DDD']);
+  });
+
+  it('falls back from a remembered sort on a hidden column, and restores it when shown', () => {
+    window.localStorage.setItem('investments.holdings.sort', JSON.stringify({ field: 'shares', direction: 'asc' }));
+    useHiddenColumnsStore.setState({ columns: { investmentHoldings: ['shares'] } } as any);
+    renderList();
+    expect(rrspOrder()).toEqual(['AAA', 'CCC', 'BBB', 'DDD']);
+    // No chip for the hidden column either.
+    const table = screen.getAllByRole('table')[0];
+    expect(phoneStripOf(table).textContent).not.toContain('Shares');
+
+    act(() => { useHiddenColumnsStore.setState({ columns: { investmentHoldings: [] } } as any); });
+    expect(rrspOrder()).toEqual(['DDD', 'AAA', 'CCC', 'BBB']);
   });
 });

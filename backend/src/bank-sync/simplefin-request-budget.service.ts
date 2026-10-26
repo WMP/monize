@@ -12,7 +12,7 @@ export type SimplefinReservation = SimplefinRequestBudget & {
   allowed: boolean;
 };
 
-/** All request-budget writers lock the owned credential row before counting/inserting. */
+/** All request-budget writers lock the owned credential row (after the owner row) before counting/inserting. */
 @Injectable()
 export class SimplefinRequestBudgetService {
   constructor(private readonly dataSource: DataSource) {}
@@ -44,6 +44,15 @@ export class SimplefinRequestBudgetService {
     )
       throw new Error("Invalid SimpleFIN reservation size");
     return withScopedDb(this.dataSource, async (m) => {
+      // The owner row first, then the credential: the SimpleFIN lock order
+      // setup and discovery take. The INSERT below takes FOR KEY SHARE on the
+      // users row through its foreign key anyway; taken only there, after the
+      // credential, it waited on a discovery holding the user FOR UPDATE while
+      // that discovery waited on this credential, and PostgreSQL broke the
+      // cycle with 40P01 on one of them.
+      await m.query("SELECT id FROM users WHERE id = $1 FOR KEY SHARE", [
+        userId,
+      ]);
       await this.requireCredential(m, userId, credentialId, true);
       await m.query(
         "DELETE FROM bank_sync_provider_requests WHERE credential_id=$1 AND user_id=$2 AND requested_at <= clock_timestamp() - INTERVAL '24 hours'",

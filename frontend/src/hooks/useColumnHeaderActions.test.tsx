@@ -125,8 +125,8 @@ describe('useColumnHeaderActions', () => {
   });
 
   it('takes no click handler for headers that do not sort, and a plain click does nothing', () => {
-    // The holdings table's headers do not sort: a plain click must neither
-    // throw nor open the sheet, while a right-click still does.
+    // The investment register's headers do not sort: a plain click must
+    // neither throw nor open the sheet, while a right-click still does.
     function Plain() {
       const { headerHandlers, sheet } = useColumnHeaderActions<Col>({ columns: COLUMNS, onHide: vi.fn() });
       return (
