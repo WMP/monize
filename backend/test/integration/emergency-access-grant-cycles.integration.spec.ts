@@ -567,6 +567,36 @@ describe("emergency access across grant cycles", () => {
     expect(contact.claim_token_hash).toBeNull();
   }, 60_000);
 
+  it("refuses a delivered link once the owner is back, before the daily cron voids it", async () => {
+    const { token } = await runInactivityGrant();
+    const [{ password_hash: before }]: { password_hash: string }[] =
+      await dataSource.query(`SELECT password_hash FROM users WHERE id = $1`, [
+        owner,
+      ]);
+
+    // The owner signs in again; the monitor has NOT run, so the link is still stored.
+    await lastSeenDaysAgo(0);
+
+    await expect(claimController.preview({ token })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    await expect(
+      claimController.complete(
+        { token, newPassword: "Too-late-for-this-1!aA" },
+        fakeResponse(),
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    const [{ password_hash: after }]: { password_hash: string }[] =
+      await dataSource.query(`SELECT password_hash FROM users WHERE id = $1`, [
+        owner,
+      ]);
+    expect(after).toBe(before);
+    const contact = await contactRow();
+    expect(contact.claim_token_used_at).toBeNull();
+    expect(contact.claim_token_hash).toBe(hashToken(token));
+  }, 60_000);
+
   describe("during a rolling deployment", () => {
     /**
      * The binary in production *today* (pre-149) rotates the credential with

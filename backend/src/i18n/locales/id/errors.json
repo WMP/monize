@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "Pinjaman telah disimpan, tetapi aturan pencocokan pembayarannya tidak dapat dibuat. Buat dari detail pinjaman."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "Pengeditan ini mengubah baris pecahan yang memindahkan uang ke akun lain, sehingga tidak dapat dibatalkan secara otomatis. Edit transaksi untuk mengembalikannya.",
+    "undoVoidWithLegs": "Perubahan ini membatalkan atau memulihkan entri di akun lain, sehingga tidak dapat dibatalkan secara otomatis. Ubah kembali statusnya.",
     "loanEditNotUndoable": "Perubahan pinjaman ini tidak dapat dibatalkan secara otomatis. Edit pinjaman untuk mengembalikannya.",
     "nothingToUndo": "Tidak ada yang dapat dibatalkan",
     "nothingToRedo": "Tidak ada yang dapat diulang",
@@ -194,6 +196,8 @@
     "deviceNotFound": "Perangkat tidak ditemukan",
     "unableToCompleteRegistration": "Tidak dapat menyelesaikan pendaftaran",
     "delegateClaimPasswordRequired": "Akun dengan email ini sudah ada sebagai pengguna bersama. Masukkan kata sandi sementara yang diberikan administrator Anda untuk mengklaimnya.",
+    "delegateClaimRequiresTwoFactorSignIn": "Akun bersama ini menggunakan autentikasi dua faktor. Masuk dengan kata sandi dan kode autentikasi Anda, jangan mendaftar.",
+    "twoFactorAlreadyEnabled": "Autentikasi dua faktor sudah diaktifkan. Setel ulang untuk menggunakan autentikator lain.",
     "passwordBreached": "Kata sandi ini ditemukan dalam kebocoran data. Pilih kata sandi yang berbeda.",
     "invalidCredentials": "Kredensial tidak valid",
     "accountTemporarilyLocked": "Akun dikunci sementara karena terlalu banyak percobaan masuk yang gagal. Coba lagi nanti.",

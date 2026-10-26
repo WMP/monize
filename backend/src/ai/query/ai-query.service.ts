@@ -50,6 +50,25 @@ export interface QueryRunOptions {
 }
 
 /**
+ * Tools withdrawn from an acting delegate's run. The query routes are
+ * `@AllowDelegate` and read-only for a delegate, but these tools act directly
+ * (no signed confirm card) or return data behind an `@OwnerOnly` controller:
+ * `email_receipt_parsers` (save_draft writes; stored order emails),
+ * `ai_review_requests` (claim returns owner-only email content; reject and
+ * submit write), `fetch_bond_series` (writes the catalog) and
+ * `list_transaction_rules` and `manage_transaction_rules` (the rules
+ * controller is owner-only, and preparing an edit, delete or run reads the
+ * owner's rules into the reply).
+ */
+export const DELEGATE_EXCLUDED_AI_TOOLS: readonly string[] = [
+  "email_receipt_parsers",
+  "ai_review_requests",
+  "fetch_bond_series",
+  "list_transaction_rules",
+  "manage_transaction_rules",
+];
+
+/**
  * Why the tool-calling loop stopped without the model having answered. Four of
  * these are budgets; `stalled` is the model itself, ending turn after turn
  * promising work it cannot do once the turn is over.

@@ -9,13 +9,15 @@ interface InvestmentIncomePanelProps {
   dividendInterestYtd: number | null;
   /** Why `dividendInterestYtd` is `null`. */
   dividendInterestUnknownReason?: 'displayFx' | 'unknownCurrency';
-  realizedGainsYtd: number;
+  /** `null` when a sale's gain is unknown; the gains that are known are `realizedGainsKnownYtd`. */
+  realizedGainsYtd: number | null;
+  realizedGainsKnownYtd?: number;
   currencyCode: string;
   isLoading: boolean;
 }
 
-function gainClass(value: number): string {
-  return value < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400';
+function gainClass(value: number | null): string {
+  return value !== null && value < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400';
 }
 
 /** Year-to-date investment income: dividends/interest plus realized gains. */
@@ -23,6 +25,7 @@ export function InvestmentIncomePanel({
   dividendInterestYtd,
   dividendInterestUnknownReason = 'displayFx',
   realizedGainsYtd,
+  realizedGainsKnownYtd = 0,
   currencyCode,
   isLoading,
 }: InvestmentIncomePanelProps) {
@@ -61,8 +64,19 @@ export function InvestmentIncomePanel({
                 {t('income.realizedGains')}
               </dt>
               <dd className={`text-xl font-bold ${gainClass(realizedGainsYtd)}`}>
-                {formatCurrency(realizedGainsYtd, currencyCode)}
+                {realizedGainsYtd === null ? (
+                  <UnknownAmount reasonText={t('income.realizedUnknownReason')} />
+                ) : (
+                  formatCurrency(realizedGainsYtd, currencyCode)
+                )}
               </dd>
+              {realizedGainsYtd === null && (
+                <dd className="text-xs text-gray-500 dark:text-gray-400">
+                  {t('income.realizedKnownPart', {
+                    amount: formatCurrency(realizedGainsKnownYtd, currencyCode),
+                  })}
+                </dd>
+              )}
               <dd className="text-xs text-gray-500 dark:text-gray-400">{t('income.ytd')}</dd>
             </div>
           </dl>

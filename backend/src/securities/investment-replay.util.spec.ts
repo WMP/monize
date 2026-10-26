@@ -1,7 +1,6 @@
 import { InvestmentAction } from "./entities/investment-transaction.entity";
 import {
   acquisitionCost,
-  acquisitionUnitCost,
   applyActionToQuantity,
   applyReturnOfCapital,
   baseInvestmentAction,
@@ -322,62 +321,6 @@ describe("acquisitionCost", () => {
         exchangeRate: "1",
       }),
     ).toBe(1010);
-  });
-});
-
-describe("acquisitionUnitCost", () => {
-  it("is the commission-inclusive cost per share (FR-008)", () => {
-    // The live incremental holding update blends a per-share figure in, while a
-    // rebuild sums total cost. Both must describe the same acquisition: 10
-    // shares at 100 with 10 commission is 101.00 per share.
-    expect(
-      acquisitionUnitCost({ quantity: 10, price: 100, commission: 10 }),
-    ).toBe(101);
-  });
-
-  it("agrees with acquisitionCost for every priced shape", () => {
-    // The invariant that keeps the incremental path and the rebuild from
-    // drifting: unit cost times quantity is the cost the rebuild would fold in.
-    const shapes = [
-      { quantity: 10, price: 100, commission: 10 },
-      { quantity: 3, price: 150, commission: 9.99 },
-      { quantity: 20, price: 100, commission: 0 },
-      { quantity: 0.5, price: 1234.5678, commission: 1.25 },
-      // No zero-price shape here: a stored 0 means "unpriced", not "free",
-      // so it is not a priced shape either function can cost.
-      { quantity: -5, price: 100, commission: 10 },
-    ];
-
-    for (const shape of shapes) {
-      const total = acquisitionCost(shape);
-      expect(total).not.toBeNull();
-      expect(acquisitionUnitCost(shape) * shape.quantity).toBeCloseTo(
-        total as number,
-        8,
-      );
-    }
-  });
-
-  it("falls back to the price when the cost cannot be worked out", () => {
-    // An unpriced TRANSFER_IN carries no cost, and the incremental holding
-    // update needs a number rather than a null -- the same 0 the pre-FR-008
-    // `Number(price)` produced, so an unpriced transfer behaves as before.
-    expect(acquisitionUnitCost({ quantity: 10, price: null })).toBe(0);
-    expect(acquisitionUnitCost({ quantity: 10, price: undefined })).toBe(0);
-  });
-
-  it("returns the price when no shares moved", () => {
-    // Dividing by a zero quantity would give Infinity, which would be written
-    // into averageCost.
-    expect(acquisitionUnitCost({ quantity: 0, price: 42, commission: 5 })).toBe(
-      42,
-    );
-  });
-
-  it("accepts the string numerics a raw select returns", () => {
-    expect(
-      acquisitionUnitCost({ quantity: "10", price: "100", commission: "10" }),
-    ).toBe(101);
   });
 });
 

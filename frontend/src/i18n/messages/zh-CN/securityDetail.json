@@ -126,6 +126,7 @@
     "fees": "费用",
     "realizedPl": "已实现盈亏",
     "realizedMixed": "以 {currencies} 实现，因此不做合计",
+    "realizedUnknownReason": "无法计算此收益：该持仓包含未记录成本而添加的股份，因此已卖出股份的成本未知。请打开添加这些股份的交易并输入其价格。",
     "totalReturn": "总回报",
     "totalReturnValue": "{amount}（{percent}）",
     "totalReturnTitle": "未实现收益，加上卖出时已实现的金额和收到的收益，减去费用，相对于你投入的资本。这是该资本上的简单回报：没有折算成年化，也没有按各笔买入的持有时长加权。",
@@ -152,6 +153,7 @@
     "title": "持仓已清",
     "description": "你已不再持有该证券。它的历史仍保留在下方。",
     "realizedPl": "已实现盈亏",
+    "realizedUnknownReason": "无法计算此收益：该持仓曾包含未记录成本而添加的股份，因此已卖出股份的成本未知。请打开添加这些股份的交易并输入其价格。",
     "heldFrom": "持有起始",
     "heldRange": "{start} 至 {end}"
   },

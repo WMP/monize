@@ -111,6 +111,11 @@ export const useAuthStore = create<AuthState>()(
         import('@/store/preferencesStore').then(({ usePreferencesStore }) => {
           usePreferencesStore.getState().clearPreferences();
         });
+        // SECURITY: The header logout navigates without a reload, so the chat
+        // held in memory (and re-persisted by the store) outlives the session.
+        import('@/store/aiChatStore').then(({ useAiChatStore }) => {
+          useAiChatStore.getState().clear();
+        });
         // SECURITY: Clear AI chat history so conversations don't leak across accounts
         try {
           if (typeof window !== 'undefined') {

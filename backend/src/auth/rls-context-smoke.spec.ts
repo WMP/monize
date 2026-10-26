@@ -31,7 +31,7 @@ describe("R7 modules RLS context smoke (real withScopedDb)", () => {
   const OWNER_ID = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
   const DELEGATE_ID = "d1a2b3c4-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
 
-  it("purgeExpiredRefreshTokens runs its bulk deletes under the system context", async () => {
+  it("purgeExpiredRefreshTokens runs its bulk delete under the system context", async () => {
     const refreshRepo = {
       delete: jest.fn().mockResolvedValue({ affected: 2 }),
     };
@@ -45,7 +45,7 @@ describe("R7 modules RLS context smoke (real withScopedDb)", () => {
 
     await service.purgeExpiredRefreshTokens();
 
-    expect(refreshRepo.delete).toHaveBeenCalledTimes(2);
+    expect(refreshRepo.delete).toHaveBeenCalledTimes(1);
   });
 
   it("handleAutoBackupCron reads its due-settings fan-out under the system context", async () => {

@@ -1326,7 +1326,11 @@
     "csvColCostBasis": "Coût de revient",
     "csvColGainLoss": "Gain/perte",
     "csvColReturn": "Rendement %",
-    "csvNoRate": "Pas de taux"
+    "csvNoRate": "Pas de taux",
+    "csvUnknownCost": "Inconnu",
+    "unknownBasisReason": "Ce gain ne peut pas être calculé : la position contient des titres ajoutés sans coût, le coût de revient des titres vendus est donc inconnu. Ouvrez la transaction qui les a ajoutés et saisissez leur prix.",
+    "knownPart": "Partie connue : {amount}",
+    "unknownCostNotice": "{count, plural, one {# vente a} other {# ventes ont}} un coût inconnu, car des titres ont été ajoutés sans prix. Aucun gain n'est indiqué pour {count, plural, one {elle} other {elles}}, les totaux des gains n'affichent donc que la partie connue."
   },
   "recurringExpenses": {
     "recurringExpenses": "Dépenses récurrentes",

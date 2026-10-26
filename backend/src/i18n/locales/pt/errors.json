@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "O empréstimo foi guardado, mas não foi possível criar a sua regra de correspondência de pagamentos. Crie-a a partir dos detalhes do empréstimo."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "Esta edição alterou linhas de divisão que movem dinheiro para outras contas, pelo que não pode ser anulada automaticamente. Edite a transação para a reverter.",
+    "undoVoidWithLegs": "Esta alteração anulou ou restaurou lançamentos noutras contas, pelo que não pode ser anulada automaticamente. Altere antes o estado de volta.",
     "loanEditNotUndoable": "Esta alteração do empréstimo não pode ser anulada automaticamente. Edite o empréstimo para a reverter.",
     "nothingToUndo": "Nada para desfazer",
     "nothingToRedo": "Nada para refazer",
@@ -194,6 +196,8 @@
     "deviceNotFound": "Dispositivo não encontrado",
     "unableToCompleteRegistration": "Não foi possível concluir o registo",
     "delegateClaimPasswordRequired": "Já existe uma conta com este e-mail como utilizador partilhado. Forneça a palavra-passe temporária fornecida pelo seu administrador para a reivindicar.",
+    "delegateClaimRequiresTwoFactorSignIn": "Esta conta partilhada usa autenticação de dois fatores. Inicie sessão com a sua palavra-passe e o código de autenticação, em vez de se registar.",
+    "twoFactorAlreadyEnabled": "A autenticação de dois fatores já está ativada. Reponha-a para usar outro autenticador.",
     "passwordBreached": "Esta palavra-passe foi encontrada numa fuga de dados. Escolha uma palavra-passe diferente.",
     "invalidCredentials": "Credenciais inválidas",
     "accountTemporarilyLocked": "A conta está temporariamente bloqueada devido a demasiadas tentativas de início de sessão falhadas. Tente novamente mais tarde.",

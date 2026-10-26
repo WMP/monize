@@ -440,22 +440,17 @@ export class TokenService {
   }
 
   private async purgeExpiredRefreshTokensWithinContext(): Promise<void> {
+    // Only expired rows: a rotated (revoked) row is the evidence reuse
+    // detection needs to revoke the family when a stolen token is replayed.
     const expiredResult = await this.scoped(RefreshToken, (repo) =>
       repo.delete({
         expiresAt: LessThan(new Date()),
       }),
     );
 
-    const revokedResult = await this.scoped(RefreshToken, (repo) =>
-      repo.delete({
-        isRevoked: true,
-      }),
-    );
-
-    const totalPurged =
-      (expiredResult.affected || 0) + (revokedResult.affected || 0);
+    const totalPurged = expiredResult.affected || 0;
     if (totalPurged > 0) {
-      this.logger.log(`Purged ${totalPurged} expired/revoked refresh tokens`);
+      this.logger.log(`Purged ${totalPurged} expired refresh tokens`);
     }
   }
 }

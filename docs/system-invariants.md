@@ -1054,10 +1054,12 @@ Enforcement         assertReconciledRowsMutable / assertReconciledIdsMutable
                     TransactionBulkUpdateService.bulkUpdate /
                     bulkDelete, TransactionSplitService.updateSplits / addSplit /
                     removeSplit, ActionHistoryService.undoTransactionUpdate (undo
-                    and redo of a transaction edit) and
+                    and redo of a transaction edit), ActionHistoryService.undoBulkUpdate
+                    (undo and redo of a bulk update, every row of the snapshot
+                    locked first) and
                     InvestmentTransactionsService.updateEmbeddedSplitParent (the
                     split parent's amount recomputed when an embedded investment
-                    row changes). The last two receive an ambient EntityManager
+                    row changes). The last three receive an ambient EntityManager
                     rather than opening their own withScopedDb, so the guard scans
                     them with a `beforeWrite` marker -- the assertion must precede
                     the method's first write. The AI assistant, the MCP tools and

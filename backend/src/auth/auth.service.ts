@@ -215,6 +215,20 @@ export class AuthService {
         );
       }
 
+      // Same lockout the password login honours: a claim is a password proof
+      // that ends in a token pair, so it must not outlive a lock.
+      if (existingUser.lockedUntil && existingUser.lockedUntil > new Date()) {
+        this.logger.warn(
+          `Delegate claim refused: account locked for user ${existingUser.id}`,
+        );
+        throw new ForbiddenException(
+          tr(
+            "errors.auth.accountTemporarilyLocked",
+            "Account is temporarily locked due to too many failed login attempts. Please try again later.",
+          ),
+        );
+      }
+
       // The registrant proves they hold the delegate password in one of
       // two ways: either they typed it into the dedicated "Delegate
       // password" prompt (currentPassword), or the new-account password
@@ -232,12 +246,28 @@ export class AuthService {
           (await bcrypt.compare(supplied, delegatePasswordHash));
       }
       if (!claimOk) {
+        // Committed on its own, so the throw below cannot roll it back.
+        await this.recordFailedAttempt(existingUser.id);
         throw new UnauthorizedException(
           tr(
             "errors.auth.delegateClaimPasswordRequired",
             "An account with this email already exists as a shared user. " +
               "Provide the temporary password your administrator gave you " +
               "to claim it.",
+          ),
+        );
+      }
+
+      // A second factor is not proven by the password alone; claiming would
+      // issue tokens without it, so a 2FA delegate signs in instead.
+      const claimPreferences = await this.scoped(UserPreference, (repo) =>
+        repo.findOne({ where: { userId: existingUser.id } }),
+      );
+      if (isTwoFactorActive(claimPreferences, existingUser)) {
+        throw new ForbiddenException(
+          tr(
+            "errors.auth.delegateClaimRequiresTwoFactorSignIn",
+            "This shared account uses two-factor authentication. Sign in with your password and authentication code instead of registering.",
           ),
         );
       }
@@ -405,6 +435,17 @@ export class AuthService {
 
     if (!user || !user.passwordHash) {
       this.logger.warn("Login failed: no matching account");
+      throw new UnauthorizedException(
+        tr("errors.auth.invalidCredentials", "Invalid credentials"),
+      );
+    }
+
+    // An SSO account signs in through its provider; the hash a link keeps is
+    // not a login credential (the OIDC login drops the TOTP secret).
+    if (user.authProvider === "oidc") {
+      this.logger.warn(
+        `Login failed: password sign-in refused for SSO user ${user.id}`,
+      );
       throw new UnauthorizedException(
         tr("errors.auth.invalidCredentials", "Invalid credentials"),
       );

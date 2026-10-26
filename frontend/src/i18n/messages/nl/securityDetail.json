@@ -126,6 +126,7 @@
     "fees": "Kosten",
     "realizedPl": "Gerealiseerde W/V",
     "realizedMixed": "Gerealiseerd in {currencies}, dus niet opgeteld",
+    "realizedUnknownReason": "Deze winst kan niet worden berekend: de positie bevat aandelen die zonder kosten zijn toegevoegd, dus de kostprijs van de verkochte aandelen is onbekend. Open de transactie die ze heeft toegevoegd en voer hun prijs in.",
     "totalReturn": "Totaalrendement",
     "totalReturnValue": "{amount} ({percent})",
     "totalReturnTitle": "De ongerealiseerde winst, plus wat je bij verkopen realiseerde en aan inkomsten ontving, minus kosten, ten opzichte van het ingelegde kapitaal. Een eenvoudig rendement op dat kapitaal: het is niet op jaarbasis gezet en weegt tranches niet naar hoe lang je ze aanhield.",
@@ -152,6 +153,7 @@
     "title": "Positie gesloten",
     "description": "Je houdt dit effect niet meer aan. De historie blijft hieronder beschikbaar.",
     "realizedPl": "Gerealiseerde W/V",
+    "realizedUnknownReason": "Deze winst kan niet worden berekend: de positie bevatte aandelen die zonder kosten zijn toegevoegd, dus de kostprijs van de verkochte aandelen is onbekend. Open de transactie die ze heeft toegevoegd en voer hun prijs in.",
     "heldFrom": "Aangehouden vanaf",
     "heldRange": "{start} tot {end}"
   },

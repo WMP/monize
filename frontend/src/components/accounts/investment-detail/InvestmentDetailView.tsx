@@ -95,7 +95,9 @@ export function InvestmentDetailView({ account, refreshKey = 0 }: InvestmentDeta
   const [cash, setCash] = useState<Account | null>(null);
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [incomeTx, setIncomeTx] = useState<InvestmentTransaction[]>([]);
-  const [realizedGainsYtd, setRealizedGainsYtd] = useState(0);
+  // `null` when a sale's gain is unknown; `realizedGainsKnownYtd` is the rest.
+  const [realizedGainsYtd, setRealizedGainsYtd] = useState<number | null>(0);
+  const [realizedGainsKnownYtd, setRealizedGainsKnownYtd] = useState(0);
   const [loadedForId, setLoadedForId] = useState<string | null>(null);
   // Bumped by the register panel after any write on either ledger. The figures
   // above it -- the summary card, the allocation and the holdings list, cash row
@@ -157,7 +159,10 @@ export function InvestmentDetailView({ account, refreshKey = 0 }: InvestmentDeta
       setSummary(summaryData);
       // A VOID row is listed by the endpoint as a record; it paid nothing.
       setIncomeTx(fetchedIncome.filter(investmentRowHasEffect));
-      setRealizedGainsYtd(roundToCents(realized.reduce((sum, r) => sum + (Number(r.realizedGain) || 0), 0)));
+      const knownGains = realized.flatMap((r) => (r.realizedGain === null ? [] : [Number(r.realizedGain) || 0]));
+      const knownTotal = roundToCents(sumMoney(knownGains));
+      setRealizedGainsKnownYtd(knownTotal);
+      setRealizedGainsYtd(knownGains.length === realized.length ? knownTotal : null);
       setLoadedForId(account.id);
     })();
     return () => {
@@ -206,6 +211,7 @@ export function InvestmentDetailView({ account, refreshKey = 0 }: InvestmentDeta
         dividendInterestYtd={dividendInterestYtd.amount}
         dividendInterestUnknownReason={dividendInterestYtd.unknownReason}
         realizedGainsYtd={realizedGainsYtd}
+        realizedGainsKnownYtd={realizedGainsKnownYtd}
         currencyCode={currency}
         isLoading={isLoading}
       />

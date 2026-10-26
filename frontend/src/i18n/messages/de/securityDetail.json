@@ -126,6 +126,7 @@
     "fees": "Gebühren",
     "realizedPl": "Realisierter G/V",
     "realizedMixed": "Realisiert in {currencies}, daher nicht summiert",
+    "realizedUnknownReason": "Dieser Gewinn kann nicht berechnet werden: Die Position enthält Anteile, die ohne Kosten hinzugefügt wurden, daher sind die Kosten der verkauften Anteile unbekannt. Öffnen Sie die Transaktion, die sie hinzugefügt hat, und geben Sie ihren Preis ein.",
     "totalReturn": "Gesamtrendite",
     "totalReturnValue": "{amount} ({percent})",
     "totalReturnTitle": "Nicht realisierter Gewinn plus das, was du bei Verkäufen realisiert und an Erträgen erhalten hast, abzüglich Gebühren, bezogen auf das eingesetzte Kapital. Eine einfache Rendite auf dieses Kapital: nicht auf ein Jahr gerechnet und nicht nach Haltedauer der Tranchen gewichtet.",
@@ -152,6 +153,7 @@
     "title": "Position geschlossen",
     "description": "Du hältst dieses Wertpapier nicht mehr. Seine Historie bleibt unten verfügbar.",
     "realizedPl": "Realisierter G/V",
+    "realizedUnknownReason": "Dieser Gewinn kann nicht berechnet werden: Die Position enthielt Anteile, die ohne Kosten hinzugefügt wurden, daher sind die Kosten der verkauften Anteile unbekannt. Öffnen Sie die Transaktion, die sie hinzugefügt hat, und geben Sie ihren Preis ein.",
     "heldFrom": "Gehalten seit",
     "heldRange": "{start} bis {end}"
   },

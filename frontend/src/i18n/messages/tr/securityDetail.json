@@ -126,6 +126,7 @@
     "fees": "Ücretler",
     "realizedPl": "Gerçekleşmiş K/Z",
     "realizedMixed": "{currencies} para birimlerinde gerçekleşti, bu yüzden toplanmadı",
+    "realizedUnknownReason": "Bu kazanç hesaplanamıyor: pozisyonda maliyetsiz eklenmiş hisseler var, bu yüzden satılan hisselerin maliyeti bilinmiyor. Onları ekleyen işlemi açın ve fiyatlarını girin.",
     "totalReturn": "Toplam getiri",
     "totalReturnValue": "{amount} ({percent})",
     "totalReturnTitle": "Gerçekleşmemiş kazanç, artı satışlarda gerçekleştirdiğin ve gelir olarak aldığın tutar, eksi ücretler; koyduğun sermayeye oranla. O sermaye üzerinde basit bir getiri: yıllıklandırılmamıştır ve dilimleri tutma süresine göre ağırlıklandırmaz.",
@@ -152,6 +153,7 @@
     "title": "Pozisyon kapatıldı",
     "description": "Bu menkul kıymeti artık tutmuyorsun. Geçmişi aşağıda kalmaya devam ediyor.",
     "realizedPl": "Gerçekleşmiş K/Z",
+    "realizedUnknownReason": "Bu kazanç hesaplanamıyor: pozisyonda maliyetsiz eklenmiş hisseler vardı, bu yüzden satılan hisselerin maliyeti bilinmiyor. Onları ekleyen işlemi açın ve fiyatlarını girin.",
     "heldFrom": "Tutulmaya başlandığı tarih",
     "heldRange": "{start} - {end}"
   },

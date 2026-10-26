@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { chartColors } from '@/lib/chart-colors';
 import { investmentsApi } from '@/lib/investments';
 import { RealizedGainEntry } from '@/types/investment';
+import { UnknownAmount } from '@/components/ui/UnknownAmount';
 import { Account } from '@/types/account';
 import { parseLocalDate } from '@/lib/utils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -76,6 +77,8 @@ interface SecurityGain {
   totalCostBasis: number;
   realizedGain: number;
   transactionCount: number;
+  /** Sales of unknown cost, left out of the figures above, which are then a subtotal. */
+  unknownCount: number;
 }
 
 const ACCOUNTS_STORAGE_KEY = 'monize-reports-realized-gains-accounts';
@@ -214,10 +217,16 @@ export function RealizedGainsReport() {
           totalCostBasis: 0,
           realizedGain: 0,
           transactionCount: 0,
+          unknownCount: 0,
         };
         map.set(symbol, bucket);
       }
 
+      // Shares of unknown cost: the gain is unknown, never proceeds against 0.
+      if (entry.costBasis === null || entry.realizedGain === null) {
+        bucket.unknownCount += 1;
+        return;
+      }
       const proceeds = toDisplay(entry.proceeds, entry.accountCurrencyCode);
       const costBasis = toDisplay(entry.costBasis, entry.accountCurrencyCode);
       const realizedGain = toDisplay(entry.realizedGain, entry.accountCurrencyCode);
@@ -241,6 +250,7 @@ export function RealizedGainsReport() {
     const missing = new Set<string>();
     let excludedCount = 0;
     for (const entry of entries) {
+      if (entry.costBasis === null || entry.realizedGain === null) continue;
       const proceeds = toDisplay(entry.proceeds, entry.accountCurrencyCode);
       const costBasis = toDisplay(entry.costBasis, entry.accountCurrencyCode);
       const realizedGain = toDisplay(entry.realizedGain, entry.accountCurrencyCode);
@@ -280,7 +290,7 @@ export function RealizedGainsReport() {
 
   const chartData = useMemo(() => {
     return securityGains
-      .filter((sg) => sg.realizedGain !== 0)
+      .filter((sg) => sg.unknownCount === 0 && sg.realizedGain !== 0)
       .map((sg) => ({
         symbol: sg.symbol,
         gain: Math.round(sg.realizedGain * 100) / 100,
@@ -288,16 +298,18 @@ export function RealizedGainsReport() {
   }, [securityGains]);
 
   const totals = useMemo(() => {
-    let totalProceeds = 0, totalCostBasis = 0, totalGain = 0, totalTransactions = 0, gainers = 0, losers = 0;
+    let totalProceeds = 0, totalCostBasis = 0, totalGain = 0, totalTransactions = 0, gainers = 0, losers = 0, unknownCount = 0;
     for (const sg of securityGains) {
+      unknownCount += sg.unknownCount;
       totalProceeds += sg.totalProceeds;
       totalCostBasis += sg.totalCostBasis;
       totalGain += sg.realizedGain;
       totalTransactions += sg.transactionCount;
+      if (sg.unknownCount > 0) continue;
       if (sg.realizedGain > 0) gainers++;
       else if (sg.realizedGain < 0) losers++;
     }
-    return { totalProceeds, totalCostBasis, totalGain, totalTransactions, gainers, losers };
+    return { totalProceeds, totalCostBasis, totalGain, totalTransactions, gainers, losers, unknownCount };
   }, [securityGains]);
 
   const sortedEntries = useMemo(() => {
@@ -337,12 +349,15 @@ export function RealizedGainsReport() {
     const headers = [t('realizedGains.csvColSecurity'), t('realizedGains.csvColDateSold'), t('realizedGains.csvColQuantity'), t('realizedGains.csvColProceeds'), t('realizedGains.csvColCostBasis'), t('realizedGains.csvColGainLoss'), t('realizedGains.csvColReturn')];
     const rows: (string | number)[][] = sortedEntries.map((entry) => {
       const proceeds = toDisplay(entry.proceeds, entry.accountCurrencyCode);
-      const costBasis = toDisplay(entry.costBasis, entry.accountCurrencyCode);
-      const gain = toDisplay(entry.realizedGain, entry.accountCurrencyCode);
+      const costBasis =
+        entry.costBasis === null ? null : toDisplay(entry.costBasis, entry.accountCurrencyCode);
+      const gain =
+        entry.realizedGain === null ? null : toDisplay(entry.realizedGain, entry.accountCurrencyCode);
+      const unknownCost = entry.costBasis === null || entry.realizedGain === null;
       // An export cell that cannot be converted says so; a spreadsheet reading a
       // blank or a native-currency figure in a display-currency column is worse
       // than one reading a marker.
-      const unknown = t('realizedGains.csvNoRate');
+      const unknown = unknownCost ? t('realizedGains.csvUnknownCost') : t('realizedGains.csvNoRate');
       const returnPct =
         costBasis !== null && gain !== null && costBasis !== 0
           ? formatPercent((gain / costBasis) * 100, 2)
@@ -368,14 +383,15 @@ export function RealizedGainsReport() {
   const handleExportPdf = useCallback(async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
     const { headers, rows } = getExportData();
-    const totalRow: (string | number)[] = [t('realizedGains.total'), '', '', totals.totalProceeds, totals.totalCostBasis, totals.totalGain, ''];
+    const unknownGain = t('realizedGains.csvUnknownCost');
+    const totalRow: (string | number)[] = [t('realizedGains.total'), '', '', totals.totalProceeds, totals.totalCostBasis, totals.unknownCount > 0 ? unknownGain : totals.totalGain, ''];
     await exportToPdf({
       title: t('realizedGains.pdfTitle'),
-      subtitle: t('realizedGains.pdfSubtitle', { count: securityGains.length, gain: fmtValue(totals.totalGain) }),
+      subtitle: t('realizedGains.pdfSubtitle', { count: securityGains.length, gain: totals.unknownCount > 0 ? unknownGain : fmtValue(totals.totalGain) }),
       summaryCards: [
         { label: t('realizedGains.totalProceeds'), value: fmtValue(totals.totalProceeds), color: '#111827' },
         { label: t('realizedGains.costBasis'), value: fmtValue(totals.totalCostBasis), color: '#111827' },
-        { label: t('realizedGains.realizedGainLoss'), value: `${totals.totalGain >= 0 ? '+' : ''}${fmtValue(totals.totalGain)}`, color: totals.totalGain >= 0 ? '#16a34a' : '#dc2626' },
+        { label: t('realizedGains.realizedGainLoss'), value: totals.unknownCount > 0 ? unknownGain : `${totals.totalGain >= 0 ? '+' : ''}${fmtValue(totals.totalGain)}`, color: totals.unknownCount > 0 || totals.totalGain >= 0 ? '#16a34a' : '#dc2626' },
       ],
       tableData: { headers, rows, totalRow },
       filename: 'realized-gains',
@@ -416,9 +432,20 @@ export function RealizedGainsReport() {
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('realizedGains.realizedGainLoss')}</div>
-          <div className={`text-xl font-bold ${gainLossColor(totals.totalGain)}`}>
-            {totals.totalGain >= 0 ? '+' : ''}{fmtValue(totals.totalGain)}
-          </div>
+          {totals.unknownCount > 0 ? (
+            <>
+              <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                <UnknownAmount reasonText={t('realizedGains.unknownBasisReason')} />
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {t('realizedGains.knownPart', { amount: fmtValue(totals.totalGain) })}
+              </div>
+            </>
+          ) : (
+            <div className={`text-xl font-bold ${gainLossColor(totals.totalGain)}`}>
+              {totals.totalGain >= 0 ? '+' : ''}{fmtValue(totals.totalGain)}
+            </div>
+          )}
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('realizedGains.securitiesSold')}</div>
@@ -440,6 +467,12 @@ export function RealizedGainsReport() {
             displayCurrency,
             currencies: gainsGaps.missingCurrencies.join(', '),
           })}
+        </p>
+      )}
+
+      {totals.unknownCount > 0 && (
+        <p className="text-xs text-amber-600 dark:text-amber-400">
+          {t('realizedGains.unknownCostNotice', { count: totals.unknownCount })}
         </p>
       )}
 
@@ -601,7 +634,16 @@ export function RealizedGainsReport() {
                     </td>
                     <td role="cell" className={`col-start-1 col-span-2 row-start-3 font-medium ${gainLossColor(sg.realizedGain)} ${FIGURE_CELL}`}>
                       <CellLabel className={CAPTION_CLASS}>{securityGainColumns.realizedGain.label}</CellLabel>
-                      {sg.realizedGain >= 0 ? '+' : ''}{fmtValue(sg.realizedGain)}
+                      {sg.unknownCount > 0 ? (
+                        <>
+                          <UnknownAmount reasonText={t('realizedGains.unknownBasisReason')} />
+                          <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+                            {t('realizedGains.knownPart', { amount: fmtValue(sg.realizedGain) })}
+                          </span>
+                        </>
+                      ) : (
+                        <>{sg.realizedGain >= 0 ? '+' : ''}{fmtValue(sg.realizedGain)}</>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -625,7 +667,16 @@ export function RealizedGainsReport() {
                   </td>
                   <td role="cell" className={`col-start-1 col-span-2 row-start-3 font-bold ${gainLossColor(totals.totalGain)} ${FIGURE_CELL}`}>
                     <CellLabel className={CAPTION_CLASS}>{securityGainColumns.realizedGain.label}</CellLabel>
-                    {totals.totalGain >= 0 ? '+' : ''}{fmtValue(totals.totalGain)}
+                    {totals.unknownCount > 0 ? (
+                      <>
+                        <UnknownAmount reasonText={t('realizedGains.unknownBasisReason')} />
+                        <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+                          {t('realizedGains.knownPart', { amount: fmtValue(totals.totalGain) })}
+                        </span>
+                      </>
+                    ) : (
+                      <>{totals.totalGain >= 0 ? '+' : ''}{fmtValue(totals.totalGain)}</>
+                    )}
                   </td>
                 </tr>
               </tfoot>

@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "貸款已儲存，但無法建立其付款比對規則。請在貸款詳細資料中建立。"
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "此次編輯變更了將資金轉入其他帳戶的拆分列，因此無法自動復原。請編輯交易以改回。",
+    "undoVoidWithLegs": "此變更作廢或恢復了其他帳戶中的項目，因此無法自動復原。請改為把狀態改回。",
     "loanEditNotUndoable": "此貸款變更無法自動復原。請編輯貸款以改回。",
     "nothingToUndo": "沒有可復原的操作",
     "nothingToRedo": "沒有可重做的操作",
@@ -194,6 +196,8 @@
     "deviceNotFound": "找不到裝置",
     "unableToCompleteRegistration": "無法完成注册",
     "delegateClaimPasswordRequired": "已有使用此電子郵件的共用使用者帳戶存在。請提供管理員給您的臨時密碼以認領帳戶。",
+    "delegateClaimRequiresTwoFactorSignIn": "此共用帳戶使用雙重驗證。請使用密碼和驗證碼登入，而不是註冊。",
+    "twoFactorAlreadyEnabled": "雙重驗證已啟用。如需使用其他驗證器，請先重設。",
     "passwordBreached": "此密碼已出現在資料外洩事件中。請選擇其他密碼。",
     "invalidCredentials": "憑證無效",
     "accountTemporarilyLocked": "由於多次登入失敗，帳戶已暫時鎖定。請稍後再試。",

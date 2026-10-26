@@ -37,6 +37,25 @@ import { generateCsrfToken, getCsrfCookieOptions } from "../common/csrf.util";
 import { withSystemContext } from "../common/db/with-context";
 import { ClaimCompleteDto, ClaimPreviewDto } from "./dto/claim.dto";
 
+/**
+ * True while the owner has NOT returned, with the same meaning as
+ * `revokeReturnedOwners` in the monitor: the owner is active, has a last-seen
+ * time (`last_activity_at`, else `last_login`), and was seen fewer than
+ * `grant_after_days` whole days ago. The daily cron alone voids a returned
+ * owner's link; this makes the claim refuse in the hours before it runs.
+ */
+const OWNER_NOT_RETURNED_SQL = `NOT EXISTS (
+            SELECT 1
+              FROM users u
+              JOIN emergency_access_settings s ON s.owner_user_id = u.id
+             WHERE u.id = emergency_access_contacts.owner_user_id
+               AND s.enabled = true
+               AND s.granted_at IS NOT NULL
+               AND u.is_active = true
+               AND COALESCE(u.last_activity_at, u.last_login) IS NOT NULL
+               AND FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(u.last_activity_at, u.last_login))) / 86400) < s.grant_after_days
+          )`;
+
 @ApiTags("Emergency Access")
 @Controller("emergency-access/claim")
 export class EmergencyAccessClaimController {
@@ -84,8 +103,19 @@ export class EmergencyAccessClaimController {
         where: { claimTokenHash: tokenHash },
       }),
     );
+    // A returned owner reads as an invalid link: same refusal, nothing to enumerate.
+    const ownerAway = contact
+      ? await withScopedDb(this.dataSource, (manager) =>
+          manager.query(
+            `SELECT id FROM emergency_access_contacts
+              WHERE id = $1 AND ${OWNER_NOT_RETURNED_SQL}`,
+            [contact.id],
+          ),
+        )
+      : [];
     if (
       !contact ||
+      returnedRows<{ id: string }>(ownerAway).length === 0 ||
       !contact.claimTokenExpiresAt ||
       contact.claimTokenUsedAt ||
       contact.claimTokenExpiresAt.getTime() < Date.now()
@@ -226,6 +256,7 @@ export class EmergencyAccessClaimController {
             AND claim_token_used_at IS NULL
             AND claim_token_expires_at IS NOT NULL
             AND claim_token_expires_at >= CURRENT_TIMESTAMP
+            AND ${OWNER_NOT_RETURNED_SQL}
           RETURNING id, owner_user_id`,
         [tokenHash],
       );

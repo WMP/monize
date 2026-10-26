@@ -1326,7 +1326,11 @@
     "csvColCostBasis": "Einstandswert",
     "csvColGainLoss": "Gewinn/Verlust",
     "csvColReturn": "Rendite %",
-    "csvNoRate": "Kein Kurs"
+    "csvNoRate": "Kein Kurs",
+    "csvUnknownCost": "Unbekannt",
+    "unknownBasisReason": "Dieser Gewinn kann nicht berechnet werden: Die Position enthält Anteile, die ohne Kosten hinzugefügt wurden, daher sind die Kosten der verkauften Anteile unbekannt. Öffnen Sie die Transaktion, die sie hinzugefügt hat, und geben Sie ihren Preis ein.",
+    "knownPart": "Bekannter Teil: {amount}",
+    "unknownCostNotice": "{count, plural, one {# Verkauf hat} other {# Verkäufe haben}} unbekannte Kosten, weil Anteile ohne Preis hinzugefügt wurden. Für {count, plural, one {ihn} other {sie}} wird kein Gewinn angegeben, daher zeigen die Gewinnsummen nur den bekannten Teil."
   },
   "recurringExpenses": {
     "recurringExpenses": "Wiederkehrende Ausgaben",

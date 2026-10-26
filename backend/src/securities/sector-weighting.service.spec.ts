@@ -2,6 +2,7 @@ import { SectorWeightingService } from "./sector-weighting.service";
 import { Security } from "./entities/security.entity";
 import { Holding } from "./entities/holding.entity";
 import { Account } from "../accounts/entities/account.entity";
+import { UserPreference } from "../users/entities/user-preference.entity";
 import {
   createScopedDbMocks,
   ManagerMock,
@@ -16,6 +17,7 @@ describe("SectorWeightingService", () => {
   let securityRepo: Record<string, jest.Mock>;
   let holdingsRepo: Record<string, jest.Mock>;
   let accountsRepo: Record<string, jest.Mock>;
+  let prefsRepo: Record<string, jest.Mock>;
   let manager: ManagerMock;
   let yahooService: Record<string, jest.Mock>;
   let calcService: Record<string, jest.Mock>;
@@ -78,6 +80,9 @@ describe("SectorWeightingService", () => {
     accountsRepo = {
       find: jest.fn().mockResolvedValue([]),
     };
+    prefsRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
     yahooService = {
       fetchStockSectorInfo: jest.fn().mockResolvedValue(null),
       fetchEtfBreakdowns: jest
@@ -102,6 +107,7 @@ describe("SectorWeightingService", () => {
       [Security, securityRepo],
       [Holding, holdingsRepo],
       [Account, accountsRepo],
+      [UserPreference, prefsRepo],
     ]);
     manager = managerMock;
     manager.query.mockResolvedValue([]);
@@ -401,6 +407,50 @@ describe("SectorWeightingService", () => {
       expect(result.items[0].directValue).toBe(18000);
       expect(result.items[0].etfValue).toBe(0);
       expect(result.items[0].totalValue).toBe(18000);
+    });
+
+    it("converts into the user's reporting currency, not the first account's", async () => {
+      const account = {
+        id: "acct-1",
+        userId: "user-1",
+        accountType: "INVESTMENT",
+        currencyCode: "USD",
+      };
+      accountsRepo.find.mockResolvedValue([account]);
+      calcService.categoriseAccounts.mockReturnValue({
+        cashAccounts: [],
+        brokerageAccounts: [],
+        standaloneAccounts: [account],
+        holdingsAccountIds: ["acct-1"],
+      });
+      holdingsRepo.find.mockResolvedValue([
+        {
+          id: "h1",
+          accountId: "acct-1",
+          securityId: "sec-stock-1",
+          quantity: 100,
+          security: mockStockSecurity,
+        },
+      ]);
+      manager.query.mockResolvedValue([
+        { security_id: "sec-stock-1", close_price: "100" },
+      ]);
+      prefsRepo.findOne.mockResolvedValue({ defaultCurrency: "EUR" });
+      // USD -> EUR at 2: 10,000 USD is 20,000 EUR.
+      calcService.convertToDefault.mockImplementation(
+        (amount: number, from: string, to: string) =>
+          Promise.resolve(from === "USD" && to === "EUR" ? amount * 2 : amount),
+      );
+
+      const result = await service.getSectorWeightings("user-1");
+
+      expect(calcService.convertToDefault).toHaveBeenCalledWith(
+        10000,
+        "USD",
+        "EUR",
+        expect.anything(),
+      );
+      expect(result.totalPortfolioValue).toBe(20000);
     });
 
     it("distributes ETF value across sectors", async () => {

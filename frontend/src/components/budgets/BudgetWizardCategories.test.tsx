@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@/test/render';
 import { BudgetWizardCategories } from './BudgetWizardCategories';
+import { usePreferencesStore } from '@/store/preferencesStore';
 import type { WizardState } from './BudgetWizard';
 import type { GenerateBudgetResponse, ApplyBudgetCategoryData } from '@/types/budget';
 
@@ -112,6 +113,7 @@ describe('BudgetWizardCategories', () => {
   const mockOnBack = vi.fn();
 
   beforeEach(() => {
+    usePreferencesStore.setState({ preferences: null });
     vi.clearAllMocks();
   });
 
@@ -276,6 +278,26 @@ describe('BudgetWizardCategories', () => {
     expect(values).toContain('5000.00');
     expect(values).toContain('400.00');
     expect(values).toContain('200.00');
+  });
+
+  it('reads a typed amount in the user number format (de-DE)', () => {
+    usePreferencesStore.setState({ preferences: { numberFormat: 'de-DE' } as never });
+    render(
+      <BudgetWizardCategories
+        state={defaultState}
+        updateState={mockUpdateState}
+        onNext={mockOnNext}
+        onBack={mockOnBack}
+      />,
+    );
+
+    const input = document.querySelectorAll('input[type="text"][inputmode="decimal"]')[0] as HTMLInputElement;
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '250,50' } });
+    fireEvent.blur(input);
+
+    const selected = mockUpdateState.mock.calls.at(-1)?.[0].selectedCategories as Map<string, { amount: number }>;
+    expect(Array.from(selected.values()).map((c) => c.amount)).toContain(250.5);
   });
 
   it('renders amount inputs as right-aligned', () => {

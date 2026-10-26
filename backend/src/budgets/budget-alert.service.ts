@@ -299,9 +299,11 @@ export class BudgetAlertService {
     const today = new Date();
     const startDate = new Date(periodStart);
     const endDate = new Date(periodEnd);
-    const totalDays = Math.ceil(
-      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
-    );
+    // periodEnd is the inclusive last day, so the period spans one more day.
+    const totalDays =
+      Math.ceil(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+      ) + 1;
     const daysElapsed = Math.max(
       1,
       Math.ceil(

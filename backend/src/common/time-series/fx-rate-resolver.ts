@@ -401,21 +401,6 @@ export function resolveFxRate(
   };
 }
 
-/**
- * The rate as a plain number, or `null`. For a caller that has nothing to say
- * about *why* a pair is unknown; anything reporting a gap to a person should
- * read the resolution and keep its `reason`.
- */
-export function resolveFxRateValue(
-  from: string,
-  to: string,
-  onDate: string,
-  lookup: FxObservationLookup,
-  options?: Parameters<typeof resolveFxRate>[4],
-): number | null {
-  return resolveFxRate(from, to, onDate, lookup, options).rate;
-}
-
 /** One line a log or a payload can carry to explain a withheld figure. */
 export function describeFxGap(
   pair: string,

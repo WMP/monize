@@ -11,7 +11,11 @@ import { AuthGuard } from "@nestjs/passport";
 import { Throttle } from "@nestjs/throttler";
 import { ApiTags, ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { Response } from "express";
-import { AiQueryService } from "./ai-query.service";
+import {
+  AiQueryService,
+  DELEGATE_EXCLUDED_AI_TOOLS,
+  QueryRunOptions,
+} from "./ai-query.service";
 import { AiQueryDto } from "./dto/ai-query.dto";
 import { tr } from "../../i18n/translate";
 import { SSE_HEADERS, sseData } from "../../common/sse.util";
@@ -37,12 +41,22 @@ export class AiQueryController {
 
   constructor(private readonly queryService: AiQueryService) {}
 
+  /** An acting delegate (`id` = owner, `realUserId` = delegate) loses the writing and owner-only tools. */
+  private runOptions(user: {
+    id: string;
+    realUserId?: string;
+  }): QueryRunOptions | undefined {
+    return user.realUserId && user.realUserId !== user.id
+      ? { excludeTools: DELEGATE_EXCLUDED_AI_TOOLS }
+      : undefined;
+  }
+
   @Post("query")
   @AllowDelegate()
   @ApiOperation({ summary: "Execute a natural language financial query" })
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   async query(
-    @Request() req: { user: { id: string } },
+    @Request() req: { user: { id: string; realUserId?: string } },
     @Body() dto: AiQueryDto,
   ) {
     return this.queryService.executeQuery(
@@ -50,6 +64,7 @@ export class AiQueryController {
       dto.query,
       dto.conversationHistory,
       dto.attachments,
+      this.runOptions(req.user),
     );
   }
 
@@ -60,7 +75,7 @@ export class AiQueryController {
   })
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   async streamQuery(
-    @Request() req: { user: { id: string } },
+    @Request() req: { user: { id: string; realUserId?: string } },
     @Body() dto: AiQueryDto,
     @Res() res: Response,
   ) {
@@ -104,6 +119,7 @@ export class AiQueryController {
         dto.query,
         dto.conversationHistory,
         dto.attachments,
+        this.runOptions(req.user),
       )) {
         if (abortController.signal.aborted) break;
         if (event) {

@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "Kredyt został zapisany, ale nie udało się utworzyć jego reguły dopasowywania płatności. Utwórz ją w szczegółach kredytu."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "Ta edycja zmieniła wiersze podziału, które przenoszą pieniądze na inne konta, więc nie można jej cofnąć automatycznie. Aby ją wycofać, edytuj transakcję.",
+    "undoVoidWithLegs": "Ta zmiana unieważniła lub przywróciła wpisy na innych kontach, więc nie można jej cofnąć automatycznie. Zamiast tego zmień status z powrotem.",
     "loanEditNotUndoable": "Tej zmiany pożyczki nie można cofnąć automatycznie. Aby ją wycofać, edytuj pożyczkę.",
     "nothingToUndo": "Nie ma nic do cofnięcia",
     "nothingToRedo": "Nie ma nic do ponowienia",
@@ -194,6 +196,8 @@
     "deviceNotFound": "Nie znaleziono urządzenia",
     "unableToCompleteRegistration": "Nie można dokończyć rejestracji",
     "delegateClaimPasswordRequired": "Konto z tym adresem e-mail już istnieje jako użytkownik współdzielony. Podaj hasło tymczasowe otrzymane od administratora, aby je przejąć.",
+    "delegateClaimRequiresTwoFactorSignIn": "To współdzielone konto używa uwierzytelniania dwuskładnikowego. Zamiast rejestrować się, zaloguj się hasłem i kodem uwierzytelniającym.",
+    "twoFactorAlreadyEnabled": "Uwierzytelnianie dwuskładnikowe jest już włączone. Zresetuj je, aby użyć innego narzędzia uwierzytelniającego.",
     "passwordBreached": "To hasło zostało znalezione w wycieku danych. Wybierz inne hasło.",
     "invalidCredentials": "Nieprawidłowe dane logowania",
     "accountTemporarilyLocked": "Konto jest tymczasowo zablokowane z powodu zbyt wielu nieudanych prób logowania. Spróbuj ponownie później.",

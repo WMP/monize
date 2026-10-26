@@ -1326,7 +1326,11 @@
     "csvColCostBasis": "Koszt nabycia",
     "csvColGainLoss": "Zysk/Strata",
     "csvColReturn": "Zwrot %",
-    "csvNoRate": "Brak kursu"
+    "csvNoRate": "Brak kursu",
+    "csvUnknownCost": "Nieznany",
+    "unknownBasisReason": "Nie można obliczyć tego zysku: pozycja zawiera akcje dodane bez kosztu, więc koszt sprzedanych akcji jest nieznany. Otwórz transakcję, która je dodała, i wpisz ich cenę.",
+    "knownPart": "Znana część: {amount}",
+    "unknownCostNotice": "{count, plural, one {# sprzedaż ma} few {# sprzedaże mają} many {# sprzedaży ma} other {# sprzedaży ma}} nieznany koszt, bo akcje dodano bez ceny. Dla {count, plural, one {niej} few {nich} many {nich} other {nich}} nie podano zysku, więc sumy zysków pokazują tylko znaną część."
   },
   "recurringExpenses": {
     "recurringExpenses": "Wydatki cykliczne",

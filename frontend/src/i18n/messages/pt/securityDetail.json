@@ -126,6 +126,7 @@
     "fees": "Comissões",
     "realizedPl": "G/P realizado",
     "realizedMixed": "Realizado em {currencies}, pelo que não é somado",
+    "realizedUnknownReason": "Este ganho não pode ser calculado: a posição contém ações adicionadas sem custo, pelo que o custo das ações vendidas é desconhecido. Abra a transação que as adicionou e introduza o respetivo preço.",
     "totalReturn": "Rendibilidade total",
     "totalReturnValue": "{amount} ({percent})",
     "totalReturnTitle": "O ganho não realizado, mais o que realizou nas vendas e recebeu em rendimentos, menos comissões, sobre o capital aplicado. Uma rendibilidade simples sobre esse capital: não é anualizada e não pondera os lotes pelo tempo em que os deteve.",
@@ -152,6 +153,7 @@
     "title": "Posição fechada",
     "description": "Já não detém este título. O histórico continua disponível abaixo.",
     "realizedPl": "G/P realizado",
+    "realizedUnknownReason": "Este ganho não pode ser calculado: a posição continha ações adicionadas sem custo, pelo que o custo das ações vendidas é desconhecido. Abra a transação que as adicionou e introduza o respetivo preço.",
     "heldFrom": "Detido desde",
     "heldRange": "{start} a {end}"
   },

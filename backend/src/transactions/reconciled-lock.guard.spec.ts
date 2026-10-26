@@ -123,6 +123,12 @@ const ENFORCEMENT_SITES: {
     beforeWrite: "manager.update(Transaction",
   },
   {
+    file: "../action-history/action-history.service.ts",
+    fn: "private async undoBulkUpdate(",
+    why: "undo/redo of a bulk update restores prior status and fields onto every row of the batch",
+    beforeWrite: "manager.update(Transaction",
+  },
+  {
     file: "../securities/investment-transactions.service.ts",
     fn: "private async updateEmbeddedSplitParent(",
     why: "editing an embedded investment rewrites the split amount and the parent's total",

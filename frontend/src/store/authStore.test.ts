@@ -136,6 +136,26 @@ describe('authStore', () => {
       ).toBeNull();
     });
 
+    it('empties the in-memory AI chat so the next user on the tab does not see it', async () => {
+      const { useAiChatStore } = await import('./aiChatStore');
+      useAiChatStore.setState({
+        messages: [
+          {
+            id: '1',
+            role: 'user',
+            content: 'private',
+            timestamp: Date.now(),
+          } as never,
+        ],
+      });
+
+      useAuthStore.getState().logout();
+
+      await vi.waitFor(() =>
+        expect(useAiChatStore.getState().messages).toEqual([]),
+      );
+    });
+
     // A share is one account's document sitting in this browser's storage. The
     // next account to sign in on a shared device must not find it waiting.
     it('clears the web-share stash so it does not leak across accounts', async () => {

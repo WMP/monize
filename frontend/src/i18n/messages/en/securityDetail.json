@@ -126,6 +126,7 @@
     "fees": "Fees",
     "realizedPl": "Realized P/L",
     "realizedMixed": "Realized in {currencies}, so not added up",
+    "realizedUnknownReason": "This gain cannot be worked out: the position holds shares that were added with no cost, so what the sold shares cost is unknown. Open the transaction that added them and enter their price.",
     "totalReturn": "Total return",
     "totalReturnValue": "{amount} ({percent})",
     "totalReturnTitle": "Unrealized gain, plus what you realized on sales and received in income, less fees, over the capital you put in. A simple return on that capital: it is not annualized and does not weight tranches by how long you held them.",
@@ -152,6 +153,7 @@
     "title": "Position closed",
     "description": "You no longer hold this security. Its history stays available below.",
     "realizedPl": "Realized P/L",
+    "realizedUnknownReason": "This gain cannot be worked out: the position held shares that were added with no cost, so what the sold shares cost is unknown. Open the transaction that added them and enter their price.",
     "heldFrom": "Held from",
     "heldRange": "{start} to {end}"
   },

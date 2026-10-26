@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { DataSource, In } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
+import { resolveUserDefaultCurrency } from "../common/default-currency.util";
 import { Security } from "./entities/security.entity";
 import { Holding } from "./entities/holding.entity";
 import { Account, AccountType } from "../accounts/entities/account.entity";
@@ -399,11 +400,12 @@ export class SectorWeightingService {
 
     // 5. Build sector maps
     const rateCache: FxRateCache = new Map();
-    // Determine default currency from first account
-    const defaultCurrency =
-      investmentAccounts.length > 0
-        ? investmentAccounts[0].currencyCode
-        : "CAD";
+    // Totals are shown in the reader's reporting currency, not whichever
+    // account sorts first.
+    const defaultCurrency = await resolveUserDefaultCurrency(
+      this.dataSource,
+      userId,
+    );
 
     const directMap = new Map<string, number>(); // sector -> value
     const etfMap = new Map<string, number>(); // sector -> value
@@ -668,10 +670,12 @@ export class SectorWeightingService {
     );
 
     const rateCache: FxRateCache = new Map();
-    const defaultCurrency =
-      investmentAccounts.length > 0
-        ? investmentAccounts[0].currencyCode
-        : "CAD";
+    // Totals are shown in the reader's reporting currency, not whichever
+    // account sorts first.
+    const defaultCurrency = await resolveUserDefaultCurrency(
+      this.dataSource,
+      userId,
+    );
 
     type Bucket = { name: string; key: K | null; value: number };
     // "canonical:<key>" for a recognised name, "text:<lower-cased name>" for

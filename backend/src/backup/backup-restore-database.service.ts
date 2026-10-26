@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { EntityManager } from "typeorm";
 import { resolveCurrencyMetadata } from "../currencies/currency-metadata";
+import { sanitizeHtmlString } from "../common/decorators/sanitize-html.decorator";
 import { tr } from "../i18n/translate";
 import { boundRestoredNotification } from "./notification-restore-bounds";
 import { withResolvedMortgageTypeColumn } from "../accounts/legacy-mortgage-type.util";
@@ -135,8 +136,26 @@ export class BackupRestoreDatabaseService {
       );
 
       for (const row of data.currencies) {
-        const filteredRow = { ...row };
+        // `currencies` is shared by every user, so a restored row is held to
+        // what the create DTO accepts: a code, a clean name and symbol within
+        // the column lengths, and decimal places from 0 to 4.
+        if (typeof row.code !== "string" || !/^[A-Z]{3}$/.test(row.code)) {
+          continue;
+        }
+        if (typeof row.name !== "string" || typeof row.symbol !== "string") {
+          continue;
+        }
+        const name = sanitizeHtmlString(row.name).slice(0, 100);
+        const symbol = sanitizeHtmlString(row.symbol).slice(0, 10);
+        if (name.trim() === "" || symbol.trim() === "") continue;
+
+        const filteredRow: Record<string, unknown> = { ...row, name, symbol };
         filteredRow.created_by_user_id = userId;
+        filteredRow.decimal_places =
+          typeof row.decimal_places === "number" &&
+          Number.isFinite(row.decimal_places)
+            ? Math.min(4, Math.max(0, Math.trunc(row.decimal_places)))
+            : 2;
 
         // Strip column names not in the actual table schema
         for (const key of Object.keys(filteredRow)) {

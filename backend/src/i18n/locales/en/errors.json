@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "The loan was saved, but its payment matching rule could not be created. Create it from the loan's details."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "This edit changed split lines that move money to other accounts, so it cannot be undone automatically. Edit the transaction to change it back.",
+    "undoVoidWithLegs": "This change voided or restored entries in other accounts, so it cannot be undone automatically. Change the status back instead.",
     "loanEditNotUndoable": "This loan change cannot be undone automatically. Edit the loan to change it back.",
     "nothingToUndo": "Nothing to undo",
     "nothingToRedo": "Nothing to redo",
@@ -194,6 +196,8 @@
     "deviceNotFound": "Device not found",
     "unableToCompleteRegistration": "Unable to complete registration",
     "delegateClaimPasswordRequired": "An account with this email already exists as a shared user. Provide the temporary password your administrator gave you to claim it.",
+    "delegateClaimRequiresTwoFactorSignIn": "This shared account uses two-factor authentication. Sign in with your password and authentication code instead of registering.",
+    "twoFactorAlreadyEnabled": "Two-factor authentication is already enabled. Reset it to use a different authenticator.",
     "passwordBreached": "This password has been found in a data breach. Please choose a different password.",
     "invalidCredentials": "Invalid credentials",
     "accountTemporarilyLocked": "Account is temporarily locked due to too many failed login attempts. Please try again later.",

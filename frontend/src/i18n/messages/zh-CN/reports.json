@@ -1326,7 +1326,11 @@
     "csvColCostBasis": "成本基础",
     "csvColGainLoss": "盈亏",
     "csvColReturn": "回报率 %",
-    "csvNoRate": "无汇率"
+    "csvNoRate": "无汇率",
+    "csvUnknownCost": "未知",
+    "unknownBasisReason": "无法计算此收益：该持仓包含未记录成本而添加的股份，因此已卖出股份的成本未知。请打开添加这些股份的交易并输入其价格。",
+    "knownPart": "已知部分：{amount}",
+    "unknownCostNotice": "{count, plural, one {# 笔卖出} other {# 笔卖出}}的成本未知，因为添加股份时没有价格。{count, plural, one {该笔} other {这些}}不给出收益，因此收益合计只显示已知部分。"
   },
   "recurringExpenses": {
     "recurringExpenses": "定期支出",

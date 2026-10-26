@@ -50,6 +50,9 @@ const PRIVATE_IP_RANGES = [
   /^192\.168\./,
   /^0\./,
   /^169\.254\./,
+  // 100.64.0.0/10 shared address space (CGNAT, Tailscale) and 198.18.0.0/15 benchmarking.
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
+  /^198\.1[89]\./,
 ];
 
 /**

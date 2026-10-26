@@ -76,6 +76,7 @@ describe("AiQueryController", () => {
         "How much did I spend in January?",
         undefined,
         undefined,
+        undefined,
       );
     });
 
@@ -89,11 +90,70 @@ describe("AiQueryController", () => {
         "My balance?",
         undefined,
         undefined,
+        undefined,
       );
+    });
+
+    it("withdraws the writing and owner-only tools from an acting delegate", async () => {
+      const delegateRequest = {
+        user: { id: "owner-1", realUserId: "delegate-1" },
+      };
+
+      await controller.query(delegateRequest, { query: "Parse my receipts" });
+
+      const options = mockQueryService.executeQuery.mock.calls[0][4];
+      expect(options.excludeTools).toEqual(
+        expect.arrayContaining([
+          "email_receipt_parsers",
+          "ai_review_requests",
+          "fetch_bond_series",
+          "manage_transaction_rules",
+        ]),
+      );
+    });
+
+    it("withdraws no tool from the owner, even with a realUserId equal to the id", async () => {
+      await controller.query(
+        { user: { id: "user-1", realUserId: "user-1" } },
+        { query: "My balance?" },
+      );
+
+      expect(mockQueryService.executeQuery.mock.calls[0][4]).toBeUndefined();
     });
   });
 
   describe("streamQuery()", () => {
+    it("withdraws the same tools from an acting delegate's stream", async () => {
+      mockQueryService.executeQueryStream.mockReturnValue(
+        (async function* () {
+          yield { type: "content", text: "x" };
+        })(),
+      );
+      const mockRes = {
+        setHeader: jest.fn(),
+        flushHeaders: jest.fn(),
+        write: jest.fn(),
+        end: jest.fn(),
+        on: jest.fn(),
+      };
+
+      await controller.streamQuery(
+        { user: { id: "owner-1", realUserId: "delegate-1" } },
+        { query: "Parse my receipts" },
+        mockRes as any,
+      );
+
+      const options = mockQueryService.executeQueryStream.mock.calls[0][4];
+      expect(options.excludeTools).toEqual(
+        expect.arrayContaining([
+          "email_receipt_parsers",
+          "ai_review_requests",
+          "fetch_bond_series",
+          "manage_transaction_rules",
+        ]),
+      );
+    });
+
     it("sets SSE headers and streams events", async () => {
       const events = [
         { type: "thinking", message: "Analyzing..." },
@@ -271,6 +331,7 @@ describe("AiQueryController", () => {
       expect(mockQueryService.executeQueryStream).toHaveBeenCalledWith(
         "user-1",
         "My spending?",
+        undefined,
         undefined,
         undefined,
       );

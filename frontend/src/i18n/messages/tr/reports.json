@@ -1326,7 +1326,11 @@
     "csvColCostBasis": "Maliyet Bazı",
     "csvColGainLoss": "Kazanç/Kayıp",
     "csvColReturn": "Getiri %",
-    "csvNoRate": "Kur yok"
+    "csvNoRate": "Kur yok",
+    "csvUnknownCost": "Bilinmiyor",
+    "unknownBasisReason": "Bu kazanç hesaplanamıyor: pozisyonda maliyetsiz eklenmiş hisseler var, bu yüzden satılan hisselerin maliyeti bilinmiyor. Onları ekleyen işlemi açın ve fiyatlarını girin.",
+    "knownPart": "Bilinen kısım: {amount}",
+    "unknownCostNotice": "{count, plural, one {# satışın} other {# satışın}} maliyeti bilinmiyor, çünkü hisseler fiyatsız eklendi. {count, plural, one {Bunun} other {Bunların}} için kazanç verilmedi, bu yüzden kazanç toplamları yalnızca bilinen kısmı gösterir."
   },
   "recurringExpenses": {
     "recurringExpenses": "Tekrarlayan Giderler",

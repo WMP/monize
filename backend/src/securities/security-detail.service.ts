@@ -89,6 +89,13 @@ export interface SecurityDetailActivity {
    * would be a number in no currency at all.
    */
   realizedGain: number | null;
+  /**
+   * False when a sale drew on shares of unknown cost, so its gain is unknown
+   * and `realizedGain` is null although the sales sit in one currency.
+   */
+  realizedGainComplete: boolean;
+  /** The gains that are known, when `realizedGainComplete` is false. */
+  realizedGainKnownSubtotal: number | null;
   realizedGainCurrency: string | null;
   /**
    * Distinct account currencies the security was sold from, for naming them
@@ -128,7 +135,7 @@ const UNIT_PRICE_DECIMALS = 10;
 /** One realized-gain entry, narrowed to the fields this service reads. */
 interface RealizedGainRow {
   securityId: string;
-  realizedGain: number;
+  realizedGain: number | null;
   accountCurrencyCode: string | null;
 }
 
@@ -354,6 +361,12 @@ export class SecurityDetailService {
       ...new Set(mine.map((entry) => entry.accountCurrencyCode ?? "")),
     ].sort();
     const hasOneCurrency = currencies.length === 1 && currencies[0] !== "";
+    // A sale from shares of unknown cost has no gain: the total is unknown,
+    // and the gains that are known are a subtotal of it.
+    const knownGains = mine.flatMap((entry) =>
+      entry.realizedGain === null ? [] : [entry.realizedGain],
+    );
+    const gainsComplete = knownGains.length === mine.length;
 
     // The history lists a VOID row as a record, which the dates and the count
     // below still describe; it moved no money, so it joins no money total.
@@ -397,9 +410,11 @@ export class SecurityDetailService {
       fees: sumMoney(effects.map((tx) => Number(tx.commission) || 0)),
       // One currency, or nothing: gains realized in a PLN account and in a EUR
       // account are not addable, and their sum would be in no currency at all.
-      realizedGain: hasOneCurrency
-        ? sumMoney(mine.map((entry) => entry.realizedGain))
-        : null,
+      realizedGain:
+        hasOneCurrency && gainsComplete ? sumMoney(knownGains) : null,
+      realizedGainComplete: gainsComplete,
+      realizedGainKnownSubtotal:
+        hasOneCurrency && !gainsComplete ? sumMoney(knownGains) : null,
       realizedGainCurrency: hasOneCurrency ? currencies[0] : null,
       realizedGainCurrencies: currencies.filter((code) => code !== ""),
       realizedSaleCount: mine.length,

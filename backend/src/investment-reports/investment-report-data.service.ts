@@ -12,6 +12,7 @@ import {
   acquisitionCost,
   applyActionToQuantity,
   baseInvestmentAction,
+  investedFlowKind,
   CASH_INCOME_ACTIONS,
   applyReturnOfCapital,
   returnOfCapitalAmount,
@@ -21,7 +22,7 @@ import {
 import { Account } from "../accounts/entities/account.entity";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { InvestmentCellValue } from "./dto/execute-investment-report.dto";
-import { roundToDecimals } from "../common/round.util";
+import { roundToDecimals, sumMoney } from "../common/round.util";
 import { FxAggregate } from "../common/fx-aggregate";
 import { todayYMD } from "../common/date-utils";
 
@@ -853,8 +854,58 @@ export class InvestmentReportDataService {
   }
 
   /**
+   * The value that crossed the position's boundary in (after, upto]: shares
+   * bought or moved in (`inflows`) and shares sold or moved out (`outflows`).
+   * A return that ignores them reads a purchase as a gain and a sale as a loss.
+   *
+   * A BUY and a SELL are valued at what they cost and fetched; a transfer or a
+   * share adjustment has no price of its own, so it is valued at the close on
+   * its date. A REINVEST is left out on purpose: it spends income the position
+   * earned, its shares are already in the market value, and counting it as a
+   * deposit would hide that income (`incomeBetween`). A return of capital is a
+   * cash distribution `incomeBetween` already counts.
+   *
+   * `null` when a flow cannot be valued: a missing price is unknown, not free.
+   */
+  private flowsBetween(
+    group: GroupRecord,
+    prices: PriceRow[],
+    after: string,
+    upto: string,
+  ): { inflows: number; outflows: number } | null {
+    const inflows: number[] = [];
+    const outflows: number[] = [];
+    for (const tx of group.txs) {
+      if (tx.transactionDate <= after || tx.transactionDate > upto) continue;
+      const base = baseInvestmentAction(tx.action);
+      const kind = investedFlowKind(tx.action);
+      if (
+        base === InvestmentAction.REINVEST ||
+        base === InvestmentAction.RETURN_OF_CAPITAL ||
+        (kind !== "capitalIn" && kind !== "capitalOut")
+      ) {
+        continue;
+      }
+      let amount: number | null;
+      if (base === InvestmentAction.BUY) {
+        amount = securityCurrencyAcquisitionCost(tx);
+      } else if (base === InvestmentAction.SELL) {
+        const total = Number(tx.totalAmount);
+        amount = Number.isFinite(total) && total > 0 ? total : null;
+      } else {
+        const price = this.priceOnOrBefore(prices, tx.transactionDate);
+        amount = price === null ? null : (Number(tx.quantity) || 0) * price;
+      }
+      if (amount === null) return null;
+      (kind === "capitalIn" ? inflows : outflows).push(amount);
+    }
+    return { inflows: sumMoney(inflows), outflows: sumMoney(outflows) };
+  }
+
+  /**
    * Compute the MS Money-style total return columns:
-   *   (current value + income in period - beginning value) / beginning value.
+   *   (current value + income + sales - beginning value - purchases)
+   *   / (beginning value + purchases), flows taken inside the window.
    * "All dates" measures against cost basis (return since inception); the
    * annualized column annualizes that figure over the holding period.
    */
@@ -885,8 +936,13 @@ export class InvestmentReportDataService {
       const beginValue = beginQty * beginPrice;
       if (beginValue <= 0) continue;
       const income = this.incomeBetween(group, start, asOfDate);
+      const flows = this.flowsBetween(group, prices, start, asOfDate);
+      // A flow that cannot be valued leaves the return unknown, not wrong.
+      if (flows === null) continue;
       result[key] = roundToDecimals(
-        ((marketValue + income - beginValue) / beginValue) * 100,
+        ((marketValue + income + flows.outflows - beginValue - flows.inflows) /
+          (beginValue + flows.inflows)) *
+          100,
         4,
       );
     }

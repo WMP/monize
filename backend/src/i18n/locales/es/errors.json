@@ -86,6 +86,8 @@
     "paymentMatchingFailed": "El préstamo se guardó, pero no se pudo crear su regla de conciliación de pagos. Créala desde los detalles del préstamo."
   },
   "actionHistory": {
+    "undoSplitLegsChanged": "Esta edición cambió líneas de división que mueven dinero a otras cuentas, por lo que no se puede deshacer automáticamente. Edita la transacción para revertirla.",
+    "undoVoidWithLegs": "Este cambio anuló o restauró asientos en otras cuentas, por lo que no se puede deshacer automáticamente. Cambia el estado de nuevo.",
     "loanEditNotUndoable": "Este cambio del préstamo no se puede deshacer automáticamente. Edita el préstamo para revertirlo.",
     "nothingToUndo": "Nada que deshacer",
     "nothingToRedo": "Nada que rehacer",
@@ -194,6 +196,8 @@
     "deviceNotFound": "Dispositivo no encontrado",
     "unableToCompleteRegistration": "No se puede completar el registro",
     "delegateClaimPasswordRequired": "Ya existe una cuenta con este correo electrónico como usuario compartido. Proporciona la contraseña temporal que te dio tu administrador para reclamarla.",
+    "delegateClaimRequiresTwoFactorSignIn": "Esta cuenta compartida usa autenticación de dos factores. Inicia sesión con tu contraseña y tu código de autenticación en lugar de registrarte.",
+    "twoFactorAlreadyEnabled": "La autenticación de dos factores ya está habilitada. Restablécela para usar otro autenticador.",
     "passwordBreached": "Esta contraseña se encontró en una filtración de datos. Elige una contraseña diferente.",
     "invalidCredentials": "Credenciales no válidas",
     "accountTemporarilyLocked": "La cuenta está bloqueada temporalmente por demasiados intentos fallidos de inicio de sesión. Inténtalo de nuevo más tarde.",

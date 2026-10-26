@@ -683,6 +683,163 @@ describe("InvestmentReportDataService", () => {
     expect(v.totalReturn1Week).toBeCloseTo(22.2222, 4);
   });
 
+  describe("period returns with share flows inside the window", () => {
+    // The 1-week window opens on 2024-06-03; the report is as of 2024-06-10.
+    const returnWeek = async (
+      txs: Record<string, unknown>[],
+      closes: Record<string, string>,
+      // The maintained holdings row is the position the report values.
+      quantityNow = 10,
+    ) => {
+      securitiesRepository.find.mockResolvedValue([
+        {
+          id: "sec1",
+          symbol: "AAA",
+          name: "Alpha",
+          securityType: "STOCK",
+          currencyCode: "USD",
+        },
+      ]);
+      holdingsRepository.find.mockResolvedValue([
+        holding({ quantity: quantityNow }),
+      ]);
+      txRepository.find.mockResolvedValue(txs.map((t) => makeTx(t)));
+      manager.query.mockResolvedValue(
+        Object.entries(closes).map(([price_date, close_price]) =>
+          priceRow({ price_date, close_price }),
+        ),
+      );
+      const { rows } = await service.computeHoldings(
+        "u1",
+        ["acc1"],
+        "2024-06-10",
+        "USD",
+      );
+      return rows[0].values.totalReturn1Week;
+    };
+    const held10 = {
+      action: InvestmentAction.BUY,
+      transactionDate: "2024-01-10",
+      quantity: 10,
+      price: 100,
+      totalAmount: 1000,
+    };
+
+    it("measures a price rise with no flows unchanged", async () => {
+      expect(
+        await returnWeek([held10], {
+          "2024-06-01": "100",
+          "2024-06-10": "110",
+        }),
+      ).toBe(10);
+    });
+
+    it("does not read shares bought inside the window as gain", async () => {
+      // 10 held, 90 bought at a flat 100: nothing was earned.
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.BUY,
+              transactionDate: "2024-06-05",
+              quantity: 90,
+              price: 100,
+              totalAmount: 9000,
+            },
+          ],
+          { "2024-06-01": "100", "2024-06-10": "100" },
+          100,
+        ),
+      ).toBe(0);
+    });
+
+    it("does not read shares sold inside the window as loss", async () => {
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.SELL,
+              transactionDate: "2024-06-05",
+              quantity: 9,
+              price: 100,
+              totalAmount: 900,
+            },
+          ],
+          { "2024-06-01": "100", "2024-06-10": "100" },
+          1,
+        ),
+      ).toBe(0);
+    });
+
+    it("values a transfer in at the price on its date", async () => {
+      // 5 shares enter at 100 (500), 10 and 5 are worth 110 each at the end:
+      // (1650 - 1000 - 500) / (1000 + 500) = 10%.
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.TRANSFER_IN,
+              transactionDate: "2024-06-05",
+              quantity: 5,
+              price: null,
+              totalAmount: 0,
+            },
+          ],
+          {
+            "2024-06-01": "100",
+            "2024-06-05": "100",
+            "2024-06-10": "110",
+          },
+          15,
+        ),
+      ).toBeCloseTo(10, 4);
+    });
+
+    it("equals the plain return when a dividend is reinvested", async () => {
+      // 1 share bought with the distribution at a flat 100: 1,000 became
+      // 1,100, which is the 10% a cash dividend of 100 would have earned.
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.REINVEST,
+              transactionDate: "2024-06-05",
+              quantity: 1,
+              price: 100,
+              totalAmount: 0,
+            },
+          ],
+          { "2024-06-01": "100", "2024-06-10": "100" },
+          11,
+        ),
+      ).toBe(10);
+    });
+
+    it("reports no return when a flow in the window cannot be valued", async () => {
+      // A BUY with no price is an unknown cost, not a free purchase.
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.BUY,
+              transactionDate: "2024-06-05",
+              quantity: 90,
+              price: 0,
+              totalAmount: 0,
+            },
+          ],
+          { "2024-06-01": "100", "2024-06-10": "100" },
+          100,
+        ),
+      ).toBeNull();
+    });
+  });
+
   it("treats a return of capital as capital paid back, not income (#1800)", async () => {
     securitiesRepository.find.mockResolvedValue([
       {

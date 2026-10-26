@@ -1326,7 +1326,11 @@
     "csvColCostBasis": "Dasar Biaya",
     "csvColGainLoss": "Keuntungan/Kerugian",
     "csvColReturn": "Imbal Hasil %",
-    "csvNoRate": "Tidak ada kurs"
+    "csvNoRate": "Tidak ada kurs",
+    "csvUnknownCost": "Tidak diketahui",
+    "unknownBasisReason": "Keuntungan ini tidak dapat dihitung: posisi memiliki saham yang ditambahkan tanpa biaya, sehingga biaya saham yang dijual tidak diketahui. Buka transaksi yang menambahkannya dan masukkan harganya.",
+    "knownPart": "Bagian yang diketahui: {amount}",
+    "unknownCostNotice": "{count, plural, one {# penjualan} other {# penjualan}} memiliki biaya yang tidak diketahui, karena saham ditambahkan tanpa harga. Tidak ada keuntungan yang diberikan untuk {count, plural, one {penjualan itu} other {penjualan itu}}, sehingga total keuntungan hanya menampilkan bagian yang diketahui."
   },
   "recurringExpenses": {
     "recurringExpenses": "Pengeluaran Berulang",
