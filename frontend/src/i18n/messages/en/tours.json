@@ -445,7 +445,7 @@
           },
           "addWarranty": {
             "title": "Way 1: add one here",
-            "body": "**Add warranty** opens a blank form. Enter the product, the vendor and the purchase date, then either how long the coverage lasts, the date it ends, or **Lifetime**. You can attach the receipt or the manual before you save."
+            "body": "**Add warranty** opens a blank form. Enter the product, the vendor and the purchase date, then when the coverage ends: **On a date**, **After a duration**, or **Never** for a lifetime warranty. You can attach the receipt or the manual before you save."
           },
           "importCsv": {
             "title": "Way 2: import a CSV file",
