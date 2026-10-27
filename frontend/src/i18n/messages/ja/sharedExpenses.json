@@ -340,5 +340,13 @@
   "reviewLoadFailed": "共有経費の変更を確認できませんでした。レポートでは、承認された会計エントリが引き続き使用されます。保留中の変更の確認を再試行します。",
   "reviewChecking": "共有経費に変更がないか確認しています…",
   "reviewCurrent": "利用可能なすべての共有変更が確認されました。",
-  "reviewEmpty": "財務にはまだグループが含まれていません。"
+  "reviewEmpty": "財務にはまだグループが含まれていません。",
+  "checkingSplit": "分割内容を確認中…",
+  "singleContributor": "1人にする",
+  "multipleReceivers": "複数人が受け取った",
+  "contributionsMismatch": "支払額または受取額の合計は、上記の金額と一致する必要があります。",
+  "selectPeople": "この分割に含める人を1人以上選んでください。",
+  "splitComplete": "適用できます",
+  "splitTools": "その他の分割オプション",
+  "repaymentExplanation": "提案は各メンバーの差引残高に基づきます。あなたの特定の支出を立て替えていない人に返済する場合もあります。"
 }

@@ -340,5 +340,13 @@
   "reviewLoadFailed": "Wijzigingen in gedeelde uitgaven konden niet worden gecontroleerd. Rapporten gebruiken nog je geaccepteerde boekingen. Probeer opnieuw te controleren op wijzigingen.",
   "reviewChecking": "Gedeelde uitgaven op wijzigingen controleren…",
   "reviewCurrent": "Alle beschikbare gedeelde wijzigingen zijn gecontroleerd.",
-  "reviewEmpty": "Er zijn nog geen groepen opgenomen in je financiën."
+  "reviewEmpty": "Er zijn nog geen groepen opgenomen in je financiën.",
+  "checkingSplit": "Verdeling controleren…",
+  "singleContributor": "Eén persoon gebruiken",
+  "multipleReceivers": "Meer dan één persoon heeft dit ontvangen",
+  "contributionsMismatch": "De betaalde of ontvangen bedragen moeten samen het bovenstaande bedrag vormen.",
+  "selectPeople": "Kies minstens één persoon voor deze verdeling.",
+  "splitComplete": "Klaar om toe te passen",
+  "splitTools": "Meer verdeelopties",
+  "repaymentExplanation": "Suggesties zijn gebaseerd op ieders nettosaldo. Je kunt iemand terugbetalen die jouw specifieke uitgave niet heeft betaald."
 }

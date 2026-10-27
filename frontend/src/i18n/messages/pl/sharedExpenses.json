@@ -340,5 +340,13 @@
   "reviewLoadFailed": "Nie udało się sprawdzić zmian we wspólnych wydatkach. Raporty nadal uwzględniają zaakceptowane księgowania. Spróbuj ponownie sprawdzić oczekujące zmiany.",
   "reviewChecking": "Sprawdzanie zmian we wspólnych wydatkach…",
   "reviewCurrent": "Wszystkie dostępne zmiany zostały przejrzane.",
-  "reviewEmpty": "Żadna grupa nie jest jeszcze uwzględniana w Twoich finansach."
+  "reviewEmpty": "Żadna grupa nie jest jeszcze uwzględniana w Twoich finansach.",
+  "checkingSplit": "Sprawdzanie podziału…",
+  "singleContributor": "Wybierz jedną osobę",
+  "multipleReceivers": "Pieniądze otrzymało kilka osób",
+  "contributionsMismatch": "Suma kwot zapłaconych lub otrzymanych musi odpowiadać kwocie powyżej.",
+  "selectPeople": "Wybierz co najmniej jedną osobę do tego podziału.",
+  "splitComplete": "Podział gotowy do zastosowania",
+  "splitTools": "Więcej opcji podziału",
+  "repaymentExplanation": "Propozycje uwzględniają saldo każdej osoby w grupie. Możesz zwracać pieniądze komuś, kto nie płacił za Twój konkretny wydatek."
 }

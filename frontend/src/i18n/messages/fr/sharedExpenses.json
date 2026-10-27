@@ -340,5 +340,13 @@
   "reviewLoadFailed": "Impossible de vérifier les modifications des dépenses partagées. Les rapports utilisent toujours vos écritures acceptées. Réessayez pour vérifier les modifications en attente.",
   "reviewChecking": "Vérification des dépenses partagées…",
   "reviewCurrent": "Toutes les modifications partagées disponibles ont été vérifiées.",
-  "reviewEmpty": "Aucun groupe n’est encore inclus dans vos finances."
+  "reviewEmpty": "Aucun groupe n’est encore inclus dans vos finances.",
+  "checkingSplit": "Vérification de la répartition…",
+  "singleContributor": "Utiliser une seule personne",
+  "multipleReceivers": "Plusieurs personnes ont reçu ce montant",
+  "contributionsMismatch": "La somme des montants payés ou reçus doit correspondre au montant ci-dessus.",
+  "selectPeople": "Choisissez au moins une personne pour cette répartition.",
+  "splitComplete": "Prêt à appliquer",
+  "splitTools": "Autres options de répartition",
+  "repaymentExplanation": "Les suggestions utilisent le solde net de chaque personne. Vous pouvez rembourser quelqu’un qui n’a pas payé votre dépense en particulier."
 }

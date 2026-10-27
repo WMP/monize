@@ -340,5 +340,13 @@
   "reviewLoadFailed": "공유 비용 변경 사항을 확인할 수 없습니다. 보고서에서는 허용된 회계 항목을 계속 사용합니다. 보류 중인 변경 사항을 다시 확인해보세요.",
   "reviewChecking": "공유 비용 변경 사항 확인 중…",
   "reviewCurrent": "사용 가능한 모든 공유 변경 사항이 검토되었습니다.",
-  "reviewEmpty": "아직 재정에 포함된 그룹이 없습니다."
+  "reviewEmpty": "아직 재정에 포함된 그룹이 없습니다.",
+  "checkingSplit": "분할 내역 확인 중…",
+  "singleContributor": "한 사람으로 변경",
+  "multipleReceivers": "여러 사람이 받았어요",
+  "contributionsMismatch": "지불하거나 받은 금액의 합계가 위의 금액과 같아야 합니다.",
+  "selectPeople": "이 분할에 포함할 사람을 한 명 이상 선택하세요.",
+  "splitComplete": "적용할 준비가 되었어요",
+  "splitTools": "추가 분할 옵션",
+  "repaymentExplanation": "제안은 각 사람의 순잔액을 기준으로 합니다. 해당 지출을 직접 대신 내지 않은 사람에게 상환할 수도 있습니다."
 }

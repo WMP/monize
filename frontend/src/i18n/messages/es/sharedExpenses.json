@@ -340,5 +340,13 @@
   "reviewLoadFailed": "No se pudieron comprobar los cambios en los gastos compartidos. Los informes siguen usando tus asientos aceptados. Reintenta comprobar los cambios pendientes.",
   "reviewChecking": "Comprobando cambios en los gastos compartidos…",
   "reviewCurrent": "Se han revisado todos los cambios compartidos disponibles.",
-  "reviewEmpty": "Aún no hay grupos incluidos en tus finanzas."
+  "reviewEmpty": "Aún no hay grupos incluidos en tus finanzas.",
+  "checkingSplit": "Comprobando el reparto…",
+  "singleContributor": "Usar una sola persona",
+  "multipleReceivers": "Más de una persona recibió este importe",
+  "contributionsMismatch": "Los importes pagados o recibidos deben sumar el importe indicado arriba.",
+  "selectPeople": "Elige al menos una persona para este reparto.",
+  "splitComplete": "Listo para aplicar",
+  "splitTools": "Más opciones de reparto",
+  "repaymentExplanation": "Las sugerencias usan el saldo neto de cada persona. Puede que debas devolver dinero a alguien que no pagó tu gasto concreto."
 }

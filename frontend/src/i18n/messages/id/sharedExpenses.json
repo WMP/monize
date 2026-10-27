@@ -340,5 +340,13 @@
   "reviewLoadFailed": "Perubahan pengeluaran bersama tidak dapat diperiksa. Laporan masih menggunakan pembukuan yang Anda setujui. Coba lagi untuk memeriksa perubahan tertunda.",
   "reviewChecking": "Memeriksa perubahan pengeluaran bersama…",
   "reviewCurrent": "Semua perubahan bersama yang tersedia telah ditinjau.",
-  "reviewEmpty": "Belum ada grup yang disertakan dalam keuangan Anda."
+  "reviewEmpty": "Belum ada grup yang disertakan dalam keuangan Anda.",
+  "checkingSplit": "Memeriksa pembagian…",
+  "singleContributor": "Gunakan satu orang",
+  "multipleReceivers": "Lebih dari satu orang menerima dana ini",
+  "contributionsMismatch": "Jumlah yang dibayar atau diterima harus sama dengan jumlah di atas.",
+  "selectPeople": "Pilih setidaknya satu orang untuk pembagian ini.",
+  "splitComplete": "Siap diterapkan",
+  "splitTools": "Opsi pembagian lainnya",
+  "repaymentExplanation": "Saran menggunakan saldo bersih setiap orang. Anda mungkin membayar kembali kepada orang yang tidak membayar pengeluaran tertentu milik Anda."
 }

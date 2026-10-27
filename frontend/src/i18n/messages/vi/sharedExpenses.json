@@ -340,5 +340,13 @@
   "reviewLoadFailed": "Không thể kiểm tra những thay đổi về chi phí chung. Báo cáo vẫn sử dụng các mục kế toán được chấp nhận của bạn. Hãy thử lại để kiểm tra các thay đổi đang chờ xử lý.",
   "reviewChecking": "Kiểm tra chi phí chung khi có thay đổi…",
   "reviewCurrent": "Tất cả các thay đổi chia sẻ sẵn có đã được xem xét.",
-  "reviewEmpty": "Chưa có nhóm nào được đưa vào tài chính của bạn."
+  "reviewEmpty": "Chưa có nhóm nào được đưa vào tài chính của bạn.",
+  "checkingSplit": "Đang kiểm tra cách chia…",
+  "singleContributor": "Chỉ dùng một người",
+  "multipleReceivers": "Nhiều người đã nhận khoản tiền này",
+  "contributionsMismatch": "Tổng số tiền đã trả hoặc nhận phải bằng số tiền ở trên.",
+  "selectPeople": "Chọn ít nhất một người cho phần chia này.",
+  "splitComplete": "Sẵn sàng áp dụng",
+  "splitTools": "Các tùy chọn chia khác",
+  "repaymentExplanation": "Các gợi ý dựa trên số dư ròng của từng người. Bạn có thể hoàn tiền cho người không trực tiếp trả khoản chi cụ thể của bạn."
 }
