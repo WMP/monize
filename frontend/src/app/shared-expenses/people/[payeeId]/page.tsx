@@ -14,7 +14,7 @@ export default function LinkedPeoplePage() {
   return (
     <ProtectedRoute>
       <PageLayout>
-        <div className="mx-auto max-w-5xl space-y-5 px-4 py-6">
+        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 space-y-5">
           <PageHeader
             title={t("linkedPeople")}
             actions={
@@ -24,7 +24,7 @@ export default function LinkedPeoplePage() {
             }
           />
           <SharedPeople key={payeeId} linkedPayeeId={payeeId} />
-        </div>
+        </main>
       </PageLayout>
     </ProtectedRoute>
   );
