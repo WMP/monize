@@ -51,6 +51,7 @@ vi.mock('@/components/reports/NetWorthReport', () => ({ NetWorthReport: () => <d
 vi.mock('@/components/reports/AccountBalancesReport', () => ({ AccountBalancesReport: () => <div data-testid="r-account-balances" /> }));
 vi.mock('@/components/reports/CashFlowReport', () => ({ CashFlowReport: () => <div data-testid="r-cash-flow" /> }));
 vi.mock('@/components/reports/TaxSummaryReport', () => ({ TaxSummaryReport: () => <div data-testid="r-tax-summary" /> }));
+vi.mock('@/components/reports/PayrollDeductionsReport', () => ({ PayrollDeductionsReport: () => <div data-testid="r-payroll-deductions" /> }));
 vi.mock('@/components/reports/YearOverYearReport', () => ({ YearOverYearReport: () => <div data-testid="r-year-over-year" /> }));
 vi.mock('@/components/reports/DebtPayoffTimelineReport', () => ({ DebtPayoffTimelineReport: () => <div data-testid="r-debt-payoff-timeline" /> }));
 vi.mock('@/components/reports/LoanAmortizationReport', () => ({ LoanAmortizationReport: () => <div data-testid="r-loan-amortization" /> }));
@@ -97,6 +98,7 @@ const ALL_REPORT_IDS = [
   'account-balances',
   'cash-flow',
   'tax-summary',
+  'payroll-deductions',
   'year-over-year',
   'debt-payoff-timeline',
   'loan-amortization',

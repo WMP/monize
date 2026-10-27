@@ -184,6 +184,8 @@ Direct RLS policy on `user_id`. Exported in the portable backup after
   (`previousPeriod`, `currentPeriod`, `currentPeriodCapped`, or `null`).
 - `GET /history` per ruled category and currency, the collected total of
   each of the last `HISTORY_PERIODS` closed periods, newest first.
+- `GET /report?year=` the Payroll Deductions report (section 10); `year` is
+  a whole number from 1900 to 2100, the current year when absent.
 - `POST /` one rule; `POST /batch` several categories of one bill sharing a
   reset, every ownership, duplicate and expected-amount check before the
   first `INSERT` in one `withScopedDb` transaction, so a refused line writes
@@ -282,3 +284,54 @@ parent rises by 64.00. First occurrence of 2027: room 1,077.48 again.
 - Batch: every line saved in one transaction; a refused later line (missing
   expected amount, repeated category) saves nothing.
 - Suggestion: the mode of the last year's deduction rows, not the latest.
+
+## 10. The Payroll Deductions report
+
+A built-in report, **Payroll Deductions** under the Tax section of Reports
+(route `/reports/payroll-deductions`), drawn from
+`GET /payroll-deductions/report?year=` (owner-only, as every route here). It
+reads the rules and the ledger and writes nothing (INV-PAYROLL-001).
+
+1. **What a category is.** One entry per ruled category and currency, every
+   bill that caps it named, as in the year-to-date table: paid is
+   category-wide. Where two rules disagree the lower maximum binds, and the
+   periods follow the earliest rule's reset date, as the history route does
+   (`groupReportRules`).
+2. **What a year is.** The selected year reports, for each category, the
+   period that starts in that year on its reset date (`periodStartingIn`):
+   the calendar year for a 1 January reset, July to June for a 1 July one.
+   The year defaults to the current one; the picker offers every year a
+   category's period starts in, the current year and the one asked for.
+3. **The rows.** Every figure is a sum over `CATEGORY_DEDUCTION_ROWS_SQL`,
+   the rows "paid" sums (decision 6), grouped per transaction: one query per
+   category over the whole ledger (`queryDeductionTransactions`), bucketed
+   into periods on the server. So the current period's paid figure is the
+   page's and the one the next posting caps against (INV-PAYROLL-003). Rows
+   in another currency are counted per period as `foreignCurrencyRows` and
+   left out of the sums.
+4. **Summary.** Per category, for the selected year: period, paid, maximum,
+   remaining, paid as a percentage of the maximum, paycheques (transactions
+   with a row in the currency), the average per paycheque, and the date of
+   the paycheque that brought the total to the maximum. A rule stores only
+   the maximum it caps with now, so the maximum, the remaining room, the
+   percentage and the date are `null` for a period that has closed, and the
+   report says "Not recorded" rather than measuring last year against this
+   year's figure.
+5. **Paycheque by paycheque.** One row per transaction that deducted to a
+   reported category in its selected period, oldest first, one column per
+   category (with its currency when the report spans more than one), the
+   row's total in the transaction's currency. A paycheque with no line for a
+   category deducted zero to it. The footer is each category's paid figure;
+   the grand total is `null` when the categories are in more than one
+   currency, and the cell says they are not added together.
+6. **Every year on record.** One table per category, never merged: every
+   period from the latest holding a row (or the current one, if later) back
+   to the earliest holding a row, empty periods between them included as
+   known zeros, newest first, with paycheques, paid and the average.
+7. **No rules.** The report says so and links to the Payroll Deductions page.
+
+Tests: `payroll-deduction-report.spec.ts` (grouping, period mapping, the
+history range, the closed-period maximum, the maximum-reached date, the
+cross-currency total, money summed without float drift),
+`PayrollDeductionsReport.test.tsx` (the three sections, the year picker,
+the empty and error states, the CSV export).
