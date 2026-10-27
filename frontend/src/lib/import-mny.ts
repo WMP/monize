@@ -28,7 +28,12 @@ const START_TIMEOUT_MS = 120_000;
 /** A poll is a single indexed row read; anything slower is a real problem. */
 const POLL_TIMEOUT_MS = 10_000;
 
-export type MnyEra = 'money2001' | 'money2002' | 'moneyPlus' | 'unknown';
+export type MnyEra =
+  | 'money99'
+  | 'money2001'
+  | 'money2002'
+  | 'moneyPlus'
+  | 'unknown';
 
 export type MnyImportPhase =
   | 'preparing'

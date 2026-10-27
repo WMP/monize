@@ -16,6 +16,7 @@ export interface MnyFixture {
 }
 
 const FIXTURES = {
+  money99: { file: "sample-money99.mny", tableCount: 44 },
   money2001: { file: "money2001.mny", tableCount: 66 },
   money2001Pwd: { file: "money2001-pwd.mny", tableCount: 66 },
   money2002: { file: "money2002.mny", tableCount: 86 },

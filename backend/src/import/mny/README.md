@@ -257,6 +257,16 @@ together, per account.
   stages anything other than what `POST /parse` stages is not testing the import.
 - **Money 2001 files use a different key derivation** ("old" scheme, flags bit `0x6` clear) that
   uses no password at all. Both schemes must keep working; the fixtures cover each.
+- **Money 97-99 is a different code space, not an older vintage of the same one.**
+  The file is plain Jet 3 (`format: "jet3"`, nothing to decrypt), and its `grftt`
+  bits and `act` codes collide with Money Plus's: its void bit is Money Plus's
+  loan-account bit, its loan-template bit is Money Plus's VOID, its `act` 1 is a
+  sale. Read through the Money Plus tables, voided rows import live, pending
+  scheduled instances import as posted, and sales import as purchases -- and every
+  balance still reconciles against the mapper's own output. `readTransactionData`
+  rebuilds the flags in the Money Plus layout (`tables/money99-transactions.ts`) and
+  the mappers look actions up by format (`model/mny-actions.ts`,
+  `model/mny-money99.ts`); `sample-money99.mny` asserts Money 99's own balances.
 - **`TRN` holds the payee in `lHpay` on Money Plus and `hpay` before it.** Reading one name only
   drops every payee on the other vintage. Column aliases belong in the reader spec, never in a
   mapper.

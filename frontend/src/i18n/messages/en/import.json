@@ -357,6 +357,7 @@
     "heading": "Review your Microsoft Money file",
     "fileSummary": "{filename} -- {era}, base currency {currency}. Balances below are computed from the file itself, so you can check them against Money before importing.",
     "era": {
+      "money99": "Money 97-99 format",
       "money2001": "Money 2001 format",
       "money2002": "Money 2002 format",
       "moneyPlus": "Money Plus / Sunset format",
@@ -529,6 +530,7 @@
     "duplicateSecuritySymbol": "{count, plural, one {# security shares} other {# securities share}} a symbol with another; the later ones were renamed so they stay separate.",
     "generatedSecuritySymbol": "{count, plural, one {# security has} other {# securities have}} no symbol in Money, so a placeholder was generated and price updates left off.",
     "unknownInvestmentAction": "{count, plural, one {# investment transaction} other {# investment transactions}} used an action Monize does not recognize and were skipped.",
+    "stockOptionNotImported": "{count, plural, one {# employee stock option event} other {# employee stock option events}} (grants, vesting and expiry) moved no cash or shares and were not imported.",
     "unconfirmedInvestmentAction": "{count, plural, one {# investment transaction} other {# investment transactions}} used a Money action whose meaning is inferred rather than documented; check them against Money.",
     "missingInvestmentDetail": "{count, plural, one {# investment transaction} other {# investment transactions}} had no share detail in the file and were imported for their cash amount only.",
     "investmentAccountMismatch": "{count, plural, one {# investment transaction} other {# investment transactions}} sat in an account that is not an investment account and were skipped.",
@@ -563,7 +565,7 @@
     "mnyStagedFileMissing": "The uploaded Money file is no longer available. Please upload it again.",
     "mnyFileTruncated": "That Money file looks incomplete. The upload may have been interrupted.",
     "mnyNotAMoneyFile": "That file is not a Microsoft Money (.mny) file.",
-    "mnyUnsupportedVersion": "That file was written by Money 97 or 98. Open and save it once in the free Money Plus Sunset edition, then import the result.",
+    "mnyUnsupportedVersion": "That file was written by a version of Microsoft Money that Monize cannot read. Open and save it once in the free Money Plus Sunset edition, then import the result.",
     "mnyPasswordRequired": "That Money file is password protected.",
     "mnyPasswordIncorrect": "That password does not open the Money file.",
     "mnyUnreadableDatabase": "That Money file was decrypted but its contents could not be read. It may be damaged."

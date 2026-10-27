@@ -15,7 +15,8 @@ import {
 import { MnyTransactionData } from "../tables/read-transactions";
 import { MnyInvestmentData } from "../tables/read-investments";
 import { DEFAULT_MNY_IMPORT_OPTIONS } from "../model/mny-import-options";
-import { MNY_ACTION, MNY_TRANSACTION_FLAG } from "../model/mny-model";
+import { MNY_ACTION } from "../model/mny-actions";
+import { MNY_TRANSACTION_FLAG } from "../model/mny-model";
 import { TransactionStatus } from "../../../transactions/entities/transaction.entity";
 import { computeExpectedBalances } from "../mny-parser.service";
 import { mapAccounts, cashKeyByAccountKey } from "./map-reference";

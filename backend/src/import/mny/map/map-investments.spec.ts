@@ -13,7 +13,9 @@ import {
   transactionData,
 } from "../__fixtures__/mny-row-builders";
 import { MappedAccounts, MappedSecurities } from "../model/mny-import-model";
-import { MNY_ACTION, MNY_TRANSACTION_FLAG } from "../model/mny-model";
+import { MNY_ACTION } from "../model/mny-actions";
+import { MONEY99_ACTION } from "../model/mny-money99";
+import { MNY_TRANSACTION_FLAG } from "../model/mny-model";
 import { mapSecurities } from "./map-securities";
 import { MapInvestmentsInput, mapInvestments } from "./map-investments";
 
@@ -690,6 +692,75 @@ describe("mapInvestments", () => {
         subject: "htrn=1",
         detail: `act=${MNY_ACTION.CAPITAL_GAIN}`,
         row: expect.objectContaining({ handle: 1 }),
+      });
+    });
+
+    describe("a Money 97-99 file", () => {
+      const money99 = (row: Parameters<typeof invRow>[0]) =>
+        mapInvestments(
+          input({
+            transactions: transactionData({
+              format: "jet3",
+              transactions: [invRow({ handle: 1, ...row })],
+            }),
+          }),
+        );
+
+      it("reads act 1 as a sale, where Money Plus reads it as a buy", () => {
+        const result = money99({ action: MONEY99_ACTION.SELL, amount: -251 });
+
+        expect(result.transactions[0]).toMatchObject({
+          action: InvestmentAction.SELL,
+          cashAmount: 251,
+        });
+      });
+
+      it("reads act 4 as a dividend, where Money Plus reads it as interest", () => {
+        const result = money99({ action: MONEY99_ACTION.DIVIDEND, amount: -2 });
+
+        expect(result.transactions[0].action).toBe(InvestmentAction.DIVIDEND);
+        expect(result.warnings).toEqual([]);
+      });
+
+      it("maps act 14 as a measured capital gain, with no unconfirmed warning", () => {
+        const result = money99({
+          action: MONEY99_ACTION.CAPITAL_GAIN,
+          amount: -10,
+        });
+
+        expect(result.transactions[0].action).toBe(
+          InvestmentAction.CAPITAL_GAIN,
+        );
+        expect(result.warnings).toEqual([]);
+      });
+
+      it("skips an employee stock option event with its own warning", () => {
+        const result = money99({ action: MONEY99_ACTION.OPTION_VEST });
+
+        expect(result.transactions).toHaveLength(0);
+        expect(result.skipped).toBe(1);
+        expect(result.warnings).toEqual([
+          {
+            code: "stockOptionNotImported",
+            subject: "htrn=1",
+            detail: `act=${MONEY99_ACTION.OPTION_VEST}`,
+            row: expect.objectContaining({ handle: 1 }),
+          },
+        ]);
+      });
+
+      it("reads a Money Plus stock option code as an unknown action", () => {
+        const result = mapInvestments(
+          input({
+            transactions: transactionData({
+              transactions: [
+                invRow({ handle: 1, action: MONEY99_ACTION.OPTION_GRANT }),
+              ],
+            }),
+          }),
+        );
+
+        expect(result.warnings[0].code).toBe("unknownInvestmentAction");
       });
     });
 

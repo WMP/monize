@@ -284,6 +284,7 @@ export function transactionData(
   overrides: Partial<MnyTransactionData> = {},
 ): MnyTransactionData {
   return {
+    format: "msisam",
     transactions: [],
     splits: [],
     transfers: [],

@@ -79,7 +79,7 @@ import {
   tradesByHandle,
 } from "@/import/mny/map/investment-cash";
 import { DEFAULT_MNY_IMPORT_OPTIONS } from "@/import/mny/model/mny-import-options";
-import { MNY_ACTION } from "@/import/mny/model/mny-model";
+import { MNY_ACTION } from "@/import/mny/model/mny-actions";
 import {
   applyDeferredClosures,
   writeAccounts,

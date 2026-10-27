@@ -183,6 +183,7 @@ describe("MnyParserService", () => {
 
   describe("era detection", () => {
     it.each([
+      ["money99", "money99"],
       ["money2001", "money2001"],
       ["money2002", "money2002"],
       ["money2008", "moneyPlus"],
@@ -281,6 +282,108 @@ describe("MnyParserService", () => {
         expect.arrayContaining([{ code: "missingTable", subject: "BILL" }]),
       );
       expect(parsed.accounts.accounts.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("sample-money99.mny", () => {
+    // Ground truth is Money 99's own account list for this file, which counts
+    // every posted row, future-dated ones included, so `asOf` is set past the
+    // file's last date. See docs/future-plans/mny-money99-import.md.
+    const parse = () => {
+      // The staged path: `POST /parse` reads the upload, the job re-reads the
+      // same bytes. Asserting on the re-read is asserting on what imports.
+      const buffer = readMnyFixture("money99");
+      const options = { userDefaultCurrency: "CAD", asOf: "2099-12-31" };
+      service.parse({ buffer, ...options });
+      return service.parse({ buffer, alreadyDecrypted: true, ...options });
+    };
+    const balanceOf = (
+      parsed: ReturnType<typeof parse>,
+      accountName: string,
+    ) => {
+      const account = parsed.accounts.accounts.find(
+        (candidate) => candidate.name === accountName,
+      );
+      return account === undefined
+        ? undefined
+        : parsed.expectedBalances.get(account.key);
+    };
+    const handles = (parsed: ReturnType<typeof parse>) =>
+      new Set(parsed.transactions.transactions.map((row) => row.handle));
+
+    it("reproduces every balance Money 99 shows", () => {
+      const parsed = parse();
+
+      expect(parsed.baseCurrency).toBe("USD");
+      expect(balanceOf(parsed, "Chase Bank")).toBe(2105);
+      expect(balanceOf(parsed, "Chase Credit card")).toBe(-185);
+      expect(balanceOf(parsed, "Chase Investmen - Cash")).toBe(22658);
+      expect(balanceOf(parsed, "Chase Savings")).toBe(11010);
+      expect(balanceOf(parsed, "Loan")).toBe(-4209.39);
+    });
+
+    it("replays the holdings the tax lots record", () => {
+      const parsed = parse();
+
+      expect(
+        parsed.holdingChecks.map((check) => [
+          check.symbol,
+          check.lotQuantity,
+          check.replayQuantity,
+        ]),
+      ).toEqual(expect.arrayContaining([["AMzn", 11, 11]]));
+      expect(parsed.holdingChecks.every((check) => check.delta === 0)).toBe(
+        true,
+      );
+      expect(parsed.warnings.map((warning) => warning.code)).not.toContain(
+        "holdingsMismatch",
+      );
+    });
+
+    it("imports the voided row as VOID", () => {
+      const voided = parse().transactions.transactions.find(
+        (row) => row.handle === 91,
+      );
+
+      expect(voided?.status).toBe(TransactionStatus.VOID);
+    });
+
+    it("imports no pending scheduled instance and no loan-template row", () => {
+      const imported = handles(parse());
+
+      for (const handle of [3, 4, 43, 44, 45, 46, 64, 67, 68, 72, 5, 6, 7, 8]) {
+        expect(imported.has(handle)).toBe(false);
+      }
+    });
+
+    it("imports other income and expenses as categorized cash rows, not trades", () => {
+      const parsed = parse();
+      const otherIncome = parsed.transactions.transactions.find(
+        (row) => row.handle === 88,
+      );
+
+      expect(otherIncome).toMatchObject({
+        amount: 10,
+        isTransfer: false,
+        linkedTransactionId: null,
+      });
+      expect(otherIncome?.categoryHandle).not.toBeNull();
+      expect(handles(parsed).has(90)).toBe(true);
+      const tradeHandles = parsed.investments.transactions.map(
+        (trade) => trade.handle,
+      );
+      expect(tradeHandles).not.toContain(87);
+      expect(tradeHandles).not.toContain(89);
+    });
+
+    it("skips the stock option events with one named warning each", () => {
+      const codes = parse().warnings.map((warning) => warning.code);
+
+      expect(
+        codes.filter((code) => code === "stockOptionNotImported"),
+      ).toHaveLength(9);
+      expect(codes).not.toContain("unknownInvestmentAction");
+      expect(codes).not.toContain("unconfirmedInvestmentAction");
     });
   });
 
