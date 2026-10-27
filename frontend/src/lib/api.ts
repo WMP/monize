@@ -3,6 +3,7 @@ import Cookies from 'js-cookie';
 import { useAuthStore } from '@/store/authStore';
 import { createLogger } from '@/lib/logger';
 import { isSigningOut } from '@/lib/logout-state';
+import { clearUndoRefused } from '@/lib/undoRedoSignal';
 
 const logger = createLogger('API');
 
@@ -143,7 +144,12 @@ async function attemptTokenRefresh(): Promise<boolean> {
 export { attemptTokenRefresh };
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Any successful write (a new action, a redo, a successful undo) changes
+    // the history head, so a refused Undo may succeed again.
+    if (response.config?.method && response.config.method !== 'get') clearUndoRefused();
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _csrfRetried?: boolean;

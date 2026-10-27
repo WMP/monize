@@ -169,6 +169,15 @@ describe('apiClient interceptors', () => {
       expect(responseHandlers.onFulfilled!(response)).toBe(response);
     });
 
+    it('clears a refused Undo after a successful write but not after a read', async () => {
+      const signal = await import('./undoRedoSignal');
+      signal.markUndoRefused('refused');
+      responseHandlers.onFulfilled!({ data: 1, config: { method: 'get' } });
+      expect(signal.getUndoRefusal()).toBe('refused');
+      responseHandlers.onFulfilled!({ data: 1, config: { method: 'post' } });
+      expect(signal.getUndoRefusal()).toBeNull();
+    });
+
     it('marks backend down on 502', async () => {
       const error = makeError({ response: { status: 502 } });
       await expect(responseHandlers.onRejected!(error)).rejects.toBe(error);

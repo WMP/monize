@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, waitFor, act } from '@/test/render';
 import { ActionHistoryPanel } from './ActionHistoryPanel';
 import { actionHistoryApi } from '@/lib/action-history';
-import { notifyUndoRedo } from '@/lib/undoRedoSignal';
+import { notifyUndoRedo, clearUndoRefused } from '@/lib/undoRedoSignal';
 
 vi.mock('@/lib/action-history', () => ({
   actionHistoryApi: {
@@ -64,6 +64,7 @@ async function openPanel() {
 describe('ActionHistoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearUndoRefused();
     (actionHistoryApi.getHistory as ReturnType<typeof vi.fn>).mockResolvedValue(mockHistory);
     (actionHistoryApi.undo as ReturnType<typeof vi.fn>).mockResolvedValue({
       action: mockHistory[0],
@@ -311,6 +312,33 @@ describe('ActionHistoryPanel', () => {
     await waitFor(() => {
       expect(toast.default.error).toHaveBeenCalledWith('Cannot undo a deleted account');
     });
+  });
+
+  it('disables Undo with the server reason after a refusal 409 and re-enables it on clear', async () => {
+    (actionHistoryApi.undo as ReturnType<typeof vi.fn>).mockRejectedValue({
+      response: { status: 409, data: { message: 'Void has legs', errorCode: 'UNDO_VOID_WITH_LEGS' } },
+    });
+    const { getByTestId } = await openPanel();
+    await waitFor(() => expect(getByTestId('undo-button')).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.click(getByTestId('undo-button'));
+    });
+    await waitFor(() => expect(getByTestId('undo-button')).toBeDisabled());
+    expect(getByTestId('undo-button')).toHaveAttribute('title', 'Void has legs');
+    expect(getByTestId('undo-button')).toHaveAccessibleDescription('Void has legs');
+    act(() => clearUndoRefused());
+    await waitFor(() => expect(getByTestId('undo-button')).not.toBeDisabled());
+  });
+
+  it('keeps Undo enabled after a 409 without a refusal code', async () => {
+    (actionHistoryApi.undo as ReturnType<typeof vi.fn>).mockRejectedValue({
+      response: { status: 409, data: { message: 'Conflict' } },
+    });
+    const { getByTestId } = await openPanel();
+    await act(async () => {
+      fireEvent.click(getByTestId('undo-button'));
+    });
+    expect(getByTestId('undo-button')).not.toBeDisabled();
   });
 
   it('shows fallback message on undo 409 error without message', async () => {
