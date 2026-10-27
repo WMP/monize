@@ -14,7 +14,9 @@
 /** The fields this module reads from any look-through result. */
 export interface LookThroughResult {
   items: { name: string; totalValue: number; percentage: number }[];
-  totalPortfolioValue: number;
+  /** null while the result is partial; `knownSubtotal` is then the base of its percentages. */
+  totalPortfolioValue: number | null;
+  knownSubtotal?: number;
   unclassifiedValue: number;
 }
 
@@ -45,7 +47,7 @@ export function collapseLookThrough(
   otherLabel: string,
   topN: number = LOOK_THROUGH_TOP_N,
 ): LookThroughSlice[] {
-  const total = result.totalPortfolioValue;
+  const total = result.totalPortfolioValue ?? result.knownSubtotal ?? 0;
   // The backend already sorts by value descending; sort defensively.
   const sorted = [...result.items].sort((a, b) => b.totalValue - a.totalValue);
   const slices: LookThroughSlice[] = sorted.slice(0, topN).map((item) => ({

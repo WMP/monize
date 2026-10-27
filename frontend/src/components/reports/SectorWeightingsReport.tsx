@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useReportData } from '@/hooks/useReportData';
 import { usePersistedAccountFilter } from '@/hooks/usePersistedAccountFilter';
 import { ReportError } from '@/components/reports/ReportError';
+import { WeightingPartialNote } from '@/components/reports/WeightingPartialNote';
 import {
   BarChart,
   Bar,
@@ -398,12 +399,16 @@ export function SectorWeightingsReport() {
         </div>
       </div>
 
+      <WeightingPartialNote result={data} />
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('sectorWeightings.totalPortfolio')}</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+            {data.valuationComplete === false ? t('partialData.knownValue') : t('sectorWeightings.totalPortfolio')}
+          </p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
-            {formatCurrency(data.totalPortfolioValue, defaultCurrency)}
+            {formatCurrency(data.totalPortfolioValue ?? data.knownSubtotal ?? 0, defaultCurrency)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
@@ -699,8 +704,8 @@ export function SectorWeightingsReport() {
                   <td role="cell" className={`${CELL_PLACEMENT.percentage} text-gray-500 dark:text-gray-400 ${FIGURE_CELL}`}>
                     <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>
                     {formatPercent(
-                      data.totalPortfolioValue > 0
-                        ? (data.unclassifiedValue / data.totalPortfolioValue) * 100
+                      (data.totalPortfolioValue ?? data.knownSubtotal ?? 0) > 0
+                        ? (data.unclassifiedValue / (data.totalPortfolioValue ?? data.knownSubtotal ?? 0)) * 100
                         : 0,
                       1,
                     )}
@@ -725,8 +730,8 @@ export function SectorWeightingsReport() {
                       cell left outside it is one long token away from
                       reopening the sideways scroll -- and nothing would show
                       it until a locale grew one. */}
-                  <span className="line-clamp-3 break-words sm:line-clamp-none sm:break-normal" title={t('sectorWeightings.total')}>
-                    {t('sectorWeightings.total')}
+                  <span className="line-clamp-3 break-words sm:line-clamp-none sm:break-normal" title={data.valuationComplete === false ? t('partialData.knownValue') : t('sectorWeightings.total')}>
+                    {data.valuationComplete === false ? t('partialData.knownValue') : t('sectorWeightings.total')}
                   </span>
                 </td>
                 <td role="cell" className={`${CELL_PLACEMENT.direct} font-bold text-blue-600 dark:text-blue-400 ${FIGURE_CELL}`}>
@@ -739,7 +744,7 @@ export function SectorWeightingsReport() {
                 </td>
                 <td role="cell" className={`${CELL_PLACEMENT.total} font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                   <CellLabel className={CAPTION_CLASS}>{columns.total.label}</CellLabel>
-                  {formatCurrencyFull(data.totalPortfolioValue, defaultCurrency)}
+                  {formatCurrencyFull(data.totalPortfolioValue ?? data.knownSubtotal ?? 0, defaultCurrency)}
                 </td>
                 <td role="cell" className={`${CELL_PLACEMENT.percentage} font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                   <CellLabel className={CAPTION_CLASS}>{columns.percentage.label}</CellLabel>

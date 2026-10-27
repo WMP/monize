@@ -59,6 +59,39 @@ describe('SectorWeightingsWidget', () => {
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
 
+  it('names what is left out while the valuation is partial', async () => {
+    const base = {
+      items: [{ sector: 'Technology', directValue: 600, etfValue: 0, totalValue: 600, percentage: 100 }],
+      totalDirectValue: 600,
+      totalEtfValue: 0,
+      unclassifiedValue: 0,
+    };
+    getSectorWeightings.mockResolvedValue({
+      ...base,
+      totalPortfolioValue: null,
+      knownSubtotal: 600,
+      valuationComplete: false,
+      unpricedSymbols: ['NOP'],
+      missingRatePairs: [],
+    });
+    await renderWidget();
+    expect(screen.getByTestId('weighting-partial-note').textContent).toContain('NOP');
+  });
+
+  it('shows no partial note when the valuation is complete', async () => {
+    getSectorWeightings.mockResolvedValue({
+      items: [{ sector: 'Technology', directValue: 600, etfValue: 0, totalValue: 600, percentage: 100 }],
+      totalPortfolioValue: 600,
+      knownSubtotal: 600,
+      valuationComplete: true,
+      totalDirectValue: 600,
+      totalEtfValue: 0,
+      unclassifiedValue: 0,
+    });
+    await renderWidget();
+    expect(screen.queryByTestId('weighting-partial-note')).not.toBeInTheDocument();
+  });
+
   it('shows the empty state with no sectors', async () => {
     getSectorWeightings.mockResolvedValue({
       items: [],

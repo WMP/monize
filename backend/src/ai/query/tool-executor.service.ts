@@ -2590,7 +2590,7 @@ export class ToolExecutorService {
 
     const sign = data.totalGainLoss >= 0 ? "+" : "";
     const lookThroughNote = data.lookThrough
-      ? ` Look-through: ${data.lookThrough.byCountry.items.length} countr${data.lookThrough.byCountry.items.length === 1 ? "y" : "ies"}, ${data.lookThrough.byAssetClass.items.length} asset class${data.lookThrough.byAssetClass.items.length === 1 ? "" : "es"}.`
+      ? ` Look-through: ${data.lookThrough.byCountry.items.length} countr${data.lookThrough.byCountry.items.length === 1 ? "y" : "ies"}, ${data.lookThrough.byAssetClass.items.length} asset class${data.lookThrough.byAssetClass.items.length === 1 ? "" : "es"}.${data.lookThrough.valuationComplete === false ? ` Look-through percentages cover only the priced and converted holdings (${data.lookThrough.knownSubtotal.toFixed(2)}); left out: ${[...data.lookThrough.unpricedSymbols.map((s) => `${s} (no price)`), ...data.lookThrough.missingRatePairs.map((p) => `${p} (no rate)`)].join(", ")}.` : ""}`
       : "";
     // The model reads this line before the payload, so an incomplete total has to
     // be described as incomplete here and not only flagged in `data`. Without it

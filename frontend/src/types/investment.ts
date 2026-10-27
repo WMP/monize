@@ -106,9 +106,27 @@ export interface SectorWeightingItem {
   percentage: number;
 }
 
-export interface SectorWeightingResult {
+/**
+ * Completeness of a weighting result. Optional for the rolling-deploy reason
+ * `lastPrice` is: absent means no information, and every reader tests
+ * `valuationComplete === false`.
+ */
+export interface WeightingCompleteness {
+  /** Value of the holdings that were priced and converted; the base of every percentage. */
+  knownSubtotal?: number;
+  valuationComplete?: boolean;
+  pricesComplete?: boolean;
+  fxComplete?: boolean;
+  unpricedSecurityIds?: string[];
+  unpricedSymbols?: string[];
+  /** "SEC->REPORTING" pairs with no rate. */
+  missingRatePairs?: string[];
+}
+
+export interface SectorWeightingResult extends WeightingCompleteness {
   items: SectorWeightingItem[];
-  totalPortfolioValue: number;
+  /** null while `valuationComplete` is false; percentages are then over `knownSubtotal`. */
+  totalPortfolioValue: number | null;
   totalDirectValue: number;
   totalEtfValue: number;
   unclassifiedValue: number;
@@ -122,9 +140,10 @@ export interface CountryWeightingItem {
   percentage: number;
 }
 
-export interface CountryWeightingResult {
+export interface CountryWeightingResult extends WeightingCompleteness {
   items: CountryWeightingItem[];
-  totalPortfolioValue: number;
+  /** null while `valuationComplete` is false; percentages are then over `knownSubtotal`. */
+  totalPortfolioValue: number | null;
   totalDirectValue: number;
   totalEtfValue: number;
   unclassifiedValue: number;
@@ -141,9 +160,10 @@ export interface AssetClassWeightingItem {
   percentage: number;
 }
 
-export interface AssetClassWeightingResult {
+export interface AssetClassWeightingResult extends WeightingCompleteness {
   items: AssetClassWeightingItem[];
-  totalPortfolioValue: number;
+  /** null while `valuationComplete` is false; percentages are then over `knownSubtotal`. */
+  totalPortfolioValue: number | null;
   totalDirectValue: number;
   totalEtfValue: number;
   /**

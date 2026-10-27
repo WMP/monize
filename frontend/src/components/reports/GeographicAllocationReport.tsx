@@ -32,6 +32,7 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { useReportData } from '@/hooks/useReportData';
 import { usePersistedAccountFilter } from '@/hooks/usePersistedAccountFilter';
 import { ReportError } from '@/components/reports/ReportError';
+import { WeightingPartialNote } from '@/components/reports/WeightingPartialNote';
 import { chartColors } from '@/lib/chart-colors';
 import {
   COUNTRY_COLOURS,
@@ -349,7 +350,7 @@ export function GeographicAllocationReport() {
 
   const countryData = useMemo<CountryRow[]>(() => {
     if (!countryResp) return [];
-    const total = countryResp.totalPortfolioValue;
+    const total = countryResp.totalPortfolioValue ?? countryResp.knownSubtotal ?? 0;
     const rows: CountryRow[] = countryResp.items.map((item, idx) => ({
       country: item.country,
       marketValue: item.totalValue,
@@ -368,7 +369,12 @@ export function GeographicAllocationReport() {
   }, [countryResp, t]);
 
   // `null` until the country request has answered: not a portfolio of zero.
-  const countryTotalValue = countryResp ? countryResp.totalPortfolioValue : null;
+  // While the server withholds the total, the footer shows the known subtotal under
+  // its own label; percentages are shares of that subtotal.
+  const countryPartial = countryResp?.valuationComplete === false;
+  const countryTotalValue = countryResp
+    ? (countryResp.totalPortfolioValue ?? countryResp.knownSubtotal ?? null)
+    : null;
   // The country view draws from its own request, which the hook keeps the last
   // answer of through a pending or failed reload (another account filter's).
   // While it is either, the view shows that state and the export is off.
@@ -757,6 +763,9 @@ export function GeographicAllocationReport() {
           limit the cost, since every value names its own column. */}
       {countryUnavailable ? null : viewType === 'country' ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
+          <div className="px-4 pt-3 empty:hidden">
+            <WeightingPartialNote result={countryResp} />
+          </div>
           <div className="overflow-x-auto">
             <table role="table" className="block min-w-full divide-y divide-gray-200 dark:divide-gray-700 sm:table">
               <thead role="rowgroup" className="block bg-gray-50 dark:bg-gray-900/50 sm:table-header-group">
@@ -806,32 +815,16 @@ export function GeographicAllocationReport() {
                     and none owes an `aria-colindex`. */}
                 <tr role="row" className={`${ROW_GRID} sm:table-row sm:p-0`}>
                   <td role="cell" className={`${COUNTRY_PLACEMENT.country} ${IDENTITY_CELL} break-words sm:break-normal font-bold text-gray-900 dark:text-gray-100`}>
-                    <span title={t('geographicAllocation.total')}>
-                      {t('geographicAllocation.total')}
+                    <span title={countryPartial ? t('partialData.knownValue') : t('geographicAllocation.total')}>
+                      {countryPartial ? t('partialData.knownValue') : t('geographicAllocation.total')}
                     </span>
                   </td>
                   <td role="cell" className={`${COUNTRY_PLACEMENT.marketValue} font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
                     <CellLabel className={CAPTION_CLASS}>{countryColumns.marketValue.label}</CellLabel>
-                    {/* NOT `totalValue`, and so NOT wrapped in `PartialTotal`
-                        like the region and exchange footers below. This figure
-                        is `countryResp.totalPortfolioValue`: the country view
-                        is a server-side look-through aggregate (ETFs split
-                        across their manual country weightings), computed from
-                        different inputs than the client-side conversion that
-                        produces `missingCurrencies` / `excludedCount`. Marking
-                        it with those would attach one aggregate's gaps to
-                        another aggregate's number -- the mistake root
-                        `CLAUDE.md` names as reading a completeness flag from
-                        somewhere other than the aggregate that produced the
-                        figure on screen.
-                        `CountryWeightingResult` reports no completeness of its
-                        own, so whether THIS total is whole is currently
-                        unknown to this component. Closing that needs an
-                        `fxComplete`/`pricesComplete` pair on
-                        `sector-weighting.service.ts`'s look-through result and
-                        its frontend type, which is a change to files this
-                        report does not own. Do not "finish" this by reaching
-                        for the client-side marker. */}
+                    {/* NOT `totalValue`, and NOT wrapped in `PartialTotal`: this is the
+                        server's look-through total, so it reads the server's own
+                        `valuationComplete` (the footer label and the note above),
+                        never the client conversion's `missingCurrencies`. */}
                     {countryTotalValue === null ? '-' : formatCurrencyFull(countryTotalValue, defaultCurrency)}
                   </td>
                   <td role="cell" className={`${COUNTRY_PLACEMENT.percentage} font-bold text-gray-900 dark:text-gray-100 ${FIGURE_CELL}`}>
