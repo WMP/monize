@@ -12,6 +12,23 @@ Paths beginning with `src/`, `test/` or `scripts/`, and layer configuration file
 - **A new column referencing `currencies(code)`** must keep `src/currencies/currency-references.spec.ts` green -- both SQL functions and the TypeScript constant.
 - **A new table** must be exported or listed in `INTENTIONALLY_EXCLUDED_TABLES` with a reason, and classified in the support backup rules.
 
+Shared-document metadata, blob digests and streamed bytes use `exportedAttachment`
+from `src/backup/shared-backup.ts`: private ownership applies only to rows without
+a shared parent; group and entry documents require ownership of the group or an
+unrevoked membership. Uploading a shared file is not a continuing read grant after
+revocation. The source guard in `backup.service.spec.ts` pins these three branches;
+`test/integration/shared-expenses-lifecycle.integration.spec.ts` exercises the same
+queries on a connection that bypasses RLS and checks actual exports under RLS.
+
+`prepareSharedRestore` applies `RESTORE_CLEARED_COLUMNS` in that same module to
+remove ownership-transfer consent and upload replay state from a detached copy;
+these transient values must not survive restoration as live commands.
+
+Support snapshots check shared references with `withSharedSupportRefs`, including
+the owner/group components of composite foreign keys. Missing optional links are
+cleared; a missing journal participant, allocation target or refund source
+refuses generation instead of silently changing the journal's financial facts.
+
 **A file's name is its identity, so anything that decides whether it may be deleted has to be in the name.** An automatic backup that could not include every attachment is published as `monize-backup-partial-<date>` in its own retention tier, and the name is chosen *after* the export from what the export found -- `writeFileAtomic` replaces a final name by design, so a partial artifact written under the `daily-` name had already destroyed that day's complete copy before any status column could say so. State beside the file cannot govern a decision the write has already made; the durable copy of the fact goes *inside* the document (`completeness` in the envelope).
 
 **Nothing in the export path may hold a whole table, a whole artifact, or a whole attachment set.** Rows come through the cursor in `src/backup/export-cursor.ts`, the document is serialised a row at a time under the chunk budget in `export-json-stream.ts`, and an object store is opened one object at a time. A `manager.query` for an export table, a `JSON.stringify` over an array of rows, or an array of base64 built before serialising are each the same defect (issue #1070). The guards in `src/backup/export-streaming.spec.ts` assert the ordering (batched fetches, loads interleaved with writes, reads that stop when the client does) rather than the memory.
