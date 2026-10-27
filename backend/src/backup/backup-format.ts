@@ -381,6 +381,7 @@ export interface BackupData {
   monthly_account_balances: Record<string, unknown>[];
   auto_backup_settings: Record<string, unknown>[];
   scheduled_transaction_split_tags: Record<string, unknown>[];
+  payroll_deduction_rules?: Record<string, unknown>[];
   monte_carlo_scenarios: Record<string, unknown>[];
   monte_carlo_cash_flows: Record<string, unknown>[];
   ai_provider_configs: Record<string, unknown>[];

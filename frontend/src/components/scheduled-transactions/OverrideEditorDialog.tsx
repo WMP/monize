@@ -29,7 +29,7 @@ import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { investmentsApi } from '@/lib/investments';
 import { buildCategoryTree } from '@/lib/categoryUtils';
 import { totalFromQuantity, quantityFromTotal, roundPrice, usableClose } from '@/lib/investmentFold';
-import { roundToCents, getCurrencySymbol } from '@/lib/format';
+import { roundToCents, getCurrencySymbol, sumMoney } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
 import { useTranslations } from 'next-intl';
@@ -57,6 +57,14 @@ interface OverrideEditorDialogProps {
    * with lines of its own keeps them; `prefillAmount` outranks it.
    */
   loanOccurrence?: SelectedLoanOccurrence | null;
+  /**
+   * For a payroll bill with deduction rules, what each ruled category deducts
+   * on this occurrence once the yearly room is spent (`projectPayrollOccurrence`),
+   * by category id: the dialog opens on those lines and their sum, never the
+   * template's. An override with lines or an amount of its own keeps them;
+   * `prefillAmount` outranks it.
+   */
+  payrollDeductions?: Record<string, number> | null;
   onClose: () => void;
   onSave: () => void;
   /**
@@ -77,6 +85,7 @@ export function OverrideEditorDialog({
   existingOverride,
   prefillAmount,
   loanOccurrence,
+  payrollDeductions,
   onClose,
   onSave,
   onCreateCategory,
@@ -165,6 +174,7 @@ export function OverrideEditorDialog({
     overrideDate,
     prefillAmount,
     loanOccurrence,
+    payrollDeductions,
     isInvestmentKind,
   ] as const;
   const [initializedFor, setInitializedFor] = useState<typeof initInputs | null>(null);
@@ -268,6 +278,28 @@ export function OverrideEditorDialog({
           setAmount(roundToCents(parent));
           if (lines ?? templateRows) initSplits(lines ?? templateRows, parent, parent);
         }
+      }
+
+      // A payroll bill's occurrence opens on its deduction lines as the yearly
+      // room leaves them (INV-PAYROLL-003), the parent re-summed, so the Edit
+      // Occurrence dialog shows the paycheque the posting will book.
+      if (
+        payrollDeductions &&
+        !isInvestmentKind &&
+        prefillAmount == null &&
+        !overrideHasOwnLines &&
+        existingOverride?.amount == null &&
+        scheduledTransaction.isSplit &&
+        scheduledTransaction.splits
+      ) {
+        const lines = toSplitRows(scheduledTransaction.splits).map((row) =>
+          row.categoryId && row.categoryId in payrollDeductions
+            ? { ...row, amount: -payrollDeductions[row.categoryId] }
+            : row,
+        );
+        const parent = sumMoney(lines.map((row) => Number(row.amount)));
+        setAmount(roundToCents(parent));
+        initSplits(lines, parent, parent);
       }
 
       // Investment-mode prefill: existing override values fall back to the

@@ -308,6 +308,11 @@
     "noOpenPeriod": "Không có kỳ mở để đóng",
     "categoryIdsNotOwned": "Không tìm thấy ID danh mục hoặc không thuộc sở hữu của người dùng: {{ ids }}"
   },
+  "payrollDeductions": {
+    "notFound": "Không tìm thấy quy tắc khấu trừ lương {{ id }}",
+    "duplicate": "Hóa đơn này đã có quy tắc cho danh mục đó",
+    "expectedRequired": "Hóa đơn không có dòng cho danh mục này; hãy nhập số tiền dự kiến mỗi kỳ lương"
+  },
   "categories": {
     "notFound": "Không tìm thấy danh mục với ID {{ id }}",
     "cannotModifySystem": "Không thể sửa đổi danh mục hệ thống",

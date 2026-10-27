@@ -11,6 +11,7 @@ import {
   FORECAST_PERIOD_DAYS,
   FORECAST_PERIOD_LABELS,
   FutureTransaction,
+  projectPayrollOccurrence,
 } from './forecast';
 
 vi.mock('@/lib/utils', () => ({
@@ -2449,5 +2450,230 @@ describe('forecast money arithmetic (integer 1/10000 units, one rounding for dis
       const summary = getForecastSummary([{ date: '2025-01-15', balance: 1.01, transactions: [] }]);
       expect(summary.startingBalance).toBe(1.01);
     });
+  });
+});
+
+/**
+ * Payroll deduction rules (docs/specs/payroll-deductions.md decision 7,
+ * INV-PAYROLL-003): the walk spends the server's `remaining` occurrence by
+ * occurrence, adds the uncollected part back to the paycheque, and refills
+ * the room on the reset date. The spec's section 7 example, on a biweekly
+ * paycheque of 2,436 net whose EI line is 64.
+ */
+describe('buildForecast with payroll deductions', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 3, 10)); // Apr 10, 2026
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const eiRule = (remaining: number) => ({
+    ruleId: 'rule-ei',
+    categoryId: 'cat-ei',
+    categoryName: 'EI',
+    yearlyMaximum: 1077.48,
+    expectedPerPaycheque: 64,
+    expectedSource: 'line' as const,
+    periodStart: '2026-01-01',
+    periodEnd: '2026-12-31',
+    nextResetOn: '2027-01-01',
+    resetDate: '2026-01-01',
+    paidToDate: 1077.48 - remaining,
+    remaining,
+    foreignCurrencyRows: 0,
+    currencyCode: 'USD',
+  });
+
+  const paycheque = (overrides: Partial<ScheduledTransaction> = {}) =>
+    makeScheduled({
+      id: 'st-pay',
+      name: 'Paycheque',
+      amount: 2436,
+      frequency: 'BIWEEKLY',
+      nextDueDate: '2026-04-24',
+      ...overrides,
+    });
+
+  /** The paycheque's amount on each occurrence the window holds, by date. */
+  const paycheques = (points: ReturnType<typeof forecastPoints>) =>
+    points
+      .flatMap(p => p.transactions.map(tx => [p.date, tx.amount] as const))
+      .filter(([, amount]) => amount !== 0 || true);
+
+  it('reduces the paycheque by nothing while the room covers the deduction', () => {
+    const points = forecastPoints([makeAccount()], [paycheque({ payrollDeductions: [eiRule(1000)] })], 'month', 'all');
+    expect(paycheques(points)).toEqual([['2026-04-24', 2436], ['2026-05-08', 2436]]);
+  });
+
+  it('adds the uncollected part back once the room runs out (spec section 7)', () => {
+    const points = forecastPoints([makeAccount()], [paycheque({ payrollDeductions: [eiRule(53.48)] })], 'month', 'all');
+    expect(paycheques(points)).toEqual([
+      ['2026-04-24', 2446.52],
+      ['2026-05-08', 2500],
+    ]);
+  });
+
+  it('refills the room on the reset date', () => {
+    vi.setSystemTime(new Date(2026, 11, 10)); // Dec 10, 2026
+    const points = forecastPoints(
+      [makeAccount()],
+      [paycheque({ nextDueDate: '2026-12-18', payrollDeductions: [eiRule(0)] })],
+      'month',
+      'all',
+    );
+    expect(paycheques(points)).toEqual([
+      ['2026-12-18', 2500],
+      ['2027-01-01', 2436],
+    ]);
+  });
+
+  it('projects an overridden amount as stated and still spends the room', () => {
+    const points = forecastPoints(
+      [makeAccount()],
+      [
+        paycheque({
+          payrollDeductions: [eiRule(53.48)],
+          futureOverrides: [
+            { originalDate: '2026-04-24', overrideDate: '2026-04-24', amount: 3000 } as never,
+          ],
+        }),
+      ],
+      'month',
+      'all',
+    );
+    expect(paycheques(points)).toEqual([
+      ['2026-04-24', 3000],
+      ['2026-05-08', 2500],
+    ]);
+  });
+
+  it('leaves a bill alone when the rule has no expected figure or the field is absent', () => {
+    const unknown = { ...eiRule(53.48), expectedPerPaycheque: null, expectedSource: null };
+    const withUnknown = forecastPoints([makeAccount()], [paycheque({ payrollDeductions: [unknown] })], 'month', 'all');
+    expect(paycheques(withUnknown)).toEqual([['2026-04-24', 2436], ['2026-05-08', 2436]]);
+    const older = forecastPoints([makeAccount()], [paycheque()], 'month', 'all');
+    expect(paycheques(older)).toEqual([['2026-04-24', 2436], ['2026-05-08', 2436]]);
+  });
+
+  it('pools the room of two paycheques on one category and spends it in date order', () => {
+    // A mid-month and a month-end paycheque both deduct 64 of EI; 100 is left.
+    const midMonth = paycheque({ id: 'st-mid', name: 'Mid-month', frequency: 'MONTHLY', nextDueDate: '2026-04-15', payrollDeductions: [eiRule(100)] });
+    const monthEnd = paycheque({
+      id: 'st-end',
+      name: 'Month-end',
+      amount: 2200,
+      frequency: 'MONTHLY',
+      nextDueDate: '2026-04-30',
+      payrollDeductions: [{ ...eiRule(100), ruleId: 'rule-ei-end' }],
+    });
+    // Given month-end first: the walk still spends 15 April before 30 April.
+    const points = forecastPoints([makeAccount()], [monthEnd, midMonth], '90days', 'all');
+    expect(paycheques(points)).toEqual([
+      ['2026-04-15', 2436], // 64 collected, 36 left
+      ['2026-04-30', 2228], // 36 collected, 28 added back
+      ['2026-05-15', 2500], // nothing left: the whole 64 added back
+      ['2026-05-30', 2264],
+      ['2026-06-15', 2500],
+      ['2026-06-30', 2264],
+    ]);
+  });
+
+  it('lets a paycheque on another account draw down the room the shown account relies on', () => {
+    const shown = makeAccount();
+    const other = makeAccount({ id: 'acc-2', name: 'Joint' });
+    const midMonth = paycheque({ id: 'st-mid', frequency: 'MONTHLY', nextDueDate: '2026-04-15', accountId: 'acc-2', payrollDeductions: [eiRule(100)] });
+    const monthEnd = paycheque({ id: 'st-end', frequency: 'MONTHLY', nextDueDate: '2026-04-30', payrollDeductions: [eiRule(100)] });
+    const points = forecastPoints([shown, other], [midMonth, monthEnd], 'month', 'acc-1');
+    expect(paycheques(points)).toEqual([['2026-04-30', 2464]]);
+    // The lower ceiling binds when the two rules disagree.
+    const tighter = paycheque({ id: 'st-end', frequency: 'MONTHLY', nextDueDate: '2026-04-30', payrollDeductions: [{ ...eiRule(100), yearlyMaximum: 1000, remaining: 20 }] });
+    const bound = forecastPoints([shown, other], [midMonth, tighter], 'month', 'acc-1');
+    expect(paycheques(bound)).toEqual([['2026-04-30', 2500]]);
+  });
+
+  it('keeps a bill whose line was zeroed at this year\'s maximum where it is, then drops it from the first paycheque after the reset', () => {
+    vi.setSystemTime(new Date(2026, 11, 10)); // Dec 10, 2026
+    // The template already pays 2500 with no EI deducted; the user entered the
+    // usual 64 and the room is spent. Nothing is added back this year, and
+    // the new year deducts 64 from what the paycheque is now.
+    const entered = { ...eiRule(0), expectedSource: 'entered' as const };
+    const points = forecastPoints(
+      [makeAccount()],
+      [paycheque({ amount: 2500, nextDueDate: '2026-12-18', payrollDeductions: [entered] })],
+      'month',
+      'all',
+    );
+    expect(paycheques(points)).toEqual([
+      ['2026-12-18', 2500],
+      ['2027-01-01', 2436],
+    ]);
+  });
+
+  it('leaves an overdue paycheque from a closed period alone and does not spend the new room on it', () => {
+    vi.setSystemTime(new Date(2027, 0, 5)); // Jan 5, 2027: the room has refilled
+    const fresh = { ...eiRule(1077.48), periodStart: '2027-01-01', periodEnd: '2027-12-31', nextResetOn: '2028-01-01' };
+    const points = forecastPoints(
+      [makeAccount()],
+      [paycheque({ nextDueDate: '2026-12-25', payrollDeductions: [fresh] })],
+      'month',
+      'all',
+    );
+    // 25 December carried onto today as it is: the ledger for December is
+    // already written; 8 January and 22 January each deduct from the new room.
+    expect(paycheques(points)).toEqual([
+      ['2027-01-05', 2436],
+      ['2027-01-08', 2436],
+      ['2027-01-22', 2436],
+    ]);
+  });
+
+  it('refills on the anchor\'s anniversary, so a leap-day anchor returns to the 29th', () => {
+    vi.setSystemTime(new Date(2028, 1, 20)); // Feb 20, 2028, a leap year
+    const leap = {
+      ...eiRule(0),
+      resetDate: '2024-02-29',
+      periodStart: '2027-02-28',
+      periodEnd: '2028-02-28',
+      nextResetOn: '2028-02-29',
+    };
+    const points = forecastPoints(
+      [makeAccount()],
+      [paycheque({ frequency: 'WEEKLY', nextDueDate: '2028-02-22', payrollDeductions: [leap] })],
+      'month',
+      'all',
+    );
+    expect(paycheques(points).slice(0, 3)).toEqual([
+      ['2028-02-22', 2500], // room spent: the 64 is added back
+      ['2028-02-29', 2436], // refilled on the 29th itself
+      ['2028-03-07', 2436],
+    ]);
+  });
+
+  it('answers what one occurrence deducts per category, after every earlier occurrence has spent', () => {
+    const cpp = { ...eiRule(500), ruleId: 'rule-cpp', categoryId: 'cat-cpp', categoryName: 'CPP', expectedPerPaycheque: 200 };
+    const bill = paycheque({ payrollDeductions: [eiRule(100), cpp] });
+    // 24 April: EI 64 of 100, CPP 200 of 500. 8 May: EI the 36 left, CPP 200.
+    expect(projectPayrollOccurrence([bill], 'st-pay', '2026-04-24')).toEqual({ 'cat-ei': 64, 'cat-cpp': 200 });
+    expect(projectPayrollOccurrence([bill], 'st-pay', '2026-05-08')).toEqual({ 'cat-ei': 36, 'cat-cpp': 200 });
+    expect(projectPayrollOccurrence([bill], 'st-pay', '2026-05-09')).toBeNull();
+    expect(projectPayrollOccurrence([paycheque()], 'st-pay', '2026-04-24')).toBeNull();
+  });
+
+  it('shares one walk between the single and the per-account forecasts', () => {
+    const multi = buildMultiAccountForecast(
+      [makeAccount()],
+      [paycheque({ payrollDeductions: [eiRule(53.48)] })],
+      'month',
+      ['acc-1'],
+    );
+    expect(
+      multi.points.flatMap(p => p.transactions.map(tx => [p.date, tx.amount])),
+    ).toEqual([
+      ['2026-04-24', 2446.52],
+      ['2026-05-08', 2500],
+    ]);
   });
 });

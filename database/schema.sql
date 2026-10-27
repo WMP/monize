@@ -3618,6 +3618,41 @@ CREATE TRIGGER update_warranty_claims_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ---------------------------------------------------------------------------
+-- Payroll deduction rules (docs/specs/payroll-deductions.md): a yearly maximum
+-- per deduction category on one payroll scheduled bill. Read when an
+-- occurrence posts (the deduction line is reduced to the room left under the
+-- maximum) and when the cash-flow forecast is drawn; never writes the ledger
+-- (INV-PAYROLL-001).
+-- ---------------------------------------------------------------------------
+CREATE TABLE payroll_deduction_rules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    scheduled_transaction_id UUID NOT NULL REFERENCES scheduled_transactions(id) ON DELETE CASCADE,
+    category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    -- The most the category collects in one period, as a magnitude in the
+    -- bill's account currency.
+    yearly_maximum NUMERIC(20,4) NOT NULL CHECK (yearly_maximum >= 0),
+    reset_period VARCHAR(20) NOT NULL DEFAULT 'YEARLY' CHECK (reset_period IN ('YEARLY')),
+    -- The anchor: a period runs from one anniversary of this day to the day
+    -- before the next.
+    reset_date DATE NOT NULL,
+    -- Read only when the bill carries no split line for the category; the
+    -- line's own magnitude is the expected amount otherwise.
+    expected_per_paycheque NUMERIC(20,4) CHECK (expected_per_paycheque IS NULL OR expected_per_paycheque >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_payroll_deduction_rule_line UNIQUE (scheduled_transaction_id, category_id)
+);
+
+CREATE INDEX idx_payroll_deduction_rules_user ON payroll_deduction_rules(user_id);
+CREATE INDEX idx_payroll_deduction_rules_scheduled ON payroll_deduction_rules(scheduled_transaction_id);
+CREATE INDEX idx_payroll_deduction_rules_category ON payroll_deduction_rules(category_id);
+
+CREATE TRIGGER update_payroll_deduction_rules_updated_at
+  BEFORE UPDATE ON payroll_deduction_rules
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ---------------------------------------------------------------------------
 -- Off-machine backup destinations (docs/specs/backup-off-machine.md section 9).
 --
 -- One row per user: which destinations a completed automatic backup is copied
@@ -3781,6 +3816,7 @@ DECLARE
         'payee_aliases',
         'payee_lookup_settings',
         'payee_lookup_usage',
+        'payroll_deduction_rules',
         'push_subscriptions',
         'scheduled_transactions',
         'securities',

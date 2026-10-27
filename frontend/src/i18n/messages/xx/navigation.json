@@ -13,6 +13,7 @@
   "rules": "[XX-Rules-XX]",
   "warranties": "[XX-Warranties-XX]",
   "emailReceipts": "[XX-Email Receipts-XX]",
+  "taxes": "[XX-Taxes-XX]",
   "securities": "[XX-Securities-XX]",
   "currencies": "[XX-Currencies-XX]",
   "import": "[XX-Import Transactions-XX]",

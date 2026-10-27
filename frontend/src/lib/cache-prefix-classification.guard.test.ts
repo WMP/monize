@@ -41,6 +41,14 @@ const TRANSACTION_DERIVED: ReadonlyArray<[string, string]> = [
     'warranties:',
     "each warranty carries its linked purchase's date, payee and amount (linkedTransaction), and deleting that transaction unlinks it, so a transaction write changes the cached view",
   ],
+  [
+    'payroll-deductions:',
+    "each rule carries paidToDate and remaining, the category's sum over the period's transaction rows (docs/specs/payroll-deductions.md section 5.3)",
+  ],
+  [
+    'scheduled:',
+    "schedule definitions plus their #1167 FX-derived forecast fields and, since payroll deductions, each bill's payrollDeductions figures (remaining is the category's sum over transaction rows), so a transaction write changes the forecast the read model drives; an FX-input change still drops it via invalidateScheduledFxReadModel",
+  ],
 ];
 
 /** Kept -- a transaction write cannot change these. */
@@ -49,10 +57,6 @@ const REFERENCE_DATA: ReadonlyArray<[string, string]> = [
   ['categories:', 'category tree'],
   ['institutions:', 'institution records'],
   ['tags:', 'tag records'],
-  [
-    'scheduled:',
-    'schedule definitions plus their #1167 FX-derived forecast fields. A transaction write does not touch it, so it stays out of invalidateBalanceCaches; its own writers invalidate it, and an FX-input change (rate refresh, account/security currency edit) drops it via invalidateScheduledFxReadModel',
-  ],
   [
     'reports:',
     'custom report DEFINITIONS, not their results -- the list of saved reports',

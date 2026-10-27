@@ -30,6 +30,7 @@ import { textOrNull } from '@/lib/form-text';
 import { expiresBeforePurchase, warrantyTermEndDate } from '@/lib/warranties';
 import type { Payee } from '@/types/payee';
 import type { StagedAttachment } from '@/types/attachment';
+import { formatNameList } from '@/lib/helpers/format-name-list';
 import {
   WARRANTY_KINDS,
   WARRANTY_MAX_SERIAL_NUMBERS,
@@ -222,13 +223,6 @@ function initialValues(
 }
 
 /** Join file names in the reader's locale, so no separator is written here. */
-function formatNameList(locale: string, names: string[]): string {
-  try {
-    return new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(names);
-  } catch {
-    return new Intl.ListFormat(undefined, { style: 'long', type: 'conjunction' }).format(names);
-  }
-}
 
 /**
  * Create or edit a warranty. The duration helper works out `expiresOn` from

@@ -232,6 +232,12 @@ export async function deleteAllUserData(
     "UPDATE accounts SET scheduled_transaction_id = NULL WHERE user_id = $1",
     [userId],
   );
+  // Payroll deduction rules cascade from their bill, but an archive that
+  // carries none must not leave the destination's rules behind.
+  await manager.query(
+    "DELETE FROM payroll_deduction_rules WHERE user_id = $1",
+    [userId],
+  );
   await manager.query("DELETE FROM scheduled_transactions WHERE user_id = $1", [
     userId,
   ]);

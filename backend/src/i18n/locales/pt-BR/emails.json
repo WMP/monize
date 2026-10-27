@@ -389,6 +389,10 @@
       "expiringMessage": "A garantia de {{ name }} expira em {{ date }}. Abra a garantia para revisar os documentos ou registrar uma reclamação.",
       "todayTitle": "{{ name }}: a garantia expira hoje",
       "todayMessage": "A garantia de {{ name }} expira hoje, {{ date }}. Abra a garantia para revisar os documentos ou registrar uma reclamação."
+    },
+    "payrollDeduction": {
+      "resetTitle": "{{ category }}: confirme o máximo do próximo ano",
+      "resetMessage": "A dedução {{ category }} em {{ bill }} é reiniciada em {{ date }}. Atualize o máximo anual se mudar; caso contrário, {{ amount }} aplica-se de novo."
     }
   },
   "backupOffsite": {

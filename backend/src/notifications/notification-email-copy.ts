@@ -421,6 +421,32 @@ export function composeLocalizedNotificationCopy(
         { name: data.name, date: dateLabel(expires) },
       );
     }
+    case NotificationType.PAYROLL_DEDUCTION_RESET_DUE: {
+      // The names, the reset date and the maximum that applies again: facts
+      // only, so a copy composed later says the same thing.
+      const resetOn = calendarDate(data.resetOn);
+      if (
+        !strings(
+          data,
+          "categoryName",
+          "scheduledTransactionName",
+          "currencyCode",
+        ) ||
+        !numbers(data, "yearlyMaximum") ||
+        resetOn === null
+      )
+        return null;
+      return pair(
+        "payrollDeduction.resetTitle",
+        "payrollDeduction.resetMessage",
+        {
+          category: data.categoryName,
+          bill: data.scheduledTransactionName,
+          date: dateLabel(resetOn),
+          amount: money(data.yearlyMaximum, data.currencyCode),
+        },
+      );
+    }
     case NotificationType.BILL_DUE: {
       const due = calendarDate(data.dueDate);
       if (

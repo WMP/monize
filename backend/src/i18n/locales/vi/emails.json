@@ -389,6 +389,10 @@
       "expiringMessage": "Bảo hành của {{ name }} hết hạn vào {{ date }}. Mở để xem tài liệu hoặc ghi lại yêu cầu bảo hành.",
       "todayTitle": "{{ name }}: bảo hành hết hạn hôm nay",
       "todayMessage": "Bảo hành của {{ name }} hết hạn hôm nay, {{ date }}. Mở để xem tài liệu hoặc ghi lại yêu cầu bảo hành."
+    },
+    "payrollDeduction": {
+      "resetTitle": "{{ category }}: xác nhận mức tối đa cho năm tới",
+      "resetMessage": "Khoản khấu trừ {{ category }} trên {{ bill }} sẽ đặt lại vào {{ date }}. Hãy cập nhật mức tối đa hằng năm nếu thay đổi; nếu không, {{ amount }} sẽ áp dụng lại."
     }
   },
   "backupOffsite": {

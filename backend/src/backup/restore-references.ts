@@ -87,6 +87,10 @@ export const RESTORE_REFERENCE_COLUMNS: Readonly<
     scheduled_transaction_split_id: "scheduled_transaction_splits",
     tag_id: "tags",
   },
+  payroll_deduction_rules: {
+    scheduled_transaction_id: "scheduled_transactions",
+    category_id: "categories",
+  },
   security_prices: { security_id: "securities" },
   security_documents: { security_id: "securities" },
   holdings: { account_id: "accounts", security_id: "securities" },

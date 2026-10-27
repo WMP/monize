@@ -308,6 +308,11 @@
     "noOpenPeriod": "[XX-No open period to close-XX]",
     "categoryIdsNotOwned": "[XX-Category IDs not found or not owned by user: {{ ids }}-XX]"
   },
+  "payrollDeductions": {
+    "notFound": "[XX-Payroll deduction rule {{ id }} not found-XX]",
+    "duplicate": "[XX-This bill already has a rule for that category-XX]",
+    "expectedRequired": "[XX-The bill has no line for this category; enter the amount expected per paycheque-XX]"
+  },
   "categories": {
     "notFound": "[XX-Category with ID {{ id }} not found-XX]",
     "cannotModifySystem": "[XX-Cannot modify system categories-XX]",

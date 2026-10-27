@@ -72,6 +72,8 @@ describe('invalidateBalanceCaches', () => {
     'budgets:cat-status:cat-1,cat-2',
     'budgets:all',
     'warranties:list:status=all',
+    'payroll-deductions:list',
+    'scheduled:all',
   ])('drops %s', (key) => {
     setCache(key, 'stale', 120_000);
     invalidateBalanceCaches();
