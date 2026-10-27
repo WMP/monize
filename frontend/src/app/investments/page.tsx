@@ -269,7 +269,7 @@ function InvestmentsContent() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <PortfolioSummaryCard
               summary={data.portfolioSummary}
-              isLoading={data.isLoading}
+              isLoading={data.isSummaryLoading}
               singleAccountCurrency={
                 data.selectedAccountIds.length === 1
                   ? data.accounts.find(a => a.id === data.selectedAccountIds[0])?.currencyCode ?? null
@@ -282,7 +282,7 @@ function InvestmentsContent() {
             />
             <AssetAllocationChart
               allocation={data.portfolioSummary ? { allocation: data.portfolioSummary.allocation, totalValue: data.portfolioSummary.totalPortfolioValue } : null}
-              isLoading={data.isLoading}
+              isLoading={data.isSummaryLoading}
               singleAccountCurrency={
                 data.selectedAccountIds.length === 1
                   ? data.accounts.find(a => a.id === data.selectedAccountIds[0])?.currencyCode ?? null
@@ -335,7 +335,7 @@ function InvestmentsContent() {
           <div className="mb-6">
             <GroupedHoldingsList
               holdingsByAccount={data.portfolioSummary?.holdingsByAccount || []}
-              isLoading={data.isLoading}
+              isLoading={data.isSummaryLoading}
               totalPortfolioValue={data.portfolioSummary?.totalPortfolioValue ?? null}
               valuationComplete={data.portfolioSummary?.valuationComplete}
               onSecurityClick={data.handleSecurityClick}
