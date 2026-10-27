@@ -88,8 +88,13 @@ function addDays(ymd: string, days: number): string {
  * stored term_end_date skipped February and differed by a day between
  * deployments.
  */
-export function addMonthsClamped(ymd: string, months: number): string {
-  const { y, m, d } = parseYMD(ymd);
+export function addMonthsClamped(
+  ymd: string,
+  months: number,
+  anchorDay?: number,
+): string {
+  const { y, m, d: prevDay } = parseYMD(ymd);
+  const d = anchorDay ?? prevDay;
   const total = y * 12 + (m - 1) + months;
   const ny = Math.floor(total / 12);
   const nm = (total % 12) + 1;
@@ -97,16 +102,28 @@ export function addMonthsClamped(ymd: string, months: number): string {
   return formatYMD(ny, nm, nd);
 }
 
-function addYearsClamped(ymd: string, years: number): string {
-  const { y, m, d } = parseYMD(ymd);
+function addYearsClamped(
+  ymd: string,
+  years: number,
+  anchorDay?: number,
+): string {
+  const { y, m, d: prevDay } = parseYMD(ymd);
+  const d = anchorDay ?? prevDay;
   const ny = y + years;
   const nd = Math.min(d, daysInMonth(ny, m));
   return formatYMD(ny, m, nd);
 }
 
+/**
+ * The date after `ymd`. `anchorDay` is the day-of-month of the schedule's
+ * `start_date`: a month-based step clamps to the month length but returns to
+ * the anchor day afterwards (31 Jan -> 28 Feb -> 31 Mar). Without it the step
+ * keeps the previous date's day, which drifts after a short month.
+ */
 export function calculateNextDueDate(
   ymd: string,
   frequency: FrequencyType,
+  anchorDay?: number,
 ): string {
   switch (frequency) {
     case "ONCE":
@@ -130,22 +147,37 @@ export function calculateNextDueDate(
       return formatYMD(ny, nm, 15);
     }
     case "MONTHLY":
-      return addMonthsClamped(ymd, 1);
+      return addMonthsClamped(ymd, 1, anchorDay);
     case "EVERY2MONTHS":
-      return addMonthsClamped(ymd, 2);
+      return addMonthsClamped(ymd, 2, anchorDay);
     case "QUARTERLY":
-      return addMonthsClamped(ymd, 3);
+      return addMonthsClamped(ymd, 3, anchorDay);
     case "EVERY4MONTHS":
-      return addMonthsClamped(ymd, 4);
+      return addMonthsClamped(ymd, 4, anchorDay);
     case "SEMIANNUAL":
-      return addMonthsClamped(ymd, 6);
+      return addMonthsClamped(ymd, 6, anchorDay);
     case "YEARLY":
-      return addYearsClamped(ymd, 1);
+      return addYearsClamped(ymd, 1, anchorDay);
     case "EVERY2YEARS":
-      return addYearsClamped(ymd, 2);
+      return addYearsClamped(ymd, 2, anchorDay);
     default:
       return ymd;
   }
+}
+
+/**
+ * The anchor day for stepping from `current`: the `start_date`'s day when
+ * `current` sits on it (or on it clamped by a short month), else `current`'s own
+ * day because the user moved it. Undefined without a `start_date`.
+ */
+export function anchorDayOf(
+  startDate: string | Date | null | undefined,
+  current: string | Date,
+): number | undefined {
+  if (!startDate) return undefined;
+  const { d: s } = parseYMD(ensureYMD(startDate));
+  const { y, m, d } = parseYMD(ensureYMD(current));
+  return d === Math.min(s, daysInMonth(y, m)) ? s : d;
 }
 
 export function ensureYMD(value: string | Date): string {

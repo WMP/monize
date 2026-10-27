@@ -1,6 +1,7 @@
 import {
   FREQUENCY_CYCLE_DAYS,
   FrequencyType,
+  anchorDayOf,
   calculateNextDueDate,
   ensureYMD,
 } from "./recurrence";
@@ -174,9 +175,55 @@ describe("calculateNextDueDate", () => {
       );
     });
 
-    it("lands on the same day two steps later, a year on", () => {
-      const first = calculateNextDueDate("2026-03-31", "SEMIANNUAL");
-      expect(calculateNextDueDate(first, "SEMIANNUAL")).toBe("2027-03-30");
+    it("returns to the 31st two steps later, a year on", () => {
+      const first = calculateNextDueDate("2026-03-31", "SEMIANNUAL", 31);
+      expect(first).toBe("2026-09-30");
+      expect(calculateNextDueDate(first, "SEMIANNUAL", 31)).toBe("2027-03-31");
+    });
+  });
+
+  describe("anchor day (issue #1857)", () => {
+    it("MONTHLY 31 Jan -> 28 Feb -> 31 Mar", () => {
+      const feb = calculateNextDueDate("2027-01-31", "MONTHLY", 31);
+      expect(feb).toBe("2027-02-28");
+      expect(calculateNextDueDate(feb, "MONTHLY", 31)).toBe("2027-03-31");
+    });
+
+    it("YEARLY 29 Feb 2028 -> 2029-02-28 -> 2030-02-28 -> 2031-02-28 -> 2032-02-29", () => {
+      let d = "2028-02-29";
+      const seen: string[] = [];
+      for (let i = 0; i < 4; i++) {
+        d = calculateNextDueDate(d, "YEARLY", 29);
+        seen.push(d);
+      }
+      expect(seen).toEqual([
+        "2029-02-28",
+        "2030-02-28",
+        "2031-02-28",
+        "2032-02-29",
+      ]);
+    });
+
+    it("anchorDayOf: start day, clamped start day, or the moved day", () => {
+      expect(anchorDayOf("2027-01-31", "2027-02-28")).toBe(31);
+      expect(anchorDayOf("2028-02-29", "2029-02-28")).toBe(29);
+      expect(anchorDayOf("2027-01-01", "2027-03-28")).toBe(28);
+      expect(anchorDayOf("2027-01-31", "2027-03-28")).toBe(28);
+      expect(anchorDayOf(null, "2027-03-28")).toBeUndefined();
+    });
+
+    it("keeps the previous day when no anchor is given", () => {
+      const feb = calculateNextDueDate("2027-01-31", "MONTHLY");
+      expect(calculateNextDueDate(feb, "MONTHLY")).toBe("2027-03-28");
+    });
+
+    it("leaves day and week steps alone", () => {
+      expect(calculateNextDueDate("2027-01-31", "WEEKLY", 15)).toBe(
+        "2027-02-07",
+      );
+      expect(calculateNextDueDate("2027-01-15", "SEMIMONTHLY", 31)).toBe(
+        "2027-01-31",
+      );
     });
   });
 

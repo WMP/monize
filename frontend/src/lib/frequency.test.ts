@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { advanceByFrequency, isOneTime, monthlyEquivalent } from './frequency';
+import { advanceByFrequency, anchorDayOf, isOneTime, monthlyEquivalent } from './frequency';
 import { FREQUENCY_VALUES, FrequencyType } from '@/types/scheduled-transaction';
 
 /** `YYYY-MM-DD` for a local-time Date, matching how the callers key dates. */
@@ -74,6 +74,28 @@ describe('advanceByFrequency', () => {
 
     it('clamps Feb 29 to Feb 28 a year later', () => {
       expect(step('2024-02-29', 'YEARLY')).toBe('2025-02-28');
+    });
+  });
+
+  describe('anchor day', () => {
+    const stepAnchored = (iso: string, frequency: FrequencyType, anchor: number) =>
+      ymd(advanceByFrequency(from(iso), frequency, anchor));
+
+    it('returns to the 31st after a short month', () => {
+      expect(stepAnchored('2027-01-31', 'MONTHLY', 31)).toBe('2027-02-28');
+      expect(stepAnchored('2027-02-28', 'MONTHLY', 31)).toBe('2027-03-31');
+    });
+
+    it('returns to Feb 29 on the next leap year', () => {
+      expect(stepAnchored('2031-02-28', 'YEARLY', 29)).toBe('2032-02-29');
+    });
+
+    it('anchorDayOf: start day, clamped start day, or the moved day', () => {
+      expect(anchorDayOf('2027-01-31', from('2027-02-28'))).toBe(31);
+      expect(anchorDayOf('2028-02-29', from('2029-02-28'))).toBe(29);
+      expect(anchorDayOf('2027-01-01', from('2027-03-28'))).toBe(28);
+      expect(anchorDayOf('2027-01-31', from('2027-03-28'))).toBe(28);
+      expect(anchorDayOf(null, from('2027-03-28'))).toBeUndefined();
     });
   });
 

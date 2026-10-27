@@ -106,6 +106,33 @@ describe("advanceScheduleCursor", () => {
     expect(manager.update.mock.calls[0][2]).toHaveProperty("lastPostedDate");
   });
 
+  it("returns to the start date's day after a short month (issue #1857)", async () => {
+    const result = await advanceScheduleCursor(
+      m(),
+      schedule({ nextDueDate: "2027-02-28", startDate: "2027-01-31" }),
+      new Set(["2027-02-28"]),
+    );
+    expect(result.nextDueDate).toBe("2027-03-31");
+  });
+
+  it("keeps a day the user moved to, not the start date's (issue #1857)", async () => {
+    const result = await advanceScheduleCursor(
+      m(),
+      schedule({ nextDueDate: "2027-02-15", startDate: "2027-01-01" }),
+      new Set(["2027-02-15"]),
+    );
+    expect(result.nextDueDate).toBe("2027-03-15");
+  });
+
+  it("keeps the previous day when the schedule carries no start date", async () => {
+    const result = await advanceScheduleCursor(
+      m(),
+      schedule({ nextDueDate: "2027-02-28" }),
+      new Set(["2027-02-28"]),
+    );
+    expect(result.nextDueDate).toBe("2027-03-28");
+  });
+
   it("steps past every consecutive claimed slot, consuming an occurrence for each", async () => {
     const result = await advanceScheduleCursor(
       m(),

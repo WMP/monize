@@ -549,6 +549,18 @@ on `(scheduled_transaction_id, original_date)`
 (`uq_sched_txn_overrides_occurrence`, migration 168), so one occurrence has at
 most one override.
 
+A month-based cadence (monthly, every 2 or 4 months, quarterly, semiannual,
+yearly, every 2 years) keeps the day-of-month of the schedule's `start_date` as
+its anchor: each step clamps to the month length and the next step returns to
+the anchor (31 Jan, 28 Feb, 31 Mar; 29 Feb 2028 yearly, then 28 Feb until 29 Feb
+2032). `anchorDayOf(startDate, current)` gives `calculateNextDueDate` its
+`anchorDay`: the `start_date` day while the date being stepped from is that day
+(or that day clamped by a short month), otherwise that date's own day, because
+the user moved the due day. With no `start_date` the previous date's day is
+kept. A schedule that already drifted (at 28 Mar with a start on the 31st) stays
+on its current day; nothing is re-anchored silently. Loan payment calendars (`advancePaymentDates`,
+`advanceDate`) step from the first payment date and are not covered by this rule.
+
 That constraint used to name `override_date`, and the sentence above was drawn
 from it as if the two were interchangeable -- they are not, and the conclusion
 was false in both directions. `original_date` is the occurrence's identity;
