@@ -477,6 +477,47 @@
             "body": "Monize erinnert Sie 30 Tage und 7 Tage vor Ablauf einer Garantie sowie am Ablauftag selbst. Die Erinnerungen erscheinen hier, und Sie können eine zurückstellen oder die Garantie direkt daraus öffnen. Wie sie Sie erreichen, legen Sie in den **Einstellungen** unter **Benachrichtigungen** bei **Garantie-Erinnerungen** fest."
           }
         }
+      },
+      "payrollDeductions": {
+        "title": "Lohnabzüge",
+        "steps": {
+          "welcome": {
+            "title": "Abzüge bei ihrem Jahreshöchstbetrag stoppen",
+            "body": "Manche Abzüge vom Gehalt, etwa für die Rente oder die Arbeitslosenversicherung, enden, sobald der Jahreshöchstbetrag erreicht ist, und beginnen im nächsten Jahr neu. Eine Lohnabzugsregel teilt Monize diesen Höchstbetrag mit, damit die Gehaltsbuchung den Abzug nicht mehr einbehält, sobald er erreicht ist. **Bevor Sie beginnen, brauchen Sie eine geplante Gehaltsbuchung:** Ihr Gehalt als geplante Einzahlung, mit den Abzügen als eigenen Zeilen."
+          },
+          "payrollBill": {
+            "title": "Zuerst Ihr Gehalt einrichten",
+            "body": "Falls noch nicht geschehen, wählen Sie **+ Neuer Zeitplan** und legen Sie Ihr Gehalt als Einzahlung an. Teilen Sie sie in eine Zeile für Ihr Bruttogehalt und je eine negative Zeile pro Abzug auf, jede mit eigener Kategorie. Regeln sind nur für eine aktive Einzahlung möglich, die mehr einbringt als sie abzieht, und nur ihre Abzugszeilen lassen sich begrenzen."
+          },
+          "taxesLink": {
+            "title": "Lohnabzüge finden Sie unter Steuern",
+            "body": "Öffnen Sie **Tools** und wählen Sie **Steuern**, um die Steuerwerkzeuge zu finden."
+          },
+          "taxesCard": {
+            "title": "Lohnabzüge öffnen",
+            "body": "Wählen Sie diese Karte, um die Lohnabzugsregeln zu öffnen."
+          },
+          "newRule": {
+            "title": "Die Regeln für ein Gehalt anlegen",
+            "body": "**+ Neue Regel** öffnet das Formular. Wählen Sie Ihre geplante Gehaltsbuchung und dann einen Jahreshöchstbetrag für jede Abzugskategorie, die Sie begrenzen möchten. Geben Sie das Rücksetzdatum an, meist der 1. Januar. Hat die Buchung keine Abzugszeilen, weist das Formular Sie darauf hin, sie zuerst dort hinzuzufügen."
+          },
+          "rulesList": {
+            "title": "Ihre Regeln",
+            "body": "Jede Regel zeigt ihre Buchung, ihre Kategorie, den Jahreshöchstbetrag, das Rücksetzdatum und was jede Gehaltszahlung abzieht. Bearbeiten Sie eine Regel, um ihren Höchstbetrag zu ändern, oder löschen Sie sie, damit das Gehalt wieder die volle Zeile einbehält. Das Löschen einer Regel ändert nie eine gebuchte Transaktion."
+          },
+          "periodTables": {
+            "title": "Was bereits einbehalten wurde",
+            "body": "Sobald Sie eine Regel haben, zeigt **Jahresstand anzeigen**, was jede Kategorie in diesem Zeitraum einbehalten hat und wie viel Spielraum bis zum Höchstbetrag bleibt. **Frühere Zeiträume anzeigen** zeigt, was sie in früheren Jahren einbehalten hat."
+          },
+          "forecast": {
+            "title": "Angewendet, wenn das Gehalt gebucht wird",
+            "body": "Wenn das Gehalt gebucht wird, wird jede begrenzte Zeile auf den verbleibenden Spielraum bis zum Höchstbetrag reduziert, bis auf null, und beginnt nach dem Rücksetzdatum neu. Die Cashflow-Prognose hier und auf dem Dashboard zeigt dasselbe im Voraus, sodass Sie sehen, wie Ihr Nettogehalt steigt, sobald ein Höchstbetrag erreicht ist."
+          },
+          "reminders": {
+            "title": "Eine Erinnerung vor jeder Rücksetzung",
+            "body": "Zwei Monate bevor eine Regel zurückgesetzt wird, bittet Monize Sie hier, den Höchstbetrag für das nächste Jahr zu bestätigen. Tun Sie nichts, behält die Regel ihren Höchstbetrag und wird an ihrem Datum zurückgesetzt. Wie die Erinnerungen Sie erreichen, legen Sie in den **Einstellungen** unter **Benachrichtigungen** bei **Rechnungen und Geplantes** fest."
+          }
+        }
       }
     }
   },

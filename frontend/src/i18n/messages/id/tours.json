@@ -477,6 +477,47 @@
             "body": "Monize mengingatkan Anda 30 hari dan 7 hari sebelum garansi berakhir, serta pada hari itu juga. Pengingat muncul di sini, dan Anda dapat menunda pengingat atau membuka garansinya dari situ. Pilih cara pengingat sampai kepada Anda di **Pengaturan**, di bagian **Notifikasi**, sebagai **Pengingat garansi**."
           }
         }
+      },
+      "payrollDeductions": {
+        "title": "Potongan Gaji",
+        "steps": {
+          "welcome": {
+            "title": "Hentikan potongan di batas maksimum tahunannya",
+            "body": "Beberapa potongan gaji, seperti dana pensiun atau asuransi ketenagakerjaan, berhenti setelah batas maksimum tahun itu tercapai dan mulai lagi tahun berikutnya. Aturan potongan gaji memberi tahu Monize batas maksimum itu, sehingga gaji berhenti memotong potongan tersebut setelah batasnya tercapai. **Sebelum mulai, Anda memerlukan tagihan gaji terjadwal:** gaji Anda yang diatur sebagai setoran terjadwal, dengan potongannya sebagai baris terpisah."
+          },
+          "payrollBill": {
+            "title": "Pertama, atur gaji Anda",
+            "body": "Jika belum, pilih **+ Jadwal Baru** dan buat gaji Anda sebagai setoran. Pecah menjadi satu baris untuk gaji kotor dan satu baris negatif untuk setiap potongan, masing-masing dengan kategorinya sendiri. Hanya setoran aktif yang memasukkan lebih banyak daripada yang dipotong yang dapat memiliki aturan, dan hanya baris potongannya yang dapat dibatasi."
+          },
+          "taxesLink": {
+            "title": "Potongan gaji ada di bawah Pajak",
+            "body": "Buka **Alat** dan pilih **Pajak** untuk menemukan alat pajak."
+          },
+          "taxesCard": {
+            "title": "Buka Potongan Gaji",
+            "body": "Pilih kartu ini untuk membuka aturan potongan gaji."
+          },
+          "newRule": {
+            "title": "Buat aturan untuk sebuah gaji",
+            "body": "**+ Aturan Baru** membuka formulir. Pilih tagihan gaji terjadwal Anda, lalu batas maksimum tahunan untuk setiap kategori potongan yang ingin Anda batasi. Tambahkan tanggal reset, biasanya 1 Januari. Jika tagihan tidak memiliki baris potongan, formulir meminta Anda menambahkannya ke tagihan terlebih dahulu."
+          },
+          "rulesList": {
+            "title": "Aturan Anda",
+            "body": "Setiap aturan menampilkan tagihannya, kategorinya, batas maksimum tahunan, tanggal reset, dan potongan setiap gaji. Edit aturan untuk mengubah batas maksimumnya, atau hapus agar gaji kembali memotong baris penuh. Menghapus aturan tidak pernah mengubah transaksi yang sudah diposting."
+          },
+          "periodTables": {
+            "title": "Yang sudah dipotong",
+            "body": "Setelah Anda memiliki aturan, **Tampilkan tahun berjalan** menampilkan berapa yang telah dipotong setiap kategori pada periode ini dan sisa ruang di bawah batas maksimumnya. **Tampilkan periode sebelumnya** menampilkan berapa yang dipotong pada tahun-tahun sebelumnya."
+          },
+          "forecast": {
+            "title": "Diterapkan saat gaji diposting",
+            "body": "Saat gaji diposting, setiap baris yang dibatasi dikurangi menjadi sisa ruang di bawah batas maksimumnya, hingga nol, lalu mulai lagi setelah tanggal reset. Prakiraan Arus Kas di sini dan di dasbor menampilkan hal yang sama lebih awal, sehingga Anda dapat melihat gaji bersih naik setelah batas maksimum tercapai."
+          },
+          "reminders": {
+            "title": "Pengingat sebelum setiap reset",
+            "body": "Dua bulan sebelum aturan direset, Monize meminta Anda di sini untuk mengonfirmasi batas maksimum tahun berikutnya. Jika Anda tidak melakukan apa pun, aturan mempertahankan batas maksimumnya dan direset pada tanggalnya. Pilih cara pengingat sampai kepada Anda di **Pengaturan**, di bagian **Notifikasi**, sebagai **Tagihan dan terjadwal**."
+          }
+        }
       }
     }
   },

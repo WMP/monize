@@ -477,6 +477,47 @@
             "body": "Monize ti avvisa 30 giorni e 7 giorni prima della scadenza di una garanzia, e il giorno stesso. I promemoria arrivano qui, e puoi posticiparne uno o aprire la garanzia da lì. Scegli come ti raggiungono nelle **Impostazioni**, in **Notifiche**, alla voce **Promemoria delle garanzie**."
           }
         }
+      },
+      "payrollDeductions": {
+        "title": "Trattenute sullo stipendio",
+        "steps": {
+          "welcome": {
+            "title": "Ferma le trattenute al loro massimo annuo",
+            "body": "Alcune trattenute sullo stipendio, come la pensione o l’assicurazione contro la disoccupazione, si fermano una volta raggiunto il massimo dell’anno e ricominciano l’anno successivo. Una regola di trattenuta comunica a Monize quel massimo, così lo stipendio smette di trattenere la voce quando viene raggiunto. **Prima di iniziare, ti serve una fattura stipendio pianificata:** il tuo stipendio impostato come deposito pianificato, con le trattenute come righe separate."
+          },
+          "payrollBill": {
+            "title": "Per prima cosa, imposta il tuo stipendio",
+            "body": "Se non l’hai già fatto, scegli **+ Nuova pianificazione** e crea il tuo stipendio come deposito. Dividilo in una riga per lo stipendio lordo e una riga negativa per ogni trattenuta, ciascuna con la propria categoria. Solo un deposito attivo che versa più di quanto trattiene può avere regole, e solo le sue righe di trattenuta possono essere limitate."
+          },
+          "taxesLink": {
+            "title": "Le trattenute sono in Tasse",
+            "body": "Apri **Strumenti** e scegli **Tasse** per trovare gli strumenti fiscali."
+          },
+          "taxesCard": {
+            "title": "Apri Trattenute sullo stipendio",
+            "body": "Scegli questa scheda per aprire le regole delle trattenute sullo stipendio."
+          },
+          "newRule": {
+            "title": "Crea le regole di uno stipendio",
+            "body": "**+ Nuova regola** apre il modulo. Scegli la tua fattura stipendio pianificata, poi un massimo annuo per ogni categoria di trattenuta da limitare. Aggiungi la data di azzeramento, di solito il 1° gennaio. Se la fattura non ha righe di trattenuta, il modulo ti chiede di aggiungerle prima alla fattura."
+          },
+          "rulesList": {
+            "title": "Le tue regole",
+            "body": "Ogni regola mostra la fattura, la categoria, il massimo annuo, la data di azzeramento e quanto trattiene ogni stipendio. Modifica una regola per cambiarne il massimo, oppure eliminala per far tornare lo stipendio a trattenere l’intera riga. Eliminare una regola non modifica mai una transazione registrata."
+          },
+          "periodTables": {
+            "title": "Quanto è già stato trattenuto",
+            "body": "Quando hai una regola, **Mostra il progressivo annuo** mostra quanto ogni categoria ha trattenuto nel periodo e il margine che resta sotto il massimo. **Mostra periodi precedenti** mostra quanto ha trattenuto negli anni precedenti."
+          },
+          "forecast": {
+            "title": "Applicato quando lo stipendio viene registrato",
+            "body": "Quando lo stipendio viene registrato, ogni riga limitata viene ridotta al margine che resta sotto il massimo, fino a zero, e riparte dopo la data di azzeramento. La previsione del flusso di cassa, qui e nella dashboard, mostra lo stesso in anticipo, così vedi lo stipendio netto salire una volta raggiunto un massimo."
+          },
+          "reminders": {
+            "title": "Un promemoria prima di ogni azzeramento",
+            "body": "Due mesi prima che una regola si azzeri, Monize ti chiede qui di confermare il massimo dell’anno successivo. Se non fai nulla, la regola mantiene il suo massimo e si azzera alla sua data. Scegli come ti raggiungono i promemoria nelle **Impostazioni**, in **Notifiche**, alla voce **Bollette e programmati**."
+          }
+        }
       }
     }
   },
