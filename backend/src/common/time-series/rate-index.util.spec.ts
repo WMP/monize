@@ -278,6 +278,47 @@ describe("rate-index.util", () => {
         resolveIndexedRate(index, "USD", "CAD", "2026-01-01"),
       ).toMatchObject({ rate: null, reason: "only_after_date" });
     });
+
+    /**
+     * A daily valuation asks for the same pair on the same day once per
+     * holding; resolving it afresh each time was most of a since-inception
+     * fold (issue #1888). The answer is remembered per index, so a repeat is
+     * the resolution already made rather than a second walk of the history.
+     */
+    it("answers a repeated pair and date with the resolution it already made", () => {
+      const fresh = indexRateRows([row("USD", "CAD", 1.365, "2026-06-15")]);
+      const first = resolveIndexedRate(fresh, "USD", "CAD", "2026-06-17");
+      expect(resolveIndexedRate(fresh, "USD", "CAD", "2026-06-17")).toBe(
+        first,
+      );
+    });
+
+    it("keys the remembered answer on the date and the direction", () => {
+      const fresh = indexRateRows([
+        row("USD", "CAD", 1.3, "2026-06-10"),
+        row("USD", "CAD", 1.4, "2026-06-20"),
+      ]);
+      expect(
+        resolveIndexedRate(fresh, "USD", "CAD", "2026-06-12"),
+      ).toMatchObject({ rate: 1.3 });
+      expect(
+        resolveIndexedRate(fresh, "USD", "CAD", "2026-06-21"),
+      ).toMatchObject({ rate: 1.4 });
+      expect(
+        resolveIndexedRate(fresh, "CAD", "USD", "2026-06-21").rate,
+      ).toBeCloseTo(1 / 1.4, 10);
+    });
+
+    it("never answers one index from another index's resolutions", () => {
+      const before = indexRateRows([row("USD", "CAD", 1.3, "2026-06-15")]);
+      const after = indexRateRows([row("USD", "CAD", 1.5, "2026-06-15")]);
+      expect(
+        resolveIndexedRate(before, "USD", "CAD", "2026-06-17"),
+      ).toMatchObject({ rate: 1.3 });
+      expect(
+        resolveIndexedRate(after, "USD", "CAD", "2026-06-17"),
+      ).toMatchObject({ rate: 1.5 });
+    });
   });
 
   describe("convertAtDate", () => {
