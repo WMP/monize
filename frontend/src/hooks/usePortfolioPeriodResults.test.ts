@@ -113,4 +113,12 @@ describe('usePortfolioPeriodResults', () => {
     await waitFor(() => expect(api).toHaveBeenCalled());
     expect(result.current.results).toBeNull();
   });
+
+  // The page owns the request and hands its answer down (#1888).
+  it('asks nothing when skipped', () => {
+    const { result } = renderHook(() => usePortfolioPeriodResults({ skip: true }));
+
+    expect(api).not.toHaveBeenCalled();
+    expect(result.current.results).toBeNull();
+  });
 });

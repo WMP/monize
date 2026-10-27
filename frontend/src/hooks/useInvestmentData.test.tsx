@@ -52,8 +52,9 @@ vi.mock('@/hooks/useLocalStorage', () => ({
   },
 }));
 
+const mockTriggerAutoRefresh = vi.fn();
 vi.mock('@/hooks/usePriceRefresh', () => ({
-  usePriceRefresh: () => ({ triggerAutoRefresh: vi.fn() }),
+  usePriceRefresh: () => ({ triggerAutoRefresh: mockTriggerAutoRefresh }),
   setRefreshInProgress: vi.fn(),
 }));
 
@@ -936,5 +937,43 @@ describe('useInvestmentData – out-of-order responses', () => {
     await act(async () => { first.resolve(page('older')); });
 
     expect(result.current.cashTransactions.map(tx => tx.id)).toEqual(['newer']);
+  });
+});
+
+/**
+ * The summary, the value chart and the performance card each value the
+ * portfolio over its whole history. A price refresh that lands while they are
+ * running reloads every one of them, so the automatic refresh waits for the
+ * first summary rather than starting beside it (#1888).
+ */
+describe('useInvestmentData – automatic price refresh', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearchParamsGet = () => null;
+    defaultSetup();
+  });
+
+  it('waits for the first portfolio summary before refreshing prices', async () => {
+    let releaseSummary!: (value: unknown) => void;
+    mockGetPortfolioSummary.mockReturnValue(
+      new Promise((resolve) => { releaseSummary = resolve; }),
+    );
+
+    renderHook(() => useInvestmentData());
+    // The transactions have loaded; the summary has not answered.
+    await act(async () => { await new Promise(res => setTimeout(res, 0)); });
+    expect(mockTriggerAutoRefresh).not.toHaveBeenCalled();
+
+    await act(async () => { releaseSummary(mockSummary); });
+    expect(mockTriggerAutoRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes prices once the first summary has failed, too', async () => {
+    mockGetPortfolioSummary.mockRejectedValue(new Error('timeout'));
+
+    renderHook(() => useInvestmentData());
+    await act(async () => { await new Promise(res => setTimeout(res, 0)); });
+
+    expect(mockTriggerAutoRefresh).toHaveBeenCalledTimes(1);
   });
 });

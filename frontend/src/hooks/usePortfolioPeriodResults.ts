@@ -16,9 +16,14 @@ interface UsePortfolioPeriodResultsOptions {
   displayCurrency?: string;
   /** Bumped by the surface when a write changed the rows behind the windows. */
   reloadKey?: number;
+  /**
+   * Ask nothing: the caller was handed the same answer by the page that owns
+   * the request (`PortfolioPerformanceCard`'s `periodResults`).
+   */
+  skip?: boolean;
 }
 
-interface UsePortfolioPeriodResultsValue {
+export interface UsePortfolioPeriodResultsValue {
   /**
    * What the server says the portfolio did over each window, or null while it
    * has not answered for THIS request -- a load in flight or a failed one.
@@ -50,6 +55,7 @@ export function usePortfolioPeriodResults({
   accountIds,
   displayCurrency,
   reloadKey = 0,
+  skip = false,
 }: UsePortfolioPeriodResultsOptions = {}): UsePortfolioPeriodResultsValue {
   const key = JSON.stringify([
     periods ?? null,
@@ -63,6 +69,7 @@ export function usePortfolioPeriodResults({
   } | null>(null);
 
   useEffect(() => {
+    if (skip) return;
     let cancelled = false;
     netWorthApi
       .getInvestmentsPeriodResults({ periods, accountIds, displayCurrency })
@@ -76,7 +83,7 @@ export function usePortfolioPeriodResults({
     return () => {
       cancelled = true;
     };
-  }, [key, periods, accountIds, displayCurrency]);
+  }, [key, periods, accountIds, displayCurrency, skip]);
 
   const answered = state?.key === key;
   return {

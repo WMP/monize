@@ -62,6 +62,7 @@ import {
   invalidateScheduledFxReadModel,
 } from './apiCache';
 import { API_MAX_PAGE_LIMIT } from './api-page-limits';
+import { PORTFOLIO_VALUATION_TIMEOUT_MS } from './constants';
 
 /**
  * Two legs of one share transfer that the ledger never paired.
@@ -120,6 +121,7 @@ export const investmentsApi = {
     return dedupe(cacheKey, async () => {
       const response = await apiClient.get<PortfolioSummary>('/portfolio/summary', {
         params: accountIds && accountIds.length > 0 ? { accountIds: accountIds.join(',') } : undefined,
+        timeout: PORTFOLIO_VALUATION_TIMEOUT_MS,
       });
       return response.data;
     }, 60_000);

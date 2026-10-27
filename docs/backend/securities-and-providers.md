@@ -202,6 +202,8 @@ The entry holds the **in-flight promise**, not only the settled value: that is w
 
 It is wrapped at the service boundary, so the controller, `loadTaggedAllocationInputs`, the security detail page, Monte Carlo and the AI / MCP `get_portfolio_summary` tool all share one answer without knowing the memo exists.
 
+The day-by-day investment valuation underneath it is shared too, but only while it runs. `backend/src/net-worth/daily-investments-in-flight.ts` lets identical concurrent calls of `NetWorthService.getDailyInvestments`, `getSampledInvestments` and `getDailyInvestmentPositions` await one walk: the period results batch and the value chart on its All range ask for the same since-inception series together (issue #1888). The entry is dropped when the walk settles, so nothing is answered from a finished valuation. The key is the resolved window, scope, reporting currency, `collectPositions`, the `fetchMissing` opt-out, the ambient identity and the request timezone. A caller inside a transaction never shares. The seams below drop these entries with the memo's, so a read that starts after a committed write does not join a walk that began before it.
+
 `invalidatePortfolioSummary(userId)` is called wherever a memoized valuation stops being true:
 
 | Seam | Where |
