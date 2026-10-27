@@ -337,7 +337,10 @@
     "securitiesNotice": "इस फ़ाइल में {count} प्रतिभूत{plural} हैं जिन्हें आयात से पहले मैप करने की आवश्यकता है।",
     "nextMapSecurities": "अगला: प्रतिभूतियां मैप करें",
     "importAll": "सभी आयात करें",
-    "transactionCount": "{count} लेनदेन{plural}"
+    "transactionCount": "{count} लेनदेन{plural}",
+    "chooseAccountType": "प्रकार चुनें",
+    "accountTypeFor": "{name} के लिए खाता प्रकार",
+    "accountTypesNeeded": "फ़ाइल यह नहीं बताती कि {count, plural, one {# खाता} other {# खाते}} किस प्रकार के हैं। आयात करने से पहले प्रत्येक के लिए एक प्रकार चुनें।"
   },
   "navigation": {
     "back": "वापस",

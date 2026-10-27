@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "QIFファイルに口座ブロックが見つかりません。このファイルはマルチアカウントエクスポートではない可能性があります。",
+    "accountTypeRequired": "インポートする前に、次の口座の種類を選択してください: {{ accounts }}",
     "importFailed": "{{ imported }} 件の取引後にインポートが失敗しました：{{ message }}",
     "investmentFileNeedsBrokerageAccount": "このファイルには投資取引が含まれていますが、選択した口座は投資証券口座ではありません。このインポートには証券口座を選択してください。",
     "regularFileNeedsCashAccount": "このファイルには通常の銀行取引が含まれていますが、選択した口座は投資証券口座です。このインポートには現金口座（投資現金口座を含む）を選択してください。",

@@ -337,7 +337,10 @@
     "securitiesNotice": "File ini berisi {count} sekuritas yang perlu dipetakan sebelum impor.",
     "nextMapSecurities": "Berikutnya: Petakan Sekuritas",
     "importAll": "Impor Semua",
-    "transactionCount": "{count} transaksi"
+    "transactionCount": "{count} transaksi",
+    "chooseAccountType": "Pilih jenis",
+    "accountTypeFor": "Jenis akun untuk {name}",
+    "accountTypesNeeded": "File tidak menyebutkan jenis {count, plural, other {# akun}}. Pilih jenis untuk masing-masing sebelum mengimpor."
   },
   "navigation": {
     "back": "Kembali",

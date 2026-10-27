@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "QIF 文件中未找到账户块。此文件可能不是多账户导出文件。",
+    "accountTypeRequired": "导入前请为以下账户选择账户类型：{{ accounts }}",
     "importFailed": "导入在 {{ imported }} 笔交易后失败：{{ message }}",
     "investmentFileNeedsBrokerageAccount": "此文件包含投资交易，但所选账户不是投资经纪账户。请为此导入选择经纪账户。",
     "regularFileNeedsCashAccount": "此文件包含普通银行交易，但所选账户是投资经纪账户。请选择现金账户（包括投资现金账户）进行导入。",

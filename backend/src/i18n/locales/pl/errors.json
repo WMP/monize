@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "Nie znaleziono bloków kont w pliku QIF. Ten plik może nie być eksportem wielokontowym.",
+    "accountTypeRequired": "Przed importem wybierz typ konta dla tych kont: {{ accounts }}",
     "importFailed": "Import nie powiódł się po {{ imported }} transakcjach: {{ message }}",
     "investmentFileNeedsBrokerageAccount": "Ten plik zawiera transakcje inwestycyjne, ale wybrane konto nie jest maklerskim kontem inwestycyjnym. Wybierz konto maklerskie dla tego importu.",
     "regularFileNeedsCashAccount": "Ten plik zawiera zwykłe transakcje bankowe, ale wybrane konto jest maklerskim kontem inwestycyjnym. Wybierz konto gotówkowe (w tym inwestycyjne konta gotówkowe) dla tego importu.",

@@ -337,7 +337,10 @@
     "securitiesNotice": "Ten plik zawiera {count} {count, plural, one {papier wartościowy} few {papiery wartościowe} many {papierów wartościowych} other {papieru wartościowego}}, które trzeba zmapować przed importem.",
     "nextMapSecurities": "Dalej: przypisz papiery wartościowe",
     "importAll": "Importuj wszystko",
-    "transactionCount": "{count, plural, one {# transakcja} few {# transakcje} many {# transakcji} other {# transakcji}}"
+    "transactionCount": "{count, plural, one {# transakcja} few {# transakcje} many {# transakcji} other {# transakcji}}",
+    "chooseAccountType": "Wybierz typ",
+    "accountTypeFor": "Typ konta dla {name}",
+    "accountTypesNeeded": "Plik nie określa typu {count, plural, one {# konta} few {# kont} many {# kont} other {# kont}}. Przed importem wybierz typ dla każdego z nich."
   },
   "navigation": {
     "back": "Wstecz",

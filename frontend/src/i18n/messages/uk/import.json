@@ -337,7 +337,10 @@
     "securitiesNotice": "Цей файл містить {count} цінних паперів{plural}, які потрібно зіставити перед імпортом.",
     "nextMapSecurities": "Далі: Зіставити цінні папери",
     "importAll": "Імпортувати всі",
-    "transactionCount": "{count} транзакцій{plural}"
+    "transactionCount": "{count} транзакцій{plural}",
+    "chooseAccountType": "Виберіть тип",
+    "accountTypeFor": "Тип рахунку для {name}",
+    "accountTypesNeeded": "У файлі не вказано тип {count, plural, one {# рахунку} few {# рахунків} many {# рахунків} other {# рахунків}}. Перед імпортом виберіть тип для кожного."
   },
   "navigation": {
     "back": "Назад",
