@@ -86,6 +86,17 @@ export function SecurityPositionState({ detail }: SecurityPositionStateProps) {
             <div className="text-lg font-bold">
               <UnknownAmount reasonText={t('closed.realizedUnknownReason')} />
             </div>
+            {activity.realizedGainKnownSubtotal != null &&
+              activity.realizedGainCurrency !== null && (
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {t('closed.realizedKnownPart', {
+                    amount: formatCurrency(
+                      activity.realizedGainKnownSubtotal,
+                      activity.realizedGainCurrency,
+                    ),
+                  })}
+                </div>
+              )}
           </div>
         )}
         {heldRange && (

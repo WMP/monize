@@ -959,6 +959,12 @@ export interface RealizedGainEntry {
    */
   costBasis: number | null;
   realizedGain: number | null;
+  /**
+   * Why `costBasis` and `realizedGain` are null: the basis holds a lot of
+   * unknown cost, or amounts in two currencies that could not be converted
+   * (`mixed_basis_currency`). `null` when they are figures.
+   */
+  basisGap?: string | null;
 }
 
 /**
@@ -994,6 +1000,10 @@ export interface CapitalGainEntry {
    * unknown, never the proceeds measured against a zero basis.
    */
   realizedGain: number | null;
+  /** False when a disposal this period drew on a basis of unknown cost. Read as `=== false`. */
+  realizedGainComplete?: boolean;
+  /** The gains that are known, when `realizedGainComplete` is false. */
+  realizedGainKnownSubtotal?: number | null;
   unrealizedGain: number | null;
   totalCapitalGain: number | null;
 }
