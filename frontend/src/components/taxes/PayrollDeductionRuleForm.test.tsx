@@ -185,7 +185,7 @@ describe('PayrollDeductionRuleForm', () => {
     expect(optionLabels(screen.getByLabelText('Deduction category 1'))).toEqual(['--', 'Groceries']);
   });
 
-  it('does not offer a bill that already has rules when creating, and keeps the rule\'s own bill when editing', async () => {
+  it('still offers a bill that already has rules when creating, and keeps the rule\'s own bill when editing', async () => {
     const ruled = { id: 'r-ei', scheduledTransactionId: 'st-pay', categoryId: 'cat-ei' } as PayrollDeductionRule;
     const other = bill({ id: 'st-other', name: 'Second job' });
     const { unmount } = render(
@@ -197,10 +197,15 @@ describe('PayrollDeductionRuleForm', () => {
         onCancel={onCancel}
       />,
     );
-    expect(optionLabels(screen.getByLabelText('Payroll scheduled bill'))).toEqual([
-      'Select the bill that is your paycheque',
-      'Second job',
-    ]);
+    const billLabels = optionLabels(screen.getByLabelText('Payroll scheduled bill'));
+    expect(billLabels).toEqual(['Select the bill that is your paycheque', bill().name, 'Second job']);
+    // The ruled category is not offered again on that bill.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Payroll scheduled bill'), { target: { value: 'st-pay' } });
+    });
+    const categoryLabels = optionLabels(screen.getByLabelText('Deduction category 1'));
+    expect(categoryLabels).toContain('CPP');
+    expect(categoryLabels).not.toContain('EI');
     unmount();
     // Editing a rule on a bill that no longer qualifies: the bill stays
     // selected, its line still supplies the expected amount, and the other
