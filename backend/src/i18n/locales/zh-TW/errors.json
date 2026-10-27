@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "在 QIF 檔案中找不到科目區塊。此檔案可能不是多科目匯出。",
+    "accountTypeRequired": "匯入前請為以下科目選擇科目類型：{{ accounts }}",
     "importFailed": "匯入在 {{ imported }} 筆交易後失敗：{{ message }}",
     "investmentFileNeedsBrokerageAccount": "此檔案包含投資交易，但選定的科目不是投資經紀科目。請為此匯入選擇經紀科目。",
     "regularFileNeedsCashAccount": "此檔案包含一般銀行交易，但選定的科目是投資經紀科目。請選擇現金科目（包括投資現金科目）進行匯入。",

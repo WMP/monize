@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "No se encontraron bloques de cuenta en el archivo QIF. Es posible que este archivo no sea una exportación de múltiples cuentas.",
+    "accountTypeRequired": "Elija un tipo de cuenta para estas cuentas antes de importar: {{ accounts }}",
     "importFailed": "Importación fallida tras {{ imported }} transacciones: {{ message }}",
     "investmentFileNeedsBrokerageAccount": "Este archivo contiene transacciones de inversión pero la cuenta seleccionada no es una cuenta de corretaje de inversiones. Selecciona una cuenta de corretaje para esta importación.",
     "regularFileNeedsCashAccount": "Este archivo contiene transacciones bancarias regulares pero la cuenta seleccionada es una cuenta de corretaje de inversiones. Selecciona una cuenta de efectivo (incluidas las cuentas de efectivo de inversión) para esta importación.",

@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "Không tìm thấy khối tài khoản trong tệp QIF. Tệp này có thể không phải là xuất khẩu nhiều tài khoản.",
+    "accountTypeRequired": "Chọn loại tài khoản cho các tài khoản này trước khi nhập: {{ accounts }}",
     "importFailed": "Nhập khẩu thất bại sau {{ imported }} giao tác: {{ message }}",
     "investmentFileNeedsBrokerageAccount": "Tệp này chứa giao tác đầu tư nhưng tài khoản đã chọn không phải là tài khoản môi giới đầu tư. Vui lòng chọn tài khoản môi giới cho lần nhập khẩu này.",
     "regularFileNeedsCashAccount": "Tệp này chứa giao tác ngân hàng thông thường nhưng tài khoản đã chọn là tài khoản môi giới đầu tư. Vui lòng chọn tài khoản tiền mặt (bao gồm tài khoản tiền mặt đầu tư) cho lần nhập khẩu này.",

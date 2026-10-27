@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "QIF dosyasında hesap bloğu bulunamadı. Bu dosya çok hesaplı dışa aktarma olmayabilir.",
+    "accountTypeRequired": "İçe aktarmadan önce bu hesaplar için bir hesap türü seçin: {{ accounts }}",
     "importFailed": "{{ imported }} işlemden sonra içe aktarma başarısız oldu: {{ message }}",
     "investmentFileNeedsBrokerageAccount": "Bu dosya yatırım işlemleri içeriyor ancak seçilen hesap yatırım aracı kurum hesabı değil. Bu içe aktarma için bir aracı kurum hesabı seçin.",
     "regularFileNeedsCashAccount": "Bu dosya normal bankacılık işlemleri içeriyor ancak seçilen hesap bir yatırım aracı kurum hesabı. Lütfen bir nakit hesabı (yatırım nakit hesapları dahil) seçin.",

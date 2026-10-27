@@ -337,7 +337,10 @@
     "securitiesNotice": "Este ficheiro contém {count} título{plural} que precisam de ser mapeados antes da importação.",
     "nextMapSecurities": "Seguinte: Mapear Títulos",
     "importAll": "Importar Tudo",
-    "transactionCount": "{count} transação{plural}"
+    "transactionCount": "{count} transação{plural}",
+    "chooseAccountType": "Escolha um tipo",
+    "accountTypeFor": "Tipo de conta para {name}",
+    "accountTypesNeeded": "O ficheiro não indica o tipo {count, plural, one {de # conta} other {de # contas}}. Escolha um tipo para cada uma antes de importar."
   },
   "navigation": {
     "back": "Anterior",

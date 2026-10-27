@@ -337,7 +337,10 @@
     "securitiesNotice": "This file contains {count} securit{plural} that need to be mapped before import.",
     "nextMapSecurities": "Next: Map Securities",
     "importAll": "Import All",
-    "transactionCount": "{count} transaction{plural}"
+    "transactionCount": "{count} transaction{plural}",
+    "chooseAccountType": "Choose a type",
+    "accountTypeFor": "Account type for {name}",
+    "accountTypesNeeded": "The file does not say what type {count, plural, one {# account is} other {# accounts are}}. Choose a type for each before importing."
   },
   "navigation": {
     "back": "Back",

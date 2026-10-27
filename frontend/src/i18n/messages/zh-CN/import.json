@@ -337,7 +337,10 @@
     "securitiesNotice": "此文件包含 {count} 种证券{plural}，需要在导入前进行映射。",
     "nextMapSecurities": "下一步：映射证券",
     "importAll": "全部导入",
-    "transactionCount": "{count} 笔交易{plural}"
+    "transactionCount": "{count} 笔交易{plural}",
+    "chooseAccountType": "选择类型",
+    "accountTypeFor": "{name} 的账户类型",
+    "accountTypesNeeded": "文件未说明 {count, plural, other {# 个账户}}的类型。导入前请为每个账户选择类型。"
   },
   "navigation": {
     "back": "上一步",
