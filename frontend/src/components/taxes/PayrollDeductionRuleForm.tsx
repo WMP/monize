@@ -290,14 +290,19 @@ export function PayrollDeductionRuleForm({
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-4">
-      <div className="flex items-center gap-1">
+      <div>
+        <div className="flex items-center mb-1">
+          <label htmlFor="payroll-bill" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            {t('form.billLabel')}
+          </label>
+          <InfoTooltip text={t('form.billHelp')} placement="bottom" usePortal />
+        </div>
         <Select
-          label={t('form.billLabel')}
+          id="payroll-bill"
           options={billOptions}
           error={errors.scheduledTransactionId?.message}
           {...register('scheduledTransactionId', { onChange: handleBillChange })}
         />
-        <InfoTooltip text={t('form.billHelp')} placement="bottom" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -307,14 +312,19 @@ export function PayrollDeductionRuleForm({
           error={errors.resetPeriod?.message}
           {...register('resetPeriod')}
         />
-        <div className="flex items-end gap-1">
+        <div>
+          <div className="flex items-center mb-1">
+            <label htmlFor="payroll-reset-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              {t('form.resetDateLabel')}
+            </label>
+            <InfoTooltip text={t('form.resetDateHelp')} placement="bottom" usePortal />
+          </div>
           <DateInput
-            label={t('form.resetDateLabel')}
+            id="payroll-reset-date"
             value={resetDate}
             onDateChange={(date) => setValue('resetDate', date, { shouldDirty: true, shouldValidate: true })}
             error={errors.resetDate?.message}
           />
-          <InfoTooltip text={t('form.resetDateHelp')} placement="bottom" align="right" />
         </div>
       </div>
 

@@ -92,15 +92,21 @@ export function PayrollDeductionLineFields({
         )}
       </div>
 
+      {/* Label row above each box, so the two boxes share one baseline. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex items-end gap-1">
+        <div>
+          <div className="flex items-center mb-1">
+            <label htmlFor={`payroll-yearly-maximum-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              {t('form.yearlyMaximumLabel')}
+            </label>
+            <InfoTooltip text={t('form.yearlyMaximumHelp')} placement="bottom" usePortal />
+          </div>
           <Controller
             control={control}
             name={`lines.${index}.yearlyMaximum` as const}
             render={({ field }) => (
               <CurrencyInput
                 id={`payroll-yearly-maximum-${index}`}
-                label={t('form.yearlyMaximumLabel')}
                 allowNegative={false}
                 value={field.value}
                 onChange={field.onChange}
@@ -111,7 +117,6 @@ export function PayrollDeductionLineFields({
               />
             )}
           />
-          <InfoTooltip text={t('form.yearlyMaximumHelp')} placement="bottom" align="right" />
         </div>
 
         {lineAmount !== null && (
@@ -121,15 +126,19 @@ export function PayrollDeductionLineFields({
         )}
         {lineAmount === null && (
           <div>
-            <div className="flex items-end gap-1">
-              <Controller
-                control={control}
-                name={`lines.${index}.expectedPerPaycheque` as const}
-                render={({ field }) => (
-                  <CurrencyInput
-                    id={`payroll-expected-per-paycheque-${index}`}
-                    label={t('form.expectedLabel')}
-                    allowNegative={false}
+            <div className="flex items-center mb-1">
+              <label htmlFor={`payroll-expected-per-paycheque-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                {t('form.expectedLabel')}
+              </label>
+              <InfoTooltip text={t('form.expectedHelp')} placement="bottom" usePortal />
+            </div>
+            <Controller
+              control={control}
+              name={`lines.${index}.expectedPerPaycheque` as const}
+              render={({ field }) => (
+                <CurrencyInput
+                  id={`payroll-expected-per-paycheque-${index}`}
+                  allowNegative={false}
                     value={field.value}
                     onChange={field.onChange}
                     onBlur={field.onBlur}
@@ -139,8 +148,6 @@ export function PayrollDeductionLineFields({
                   />
                 )}
               />
-              <InfoTooltip text={t('form.expectedHelp')} placement="bottom" align="right" />
-            </div>
             {suggested && (
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('form.expectedSuggested')}</p>
             )}
