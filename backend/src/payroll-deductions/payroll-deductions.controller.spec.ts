@@ -1,4 +1,6 @@
 import { BadRequestException } from "@nestjs/common";
+import { plainToInstance } from "class-transformer";
+import { validateSync } from "class-validator";
 import { Test, TestingModule } from "@nestjs/testing";
 import {
   GUARDS_METADATA,
@@ -9,6 +11,7 @@ import {
   CreatePayrollDeductionRuleDto,
   CreatePayrollDeductionRulesDto,
 } from "./dto/create-payroll-deduction-rule.dto";
+import { PayrollDeductionReportQueryDto } from "./dto/payroll-deduction-report-query.dto";
 import { PayrollDeductionsController } from "./payroll-deductions.controller";
 import { PayrollDeductionsService } from "./payroll-deductions.service";
 
@@ -26,6 +29,7 @@ describe("PayrollDeductionsController", () => {
     service = {
       findAll: jest.fn().mockResolvedValue([]),
       history: jest.fn().mockResolvedValue([]),
+      report: jest.fn().mockResolvedValue({ year: 2026 }),
       suggestExpected: jest.fn().mockResolvedValue({
         expectedPerPaycheque: 64,
         expectedSource: "line",
@@ -51,6 +55,7 @@ describe("PayrollDeductionsController", () => {
     });
     await controller.findAll(req);
     await controller.history(req);
+    await controller.report(req, { year: 2025 });
     await controller.suggest(req, BILL, CATEGORY);
     await controller.create(req, dto);
     const batch = Object.assign(new CreatePayrollDeductionRulesDto(), {
@@ -64,6 +69,7 @@ describe("PayrollDeductionsController", () => {
 
     expect(service.findAll).toHaveBeenCalledWith(USER);
     expect(service.history).toHaveBeenCalledWith(USER);
+    expect(service.report).toHaveBeenCalledWith(USER, 2025);
     expect(service.suggestExpected).toHaveBeenCalledWith(
       USER,
       BILL,
@@ -98,6 +104,23 @@ describe("PayrollDeductionsController", () => {
       expectedPerPaycheque: 64,
       expectedSource: "line",
     });
+  });
+
+  it("accepts an absent or a whole year in range for the report, and refuses anything else", () => {
+    const errors = (query: Record<string, unknown>) =>
+      validateSync(plainToInstance(PayrollDeductionReportQueryDto, query), {
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }).length;
+    expect(errors({})).toBe(0);
+    expect(errors({ year: "2026" })).toBe(0);
+    expect(
+      plainToInstance(PayrollDeductionReportQueryDto, { year: "2026" }).year,
+    ).toBe(2026);
+    for (const year of ["abc", "2026.5", "1899", "2101"]) {
+      expect(errors({ year })).toBeGreaterThan(0);
+    }
+    expect(errors({ year: "2026", userId: USER })).toBeGreaterThan(0);
   });
 
   it("deletes with 204, is guarded by the JWT and mounted at /payroll-deductions", () => {

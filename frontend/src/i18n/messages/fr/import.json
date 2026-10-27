@@ -337,7 +337,10 @@
     "securitiesNotice": "Ce fichier contient {count} titre{plural} à mapper avant l'importation.",
     "nextMapSecurities": "Suivant : mapper les titres",
     "importAll": "Tout importer",
-    "transactionCount": "{count} transaction{plural}"
+    "transactionCount": "{count} transaction{plural}",
+    "chooseAccountType": "Choisir un type",
+    "accountTypeFor": "Type de compte pour {name}",
+    "accountTypesNeeded": "Le fichier n'indique pas le type {count, plural, one {de # compte} other {de # comptes}}. Choisissez un type pour chacun avant l'importation."
   },
   "navigation": {
     "back": "Retour",

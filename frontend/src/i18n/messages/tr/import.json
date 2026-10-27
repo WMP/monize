@@ -337,7 +337,10 @@
     "securitiesNotice": "Bu dosya, içe aktarılmadan önce eşleştirilmesi gereken {count} menkul kıymet içeriyor.",
     "nextMapSecurities": "Sonraki: Menkul Kıymetleri Eşleştir",
     "importAll": "Tümünü İçe Aktar",
-    "transactionCount": "{count} işlem"
+    "transactionCount": "{count} işlem",
+    "chooseAccountType": "Bir tür seçin",
+    "accountTypeFor": "{name} için hesap türü",
+    "accountTypesNeeded": "Dosya {count, plural, other {# hesabın}} türünü belirtmiyor. İçe aktarmadan önce her biri için bir tür seçin."
   },
   "navigation": {
     "back": "Geri",

@@ -477,6 +477,47 @@
             "body": "Monize, bir garantinin süresi dolmadan 30 gün ve 7 gün önce ve dolduğu gün size hatırlatır. Hatırlatıcılar buraya gelir; birini erteleyebilir ya da garantiyi oradan açabilirsiniz. Size nasıl ulaşacaklarını **Ayarlar** içinde, **Bildirimler** bölümünde, **Garanti hatırlatıcıları** altında seçin."
           }
         }
+      },
+      "payrollDeductions": {
+        "title": "Bordro Kesintileri",
+        "steps": {
+          "welcome": {
+            "title": "Kesintileri yıllık üst sınırlarında durdurun",
+            "body": "Emeklilik veya işsizlik sigortası gibi bazı maaş kesintileri, yılın üst sınırına ulaşıldığında durur ve ertesi yıl yeniden başlar. Bir bordro kesintisi kuralı Monize’a bu üst sınırı bildirir; böylece sınıra ulaşıldığında maaş bu kesintiyi yapmayı bırakır. **Başlamadan önce planlı bir bordro faturasına ihtiyacınız var:** maaşınızın, kesintileri ayrı satırlar olarak içeren planlı bir yatırma olarak ayarlanmış hâli."
+          },
+          "payrollBill": {
+            "title": "Önce maaşınızı ayarlayın",
+            "body": "Henüz yapmadıysanız **+ Yeni Zamanlama**’yı seçin ve maaşınızı bir yatırma olarak oluşturun. Brüt maaşınız için bir satıra ve her kesinti için kendi kategorisi olan birer negatif satıra bölün. Bu yılın üst sınırına zaten ulaşıldığı için bir kesinti şu anda yapılmıyorsa, yine de onun için sıfır değerli bir gider olarak bir bölme satırı ekleyin; böylece bir kural onu sınırlayabilir ve sıfırlamadan sonra yeniden başlar. Yalnızca kestiğinden fazlasını yatıran etkin bir yatırma kural taşıyabilir ve yalnızca kesinti satırları sınırlanabilir."
+          },
+          "taxesLink": {
+            "title": "Bordro kesintileri Vergiler altında",
+            "body": "Vergi araçlarını bulmak için **Araçlar**’ı açın ve **Vergiler**’i seçin."
+          },
+          "taxesCard": {
+            "title": "Bordro Kesintileri’ni açın",
+            "body": "Bordro kesintisi kurallarını açmak için bu kartı seçin."
+          },
+          "newRule": {
+            "title": "Bir maaşın kurallarını oluşturun",
+            "body": "**+ Yeni Kural** formu açar. Planlı bordro faturanızı, ardından sınırlamak istediğiniz her kesinti kategorisi için bir yıllık üst sınır seçin. Sıfırlama tarihini ekleyin; genellikle 1 Ocak’tır. Faturada kesinti satırı yoksa form, önce bunları faturaya eklemenizi söyler."
+          },
+          "rulesList": {
+            "title": "Kurallarınız",
+            "body": "Her kural faturasını, kategorisini, yıllık üst sınırı, sıfırlama tarihini ve her maaştan ne kesildiğini gösterir. Üst sınırı değiştirmek için kuralı düzenleyin ya da maaşın satırın tamamını yeniden kesmesi için kuralı silin. Bir kuralı silmek kaydedilmiş bir işlemi asla değiştirmez."
+          },
+          "periodTables": {
+            "title": "Şimdiye kadar kesilenler",
+            "body": "Bir kuralınız olduğunda **Yıl başından bugüne göster**, her kategorinin bu dönemde ne kadar kestiğini ve üst sınırın altında kalan payı gösterir. **Önceki dönemleri göster**, önceki yıllarda ne kadar kestiğini gösterir."
+          },
+          "forecast": {
+            "title": "Maaş kaydedildiğinde uygulanır",
+            "body": "Maaş kaydedildiğinde, sınırlanan her satır üst sınırın altında kalan paya, sıfıra kadar düşürülür ve sıfırlama tarihinden sonra yeniden başlar. Buradaki ve panodaki Nakit Akışı Tahmini aynı şeyi önceden gösterir; böylece bir üst sınıra ulaşıldığında net maaşınızın arttığını görürsünüz."
+          },
+          "reminders": {
+            "title": "Her sıfırlamadan önce bir hatırlatma",
+            "body": "Bir kural sıfırlanmadan iki ay önce Monize burada sizden gelecek yılın üst sınırını onaylamanızı ister. Hiçbir şey yapmazsanız kural üst sınırını korur ve kendi tarihinde sıfırlanır. Hatırlatmaların size nasıl ulaşacağını **Ayarlar** içinde, **Bildirimler** bölümünde, **Faturalar ve planlananlar** altında seçin."
+          }
+        }
       }
     }
   },

@@ -2399,7 +2399,9 @@ PStore
     expect(block.creditLimit).toBe(5000);
   });
 
-  it("uppercases an unknown !Account T type as the pending type", () => {
+  it("leaves the type unknown when neither header nor !Account names a QIF type", () => {
+    // "GIZMO" is no Monize account type; creating an account under it, or
+    // under an assumed CHEQUING, would be a guess the user never made.
     const qif = `!Account
 NMystery
 TGizmo
@@ -2410,7 +2412,7 @@ T-50.00
 ^
 `;
     const result = parseQifFull(qif, "MM/DD/YYYY");
-    expect(result.accountBlocks[0].accountType).toBe("GIZMO");
+    expect(result.accountBlocks[0].accountType).toBeNull();
   });
 
   it("skips !Type:Security/Prices/Budget sections", () => {

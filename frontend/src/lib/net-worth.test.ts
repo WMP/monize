@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import apiClient from './api';
 import { netWorthApi } from './net-worth';
+import { PORTFOLIO_VALUATION_TIMEOUT_MS } from './constants';
 
 vi.mock('./api', () => ({
   default: { get: vi.fn(), post: vi.fn() },
@@ -45,9 +46,29 @@ describe('netWorthApi', () => {
 
     expect(apiClient.get).toHaveBeenCalledWith(
       '/net-worth/investments-period-results',
-      { params: { periods: '1d,1y', accountIds: 'a1', displayCurrency: 'USD' } },
+      {
+        params: { periods: '1d,1y', accountIds: 'a1', displayCurrency: 'USD' },
+        timeout: PORTFOLIO_VALUATION_TIMEOUT_MS,
+      },
     );
     expect(result.asOf).toBe('2026-09-17');
+  });
+
+  // A since-inception period over decades of history outlives the client's 10 s
+  // default; the read carries the valuation timeout (#1888).
+  it('getInvestmentsPeriodResult fetches /net-worth/investments-period-result', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { currency: 'CAD' } });
+
+    await netWorthApi.getInvestmentsPeriodResult({ period: 'all', accountIds: 'a1' });
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      '/net-worth/investments-period-result',
+      {
+        params: { period: 'all', accountIds: 'a1' },
+        timeout: PORTFOLIO_VALUATION_TIMEOUT_MS,
+      },
+    );
+    expect(PORTFOLIO_VALUATION_TIMEOUT_MS).toBeGreaterThan(10_000);
   });
 
   it('recalculate posts to /net-worth/recalculate', async () => {
@@ -62,6 +83,7 @@ describe('netWorthApi', () => {
     await netWorthApi.getInvestmentsDaily({ accountIds: 'a1', displayCurrency: 'CAD' });
     expect(apiClient.get).toHaveBeenCalledWith('/net-worth/investments-daily', {
       params: { accountIds: 'a1', displayCurrency: 'CAD' },
+      timeout: PORTFOLIO_VALUATION_TIMEOUT_MS,
     });
   });
 
@@ -70,6 +92,7 @@ describe('netWorthApi', () => {
     await netWorthApi.getInvestmentsDaily();
     expect(apiClient.get).toHaveBeenCalledWith('/net-worth/investments-daily', {
       params: undefined,
+      timeout: PORTFOLIO_VALUATION_TIMEOUT_MS,
     });
   });
 
@@ -84,6 +107,7 @@ describe('netWorthApi', () => {
     });
     expect(apiClient.get).toHaveBeenCalledWith('/net-worth/investments-breakdown', {
       params: { granularity: 'monthly', accountIds: 'a1', displayCurrency: 'CAD' },
+      timeout: PORTFOLIO_VALUATION_TIMEOUT_MS,
     });
     expect(result.granularity).toBe('monthly');
   });

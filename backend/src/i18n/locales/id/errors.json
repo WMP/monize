@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "Tidak ada blok akun yang ditemukan dalam file QIF. File ini mungkin bukan ekspor multi-akun.",
+    "accountTypeRequired": "Pilih jenis akun untuk akun-akun ini sebelum mengimpor: {{ accounts }}",
     "importFailed": "Impor gagal setelah {{ imported }} transaksi: {{ message }}",
     "investmentFileNeedsBrokerageAccount": "File ini berisi transaksi investasi tetapi akun yang dipilih bukan akun pialang investasi. Pilih akun pialang untuk impor ini.",
     "regularFileNeedsCashAccount": "File ini berisi transaksi perbankan reguler tetapi akun yang dipilih adalah akun pialang investasi. Pilih akun tunai (termasuk akun tunai investasi) untuk impor ini.",

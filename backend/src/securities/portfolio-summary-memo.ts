@@ -1,4 +1,5 @@
 import { getRequestContext } from "../common/request-context";
+import { dailyInvestmentsInFlight } from "../net-worth/daily-investments-in-flight";
 
 /**
  * One portfolio valuation per user, scope and minute.
@@ -223,12 +224,16 @@ export function setPortfolioSummaryBroadcast(
  */
 export function invalidatePortfolioSummary(userId: string): void {
   portfolioSummaryMemo.invalidateUser(userId);
+  // A valuation still running from before the write must not be joined by a
+  // read that starts after it (#1888).
+  dailyInvestmentsInFlight.invalidateUser(userId);
   announce({ userId });
 }
 
 /** Forget every user's valuations: whole-dataset writes with no single owner. */
 export function invalidateAllPortfolioSummaries(): void {
   portfolioSummaryMemo.clearAll();
+  dailyInvestmentsInFlight.clearAll();
   announce({});
 }
 
@@ -247,9 +252,11 @@ export function applyPortfolioSummaryInvalidation(
   const userId = payload?.userId;
   if (typeof userId === "string" && userId.length > 0) {
     portfolioSummaryMemo.invalidateUser(userId);
+    dailyInvestmentsInFlight.invalidateUser(userId);
     return;
   }
   portfolioSummaryMemo.clearAll();
+  dailyInvestmentsInFlight.clearAll();
 }
 
 /**

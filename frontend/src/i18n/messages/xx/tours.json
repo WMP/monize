@@ -477,6 +477,47 @@
             "body": "[XX-Monize reminds you 30 days and 7 days before a warranty expires, and on the day. The reminders arrive here, and you can snooze one or open the warranty from it. Choose how they reach you under **Settings**, in **Notifications**, as **Warranty reminders**.-XX]"
           }
         }
+      },
+      "payrollDeductions": {
+        "title": "[XX-Payroll Deductions-XX]",
+        "steps": {
+          "welcome": {
+            "title": "[XX-Stop deductions at their yearly maximum-XX]",
+            "body": "[XX-Some paycheque deductions, such as pension or employment insurance, stop once the year's maximum is collected and start again the next year. A payroll deduction rule tells Monize that maximum, so the paycheque stops collecting the deduction when it is reached. **Before you start, you need a payroll scheduled bill:** your paycheque set up as a scheduled deposit, with its deductions as separate lines.-XX]"
+          },
+          "payrollBill": {
+            "title": "[XX-First, set up your paycheque-XX]",
+            "body": "[XX-If you have not already, choose **+ New Schedule** and create your paycheque as a deposit. Split it into a line for your gross pay and one negative line for each deduction, each with its own category. If a deduction is not being taken right now because this year's maximum is already reached, still add a split line for it, as a zero-value expense, so a rule can cap it and it starts again after the reset. Only an active deposit that pays in more than it takes out can carry rules, and only its deduction lines can be capped.-XX]"
+          },
+          "taxesLink": {
+            "title": "[XX-Payroll Deductions are under Taxes-XX]",
+            "body": "[XX-Open **Tools** and choose **Taxes** to find the tax tools.-XX]"
+          },
+          "taxesCard": {
+            "title": "[XX-Open Payroll Deductions-XX]",
+            "body": "[XX-Choose this card to open the payroll deduction rules.-XX]"
+          },
+          "newRule": {
+            "title": "[XX-Create the rules for a paycheque-XX]",
+            "body": "[XX-**+ New Rule** opens the form. Choose your payroll scheduled bill, then a yearly maximum for each deduction category you want to cap. Add the reset date, usually 1 January. If the bill has no deduction lines, the form tells you to add them to the bill first.-XX]"
+          },
+          "rulesList": {
+            "title": "[XX-Your rules-XX]",
+            "body": "[XX-Each rule shows its bill, its category, the yearly maximum, the reset date and what each paycheque deducts. Edit a rule to change its maximum, or delete it to let the paycheque collect the full line again. Deleting a rule never changes a posted transaction.-XX]"
+          },
+          "periodTables": {
+            "title": "[XX-What has been collected-XX]",
+            "body": "[XX-Once you have a rule, **Show year-to-date** lists what each category has collected this period and the room left under its maximum. **Show previous periods** lists what it collected in earlier years.-XX]"
+          },
+          "forecast": {
+            "title": "[XX-Applied when the paycheque posts-XX]",
+            "body": "[XX-When the paycheque posts, each capped line is reduced to the room left under its maximum, down to zero, and starts again after the reset date. The Cash Flow Forecast here and on the dashboard shows the same thing ahead of time, so you can see your take-home pay rise once a maximum is reached.-XX]"
+          },
+          "reminders": {
+            "title": "[XX-A reminder before each reset-XX]",
+            "body": "[XX-Two months before a rule resets, Monize asks you here to confirm next year's maximum. If you do nothing, the rule keeps its maximum and resets on its date. Choose how the reminders reach you under **Settings**, in **Notifications**, as **Bills and scheduled**.-XX]"
+          }
+        }
       }
     }
   },

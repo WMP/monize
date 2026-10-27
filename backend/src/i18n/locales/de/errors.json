@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "Keine Kontoblöcke in der QIF-Datei gefunden. Diese Datei ist möglicherweise kein Multi-Konto-Export.",
+    "accountTypeRequired": "Wählen Sie vor dem Import eine Kontoart für diese Konten: {{ accounts }}",
     "importFailed": "Import fehlgeschlagen nach {{ imported }} Buchungen: {{ message }}",
     "investmentFileNeedsBrokerageAccount": "Diese Datei enthält Investmentbuchungen, aber das ausgewählte Konto ist kein Investment-Maklerkonto. Bitte wählen Sie ein Maklerkonto für diesen Import.",
     "regularFileNeedsCashAccount": "Diese Datei enthält reguläre Bankbuchungen, aber das ausgewählte Konto ist ein Investment-Maklerkonto. Bitte wählen Sie ein Bargeldkonto (einschließlich Investment-Bargeldkonten) für diesen Import.",

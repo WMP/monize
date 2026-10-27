@@ -341,20 +341,35 @@ vi.mock('@/components/investments/InvestmentTransactionForm', () => ({
   InvestmentTransactionForm: () => <div data-testid="transaction-form">Form</div>,
 }));
 
+// The page asks for the "Portfolio performance" batch once and hands the one
+// answer to the card and to the value chart (#1888).
+const mockPeriodResults = vi.hoisted(() => ({
+  results: { currency: 'CAD', asOf: '2026-10-27', periods: {} },
+  status: 'ready' as const,
+}));
+const mockUsePortfolioPeriodResults = vi.hoisted(() =>
+  vi.fn((_options: unknown) => mockPeriodResults),
+);
+vi.mock('@/hooks/usePortfolioPeriodResults', () => ({
+  usePortfolioPeriodResults: mockUsePortfolioPeriodResults,
+}));
+
 vi.mock('@/components/investments/PortfolioPerformanceCard', () => ({
-  PortfolioPerformanceCard: ({ accountIds, reloadKey }: any) => (
+  PortfolioPerformanceCard: ({ accountIds, reloadKey, periodResults }: any) => (
     <div data-testid="portfolio-performance">
       {accountIds?.length > 0 ? `Filtered: ${accountIds.join(',')}` : 'All accounts'}
       <span data-testid="performance-reload-key">{String(reloadKey ?? '')}</span>
+      <span data-testid="performance-shared">{String(periodResults === mockPeriodResults)}</span>
     </div>
   ),
 }));
 
 vi.mock('@/components/investments/InvestmentValueChart', () => ({
-  InvestmentValueChart: ({ accountIds, refreshKey }: any) => (
+  InvestmentValueChart: ({ accountIds, refreshKey, periodResults }: any) => (
     <div data-testid="value-chart">
       {accountIds?.length > 0 ? `Filtered: ${accountIds.join(',')}` : 'All accounts'}
       <span data-testid="value-chart-refresh-key">{String(refreshKey ?? '')}</span>
+      <span data-testid="value-chart-shared">{String(periodResults === mockPeriodResults)}</span>
     </div>
   ),
   INVESTMENT_CHART_REFRESH_EVENT: 'monize:investment-chart-refresh',
@@ -570,6 +585,21 @@ describe('InvestmentsPage', () => {
         expect(mockGetPortfolioSummary).toHaveBeenCalled();
         expect(mockGetTransactions).toHaveBeenCalled();
       });
+    });
+
+    it('asks for the performance batch once and hands it to the card and the chart', async () => {
+      await renderPage();
+      await waitFor(() => {
+        expect(screen.getByTestId('performance-shared')).toHaveTextContent('true');
+        expect(screen.getByTestId('value-chart-shared')).toHaveTextContent('true');
+      });
+      expect(mockUsePortfolioPeriodResults).toHaveBeenCalledWith(
+        expect.objectContaining({
+          periods: '1d,1w,1m,3m,ytd,1y,2y,5y,10y,all',
+          accountIds: undefined,
+          displayCurrency: undefined,
+        }),
+      );
     });
 
     it('handles portfolio summary load failure gracefully', async () => {

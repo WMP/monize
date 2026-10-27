@@ -337,7 +337,10 @@
     "securitiesNotice": "Diese Datei enthält {count} Wertpapier{plural}, die vor dem Import zugeordnet werden müssen.",
     "nextMapSecurities": "Weiter: Wertpapiere zuordnen",
     "importAll": "Alle importieren",
-    "transactionCount": "{count} Buchung{plural}"
+    "transactionCount": "{count} Buchung{plural}",
+    "chooseAccountType": "Typ wählen",
+    "accountTypeFor": "Kontoart für {name}",
+    "accountTypesNeeded": "Die Datei gibt nicht an, welche Art {count, plural, one {# Konto ist} other {# Konten sind}}. Wählen Sie vor dem Import für jedes eine Art."
   },
   "navigation": {
     "back": "Zurück",

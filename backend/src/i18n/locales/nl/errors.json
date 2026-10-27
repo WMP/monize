@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "Geen rekeningblokken gevonden in QIF-bestand. Dit bestand is mogelijk geen export met meerdere rekeningen.",
+    "accountTypeRequired": "Kies een rekeningtype voor deze rekeningen voordat u importeert: {{ accounts }}",
     "importFailed": "Import mislukt na {{ imported }} transacties: {{ message }}",
     "investmentFileNeedsBrokerageAccount": "Dit bestand bevat beleggingstransacties, maar de geselecteerde rekening is geen beleggingsbrokerage-rekening. Selecteer een brokerage-rekening voor deze import.",
     "regularFileNeedsCashAccount": "Dit bestand bevat gewone banktransacties, maar de geselecteerde rekening is een beleggingsbrokerage-rekening. Selecteer een contantenrekening (inclusief beleggingscontantenrekeningen) voor deze import.",

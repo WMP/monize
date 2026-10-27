@@ -337,7 +337,10 @@
     "securitiesNotice": "此檔案包含 {count} 種證券{plural}，需在匯入前進行對應。",
     "nextMapSecurities": "下一步：對應證券",
     "importAll": "全部匯入",
-    "transactionCount": "{count} 筆交易{plural}"
+    "transactionCount": "{count} 筆交易{plural}",
+    "chooseAccountType": "選擇類型",
+    "accountTypeFor": "{name} 的科目類型",
+    "accountTypesNeeded": "檔案未說明 {count, plural, other {# 個科目}}的類型。匯入前請為每個科目選擇類型。"
   },
   "navigation": {
     "back": "上一步",
