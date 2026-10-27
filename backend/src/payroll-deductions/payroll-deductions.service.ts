@@ -32,6 +32,14 @@ import {
   subtractMonths,
 } from "./payroll-deduction-period";
 import { addDaysYMD } from "../common/date-utils";
+import {
+  assemblePayrollReport,
+  DeductionTransaction,
+  groupReportRules,
+  PayrollDeductionReport,
+  PayrollReportGroup,
+  queryDeductionTransactions,
+} from "./payroll-deduction-report";
 
 /**
  * How far back the suggestion reads the ledger. Deduction rates change once
@@ -176,6 +184,42 @@ export class PayrollDeductionsService {
         views.push({ ...group, periods });
       }
       return views;
+    });
+  }
+
+  /**
+   * The payroll deductions report for `year` (docs/specs/payroll-deductions.md
+   * section 10): per ruled category and currency, the period starting in that
+   * year, its paycheques, and every period the ledger holds. One ledger read
+   * per category, shared by the category's currencies.
+   */
+  async report(userId: string, year?: number): Promise<PayrollDeductionReport> {
+    const today = todayYMD();
+    const selectedYear = year ?? Number(today.slice(0, 4));
+    return withScopedDb(this.dataSource, async (m) => {
+      const rules = await m.getRepository(PayrollDeductionRule).find({
+        where: { userId },
+        relations: ["category", "scheduledTransaction"],
+        order: { createdAt: "ASC" },
+      });
+      const byCategory = new Map<string, DeductionTransaction[]>();
+      const entries: {
+        group: PayrollReportGroup;
+        transactions: DeductionTransaction[];
+      }[] = [];
+      for (const group of groupReportRules(rules)) {
+        let transactions = byCategory.get(group.categoryId);
+        if (!transactions) {
+          transactions = await queryDeductionTransactions(
+            m,
+            userId,
+            group.categoryId,
+          );
+          byCategory.set(group.categoryId, transactions);
+        }
+        entries.push({ group, transactions });
+      }
+      return assemblePayrollReport(entries, selectedYear, today);
     });
   }
 

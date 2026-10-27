@@ -27,6 +27,8 @@ import {
   CreatePayrollDeductionRulesDto,
   UpdatePayrollDeductionRuleDto,
 } from "./dto/create-payroll-deduction-rule.dto";
+import { PayrollDeductionReportQueryDto } from "./dto/payroll-deduction-report-query.dto";
+import { PayrollDeductionReport } from "./payroll-deduction-report";
 import {
   ExpectedAmountSuggestion,
   PayrollDeductionHistoryView,
@@ -60,6 +62,19 @@ export class PayrollDeductionsController {
   @ApiResponse({ status: 200, description: "One entry per category" })
   history(@Request() req): Promise<PayrollDeductionHistoryView[]> {
     return this.service.history(req.user.id);
+  }
+
+  @Get("report")
+  @ApiOperation({
+    summary:
+      "The payroll deductions report: a year's summary and paycheques, and every period's total",
+  })
+  @ApiResponse({ status: 200, description: "The report" })
+  report(
+    @Request() req,
+    @Query() query: PayrollDeductionReportQueryDto,
+  ): Promise<PayrollDeductionReport> {
+    return this.service.report(req.user.id, query.year);
   }
 
   @Get("suggest")

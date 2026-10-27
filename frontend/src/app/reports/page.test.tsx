@@ -1159,7 +1159,14 @@ describe('ReportsPage', () => {
     currentCategoryFilter = 'tax';
     render(<ReportsPage />);
     await waitFor(() => {
-      // Tax category has exactly 1 report: Tax Summary
+      expect(screen.getByText('Tax Summary')).toBeInTheDocument();
+    });
+    // The Tax section holds Tax Summary and Payroll Deductions; the search
+    // leaves one of them.
+    fireEvent.change(screen.getByPlaceholderText(/search reports/i), {
+      target: { value: 'Tax Summary' },
+    });
+    await waitFor(() => {
       expect(screen.getByText('1 report available')).toBeInTheDocument();
     });
   });

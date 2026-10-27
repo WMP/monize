@@ -113,3 +113,64 @@ export interface ExpectedAmountSuggestion {
   yearlyMaximum: number | null;
   yearlyMaximumSource: 'previousPeriod' | 'currentPeriod' | 'currentPeriodCapped' | null;
 }
+
+/** One period's collected total for one category of the report, in its currency. */
+export interface PayrollReportPeriodTotal {
+  periodStart: string;
+  periodEnd: string;
+  paidToDate: number;
+  /** Rows of the category in the period in another currency, not converted. */
+  foreignCurrencyRows: number;
+  /** Transactions that deducted to the category in the period. */
+  paycheques: number;
+  /** `null` when no paycheque deducted. */
+  averagePerPaycheque: number | null;
+  /** The period contains today, so its total is still growing. */
+  isCurrent: boolean;
+}
+
+/** The selected year's period of one category, with the rule's ceiling beside it. */
+export interface PayrollReportCategorySummary extends PayrollReportPeriodTotal {
+  /** The binding maximum; `null` for a closed period, whose own maximum was never stored. */
+  yearlyMaximum: number | null;
+  remaining: number | null;
+  percentOfMaximum: number | null;
+  /** The date of the paycheque that brought the total to the maximum. */
+  maximumReachedOn: string | null;
+}
+
+export interface PayrollReportCategory {
+  /** `categoryId|currencyCode`, the key of `PayrollReportPaycheque.amounts`. */
+  key: string;
+  categoryId: string;
+  categoryName: string;
+  currencyCode: string;
+  resetDate: string;
+  billNames: string[];
+  summary: PayrollReportCategorySummary;
+  /** Every period the ledger holds for the category, newest first. */
+  history: PayrollReportPeriodTotal[];
+}
+
+export interface PayrollReportPaycheque {
+  transactionId: string;
+  transactionDate: string;
+  payeeName: string | null;
+  currencyCode: string;
+  /** Deducted magnitude by category key; a category it did not deduct is absent. */
+  amounts: Record<string, number>;
+  total: number;
+}
+
+/** `GET /payroll-deductions/report?year=` (docs/specs/payroll-deductions.md section 10). */
+export interface PayrollDeductionReport {
+  year: number;
+  /** Newest first. */
+  availableYears: number[];
+  categories: PayrollReportCategory[];
+  /** The selected year's paycheques, oldest first. */
+  paycheques: PayrollReportPaycheque[];
+  /** `null` when the categories span currencies, which are not added together. */
+  total: number | null;
+  totalCurrencyCode: string | null;
+}
