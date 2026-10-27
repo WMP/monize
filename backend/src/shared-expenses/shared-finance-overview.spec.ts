@@ -71,13 +71,13 @@ describe("Private finance overview after group access changes", () => {
       readSharedFinanceOverview(manager, "owner", "group"),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
-  it("counts only this participant's unaccepted financial effects", async () => {
+  it("offers unbooked entries without requiring the participant to add them", async () => {
     const result = await readSharedFinanceOverview(manager, "owner", "group");
     expect(result).toMatchObject({
-      pendingCount: 1,
+      pendingCount: 0,
       accessRevoked: false,
       entries: [
-        { entryId: "entry", reviewReason: "NOT_BOOKED", needsReview: true },
+        { entryId: "entry", reviewReason: "NOT_BOOKED", needsReview: false },
       ],
     });
   });

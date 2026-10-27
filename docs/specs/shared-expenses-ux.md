@@ -288,6 +288,15 @@ retained; accepted private transactions still require their owner's review.
 Pending attachments require the same leave confirmation before cancellation as
 before editing or closing an entry.
 
+The follow-up feedback prioritizes starting in Transactions. Its existing save
+dropdown offers "Save & Share" for a new transaction on the reader's own
+payment account. Saving happens once; closing the form and its history entry
+precedes navigation to the shared-expense flow. That flow reuses the saved row's
+amount, date and identity. Choosing a group leads with creating the expense;
+matching a previously recorded expense is an expandable alternative. The sharing
+choice is per transaction, not a persisted change to the ordinary save action.
+No group entry or private attachment is published merely by saving the bank row.
+
 Group creation starts with Group only. “Include in my finances” is the one-time
 opt-in, with a preview of costs, receivables/payables and any historical items
 needing a bank match. The application manages the settlement account; users do

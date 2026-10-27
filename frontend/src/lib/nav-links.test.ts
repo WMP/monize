@@ -52,10 +52,11 @@ describe('nav-links', () => {
     expect(NAV_ICONS['/warranties']).toBe(ShieldCheckIcon);
   });
 
-  it('puts Taxes in the Tools menu directly under Warranties and Rules under Taxes, owner-only, with an icon', () => {
+  it('puts Shared expenses between Warranties and Taxes and Rules under Taxes, owner-only, with an icon', () => {
     const hrefs = TOOLS_LINKS.map((l) => l.href);
     expect(TOOLS_LINKS).toContainEqual({ href: '/taxes', labelKey: 'taxes', ownerOnly: true });
-    expect(hrefs.indexOf('/taxes')).toBe(hrefs.indexOf('/warranties') + 1);
+    expect(hrefs.indexOf('/shared-expenses')).toBe(hrefs.indexOf('/warranties') + 1);
+    expect(hrefs.indexOf('/taxes')).toBe(hrefs.indexOf('/shared-expenses') + 1);
     expect(hrefs.indexOf('/rules')).toBe(hrefs.indexOf('/taxes') + 1);
     expect(NAV_ICONS['/taxes']).toBe(ReceiptPercentIcon);
   });

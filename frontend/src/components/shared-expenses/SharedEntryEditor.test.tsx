@@ -88,11 +88,11 @@ describe("SharedEntryEditor", () => {
       });
     });
     await act(async () => resolve(sharedEntryFixture()));
-    expect(screen.getByRole("button", { name: "Save expense" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save Expense" })).toBeDisabled();
     await advancePreview();
-    expect(screen.getByRole("button", { name: "Save expense" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save Expense" })).toBeEnabled();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Save expense" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save Expense" }));
     });
     expect(onSaved).toHaveBeenCalledOnce();
     const sent = vi.mocked(sharedExpensesApi.saveEntry).mock.calls[0][1];
@@ -121,19 +121,19 @@ describe("SharedEntryEditor", () => {
       .mockResolvedValueOnce(sharedEntryFixture());
     const { onSaved } = await setup();
     await advancePreview();
-    expect(screen.getByRole("button", { name: "Save expense" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save Expense" })).toBeEnabled();
     expect(screen.getByText("Your cost", { exact: false })).toHaveTextContent(
       /150/,
     );
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Save expense" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save Expense" }));
     });
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Connection interrupted",
     );
     expect(screen.getByLabelText("What was it for?")).toHaveValue("Dinner");
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Save expense" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save Expense" }));
     });
     expect(onSaved).toHaveBeenCalledOnce();
     expect(vi.mocked(sharedExpensesApi.saveEntry).mock.calls[1]).toEqual(
@@ -166,12 +166,12 @@ describe("SharedEntryEditor", () => {
       });
     });
     await advancePreview();
-    expect(screen.getByRole("button", { name: "Save expense" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save Expense" })).toBeEnabled();
     await act(async () => {
       resolveOld(sharedEntryFixture({ previewFingerprint: "old-300" }));
     });
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Save expense" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save Expense" }));
     });
     expect(
       vi.mocked(sharedExpensesApi.saveEntry).mock.calls[0][1],
@@ -185,16 +185,16 @@ describe("SharedEntryEditor", () => {
     await advancePreview();
     expect(screen.getByRole("alert")).toHaveTextContent("Choose a rate");
     expect(sharedExpensesApi.saveEntry).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Save expense" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save Expense" })).toBeDisabled();
     expect(screen.getByLabelText("Amount")).toHaveValue("300.00");
     vi.mocked(sharedExpensesApi.preview).mockResolvedValue(
       sharedEntryFixture(),
     );
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
     });
     await advancePreview();
-    expect(screen.getByRole("button", { name: "Save expense" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save Expense" })).toBeEnabled();
     expect(sharedExpensesApi.saveEntry).not.toHaveBeenCalled();
   });
   it("waits for a foreign currency's precision before allowing money input", async () => {
@@ -231,14 +231,14 @@ describe("SharedEntryEditor", () => {
   it("previews a routine expense automatically but writes only after Save", async () => {
     await setup();
     await advancePreview();
-    expect(screen.getByRole("button", { name: "Save expense" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save Expense" })).toBeEnabled();
     expect(sharedExpensesApi.preview).toHaveBeenCalledOnce();
     expect(sharedExpensesApi.saveEntry).not.toHaveBeenCalled();
     expect(
-      screen.queryByRole("button", { name: "Review split" }),
+      screen.queryByRole("button", { name: "Review Split" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("checkbox", { name: /Also record this in my finances/ }),
+      screen.getByRole("switch", { name: /Also record this in my finances/ }),
     ).not.toBeChecked();
   });
   it("explains an exact split made invalid by changing the total", async () => {
@@ -267,7 +267,7 @@ describe("SharedEntryEditor", () => {
     expect(
       screen.getByText("The amount changed. Review the split before saving."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save expense" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save Expense" })).toBeDisabled();
     expect(sharedExpensesApi.preview).not.toHaveBeenCalled();
     expect(sharedExpensesApi.saveEntry).not.toHaveBeenCalled();
   });
@@ -288,13 +288,13 @@ describe("SharedEntryEditor", () => {
         "The amounts paid or received must add up to the amount above.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save expense" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save Expense" })).toBeDisabled();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Use one person" }));
+      fireEvent.click(screen.getByRole("button", { name: "Use One Person" }));
     });
     expect(screen.getByLabelText("Paid by")).toHaveValue("me");
     await advancePreview();
-    expect(screen.getByRole("button", { name: "Save expense" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save Expense" })).toBeEnabled();
     expect(
       vi.mocked(sharedExpensesApi.preview).mock.lastCall?.[1].contributions,
     ).toEqual([{ participantId: "me", value: "300" }]);

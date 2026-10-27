@@ -62,6 +62,9 @@ vi.mock('next/dynamic', () => ({
                 Form add warranty after create
               </button>
             )}
+            {props.onShareAfterCreate && (
+              <button data-testid="form-share-after-create" onClick={() => props.onShareAfterCreate({ id: 'tx-new' })}>Share saved transaction</button>
+            )}
             {props.onOpenWarranty && (
               <button data-testid="form-open-warranty" onClick={() => props.onOpenWarranty('w-9')}>
                 Form open warranty
@@ -1902,6 +1905,16 @@ describe('TransactionsPage', () => {
         expect(mockGetAll.mock.calls.length).toBe(loadsBefore);
       });
 
+      it('closes the saved transaction before continuing to its shared-expense flow', async () => {
+        mockRealFormModal.value = true;
+        await act(async () => render(<TransactionsPage />));
+        await act(async () => fireEvent.click(screen.getByText('+ New Transaction')));
+        fireEvent.click(screen.getByTestId('form-make-dirty'));
+        fireEvent.click(screen.getByTestId('form-share-after-create'));
+        expect(screen.queryByTestId('unsaved-dialog')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('dynamic-transaction-form')).not.toBeInTheDocument();
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/shared-expenses/from-transaction/tx-new'));
+      });
       it('closes a clean form and navigates', async () => {
         await openEditWindow();
         fireEvent.click(screen.getByTestId('form-add-warranty'));

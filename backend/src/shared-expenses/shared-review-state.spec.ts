@@ -3,7 +3,24 @@ import { sharedPostingFixture } from "./__fixtures__/shared-finance";
 import { sharedReviewState } from "./shared-review-state";
 
 describe("Shared personal review state", () => {
-  it("counts an unbooked personal effect but not somebody else's expense", () => {
+  it("leaves a new expense optional even after another entry was accepted", () => {
+    expect(sharedReviewState(sharedEntryFixture(), "me", null)).toMatchObject({
+      needsReview: false,
+      reviewReason: "NOT_BOOKED",
+    });
+    const missing = sharedEntryFixture({
+      state: "DRAFT",
+      draftReason: "MISSING_RATE",
+    });
+    expect(sharedReviewState(missing, "me", null).needsReview).toBe(false);
+    expect(
+      sharedReviewState(missing, "me", sharedPostingFixture()),
+    ).toMatchObject({
+      needsReview: true,
+      reviewReason: "MISSING_RATE",
+    });
+  });
+  it("identifies an optional unbooked personal effect but not somebody else's expense", () => {
     expect(
       sharedReviewState(sharedEntryFixture(), "me", null).reviewReason,
     ).toBe("NOT_BOOKED");
@@ -63,7 +80,7 @@ describe("Shared personal review state", () => {
     });
     expect(sharedReviewState(missing, "me", null)).toEqual({
       effect: null,
-      needsReview: true,
+      needsReview: false,
       reviewReason: "MISSING_RATE",
     });
     expect(sharedReviewState(missing, "unrelated", null).needsReview).toBe(

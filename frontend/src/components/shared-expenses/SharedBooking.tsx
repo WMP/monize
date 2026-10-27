@@ -161,7 +161,7 @@ export function SharedBooking({
         isOpen
         fixedHeight
         fullScreenOnPhone
-        title={t("book")}
+        title={t(row.posting ? "reviewOwnFinances" : "book")}
         description={row.title}
         padding="md"
         maxWidth="2xl"
@@ -194,6 +194,24 @@ export function SharedBooking({
             error={error || options.error}
             retry={options.error ? options.reload : undefined}
           />
+          {row.effect && Number(row.effect.personal) !== 0 && (
+            <Combobox
+              aria-label={t("category")}
+              label={t("category")}
+              placeholder={t("choose")}
+              options={categoryOptions}
+              value={input.categoryId ?? ""}
+              onChange={(categoryId) =>
+                change({ categoryId: categoryId || undefined })
+              }
+              usePortal
+            />
+          )}
+          {!cash && row.effect && Number(row.effect.personal) !== 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {t("noBankPaymentHelp")}
+            </p>
+          )}
           {cash && (
             <div className="space-y-4">
               {(input.payments ?? [input]).map((payment, index) => (
@@ -247,81 +265,74 @@ export function SharedBooking({
                   )}
                 </Card>
               ))}
-              {(input.payments?.length ?? 1) < 10 && (
-                <Button
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => {
-                    const {
-                      contributionAmount,
-                      bankAccountId,
-                      bankTransactionId,
-                      bankAmount,
-                      sharedBankAmount,
-                      bankRate,
-                      privateCategoryId,
-                      fxCategoryId,
-                    } = input;
-                    const current: SharedBankPaymentInput = {
-                      contributionAmount,
-                      bankAccountId,
-                      bankTransactionId,
-                      bankAmount,
-                      sharedBankAmount,
-                      bankRate,
-                      privateCategoryId,
-                      fxCategoryId,
-                    };
-                    change({
-                      payments: [
-                        ...(input.payments ?? [
-                          {
-                            ...current,
-                            contributionAmount: String(
-                              Math.abs(Number(row.effect!.originalCash)),
-                            ),
-                          },
-                        ]),
-                        {},
-                      ],
-                      contributionAmount: undefined,
-                      bankAccountId: undefined,
-                      sourceSplits: undefined,
-                      bankTransactionId: undefined,
-                      bankAmount: undefined,
-                      sharedBankAmount: undefined,
-                      bankRate: undefined,
-                      privateCategoryId: undefined,
-                      fxCategoryId: undefined,
-                    });
-                    setPaymentIds([...paymentIds, crypto.randomUUID()]);
-                  }}
-                >
-                  {t("addPayment")}
-                </Button>
-              )}
               {input.payments && (
                 <SharedNotice>{t("paymentsHelp")}</SharedNotice>
               )}
             </div>
           )}
-          {row.effect && Number(row.effect.personal) !== 0 && (
-            <Combobox
-              aria-label={t("category")}
-              label={t("category")}
-              placeholder={t("choose")}
-              options={categoryOptions}
-              value={input.categoryId ?? ""}
-              onChange={(categoryId) =>
-                change({ categoryId: categoryId || undefined })
-              }
-              usePortal
-            />
-          )}
           <details className="space-y-3">
             <summary className="min-h-10 cursor-pointer text-sm font-medium">
               {t("advanced")}
             </summary>
+            {cash && (
+              <>
+                {(input.payments?.length ?? 1) < 10 && (
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => {
+                      const {
+                        contributionAmount,
+                        bankAccountId,
+                        bankTransactionId,
+                        bankAmount,
+                        sharedBankAmount,
+                        bankRate,
+                        privateCategoryId,
+                        fxCategoryId,
+                        sourceSplits,
+                      } = input;
+                      const current: SharedBankPaymentInput = {
+                        contributionAmount,
+                        bankAccountId,
+                        bankTransactionId,
+                        bankAmount,
+                        sharedBankAmount,
+                        bankRate,
+                        privateCategoryId,
+                        fxCategoryId,
+                        sourceSplits,
+                      };
+                      change({
+                        payments: [
+                          ...(input.payments ?? [
+                            {
+                              ...current,
+                              contributionAmount: String(
+                                Math.abs(Number(row.effect!.originalCash)),
+                              ),
+                            },
+                          ]),
+                          {},
+                        ],
+                        contributionAmount: undefined,
+                        bankAccountId: undefined,
+                        sourceSplits: undefined,
+                        bankTransactionId: undefined,
+                        bankAmount: undefined,
+                        sharedBankAmount: undefined,
+                        bankRate: undefined,
+                        privateCategoryId: undefined,
+                        fxCategoryId: undefined,
+                      });
+                      setPaymentIds([...paymentIds, crypto.randomUUID()]);
+                    }}
+                  >
+                    {t("addPayment")}
+                  </Button>
+                )}
+              </>
+            )}
             <Combobox
               aria-label={t("payee")}
               label={t("payee")}

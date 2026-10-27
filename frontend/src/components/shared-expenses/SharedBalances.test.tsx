@@ -15,7 +15,7 @@ describe("SharedBalances", () => {
     render(<SharedBalances group={sharedGroupFixture()} onRepay={onRepay} />);
     expect(onRepay).not.toHaveBeenCalled();
     fireEvent.click(
-      screen.getAllByRole("button", { name: "Record repayment" })[0],
+      screen.getAllByRole("button", { name: "Record Repayment" })[0],
     );
     expect(onRepay).toHaveBeenCalledWith({
       fromParticipantId: "anna",
@@ -36,7 +36,7 @@ describe("SharedBalances", () => {
     );
     expect(screen.getByText(/currency rate is missing/)).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Record repayment" }),
+      screen.queryByRole("button", { name: "Record Repayment" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Remind" }),
@@ -50,7 +50,7 @@ describe("SharedBalances", () => {
       );
       expect(screen.getByText(/Anna → Me/)).toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: "Record repayment" }),
+        screen.queryByRole("button", { name: "Record Repayment" }),
       ).not.toBeInTheDocument();
     },
   );
@@ -64,12 +64,12 @@ describe("SharedBalances", () => {
     expect(
       screen.getByRole("dialog", { name: "Remind Anna" }),
     ).toHaveTextContent(/shared group has an update/i);
-    fireEvent.click(screen.getByRole("button", { name: "Send reminder" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send Reminder" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Try again later",
     );
     const first = vi.mocked(sharedExpensesApi.remind).mock.calls[0];
-    fireEvent.click(screen.getByRole("button", { name: "Send reminder" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send Reminder" }));
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "Reminder sent" }),

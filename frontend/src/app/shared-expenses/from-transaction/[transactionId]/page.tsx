@@ -53,20 +53,20 @@ function BankContent() {
   const groups = useReportData(sharedExpensesApi.groups, []);
   const [groupId, setGroupId] = useState("");
   const [createGroup, setCreateGroup] = useState(false);
-  const [created, setCreated] = useState<SharedGroupDetail | null>(null);
   const [error, setError] = useState<unknown>(null);
   const group = useReportData(
     () => (groupId ? sharedExpensesApi.group(groupId) : Promise.resolve(null)),
     [groupId],
     { requestKey: groupId },
   );
-  const bank = source.dataKey === transactionId ? source.data : null;
+  const bank =
+    !source.isLoading && !source.error && source.dataKey === transactionId
+      ? source.data
+      : null;
   const selected =
-    created?.id === groupId
-      ? created
-      : group.dataKey === groupId
-        ? group.data
-        : null;
+    !group.isLoading && !group.error && group.dataKey === groupId
+      ? group.data
+      : null;
   return (
     <PageLayout>
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 space-y-5">
@@ -106,6 +106,7 @@ function BankContent() {
                 <Select
                   label={t("group")}
                   value={groupId}
+                  disabled={groups.isLoading || !!groups.error}
                   options={[
                     { value: "", label: t("choose") },
                     ...(groups.data ?? [])
@@ -118,6 +119,7 @@ function BankContent() {
                   {t("newGroup")}
                 </Button>
               </div>
+              {group.isLoading && groupId && <LoadingSpinner />}
               {selected && (
                 <BankGroup key={selected.id} group={selected} bank={bank} />
               )}
@@ -132,7 +134,7 @@ function BankContent() {
               setGroupId(id);
               groups.reload();
               try {
-                setCreated(await sharedExpensesApi.group(id));
+                group.adoptAs(await sharedExpensesApi.group(id), id);
               } catch (cause) {
                 setError(cause);
               }
@@ -154,18 +156,34 @@ function BankGroup({
   const router = useRouter();
   const [create, setCreate] = useState(false);
   const [search, setSearch] = useState("");
+  const [matching, setMatching] = useState(false);
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<
     SharedFinanceOverview["entries"][number] | null
   >(null);
+  const resultKey = JSON.stringify([group.id, offset, search, matching]);
   const result = useReportData(
-    () => sharedExpensesApi.group(group.id, offset, { search }),
-    [group.id, offset, search],
+    () =>
+      matching
+        ? sharedExpensesApi.group(group.id, offset, { search })
+        : Promise.resolve(null),
+    [group.id, offset, search, matching],
+    { requestKey: resultKey },
   );
   const finances = useReportData(
-    () => sharedExpensesApi.finances(group.id),
-    [group.id],
+    () =>
+      matching ? sharedExpensesApi.finances(group.id) : Promise.resolve(null),
+    [group.id, matching],
+    { requestKey: `${group.id}:${matching}` },
   );
+  const matchReady =
+    matching &&
+    !result.isLoading &&
+    !result.error &&
+    !finances.isLoading &&
+    !finances.error &&
+    result.dataKey === resultKey &&
+    finances.dataKey === `${group.id}:${matching}`;
   const initialFinance = {
     bankTransactionId: bank.id,
     categoryId: bank.categoryId ?? undefined,
@@ -195,71 +213,79 @@ function BankGroup({
       <Button onClick={() => setCreate(true)} disabled={!group.myParticipantId}>
         {t("createSharedExpense")}
       </Button>
-      <h2 className="font-semibold">{t("matchExistingExpense")}</h2>
-      <p className="text-sm">{t("matchHelp")}</p>
-      <Input
-        label={t("search")}
-        value={search}
-        onChange={(event) => {
-          setSearch(event.target.value);
-          setOffset(0);
-        }}
-      />
-      <SharedError
-        error={result.error || finances.error}
-        retry={() => {
-          result.reload();
-          finances.reload();
-        }}
-      />
-      {!finances.isLoading && finances.data && !finances.data.integration && (
-        <SharedFinances group={group} onEnabled={finances.reload} />
-      )}
-      {(result.data?.entries ?? [])
-        .filter((entry) => entry.state === "POSTED")
-        .map((entry) => (
-          <Card padding="sm" key={entry.id}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="break-words">{entry.title}</span>
-              <SharedAmount
-                amount={entry.originalAmount}
-                currency={entry.currencyCode}
-                relativeTo={group.currencyCode}
-              />
-              <Button
-                variant="outline"
-                disabled={
-                  !finances.data?.integration ||
-                  !entry.ownEffect ||
-                  !!finances.data.entries.find(
-                    (row) => row.entryId === entry.id,
-                  )?.posting
-                }
-                onClick={() => choose(entry)}
-              >
-                {t("matchThisExpense")}
-              </Button>
-            </div>
-          </Card>
-        ))}
-      <div className="flex gap-3">
-        {offset > 0 && (
-          <Button
-            variant="outline"
-            onClick={() => setOffset(Math.max(0, offset - 100))}
-          >
-            {t("previous")}
-          </Button>
+      <details
+        onToggle={(event) => setMatching(event.currentTarget.open)}
+        className="space-y-4"
+      >
+        <summary className="min-h-11 cursor-pointer text-sm font-medium">
+          {t("matchExistingExpense")}
+        </summary>
+        <p className="text-sm">{t("matchHelp")}</p>
+        <Input
+          label={t("search")}
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setOffset(0);
+          }}
+        />
+        <SharedError
+          error={result.error || finances.error}
+          retry={() => {
+            result.reload();
+            finances.reload();
+          }}
+        />
+        {matchReady && finances.data && !finances.data.integration && (
+          <SharedFinances group={group} onEnabled={finances.reload} />
         )}
-        {result.data?.nextOffset != null && (
-          <Button
-            variant="outline"
-            onClick={() => setOffset(result.data!.nextOffset!)}
-          >
-            {t("next")}
-          </Button>
-        )}
-      </div>
+        {(result.data?.entries ?? [])
+          .filter((entry) => entry.state === "POSTED")
+          .map((entry) => (
+            <Card padding="sm" key={entry.id}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="break-words">{entry.title}</span>
+                <SharedAmount
+                  amount={entry.originalAmount}
+                  currency={entry.currencyCode}
+                  relativeTo={group.currencyCode}
+                />
+                <Button
+                  variant="outline"
+                  disabled={
+                    !matchReady ||
+                    !finances.data?.integration ||
+                    !entry.ownEffect ||
+                    !!finances.data.entries.find(
+                      (row) => row.entryId === entry.id,
+                    )?.posting
+                  }
+                  onClick={() => choose(entry)}
+                >
+                  {t("matchThisExpense")}
+                </Button>
+              </div>
+            </Card>
+          ))}
+        <div className="flex gap-3">
+          {offset > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setOffset(Math.max(0, offset - 100))}
+            >
+              {t("previous")}
+            </Button>
+          )}
+          {result.data?.nextOffset != null && (
+            <Button
+              variant="outline"
+              onClick={() => setOffset(result.data!.nextOffset!)}
+            >
+              {t("next")}
+            </Button>
+          )}
+        </div>
+      </details>
       {create && (
         <SharedEntryEditor
           group={group}

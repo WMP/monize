@@ -50,11 +50,13 @@ test.describe("Shared expense personal review", () => {
     }>(`/transactions/${source.id}`);
     await page.goto(`/shared-expenses/${group.id}?view=myFinances`);
     await page
-      .getByRole("button", { name: "Connect my finances", exact: true })
+      .getByRole("button", { name: "Set Up My Finances", exact: true })
       .click();
-    await page.getByRole("button", { name: "Review", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Add to My Finances", exact: true })
+      .click();
     const booking = page.getByRole("dialog", {
-      name: "Connect to my ledger",
+      name: /^(Add to My Finances|Review My Finances)$/,
       exact: true,
     });
     await booking
@@ -80,13 +82,13 @@ test.describe("Shared expense personal review", () => {
       animations: "disabled",
     });
     await booking
-      .getByRole("button", { name: "Preview my ledger", exact: true })
+      .getByRole("button", { name: "Preview Changes", exact: true })
       .click();
     await expect(
-      booking.getByRole("button", { name: "Accept booking", exact: true }),
+      booking.getByRole("button", { name: "Save to My Finances", exact: true }),
     ).toBeVisible();
     await booking
-      .getByRole("button", { name: "Accept booking", exact: true })
+      .getByRole("button", { name: "Save to My Finances", exact: true })
       .click();
     await expect(booking).toHaveCount(0);
     await page.reload();
@@ -120,13 +122,13 @@ test.describe("Shared expense personal review", () => {
       booking.getByLabel("Shared part of Supplies", { exact: true }),
     ).toHaveValue("100.0000");
     await booking
-      .getByRole("button", { name: "Disconnect booking", exact: true })
+      .getByRole("button", { name: "Remove from My Finances", exact: true })
       .click();
     await page
       .getByRole("dialog")
       .filter({
         has: page.getByRole("heading", {
-          name: "Disconnect booking",
+          name: "Remove from My Finances",
           exact: true,
         }),
       })
@@ -241,21 +243,19 @@ test.describe("Shared expense personal review", () => {
       .click();
     await page.getByRole("button", { name: "Review", exact: true }).click();
     const booking = page.getByRole("dialog", {
-      name: "Connect to my ledger",
+      name: "Review My Finances",
       exact: true,
     });
     await booking
-      .getByRole("button", { name: "Preview my ledger", exact: true })
+      .getByRole("button", { name: "Preview Changes", exact: true })
       .click();
     await booking
-      .getByRole("button", { name: "Accept booking", exact: true })
+      .getByRole("button", { name: "Save to My Finances", exact: true })
       .click();
     await expect(booking).toHaveCount(0);
     await page.goto("/reports");
     await page.reload();
-    await expect(notice).toContainText(
-      "All available shared changes have been reviewed.",
-    );
+    await expect(notice).toHaveCount(0);
     const after = await api.get<typeof before>(
       `/shared-expenses/groups/${group.id}/finances`,
     );

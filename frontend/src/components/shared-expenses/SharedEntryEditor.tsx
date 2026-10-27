@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { DateInput } from "@/components/ui/DateInput";
 import { NumericInput } from "@/components/ui/NumericInput";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -387,12 +388,11 @@ export function SharedEntryEditor({
                     />
                   </div>
                   <label className="flex gap-3 items-start text-sm">
-                    <input
-                      className="mt-1"
-                      type="checkbox"
+                    <ToggleSwitch
+                      label={t("overpayment")}
                       checked={input.acknowledgeOverpayment ?? false}
-                      onChange={(e) =>
-                        change({ acknowledgeOverpayment: e.target.checked })
+                      onChange={(checked) =>
+                        change({ acknowledgeOverpayment: checked })
                       }
                     />
                     {t("overpayment")}
@@ -600,17 +600,21 @@ export function SharedEntryEditor({
               <SharedError error={preview.error} retry={preview.retry} />
               {group.myParticipantId && (
                 <label className="flex items-start gap-3 text-sm">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4"
+                  <ToggleSwitch
+                    label={t("includeOwnFinances")}
                     checked={includeOwn}
-                    onChange={(event) => setIncludeOwn(event.target.checked)}
+                    onChange={setIncludeOwn}
                   />
                   <span>
                     {t("includeOwnFinances")}
                     {includeOwn && (
                       <span className="block mt-1 text-gray-500 dark:text-gray-400">
                         {t("combinedBookingHelp")}
+                      </span>
+                    )}
+                    {!includeOwn && (
+                      <span className="block mt-1 text-gray-500 dark:text-gray-400">
+                        {t("groupOnlyHelp")}
                       </span>
                     )}
                   </span>

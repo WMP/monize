@@ -45,11 +45,10 @@ function SharedReviewBannerContent() {
     return () => window.removeEventListener("focus", review.reload);
   }, [review.reload]);
   if (
-    !review.isLoading &&
     !review.error &&
-    review.data?.groups.length === 0 &&
-    review.data.pendingCount === 0 &&
-    review.data.unavailableGroupCount === 0
+    (!review.data ||
+      (review.data.pendingCount === 0 &&
+        review.data.unavailableGroupCount === 0))
   )
     return null;
   return (
@@ -66,10 +65,6 @@ function SharedReviewBannerContent() {
             t("reviewChecking")
           ) : (
             <>
-              {review.data?.pendingCount === 0 &&
-                review.data.unavailableGroupCount === 0 && (
-                  <p>{t("reviewCurrent")}</p>
-                )}
               {review.data && review.data.pendingCount > 0 && (
                 <p>
                   {t("reviewPending", {

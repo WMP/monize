@@ -23,7 +23,7 @@ function setup() {
 describe("SharedSplitEditor", () => {
   it("cancels local edits without replacing the parent's split", () => {
     const { input, onApply, onClose } = setup();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Anna" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Anna" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onClose).toHaveBeenCalledOnce();
     expect(onApply).not.toHaveBeenCalled();
@@ -39,7 +39,7 @@ describe("SharedSplitEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Exact amounts" }));
     expect(screen.getByLabelText("Share for Me")).toHaveValue("35.00");
     fireEvent.click(screen.getByRole("button", { name: /remainder.*Anna/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Apply split" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply Split" }));
     expect(onApply).toHaveBeenCalledWith({
       splitMode: "EXACT",
       shares: [
@@ -58,20 +58,20 @@ describe("SharedSplitEditor", () => {
       target: { value: "49.99" },
     });
     expect(screen.getByRole("status")).toHaveTextContent("0.01%");
-    expect(screen.getByRole("button", { name: "Apply split" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Apply Split" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Share for Anna"), {
       target: { value: "50" },
     });
-    expect(screen.getByRole("button", { name: "Apply split" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Apply Split" })).toBeEnabled();
   });
   it("explains why an empty selection cannot be applied", () => {
     const { onApply } = setup();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Me" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Anna" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Me" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Anna" }));
     expect(screen.getByRole("status")).toHaveTextContent(
       "Choose at least one person",
     );
-    expect(screen.getByRole("button", { name: "Apply split" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Apply Split" })).toBeDisabled();
     expect(onApply).not.toHaveBeenCalled();
   });
   it("keeps extras optional and only applies their calculation on request", () => {
@@ -100,7 +100,7 @@ describe("SharedSplitEditor", () => {
     expect(
       screen.queryByRole("button", { name: /Give remainder/ }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Apply split" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply Split" }));
     expect(onApply).toHaveBeenCalledWith({
       splitMode: "EXACT",
       shares: [
@@ -116,7 +116,7 @@ describe("SharedSplitEditor", () => {
       target: { value: "120" },
     });
     expect(screen.getByRole("status")).toHaveTextContent(/Over-allocated:.*20/);
-    expect(screen.getByRole("button", { name: "Apply split" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Apply Split" })).toBeDisabled();
     expect(
       screen.queryByRole("button", { name: /Give remainder/ }),
     ).not.toBeInTheDocument();

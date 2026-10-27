@@ -31,7 +31,7 @@ describe("Unsaved private draft navigation", () => {
     fireEvent.click(screen.getByRole("link", { name: "Accounts" }));
     expect(screen.getByText("Files are not uploaded")).toBeInTheDocument();
     expect(navigate).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Keep Editing" }));
     expect(
       screen.queryByText("Files are not uploaded"),
     ).not.toBeInTheDocument();

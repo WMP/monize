@@ -67,6 +67,24 @@ describe("Shared changes beside personal reports", () => {
     );
     view.unmount();
   });
+  it("does not prompt a connected group with no changes to accepted finances", async () => {
+    vi.mocked(sharedExpensesApi.review).mockResolvedValue(
+      summary({
+        pendingCount: 0,
+        groups: [
+          {
+            groupId: "group",
+            accountId: "account",
+            accountName: "Trip",
+            pendingCount: 0,
+            accessRevoked: false,
+          },
+        ],
+      }),
+    );
+    await act(async () => render(<SharedReviewBanner />));
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+  });
   it("keeps a failed request distinct from zero, with retry", async () => {
     vi.mocked(sharedExpensesApi.review).mockRejectedValueOnce(
       new Error("network"),
@@ -76,7 +94,7 @@ describe("Shared changes beside personal reports", () => {
     });
     expect(screen.getByRole("alert")).toHaveTextContent("could not be checked");
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
     });
     expect(screen.getByRole("status")).toHaveTextContent("review: 2");
   });
@@ -112,7 +130,7 @@ describe("Shared changes beside personal reports", () => {
     await act(async () => {
       render(<SharedReviewBanner />);
     });
-    expect(screen.getByRole("status")).toHaveTextContent("Checking");
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
     await act(async () => {
       const user = useAuthStore.getState().user!;
       useAuthStore.setState({ user: { ...user, id: "new-user" } });

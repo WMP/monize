@@ -1,4 +1,18 @@
 import type { Transaction } from "@/types/transaction";
+import type { Account } from "@/types/account";
+
+export function isSharedPaymentAccount(
+  account: Account | null | undefined,
+): boolean {
+  return (
+    !!account &&
+    !account.isClosed &&
+    !account.managedPurpose &&
+    ["CHEQUING", "SAVINGS", "CASH", "CREDIT_CARD", "LINE_OF_CREDIT"].includes(
+      account.accountType,
+    )
+  );
+}
 
 export function hasShareableBankStructure(row: Transaction): boolean {
   return (
@@ -35,11 +49,6 @@ export function canShareBankTransaction(
     !actingAsUserId &&
     row.userId === userId &&
     hasShareableBankStructure(row) &&
-    !!row.account &&
-    !row.account.isClosed &&
-    !row.account.managedPurpose &&
-    ["CHEQUING", "SAVINGS", "CASH", "CREDIT_CARD", "LINE_OF_CREDIT"].includes(
-      row.account.accountType,
-    )
+    isSharedPaymentAccount(row.account)
   );
 }

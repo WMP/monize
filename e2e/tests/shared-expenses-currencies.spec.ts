@@ -55,14 +55,14 @@ test("starts with a tagged USD bank payment, adds a CAD bill and preserves the a
     .first()
     .click({ button: "right" });
   await page
-    .getByRole("button", { name: "Split with people", exact: true })
+    .getByRole("button", { name: "Split With People", exact: true })
     .click();
   await page.waitForURL(`**/shared-expenses/from-transaction/${source.id}`);
   await page.getByLabel("Group", { exact: true }).selectOption(group.id);
   await page
-    .getByRole("button", { name: "Create a shared expense", exact: true })
+    .getByRole("button", { name: "Create A Shared Expense", exact: true })
     .click();
-  const editor = page.getByRole("dialog", { name: "Add expense", exact: true });
+  const editor = page.getByRole("dialog", { name: "Add Expense", exact: true });
   await expect(editor.getByLabel("What was it for?")).toHaveValue(
     "Lakeview cabin",
   );
@@ -96,21 +96,21 @@ test("starts with a tagged USD bank payment, adds a CAD bill and preserves the a
   });
 
   await editor
-    .getByRole("button", { name: "Review my finances", exact: true })
+    .getByRole("button", { name: "Review My Finances", exact: true })
     .click();
   await page
-    .getByRole("dialog", { name: "Connect my finances", exact: true })
-    .getByRole("button", { name: "Connect my finances", exact: true })
+    .getByRole("dialog", { name: "Set Up My Finances", exact: true })
+    .getByRole("button", { name: "Next", exact: true })
     .click();
   const booking = page.getByRole("dialog", {
-    name: "Connect to my ledger",
+    name: "Add to My Finances",
     exact: true,
   });
   await booking
-    .getByRole("button", { name: "Preview my ledger", exact: true })
+    .getByRole("button", { name: "Preview Changes", exact: true })
     .click();
   await expect(
-    booking.getByRole("button", { name: "Accept booking", exact: true }),
+    booking.getByRole("button", { name: "Save to My Finances", exact: true }),
   ).toBeEnabled();
   await expect(
     booking.getByText("Bank movement", { exact: true }).locator(".."),
@@ -126,7 +126,7 @@ test("starts with a tagged USD bank payment, adds a CAD bill and preserves the a
     animations: "disabled",
   });
   await booking
-    .getByRole("button", { name: "Accept booking", exact: true })
+    .getByRole("button", { name: "Save to My Finances", exact: true })
     .click();
   const closeSaved = async () => {
     await page
@@ -171,7 +171,8 @@ test("starts with a tagged USD bank payment, adds a CAD bill and preserves the a
   expect(matched.sharedExpensePostingId).toBeTruthy();
   expect(matched.tags.map((item) => item.id)).toContain(tag.id);
 
-  await page.getByRole("button", { name: "Add expense", exact: true }).click();
+  await page.getByRole("button", { name: "Add Expense", exact: true }).click();
+  await page.getByRole("button", { name: "Expense", exact: true }).click();
   await editor.getByLabel("What was it for?").fill("Fuel before the border");
   await expect(editor.getByLabel("Currency", { exact: true })).toHaveValue(
     "CAD",
@@ -186,7 +187,7 @@ test("starts with a tagged USD bank payment, adds a CAD bill and preserves the a
     "45.00",
   );
   await editor
-    .getByRole("button", { name: "Save expense", exact: true })
+    .getByRole("button", { name: "Save Expense", exact: true })
     .click();
   await closeSaved();
   await page.getByRole("button", { name: "Balances", exact: true }).click();
@@ -195,15 +196,15 @@ test("starts with a tagged USD bank payment, adds a CAD bill and preserves the a
     .filter({ hasText: "Anna → Robert" });
   await expect(suggestion).toContainText("315.00");
   await suggestion
-    .getByRole("button", { name: "Record repayment", exact: true })
+    .getByRole("button", { name: "Record Repayment", exact: true })
     .click();
   const repayment = page.getByRole("dialog", {
-    name: "Record repayment",
+    name: "Record Repayment",
     exact: true,
   });
   await repayment.getByLabel("Amount", { exact: true }).fill("100");
   await repayment
-    .getByRole("button", { name: "Record repayment", exact: true })
+    .getByRole("button", { name: "Record Repayment", exact: true })
     .click();
   await closeSaved();
   await page.reload();

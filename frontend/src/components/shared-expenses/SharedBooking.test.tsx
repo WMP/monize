@@ -6,6 +6,7 @@ import { accountsApi } from "@/lib/accounts";
 import { categoriesApi } from "@/lib/categories";
 import { payeesApi } from "@/lib/payees";
 import { sharedExpensesApi } from "@/lib/shared-expenses";
+import { transactionsApi } from "@/lib/transactions";
 import { useAuthStore } from "@/store/authStore";
 import type {
   SharedFinanceOverview,
@@ -15,6 +16,9 @@ import type {
 vi.mock("@/lib/accounts", () => ({ accountsApi: { getAll: vi.fn() } }));
 vi.mock("@/lib/categories", () => ({ categoriesApi: { getAll: vi.fn() } }));
 vi.mock("@/lib/payees", () => ({ payeesApi: { getAll: vi.fn() } }));
+vi.mock("@/lib/transactions", () => ({
+  transactionsApi: { getById: vi.fn() },
+}));
 vi.mock("@/lib/shared-expenses", async (original) => ({
   ...(await original<typeof import("@/lib/shared-expenses")>()),
   sharedExpensesApi: { previewFinance: vi.fn(), book: vi.fn() },
@@ -84,15 +88,16 @@ describe("Personal booking review", () => {
       />,
     );
     await screen.findByRole("option", { name: "My bank · PLN" });
+    fireEvent.click(screen.getAllByText("More options").at(-1)!);
     fireEvent.click(
-      screen.getByRole("button", { name: "Add another payment" }),
+      screen.getByRole("button", { name: "Add Another Payment" }),
     );
     const parts = screen.getAllByLabelText(
       "Part of my contribution covered by this payment",
     );
     fireEvent.change(parts[0], { target: { value: "200" } });
     fireEvent.change(parts[1], { target: { value: "100" } });
-    fireEvent.click(screen.getByRole("button", { name: "Preview my ledger" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview Changes" }));
     await waitFor(() =>
       expect(sharedExpensesApi.previewFinance).toHaveBeenCalledOnce(),
     );
@@ -104,10 +109,10 @@ describe("Personal booking review", () => {
       ],
     });
     expect(sent.bankAccountId).toBeUndefined();
-    await screen.findByRole("button", { name: "Accept booking" });
+    await screen.findByRole("button", { name: "Save to My Finances" });
     fireEvent.change(parts[1], { target: { value: "90" } });
     expect(
-      screen.queryByRole("button", { name: "Accept booking" }),
+      screen.queryByRole("button", { name: "Save to My Finances" }),
     ).not.toBeInTheDocument();
     expect(sharedExpensesApi.book).not.toHaveBeenCalled();
   });
@@ -128,12 +133,58 @@ describe("Personal booking review", () => {
       />,
     );
     await screen.findByRole("option", { name: "My bank · PLN" });
-    fireEvent.click(screen.getByRole("button", { name: "Preview my ledger" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview Changes" }));
     fireEvent.click(
-      await screen.findByRole("button", { name: "Accept booking" }),
+      await screen.findByRole("button", { name: "Save to My Finances" }),
     );
     await waitFor(() => expect(onCommit).toHaveBeenCalledOnce());
     expect(onCommit.mock.calls[0][1].commitFingerprint).toBe("combined");
     expect(sharedExpensesApi.book).not.toHaveBeenCalled();
+  });
+  it("keeps imported category portions when adding a second payment", async () => {
+    vi.mocked(transactionsApi.getById).mockResolvedValue({
+      id: "receipt",
+      accountId: "bank",
+      amount: -250,
+      currencyCode: "PLN",
+      isSplit: true,
+      payeeName: "Dinner receipt",
+      splits: [{ id: "food", amount: -250, memo: "Food" }],
+    } as never);
+    render(
+      <SharedBooking
+        group={sharedGroupFixture()}
+        row={row}
+        initialInput={{
+          bankTransactionId: "receipt",
+          sourceSplits: [{ splitId: "food", amount: "200" }],
+        }}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    const portion = await screen.findByLabelText("Shared part of Food");
+    expect(portion).toHaveValue("200.0000");
+    fireEvent.click(screen.getAllByText("More options").at(-1)!);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add Another Payment" }),
+    );
+    const parts = screen.getAllByLabelText(
+      "Part of my contribution covered by this payment",
+    );
+    fireEvent.change(parts[0], { target: { value: "200" } });
+    fireEvent.change(parts[1], { target: { value: "100" } });
+    fireEvent.click(screen.getByRole("button", { name: "Preview Changes" }));
+    await waitFor(() =>
+      expect(sharedExpensesApi.previewFinance).toHaveBeenCalledOnce(),
+    );
+    expect(
+      vi.mocked(sharedExpensesApi.previewFinance).mock.calls[0][2]
+        .payments?.[0],
+    ).toMatchObject({
+      bankTransactionId: "receipt",
+      contributionAmount: "200",
+      sourceSplits: [{ splitId: "food", amount: "200" }],
+    });
   });
 });

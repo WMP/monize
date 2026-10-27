@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { NumericInput } from "@/components/ui/NumericInput";
@@ -170,17 +171,16 @@ export function SharedSplitEditor({
                 className={`grid ${mode === "EQUAL" ? "grid-cols-1" : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"} items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-3`}
               >
                 <label className="flex items-center gap-3 min-h-11 min-w-0 break-words">
-                  <input
-                    type="checkbox"
+                  <ToggleSwitch
+                    label={p.name}
                     checked={selected.includes(p.id)}
-                    onChange={(e) =>
+                    onChange={(checked) =>
                       setSelected(
-                        e.target.checked
+                        checked
                           ? [...selected, p.id]
                           : selected.filter((id) => id !== p.id),
                       )
                     }
-                    className="h-4 w-4 shrink-0"
                   />
                   {p.name}
                 </label>
