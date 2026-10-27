@@ -81,6 +81,8 @@ export function useInvestmentData() {
   // performance card that load beside it; a price refresh that lands while
   // they are still running reloads all of them, so the server values the
   // same history a second time while the first is still in flight (#1888).
+  // It is also what the summary sections wait on before leaving their
+  // skeletons (`isSummaryLoading`).
   const [initialSummarySettled, setInitialSummarySettled] = useState(false);
 
   // Cash transaction form modal
@@ -144,16 +146,6 @@ export function useInvestmentData() {
     return fetchStatus();
   }, []);
 
-  // Track whether the initial load has completed so subsequent reloads
-  // (price refresh, account selection change, pagination, filter change)
-  // can run "in the background" while sections keep showing their existing
-  // data. Without this, every refresh flips isLoading=true and every
-  // skeleton-gated section re-mounts from blank -- which is the
-  // "everything redraws when prices refresh" bug. The Portfolio Value chart
-  // is unaffected because it already has its own keep-data-while-loading
-  // pattern; this generalises that behaviour to the rest of the page.
-  const hasLoadedRef = useRef(false);
-
   // A response belongs to the request that produced it. An older selection's
   // slower answer must not overwrite the current one (e.g. a remembered
   // selection fetched on mount, then superseded by ?accountId=).
@@ -161,12 +153,18 @@ export function useInvestmentData() {
   const transactionsSeqRef = useRef(0);
   const cashSeqRef = useRef(0);
 
+  // A reload after the page has drawn (a write, a price refresh, a failed
+  // delete) runs in the background: the sections keep their figures until the
+  // new ones land and never return to their skeletons. Only the first load
+  // shows those, and the first load's own loaders clear them. Flipping a
+  // loading flag here put the summary, the allocation and the holdings back to
+  // skeletons a second after they first drew, whenever the automatic price
+  // refresh found a new quote.
   const loadAllPortfolioData = useCallback(async (
     accountIds: string[],
     page: number = 1,
     filters: TransactionFilters = {},
   ) => {
-    if (!hasLoadedRef.current) setIsLoading(true);
     const summarySeq = ++summarySeqRef.current;
     const txSeq = ++transactionsSeqRef.current;
     try {
@@ -185,6 +183,7 @@ export function useInvestmentData() {
       ]);
       if (summarySeqRef.current === summarySeq) {
         setPortfolioSummary(summaryData);
+        setInitialSummarySettled(true);
       }
       if (transactionsSeqRef.current === txSeq) {
         setTransactions(txResponse.data || []);
@@ -194,20 +193,19 @@ export function useInvestmentData() {
       logger.error('Failed to load portfolio data:', error);
       if (summarySeqRef.current === summarySeq) {
         setPortfolioSummary(null);
+        // This request superseded the first summary's, so its answer is the
+        // one the summary sections were waiting on.
+        setInitialSummarySettled(true);
       }
       if (transactionsSeqRef.current === txSeq) {
         setTransactions([]);
         setPagination(null);
       }
-    } finally {
-      if (!hasLoadedRef.current) setIsLoading(false);
-      hasLoadedRef.current = true;
     }
   }, []);
 
   const { isRefreshing: isRefreshingPrices, triggerManualRefresh: handleRefreshPrices, triggerAutoRefresh } = usePriceRefresh({
     onRefreshComplete: (lastUpdated) => {
-      loadAllPortfolioData(selectedAccountIds, currentPage, transactionFilters);
       // New prices move every figure valued from them, not only the summary
       // this hook fetches: the value chart and both period-result surfaces
       // (Value change / Investment result, Portfolio performance) fetch their
@@ -222,6 +220,10 @@ export function useInvestmentData() {
       } else {
         loadPriceStatus();
       }
+      // Returned so the refresh button keeps spinning until the summary has
+      // been re-valued: the sections keep their previous figures meanwhile,
+      // and the spinner is what says they are about to change.
+      return loadAllPortfolioData(selectedAccountIds, currentPage, transactionFilters);
     },
   });
 
@@ -604,8 +606,13 @@ export function useInvestmentData() {
     accounts, allAccounts, selectedAccountIds, selectableAccounts,
     handleAccountChange,
 
-    // Portfolio
+    // Portfolio. `isSummaryLoading` gates the sections drawn from the summary
+    // (summary card, allocation, holdings); `isLoading` gates the brokerage
+    // register. The register answers in a fraction of the time the summary's
+    // valuation takes, and gating the summary sections on it showed them as
+    // "no data" until the summary arrived.
     portfolioSummary, isLoading,
+    isSummaryLoading: !initialSummarySettled,
     loadAllPortfolioData, refreshAfterWrite, writeRefreshKey,
 
     // Brokerage transactions
