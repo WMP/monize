@@ -159,6 +159,8 @@ export function SharedBooking({
       <Modal
         pushHistory
         isOpen
+        fixedHeight
+        fullScreenOnPhone
         title={t("book")}
         description={row.title}
         padding="md"

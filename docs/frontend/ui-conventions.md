@@ -568,6 +568,19 @@ The Bank Sync settings page defaults to SimpleFIN when at least one active conne
 
 ## Shared-expense forms and stacked dialogs
 
+`components/shared-expenses/useSharedEntryPreview.ts` requests a server preview
+after a typing pause. Save reads only the response whose group, entry and draft
+key match the current inputs; preview failures retain the same key and expose
+retry. Keep the accepted fingerprint on a failed save so a lost response can be
+retried with the original command. The entry-editor tests exercise both response
+orders and the save retry. The split editor offers remainder helpers only for
+a positive remainder and keeps extras behind an explicit disclosure.
+
+The entry, split and private-booking forms use `Modal` with `fixedHeight` and
+`fullScreenOnPhone` so the title and footer stay visible while their body scrolls.
+The browser journeys assert that the title and acceptance action remain in the
+viewport after scrolling to the proposal on desktop and a 360px phone.
+
 A repeated money field uses a `useId()` identity, not its translated label:
 `components/shared-expenses/SharedPrimitives.tsx` supplies one to `CurrencyInput`.
 Several payments can have the same caption while their labels still target their

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
+  ArrowPathIcon,
   ChevronLeftIcon,
   PlusIcon,
   UsersIcon,
@@ -282,9 +283,10 @@ function GroupContent({ groupId }: { groupId: string }) {
                 />
               }
               actions={
-                <>
+                <div className="flex flex-wrap items-stretch gap-2">
                   {writable && (
                     <Button
+                      className="flex-1 sm:flex-none"
                       disabled={!fresh}
                       onClick={() => setForm({ kind: "EXPENSE" })}
                     >
@@ -292,10 +294,15 @@ function GroupContent({ groupId }: { groupId: string }) {
                       {t("addExpense")}
                     </Button>
                   )}
-                  <Button variant="outline" onClick={changed}>
-                    {t("refresh")}
+                  <Button
+                    variant="outline"
+                    onClick={changed}
+                    aria-label={t("refresh")}
+                    title={t("refresh")}
+                  >
+                    <ArrowPathIcon aria-hidden="true" className="h-5 w-5" />
                   </Button>
-                </>
+                </div>
               }
             />
             {group.isDetachedCopy && (

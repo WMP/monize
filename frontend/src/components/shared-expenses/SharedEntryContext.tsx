@@ -7,9 +7,11 @@ import { SharedAmount } from "./SharedPrimitives";
 export function SharedEntryContext({
   entry,
   group,
+  prominent = false,
 }: {
   entry: SharedEntry;
   group: SharedGroupDetail;
+  prominent?: boolean;
 }) {
   const t = useTranslations("sharedExpenses");
   const name = (id: string | null) =>
@@ -27,7 +29,9 @@ export function SharedEntryContext({
       Number(allocation.originalAmount) > 0,
   );
   return (
-    <div className="mt-2 text-sm text-gray-500 dark:text-gray-400 space-y-1">
+    <div
+      className={`${prominent ? "" : "mt-2 "}text-sm text-gray-500 dark:text-gray-400 space-y-1`}
+    >
       <p>
         {t(entry.type === "EXPENSE" ? "paidBy" : "receivedBy")} ·{" "}
         {contributors
@@ -35,7 +39,13 @@ export function SharedEntryContext({
           .join(", ")}
       </p>
       {entry.state === "POSTED" && (
-        <p>
+        <p
+          className={
+            prominent
+              ? "font-semibold text-gray-900 dark:text-gray-100"
+              : undefined
+          }
+        >
           {t(
             entry.type === "INCOME"
               ? "yourIncome"

@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { sharedCommand, sharedExpensesApi } from "@/lib/shared-expenses";
 import type { SharedEntry, SharedGroupDetail } from "@/types/shared-expense";
-import { SharedEntryPreview } from "./SharedEntryEditor";
+import { SharedEntryPreview } from "./SharedEntryPreview";
 import { SharedAmount, SharedError, SharedNotice } from "./SharedPrimitives";
 const SharedDocuments = dynamic(
   () => import("./SharedDocuments").then((m) => m.SharedDocuments),

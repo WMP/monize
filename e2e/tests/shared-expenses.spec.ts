@@ -20,6 +20,85 @@ test.describe("Shared expenses", () => {
     await dismissNotificationPrompt(authedPage);
   });
 
+  test("previews an ordinary mobile bill and records it with one save", async ({
+    authedPage: page,
+    api,
+  }, info) => {
+    const group = await createSharedGroup(api, "Dinner with friends");
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.goto(`/shared-expenses/${group.id}`);
+    await page
+      .getByRole("button", { name: "Add expense", exact: true })
+      .click();
+    const editor = page.getByRole("dialog", {
+      name: "Add expense",
+      exact: true,
+    });
+    await editor.getByLabel("What was it for?").fill("Friday dinner");
+    await editor.getByLabel("Amount", { exact: true }).fill("300");
+    const save = editor.getByRole("button", {
+      name: "Save expense",
+      exact: true,
+    });
+    await expect(save).toBeEnabled();
+    await expect(editor.getByText("Your cost", { exact: false })).toContainText(
+      "100.00",
+    );
+    await expect(
+      editor.getByRole("checkbox", { name: /Also record this in my finances/ }),
+    ).not.toBeChecked();
+    expect(
+      (await api.get<SharedGroupFixture>(`/shared-expenses/groups/${group.id}`))
+        .entries,
+    ).toHaveLength(0);
+    await editor
+      .getByText("Your cost", { exact: false })
+      .scrollIntoViewIfNeeded();
+    await expect(
+      editor.getByRole("heading", { name: "Add expense", exact: true }),
+    ).toBeInViewport();
+    await expect(
+      editor.getByText("Friday dinner", { exact: true }),
+    ).toBeInViewport();
+    await expect(save).toBeInViewport();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: info.outputPath("expense-preview-mobile.png"),
+      fullPage: false,
+      animations: "disabled",
+    });
+    await page.setViewportSize(VIDEO_VIEWPORT);
+    await page.screenshot({
+      path: info.outputPath("expense-preview-desktop.png"),
+      fullPage: false,
+      animations: "disabled",
+    });
+    await save.click();
+    await page
+      .getByRole("dialog", { name: "Saved", exact: true })
+      .getByRole("button", { name: "Close", exact: true })
+      .last()
+      .click();
+    await page.reload();
+    await expect(
+      page.getByRole("main").getByText("Friday dinner", { exact: true }),
+    ).toBeVisible();
+    const saved = await api.get<SharedGroupFixture>(
+      `/shared-expenses/groups/${group.id}`,
+    );
+    expect(saved.entries).toHaveLength(1);
+    expect(saved.balances.totalExpenses).toBe("300.0000");
+    expect(
+      saved.balances.positions.find(
+        (person) => person.participantId === group.myParticipantId,
+      )?.balance,
+    ).toBe("200.0000");
+  });
+
   test("records an unequal split for people without accounts and keeps a partial repayment after reload", async ({
     authedPage: page,
     api,
@@ -58,8 +137,12 @@ test.describe("Shared expenses", () => {
       animations: "disabled",
     });
     await split.getByRole("button", { name: "Apply split" }).click();
-    await editor.getByRole("button", { name: "Review split" }).click();
-    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(
+      editor.getByRole("button", { name: "Save expense", exact: true }),
+    ).toBeEnabled();
+    await editor
+      .getByRole("button", { name: "Save expense", exact: true })
+      .click();
     const saved = page.getByRole("dialog", { name: "Saved", exact: true });
     await saved
       .getByRole("button", { name: "Close", exact: true })
@@ -94,7 +177,6 @@ test.describe("Shared expenses", () => {
       exact: true,
     });
     await repayment.getByLabel("Amount", { exact: true }).fill("50");
-    await repayment.getByRole("button", { name: "Review split" }).click();
     await repayment
       .getByRole("button", { name: "Record repayment", exact: true })
       .click();
@@ -179,8 +261,12 @@ test.describe("Shared expenses", () => {
       })
       .click();
     await editor.getByLabel("Amount", { exact: true }).fill("240");
-    await editor.getByRole("button", { name: "Review split" }).click();
-    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(
+      editor.getByRole("button", { name: "Save expense", exact: true }),
+    ).toBeEnabled();
+    await editor
+      .getByRole("button", { name: "Save expense", exact: true })
+      .click();
     await page
       .getByRole("dialog", { name: "Saved", exact: true })
       .getByRole("button", { name: "Close", exact: true })
@@ -263,6 +349,15 @@ test.describe("Shared expenses", () => {
       .getByRole("heading", { name: "Current proposal", exact: true })
       .locator("..")
       .scrollIntoViewIfNeeded();
+    await expect(
+      booking.getByRole("heading", {
+        name: "Connect to my ledger",
+        exact: true,
+      }),
+    ).toBeInViewport();
+    await expect(
+      booking.getByRole("button", { name: "Accept booking", exact: true }),
+    ).toBeInViewport();
     await page.screenshot({
       path: info.outputPath("bank-preview-desktop.png"),
       fullPage: false,
@@ -317,9 +412,6 @@ test.describe("Shared expenses", () => {
     );
     await editor.getByLabel("Amount", { exact: true }).fill("300");
     await editor
-      .getByRole("button", { name: "Review split", exact: true })
-      .click();
-    await editor
       .getByRole("button", { name: "Review my finances", exact: true })
       .click();
     await page
@@ -349,6 +441,15 @@ test.describe("Shared expenses", () => {
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
+    await expect(
+      booking.getByRole("heading", {
+        name: "Connect to my ledger",
+        exact: true,
+      }),
+    ).toBeInViewport();
+    await expect(
+      booking.getByRole("button", { name: "Accept booking", exact: true }),
+    ).toBeInViewport();
     await page.screenshot({
       path: info.outputPath("combined-bank-mobile.png"),
       fullPage: false,

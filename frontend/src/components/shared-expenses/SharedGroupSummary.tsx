@@ -12,8 +12,8 @@ export function SharedGroupSummary({ group }: { group: SharedGroupDetail }) {
     (person) => person.participantId === group.myParticipantId,
   );
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      <Card padding="sm">
+    <div className="flex flex-wrap gap-3 sm:grid sm:grid-cols-3">
+      <Card padding="sm" className="basis-full sm:basis-auto">
         <SharedPositionValue
           personal
           prominent
@@ -21,11 +21,11 @@ export function SharedGroupSummary({ group }: { group: SharedGroupDetail }) {
           currency={group.currencyCode}
         />
       </Card>
-      <Card padding="sm">
+      <Card padding="sm" className="flex-1 basis-36 min-w-fit max-w-full">
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {t("yourCost")}
         </p>
-        <p className="mt-1 text-2xl font-semibold">
+        <p className="mt-1 text-lg sm:text-2xl font-semibold">
           <SharedAmount
             amount={mine?.cost ?? null}
             currency={group.currencyCode}
@@ -39,11 +39,11 @@ export function SharedGroupSummary({ group }: { group: SharedGroupDetail }) {
           />
         </p>
       </Card>
-      <Card padding="sm">
+      <Card padding="sm" className="flex-1 basis-36 min-w-fit max-w-full">
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {t("totalExpenses")}
         </p>
-        <p className="mt-1 text-2xl font-semibold">
+        <p className="mt-1 text-lg sm:text-2xl font-semibold">
           <SharedAmount
             amount={group.balances.totalExpenses}
             currency={group.currencyCode}
