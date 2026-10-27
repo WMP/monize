@@ -55,6 +55,10 @@ import { addDaysYMD, formatDateYMDLocal, todayYMD } from "../common/date-utils";
 import { enumerateDaysYMD, monthEndSampleDates } from "./series-dates.util";
 import { loadFirstInvestmentDate } from "./investment-inception.util";
 import { positionCloseAsOf, PricePoint } from "./position-price.util";
+import {
+  buildDailyInvestmentsKey,
+  dailyInvestmentsInFlight,
+} from "./daily-investments-in-flight";
 import { preferredCurrency } from "../common/default-currency.util";
 import {
   DateColumn,
@@ -1705,11 +1709,6 @@ export class NetWorthService {
     },
     collectPositions: boolean,
   ): Promise<DailyInvestmentsWithPositions> {
-    const empty: DailyInvestmentsWithPositions = {
-      series: [],
-      positions: [],
-      securities: new Map(),
-    };
     const pref = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(UserPreference).findOne({ where: { userId } }),
     );
@@ -1718,6 +1717,52 @@ export class NetWorthService {
     // "Today" is the request's calendar day, not a UTC slice of the clock:
     // `todayYMD()` reads the request timezone where one is set.
     const end = endDate || todayYMD();
+
+    // Resolved before keying, so a caller that named the reporting currency
+    // and one that left it to the preference share one valuation (#1888).
+    return dailyInvestmentsInFlight.run(
+      userId,
+      buildDailyInvestmentsKey({
+        userId,
+        startDate,
+        endDate: end,
+        accountIds,
+        currency: defaultCurrency,
+        collectPositions,
+        fetchMissing: options?.fetchMissing,
+      }),
+      () =>
+        this.computeDailyInvestments(
+          userId,
+          { startDate, end, accountIds, defaultCurrency, options },
+          collectPositions,
+        ),
+    );
+  }
+
+  /** The valuation `loadDailyInvestments` shares, over resolved inputs. */
+  private async computeDailyInvestments(
+    userId: string,
+    {
+      startDate,
+      end,
+      accountIds,
+      defaultCurrency,
+      options,
+    }: {
+      startDate?: string;
+      end: string;
+      accountIds?: string[];
+      defaultCurrency: string;
+      options?: SeriesFetchOptions;
+    },
+    collectPositions: boolean,
+  ): Promise<DailyInvestmentsWithPositions> {
+    const empty: DailyInvestmentsWithPositions = {
+      series: [],
+      positions: [],
+      securities: new Map(),
+    };
 
     let accountFilter: string;
     const acctParams: unknown[] = [userId];
