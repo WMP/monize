@@ -22,10 +22,10 @@ confirmation word and re-enter your password, and it cannot be undone.
 **Work from a copy.** Monize never writes to the file, but a spare copy of three
 decades of finances costs nothing.
 
-**Money 97, 98 and 99 files import directly**, with no conversion step. Those
-versions have no separate list of scheduled bills, so a Money 97-99 file imports
-its accounts, transactions and investments but not its recurring bills. An
-investment account's "Other income" and "Other expenses" arrive as ordinary
+**Money 97, 98 and 99 files import directly**, with no conversion step,
+recurring bills included. A scheduled payment Money recorded with no account to
+pay from (Money 99 can leave a scheduled loan payment that way) cannot become a
+bill and is listed as skipped. An investment account's "Other income" and "Other expenses" arrive as ordinary
 categorized transactions in its cash account, because Monize has no investment
 action for either, and employee stock option grants, vesting and expiry are not
 imported.

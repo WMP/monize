@@ -24,8 +24,8 @@
 | S1 | Plan pair; amend `docs/specs/mny-import.md` (Money 97/98 rejection becomes Money 97-99 support, link the plan) | -- | none | [x] | branch `feat/mny-money99-import` |
 | B1 | Per-format codes: flag translation and action table | S1 | inert | [x] | branch `feat/mny-money99-import` |
 | B2 | Open Jet 3 files; `money99` era; fixture and end-to-end balances | B1, D1 | live | [x] | branch `feat/mny-money99-import` |
-| B3 | Scheduled bills from `TRN` templates when there is no `BILL` table | B2 | live | [ ] | -- |
-| Q | Locales, user guide, release note | B2 (B3 if merged) | none | [ ] | -- |
+| B3 | Scheduled bills from `TRN` templates when there is no `BILL` table | B2 | live | [x] | branch `feat/mny-money99-import` |
+| Q | Locales and user guide | B2 (B3 if merged) | none | [x] | branch `feat/mny-money99-import` |
 
 ## S1: spec amendment
 
@@ -63,8 +63,8 @@ Files: `backend/src/import/mny/tables/read-bills.ts`, `backend/src/import/mny/ta
 
 When the file has no `BILL` table, one candidate per `frq != -1` template that names its pending instance in `TRN.htrnSrc` (one bill per scheduled transfer, from its outgoing leg; the reader does not keep the `0x800` origin bit), dated from its pending instance (`htrnSrc`), through the existing cadence, activity and roll-forward rules. The loan-payment template family stays excluded as today.
 
-Tests: the fixture yields the five series the file holds (card payment, loan payment, transfer to investment cash, salary, "Actos culturales"), each once, monthly. The scheduled loan payment (the split template whose leg pays the loan account) is a series, not the `0x100` loan-template family.
+Tests: the fixture holds five series (card payment, loan payment, transfer to investment cash, salary, "Actos culturales"), each read once, monthly. The scheduled loan payment (the split template whose leg pays the loan account) is a series, not the `0x100` loan-template family, but Money 99 recorded no paying account on it, so it is reported as `unusableBill` and four bills import.
 
 ## Q: acceptance
 
-Translate every new string into every locale; `docs/import-ms-money.md` names Money 97-99 as supported and drops the resave instruction; release-note line.
+Translate every new string into every locale; `docs/import-ms-money.md` names Money 97-99 as supported and drops the resave instruction. Release notes are drafted when a release is cut (`docs/release-notes/README.md`), so none is committed here.

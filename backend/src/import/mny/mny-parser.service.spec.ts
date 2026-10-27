@@ -376,6 +376,31 @@ describe("MnyParserService", () => {
       expect(tradeHandles).not.toContain(89);
     });
 
+    it("offers each scheduled series once, from its paying leg", () => {
+      const parsed = parse();
+
+      expect(parsed.missingTables).toEqual([]);
+      expect(
+        parsed.bills.bills.map((bill) => [
+          bill.handle,
+          bill.amount,
+          bill.frequency,
+          bill.isTransfer,
+        ]),
+      ).toEqual([
+        [1, -100, "MONTHLY", true],
+        [61, -15, "MONTHLY", false],
+        [65, -2, "MONTHLY", true],
+        [69, 1500, "MONTHLY", false],
+      ]);
+    });
+
+    it("reports the scheduled loan payment, which Money 99 gave no paying account", () => {
+      expect(parse().bills.warnings).toEqual([
+        { code: "unusableBill", subject: "hbill=39", detail: "no account" },
+      ]);
+    });
+
     it("skips the stock option events with one named warning each", () => {
       const codes = parse().warnings.map((warning) => warning.code);
 

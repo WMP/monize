@@ -31,7 +31,9 @@ split, transfers, a loan with its payment history, scheduled bills, a voided row
 one row of every investment action Money 99 offers short of interest and short
 sales, and employee stock option events. Money 99's own account list for it is
 the ground truth `mny-parser.service.spec.ts` asserts (Chase Bank 2,105.00, card
--185.00, investment cash 22,658.00, savings 11,010.00, loan -4,209.39, 11 AMZN).
+-185.00, investment cash 22,658.00, savings 11,010.00, loan -4,209.39, 11 AMZN),
+along with its four monthly bills; its scheduled loan payment has no paying
+account and is skipped.
 Its EUR->USD rate of 112 is a typo in the source file, kept as found.
 
 `sample-cd-redemption.mny` was purpose-built for Monize with synthetic data and

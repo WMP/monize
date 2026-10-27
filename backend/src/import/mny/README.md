@@ -267,6 +267,9 @@ together, per account.
   rebuilds the flags in the Money Plus layout (`tables/money99-transactions.ts`) and
   the mappers look actions up by format (`model/mny-actions.ts`,
   `model/mny-money99.ts`); `sample-money99.mny` asserts Money 99's own balances.
+  It has no `BILL` table either: `tables/money99-bills.ts` turns each `TRN`
+  template that names a pending instance (`htrnSrc`) into the `BILL` row
+  `mapBills` expects, which is also what keeps a scheduled transfer to one bill.
 - **`TRN` holds the payee in `lHpay` on Money Plus and `hpay` before it.** Reading one name only
   drops every payee on the other vintage. Column aliases belong in the reader spec, never in a
   mapper.
