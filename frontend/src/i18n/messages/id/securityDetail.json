@@ -127,6 +127,7 @@
     "realizedPl": "L/R terealisasi",
     "realizedMixed": "Terealisasi dalam {currencies}, jadi tidak dijumlahkan",
     "realizedUnknownReason": "Keuntungan ini tidak dapat dihitung: posisi memiliki saham yang ditambahkan tanpa biaya, sehingga biaya saham yang dijual tidak diketahui. Buka transaksi yang menambahkannya dan masukkan harganya.",
+    "realizedKnownPart": "Bagian yang diketahui: {amount}",
     "totalReturn": "Hasil total",
     "totalReturnValue": "{amount} ({percent})",
     "totalReturnTitle": "Keuntungan yang belum terealisasi, ditambah yang Anda realisasikan dari penjualan dan terima sebagai pendapatan, dikurangi biaya, dibandingkan modal yang Anda tanamkan. Hasil sederhana atas modal itu: tidak disetahunkan dan tidak menimbang setiap pembelian menurut lama Anda memegangnya.",
@@ -154,6 +155,7 @@
     "description": "Anda tidak lagi memegang efek ini. Riwayatnya tetap tersedia di bawah.",
     "realizedPl": "L/R terealisasi",
     "realizedUnknownReason": "Keuntungan ini tidak dapat dihitung: posisi memiliki saham yang ditambahkan tanpa biaya, sehingga biaya saham yang dijual tidak diketahui. Buka transaksi yang menambahkannya dan masukkan harganya.",
+    "realizedKnownPart": "Bagian yang diketahui: {amount}",
     "heldFrom": "Dipegang sejak",
     "heldRange": "{start} sampai {end}"
   },

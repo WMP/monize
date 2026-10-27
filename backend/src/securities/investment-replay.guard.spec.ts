@@ -261,11 +261,12 @@ describe("investment action replay is written once", () => {
     // own row's price and rate 1, so a security bought at USD 100 / 1.37 CAD
     // arrived as a basis of 1,000 and a realized gain read 918 instead of 548.
     // A transfer takes the basis its paired TRANSFER_OUT released
-    // (`computeHoldingsMap`'s `releasedByTransferOut`, `carriedBasisByTransferIn`);
+    // (`computeHoldingsMap`'s `releasedByTransferOut`, `replayPositionBasis`);
     // a fold that lists it with BUY has no way to say so. Give TRANSFER_IN its
     // own case.
     const FOLDS = [
       "securities/portfolio-calculation.service.ts",
+      "securities/position-basis-replay.ts",
       "securities/holdings.service.ts",
     ];
     const labelOf = (line: string) =>

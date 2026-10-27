@@ -2753,7 +2753,12 @@ export class ToolExecutorService {
 
     const summaryParts = [
       `capital gains ${money(data.totals.totalCapitalGain)}${filterDesc}`,
-      `realized ${money(data.totals.realizedGain)}`,
+      `realized ${money(data.totals.realizedGain)}${
+        data.totals.realizedGain === null &&
+        data.totals.realizedGainKnownSubtotal !== null
+          ? ` (known part ${money(data.totals.realizedGainKnownSubtotal)}, the rest has no cost basis on record)`
+          : ""
+      }`,
       `unrealized ${money(data.totals.unrealizedGain)}`,
       `grouped by ${groupBy} (${data.entryCount} ${
         data.entryCount === 1 ? "entry" : "entries"

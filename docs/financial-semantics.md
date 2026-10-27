@@ -313,6 +313,13 @@ const costBasisSold = sellQty * avgCostPerShare;
 const realizedGain = proceeds - costBasisSold;
 ```
 
+Proceeds and basis are in one currency, the holding account's, or the gain is
+`null`: a row settled elsewhere is converted by its own amounts, then by the
+market rate on its own date, and with neither it is `mixed_basis_currency`.
+Shares added with no cost make every sale drawn on them unknown, in the
+realized-gain report and the capital-gains-by-period report alike
+(`docs/specs/realized-gain-basis-and-currency.md`).
+
 ### A transfer carries the basis the source released
 
 A security transfer (a TRANSFER_OUT paired with a TRANSFER_IN through
@@ -1014,7 +1021,7 @@ confirmed by reading `main`; each is a divergence, not a style difference.
 | --- | --- |
 | What does a SPLIT do to a share count? | `holdings.service.ts` multiplies (`qty *= txQty`, and `next = current * quantity`). `net-worth.service.ts` **adds**, at all three of its reducers -- and at one of them SPLIT is grouped with `BUY`/`REINVEST`/`TRANSFER_IN`. The holdings page and every historical net-worth chart therefore disagree about the same position after any split. `net-worth.service.ts` also handles no `ADD_SHARES`/`REMOVE_SHARES` at all, so those move the share count in one view and not the other. Breaches FIN-003. |
 | What is an unavailable rate worth? | `portfolio-calculation.service.ts` falls back to `rate = 1`; `net-worth.service.ts` returns `result ?? amount`, relabelling an unconverted amount as the target currency. Breaches FIN-002. |
-| Is acquisition commission in the cost basis? | `calculateCostBasisLotsInAccountCurrency` includes it (`quantity * price + commission`); `calculateRealizedGains` does not (`quantity * price`), while still taking proceeds net of the sell commission -- so realized gain is overstated by the buy-side commission relative to every other basis figure in the app. The code comments this discrepancy itself and declines to resolve it, correctly noting that reconciling the two changes every realized-gain figure in the application and so is its own change. Recorded here so the two are not mistaken for one rule. |
+| Is acquisition commission in the cost basis? | Resolved (#1859): `calculateCostBasisLotsInAccountCurrency`, `calculateRealizedGains` and the capital-gains-by-period report read one fold, `replayPositionBasis` (`backend/src/securities/position-basis-replay.ts`), which includes the commission (`acquisitionCost`). `docs/specs/realized-gain-basis-and-currency.md`. |
 | Does a status change reach both transfer legs? | `PATCH /:id/transfer` mirrors `status` to both legs. `PATCH /transactions/:id/status` (and `markCleared`/`reconcile`/`unreconcile`) touch only the row given -- the reconciliation service references neither `isTransfer` nor `linkedTransactionId`. Bulk update mirrors `payeeId`/`payeeName`/`description` to the linked leg but not `status`. Breaches FIN-001. |
 | Does a cross-currency transfer need a real rate? | `exchangeRate` defaults to `1` with no server-side resolution or rejection, and balances are updated regardless of `status`, so a transfer created as `VOID` still moves both balances. Breaches FIN-001 and FIN-002. |
 | Is a stored override price safe? | `OverrideEditorDialog` seeds from the stored value correctly, then an unconditional effect overwrites `investmentPrice` whenever the fetched market price differs from the last seen one, recomputing the total from it. Breaches FIN-004. |

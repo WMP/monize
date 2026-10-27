@@ -1809,6 +1809,509 @@ describe("PortfolioCalculationService.calculateCapitalGainsByDay", () => {
   });
 });
 
+describe("one replay behind realized gains, lots and the capital-gains periods (#1859)", () => {
+  const userId = "user-1";
+  const brokerage = "acct-1";
+  const usdChequing = "chq-usd";
+  const cadChequing = "chq-cad";
+  const securityId = "sec-1";
+
+  const account = (id: string, currencyCode: string, name = id) =>
+    ({ id, name, currencyCode }) as Partial<Account>;
+
+  const makeTx = (
+    overrides: Partial<InvestmentTransaction> & {
+      accountCurrency?: string;
+      securityCurrency?: string;
+    },
+  ) => {
+    const {
+      accountCurrency = "CAD",
+      securityCurrency = "CAD",
+      ...rest
+    } = overrides;
+    return {
+      id: "tx",
+      userId,
+      accountId: brokerage,
+      securityId,
+      action: InvestmentAction.BUY,
+      transactionDate: "2024-01-01",
+      quantity: 0,
+      price: 0,
+      commission: 0,
+      totalAmount: 0,
+      exchangeRate: 1,
+      fundingAccountId: null,
+      description: null,
+      createdAt: new Date("2024-01-01"),
+      updatedAt: new Date("2024-01-01"),
+      account: account(brokerage, accountCurrency, "Brokerage"),
+      security: {
+        id: securityId,
+        symbol: "ABC",
+        name: "ABC Corp",
+        currencyCode: securityCurrency,
+      },
+      ...rest,
+    } as unknown as InvestmentTransaction;
+  };
+
+  const accounts = (accountCurrency: string) => [
+    {
+      id: brokerage,
+      currencyCode: accountCurrency,
+      accountSubType: AccountSubType.INVESTMENT_BROKERAGE,
+      linkedAccountId: null,
+    },
+    {
+      id: usdChequing,
+      currencyCode: "USD",
+      accountSubType: AccountSubType.INVESTMENT_CASH,
+      linkedAccountId: null,
+    },
+    {
+      id: cadChequing,
+      currencyCode: "CAD",
+      accountSubType: AccountSubType.INVESTMENT_CASH,
+      linkedAccountId: null,
+    },
+  ];
+
+  const build = (
+    transactions: InvestmentTransaction[],
+    opts: {
+      accountCurrency?: string;
+      rates?: Record<string, number | null>;
+      prices?: Array<{ date: string; price: number }>;
+    } = {},
+  ) => {
+    const txRepo = { find: jest.fn().mockResolvedValue(transactions) };
+    const known = accounts(opts.accountCurrency ?? "CAD");
+    const accountRepo = {
+      find: jest.fn(({ where }: { where: { id: { _value: string[] } } }) =>
+        Promise.resolve(known.filter((a) => where.id._value.includes(a.id))),
+      ),
+    };
+    const resolveStoredRate = storedRateDouble(opts.rates);
+    const priceQuery = jest.fn().mockResolvedValue(
+      (opts.prices ?? []).map((r) => ({
+        security_id: securityId,
+        price_date: r.date,
+        close_price: String(r.price),
+      })),
+    );
+    const service = buildService(
+      [
+        [InvestmentTransaction, txRepo],
+        [Account, accountRepo],
+      ],
+      { resolveStoredRate },
+      priceQuery,
+    );
+    return { service, resolveStoredRate };
+  };
+
+  const addUnpriced = (overrides: Partial<InvestmentTransaction> = {}) =>
+    makeTx({
+      id: "add",
+      action: InvestmentAction.ADD_SHARES,
+      transactionDate: "2023-12-05",
+      quantity: 100,
+      price: null as never,
+      ...overrides,
+    });
+  const buy100 = (overrides: Partial<InvestmentTransaction> = {}) =>
+    makeTx({
+      id: "buy",
+      action: InvestmentAction.BUY,
+      transactionDate: "2024-01-10",
+      quantity: 100,
+      price: 50,
+      totalAmount: 5000,
+      ...overrides,
+    });
+  const sell100 = (overrides: Partial<InvestmentTransaction> = {}) =>
+    makeTx({
+      id: "sell",
+      action: InvestmentAction.SELL,
+      transactionDate: "2024-02-10",
+      quantity: 100,
+      price: 60,
+      totalAmount: 6000,
+      ...overrides,
+    });
+
+  describe("shares added with no cost (example 1)", () => {
+    const history = () => [addUnpriced(), buy100(), sell100()];
+
+    it("realized gains: the sale's cost and gain are unknown, its proceeds are not", async () => {
+      const { service } = build(history());
+
+      const [sale] = await service.calculateRealizedGains(userId);
+
+      expect(sale).toMatchObject({
+        proceeds: 6000,
+        costBasis: null,
+        realizedGain: null,
+        basisGap: "quantity_only_action",
+      });
+    });
+
+    it("by period: the sale's month has no realized gain, a flag and a known subtotal of zero", async () => {
+      // ADD 100 (no cost) + BUY 100 @ 50 + SELL 100 @ 60 used to report a
+      // realized gain of 3,500 here: the average of the priced half only.
+      const { service } = build(history(), {
+        prices: [
+          { date: "2023-12-31", price: 50 },
+          { date: "2024-01-31", price: 55 },
+          { date: "2024-02-29", price: 60 },
+        ],
+      });
+
+      const result = await service.calculateCapitalGainsByMonth(userId, {
+        startDate: "2024-01-01",
+        endDate: "2024-02-29",
+      });
+
+      const jan = result.find((r) => r.month === "2024-01")!;
+      const feb = result.find((r) => r.month === "2024-02")!;
+      expect(jan).toMatchObject({
+        realizedGain: 0,
+        realizedGainComplete: true,
+        realizedGainKnownSubtotal: null,
+        totalCapitalGain: 1000,
+      });
+      expect(feb).toMatchObject({
+        sells: 6000,
+        realizedGain: null,
+        realizedGainComplete: false,
+        realizedGainKnownSubtotal: 0,
+        unrealizedGain: null,
+      });
+    });
+
+    it("by period: the known part is the sales on a known basis, and the unknown lot clears when the position closes", async () => {
+      const { service } = build(
+        [
+          addUnpriced({ quantity: 10 }),
+          sell100({
+            id: "sell-1",
+            transactionDate: "2024-01-10",
+            quantity: 10,
+            totalAmount: 600,
+          }),
+          buy100({
+            id: "buy-2",
+            transactionDate: "2024-02-01",
+            quantity: 10,
+            totalAmount: 500,
+          }),
+          sell100({
+            id: "sell-2",
+            transactionDate: "2024-02-10",
+            quantity: 5,
+            totalAmount: 300,
+          }),
+          sell100({
+            id: "sell-3",
+            transactionDate: "2024-02-11",
+            quantity: 5,
+            totalAmount: 300,
+          }),
+        ],
+        { prices: [{ date: "2024-02-29", price: 60 }] },
+      );
+
+      const result = await service.calculateCapitalGainsByMonth(userId, {
+        startDate: "2024-01-01",
+        endDate: "2024-02-29",
+      });
+
+      const jan = result.find((r) => r.month === "2024-01")!;
+      const feb = result.find((r) => r.month === "2024-02")!;
+      expect(jan.realizedGain).toBeNull();
+      // 500 for 10 shares: 5 sold for 300 and 5 for 300 realize 50 and 50.
+      expect(feb).toMatchObject({
+        realizedGain: 50 + 50,
+        realizedGainComplete: true,
+        realizedGainKnownSubtotal: null,
+      });
+    });
+
+    it("by period: shares added in the period make its total capital gain unknown", async () => {
+      const { service } = build(
+        [
+          buy100({ transactionDate: "2023-12-10" }),
+          addUnpriced({ transactionDate: "2024-01-15", quantity: 10 }),
+        ],
+        {
+          prices: [
+            { date: "2023-12-31", price: 50 },
+            { date: "2024-01-31", price: 60 },
+          ],
+        },
+      );
+
+      const [jan] = await service.calculateCapitalGainsByMonth(userId, {
+        startDate: "2024-01-01",
+        endDate: "2024-01-31",
+      });
+
+      // The 10 free shares are in the end value and nowhere in `buys`.
+      expect(jan).toMatchObject({
+        endQuantity: 110,
+        totalCapitalGain: null,
+        unrealizedGain: null,
+      });
+    });
+
+    it("by period: shares removed in the period make its total capital gain unknown", async () => {
+      const { service } = build(
+        [
+          buy100({ transactionDate: "2023-12-10" }),
+          makeTx({
+            id: "remove",
+            action: InvestmentAction.REMOVE_SHARES,
+            transactionDate: "2024-01-15",
+            quantity: 10,
+          }),
+        ],
+        {
+          prices: [
+            { date: "2023-12-31", price: 50 },
+            { date: "2024-01-31", price: 60 },
+          ],
+        },
+      );
+
+      const [jan] = await service.calculateCapitalGainsByMonth(userId, {
+        startDate: "2024-01-01",
+        endDate: "2024-01-31",
+      });
+
+      expect(jan).toMatchObject({ endQuantity: 90, totalCapitalGain: null });
+    });
+  });
+
+  describe("a basis in another currency than the proceeds (examples 3 to 6)", () => {
+    // A CAD brokerage holds a USD security. The BUY is funded from USD chequing
+    // (the row's rate is 1, into USD); the SELL settles into the brokerage's own
+    // CAD at 1.35.
+    const usdBuy = (
+      overrides: Partial<InvestmentTransaction> & {
+        accountCurrency?: string;
+      } = {},
+    ) =>
+      makeTx({
+        id: "buy",
+        securityCurrency: "USD",
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-10",
+        quantity: 10,
+        price: 100,
+        totalAmount: 1000,
+        exchangeRate: 1,
+        fundingAccountId: usdChequing,
+        ...overrides,
+      });
+    const cadSell = (
+      overrides: Partial<InvestmentTransaction> & {
+        accountCurrency?: string;
+      } = {},
+    ) =>
+      makeTx({
+        id: "sell",
+        securityCurrency: "USD",
+        action: InvestmentAction.SELL,
+        transactionDate: "2024-02-10",
+        quantity: 10,
+        price: 110,
+        totalAmount: 1100,
+        exchangeRate: 1.35,
+        ...overrides,
+      });
+
+    it("converts the USD basis at the rate on the purchase date, not subtracting USD from CAD", async () => {
+      const { service, resolveStoredRate } = build([usdBuy(), cadSell()], {
+        rates: { "USD->CAD": 1.35 },
+      });
+
+      const [sale] = await service.calculateRealizedGains(userId);
+
+      // 1,485 CAD of proceeds against 1,000 USD x 1.35 = 1,350 CAD; it read 485.
+      expect(sale).toMatchObject({
+        proceeds: 1485,
+        costBasis: 1350,
+        realizedGain: 135,
+        basisGap: null,
+      });
+      expect(resolveStoredRate).toHaveBeenCalledWith(
+        "USD",
+        "CAD",
+        "2024-01-10",
+        { mode: "historical" },
+      );
+    });
+
+    it("keeps the currency move on the cost in the gain", async () => {
+      const { service } = build([usdBuy(), cadSell()], {
+        rates: { "USD->CAD": 1.3 },
+      });
+
+      const [sale] = await service.calculateRealizedGains(userId);
+
+      expect(sale).toMatchObject({ costBasis: 1300, realizedGain: 185 });
+    });
+
+    it("reports the gain unknown, naming mixed_basis_currency, when no rate converts the basis", async () => {
+      const { service } = build([usdBuy(), cadSell()]);
+
+      const [sale] = await service.calculateRealizedGains(userId);
+
+      expect(sale).toMatchObject({
+        proceeds: 1485,
+        costBasis: null,
+        realizedGain: null,
+        basisGap: "mixed_basis_currency",
+      });
+    });
+
+    it("reports the gain unknown when the sale's stored rate cannot convert it, never at par", async () => {
+      const { service } = build([usdBuy(), cadSell({ exchangeRate: 0 })], {
+        rates: { "USD->CAD": 1.35 },
+      });
+
+      const [sale] = await service.calculateRealizedGains(userId);
+
+      expect(sale).toMatchObject({
+        costBasis: null,
+        realizedGain: null,
+        basisGap: "mixed_basis_currency",
+      });
+    });
+
+    it("by period: buys are in the account's currency", async () => {
+      const { service } = build([usdBuy()], {
+        rates: { "USD->CAD": 1.35 },
+        prices: [{ date: "2024-01-31", price: 110 }],
+      });
+
+      const [jan] = await service.calculateCapitalGainsByMonth(userId, {
+        startDate: "2024-01-01",
+        endDate: "2024-01-31",
+      });
+
+      // 10 x 110 x 1.35 = 1,485 of value against 1,350 spent: 135. With the
+      // purchase left in USD it read 485.
+      expect(jan).toMatchObject({ buys: 1350, totalCapitalGain: 135 });
+    });
+
+    it("by period: a basis that cannot be converted makes the total unknown, not 485", async () => {
+      const { service } = build([usdBuy()], {
+        prices: [{ date: "2024-01-31", price: 110 }],
+      });
+
+      const result = await service.calculateCapitalGainsByMonth(userId, {
+        startDate: "2024-01-01",
+        endDate: "2024-01-31",
+      });
+
+      // The end value needs the same missing rate; either way nothing is stated.
+      expect(result[0].totalCapitalGain).toBeNull();
+    });
+
+    it("uses the row's own amounts, and no market rate, when the account holds the security's currency", async () => {
+      // A USD brokerage, a USD security, bought with CAD at 1.35 (CAD 1,350) and
+      // sold into USD: the basis is the USD the row names, 1,000.
+      const { service, resolveStoredRate } = build(
+        [
+          usdBuy({
+            accountCurrency: "USD",
+            exchangeRate: 1.35,
+            fundingAccountId: cadChequing,
+          }),
+          cadSell({ accountCurrency: "USD", exchangeRate: 1 }),
+        ],
+        { accountCurrency: "USD" },
+      );
+
+      const [sale] = await service.calculateRealizedGains(userId);
+
+      expect(sale).toMatchObject({ costBasis: 1000, realizedGain: 100 });
+      expect(resolveStoredRate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("one basis through all three reports", () => {
+    // BUY 10 @ 100 with 10 of commission (1,010), 100 of capital returned (910),
+    // SELL 5 for 600.
+    const history = () => [
+      makeTx({
+        id: "buy",
+        quantity: 10,
+        price: 100,
+        commission: 10,
+        totalAmount: 1010,
+      }),
+      makeTx({
+        id: "roc",
+        action: InvestmentAction.RETURN_OF_CAPITAL,
+        transactionDate: "2024-01-20",
+        quantity: null as never,
+        price: null as never,
+        totalAmount: 100,
+      }),
+      makeTx({
+        id: "sell",
+        action: InvestmentAction.SELL,
+        transactionDate: "2024-01-25",
+        quantity: 5,
+        price: 120,
+        totalAmount: 600,
+      }),
+    ];
+
+    it("relieves the same basis in realized gains and the lots, commission and return of capital included", async () => {
+      const { service } = build(history());
+
+      const sales = await service.calculateRealizedGains(userId);
+      const sale = sales.find((r) => r.transactionId === "sell")!;
+      const lots = await service.calculateCostBasisLotsInAccountCurrency(
+        userId,
+        [brokerage],
+      );
+
+      // 1,010 less 100 is 910: 455 relieved by the sale, 455 left.
+      expect(sale.costBasis).toBe(455);
+      expect(lots.get(`${brokerage}:${securityId}`)?.costBasis).toBe(455);
+      expect(
+        sale.costBasis! + lots.get(`${brokerage}:${securityId}`)!.costBasis,
+      ).toBe(910);
+    });
+
+    it("realizes the same gain by period as per sale", async () => {
+      const { service } = build(history(), {
+        prices: [
+          { date: "2023-12-31", price: 100 },
+          { date: "2024-01-31", price: 110 },
+        ],
+      });
+
+      const [sale] = (await service.calculateRealizedGains(userId)).filter(
+        (r) => r.transactionId === "sell",
+      );
+      const [jan] = await service.calculateCapitalGainsByMonth(userId, {
+        startDate: "2024-01-01",
+        endDate: "2024-01-31",
+      });
+
+      expect(sale.realizedGain).toBe(145);
+      expect(jan.realizedGain).toBe(sale.realizedGain);
+    });
+  });
+});
+
 describe("PortfolioCalculationService.primeLiveRates", () => {
   let service: PortfolioCalculationService;
   let holdingsRepo: { createQueryBuilder: jest.Mock };
