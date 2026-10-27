@@ -13,12 +13,12 @@
     "title": "Trattenute sullo stipendio",
     "subtitle": "Massimi annui sulle righe di trattenuta della tua fattura stipendio",
     "backToTaxes": "Tasse",
-    "newButton": "+ Nuove regole",
+    "newButton": "+ Nuova regola",
     "loading": "Caricamento delle trattenute...",
     "emptyState": {
       "title": "Ancora nessuna regola di trattenuta",
       "body": "Scegli la transazione pianificata che è la tua busta paga, le sue categorie di trattenuta e un massimo annuo per ciascuna. La transazione smette di trattenere una voce una volta raggiunto il suo massimo e ricomincia alla data di azzeramento.",
-      "createButton": "Crea le tue prime regole"
+      "createButton": "Crea la tua prima regola"
     },
     "yearToDate": {
       "show": "Mostra il progressivo annuo",
@@ -43,7 +43,7 @@
       "periodRange": "Dal {start} al {end}"
     },
     "modal": {
-      "newTitle": "Nuove regole di trattenuta",
+      "newTitle": "Nuova regola di trattenuta",
       "editTitle": "Modifica regola di trattenuta"
     },
     "form": {

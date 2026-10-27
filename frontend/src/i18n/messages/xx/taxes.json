@@ -13,12 +13,12 @@
     "title": "[XX-Payroll Deductions-XX]",
     "subtitle": "[XX-Yearly maximums on the deduction lines of your payroll bill-XX]",
     "backToTaxes": "[XX-Taxes-XX]",
-    "newButton": "[XX-+ New Rules-XX]",
+    "newButton": "[XX-+ New Rule-XX]",
     "loading": "[XX-Loading payroll deductions...-XX]",
     "emptyState": {
       "title": "[XX-No deduction rules yet-XX]",
       "body": "[XX-Pick the scheduled bill that is your paycheque, choose its deduction categories and set a yearly maximum for each. The bill stops collecting a deduction once its maximum is reached and starts again on the reset date.-XX]",
-      "createButton": "[XX-Create Your First Rules-XX]"
+      "createButton": "[XX-Create Your First Rule-XX]"
     },
     "yearToDate": {
       "show": "[XX-Show year-to-date-XX]",
@@ -43,7 +43,7 @@
       "periodRange": "[XX-{start} to {end}-XX]"
     },
     "modal": {
-      "newTitle": "[XX-New Deduction Rules-XX]",
+      "newTitle": "[XX-New Deduction Rule-XX]",
       "editTitle": "[XX-Edit Deduction Rule-XX]"
     },
     "form": {

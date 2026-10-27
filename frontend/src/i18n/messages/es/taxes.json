@@ -13,12 +13,12 @@
     "title": "Deducciones de nómina",
     "subtitle": "Máximos anuales en las líneas de deducción de su factura de nómina",
     "backToTaxes": "Impuestos",
-    "newButton": "+ Nuevas reglas",
+    "newButton": "+ Nueva regla",
     "loading": "Cargando deducciones de nómina...",
     "emptyState": {
       "title": "Aún no hay reglas de deducción",
       "body": "Elija la transacción programada que es su nómina, sus categorías de deducción y un máximo anual para cada una. La transacción deja de cobrar una deducción cuando alcanza su máximo y vuelve a empezar en la fecha de reinicio.",
-      "createButton": "Crear sus primeras reglas"
+      "createButton": "Crear su primera regla"
     },
     "yearToDate": {
       "show": "Mostrar acumulado del año",
@@ -43,7 +43,7 @@
       "periodRange": "{start} a {end}"
     },
     "modal": {
-      "newTitle": "Nuevas reglas de deducción",
+      "newTitle": "Nueva regla de deducción",
       "editTitle": "Editar regla de deducción"
     },
     "form": {

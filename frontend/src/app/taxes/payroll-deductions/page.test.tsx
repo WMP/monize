@@ -147,14 +147,14 @@ describe('PayrollDeductionsPage', () => {
     await renderPage();
     expect(screen.getByText('No deduction rules yet')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /year-to-date/ })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Create Your First Rules' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Your First Rule' }));
     expect(screen.getByTestId('rule-form')).toBeInTheDocument();
     expect(screen.getByTestId('bills')).toHaveTextContent('1');
   });
 
   it('creates every line of the form in one request, hands the form the existing rules and reloads', async () => {
     await renderPage();
-    fireEvent.click(screen.getByRole('button', { name: '+ New Rules' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ New Rule' }));
     expect(screen.getByTestId('existing')).toHaveTextContent('1');
     await act(async () => {
       fireEvent.click(screen.getByText('Submit stub'));
@@ -202,7 +202,7 @@ describe('PayrollDeductionsPage', () => {
     mockList.mockResolvedValue([]);
     mockCreateMany.mockRejectedValue({ response: { data: {} } });
     await renderPage();
-    fireEvent.click(screen.getAllByRole('button', { name: '+ New Rules' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: '+ New Rule' })[0]);
     await act(async () => {
       fireEvent.click(screen.getByText('Submit stub'));
     });

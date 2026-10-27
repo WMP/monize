@@ -13,12 +13,12 @@
     "title": "Potrącenia z wynagrodzenia",
     "subtitle": "Roczne maksima dla pozycji potrąceń w rachunku wynagrodzenia",
     "backToTaxes": "Podatki",
-    "newButton": "+ Nowe reguły",
+    "newButton": "+ Nowa reguła",
     "loading": "Ładowanie potrąceń z wynagrodzenia...",
     "emptyState": {
       "title": "Brak reguł potrąceń",
       "body": "Wybierz zaplanowaną transakcję będącą Twoją wypłatą, jej kategorie potrąceń i ustaw roczny limit dla każdej z nich. Transakcja przestaje pobierać potrącenie po osiągnięciu limitu i zaczyna od nowa w dniu resetu.",
-      "createButton": "Utwórz pierwsze reguły"
+      "createButton": "Utwórz pierwszą regułę"
     },
     "yearToDate": {
       "show": "Pokaż narastająco w roku",
@@ -43,7 +43,7 @@
       "periodRange": "Od {start} do {end}"
     },
     "modal": {
-      "newTitle": "Nowe reguły potrąceń",
+      "newTitle": "Nowa reguła potrącenia",
       "editTitle": "Edytuj regułę potrącenia"
     },
     "form": {

@@ -5,6 +5,7 @@ import { Controller, type Control, type FieldErrors } from 'react-hook-form';
 import { Combobox } from '@/components/ui/Combobox';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { RemoveSplitLineButton } from '@/components/transactions/SplitLineButtons';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { getCurrencySymbol } from '@/lib/format';
 import type { PayrollResetPeriod } from '@/types/payroll-deduction';
@@ -63,9 +64,15 @@ export function PayrollDeductionLineFields({
   const symbol = currencyCode ? getCurrencySymbol(currencyCode) : undefined;
 
   return (
-    <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3 space-y-3">
-      <div className="flex items-start gap-2">
-        <div className="flex-1 min-w-0">
+    <div className="relative rounded-md border border-gray-200 dark:border-gray-700 p-3 space-y-3">
+      {/* The same trash button a split line has, pinned to the row's top-right corner. */}
+      {onRemove && (
+        <div className="absolute top-2 right-2">
+          <RemoveSplitLineButton onClick={onRemove} title={t('form.removeCategory', { index: ordinal })} />
+        </div>
+      )}
+      <div className={onRemove ? 'pr-8' : undefined}>
+        <div>
           <Controller
             control={control}
             name={`lines.${index}.categoryId` as const}
@@ -83,16 +90,6 @@ export function PayrollDeductionLineFields({
             )}
           />
         </div>
-        {onRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            aria-label={t('form.removeCategory', { index: ordinal })}
-            className="mt-7 rounded px-2 py-1.5 text-sm text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 focus-visible:outline-2 focus-visible:outline-blue-500"
-          >
-            <span aria-hidden="true">&times;</span>
-          </button>
-        )}
       </div>
 
       {/* Label row above each box, so the two boxes share one baseline. */}

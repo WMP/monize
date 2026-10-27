@@ -13,12 +13,12 @@
     "title": "Lohnabzüge",
     "subtitle": "Jahreshöchstbeträge für die Abzugszeilen Ihrer Gehaltsbuchung",
     "backToTaxes": "Steuern",
-    "newButton": "+ Neue Regeln",
+    "newButton": "+ Neue Regel",
     "loading": "Lohnabzüge werden geladen...",
     "emptyState": {
       "title": "Noch keine Abzugsregeln",
       "body": "Wählen Sie die geplante Buchung, die Ihre Gehaltsabrechnung ist, deren Abzugskategorien und je einen Jahreshöchstbetrag. Die Buchung zieht einen Abzug nicht mehr ein, sobald sein Höchstbetrag erreicht ist, und beginnt am Rücksetzdatum neu.",
-      "createButton": "Erste Regeln erstellen"
+      "createButton": "Erste Regel erstellen"
     },
     "yearToDate": {
       "show": "Jahresstand anzeigen",
@@ -43,7 +43,7 @@
       "periodRange": "{start} bis {end}"
     },
     "modal": {
-      "newTitle": "Neue Abzugsregeln",
+      "newTitle": "Neue Abzugsregel",
       "editTitle": "Abzugsregel bearbeiten"
     },
     "form": {

@@ -13,12 +13,12 @@
     "title": "Bordro Kesintileri",
     "subtitle": "Bordro faturanızın kesinti satırları için yıllık üst sınırlar",
     "backToTaxes": "Vergiler",
-    "newButton": "+ Yeni Kurallar",
+    "newButton": "+ Yeni Kural",
     "loading": "Bordro kesintileri yükleniyor...",
     "emptyState": {
       "title": "Henüz kesinti kuralı yok",
       "body": "Maaşınız olan planlı işlemi seçin, kesinti kategorilerini belirleyin ve her biri için yıllık bir üst sınır girin. İşlem, üst sınıra ulaşılan kesintiyi almayı durdurur ve sıfırlama tarihinde yeniden başlar.",
-      "createButton": "İlk Kurallarınızı Oluşturun"
+      "createButton": "İlk Kuralınızı Oluşturun"
     },
     "yearToDate": {
       "show": "Yıl başından bugüne göster",
@@ -43,7 +43,7 @@
       "periodRange": "{start} - {end}"
     },
     "modal": {
-      "newTitle": "Yeni Kesinti Kuralları",
+      "newTitle": "Yeni Kesinti Kuralı",
       "editTitle": "Kesinti Kuralını Düzenle"
     },
     "form": {

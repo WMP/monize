@@ -13,12 +13,12 @@
     "title": "Payroll Deductions",
     "subtitle": "Yearly maximums on the deduction lines of your payroll bill",
     "backToTaxes": "Taxes",
-    "newButton": "+ New Rules",
+    "newButton": "+ New Rule",
     "loading": "Loading payroll deductions...",
     "emptyState": {
       "title": "No deduction rules yet",
       "body": "Pick the scheduled bill that is your paycheque, choose its deduction categories and set a yearly maximum for each. The bill stops collecting a deduction once its maximum is reached and starts again on the reset date.",
-      "createButton": "Create Your First Rules"
+      "createButton": "Create Your First Rule"
     },
     "yearToDate": {
       "show": "Show year-to-date",
@@ -43,7 +43,7 @@
       "periodRange": "{start} to {end}"
     },
     "modal": {
-      "newTitle": "New Deduction Rules",
+      "newTitle": "New Deduction Rule",
       "editTitle": "Edit Deduction Rule"
     },
     "form": {

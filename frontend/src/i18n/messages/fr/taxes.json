@@ -13,12 +13,12 @@
     "title": "Retenues salariales",
     "subtitle": "Maximums annuels sur les lignes de retenue de votre facture de paie",
     "backToTaxes": "Impôts",
-    "newButton": "+ Nouvelles règles",
+    "newButton": "+ Nouvelle règle",
     "loading": "Chargement des retenues salariales...",
     "emptyState": {
       "title": "Aucune règle de retenue pour l'instant",
       "body": "Choisissez l'opération planifiée qui est votre paie, ses catégories de retenue et un maximum annuel pour chacune. L'opération cesse de prélever une retenue une fois son maximum atteint et recommence à la date de réinitialisation.",
-      "createButton": "Créer vos premières règles"
+      "createButton": "Créer votre première règle"
     },
     "yearToDate": {
       "show": "Afficher le cumul de l'année",
@@ -43,7 +43,7 @@
       "periodRange": "Du {start} au {end}"
     },
     "modal": {
-      "newTitle": "Nouvelles règles de retenue",
+      "newTitle": "Nouvelle règle de retenue",
       "editTitle": "Modifier la règle de retenue"
     },
     "form": {

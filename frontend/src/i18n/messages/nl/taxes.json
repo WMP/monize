@@ -13,12 +13,12 @@
     "title": "Looninhoudingen",
     "subtitle": "Jaarmaxima op de inhoudingsregels van uw loonrekening",
     "backToTaxes": "Belastingen",
-    "newButton": "+ Nieuwe regels",
+    "newButton": "+ Nieuwe regel",
     "loading": "Looninhoudingen laden...",
     "emptyState": {
       "title": "Nog geen inhoudingsregels",
       "body": "Kies de geplande transactie die uw loonstrook is, kies de inhoudingscategorieën en stel voor elk een jaarmaximum in. De transactie stopt met het innen van een inhouding zodra het maximum is bereikt en begint opnieuw op de resetdatum.",
-      "createButton": "Maak uw eerste regels"
+      "createButton": "Maak uw eerste regel"
     },
     "yearToDate": {
       "show": "Jaar tot nu toe tonen",
@@ -43,7 +43,7 @@
       "periodRange": "{start} tot {end}"
     },
     "modal": {
-      "newTitle": "Nieuwe inhoudingsregels",
+      "newTitle": "Nieuwe inhoudingsregel",
       "editTitle": "Inhoudingsregel bewerken"
     },
     "form": {

@@ -13,12 +13,12 @@
     "title": "Deduções salariais",
     "subtitle": "Máximos anuais nas linhas de dedução da sua fatura de salário",
     "backToTaxes": "Impostos",
-    "newButton": "+ Novas regras",
+    "newButton": "+ Nova regra",
     "loading": "Carregando deduções salariais...",
     "emptyState": {
       "title": "Ainda sem regras de dedução",
       "body": "Escolha a transação agendada que é o seu salário, as categorias de dedução dela e um máximo anual para cada uma. A transação para de cobrar uma dedução quando o máximo é atingido e recomeça na data de reinício.",
-      "createButton": "Criar suas primeiras regras"
+      "createButton": "Criar a sua primeira regra"
     },
     "yearToDate": {
       "show": "Mostrar acumulado do ano",
@@ -43,7 +43,7 @@
       "periodRange": "{start} a {end}"
     },
     "modal": {
-      "newTitle": "Novas regras de dedução",
+      "newTitle": "Nova regra de dedução",
       "editTitle": "Editar regra de dedução"
     },
     "form": {
