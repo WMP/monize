@@ -44,6 +44,10 @@ describe("operator-pinned private UnifiedPush", () => {
     "127.0.0.1",
     "169.254.169.254",
     "0.0.0.0",
+    "100.63.255.255",
+    "100.128.0.1",
+    "198.17.255.255",
+    "198.20.0.1",
     "8.8.8.8",
     "::1",
     "fe80::1",
@@ -57,16 +61,21 @@ describe("operator-pinned private UnifiedPush", () => {
       ),
     ).toThrow(/Invalid UNIFIEDPUSH_PRIVATE_ENDPOINTS/);
   });
-  it.each(["10.2.3.4", "172.16.1.1", "192.168.1.1", "fd12:3456::1"])(
-    "accepts private destination %s",
-    (address) => {
-      expect(
-        privatePushEndpoints(
-          JSON.stringify({ "https://ntfy.home.lan": address }),
-        ).size,
-      ).toBe(1);
-    },
-  );
+  it.each([
+    "10.2.3.4",
+    "172.16.1.1",
+    "192.168.1.1",
+    "100.64.0.1",
+    "100.127.255.254",
+    "198.18.0.1",
+    "198.19.255.254",
+    "fd12:3456::1",
+  ])("accepts private destination %s", (address) => {
+    expect(
+      privatePushEndpoints(JSON.stringify({ "https://ntfy.home.lan": address }))
+        .size,
+    ).toBe(1);
+  });
   it.each([
     "http://ntfy.home.lan",
     "https://*.home.lan",
