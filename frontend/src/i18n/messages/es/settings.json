@@ -391,7 +391,8 @@
         "EMAIL_RECEIPTS": "Recibos de correo",
         "BONDS": "Bonos",
         "AI_REVIEW": "Propuestas de revisión de IA",
-        "WARRANTIES": "Recordatorios de garantía"
+        "WARRANTIES": "Recordatorios de garantía",
+        "SHARED_EXPENSES": "Gastos compartidos"
       },
       "channelNotApplicable": "No aplicable a este tipo de notificación",
       "emailToggleLabel": "Correo (informe) para {category}",

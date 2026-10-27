@@ -391,7 +391,8 @@
         "EMAIL_RECEIPTS": "Biên lai email",
         "BONDS": "Trái phiếu",
         "AI_REVIEW": "Đề xuất xem xét AI",
-        "WARRANTIES": "Nhắc nhở bảo hành"
+        "WARRANTIES": "Nhắc nhở bảo hành",
+        "SHARED_EXPENSES": "Chi phí chung"
       },
       "channelNotApplicable": "Không áp dụng cho loại thông báo này",
       "emailToggleLabel": "Email báo cáo cho {category}",

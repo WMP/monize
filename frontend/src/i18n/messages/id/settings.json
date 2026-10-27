@@ -391,7 +391,8 @@
         "EMAIL_RECEIPTS": "Tanda terima email",
         "BONDS": "Obligasi",
         "AI_REVIEW": "Usulan tinjauan AI",
-        "WARRANTIES": "Pengingat garansi"
+        "WARRANTIES": "Pengingat garansi",
+        "SHARED_EXPENSES": "Pengeluaran bersama"
       },
       "channelNotApplicable": "Tidak berlaku untuk jenis notifikasi ini",
       "emailToggleLabel": "Email laporan untuk {category}",

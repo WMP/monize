@@ -391,7 +391,8 @@
         "EMAIL_RECEIPTS": "E-Mail-Belege",
         "BONDS": "Anleihen",
         "AI_REVIEW": "KI-Prüfvorschläge",
-        "WARRANTIES": "Garantie-Erinnerungen"
+        "WARRANTIES": "Garantie-Erinnerungen",
+        "SHARED_EXPENSES": "Gemeinsame Ausgaben"
       },
       "channelNotApplicable": "Für diese Benachrichtigungsart nicht zutreffend",
       "emailToggleLabel": "Bericht-E-Mail für {category}",

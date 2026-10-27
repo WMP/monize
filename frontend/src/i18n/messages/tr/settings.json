@@ -391,7 +391,8 @@
         "EMAIL_RECEIPTS": "E-posta makbuzları",
         "BONDS": "Tahviller",
         "AI_REVIEW": "Yapay zeka inceleme önerileri",
-        "WARRANTIES": "Garanti hatırlatıcıları"
+        "WARRANTIES": "Garanti hatırlatıcıları",
+        "SHARED_EXPENSES": "Paylaşılan giderler"
       },
       "channelNotApplicable": "Bu bildirim türü için geçerli değil",
       "emailToggleLabel": "{category} için rapor e-postası",
