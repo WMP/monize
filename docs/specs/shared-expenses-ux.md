@@ -262,6 +262,32 @@ from Files. Sensitive draft amounts and photos are not put in localStorage.
 
 ## 5. Personal finance integration stays understandable
 
+The 27 October maintainer-feedback iteration keeps the standalone group as the
+default. Enabling private finances does not enrol every group entry: each entry
+is included only after its owner accepts its preview. An unbooked entry remains
+available to add later, without a pending-review count or a financial-page
+banner. Missing rates on unbooked entries remain repairable in the group.
+Changes to an already accepted posting, lost group access and a failed review
+request still disclose that the reports use previously accepted figures. A
+successful check with no such issue displays no banner. Group activity continues
+to use the existing notification centre, including its reminder action.
+
+Use Monize's existing switches for on/off options and its transaction-action
+dropdown pattern for Expense and Income. Place Shared expenses between Warranties
+and Taxes. A new group starts with the profile's first name, still editable; an
+untouched default is not an unsaved edit. Remove a draft participant with an
+accessible red cross beside their name. English action labels use Title Case.
+
+Private setup explains the managed account as a record of money owed to or by
+the reader, not a payment account. Its name is an optional setting. The booking
+form leads with the personal category and necessary payment; partial payments,
+additional payments and other private adjustments are progressive options.
+Use "My Finances" and "transactions" in the interface rather than "ledger".
+"Cancel Entry" explains that its group effect is removed while its history is
+retained; accepted private transactions still require their owner's review.
+Pending attachments require the same leave confirmation before cancellation as
+before editing or closing an entry.
+
 Group creation starts with Group only. “Include in my finances” is the one-time
 opt-in, with a preview of costs, receivables/payables and any historical items
 needing a bank match. The application manages the settlement account; users do
@@ -287,8 +313,8 @@ remembered own-account choice is visible and editable before each Save.
 | My share changes from 80 to 100 after my bank payment was booked | Review says cost +20, receivable -20, bank unchanged. Accepting the existing mapping does not require entering the account again. |
 
 For my own new expense, saving the group entry can also accept the displayed
-private posting in one command. Other members' entries/financial edits create a
-review item for my affected finances. Group totals remain current; personal
+private posting in one command. Other members' financial edits to entries I have
+already accepted create a review item for my affected finances. Group totals remain current; personal
 reports retain accepted figures and explain the pending changes. A receipt,
 participant rename or unchanged financial input does not require a finance review.
 
