@@ -54,6 +54,7 @@
       "categoryPlaceholder": "Bir kesinti satırı seçin",
       "yearlyMaximumLabel": "Yıllık üst sınır",
       "yearlyMaximumHelp": "Bu kategorinin bir dönemde kestiği en yüksek tutar, fatura para biriminde. Satır kalan paya kadar, sıfıra dek azaltılır.",
+      "yearlyMaximumSuggested": "Bu kategorinin şimdiye kadar kestiği tutardan tahmin edildi.",
       "resetPeriodLabel": "Sıfırlama",
       "resetDateLabel": "Sıfırlama tarihi",
       "resetDateHelp": "Sayım her yıl bu gün yeniden başlar. Genellikle yılın ilk günü.",

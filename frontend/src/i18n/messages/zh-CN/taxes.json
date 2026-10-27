@@ -54,6 +54,7 @@
       "categoryPlaceholder": "选择扣款行",
       "yearlyMaximumLabel": "年度上限",
       "yearlyMaximumHelp": "该类别在一个周期内扣除的最高金额，按账单货币计。该行会减少到剩余额度，最低为零。",
+      "yearlyMaximumSuggested": "根据此类别已扣除的金额估算。",
       "resetPeriodLabel": "重置",
       "resetDateLabel": "重置日期",
       "resetDateHelp": "每年在这一天重新开始计算。通常是一年的第一天。",

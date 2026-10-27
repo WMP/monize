@@ -71,7 +71,15 @@ start again at the next year's figure.
    (`SUGGESTION_WINDOW_MONTHS`), ties to the more recently seen figure; the
    latest row alone is not it, because the last paycheque of a year is often
    capped or zeroed, and a longer window lets last year's rate outvote this
-   year's.
+   year's. The form also suggests the **yearly maximum** from what the
+   category has already collected, since a capped deduction stops exactly at
+   its maximum (`estimateMaximum`): the current period's total when the
+   bill's own postings show the deduction stopped (its latest posted
+   paycheque in the period carries no deduction line for the category after
+   one that did, `deductionStopped`); else the current period's total when
+   it already exceeds the last full period's (a rate rose); else the last
+   full period's total; nothing when nothing was collected. The form fills an
+   empty box from it and says so; a typed figure is kept.
 4. **Reset is Yearly, on a date.** `reset_date` is the anchor; a period runs
    from one anniversary of its month and day to the day before the next. The
    29th of February clamps to the 28th in a common year. The enumeration
@@ -150,9 +158,11 @@ Direct RLS policy on `user_id`. Exported in the portable backup after
 ### 5.2 Routes (`/payroll-deductions`, owner-only)
 
 - `GET /` the user's rules with their figures as of today.
-- `GET /suggest?scheduledTransactionId&categoryId` the expected amount the
-  bill's line gives, or the mode of the category's deduction rows over the
-  last year when the bill has no line (decision 3), or `null`.
+- `GET /suggest?scheduledTransactionId&categoryId[&resetDate]` the expected
+  amount the bill's line gives, or the mode of the category's deduction rows
+  over the last year when the bill has no line (decision 3), or `null`; with
+  `resetDate`, also the yearly maximum the ledger suggests and its source
+  (`previousPeriod`, `currentPeriod`, `currentPeriodCapped`, or `null`).
 - `POST /` one rule; `POST /batch` several categories of one bill sharing a
   reset, every ownership, duplicate and expected-amount check before the
   first `INSERT` in one `withScopedDb` transaction, so a refused line writes

@@ -54,6 +54,7 @@
       "categoryPlaceholder": "Wybierz pozycję potrącenia",
       "yearlyMaximumLabel": "Roczne maksimum",
       "yearlyMaximumHelp": "Najwięcej, ile ta kategoria pobiera w jednym okresie, w walucie rachunku. Pozycja jest zmniejszana do pozostałego zapasu, aż do zera.",
+      "yearlyMaximumSuggested": "Oszacowano na podstawie tego, co ta kategoria już pobrała.",
       "resetPeriodLabel": "Reset",
       "resetDateLabel": "Data resetu",
       "resetDateHelp": "Liczenie zaczyna się od nowa tego dnia każdego roku. Zwykle pierwszy dzień roku.",

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -19,6 +20,8 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { AuthGuard } from "@nestjs/passport";
+import { isCalendarDate } from "../common/validators/is-calendar-date.validator";
+import { tr } from "../i18n/translate";
 import {
   CreatePayrollDeductionRuleDto,
   CreatePayrollDeductionRulesDto,
@@ -57,11 +60,23 @@ export class PayrollDeductionsController {
     @Query("scheduledTransactionId", ParseUUIDPipe)
     scheduledTransactionId: string,
     @Query("categoryId", ParseUUIDPipe) categoryId: string,
+    @Query("resetDate") resetDate?: string,
   ): Promise<ExpectedAmountSuggestion> {
+    // Optional, so no pipe: a value that is present must still be a real date.
+    if (resetDate !== undefined && !isCalendarDate(resetDate)) {
+      throw new BadRequestException(
+        tr(
+          "errors.validation.invalidDateParam",
+          "resetDate must be a valid date in YYYY-MM-DD format",
+          { paramName: "resetDate" },
+        ),
+      );
+    }
     return this.service.suggestExpected(
       req.user.id,
       scheduledTransactionId,
       categoryId,
+      resetDate,
     );
   }
 

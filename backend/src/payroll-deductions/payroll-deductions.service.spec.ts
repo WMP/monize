@@ -132,18 +132,86 @@ describe("PayrollDeductionsService", () => {
   });
 
   describe("suggestExpected", () => {
-    it("prefers the bill's line", async () => {
+    it("prefers the bill's line, and estimates no maximum without a reset date", async () => {
       await expect(service.suggestExpected(USER, BILL, EI)).resolves.toEqual({
         expectedPerPaycheque: 64,
         expectedSource: "line",
+        yearlyMaximum: null,
+        yearlyMaximumSource: null,
       });
       expect(mocks.manager.query).not.toHaveBeenCalled();
+    });
+
+    it("estimates the maximum from the last full period, the current one when it already collected more, or the current one when the bill's later paycheques stopped deducting", async () => {
+      // Per call: the previous period's paid, the current period's paid, then
+      // the bill's postings in the current period, latest first.
+      const paid = (
+        previous: string,
+        current: string,
+        postings: boolean[] = [],
+      ) => {
+        let call = 0;
+        mocks.manager.query.mockImplementation(async (sql: string) =>
+          String(sql).includes("foreign_rows")
+            ? [{ total: call++ === 0 ? previous : current, foreign_rows: "0" }]
+            : String(sql).includes("scheduled_transaction_postings")
+              ? postings.map((deducted) => ({ deducted }))
+              : [],
+        );
+      };
+      // The two latest paycheques carry no EI line after ones that did: the
+      // period's total is the maximum, even though last year's was higher.
+      paid("-1100", "-1049.12", [false, false, true, true]);
+      await expect(
+        service.suggestExpected(USER, BILL, EI, "2026-01-01"),
+      ).resolves.toMatchObject({
+        yearlyMaximum: 1049.12,
+        yearlyMaximumSource: "currentPeriodCapped",
+      });
+      // A category never deducted on this bill's postings is not "stopped".
+      paid("-1100", "-50", [false, false]);
+      await expect(
+        service.suggestExpected(USER, BILL, EI, "2026-01-01"),
+      ).resolves.toMatchObject({ yearlyMaximumSource: "previousPeriod" });
+      mocks.manager.query.mockClear();
+      // Deducted on every paycheque so far: nothing says the cap was reached.
+      paid("-1049.12", "-800", [true, true, true]);
+      await expect(
+        service.suggestExpected(USER, BILL, EI, "2026-01-01"),
+      ).resolves.toMatchObject({
+        yearlyMaximum: 1049.12,
+        yearlyMaximumSource: "previousPeriod",
+      });
+      const [, previousParams] = mocks.manager.query.mock.calls[0];
+      const [, currentParams] = mocks.manager.query.mock.calls[1];
+      expect(previousParams).toEqual(
+        expect.arrayContaining(["2025-01-01", "2025-12-31"]),
+      );
+      expect(currentParams).toEqual(
+        expect.arrayContaining(["2026-01-01", "2026-12-31"]),
+      );
+      paid("-1049.12", "-1077.48");
+      await expect(
+        service.suggestExpected(USER, BILL, EI, "2026-01-01"),
+      ).resolves.toMatchObject({
+        yearlyMaximum: 1077.48,
+        yearlyMaximumSource: "currentPeriod",
+      });
+      paid("0", "0");
+      await expect(
+        service.suggestExpected(USER, BILL, EI, "2026-01-01"),
+      ).resolves.toMatchObject({
+        yearlyMaximum: null,
+        yearlyMaximumSource: null,
+      });
     });
 
     it("falls back to the figure the category's rows most often carry over the last year, then to nothing", async () => {
       await expect(service.suggestExpected(USER, BILL, CPP)).resolves.toEqual({
         expectedPerPaycheque: 61.5,
         expectedSource: "ledger",
+        yearlyMaximum: null,
+        yearlyMaximumSource: null,
       });
       const [sql, params] = mocks.manager.query.mock.calls[0];
       // The mode, not the latest row: a capped or zeroed final paycheque of
@@ -160,6 +228,8 @@ describe("PayrollDeductionsService", () => {
       await expect(service.suggestExpected(USER, BILL, CPP)).resolves.toEqual({
         expectedPerPaycheque: null,
         expectedSource: null,
+        yearlyMaximum: null,
+        yearlyMaximumSource: null,
       });
     });
 

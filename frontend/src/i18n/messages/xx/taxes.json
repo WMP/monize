@@ -54,6 +54,7 @@
       "categoryPlaceholder": "[XX-Select a deduction line-XX]",
       "yearlyMaximumLabel": "[XX-Yearly maximum-XX]",
       "yearlyMaximumHelp": "[XX-The most this category collects in one period, in the bill's currency. The line is reduced to what room is left, down to zero.-XX]",
+      "yearlyMaximumSuggested": "[XX-Estimated from what this category has already collected.-XX]",
       "resetPeriodLabel": "[XX-Resets-XX]",
       "resetDateLabel": "[XX-Reset date-XX]",
       "resetDateHelp": "[XX-The count starts again on this day each year. Usually the first day of the year.-XX]",

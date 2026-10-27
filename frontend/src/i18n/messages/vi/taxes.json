@@ -54,6 +54,7 @@
       "categoryPlaceholder": "Chọn một dòng khấu trừ",
       "yearlyMaximumLabel": "Tối đa hằng năm",
       "yearlyMaximumHelp": "Số tiền tối đa danh mục này thu trong một kỳ, theo tiền tệ của hóa đơn. Dòng được giảm xuống phần còn lại, cho đến 0.",
+      "yearlyMaximumSuggested": "Ước tính từ số tiền danh mục này đã thu.",
       "resetPeriodLabel": "Đặt lại",
       "resetDateLabel": "Ngày đặt lại",
       "resetDateHelp": "Việc tính bắt đầu lại vào ngày này mỗi năm. Thường là ngày đầu năm.",

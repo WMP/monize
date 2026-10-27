@@ -90,4 +90,11 @@ export interface CreatePayrollDeductionRulesData {
 export interface ExpectedAmountSuggestion {
   expectedPerPaycheque: number | null;
   expectedSource: 'line' | 'ledger' | null;
+  /**
+   * The maximum the ledger suggests: the last full period's total, or the
+   * current period's when that is already higher; `null` when nothing was
+   * collected or no reset date was sent.
+   */
+  yearlyMaximum: number | null;
+  yearlyMaximumSource: 'previousPeriod' | 'currentPeriod' | 'currentPeriodCapped' | null;
 }

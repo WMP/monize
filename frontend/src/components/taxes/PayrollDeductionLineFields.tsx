@@ -17,6 +17,8 @@ export interface PayrollDeductionLineValues {
   expectedPerPaycheque?: number;
   /** Set when the expected figure was prefilled from the ledger. */
   suggested?: boolean;
+  /** Set when the maximum was estimated from what the category has collected. */
+  maximumSuggested?: boolean;
 }
 
 /** The form's values: one bill and one reset, shared by every row. */
@@ -37,6 +39,8 @@ interface PayrollDeductionLineFieldsProps {
   currencyCode?: string;
   /** The expected figure was prefilled from the ledger. */
   suggested: boolean;
+  /** The maximum was estimated from what the category has already collected. */
+  maximumSuggested: boolean;
   onCategoryChange: (value: string) => void;
   /** Absent on the only row, and when editing a single rule. */
   onRemove?: () => void;
@@ -54,6 +58,7 @@ export function PayrollDeductionLineFields({
   lineAmount,
   currencyCode,
   suggested,
+  maximumSuggested,
   onCategoryChange,
   onRemove,
 }: PayrollDeductionLineFieldsProps) {
@@ -118,6 +123,9 @@ export function PayrollDeductionLineFields({
               />
             )}
           />
+          {maximumSuggested && (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('form.yearlyMaximumSuggested')}</p>
+          )}
         </div>
 
         {lineAmount !== null && (

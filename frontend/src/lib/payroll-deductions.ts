@@ -38,9 +38,10 @@ export const payrollDeductionsApi = {
   suggest: async (
     scheduledTransactionId: string,
     categoryId: string,
+    resetDate?: string,
   ): Promise<ExpectedAmountSuggestion> => {
     const response = await apiClient.get<ExpectedAmountSuggestion>('/payroll-deductions/suggest', {
-      params: { scheduledTransactionId, categoryId },
+      params: { scheduledTransactionId, categoryId, ...(resetDate && { resetDate }) },
     });
     return response.data;
   },

@@ -22,10 +22,16 @@ import {
 import { PayrollDeductionRule } from "./entities/payroll-deduction-rule.entity";
 import {
   PayrollDeductionFigures,
+  queryCategoryPeriodPaid,
   resolveExpectedPerPaycheque,
   resolvePayrollDeductionFigures,
 } from "./payroll-deduction-cap";
-import { subtractMonths } from "./payroll-deduction-period";
+import {
+  DeductionPeriod,
+  deductionPeriod,
+  subtractMonths,
+} from "./payroll-deduction-period";
+import { addDaysYMD } from "../common/date-utils";
 
 /**
  * How far back the suggestion reads the ledger. Deduction rates change once
@@ -49,6 +55,15 @@ export type PayrollDeductionRuleView = PayrollDeductionRule &
 export interface ExpectedAmountSuggestion {
   expectedPerPaycheque: number | null;
   expectedSource: "line" | "ledger" | null;
+  /**
+   * An estimate of the maximum from what the category has already collected:
+   * the last full period's total (a capped deduction stops exactly there), or
+   * the current period's when that is already higher; `null` when nothing was
+   * collected or no reset date was given.
+   */
+  yearlyMaximum: number | null;
+  yearlyMaximumSource:
+    "previousPeriod" | "currentPeriod" | "currentPeriodCapped" | null;
 }
 
 /**
@@ -93,13 +108,23 @@ export class PayrollDeductionsService {
     userId: string,
     scheduledTransactionId: string,
     categoryId: string,
+    resetDate?: string,
   ): Promise<ExpectedAmountSuggestion> {
-    const since = subtractMonths(todayYMD(), SUGGESTION_WINDOW_MONTHS);
+    const today = todayYMD();
+    const since = subtractMonths(today, SUGGESTION_WINDOW_MONTHS);
     return withScopedDb(this.dataSource, async (m) => {
       const schedule = await this.ownedSchedule(
         m,
         userId,
         scheduledTransactionId,
+      );
+      const maximum = await this.estimateMaximum(
+        m,
+        userId,
+        schedule,
+        categoryId,
+        resetDate,
+        today,
       );
       const fromLine = resolveExpectedPerPaycheque(
         { categoryId, expectedPerPaycheque: null },
@@ -109,6 +134,7 @@ export class PayrollDeductionsService {
         return {
           expectedPerPaycheque: fromLine.expectedPerPaycheque,
           expectedSource: "line",
+          ...maximum,
         };
       }
       const rows = returnedRows<{ amount: string }>(
@@ -139,8 +165,116 @@ export class PayrollDeductionsService {
       return {
         expectedPerPaycheque: usual,
         expectedSource: usual === null ? null : "ledger",
+        ...maximum,
       };
     });
+  }
+
+  /**
+   * The maximum the ledger suggests, since a capped deduction stops exactly
+   * at its maximum. In order: the current period's total when the bill's own
+   * postings show the deduction stopped (a later paycheque in the period
+   * carries no line for the category after one that did); the current
+   * period's total when it is already above the last full period's (a rate
+   * rose); else the last full period's total. Paid is category-wide, so two
+   * paycheques on one category estimate the one maximum they share. Nothing
+   * collected, or no reset date, suggests nothing.
+   */
+  private async estimateMaximum(
+    m: EntityManager,
+    userId: string,
+    schedule: Pick<ScheduledTransaction, "id" | "currencyCode">,
+    categoryId: string,
+    resetDate: string | undefined,
+    today: string,
+  ): Promise<
+    Pick<ExpectedAmountSuggestion, "yearlyMaximum" | "yearlyMaximumSource">
+  > {
+    if (!resetDate) return { yearlyMaximum: null, yearlyMaximumSource: null };
+    const { currencyCode } = schedule;
+    const current = deductionPeriod(resetDate, today);
+    const previous = deductionPeriod(
+      resetDate,
+      addDaysYMD(current.periodStart, -1),
+    );
+    const before = await queryCategoryPeriodPaid(
+      m,
+      userId,
+      categoryId,
+      previous,
+      currencyCode,
+    );
+    const sofar = await queryCategoryPeriodPaid(
+      m,
+      userId,
+      categoryId,
+      current,
+      currencyCode,
+    );
+    if (
+      sofar.paidToDate > 0 &&
+      (await this.deductionStopped(m, userId, schedule.id, categoryId, current))
+    ) {
+      return {
+        yearlyMaximum: roundMoney(sofar.paidToDate),
+        yearlyMaximumSource: "currentPeriodCapped",
+      };
+    }
+    if (sofar.paidToDate > before.paidToDate && sofar.paidToDate > 0) {
+      return {
+        yearlyMaximum: roundMoney(sofar.paidToDate),
+        yearlyMaximumSource: "currentPeriod",
+      };
+    }
+    if (before.paidToDate > 0) {
+      return {
+        yearlyMaximum: roundMoney(before.paidToDate),
+        yearlyMaximumSource: "previousPeriod",
+      };
+    }
+    return { yearlyMaximum: null, yearlyMaximumSource: null };
+  }
+
+  /**
+   * Whether the bill's postings in the period show the deduction reached its
+   * maximum: its latest posted paycheque carries no deduction line for the
+   * category while an earlier one in the period did. A line the posting
+   * capped to zero is "no deduction line" here, as is one the user removed.
+   */
+  private async deductionStopped(
+    m: EntityManager,
+    userId: string,
+    scheduledTransactionId: string,
+    categoryId: string,
+    period: Pick<DeductionPeriod, "periodStart" | "periodEnd">,
+  ): Promise<boolean> {
+    const rows = returnedRows<{ deducted: boolean }>(
+      await m.query(
+        `SELECT (
+                  (t.is_split = false AND t.category_id = $3 AND t.amount < 0)
+                  OR EXISTS (
+                    SELECT 1 FROM transaction_splits s
+                     WHERE s.transaction_id = t.id
+                       AND s.category_id = $3 AND s.amount < 0
+                  )
+                ) AS deducted
+           FROM scheduled_transaction_postings p
+           JOIN transactions t ON t.id = p.transaction_id
+          WHERE p.scheduled_transaction_id = $2
+            AND t.user_id = $1 AND t.status <> 'VOID'
+            AND t.transaction_date BETWEEN $4 AND $5
+          ORDER BY t.transaction_date DESC, t.created_at DESC`,
+        [
+          userId,
+          scheduledTransactionId,
+          categoryId,
+          period.periodStart,
+          period.periodEnd,
+        ],
+      ),
+    );
+    if (rows.length < 2 || rows[0].deducted) return false;
+    return rows.some((row) => row.deducted);
   }
 
   /** One rule: the single-line form of `createMany`. */

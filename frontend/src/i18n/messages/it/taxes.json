@@ -54,6 +54,7 @@
       "categoryPlaceholder": "Seleziona una riga di trattenuta",
       "yearlyMaximumLabel": "Massimo annuo",
       "yearlyMaximumHelp": "Il massimo che questa categoria preleva in un periodo, nella valuta della fattura. La riga viene ridotta al margine rimanente, fino a zero.",
+      "yearlyMaximumSuggested": "Stimato da quanto questa categoria ha già trattenuto.",
       "resetPeriodLabel": "Azzeramento",
       "resetDateLabel": "Data di azzeramento",
       "resetDateHelp": "Il conteggio riparte da questo giorno ogni anno. Di solito il primo giorno dell'anno.",

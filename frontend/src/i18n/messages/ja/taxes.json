@@ -54,6 +54,7 @@
       "categoryPlaceholder": "控除行を選択",
       "yearlyMaximumLabel": "年間上限額",
       "yearlyMaximumHelp": "このカテゴリが1期間に徴収する最大額（請求の通貨）。行は残りの余地まで、ゼロを下限に減らされます。",
+      "yearlyMaximumSuggested": "このカテゴリで既に控除された金額から推定しています。",
       "resetPeriodLabel": "リセット",
       "resetDateLabel": "リセット日",
       "resetDateHelp": "毎年この日に集計がやり直されます。通常は年の初日です。",

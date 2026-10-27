@@ -54,6 +54,7 @@
       "categoryPlaceholder": "Selecione uma linha de dedução",
       "yearlyMaximumLabel": "Máximo anual",
       "yearlyMaximumHelp": "O máximo que esta categoria cobra em um período, na moeda da fatura. A linha é reduzida à margem restante, até zero.",
+      "yearlyMaximumSuggested": "Estimado a partir do que esta categoria já cobrou.",
       "resetPeriodLabel": "Reinicia",
       "resetDateLabel": "Data de reinício",
       "resetDateHelp": "A contagem recomeça neste dia todos os anos. Normalmente o primeiro dia do ano.",

@@ -54,6 +54,7 @@
       "categoryPlaceholder": "공제 행 선택",
       "yearlyMaximumLabel": "연간 상한액",
       "yearlyMaximumHelp": "이 카테고리가 한 기간에 공제하는 최대 금액(청구 통화)입니다. 항목은 남은 여유까지, 최소 0으로 줄어듭니다.",
+      "yearlyMaximumSuggested": "이 카테고리에서 이미 공제된 금액을 바탕으로 추정했습니다.",
       "resetPeriodLabel": "초기화",
       "resetDateLabel": "초기화 날짜",
       "resetDateHelp": "매년 이 날에 집계가 다시 시작됩니다. 보통 연초 첫날입니다.",

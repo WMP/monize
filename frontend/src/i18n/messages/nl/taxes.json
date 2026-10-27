@@ -54,6 +54,7 @@
       "categoryPlaceholder": "Selecteer een inhoudingsregel",
       "yearlyMaximumLabel": "Jaarmaximum",
       "yearlyMaximumHelp": "Het meeste dat deze categorie in één periode int, in de valuta van de rekening. De regel wordt verlaagd tot de resterende ruimte, tot nul.",
+      "yearlyMaximumSuggested": "Geschat op basis van wat deze categorie al heeft ingehouden.",
       "resetPeriodLabel": "Reset",
       "resetDateLabel": "Resetdatum",
       "resetDateHelp": "De telling begint elk jaar op deze dag opnieuw. Meestal de eerste dag van het jaar.",

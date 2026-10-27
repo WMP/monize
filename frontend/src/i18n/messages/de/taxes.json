@@ -54,6 +54,7 @@
       "categoryPlaceholder": "Abzugszeile wählen",
       "yearlyMaximumLabel": "Jahreshöchstbetrag",
       "yearlyMaximumHelp": "Der Höchstbetrag, den diese Kategorie in einem Zeitraum einzieht, in der Währung der Buchung. Die Zeile wird auf den verbleibenden Spielraum reduziert, bis auf null.",
+      "yearlyMaximumSuggested": "Geschätzt aus dem, was diese Kategorie bereits eingezogen hat.",
       "resetPeriodLabel": "Zurücksetzung",
       "resetDateLabel": "Rücksetzdatum",
       "resetDateHelp": "Die Zählung beginnt jedes Jahr an diesem Tag neu. Meist der erste Tag des Jahres.",

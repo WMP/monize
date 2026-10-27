@@ -98,7 +98,7 @@ describe('PayrollDeductionRuleForm', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSuggest.mockResolvedValue({ expectedPerPaycheque: null, expectedSource: null });
+    mockSuggest.mockResolvedValue({ expectedPerPaycheque: null, expectedSource: null, yearlyMaximum: null, yearlyMaximumSource: null });
   });
 
   const fillMaximum = (index: number, value: string) => {
@@ -139,7 +139,7 @@ describe('PayrollDeductionRuleForm', () => {
   });
 
   it('takes several categories at once, each offered only the lines the others left', async () => {
-    mockSuggest.mockResolvedValue({ expectedPerPaycheque: 150, expectedSource: 'ledger' });
+    mockSuggest.mockResolvedValue({ expectedPerPaycheque: 150, expectedSource: 'ledger', yearlyMaximum: null, yearlyMaximumSource: null });
     render(
       <PayrollDeductionRuleForm scheduledTransactions={[bill()]} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />,
     );
@@ -149,7 +149,7 @@ describe('PayrollDeductionRuleForm', () => {
     expect(optionLabels(screen.getByLabelText('Deduction category 2'))).toEqual(['--', 'CPP']);
     await pickCategory(1, 'cat-cpp');
     // The zero line supplies nothing, so the ledger's usual figure is offered.
-    expect(mockSuggest).toHaveBeenCalledWith('st-pay', 'cat-cpp');
+    expect(mockSuggest).toHaveBeenCalledWith('st-pay', 'cat-cpp', expect.stringMatching(/^\d{4}-01-01$/));
     const expected = await screen.findByLabelText('Expected per paycheque');
     await waitFor(() => expect(expected).toHaveValue('150.00'));
     expect(
@@ -209,6 +209,23 @@ describe('PayrollDeductionRuleForm', () => {
     );
     expect(screen.getByText('Every deduction line on this bill already has a rule.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '+ Add another category' })).not.toBeInTheDocument();
+  });
+
+  it('estimates an empty yearly maximum from what the category has already collected', async () => {
+    mockSuggest.mockResolvedValue({ expectedPerPaycheque: null, expectedSource: null, yearlyMaximum: 1049.12, yearlyMaximumSource: 'previousPeriod' });
+    render(
+      <PayrollDeductionRuleForm scheduledTransactions={[bill()]} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />,
+    );
+    await pickCategory(0, 'cat-ei');
+    expect(mockSuggest).toHaveBeenCalledWith('st-pay', 'cat-ei', expect.stringMatching(/^\d{4}-01-01$/));
+    await waitFor(() => expect(screen.getByLabelText('Yearly maximum')).toHaveValue('1,049.12'));
+    expect(screen.getByText('Estimated from what this category has already collected.')).toBeInTheDocument();
+    // A figure already typed is kept, and the note goes with it.
+    fillMaximum(0, '1100');
+    await pickCategory(0, 'cat-cpp');
+    await waitFor(() => expect(mockSuggest).toHaveBeenCalledTimes(2));
+    expect(screen.getAllByLabelText('Yearly maximum')[0]).toHaveValue('1,100.00');
+    expect(screen.queryByText('Estimated from what this category has already collected.')).not.toBeInTheDocument();
   });
 
   it("starts an empty yearly maximum from another paycheque's rule on the same category", async () => {

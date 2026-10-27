@@ -83,6 +83,7 @@ function buildSchema(
             expectedPerPaycheque: z.number().min(0).optional(),
             /** Set when the expected figure was prefilled from the ledger. */
             suggested: z.boolean().optional(),
+            maximumSuggested: z.boolean().optional(),
           }),
         )
         .min(1)
@@ -125,6 +126,7 @@ const emptyLine = (): FormValues['lines'][number] => ({
   yearlyMaximum: undefined as unknown as number,
   expectedPerPaycheque: undefined,
   suggested: false,
+  maximumSuggested: false,
 });
 
 interface PayrollDeductionRuleFormProps {
@@ -190,6 +192,7 @@ export function PayrollDeductionRuleForm({
                   ? Number(rule.expectedPerPaycheque)
                   : undefined,
               suggested: false,
+              maximumSuggested: false,
             },
           ],
         }
@@ -254,13 +257,15 @@ export function PayrollDeductionRuleForm({
     if (!rule) replace([emptyLine()]);
   };
 
-  // A category whose line on the bill is not a deduction: ask the server what
-  // the ledger usually shows, and prefill only while the field is still empty.
-  // Done in the change handler, not an effect, so nothing is written during a
-  // render.
+  // Ask the server what the ledger says about the category: the maximum it
+  // has already collected up to, and, when the bill's line is not a
+  // deduction, the amount it usually deducts. Each prefills only while its
+  // box is still empty. Done in the change handler, not an effect, so nothing
+  // is written during a render.
   const handleCategoryChange = (index: number, value: string) => {
     setValue(`lines.${index}.categoryId`, value, { shouldDirty: true, shouldValidate: true });
     setValue(`lines.${index}.suggested`, false);
+    setValue(`lines.${index}.maximumSuggested`, false);
     // A second paycheque deducting to a category another bill already caps
     // shares that maximum (the forecast pools the room), so an empty box
     // starts from the rule entered first.
@@ -273,11 +278,26 @@ export function PayrollDeductionRuleForm({
         shouldValidate: true,
       });
     }
-    if (!value || !billId || billLineAmount(billsById.get(billId), value) !== null) return;
+    if (!value || !billId) return;
+    const hasLine = billLineAmount(billsById.get(billId), value) !== null;
     payrollDeductionsApi
-      .suggest(billId, value)
+      .suggest(billId, value, getValues('resetDate') || undefined)
       .then((suggestion) => {
-        if (suggestion.expectedSource === 'ledger' && suggestion.expectedPerPaycheque !== null) {
+        if (
+          suggestion.yearlyMaximum !== null &&
+          getValues(`lines.${index}.yearlyMaximum`) === undefined
+        ) {
+          setValue(`lines.${index}.yearlyMaximum`, suggestion.yearlyMaximum, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+          setValue(`lines.${index}.maximumSuggested`, true);
+        }
+        if (
+          !hasLine &&
+          suggestion.expectedSource === 'ledger' &&
+          suggestion.expectedPerPaycheque !== null
+        ) {
           setValue(`lines.${index}.expectedPerPaycheque`, suggestion.expectedPerPaycheque, {
             shouldDirty: true,
           });
@@ -361,6 +381,7 @@ export function PayrollDeductionRuleForm({
             lineAmount={billLineAmount(bill, lines?.[index]?.categoryId ?? '')}
             currencyCode={bill?.currencyCode}
             suggested={lines?.[index]?.suggested === true}
+            maximumSuggested={lines?.[index]?.maximumSuggested === true}
             onCategoryChange={(value) => handleCategoryChange(index, value)}
             onRemove={!rule && fields.length > 1 ? () => remove(index) : undefined}
           />

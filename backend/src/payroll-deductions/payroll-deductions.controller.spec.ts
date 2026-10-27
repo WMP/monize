@@ -1,3 +1,4 @@
+import { BadRequestException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import {
   GUARDS_METADATA,
@@ -60,7 +61,24 @@ describe("PayrollDeductionsController", () => {
     await controller.remove(req, RULE);
 
     expect(service.findAll).toHaveBeenCalledWith(USER);
-    expect(service.suggestExpected).toHaveBeenCalledWith(USER, BILL, CATEGORY);
+    expect(service.suggestExpected).toHaveBeenCalledWith(
+      USER,
+      BILL,
+      CATEGORY,
+      undefined,
+    );
+    await controller.suggest(req, BILL, CATEGORY, "2026-01-01");
+    expect(service.suggestExpected).toHaveBeenLastCalledWith(
+      USER,
+      BILL,
+      CATEGORY,
+      "2026-01-01",
+    );
+    // Refused before the service is asked: the throw is synchronous.
+    expect(() => controller.suggest(req, BILL, CATEGORY, "2026-02-30")).toThrow(
+      BadRequestException,
+    );
+    expect(service.suggestExpected).toHaveBeenCalledTimes(2);
     expect(service.create).toHaveBeenCalledWith(USER, dto);
     expect(service.createMany).toHaveBeenCalledWith(USER, batch);
     expect(service.update).toHaveBeenCalledWith(USER, RULE, {

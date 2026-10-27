@@ -54,6 +54,7 @@
       "categoryPlaceholder": "Sélectionnez une ligne de retenue",
       "yearlyMaximumLabel": "Maximum annuel",
       "yearlyMaximumHelp": "Le plus que cette catégorie prélève sur une période, dans la devise de la facture. La ligne est réduite à la marge restante, jusqu'à zéro.",
+      "yearlyMaximumSuggested": "Estimé d'après ce que cette catégorie a déjà prélevé.",
       "resetPeriodLabel": "Réinitialisation",
       "resetDateLabel": "Date de réinitialisation",
       "resetDateHelp": "Le décompte repart de ce jour chaque année. Généralement le premier jour de l'année.",

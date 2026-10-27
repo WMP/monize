@@ -54,6 +54,7 @@
       "categoryPlaceholder": "Pilih baris potongan",
       "yearlyMaximumLabel": "Maksimum tahunan",
       "yearlyMaximumHelp": "Jumlah terbanyak yang dipotong kategori ini dalam satu periode, dalam mata uang tagihan. Baris dikurangi menjadi sisa ruang yang ada, hingga nol.",
+      "yearlyMaximumSuggested": "Diperkirakan dari yang sudah dipungut kategori ini.",
       "resetPeriodLabel": "Diatur ulang",
       "resetDateLabel": "Tanggal pengaturan ulang",
       "resetDateHelp": "Hitungan dimulai lagi pada hari ini setiap tahun. Biasanya hari pertama tahun.",
