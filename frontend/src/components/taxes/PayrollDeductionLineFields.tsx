@@ -6,6 +6,7 @@ import { Combobox } from '@/components/ui/Combobox';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { getCurrencySymbol } from '@/lib/format';
 import type { PayrollResetPeriod } from '@/types/payroll-deduction';
 
 /** One category row of the form. */
@@ -58,6 +59,8 @@ export function PayrollDeductionLineFields({
   const t = useTranslations('taxes.payroll');
   const { formatCurrency } = useNumberFormat();
   const ordinal = index + 1;
+  // The bill's currency symbol in the box, as every money entry in Monize shows it.
+  const symbol = currencyCode ? getCurrencySymbol(currencyCode) : undefined;
 
   return (
     <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3 space-y-3">
@@ -107,6 +110,7 @@ export function PayrollDeductionLineFields({
             render={({ field }) => (
               <CurrencyInput
                 id={`payroll-yearly-maximum-${index}`}
+                prefix={symbol}
                 allowNegative={false}
                 value={field.value}
                 onChange={field.onChange}
@@ -138,6 +142,7 @@ export function PayrollDeductionLineFields({
               render={({ field }) => (
                 <CurrencyInput
                   id={`payroll-expected-per-paycheque-${index}`}
+                  prefix={symbol}
                   allowNegative={false}
                     value={field.value}
                     onChange={field.onChange}
