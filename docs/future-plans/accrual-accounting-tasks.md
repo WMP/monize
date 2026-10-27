@@ -23,3 +23,9 @@ The published frontend CI run has one failure in the unchanged investment transa
 ## CI compatibility repair
 
 Corrected dated-rate test fixtures, FK comparison by reference target, budget basis query validation, and the nullable account-summary / LLM native-bucket adapters. Cash-specific browser scenarios request cash mode explicitly. Final changed backend batch passes 714 files, including guards; targeted browser scenarios pass eight cases each in Chromium and Firefox with no retries. Full GitHub CI must be rechecked on the repair commit.
+
+## Bill reminder projection regression
+
+- [x] Reproduce the maintainer's notification-column error against PostgreSQL with enforced RLS.
+- [x] Restore ordinary scoped notification reads and restrict recognition projection to transaction roots.
+- [x] Verify due reminders and repeated-read deduplication in cash/accrual mode, plus adjacent reporting coverage: 28 integration tests and 774 changed backend test files/guards pass.

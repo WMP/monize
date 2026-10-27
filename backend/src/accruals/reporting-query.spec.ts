@@ -18,6 +18,11 @@ function setup() {
   const builder = {
     alias: "t",
     expressionMap: {
+      mainAlias: {
+        name: "t",
+        hasMetadata: true,
+        metadata: { tableName: "transactions" },
+      },
       joinAttributes: [
         {
           alias: {
@@ -64,6 +69,21 @@ function setup() {
 }
 
 describe("reporting query projection boundaries", () => {
+  it.each(["notifications", "accounts"])(
+    "does not project transaction columns onto a %s root",
+    async (tableName) => {
+      const { manager, builder, qb } = setup();
+      builder.expressionMap.mainAlias.metadata.tableName = tableName;
+      builder.getMany.mockResolvedValue([{ id: "ordinary-entity" }]);
+      expect(
+        await reportingEntities(manager, "owner", qb, { basis: "accrual" }),
+      ).toEqual([{ id: "ordinary-entity" }]);
+      expect(builder.addCommonTableExpression).not.toHaveBeenCalled();
+      expect(builder.addSelect).not.toHaveBeenCalled();
+      expect(builder.getRawAndEntities).not.toHaveBeenCalled();
+    },
+  );
+
   it("passes cash SQL and entities through without recognition projections", async () => {
     const { manager, query, builder, qb } = setup();
     await reportingQuery(manager, "owner", "SELECT $1", [7], "cash");

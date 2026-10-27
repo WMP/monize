@@ -68,6 +68,11 @@ export async function reportingEntities<T extends ObjectLiteral>(
   qb: SelectQueryBuilder<T>,
   options?: { basis?: ReportingBasis; preserveReportIds?: boolean },
 ): Promise<T[]> {
+  // Only transaction roots carry recognition provenance. Other entities retain
+  // their normal scoped read, even when the user's default is accrual.
+  const root = qb.expressionMap.mainAlias;
+  if (!root?.hasMetadata || root.metadata.tableName !== "transactions")
+    return qb.getMany();
   if ((await resolveReportingBasis(m, userId, options?.basis)) === "cash")
     return qb.getMany();
   await applyReportingBasis(m, userId, qb, "accrual");

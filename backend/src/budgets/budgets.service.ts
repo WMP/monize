@@ -1,5 +1,4 @@
 import { BudgetPeriod } from "./entities/budget-period.entity";
-import { reportingEntities } from "../accruals/reporting-query";
 import { reportingMoneyOne } from "../accruals/reporting-money";
 import { ReportingRead } from "../accruals/reporting-basis";
 import {
@@ -731,17 +730,14 @@ export class BudgetsService {
 
     // Fetch ALL existing BILL_DUE alerts (including dismissed) to prevent re-creation
     const existingAlerts = await withScopedDb(this.dataSource, (m) =>
-      reportingEntities(
-        m,
-        userId,
-        m
-          .getRepository(Notification)
-          .createQueryBuilder("ba")
-          .where("ba.user_id = :userId", { userId })
-          .andWhere("ba.alert_type = :type", {
-            type: NotificationType.BILL_DUE,
-          }),
-      ),
+      m
+        .getRepository(Notification)
+        .createQueryBuilder("ba")
+        .where("ba.user_id = :userId", { userId })
+        .andWhere("ba.alert_type = :type", {
+          type: NotificationType.BILL_DUE,
+        })
+        .getMany(),
     );
 
     // An occurrence's identity is `(billId, originalDate)`, so that is what
