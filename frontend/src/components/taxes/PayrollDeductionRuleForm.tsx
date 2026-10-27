@@ -195,7 +195,8 @@ export function PayrollDeductionRuleForm({
       : {
           scheduledTransactionId: bills.length === 1 ? bills[0].id : '',
           resetPeriod: 'YEARLY',
-          resetDate: `${today.slice(0, 4)}-01-01`,
+          // The next 1 January: the count resets at the turn of the year.
+          resetDate: `${Number(today.slice(0, 4)) + 1}-01-01`,
           lines: [emptyLine()],
         },
   });

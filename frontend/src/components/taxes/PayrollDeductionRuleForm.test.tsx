@@ -117,12 +117,12 @@ describe('PayrollDeductionRuleForm', () => {
     });
   };
 
-  it("preselects the only bill, defaults the reset to 1 January and offers only the bill's deduction lines", async () => {
+  it("preselects the only bill, defaults the reset to next 1 January and offers only the bill's deduction lines", async () => {
     render(
       <PayrollDeductionRuleForm scheduledTransactions={[bill()]} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />,
     );
     expect(screen.getByLabelText('Payroll scheduled bill')).toHaveValue('st-pay');
-    expect(screen.getByLabelText('Reset date')).toHaveValue(`01/01/${new Date().getFullYear()}`);
+    expect(screen.getByLabelText('Reset date')).toHaveValue(`01/01/${new Date().getFullYear() + 1}`);
     expect(optionLabels(screen.getByLabelText('Deduction category 1'))).toEqual(['--', 'CPP', 'EI']);
     await pickCategory(0, 'cat-ei');
     expect(await screen.findByText("The bill's line deducts $64.00 per paycheque.")).toBeInTheDocument();

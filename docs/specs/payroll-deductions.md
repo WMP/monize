@@ -14,7 +14,7 @@ start again at the next year's figure.
   and the first tool, **Payroll Deductions** (route `/taxes/payroll-deductions`).
 - A **rule** names the payroll scheduled bill, one category of that bill, the
   yearly maximum deducted to that category, when the count resets (Yearly, on a
-  chosen date, usually 1 January) and, only when the bill carries no line for
+  chosen date, usually 1 January; the form defaults to the next one) and, only when the bill carries no line for
   the category, the amount expected per paycheque. The form creates the rules
   of one bill together: the bill and the reset are shared, each category row
   carries its own maximum, and the batch is one request (section 5.2).
