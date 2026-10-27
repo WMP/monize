@@ -340,5 +340,13 @@
   "reviewLoadFailed": "Não foi possível verificar as alterações às despesas partilhadas. Os relatórios continuam a usar os lançamentos aceites. Tente verificar novamente as alterações pendentes.",
   "reviewChecking": "A verificar alterações às despesas partilhadas…",
   "reviewCurrent": "Todas as alterações partilhadas disponíveis foram revistas.",
-  "reviewEmpty": "Ainda não há grupos incluídos nas suas finanças."
+  "reviewEmpty": "Ainda não há grupos incluídos nas suas finanças.",
+  "checkingSplit": "A verificar a divisão…",
+  "singleContributor": "Usar apenas uma pessoa",
+  "multipleReceivers": "Várias pessoas receberam este montante",
+  "contributionsMismatch": "A soma dos montantes pagos ou recebidos deve corresponder ao montante acima.",
+  "selectPeople": "Escolha pelo menos uma pessoa para esta divisão.",
+  "splitComplete": "Pronto a aplicar",
+  "splitTools": "Mais opções de divisão",
+  "repaymentExplanation": "As sugestões baseiam-se no saldo líquido de cada pessoa. Pode reembolsar alguém que não tenha pago a sua despesa específica."
 }

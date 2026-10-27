@@ -340,5 +340,13 @@
   "reviewLoadFailed": "Änderungen an gemeinsamen Ausgaben konnten nicht geprüft werden. Berichte verwenden weiterhin Ihre bestätigten Buchungen. Versuchen Sie die Prüfung erneut.",
   "reviewChecking": "Gemeinsame Ausgaben werden auf Änderungen geprüft…",
   "reviewCurrent": "Alle verfügbaren gemeinsamen Änderungen wurden geprüft.",
-  "reviewEmpty": "Noch keine Gruppen in Ihren Finanzen enthalten."
+  "reviewEmpty": "Noch keine Gruppen in Ihren Finanzen enthalten.",
+  "checkingSplit": "Aufteilung wird geprüft…",
+  "singleContributor": "Nur eine Person verwenden",
+  "multipleReceivers": "Mehrere Personen haben diesen Betrag erhalten",
+  "contributionsMismatch": "Die gezahlten oder erhaltenen Beträge müssen zusammen den obigen Betrag ergeben.",
+  "selectPeople": "Wähle mindestens eine Person für diese Aufteilung.",
+  "splitComplete": "Bereit zum Übernehmen",
+  "splitTools": "Weitere Aufteilungsoptionen",
+  "repaymentExplanation": "Die Vorschläge berücksichtigen den Nettosaldo jeder Person. Du zahlst möglicherweise jemandem zurück, der deine konkrete Ausgabe nicht bezahlt hat."
 }

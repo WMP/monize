@@ -340,5 +340,13 @@
   "reviewLoadFailed": "无法检查共享费用更改。报告仍使用您接受的会计分录。重试检查挂起的更改。",
   "reviewChecking": "检查共享费用的变化...",
   "reviewCurrent": "所有可访问的共同支出更改均已确认。",
-  "reviewEmpty": "您的财务中尚未包含任何组。"
+  "reviewEmpty": "您的财务中尚未包含任何组。",
+  "checkingSplit": "正在检查分摊…",
+  "singleContributor": "仅使用一人",
+  "multipleReceivers": "多人收到了这笔款项",
+  "contributionsMismatch": "支付或收到的金额之和必须等于上方的金额。",
+  "selectPeople": "请为此次分摊至少选择一人。",
+  "splitComplete": "可以应用",
+  "splitTools": "更多分摊选项",
+  "repaymentExplanation": "建议根据每个人的净余额计算。你可能需要向并未支付你这笔具体费用的人还款。"
 }

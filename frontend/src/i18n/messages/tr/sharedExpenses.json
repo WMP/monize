@@ -340,5 +340,13 @@
   "reviewLoadFailed": "Paylaşılan gider değişiklikleri kontrol edilemedi. Raporlar hâlâ kabul edilen muhasebe girişlerinizi kullanmaya devam ediyor. Bekleyen değişiklikleri kontrol etmeyi yeniden deneyin.",
   "reviewChecking": "Değişiklikler için paylaşılan giderler kontrol ediliyor…",
   "reviewCurrent": "Mevcut tüm paylaşılan değişiklikler incelendi.",
-  "reviewEmpty": "Henüz mali durumunuza dahil edilen grup yok."
+  "reviewEmpty": "Henüz mali durumunuza dahil edilen grup yok.",
+  "checkingSplit": "Paylaşım kontrol ediliyor…",
+  "singleContributor": "Tek kişi kullan",
+  "multipleReceivers": "Bu tutarı birden fazla kişi aldı",
+  "contributionsMismatch": "Ödenen veya alınan tutarların toplamı yukarıdaki tutara eşit olmalıdır.",
+  "selectPeople": "Bu paylaşım için en az bir kişi seçin.",
+  "splitComplete": "Uygulamaya hazır",
+  "splitTools": "Diğer paylaşım seçenekleri",
+  "repaymentExplanation": "Öneriler herkesin net bakiyesine dayanır. Sizin belirli bir giderinizi ödememiş birine geri ödeme yapmanız gerekebilir."
 }

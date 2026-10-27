@@ -340,5 +340,13 @@
   "reviewLoadFailed": "無法檢查共享費用變更。報告仍使用您接受的會計分錄。重試檢查掛起的變更。",
   "reviewChecking": "檢查共享費用的變化...",
   "reviewCurrent": "所有可存取的共同支出變更均已確認。",
-  "reviewEmpty": "您的財務中尚未包含任何組。"
+  "reviewEmpty": "您的財務中尚未包含任何組。",
+  "checkingSplit": "正在檢查分攤…",
+  "singleContributor": "僅使用一人",
+  "multipleReceivers": "多人收到了這筆款項",
+  "contributionsMismatch": "支付或收到的金額總和必須等於上方的金額。",
+  "selectPeople": "請為此次分攤至少選擇一人。",
+  "splitComplete": "可以套用",
+  "splitTools": "更多分攤選項",
+  "repaymentExplanation": "建議依據每個人的淨餘額計算。你可能需要向並未支付你這筆特定費用的人還款。"
 }

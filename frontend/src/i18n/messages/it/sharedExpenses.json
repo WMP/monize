@@ -340,5 +340,13 @@
   "reviewLoadFailed": "Impossibile verificare le modifiche alle spese condivise. I report usano ancora le registrazioni accettate. Riprova a verificare le modifiche in attesa.",
   "reviewChecking": "Verifica delle modifiche alle spese condivise…",
   "reviewCurrent": "Tutte le modifiche condivise disponibili sono state verificate.",
-  "reviewEmpty": "Nessun gruppo è ancora incluso nelle tue finanze."
+  "reviewEmpty": "Nessun gruppo è ancora incluso nelle tue finanze.",
+  "checkingSplit": "Verifica della suddivisione…",
+  "singleContributor": "Usa una sola persona",
+  "multipleReceivers": "Più persone hanno ricevuto questo importo",
+  "contributionsMismatch": "La somma degli importi pagati o ricevuti deve corrispondere all’importo indicato sopra.",
+  "selectPeople": "Scegli almeno una persona per questa suddivisione.",
+  "splitComplete": "Pronto per applicare",
+  "splitTools": "Altre opzioni di suddivisione",
+  "repaymentExplanation": "I suggerimenti usano il saldo netto di ogni persona. Potresti rimborsare qualcuno che non ha pagato la tua specifica spesa."
 }
