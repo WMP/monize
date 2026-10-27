@@ -146,11 +146,21 @@ const FIELD_LIMITS = {
   SECURITY: 255, // security.name VARCHAR(255)
 } as const;
 
+/**
+ * Split a QIF file into lines whatever its line endings: Windows `\r\n`, Unix
+ * `\n`, or the bare `\r` of classic Mac OS that Quicken for Mac's `.qmtf`
+ * transfer files can carry. Splitting on `\n` alone would read a `\r`-only file
+ * as one line and find no transactions in it.
+ */
+function splitQifLines(content: string): string[] {
+  return content.split(/\r\n|\r|\n/);
+}
+
 export function parseQif(
   content: string,
   dateFormat?: DateFormat,
 ): QifParseResult {
-  const lines = content.split(/\r?\n/);
+  const lines = splitQifLines(content);
   const transactions: QifTransaction[] = [];
   const categoriesSet = new Set<string>();
   const transferAccountsSet = new Set<string>();
@@ -848,7 +858,7 @@ export function parseQifFull(
   content: string,
   dateFormat?: DateFormat,
 ): QifFullParseResult {
-  const lines = content.split(/\r?\n/);
+  const lines = splitQifLines(content);
   const categoryDefs: QifCategoryDef[] = [];
   const tagDefs: QifTagDef[] = [];
   const accountBlocks: QifAccountBlock[] = [];

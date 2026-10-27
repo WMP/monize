@@ -34,18 +34,18 @@
   },
   "page": {
     "title": "取引のインポート",
-    "subtitle": "QIF、OFX/QFX、CSV ファイルから取引をインポートするか、Microsoft Money (.mny) ファイルをまるごと取り込みます"
+    "subtitle": "QIF/QMTF、OFX/QFX、CSV ファイルから取引をインポートするか、Microsoft Money (.mny) ファイルをまるごと取り込みます"
   },
   "upload": {
     "heading": "取引ファイルのアップロード",
-    "instructions": "インポートするファイルを 1 つ以上選択してください。対応形式: QIF、OFX/QFX、CSV、Microsoft Money (.mny)。\n一括インポートのために同じ種類の複数ファイルを選択できます。Microsoft Money ファイルは 1 つずつインポートしてください。.mny ファイルにはプロファイル全体が含まれます。",
+    "instructions": "インポートするファイルを 1 つ以上選択してください。対応形式: QIF/QMTF、OFX/QFX、CSV、Microsoft Money (.mny)。\n一括インポートのために同じ種類の複数ファイルを選択できます。Microsoft Money ファイルは 1 つずつインポートしてください。.mny ファイルにはプロファイル全体が含まれます。",
     "importingTo": "インポート先:",
     "clickToSelect": "クリックしてファイルを選択",
     "orDragAndDrop": "またはここにドラッグ＆ドロップ",
     "dropToImport": "ドロップしてインポート",
-    "unsupportedDrop": "次のファイルはインポートできません: {names}。QIF、OFX、QFX、CSV、または Microsoft Money (.mny) ファイルを使用してください。",
+    "unsupportedDrop": "次のファイルはインポートできません: {names}。QIF/QMTF、OFX、QFX、CSV、または Microsoft Money (.mny) ファイルを使用してください。",
     "processing": "処理中...",
-    "acceptedFormats": "QIF、OFX、QFX、CSV、または Microsoft Money (.mny)",
+    "acceptedFormats": "QIF/QMTF、OFX、QFX、CSV、または Microsoft Money (.mny)",
     "mnyFailedHeading": "この Microsoft Money ファイルを開けませんでした",
     "wikiNotice": {
       "title": "インポートする前に",

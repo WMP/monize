@@ -184,7 +184,7 @@ export function UploadStep({
           <input
             ref={inputRef}
             type="file"
-            accept=".qif,.ofx,.qfx,.csv,.mny"
+            accept=".qif,.qmtf,.ofx,.qfx,.csv,.mny"
             multiple
             onChange={onFileSelect}
             className="hidden"

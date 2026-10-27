@@ -578,6 +578,20 @@ PGrocery Store`;
       expect(result.transactions).toHaveLength(1);
     });
 
+    it("handles classic Mac line endings (bare CR), as a .qmtf can carry", () => {
+      const qif =
+        "!Type:Bank\rD01/15/26\rT-50.00\rPGrocery\rLHousing:Mortgage:Interest\r^\r";
+      const result = parseQif(qif);
+      expect(result.transactions).toHaveLength(1);
+      expect(result.transactions[0]).toMatchObject({
+        date: "2026-01-15",
+        amount: -50,
+        payee: "Grocery",
+        category: "Housing:Mortgage:Interest",
+      });
+      expect(result.categories).toEqual(["Housing:Mortgage:Interest"]);
+    });
+
     it("skips empty lines", () => {
       const qif = `!Type:Bank
 
@@ -2478,5 +2492,42 @@ PStore
     const qif = `!Type:Tag\nNVacation\nDTravel\nNBusiness\n^\n!Account\nNChecking\nTBank\n^\n!Type:Bank\nD01/15/2026\nT-50.00\n^\n`;
     const result = parseQifFull(qif, "MM/DD/YYYY");
     expect(result.tagDefs.map((t) => t.name)).toEqual(["Vacation", "Business"]);
+  });
+});
+
+describe("parseQifFull - Quicken for Mac transfer files (.qmtf)", () => {
+  it("reads a bare-CR multi-account export and keeps every category level", () => {
+    const qif = [
+      "!Type:Cat",
+      "NHousing:Mortgage:Interest",
+      "E",
+      "^",
+      "!Account",
+      "NChecking",
+      "TBank",
+      "^",
+      "!Type:Bank",
+      "D3/ 1'26",
+      "T-812.40",
+      "PFirst Bank",
+      "LHousing:Mortgage:Interest",
+      "^",
+      "",
+    ].join("\r");
+
+    expect(isMultiAccountQif(qif)).toBe(true);
+    const result = parseQifFull(qif);
+    expect(result.categoryDefs.map((d: { name: string }) => d.name)).toEqual([
+      "Housing:Mortgage:Interest",
+    ]);
+    expect(result.accountBlocks).toHaveLength(1);
+    expect(result.accountBlocks[0].accountName).toBe("Checking");
+    expect(result.accountBlocks[0].categories).toEqual([
+      "Housing:Mortgage:Interest",
+    ]);
+    expect(result.accountBlocks[0].transactions[0]).toMatchObject({
+      date: "2026-03-01",
+      amount: -812.4,
+    });
   });
 });
