@@ -17,8 +17,8 @@
     "loading": "正在載入薪資扣款...",
     "emptyState": {
       "title": "尚無扣款規則",
-      "body": "選擇作為您薪資的排程帳單，選擇扣款類別並設定年度上限。達到上限後帳單停止扣除，並在重設日期重新開始。",
-      "createButton": "建立您的第一條規則"
+      "body": "選擇作為您薪資的定期交易，選擇其扣款類別，並為每個類別設定年度上限。達到上限後，該交易停止收取該項扣款，並在重設日期重新開始。",
+      "createButton": "建立您的第一批規則"
     },
     "yearToDate": {
       "show": "顯示年初至今",
@@ -49,18 +49,18 @@
     "form": {
       "billLabel": "薪資排程帳單",
       "billPlaceholder": "選擇作為您薪資的帳單",
-      "billHelp": "其項目包含扣款的排程存款。只有其類別項目可以設定上限。",
-      "categoryLabel": "扣款類別",
-      "categoryPlaceholder": "選擇類別",
+      "billHelp": "各行記載扣款的定期存入交易。僅提供存入多於扣除的交易，且只能對其扣款行設定上限。",
+      "categoryLabel": "扣款類別 {index}",
+      "categoryPlaceholder": "選擇扣款行",
       "yearlyMaximumLabel": "年度上限",
       "yearlyMaximumHelp": "該類別在一個期間內扣除的最高金額，以帳單幣別計。該項目會減少到剩餘額度，最低為零。",
       "resetPeriodLabel": "重設",
       "resetDateLabel": "重設日期",
       "resetDateHelp": "每年在這一天重新開始計算。通常是一年的第一天。",
       "expectedLabel": "每次發薪的預期金額",
-      "expectedHelp": "帳單中沒有此類別的項目，因此預測需要每次發薪扣除的金額。",
+      "expectedHelp": "此交易在該類別的行為零，因此預測需要每次薪資通常扣除的金額。",
       "expectedFromLine": "帳單的項目每次發薪扣除 {amount}。",
-      "expectedSuggested": "根據您在此類別中的最近一筆交易建議。",
+      "expectedSuggested": "根據過去一年中您在此類別的交易最常出現的金額建議。",
       "periods": {
         "YEARLY": "每年"
       },
@@ -69,15 +69,21 @@
         "categoryRequired": "請選擇類別",
         "yearlyMaximumRequired": "請輸入年度上限",
         "resetDateRequired": "請輸入重設日期",
-        "expectedRequired": "請輸入每次發薪的預期金額"
-      }
+        "expectedRequired": "請輸入每次發薪的預期金額",
+        "categoryDuplicate": "此類別已在清單中"
+      },
+      "categoriesLegend": "扣款類別",
+      "addCategory": "+ 新增另一個類別",
+      "removeCategory": "移除類別 {index}",
+      "noDeductionLines": "此交易沒有扣款行。請先在交易中將扣款新增為負數拆分行。",
+      "allLinesRuled": "此交易的每個扣款行都已有規則。"
     },
     "delete": {
       "title": "刪除扣款規則",
       "message": "刪除 {bill} 上的 {category} 規則？已記帳的交易不會改變；下一次發薪將記入完整的項目。"
     },
     "toasts": {
-      "created": "扣款規則已建立",
+      "created": "{count, plural, other {已建立 # 條扣款規則}}",
       "updated": "扣款規則已更新",
       "deleted": "扣款規則已刪除",
       "loadFailed": "無法載入薪資扣款",

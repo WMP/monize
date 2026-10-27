@@ -136,6 +136,10 @@ export function invalidateBalanceCaches(): void {
   invalidateCache('investments:');
   invalidateCache('budgets:');
   invalidateCache('warranties:');
+  // A rule's paid-to-date, and the figures the scheduled read model carries
+  // for the forecast, are sums over transaction rows (INV-PAYROLL-003).
+  invalidateCache('payroll-deductions:');
+  invalidateCache('scheduled:');
 }
 
 /**
@@ -144,8 +148,9 @@ export function invalidateBalanceCaches(): void {
  * The `scheduled:all` payload now carries server-derived, current-settlement-pair
  * FX fields (`investmentForecastExchangeRate` / `investmentForecastAmount`, issue
  * #1167). Those are resolved from `exchange_rates` snapshots and from the security's
- * and settlement account's currencies -- none of which a transaction write touches,
- * so this is deliberately NOT part of `invalidateBalanceCaches`. Call it after any
+ * and settlement account's currencies, none of which a transaction write touches.
+ * `invalidateBalanceCaches` drops the family too, for its payroll deduction
+ * figures, but a rate or currency change is not a money write, so it calls this. Call it after any
  * operation that can change one side of a scheduled investment's settlement pair
  * or the rate it resolves at: a successful exchange-rate refresh, an account edit
  * (funding/linked-cash/brokerage currency), or a security edit (currency). Call it

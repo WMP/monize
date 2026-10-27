@@ -135,6 +135,13 @@ interface Occurrence {
   unknown: boolean;
   /** See `ForecastTransaction.overdueOriginalDate`. */
   overdueOriginalDate?: string;
+  /**
+   * The day the occurrence falls on before any overdue carry: the day its
+   * deductions are spent against the room (`spendPayrollDeductions`).
+   */
+  spendDate?: string;
+  /** An override states the amount: it spends room but takes no add-back. */
+  stated?: boolean;
 }
 
 /**
@@ -183,44 +190,122 @@ function advanceOneYear(ymd: string): string {
   return `${y + 1}-${String(m).padStart(2, '0')}-${String(Math.min(d, lastDay)).padStart(2, '0')}`;
 }
 
-/**
- * The payroll deduction rules on a bill, spent occurrence by occurrence
- * (docs/specs/payroll-deductions.md decision 7, INV-PAYROLL-003).
- *
- * Each rule starts from the server's `remaining` -- the room left under the
- * yearly maximum as of today, read from the ledger -- and every occurrence
- * walked spends the expected deduction against it. The part the room cannot
- * cover is what the paycheque stops deducting, so it is added back to the
- * occurrence's amount; an occurrence on or after the reset date refills the
- * room to the maximum first. A rule with no expected figure (no line on the
- * bill and nothing entered) projects nothing, and a bill without rules walks
- * unchanged. `null` when there is nothing to spend.
- */
-function deductionWalker(
-  transaction: ScheduledTransaction,
-): ((dateKey: string, projectAddBack: boolean) => number) | null {
-  const state = (transaction.payrollDeductions ?? [])
+interface DeductionPool {
+  maximum: number;
+  remaining: number;
+  nextResetOn: string;
+}
+
+/** A bill's rules the projection can spend: those with a positive expected figure. */
+function spendableRules(transaction: ScheduledTransaction) {
+  return (transaction.payrollDeductions ?? [])
     .filter(r => r.expectedPerPaycheque != null && Number(r.expectedPerPaycheque) > 0)
     .map(r => ({
+      key: `${r.categoryId}|${r.currencyCode}`,
       expected: Number(r.expectedPerPaycheque),
       maximum: Number(r.yearlyMaximum),
       remaining: Number(r.remaining),
       nextResetOn: r.nextResetOn,
     }));
-  if (state.length === 0) return null;
-  return (dateKey, projectAddBack) => {
-    let addBack = 0;
-    for (const rule of state) {
-      while (dateKey >= rule.nextResetOn) {
-        rule.remaining = rule.maximum;
-        rule.nextResetOn = advanceOneYear(rule.nextResetOn);
+}
+
+/**
+ * The room under each yearly maximum, pooled per category and currency across
+ * every bill that names it (docs/specs/payroll-deductions.md decision 7). Two
+ * paycheques (a mid-month and a month-end) deducting to the same category draw
+ * down one maximum, as the ledger's category-wide paid figure does on the
+ * server. Where their rules differ, the lower ceiling and the earlier reset
+ * bind: the projection errs towards collecting, as the posting cap does.
+ */
+function buildDeductionPools(transactions: ScheduledTransaction[]): Map<string, DeductionPool> {
+  const pools = new Map<string, DeductionPool>();
+  for (const tx of transactions) {
+    if (!tx.isActive) continue;
+    for (const rule of spendableRules(tx)) {
+      const pool = pools.get(rule.key);
+      if (!pool) {
+        pools.set(rule.key, {
+          maximum: rule.maximum,
+          remaining: rule.remaining,
+          nextResetOn: rule.nextResetOn,
+        });
+      } else {
+        pool.maximum = Math.min(pool.maximum, rule.maximum);
+        pool.remaining = Math.min(pool.remaining, rule.remaining);
+        if (rule.nextResetOn < pool.nextResetOn) pool.nextResetOn = rule.nextResetOn;
       }
-      const applied = Math.min(rule.expected, Math.max(0, rule.remaining));
-      rule.remaining = roundMoney(rule.remaining - applied);
-      if (projectAddBack) addBack += rule.expected - applied;
     }
-    return roundMoney(addBack);
-  };
+  }
+  return pools;
+}
+
+/**
+ * Spend the payroll deductions of every bill against the pooled room, in date
+ * order across bills (INV-PAYROLL-003).
+ *
+ * Each pool starts from the server's `remaining` -- the room left under the
+ * yearly maximum as of today, read from the ledger -- and every occurrence
+ * walked spends the bill's own expected deduction against it. The part the
+ * room cannot cover is what the paycheque stops deducting, so it is added back
+ * to the occurrence's amount unless an override stated the amount; an
+ * occurrence on or after the reset date refills the pool to the maximum first.
+ * A rule with no expected figure projects nothing, and a bill without rules
+ * walks unchanged. Mutates the occurrences in place.
+ */
+function spendPayrollDeductions(
+  transactions: ScheduledTransaction[],
+  occurrencesById: Map<string, Occurrence[]>,
+): void {
+  const pools = buildDeductionPools(transactions);
+  if (pools.size === 0) return;
+  const walk: { occurrence: Occurrence; rules: ReturnType<typeof spendableRules> }[] = [];
+  const seen = new Set<string>();
+  for (const tx of transactions) {
+    if (seen.has(tx.id)) continue;
+    seen.add(tx.id);
+    const rules = spendableRules(tx);
+    if (rules.length === 0) continue;
+    for (const occurrence of occurrencesById.get(tx.id) ?? []) {
+      if (occurrence.spendDate !== undefined) walk.push({ occurrence, rules });
+    }
+  }
+  // Stable: two bills on one day spend in the order they were given.
+  walk.sort((a, b) => (a.occurrence.spendDate as string).localeCompare(b.occurrence.spendDate as string));
+  for (const { occurrence, rules } of walk) {
+    const dateKey = occurrence.spendDate as string;
+    let addBack = 0;
+    for (const rule of rules) {
+      const pool = pools.get(rule.key) as DeductionPool;
+      while (dateKey >= pool.nextResetOn) {
+        pool.remaining = pool.maximum;
+        pool.nextResetOn = advanceOneYear(pool.nextResetOn);
+      }
+      const applied = Math.min(rule.expected, Math.max(0, pool.remaining));
+      pool.remaining = roundMoney(pool.remaining - applied);
+      if (!occurrence.stated) addBack += rule.expected - applied;
+    }
+    occurrence.amount = roundMoney(occurrence.amount + roundMoney(addBack));
+  }
+}
+
+/**
+ * The occurrences of every schedule in the window, keyed by schedule id, with
+ * the payroll deductions spent across all of them. Every surface generates
+ * through this so two bills sharing a deduction category see one room, even
+ * when the surface then reads only one account's bills.
+ */
+function generateAllOccurrences(
+  transactions: ScheduledTransaction[],
+  startDate: Date,
+  endDate: Date,
+  options: { carryOverdue?: boolean } = {},
+): Map<string, Occurrence[]> {
+  const byId = new Map<string, Occurrence[]>();
+  for (const tx of transactions) {
+    if (!byId.has(tx.id)) byId.set(tx.id, generateOccurrences(tx, startDate, endDate, options));
+  }
+  spendPayrollDeductions(transactions, byId);
+  return byId;
 }
 
 /**
@@ -277,8 +362,6 @@ function generateOccurrences(
   // total). Every base occurrence inherits it; so does an override that falls
   // through to the base amount.
   const baseUnknown = hasUnknownForecastRate(transaction);
-  // Spent in walk order, only for occurrences the window keeps.
-  const spendDeductions = deductionWalker(transaction);
 
   // Build override lookup map: originalDate -> override
   const overrideMap = new Map<string, OverrideLookup>();
@@ -329,17 +412,18 @@ function generateOccurrences(
     return { amount: baseAmount, unknown: baseUnknown, stated: false };
   };
 
-  // The occurrence's amount once its deductions are spent against the room
-  // left: an amount an override states is projected as stated and still
-  // spends; the base amount rises by what the room cannot cover.
+  // Deductions are spent later, across every bill (`spendPayrollDeductions`):
+  // the occurrence records the day it falls on and whether an override stated
+  // its amount, which is projected as stated and still spends.
   const withDeductions = (
     resolved: { amount: number; unknown: boolean; stated: boolean },
     dateKey: string,
-  ): { amount: number; unknown: boolean } => {
-    if (!spendDeductions) return resolved;
-    const addBack = spendDeductions(dateKey, !resolved.stated);
-    return { amount: roundMoney(resolved.amount + addBack), unknown: resolved.unknown };
-  };
+  ): Pick<Occurrence, 'amount' | 'unknown' | 'spendDate' | 'stated'> => ({
+    amount: resolved.amount,
+    unknown: resolved.unknown,
+    spendDate: dateKey,
+    stated: resolved.stated,
+  });
 
   // For ONCE frequency, just check if it's in range
   if (transaction.frequency === 'ONCE') {
@@ -350,8 +434,7 @@ function generateOccurrences(
     const effectiveKey = formatDateKey(effectiveDate);
     const placed = place(effectiveTime, effectiveKey, slotKey);
     if (placed && (!txEndTime || effectiveTime <= txEndTime)) {
-      const { amount, unknown } = withDeductions(resolveOccurrence(override), effectiveKey);
-      occurrences.push({ ...placed, amount, unknown });
+      occurrences.push({ ...placed, ...withDeductions(resolveOccurrence(override), effectiveKey) });
     }
     return occurrences;
   }
@@ -385,8 +468,7 @@ function generateOccurrences(
     // carrying, before it)
     const placed = place(effectiveTime, effectiveDateKey, currentDateKey);
     if (placed) {
-      const { amount, unknown } = withDeductions(resolveOccurrence(override), effectiveDateKey);
-      occurrences.push({ ...placed, amount, unknown });
+      occurrences.push({ ...placed, ...withDeductions(resolveOccurrence(override), effectiveDateKey) });
     }
 
     // Every slot walked is one occurrence of the count, wherever it falls --
@@ -749,6 +831,10 @@ export function buildForecast(
         .map(transaction => ({ transaction, isInbound: false }))
     : scheduledFlowsForAccount(transactions, accountId);
 
+  // Every active schedule, not only the relevant ones: a paycheque on another
+  // account draws down the same deduction room.
+  const occurrencesById = generateAllOccurrences(transactions, today, endDate, { carryOverdue: true });
+
   // Generate all occurrences and group by date
   const transactionsByDate = new Map<string, ForecastTransaction[]>();
 
@@ -766,7 +852,7 @@ export function buildForecast(
   for (const { transaction: tx, isInbound } of relevantFlows) {
     // An unposted occurrence due before today lands on today: the bill is
     // still owed (discussion #1784).
-    const occurrences = generateOccurrences(tx, today, endDate, { carryOverdue: true });
+    const occurrences = occurrencesById.get(tx.id) ?? [];
     const txAccountId = isInbound ? (tx.transferAccountId ?? tx.accountId) : tx.accountId;
     for (const occ of occurrences) {
       const existing = transactionsByDate.get(occ.date) || [];
@@ -908,6 +994,9 @@ export function buildMultiAccountForecast(
   const startingBalances = new Map<string, number>();
   const flowsByAccount = new Map<string, Map<string, ForecastTransaction[]>>();
 
+  // Across every schedule, so bills on different accounts share one room.
+  const occurrencesById = generateAllOccurrences(normalized, today, endDate, { carryOverdue: true });
+
   for (const account of targetAccounts) {
     startingBalances.set(
       account.id,
@@ -932,7 +1021,7 @@ export function buildMultiAccountForecast(
     }
 
     for (const { transaction, isInbound } of scheduledFlowsForAccount(normalized, account.id)) {
-      for (const occ of generateOccurrences(transaction, today, endDate, { carryOverdue: true })) {
+      for (const occ of occurrencesById.get(transaction.id) ?? []) {
         // Unresolved current FX for an investment occurrence withholds the whole
         // result (issue #1167), the same as a missing display-currency rate. The
         // flag is per-occurrence (F5-2).
@@ -1078,8 +1167,15 @@ export function getProjectedBalanceAtDate(
     relevant.filter(t => isTransfer(t) && t.transferAccountId === account.id && t.accountId !== account.id).map(t => t.id)
   );
 
+  // The excluded schedule is the one being posted: it neither counts here nor
+  // spends room the others would have had.
+  const occurrencesById = generateAllOccurrences(
+    scheduledTransactions.filter(t => !excludeScheduledId || t.id !== excludeScheduledId),
+    today,
+    endDate,
+  );
   for (const tx of relevant) {
-    const occurrences = generateOccurrences(tx, today, endDate);
+    const occurrences = occurrencesById.get(tx.id) ?? [];
     const isInbound = inboundTransferIds.has(tx.id);
     for (const occ of occurrences) {
       // An investment occurrence whose current FX rate is unknown (issue #1167)

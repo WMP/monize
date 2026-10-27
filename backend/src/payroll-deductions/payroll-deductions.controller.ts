@@ -21,6 +21,7 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import {
   CreatePayrollDeductionRuleDto,
+  CreatePayrollDeductionRulesDto,
   UpdatePayrollDeductionRuleDto,
 } from "./dto/create-payroll-deduction-rule.dto";
 import {
@@ -77,6 +78,23 @@ export class PayrollDeductionsController {
     @Body() dto: CreatePayrollDeductionRuleDto,
   ): Promise<PayrollDeductionRuleView> {
     return this.service.create(req.user.id, dto);
+  }
+
+  @Post("batch")
+  @ApiOperation({
+    summary: "Create one rule per category of a bill, atomically",
+  })
+  @ApiResponse({ status: 201, description: "The created rules, in order" })
+  @ApiResponse({ status: 400, description: "A line lacks its expected amount" })
+  @ApiResponse({
+    status: 409,
+    description: "A category repeats, or the bill already has it",
+  })
+  createMany(
+    @Request() req,
+    @Body() dto: CreatePayrollDeductionRulesDto,
+  ): Promise<PayrollDeductionRuleView[]> {
+    return this.service.createMany(req.user.id, dto);
   }
 
   @Patch(":id")

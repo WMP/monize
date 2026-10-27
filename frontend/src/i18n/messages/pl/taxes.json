@@ -13,12 +13,12 @@
     "title": "Potrącenia z wynagrodzenia",
     "subtitle": "Roczne maksima dla pozycji potrąceń w rachunku wynagrodzenia",
     "backToTaxes": "Podatki",
-    "newButton": "+ Nowa reguła",
+    "newButton": "+ Nowe reguły",
     "loading": "Ładowanie potrąceń z wynagrodzenia...",
     "emptyState": {
       "title": "Brak reguł potrąceń",
-      "body": "Wybierz zaplanowany rachunek będący Twoją wypłatą, kategorię potrącenia i jej roczne maksimum. Rachunek przestaje je pobierać po osiągnięciu maksimum i zaczyna od nowa w dniu resetu.",
-      "createButton": "Utwórz pierwszą regułę"
+      "body": "Wybierz zaplanowaną transakcję będącą Twoją wypłatą, jej kategorie potrąceń i ustaw roczny limit dla każdej z nich. Transakcja przestaje pobierać potrącenie po osiągnięciu limitu i zaczyna od nowa w dniu resetu.",
+      "createButton": "Utwórz pierwsze reguły"
     },
     "yearToDate": {
       "show": "Pokaż narastająco w roku",
@@ -43,24 +43,24 @@
       "periodRange": "Od {start} do {end}"
     },
     "modal": {
-      "newTitle": "Nowa reguła potrącenia",
+      "newTitle": "Nowe reguły potrąceń",
       "editTitle": "Edytuj regułę potrącenia"
     },
     "form": {
       "billLabel": "Zaplanowany rachunek wynagrodzenia",
       "billPlaceholder": "Wybierz rachunek będący Twoją wypłatą",
-      "billHelp": "Zaplanowana wpłata, której pozycje zawierają potrącenia. Ograniczyć można tylko jej pozycje kategorii.",
-      "categoryLabel": "Kategoria potrącenia",
-      "categoryPlaceholder": "Wybierz kategorię",
+      "billHelp": "Zaplanowana wpłata, której pozycje zawierają potrącenia. Oferowane są tylko transakcje, które wpłacają więcej, niż pobierają, i tylko ich pozycje potrąceń można ograniczyć.",
+      "categoryLabel": "Kategoria potrącenia {index}",
+      "categoryPlaceholder": "Wybierz pozycję potrącenia",
       "yearlyMaximumLabel": "Roczne maksimum",
       "yearlyMaximumHelp": "Najwięcej, ile ta kategoria pobiera w jednym okresie, w walucie rachunku. Pozycja jest zmniejszana do pozostałego zapasu, aż do zera.",
       "resetPeriodLabel": "Reset",
       "resetDateLabel": "Data resetu",
       "resetDateHelp": "Liczenie zaczyna się od nowa tego dnia każdego roku. Zwykle pierwszy dzień roku.",
       "expectedLabel": "Oczekiwane na wypłatę",
-      "expectedHelp": "Rachunek nie ma pozycji dla tej kategorii, więc prognoza potrzebuje kwoty potrącanej z każdej wypłaty.",
+      "expectedHelp": "Pozycja transakcji dla tej kategorii wynosi zero, więc prognoza potrzebuje kwoty, jaką zwykle potrąca każda wypłata.",
       "expectedFromLine": "Pozycja rachunku potrąca {amount} na wypłatę.",
-      "expectedSuggested": "Zasugerowano na podstawie Twojej ostatniej transakcji w tej kategorii.",
+      "expectedSuggested": "Zasugerowano na podstawie kwoty, która najczęściej występuje w Twoich transakcjach w tej kategorii w ostatnim roku.",
       "periods": {
         "YEARLY": "Rocznie"
       },
@@ -69,15 +69,21 @@
         "categoryRequired": "Wybierz kategorię",
         "yearlyMaximumRequired": "Wpisz roczne maksimum",
         "resetDateRequired": "Wpisz datę resetu",
-        "expectedRequired": "Wpisz oczekiwaną kwotę na wypłatę"
-      }
+        "expectedRequired": "Wpisz oczekiwaną kwotę na wypłatę",
+        "categoryDuplicate": "Ta kategoria jest już na liście"
+      },
+      "categoriesLegend": "Kategorie potrąceń",
+      "addCategory": "+ Dodaj kolejną kategorię",
+      "removeCategory": "Usuń kategorię {index}",
+      "noDeductionLines": "Ta transakcja nie ma pozycji potrąceń. Najpierw dodaj potrącenia jako ujemne pozycje podziału na transakcji.",
+      "allLinesRuled": "Każda pozycja potrącenia tej transakcji ma już regułę."
     },
     "delete": {
       "title": "Usuń regułę potrącenia",
       "message": "Usunąć regułę {category} w {bill}? Zaksięgowane transakcje się nie zmieniają; następna wypłata zaksięguje pełną pozycję."
     },
     "toasts": {
-      "created": "Utworzono regułę potrącenia",
+      "created": "{count, plural, one {Utworzono regułę potrącenia} few {Utworzono # reguły potrąceń} many {Utworzono # reguł potrąceń} other {Utworzono # reguły potrąceń}}",
       "updated": "Zaktualizowano regułę potrącenia",
       "deleted": "Usunięto regułę potrącenia",
       "loadFailed": "Nie udało się załadować potrąceń z wynagrodzenia",

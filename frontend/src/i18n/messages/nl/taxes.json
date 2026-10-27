@@ -13,12 +13,12 @@
     "title": "Looninhoudingen",
     "subtitle": "Jaarmaxima op de inhoudingsregels van uw loonrekening",
     "backToTaxes": "Belastingen",
-    "newButton": "+ Nieuwe regel",
+    "newButton": "+ Nieuwe regels",
     "loading": "Looninhoudingen laden...",
     "emptyState": {
       "title": "Nog geen inhoudingsregels",
-      "body": "Kies de geplande rekening die uw loonstrook is, een inhoudingscategorie en het jaarmaximum ervan. De rekening stopt met innen zodra het maximum is bereikt en begint opnieuw op de resetdatum.",
-      "createButton": "Maak uw eerste regel"
+      "body": "Kies de geplande transactie die uw loonstrook is, kies de inhoudingscategorieën en stel voor elk een jaarmaximum in. De transactie stopt met het innen van een inhouding zodra het maximum is bereikt en begint opnieuw op de resetdatum.",
+      "createButton": "Maak uw eerste regels"
     },
     "yearToDate": {
       "show": "Jaar tot nu toe tonen",
@@ -43,24 +43,24 @@
       "periodRange": "{start} tot {end}"
     },
     "modal": {
-      "newTitle": "Nieuwe inhoudingsregel",
+      "newTitle": "Nieuwe inhoudingsregels",
       "editTitle": "Inhoudingsregel bewerken"
     },
     "form": {
       "billLabel": "Geplande loonrekening",
       "billPlaceholder": "Selecteer de rekening die uw loonstrook is",
-      "billHelp": "De geplande storting waarvan de regels de inhoudingen bevatten. Alleen de categorieregels ervan kunnen worden begrensd.",
-      "categoryLabel": "Inhoudingscategorie",
-      "categoryPlaceholder": "Selecteer een categorie",
+      "billHelp": "De geplande storting waarvan de regels de inhoudingen bevatten. Alleen transacties die meer storten dan ze inhouden worden aangeboden, en alleen hun inhoudingsregels kunnen worden begrensd.",
+      "categoryLabel": "Inhoudingscategorie {index}",
+      "categoryPlaceholder": "Selecteer een inhoudingsregel",
       "yearlyMaximumLabel": "Jaarmaximum",
       "yearlyMaximumHelp": "Het meeste dat deze categorie in één periode int, in de valuta van de rekening. De regel wordt verlaagd tot de resterende ruimte, tot nul.",
       "resetPeriodLabel": "Reset",
       "resetDateLabel": "Resetdatum",
       "resetDateHelp": "De telling begint elk jaar op deze dag opnieuw. Meestal de eerste dag van het jaar.",
       "expectedLabel": "Verwacht per loonstrook",
-      "expectedHelp": "De rekening heeft geen regel voor deze categorie, dus de prognose heeft het bedrag nodig dat elke loonstrook inhoudt.",
+      "expectedHelp": "De regel van de transactie voor deze categorie is nul, dus de prognose heeft het bedrag nodig dat elke loonstrook gewoonlijk inhoudt.",
       "expectedFromLine": "De regel van de rekening houdt {amount} per loonstrook in.",
-      "expectedSuggested": "Voorgesteld op basis van uw meest recente transactie in deze categorie.",
+      "expectedSuggested": "Voorgesteld op basis van het bedrag dat uw transacties in deze categorie het afgelopen jaar het vaakst tonen.",
       "periods": {
         "YEARLY": "Jaarlijks"
       },
@@ -69,15 +69,21 @@
         "categoryRequired": "Kies een categorie",
         "yearlyMaximumRequired": "Voer het jaarmaximum in",
         "resetDateRequired": "Voer de resetdatum in",
-        "expectedRequired": "Voer het verwachte bedrag per loonstrook in"
-      }
+        "expectedRequired": "Voer het verwachte bedrag per loonstrook in",
+        "categoryDuplicate": "Deze categorie staat al in de lijst"
+      },
+      "categoriesLegend": "Inhoudingscategorieën",
+      "addCategory": "+ Nog een categorie toevoegen",
+      "removeCategory": "Categorie {index} verwijderen",
+      "noDeductionLines": "Deze transactie heeft geen inhoudingsregels. Voeg de inhoudingen eerst toe als negatieve splitsregels op de transactie.",
+      "allLinesRuled": "Elke inhoudingsregel van deze transactie heeft al een regel."
     },
     "delete": {
       "title": "Inhoudingsregel verwijderen",
       "message": "De regel {category} op {bill} verwijderen? Geboekte transacties veranderen niet; de volgende loonstrook boekt de volledige regel."
     },
     "toasts": {
-      "created": "Inhoudingsregel aangemaakt",
+      "created": "{count, plural, one {Inhoudingsregel aangemaakt} other {# inhoudingsregels aangemaakt}}",
       "updated": "Inhoudingsregel bijgewerkt",
       "deleted": "Inhoudingsregel verwijderd",
       "loadFailed": "Looninhoudingen konden niet worden geladen",

@@ -2,6 +2,7 @@ import apiClient from './api';
 import { dedupe, invalidateCache } from './apiCache';
 import type {
   CreatePayrollDeductionRuleData,
+  CreatePayrollDeductionRulesData,
   ExpectedAmountSuggestion,
   PayrollDeductionRule,
   UpdatePayrollDeductionRuleData,
@@ -46,6 +47,13 @@ export const payrollDeductionsApi = {
 
   create: async (data: CreatePayrollDeductionRuleData): Promise<PayrollDeductionRule> => {
     const response = await apiClient.post<PayrollDeductionRule>('/payroll-deductions', data);
+    afterWrite();
+    return response.data;
+  },
+
+  /** Every line of one bill in one request; none is written when one is refused. */
+  createMany: async (data: CreatePayrollDeductionRulesData): Promise<PayrollDeductionRule[]> => {
+    const response = await apiClient.post<PayrollDeductionRule[]>('/payroll-deductions/batch', data);
     afterWrite();
     return response.data;
   },

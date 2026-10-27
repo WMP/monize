@@ -13,12 +13,12 @@
     "title": "Retenues salariales",
     "subtitle": "Maximums annuels sur les lignes de retenue de votre facture de paie",
     "backToTaxes": "Impôts",
-    "newButton": "+ Nouvelle règle",
+    "newButton": "+ Nouvelles règles",
     "loading": "Chargement des retenues salariales...",
     "emptyState": {
       "title": "Aucune règle de retenue pour l'instant",
-      "body": "Choisissez la facture planifiée qui est votre paie, une catégorie de retenue et son maximum annuel. La facture cesse de la prélever une fois le maximum atteint et recommence à la date de réinitialisation.",
-      "createButton": "Créer votre première règle"
+      "body": "Choisissez l'opération planifiée qui est votre paie, ses catégories de retenue et un maximum annuel pour chacune. L'opération cesse de prélever une retenue une fois son maximum atteint et recommence à la date de réinitialisation.",
+      "createButton": "Créer vos premières règles"
     },
     "yearToDate": {
       "show": "Afficher le cumul de l'année",
@@ -43,24 +43,24 @@
       "periodRange": "Du {start} au {end}"
     },
     "modal": {
-      "newTitle": "Nouvelle règle de retenue",
+      "newTitle": "Nouvelles règles de retenue",
       "editTitle": "Modifier la règle de retenue"
     },
     "form": {
       "billLabel": "Facture de paie planifiée",
       "billPlaceholder": "Sélectionnez la facture qui est votre paie",
-      "billHelp": "Le dépôt planifié dont les lignes portent les retenues. Seules ses lignes de catégorie peuvent être plafonnées.",
-      "categoryLabel": "Catégorie de retenue",
-      "categoryPlaceholder": "Sélectionnez une catégorie",
+      "billHelp": "Le dépôt planifié dont les lignes portent les retenues. Seules les opérations qui versent plus qu'elles ne prélèvent sont proposées, et seules leurs lignes de retenue peuvent être plafonnées.",
+      "categoryLabel": "Catégorie de retenue {index}",
+      "categoryPlaceholder": "Sélectionnez une ligne de retenue",
       "yearlyMaximumLabel": "Maximum annuel",
       "yearlyMaximumHelp": "Le plus que cette catégorie prélève sur une période, dans la devise de la facture. La ligne est réduite à la marge restante, jusqu'à zéro.",
       "resetPeriodLabel": "Réinitialisation",
       "resetDateLabel": "Date de réinitialisation",
       "resetDateHelp": "Le décompte repart de ce jour chaque année. Généralement le premier jour de l'année.",
       "expectedLabel": "Attendu par paie",
-      "expectedHelp": "La facture n'a pas de ligne pour cette catégorie ; la prévision a donc besoin du montant que chaque paie retient.",
+      "expectedHelp": "La ligne de l'opération pour cette catégorie est à zéro ; la prévision a donc besoin du montant que chaque paie retient habituellement.",
       "expectedFromLine": "La ligne de la facture retient {amount} par paie.",
-      "expectedSuggested": "Suggéré d'après votre transaction la plus récente dans cette catégorie.",
+      "expectedSuggested": "Suggéré d'après le montant que vos opérations de cette catégorie affichent le plus souvent sur la dernière année.",
       "periods": {
         "YEARLY": "Annuel"
       },
@@ -69,15 +69,21 @@
         "categoryRequired": "Choisissez une catégorie",
         "yearlyMaximumRequired": "Saisissez le maximum annuel",
         "resetDateRequired": "Saisissez la date de réinitialisation",
-        "expectedRequired": "Saisissez le montant attendu par paie"
-      }
+        "expectedRequired": "Saisissez le montant attendu par paie",
+        "categoryDuplicate": "Cette catégorie est déjà dans la liste"
+      },
+      "categoriesLegend": "Catégories de retenue",
+      "addCategory": "+ Ajouter une autre catégorie",
+      "removeCategory": "Retirer la catégorie {index}",
+      "noDeductionLines": "Cette opération n'a aucune ligne de retenue. Ajoutez d'abord les retenues comme lignes ventilées négatives sur l'opération.",
+      "allLinesRuled": "Chaque ligne de retenue de cette opération a déjà une règle."
     },
     "delete": {
       "title": "Supprimer la règle de retenue",
       "message": "Supprimer la règle {category} sur {bill} ? Les transactions enregistrées ne changent pas ; la prochaine paie enregistre sa ligne complète."
     },
     "toasts": {
-      "created": "Règle de retenue créée",
+      "created": "{count, plural, one {Règle de retenue créée} other {# règles de retenue créées}}",
       "updated": "Règle de retenue mise à jour",
       "deleted": "Règle de retenue supprimée",
       "loadFailed": "Échec du chargement des retenues salariales",

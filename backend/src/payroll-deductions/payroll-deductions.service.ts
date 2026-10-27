@@ -15,6 +15,8 @@ import { ScheduledTransaction } from "../scheduled-transactions/entities/schedul
 import { ScheduledTransactionSplit } from "../scheduled-transactions/entities/scheduled-transaction-split.entity";
 import {
   CreatePayrollDeductionRuleDto,
+  CreatePayrollDeductionRulesDto,
+  PayrollDeductionLineDto,
   UpdatePayrollDeductionRuleDto,
 } from "./dto/create-payroll-deduction-rule.dto";
 import { PayrollDeductionRule } from "./entities/payroll-deduction-rule.entity";
@@ -23,6 +25,14 @@ import {
   resolveExpectedPerPaycheque,
   resolvePayrollDeductionFigures,
 } from "./payroll-deduction-cap";
+import { subtractMonths } from "./payroll-deduction-period";
+
+/**
+ * How far back the suggestion reads the ledger. Deduction rates change once
+ * a year, so a year of paycheques holds one rate more often than any other;
+ * a longer window would let last year's rate outvote this year's.
+ */
+export const SUGGESTION_WINDOW_MONTHS = 12;
 
 /** A rule as the page reads it: the row, its names and today's figures. */
 export type PayrollDeductionRuleView = PayrollDeductionRule &
@@ -31,10 +41,14 @@ export type PayrollDeductionRuleView = PayrollDeductionRule &
     scheduledTransactionName: string;
   };
 
-/** What `GET /payroll-deductions/suggest` answers (decision 3). */
+/**
+ * What `GET /payroll-deductions/suggest` answers (decision 3): `line` is the
+ * bill's own figure, `ledger` the magnitude the category's deduction rows
+ * most often carry in the last `SUGGESTION_WINDOW_MONTHS`.
+ */
 export interface ExpectedAmountSuggestion {
   expectedPerPaycheque: number | null;
-  expectedSource: "line" | "recent" | null;
+  expectedSource: "line" | "ledger" | null;
 }
 
 /**
@@ -69,14 +83,18 @@ export class PayrollDeductionsService {
 
   /**
    * The expected amount a new rule could start from: the bill's line for the
-   * category, else the most recent row of the category in the ledger, else
-   * nothing (the form then insists on a figure).
+   * category, else the magnitude the category's deduction rows most often
+   * carry over the last year (ties go to the more recently seen figure), else
+   * nothing (the form then insists on a figure). A single row is one paycheque;
+   * the mode is the figure the paycheque usually deducts, which the latest row
+   * is not once the line has been capped or a rate has changed.
    */
   async suggestExpected(
     userId: string,
     scheduledTransactionId: string,
     categoryId: string,
   ): Promise<ExpectedAmountSuggestion> {
+    const since = subtractMonths(todayYMD(), SUGGESTION_WINDOW_MONTHS);
     return withScopedDb(this.dataSource, async (m) => {
       const schedule = await this.ownedSchedule(
         m,
@@ -110,24 +128,50 @@ export class PayrollDeductionsService {
                   AND t.status <> 'VOID'
                   AND t.currency_code = $3
              ) x
-            WHERE x.amount < 0
-            ORDER BY x.transaction_date DESC, x.created_at DESC
+            WHERE x.amount < 0 AND x.transaction_date >= $4
+            GROUP BY x.amount
+            ORDER BY COUNT(*) DESC, MAX(x.transaction_date) DESC
             LIMIT 1`,
-          [userId, categoryId, schedule.currencyCode],
+          [userId, categoryId, schedule.currencyCode, since],
         ),
       );
-      const recent = rows[0] ? roundMoney(-Number(rows[0].amount)) : null;
+      const usual = rows[0] ? roundMoney(-Number(rows[0].amount)) : null;
       return {
-        expectedPerPaycheque: recent,
-        expectedSource: recent === null ? null : "recent",
+        expectedPerPaycheque: usual,
+        expectedSource: usual === null ? null : "ledger",
       };
     });
   }
 
+  /** One rule: the single-line form of `createMany`. */
   async create(
     userId: string,
     dto: CreatePayrollDeductionRuleDto,
   ): Promise<PayrollDeductionRuleView> {
+    const [view] = await this.createMany(userId, {
+      scheduledTransactionId: dto.scheduledTransactionId,
+      resetPeriod: dto.resetPeriod,
+      resetDate: dto.resetDate,
+      lines: [
+        {
+          categoryId: dto.categoryId,
+          yearlyMaximum: dto.yearlyMaximum,
+          expectedPerPaycheque: dto.expectedPerPaycheque,
+        },
+      ],
+    });
+    return view;
+  }
+
+  /**
+   * Several categories of one bill in one transaction: every ownership,
+   * duplicate and expected-amount check runs before the first row is saved,
+   * so a refused line leaves no sibling behind (AGENTS.md, "Transactions").
+   */
+  async createMany(
+    userId: string,
+    dto: CreatePayrollDeductionRulesDto,
+  ): Promise<PayrollDeductionRuleView[]> {
     const today = todayYMD();
     return withScopedDb(this.dataSource, async (m) => {
       const schedule = await this.ownedSchedule(
@@ -135,46 +179,72 @@ export class PayrollDeductionsService {
         userId,
         dto.scheduledTransactionId,
       );
-      await this.ownedCategory(m, userId, dto.categoryId);
       const repo = m.getRepository(PayrollDeductionRule);
-      const duplicate = await repo.findOne({
-        where: {
-          userId,
-          scheduledTransactionId: dto.scheduledTransactionId,
-          categoryId: dto.categoryId,
-        },
-      });
-      if (duplicate) {
-        throw new ConflictException(
-          tr(
-            "errors.payrollDeductions.duplicate",
-            "This bill already has a rule for that category",
+      const seen = new Set<string>();
+      const rows: Partial<PayrollDeductionRule>[] = [];
+      for (const line of dto.lines) {
+        if (seen.has(line.categoryId)) throw this.duplicate();
+        seen.add(line.categoryId);
+        rows.push(await this.prepareLine(m, userId, schedule, dto, line));
+      }
+      const views: PayrollDeductionRuleView[] = [];
+      for (const row of rows) {
+        const saved = await repo.save(repo.create(row));
+        views.push(
+          await this.toView(
+            m,
+            userId,
+            await this.reload(m, userId, saved.id),
+            today,
           ),
         );
       }
-      const expected = this.expectedOrRefuse(
-        schedule,
-        dto.categoryId,
-        dto.expectedPerPaycheque,
-      );
-      const saved = await repo.save(
-        repo.create({
-          userId,
-          scheduledTransactionId: dto.scheduledTransactionId,
-          categoryId: dto.categoryId,
-          yearlyMaximum: roundMoney(dto.yearlyMaximum),
-          resetPeriod: dto.resetPeriod ?? "YEARLY",
-          resetDate: dto.resetDate,
-          expectedPerPaycheque: expected,
-        }),
-      );
-      return this.toView(
-        m,
-        userId,
-        await this.reload(m, userId, saved.id),
-        today,
-      );
+      return views;
     });
+  }
+
+  /** The row one line becomes, after every check that can refuse it. */
+  private async prepareLine(
+    m: EntityManager,
+    userId: string,
+    schedule: ScheduledTransaction,
+    shared: Pick<
+      CreatePayrollDeductionRulesDto,
+      "scheduledTransactionId" | "resetPeriod" | "resetDate"
+    >,
+    line: PayrollDeductionLineDto,
+  ): Promise<Partial<PayrollDeductionRule>> {
+    await this.ownedCategory(m, userId, line.categoryId);
+    const duplicate = await m.getRepository(PayrollDeductionRule).findOne({
+      where: {
+        userId,
+        scheduledTransactionId: shared.scheduledTransactionId,
+        categoryId: line.categoryId,
+      },
+    });
+    if (duplicate) throw this.duplicate();
+    return {
+      userId,
+      scheduledTransactionId: shared.scheduledTransactionId,
+      categoryId: line.categoryId,
+      yearlyMaximum: roundMoney(line.yearlyMaximum),
+      resetPeriod: shared.resetPeriod ?? "YEARLY",
+      resetDate: shared.resetDate,
+      expectedPerPaycheque: this.expectedOrRefuse(
+        schedule,
+        line.categoryId,
+        line.expectedPerPaycheque,
+      ),
+    };
+  }
+
+  private duplicate(): ConflictException {
+    return new ConflictException(
+      tr(
+        "errors.payrollDeductions.duplicate",
+        "This bill already has a rule for that category",
+      ),
+    );
   }
 
   async update(
@@ -205,14 +275,7 @@ export class PayrollDeductionsService {
         const duplicate = await repo.findOne({
           where: { userId, scheduledTransactionId, categoryId },
         });
-        if (duplicate && duplicate.id !== id) {
-          throw new ConflictException(
-            tr(
-              "errors.payrollDeductions.duplicate",
-              "This bill already has a rule for that category",
-            ),
-          );
-        }
+        if (duplicate && duplicate.id !== id) throw this.duplicate();
       }
       const expected = this.expectedOrRefuse(
         schedule,

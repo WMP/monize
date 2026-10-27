@@ -17,7 +17,7 @@
     "loading": "Đang tải khấu trừ lương...",
     "emptyState": {
       "title": "Chưa có quy tắc khấu trừ",
-      "body": "Chọn hóa đơn định kỳ là kỳ lương của bạn, chọn danh mục khấu trừ và đặt mức tối đa hằng năm. Hóa đơn ngừng thu khi đạt mức tối đa và bắt đầu lại vào ngày đặt lại.",
+      "body": "Chọn giao dịch định kỳ là lương của bạn, chọn các danh mục khấu trừ và đặt mức tối đa hằng năm cho từng danh mục. Giao dịch ngừng thu một khoản khấu trừ khi đạt mức tối đa và bắt đầu lại vào ngày đặt lại.",
       "createButton": "Tạo quy tắc đầu tiên"
     },
     "yearToDate": {
@@ -49,18 +49,18 @@
     "form": {
       "billLabel": "Hóa đơn lương định kỳ",
       "billPlaceholder": "Chọn hóa đơn là kỳ lương của bạn",
-      "billHelp": "Khoản tiền gửi định kỳ có các dòng chứa khoản khấu trừ. Chỉ các dòng danh mục của nó mới có thể bị giới hạn.",
-      "categoryLabel": "Danh mục khấu trừ",
-      "categoryPlaceholder": "Chọn một danh mục",
+      "billHelp": "Khoản nạp định kỳ có các dòng chứa khoản khấu trừ. Chỉ các giao dịch nạp vào nhiều hơn khấu trừ mới được đưa ra, và chỉ các dòng khấu trừ của chúng mới có thể bị giới hạn.",
+      "categoryLabel": "Danh mục khấu trừ {index}",
+      "categoryPlaceholder": "Chọn một dòng khấu trừ",
       "yearlyMaximumLabel": "Tối đa hằng năm",
       "yearlyMaximumHelp": "Số tiền tối đa danh mục này thu trong một kỳ, theo tiền tệ của hóa đơn. Dòng được giảm xuống phần còn lại, cho đến 0.",
       "resetPeriodLabel": "Đặt lại",
       "resetDateLabel": "Ngày đặt lại",
       "resetDateHelp": "Việc tính bắt đầu lại vào ngày này mỗi năm. Thường là ngày đầu năm.",
       "expectedLabel": "Dự kiến mỗi kỳ lương",
-      "expectedHelp": "Hóa đơn không có dòng cho danh mục này, nên dự báo cần số tiền mỗi kỳ lương khấu trừ.",
+      "expectedHelp": "Dòng của giao dịch cho danh mục này bằng không, nên dự báo cần số tiền mà mỗi kỳ lương thường khấu trừ.",
       "expectedFromLine": "Dòng của hóa đơn khấu trừ {amount} mỗi kỳ lương.",
-      "expectedSuggested": "Gợi ý từ giao dịch gần nhất của bạn trong danh mục này.",
+      "expectedSuggested": "Được đề xuất từ số tiền xuất hiện nhiều nhất trong các giao dịch của bạn ở danh mục này trong năm qua.",
       "periods": {
         "YEARLY": "Hằng năm"
       },
@@ -69,15 +69,21 @@
         "categoryRequired": "Chọn một danh mục",
         "yearlyMaximumRequired": "Nhập mức tối đa hằng năm",
         "resetDateRequired": "Nhập ngày đặt lại",
-        "expectedRequired": "Nhập số tiền dự kiến mỗi kỳ lương"
-      }
+        "expectedRequired": "Nhập số tiền dự kiến mỗi kỳ lương",
+        "categoryDuplicate": "Danh mục này đã có trong danh sách"
+      },
+      "categoriesLegend": "Danh mục khấu trừ",
+      "addCategory": "+ Thêm danh mục khác",
+      "removeCategory": "Xóa danh mục {index}",
+      "noDeductionLines": "Giao dịch này không có dòng khấu trừ. Trước tiên hãy thêm các khoản khấu trừ làm dòng chia âm trên giao dịch.",
+      "allLinesRuled": "Mọi dòng khấu trừ của giao dịch này đã có quy tắc."
     },
     "delete": {
       "title": "Xóa quy tắc khấu trừ",
       "message": "Xóa quy tắc {category} trên {bill}? Các giao dịch đã ghi không thay đổi; kỳ lương tiếp theo sẽ ghi đủ dòng của nó."
     },
     "toasts": {
-      "created": "Đã tạo quy tắc khấu trừ",
+      "created": "{count, plural, other {Đã tạo # quy tắc khấu trừ}}",
       "updated": "Đã cập nhật quy tắc khấu trừ",
       "deleted": "Đã xóa quy tắc khấu trừ",
       "loadFailed": "Không tải được khấu trừ lương",

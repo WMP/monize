@@ -15,7 +15,16 @@ start again at the next year's figure.
 - A **rule** names the payroll scheduled bill, one category of that bill, the
   yearly maximum deducted to that category, when the count resets (Yearly, on a
   chosen date, usually 1 January) and, only when the bill carries no line for
-  the category, the amount expected per paycheque.
+  the category, the amount expected per paycheque. The form creates the rules
+  of one bill together: the bill and the reset are shared, each category row
+  carries its own maximum, and the batch is one request (section 5.2).
+- The form offers as the bill only an active, non-investment, non-transfer
+  schedule whose amount is a net income (a paycheque pays in more than it
+  takes out), and as categories only that bill's deduction lines: split lines
+  with a category and a non-positive amount (`billDeductionCategoryIds`). The
+  gross line is not a deduction; a zero line is one the bill stopped
+  collecting, which a rule may resume. A category the bill already has a rule
+  for is not offered again.
 - When the bill **posts** (automatically or from the Post dialog), each
   deduction line of a category with a rule is reduced to what room is left
   under the maximum, down to zero. The parent amount follows.
@@ -51,7 +60,13 @@ start again at the next year's figure.
    has a split line for the category, that line's magnitude is the expected
    amount and the stored `expected_per_paycheque` is ignored. When it has no
    such line, the user must enter one; the projection uses it, and the posting
-   has nothing to cap. `expectedSource` in the read model says which.
+   has nothing to cap. `expectedSource` in the read model says which. The
+   figure the form suggests for an entered amount is the magnitude the
+   category's deduction rows most often carry over the last twelve months
+   (`SUGGESTION_WINDOW_MONTHS`), ties to the more recently seen figure; the
+   latest row alone is not it, because the last paycheque of a year is often
+   capped or zeroed, and a longer window lets last year's rate outvote this
+   year's.
 4. **Reset is Yearly, on a date.** `reset_date` is the anchor; a period runs
    from one anniversary of its month and day to the day before the next. The
    29th of February clamps to the 28th in a common year. The enumeration
@@ -73,7 +88,14 @@ start again at the next year's figure.
    uncollected part back to the occurrence's amount, and refills the room to
    the maximum when an occurrence falls after the period's end. An occurrence
    whose override states its own amount is projected as stated and still
-   spends the expected amount.
+   spends the expected amount. **The room is one per category and currency,
+   shared by every bill that names it** (`buildDeductionPools`): two
+   paycheques deducting to the same category, a mid-month and a month-end,
+   draw down one maximum, spent in date order across both bills and across
+   every account, as the category-wide paid figure does on the server. Each
+   bill spends its own expected figure. Where two rules on one category
+   differ, the lower maximum, the lower remaining and the earlier reset bind:
+   the projection errs towards collecting, as the posting cap does.
 8. **The reminder opens two calendar months before the reset date** and is
    keyed on the rule and that reset date, so it fires once per period.
 9. **The page is owner-only.** The Tools entry is hidden while acting as a
@@ -124,9 +146,13 @@ Direct RLS policy on `user_id`. Exported in the portable backup after
 
 - `GET /` the user's rules with their figures as of today.
 - `GET /suggest?scheduledTransactionId&categoryId` the expected amount the
-  bill's line gives, or the most recent row of the category when the bill has
-  no line, or `null`.
-- `POST /`, `PATCH /:id`, `DELETE /:id`.
+  bill's line gives, or the mode of the category's deduction rows over the
+  last year when the bill has no line (decision 3), or `null`.
+- `POST /` one rule; `POST /batch` several categories of one bill sharing a
+  reset, every ownership, duplicate and expected-amount check before the
+  first `INSERT` in one `withScopedDb` transaction, so a refused line writes
+  nothing (`PAYROLL_BATCH_MAX_LINES` lines at most); `PATCH /:id`,
+  `DELETE /:id`.
 
 ### 5.3 Figures (`PayrollDeductionFigures`, on a rule and on the read model)
 
@@ -206,6 +232,13 @@ parent rises by 64.00. First occurrence of 2027: room 1,077.48 again.
 - Cron: a rule inside the window writes once; outside it writes nothing;
   a lost insert sends nothing.
 - Frontend: the forecast spends room, adds back the uncollected part, refills
-  after the period end, leaves a bill with no figure untouched; the nav link,
-  the landing page and the Payroll Deductions page render, create, edit,
-  delete and expand the year-to-date table.
+  after the period end, leaves a bill with no figure untouched, pools the room
+  of two bills on one category in date order and across accounts, and lets
+  the lower ceiling bind; the nav link,
+  the landing page and the Payroll Deductions page render, create several
+  categories in one batch, edit, delete and expand the year-to-date table;
+  the form offers only net-income bills and only the bill's deduction lines,
+  less those already ruled.
+- Batch: every line saved in one transaction; a refused later line (missing
+  expected amount, repeated category) saves nothing.
+- Suggestion: the mode of the last year's deduction rows, not the latest.

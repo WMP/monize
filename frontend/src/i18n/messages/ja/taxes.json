@@ -17,7 +17,7 @@
     "loading": "給与控除を読み込んでいます...",
     "emptyState": {
       "title": "控除ルールはまだありません",
-      "body": "給与に当たる予定請求を選び、控除カテゴリとその年間上限額を設定します。上限に達すると請求はその控除を止め、リセット日に再開します。",
+      "body": "給与となる定期取引を選び、その控除カテゴリを選んで、それぞれに年間上限を設定します。上限に達すると取引はその控除の徴収を止め、リセット日に再開します。",
       "createButton": "最初のルールを作成"
     },
     "yearToDate": {
@@ -49,18 +49,18 @@
     "form": {
       "billLabel": "給与の予定請求",
       "billPlaceholder": "給与に当たる請求を選択",
-      "billHelp": "控除を行に持つ予定入金です。上限を適用できるのはそのカテゴリ行だけです。",
-      "categoryLabel": "控除カテゴリ",
-      "categoryPlaceholder": "カテゴリを選択",
+      "billHelp": "控除を行に持つ定期入金です。差し引く額より入金額の方が大きい取引のみが表示され、その控除行のみに上限を設けられます。",
+      "categoryLabel": "控除カテゴリ {index}",
+      "categoryPlaceholder": "控除行を選択",
       "yearlyMaximumLabel": "年間上限額",
       "yearlyMaximumHelp": "このカテゴリが1期間に徴収する最大額（請求の通貨）。行は残りの余地まで、ゼロを下限に減らされます。",
       "resetPeriodLabel": "リセット",
       "resetDateLabel": "リセット日",
       "resetDateHelp": "毎年この日に集計がやり直されます。通常は年の初日です。",
       "expectedLabel": "給与ごとの予定額",
-      "expectedHelp": "この請求にはこのカテゴリの行がないため、予測には各給与で控除される額が必要です。",
+      "expectedHelp": "このカテゴリの取引行はゼロのため、予測には各給与で通常控除される金額が必要です。",
       "expectedFromLine": "請求の行は給与ごとに {amount} を控除します。",
-      "expectedSuggested": "このカテゴリの直近の取引から提案されました。",
+      "expectedSuggested": "過去1年間にこのカテゴリの取引で最も多く見られた金額から提案しています。",
       "periods": {
         "YEARLY": "毎年"
       },
@@ -69,15 +69,21 @@
         "categoryRequired": "カテゴリを選んでください",
         "yearlyMaximumRequired": "年間上限額を入力してください",
         "resetDateRequired": "リセット日を入力してください",
-        "expectedRequired": "給与ごとの予定額を入力してください"
-      }
+        "expectedRequired": "給与ごとの予定額を入力してください",
+        "categoryDuplicate": "このカテゴリはすでに一覧にあります"
+      },
+      "categoriesLegend": "控除カテゴリ",
+      "addCategory": "+ カテゴリを追加",
+      "removeCategory": "カテゴリ {index} を削除",
+      "noDeductionLines": "この取引には控除行がありません。まず控除を負の分割行として取引に追加してください。",
+      "allLinesRuled": "この取引の控除行にはすべてルールが設定されています。"
     },
     "delete": {
       "title": "控除ルールを削除",
       "message": "{bill} の {category} ルールを削除しますか？記帳済みの取引は変わりません。次の給与は行の全額を記帳します。"
     },
     "toasts": {
-      "created": "控除ルールを作成しました",
+      "created": "{count, plural, other {控除ルールを#件作成しました}}",
       "updated": "控除ルールを更新しました",
       "deleted": "控除ルールを削除しました",
       "loadFailed": "給与控除を読み込めませんでした",

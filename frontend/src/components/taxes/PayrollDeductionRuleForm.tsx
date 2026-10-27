@@ -1,13 +1,11 @@
 'use client';
 
-import { MutableRefObject, useCallback, useMemo, useState } from 'react';
+import { MutableRefObject, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Combobox } from '@/components/ui/Combobox';
-import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { DateInput } from '@/components/ui/DateInput';
 import { FormActions } from '@/components/ui/FormActions';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
@@ -15,26 +13,46 @@ import { Select } from '@/components/ui/Select';
 import { useFormDirtyNotify } from '@/hooks/useFormDirtyNotify';
 import { useFormSubmitRef } from '@/hooks/useFormSubmitRef';
 import { useFinancialToday } from '@/hooks/useFinancialToday';
-import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { getCategorySelectOptions } from '@/lib/categoryUtils';
 import { createLogger } from '@/lib/logger';
 import { payrollDeductionsApi } from '@/lib/payroll-deductions';
 import type { Category } from '@/types/category';
 import {
+  PAYROLL_BATCH_MAX_LINES,
   PAYROLL_RESET_PERIODS,
-  type CreatePayrollDeductionRuleData,
+  type CreatePayrollDeductionRulesData,
   type PayrollDeductionRule,
 } from '@/types/payroll-deduction';
 import type { ScheduledTransaction } from '@/types/scheduled-transaction';
+import {
+  PayrollDeductionLineFields,
+  type PayrollDeductionFormValues,
+} from './PayrollDeductionLineFields';
 
 const logger = createLogger('PayrollDeductionRuleForm');
 
 /**
- * The bills a rule can name: active, and neither an investment nor a
- * transfer, since only a category line can be capped (spec decision 5).
+ * The bills a rule can name: active, a net income (a paycheque pays in more
+ * than it takes out), and neither an investment nor a transfer, since only a
+ * category line can be capped (spec decision 5).
  */
 export function payrollBillOptions(scheduled: ScheduledTransaction[]): ScheduledTransaction[] {
-  return scheduled.filter((st) => st.isActive && !st.isInvestment && !st.isTransfer);
+  return scheduled.filter(
+    (st) => st.isActive && !st.isInvestment && !st.isTransfer && Number(st.amount) > 0,
+  );
+}
+
+/**
+ * The categories a rule on `bill` can name: those on its deduction lines, a
+ * split line with a category and a non-positive amount. The gross line is not
+ * a deduction, and a transfer line has no category to cap. A zero line counts:
+ * it is a deduction the bill stopped collecting, which a rule may resume.
+ */
+export function billDeductionCategoryIds(bill: ScheduledTransaction | undefined): string[] {
+  const ids = (bill?.splits ?? [])
+    .filter((s) => s.categoryId && !s.transferAccountId && Number(s.amount) <= 0)
+    .map((s) => s.categoryId as string);
+  return Array.from(new Set(ids));
 }
 
 /** The magnitude of the bill's deduction line for `categoryId`, or `null`. */
@@ -55,58 +73,91 @@ function buildSchema(
   return z
     .object({
       scheduledTransactionId: z.string().min(1, t('form.validation.billRequired')),
-      categoryId: z.string().min(1, t('form.validation.categoryRequired')),
-      yearlyMaximum: z.number({ message: t('form.validation.yearlyMaximumRequired') }).min(0),
       resetPeriod: z.enum(PAYROLL_RESET_PERIODS),
       resetDate: z.string().regex(DATE_PATTERN, t('form.validation.resetDateRequired')),
-      expectedPerPaycheque: z.number().min(0).optional(),
+      lines: z
+        .array(
+          z.object({
+            categoryId: z.string().min(1, t('form.validation.categoryRequired')),
+            yearlyMaximum: z.number({ message: t('form.validation.yearlyMaximumRequired') }).min(0),
+            expectedPerPaycheque: z.number().min(0).optional(),
+            /** Set when the expected figure was prefilled from the ledger. */
+            suggested: z.boolean().optional(),
+          }),
+        )
+        .min(1)
+        .max(PAYROLL_BATCH_MAX_LINES),
     })
     .superRefine((values, ctx) => {
-      // The bill's own line is the expected amount; otherwise the user says.
-      if (
-        values.scheduledTransactionId &&
-        values.categoryId &&
-        !hasLine(values.scheduledTransactionId, values.categoryId) &&
-        values.expectedPerPaycheque === undefined
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['expectedPerPaycheque'],
-          message: t('form.validation.expectedRequired'),
-        });
-      }
+      const seen = new Set<string>();
+      values.lines.forEach((line, index) => {
+        if (line.categoryId && seen.has(line.categoryId)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['lines', index, 'categoryId'],
+            message: t('form.validation.categoryDuplicate'),
+          });
+        }
+        seen.add(line.categoryId);
+        // The bill's own line is the expected amount; otherwise the user says.
+        if (
+          values.scheduledTransactionId &&
+          line.categoryId &&
+          !hasLine(values.scheduledTransactionId, line.categoryId) &&
+          line.expectedPerPaycheque === undefined
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['lines', index, 'expectedPerPaycheque'],
+            message: t('form.validation.expectedRequired'),
+          });
+        }
+      });
     });
 }
 
-type FormValues = z.infer<ReturnType<typeof buildSchema>>;
+// The resolver's typing holds the schema's output to this shape.
+type FormValues = PayrollDeductionFormValues;
+
+/** A fresh row: no category and an empty maximum, which the schema refuses. */
+const emptyLine = (): FormValues['lines'][number] => ({
+  categoryId: '',
+  yearlyMaximum: undefined as unknown as number,
+  expectedPerPaycheque: undefined,
+  suggested: false,
+});
 
 interface PayrollDeductionRuleFormProps {
+  /** The rule being edited; the form then holds exactly one line. */
   rule?: PayrollDeductionRule;
   scheduledTransactions: ScheduledTransaction[];
   categories: Category[];
-  onSubmit: (data: CreatePayrollDeductionRuleData) => Promise<void>;
+  /** The user's current rules; a category already ruled on the bill is not offered again. */
+  existingRules?: PayrollDeductionRule[];
+  onSubmit: (data: CreatePayrollDeductionRulesData) => Promise<void>;
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
   submitRef?: MutableRefObject<(() => void) | null>;
 }
 
 /**
- * One payroll deduction rule (docs/specs/payroll-deductions.md section 3).
- * The expected-per-paycheque field appears only when the chosen bill has no
- * deduction line for the chosen category; when it does, the line's own figure
- * is shown and nothing is stored.
+ * The deduction rules of one payroll bill (docs/specs/payroll-deductions.md
+ * section 3). The bill and the reset are shared; each category row carries its
+ * own maximum. A row's expected-per-paycheque field appears only when the
+ * bill's line for the category is not a deduction; when it is, the line's own
+ * figure is shown and nothing is stored.
  */
 export function PayrollDeductionRuleForm({
   rule,
   scheduledTransactions,
   categories,
+  existingRules = [],
   onSubmit,
   onCancel,
   onDirtyChange,
   submitRef,
 }: PayrollDeductionRuleFormProps) {
   const t = useTranslations('taxes.payroll');
-  const { formatCurrency } = useNumberFormat();
   const today = useFinancialToday();
   const bills = useMemo(() => payrollBillOptions(scheduledTransactions), [scheduledTransactions]);
   const billsById = useMemo(() => new Map(bills.map((b) => [b.id, b])), [bills]);
@@ -115,7 +166,6 @@ export function PayrollDeductionRuleForm({
     [billsById],
   );
   const schema = useMemo(() => buildSchema(t, hasLine), [t, hasLine]);
-  const [suggestedFromRecent, setSuggestedFromRecent] = useState(false);
 
   const {
     register,
@@ -128,34 +178,36 @@ export function PayrollDeductionRuleForm({
     defaultValues: rule
       ? {
           scheduledTransactionId: rule.scheduledTransactionId,
-          categoryId: rule.categoryId,
-          yearlyMaximum: Number(rule.yearlyMaximum),
           resetPeriod: rule.resetPeriod,
           resetDate: rule.resetDate,
-          expectedPerPaycheque:
-            rule.expectedSource === 'entered' && rule.expectedPerPaycheque !== null
-              ? Number(rule.expectedPerPaycheque)
-              : undefined,
+          lines: [
+            {
+              categoryId: rule.categoryId,
+              yearlyMaximum: Number(rule.yearlyMaximum),
+              expectedPerPaycheque:
+                rule.expectedSource === 'entered' && rule.expectedPerPaycheque !== null
+                  ? Number(rule.expectedPerPaycheque)
+                  : undefined,
+              suggested: false,
+            },
+          ],
         }
       : {
           scheduledTransactionId: bills.length === 1 ? bills[0].id : '',
-          categoryId: '',
-          yearlyMaximum: undefined,
           resetPeriod: 'YEARLY',
           resetDate: `${today.slice(0, 4)}-01-01`,
-          expectedPerPaycheque: undefined,
+          lines: [emptyLine()],
         },
   });
+  const { fields, append, remove, replace } = useFieldArray({ control, name: 'lines' });
 
   useFormDirtyNotify(isDirty, onDirtyChange);
   useFormSubmitRef(submitRef, handleSubmit, onSubmit);
 
   const billId = useWatch({ control, name: 'scheduledTransactionId' });
-  const categoryId = useWatch({ control, name: 'categoryId' });
+  const lines = useWatch({ control, name: 'lines' });
   const resetDate = useWatch({ control, name: 'resetDate' });
   const bill = billsById.get(billId);
-  const lineAmount = billLineAmount(bill, categoryId);
-  const currencyCode = bill?.currencyCode;
 
   const billOptions = useMemo(
     () => [
@@ -164,21 +216,58 @@ export function PayrollDeductionRuleForm({
     ],
     [bills, t],
   );
-  const categoryOptions = useMemo(() => getCategorySelectOptions(categories), [categories]);
 
-  // A category picked on a bill without a line for it: ask the server what the
-  // ledger suggests, and prefill only while the field is still empty. Done in
-  // the change handler, not an effect, so nothing is written during a render.
-  const handleCategoryChange = (value: string) => {
-    setValue('categoryId', value, { shouldDirty: true, shouldValidate: true });
-    setSuggestedFromRecent(false);
+  // Only the bill's deduction lines are offered, less the ones another row or
+  // an existing rule already names (one rule per bill and category).
+  const deductionIds = useMemo(() => billDeductionCategoryIds(bill), [bill]);
+  const ruledIds = useMemo(
+    () =>
+      new Set(
+        existingRules
+          .filter((r) => r.scheduledTransactionId === billId && r.id !== rule?.id)
+          .map((r) => r.categoryId),
+      ),
+    [existingRules, billId, rule?.id],
+  );
+  const allCategoryOptions = useMemo(() => getCategorySelectOptions(categories), [categories]);
+  const optionsForRow = useCallback(
+    (index: number) => {
+      const taken = new Set(
+        (lines ?? []).flatMap((line, i) => (i === index || !line.categoryId ? [] : [line.categoryId])),
+      );
+      const own = lines?.[index]?.categoryId;
+      const offered = new Set(
+        deductionIds.filter((id) => (id === own || !ruledIds.has(id)) && !taken.has(id)),
+      );
+      if (own) offered.add(own);
+      return allCategoryOptions.filter((o) => offered.has(o.value));
+    },
+    [lines, deductionIds, ruledIds, allCategoryOptions],
+  );
+  const unruledCount = deductionIds.filter((id) => !ruledIds.has(id)).length;
+  const canAddRow = !rule && fields.length < Math.min(unruledCount, PAYROLL_BATCH_MAX_LINES);
+
+  // A new bill means new lines: the rows start over.
+  const handleBillChange = () => {
+    if (!rule) replace([emptyLine()]);
+  };
+
+  // A category whose line on the bill is not a deduction: ask the server what
+  // the ledger usually shows, and prefill only while the field is still empty.
+  // Done in the change handler, not an effect, so nothing is written during a
+  // render.
+  const handleCategoryChange = (index: number, value: string) => {
+    setValue(`lines.${index}.categoryId`, value, { shouldDirty: true, shouldValidate: true });
+    setValue(`lines.${index}.suggested`, false);
     if (!value || !billId || billLineAmount(billsById.get(billId), value) !== null) return;
     payrollDeductionsApi
       .suggest(billId, value)
       .then((suggestion) => {
-        if (suggestion.expectedSource === 'recent' && suggestion.expectedPerPaycheque !== null) {
-          setValue('expectedPerPaycheque', suggestion.expectedPerPaycheque, { shouldDirty: true });
-          setSuggestedFromRecent(true);
+        if (suggestion.expectedSource === 'ledger' && suggestion.expectedPerPaycheque !== null) {
+          setValue(`lines.${index}.expectedPerPaycheque`, suggestion.expectedPerPaycheque, {
+            shouldDirty: true,
+          });
+          setValue(`lines.${index}.suggested`, true);
         }
       })
       .catch((error) => logger.error(error));
@@ -187,116 +276,81 @@ export function PayrollDeductionRuleForm({
   const submit = async (values: FormValues) => {
     await onSubmit({
       scheduledTransactionId: values.scheduledTransactionId,
-      categoryId: values.categoryId,
-      yearlyMaximum: values.yearlyMaximum,
       resetPeriod: values.resetPeriod,
       resetDate: values.resetDate,
-      expectedPerPaycheque: lineAmount === null ? (values.expectedPerPaycheque ?? null) : null,
+      lines: values.lines.map((line) => ({
+        categoryId: line.categoryId,
+        yearlyMaximum: line.yearlyMaximum,
+        expectedPerPaycheque:
+          billLineAmount(bill, line.categoryId) === null ? (line.expectedPerPaycheque ?? null) : null,
+      })),
     });
   };
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-4">
-      <div>
-        <div className="flex items-center gap-1">
-          <Select
-            label={t('form.billLabel')}
-            options={billOptions}
-            error={errors.scheduledTransactionId?.message}
-            {...register('scheduledTransactionId')}
-          />
-          <InfoTooltip text={t('form.billHelp')} placement="bottom" />
-        </div>
+      <div className="flex items-center gap-1">
+        <Select
+          label={t('form.billLabel')}
+          options={billOptions}
+          error={errors.scheduledTransactionId?.message}
+          {...register('scheduledTransactionId', { onChange: handleBillChange })}
+        />
+        <InfoTooltip text={t('form.billHelp')} placement="bottom" />
       </div>
 
-      <Controller
-        control={control}
-        name="categoryId"
-        render={({ field }) => (
-          <Combobox
-            label={t('form.categoryLabel')}
-            placeholder={t('form.categoryPlaceholder')}
-            options={categoryOptions}
-            value={field.value}
-            onChange={handleCategoryChange}
-            error={errors.categoryId?.message}
-            valueIsId
-            usePortal
-          />
-        )}
-      />
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex items-end gap-1">
-          <Controller
-            control={control}
-            name="yearlyMaximum"
-            render={({ field }) => (
-              <CurrencyInput
-                id="payroll-yearly-maximum"
-                label={t('form.yearlyMaximumLabel')}
-                allowNegative={false}
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                name={field.name}
-                ref={field.ref}
-                error={errors.yearlyMaximum?.message}
-              />
-            )}
-          />
-          <InfoTooltip text={t('form.yearlyMaximumHelp')} placement="bottom" align="right" />
-        </div>
         <Select
           label={t('form.resetPeriodLabel')}
           options={PAYROLL_RESET_PERIODS.map((p) => ({ value: p, label: t(`form.periods.${p}`) }))}
           error={errors.resetPeriod?.message}
           {...register('resetPeriod')}
         />
-      </div>
-
-      <div className="flex items-end gap-1">
-        <DateInput
-          label={t('form.resetDateLabel')}
-          value={resetDate}
-          onDateChange={(date) => setValue('resetDate', date, { shouldDirty: true, shouldValidate: true })}
-          error={errors.resetDate?.message}
-        />
-        <InfoTooltip text={t('form.resetDateHelp')} placement="bottom" align="right" />
-      </div>
-
-      {billId && categoryId && lineAmount !== null && (
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          {t('form.expectedFromLine', { amount: formatCurrency(lineAmount, currencyCode) })}
-        </p>
-      )}
-      {billId && categoryId && lineAmount === null && (
-        <div>
-          <div className="flex items-end gap-1">
-            <Controller
-              control={control}
-              name="expectedPerPaycheque"
-              render={({ field }) => (
-                <CurrencyInput
-                  id="payroll-expected-per-paycheque"
-                  label={t('form.expectedLabel')}
-                  allowNegative={false}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  ref={field.ref}
-                  error={errors.expectedPerPaycheque?.message}
-                />
-              )}
-            />
-            <InfoTooltip text={t('form.expectedHelp')} placement="bottom" align="right" />
-          </div>
-          {suggestedFromRecent && (
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('form.expectedSuggested')}</p>
-          )}
+        <div className="flex items-end gap-1">
+          <DateInput
+            label={t('form.resetDateLabel')}
+            value={resetDate}
+            onDateChange={(date) => setValue('resetDate', date, { shouldDirty: true, shouldValidate: true })}
+            error={errors.resetDate?.message}
+          />
+          <InfoTooltip text={t('form.resetDateHelp')} placement="bottom" align="right" />
         </div>
-      )}
+      </div>
+
+      <fieldset className="space-y-3">
+        <legend className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {t('form.categoriesLegend')}
+        </legend>
+        {bill && deductionIds.length === 0 && (
+          <p className="text-sm text-amber-600 dark:text-amber-400">{t('form.noDeductionLines')}</p>
+        )}
+        {bill && deductionIds.length > 0 && unruledCount === 0 && !rule && (
+          <p className="text-sm text-amber-600 dark:text-amber-400">{t('form.allLinesRuled')}</p>
+        )}
+        {fields.map((field, index) => (
+          <PayrollDeductionLineFields
+            key={field.id}
+            index={index}
+            control={control}
+            errors={errors.lines?.[index]}
+            categoryOptions={optionsForRow(index)}
+            lineAmount={billLineAmount(bill, lines?.[index]?.categoryId ?? '')}
+            currencyCode={bill?.currencyCode}
+            suggested={lines?.[index]?.suggested === true}
+            onCategoryChange={(value) => handleCategoryChange(index, value)}
+            onRemove={!rule && fields.length > 1 ? () => remove(index) : undefined}
+          />
+        ))}
+        {canAddRow && (
+          <button
+            type="button"
+            onClick={() => append(emptyLine())}
+            className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 focus-visible:outline-2 focus-visible:outline-blue-500 rounded"
+          >
+            {t('form.addCategory')}
+          </button>
+        )}
+      </fieldset>
 
       <FormActions onCancel={onCancel} isSubmitting={isSubmitting} />
     </form>

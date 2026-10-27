@@ -21,11 +21,12 @@ vi.mock('@/hooks/useOnAiAction', () => ({ useOnAiAction: vi.fn() }));
 
 const FORM_PAYLOAD = {
   scheduledTransactionId: 'st-pay',
-  categoryId: 'cat-ei',
-  yearlyMaximum: 1077.48,
   resetPeriod: 'YEARLY',
   resetDate: '2026-01-01',
-  expectedPerPaycheque: null,
+  lines: [
+    { categoryId: 'cat-ei', yearlyMaximum: 1077.48, expectedPerPaycheque: null },
+    { categoryId: 'cat-cpp', yearlyMaximum: 4034.1, expectedPerPaycheque: 150 },
+  ],
 };
 // The form is loaded through dynamic(); a stub shows what the page handed it.
 vi.mock('next/dynamic', () => ({
@@ -35,6 +36,7 @@ vi.mock('next/dynamic', () => ({
         <div data-testid="rule-form">
           {props.rule && <span data-testid="editing">{props.rule.categoryName}</span>}
           <span data-testid="bills">{props.scheduledTransactions.length}</span>
+          <span data-testid="existing">{props.existingRules.length}</span>
           <button type="button" onClick={() => props.onSubmit(FORM_PAYLOAD).catch(() => {})}>
             Submit stub
           </button>
@@ -44,13 +46,13 @@ vi.mock('next/dynamic', () => ({
 }));
 
 const mockList = vi.fn();
-const mockCreate = vi.fn();
+const mockCreateMany = vi.fn();
 const mockUpdate = vi.fn();
 const mockDelete = vi.fn();
 vi.mock('@/lib/payroll-deductions', () => ({
   payrollDeductionsApi: {
     list: (...args: unknown[]) => mockList(...args),
-    create: (...args: unknown[]) => mockCreate(...args),
+    createMany: (...args: unknown[]) => mockCreateMany(...args),
     update: (...args: unknown[]) => mockUpdate(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
     suggest: vi.fn(),
@@ -103,7 +105,7 @@ describe('PayrollDeductionsPage', () => {
     mockList.mockResolvedValue([rule()]);
     mockScheduled.mockResolvedValue([{ id: 'st-pay', name: 'Paycheque', isActive: true }]);
     mockCategories.mockResolvedValue([]);
-    mockCreate.mockResolvedValue(rule());
+    mockCreateMany.mockResolvedValue([rule(), rule({ id: 'rule-2', categoryId: 'cat-cpp' })]);
     mockUpdate.mockResolvedValue(rule());
     mockDelete.mockResolvedValue(undefined);
   });
@@ -145,19 +147,20 @@ describe('PayrollDeductionsPage', () => {
     await renderPage();
     expect(screen.getByText('No deduction rules yet')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /year-to-date/ })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Create Your First Rule' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Your First Rules' }));
     expect(screen.getByTestId('rule-form')).toBeInTheDocument();
     expect(screen.getByTestId('bills')).toHaveTextContent('1');
   });
 
-  it('creates through the form and reloads', async () => {
+  it('creates every line of the form in one request, hands the form the existing rules and reloads', async () => {
     await renderPage();
-    fireEvent.click(screen.getByRole('button', { name: '+ New Rule' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ New Rules' }));
+    expect(screen.getByTestId('existing')).toHaveTextContent('1');
     await act(async () => {
       fireEvent.click(screen.getByText('Submit stub'));
     });
-    expect(mockCreate).toHaveBeenCalledWith(FORM_PAYLOAD);
-    expect(toast.success).toHaveBeenCalledWith('Deduction rule created');
+    expect(mockCreateMany).toHaveBeenCalledWith(FORM_PAYLOAD);
+    expect(toast.success).toHaveBeenCalledWith('2 deduction rules created');
     await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
   });
 
@@ -168,7 +171,15 @@ describe('PayrollDeductionsPage', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('Submit stub'));
     });
-    expect(mockUpdate).toHaveBeenCalledWith('rule-1', FORM_PAYLOAD);
+    // An edit is the one-line case: the first line, flattened onto the shared fields.
+    expect(mockUpdate).toHaveBeenCalledWith('rule-1', {
+      scheduledTransactionId: 'st-pay',
+      resetPeriod: 'YEARLY',
+      resetDate: '2026-01-01',
+      categoryId: 'cat-ei',
+      yearlyMaximum: 1077.48,
+      expectedPerPaycheque: null,
+    });
     expect(toast.success).toHaveBeenCalledWith('Deduction rule updated');
   });
 
@@ -189,9 +200,9 @@ describe('PayrollDeductionsPage', () => {
     expect(toast.error).toHaveBeenCalledWith('Failed to load payroll deductions');
 
     mockList.mockResolvedValue([]);
-    mockCreate.mockRejectedValue({ response: { data: {} } });
+    mockCreateMany.mockRejectedValue({ response: { data: {} } });
     await renderPage();
-    fireEvent.click(screen.getAllByRole('button', { name: '+ New Rule' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: '+ New Rules' })[0]);
     await act(async () => {
       fireEvent.click(screen.getByText('Submit stub'));
     });

@@ -13,12 +13,12 @@
     "title": "Bordro Kesintileri",
     "subtitle": "Bordro faturanızın kesinti satırları için yıllık üst sınırlar",
     "backToTaxes": "Vergiler",
-    "newButton": "+ Yeni Kural",
+    "newButton": "+ Yeni Kurallar",
     "loading": "Bordro kesintileri yükleniyor...",
     "emptyState": {
       "title": "Henüz kesinti kuralı yok",
-      "body": "Maaşınız olan planlı faturayı seçin, bir kesinti kategorisi belirleyin ve yıllık üst sınırını girin. Üst sınıra ulaşıldığında fatura kesintiyi durdurur ve sıfırlama tarihinde yeniden başlar.",
-      "createButton": "İlk Kuralınızı Oluşturun"
+      "body": "Maaşınız olan planlı işlemi seçin, kesinti kategorilerini belirleyin ve her biri için yıllık bir üst sınır girin. İşlem, üst sınıra ulaşılan kesintiyi almayı durdurur ve sıfırlama tarihinde yeniden başlar.",
+      "createButton": "İlk Kurallarınızı Oluşturun"
     },
     "yearToDate": {
       "show": "Yıl başından bugüne göster",
@@ -43,24 +43,24 @@
       "periodRange": "{start} - {end}"
     },
     "modal": {
-      "newTitle": "Yeni Kesinti Kuralı",
+      "newTitle": "Yeni Kesinti Kuralları",
       "editTitle": "Kesinti Kuralını Düzenle"
     },
     "form": {
       "billLabel": "Planlı bordro faturası",
       "billPlaceholder": "Maaşınız olan faturayı seçin",
-      "billHelp": "Satırları kesintileri taşıyan planlı yatırma. Yalnızca kategori satırları sınırlandırılabilir.",
-      "categoryLabel": "Kesinti kategorisi",
-      "categoryPlaceholder": "Bir kategori seçin",
+      "billHelp": "Satırlarında kesintileri taşıyan planlı yatırma işlemi. Yalnızca kestiğinden fazlasını yatıran işlemler sunulur ve yalnızca bunların kesinti satırları sınırlanabilir.",
+      "categoryLabel": "Kesinti kategorisi {index}",
+      "categoryPlaceholder": "Bir kesinti satırı seçin",
       "yearlyMaximumLabel": "Yıllık üst sınır",
       "yearlyMaximumHelp": "Bu kategorinin bir dönemde kestiği en yüksek tutar, fatura para biriminde. Satır kalan paya kadar, sıfıra dek azaltılır.",
       "resetPeriodLabel": "Sıfırlama",
       "resetDateLabel": "Sıfırlama tarihi",
       "resetDateHelp": "Sayım her yıl bu gün yeniden başlar. Genellikle yılın ilk günü.",
       "expectedLabel": "Maaş başına beklenen",
-      "expectedHelp": "Faturada bu kategori için satır yok; bu nedenle tahmin, her maaştan kesilen tutara ihtiyaç duyar.",
+      "expectedHelp": "İşlemin bu kategorideki satırı sıfır olduğundan tahmin, her maaştan genellikle kesilen tutara ihtiyaç duyar.",
       "expectedFromLine": "Faturanın satırı maaş başına {amount} keser.",
-      "expectedSuggested": "Bu kategorideki en son işleminize göre önerildi.",
+      "expectedSuggested": "Son bir yılda bu kategorideki işlemlerinizde en sık görülen tutardan önerildi.",
       "periods": {
         "YEARLY": "Yıllık"
       },
@@ -69,15 +69,21 @@
         "categoryRequired": "Bir kategori seçin",
         "yearlyMaximumRequired": "Yıllık üst sınırı girin",
         "resetDateRequired": "Sıfırlama tarihini girin",
-        "expectedRequired": "Maaş başına beklenen tutarı girin"
-      }
+        "expectedRequired": "Maaş başına beklenen tutarı girin",
+        "categoryDuplicate": "Bu kategori zaten listede"
+      },
+      "categoriesLegend": "Kesinti kategorileri",
+      "addCategory": "+ Başka bir kategori ekle",
+      "removeCategory": "{index}. kategoriyi kaldır",
+      "noDeductionLines": "Bu işlemde kesinti satırı yok. Önce kesintileri işleme negatif bölünmüş satırlar olarak ekleyin.",
+      "allLinesRuled": "Bu işlemdeki her kesinti satırının zaten bir kuralı var."
     },
     "delete": {
       "title": "Kesinti Kuralını Sil",
       "message": "{bill} üzerindeki {category} kuralı silinsin mi? Kaydedilmiş işlemler değişmez; sonraki maaş satırının tamamını kaydeder."
     },
     "toasts": {
-      "created": "Kesinti kuralı oluşturuldu",
+      "created": "{count, plural, one {Kesinti kuralı oluşturuldu} other {# kesinti kuralı oluşturuldu}}",
       "updated": "Kesinti kuralı güncellendi",
       "deleted": "Kesinti kuralı silindi",
       "loadFailed": "Bordro kesintileri yüklenemedi",

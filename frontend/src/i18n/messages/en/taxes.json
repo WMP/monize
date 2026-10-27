@@ -13,12 +13,12 @@
     "title": "Payroll Deductions",
     "subtitle": "Yearly maximums on the deduction lines of your payroll bill",
     "backToTaxes": "Taxes",
-    "newButton": "+ New Rule",
+    "newButton": "+ New Rules",
     "loading": "Loading payroll deductions...",
     "emptyState": {
       "title": "No deduction rules yet",
-      "body": "Pick the scheduled bill that is your paycheque, choose a deduction category and set its yearly maximum. The bill stops collecting it once the maximum is reached and starts again on the reset date.",
-      "createButton": "Create Your First Rule"
+      "body": "Pick the scheduled bill that is your paycheque, choose its deduction categories and set a yearly maximum for each. The bill stops collecting a deduction once its maximum is reached and starts again on the reset date.",
+      "createButton": "Create Your First Rules"
     },
     "yearToDate": {
       "show": "Show year-to-date",
@@ -43,24 +43,24 @@
       "periodRange": "{start} to {end}"
     },
     "modal": {
-      "newTitle": "New Deduction Rule",
+      "newTitle": "New Deduction Rules",
       "editTitle": "Edit Deduction Rule"
     },
     "form": {
       "billLabel": "Payroll scheduled bill",
       "billPlaceholder": "Select the bill that is your paycheque",
-      "billHelp": "The scheduled deposit whose lines carry the deductions. Only its category lines can be capped.",
-      "categoryLabel": "Deduction category",
-      "categoryPlaceholder": "Select a category",
+      "billHelp": "The scheduled deposit whose lines carry the deductions. Only bills that pay in more than they take out are offered, and only their deduction lines can be capped.",
+      "categoryLabel": "Deduction category {index}",
+      "categoryPlaceholder": "Select a deduction line",
       "yearlyMaximumLabel": "Yearly maximum",
       "yearlyMaximumHelp": "The most this category collects in one period, in the bill's currency. The line is reduced to what room is left, down to zero.",
       "resetPeriodLabel": "Resets",
       "resetDateLabel": "Reset date",
       "resetDateHelp": "The count starts again on this day each year. Usually the first day of the year.",
       "expectedLabel": "Expected per paycheque",
-      "expectedHelp": "The bill has no line for this category, so the forecast needs the amount each paycheque deducts.",
+      "expectedHelp": "The bill's line for this category is zero, so the forecast needs the amount each paycheque usually deducts.",
       "expectedFromLine": "The bill's line deducts {amount} per paycheque.",
-      "expectedSuggested": "Suggested from your most recent transaction in this category.",
+      "expectedSuggested": "Suggested from the amount your transactions in this category most often show over the last year.",
       "periods": {
         "YEARLY": "Yearly"
       },
@@ -69,15 +69,21 @@
         "categoryRequired": "Choose a category",
         "yearlyMaximumRequired": "Enter the yearly maximum",
         "resetDateRequired": "Enter the reset date",
-        "expectedRequired": "Enter the expected amount per paycheque"
-      }
+        "expectedRequired": "Enter the expected amount per paycheque",
+        "categoryDuplicate": "This category is already in the list"
+      },
+      "categoriesLegend": "Deduction categories",
+      "addCategory": "+ Add another category",
+      "removeCategory": "Remove category {index}",
+      "noDeductionLines": "This bill has no deduction lines. Add the deductions as negative split lines on the bill first.",
+      "allLinesRuled": "Every deduction line on this bill already has a rule."
     },
     "delete": {
       "title": "Delete Deduction Rule",
       "message": "Delete the {category} rule on {bill}? Posted transactions are not changed; the next paycheque posts its full line."
     },
     "toasts": {
-      "created": "Deduction rule created",
+      "created": "{count, plural, one {Deduction rule created} other {# deduction rules created}}",
       "updated": "Deduction rule updated",
       "deleted": "Deduction rule deleted",
       "loadFailed": "Failed to load payroll deductions",

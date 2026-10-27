@@ -13,12 +13,12 @@
     "title": "Lohnabzüge",
     "subtitle": "Jahreshöchstbeträge für die Abzugszeilen Ihrer Gehaltsbuchung",
     "backToTaxes": "Steuern",
-    "newButton": "+ Neue Regel",
+    "newButton": "+ Neue Regeln",
     "loading": "Lohnabzüge werden geladen...",
     "emptyState": {
       "title": "Noch keine Abzugsregeln",
-      "body": "Wählen Sie die geplante Buchung, die Ihre Gehaltsabrechnung ist, eine Abzugskategorie und deren Jahreshöchstbetrag. Die Buchung zieht den Betrag nicht mehr ein, sobald der Höchstbetrag erreicht ist, und beginnt am Rücksetzdatum neu.",
-      "createButton": "Erste Regel erstellen"
+      "body": "Wählen Sie die geplante Buchung, die Ihre Gehaltsabrechnung ist, deren Abzugskategorien und je einen Jahreshöchstbetrag. Die Buchung zieht einen Abzug nicht mehr ein, sobald sein Höchstbetrag erreicht ist, und beginnt am Rücksetzdatum neu.",
+      "createButton": "Erste Regeln erstellen"
     },
     "yearToDate": {
       "show": "Jahresstand anzeigen",
@@ -43,24 +43,24 @@
       "periodRange": "{start} bis {end}"
     },
     "modal": {
-      "newTitle": "Neue Abzugsregel",
+      "newTitle": "Neue Abzugsregeln",
       "editTitle": "Abzugsregel bearbeiten"
     },
     "form": {
       "billLabel": "Geplante Gehaltsbuchung",
       "billPlaceholder": "Wählen Sie die Buchung, die Ihre Gehaltsabrechnung ist",
-      "billHelp": "Die geplante Einzahlung, deren Zeilen die Abzüge enthalten. Nur ihre Kategoriezeilen können begrenzt werden.",
-      "categoryLabel": "Abzugskategorie",
-      "categoryPlaceholder": "Kategorie wählen",
+      "billHelp": "Die geplante Einzahlung, deren Zeilen die Abzüge enthalten. Angeboten werden nur Buchungen, die mehr einzahlen als abziehen, und nur ihre Abzugszeilen können begrenzt werden.",
+      "categoryLabel": "Abzugskategorie {index}",
+      "categoryPlaceholder": "Abzugszeile wählen",
       "yearlyMaximumLabel": "Jahreshöchstbetrag",
       "yearlyMaximumHelp": "Der Höchstbetrag, den diese Kategorie in einem Zeitraum einzieht, in der Währung der Buchung. Die Zeile wird auf den verbleibenden Spielraum reduziert, bis auf null.",
       "resetPeriodLabel": "Zurücksetzung",
       "resetDateLabel": "Rücksetzdatum",
       "resetDateHelp": "Die Zählung beginnt jedes Jahr an diesem Tag neu. Meist der erste Tag des Jahres.",
       "expectedLabel": "Erwartet pro Gehaltsabrechnung",
-      "expectedHelp": "Die Buchung hat keine Zeile für diese Kategorie, daher braucht die Prognose den Betrag, den jede Gehaltsabrechnung abzieht.",
+      "expectedHelp": "Die Zeile der Buchung für diese Kategorie ist null, daher braucht die Prognose den Betrag, den jede Gehaltsabrechnung üblicherweise abzieht.",
       "expectedFromLine": "Die Zeile der Buchung zieht {amount} pro Gehaltsabrechnung ab.",
-      "expectedSuggested": "Vorgeschlagen anhand Ihrer letzten Transaktion in dieser Kategorie.",
+      "expectedSuggested": "Vorgeschlagen aus dem Betrag, den Ihre Transaktionen in dieser Kategorie im letzten Jahr am häufigsten zeigen.",
       "periods": {
         "YEARLY": "Jährlich"
       },
@@ -69,15 +69,21 @@
         "categoryRequired": "Wählen Sie eine Kategorie",
         "yearlyMaximumRequired": "Geben Sie den Jahreshöchstbetrag ein",
         "resetDateRequired": "Geben Sie das Rücksetzdatum ein",
-        "expectedRequired": "Geben Sie den erwarteten Betrag pro Gehaltsabrechnung ein"
-      }
+        "expectedRequired": "Geben Sie den erwarteten Betrag pro Gehaltsabrechnung ein",
+        "categoryDuplicate": "Diese Kategorie ist bereits in der Liste"
+      },
+      "categoriesLegend": "Abzugskategorien",
+      "addCategory": "+ Weitere Kategorie hinzufügen",
+      "removeCategory": "Kategorie {index} entfernen",
+      "noDeductionLines": "Diese Buchung hat keine Abzugszeilen. Legen Sie die Abzüge zuerst als negative Aufteilungszeilen auf der Buchung an.",
+      "allLinesRuled": "Jede Abzugszeile dieser Buchung hat bereits eine Regel."
     },
     "delete": {
       "title": "Abzugsregel löschen",
       "message": "Die Regel {category} auf {bill} löschen? Gebuchte Transaktionen bleiben unverändert; die nächste Gehaltsabrechnung bucht ihre volle Zeile."
     },
     "toasts": {
-      "created": "Abzugsregel erstellt",
+      "created": "{count, plural, one {Abzugsregel erstellt} other {# Abzugsregeln erstellt}}",
       "updated": "Abzugsregel aktualisiert",
       "deleted": "Abzugsregel gelöscht",
       "loadFailed": "Lohnabzüge konnten nicht geladen werden",

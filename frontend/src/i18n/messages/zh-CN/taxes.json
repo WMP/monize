@@ -17,8 +17,8 @@
     "loading": "正在加载工资扣款...",
     "emptyState": {
       "title": "尚无扣款规则",
-      "body": "选择作为您工资的计划账单，选择扣款类别并设置年度上限。达到上限后账单停止扣除，并在重置日期重新开始。",
-      "createButton": "创建您的第一条规则"
+      "body": "选择作为您工资的定期交易，选择其扣款类别，并为每个类别设置年度上限。达到上限后，该交易停止收取该项扣款，并在重置日期重新开始。",
+      "createButton": "创建您的第一批规则"
     },
     "yearToDate": {
       "show": "显示年初至今",
@@ -49,18 +49,18 @@
     "form": {
       "billLabel": "工资计划账单",
       "billPlaceholder": "选择作为您工资的账单",
-      "billHelp": "其各行包含扣款的计划存款。只有其类别行可以设置上限。",
-      "categoryLabel": "扣款类别",
-      "categoryPlaceholder": "选择类别",
+      "billHelp": "各行记载扣款的定期存入交易。仅提供存入多于扣除的交易，且只能对其扣款行设置上限。",
+      "categoryLabel": "扣款类别 {index}",
+      "categoryPlaceholder": "选择扣款行",
       "yearlyMaximumLabel": "年度上限",
       "yearlyMaximumHelp": "该类别在一个周期内扣除的最高金额，按账单货币计。该行会减少到剩余额度，最低为零。",
       "resetPeriodLabel": "重置",
       "resetDateLabel": "重置日期",
       "resetDateHelp": "每年在这一天重新开始计算。通常是一年的第一天。",
       "expectedLabel": "每次发薪的预期金额",
-      "expectedHelp": "账单中没有此类别的行，因此预测需要每次发薪扣除的金额。",
+      "expectedHelp": "此交易在该类别的行为零，因此预测需要每次工资通常扣除的金额。",
       "expectedFromLine": "账单的行每次发薪扣除 {amount}。",
-      "expectedSuggested": "根据您在此类别中的最近一笔交易建议。",
+      "expectedSuggested": "根据过去一年中您在此类别的交易最常出现的金额建议。",
       "periods": {
         "YEARLY": "每年"
       },
@@ -69,15 +69,21 @@
         "categoryRequired": "请选择类别",
         "yearlyMaximumRequired": "请输入年度上限",
         "resetDateRequired": "请输入重置日期",
-        "expectedRequired": "请输入每次发薪的预期金额"
-      }
+        "expectedRequired": "请输入每次发薪的预期金额",
+        "categoryDuplicate": "此类别已在列表中"
+      },
+      "categoriesLegend": "扣款类别",
+      "addCategory": "+ 添加另一个类别",
+      "removeCategory": "移除类别 {index}",
+      "noDeductionLines": "此交易没有扣款行。请先在交易中将扣款添加为负数拆分行。",
+      "allLinesRuled": "此交易的每个扣款行都已有规则。"
     },
     "delete": {
       "title": "删除扣款规则",
       "message": "删除 {bill} 上的 {category} 规则？已记账的交易不会改变；下一次发薪将记入完整的行。"
     },
     "toasts": {
-      "created": "扣款规则已创建",
+      "created": "{count, plural, other {已创建 # 条扣款规则}}",
       "updated": "扣款规则已更新",
       "deleted": "扣款规则已删除",
       "loadFailed": "无法加载工资扣款",

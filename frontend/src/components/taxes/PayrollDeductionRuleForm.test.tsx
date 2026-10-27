@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@/test/render';
 import type { Category } from '@/types/category';
+import type { PayrollDeductionRule } from '@/types/payroll-deduction';
 import type { ScheduledTransaction } from '@/types/scheduled-transaction';
-import { billLineAmount, payrollBillOptions, PayrollDeductionRuleForm } from './PayrollDeductionRuleForm';
+import {
+  billDeductionCategoryIds,
+  billLineAmount,
+  payrollBillOptions,
+  PayrollDeductionRuleForm,
+} from './PayrollDeductionRuleForm';
 
 vi.mock('@/lib/zodConfig', () => ({}));
 vi.mock('@/lib/logger', () => ({
@@ -37,31 +43,48 @@ const bill = (overrides: Partial<ScheduledTransaction> = {}): ScheduledTransacti
     isActive: true,
     isInvestment: false,
     isTransfer: false,
+    amount: 2436,
     currencyCode: 'CAD',
     splits: [
       { id: 's1', categoryId: 'cat-gross', amount: 2500 },
       { id: 's2', categoryId: 'cat-ei', amount: -64 },
+      // Zeroed at the end of last year: still one of the bill's deductions.
+      { id: 's3', categoryId: 'cat-cpp', amount: 0 },
+      { id: 's4', categoryId: null, transferAccountId: 'acc-savings', amount: -100 },
     ],
     ...overrides,
   }) as ScheduledTransaction;
 
 const categories = [
+  { id: 'cat-gross', name: 'Salary', parentId: null },
   { id: 'cat-ei', name: 'EI', parentId: null },
   { id: 'cat-cpp', name: 'CPP', parentId: null },
+  { id: 'cat-other', name: 'Groceries', parentId: null },
 ] as Category[];
 
-describe('payrollBillOptions and billLineAmount', () => {
-  it('offers only active, non-investment, non-transfer bills', () => {
+const optionLabels = (select: HTMLElement) =>
+  Array.from((select as HTMLSelectElement).options).map((o) => o.textContent);
+
+describe('payrollBillOptions, billDeductionCategoryIds and billLineAmount', () => {
+  it('offers only active, net-income, non-investment, non-transfer bills', () => {
     const options = payrollBillOptions([
       bill(),
       bill({ id: 'inactive', isActive: false }),
       bill({ id: 'inv', isInvestment: true }),
       bill({ id: 'xfer', isTransfer: true }),
+      bill({ id: 'rent', amount: -1800 }),
+      bill({ id: 'zero', amount: 0 }),
     ]);
     expect(options.map((b) => b.id)).toEqual(['st-pay']);
   });
 
-  it('reads the magnitude of a negative line and nothing from a positive one', () => {
+  it("names the bill's deduction lines: categorised, not positive, not a transfer", () => {
+    expect(billDeductionCategoryIds(bill())).toEqual(['cat-ei', 'cat-cpp']);
+    expect(billDeductionCategoryIds(bill({ splits: [] }))).toEqual([]);
+    expect(billDeductionCategoryIds(undefined)).toEqual([]);
+  });
+
+  it('reads the magnitude of a negative line and nothing from a positive or zero one', () => {
     expect(billLineAmount(bill(), 'cat-ei')).toBe(64);
     expect(billLineAmount(bill(), 'cat-gross')).toBeNull();
     expect(billLineAmount(bill(), 'cat-cpp')).toBeNull();
@@ -78,72 +101,141 @@ describe('PayrollDeductionRuleForm', () => {
     mockSuggest.mockResolvedValue({ expectedPerPaycheque: null, expectedSource: null });
   });
 
-  const fillMaximum = (value: string) => {
-    const input = screen.getByLabelText('Yearly maximum');
+  const fillMaximum = (index: number, value: string) => {
+    const input = screen.getAllByLabelText('Yearly maximum')[index];
     fireEvent.change(input, { target: { value } });
     fireEvent.blur(input);
   };
+  const pickCategory = async (index: number, value: string) => {
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(`Deduction category ${index + 1}`), { target: { value } });
+    });
+  };
+  const save = async () => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Save|Create/ }));
+    });
+  };
 
-  it('preselects the only bill, defaults the reset to 1 January and names the line it will cap', async () => {
+  it("preselects the only bill, defaults the reset to 1 January and offers only the bill's deduction lines", async () => {
     render(
       <PayrollDeductionRuleForm scheduledTransactions={[bill()]} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />,
     );
     expect(screen.getByLabelText('Payroll scheduled bill')).toHaveValue('st-pay');
     expect(screen.getByLabelText('Reset date')).toHaveValue(`01/01/${new Date().getFullYear()}`);
-    fireEvent.change(screen.getByLabelText('Deduction category'), { target: { value: 'cat-ei' } });
+    expect(optionLabels(screen.getByLabelText('Deduction category 1'))).toEqual(['--', 'CPP', 'EI']);
+    await pickCategory(0, 'cat-ei');
     expect(await screen.findByText("The bill's line deducts $64.00 per paycheque.")).toBeInTheDocument();
     expect(screen.queryByLabelText('Expected per paycheque')).not.toBeInTheDocument();
-    fillMaximum('1077.48');
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Save|Create/ }));
-    });
+    fillMaximum(0, '1077.48');
+    await save();
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onSubmit).toHaveBeenCalledWith({
       scheduledTransactionId: 'st-pay',
-      categoryId: 'cat-ei',
-      yearlyMaximum: 1077.48,
       resetPeriod: 'YEARLY',
       resetDate: expect.stringMatching(/^\d{4}-01-01$/),
-      expectedPerPaycheque: null,
+      lines: [{ categoryId: 'cat-ei', yearlyMaximum: 1077.48, expectedPerPaycheque: null }],
     });
   });
 
-  it('asks for the expected amount when the bill has no line, prefilled from the ledger when it has one', async () => {
-    mockSuggest.mockResolvedValue({ expectedPerPaycheque: 61.5, expectedSource: 'recent' });
+  it('takes several categories at once, each offered only the lines the others left', async () => {
+    mockSuggest.mockResolvedValue({ expectedPerPaycheque: 150, expectedSource: 'ledger' });
     render(
       <PayrollDeductionRuleForm scheduledTransactions={[bill()]} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />,
     );
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText('Deduction category'), { target: { value: 'cat-cpp' } });
-    });
+    await pickCategory(0, 'cat-ei');
+    fillMaximum(0, '1077.48');
+    fireEvent.click(screen.getByRole('button', { name: '+ Add another category' }));
+    expect(optionLabels(screen.getByLabelText('Deduction category 2'))).toEqual(['--', 'CPP']);
+    await pickCategory(1, 'cat-cpp');
+    // The zero line supplies nothing, so the ledger's usual figure is offered.
     expect(mockSuggest).toHaveBeenCalledWith('st-pay', 'cat-cpp');
     const expected = await screen.findByLabelText('Expected per paycheque');
-    await waitFor(() => expect(expected).toHaveValue('61.50'));
-    expect(screen.getByText('Suggested from your most recent transaction in this category.')).toBeInTheDocument();
-    fillMaximum('4034.10');
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Save|Create/ }));
-    });
+    await waitFor(() => expect(expected).toHaveValue('150.00'));
+    expect(
+      screen.getByText('Suggested from the amount your transactions in this category most often show over the last year.'),
+    ).toBeInTheDocument();
+    fillMaximum(1, '4034.10');
+    // Both deduction lines are taken: nothing more to add.
+    expect(screen.queryByRole('button', { name: '+ Add another category' })).not.toBeInTheDocument();
+    await save();
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    expect(onSubmit.mock.calls[0][0]).toMatchObject({ categoryId: 'cat-cpp', expectedPerPaycheque: 61.5 });
+    expect(onSubmit.mock.calls[0][0].lines).toEqual([
+      { categoryId: 'cat-ei', yearlyMaximum: 1077.48, expectedPerPaycheque: null },
+      { categoryId: 'cat-cpp', yearlyMaximum: 4034.1, expectedPerPaycheque: 150 },
+    ]);
+  });
+
+  it('removes a row and starts the rows over when the bill changes', async () => {
+    const other = bill({ id: 'st-other', name: 'Second job', splits: [{ id: 'o1', categoryId: 'cat-other', amount: -5 }] as never });
+    render(
+      <PayrollDeductionRuleForm scheduledTransactions={[bill(), other]} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />,
+    );
+    fireEvent.change(screen.getByLabelText('Payroll scheduled bill'), { target: { value: 'st-pay' } });
+    await pickCategory(0, 'cat-ei');
+    fireEvent.click(screen.getByRole('button', { name: '+ Add another category' }));
+    expect(screen.getAllByLabelText('Yearly maximum')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove category 2' }));
+    expect(screen.getAllByLabelText('Yearly maximum')).toHaveLength(1);
+    expect(screen.getByLabelText('Deduction category 1')).toHaveValue('cat-ei');
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Payroll scheduled bill'), { target: { value: 'st-other' } });
+    });
+    expect(screen.getByLabelText('Deduction category 1')).toHaveValue('');
+    expect(optionLabels(screen.getByLabelText('Deduction category 1'))).toEqual(['--', 'Groceries']);
+  });
+
+  it('leaves out a line that already has a rule and says so when none is left', () => {
+    const ruled = { id: 'r-ei', scheduledTransactionId: 'st-pay', categoryId: 'cat-ei' } as PayrollDeductionRule;
+    const { unmount } = render(
+      <PayrollDeductionRuleForm
+        scheduledTransactions={[bill()]}
+        categories={categories}
+        existingRules={[ruled]}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    expect(optionLabels(screen.getByLabelText('Deduction category 1'))).toEqual(['--', 'CPP']);
+    unmount();
+    render(
+      <PayrollDeductionRuleForm
+        scheduledTransactions={[bill()]}
+        categories={categories}
+        existingRules={[ruled, { ...ruled, id: 'r-cpp', categoryId: 'cat-cpp' }]}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    expect(screen.getByText('Every deduction line on this bill already has a rule.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '+ Add another category' })).not.toBeInTheDocument();
+  });
+
+  it('says when the bill has no deduction lines at all', () => {
+    render(
+      <PayrollDeductionRuleForm
+        scheduledTransactions={[bill({ splits: [{ id: 's1', categoryId: 'cat-gross', amount: 2500 }] as never })]}
+        categories={categories}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    expect(screen.getByText(/This bill has no deduction lines/)).toBeInTheDocument();
+    expect(optionLabels(screen.getByLabelText('Deduction category 1'))).toEqual(['--']);
   });
 
   it('refuses to submit without the expected amount when nothing supplies it', async () => {
     render(
       <PayrollDeductionRuleForm scheduledTransactions={[bill()]} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />,
     );
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText('Deduction category'), { target: { value: 'cat-cpp' } });
-    });
-    fillMaximum('4034.10');
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Save|Create/ }));
-    });
+    await pickCategory(0, 'cat-cpp');
+    fillMaximum(0, '4034.10');
+    await save();
     expect(await screen.findByText('Enter the expected amount per paycheque')).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('loads an existing rule, keeping an entered figure and dropping one the line supplies', () => {
+  it('loads an existing rule as its one row, keeping an entered figure and offering its own category', () => {
     const rule = {
       id: 'r1',
       userId: 'u1',
@@ -167,10 +259,21 @@ describe('PayrollDeductionRuleForm', () => {
       updatedAt: '',
     };
     render(
-      <PayrollDeductionRuleForm rule={rule} scheduledTransactions={[bill()]} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />,
+      <PayrollDeductionRuleForm
+        rule={rule}
+        existingRules={[rule, { ...rule, id: 'r-ei', categoryId: 'cat-ei' }]}
+        scheduledTransactions={[bill()]}
+        categories={categories}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
     );
+    expect(screen.getByLabelText('Deduction category 1')).toHaveValue('cat-cpp');
+    expect(optionLabels(screen.getByLabelText('Deduction category 1'))).toEqual(['--', 'CPP']);
     expect(screen.getByLabelText('Yearly maximum')).toHaveValue('4,034.10');
     expect(screen.getByLabelText('Expected per paycheque')).toHaveValue('150.00');
+    expect(screen.queryByRole('button', { name: '+ Add another category' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Remove category/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });

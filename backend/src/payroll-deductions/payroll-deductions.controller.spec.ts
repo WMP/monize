@@ -4,7 +4,10 @@ import {
   HTTP_CODE_METADATA,
   PATH_METADATA,
 } from "@nestjs/common/constants";
-import { CreatePayrollDeductionRuleDto } from "./dto/create-payroll-deduction-rule.dto";
+import {
+  CreatePayrollDeductionRuleDto,
+  CreatePayrollDeductionRulesDto,
+} from "./dto/create-payroll-deduction-rule.dto";
 import { PayrollDeductionsController } from "./payroll-deductions.controller";
 import { PayrollDeductionsService } from "./payroll-deductions.service";
 
@@ -26,6 +29,7 @@ describe("PayrollDeductionsController", () => {
         expectedSource: "line",
       }),
       create: jest.fn().mockResolvedValue({ id: RULE }),
+      createMany: jest.fn().mockResolvedValue([{ id: RULE }]),
       update: jest.fn().mockResolvedValue({ id: RULE }),
       remove: jest.fn().mockResolvedValue(undefined),
     };
@@ -46,12 +50,19 @@ describe("PayrollDeductionsController", () => {
     await controller.findAll(req);
     await controller.suggest(req, BILL, CATEGORY);
     await controller.create(req, dto);
+    const batch = Object.assign(new CreatePayrollDeductionRulesDto(), {
+      scheduledTransactionId: BILL,
+      resetDate: "2026-01-01",
+      lines: [{ categoryId: CATEGORY, yearlyMaximum: 1077.48 }],
+    });
+    await controller.createMany(req, batch);
     await controller.update(req, RULE, { yearlyMaximum: 1100 });
     await controller.remove(req, RULE);
 
     expect(service.findAll).toHaveBeenCalledWith(USER);
     expect(service.suggestExpected).toHaveBeenCalledWith(USER, BILL, CATEGORY);
     expect(service.create).toHaveBeenCalledWith(USER, dto);
+    expect(service.createMany).toHaveBeenCalledWith(USER, batch);
     expect(service.update).toHaveBeenCalledWith(USER, RULE, {
       yearlyMaximum: 1100,
     });

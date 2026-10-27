@@ -13,12 +13,12 @@
     "title": "Deduções salariais",
     "subtitle": "Máximos anuais nas linhas de dedução da sua fatura de salário",
     "backToTaxes": "Impostos",
-    "newButton": "+ Nova regra",
+    "newButton": "+ Novas regras",
     "loading": "Carregando deduções salariais...",
     "emptyState": {
       "title": "Ainda sem regras de dedução",
-      "body": "Escolha a fatura agendada que é o seu salário, uma categoria de dedução e o seu máximo anual. A fatura deixa de a cobrar quando o máximo é atingido e recomeça na data de reinício.",
-      "createButton": "Criar a sua primeira regra"
+      "body": "Escolha a transação agendada que é o seu salário, as categorias de dedução dela e um máximo anual para cada uma. A transação para de cobrar uma dedução quando o máximo é atingido e recomeça na data de reinício.",
+      "createButton": "Criar suas primeiras regras"
     },
     "yearToDate": {
       "show": "Mostrar acumulado do ano",
@@ -43,24 +43,24 @@
       "periodRange": "{start} a {end}"
     },
     "modal": {
-      "newTitle": "Nova regra de dedução",
+      "newTitle": "Novas regras de dedução",
       "editTitle": "Editar regra de dedução"
     },
     "form": {
       "billLabel": "Fatura de salário agendada",
       "billPlaceholder": "Selecione a fatura que é o seu salário",
-      "billHelp": "O depósito agendado cujas linhas contêm as deduções. Só as suas linhas de categoria podem ser limitadas.",
-      "categoryLabel": "Categoria de dedução",
-      "categoryPlaceholder": "Selecione uma categoria",
+      "billHelp": "O depósito agendado cujas linhas trazem as deduções. Só são oferecidas transações que depositam mais do que retiram, e só as linhas de dedução delas podem ser limitadas.",
+      "categoryLabel": "Categoria de dedução {index}",
+      "categoryPlaceholder": "Selecione uma linha de dedução",
       "yearlyMaximumLabel": "Máximo anual",
       "yearlyMaximumHelp": "O máximo que esta categoria cobra em um período, na moeda da fatura. A linha é reduzida à margem restante, até zero.",
       "resetPeriodLabel": "Reinicia",
       "resetDateLabel": "Data de reinício",
       "resetDateHelp": "A contagem recomeça neste dia todos os anos. Normalmente o primeiro dia do ano.",
       "expectedLabel": "Previsto por salário",
-      "expectedHelp": "A fatura não tem uma linha para esta categoria, por isso a previsão precisa do montante que cada salário deduz.",
+      "expectedHelp": "A linha da transação para esta categoria é zero, então a previsão precisa do valor que cada salário costuma deduzir.",
       "expectedFromLine": "A linha da fatura deduz {amount} por salário.",
-      "expectedSuggested": "Sugerido a partir da sua transação mais recente nesta categoria.",
+      "expectedSuggested": "Sugerido a partir do valor que suas transações nesta categoria mostram com mais frequência no último ano.",
       "periods": {
         "YEARLY": "Anual"
       },
@@ -69,15 +69,21 @@
         "categoryRequired": "Escolha uma categoria",
         "yearlyMaximumRequired": "Informe o máximo anual",
         "resetDateRequired": "Informe a data de reinício",
-        "expectedRequired": "Informe o montante previsto por salário"
-      }
+        "expectedRequired": "Informe o montante previsto por salário",
+        "categoryDuplicate": "Esta categoria já está na lista"
+      },
+      "categoriesLegend": "Categorias de dedução",
+      "addCategory": "+ Adicionar outra categoria",
+      "removeCategory": "Remover a categoria {index}",
+      "noDeductionLines": "Esta transação não tem linhas de dedução. Adicione primeiro as deduções como linhas divididas negativas na transação.",
+      "allLinesRuled": "Todas as linhas de dedução desta transação já têm uma regra."
     },
     "delete": {
       "title": "Eliminar regra de dedução",
       "message": "Eliminar a regra {category} em {bill}? As transações registradas não mudam; o próximo salário registra a sua linha completa."
     },
     "toasts": {
-      "created": "Regra de dedução criada",
+      "created": "{count, plural, one {Regra de dedução criada} other {# regras de dedução criadas}}",
       "updated": "Regra de dedução atualizada",
       "deleted": "Regra de dedução eliminada",
       "loadFailed": "Não foi possível carregar as deduções salariais",

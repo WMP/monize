@@ -2556,6 +2556,42 @@ describe('buildForecast with payroll deductions', () => {
     expect(paycheques(older)).toEqual([['2026-04-24', 2436], ['2026-05-08', 2436]]);
   });
 
+  it('pools the room of two paycheques on one category and spends it in date order', () => {
+    // A mid-month and a month-end paycheque both deduct 64 of EI; 100 is left.
+    const midMonth = paycheque({ id: 'st-mid', name: 'Mid-month', frequency: 'MONTHLY', nextDueDate: '2026-04-15', payrollDeductions: [eiRule(100)] });
+    const monthEnd = paycheque({
+      id: 'st-end',
+      name: 'Month-end',
+      amount: 2200,
+      frequency: 'MONTHLY',
+      nextDueDate: '2026-04-30',
+      payrollDeductions: [{ ...eiRule(100), ruleId: 'rule-ei-end' }],
+    });
+    // Given month-end first: the walk still spends 15 April before 30 April.
+    const points = forecastPoints([makeAccount()], [monthEnd, midMonth], '90days', 'all');
+    expect(paycheques(points)).toEqual([
+      ['2026-04-15', 2436], // 64 collected, 36 left
+      ['2026-04-30', 2228], // 36 collected, 28 added back
+      ['2026-05-15', 2500], // nothing left: the whole 64 added back
+      ['2026-05-30', 2264],
+      ['2026-06-15', 2500],
+      ['2026-06-30', 2264],
+    ]);
+  });
+
+  it('lets a paycheque on another account draw down the room the shown account relies on', () => {
+    const shown = makeAccount();
+    const other = makeAccount({ id: 'acc-2', name: 'Joint' });
+    const midMonth = paycheque({ id: 'st-mid', frequency: 'MONTHLY', nextDueDate: '2026-04-15', accountId: 'acc-2', payrollDeductions: [eiRule(100)] });
+    const monthEnd = paycheque({ id: 'st-end', frequency: 'MONTHLY', nextDueDate: '2026-04-30', payrollDeductions: [eiRule(100)] });
+    const points = forecastPoints([shown, other], [midMonth, monthEnd], 'month', 'acc-1');
+    expect(paycheques(points)).toEqual([['2026-04-30', 2464]]);
+    // The lower ceiling binds when the two rules disagree.
+    const tighter = paycheque({ id: 'st-end', frequency: 'MONTHLY', nextDueDate: '2026-04-30', payrollDeductions: [{ ...eiRule(100), yearlyMaximum: 1000, remaining: 20 }] });
+    const bound = forecastPoints([shown, other], [midMonth, tighter], 'month', 'acc-1');
+    expect(paycheques(bound)).toEqual([['2026-04-30', 2500]]);
+  });
+
   it('shares one walk between the single and the per-account forecasts', () => {
     const multi = buildMultiAccountForecast(
       [makeAccount()],

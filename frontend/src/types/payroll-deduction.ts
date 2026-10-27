@@ -62,8 +62,32 @@ export interface CreatePayrollDeductionRuleData {
 
 export type UpdatePayrollDeductionRuleData = Partial<CreatePayrollDeductionRuleData>;
 
-/** `GET /payroll-deductions/suggest`: what a bill and category suggest. */
+/** One category of a batch: what differs per deduction line of the bill. */
+export interface PayrollDeductionLineData {
+  categoryId: string;
+  yearlyMaximum: number;
+  expectedPerPaycheque?: number | null;
+}
+
+/** The most categories one batch names (`PAYROLL_BATCH_MAX_LINES` on the server). */
+export const PAYROLL_BATCH_MAX_LINES = 50;
+
+/**
+ * `POST /payroll-deductions/batch`: several categories of one bill sharing a
+ * reset, written in one transaction so a refused line leaves nothing behind.
+ */
+export interface CreatePayrollDeductionRulesData {
+  scheduledTransactionId: string;
+  resetPeriod?: PayrollResetPeriod;
+  resetDate: string;
+  lines: PayrollDeductionLineData[];
+}
+
+/**
+ * `GET /payroll-deductions/suggest`: the bill's own line, else the magnitude
+ * the category's deduction rows most often carry over the last year.
+ */
 export interface ExpectedAmountSuggestion {
   expectedPerPaycheque: number | null;
-  expectedSource: 'line' | 'recent' | null;
+  expectedSource: 'line' | 'ledger' | null;
 }

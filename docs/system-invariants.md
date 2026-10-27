@@ -4823,8 +4823,10 @@ forecast projects the same reduction.
   never re-derives it from rows.
 - **Mechanism.** `payroll-deduction-cap.ts` holds the three functions and the
   one query; `loadScheduledPayrollDeductions` stamps the figures onto every
-  `findAll` row; `frontend/src/lib/forecast.ts` spends them per occurrence
-  and refills on the period end (`forecast.test.ts`).
+  `findAll` row; `frontend/src/lib/forecast.ts` pools the room per category
+  across every bill (`buildDeductionPools`), spends it per occurrence in date
+  order (`spendPayrollDeductions`) and refills on the period end
+  (`forecast.test.ts`).
 - **Status.** enforced.
 
 ### INV-PAYROLL-004 -- one reminder per reset

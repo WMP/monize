@@ -103,6 +103,19 @@ export function todayInTimezone(
 }
 
 /**
+ * Today in `timezone`, or in UTC when the zone does not resolve: what a cron
+ * dates a per-user decision by when the stored zone cannot be trusted.
+ */
+export function todayInTimezoneOrUtc(
+  timezone: string,
+  at: Date = new Date(),
+): string {
+  return (
+    todayInTimezone(timezone, at) ?? (todayInTimezone("UTC", at) as string)
+  );
+}
+
+/**
  * Return today's date as a YYYY-MM-DD string.
  * If a request-scoped timezone is set (via RequestContextInterceptor),
  * returns today in that timezone. Otherwise falls back to the server's

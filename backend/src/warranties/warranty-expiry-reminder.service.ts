@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { DataSource } from "typeorm";
-import { addDaysYMD, todayInTimezone } from "../common/date-utils";
+import { addDaysYMD, todayInTimezoneOrUtc } from "../common/date-utils";
 import { returnedRows } from "../common/db/query-result";
 import { withScopedDb } from "../common/db/scoped-db";
 import { withSystemContext, withUserContext } from "../common/db/with-context";
@@ -116,7 +116,10 @@ export class WarrantyExpiryReminderService {
     const tally: WarrantyReminderTally = { written: 0 };
     for (const [userId, warranties] of byUser) {
       try {
-        const today = localToday(timezoneOf.get(userId) ?? "UTC", now);
+        const today = todayInTimezoneOrUtc(
+          timezoneOf.get(userId) ?? "UTC",
+          now,
+        );
         await withUserContext(userId, async () => {
           for (const warranty of warranties) {
             try {
@@ -209,13 +212,6 @@ export class WarrantyExpiryReminderService {
     );
     return written !== null;
   }
-}
-
-/** Today in `timezone`, or in UTC when the zone does not resolve. */
-function localToday(timezone: string, now: Date): string {
-  return (
-    todayInTimezone(timezone, now) ?? (todayInTimezone("UTC", now) as string)
-  );
 }
 
 function errorMessage(error: unknown): string {

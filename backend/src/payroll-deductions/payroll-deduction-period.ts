@@ -1,4 +1,5 @@
 import { addDaysYMD } from "../common/date-utils";
+import { daysInMonth } from "../common/recurrence";
 
 /**
  * The calendar arithmetic of a rule's reset (docs/specs/payroll-deductions.md
@@ -26,10 +27,6 @@ function parts(ymd: string): [number, number, number] {
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");
-}
-
-function daysInMonth(year: number, month: number): number {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
 /**

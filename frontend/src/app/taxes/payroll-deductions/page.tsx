@@ -27,7 +27,7 @@ import { createLogger } from '@/lib/logger';
 import { payrollDeductionsApi } from '@/lib/payroll-deductions';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import type { Category } from '@/types/category';
-import type { CreatePayrollDeductionRuleData, PayrollDeductionRule } from '@/types/payroll-deduction';
+import type { CreatePayrollDeductionRulesData, PayrollDeductionRule } from '@/types/payroll-deduction';
 import type { ScheduledTransaction } from '@/types/scheduled-transaction';
 
 const PayrollDeductionRuleForm = dynamic(
@@ -100,14 +100,21 @@ function PayrollDeductionsContent() {
   useOnUndoRedo(reload);
   useOnAiAction(reload);
 
-  const handleFormSubmit = async (data: CreatePayrollDeductionRuleData) => {
+  // The form always speaks in lines; an edit is the one-line case.
+  const handleFormSubmit = async (data: CreatePayrollDeductionRulesData) => {
     try {
       if (editingItem) {
-        await payrollDeductionsApi.update(editingItem.id, data);
+        const [line] = data.lines;
+        await payrollDeductionsApi.update(editingItem.id, {
+          scheduledTransactionId: data.scheduledTransactionId,
+          resetPeriod: data.resetPeriod,
+          resetDate: data.resetDate,
+          ...line,
+        });
         toast.success(t('toasts.updated'));
       } else {
-        await payrollDeductionsApi.create(data);
-        toast.success(t('toasts.created'));
+        const created = await payrollDeductionsApi.createMany(data);
+        toast.success(t('toasts.created', { count: created.length }));
       }
       close();
       reload();
@@ -160,6 +167,7 @@ function PayrollDeductionsContent() {
             rule={editingItem}
             scheduledTransactions={scheduled}
             categories={categories}
+            existingRules={rules}
             onSubmit={handleFormSubmit}
             onCancel={close}
             onDirtyChange={setFormDirty}

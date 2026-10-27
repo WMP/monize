@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { DataSource } from "typeorm";
-import { todayInTimezone } from "../common/date-utils";
+import { todayInTimezoneOrUtc } from "../common/date-utils";
 import { returnedRows } from "../common/db/query-result";
 import { withScopedDb } from "../common/db/scoped-db";
 import { withSystemContext, withUserContext } from "../common/db/with-context";
@@ -92,7 +92,10 @@ export class PayrollDeductionResetReminderService {
     const tally: ResetReminderTally = { written: 0 };
     for (const [userId, rules] of byUser) {
       try {
-        const today = localToday(timezoneOf.get(userId) ?? "UTC", now);
+        const today = todayInTimezoneOrUtc(
+          timezoneOf.get(userId) ?? "UTC",
+          now,
+        );
         await withUserContext(userId, async () => {
           for (const rule of rules) {
             try {
@@ -178,12 +181,6 @@ export class PayrollDeductionResetReminderService {
     );
     return written !== null;
   }
-}
-
-function localToday(timezone: string, now: Date): string {
-  return (
-    todayInTimezone(timezone, now) ?? (todayInTimezone("UTC", now) as string)
-  );
 }
 
 function errorMessage(error: unknown): string {

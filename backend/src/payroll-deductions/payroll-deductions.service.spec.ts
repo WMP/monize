@@ -140,12 +140,22 @@ describe("PayrollDeductionsService", () => {
       expect(mocks.manager.query).not.toHaveBeenCalled();
     });
 
-    it("falls back to the most recent row in the bill's currency, then to nothing", async () => {
+    it("falls back to the figure the category's rows most often carry over the last year, then to nothing", async () => {
       await expect(service.suggestExpected(USER, BILL, CPP)).resolves.toEqual({
         expectedPerPaycheque: 61.5,
-        expectedSource: "recent",
+        expectedSource: "ledger",
       });
-      expect(mocks.manager.query.mock.calls[0][1]).toEqual([USER, CPP, "CAD"]);
+      const [sql, params] = mocks.manager.query.mock.calls[0];
+      // The mode, not the latest row: a capped or zeroed final paycheque of
+      // the year must not become next year's expected amount.
+      expect(String(sql)).toMatch(/GROUP BY x\.amount/);
+      expect(String(sql)).toMatch(
+        /ORDER BY COUNT\(\*\) DESC, MAX\(x\.transaction_date\) DESC/,
+      );
+      expect(String(sql)).toMatch(
+        /x\.amount < 0 AND x\.transaction_date >= \$4/,
+      );
+      expect(params).toEqual([USER, CPP, "CAD", "2025-04-10"]);
       mocks.manager.query.mockResolvedValue([]);
       await expect(service.suggestExpected(USER, BILL, CPP)).resolves.toEqual({
         expectedPerPaycheque: null,
@@ -220,6 +230,57 @@ describe("PayrollDeductionsService", () => {
       await expect(
         service.create(USER, { ...dto, categoryId: RULE }),
       ).rejects.toBeInstanceOf(NotFoundException);
+      expect(rulesRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("createMany", () => {
+    const batch = {
+      scheduledTransactionId: BILL,
+      resetDate: "2026-01-01",
+      lines: [
+        { categoryId: EI, yearlyMaximum: 1077.48 },
+        { categoryId: CPP, yearlyMaximum: 4034.1, expectedPerPaycheque: 150 },
+      ],
+    };
+
+    it("saves every line in one transaction and answers a view per line", async () => {
+      rulesRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(rule())
+        .mockResolvedValueOnce(
+          rule({ categoryId: CPP, expectedPerPaycheque: 150 }),
+        );
+      const views = await service.createMany(USER, batch);
+      expect(views).toHaveLength(2);
+      expect(rulesRepo.save).toHaveBeenCalledTimes(2);
+      expect(rulesRepo.save.mock.calls[0][0]).toMatchObject({
+        categoryId: EI,
+        resetDate: "2026-01-01",
+        resetPeriod: "YEARLY",
+        expectedPerPaycheque: null,
+      });
+      expect(rulesRepo.save.mock.calls[1][0]).toMatchObject({
+        categoryId: CPP,
+        expectedPerPaycheque: 150,
+      });
+      expect(mocks.dataSource.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it("writes nothing when a later line is refused", async () => {
+      await expect(
+        service.createMany(USER, {
+          ...batch,
+          lines: [batch.lines[0], { categoryId: CPP, yearlyMaximum: 4034.1 }],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        service.createMany(USER, {
+          ...batch,
+          lines: [batch.lines[0], batch.lines[0]],
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
       expect(rulesRepo.save).not.toHaveBeenCalled();
     });
   });
