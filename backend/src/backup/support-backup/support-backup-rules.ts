@@ -1,3 +1,4 @@
+import { SHARED_RULES } from "./support-backup-rules.shared";
 import {
   drop,
   jsonb,
@@ -37,6 +38,9 @@ import type { TableRules } from "./support-backup-rule-kinds";
  * intentionally absent from RULES below; the golden test skips them.
  */
 export const ALWAYS_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
+  "shared_integrations", // Private pre-link snapshots are not suitable for a support artifact.
+  "shared_postings",
+  "shared_ledger_links",
   "ai_provider_configs",
   "payee_lookup_settings",
   "transaction_attachments",
@@ -45,6 +49,7 @@ export const ALWAYS_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
 ]);
 
 export const RULES: Record<string, TableRules> = {
+  ...SHARED_RULES,
   // How many Google Places requests a month cost, and nothing else: a user id
   // (kept as an FK everywhere here), a YYYY-MM, and a counter. Nothing about
   // it names a payee, so nothing needs masking -- and the count is exactly
@@ -183,6 +188,8 @@ export const RULES: Record<string, TableRules> = {
     updated_at: keep,
   },
   accounts: {
+    managed_purpose: drop,
+    shared_expense_group_id: drop,
     id: keep,
     user_id: keep,
     account_type: keep,
@@ -289,6 +296,7 @@ export const RULES: Record<string, TableRules> = {
     updated_at: keep,
   },
   transactions: {
+    shared_expense_posting_id: drop,
     id: keep,
     user_id: keep,
     account_id: keep,
