@@ -1,4 +1,8 @@
-import { calculateNextDueDate, FrequencyType } from "../common/recurrence";
+import {
+  anchorDayOf,
+  calculateNextDueDate,
+  FrequencyType,
+} from "../common/recurrence";
 import { addDaysYMD } from "../common/date-utils";
 import {
   calendarPaymentNumber,
@@ -62,14 +66,26 @@ export function settlementWindow(
 }
 
 /** The next slot date, or null when the cadence does not move the date forward (`ONCE`, an unknown value). */
-function stepForward(date: string, frequency: string): string | null {
-  const next = calculateNextDueDate(date, frequency as FrequencyType);
+function stepForward(
+  date: string,
+  frequency: string,
+  startDate: string,
+): string | null {
+  const next = calculateNextDueDate(
+    date,
+    frequency as FrequencyType,
+    anchorDayOf(startDate, date),
+  );
   return next > date ? next : null;
 }
 
 /** A slot's period end: the next calendar date, or the day after for a cadence that does not step. */
-function periodEndOf(date: string, frequency: string): string {
-  return stepForward(date, frequency) ?? addDaysYMD(date, 1);
+function periodEndOf(
+  date: string,
+  frequency: string,
+  startDate: string,
+): string {
+  return stepForward(date, frequency, startDate) ?? addDaysYMD(date, 1);
 }
 
 /**
@@ -106,7 +122,7 @@ export function occurrenceSlotsInRange(
   if (schedule.startDate <= cursor) {
     let date = schedule.startDate;
     for (;;) {
-      const next = stepForward(date, frequency);
+      const next = stepForward(date, frequency, schedule.startDate);
       if (next === null || next > cursor) break;
       history.push(date);
       historyEnd = next;
@@ -114,7 +130,7 @@ export function occurrenceSlotsInRange(
     }
   }
   history.forEach((date, index) => {
-    const periodEnd = periodEndOf(date, frequency);
+    const periodEnd = periodEndOf(date, frequency, schedule.startDate);
     if (date >= range.from && date <= range.to) {
       slots.push({
         date,
@@ -136,7 +152,7 @@ export function occurrenceSlotsInRange(
     return slots;
   }
   let ordinal = history.length + 1;
-  const cursorPeriodEnd = periodEndOf(cursor, frequency);
+  const cursorPeriodEnd = periodEndOf(cursor, frequency, schedule.startDate);
   if (cursor >= range.from && cursor <= range.to) {
     slots.push({
       date: cursor,
@@ -153,7 +169,7 @@ export function occurrenceSlotsInRange(
   let date = cursor;
   for (;;) {
     if (remaining !== null && remaining <= 0) break;
-    const next = stepForward(date, frequency);
+    const next = stepForward(date, frequency, schedule.startDate);
     if (next === null || next > range.to) break;
     if (schedule.endDate !== null && next > schedule.endDate) break;
     ordinal += 1;
@@ -163,7 +179,7 @@ export function occurrenceSlotsInRange(
         date: next,
         ordinal,
         periodStart: next,
-        periodEnd: periodEndOf(next, frequency),
+        periodEnd: periodEndOf(next, frequency, schedule.startDate),
         isCursor: false,
       });
     }

@@ -1,7 +1,11 @@
 import { EntityManager } from "typeorm";
 import { ScheduledTransaction } from "./entities/scheduled-transaction.entity";
 import { ScheduledTransactionOverride } from "./entities/scheduled-transaction-override.entity";
-import { calculateNextDueDate, ensureYMD } from "../common/recurrence";
+import {
+  anchorDayOf,
+  calculateNextDueDate,
+  ensureYMD,
+} from "../common/recurrence";
 import { todayYMD } from "../common/date-utils";
 import { returnedRows } from "../common/db/query-result";
 
@@ -49,7 +53,8 @@ export async function advanceScheduleCursor(
   schedule: Pick<
     ScheduledTransaction,
     "id" | "nextDueDate" | "frequency" | "occurrencesRemaining" | "endDate"
-  >,
+  > &
+    Partial<Pick<ScheduledTransaction, "startDate">>,
   consumedSlots: ReadonlySet<string>,
   options: { stampLastPosted?: boolean } = {},
 ): Promise<ScheduleCursorAdvance> {
@@ -63,7 +68,11 @@ export async function advanceScheduleCursor(
     // rolls back and nothing is claimed on a schedule whose cadence cannot
     // step.
     const previous = newNextDueDateStr;
-    newNextDueDateStr = calculateNextDueDate(previous, schedule.frequency);
+    newNextDueDateStr = calculateNextDueDate(
+      previous,
+      schedule.frequency,
+      anchorDayOf(schedule.startDate, previous),
+    );
     if (newNextDueDateStr <= previous) {
       throw new Error(
         `advanceScheduleCursor: frequency "${schedule.frequency}" of scheduled ` +
