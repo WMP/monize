@@ -13,7 +13,7 @@ import {
   SLUGS,
   seriesRoutes,
 } from "@/bonds/adapters/pl/series/fixture-helpers";
-import { extractPdfText } from "@/bonds/adapters/pl/series/pdf-text";
+import { extractPdfText } from "@/common/pdf-text";
 import {
   BondAdapter,
   BondFetch,
@@ -43,7 +43,7 @@ const NO_FX_CHAIN = {} as unknown as FxProviderChain;
 
 // The letter is read as text: the fake PDF is the magic plus the saved letter
 // text, so the real adapter parses the real fixture without pdfjs.
-jest.mock("@/bonds/adapters/pl/series/pdf-text", () => ({
+jest.mock("@/common/pdf-text", () => ({
   extractPdfText: jest.fn(),
 }));
 

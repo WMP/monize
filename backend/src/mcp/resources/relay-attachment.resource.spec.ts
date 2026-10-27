@@ -1,7 +1,7 @@
 import { McpRelayAttachmentResource } from "./relay-attachment.resource";
 import { RelayAttachmentStore } from "../../ai/relay/relay-attachment.store";
 import { createRelayRowsHarness } from "../../ai/relay/relay-rows.harness";
-import { extractPdfText } from "../../ai/relay/pdf-text.util";
+import { extractPdfText } from "../../common/pdf-text";
 import { mcpTestCtx, McpTestContext } from "../testing/mcp-test-context";
 
 jest.mock("../../common/db/scoped-db", () =>
@@ -10,7 +10,7 @@ jest.mock("../../common/db/scoped-db", () =>
     .scopedDbMockModule(),
 );
 
-jest.mock("../../ai/relay/pdf-text.util", () => ({
+jest.mock("../../common/pdf-text", () => ({
   extractPdfText: jest.fn(),
 }));
 const mockExtractPdfText = extractPdfText as jest.MockedFunction<
@@ -107,7 +107,7 @@ describe("McpRelayAttachmentResource", () => {
   });
 
   it("returns server-extracted text (not a blob) for a PDF attachment", async () => {
-    mockExtractPdfText.mockResolvedValue("Bank statement: balance $100");
+    mockExtractPdfText.mockResolvedValue("  Bank statement: balance $100\n");
     const [ref] = await store.store("u1", [
       {
         kind: "pdf",
