@@ -4829,7 +4829,10 @@ forecast projects the same reduction.
   line plus the deduction due, refills on the anchor's anniversary, and
   answers one occurrence's lines to the Edit Occurrence dialog
   (`projectPayrollOccurrence`); `forecast.test.ts` and
-  `OverrideEditorDialog.payroll.test.tsx`.
+  `OverrideEditorDialog.payroll.test.tsx`. The rows "paid" sums are one SQL
+  fragment, `CATEGORY_DEDUCTION_ROWS_SQL`, which the payroll deductions report
+  (`payroll-deduction-report.ts`) reads too, so its columns add up to the
+  figure the cap spends; `payroll-deduction-report.spec.ts`.
 - **Status.** enforced.
 
 ### INV-PAYROLL-004 -- one reminder per reset

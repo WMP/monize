@@ -477,6 +477,47 @@
             "body": "Monize herinnert je 30 dagen en 7 dagen voordat een garantie verloopt, en op de dag zelf. De herinneringen komen hier binnen, en je kunt er een uitstellen of de garantie ervan openen. Kies onder **Instellingen**, in **Meldingen**, bij **Garantieherinneringen** hoe ze je bereiken."
           }
         }
+      },
+      "payrollDeductions": {
+        "title": "Looninhoudingen",
+        "steps": {
+          "welcome": {
+            "title": "Stop inhoudingen bij hun jaarmaximum",
+            "body": "Sommige inhoudingen op je loon, zoals pensioen of werkloosheidsverzekering, stoppen zodra het jaarmaximum is bereikt en beginnen het volgende jaar opnieuw. Een looninhoudingsregel vertelt Monize dat maximum, zodat je loon de inhouding niet meer inhoudt zodra het is bereikt. **Voordat je begint, heb je een geplande loonrekening nodig:** je loon ingesteld als geplande storting, met de inhoudingen als aparte regels."
+          },
+          "payrollBill": {
+            "title": "Stel eerst je loon in",
+            "body": "Heb je dat nog niet gedaan, kies dan **+ Nieuw schema** en maak je loon aan als storting. Splits het in een regel voor je brutoloon en een negatieve regel per inhouding, elk met een eigen categorie. Wordt een inhouding nu niet ingehouden omdat het maximum van dit jaar al is bereikt, voeg er dan toch een splitsingsregel voor toe, als uitgave met waarde nul, zodat een regel haar kan begrenzen en ze na de reset opnieuw begint. Alleen een actieve storting die meer binnenbrengt dan ze inhoudt kan regels krijgen, en alleen haar inhoudingsregels kunnen worden begrensd."
+          },
+          "taxesLink": {
+            "title": "Looninhoudingen staan onder Belastingen",
+            "body": "Open **Hulpmiddelen** en kies **Belastingen** om de belastinghulpmiddelen te vinden."
+          },
+          "taxesCard": {
+            "title": "Open Looninhoudingen",
+            "body": "Kies deze kaart om de looninhoudingsregels te openen."
+          },
+          "newRule": {
+            "title": "Maak de regels voor een loonstrook",
+            "body": "**+ Nieuwe regel** opent het formulier. Kies je geplande loonrekening en daarna een jaarmaximum voor elke inhoudingscategorie die je wilt begrenzen. Vul de resetdatum in, meestal 1 januari. Heeft de rekening geen inhoudingsregels, dan zegt het formulier dat je die eerst aan de rekening moet toevoegen."
+          },
+          "rulesList": {
+            "title": "Je regels",
+            "body": "Elke regel toont de rekening, de categorie, het jaarmaximum, de resetdatum en wat elke loonbetaling inhoudt. Bewerk een regel om het maximum te wijzigen, of verwijder hem zodat je loon weer de volledige regel inhoudt. Een regel verwijderen wijzigt nooit een geboekte transactie."
+          },
+          "periodTables": {
+            "title": "Wat al is ingehouden",
+            "body": "Zodra je een regel hebt, toont **Jaar tot nu toe tonen** wat elke categorie deze periode heeft ingehouden en hoeveel ruimte er onder het maximum overblijft. **Vorige perioden tonen** toont wat ze in eerdere jaren heeft ingehouden."
+          },
+          "forecast": {
+            "title": "Toegepast wanneer het loon wordt geboekt",
+            "body": "Wanneer het loon wordt geboekt, wordt elke begrensde regel verlaagd tot de ruimte die onder het maximum overblijft, tot nul, en begint ze na de resetdatum opnieuw. De kasstroomprognose hier en op het dashboard toont hetzelfde vooraf, zodat je ziet hoe je nettoloon stijgt zodra een maximum is bereikt."
+          },
+          "reminders": {
+            "title": "Een herinnering voor elke reset",
+            "body": "Twee maanden voordat een regel wordt gereset, vraagt Monize je hier het maximum voor volgend jaar te bevestigen. Doe je niets, dan houdt de regel zijn maximum en wordt hij op zijn datum gereset. Kies onder **Instellingen**, in **Meldingen**, bij **Rekeningen en gepland** hoe de herinneringen je bereiken."
+          }
+        }
       }
     }
   },
