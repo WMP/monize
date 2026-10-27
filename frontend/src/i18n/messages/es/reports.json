@@ -1942,7 +1942,11 @@
     "noticeExcluded": "Algunas cifras son parciales: {count, plural, one {# importe no se pudo calcular y queda} other {# importes no se pudieron calcular y quedan}} excluidos.",
     "pdfNote": "Total parcial: no hay tipo de cambio para {currencies}",
     "pdfNoteExcluded": "Total parcial: {count, plural, one {# importe excluido} other {# importes excluidos}}",
-    "pdfSuffix": "(parcial)"
+    "pdfSuffix": "(parcial)",
+    "knownValue": "Valor conocido",
+    "weightingIntro": "Los porcentajes solo cubren las posiciones que se pudieron valorar.",
+    "weightingNoPrice": "Sin precio para {symbols}: actualiza o añade un precio en la página del valor.",
+    "weightingNoRate": "Sin tipo de cambio para {pairs}: añade uno en la página Divisas."
   },
   "sankey": {
     "help": "El dinero que entró fluye por el centro hacia aquello en lo que se gastó, lo que se ahorró o invirtió y lo que pagó deudas. De forma predeterminada, el informe abarca sus cuentas corrientes, de ahorro, de efectivo, de tarjeta de crédito y de línea de crédito abiertas, y una transferencia entre dos de ellas no se muestra. Excluya una cuenta de ahorro del filtro de cuentas para ver lo que transfirió a ella. Un pago de tarjeta de crédito nunca es un pago de deuda: las compras que liquida ya se cuentan como gastos.",

@@ -779,7 +779,96 @@ describe("SectorWeightingService", () => {
 
       const result = await service.getAssetClassWeightings("user-1");
 
-      expect(result.totalPortfolioValue).toBeCloseTo(1000.8, 6);
+      expect(result.totalPortfolioValue).toBeNull();
+      expect(result.knownSubtotal).toBeCloseTo(1000.8, 6);
+      expect(result.valuationComplete).toBe(false);
+    });
+  });
+
+  describe("a holding left out withholds the total", () => {
+    const account = {
+      id: "acct-1",
+      userId: "user-1",
+      accountType: "INVESTMENT",
+      currencyCode: "USD",
+    };
+    const held = (id: string, symbol: string, currencyCode: string) => ({
+      id: `h-${id}`,
+      accountId: "acct-1",
+      securityId: id,
+      quantity: 10,
+      security: { ...mockStockSecurity, id, symbol, currencyCode },
+    });
+
+    beforeEach(() => {
+      accountsRepo.find.mockResolvedValue([account]);
+      calcService.categoriseAccounts.mockReturnValue({
+        cashAccounts: [],
+        brokerageAccounts: [],
+        standaloneAccounts: [account],
+        holdingsAccountIds: ["acct-1"],
+      });
+      prefsRepo.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+      // sec-ok and sec-jpy are priced; sec-nop has no price row.
+      manager.query.mockResolvedValue([
+        { security_id: "sec-ok", close_price: "100" },
+        { security_id: "sec-jpy", close_price: "5000" },
+      ]);
+      calcService.convertToDefault.mockImplementation(
+        (amount: number, from: string) =>
+          Promise.resolve(from === "JPY" ? null : amount),
+      );
+    });
+
+    it("names the unpriced security and the missing pair, weights over the known part", async () => {
+      holdingsRepo.find.mockResolvedValue([
+        held("sec-ok", "OK", "USD"),
+        held("sec-nop", "NOP", "USD"),
+        held("sec-jpy", "JPY1", "JPY"),
+      ]);
+
+      const result = await service.getSectorWeightings("user-1");
+
+      expect(result.totalPortfolioValue).toBeNull();
+      expect(result.knownSubtotal).toBe(1000);
+      expect(result.valuationComplete).toBe(false);
+      expect(result.pricesComplete).toBe(false);
+      expect(result.fxComplete).toBe(false);
+      expect(result.unpricedSecurityIds).toEqual(["sec-nop"]);
+      expect(result.unpricedSymbols).toEqual(["NOP"]);
+      expect(result.missingRatePairs).toEqual(["JPY->USD"]);
+      expect(result.items[0].percentage).toBe(100);
+    });
+
+    it("withholds the total on the country and asset-class views too", async () => {
+      holdingsRepo.find.mockResolvedValue([
+        held("sec-ok", "OK", "USD"),
+        held("sec-nop", "NOP", "USD"),
+      ]);
+
+      const country = await service.getCountryWeightings("user-1");
+      const assetClass = await service.getAssetClassWeightings("user-1");
+      const llm = await service.getLlmLookThrough("user-1");
+
+      for (const r of [country, assetClass, llm]) {
+        expect(r.totalPortfolioValue).toBeNull();
+        expect(r.knownSubtotal).toBe(1000);
+        expect(r.valuationComplete).toBe(false);
+        expect(r.unpricedSymbols).toEqual(["NOP"]);
+      }
+      expect(llm.byCountry.items[0].percentage).toBe(100);
+    });
+
+    it("keeps the total when every holding is priced and converted", async () => {
+      holdingsRepo.find.mockResolvedValue([held("sec-ok", "OK", "USD")]);
+
+      const result = await service.getSectorWeightings("user-1");
+
+      expect(result.totalPortfolioValue).toBe(1000);
+      expect(result.knownSubtotal).toBe(1000);
+      expect(result.valuationComplete).toBe(true);
+      expect(result.unpricedSecurityIds).toEqual([]);
+      expect(result.missingRatePairs).toEqual([]);
     });
   });
 

@@ -25,6 +25,7 @@ import { chartColors, chartSeriesColor } from '@/lib/chart-colors';
 import { computeGeographicAllocation } from '@/lib/geographic-allocation';
 import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
 import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
+import { WeightingPartialNote } from '@/components/reports/WeightingPartialNote';
 import { WidgetCard, WidgetConfigRow, WidgetMessage } from './WidgetCard';
 import { WidgetSegmentedControl } from './WidgetSegmentedControl';
 import { GEOGRAPHIC_ALLOCATION_DEFAULT, GeographicConfig } from './widget-config';
@@ -277,6 +278,7 @@ export function GeographicAllocationWidget({
           {t('geographicAllocation.listingBasisNote')}
         </p>
       )}
+      {!loading && !isEmpty && config.view === 'country' && <WeightingPartialNote result={countryResp} />}
       {!loading && !isEmpty && partialNote && (
         // Some holdings converted and some did not: the shares above are of the
         // convertible subset, so mark them a subtotal rather than 100%.

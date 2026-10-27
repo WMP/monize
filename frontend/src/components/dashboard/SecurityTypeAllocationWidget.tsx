@@ -16,6 +16,7 @@ import { aggregateHoldingsBySecurity } from '@/lib/aggregate-holdings';
 import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
 import { collapseLookThrough } from '@/lib/look-through-allocation';
 import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
+import { WeightingPartialNote } from '@/components/reports/WeightingPartialNote';
 import { WidgetCard, WidgetConfigRow, WidgetMessage } from './WidgetCard';
 import { WidgetSegmentedControl } from './WidgetSegmentedControl';
 import {
@@ -196,6 +197,7 @@ export function SecurityTypeAllocationWidget({
         </WidgetMessage>
       ) : (
         <>
+          {config.view === 'assetClass' && <WeightingPartialNote result={assetClasses} />}
           <div className="flex-1 min-h-[240px]">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <PieChart>

@@ -20,6 +20,7 @@ import { useReportData } from '@/hooks/useReportData';
 import { useWidgetConfig } from '@/hooks/useWidgetConfig';
 import { chartColors } from '@/lib/chart-colors';
 import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
+import { WeightingPartialNote } from '@/components/reports/WeightingPartialNote';
 import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
 import { WidgetCard, WidgetConfigRow, WidgetMessage } from './WidgetCard';
 import { SECTOR_WEIGHTINGS_DEFAULT, AccountsConfig } from './widget-config';
@@ -93,6 +94,8 @@ export function SectorWeightingsWidget({ accounts, isLoading }: SectorWeightings
       ) : chartData.length === 0 ? (
         <WidgetMessage>{t('sectorWeightings.empty')}</WidgetMessage>
       ) : (
+        <>
+        <WeightingPartialNote result={data} />
         <div
           className="flex-1"
           style={{ minHeight: Math.min(Math.max(240, chartData.length * 38 + 40), 420) }}
@@ -132,6 +135,7 @@ export function SectorWeightingsWidget({ accounts, isLoading }: SectorWeightings
             </BarChart>
           </ResponsiveContainer>
         </div>
+        </>
       )}
     </WidgetCard>
   );
