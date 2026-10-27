@@ -211,6 +211,26 @@ describe('PayrollDeductionRuleForm', () => {
     expect(screen.queryByRole('button', { name: '+ Add another category' })).not.toBeInTheDocument();
   });
 
+  it("starts an empty yearly maximum from another paycheque's rule on the same category", async () => {
+    const onOtherBill = { id: 'r-mid', scheduledTransactionId: 'st-mid', categoryId: 'cat-ei', yearlyMaximum: 1077.48 } as PayrollDeductionRule;
+    render(
+      <PayrollDeductionRuleForm
+        scheduledTransactions={[bill()]}
+        categories={categories}
+        existingRules={[onOtherBill]}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+    await pickCategory(0, 'cat-ei');
+    expect(screen.getByLabelText('Yearly maximum')).toHaveValue('1,077.48');
+    // A figure already typed is kept.
+    fillMaximum(0, '1100');
+    await pickCategory(0, 'cat-cpp');
+    await pickCategory(0, 'cat-ei');
+    expect(screen.getByLabelText('Yearly maximum')).toHaveValue('1,100.00');
+  });
+
   it('says when the bill has no deduction lines at all', () => {
     render(
       <PayrollDeductionRuleForm

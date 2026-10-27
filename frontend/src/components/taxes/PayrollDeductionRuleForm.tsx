@@ -172,6 +172,7 @@ export function PayrollDeductionRuleForm({
     handleSubmit,
     control,
     setValue,
+    getValues,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -260,6 +261,18 @@ export function PayrollDeductionRuleForm({
   const handleCategoryChange = (index: number, value: string) => {
     setValue(`lines.${index}.categoryId`, value, { shouldDirty: true, shouldValidate: true });
     setValue(`lines.${index}.suggested`, false);
+    // A second paycheque deducting to a category another bill already caps
+    // shares that maximum (the forecast pools the room), so an empty box
+    // starts from the rule entered first.
+    const sibling = existingRules.find(
+      (r) => r.categoryId === value && r.scheduledTransactionId !== billId && r.id !== rule?.id,
+    );
+    if (sibling && getValues(`lines.${index}.yearlyMaximum`) === undefined) {
+      setValue(`lines.${index}.yearlyMaximum`, Number(sibling.yearlyMaximum), {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
     if (!value || !billId || billLineAmount(billsById.get(billId), value) !== null) return;
     payrollDeductionsApi
       .suggest(billId, value)

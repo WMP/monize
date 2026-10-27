@@ -24,7 +24,9 @@ start again at the next year's figure.
   with a category and a non-positive amount (`billDeductionCategoryIds`). The
   gross line is not a deduction; a zero line is one the bill stopped
   collecting, which a rule may resume. A category the bill already has a rule
-  for is not offered again.
+  for is not offered again; when another bill already caps the category, an
+  empty yearly maximum starts from that rule's figure, since the two share
+  one room.
 - When the bill **posts** (automatically or from the Post dialog), each
   deduction line of a category with a rule is reduced to what room is left
   under the maximum, down to zero. The parent amount follows.
