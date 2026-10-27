@@ -11,7 +11,7 @@ import { createLogger } from '@/lib/logger';
 import { useTableDensity } from '@/hooks/useTableDensity';
 import { useDensityPreference } from '@/store/densityStore';
 import { SortIcon } from '@/components/ui/SortIcon';
-import { safeHttpUrl } from '@/lib/safe-url';
+import { toSafeExternalUrl } from '@/lib/external-url';
 import { InstitutionLogo } from './InstitutionLogo';
 import { useLongPress } from '@/hooks/useLongPress';
 import { RowActions } from '@/components/ui/row-actions/RowActions';
@@ -106,7 +106,7 @@ function institutionCountryText(institution: Institution): string {
  * what keeps the row's press handlers from also acting on it.
  */
 function InstitutionWebsite({ institution }: { institution: Institution }) {
-  const href = safeHttpUrl(institution.website);
+  const href = toSafeExternalUrl(institution.website);
   return href ? (
     <a
       href={href}

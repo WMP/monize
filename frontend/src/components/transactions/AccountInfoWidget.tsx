@@ -25,7 +25,7 @@ import { useLoanProjection } from '@/hooks/useLoanProjection';
 import { InstitutionLogo, InstitutionLogoData } from '@/components/institutions/InstitutionLogo';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { EntitySwitcher, type EntitySwitcherItem } from '@/components/ui/EntitySwitcher';
-import { safeHttpUrl } from '@/lib/safe-url';
+import { toSafeExternalUrl } from '@/lib/external-url';
 import { getNextScheduled } from '@/lib/scheduled-utils';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
 
@@ -108,7 +108,7 @@ export function AccountInfoWidget({
   const institutionName = institution?.name ?? account.institution ?? null;
   // Only treat http(s) URLs as a safe link target, to avoid javascript:/data:
   // URIs ever reaching the href.
-  const institutionWebsite = safeHttpUrl(institution?.website);
+  const institutionWebsite = toSafeExternalUrl(institution?.website);
 
   // One row per account the Accounts filter offers, each qualified by its type
   // the way the account detail page's switcher does, so alike-named accounts at

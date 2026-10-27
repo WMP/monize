@@ -7,7 +7,7 @@ import { GroupToggleButton } from '@/components/ui/GroupToggleButton';
 import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
-import { isHttpUrl } from '@/lib/bond-offer';
+import { toSafeExternalUrl } from '@/lib/external-url';
 import type { HistorySeries } from '@/types/bond';
 
 /** Group key of a series whose terms carry no sale window. */
@@ -80,7 +80,7 @@ export function BondHistorySeriesTable({
     currency === null ? formatNumber(amount) : formatCurrency(amount, currency);
   const termsSource = (s: HistorySeries): ReactNode => {
     const label = tSec('bond.termsSource', { document: s.termsSource.document });
-    return isHttpUrl(s.termsSource.url) ? (
+    return toSafeExternalUrl(s.termsSource.url) ? (
       <a
         href={s.termsSource.url}
         target="_blank"

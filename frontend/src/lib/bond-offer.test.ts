@@ -3,7 +3,6 @@ import {
   buildAssumptions,
   buildHistoryPoints,
   fractionToPercent,
-  isHttpUrl,
   monthRange,
   offerBenchmarks,
   sortOffer,
@@ -166,14 +165,5 @@ describe('history points', () => {
     expect(monthRange('2025-11', '2026-02')).toEqual(['2025-11', '2025-12', '2026-01', '2026-02']);
     expect(monthRange('2025-13', '2026-02')).toEqual([]);
     expect(monthRange('2026-03', '2026-01')).toEqual([]);
-  });
-});
-
-describe('isHttpUrl', () => {
-  it('accepts http(s) only', () => {
-    expect(isHttpUrl('https://a.test')).toBe(true);
-    expect(isHttpUrl('HTTP://a.test')).toBe(true);
-    expect(isHttpUrl('javascript:alert(1)')).toBe(false);
-    expect(isHttpUrl('//a.test')).toBe(false);
   });
 });
