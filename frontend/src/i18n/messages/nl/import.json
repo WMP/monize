@@ -337,7 +337,10 @@
     "securitiesNotice": "Dit bestand bevat {count} waardepapier{plural} die voor de import gekoppeld moeten worden.",
     "nextMapSecurities": "Volgende: waardepapieren koppelen",
     "importAll": "Alles importeren",
-    "transactionCount": "{count} transactie{plural}"
+    "transactionCount": "{count} transactie{plural}",
+    "chooseAccountType": "Kies een type",
+    "accountTypeFor": "Rekeningtype voor {name}",
+    "accountTypesNeeded": "Het bestand vermeldt niet welk type {count, plural, one {# rekening is} other {# rekeningen zijn}}. Kies voor elke rekening een type voordat u importeert."
   },
   "navigation": {
     "back": "Terug",

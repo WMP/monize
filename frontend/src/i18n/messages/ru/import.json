@@ -337,7 +337,10 @@
     "securitiesNotice": "Этот файл содержит {count} ценных бумаг, которые необходимо сопоставить перед импортом.",
     "nextMapSecurities": "Далее: сопоставить ценные бумаги",
     "importAll": "Импортировать все",
-    "transactionCount": "{count} проводок"
+    "transactionCount": "{count} проводок",
+    "chooseAccountType": "Выберите тип",
+    "accountTypeFor": "Тип счёта для {name}",
+    "accountTypesNeeded": "В файле не указан тип {count, plural, one {# счёта} few {# счетов} many {# счетов} other {# счетов}}. Перед импортом выберите тип для каждого."
   },
   "navigation": {
     "back": "Назад",

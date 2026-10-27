@@ -337,7 +337,10 @@
     "securitiesNotice": "Tệp này chứa {count} chứng khoán{plural} cần được ánh xạ trước khi nhập khẩu.",
     "nextMapSecurities": "Tiếp theo: Ánh xạ chứng khoán",
     "importAll": "Nhập Khẩu Tất Cả",
-    "transactionCount": "{count} giao dịch{plural}"
+    "transactionCount": "{count} giao dịch{plural}",
+    "chooseAccountType": "Chọn loại",
+    "accountTypeFor": "Loại tài khoản cho {name}",
+    "accountTypesNeeded": "Tệp không cho biết loại của {count, plural, other {# tài khoản}}. Hãy chọn loại cho từng tài khoản trước khi nhập."
   },
   "navigation": {
     "back": "Quay lại",

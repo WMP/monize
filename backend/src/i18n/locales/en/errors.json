@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "No account blocks found in QIF file. This file may not be a multi-account export.",
+    "accountTypeRequired": "Choose an account type for these accounts before importing: {{ accounts }}",
     "importFailed": "Import failed after {{ imported }} transactions: {{ message }}",
     "investmentFileNeedsBrokerageAccount": "This file contains investment transactions but the selected account is not an investment brokerage account. Please select a brokerage account for this import.",
     "regularFileNeedsCashAccount": "This file contains regular banking transactions but the selected account is an investment brokerage account. Please select a cash account (including investment cash accounts) for this import.",

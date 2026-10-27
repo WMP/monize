@@ -27,6 +27,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
 import { payrollDeductionsApi } from '@/lib/payroll-deductions';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
+import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import type { Category } from '@/types/category';
 import type { CreatePayrollDeductionRulesData, PayrollDeductionRule } from '@/types/payroll-deduction';
 import type { ScheduledTransaction } from '@/types/scheduled-transaction';
@@ -153,7 +154,11 @@ function PayrollDeductionsContent() {
         <PageHeader
           title={t('title')}
           subtitle={t('subtitle')}
-          actions={<Button onClick={openCreate}>{t('newButton')}</Button>}
+          actions={
+            <Button onClick={openCreate} {...tourAnchor(TOUR_ANCHORS.payrollNewRuleButton)}>
+              {t('newButton')}
+            </Button>
+          }
         />
 
         <Modal
@@ -191,7 +196,7 @@ function PayrollDeductionsContent() {
           onCancel={() => setDeleteRule(null)}
         />
 
-        <div className={`${CARD_CLASS} overflow-hidden`}>
+        <div className={`${CARD_CLASS} overflow-hidden`} {...tourAnchor(TOUR_ANCHORS.payrollRulesList)}>
           {isLoading ? (
             <LoadingSpinner text={t('loading')} />
           ) : rules.length === 0 ? (

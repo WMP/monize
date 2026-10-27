@@ -337,7 +337,10 @@
     "securitiesNotice": "[XX-This file contains {count} securit{plural} that need to be mapped before import.-XX]",
     "nextMapSecurities": "[XX-Next: Map Securities-XX]",
     "importAll": "[XX-Import All-XX]",
-    "transactionCount": "[XX-{count} transaction{plural}-XX]"
+    "transactionCount": "[XX-{count} transaction{plural}-XX]",
+    "chooseAccountType": "[XX-Choose a type-XX]",
+    "accountTypeFor": "[XX-Account type for {name}-XX]",
+    "accountTypesNeeded": "[XX-The file does not say what type {count, plural, one {# account is} other {# accounts are}}. Choose a type for each before importing.-XX]"
   },
   "navigation": {
     "back": "[XX-Back-XX]",

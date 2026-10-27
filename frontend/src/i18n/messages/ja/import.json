@@ -337,7 +337,10 @@
     "securitiesNotice": "このファイルにはインポート前にマッピングが必要な {count} 件の有価証券{plural}が含まれています。",
     "nextMapSecurities": "次へ: 有価証券のマッピング",
     "importAll": "すべてインポート",
-    "transactionCount": "{count} 件の取引{plural}"
+    "transactionCount": "{count} 件の取引{plural}",
+    "chooseAccountType": "種類を選択",
+    "accountTypeFor": "{name} の口座の種類",
+    "accountTypesNeeded": "ファイルに {count, plural, other {# 件の口座}}の種類が記載されていません。インポートする前にそれぞれの種類を選択してください。"
   },
   "navigation": {
     "back": "戻る",

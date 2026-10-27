@@ -15,8 +15,10 @@ import {
   Min,
   Max,
   ArrayMaxSize,
+  IsEnum,
 } from "class-validator";
 import { Type } from "class-transformer";
+import { AccountType } from "../../accounts/entities/account.entity";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import type { CsvInvestmentSummary } from "../csv-parser";
 
@@ -435,6 +437,21 @@ export class ImportResultDto {
 
 // --- Multi-account QIF DTOs ---
 
+export class QifAccountTypeChoiceDto {
+  @ApiProperty({
+    description:
+      "Account name exactly as the file spells it, for an account whose type the file leaves unknown",
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  accountName: string;
+
+  @ApiProperty({ enum: AccountType, description: "Type to create it as" })
+  @IsEnum(AccountType)
+  accountType: AccountType;
+}
+
 export class ImportQifMultiAccountDto {
   @ApiProperty({ description: "QIF file content as string" })
   @IsString()
@@ -472,6 +489,18 @@ export class ImportQifMultiAccountDto {
   @ValidateNested({ each: true })
   @Type(() => SecurityMappingDto)
   securityMappings?: SecurityMappingDto[];
+
+  @ApiPropertyOptional({
+    description:
+      "The user's type for each account the file leaves without one; a type the file names is kept",
+    type: [QifAccountTypeChoiceDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(1000)
+  @ValidateNested({ each: true })
+  @Type(() => QifAccountTypeChoiceDto)
+  accountTypes?: QifAccountTypeChoiceDto[];
 }
 
 export class ParsedQifMultiAccountResponseDto {
@@ -495,10 +524,13 @@ export class ParsedQifMultiAccountResponseDto {
     description: string;
   }>;
 
-  @ApiProperty({ description: "Account blocks found in the file" })
+  @ApiProperty({
+    description:
+      "Account blocks found in the file; accountType is null when the file names no type QIF defines",
+  })
   accounts: Array<{
     accountName: string;
-    accountType: string;
+    accountType: string | null;
     transactionCount: number;
     dateRange: { start: string; end: string };
   }>;

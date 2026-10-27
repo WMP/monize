@@ -164,11 +164,28 @@ function warnOnce(
 }
 
 /**
+ * Resolutions already made against an index, keyed by the index object and
+ * then by `"FROM->TO@date"`.
+ *
+ * A daily valuation asks the same question once per HOLDING per day: sixty
+ * positions in two foreign currencies resolve each pair sixty times for one
+ * date, and every resolution pays for its own date arithmetic. Over a
+ * twenty-eight-year history that was most of a three-second fold, run once per
+ * concurrent request on the Investments page (issue #1888). The answer for a
+ * (pair, date) cannot change while the index lives -- an index is built once
+ * and never patched; a fill re-reads into a new one -- so it is remembered for
+ * the index's lifetime and dropped with it.
+ */
+const resolutionMemo = new WeakMap<RateIndex, Map<string, FxRateResolution>>();
+
+/**
  * The rate for `from -> to` on `onDate`, resolved from a loaded index.
  *
  * The whole resolution, not just the number: `observedOn` says which day's
  * observation was used and `reason` says why there is none, which is what a
  * surface needs to explain a withheld figure rather than showing a bare gap.
+ * Treat the returned object as read-only: it is shared by every lookup of the
+ * same pair and date against the same index.
  */
 export function resolveIndexedRate(
   rateIndex: RateIndex,
@@ -176,7 +193,19 @@ export function resolveIndexedRate(
   to: string,
   onDate: string,
 ): FxRateResolution {
-  return resolveFxRate(from, to, onDate, (f, t) => rateIndex.get(`${f}->${t}`));
+  let memo = resolutionMemo.get(rateIndex);
+  if (!memo) {
+    memo = new Map();
+    resolutionMemo.set(rateIndex, memo);
+  }
+  const key = `${from}->${to}@${onDate}`;
+  const known = memo.get(key);
+  if (known) return known;
+  const resolution = resolveFxRate(from, to, onDate, (f, t) =>
+    rateIndex.get(`${f}->${t}`),
+  );
+  memo.set(key, resolution);
+  return resolution;
 }
 
 /**

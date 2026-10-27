@@ -24,6 +24,7 @@ import { usePortfolioRangeWindow } from '@/hooks/usePortfolioRangeWindow';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { usePortfolioPeriodResult } from '@/hooks/usePortfolioPeriodResult';
+import type { UsePortfolioPeriodResultsValue } from '@/hooks/usePortfolioPeriodResults';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { createLogger } from '@/lib/logger';
@@ -132,9 +133,15 @@ interface InvestmentValueChartProps {
    * re-fetch that trusted it.
    */
   refreshKey?: number;
+  /**
+   * The page's "Portfolio performance" batch for the same accounts, currency
+   * and refresh key. A range the batch reports reads its figures from there
+   * instead of asking the server to value the same window again (#1888).
+   */
+  periodResults?: UsePortfolioPeriodResultsValue;
 }
 
-export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix, refreshKey = 0 }: InvestmentValueChartProps) {
+export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix, refreshKey = 0, periodResults }: InvestmentValueChartProps) {
   const t = useTranslations('investments');
   const tc = useTranslations('common');
   const tReports = useTranslations('reports');
@@ -512,6 +519,7 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
     accountIds: accountIds?.length ? accountIds.join(',') : undefined,
     displayCurrency: foreignCurrency || undefined,
     reloadKey: refreshKey,
+    shared: periodResults,
   });
 
   // The series as drawn. It was requested from the day the period is measured

@@ -24,6 +24,7 @@ export const TOUR_ANCHORS = {
   navToolsMenu: 'nav-tools-menu',
   navRules: 'nav-rules',
   navWarranties: 'nav-warranties',
+  navTaxes: 'nav-taxes',
 
   // Dashboard
   dashboardWidgets: 'dashboard-widgets',
@@ -116,6 +117,15 @@ export const TOUR_ANCHORS = {
   warrantiesSummary: 'warranties-summary',
   warrantiesAddButton: 'warranties-add-button',
   warrantiesImportButton: 'warranties-import-button',
+
+  // Payroll deductions (the payroll bill's way in on Bills, the Taxes card,
+  // and the tool's page). The rules card holds the spinner, the empty state
+  // or the list, so it renders in every state of the page.
+  billsNewButton: 'bills-new-button',
+  billsCashFlowForecast: 'bills-cash-flow-forecast',
+  taxesPayrollDeductions: 'taxes-payroll-deductions',
+  payrollNewRuleButton: 'payroll-new-rule-button',
+  payrollRulesList: 'payroll-rules-list',
 } as const;
 
 export type TourAnchorId = (typeof TOUR_ANCHORS)[keyof typeof TOUR_ANCHORS];

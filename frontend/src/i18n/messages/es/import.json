@@ -337,7 +337,10 @@
     "securitiesNotice": "Este archivo contiene {count} valor{plural} que deben asignarse antes de la importación.",
     "nextMapSecurities": "Siguiente: Asignar Valores",
     "importAll": "Importar Todo",
-    "transactionCount": "{count} transacción{plural}"
+    "transactionCount": "{count} transacción{plural}",
+    "chooseAccountType": "Elija un tipo",
+    "accountTypeFor": "Tipo de cuenta para {name}",
+    "accountTypesNeeded": "El archivo no indica de qué tipo {count, plural, one {es # cuenta} other {son # cuentas}}. Elija un tipo para cada una antes de importar."
   },
   "navigation": {
     "back": "Atrás",

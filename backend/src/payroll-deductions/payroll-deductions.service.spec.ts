@@ -180,6 +180,64 @@ describe("PayrollDeductionsService", () => {
     });
   });
 
+  describe("report", () => {
+    it("reads each category once, shared by its rules, and reports the current year by default", async () => {
+      // Two paycheques on EI and one on CPP.
+      rulesRepo.find.mockResolvedValue([
+        rule(),
+        rule({ id: CPP, scheduledTransactionId: CPP }),
+        rule({
+          id: USER,
+          categoryId: CPP,
+          yearlyMaximum: 4034.1,
+          category: { id: CPP, name: "CPP" } as Category,
+        }),
+      ]);
+      mocks.manager.query.mockImplementation(
+        async (_sql: string, params: unknown[]) => [
+          {
+            transaction_id: "p1",
+            transaction_date: "2026-01-15",
+            payee_name: "Employer",
+            currency_code: "CAD",
+            amount: params[1] === EI ? "-64" : "-200.5",
+          },
+        ],
+      );
+      const report = await service.report(USER);
+      expect(rulesRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: USER } }),
+      );
+      expect(mocks.manager.query).toHaveBeenCalledTimes(2);
+      expect(
+        mocks.manager.query.mock.calls.map((c) => (c[1] as unknown[])[0]),
+      ).toEqual([USER, USER]);
+      expect(report.year).toBe(2026);
+      expect(report.categories.map((c) => c.categoryName)).toEqual([
+        "CPP",
+        "EI",
+      ]);
+      expect(report.categories[1]).toMatchObject({
+        billNames: ["Paycheque"],
+        summary: { paidToDate: 64, yearlyMaximum: 1077.48, remaining: 1013.48 },
+      });
+      expect(report.paycheques).toEqual([
+        expect.objectContaining({ transactionId: "p1", total: 264.5 }),
+      ]);
+    });
+
+    it("reports the year asked for", async () => {
+      mocks.manager.query.mockResolvedValue([]);
+      const report = await service.report(USER, 2024);
+      expect(report.year).toBe(2024);
+      expect(report.categories[0].summary).toMatchObject({
+        periodStart: "2024-01-01",
+        paidToDate: 0,
+        yearlyMaximum: null,
+      });
+    });
+  });
+
   describe("suggestExpected", () => {
     it("prefers the bill's line, and estimates no maximum without a reset date", async () => {
       await expect(service.suggestExpected(USER, BILL, EI)).resolves.toEqual({

@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@/test/render";
 import { usePortfolioPeriodResult } from "./usePortfolioPeriodResult";
 import { netWorthApi } from "@/lib/net-worth";
-import type { PortfolioPeriodResult } from "@/types/net-worth";
+import type {
+  PortfolioPeriodResult,
+  PortfolioPeriodResults,
+} from "@/types/net-worth";
 
 vi.mock("@/lib/net-worth", () => ({
   netWorthApi: { getInvestmentsPeriodResult: vi.fn() },
@@ -211,5 +214,104 @@ describe("usePortfolioPeriodResult", () => {
     range = "3m";
     rerender();
     expect(hook.current.periodResult).toBeNull();
+  });
+
+  /**
+   * The Investments page asks for the "Portfolio performance" batch once and
+   * hands it to the chart: a named window the batch reports is the figure this
+   * route would return, and asking again valued the same history twice at the
+   * same moment (#1888).
+   */
+  describe("with the page's batch", () => {
+    const batch = (
+      periods: PortfolioPeriodResults["periods"],
+      currency = "CAD",
+    ) => ({
+      results: { currency, asOf: "2026-06-30", periods },
+      status: "ready" as const,
+    });
+
+    it("reads a named window from the batch without asking the server", () => {
+      const fromBatch = result({ investmentResult: 42 });
+      const { result: hook } = renderHook(() =>
+        usePortfolioPeriodResult({
+          ...base,
+          range: "all",
+          shared: batch({ all: fromBatch }),
+        }),
+      );
+      expect(hook.current.periodResult).toBe(fromBatch);
+      expect(netWorthApi.getInvestmentsPeriodResult).not.toHaveBeenCalled();
+    });
+
+    it("waits for the batch rather than asking beside it", () => {
+      const { result: hook } = renderHook(() =>
+        usePortfolioPeriodResult({
+          ...base,
+          range: "1y",
+          shared: { results: null, status: "loading" },
+        }),
+      );
+      expect(hook.current.periodResult).toBeNull();
+      expect(netWorthApi.getInvestmentsPeriodResult).not.toHaveBeenCalled();
+    });
+
+    it("asks for itself when the batch failed", async () => {
+      const { result: hook } = renderHook(() =>
+        usePortfolioPeriodResult({
+          ...base,
+          range: "1y",
+          shared: { results: null, status: "error" },
+        }),
+      );
+      await waitFor(() => expect(hook.current.periodResult).not.toBeNull());
+      expect(netWorthApi.getInvestmentsPeriodResult).toHaveBeenCalledWith(
+        expect.objectContaining({ period: "1y" }),
+      );
+    });
+
+    it("asks for itself when the batch does not report the window", async () => {
+      const { result: hook } = renderHook(() =>
+        usePortfolioPeriodResult({
+          ...base,
+          range: "5y",
+          shared: batch({ "1y": result() }),
+        }),
+      );
+      await waitFor(() => expect(hook.current.periodResult).not.toBeNull());
+      expect(netWorthApi.getInvestmentsPeriodResult).toHaveBeenCalledWith(
+        expect.objectContaining({ period: "5y" }),
+      );
+    });
+
+    it("asks for itself over a dated window the batch has no preset for", async () => {
+      renderHook(() =>
+        usePortfolioPeriodResult({
+          ...base,
+          range: "mtd",
+          shared: batch({ "1m": result() }),
+        }),
+      );
+      await waitFor(() =>
+        expect(netWorthApi.getInvestmentsPeriodResult).toHaveBeenCalledWith(
+          expect.objectContaining({ startDate: base.periodStartDate }),
+        ),
+      );
+    });
+
+    it("never reads a batch reported in another currency", async () => {
+      const { result: hook } = renderHook(() =>
+        usePortfolioPeriodResult({
+          ...base,
+          range: "1y",
+          displayCurrency: "USD",
+          shared: batch({ "1y": result({ investmentResult: 7 }) }, "CAD"),
+        }),
+      );
+      await waitFor(() => expect(hook.current.periodResult).not.toBeNull());
+      expect(netWorthApi.getInvestmentsPeriodResult).toHaveBeenCalledWith(
+        expect.objectContaining({ period: "1y", displayCurrency: "USD" }),
+      );
+    });
   });
 });

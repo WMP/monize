@@ -16,12 +16,18 @@ interface UsePortfolioPeriodResultsOptions {
   displayCurrency?: string;
   /** Bumped by the surface when a write changed the rows behind the windows. */
   reloadKey?: number;
+  /**
+   * Ask nothing: the caller was handed the same answer by the page that owns
+   * the request (`PortfolioPerformanceCard`'s `periodResults`).
+   */
+  skip?: boolean;
 }
 
-interface UsePortfolioPeriodResultsValue {
+export interface UsePortfolioPeriodResultsValue {
   /**
    * What the server says the portfolio did over each window, or null while it
    * has not answered for THIS request -- a load in flight or a failed one.
+   * While a reload of the same scope is in flight it is the previous answer.
    * Null is never a set of periods that did nothing: nothing here subtracts,
    * divides or falls back to zero.
    */
@@ -50,37 +56,48 @@ export function usePortfolioPeriodResults({
   accountIds,
   displayCurrency,
   reloadKey = 0,
+  skip = false,
 }: UsePortfolioPeriodResultsOptions = {}): UsePortfolioPeriodResultsValue {
-  const key = JSON.stringify([
+  const scopeKey = JSON.stringify([
     periods ?? null,
     accountIds ?? null,
     displayCurrency ?? null,
-    reloadKey,
   ]);
+  const key = JSON.stringify([scopeKey, reloadKey]);
   const [state, setState] = useState<{
     key: string;
+    scopeKey: string;
     results: PortfolioPeriodResults | null;
   } | null>(null);
 
   useEffect(() => {
+    if (skip) return;
     let cancelled = false;
     netWorthApi
       .getInvestmentsPeriodResults({ periods, accountIds, displayCurrency })
       .then((results) => {
-        if (!cancelled) setState({ key, results });
+        if (!cancelled) setState({ key, scopeKey, results });
       })
       .catch((error) => {
         logger.error('Failed to load the period results:', error);
-        if (!cancelled) setState({ key, results: null });
+        if (!cancelled) setState({ key, scopeKey, results: null });
       });
     return () => {
       cancelled = true;
     };
-  }, [key, periods, accountIds, displayCurrency]);
+  }, [key, scopeKey, periods, accountIds, displayCurrency, skip]);
 
   const answered = state?.key === key;
+  // A reload of the same scope (a write or a price refresh moved `reloadKey`)
+  // keeps the previous answer until the new one lands, as the page's other
+  // sections do; dropping it emptied "Portfolio performance" to its loading
+  // notice and fewer rows for the length of every reload. Another scope's
+  // answer is never kept, and a failed reload still reads as failed.
+  const previous =
+    !answered && state?.scopeKey === scopeKey ? state.results : null;
+  const results = answered ? state.results : previous;
   return {
-    results: answered ? state.results : null,
-    status: !answered ? 'loading' : state.results === null ? 'error' : 'ready',
+    results,
+    status: results !== null ? 'ready' : answered ? 'error' : 'loading',
   };
 }

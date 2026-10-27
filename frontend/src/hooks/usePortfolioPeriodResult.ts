@@ -5,6 +5,7 @@ import { netWorthApi } from '@/lib/net-worth';
 import { createLogger } from '@/lib/logger';
 import { isPortfolioPeriodPreset } from '@/types/net-worth';
 import type { PortfolioPeriodResult } from '@/types/net-worth';
+import type { UsePortfolioPeriodResultsValue } from '@/hooks/usePortfolioPeriodResults';
 
 const logger = createLogger('usePortfolioPeriodResult');
 
@@ -32,6 +33,15 @@ interface UsePortfolioPeriodResultOptions {
   displayCurrency?: string;
   /** Bumped by the surface when a write changed the rows behind the window. */
   reloadKey?: number;
+  /**
+   * The page's own "Portfolio performance" batch, for the same accounts,
+   * currency and reload key. A named window the batch reports is the figure
+   * this route would have returned for it (`docs/specs/portfolio-period-result.md`),
+   * so the hook reads it from there rather than asking the server to value the
+   * same window twice (#1888). While the batch is loading it waits for it; a
+   * failed batch, or a window the batch does not report, is asked for here.
+   */
+  shared?: UsePortfolioPeriodResultsValue;
 }
 
 interface UsePortfolioPeriodResultValue {
@@ -77,8 +87,21 @@ export function usePortfolioPeriodResult({
   accountIds,
   displayCurrency,
   reloadKey = 0,
+  shared,
 }: UsePortfolioPeriodResultOptions): UsePortfolioPeriodResultValue {
   const period = isPortfolioPeriodPreset(range) ? range : undefined;
+  // The batch's answer for this window, when it has one in the currency this
+  // surface reports in. Only a named window can be read from it: a dated one
+  // is not a preset the batch measured.
+  const sharedResults = period && shared?.status === 'ready' ? shared.results : null;
+  const sharedResult =
+    period &&
+    sharedResults &&
+    (!displayCurrency || sharedResults.currency === displayCurrency)
+      ? (sharedResults.periods?.[period] ?? null)
+      : null;
+  const awaitingShared = !!period && shared?.status === 'loading';
+  const ownRequest = sharedResult === null && !awaitingShared;
   // The close before the period, where the series opens on one: sent as the
   // baseline so flows are counted strictly after it. The server takes the
   // earlier of the two anyway; this only avoids sending a second copy of the
@@ -104,6 +127,7 @@ export function usePortfolioPeriodResult({
   } | null>(null);
 
   useEffect(() => {
+    if (!ownRequest) return;
     // A named window needs nothing from the chart: the server knows where it
     // opens and what today is. A dated one waits for both.
     if (!period && (!hasSeries || !periodStartDate)) return;
@@ -143,7 +167,10 @@ export function usePortfolioPeriodResult({
     baselineDate,
     accountIds,
     displayCurrency,
+    ownRequest,
   ]);
 
+  if (sharedResult !== null) return { periodResult: sharedResult };
+  if (awaitingShared) return { periodResult: null };
   return { periodResult: state?.key === key ? state.result : null };
 }

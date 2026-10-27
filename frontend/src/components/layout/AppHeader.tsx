@@ -75,6 +75,7 @@ const NAV_TOUR_ANCHORS: Record<string, { 'data-tour-id': string }> = {
 const TOOLS_TOUR_ANCHORS: Record<string, { 'data-tour-id': string }> = {
   '/rules': tourAnchor(TOUR_ANCHORS.navRules),
   '/warranties': tourAnchor(TOUR_ANCHORS.navWarranties),
+  '/taxes': tourAnchor(TOUR_ANCHORS.navTaxes),
 };
 
 export function AppHeader() {
