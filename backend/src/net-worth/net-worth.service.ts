@@ -886,7 +886,7 @@ export class NetWorthService {
     startDate?: string,
     endDate?: string,
     jointScope?: JointNetWorthScope,
-    options?: SeriesFetchOptions,
+    options?: SeriesFetchOptions & { allowIncomplete?: boolean },
   ): Promise<
     {
       month: string;
@@ -988,7 +988,11 @@ export class NetWorthService {
         })),
       accrual && !startDate ? { ...options, fetchMissing: false } : options,
     );
-    if (accrual && months.some((month) => !month.fxComplete))
+    if (
+      accrual &&
+      !options?.allowIncomplete &&
+      months.some((month) => !month.fxComplete)
+    )
       throw new ServiceUnavailableException({
         code: "REPORTING_FX_INCOMPLETE",
         fxComplete: false,
@@ -1196,7 +1200,9 @@ export class NetWorthService {
       monthStr,
       monthStr,
       jointScope,
-      accrual ? { fetchMissing: false } : undefined,
+      // Account summaries use the fold's completeness flags to expose nullable
+      // totals and known subtotals; full accrual reports keep their dated refusal.
+      accrual ? { fetchMissing: false, allowIncomplete: true } : undefined,
     );
     const latest = months[months.length - 1];
     if (!latest) return null;

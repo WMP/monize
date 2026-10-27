@@ -467,6 +467,7 @@ export class TransactionAnalyticsService {
     excludeTransfers?: boolean,
     tagIds?: string[],
     jointAccountIds?: string[],
+    nativeCurrencyBuckets = false,
   ): Promise<{
     currency?: string;
     fxComplete?: boolean;
@@ -534,6 +535,9 @@ export class TransactionAnalyticsService {
         userId,
         queryBuilder,
         currentReportingRead(userId)!.currency,
+        "totalIncome",
+        "totalExpenses",
+        nativeCurrencyBuckets,
       );
 
       let totalIncome = 0;
@@ -1355,6 +1359,11 @@ export class TransactionAnalyticsService {
       input.minAmount,
       input.maxAmount,
       true,
+      true,
+      undefined,
+      undefined,
+      // Only counts and native buckets are consumed here. Nullable converted
+      // totals are resolved independently below, including missing-rate gaps.
       true,
     );
     const converted = await this.getConvertedFlowTotals(userId, {

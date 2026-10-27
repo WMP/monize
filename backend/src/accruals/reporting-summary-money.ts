@@ -1,3 +1,4 @@
+import { ServiceUnavailableException } from "@nestjs/common";
 import type { EntityManager, SelectQueryBuilder } from "typeorm";
 import { reportingRawMany } from "./reporting-query";
 import { reportingAmount, reportingRates } from "./reporting-money";
@@ -12,7 +13,26 @@ export async function reportingSummaryRows(
   currency: string,
   incomeColumn = "totalIncome",
   expensesColumn = "totalExpenses",
+  nativeOnly = false,
 ) {
+  // The LLM list requests native buckets only for counts and breakdowns; its
+  // nullable reporting totals are folded independently through FxAggregate.
+  if (nativeOnly) {
+    const rows = await query.getRawMany();
+    if (
+      rows.some(
+        (row) =>
+          !row.currencyCode &&
+          (Number(row[incomeColumn]) !== 0 ||
+            Number(row[expensesColumn]) !== 0),
+      )
+    )
+      throw new ServiceUnavailableException({
+        code: "REPORTING_FX_INCOMPLETE",
+        fxComplete: false,
+      });
+    return rows;
+  }
   reportingResultCurrency(userId, currency);
   const alias = query.alias;
   const qb = query
