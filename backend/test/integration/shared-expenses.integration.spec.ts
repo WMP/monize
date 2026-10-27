@@ -1,4 +1,7 @@
 import { ExchangeRateService } from "@/currencies/exchange-rate.service";
+import { AccountsService } from "@/accounts/accounts.service";
+import { SharedEntryFinanceService } from "@/shared-expenses/shared-entry-finance.service";
+import { raceTwo } from "../helpers/race";
 import { randomUUID } from "crypto";
 import {
   BadRequestException,
@@ -176,6 +179,50 @@ describe("Shared expense journal under enforced RLS (SE-001/002/005/008/012)", (
     await expect(
       as(stranger, () => groups.detail(stranger, groupId)),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("allows only one claimant after two connections wait on the same invitation's group lock", async () => {
+    await as(owner, () => entries.save(owner, groupId, expense()));
+    const group = await as(owner, () => groups.detail(owner, groupId));
+    const invite = await as(owner, () =>
+      invitations.create(owner, groupId, {
+        operationId: randomUUID(),
+        expectedRevision: group.revision,
+        participantId: anna,
+        role: "EDITOR",
+      }),
+    );
+    const before = await harness.owner.query(
+      "SELECT * FROM shared_allocations WHERE group_id=$1 ORDER BY id",
+      [groupId],
+    );
+    const result = await raceTwo(
+      harness.owner,
+      () => as(guest, () => invitations.claim(guest, invite.token)),
+      () => as(stranger, () => invitations.claim(stranger, invite.token)),
+      {
+        gate: {
+          sql: "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+          params: [`shared-group:${groupId}`],
+        },
+      },
+    );
+    expect(result.fulfilled).toBe(1);
+    expect(result.reasons).toEqual([expect.any(BadRequestException)]);
+    expect(
+      await harness.owner.query(
+        "SELECT user_id FROM shared_memberships WHERE group_id=$1 AND participant_id=$2 AND revoked_at IS NULL",
+        [groupId, anna],
+      ),
+    ).toEqual([
+      { user_id: result.a.status === "fulfilled" ? guest : stranger },
+    ]);
+    expect(
+      await harness.owner.query(
+        "SELECT * FROM shared_allocations WHERE group_id=$1 ORDER BY id",
+        [groupId],
+      ),
+    ).toEqual(before);
   });
 
   it("keeps viewer writes and direct SQL deletes outside their read grant", async () => {
@@ -433,6 +480,90 @@ describe("Shared expense journal under enforced RLS (SE-001/002/005/008/012)", (
     );
     return row.current_balance as string;
   }
+
+  it("rolls back the journal, posting, bank source and balance after an injected mid-booking failure", async () => {
+    const f = await financeFixture();
+    const group = await as(owner, () => groups.detail(owner, groupId));
+    const combined = harness.module.get(SharedEntryFinanceService);
+    const dto = {
+      operationId: randomUUID(),
+      expectedRevision: group.revision,
+      entry: expense(),
+      finance: {
+        operationId: randomUUID(),
+        expectedRevision: 1,
+        categoryId: f.category.id,
+        bankTransactionId: f.bankId,
+      },
+    };
+    const preview = await as(owner, () =>
+      combined.preview(owner, groupId, dto),
+    );
+    const beforeBank = await harness.owner.query(
+      "SELECT * FROM transactions WHERE id=$1",
+      [f.bankId],
+    );
+    const accounts = harness.module.get(AccountsService);
+    const updateBalance = accounts.updateBalance.bind(accounts);
+    const failpoint = jest
+      .spyOn(accounts, "updateBalance")
+      .mockImplementationOnce(async (...args) => {
+        await updateBalance(...args);
+        await withScopedDb(harness.app, async (m) => {
+          expect(
+            await m.query(
+              "SELECT count(*)::int AS n FROM shared_entries WHERE group_id=$1",
+              [groupId],
+            ),
+          ).toEqual([{ n: 1 }]);
+          expect(
+            await m.query(
+              "SELECT count(*)::int AS n FROM shared_postings WHERE group_id=$1",
+              [groupId],
+            ),
+          ).toEqual([{ n: 1 }]);
+        });
+        throw new Error("Injected mid-booking failure");
+      });
+    try {
+      await expect(
+        as(owner, () =>
+          combined.save(owner, groupId, {
+            ...dto,
+            previewFingerprint: preview.fingerprint,
+          }),
+        ),
+      ).rejects.toThrow("Injected mid-booking failure");
+      expect(failpoint).toHaveBeenCalledTimes(1);
+    } finally {
+      failpoint.mockRestore();
+    }
+    expect(await balance(f.account.id)).toBe("700.0000");
+    expect(await balance(f.integration.accountId)).toBe("0.0000");
+    expect(
+      await harness.owner.query("SELECT * FROM transactions WHERE id=$1", [
+        f.bankId,
+      ]),
+    ).toEqual(beforeBank);
+    expect(
+      await harness.owner.query(
+        "SELECT id FROM shared_entries WHERE group_id=$1",
+        [groupId],
+      ),
+    ).toEqual([]);
+    expect(
+      await harness.owner.query(
+        "SELECT id FROM shared_postings WHERE group_id=$1",
+        [groupId],
+      ),
+    ).toEqual([]);
+    expect(
+      await harness.owner.query(
+        "SELECT id FROM shared_commands WHERE id=ANY($1::uuid[])",
+        [[dto.operationId, dto.entry.operationId]],
+      ),
+    ).toEqual([]);
+  });
 
   it("matches an imported 300 debit without a second bank movement and restores it when unlinked", async () => {
     const saved = await as(owner, () =>

@@ -1,131 +1,94 @@
 # Shared expenses tasks
 
-Execute [the plan](shared-expenses.md) against the accepted financial and UX specs.
-Branch: `feat/shared-expenses`, originally based on `b9ee599b2`. The user authorized the full
-implementation and the eight security registry additions. No upstream Discussion,
-issue approval label, push or PR has been created or claimed.
+Execute [the plan](shared-expenses.md) against the requester-accepted
+[financial spec](../specs/shared-expenses.md) and
+[UX contract](../specs/shared-expenses-ux.md).
 
 ## Current handoff — 2026-10-27
 
-The approved spec/plan was committed as `5f2c6cfec` before implementation.
-Local implementation checkpoints are being prepared. The fetched `main` is
-`b70868dda`; reconcile the unpublished branch with that revision before the final
-gate. That revision includes the previously reported SimpleFIN lock-order fix.
+Branch `feat/shared-expenses` is rebased onto upstream `b70868dda`. The spec/plan
+commit preceded implementation; current commits are `e0a9a7e34` (spec),
+`ca15ea80f` (backend) and `20ca83c46` (frontend). The user authorized an upstream
+Draft PR and Discussion to seek maintainer scope approval while checks continue.
+There is no upstream approval or approved-to-build label yet. Merge remains a
+maintainer decision.
 
 | ID | Deliverable | Status |
 | --- | --- | --- |
-| S1 | Approved spec and execution plan committed before financial code | Complete |
-| B1 | Exact allocations, currency tuples, balances, refunds | Implemented; focused numeric tests passed |
-| B2 | Schema, six migrations, RLS, backup classification | Implemented; original migration guard passed, latest RLS setup edits need recheck and schema replay |
-| B3 | Groups, private contacts, roles, invitations, ownership consent | Implemented; latest enforced-RLS rerun pending |
-| B4 | Optional private ledger, several bank payments, combined entry/booking, source protection | Implemented; report/budget case passed, category portions and global review additions need recheck |
-| B5 | Independent group files, opt-in publication, activity, exports, notifications | Implemented; lifecycle 11/11 passed before latest additions |
-| B6 | Detached restore, retained private ledger, erasure | Implemented; lifecycle 11/11 passed before latest additions |
-| F1 | Group/people screens, split/refund/repayment flows | Implemented; final UX review pending |
-| F2 | Files, invitations, matching, combined bank entry flow, private review | Implemented; four Chromium journeys passed |
-| Q1 | Financial, authorization, concurrency and interaction tests | Service/controller regression suites added; final verification pending |
-| Q2 | Browser journeys and screenshots | Four Chromium cases passed; two additional bank-portion/review journeys need verification; final captures pending |
-| L1 | Every supported locale, generated pseudo-locales | All 18 full locales authored and xx regenerated; pseudo parity passed; translations remain the final implementation commit |
-| Q3 | Gates, invariant catalog, consumer audit, PR description | Invariants and consumer audit written; gates and PR description pending |
+| S1 | Spec and execution plan before financial code | Committed; upstream scope approval pending |
+| B1 | Exact allocations, FX tuples, balances, refunds | Implemented; numeric unit cases passed |
+| B2 | Schema, six migrations, RLS, backup classification | Implemented; final rebased schema replay pending |
+| B3 | Groups, contacts, roles, invitations, ownership consent | Implemented; enforced-RLS recheck passed |
+| B4 | Private ledger, bank payments, category portions and source protection | Implemented; rebased integration recheck passed |
+| B5 | Group files, publication, activity, exports, notifications | Implemented; rebased lifecycle recheck passed |
+| B6 | Detached restore, private ledger retention and erasure | Implemented; rebased lifecycle recheck passed |
+| F1 | Group/people screens, splits, refunds and repayments | Implemented; final browser review pending |
+| F2 | Bank matching, combined save and private review | Implemented; six final Chromium journeys pending |
+| Q1 | Financial, authorization and concurrency regressions | Added; final gates pending |
+| Q2 | Desktop/mobile browser captures | Six earlier captures reviewed; final refresh pending |
+| L1 | Every supported locale and generated pseudo-locales | All translations authored locally; final localization commit pending |
+| Q3 | Gates, invariant catalog, consumer audit and PR | Invariants/audit written; draft publication and final verification in progress |
 
-## Verification evidence and remaining work
+## Verified evidence
 
-- Resumed verification on 2026-10-26: backend lint, source/test typechecks,
-  pseudo-locale check and build passed. Frontend lint, types, pseudo-locale
-  check and focused feature tests passed before the final uploader-copy fix.
-  The full integration run was interrupted to correct the isolated database
-  timezone to UTC. Its 12 attachment lease cases now pass; a full rerun remains.
-- Native PostgreSQL 16 replayed all 252 migrations twice over the current
-  schema, with identical normalized schema dumps. The new shared-table
-  migration reasserts the owner/membership RESTRICT foreign keys after the
-  retained user-FK migration; retained migrations are unchanged. Migration
-  lint, env/docs checks and migration-prefix checks passed.
-- Four guard decisions have explicit owner approval: the shared-document export
-  boundary, the one derived-posting transaction-rule exemption and checked
-  clearing of transient restore fields, and the two support-backup completeness
-  guards. The restore checks passed 53 cases; support-reference unit checks
-  passed 69. The approved support integration guards are applied and queued.
-- The broad frontend run passed 945 of 949 files. Three feature failures were
-  fixed and their focused rerun passed 169 cases. The remaining unchanged
-  public-script guard conflicts with ignored vendor assets generated by the
-  existing pretest/prebuild script. It has not been weakened. A bounded default
-  frontend build and the final browser review remain outstanding.
-- Migration guard is unchanged. All 42 self-tests and all 252 migration files
-  passed after access removal became the dedicated `MEMBER_REVOKED` event.
-  The rejected guard proposal remains outside tracked files and must not be applied.
-- The full shared lifecycle suite passed all 11 cases, including revoked-recipient
-  notification/access, scan-pair privacy and detached restore. Its unchanged-penny
-  check compares exact allocation rows by participant/kind rather than row order.
-- Journal/booking cases passed before the additional category-split acceptance
-  work below; the spending/budget repayment case also passed its focused rerun.
-- New finance service/combined service unit cases passed (21), ledger writer/undo
-  passed (7), group/summary passed (15), UI summary/navigation passed (9), and
-  Combobox passed (85), before the latest category-split additions.
-- Backend lint/source TS/test TS and frontend lint/types passed before those
-  additions. Backend build passed. The subsequent full serial integration run
-  was interrupted after more than two hours of slow Windows-mounted file access;
-  it is not a complete pass. Final checks run from an identical source copy on
-  the Linux filesystem with the unchanged locked dependencies.
-- That full run exposed an incomplete generic RLS fixture for the new constrained
-  journal. Fixture inputs now create a complete entry/allocation cohort in one
-  transaction. Exact visibility still compares every seeded primary key; no
-  table was exempted and no policy or sum constraint was disabled. The focused
-  RLS rerun is pending completion of the current serial run.
-- Four Chromium journeys passed before the last summary and bank-split changes:
-  unequal split/partial repayment, file-first expense, imported bank matching,
-  and combined bank/group save. Real development screenshots are in
-  [shared-expenses-screenshots](shared-expenses-screenshots/); refresh them after
-  final source synchronization and visual review.
-- Full feature translations are authored for all 18 complete locales. Final
-  parity remains pending. Translation files stay for the final implementation commit.
-- The interrupted integration run found fixture/setup changes needed by the new
-  constrained journal and attachment parents; these are repaired and await
-  verification. Two suites also need explicit database credentials in the test
-  invocation. An unrelated SimpleFIN concurrent-discovery deadlock remains
-  reported and unfixed; no bank-sync code was changed in this feature.
+- After rebase: frontend lint, typecheck and pseudo-locale check passed, plus
+  6 focused files / 380 tests covering attachment staging, register controls,
+  action sheet, bank eligibility and E2E conventions.
+- After rebase: backend lint, source/test typechecks, pseudo-locale check and
+  build passed. All 47 PostgreSQL cases in the four shared-feature/support suites
+  passed, including two lock-blocked invitation claimants and rollback after an
+  injected balance-write failure.
+- Before rebase: controlled restore checks passed 53 cases, support-reference
+  unit checks passed 69 cases, and support-backup integration passed all 5 cases.
+  The latter checks actual exported columns and complete composite FK tuples.
+- Before rebase: native PostgreSQL 16 replayed 252 migrations twice with matching
+  normalized schema dumps; migration lint/self-tests and root env/docs/prefix
+  checks passed. Replay must be repeated after upstream migrations and the final
+  shared-document FK fix. The FK fix installs constraints independently of
+  whether entity synchronization already created the columns.
+- Four guard decisions were explicitly authorized by the requesting user:
+  shared-document export scope, one derived-posting rule exemption, checked
+  transient restore-field clearing, and the two support-backup completeness
+  checks. These are local authorizations, not upstream security review.
+- The earlier full integration run was interrupted to correct the isolated
+  database timezone to UTC. Its 12 attachment lease cases then passed. It is not
+  a completed full gate. The reported SimpleFIN lock inversion is fixed by
+  upstream `main`; verify the inherited fix in the final run.
+- The old frontend broad run had a generated-vendor-assets guard failure. The
+  maintainer's upstream note explains the test/build artifact boundary; final
+  tests use a fresh Linux checkout, before builds create those ignored assets.
+- Earlier default frontend builds hit the bounded memory budget; the Webpack
+  alternative failed on the existing scanner's browser import of node:module.
+  A final default-build attempt is pending on the rebased tree with a monitored
+  4096 MiB ceiling and a 1536 MiB host-memory reserve.
 
-## Resume order
+## Remaining sequence
 
-1. Finish lint/types and focused unit checks in the synchronized Linux copy.
-   Run the complete PostgreSQL integration suite with explicit local test
-   credentials and no other test/build process alongside it. Recheck the RLS
-   fixture and shared booking changes; do not report the current tree green.
-2. Verify the newly added category-only bank split flow: select individual line
-   portions, retain remaining categories/memos/tags, reopen the original source,
-   restore exact original splits on unlink, refuse a stale allocation before
-   writing. Added unit/UI tests and three real DB cases remain unrun. Manual
-   payment-to-import replacement must leave one bank effect.
-3. Complete the accepted-booking/pending-review disclosure outside the group
-   finance screen. The approved spec requires a count and repair link on personal
-   report surfaces and the same server-owned context for AI/MCP consumers. The read service, UI banner/inbox and AI/MCP adapter context are now implemented
-   with tests, but unverified; run those cases and check MCP tool payload budgets.
-   Live group positions must never be added to booked ledger totals.
-4. Verify the added service/controller/UI coverage, invariant catalog and
-   [consumer audit](../specs/shared-expenses-consumers.md) against actual results.
-5. Verify all translation catalogs and generated xx. Stage new files before
-   tree guards. Make logical implementation commits with translations last.
-6. Run the required backend/frontend gates, migrations/schema replay, root
-   doc/env/prefix checks and final browser journeys. Scope any rerun to changes
-   or outstanding failures; coverage gates remain CI-owned unless requested.
-7. Refresh desktop/mobile screenshots and prepare the repository PR template
-   with actual evidence and AI disclosure. Do not tick upstream approval or human
-   review boxes without evidence. No push or PR is authorized at this checkpoint.
+1. Finish the rebased shared integration check, including a two-connection
+   invitation claim and an injected failure after the booking starts writing.
+2. Run backend/frontend changed-test gates once on the final source. Run the
+   native schema replay, root metadata checks and full serial backend integration.
+3. Run the bounded frontend production build and six Chromium journeys; refresh
+   and inspect every saved desktop/mobile capture. Record failures explicitly.
+4. Commit resulting fixes and refreshed evidence, then translations last. Keep
+   the [consumer audit](../specs/shared-expenses-consumers.md) and
+   [security decisions](../specs/shared-expenses-security.md) aligned with results.
+5. Publish/update the user-requested Draft PR and Discussion with completed
+   checks, remaining work and AI disclosure. Leave approval, complete-suite and
+   human-review boxes unticked until their evidence exists. Do not merge.
 
-## Local review environment
+## Local verification environment
 
-The previous Docker review stack and the temporary verification copy are not
-assumed to survive the Ubuntu restart. The resumed verification uses an identical
-source copy on the Linux filesystem, with dependencies installed from the unchanged
-lockfiles. The working tree remains authoritative; synchronize every subsequent
-edit before checking the copy. Docker has not been started during this resume.
+The source of truth is the working tree. An identical Linux checkout uses
+upstream locked dependencies;
+synchronize subsequent edits before checking it. Docker has not been started
+in this resume. One test/build runs at a time, in UTC with one worker.
 
-Run one test/build process at a time. A systemd user scope enforces a 3500 MiB
-memory limit, 256 MiB swap limit and CPU quota; Node's heap is limited separately.
-Use one test worker and UTC. An isolated user-owned PostgreSQL 16 instance runs
-on loopback port 15433 with a 768 MiB memory limit. Existing local databases are
-not review targets. Integration
-suites rebuild `monize_test` and must not overlap another test/build process.
+Systemd scopes bound memory (normally 3500 MiB), swap (256 MiB) and CPU. The
+isolated PostgreSQL 16 service uses loopback port 15433, UTC and a 768 MiB ceiling.
+Existing local databases are not review targets. Database suites share only the
+throwaway `monize_test` and never overlap another test/build process.
 
-Private working notes and command logs remain in ignored
-`tmp/shared-expenses-spec/`. All screenshots and committed fixtures use synthetic
-users, names and amounts.
+Private logs are in ignored `tmp/shared-expenses-spec/`. Screenshots and fixtures
+use synthetic users and amounts. The planned human usability study remains
+outstanding; automated browser checks do not replace it.

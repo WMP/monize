@@ -1,7 +1,9 @@
 # Shared expenses: database privilege review
 
-Status: the repository owner explicitly approved these eight additions to the
-reviewed SECURITY DEFINER registry on 2026-10-25. Verification is tracked separately.
+Status: the requesting user authorized these eight additions to the SECURITY
+DEFINER registry for local implementation on 2026-10-25. Upstream maintainer
+approval is pending; these local decisions do not claim that approval.
+Verification is tracked separately.
 
 These functions execute as the schema owner because membership checks recurse
 through policies and conservation checks must see all rows of one journal.
@@ -39,14 +41,14 @@ resulting constraint definitions, including deletion behavior.
 
 ## Additional guard decisions — 2026-10-26
 
-The repository owner approved adapting the backup export guard to the specified
+The requesting user approved adapting the backup export guard to the specified
 shared-document scope: private files remain owner-only; group and entry files
 require current group access, even for their uploader. The guard retains the
 restore ownership gate and the two permitted object-read sites. The lifecycle
 integration case checks metadata and bytes before and after revocation, including
 the explicit SQL predicate on a connection that bypasses RLS.
 
-The owner also approved one `EXEMPT_INSERT_SITES` entry for
+The requesting user also approved one `EXEMPT_INSERT_SITES` entry for
 `backend/src/shared-expenses/shared-finance-write.ts`. Its bank, counterpart and
 personal-cost rows are derived from the accepted preview. Applying ordinary
 transaction rules after that preview could change its categories or transfer
@@ -55,7 +57,7 @@ proves it changes an ordinary new transaction, then checks the shared posting's
 accepted category, transfer legs and balances. Imported source rows have already
 passed through their import rules before matching; matching does not replay them.
 
-The owner approved classifying transient restore fields through
+The requesting user approved classifying transient restore fields through
 `RESTORE_CLEARED_COLUMNS`, including the ownership-request consent token.
 The restore guard checks that each field belongs to a restored table, exists in
 the schema, is nullable and is actually returned as NULL by
@@ -63,7 +65,7 @@ the schema, is nullable and is actually returned as NULL by
 classification checks remain in place; the nullable consent token is not treated
 as a row reference or replayed as live ownership consent.
 
-The owner approved updating the two support-backup completeness guards. Column
+The requesting user approved updating the two support-backup completeness guards. Column
 classification now checks physical columns together with the actual export's
 keys, including the snapshot participant claim. Foreign-key coverage compares
 the full ordered column pairing and target from `pg_constraint`, retaining the

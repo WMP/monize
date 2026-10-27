@@ -1,8 +1,9 @@
 # Shared expenses and settlements
 
 Status: **implementation authorized by the requesting user on 2026-10-25**.
-Upstream maintainer Discussion/label remains a separate prerequisite to publishing
-an upstream PR; this records local authorization, not that upstream approval.
+This records local authorization, not upstream maintainer approval. On 2026-10-27
+the requester asked to publish a Draft PR and Discussion to seek that approval
+while verification continues; no approved-to-build label is claimed.
 Date: 2026-10-25. Based on Monize `b9ee599b2`.
 
 This specification defines the product, financial meaning, screens, data and
