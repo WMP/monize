@@ -1652,6 +1652,8 @@
     "toDate": "do dziś",
     "notRecorded": "Nie zapisano",
     "notReached": "Nie osiągnięto",
+    "outsidePeriod": "Poza okresem",
+    "otherCurrency": "Inna waluta",
     "noPaycheque": "Brak",
     "noPayee": "Brak odbiorcy",
     "foreignRows": "{count, plural, one {# pozycja} few {# pozycje} many {# pozycji} other {# pozycji}} w innej walucie nie policzono",

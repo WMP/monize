@@ -1652,6 +1652,8 @@
     "toDate": "sejauh ini",
     "notRecorded": "Tidak tercatat",
     "notReached": "Belum tercapai",
+    "outsidePeriod": "Di luar periodenya",
+    "otherCurrency": "Mata uang lain",
     "noPaycheque": "Tidak ada",
     "noPayee": "Tanpa penerima",
     "foreignRows": "{count, plural, one {# baris} other {# baris}} dalam mata uang lain tidak dihitung",

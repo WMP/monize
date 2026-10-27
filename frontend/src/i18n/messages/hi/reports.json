@@ -1652,6 +1652,8 @@
     "toDate": "अब तक",
     "notRecorded": "दर्ज नहीं",
     "notReached": "नहीं पहुँचा",
+    "outsidePeriod": "अपनी अवधि से बाहर",
+    "otherCurrency": "दूसरी मुद्रा",
     "noPaycheque": "कोई नहीं",
     "noPayee": "कोई प्राप्तकर्ता नहीं",
     "foreignRows": "दूसरी मुद्रा की {count, plural, one {# पंक्ति} other {# पंक्तियाँ}} गिनी नहीं गईं",

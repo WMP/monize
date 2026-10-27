@@ -1652,6 +1652,8 @@
     "toDate": "bugüne kadar",
     "notRecorded": "Kayıtlı değil",
     "notReached": "Ulaşılmadı",
+    "outsidePeriod": "Dönemi dışında",
+    "otherCurrency": "Başka para birimi",
     "noPaycheque": "Yok",
     "noPayee": "Alacaklı yok",
     "foreignRows": "Başka para birimindeki {count, plural, one {# satır} other {# satır}} sayılmadı",

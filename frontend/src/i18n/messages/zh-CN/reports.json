@@ -1652,6 +1652,8 @@
     "toDate": "截至目前",
     "notRecorded": "无记录",
     "notReached": "未达到",
+    "outsidePeriod": "不在其周期内",
+    "otherCurrency": "其他货币",
     "noPaycheque": "无",
     "noPayee": "无收款方",
     "foreignRows": "其他货币的 {count, plural, other {# 行}}未计入",

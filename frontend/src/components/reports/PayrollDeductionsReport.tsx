@@ -15,6 +15,7 @@ import {
   PayrollDeductionsHistoryTable,
   PayrollDeductionsPaychequeTable,
   PayrollDeductionsSummaryTable,
+  paychequeCell,
 } from '@/components/reports/PayrollDeductionsReportTables';
 import { useFinancialToday } from '@/hooks/useFinancialToday';
 import { useReportData } from '@/hooks/useReportData';
@@ -159,8 +160,11 @@ export function csvSections(report: PayrollDeductionReport, t: Translate): CsvSe
     rows: report.paycheques.map((p) => [
       p.transactionDate,
       p.payeeName ?? '',
-      // An absent key is a paycheque with no line for the category: it deducted nothing.
-      ...report.categories.map((c) => (c.key in p.amounts ? p.amounts[c.key] : 0)),
+      // A cell the category did not count (another period or currency) is empty, not zero.
+      ...report.categories.map((c) => {
+        const cell = paychequeCell(c, p);
+        return typeof cell === 'number' ? cell : '';
+      }),
       p.total,
     ]),
   };

@@ -1652,6 +1652,8 @@
     "toDate": "на сегодня",
     "notRecorded": "Не записано",
     "notReached": "Не достигнут",
+    "outsidePeriod": "Вне периода",
+    "otherCurrency": "Другая валюта",
     "noPaycheque": "Нет",
     "noPayee": "Без получателя",
     "foreignRows": "{count, plural, one {# строка} few {# строки} many {# строк} other {# строк}} в другой валюте не учтены",

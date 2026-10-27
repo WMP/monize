@@ -163,6 +163,12 @@ describe("payroll deduction report", () => {
         REPORT_EARLIEST_DATE,
         REPORT_LATEST_DATE,
       ]);
+      // The window is the years the route accepts, so a mistyped year 9999
+      // row cannot offer a year the route refuses.
+      expect([REPORT_EARLIEST_DATE, REPORT_LATEST_DATE]).toEqual([
+        "1900-01-01",
+        "2100-12-31",
+      ]);
     });
   });
 
@@ -291,6 +297,19 @@ describe("payroll deduction report", () => {
         paidToDate: 10,
         isCurrent: true,
       });
+    });
+
+    it("offers no period starting before the first reportable year", () => {
+      // A mid-year reset puts a March 1900 row in the period from July 1899.
+      const { category } = summariseReportCategory(
+        group({ resetDate: "2020-07-01" }),
+        [tx("a", "1900-03-01", 10), tx("b", "1900-08-01", 20)],
+        1900,
+        "1901-01-10",
+      );
+      expect(category.history.map((p) => p.periodStart)).toEqual([
+        "1900-07-01",
+      ]);
     });
 
     it("adds up money without float drift", () => {

@@ -302,6 +302,10 @@ reads the rules and the ledger and writes nothing (INV-PAYROLL-001).
    the calendar year for a 1 January reset, July to June for a 1 July one.
    The year defaults to the current one; the picker offers every year a
    category's period starts in, the current year and the one asked for.
+   Reportable years are 1900 to 2100 (`PAYROLL_REPORT_MIN_YEAR`,
+   `PAYROLL_REPORT_MAX_YEAR`), which the route accepts; the ledger is read
+   only inside them and a period starting before 1900 is not offered, since
+   a transaction date carries no such bound.
 3. **The rows.** Every figure is a sum over `CATEGORY_DEDUCTION_ROWS_SQL`,
    the rows "paid" sums (decision 6), grouped per transaction: one query per
    category over the whole ledger (`queryDeductionTransactions`), bucketed
@@ -320,8 +324,12 @@ reads the rules and the ledger and writes nothing (INV-PAYROLL-001).
 5. **Paycheque by paycheque.** One row per transaction that deducted to a
    reported category in its selected period, oldest first, one column per
    category (with its currency when the report spans more than one), the
-   row's total in the transaction's currency. A paycheque with no line for a
-   category deducted zero to it. The footer is each category's paid figure;
+   row's total in the transaction's currency. Each column counts only its
+   category's own period and currency, so an absent amount is one of three
+   things (`paychequeCell`): a counted paycheque with no line for the
+   category, a known zero; a paycheque outside that category's period (its
+   reset date differs), "Outside its period"; or one in another currency,
+   "Other currency". The CSV leaves the last two empty. The footer is each category's paid figure;
    the grand total is `null` when the categories are in more than one
    currency, and the cell says they are not added together.
 6. **Every year on record.** One table per category, never merged: every

@@ -22,9 +22,19 @@ import {
  * what the next posting caps against (INV-PAYROLL-003).
  */
 
-/** The widest window the report reads: the whole ledger, future rows included. */
-export const REPORT_EARLIEST_DATE = "1900-01-01";
-export const REPORT_LATEST_DATE = "9999-12-31";
+/**
+ * The years the report answers for, a year being the one a period starts
+ * in. The query DTO accepts only these, so every year the report offers
+ * (`availableYears`, the history) stays inside them: a transaction date has
+ * no such bound, and a mistyped year 9999 row would otherwise put a year on
+ * the picker the route refuses, and walk thousands of empty periods.
+ */
+export const PAYROLL_REPORT_MIN_YEAR = 1900;
+export const PAYROLL_REPORT_MAX_YEAR = 2100;
+
+/** The window the report reads: the whole ledger inside the reportable years. */
+export const REPORT_EARLIEST_DATE = `${PAYROLL_REPORT_MIN_YEAR}-01-01`;
+export const REPORT_LATEST_DATE = `${PAYROLL_REPORT_MAX_YEAR}-12-31`;
 
 /** One period's collected total for one category, in its currency. */
 export interface PayrollReportPeriodTotal {
@@ -287,7 +297,12 @@ export function summariseReportCategory(
   const history: PayrollReportPeriodTotal[] = [];
   const firstStart = deductionPeriod(group.resetDate, earliest).periodStart;
   let period = deductionPeriod(group.resetDate, latest);
-  while (period.periodStart >= firstStart) {
+  // A row early in the first reportable year can fall in a period that
+  // started the year before (a mid-year reset); that period is not offered.
+  while (
+    period.periodStart >= firstStart &&
+    yearOf(period.periodStart) >= PAYROLL_REPORT_MIN_YEAR
+  ) {
     history.push(
       periodTotal(
         byPeriod.get(period.periodStart) ?? {

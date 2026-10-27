@@ -1652,6 +1652,8 @@
     "toDate": "tot nu toe",
     "notRecorded": "Niet vastgelegd",
     "notReached": "Niet bereikt",
+    "outsidePeriod": "Buiten de periode",
+    "otherCurrency": "Andere valuta",
     "noPaycheque": "Geen",
     "noPayee": "Geen begunstigde",
     "foreignRows": "{count, plural, one {# regel} other {# regels}} in een andere valuta niet meegeteld",

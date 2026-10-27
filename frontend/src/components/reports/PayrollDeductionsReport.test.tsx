@@ -227,6 +227,35 @@ describe('PayrollDeductionsReport', () => {
     expect(screen.getByRole('columnheader', { name: 'EI (USD)' })).toBeInTheDocument();
     expect(screen.getByText('Not added: the categories are in more than one currency.')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'EI (USD) by year' })).toBeInTheDocument();
+    // A CAD paycheque was not counted for the USD column: not a zero.
+    const paycheques = screen.getByRole('region', { name: 'Paycheque by paycheque, 2026' });
+    expect(within(paycheques).getAllByText('Other currency')).toHaveLength(2);
+  });
+
+  it('marks a paycheque outside a category\'s own period as not counted, never as a zero', async () => {
+    // EI resets on 1 July, so its 2026 period starts after both January paycheques.
+    const julyEi = category({
+      resetDate: '2025-07-01',
+      summary: { ...category().summary, periodStart: '2026-07-01', periodEnd: '2027-06-30', paidToDate: 0 },
+    });
+    mockReport.mockResolvedValue(
+      report({
+        categories: [cpp, julyEi],
+        paycheques: report().paycheques.map((p) => ({
+          ...p,
+          amounts: { 'cat-cpp|CAD': 200.5 },
+          total: 200.5,
+        })),
+      }),
+    );
+    await renderReport();
+    const paycheques = screen.getByRole('region', { name: 'Paycheque by paycheque, 2026' });
+    const rows = within(paycheques).getAllByRole('row');
+    expect(rows[1]).toHaveTextContent('Outside its period');
+    expect(rows[1]).not.toHaveTextContent('CAD 0.00');
+    fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+    const [, sections] = mockExportCsvSections.mock.calls[0];
+    expect(sections[1].rows[0]).toEqual(['2026-01-15', 'Employer', 200.5, '', 200.5]);
   });
 
   it('points to the Payroll Deductions tool when there are no rules', async () => {

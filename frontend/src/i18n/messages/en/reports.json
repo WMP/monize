@@ -1652,6 +1652,8 @@
     "toDate": "to date",
     "notRecorded": "Not recorded",
     "notReached": "Not reached",
+    "outsidePeriod": "Outside its period",
+    "otherCurrency": "Other currency",
     "noPaycheque": "None",
     "noPayee": "No payee",
     "foreignRows": "{count, plural, one {# row} other {# rows}} in another currency not counted",

@@ -1652,6 +1652,8 @@
     "toDate": "截至目前",
     "notRecorded": "無紀錄",
     "notReached": "未達到",
+    "outsidePeriod": "不在其期間內",
+    "otherCurrency": "其他幣別",
     "noPaycheque": "無",
     "noPayee": "無收款人",
     "foreignRows": "其他幣別的 {count, plural, other {# 筆}}未計入",

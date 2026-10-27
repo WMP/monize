@@ -1652,6 +1652,8 @@
     "toDate": "até agora",
     "notRecorded": "Não registrado",
     "notReached": "Não atingido",
+    "outsidePeriod": "Fora do período",
+    "otherCurrency": "Outra moeda",
     "noPaycheque": "Nenhum",
     "noPayee": "Sem beneficiário",
     "foreignRows": "{count, plural, one {# linha} other {# linhas}} em outra moeda não contadas",

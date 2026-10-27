@@ -1652,6 +1652,8 @@
     "toDate": "[XX-to date-XX]",
     "notRecorded": "[XX-Not recorded-XX]",
     "notReached": "[XX-Not reached-XX]",
+    "outsidePeriod": "[XX-Outside its period-XX]",
+    "otherCurrency": "[XX-Other currency-XX]",
     "noPaycheque": "[XX-None-XX]",
     "noPayee": "[XX-No payee-XX]",
     "foreignRows": "[XX-{count, plural, one {# row} other {# rows}} in another currency not counted-XX]",

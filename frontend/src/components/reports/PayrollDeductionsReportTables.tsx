@@ -10,6 +10,7 @@ import { formatNameList } from '@/lib/helpers/format-name-list';
 import type {
   PayrollDeductionReport,
   PayrollReportCategory,
+  PayrollReportPaycheque,
   PayrollReportPeriodTotal,
 } from '@/types/payroll-deduction';
 
@@ -23,6 +24,28 @@ const FOREIGN_NOTE = 'block text-xs text-amber-600 dark:text-amber-400';
  */
 export function categoryHeading(category: PayrollReportCategory, multiCurrency: boolean): string {
   return multiCurrency ? `${category.categoryName} (${category.currencyCode})` : category.categoryName;
+}
+
+/**
+ * What one paycheque's cell holds for one category. The table shares one set
+ * of rows across categories, but each category counts only its own period
+ * (from its reset date) in its own currency, so an absent amount is one of
+ * three things: a paycheque the category counted that deducted nothing to it
+ * (a known zero), one outside the category's period, or one in another
+ * currency. Only the first is zero; the other two were not counted for it.
+ */
+export function paychequeCell(
+  category: PayrollReportCategory,
+  paycheque: PayrollReportPaycheque,
+): number | 'outsidePeriod' | 'otherCurrency' {
+  const amount = paycheque.amounts[category.key];
+  if (amount !== undefined) return amount;
+  if (paycheque.currencyCode !== category.currencyCode) return 'otherCurrency';
+  const { periodStart, periodEnd } = category.summary;
+  if (paycheque.transactionDate < periodStart || paycheque.transactionDate > periodEnd) {
+    return 'outsidePeriod';
+  }
+  return 0;
 }
 
 function SectionHeading({ title, help }: { title: string; help: string }) {
@@ -190,14 +213,15 @@ export function PayrollDeductionsPaychequeTable({ report }: SummaryProps) {
                   <Td className="whitespace-nowrap">{formatDate(paycheque.transactionDate)}</Td>
                   <Td>{paycheque.payeeName ?? <span className={MUTED}>{t('noPayee')}</span>}</Td>
                   {report.categories.map((category) => {
-                    const amount = paycheque.amounts[category.key];
+                    const cell = paychequeCell(category, paycheque);
                     return (
                       <Td key={category.key} align="right" className="whitespace-nowrap">
-                        {amount === undefined ? (
-                          // The paycheque carried no line for the category: it deducted nothing.
-                          <span className={MUTED}>{formatCurrency(0, category.currencyCode)}</span>
+                        {typeof cell === 'number' ? (
+                          <span className={cell === 0 && paycheque.amounts[category.key] === undefined ? MUTED : undefined}>
+                            {formatCurrency(cell, category.currencyCode)}
+                          </span>
                         ) : (
-                          formatCurrency(amount, category.currencyCode)
+                          <span className={`${MUTED} text-xs`}>{t(cell)}</span>
                         )}
                       </Td>
                     );

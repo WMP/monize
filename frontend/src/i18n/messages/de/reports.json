@@ -1652,6 +1652,8 @@
     "toDate": "bisher",
     "notRecorded": "Nicht erfasst",
     "notReached": "Nicht erreicht",
+    "outsidePeriod": "Außerhalb des Zeitraums",
+    "otherCurrency": "Andere Währung",
     "noPaycheque": "Keine",
     "noPayee": "Kein Empfänger",
     "foreignRows": "{count, plural, one {# Zeile} other {# Zeilen}} in einer anderen Währung nicht gezählt",

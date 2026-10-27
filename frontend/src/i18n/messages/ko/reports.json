@@ -1652,6 +1652,8 @@
     "toDate": "현재까지",
     "notRecorded": "기록 없음",
     "notReached": "도달하지 않음",
+    "outsidePeriod": "기간 외",
+    "otherCurrency": "다른 통화",
     "noPaycheque": "없음",
     "noPayee": "수취인 없음",
     "foreignRows": "다른 통화의 {count, plural, other {#개 항목}}은 집계되지 않음",

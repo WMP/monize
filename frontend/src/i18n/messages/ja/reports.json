@@ -1652,6 +1652,8 @@
     "toDate": "現時点",
     "notRecorded": "記録なし",
     "notReached": "未到達",
+    "outsidePeriod": "期間外",
+    "otherCurrency": "別の通貨",
     "noPaycheque": "なし",
     "noPayee": "支払先なし",
     "foreignRows": "別の通貨の {count, plural, other {# 行}}は集計対象外",

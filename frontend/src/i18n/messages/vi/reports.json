@@ -1652,6 +1652,8 @@
     "toDate": "đến nay",
     "notRecorded": "Không được ghi nhận",
     "notReached": "Chưa đạt",
+    "outsidePeriod": "Ngoài kỳ",
+    "otherCurrency": "Tiền tệ khác",
     "noPaycheque": "Không có",
     "noPayee": "Không có người nhận",
     "foreignRows": "{count, plural, other {# dòng}} bằng tiền tệ khác không được tính",

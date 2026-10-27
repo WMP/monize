@@ -2,9 +2,10 @@ import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsInt, IsOptional, Max, Min } from "class-validator";
 
-/** The years the report accepts; the year a period starts in. */
-export const PAYROLL_REPORT_MIN_YEAR = 1900;
-export const PAYROLL_REPORT_MAX_YEAR = 2100;
+import {
+  PAYROLL_REPORT_MAX_YEAR,
+  PAYROLL_REPORT_MIN_YEAR,
+} from "../payroll-deduction-report";
 
 /** `GET /payroll-deductions/report` (docs/specs/payroll-deductions.md section 10). */
 export class PayrollDeductionReportQueryDto {
