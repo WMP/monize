@@ -1942,7 +1942,11 @@
     "noticeExcluded": "Bazı değerler kısmidir: {count, plural, other {# tutar hesaplanamadı ve}} hariç tutuldu.",
     "pdfNote": "Kısmi toplam: {currencies} için döviz kuru yok",
     "pdfNoteExcluded": "Kısmi toplam: {count, plural, other {# tutar}} hariç tutuldu",
-    "pdfSuffix": "(kısmi)"
+    "pdfSuffix": "(kısmi)",
+    "knownValue": "Bilinen Değer",
+    "weightingIntro": "Yüzdeler yalnızca değerlenebilen pozisyonları kapsar.",
+    "weightingNoPrice": "{symbols} için fiyat yok: menkul kıymet sayfasında fiyatı güncelleyin veya ekleyin.",
+    "weightingNoRate": "{pairs} için döviz kuru yok: Para Birimleri sayfasından ekleyin."
   },
   "sankey": {
     "help": "Gelen para ortadan geçerek harcandığı yerlere, biriktirilen veya yatırılan kısma ve borç ödemelerine akar. Rapor varsayılan olarak açık vadesiz, birikim, nakit, kredi kartı ve kredili mevduat hesaplarınızı kapsar ve bunlardan ikisi arasındaki transfer gösterilmez. Bir birikim hesabına ne aktardığınızı görmek için o hesabı hesap filtresinden çıkarın. Kredi kartı ödemesi asla borç ödemesi değildir: kapattığı alışverişler zaten harcama olarak sayılmıştır.",
