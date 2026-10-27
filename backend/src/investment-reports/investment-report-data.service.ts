@@ -18,6 +18,7 @@ import {
   returnOfCapitalAmount,
   INVESTMENT_REPLAY_ORDER,
   reinvestedIncomeAmount,
+  isQuantityOnlyAction,
 } from "../securities/investment-replay.util";
 import { Account } from "../accounts/entities/account.entity";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
@@ -89,6 +90,13 @@ interface ReplayState {
   sales: number;
   reinvestments: number;
   realizedGains: number;
+  /**
+   * False once shares of unknown cost (ADD_SHARES / REMOVE_SHARES, an unpriced
+   * acquisition) join the position, until it closes to zero.
+   */
+  basisKnown: boolean;
+  /** False once a sale drew on an unknown basis: `realizedGains` is then a subtotal. */
+  realizedKnown: boolean;
   lastTransactionDate: string | null;
 }
 
@@ -446,7 +454,11 @@ export class InvestmentReportDataService {
         purchases: roundToDecimals(group.state.purchases, 4),
         sales: roundToDecimals(group.state.sales, 4),
         reinvestments: roundToDecimals(group.state.reinvestments, 4),
-        realizedGains: roundToDecimals(group.state.realizedGains, 4),
+        // A sale drawn on shares of unknown cost has no gain; the column is
+        // unknown, not the proceeds measured against the priced part.
+        realizedGains: group.state.realizedKnown
+          ? roundToDecimals(group.state.realizedGains, 4)
+          : null,
         exchangeRate: fxRate === null ? null : roundToDecimals(fxRate, 6),
         lastUpdated: asOfRow?.date ?? null,
         fiftyTwoWeekHigh: high52,
@@ -661,6 +673,8 @@ export class InvestmentReportDataService {
       sales: 0,
       reinvestments: 0,
       realizedGains: 0,
+      basisKnown: true,
+      realizedKnown: true,
       lastTransactionDate: null,
     };
   }
@@ -683,6 +697,7 @@ export class InvestmentReportDataService {
         // say what it cost, and unknown is not free.
         const cost = securityCurrencyAcquisitionCost(tx);
         if (cost !== null) state.costBasis += cost;
+        else state.basisKnown = false;
         state.quantity = applyActionToQuantity(
           state.quantity,
           tx.action,
@@ -714,6 +729,7 @@ export class InvestmentReportDataService {
         if (baseInvestmentAction(tx.action) === InvestmentAction.SELL) {
           state.sales += totalAmount;
           state.realizedGains += totalAmount - costSold;
+          if (!state.basisKnown) state.realizedKnown = false;
         }
         break;
       }
@@ -730,10 +746,19 @@ export class InvestmentReportDataService {
           const effect = applyReturnOfCapital(state.costBasis, amount);
           state.costBasis = effect.costBasis;
           state.realizedGains += effect.realizedGain;
+          if (!state.basisKnown && effect.realizedGain > 0) {
+            state.realizedKnown = false;
+          }
+        } else {
+          state.basisKnown = false;
         }
         break;
       }
       default:
+        // ADD_SHARES / REMOVE_SHARES move units with no cost in the ledger.
+        if (isQuantityOnlyAction(tx.action) && quantity !== 0) {
+          state.basisKnown = false;
+        }
         state.quantity = applyActionToQuantity(
           state.quantity,
           tx.action,
@@ -745,6 +770,7 @@ export class InvestmentReportDataService {
     if (Math.abs(state.quantity) < 0.0001) {
       state.quantity = 0;
       state.costBasis = 0;
+      state.basisKnown = true;
     }
   }
 
