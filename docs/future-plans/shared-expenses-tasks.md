@@ -6,11 +6,12 @@ Execute [the plan](shared-expenses.md) against the requester-accepted
 
 ## Current handoff — 2026-10-27
 
-Branch `feat/shared-expenses` is based on upstream `b70868dda`. The spec/plan
+Branch `feat/shared-expenses` is based on upstream `ed148f527`. The spec/plan
 commit preceded implementation. The user authorized
 [Draft PR #1890](https://github.com/kenlasko/monize/pull/1890) and
 [Discussion #1889](https://github.com/kenlasko/monize/discussions/1889) to seek
-maintainer scope approval. Upstream approval and the `approved-to-build` label
+maintainer scope approval. [Issue #1891](https://github.com/kenlasko/monize/issues/1891)
+tracks the concrete feature request under the Discussion guidelines. Upstream approval and the `approved-to-build` label
 remain pending. Merge remains a maintainer decision.
 
 | ID | Deliverable | Status |
@@ -23,13 +24,13 @@ remain pending. Merge remains a maintainer decision.
 | B5 | Group files, publication, activity, exports, notifications | Implemented; lifecycle integration passed |
 | B6 | Detached restore, private ledger retention and erasure | Implemented; lifecycle integration passed |
 | F1 | Group/people screens, splits, refunds and repayments | Implemented; production browser journeys passed |
-| F2 | Bank matching, combined save and private review | All six production Chromium journeys passed |
+| F2 | Bank matching, combined save and private review | All seven production Chromium journeys passed after UX refinement |
 | Q1 | Financial, authorization and concurrency regressions | Changed-test gates and full PostgreSQL integration passed |
-| Q2 | Desktop/mobile browser captures | Eight final captures refreshed and visually reviewed |
+| Q2 | Desktop/mobile browser captures | Ten production captures refreshed and visually reviewed |
 | L1 | Every supported locale and generated pseudo-locales | All supported locales authored and parity checked; separate final commit |
 | Q3 | Gates, invariant catalog, consumer audit and PR | Local gates passed; upstream scope, review-series agreement and CI pending |
 
-## Verified evidence
+## Implementation baseline verified at `d83568b96`
 
 - Backend lint, source/test typechecks, pseudo-locale check and build passed.
   The final `test:changed` gate passed all 582 selected files, including 67 guards,
@@ -64,13 +65,69 @@ remain pending. Merge remains a maintainer decision.
   transient restore-field clearing, and the two support-backup completeness
   checks. These are local authorizations, not upstream security review.
 
+## UX refinement — 2026-10-27
+
+The [UX review](shared-expenses-ux-review.md) records the findings and reference
+flows. Ordinary expenses now request a read-only server preview after a typing
+pause, with one explicit Save action. The preview displays personal cost and the
+position change separately. Exact-split helpers appear when a remainder exists;
+mobile balances and primary actions use less vertical space. Entry, split and
+private-booking dialogs retain their title and footer while the body scrolls.
+
+The financial/domain implementation is unchanged from the baseline above. New
+frontend regression cases exercise current-draft identity, delayed responses,
+failed preview retry, unchanged command/fingerprint after a lost save response,
+and split helper behavior. Production browser assertions also check that the
+ordinary-entry and private-booking title and acceptance action remain in the
+viewport after scrolling.
+
+- Focused editor/split/summary tests: 3 files, 21 cases passed.
+- Frontend lint, typecheck and pseudo-locale check passed. The final
+  `test:changed` gate passed 867 files / 16,178 cases, including all 37 selected
+  guards; its bounded run took 1864 seconds with at least 4705 MiB host memory
+  available.
+- The standard production build passed in 30 seconds, with a 2611 MiB peak
+  inside the 4096 MiB ceiling and at least 3755 MiB host memory available.
+  It ran normal type checking and page generation.
+- All seven production Chromium journeys passed with one worker and zero
+  retries. Ten final captures were visually reviewed. The added ordinary-bill
+  journey checks no entry exists before Save and one persisted entry after it.
+- All supported locale catalogs include the finalized copy; the pseudo-locale
+  was regenerated from English. Foreign translations form the final commit.
+
+No Docker or database integration rerun was needed for this frontend-only
+refinement. The browser services were stopped before the changed-test gate;
+this build's generated vendor assets were archived outside the test checkout,
+following the same upstream artifact boundary as the baseline run.
+
+## Upstream synchronization — 2026-10-27
+
+The requester authorized rebasing the published branch onto `ed148f527` and a
+push guarded by the previous fork-head value. The only application-source differences from
+the published UX revision `54d8e3ad0` are the four upstream Tools-menu/payroll-form
+files. The navigation-test conflict preserves the owner-only shared-expenses
+link while adopting the upstream ordering. The two affected test files passed
+all 20 cases in the prepared candidate; backend/database and UX source and
+catalogs are unchanged.
+
+Post-rebase frontend lint, typecheck and locale checks passed. The full
+`test:changed` gate passed 867 files / 16,178 cases, including 37 guards, in
+1978 seconds with at least 3845 MiB host memory available. The standard
+production build passed in 46 seconds with a 2150 MiB peak inside its 4096 MiB
+ceiling. All seven Chromium journeys then passed with one worker and zero
+retries. The ten runtime captures were reviewed after synchronization.
+The browser services were stopped after verification; Docker was not started.
+
 ## Browser captures
 
 These are synthetic users and amounts, captured from the production build with
 1440×900 desktop and 360×800 mobile viewports. Some captures include the full page.
+The ten images below are from the final UX-refined production build.
 
 | Capture | What it shows |
 | --- | --- |
+| [Ordinary expense, desktop](shared-expenses-screenshots/expense-preview-desktop.png) | Automatic server preview of a 300 bill: own cost 100, claim 200 |
+| [Ordinary expense, mobile](shared-expenses-screenshots/expense-preview-mobile.png) | Bill context and Save remain visible at 360px |
 | [Unequal split](shared-expenses-screenshots/unequal-split-desktop.png) | A 300 expense split into 80, 110 and 110 |
 | [Group overview](shared-expenses-screenshots/group-desktop.png) | Own cost 80 and amount owed 220 |
 | [Mobile balances](shared-expenses-screenshots/balances-mobile.png) | A partial repayment reduces the amount owed to 170 |

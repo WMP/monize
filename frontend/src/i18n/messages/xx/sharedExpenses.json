@@ -340,5 +340,13 @@
   "reviewLoadFailed": "[XX-Shared-expense changes could not be checked. Reports still use your accepted bookings. Retry to check for pending changes.-XX]",
   "reviewChecking": "[XX-Checking shared expenses for changes…-XX]",
   "reviewCurrent": "[XX-All available shared changes have been reviewed.-XX]",
-  "reviewEmpty": "[XX-No groups included in your finances yet.-XX]"
+  "reviewEmpty": "[XX-No groups included in your finances yet.-XX]",
+  "checkingSplit": "[XX-Checking the split…-XX]",
+  "singleContributor": "[XX-Use one person-XX]",
+  "multipleReceivers": "[XX-More than one person received this-XX]",
+  "contributionsMismatch": "[XX-The amounts paid or received must add up to the amount above.-XX]",
+  "selectPeople": "[XX-Choose at least one person for this split.-XX]",
+  "splitComplete": "[XX-Ready to apply-XX]",
+  "splitTools": "[XX-More split options-XX]",
+  "repaymentExplanation": "[XX-Suggestions use everyone’s net balance. You may repay someone who did not pay for your particular expense.-XX]"
 }

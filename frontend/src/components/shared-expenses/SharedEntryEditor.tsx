@@ -39,6 +39,8 @@ import {
 import { SharedNavigationGuard } from "./SharedNavigationGuard";
 import { SharedCombinedBooking } from "./SharedCombinedBooking";
 import { SharedSplitEditor } from "./SharedSplitEditor";
+import { useSharedEntryPreview } from "./useSharedEntryPreview";
+import { SharedEntryPreview } from "./SharedEntryPreview";
 const SharedDocuments = dynamic(
   () => import("./SharedDocuments").then((m) => m.SharedDocuments),
   { ssr: false },
@@ -117,10 +119,6 @@ export function SharedEntryEditor({
       ? group.decimalPlaces
       : undefined,
   );
-  const [preview, setPreview] = useState<{
-    key: string;
-    result: SharedEntry;
-  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [includeOwn, setIncludeOwn] = useState(!!initialFinance);
@@ -133,7 +131,14 @@ export function SharedEntryEditor({
   const [saved, setSaved] = useState<SharedEntry | null>(null);
   const [multiple, setMultiple] = useState(input.contributions.length > 1);
   const inputKey = JSON.stringify(input);
-  const shownPreview = preview?.key === inputKey ? preview.result : null;
+  const preview = useSharedEntryPreview(
+    group.id,
+    input,
+    places,
+    entry?.id,
+    !!saved,
+  );
+  const shownPreview = preview.preview;
   const dirty = JSON.stringify(initial) !== inputKey;
   const participants = group.participants.filter(
     (p) =>
@@ -153,22 +158,6 @@ export function SharedEntryEditor({
     if (busy) return;
     if ((dirty && !saved) || pendingFiles) setDiscard(true);
     else onClose();
-  };
-  const review = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await sharedExpensesApi.preview(
-        group.id,
-        input,
-        entry?.id,
-      );
-      setPreview({ key: inputKey, result });
-    } catch (cause) {
-      setError(cause);
-    } finally {
-      setBusy(false);
-    }
   };
   const linkSourceDocument = async (targetId: string) => {
     if (!sourceDocument) return;
@@ -241,13 +230,23 @@ export function SharedEntryEditor({
           }
         }}
         isOpen
+        fixedHeight
+        fullScreenOnPhone
         title={saved ? t("saved") : label}
         description={
-          saved
-            ? t("sharedWithGroup")
-            : input.type === "REPAYMENT"
-              ? t("repaymentHelp")
-              : undefined
+          saved ? (
+            t("sharedWithGroup")
+          ) : input.type === "REPAYMENT" ? (
+            t("repaymentHelp")
+          ) : input.title.trim() && Number(input.amount) > 0 ? (
+            <span className="flex flex-wrap justify-between gap-x-3">
+              <span className="break-words">{input.title}</span>
+              <SharedAmount
+                amount={input.amount}
+                currency={input.currencyCode}
+              />
+            </span>
+          ) : undefined
         }
         onClose={close}
         padding="md"
@@ -260,28 +259,22 @@ export function SharedEntryEditor({
               <Button variant="outline" disabled={busy} onClick={close}>
                 {t("cancel")}
               </Button>
-              <Button
-                isLoading={busy}
-                disabled={
-                  !input.title.trim() || !input.amount || places === undefined
-                }
-                onClick={shownPreview ? save : review}
-              >
-                {shownPreview
-                  ? includeOwn &&
-                    shownPreview.state === "POSTED" &&
-                    shownPreview.ownEffect
-                    ? t("reviewOwnFinances")
-                    : input.type === "REPAYMENT"
-                      ? t("confirmRepayment")
-                      : t("save")
-                  : t("preview")}
+              <Button isLoading={busy} disabled={!shownPreview} onClick={save}>
+                {includeOwn &&
+                shownPreview?.state === "POSTED" &&
+                shownPreview.ownEffect
+                  ? t("reviewOwnFinances")
+                  : input.type === "REPAYMENT"
+                    ? t("confirmRepayment")
+                    : input.type === "EXPENSE" && !entry
+                      ? t("confirmSave")
+                      : t("save")}
               </Button>
             </>
           )
         }
       >
-        <div className="space-y-5">
+        <div className="space-y-4">
           <SharedError error={error} />
           {saved ? (
             <>
@@ -326,7 +319,7 @@ export function SharedEntryEditor({
                 autoFocus
                 onChange={(e) => change({ title: e.target.value })}
               />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <SharedMoneyInput
                   label={t("amount")}
                   value={input.amount}
@@ -406,83 +399,100 @@ export function SharedEntryEditor({
                 </>
               ) : (
                 <>
-                  {!multiple ? (
-                    <Select
-                      label={t(
-                        input.type === "EXPENSE" ? "paidBy" : "receivedBy",
-                      )}
-                      value={input.contributions[0]?.participantId ?? ""}
-                      options={options}
-                      onChange={(e) =>
-                        change({
-                          contributions: e.target.value
-                            ? [
-                                {
-                                  participantId: e.target.value,
-                                  value: input.amount,
-                                },
-                              ]
-                            : [],
-                        })
-                      }
-                    />
-                  ) : (
-                    <fieldset className="space-y-3">
-                      <legend className="text-sm font-medium">
-                        {t(input.type === "EXPENSE" ? "paidBy" : "receivedBy")}
-                      </legend>
-                      {participants.map((person) => (
-                        <SharedMoneyInput
-                          key={person.id}
-                          label={t("contribution", { name: person.name })}
-                          value={
-                            input.contributions.find(
-                              (c) => c.participantId === person.id,
-                            )?.value ?? ""
-                          }
-                          currency={input.currencyCode}
-                          places={places ?? 4}
-                          disabled={places === undefined}
-                          onChange={(value) =>
+                  <div className="space-y-1">
+                    {!multiple ? (
+                      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
+                        <Select
+                          label={t(
+                            input.type === "EXPENSE" ? "paidBy" : "receivedBy",
+                          )}
+                          value={input.contributions[0]?.participantId ?? ""}
+                          options={options}
+                          onChange={(e) =>
                             change({
-                              contributions: [
-                                ...input.contributions.filter(
-                                  (c) => c.participantId !== person.id,
-                                ),
-                                ...(value && Number(value) > 0
-                                  ? [{ participantId: person.id, value }]
-                                  : []),
-                              ],
+                              contributions: e.target.value
+                                ? [
+                                    {
+                                      participantId: e.target.value,
+                                      value: input.amount,
+                                    },
+                                  ]
+                                : [],
                             })
                           }
                         />
-                      ))}
-                    </fieldset>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setMultiple(!multiple);
-                      if (multiple)
-                        change({
-                          contributions: [
-                            {
-                              participantId:
-                                input.contributions[0]?.participantId ??
-                                group.myParticipantId ??
-                                "",
-                              value: input.amount,
-                            },
-                          ],
-                        });
-                    }}
-                  >
-                    {t("multiplePayers")}
-                  </Button>
+                        <DateInput
+                          label={t("date")}
+                          value={input.date}
+                          onDateChange={(date) => change({ date })}
+                        />
+                      </div>
+                    ) : (
+                      <fieldset className="space-y-3">
+                        <legend className="text-sm font-medium">
+                          {t(
+                            input.type === "EXPENSE" ? "paidBy" : "receivedBy",
+                          )}
+                        </legend>
+                        {participants.map((person) => (
+                          <SharedMoneyInput
+                            key={person.id}
+                            label={t("contribution", { name: person.name })}
+                            value={
+                              input.contributions.find(
+                                (c) => c.participantId === person.id,
+                              )?.value ?? ""
+                            }
+                            currency={input.currencyCode}
+                            places={places ?? 4}
+                            disabled={places === undefined}
+                            onChange={(value) =>
+                              change({
+                                contributions: [
+                                  ...input.contributions.filter(
+                                    (c) => c.participantId !== person.id,
+                                  ),
+                                  ...(value && Number(value) > 0
+                                    ? [{ participantId: person.id, value }]
+                                    : []),
+                                ],
+                              })
+                            }
+                          />
+                        ))}
+                      </fieldset>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setMultiple(!multiple);
+                        if (multiple)
+                          change({
+                            contributions: [
+                              {
+                                participantId:
+                                  input.contributions[0]?.participantId ??
+                                  group.myParticipantId ??
+                                  "",
+                                value: input.amount,
+                              },
+                            ],
+                          });
+                      }}
+                    >
+                      {t(
+                        multiple
+                          ? "singleContributor"
+                          : input.type === "EXPENSE"
+                            ? "multiplePayers"
+                            : "multipleReceivers",
+                      )}
+                    </Button>
+                  </div>
                   <Card padding="sm">
                     <div className="flex flex-wrap justify-between items-center gap-3">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="font-medium">{t("splitBetween")}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {input.splitMode === "EQUAL"
@@ -519,11 +529,13 @@ export function SharedEntryEditor({
                   )}
                 </SharedNotice>
               )}
-              <DateInput
-                label={t("date")}
-                value={input.date}
-                onDateChange={(date) => change({ date })}
-              />
+              {(input.type === "REPAYMENT" || multiple) && (
+                <DateInput
+                  label={t("date")}
+                  value={input.date}
+                  onDateChange={(date) => change({ date })}
+                />
+              )}
               <details
                 className="space-y-3"
                 open={!!shownPreview?.draftReason || undefined}
@@ -567,8 +579,24 @@ export function SharedEntryEditor({
                   )}
               </details>
               {shownPreview && (
-                <SharedEntryPreview entry={shownPreview} group={group} />
+                <SharedEntryPreview
+                  entry={shownPreview}
+                  group={group}
+                  compact
+                />
               )}
+              {preview.pending && (
+                <p
+                  role="status"
+                  className="text-sm text-gray-500 dark:text-gray-400"
+                >
+                  {t("checkingSplit")}
+                </p>
+              )}
+              {preview.validation && (
+                <SharedNotice>{t(preview.validation)}</SharedNotice>
+              )}
+              <SharedError error={preview.error} retry={preview.retry} />
               {group.myParticipantId && (
                 <label className="flex items-start gap-3 text-sm">
                   <input
@@ -579,9 +607,11 @@ export function SharedEntryEditor({
                   />
                   <span>
                     {t("includeOwnFinances")}
-                    <span className="block mt-1 text-gray-500 dark:text-gray-400">
-                      {t("combinedBookingHelp")}
-                    </span>
+                    {includeOwn && (
+                      <span className="block mt-1 text-gray-500 dark:text-gray-400">
+                        {t("combinedBookingHelp")}
+                      </span>
+                    )}
                   </span>
                 </label>
               )}
@@ -626,103 +656,5 @@ export function SharedEntryEditor({
         onConfirm={onClose}
       />
     </>
-  );
-}
-
-export function SharedEntryPreview({
-  entry,
-  group,
-}: {
-  entry: SharedEntry;
-  group: SharedGroupDetail;
-}) {
-  const t = useTranslations("sharedExpenses");
-  return (
-    <Card padding="sm" className="space-y-3">
-      <h3 className="font-semibold">{t("review")}</h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400">
-        {t("previewHelp")}
-      </p>
-      {entry.draftReason && (
-        <SharedNotice>
-          {entry.draftReason === "MISSING_RATE"
-            ? t("MISSING_RATE", {
-                from: entry.currencyCode,
-                to: group.currencyCode,
-                date: entry.date,
-              })
-            : t("FUTURE_DATE")}
-        </SharedNotice>
-      )}
-      {entry.type === "REPAYMENT" ? (
-        <p>
-          {
-            group.participants.find((p) => p.id === entry.fromParticipantId)
-              ?.name
-          }{" "}
-          →{" "}
-          {group.participants.find((p) => p.id === entry.toParticipantId)?.name}
-          :{" "}
-          <SharedAmount
-            amount={entry.originalAmount}
-            currency={entry.currencyCode}
-          />
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {entry.allocations
-            .filter((a) => a.kind === "SHARE")
-            .map((a) => (
-              <li
-                key={a.participantId}
-                className="flex flex-wrap justify-between gap-2"
-              >
-                <span className="break-words min-w-0">
-                  {
-                    group.participants.find((p) => p.id === a.participantId)
-                      ?.name
-                  }
-                </span>
-                <span>
-                  <SharedAmount
-                    amount={a.originalAmount}
-                    currency={entry.currencyCode}
-                  />
-                  {entry.currencyCode !== group.currencyCode && (
-                    <span className="block text-xs text-gray-500 dark:text-gray-400">
-                      <SharedAmount
-                        amount={a.groupAmount}
-                        currency={group.currencyCode}
-                      />
-                    </span>
-                  )}
-                </span>
-              </li>
-            ))}
-        </ul>
-      )}
-      {group.myParticipantId && (
-        <dl className="grid grid-cols-1 gap-2 border-t border-gray-200 pt-3 dark:border-gray-700 sm:grid-cols-2">
-          <div>
-            <dt className="text-sm">{t("personalFlow")}</dt>
-            <dd className="font-semibold">
-              <SharedAmount
-                amount={entry.ownEffect?.personal ?? null}
-                currency={group.currencyCode}
-              />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm">{t("settlementChange")}</dt>
-            <dd className="font-semibold">
-              <SharedAmount
-                amount={entry.ownEffect?.position ?? null}
-                currency={group.currencyCode}
-              />
-            </dd>
-          </div>
-        </dl>
-      )}
-    </Card>
   );
 }

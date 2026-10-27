@@ -64,4 +64,61 @@ describe("SharedSplitEditor", () => {
     });
     expect(screen.getByRole("button", { name: "Apply split" })).toBeEnabled();
   });
+  it("explains why an empty selection cannot be applied", () => {
+    const { onApply } = setup();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Me" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Anna" }));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Choose at least one person",
+    );
+    expect(screen.getByRole("button", { name: "Apply split" })).toBeDisabled();
+    expect(onApply).not.toHaveBeenCalled();
+  });
+  it("keeps extras optional and only applies their calculation on request", () => {
+    const { onApply } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "Exact amounts" }));
+    fireEvent.change(screen.getByLabelText("Share for Me"), {
+      target: { value: "20" },
+    });
+    const disclosure = screen
+      .getByText("More split options")
+      .closest("details")!;
+    expect(disclosure.open).toBe(false);
+    fireEvent.click(screen.getByText("More split options"));
+    expect(disclosure.open).toBe(true);
+    expect(screen.getByLabelText("Share for Me")).toHaveValue("20.00");
+    expect(onApply).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Extras, then split the rest equally",
+      }),
+    );
+    expect(screen.getByLabelText("Share for Me")).toHaveValue("60.00");
+    expect(screen.getByLabelText("Share for Anna")).toHaveValue("40.00");
+    expect(screen.getByRole("status")).toHaveTextContent("Ready to apply");
+    expect(screen.getByRole("status")).toHaveFocus();
+    expect(
+      screen.queryByRole("button", { name: /Give remainder/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Apply split" }));
+    expect(onApply).toHaveBeenCalledWith({
+      splitMode: "EXACT",
+      shares: [
+        { participantId: "me", value: "60.00" },
+        { participantId: "anna", value: "40.00" },
+      ],
+    });
+  });
+  it("names over-allocation and does not offer a positive-remainder action", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Exact amounts" }));
+    fireEvent.change(screen.getByLabelText("Share for Me"), {
+      target: { value: "120" },
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(/Over-allocated:.*20/);
+    expect(screen.getByRole("button", { name: "Apply split" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: /Give remainder/ }),
+    ).not.toBeInTheDocument();
+  });
 });

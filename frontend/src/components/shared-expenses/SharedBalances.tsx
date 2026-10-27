@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import type {
   SharedGroupDetail,
   SharedSuggestion,
@@ -26,7 +27,10 @@ export function SharedBalances({
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <Card padding="md">
-        <h2 className="text-lg font-semibold">{t("suggestions")}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold">{t("suggestions")}</h2>
+          <InfoTooltip text={t("repaymentExplanation")} usePortal />
+        </div>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           {t("suggestionsHelp")}
         </p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -56,6 +56,8 @@ export function SharedSplitEditor({
     ),
   });
   const [error, setError] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const statusRef = useRef<HTMLParagraphElement>(null);
   const values = drafts[mode] ?? {};
   const shares = selected.map((participantId) => ({
     participantId,
@@ -77,6 +79,8 @@ export function SharedSplitEditor({
             Math.abs(Number(status.remaining)),
             input.currencyCode,
           );
+  const hasRemainder =
+    status.remaining !== null && Number(status.remaining) > 0;
   const helper = (personId?: string) => {
     try {
       const rows = personId
@@ -88,6 +92,7 @@ export function SharedSplitEditor({
       });
       setMode("EXACT");
       setError(false);
+      statusRef.current?.focus();
     } catch {
       setError(true);
     }
@@ -96,6 +101,8 @@ export function SharedSplitEditor({
     <Modal
       pushHistory
       isOpen
+      fixedHeight
+      fullScreenOnPhone
       title={t("splitMode")}
       description={t("splitHelp")}
       padding="md"
@@ -117,13 +124,29 @@ export function SharedSplitEditor({
     >
       <div className="space-y-4">
         <SharedError error={saveError} />
-        {remaining !== null && (
-          <p role="status" className="text-sm font-medium">
-            {t(Number(status.remaining) < 0 ? "splitOver" : "splitRemaining", {
-              amount: remaining,
-            })}
-          </p>
-        )}
+        <p
+          ref={statusRef}
+          tabIndex={-1}
+          role="status"
+          className="text-sm font-medium"
+        >
+          {selected.length === 0
+            ? t("selectPeople")
+            : remaining !== null
+              ? status.valid
+                ? t("splitComplete")
+                : t(
+                    Number(status.remaining) < 0
+                      ? "splitOver"
+                      : "splitRemaining",
+                    { amount: remaining },
+                  )
+              : mode === "EQUAL"
+                ? t("equalSummary", { count: selected.length })
+                : !status.valid
+                  ? t("splitInvalid")
+                  : t("splitComplete")}
+        </p>
         {mode === "WEIGHT" && <SharedNotice>{t("weightsHelp")}</SharedNotice>}
         <SharedTabs
           label={t("splitMode")}
@@ -138,13 +161,13 @@ export function SharedSplitEditor({
             {t("splitInvalid")}
           </p>
         )}
-        <div className="scrollbar-slim max-h-96 overflow-y-auto space-y-3">
+        <div className="space-y-3">
           {participants
             .filter((p) => p.isActive || selected.includes(p.id))
             .map((p) => (
               <div
                 key={p.id}
-                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-3"
+                className={`grid ${mode === "EQUAL" ? "grid-cols-1" : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"} items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-3`}
               >
                 <label className="flex items-center gap-3 min-h-11 min-w-0 break-words">
                   <input
@@ -187,7 +210,7 @@ export function SharedSplitEditor({
                         }
                       />
                     )}
-                    {mode === "EXACT" && (
+                    {mode === "EXACT" && hasRemainder && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -202,13 +225,27 @@ export function SharedSplitEditor({
               </div>
             ))}
         </div>
-        {mode === "EXACT" && (
-          <>
-            <SharedNotice>{t("extrasHelp")}</SharedNotice>
-            <Button variant="outline" onClick={() => helper()}>
-              {t("extras")}
-            </Button>
-          </>
+        {mode === "EXACT" && hasRemainder && selected.length > 0 && (
+          <details
+            open={toolsOpen}
+            onToggle={(event) => setToolsOpen(event.currentTarget.open)}
+          >
+            <summary
+              className="cursor-pointer min-h-11 py-2 text-sm font-medium"
+              onClick={(event) => {
+                event.preventDefault();
+                setToolsOpen(!toolsOpen);
+              }}
+            >
+              {t("splitTools")}
+            </summary>
+            <div className="space-y-3 pt-2">
+              <SharedNotice>{t("extrasHelp")}</SharedNotice>
+              <Button variant="outline" onClick={() => helper()}>
+                {t("extras")}
+              </Button>
+            </div>
+          </details>
         )}
       </div>
     </Modal>
