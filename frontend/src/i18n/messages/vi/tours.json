@@ -477,6 +477,47 @@
             "body": "Monize nhắc bạn 30 ngày và 7 ngày trước khi bảo hành hết hạn, và vào đúng ngày hết hạn. Các lời nhắc đến đây, và bạn có thể tạm hoãn một lời nhắc hoặc mở bảo hành từ đó. Chọn cách chúng đến với bạn trong **Cài đặt**, mục **Thông báo**, tại **Nhắc nhở bảo hành**."
           }
         }
+      },
+      "payrollDeductions": {
+        "title": "Khấu trừ lương",
+        "steps": {
+          "welcome": {
+            "title": "Dừng khấu trừ khi đạt mức tối đa hằng năm",
+            "body": "Một số khoản khấu trừ lương, như lương hưu hoặc bảo hiểm thất nghiệp, sẽ dừng khi đạt mức tối đa của năm và bắt đầu lại vào năm sau. Quy tắc khấu trừ lương cho Monize biết mức tối đa đó, để phiếu lương ngừng thu khoản khấu trừ khi đã đạt mức. **Trước khi bắt đầu, bạn cần một hóa đơn lương định kỳ:** khoản lương của bạn được thiết lập như một khoản tiền gửi định kỳ, với các khoản khấu trừ là các dòng riêng."
+          },
+          "payrollBill": {
+            "title": "Trước tiên, thiết lập khoản lương",
+            "body": "Nếu chưa làm, hãy chọn **+ Lịch mới** và tạo khoản lương của bạn như một khoản tiền gửi. Chia nó thành một dòng cho lương gộp và một dòng âm cho mỗi khoản khấu trừ, mỗi dòng có danh mục riêng. Nếu một khoản khấu trừ hiện không bị trừ vì đã đạt mức tối đa của năm nay, bạn vẫn hãy thêm một dòng chia cho nó, dưới dạng khoản chi có giá trị bằng 0, để quy tắc có thể giới hạn nó và nó bắt đầu lại sau ngày đặt lại. Chỉ khoản tiền gửi đang hoạt động có số tiền vào lớn hơn số tiền trừ mới có thể có quy tắc, và chỉ các dòng khấu trừ của nó mới có thể bị giới hạn."
+          },
+          "taxesLink": {
+            "title": "Khấu trừ lương nằm trong Thuế",
+            "body": "Mở **Công cụ** và chọn **Thuế** để tìm các công cụ thuế."
+          },
+          "taxesCard": {
+            "title": "Mở Khấu trừ lương",
+            "body": "Chọn thẻ này để mở các quy tắc khấu trừ lương."
+          },
+          "newRule": {
+            "title": "Tạo quy tắc cho một khoản lương",
+            "body": "**+ Quy tắc mới** mở biểu mẫu. Chọn hóa đơn lương định kỳ của bạn, rồi đặt mức tối đa hằng năm cho từng danh mục khấu trừ bạn muốn giới hạn. Thêm ngày đặt lại, thường là ngày 1 tháng 1. Nếu hóa đơn không có dòng khấu trừ nào, biểu mẫu sẽ yêu cầu bạn thêm chúng vào hóa đơn trước."
+          },
+          "rulesList": {
+            "title": "Các quy tắc của bạn",
+            "body": "Mỗi quy tắc hiển thị hóa đơn, danh mục, mức tối đa hằng năm, ngày đặt lại và số tiền mỗi kỳ lương khấu trừ. Sửa quy tắc để thay đổi mức tối đa, hoặc xóa nó để khoản lương thu lại toàn bộ dòng. Xóa quy tắc không bao giờ thay đổi giao dịch đã ghi sổ."
+          },
+          "periodTables": {
+            "title": "Những gì đã thu",
+            "body": "Khi bạn có quy tắc, **Hiện lũy kế từ đầu năm** cho biết mỗi danh mục đã thu bao nhiêu trong kỳ này và còn bao nhiêu dư địa dưới mức tối đa. **Hiện các kỳ trước** cho biết số đã thu trong các năm trước."
+          },
+          "forecast": {
+            "title": "Áp dụng khi khoản lương được ghi sổ",
+            "body": "Khi khoản lương được ghi sổ, mỗi dòng bị giới hạn được giảm xuống phần dư địa còn lại dưới mức tối đa, cho đến 0, và bắt đầu lại sau ngày đặt lại. Dự báo dòng tiền ở đây và trên bảng điều khiển hiển thị điều tương tự từ trước, để bạn thấy lương thực nhận tăng lên khi đạt mức tối đa."
+          },
+          "reminders": {
+            "title": "Lời nhắc trước mỗi lần đặt lại",
+            "body": "Hai tháng trước khi một quy tắc được đặt lại, Monize sẽ nhờ bạn xác nhận tại đây mức tối đa của năm sau. Nếu bạn không làm gì, quy tắc giữ nguyên mức tối đa và đặt lại vào ngày của nó. Chọn cách lời nhắc đến với bạn trong **Cài đặt**, mục **Thông báo**, tại **Hóa đơn và đã lên lịch**."
+          }
+        }
       }
     }
   },

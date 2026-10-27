@@ -50,6 +50,7 @@ import { useFormModal } from '@/hooks/useFormModal';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { createLogger } from '@/lib/logger';
+import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { getErrorMessage } from '@/lib/errors';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
@@ -670,7 +671,11 @@ function BillsContent() {
           title={t('page.title')}
           subtitle={t('page.subtitle')}
           helpUrl="https://github.com/kenlasko/monize/wiki/Bills-and-Deposits"
-          actions={<Button onClick={handleCreateNew}>{t('page.newButton')}</Button>}
+          actions={
+            <Button onClick={handleCreateNew} {...tourAnchor(TOUR_ANCHORS.billsNewButton)}>
+              {t('page.newButton')}
+            </Button>
+          }
         />
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-6">
@@ -704,18 +709,20 @@ function BillsContent() {
         </div>
 
         {/* Cash Flow Forecast Chart */}
-        <ErrorBoundary fallback={
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6 mb-6">
-            <p className="text-gray-500 dark:text-gray-400">{t('page.chartUnavailable')}</p>
-          </div>
-        }>
-          <CashFlowForecastChart
-            scheduledTransactions={scheduledTransactions}
-            accounts={accounts}
-            futureTransactions={futureTransactions}
-            isLoading={isLoading}
-          />
-        </ErrorBoundary>
+        <div {...tourAnchor(TOUR_ANCHORS.billsCashFlowForecast)}>
+          <ErrorBoundary fallback={
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6 mb-6">
+              <p className="text-gray-500 dark:text-gray-400">{t('page.chartUnavailable')}</p>
+            </div>
+          }>
+            <CashFlowForecastChart
+              scheduledTransactions={scheduledTransactions}
+              accounts={accounts}
+              futureTransactions={futureTransactions}
+              isLoading={isLoading}
+            />
+          </ErrorBoundary>
+        </div>
 
         {/* Form Modal */}
         <Modal isOpen={showForm} onClose={handleFormClose} {...modalProps} maxWidth="6xl" className="p-6 !max-w-[69rem]">

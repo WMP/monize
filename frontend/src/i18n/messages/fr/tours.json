@@ -477,6 +477,47 @@
             "body": "Monize vous prévient 30 jours et 7 jours avant l’expiration d’une garantie, puis le jour même. Les rappels arrivent ici, et vous pouvez en reporter un ou ouvrir la garantie depuis celui-ci. Choisissez comment ils vous parviennent dans les **Paramètres**, section **Notifications**, sous **Rappels de garantie**."
           }
         }
+      },
+      "payrollDeductions": {
+        "title": "Retenues salariales",
+        "steps": {
+          "welcome": {
+            "title": "Arrêter les retenues à leur maximum annuel",
+            "body": "Certaines retenues sur la paie, comme le régime de retraite ou l’assurance-emploi, s’arrêtent une fois le maximum de l’année atteint et reprennent l’année suivante. Une règle de retenue salariale indique ce maximum à Monize, pour que la paie cesse de prélever la retenue une fois qu’il est atteint. **Avant de commencer, il vous faut une facture de paie planifiée :** votre paie configurée comme un dépôt planifié, avec ses retenues en lignes distinctes."
+          },
+          "payrollBill": {
+            "title": "D’abord, configurez votre paie",
+            "body": "Si ce n’est pas déjà fait, choisissez **+ Nouveau calendrier** et créez votre paie comme un dépôt. Ventilez-la en une ligne pour votre salaire brut et une ligne négative par retenue, chacune avec sa propre catégorie. Si une retenue n’est pas prélevée en ce moment parce que le maximum de cette année est déjà atteint, ajoutez quand même une ligne de ventilation pour elle, comme une dépense de valeur zéro, pour qu’une règle puisse la plafonner et qu’elle reprenne après la réinitialisation. Seul un dépôt actif qui verse plus qu’il ne prélève peut porter des règles, et seules ses lignes de retenue peuvent être plafonnées."
+          },
+          "taxesLink": {
+            "title": "Les retenues salariales sont sous Impôts",
+            "body": "Ouvrez **Outils** et choisissez **Impôts** pour trouver les outils fiscaux."
+          },
+          "taxesCard": {
+            "title": "Ouvrir Retenues salariales",
+            "body": "Choisissez cette carte pour ouvrir les règles de retenue salariale."
+          },
+          "newRule": {
+            "title": "Créer les règles d’une paie",
+            "body": "**+ Nouvelle règle** ouvre le formulaire. Choisissez votre facture de paie planifiée, puis un maximum annuel pour chaque catégorie de retenue à plafonner. Ajoutez la date de réinitialisation, généralement le 1er janvier. Si la facture n’a aucune ligne de retenue, le formulaire vous invite à les ajouter d’abord à la facture."
+          },
+          "rulesList": {
+            "title": "Vos règles",
+            "body": "Chaque règle affiche sa facture, sa catégorie, le maximum annuel, la date de réinitialisation et ce que chaque paie prélève. Modifiez une règle pour changer son maximum, ou supprimez-la pour que la paie prélève de nouveau la ligne entière. Supprimer une règle ne modifie jamais une transaction déjà passée."
+          },
+          "periodTables": {
+            "title": "Ce qui a déjà été prélevé",
+            "body": "Dès que vous avez une règle, **Afficher le cumul de l’année** indique ce que chaque catégorie a prélevé sur la période et la marge restante sous son maximum. **Afficher les périodes précédentes** indique ce qu’elle a prélevé les années précédentes."
+          },
+          "forecast": {
+            "title": "Appliqué quand la paie est passée",
+            "body": "Quand la paie est passée, chaque ligne plafonnée est réduite à la marge restante sous son maximum, jusqu’à zéro, puis reprend après la date de réinitialisation. La prévision de trésorerie, ici et sur le tableau de bord, montre la même chose à l’avance : vous voyez votre salaire net augmenter une fois un maximum atteint."
+          },
+          "reminders": {
+            "title": "Un rappel avant chaque réinitialisation",
+            "body": "Deux mois avant la réinitialisation d’une règle, Monize vous demande ici de confirmer le maximum de l’année suivante. Si vous ne faites rien, la règle garde son maximum et se réinitialise à sa date. Choisissez comment les rappels vous parviennent dans les **Paramètres**, section **Notifications**, sous **Factures et planifiés**."
+          }
+        }
       }
     }
   },
