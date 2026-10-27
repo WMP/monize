@@ -137,6 +137,7 @@ export class PayrollDeductionResetReminderService {
              FROM payroll_deduction_rules r
              JOIN categories c ON c.id = r.category_id
              JOIN scheduled_transactions st ON st.id = r.scheduled_transaction_id
+            WHERE st.is_active = true
             ORDER BY r.user_id, r.created_at, r.id`,
         ),
       );

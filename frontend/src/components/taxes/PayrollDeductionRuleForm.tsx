@@ -161,7 +161,22 @@ export function PayrollDeductionRuleForm({
 }: PayrollDeductionRuleFormProps) {
   const t = useTranslations('taxes.payroll');
   const today = useFinancialToday();
-  const bills = useMemo(() => payrollBillOptions(scheduledTransactions), [scheduledTransactions]);
+  // Creating: a bill that already has rules is not offered again; its rules
+  // are edited, or added to, from the list. Editing: the rule's own bill stays
+  // offered even when it no longer qualifies (deactivated, no longer a net
+  // income), so the rule can still be changed.
+  const ruledBillIds = useMemo(
+    () => new Set(existingRules.filter((r) => r.id !== rule?.id).map((r) => r.scheduledTransactionId)),
+    [existingRules, rule?.id],
+  );
+  const bills = useMemo(() => {
+    const offered = payrollBillOptions(scheduledTransactions).filter((b) => rule || !ruledBillIds.has(b.id));
+    if (rule && !offered.some((b) => b.id === rule.scheduledTransactionId)) {
+      const own = scheduledTransactions.find((b) => b.id === rule.scheduledTransactionId);
+      if (own) return [own, ...offered];
+    }
+    return offered;
+  }, [scheduledTransactions, rule, ruledBillIds]);
   const billsById = useMemo(() => new Map(bills.map((b) => [b.id, b])), [bills]);
   const hasLine = useCallback(
     (billId: string, categoryId: string) => billLineAmount(billsById.get(billId), categoryId) !== null,
@@ -207,7 +222,6 @@ export function PayrollDeductionRuleForm({
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'lines' });
 
   useFormDirtyNotify(isDirty, onDirtyChange);
-  useFormSubmitRef(submitRef, handleSubmit, onSubmit);
 
   const billId = useWatch({ control, name: 'scheduledTransactionId' });
   const lines = useWatch({ control, name: 'lines' });
@@ -280,9 +294,19 @@ export function PayrollDeductionRuleForm({
     }
     if (!value || !billId) return;
     const hasLine = billLineAmount(billsById.get(billId), value) !== null;
+    const requestedBill = billId;
     payrollDeductionsApi
       .suggest(billId, value, getValues('resetDate') || undefined)
       .then((suggestion) => {
+        // The answer is for the category and bill asked about; the row may
+        // have moved on (another category picked, the bill changed, the row
+        // removed) while the request was in flight.
+        if (
+          getValues(`lines.${index}.categoryId`) !== value ||
+          getValues('scheduledTransactionId') !== requestedBill
+        ) {
+          return;
+        }
         if (
           suggestion.yearlyMaximum !== null &&
           getValues(`lines.${index}.yearlyMaximum`) === undefined
@@ -307,19 +331,24 @@ export function PayrollDeductionRuleForm({
       .catch((error) => logger.error(error));
   };
 
-  const submit = async (values: FormValues) => {
-    await onSubmit({
-      scheduledTransactionId: values.scheduledTransactionId,
-      resetPeriod: values.resetPeriod,
-      resetDate: values.resetDate,
-      lines: values.lines.map((line) => ({
-        categoryId: line.categoryId,
-        yearlyMaximum: line.yearlyMaximum,
-        expectedPerPaycheque:
-          billLineAmount(bill, line.categoryId) === null ? (line.expectedPerPaycheque ?? null) : null,
-      })),
-    });
-  };
+  const submit = useCallback(
+    async (values: FormValues) => {
+      await onSubmit({
+        scheduledTransactionId: values.scheduledTransactionId,
+        resetPeriod: values.resetPeriod,
+        resetDate: values.resetDate,
+        lines: values.lines.map((line) => ({
+          categoryId: line.categoryId,
+          yearlyMaximum: line.yearlyMaximum,
+          expectedPerPaycheque:
+            billLineAmount(bill, line.categoryId) === null ? (line.expectedPerPaycheque ?? null) : null,
+        })),
+      });
+    },
+    [onSubmit, bill],
+  );
+  // The unsaved-changes dialog's Save runs the same mapping as the Save button.
+  useFormSubmitRef(submitRef, handleSubmit, submit);
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-4">
@@ -367,9 +396,6 @@ export function PayrollDeductionRuleForm({
         </legend>
         {bill && deductionIds.length === 0 && (
           <p className="text-sm text-amber-600 dark:text-amber-400">{t('form.noDeductionLines')}</p>
-        )}
-        {bill && deductionIds.length > 0 && unruledCount === 0 && !rule && (
-          <p className="text-sm text-amber-600 dark:text-amber-400">{t('form.allLinesRuled')}</p>
         )}
         {fields.map((field, index) => (
           <PayrollDeductionLineFields

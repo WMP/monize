@@ -27,6 +27,15 @@
       "help": "Ce que la catégorie a prélevé sur la période qui contient aujourd'hui, tous comptes confondus, dans la devise de la facture.",
       "foreignRows": "{count, plural, one {# ligne} other {# lignes}} dans une autre devise non comptées"
     },
+    "previousPeriods": {
+      "show": "Afficher les périodes précédentes",
+      "hide": "Masquer les périodes précédentes",
+      "title": "Périodes précédentes",
+      "help": "Ce que chaque catégorie a prélevé au cours de ses périodes passées, sur tous les comptes, dans la devise de l'opération. La période en cours figure dans le tableau de l'année en cours.",
+      "loading": "Chargement des périodes précédentes...",
+      "empty": "Rien n'a encore été prélevé au cours d'une période antérieure.",
+      "loadFailed": "Échec du chargement des périodes précédentes"
+    },
     "list": {
       "bill": "Facture",
       "category": "Catégorie",
@@ -76,8 +85,7 @@
       "categoriesLegend": "Catégories de retenue",
       "addCategory": "+ Ajouter une autre catégorie",
       "removeCategory": "Retirer la catégorie {index}",
-      "noDeductionLines": "Cette opération n'a aucune ligne de retenue. Ajoutez d'abord les retenues comme lignes ventilées négatives sur l'opération.",
-      "allLinesRuled": "Chaque ligne de retenue de cette opération a déjà une règle."
+      "noDeductionLines": "Cette opération n'a aucune ligne de retenue. Ajoutez d'abord les retenues comme lignes ventilées négatives sur l'opération."
     },
     "delete": {
       "title": "Supprimer la règle de retenue",

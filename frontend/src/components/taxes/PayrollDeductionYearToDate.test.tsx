@@ -45,9 +45,14 @@ describe('groupYearToDateRows', () => {
     expect(rows[1]).toMatchObject({ categoryName: 'CPP', billNames: ['Paycheque'] });
   });
 
-  it('keeps the same category apart when the bills pay in different currencies', () => {
+  it('keeps the same category apart when the bills pay in different currencies or measure different periods', () => {
     const rows = groupYearToDateRows([rule(), rule({ id: 'rule-2', currencyCode: 'USD' })]);
     expect(rows.map((r) => r.currencyCode)).toEqual(['CAD', 'USD']);
+    const periods = groupYearToDateRows([
+      rule(),
+      rule({ id: 'rule-3', periodStart: '2026-04-01', periodEnd: '2027-03-31', nextResetOn: '2027-04-01', yearlyMaximum: 900 }),
+    ]);
+    expect(periods.map((r) => [r.periodStart, r.yearlyMaximum])).toEqual([['2026-01-01', 1077.48], ['2026-04-01', 900]]);
   });
 });
 

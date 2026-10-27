@@ -185,67 +185,67 @@ describe('PayrollDeductionRuleForm', () => {
     expect(optionLabels(screen.getByLabelText('Deduction category 1'))).toEqual(['--', 'Groceries']);
   });
 
-  it('leaves out a line that already has a rule and says so when none is left', () => {
+  it('does not offer a bill that already has rules when creating, and keeps the rule\'s own bill when editing', async () => {
     const ruled = { id: 'r-ei', scheduledTransactionId: 'st-pay', categoryId: 'cat-ei' } as PayrollDeductionRule;
+    const other = bill({ id: 'st-other', name: 'Second job' });
     const { unmount } = render(
       <PayrollDeductionRuleForm
-        scheduledTransactions={[bill()]}
+        scheduledTransactions={[bill(), other]}
         categories={categories}
         existingRules={[ruled]}
         onSubmit={onSubmit}
         onCancel={onCancel}
       />,
     );
-    expect(optionLabels(screen.getByLabelText('Deduction category 1'))).toEqual(['--', 'CPP']);
+    expect(optionLabels(screen.getByLabelText('Payroll scheduled bill'))).toEqual([
+      'Select the bill that is your paycheque',
+      'Second job',
+    ]);
     unmount();
+    // Editing a rule on a bill that no longer qualifies: the bill stays
+    // selected, its line still supplies the expected amount, and the other
+    // rule's category is not offered again.
+    const rule = {
+      ...ruled,
+      id: 'r-cpp',
+      categoryId: 'cat-cpp',
+      yearlyMaximum: 4034.1,
+      resetPeriod: 'YEARLY',
+      resetDate: '2026-01-01',
+      expectedPerPaycheque: 150,
+      expectedSource: 'entered',
+    } as PayrollDeductionRule;
     render(
       <PayrollDeductionRuleForm
-        scheduledTransactions={[bill()]}
+        rule={rule}
+        scheduledTransactions={[bill({ isActive: false })]}
         categories={categories}
-        existingRules={[ruled, { ...ruled, id: 'r-cpp', categoryId: 'cat-cpp' }]}
+        existingRules={[ruled, rule]}
         onSubmit={onSubmit}
         onCancel={onCancel}
       />,
     );
-    expect(screen.getByText('Every deduction line on this bill already has a rule.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '+ Add another category' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Payroll scheduled bill')).toHaveValue('st-pay');
+    expect(optionLabels(screen.getByLabelText('Deduction category 1'))).toEqual(['--', 'CPP']);
+    expect(screen.getByLabelText('Yearly maximum')).toHaveValue('4,034.10');
   });
 
-  it('estimates an empty yearly maximum from what the category has already collected', async () => {
-    mockSuggest.mockResolvedValue({ expectedPerPaycheque: null, expectedSource: null, yearlyMaximum: 1049.12, yearlyMaximumSource: 'previousPeriod' });
+  it('ignores a suggestion that answers for a category the row has since left', async () => {
+    let resolveFirst: (value: unknown) => void = () => {};
+    mockSuggest
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockResolvedValueOnce({ expectedPerPaycheque: null, expectedSource: null, yearlyMaximum: 4034.1, yearlyMaximumSource: 'previousPeriod' });
     render(
       <PayrollDeductionRuleForm scheduledTransactions={[bill()]} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />,
     );
     await pickCategory(0, 'cat-ei');
-    expect(mockSuggest).toHaveBeenCalledWith('st-pay', 'cat-ei', expect.stringMatching(/^\d{4}-01-01$/));
-    await waitFor(() => expect(screen.getByLabelText('Yearly maximum')).toHaveValue('1,049.12'));
-    expect(screen.getByText('Estimated from what this category has already collected.')).toBeInTheDocument();
-    // A figure already typed is kept, and the note goes with it.
-    fillMaximum(0, '1100');
     await pickCategory(0, 'cat-cpp');
-    await waitFor(() => expect(mockSuggest).toHaveBeenCalledTimes(2));
-    expect(screen.getAllByLabelText('Yearly maximum')[0]).toHaveValue('1,100.00');
-    expect(screen.queryByText('Estimated from what this category has already collected.')).not.toBeInTheDocument();
-  });
-
-  it("starts an empty yearly maximum from another paycheque's rule on the same category", async () => {
-    const onOtherBill = { id: 'r-mid', scheduledTransactionId: 'st-mid', categoryId: 'cat-ei', yearlyMaximum: 1077.48 } as PayrollDeductionRule;
-    render(
-      <PayrollDeductionRuleForm
-        scheduledTransactions={[bill()]}
-        categories={categories}
-        existingRules={[onOtherBill]}
-        onSubmit={onSubmit}
-        onCancel={onCancel}
-      />,
-    );
-    await pickCategory(0, 'cat-ei');
-    expect(screen.getByLabelText('Yearly maximum')).toHaveValue('1,077.48');
-    // A figure already typed is kept.
-    fillMaximum(0, '1100');
-    await pickCategory(0, 'cat-cpp');
-    await pickCategory(0, 'cat-ei');
-    expect(screen.getByLabelText('Yearly maximum')).toHaveValue('1,100.00');
+    await waitFor(() => expect(screen.getByLabelText('Yearly maximum')).toHaveValue('4,034.10'));
+    // EI's late answer must not overwrite CPP's figure.
+    await act(async () => {
+      resolveFirst({ expectedPerPaycheque: null, expectedSource: null, yearlyMaximum: 1049.12, yearlyMaximumSource: 'previousPeriod' });
+    });
+    expect(screen.getByLabelText('Yearly maximum')).toHaveValue('4,034.10');
   });
 
   it('says when the bill has no deduction lines at all', () => {

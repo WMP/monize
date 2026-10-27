@@ -27,6 +27,15 @@
       "help": "Số tiền danh mục đã thu trong kỳ chứa ngày hôm nay, trên mọi tài khoản, theo tiền tệ của hóa đơn.",
       "foreignRows": "{count, plural, other {# dòng}} bằng tiền tệ khác không được tính"
     },
+    "previousPeriods": {
+      "show": "Hiện các kỳ trước",
+      "hide": "Ẩn các kỳ trước",
+      "title": "Các kỳ trước",
+      "help": "Số tiền mỗi danh mục đã thu trong các kỳ trước, trên mọi tài khoản, theo đơn vị tiền của giao dịch. Kỳ hiện tại nằm trong bảng từ đầu năm đến nay.",
+      "loading": "Đang tải các kỳ trước...",
+      "empty": "Chưa thu được gì trong kỳ trước nào.",
+      "loadFailed": "Không tải được các kỳ trước"
+    },
     "list": {
       "bill": "Hóa đơn",
       "category": "Danh mục",
@@ -76,8 +85,7 @@
       "categoriesLegend": "Danh mục khấu trừ",
       "addCategory": "+ Thêm danh mục khác",
       "removeCategory": "Xóa danh mục {index}",
-      "noDeductionLines": "Giao dịch này không có dòng khấu trừ. Trước tiên hãy thêm các khoản khấu trừ làm dòng chia âm trên giao dịch.",
-      "allLinesRuled": "Mọi dòng khấu trừ của giao dịch này đã có quy tắc."
+      "noDeductionLines": "Giao dịch này không có dòng khấu trừ. Trước tiên hãy thêm các khoản khấu trừ làm dòng chia âm trên giao dịch."
     },
     "delete": {
       "title": "Xóa quy tắc khấu trừ",

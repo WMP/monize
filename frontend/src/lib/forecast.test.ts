@@ -11,6 +11,7 @@ import {
   FORECAST_PERIOD_DAYS,
   FORECAST_PERIOD_LABELS,
   FutureTransaction,
+  projectPayrollOccurrence,
 } from './forecast';
 
 vi.mock('@/lib/utils', () => ({
@@ -2479,6 +2480,7 @@ describe('buildForecast with payroll deductions', () => {
     periodStart: '2026-01-01',
     periodEnd: '2026-12-31',
     nextResetOn: '2027-01-01',
+    resetDate: '2026-01-01',
     paidToDate: 1077.48 - remaining,
     remaining,
     foreignCurrencyRows: 0,
@@ -2590,6 +2592,74 @@ describe('buildForecast with payroll deductions', () => {
     const tighter = paycheque({ id: 'st-end', frequency: 'MONTHLY', nextDueDate: '2026-04-30', payrollDeductions: [{ ...eiRule(100), yearlyMaximum: 1000, remaining: 20 }] });
     const bound = forecastPoints([shown, other], [midMonth, tighter], 'month', 'acc-1');
     expect(paycheques(bound)).toEqual([['2026-04-30', 2500]]);
+  });
+
+  it('keeps a bill whose line was zeroed at this year\'s maximum where it is, then drops it from the first paycheque after the reset', () => {
+    vi.setSystemTime(new Date(2026, 11, 10)); // Dec 10, 2026
+    // The template already pays 2500 with no EI deducted; the user entered the
+    // usual 64 and the room is spent. Nothing is added back this year, and
+    // the new year deducts 64 from what the paycheque is now.
+    const entered = { ...eiRule(0), expectedSource: 'entered' as const };
+    const points = forecastPoints(
+      [makeAccount()],
+      [paycheque({ amount: 2500, nextDueDate: '2026-12-18', payrollDeductions: [entered] })],
+      'month',
+      'all',
+    );
+    expect(paycheques(points)).toEqual([
+      ['2026-12-18', 2500],
+      ['2027-01-01', 2436],
+    ]);
+  });
+
+  it('leaves an overdue paycheque from a closed period alone and does not spend the new room on it', () => {
+    vi.setSystemTime(new Date(2027, 0, 5)); // Jan 5, 2027: the room has refilled
+    const fresh = { ...eiRule(1077.48), periodStart: '2027-01-01', periodEnd: '2027-12-31', nextResetOn: '2028-01-01' };
+    const points = forecastPoints(
+      [makeAccount()],
+      [paycheque({ nextDueDate: '2026-12-25', payrollDeductions: [fresh] })],
+      'month',
+      'all',
+    );
+    // 25 December carried onto today as it is: the ledger for December is
+    // already written; 8 January and 22 January each deduct from the new room.
+    expect(paycheques(points)).toEqual([
+      ['2027-01-05', 2436],
+      ['2027-01-08', 2436],
+      ['2027-01-22', 2436],
+    ]);
+  });
+
+  it('refills on the anchor\'s anniversary, so a leap-day anchor returns to the 29th', () => {
+    vi.setSystemTime(new Date(2028, 1, 20)); // Feb 20, 2028, a leap year
+    const leap = {
+      ...eiRule(0),
+      resetDate: '2024-02-29',
+      periodStart: '2027-02-28',
+      periodEnd: '2028-02-28',
+      nextResetOn: '2028-02-29',
+    };
+    const points = forecastPoints(
+      [makeAccount()],
+      [paycheque({ frequency: 'WEEKLY', nextDueDate: '2028-02-22', payrollDeductions: [leap] })],
+      'month',
+      'all',
+    );
+    expect(paycheques(points).slice(0, 3)).toEqual([
+      ['2028-02-22', 2500], // room spent: the 64 is added back
+      ['2028-02-29', 2436], // refilled on the 29th itself
+      ['2028-03-07', 2436],
+    ]);
+  });
+
+  it('answers what one occurrence deducts per category, after every earlier occurrence has spent', () => {
+    const cpp = { ...eiRule(500), ruleId: 'rule-cpp', categoryId: 'cat-cpp', categoryName: 'CPP', expectedPerPaycheque: 200 };
+    const bill = paycheque({ payrollDeductions: [eiRule(100), cpp] });
+    // 24 April: EI 64 of 100, CPP 200 of 500. 8 May: EI the 36 left, CPP 200.
+    expect(projectPayrollOccurrence([bill], 'st-pay', '2026-04-24')).toEqual({ 'cat-ei': 64, 'cat-cpp': 200 });
+    expect(projectPayrollOccurrence([bill], 'st-pay', '2026-05-08')).toEqual({ 'cat-ei': 36, 'cat-cpp': 200 });
+    expect(projectPayrollOccurrence([bill], 'st-pay', '2026-05-09')).toBeNull();
+    expect(projectPayrollOccurrence([paycheque()], 'st-pay', '2026-04-24')).toBeNull();
   });
 
   it('shares one walk between the single and the per-account forecasts', () => {

@@ -27,6 +27,15 @@
       "help": "Kategorinin bugünü içeren dönemde tüm hesaplarda, fatura para biriminde kestiği tutar.",
       "foreignRows": "Başka para birimindeki {count, plural, one {# satır} other {# satır}} sayılmadı"
     },
+    "previousPeriods": {
+      "show": "Önceki dönemleri göster",
+      "hide": "Önceki dönemleri gizle",
+      "title": "Önceki Dönemler",
+      "help": "Her kategorinin geçmiş dönemlerinde tüm hesaplarda, işlemin para biriminde kestiği tutar. Mevcut dönem yıl başından bugüne tablosundadır.",
+      "loading": "Önceki dönemler yükleniyor...",
+      "empty": "Önceki bir dönemde henüz hiçbir şey kesilmedi.",
+      "loadFailed": "Önceki dönemler yüklenemedi"
+    },
     "list": {
       "bill": "Fatura",
       "category": "Kategori",
@@ -76,8 +85,7 @@
       "categoriesLegend": "Kesinti kategorileri",
       "addCategory": "+ Başka bir kategori ekle",
       "removeCategory": "{index}. kategoriyi kaldır",
-      "noDeductionLines": "Bu işlemde kesinti satırı yok. Önce kesintileri işleme negatif bölünmüş satırlar olarak ekleyin.",
-      "allLinesRuled": "Bu işlemdeki her kesinti satırının zaten bir kuralı var."
+      "noDeductionLines": "Bu işlemde kesinti satırı yok. Önce kesintileri işleme negatif bölünmüş satırlar olarak ekleyin."
     },
     "delete": {
       "title": "Kesinti Kuralını Sil",

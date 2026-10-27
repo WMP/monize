@@ -3,6 +3,7 @@ import { roundMoney } from "../common/round.util";
 import { PayrollDeductionRule } from "./entities/payroll-deduction-rule.entity";
 import {
   PayrollDeductionFigures,
+  memoisedPaidLookup,
   resolvePayrollDeductionFigures,
 } from "./payroll-deduction-cap";
 
@@ -12,6 +13,8 @@ export type ScheduledPayrollDeduction = PayrollDeductionFigures & {
   categoryId: string;
   categoryName: string;
   yearlyMaximum: number;
+  /** The anchor the periods are anniversaries of; the forecast steps resets from it. */
+  resetDate: string;
 };
 
 /** The slice of a schedule the figures need. */
@@ -43,6 +46,7 @@ export async function loadScheduledPayrollDeductions(
   });
   if (rules.length === 0) return result;
   const byId = new Map(schedules.map((s) => [s.id, s]));
+  const paidLookup = memoisedPaidLookup(m, userId);
   for (const rule of rules) {
     const schedule = byId.get(rule.scheduledTransactionId);
     if (!schedule) continue;
@@ -53,6 +57,7 @@ export async function loadScheduledPayrollDeductions(
       schedule.splits ?? [],
       schedule.currencyCode,
       asOf,
+      paidLookup,
     );
     result.set(schedule.id, [
       ...(result.get(schedule.id) ?? []),
@@ -62,6 +67,7 @@ export async function loadScheduledPayrollDeductions(
         categoryId: rule.categoryId,
         categoryName: rule.category?.name ?? "",
         yearlyMaximum: roundMoney(Number(rule.yearlyMaximum)),
+        resetDate: rule.resetDate,
       },
     ]);
   }

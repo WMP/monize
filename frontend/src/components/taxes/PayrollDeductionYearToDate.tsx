@@ -6,6 +6,7 @@ import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { PayrollDeductionRule } from '@/types/payroll-deduction';
+import { formatNameList } from '@/lib/helpers/format-name-list';
 
 /** One row of the table: a category's room, shared by every bill that caps it. */
 export interface YearToDateRow {
@@ -22,15 +23,17 @@ export interface YearToDateRow {
 }
 
 /**
- * One row per category and currency. `paidToDate` is category-wide on the
- * server, so two paycheques capping the same category carry the same figure;
- * showing it twice would read as twice the money. Where their maxima differ,
- * the lower one binds, as it does in the forecast's pooled room.
+ * One row per category, currency and period. `paidToDate` is category-wide
+ * on the server, so two paycheques capping the same category over the same
+ * period carry the same figure; showing it twice would read as twice the
+ * money. Where their maxima differ, the lower one binds, as it does in the
+ * forecast's pooled room. Rules anchored on different reset dates measure
+ * different periods, so they stay apart.
  */
 export function groupYearToDateRows(rules: PayrollDeductionRule[]): YearToDateRow[] {
   const rows = new Map<string, YearToDateRow>();
   for (const rule of rules) {
-    const key = `${rule.categoryId}|${rule.currencyCode}`;
+    const key = `${rule.categoryId}|${rule.currencyCode}|${rule.periodStart}|${rule.periodEnd}`;
     const row = rows.get(key);
     if (!row) {
       rows.set(key, {
@@ -54,14 +57,6 @@ export function groupYearToDateRows(rules: PayrollDeductionRule[]): YearToDateRo
     row.remaining = Math.min(row.remaining, rule.remaining);
   }
   return Array.from(rows.values());
-}
-
-function formatNameList(locale: string, names: string[]): string {
-  try {
-    return new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(names);
-  } catch {
-    return new Intl.ListFormat(undefined, { style: 'long', type: 'conjunction' }).format(names);
-  }
 }
 
 interface PayrollDeductionYearToDateProps {

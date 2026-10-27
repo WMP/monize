@@ -4,6 +4,7 @@ import type {
   CreatePayrollDeductionRuleData,
   CreatePayrollDeductionRulesData,
   ExpectedAmountSuggestion,
+  PayrollDeductionHistory,
   PayrollDeductionRule,
   UpdatePayrollDeductionRuleData,
 } from '@/types/payroll-deduction';
@@ -30,6 +31,17 @@ export const payrollDeductionsApi = {
       'payroll-deductions:list',
       async () => {
         const response = await apiClient.get<PayrollDeductionRule[]>('/payroll-deductions');
+        return response.data;
+      },
+      READ_TTL_MS,
+    ),
+
+  /** What each ruled category collected in its closed periods. */
+  history: async (): Promise<PayrollDeductionHistory[]> =>
+    dedupe(
+      'payroll-deductions:history',
+      async () => {
+        const response = await apiClient.get<PayrollDeductionHistory[]>('/payroll-deductions/history');
         return response.data;
       },
       READ_TTL_MS,

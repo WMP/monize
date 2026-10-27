@@ -29,6 +29,7 @@ import {
 } from "./dto/create-payroll-deduction-rule.dto";
 import {
   ExpectedAmountSuggestion,
+  PayrollDeductionHistoryView,
   PayrollDeductionRuleView,
   PayrollDeductionsService,
 } from "./payroll-deductions.service";
@@ -50,6 +51,15 @@ export class PayrollDeductionsController {
   @ApiResponse({ status: 200, description: "The rules" })
   findAll(@Request() req): Promise<PayrollDeductionRuleView[]> {
     return this.service.findAll(req.user.id);
+  }
+
+  @Get("history")
+  @ApiOperation({
+    summary: "What each ruled category collected in past periods",
+  })
+  @ApiResponse({ status: 200, description: "One entry per category" })
+  history(@Request() req): Promise<PayrollDeductionHistoryView[]> {
+    return this.service.history(req.user.id);
   }
 
   @Get("suggest")

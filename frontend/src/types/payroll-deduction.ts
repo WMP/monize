@@ -49,6 +49,21 @@ export interface ScheduledPayrollDeduction extends PayrollDeductionFigures {
   categoryId: string;
   categoryName: string;
   yearlyMaximum: number;
+  /** The anchor the periods are anniversaries of; absent from an older backend. */
+  resetDate?: string;
+}
+
+/** `GET /payroll-deductions/history`: one category's closed periods, newest first. */
+export interface PayrollDeductionHistory {
+  categoryId: string;
+  categoryName: string;
+  currencyCode: string;
+  periods: {
+    periodStart: string;
+    periodEnd: string;
+    paidToDate: number;
+    foreignCurrencyRows: number;
+  }[];
 }
 
 export interface CreatePayrollDeductionRuleData {

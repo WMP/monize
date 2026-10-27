@@ -25,6 +25,7 @@ describe("PayrollDeductionsController", () => {
   beforeEach(async () => {
     service = {
       findAll: jest.fn().mockResolvedValue([]),
+      history: jest.fn().mockResolvedValue([]),
       suggestExpected: jest.fn().mockResolvedValue({
         expectedPerPaycheque: 64,
         expectedSource: "line",
@@ -49,6 +50,7 @@ describe("PayrollDeductionsController", () => {
       resetDate: "2026-01-01",
     });
     await controller.findAll(req);
+    await controller.history(req);
     await controller.suggest(req, BILL, CATEGORY);
     await controller.create(req, dto);
     const batch = Object.assign(new CreatePayrollDeductionRulesDto(), {
@@ -61,6 +63,7 @@ describe("PayrollDeductionsController", () => {
     await controller.remove(req, RULE);
 
     expect(service.findAll).toHaveBeenCalledWith(USER);
+    expect(service.history).toHaveBeenCalledWith(USER);
     expect(service.suggestExpected).toHaveBeenCalledWith(
       USER,
       BILL,

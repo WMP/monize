@@ -39,7 +39,7 @@ import { buildScheduledCalendarDays } from '@/lib/scheduled-calendar';
 import { occurrenceKind } from '@/lib/scheduled-kind';
 import { scheduleEffectiveAmount } from '@/lib/scheduled-effective-amount';
 import { monthlyEquivalent } from '@/lib/frequency';
-import type { FutureTransaction } from '@/lib/forecast';
+import { projectPayrollOccurrence, type FutureTransaction } from '@/lib/forecast';
 import { loadFutureTransactions } from '@/lib/future-transactions';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
@@ -67,6 +67,9 @@ interface OverrideEditorState {
   // A loan bill's occurrence as the server priced it at its own due date: the
   // editor opens on its amount and lines rather than the template's.
   loanOccurrence: SelectedLoanOccurrence | null;
+  // A payroll bill's occurrence as the yearly room leaves its deduction lines,
+  // by category id: the editor opens on those lines rather than the template's.
+  payrollDeductions: Record<string, number> | null;
 }
 
 /**
@@ -131,6 +134,7 @@ function BillsContent() {
     existingOverride: null,
     prefillAmount: null,
     loanOccurrence: null,
+    payrollDeductions: null,
   });
   // Prefill state for a new transfer schedule created from the reconcile flow.
   const [createPrefill, setCreatePrefill] = useState<{
@@ -316,6 +320,7 @@ function BillsContent() {
       existingOverride,
       prefillAmount: prefillAmount ?? null,
       loanOccurrence: null,
+    payrollDeductions: null,
     });
   };
 
@@ -372,6 +377,7 @@ function BillsContent() {
         existingOverride,
         prefillAmount: null,
         loanOccurrence: loanOccurrence ?? null,
+        payrollDeductions: projectPayrollOccurrence(scheduledTransactions, transaction.id, date),
       });
     } catch (error) {
       logger.error('Failed to check for existing override:', error);
@@ -383,6 +389,7 @@ function BillsContent() {
         existingOverride: null,
         prefillAmount: null,
         loanOccurrence: loanOccurrence ?? null,
+        payrollDeductions: projectPayrollOccurrence(scheduledTransactions, transaction.id, date),
       });
     }
   };
@@ -422,6 +429,7 @@ function BillsContent() {
       existingOverride: null,
       prefillAmount: null,
       loanOccurrence: null,
+    payrollDeductions: null,
     });
     if (wasReconcileDeepLink) {
       clearReconcileParams();
@@ -883,6 +891,7 @@ function BillsContent() {
           existingOverride={overrideEditor.existingOverride}
           prefillAmount={overrideEditor.prefillAmount}
           loanOccurrence={overrideEditor.loanOccurrence}
+          payrollDeductions={overrideEditor.payrollDeductions}
           onClose={handleOverrideEditorClose}
           onSave={handleOverrideEditorSave}
           onCreateCategory={createCategoryFromTypedName}

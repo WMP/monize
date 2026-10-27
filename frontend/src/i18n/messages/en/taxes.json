@@ -27,6 +27,15 @@
       "help": "What the category has collected in the period that contains today, across every account, in the bill's currency.",
       "foreignRows": "{count, plural, one {# row} other {# rows}} in another currency not counted"
     },
+    "previousPeriods": {
+      "show": "Show previous periods",
+      "hide": "Hide previous periods",
+      "title": "Previous Periods",
+      "help": "What each category collected in its past periods, across every account, in the bill's currency. The current period is in the year-to-date table.",
+      "loading": "Loading previous periods...",
+      "empty": "Nothing collected in an earlier period yet.",
+      "loadFailed": "Failed to load previous periods"
+    },
     "list": {
       "bill": "Bill",
       "category": "Category",
@@ -76,8 +85,7 @@
       "categoriesLegend": "Deduction categories",
       "addCategory": "+ Add another category",
       "removeCategory": "Remove category {index}",
-      "noDeductionLines": "This bill has no deduction lines. Add the deductions as negative split lines on the bill first.",
-      "allLinesRuled": "Every deduction line on this bill already has a rule."
+      "noDeductionLines": "This bill has no deduction lines. Add the deductions as negative split lines on the bill first."
     },
     "delete": {
       "title": "Delete Deduction Rule",

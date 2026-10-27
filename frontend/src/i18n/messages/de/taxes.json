@@ -27,6 +27,15 @@
       "help": "Was die Kategorie im Zeitraum, der den heutigen Tag enthält, über alle Konten in der Währung der Buchung eingezogen hat.",
       "foreignRows": "{count, plural, one {# Zeile} other {# Zeilen}} in einer anderen Währung nicht gezählt"
     },
+    "previousPeriods": {
+      "show": "Frühere Zeiträume anzeigen",
+      "hide": "Frühere Zeiträume ausblenden",
+      "title": "Frühere Zeiträume",
+      "help": "Was jede Kategorie in ihren vergangenen Zeiträumen über alle Konten in der Währung der Buchung eingezogen hat. Der aktuelle Zeitraum steht in der Jahresstand-Tabelle.",
+      "loading": "Frühere Zeiträume werden geladen...",
+      "empty": "In einem früheren Zeitraum wurde noch nichts eingezogen.",
+      "loadFailed": "Frühere Zeiträume konnten nicht geladen werden"
+    },
     "list": {
       "bill": "Buchung",
       "category": "Kategorie",
@@ -76,8 +85,7 @@
       "categoriesLegend": "Abzugskategorien",
       "addCategory": "+ Weitere Kategorie hinzufügen",
       "removeCategory": "Kategorie {index} entfernen",
-      "noDeductionLines": "Diese Buchung hat keine Abzugszeilen. Legen Sie die Abzüge zuerst als negative Aufteilungszeilen auf der Buchung an.",
-      "allLinesRuled": "Jede Abzugszeile dieser Buchung hat bereits eine Regel."
+      "noDeductionLines": "Diese Buchung hat keine Abzugszeilen. Legen Sie die Abzüge zuerst als negative Aufteilungszeilen auf der Buchung an."
     },
     "delete": {
       "title": "Abzugsregel löschen",

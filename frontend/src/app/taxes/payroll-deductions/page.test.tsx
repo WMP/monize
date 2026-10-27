@@ -46,12 +46,14 @@ vi.mock('next/dynamic', () => ({
 }));
 
 const mockList = vi.fn();
+const mockHistory = vi.fn();
 const mockCreateMany = vi.fn();
 const mockUpdate = vi.fn();
 const mockDelete = vi.fn();
 vi.mock('@/lib/payroll-deductions', () => ({
   payrollDeductionsApi: {
     list: (...args: unknown[]) => mockList(...args),
+    history: (...args: unknown[]) => mockHistory(...args),
     createMany: (...args: unknown[]) => mockCreateMany(...args),
     update: (...args: unknown[]) => mockUpdate(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
@@ -103,6 +105,17 @@ describe('PayrollDeductionsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockList.mockResolvedValue([rule()]);
+    mockHistory.mockResolvedValue([
+      {
+        categoryId: 'cat-ei',
+        categoryName: 'EI',
+        currencyCode: 'CAD',
+        periods: [
+          { periodStart: '2025-01-01', periodEnd: '2025-12-31', paidToDate: 1049.12, foreignCurrencyRows: 0 },
+          { periodStart: '2024-01-01', periodEnd: '2024-12-31', paidToDate: 1002.45, foreignCurrencyRows: 0 },
+        ],
+      },
+    ]);
     mockScheduled.mockResolvedValue([{ id: 'st-pay', name: 'Paycheque', isActive: true }]);
     mockCategories.mockResolvedValue([]);
     mockCreateMany.mockResolvedValue([rule(), rule({ id: 'rule-2', categoryId: 'cat-cpp' })]);
@@ -133,6 +146,21 @@ describe('PayrollDeductionsPage', () => {
     expect(screen.getByRole('button', { name: /Hide year-to-date/ })).toHaveAttribute('aria-expanded', 'true');
     fireEvent.click(screen.getByRole('button', { name: /Hide year-to-date/ }));
     expect(screen.queryByText('Paid this period')).not.toBeInTheDocument();
+  });
+
+  it('keeps the previous periods collapsed until asked, then loads and lists each closed period', async () => {
+    await renderPage();
+    expect(screen.queryByText('Previous Periods')).not.toBeInTheDocument();
+    expect(mockHistory).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Show previous periods/ }));
+    });
+    expect(mockHistory).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Previous Periods')).toBeInTheDocument();
+    expect(await screen.findByText('$1,049.12')).toBeInTheDocument();
+    expect(screen.getByText('$1,002.45')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Hide previous periods/ }));
+    expect(screen.queryByText('Previous Periods')).not.toBeInTheDocument();
   });
 
   it('says when rows in another currency were left out of the paid figure', async () => {

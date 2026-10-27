@@ -27,6 +27,15 @@
       "help": "Jumlah yang telah dipotong kategori ini dalam periode yang memuat hari ini, di semua akun, dalam mata uang tagihan.",
       "foreignRows": "{count, plural, one {# baris} other {# baris}} dalam mata uang lain tidak dihitung"
     },
+    "previousPeriods": {
+      "show": "Tampilkan periode sebelumnya",
+      "hide": "Sembunyikan periode sebelumnya",
+      "title": "Periode Sebelumnya",
+      "help": "Yang dipungut setiap kategori pada periode-periode lampaunya, di semua akun, dalam mata uang transaksi. Periode berjalan ada di tabel tahun berjalan.",
+      "loading": "Memuat periode sebelumnya...",
+      "empty": "Belum ada yang dipungut pada periode sebelumnya.",
+      "loadFailed": "Gagal memuat periode sebelumnya"
+    },
     "list": {
       "bill": "Tagihan",
       "category": "Kategori",
@@ -76,8 +85,7 @@
       "categoriesLegend": "Kategori potongan",
       "addCategory": "+ Tambah kategori lain",
       "removeCategory": "Hapus kategori {index}",
-      "noDeductionLines": "Transaksi ini tidak memiliki baris potongan. Tambahkan dahulu potongan sebagai baris pecahan negatif pada transaksi.",
-      "allLinesRuled": "Setiap baris potongan pada transaksi ini sudah memiliki aturan."
+      "noDeductionLines": "Transaksi ini tidak memiliki baris potongan. Tambahkan dahulu potongan sebagai baris pecahan negatif pada transaksi."
     },
     "delete": {
       "title": "Hapus Aturan Potongan",

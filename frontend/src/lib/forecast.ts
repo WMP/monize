@@ -142,6 +142,8 @@ interface Occurrence {
   spendDate?: string;
   /** An override states the amount: it spends room but takes no add-back. */
   stated?: boolean;
+  /** What each ruled category deducts on this occurrence, once the room is spent. */
+  deductions?: { categoryId: string; deducted: number }[];
 }
 
 /**
@@ -194,6 +196,24 @@ interface DeductionPool {
   maximum: number;
   remaining: number;
   nextResetOn: string;
+  /** The current period's first day: an occurrence before it belongs to a closed period. */
+  periodStart: string;
+  /** The anchor the resets are anniversaries of; absent on an older read model. */
+  resetDate?: string;
+}
+
+/**
+ * The anniversary of `resetDate`'s month and day in the year after `after`,
+ * the day clamped to the month, so a leap-day anchor returns to the 29th in
+ * a leap year as the server's `anniversaryInYear` does. Without the anchor
+ * the previous reset is stepped one year, which keeps a clamped day clamped.
+ */
+function nextAnniversary(resetDate: string | undefined, after: string): string {
+  if (!resetDate) return advanceOneYear(after);
+  const [, m, d] = resetDate.split('-').map(Number);
+  const year = Number(after.slice(0, 4)) + 1;
+  const lastDay = new Date(year, m, 0).getDate();
+  return `${year}-${String(m).padStart(2, '0')}-${String(Math.min(d, lastDay)).padStart(2, '0')}`;
 }
 
 /** A bill's rules the projection can spend: those with a positive expected figure. */
@@ -202,10 +222,16 @@ function spendableRules(transaction: ScheduledTransaction) {
     .filter(r => r.expectedPerPaycheque != null && Number(r.expectedPerPaycheque) > 0)
     .map(r => ({
       key: `${r.categoryId}|${r.currencyCode}`,
+      categoryId: r.categoryId,
       expected: Number(r.expectedPerPaycheque),
+      // What the template already deducts for the category: its own line, or
+      // nothing when the figure was entered because the line is absent or zero.
+      lineAmount: r.expectedSource === 'line' ? Number(r.expectedPerPaycheque) : 0,
       maximum: Number(r.yearlyMaximum),
       remaining: Number(r.remaining),
       nextResetOn: r.nextResetOn,
+      periodStart: r.periodStart,
+      resetDate: r.resetDate,
     }));
 }
 
@@ -228,11 +254,17 @@ function buildDeductionPools(transactions: ScheduledTransaction[]): Map<string, 
           maximum: rule.maximum,
           remaining: rule.remaining,
           nextResetOn: rule.nextResetOn,
+          periodStart: rule.periodStart,
+          resetDate: rule.resetDate,
         });
       } else {
         pool.maximum = Math.min(pool.maximum, rule.maximum);
         pool.remaining = Math.min(pool.remaining, rule.remaining);
-        if (rule.nextResetOn < pool.nextResetOn) pool.nextResetOn = rule.nextResetOn;
+        if (rule.periodStart < pool.periodStart) pool.periodStart = rule.periodStart;
+        if (rule.nextResetOn < pool.nextResetOn) {
+          pool.nextResetOn = rule.nextResetOn;
+          pool.resetDate = rule.resetDate;
+        }
       }
     }
   }
@@ -245,12 +277,19 @@ function buildDeductionPools(transactions: ScheduledTransaction[]): Map<string, 
  *
  * Each pool starts from the server's `remaining` -- the room left under the
  * yearly maximum as of today, read from the ledger -- and every occurrence
- * walked spends the bill's own expected deduction against it. The part the
- * room cannot cover is what the paycheque stops deducting, so it is added back
- * to the occurrence's amount unless an override stated the amount; an
- * occurrence on or after the reset date refills the pool to the maximum first.
- * A rule with no expected figure projects nothing, and a bill without rules
- * walks unchanged. Mutates the occurrences in place.
+ * walked spends the bill's own expected deduction against it. The occurrence
+ * is then projected at the template's amount, less what the template already
+ * deducts for the category (its line, or nothing when the figure was entered
+ * because the line is absent or zero), plus what will be deducted: so a bill
+ * whose line was zeroed at this year's maximum stays where it is until the
+ * reset and drops by the deduction from the first paycheque after it, and a
+ * bill whose line still deducts rises by what the room cannot cover. An
+ * override that states its amount is projected as stated and still spends.
+ * An occurrence on or after the reset date refills the pool to the maximum
+ * first; one dated inside a closed period (an overdue paycheque from before
+ * the current period) neither spends the pool nor changes. A rule with no
+ * expected figure projects nothing, and a bill without rules walks
+ * unchanged. Mutates the occurrences in place.
  */
 function spendPayrollDeductions(
   transactions: ScheduledTransaction[],
@@ -273,19 +312,50 @@ function spendPayrollDeductions(
   walk.sort((a, b) => (a.occurrence.spendDate as string).localeCompare(b.occurrence.spendDate as string));
   for (const { occurrence, rules } of walk) {
     const dateKey = occurrence.spendDate as string;
-    let addBack = 0;
+    let delta = 0;
+    const deductions: { categoryId: string; deducted: number }[] = [];
     for (const rule of rules) {
       const pool = pools.get(rule.key) as DeductionPool;
+      if (dateKey < pool.periodStart) {
+        deductions.push({ categoryId: rule.categoryId, deducted: rule.lineAmount });
+        continue;
+      }
       while (dateKey >= pool.nextResetOn) {
         pool.remaining = pool.maximum;
-        pool.nextResetOn = advanceOneYear(pool.nextResetOn);
+        pool.nextResetOn = nextAnniversary(pool.resetDate, pool.nextResetOn);
       }
       const applied = Math.min(rule.expected, Math.max(0, pool.remaining));
       pool.remaining = roundMoney(pool.remaining - applied);
-      if (!occurrence.stated) addBack += rule.expected - applied;
+      deductions.push({ categoryId: rule.categoryId, deducted: roundMoney(applied) });
+      if (!occurrence.stated) delta += rule.lineAmount - applied;
     }
-    occurrence.amount = roundMoney(occurrence.amount + roundMoney(addBack));
+    occurrence.deductions = deductions;
+    occurrence.amount = roundMoney(occurrence.amount + roundMoney(delta));
   }
+}
+
+/**
+ * What each ruled category deducts on one occurrence of `billId` falling on
+ * `dateKey`, as a map of category id to magnitude, with every bill's earlier
+ * occurrences spent first; `null` when the bill has no spendable rule or no
+ * occurrence on that day. The occurrence editor opens on these lines, so what
+ * it shows is what the forecast projects and the posting will cap to.
+ */
+export function projectPayrollOccurrence(
+  transactions: ScheduledTransaction[],
+  billId: string,
+  dateKey: string,
+): Record<string, number> | null {
+  const bill = transactions.find(t => t.id === billId);
+  if (!bill || spendableRules(bill).length === 0) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const endDate = parseLocalDate(dateKey);
+  endDate.setHours(0, 0, 0, 0);
+  const occurrences = generateAllOccurrences(transactions, today, endDate, { carryOverdue: true });
+  const occurrence = (occurrences.get(billId) ?? []).find(o => o.spendDate === dateKey);
+  if (!occurrence?.deductions) return null;
+  return Object.fromEntries(occurrence.deductions.map(d => [d.categoryId, d.deducted]));
 }
 
 /**

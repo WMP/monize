@@ -131,6 +131,55 @@ describe("PayrollDeductionsService", () => {
     });
   });
 
+  describe("history", () => {
+    it("answers each category's closed periods, newest first, dropping the empty oldest ones", async () => {
+      // Two rules on EI (two paycheques) and one on CPP: two categories.
+      rulesRepo.find.mockResolvedValue([
+        rule(),
+        rule({ id: CPP, scheduledTransactionId: CPP }),
+        rule({
+          id: USER,
+          categoryId: CPP,
+          category: { id: CPP, name: "CPP" } as Category,
+        }),
+      ]);
+      // EI collected in 2025 and 2024 only; CPP in every period asked.
+      let eiCalls = 0;
+      mocks.manager.query.mockImplementation(
+        async (_sql: string, params: unknown[]) =>
+          params[1] === EI
+            ? [{ total: eiCalls++ < 2 ? "-1049.12" : "0", foreign_rows: "0" }]
+            : [{ total: "-3500", foreign_rows: "1" }],
+      );
+      const views = await service.history(USER);
+      expect(views.map((v) => v.categoryName)).toEqual(["EI", "CPP"]);
+      expect(views[0].periods).toEqual([
+        {
+          periodStart: "2025-01-01",
+          periodEnd: "2025-12-31",
+          paidToDate: 1049.12,
+          foreignCurrencyRows: 0,
+        },
+        {
+          periodStart: "2024-01-01",
+          periodEnd: "2024-12-31",
+          paidToDate: 1049.12,
+          foreignCurrencyRows: 0,
+        },
+      ]);
+      expect(views[1].periods).toHaveLength(5);
+      expect(views[1].periods[4]).toMatchObject({
+        periodStart: "2021-01-01",
+        paidToDate: 3500,
+        foreignCurrencyRows: 1,
+      });
+      // The current period is never part of the history.
+      expect(mocks.manager.query.mock.calls.map((c) => c[1][2])).not.toContain(
+        "2026-01-01",
+      );
+    });
+  });
+
   describe("suggestExpected", () => {
     it("prefers the bill's line, and estimates no maximum without a reset date", async () => {
       await expect(service.suggestExpected(USER, BILL, EI)).resolves.toEqual({

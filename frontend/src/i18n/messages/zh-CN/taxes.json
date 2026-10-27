@@ -27,6 +27,15 @@
       "help": "该类别在包含今天的周期内，于所有账户中按账单货币扣除的金额。",
       "foreignRows": "其他货币的 {count, plural, other {# 行}}未计入"
     },
+    "previousPeriods": {
+      "show": "显示以前的期间",
+      "hide": "隐藏以前的期间",
+      "title": "以前的期间",
+      "help": "每个类别在过去各期间于所有账户中按交易货币扣除的金额。当前期间见本年至今表。",
+      "loading": "正在加载以前的期间...",
+      "empty": "以前的期间尚未扣除任何金额。",
+      "loadFailed": "无法加载以前的期间"
+    },
     "list": {
       "bill": "账单",
       "category": "类别",
@@ -76,8 +85,7 @@
       "categoriesLegend": "扣款类别",
       "addCategory": "+ 添加另一个类别",
       "removeCategory": "移除类别 {index}",
-      "noDeductionLines": "此交易没有扣款行。请先在交易中将扣款添加为负数拆分行。",
-      "allLinesRuled": "此交易的每个扣款行都已有规则。"
+      "noDeductionLines": "此交易没有扣款行。请先在交易中将扣款添加为负数拆分行。"
     },
     "delete": {
       "title": "删除扣款规则",

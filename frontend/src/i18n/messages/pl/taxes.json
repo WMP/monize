@@ -27,6 +27,15 @@
       "help": "Ile kategoria pobrała w okresie obejmującym dzisiaj, na wszystkich kontach, w walucie rachunku.",
       "foreignRows": "{count, plural, one {# pozycja} few {# pozycje} many {# pozycji} other {# pozycji}} w innej walucie nie policzono"
     },
+    "previousPeriods": {
+      "show": "Pokaż poprzednie okresy",
+      "hide": "Ukryj poprzednie okresy",
+      "title": "Poprzednie okresy",
+      "help": "Ile każda kategoria pobrała w swoich minionych okresach, na wszystkich kontach, w walucie transakcji. Bieżący okres znajduje się w tabeli od początku roku.",
+      "loading": "Ładowanie poprzednich okresów...",
+      "empty": "W żadnym wcześniejszym okresie nic jeszcze nie pobrano.",
+      "loadFailed": "Nie udało się załadować poprzednich okresów"
+    },
     "list": {
       "bill": "Rachunek",
       "category": "Kategoria",
@@ -76,8 +85,7 @@
       "categoriesLegend": "Kategorie potrąceń",
       "addCategory": "+ Dodaj kolejną kategorię",
       "removeCategory": "Usuń kategorię {index}",
-      "noDeductionLines": "Ta transakcja nie ma pozycji potrąceń. Najpierw dodaj potrącenia jako ujemne pozycje podziału na transakcji.",
-      "allLinesRuled": "Każda pozycja potrącenia tej transakcji ma już regułę."
+      "noDeductionLines": "Ta transakcja nie ma pozycji potrąceń. Najpierw dodaj potrącenia jako ujemne pozycje podziału na transakcji."
     },
     "delete": {
       "title": "Usuń regułę potrącenia",

@@ -23,20 +23,27 @@ start again at the next year's figure.
   takes out), and as categories only that bill's deduction lines: split lines
   with a category and a non-positive amount (`billDeductionCategoryIds`). The
   gross line is not a deduction; a zero line is one the bill stopped
-  collecting, which a rule may resume. A category the bill already has a rule
-  for is not offered again; when another bill already caps the category, an
-  empty yearly maximum starts from that rule's figure, since the two share
-  one room.
+  collecting, which a rule may resume. Creating, a bill that already has
+  rules is not offered again (its rules are edited from the list), and a
+  category the bill already has a rule for is not offered again; editing, the
+  rule's own bill stays offered even when it no longer qualifies. When
+  another bill already caps the category, an empty yearly maximum starts
+  from that rule's figure, since the two share one room.
 - When the bill **posts** (automatically or from the Post dialog), each
   deduction line of a category with a rule is reduced to what room is left
   under the maximum, down to zero. The parent amount follows.
 - The **Cash Flow Forecast** (Bills page chart and the dashboard widget)
   projects the same reduction occurrence by occurrence, and the reset.
 - The page offers a **year-to-date** table, collapsed by default: one row per
-  category and currency (`groupYearToDateRows`), naming every bill that caps
-  it, with the period, the amount paid so far, the maximum and the room left.
-  Paid is category-wide, so two paycheques on one category are one row; where
-  their maxima differ the lower one binds, as in the forecast's pooled room.
+  category, currency and period (`groupYearToDateRows`), naming every bill
+  that caps it, with the period, the amount paid so far, the maximum and the
+  room left. Paid is category-wide, so two paycheques on one category over
+  one period are one row; where their maxima differ the lower one binds, as
+  in the forecast's pooled room.
+- The page offers a **Previous Periods** table, collapsed by default and
+  loaded when opened (`GET /payroll-deductions/history`): per ruled category
+  and currency, what the category collected in each of its last five closed
+  periods (`HISTORY_PERIODS`), newest first, the oldest empty ones dropped.
 - Two months before a rule resets, a **notification** asks the user to confirm
   the next period's figures. Nothing changes if they do not: the rule keeps
   its values and resets on its date.
@@ -97,11 +104,23 @@ start again at the next year's figure.
    bound (the cap errs towards collecting, never towards skipping).
 7. **Projection state starts from the server's figure.** The read model
    carries `remaining` as of today; the forecast walks each occurrence in
-   order, spends the expected amount against the room left, adds the
-   uncollected part back to the occurrence's amount, and refills the room to
-   the maximum when an occurrence falls after the period's end. An occurrence
-   whose override states its own amount is projected as stated and still
-   spends the expected amount. **The room is one per category and currency,
+   order, spends the expected amount against the room left, and projects the
+   occurrence at the template's amount, **less what the template already
+   deducts for the category** (its line, or nothing when the figure was
+   entered because the line is absent or zero), **plus what will be
+   deducted**. So a bill whose line still deducts rises by what the room
+   cannot cover, and a bill whose line was zeroed at this year's maximum
+   stays where it is until the reset and drops by the deduction from the
+   first paycheque after it. The room refills to the maximum when an
+   occurrence falls on or after the next anniversary of `reset_date`
+   (stepped from the anchor, so a leap-day anchor returns to the 29th as the
+   server's `anniversaryInYear` does). An occurrence dated inside a closed
+   period (an overdue paycheque from before the current period) neither
+   spends the room nor changes: its ledger is written. An occurrence whose
+   override states its own amount is projected as stated and still spends
+   the expected amount. The Edit Occurrence dialog opens a payroll bill's
+   occurrence on the same lines (`projectPayrollOccurrence`), so what it
+   shows is what the forecast projects and the posting will cap to. **The room is one per category and currency,
    shared by every bill that names it** (`buildDeductionPools`): two
    paycheques deducting to the same category, a mid-month and a month-end,
    draw down one maximum, spent in date order across both bills and across
@@ -163,6 +182,8 @@ Direct RLS policy on `user_id`. Exported in the portable backup after
   over the last year when the bill has no line (decision 3), or `null`; with
   `resetDate`, also the yearly maximum the ledger suggests and its source
   (`previousPeriod`, `currentPeriod`, `currentPeriodCapped`, or `null`).
+- `GET /history` per ruled category and currency, the collected total of
+  each of the last `HISTORY_PERIODS` closed periods, newest first.
 - `POST /` one rule; `POST /batch` several categories of one bill sharing a
   reset, every ownership, duplicate and expected-amount check before the
   first `INSERT` in one `withScopedDb` transaction, so a refused line writes
@@ -246,10 +267,14 @@ parent rises by 64.00. First occurrence of 2027: room 1,077.48 again.
   parent; a post with no rule is unchanged; a positive line is untouched.
 - Cron: a rule inside the window writes once; outside it writes nothing;
   a lost insert sends nothing.
-- Frontend: the forecast spends room, adds back the uncollected part, refills
-  after the period end, leaves a bill with no figure untouched, pools the room
-  of two bills on one category in date order and across accounts, and lets
-  the lower ceiling bind; the nav link,
+- Frontend: the forecast spends room, projects each occurrence at the
+  template less its current line plus the deduction due (a zeroed line stays
+  until the reset and then drops), refills on the anchor's anniversary (a
+  leap-day anchor returns to the 29th), leaves a closed-period occurrence and
+  a bill with no figure untouched, pools the room of two bills on one
+  category in date order and across accounts, lets the lower ceiling bind,
+  and answers one occurrence's lines for the Edit Occurrence dialog; the
+  reminder skips an inactive bill; the nav link,
   the landing page and the Payroll Deductions page render, create several
   categories in one batch, edit, delete and expand the year-to-date table;
   the form offers only net-income bills and only the bill's deduction lines,

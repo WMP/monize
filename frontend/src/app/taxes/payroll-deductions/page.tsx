@@ -9,6 +9,7 @@ import { ArrowLeftIcon, ChevronDownIcon, ReceiptPercentIcon } from '@heroicons/r
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PageLayout } from '@/components/layout/PageLayout';
+import { PayrollDeductionPreviousPeriods } from '@/components/taxes/PayrollDeductionPreviousPeriods';
 import { PayrollDeductionRuleList } from '@/components/taxes/PayrollDeductionRuleList';
 import { PayrollDeductionYearToDate } from '@/components/taxes/PayrollDeductionYearToDate';
 import { Button } from '@/components/ui/Button';
@@ -53,6 +54,7 @@ function PayrollDeductionsContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showYearToDate, setShowYearToDate] = useState(false);
+  const [showPreviousPeriods, setShowPreviousPeriods] = useState(false);
   const [deleteRule, setDeleteRule] = useState<PayrollDeductionRule | null>(null);
   const {
     showForm,
@@ -221,6 +223,28 @@ function PayrollDeductionsContent() {
             {showYearToDate && (
               <div className={`${CARD_CLASS} overflow-hidden mt-4`}>
                 <PayrollDeductionYearToDate rules={rules} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {!isLoading && rules.length > 0 && (
+          <div className="mt-4">
+            {/* Collapsed by default, loaded when opened: a look back, not a decision. */}
+            <Button
+              variant="outline"
+              onClick={() => setShowPreviousPeriods((open) => !open)}
+              aria-expanded={showPreviousPeriods}
+            >
+              <ChevronDownIcon
+                className={`h-4 w-4 mr-1 transition-transform motion-reduce:transition-none ${showPreviousPeriods ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+              />
+              {showPreviousPeriods ? t('previousPeriods.hide') : t('previousPeriods.show')}
+            </Button>
+            {showPreviousPeriods && (
+              <div className={`${CARD_CLASS} overflow-hidden mt-4`}>
+                <PayrollDeductionPreviousPeriods />
               </div>
             )}
           </div>

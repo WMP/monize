@@ -4825,8 +4825,11 @@ forecast projects the same reduction.
   one query; `loadScheduledPayrollDeductions` stamps the figures onto every
   `findAll` row; `frontend/src/lib/forecast.ts` pools the room per category
   across every bill (`buildDeductionPools`), spends it per occurrence in date
-  order (`spendPayrollDeductions`) and refills on the period end
-  (`forecast.test.ts`).
+  order (`spendPayrollDeductions`), projects the template less its current
+  line plus the deduction due, refills on the anchor's anniversary, and
+  answers one occurrence's lines to the Edit Occurrence dialog
+  (`projectPayrollOccurrence`); `forecast.test.ts` and
+  `OverrideEditorDialog.payroll.test.tsx`.
 - **Status.** enforced.
 
 ### INV-PAYROLL-004 -- one reminder per reset

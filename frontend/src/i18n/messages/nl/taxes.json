@@ -27,6 +27,15 @@
       "help": "Wat de categorie heeft geïnd in de periode die vandaag bevat, over alle rekeningen, in de valuta van de rekening.",
       "foreignRows": "{count, plural, one {# regel} other {# regels}} in een andere valuta niet meegeteld"
     },
+    "previousPeriods": {
+      "show": "Vorige perioden tonen",
+      "hide": "Vorige perioden verbergen",
+      "title": "Vorige perioden",
+      "help": "Wat elke categorie in haar vorige perioden heeft ingehouden, over alle rekeningen, in de valuta van de transactie. De huidige periode staat in de tabel van het lopende jaar.",
+      "loading": "Vorige perioden laden...",
+      "empty": "In een eerdere periode is nog niets ingehouden.",
+      "loadFailed": "Vorige perioden konden niet worden geladen"
+    },
     "list": {
       "bill": "Rekening",
       "category": "Categorie",
@@ -76,8 +85,7 @@
       "categoriesLegend": "Inhoudingscategorieën",
       "addCategory": "+ Nog een categorie toevoegen",
       "removeCategory": "Categorie {index} verwijderen",
-      "noDeductionLines": "Deze transactie heeft geen inhoudingsregels. Voeg de inhoudingen eerst toe als negatieve splitsregels op de transactie.",
-      "allLinesRuled": "Elke inhoudingsregel van deze transactie heeft al een regel."
+      "noDeductionLines": "Deze transactie heeft geen inhoudingsregels. Voeg de inhoudingen eerst toe als negatieve splitsregels op de transactie."
     },
     "delete": {
       "title": "Inhoudingsregel verwijderen",

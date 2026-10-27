@@ -47,6 +47,22 @@ export type PayrollDeductionRuleView = PayrollDeductionRule &
     scheduledTransactionName: string;
   };
 
+/** How many closed periods `GET /payroll-deductions/history` looks back over. */
+export const HISTORY_PERIODS = 5;
+
+/** One category's collected totals over its closed periods, newest first. */
+export interface PayrollDeductionHistoryView {
+  categoryId: string;
+  categoryName: string;
+  currencyCode: string;
+  periods: {
+    periodStart: string;
+    periodEnd: string;
+    paidToDate: number;
+    foreignCurrencyRows: number;
+  }[];
+}
+
 /**
  * What `GET /payroll-deductions/suggest` answers (decision 3): `line` is the
  * bill's own figure, `ledger` the magnitude the category's deduction rows
@@ -91,6 +107,73 @@ export class PayrollDeductionsService {
       const views: PayrollDeductionRuleView[] = [];
       for (const rule of rules) {
         views.push(await this.toView(m, userId, rule, today));
+      }
+      return views;
+    });
+  }
+
+  /**
+   * What each ruled category collected in each of its last `HISTORY_PERIODS`
+   * closed periods, one entry per category and currency (two paycheques on
+   * one category share the figure, as paid is category-wide), periods
+   * anchored on the earliest rule's reset date. Oldest periods with nothing
+   * in them are dropped: the history starts where the ledger does.
+   */
+  async history(userId: string): Promise<PayrollDeductionHistoryView[]> {
+    const today = todayYMD();
+    return withScopedDb(this.dataSource, async (m) => {
+      const rules = await m.getRepository(PayrollDeductionRule).find({
+        where: { userId },
+        relations: ["category", "scheduledTransaction"],
+        order: { createdAt: "ASC" },
+      });
+      const groups = new Map<
+        string,
+        Omit<PayrollDeductionHistoryView, "periods"> & { resetDate: string }
+      >();
+      for (const rule of rules) {
+        const currencyCode = rule.scheduledTransaction?.currencyCode ?? "";
+        const key = `${rule.categoryId}|${currencyCode}`;
+        if (!groups.has(key)) {
+          groups.set(key, {
+            categoryId: rule.categoryId,
+            categoryName: rule.category?.name ?? "",
+            currencyCode,
+            resetDate: rule.resetDate,
+          });
+        }
+      }
+      const views: PayrollDeductionHistoryView[] = [];
+      for (const { resetDate, ...group } of groups.values()) {
+        let period = deductionPeriod(resetDate, today);
+        const periods: PayrollDeductionHistoryView["periods"] = [];
+        for (let i = 0; i < HISTORY_PERIODS; i++) {
+          period = deductionPeriod(
+            resetDate,
+            addDaysYMD(period.periodStart, -1),
+          );
+          const paid = await queryCategoryPeriodPaid(
+            m,
+            userId,
+            group.categoryId,
+            period,
+            group.currencyCode,
+          );
+          periods.push({
+            periodStart: period.periodStart,
+            periodEnd: period.periodEnd,
+            paidToDate: paid.paidToDate,
+            foreignCurrencyRows: paid.foreignCurrencyRows,
+          });
+        }
+        while (
+          periods.length > 0 &&
+          periods[periods.length - 1].paidToDate === 0 &&
+          periods[periods.length - 1].foreignCurrencyRows === 0
+        ) {
+          periods.pop();
+        }
+        views.push({ ...group, periods });
       }
       return views;
     });

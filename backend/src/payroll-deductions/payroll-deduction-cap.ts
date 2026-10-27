@@ -34,6 +34,40 @@ export interface CategoryPeriodPaid {
   foreignCurrencyRows: number;
 }
 
+/** How a figures resolver reads the ledger; `memoisedPaidLookup` dedupes it. */
+export type PaidLookup = (
+  categoryId: string,
+  period: Pick<DeductionPeriod, "periodStart" | "periodEnd">,
+  currencyCode: string,
+) => Promise<CategoryPeriodPaid>;
+
+/**
+ * One ledger read per (category, period, currency) for the lifetime of the
+ * lookup: two paycheques capping one category, or two rules sharing a
+ * period, cost one query instead of one per rule on the scheduled list read.
+ */
+export function memoisedPaidLookup(
+  m: EntityManager,
+  userId: string,
+): PaidLookup {
+  const cache = new Map<string, Promise<CategoryPeriodPaid>>();
+  return (categoryId, period, currencyCode) => {
+    const key = `${categoryId}|${period.periodStart}|${period.periodEnd}|${currencyCode}`;
+    let hit = cache.get(key);
+    if (!hit) {
+      hit = queryCategoryPeriodPaid(
+        m,
+        userId,
+        categoryId,
+        period,
+        currencyCode,
+      );
+      cache.set(key, hit);
+    }
+    return hit;
+  };
+}
+
 /**
  * The category's rows between the two dates: unsplit transactions carrying
  * the category and split lines carrying it, VOID excluded, every account. The
@@ -198,15 +232,11 @@ export async function resolvePayrollDeductionFigures(
   lines: readonly { categoryId?: string | null; amount: number }[],
   currencyCode: string,
   asOf: string,
+  paidLookup: PaidLookup = (categoryId, period, currency) =>
+    queryCategoryPeriodPaid(m, userId, categoryId, period, currency),
 ): Promise<PayrollDeductionFigures> {
   const period = deductionPeriod(rule.resetDate, asOf);
-  const paid = await queryCategoryPeriodPaid(
-    m,
-    userId,
-    rule.categoryId,
-    period,
-    currencyCode,
-  );
+  const paid = await paidLookup(rule.categoryId, period, currencyCode);
   return {
     ...period,
     paidToDate: paid.paidToDate,

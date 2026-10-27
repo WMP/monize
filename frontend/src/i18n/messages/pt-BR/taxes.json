@@ -27,6 +27,15 @@
       "help": "O que a categoria cobrou no período que contém hoje, em todas as contas, na moeda da fatura.",
       "foreignRows": "{count, plural, one {# linha} other {# linhas}} em outra moeda não contadas"
     },
+    "previousPeriods": {
+      "show": "Mostrar períodos anteriores",
+      "hide": "Ocultar períodos anteriores",
+      "title": "Períodos anteriores",
+      "help": "O que cada categoria cobrou nos períodos passados, em todas as contas, na moeda da transação. O período atual está na tabela do ano até a data.",
+      "loading": "Carregando períodos anteriores...",
+      "empty": "Nada foi cobrado em um período anterior ainda.",
+      "loadFailed": "Falha ao carregar os períodos anteriores"
+    },
     "list": {
       "bill": "Fatura",
       "category": "Categoria",
@@ -76,8 +85,7 @@
       "categoriesLegend": "Categorias de dedução",
       "addCategory": "+ Adicionar outra categoria",
       "removeCategory": "Remover a categoria {index}",
-      "noDeductionLines": "Esta transação não tem linhas de dedução. Adicione primeiro as deduções como linhas divididas negativas na transação.",
-      "allLinesRuled": "Todas as linhas de dedução desta transação já têm uma regra."
+      "noDeductionLines": "Esta transação não tem linhas de dedução. Adicione primeiro as deduções como linhas divididas negativas na transação."
     },
     "delete": {
       "title": "Eliminar regra de dedução",

@@ -27,6 +27,15 @@
       "help": "Quanto la categoria ha prelevato nel periodo che contiene oggi, su tutti i conti, nella valuta della fattura.",
       "foreignRows": "{count, plural, one {# riga} other {# righe}} in un'altra valuta non conteggiate"
     },
+    "previousPeriods": {
+      "show": "Mostra periodi precedenti",
+      "hide": "Nascondi periodi precedenti",
+      "title": "Periodi precedenti",
+      "help": "Quanto ogni categoria ha trattenuto nei suoi periodi passati, su tutti i conti, nella valuta della transazione. Il periodo corrente è nella tabella dell'anno in corso.",
+      "loading": "Caricamento dei periodi precedenti...",
+      "empty": "Nulla è ancora stato trattenuto in un periodo precedente.",
+      "loadFailed": "Impossibile caricare i periodi precedenti"
+    },
     "list": {
       "bill": "Fattura",
       "category": "Categoria",
@@ -76,8 +85,7 @@
       "categoriesLegend": "Categorie di trattenuta",
       "addCategory": "+ Aggiungi un'altra categoria",
       "removeCategory": "Rimuovi la categoria {index}",
-      "noDeductionLines": "Questa transazione non ha righe di trattenuta. Aggiungi prima le trattenute come righe suddivise negative sulla transazione.",
-      "allLinesRuled": "Ogni riga di trattenuta di questa transazione ha già una regola."
+      "noDeductionLines": "Questa transazione non ha righe di trattenuta. Aggiungi prima le trattenute come righe suddivise negative sulla transazione."
     },
     "delete": {
       "title": "Elimina regola di trattenuta",
