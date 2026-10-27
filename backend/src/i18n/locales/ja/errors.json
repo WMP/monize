@@ -487,7 +487,7 @@
     "mnyNoFile": "Money ファイルがアップロードされていません",
     "mnyFileTruncated": "この Money ファイルは不完全なようです。アップロードが中断された可能性があります。もう一度お試しください。",
     "mnyNotAMoneyFile": "このファイルは Microsoft Money (.mny) ファイルではありません",
-    "mnyUnsupportedVersion": "このファイルは Money 97 または 98 で作成されており、Monize では読み取れません。無償の Money Plus Sunset エディションで一度開いて保存し、その結果をインポートしてください。",
+    "mnyUnsupportedVersion": "このファイルは Monize で読み取れないバージョンの Microsoft Money で作成されています。無償の Money Plus Sunset エディションで一度開いて保存し、その結果をインポートしてください。",
     "mnyPasswordRequired": "この Money ファイルはパスワードで保護されています。続行するにはパスワードを入力してください。",
     "mnyPasswordIncorrect": "そのパスワードでは Money ファイルを開けません。確認してもう一度お試しください。",
     "mnyUnreadableDatabase": "この Money ファイルは復号できましたが、内容を読み取れませんでした。破損している可能性があります。",

@@ -487,7 +487,7 @@
     "mnyNoFile": "未上传 Money 文件",
     "mnyFileTruncated": "该 Money 文件似乎不完整。上传可能被中断，请重试。",
     "mnyNotAMoneyFile": "该文件不是 Microsoft Money (.mny) 文件",
-    "mnyUnsupportedVersion": "该文件由 Money 97 或 98 创建，Monize 无法读取。请先用免费的 Money Plus Sunset 版本打开并保存一次，然后导入结果。",
+    "mnyUnsupportedVersion": "该文件由 Monize 无法读取的 Microsoft Money 版本创建。请先用免费的 Money Plus Sunset 版本打开并保存一次，然后导入结果。",
     "mnyPasswordRequired": "该 Money 文件受密码保护。请输入密码以继续。",
     "mnyPasswordIncorrect": "该密码无法打开 Money 文件。请检查后重试。",
     "mnyUnreadableDatabase": "该 Money 文件已解密，但无法读取其内容。文件可能已损坏。",

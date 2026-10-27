@@ -357,6 +357,7 @@
     "heading": "Reveja o seu ficheiro do Microsoft Money",
     "fileSummary": "{filename} -- {era}, moeda base {currency}. Os saldos abaixo são calculados a partir do próprio ficheiro, para que os possa comparar com o Money antes de importar.",
     "era": {
+      "money99": "formato Money 97-99",
       "money2001": "formato Money 2001",
       "money2002": "formato Money 2002",
       "moneyPlus": "formato Money Plus / Sunset",
@@ -529,6 +530,7 @@
     "duplicateSecuritySymbol": "{count, plural, one {# título partilha} other {# títulos partilham}} o símbolo com outro; os posteriores foram renomeados para se manterem separados.",
     "generatedSecuritySymbol": "{count, plural, one {# título não tem} other {# títulos não têm}} símbolo no Money, pelo que foi gerado um marcador e as atualizações de preço ficaram desativadas.",
     "unknownInvestmentAction": "{count, plural, one {# transação de investimento usou} other {# transações de investimento usaram}} uma ação que o Monize não reconhece e foram ignoradas.",
+    "stockOptionNotImported": "{count, plural, one {# evento de opções sobre ações para colaboradores} other {# eventos de opções sobre ações para colaboradores}} (atribuições, aquisição de direitos e expiração) não movimentaram dinheiro nem ações e não foram importados.",
     "unconfirmedInvestmentAction": "{count, plural, one {# transação de investimento usou} other {# transações de investimento usaram}} uma ação do Money cujo significado é deduzido e não documentado; confirme-as no Money.",
     "missingInvestmentDetail": "{count, plural, one {# transação de investimento não tinha} other {# transações de investimento não tinham}} detalhe de ações no ficheiro e foram importadas apenas pelo montante em numerário.",
     "investmentAccountMismatch": "{count, plural, one {# transação de investimento estava} other {# transações de investimento estavam}} numa conta que não é de investimento e foram ignoradas.",
@@ -563,7 +565,7 @@
     "mnyStagedFileMissing": "O ficheiro do Money carregado já não está disponível. Carregue-o novamente.",
     "mnyFileTruncated": "Este ficheiro do Money parece incompleto. O carregamento pode ter sido interrompido.",
     "mnyNotAMoneyFile": "Este ficheiro não é um ficheiro do Microsoft Money (.mny).",
-    "mnyUnsupportedVersion": "Este ficheiro foi criado no Money 97 ou 98. Abra-o e guarde-o uma vez na edição gratuita Money Plus Sunset e depois importe o resultado.",
+    "mnyUnsupportedVersion": "Este ficheiro foi criado numa versão do Microsoft Money que o Monize não consegue ler. Abra-o e guarde-o uma vez na edição gratuita Money Plus Sunset e depois importe o resultado.",
     "mnyPasswordRequired": "Este ficheiro do Money está protegido por palavra-passe.",
     "mnyPasswordIncorrect": "Essa palavra-passe não abre o ficheiro do Money.",
     "mnyUnreadableDatabase": "Este ficheiro do Money foi desencriptado, mas não foi possível ler o seu conteúdo. Pode estar danificado."

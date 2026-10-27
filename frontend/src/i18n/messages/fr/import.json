@@ -357,6 +357,7 @@
     "heading": "Vérifiez votre fichier Microsoft Money",
     "fileSummary": "{filename} -- {era}, devise de base {currency}. Les soldes ci-dessous sont calculés depuis le fichier lui-même, vous pouvez donc les comparer à Money avant d'importer.",
     "era": {
+      "money99": "format Money 97-99",
       "money2001": "format Money 2001",
       "money2002": "format Money 2002",
       "moneyPlus": "format Money Plus / Sunset",
@@ -529,6 +530,7 @@
     "duplicateSecuritySymbol": "{count, plural, one {# titre partage} other {# titres partagent}} un symbole avec un autre ; les suivants ont été renommés pour rester distincts.",
     "generatedSecuritySymbol": "{count, plural, one {# titre n'a} other {# titres n'ont}} pas de symbole dans Money : un symbole provisoire a été créé et la mise à jour des cours laissée désactivée.",
     "unknownInvestmentAction": "{count, plural, one {# transaction de placement utilisait} other {# transactions de placement utilisaient}} une action que Monize ne reconnaît pas et ont été ignorées.",
+    "stockOptionNotImported": "{count, plural, one {# événement d'options sur actions des salariés} other {# événements d'options sur actions des salariés}} (attributions, acquisition des droits et expiration) n'ont déplacé ni liquidités ni actions et n'ont pas été importés.",
     "unconfirmedInvestmentAction": "{count, plural, one {# transaction de placement utilisait} other {# transactions de placement utilisaient}} une action Money dont le sens est déduit et non documenté ; vérifiez-les avec Money.",
     "missingInvestmentDetail": "{count, plural, one {# transaction de placement n'avait} other {# transactions de placement n'avaient}} aucun détail de parts dans le fichier et ont été importées uniquement pour leur montant en espèces.",
     "investmentAccountMismatch": "{count, plural, one {# transaction de placement se trouvait} other {# transactions de placement se trouvaient}} dans un compte qui n'est pas un compte de placement et ont été ignorées.",
@@ -563,7 +565,7 @@
     "mnyStagedFileMissing": "Le fichier Money envoyé n'est plus disponible. Veuillez l'envoyer à nouveau.",
     "mnyFileTruncated": "Ce fichier Money semble incomplet. L'envoi a peut-être été interrompu.",
     "mnyNotAMoneyFile": "Ce fichier n'est pas un fichier Microsoft Money (.mny).",
-    "mnyUnsupportedVersion": "Ce fichier a été créé avec Money 97 ou 98. Ouvrez-le et enregistrez-le une fois dans l'édition gratuite Money Plus Sunset, puis importez le résultat.",
+    "mnyUnsupportedVersion": "Ce fichier a été créé avec une version de Microsoft Money que Monize ne peut pas lire. Ouvrez-le et enregistrez-le une fois dans l'édition gratuite Money Plus Sunset, puis importez le résultat.",
     "mnyPasswordRequired": "Ce fichier Money est protégé par un mot de passe.",
     "mnyPasswordIncorrect": "Ce mot de passe n'ouvre pas le fichier Money.",
     "mnyUnreadableDatabase": "Ce fichier Money a été déchiffré mais son contenu n'a pas pu être lu. Il est peut-être endommagé."

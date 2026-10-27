@@ -487,7 +487,7 @@
     "mnyNoFile": "Hiçbir Money dosyası yüklenmedi",
     "mnyFileTruncated": "Bu Money dosyası eksik görünüyor. Yükleme kesilmiş olabilir; yeniden deneyin.",
     "mnyNotAMoneyFile": "Bu dosya bir Microsoft Money (.mny) dosyası değil",
-    "mnyUnsupportedVersion": "Bu dosya Monize'ın okuyamadığı Money 97 veya 98 ile oluşturulmuş. Ücretsiz Money Plus Sunset sürümünde bir kez açıp kaydedin, ardından sonucu içe aktarın.",
+    "mnyUnsupportedVersion": "Bu dosya Monize'ın okuyamadığı bir Microsoft Money sürümüyle oluşturulmuş. Ücretsiz Money Plus Sunset sürümünde bir kez açıp kaydedin, ardından sonucu içe aktarın.",
     "mnyPasswordRequired": "Bu Money dosyası parola korumalı. Devam etmek için parolayı girin.",
     "mnyPasswordIncorrect": "Bu parola Money dosyasını açmıyor. Kontrol edip yeniden deneyin.",
     "mnyUnreadableDatabase": "Bu Money dosyasının şifresi çözüldü ancak içeriği okunamadı. Dosya bozuk olabilir.",

@@ -357,6 +357,7 @@
     "heading": "Periksa berkas Microsoft Money Anda",
     "fileSummary": "{filename} -- {era}, mata uang dasar {currency}. Saldo di bawah dihitung dari berkas itu sendiri, jadi Anda dapat membandingkannya dengan Money sebelum mengimpor.",
     "era": {
+      "money99": "format Money 97-99",
       "money2001": "format Money 2001",
       "money2002": "format Money 2002",
       "moneyPlus": "format Money Plus / Sunset",
@@ -529,6 +530,7 @@
     "duplicateSecuritySymbol": "{count, plural, other {# efek}} berbagi simbol dengan efek lain; yang berikutnya diganti namanya agar tetap terpisah.",
     "generatedSecuritySymbol": "{count, plural, other {# efek}} tidak memiliki simbol di Money, jadi simbol sementara dibuat dan pembaruan harga dibiarkan mati.",
     "unknownInvestmentAction": "{count, plural, other {# transaksi investasi}} memakai aksi yang tidak dikenali Monize dan dilewati.",
+    "stockOptionNotImported": "{count, plural, other {# peristiwa opsi saham karyawan}} (pemberian, vesting, dan kedaluwarsa) tidak memindahkan kas maupun saham dan tidak diimpor.",
     "unconfirmedInvestmentAction": "{count, plural, other {# transaksi investasi}} memakai aksi Money yang artinya disimpulkan, bukan terdokumentasi; periksa terhadap Money.",
     "missingInvestmentDetail": "{count, plural, other {# transaksi investasi}} tidak memiliki rincian lembar di berkas dan hanya diimpor sebesar jumlah tunainya.",
     "investmentAccountMismatch": "{count, plural, other {# transaksi investasi}} berada di akun yang bukan akun investasi dan dilewati.",
@@ -563,7 +565,7 @@
     "mnyStagedFileMissing": "Berkas Money yang diunggah sudah tidak tersedia. Silakan unggah kembali.",
     "mnyFileTruncated": "Berkas Money ini tampak tidak lengkap. Unggahan mungkin terputus.",
     "mnyNotAMoneyFile": "Berkas itu bukan berkas Microsoft Money (.mny).",
-    "mnyUnsupportedVersion": "Berkas itu dibuat oleh Money 97 atau 98. Buka dan simpan sekali di edisi gratis Money Plus Sunset, lalu impor hasilnya.",
+    "mnyUnsupportedVersion": "Berkas itu dibuat oleh versi Microsoft Money yang tidak dapat dibaca Monize. Buka dan simpan sekali di edisi gratis Money Plus Sunset, lalu impor hasilnya.",
     "mnyPasswordRequired": "Berkas Money itu dilindungi kata sandi.",
     "mnyPasswordIncorrect": "Kata sandi itu tidak membuka berkas Money.",
     "mnyUnreadableDatabase": "Berkas Money itu berhasil didekripsi, tetapi isinya tidak dapat dibaca. Mungkin rusak."
