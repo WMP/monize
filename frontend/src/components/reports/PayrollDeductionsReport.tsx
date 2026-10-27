@@ -50,20 +50,24 @@ export function PayrollDeductionsReport() {
   return (
     <div className="space-y-6">
       <Card className="p-4">
-        <div className="flex flex-wrap gap-4 items-end justify-between">
-          <div className="flex items-end gap-1 w-full sm:w-auto">
-            <div className="w-full sm:w-40">
+        <div className="flex flex-wrap gap-4 items-center justify-between">
+          {/* The label sits beside the picker, which only ever holds a 4-digit year. */}
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="payroll-report-year"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap"
+            >
+              {t('year')}
+            </label>
+            <div className="w-28">
               <Select
                 id="payroll-report-year"
-                label={t('year')}
                 value={String(year)}
                 onChange={(e) => setYear(Number(e.target.value))}
                 options={years.map((y) => ({ value: String(y), label: String(y) }))}
               />
             </div>
-            <div className="pb-2.5">
-              <InfoTooltip text={t('yearHelp')} placement="bottom" />
-            </div>
+            <InfoTooltip text={t('yearHelp')} placement="bottom" />
           </div>
           <ReportToolbarActions onExportCsv={handleExportCsv} disabled={!report || report.categories.length === 0} />
         </div>

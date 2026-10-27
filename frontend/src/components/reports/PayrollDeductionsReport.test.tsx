@@ -208,6 +208,11 @@ describe('PayrollDeductionsReport', () => {
   it('asks again for the year picked', async () => {
     mockReport.mockResolvedValue(report());
     await renderReport();
+    // The label sits on the picker's left, and the picker is sized for a year.
+    const select = screen.getByLabelText('Year');
+    const label = screen.getByText('Year', { selector: 'label' });
+    expect(label.compareDocumentPosition(select) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(select.closest('.w-28')).not.toBeNull();
     await act(async () => {
       fireEvent.change(screen.getByLabelText('Year'), { target: { value: '2025' } });
     });
