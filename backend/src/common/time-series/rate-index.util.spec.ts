@@ -288,9 +288,7 @@ describe("rate-index.util", () => {
     it("answers a repeated pair and date with the resolution it already made", () => {
       const fresh = indexRateRows([row("USD", "CAD", 1.365, "2026-06-15")]);
       const first = resolveIndexedRate(fresh, "USD", "CAD", "2026-06-17");
-      expect(resolveIndexedRate(fresh, "USD", "CAD", "2026-06-17")).toBe(
-        first,
-      );
+      expect(resolveIndexedRate(fresh, "USD", "CAD", "2026-06-17")).toBe(first);
     });
 
     it("keys the remembered answer on the date and the direction", () => {
