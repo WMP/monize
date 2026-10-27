@@ -93,6 +93,11 @@ export enum NotificationType {
   // `docs/specs/warranty-tracker.md` section 6.6.
   WARRANTY_EXPIRING = "WARRANTY_EXPIRING",
   WARRANTY_EXPIRES_TODAY = "WARRANTY_EXPIRES_TODAY",
+  // A payroll deduction rule resets in two months: confirm next period's
+  // maximum (PAYMENTS, like every row about a scheduled payment). One per rule
+  // per reset date via the dedupe key (`pdr:reset:...`). See
+  // `docs/specs/payroll-deductions.md` section 5.4.
+  PAYROLL_DEDUCTION_RESET_DUE = "PAYROLL_DEDUCTION_RESET_DUE",
 }
 
 /**
@@ -226,7 +231,8 @@ export function notificationCategoryOf(
   // subject; the category test proves the two classifications never diverge.
   if (
     type === NotificationType.BILL_DUE ||
-    type === NotificationType.SCHEDULED_POST_FAILED
+    type === NotificationType.SCHEDULED_POST_FAILED ||
+    type === NotificationType.PAYROLL_DEDUCTION_RESET_DUE
   ) {
     return NotificationCategory.PAYMENTS;
   }

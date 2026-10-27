@@ -34,18 +34,18 @@
   },
   "page": {
     "title": "거래 가져오기",
-    "subtitle": "QIF, OFX/QFX 또는 CSV 파일에서 거래를 가져오거나 Microsoft Money (.mny) 파일 전체를 가져옵니다"
+    "subtitle": "QIF/QMTF, OFX/QFX 또는 CSV 파일에서 거래를 가져오거나 Microsoft Money (.mny) 파일 전체를 가져옵니다"
   },
   "upload": {
     "heading": "거래 파일 업로드",
-    "instructions": "가져올 파일을 하나 이상 선택하세요. 지원 형식: QIF, OFX/QFX, CSV, Microsoft Money (.mny).\n대량 가져오기를 위해 동일한 유형의 파일을 여러 개 선택할 수 있습니다. Microsoft Money 파일은 한 번에 하나씩 가져오세요. .mny 파일에는 프로필 전체가 들어 있습니다.",
+    "instructions": "가져올 파일을 하나 이상 선택하세요. 지원 형식: QIF/QMTF, OFX/QFX, CSV, Microsoft Money (.mny).\n대량 가져오기를 위해 동일한 유형의 파일을 여러 개 선택할 수 있습니다. Microsoft Money 파일은 한 번에 하나씩 가져오세요. .mny 파일에는 프로필 전체가 들어 있습니다.",
     "importingTo": "가져오기 대상:",
     "clickToSelect": "파일을 선택하려면 클릭하세요",
     "orDragAndDrop": "또는 여기로 끌어다 놓으세요",
     "dropToImport": "놓아서 가져오기",
-    "unsupportedDrop": "다음 파일은 가져올 수 없습니다: {names}. QIF, OFX, QFX, CSV 또는 Microsoft Money(.mny) 파일을 사용하세요.",
+    "unsupportedDrop": "다음 파일은 가져올 수 없습니다: {names}. QIF/QMTF, OFX, QFX, CSV 또는 Microsoft Money(.mny) 파일을 사용하세요.",
     "processing": "처리 중...",
-    "acceptedFormats": "QIF, OFX, QFX, CSV 또는 Microsoft Money (.mny)",
+    "acceptedFormats": "QIF/QMTF, OFX, QFX, CSV 또는 Microsoft Money (.mny)",
     "mnyFailedHeading": "이 Microsoft Money 파일을 열 수 없습니다",
     "wikiNotice": {
       "title": "가져오기 전에",

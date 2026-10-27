@@ -112,7 +112,7 @@ Highlights of the recent releases. Every version has full notes in [`docs/releas
 - Payee brand icons and category icons that subcategories inherit
 - A page for each payee (statistics, recurrence, seasonality, address, phone and email) and for each category (subcategories, top payees, seasonality). Payee details can be looked up through Google Places or your AI provider, and are shown for confirmation before they are saved
 - Multi-currency transactions with automatic exchange rate tracking
-- Import from CSV (including brokerage exports), OFX/QFX, and QIF (Quicken and Microsoft Money) with smart column auto-matching
+- Import from CSV (including brokerage exports), OFX/QFX, and QIF (Quicken, including Quicken for Mac .qmtf transfer files, and Microsoft Money) with smart column auto-matching and categories nested to any depth
 - Microsoft Money full-file import: read a `.mny` file directly -- accounts, transfers, splits, investments, price history, exchange rates and scheduled bills -- and reconcile every balance against the file afterwards ([guide](docs/import-ms-money.md))
 - Quicken full-file import: import all accounts, categories, and tags from a single QIF export
 - Bank sync (Settings -> Bank sync): import booked transactions from your bank through Open Banking (Enable Banking), with a preview before the first import, your `import` rules applied, and a daily or on-demand sync

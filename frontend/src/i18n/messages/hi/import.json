@@ -34,18 +34,18 @@
   },
   "page": {
     "title": "लेनदेन आयात करें",
-    "subtitle": "QIF, OFX/QFX, या CSV फ़ाइलों से लेनदेन आयात करें, या पूरी Microsoft Money (.mny) फ़ाइल ले आएँ"
+    "subtitle": "QIF/QMTF, OFX/QFX, या CSV फ़ाइलों से लेनदेन आयात करें, या पूरी Microsoft Money (.mny) फ़ाइल ले आएँ"
   },
   "upload": {
     "heading": "लेनदेन फ़ाइलें अपलोड करें",
-    "instructions": "आयात करने के लिए एक या अधिक फ़ाइलें चुनें। समर्थित प्रारूप: QIF, OFX/QFX, CSV और Microsoft Money (.mny)।\nबल्क आयात के लिए आप एक ही प्रकार की कई फ़ाइलें चुन सकते हैं। Microsoft Money फ़ाइलें एक-एक करके आयात करें — एक .mny फ़ाइल में पूरी प्रोफ़ाइल होती है।",
+    "instructions": "आयात करने के लिए एक या अधिक फ़ाइलें चुनें। समर्थित प्रारूप: QIF/QMTF, OFX/QFX, CSV और Microsoft Money (.mny)।\nबल्क आयात के लिए आप एक ही प्रकार की कई फ़ाइलें चुन सकते हैं। Microsoft Money फ़ाइलें एक-एक करके आयात करें — एक .mny फ़ाइल में पूरी प्रोफ़ाइल होती है।",
     "importingTo": "इसमें आयात हो रहा है:",
     "clickToSelect": "फ़ाइल(ें) चुनने के लिए क्लिक करें",
     "orDragAndDrop": "या उन्हें यहाँ खींचकर छोड़ें",
     "dropToImport": "आयात करने के लिए छोड़ें",
-    "unsupportedDrop": "ये फ़ाइलें आयात नहीं की जा सकतीं: {names}। QIF, OFX, QFX, CSV या Microsoft Money (.mny) फ़ाइलों का उपयोग करें।",
+    "unsupportedDrop": "ये फ़ाइलें आयात नहीं की जा सकतीं: {names}। QIF/QMTF, OFX, QFX, CSV या Microsoft Money (.mny) फ़ाइलों का उपयोग करें।",
     "processing": "प्रसंस्करण हो रहा है...",
-    "acceptedFormats": "QIF, OFX, QFX, CSV, या Microsoft Money (.mny)",
+    "acceptedFormats": "QIF/QMTF, OFX, QFX, CSV, या Microsoft Money (.mny)",
     "mnyFailedHeading": "यह Microsoft Money फ़ाइल खोली नहीं जा सकी",
     "wikiNotice": {
       "title": "आयात करने से पहले",

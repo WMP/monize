@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import navigation from '@/i18n/messages/en/navigation.json';
-import { ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { ReceiptPercentIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { NAV_LINKS, TOOLS_LINKS, AI_LINKS, NAV_ICONS } from './nav-links';
 
 describe('nav-links', () => {
@@ -34,6 +34,7 @@ describe('nav-links', () => {
     expect(NAV_ICONS['/ai-reviews']).toBeTruthy();
     expect([...NAV_LINKS, ...TOOLS_LINKS, ...AI_LINKS].filter((l) => l.ownerOnly).map((l) => l.href)).toEqual([
       '/email-receipts',
+      '/taxes',
       '/ai-reviews',
     ]);
   });
@@ -49,6 +50,13 @@ describe('nav-links', () => {
     expect(hrefs.indexOf('/warranties')).toBe(hrefs.indexOf('/rules') + 1);
     expect(hrefs.indexOf('/email-receipts')).toBe(hrefs.indexOf('/warranties') + 1);
     expect(NAV_ICONS['/warranties']).toBe(ShieldCheckIcon);
+  });
+
+  it('puts Taxes in the Tools menu after Email receipts, owner-only, with an icon', () => {
+    const hrefs = TOOLS_LINKS.map((l) => l.href);
+    expect(TOOLS_LINKS).toContainEqual({ href: '/taxes', labelKey: 'taxes', ownerOnly: true });
+    expect(hrefs.indexOf('/taxes')).toBe(hrefs.indexOf('/email-receipts') + 1);
+    expect(NAV_ICONS['/taxes']).toBe(ReceiptPercentIcon);
   });
 
   it('has a navigation label for every link', () => {

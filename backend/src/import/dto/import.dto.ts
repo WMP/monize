@@ -54,7 +54,8 @@ export class CategoryMappingDto {
 
   @ApiPropertyOptional({
     description:
-      "Name for a new parent category to create (used when parent does not exist yet)",
+      "Name for a new parent category to create (used when parent does not exist yet). " +
+      "A colon-delimited path (e.g. Housing:Mortgage) finds or creates every level.",
   })
   @IsOptional()
   @IsString()

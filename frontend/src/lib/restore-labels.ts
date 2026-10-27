@@ -54,6 +54,7 @@ export const RESTORE_LABELS: Record<string, string> = {
   monteCarloCashFlows: 'Monte Carlo Cash Flows',
   institutions: 'Institutions',
   scheduledTransactionPostings: 'Scheduled Transaction Postings',
+  payrollDeductionRules: 'Payroll Deduction Rules',
   securityDocuments: 'Security Documents',
   transactionAttachments: 'Transaction Attachments',
   attachmentBlobs: 'Attachment Files',

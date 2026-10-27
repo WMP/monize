@@ -308,6 +308,11 @@
     "noOpenPeriod": "沒有可關閉的開放期間",
     "categoryIdsNotOwned": "找不到類別 ID 或類別不屬於使用者：{{ ids }}"
   },
+  "payrollDeductions": {
+    "notFound": "找不到薪資扣款規則 {{ id }}",
+    "duplicate": "此帳單已有該類別的規則",
+    "expectedRequired": "帳單中沒有此類別的項目；請輸入每次發薪的預期金額"
+  },
   "categories": {
     "notFound": "找不到 ID 為 {{ id }} 的類別",
     "cannotModifySystem": "無法修改系統類別",

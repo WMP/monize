@@ -228,6 +228,10 @@ INV-LOAN-002's entry names the missing source scan while its row said `--`.
 | INV-WTY-005 a warranty refusal before the write | required | -- | **required** | -- | -- | -- | -- | -- |
 | INV-WTY-006 an import's preview and commit agree | **required** | -- | required | -- | -- | -- | -- | -- |
 | INV-WTY-007 no transaction through a warranty | required | -- | **required** | -- | -- | -- | -- | -- |
+| INV-PAYROLL-001 a deduction rule never writes the ledger | -- | **required** | -- | -- | -- | -- | -- | -- |
+| INV-PAYROLL-002 a post caps a ruled line and re-sums | **required** | -- | required (not yet met) | -- | -- | -- | -- | -- |
+| INV-PAYROLL-003 posting and projection cap alike | **required** | -- | required (not yet met) | -- | -- | -- | -- | optional |
+| INV-PAYROLL-004 one reset reminder per rule and date | required | -- | required (not yet met) | **required (not yet met)** | -- | -- | -- | -- |
 
 Bold marks the kind that is load-bearing -- the one whose absence means the
 invariant is unverified no matter how many others pass. `INV-PROFILE-001`'s is a

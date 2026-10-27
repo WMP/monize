@@ -389,6 +389,10 @@
       "expiringMessage": "De garantie voor {{ name }} verloopt op {{ date }}. Open hem om de documenten te bekijken of een claim vast te leggen.",
       "todayTitle": "{{ name }}: garantie verloopt vandaag",
       "todayMessage": "De garantie voor {{ name }} verloopt vandaag, {{ date }}. Open hem om de documenten te bekijken of een claim vast te leggen."
+    },
+    "payrollDeduction": {
+      "resetTitle": "{{ category }}: bevestig het maximum voor volgend jaar",
+      "resetMessage": "De inhouding {{ category }} op {{ bill }} wordt op {{ date }} opnieuw ingesteld. Werk het jaarmaximum bij als het verandert; anders geldt {{ amount }} opnieuw."
     }
   },
   "backupOffsite": {

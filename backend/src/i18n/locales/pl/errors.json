@@ -308,6 +308,11 @@
     "noOpenPeriod": "Brak otwartego okresu do zamknięcia",
     "categoryIdsNotOwned": "Identyfikatory kategorii nie zostały znalezione lub nie należą do użytkownika: {{ ids }}"
   },
+  "payrollDeductions": {
+    "notFound": "Nie znaleziono reguły potrącenia z wynagrodzenia {{ id }}",
+    "duplicate": "Ten rachunek ma już regułę dla tej kategorii",
+    "expectedRequired": "Rachunek nie ma pozycji dla tej kategorii; wpisz oczekiwaną kwotę na wypłatę"
+  },
   "categories": {
     "notFound": "Nie znaleziono kategorii o ID {{ id }}",
     "cannotModifySystem": "Nie można modyfikować kategorii systemowych",

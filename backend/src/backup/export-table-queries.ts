@@ -488,6 +488,11 @@ export function buildExportTableQueries(
             JOIN scheduled_transactions st ON sts.scheduled_transaction_id = st.id
             WHERE st.user_id = $1`,
     },
+    {
+      // After the scheduled tables and categories it references.
+      key: "payroll_deduction_rules",
+      sql: "SELECT * FROM payroll_deduction_rules WHERE user_id = $1 ORDER BY created_at, id",
+    },
     { key: "securities", sql: "SELECT * FROM securities WHERE user_id = $1" },
     {
       key: "security_prices",

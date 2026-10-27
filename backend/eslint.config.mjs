@@ -83,6 +83,11 @@ const WITH_CONTEXT_ALLOWLIST = [
   // that dispatches the 30, 7 and 0-day reminders
   // (docs/specs/warranty-tracker.md section 6.7).
   "src/warranties/warranty-expiry-reminder.service.ts",
+  // Daily payroll-deduction reset reminder: a system-context fan-out over
+  // every rule (and every user's timezone), then a per-user body
+  // (withUserContext) that dispatches the two-months-before reminder
+  // (docs/specs/payroll-deductions.md section 5.5).
+  "src/payroll-deductions/payroll-deduction-reset-reminder.service.ts",
   "src/budgets/budget-alert.service.ts",
   "src/budgets/budget-period-cron.service.ts",
   // Daily portfolio-movement cron: a system-context fan-out over users with a

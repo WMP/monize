@@ -7,6 +7,7 @@ import {
   isTransactionInFuture,
   isValidIanaTimezone,
   todayInTimezone,
+  todayInTimezoneOrUtc,
   todayYMD,
 } from "./date-utils";
 import { requestContextStorage } from "./request-context";
@@ -64,6 +65,14 @@ describe("isValidIanaTimezone", () => {
 
   it("rejects invented timezone names", () => {
     expect(isValidIanaTimezone("Not/A_Real_Zone")).toBe(false);
+  });
+});
+
+describe("todayInTimezoneOrUtc", () => {
+  it("dates by the zone when it resolves and by UTC when it does not", () => {
+    const at = new Date("2027-03-30T23:30:00.000Z");
+    expect(todayInTimezoneOrUtc("Pacific/Auckland", at)).toBe("2027-03-31");
+    expect(todayInTimezoneOrUtc("Not/A_Real_Zone", at)).toBe("2027-03-30");
   });
 });
 

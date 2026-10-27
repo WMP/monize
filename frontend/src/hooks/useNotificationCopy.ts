@@ -779,6 +779,29 @@ export function useNotificationCopy() {
       : t('warranty.expiringMessage', { name, date });
   };
 
+  /**
+   * The payroll deduction reset reminder, from the producer's facts: the
+   * category, the bill, the reset date and the maximum that applies again.
+   */
+  const payrollDeductionCopy = (notification: Notification, part: 'title' | 'message'): string | null => {
+    if (notification.type !== 'PAYROLL_DEDUCTION_RESET_DUE') return null;
+    const data = notification.data ?? {};
+    const { categoryName, scheduledTransactionName, resetOn, yearlyMaximum, currencyCode } = data;
+    if (typeof categoryName !== 'string' || categoryName === '') return null;
+    if (typeof scheduledTransactionName !== 'string' || scheduledTransactionName === '') return null;
+    if (typeof resetOn !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(resetOn)) return null;
+    if (typeof yearlyMaximum !== 'number' || !Number.isFinite(yearlyMaximum)) return null;
+    if (typeof currencyCode !== 'string' || currencyCode === '') return null;
+    return part === 'title'
+      ? t('payrollDeduction.resetTitle', { category: categoryName })
+      : t('payrollDeduction.resetMessage', {
+          category: categoryName,
+          bill: scheduledTransactionName,
+          date: formatDate(resetOn),
+          amount: formatCurrency(yearlyMaximum, currencyCode),
+        });
+  };
+
   return (notification: Notification) => ({
     title:
       priceCopy(notification, 'title') ??
@@ -791,6 +814,7 @@ export function useNotificationCopy() {
       emailReceiptsAttentionTitle(notification) ??
       aiReviewCopy(notification, 'title') ??
       warrantyCopy(notification, 'title') ??
+      payrollDeductionCopy(notification, 'title') ??
       bondCopy(notification, 'title') ??
       notification.title,
     message:
@@ -804,6 +828,7 @@ export function useNotificationCopy() {
       emailReceiptsAttentionMessage(notification) ??
       aiReviewCopy(notification, 'message') ??
       warrantyCopy(notification, 'message') ??
+      payrollDeductionCopy(notification, 'message') ??
       bondCopy(notification, 'message') ??
       notification.message,
   });

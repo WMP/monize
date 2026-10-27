@@ -62,7 +62,10 @@ export type NotificationType =
   // Warranty reminders (WARRANTIES): 30 and 7 days before expiry, and the day
   // itself. The data carries the warranty's name and its expiry date.
   | 'WARRANTY_EXPIRING'
-  | 'WARRANTY_EXPIRES_TODAY';
+  | 'WARRANTY_EXPIRES_TODAY'
+  // A payroll deduction rule resets in two months (PAYMENTS): confirm next
+  // period's maximum. The data carries the names, the reset date and the maximum.
+  | 'PAYROLL_DEDUCTION_RESET_DUE';
 
 /** How urgent, and how it is drawn. */
 export type NotificationSeverity = 'info' | 'warning' | 'critical' | 'success';

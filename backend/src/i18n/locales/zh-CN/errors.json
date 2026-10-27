@@ -308,6 +308,11 @@
     "noOpenPeriod": "没有可关闭的开放周期",
     "categoryIdsNotOwned": "未找到分类 ID 或不属于该用户：{{ ids }}"
   },
+  "payrollDeductions": {
+    "notFound": "未找到工资扣款规则 {{ id }}",
+    "duplicate": "此账单已有该类别的规则",
+    "expectedRequired": "账单中没有此类别的行；请输入每次发薪的预期金额"
+  },
   "categories": {
     "notFound": "未找到 ID 为 {{ id }} 的分类",
     "cannotModifySystem": "无法修改系统分类",

@@ -308,6 +308,11 @@
     "noOpenPeriod": "Kapatılacak açık dönem yok",
     "categoryIdsNotOwned": "Kategori kimlikleri bulunamadı veya kullanıcıya ait değil: {{ ids }}"
   },
+  "payrollDeductions": {
+    "notFound": "Bordro kesinti kuralı {{ id }} bulunamadı",
+    "duplicate": "Bu faturada o kategori için zaten bir kural var",
+    "expectedRequired": "Faturada bu kategori için satır yok; maaş başına beklenen tutarı girin"
+  },
   "categories": {
     "notFound": "{{ id }} kimliğine sahip kategori bulunamadı",
     "cannotModifySystem": "Sistem kategorileri değiştirilemez",

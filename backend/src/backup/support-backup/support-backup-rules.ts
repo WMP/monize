@@ -427,6 +427,20 @@ export const RULES: Record<string, TableRules> = {
     scheduled_transaction_split_id: keep,
     tag_id: keep,
   },
+  // A payroll deduction rule is structure (which bill, which category, when
+  // it resets) plus two private amounts, scaled like every other one.
+  payroll_deduction_rules: {
+    id: keep,
+    user_id: keep,
+    scheduled_transaction_id: keep,
+    category_id: keep,
+    yearly_maximum: scale,
+    reset_period: keep,
+    reset_date: keep,
+    expected_per_paycheque: scale,
+    created_at: keep,
+    updated_at: keep,
+  },
   securities: {
     id: keep,
     user_id: keep,

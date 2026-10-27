@@ -308,6 +308,11 @@
     "noOpenPeriod": "마감할 열린 기간이 없습니다",
     "categoryIdsNotOwned": "사용자가 찾을 수 없거나 소유하지 않은 카테고리 ID입니다: {{ ids }}"
   },
+  "payrollDeductions": {
+    "notFound": "급여 공제 규칙 {{ id }}을(를) 찾을 수 없습니다",
+    "duplicate": "이 청구에는 해당 카테고리의 규칙이 이미 있습니다",
+    "expectedRequired": "청구에 이 카테고리의 항목이 없습니다. 급여당 예상 금액을 입력하세요"
+  },
   "categories": {
     "notFound": "ID가 {{ id }}인 카테고리를 찾을 수 없습니다",
     "cannotModifySystem": "시스템 카테고리는 수정할 수 없습니다",

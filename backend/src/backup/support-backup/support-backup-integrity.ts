@@ -61,6 +61,15 @@ const REFS: Record<string, RefRule[]> = {
   warranty_claims: [
     { column: "warranty_id", refTable: "warranties", onMissing: "dropRow" },
   ],
+  // A rule cannot outlive its bill or its category (both NOT NULL, CASCADE).
+  payroll_deduction_rules: [
+    {
+      column: "scheduled_transaction_id",
+      refTable: "scheduled_transactions",
+      onMissing: "dropRow",
+    },
+    { column: "category_id", refTable: "categories", onMissing: "dropRow" },
+  ],
   // transaction_attachments.transaction_id is a real FK (the entity models the
   // relation) between two fully-exported tables, so the coverage guard requires
   // it here even though the de-identified support backup excludes the table. A

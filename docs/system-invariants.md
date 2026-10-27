@@ -121,6 +121,10 @@ implied.
 | INV-OCCURRENCE-001 | One scheduled occurrence has at most one financial effect | enforced |
 | INV-OCCURRENCE-002 | A stored override price survives reopening | enforced |
 | INV-OCCURRENCE-003 | Every surface reports the effective occurrence: its current amount and currency, its direction, on the date it falls | enforced |
+| INV-PAYROLL-001 | A payroll deduction rule never writes a ledger row; changing one changes no posted transaction | enforced |
+| INV-PAYROLL-002 | The cap on a deduction line is decided under the posting lock from the ledger as it stands | enforced |
+| INV-PAYROLL-003 | The posting and the projection reduce a line by one definition over the server's own figures | enforced |
+| INV-PAYROLL-004 | A rule's reset reminder is raised once per reset date, however many replicas or days are in the window | enforced |
 | INV-CLAIM-001 | An emergency-access claim token is consumed exactly once | enforced |
 | INV-AUTH-001 | A refresh token rotates once, or the family is revoked | enforced |
 | INV-AUTH-002 | A failed-login counter records every failure | enforced |
@@ -4779,6 +4783,65 @@ Known scope         Two client-side expansions remain, both named in the fronten
                     product window.
 Status              enforced
 ```
+
+## Payroll deductions
+
+Specified in `docs/specs/payroll-deductions.md`. A rule names a payroll
+scheduled bill, one of its deduction categories, a yearly maximum and the
+date the count resets; the bill's line for that category is reduced to the
+room left under the maximum when the occurrence posts, and the cash-flow
+forecast projects the same reduction.
+
+### INV-PAYROLL-001 -- a rule never writes the ledger
+
+- **Statement.** `backend/src/payroll-deductions/` reads `transactions` and
+  `transaction_splits` and writes only `payroll_deduction_rules`. A rule
+  created, changed or deleted in October leaves every row posted before
+  October as it was; the cap applies to the next occurrence posted.
+- **Mechanism.** The module imports no ledger writer and issues no
+  `INSERT`, `UPDATE` or `DELETE` against a ledger table;
+  `payroll-deductions.guard.spec.ts` scans its sources for both.
+- **Status.** enforced.
+
+### INV-PAYROLL-002 -- the cap is decided under the posting lock
+
+- **Statement.** The year-to-date figure that caps a line is read inside
+  the posting transaction, after `ScheduledTransactionsService.post` has
+  locked the schedule row, on the same `EntityManager`, in the period that
+  contains the posting date.
+- **Mechanism.** `applyPayrollDeductionCaps` takes the posting's manager and
+  runs after the lock and before the occurrence claim;
+  `payroll-deduction-cap.spec.ts` pins the period and the query shape, and
+  the posting spec pins the call site.
+- **Status.** enforced.
+
+### INV-PAYROLL-003 -- one definition of paid, remaining and capped
+
+- **Statement.** The posting and the projection reduce a line by
+  `capDeductionLine` over `remainingRoom(yearlyMaximum, paidToDate)`; the
+  forecast reads `remaining` from the read model's `payrollDeductions` and
+  never re-derives it from rows.
+- **Mechanism.** `payroll-deduction-cap.ts` holds the three functions and the
+  one query; `loadScheduledPayrollDeductions` stamps the figures onto every
+  `findAll` row; `frontend/src/lib/forecast.ts` pools the room per category
+  across every bill (`buildDeductionPools`), spends it per occurrence in date
+  order (`spendPayrollDeductions`), projects the template less its current
+  line plus the deduction due, refills on the anchor's anniversary, and
+  answers one occurrence's lines to the Edit Occurrence dialog
+  (`projectPayrollOccurrence`); `forecast.test.ts` and
+  `OverrideEditorDialog.payroll.test.tsx`.
+- **Status.** enforced.
+
+### INV-PAYROLL-004 -- one reminder per reset
+
+- **Statement.** The two-months-before reminder is raised once per rule per
+  reset date, whichever replica runs the cron and however many days of the
+  window pass.
+- **Mechanism.** The notification's `dedupe_key` is
+  `pdr:reset:<ruleId>:<resetOn>` and `NotificationService.create` is
+  `INSERT ... ON CONFLICT DO NOTHING`; `payroll-deduction-reset-reminder.service.spec.ts`
+  covers the window and the lost insert.
+- **Status.** enforced.
 
 ## Authentication and authorization
 

@@ -62,6 +62,9 @@ export const NOTIFICATION_EMAIL_MESSAGES = {
   "warranty.todayTitle": "{{ name }}: warranty expires today",
   "warranty.todayMessage":
     "The warranty for {{ name }} expires today, {{ date }}. Open to review its documents or record a claim.",
+  "payrollDeduction.resetTitle": "{{ category }}: confirm next year's maximum",
+  "payrollDeduction.resetMessage":
+    "The {{ category }} deduction on {{ bill }} resets on {{ date }}. Update the yearly maximum if it changes; otherwise {{ amount }} applies again.",
   "portfolioMovement.titleUp": "Investments up {{ percent }}%",
   "portfolioMovement.titleDown": "Investments down {{ percent }}%",
   "portfolioMovement.messageUp":

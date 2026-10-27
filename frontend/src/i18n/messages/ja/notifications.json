@@ -203,5 +203,9 @@
     "expiringMessage": "{name} の保証は {date} に期限切れになります。開いて書類を確認するか、保証請求を記録してください。",
     "todayTitle": "{name}：保証が本日期限切れになります",
     "todayMessage": "{name} の保証は本日 {date} に期限切れになります。開いて書類を確認するか、保証請求を記録してください。"
+  },
+  "payrollDeduction": {
+    "resetTitle": "{category}：来年の上限額を確認してください",
+    "resetMessage": "{bill} の {category} 控除は {date} にリセットされます。年間上限額が変わる場合は更新してください。変わらなければ {amount} が再び適用されます。"
   }
 }
