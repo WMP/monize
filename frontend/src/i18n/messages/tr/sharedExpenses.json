@@ -281,7 +281,7 @@
   "linkedTransactionHelp": "Bu işlem, kabul edilen bir paylaşılan muhasebe girişine ait. Tutarlarını incelemek veya düzenlemeden önce bağlantısını kaldırmak için Mali durumum'u açın. Buraya eklenen belgeler gizli kalır.",
   "previewFile": "Dosyanın önizlemesi",
   "addSavedPerson": "Kişilerinizden birini ekleyin",
-  "ORIGINAL_REFUND": "Asıl giderin döviz kuru",
+  "ORIGINAL_REFUND": "İlk giderin kuru",
   "deleteContact": "Özel kişiyi kaldır",
   "deleteContactHelp": "Bu kişi ve özel bağlantılarınız kaldırılsın mı? Grup katılımcıları, giderleri ve bakiyeleri olduğu gibi kalacaktır.",
   "GROUP_ARCHIVED": "Grup arşivlendi",
@@ -348,5 +348,8 @@
   "selectPeople": "Bu paylaşım için en az bir kişi seçin.",
   "splitComplete": "Uygulamaya hazır",
   "splitTools": "Diğer paylaşım seçenekleri",
-  "repaymentExplanation": "Öneriler herkesin net bakiyesine dayanır. Sizin belirli bir giderinizi ödememiş birine geri ödeme yapmanız gerekebilir."
+  "repaymentExplanation": "Öneriler herkesin net bakiyesine dayanır. Sizin belirli bir giderinizi ödememiş birine geri ödeme yapmanız gerekebilir.",
+  "currencyConversion": "Para birimi dönüşümü",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "Bakiyeler ve toplamlar: {currency}"
 }

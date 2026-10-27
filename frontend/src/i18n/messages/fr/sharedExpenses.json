@@ -348,5 +348,8 @@
   "selectPeople": "Choisissez au moins une personne pour cette répartition.",
   "splitComplete": "Prêt à appliquer",
   "splitTools": "Autres options de répartition",
-  "repaymentExplanation": "Les suggestions utilisent le solde net de chaque personne. Vous pouvez rembourser quelqu’un qui n’a pas payé votre dépense en particulier."
+  "repaymentExplanation": "Les suggestions utilisent le solde net de chaque personne. Vous pouvez rembourser quelqu’un qui n’a pas payé votre dépense en particulier.",
+  "currencyConversion": "Conversion de devises",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "Soldes et totaux en {currency}"
 }

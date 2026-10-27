@@ -281,7 +281,7 @@
   "linkedTransactionHelp": "此交易屬於已接受的共享會計分錄。打開“我的財務”以查看其金額或在編輯前取消連結。此處新增的文件保持私密。",
   "previewFile": "預覽文件",
   "addSavedPerson": "從您的人員中加入某人",
-  "ORIGINAL_REFUND": "原支出的匯率",
+  "ORIGINAL_REFUND": "原始支出的匯率",
   "deleteContact": "刪除私人聯絡人",
   "deleteContactHelp": "刪除此聯絡人和您的私人連結？團體參與者、費用和餘額將保持不變。",
   "GROUP_ARCHIVED": "對該組進行存檔",
@@ -348,5 +348,8 @@
   "selectPeople": "請為此次分攤至少選擇一人。",
   "splitComplete": "可以套用",
   "splitTools": "更多分攤選項",
-  "repaymentExplanation": "建議依據每個人的淨餘額計算。你可能需要向並未支付你這筆特定費用的人還款。"
+  "repaymentExplanation": "建議依據每個人的淨餘額計算。你可能需要向並未支付你這筆特定費用的人還款。",
+  "currencyConversion": "貨幣換算",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "餘額和總額以 {currency} 計"
 }
