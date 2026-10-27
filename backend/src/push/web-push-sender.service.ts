@@ -14,6 +14,7 @@ import {
   VapidIdentity,
 } from "./push-config.service";
 import { PushDisabledReason } from "./entities/push-subscription.entity";
+import { publicOnlyLookup } from "../ai/providers/provider-egress";
 import { validateUrlIsSafeWithin } from "../ai/validators/safe-url.validator";
 
 /**
@@ -317,7 +318,9 @@ export class WebPushSender {
   ): Promise<void> {
     const agent = new https.Agent({
       keepAlive: false,
-      ...(pin ? { lookup: pinnedPushLookup(pin) } : {}),
+      // Unpinned: the connect-time lookup refuses a private answer, so a name
+      // that rebinds after `endpointStillSafe` cannot reach an internal address.
+      lookup: pin ? pinnedPushLookup(pin) : publicOnlyLookup,
     });
     const sockets = collectAgentSockets(agent);
 

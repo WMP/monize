@@ -11,6 +11,7 @@ import {
   PushPayload,
   PushTarget,
 } from "./web-push-sender.service";
+import { publicOnlyLookup } from "../ai/providers/provider-egress";
 import { PushConfigService, VAPID_SUBJECT } from "./push-config.service";
 import { PushDisabledReason } from "./entities/push-subscription.entity";
 
@@ -173,6 +174,14 @@ describe("WebPushSender", () => {
         delete process.env.UNIFIEDPUSH_PRIVATE_ENDPOINTS;
       else process.env.UNIFIEDPUSH_PRIVATE_ENDPOINTS = original;
     }
+  });
+
+  it("connects an unpinned endpoint through publicOnlyLookup", async () => {
+    sendNotification.mockResolvedValue(undefined);
+    expect(await sendOne(target(), PAYLOAD)).toEqual({ status: "sent" });
+    expect(sendNotification.mock.calls[0][2].agent.options.lookup).toBe(
+      publicOnlyLookup,
+    );
   });
 
   it("reads the instance identity once for a whole batch, and not at all for nothing", async () => {
