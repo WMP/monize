@@ -7,7 +7,12 @@ import { actionHistoryApi } from '@/lib/action-history';
 import { renderActionDescription } from '@/lib/action-history-format';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { clearAllCache } from '@/lib/apiCache';
-import { notifyUndoRedo } from '@/lib/undoRedoSignal';
+import {
+  notifyUndoRedo,
+  getUndoRefusal,
+  isUndoRefusal,
+  markUndoRefused,
+} from '@/lib/undoRedoSignal';
 import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('UndoRedo');
@@ -33,6 +38,11 @@ export function useUndoRedo() {
 
   const handleUndo = useCallback(async () => {
     if (pendingRef.current) return;
+    const refusal = getUndoRefusal();
+    if (refusal) {
+      toast.error(refusal);
+      return;
+    }
     pendingRef.current = true;
     try {
       const result = await actionHistoryApi.undo();
@@ -49,7 +59,9 @@ export function useUndoRedo() {
       if (status === 404) {
         toast.success(t('undoRedo.nothingToUndo'));
       } else if (status === 409) {
-        toast.error(message || t('undoRedo.cannotUndo'));
+        const text = message || t('undoRedo.cannotUndo');
+        if (isUndoRefusal(status, error?.response?.data?.errorCode)) markUndoRefused(text);
+        toast.error(text);
       } else {
         logger.error('Undo failed', error);
         toast.error(t('undoRedo.undoFailed'));

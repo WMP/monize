@@ -3,6 +3,7 @@ import { renderHook, act } from '@/test/render';
 
 import toast from 'react-hot-toast';
 import { useUndoRedo } from './useUndoRedo';
+import { clearUndoRefused, getUndoRefusal } from '@/lib/undoRedoSignal';
 
 vi.mock('@/lib/action-history', () => ({
   actionHistoryApi: {
@@ -78,6 +79,51 @@ describe('useUndoRedo', () => {
 
     expect(actionHistoryApi.redo).toHaveBeenCalled();
     expect(toast.success).toHaveBeenCalledWith('Redone: Created tag "Test"');
+  });
+
+  it('disables Undo after a refusal 409 and the next undo makes no request', async () => {
+    clearUndoRefused();
+    actionHistoryApi.undo.mockRejectedValue({
+      response: { status: 409, data: { message: 'Split legs changed', errorCode: 'UNDO_SPLIT_LEGS_CHANGED' } },
+    });
+    const { result } = renderHook(() => useUndoRedo());
+
+    await act(async () => {
+      await result.current.handleUndo();
+    });
+    expect(toast.error).toHaveBeenCalledWith('Split legs changed');
+    expect(getUndoRefusal()).toBe('Split legs changed');
+
+    await act(async () => {
+      await result.current.handleUndo();
+    });
+    expect(actionHistoryApi.undo).toHaveBeenCalledTimes(1);
+    expect(toast.error).toHaveBeenCalledTimes(2);
+
+    clearUndoRefused();
+    await act(async () => {
+      await result.current.handleUndo();
+    });
+    expect(actionHistoryApi.undo).toHaveBeenCalledTimes(2);
+    clearUndoRefused();
+  });
+
+  it('does not disable Undo on a 409 without a refusal code or on a non-409 error', async () => {
+    clearUndoRefused();
+    actionHistoryApi.undo.mockRejectedValueOnce({
+      response: { status: 409, data: { message: 'Conflict' } },
+    });
+    actionHistoryApi.undo.mockRejectedValueOnce({ response: { status: 500, data: {} } });
+    const { result } = renderHook(() => useUndoRedo());
+
+    await act(async () => {
+      await result.current.handleUndo();
+    });
+    await act(async () => {
+      await result.current.handleUndo();
+    });
+    expect(getUndoRefusal()).toBeNull();
+    expect(actionHistoryApi.undo).toHaveBeenCalledTimes(2);
   });
 
   it('should show success toast (not error) when nothing to undo', async () => {
