@@ -116,6 +116,18 @@ describe('PortfolioPerformanceCard', () => {
     expect(screen.getByText('+$200.00')).toBeInTheDocument();
   });
 
+  // The Investments page asks once for this card and the value chart (#1888).
+  it('shows the answer the page hands it without asking again', async () => {
+    render(
+      <PortfolioPerformanceCard
+        periodResults={{ results: everyPreset(), status: 'ready' }}
+      />,
+    );
+
+    expect(await screen.findByText('+2.00%')).toBeInTheDocument();
+    expect(api).not.toHaveBeenCalled();
+  });
+
   it('says what is not in these figures once, under the heading', async () => {
     render(<PortfolioPerformanceCard />);
 

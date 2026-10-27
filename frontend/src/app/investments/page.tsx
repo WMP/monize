@@ -35,6 +35,8 @@ import { useFinancialToday } from '@/hooks/useFinancialToday';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useInvestmentData } from '@/hooks/useInvestmentData';
+import { usePortfolioPeriodResults } from '@/hooks/usePortfolioPeriodResults';
+import { PORTFOLIO_PERIOD_PRESETS } from '@/types/net-worth';
 import { useBrokerageFilterOptions } from '@/hooks/useBrokerageFilterOptions';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
@@ -207,6 +209,24 @@ function InvestmentsContent() {
     );
   }, [data.selectedAccountIds, data.selectableAccounts, tc, getAccountDisplayName]);
 
+  // One account in view reports in its own currency, everywhere on the page.
+  const singleAccountCurrency =
+    data.selectedAccountIds.length === 1
+      ? data.accounts.find(a => a.id === data.selectedAccountIds[0])?.currencyCode ?? null
+      : null;
+
+  // Asked once for the page: "Portfolio performance" lists every window, and
+  // the value chart's figures for any range the batch covers are the same
+  // answer. Two requests valued the same history twice, on the same event
+  // loop, at the same moment (#1888).
+  const periodResults = usePortfolioPeriodResults({
+    periods: PORTFOLIO_PERIOD_PRESETS.join(','),
+    accountIds:
+      data.selectedAccountIds.length > 0 ? data.selectedAccountIds.join(',') : undefined,
+    displayCurrency: singleAccountCurrency ?? undefined,
+    reloadKey: data.writeRefreshKey,
+  });
+
   return (
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
@@ -284,23 +304,17 @@ function InvestmentsContent() {
             <InvestmentValueChart
               accountIds={data.selectedAccountIds}
               refreshKey={data.writeRefreshKey}
-              displayCurrency={
-                data.selectedAccountIds.length === 1
-                  ? data.accounts.find(a => a.id === data.selectedAccountIds[0])?.currencyCode ?? null
-                  : null
-              }
+              displayCurrency={singleAccountCurrency}
               titleSuffix={accountFilterLabel}
+              periodResults={periodResults}
             />
             {/* What the INVESTMENTS earned over each trailing period, with
                 deposits, withdrawals and idle cash taken out. */}
             <PortfolioPerformanceCard
               accountIds={data.selectedAccountIds}
               reloadKey={data.writeRefreshKey}
-              displayCurrency={
-                data.selectedAccountIds.length === 1
-                  ? data.accounts.find(a => a.id === data.selectedAccountIds[0])?.currencyCode ?? null
-                  : null
-              }
+              displayCurrency={singleAccountCurrency}
+              periodResults={periodResults}
             />
           </div>
 

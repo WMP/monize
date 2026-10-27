@@ -3,7 +3,10 @@
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
-import { usePortfolioPeriodResults } from '@/hooks/usePortfolioPeriodResults';
+import {
+  usePortfolioPeriodResults,
+  type UsePortfolioPeriodResultsValue,
+} from '@/hooks/usePortfolioPeriodResults';
 import { PerformancePeriodsCard } from '@/components/ui/PerformancePeriodsCard';
 import { withheldPeriodCause } from './portfolio-period-result';
 import {
@@ -22,6 +25,11 @@ interface PortfolioPerformanceCardProps {
   displayCurrency?: string | null;
   /** Bumped by the page after a write, so the figures follow the ledger. */
   reloadKey?: number;
+  /**
+   * The batch answer, when the page asked for it once on behalf of this card
+   * and the value chart beside it (#1888). Absent, the card asks for itself.
+   */
+  periodResults?: UsePortfolioPeriodResultsValue;
 }
 
 /**
@@ -59,17 +67,20 @@ export function PortfolioPerformanceCard({
   accountIds,
   displayCurrency,
   reloadKey,
+  periodResults,
 }: PortfolioPerformanceCardProps) {
   const t = useTranslations('investments');
   const { formatCurrency, formatSignedPercent, defaultCurrency } =
     useNumberFormat();
-  const { results, status } = usePortfolioPeriodResults({
+  const own = usePortfolioPeriodResults({
     periods: PORTFOLIO_PERIOD_PRESETS.join(','),
     accountIds:
       accountIds && accountIds.length > 0 ? accountIds.join(',') : undefined,
     displayCurrency: displayCurrency ?? undefined,
     reloadKey,
+    skip: periodResults !== undefined,
   });
+  const { results, status } = periodResults ?? own;
 
   /**
    * The windows on screen: what the server reported, in the canonical order,
