@@ -348,5 +348,8 @@
   "selectPeople": "この分割に含める人を1人以上選んでください。",
   "splitComplete": "適用できます",
   "splitTools": "その他の分割オプション",
-  "repaymentExplanation": "提案は各メンバーの差引残高に基づきます。あなたの特定の支出を立て替えていない人に返済する場合もあります。"
+  "repaymentExplanation": "提案は各メンバーの差引残高に基づきます。あなたの特定の支出を立て替えていない人に返済する場合もあります。",
+  "currencyConversion": "通貨換算",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "残高と合計の通貨：{currency}"
 }

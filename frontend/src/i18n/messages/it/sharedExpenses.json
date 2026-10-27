@@ -348,5 +348,8 @@
   "selectPeople": "Scegli almeno una persona per questa suddivisione.",
   "splitComplete": "Pronto per applicare",
   "splitTools": "Altre opzioni di suddivisione",
-  "repaymentExplanation": "I suggerimenti usano il saldo netto di ogni persona. Potresti rimborsare qualcuno che non ha pagato la tua specifica spesa."
+  "repaymentExplanation": "I suggerimenti usano il saldo netto di ogni persona. Potresti rimborsare qualcuno che non ha pagato la tua specifica spesa.",
+  "currencyConversion": "Conversione valutaria",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "Saldi e totali in {currency}"
 }

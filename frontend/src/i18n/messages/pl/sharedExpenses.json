@@ -348,5 +348,8 @@
   "selectPeople": "Wybierz co najmniej jedną osobę do tego podziału.",
   "splitComplete": "Podział gotowy do zastosowania",
   "splitTools": "Więcej opcji podziału",
-  "repaymentExplanation": "Propozycje uwzględniają saldo każdej osoby w grupie. Możesz zwracać pieniądze komuś, kto nie płacił za Twój konkretny wydatek."
+  "repaymentExplanation": "Propozycje uwzględniają saldo każdej osoby w grupie. Możesz zwracać pieniądze komuś, kto nie płacił za Twój konkretny wydatek.",
+  "currencyConversion": "Przeliczenie walut",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "Salda i sumy w {currency}"
 }

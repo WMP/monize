@@ -348,5 +348,8 @@
   "selectPeople": "Wähle mindestens eine Person für diese Aufteilung.",
   "splitComplete": "Bereit zum Übernehmen",
   "splitTools": "Weitere Aufteilungsoptionen",
-  "repaymentExplanation": "Die Vorschläge berücksichtigen den Nettosaldo jeder Person. Du zahlst möglicherweise jemandem zurück, der deine konkrete Ausgabe nicht bezahlt hat."
+  "repaymentExplanation": "Die Vorschläge berücksichtigen den Nettosaldo jeder Person. Du zahlst möglicherweise jemandem zurück, der deine konkrete Ausgabe nicht bezahlt hat.",
+  "currencyConversion": "Währungsumrechnung",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "Salden und Summen in {currency}"
 }

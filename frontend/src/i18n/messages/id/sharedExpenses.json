@@ -348,5 +348,8 @@
   "selectPeople": "Pilih setidaknya satu orang untuk pembagian ini.",
   "splitComplete": "Siap diterapkan",
   "splitTools": "Opsi pembagian lainnya",
-  "repaymentExplanation": "Saran menggunakan saldo bersih setiap orang. Anda mungkin membayar kembali kepada orang yang tidak membayar pengeluaran tertentu milik Anda."
+  "repaymentExplanation": "Saran menggunakan saldo bersih setiap orang. Anda mungkin membayar kembali kepada orang yang tidak membayar pengeluaran tertentu milik Anda.",
+  "currencyConversion": "Konversi mata uang",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "Saldo dan total dalam {currency}"
 }

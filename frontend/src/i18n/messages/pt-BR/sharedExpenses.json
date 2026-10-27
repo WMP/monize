@@ -348,5 +348,8 @@
   "selectPeople": "Escolha pelo menos uma pessoa para esta divisão.",
   "splitComplete": "Pronto para aplicar",
   "splitTools": "Mais opções de divisão",
-  "repaymentExplanation": "As sugestões usam o saldo líquido de cada pessoa. Você pode reembolsar alguém que não pagou aquela sua despesa específica."
+  "repaymentExplanation": "As sugestões usam o saldo líquido de cada pessoa. Você pode reembolsar alguém que não pagou aquela sua despesa específica.",
+  "currencyConversion": "Conversão de moedas",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "Saldos e totais em {currency}"
 }

@@ -281,7 +281,7 @@
   "linkedTransactionHelp": "Esta transacción pertenece a un apunte compartido aceptado. Abre Mis finanzas para revisar los importes o desvincúlala antes de editar. Los documentos añadidos aquí siguen siendo privados.",
   "previewFile": "Vista previa del archivo",
   "addSavedPerson": "Añadir una persona guardada",
-  "ORIGINAL_REFUND": "Cambio del gasto original",
+  "ORIGINAL_REFUND": "Tipo de cambio del gasto original",
   "deleteContact": "Eliminar contacto privado",
   "deleteContactHelp": "¿Eliminar este contacto y tus vínculos privados? Los participantes, gastos y saldos de los grupos no cambiarán.",
   "GROUP_ARCHIVED": "Archivó el grupo",
@@ -348,5 +348,8 @@
   "selectPeople": "Elige al menos una persona para este reparto.",
   "splitComplete": "Listo para aplicar",
   "splitTools": "Más opciones de reparto",
-  "repaymentExplanation": "Las sugerencias usan el saldo neto de cada persona. Puede que debas devolver dinero a alguien que no pagó tu gasto concreto."
+  "repaymentExplanation": "Las sugerencias usan el saldo neto de cada persona. Puede que debas devolver dinero a alguien que no pagó tu gasto concreto.",
+  "currencyConversion": "Conversión de divisas",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "Saldos y totales en {currency}"
 }

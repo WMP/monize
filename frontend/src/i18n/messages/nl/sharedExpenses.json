@@ -281,7 +281,7 @@
   "linkedTransactionHelp": "Deze transactie hoort bij een geaccepteerde gedeelde boeking. Open Mijn financiën om de bedragen te controleren of koppel de boeking los voordat je deze bewerkt. Hier toegevoegde documenten blijven privé.",
   "previewFile": "Bestand bekijken",
   "addSavedPerson": "Iemand uit je personen toevoegen",
-  "ORIGINAL_REFUND": "Koers van oorspronkelijke uitgave",
+  "ORIGINAL_REFUND": "Koers van de oorspronkelijke uitgave",
   "deleteContact": "Privécontact verwijderen",
   "deleteContactHelp": "Dit contact en jouw privékoppelingen verwijderen? Groepsdeelnemers, uitgaven en saldi blijven ongewijzigd.",
   "GROUP_ARCHIVED": "Groep gearchiveerd",
@@ -348,5 +348,8 @@
   "selectPeople": "Kies minstens één persoon voor deze verdeling.",
   "splitComplete": "Klaar om toe te passen",
   "splitTools": "Meer verdeelopties",
-  "repaymentExplanation": "Suggesties zijn gebaseerd op ieders nettosaldo. Je kunt iemand terugbetalen die jouw specifieke uitgave niet heeft betaald."
+  "repaymentExplanation": "Suggesties zijn gebaseerd op ieders nettosaldo. Je kunt iemand terugbetalen die jouw specifieke uitgave niet heeft betaald.",
+  "currencyConversion": "Valutaomrekening",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "Saldi en totalen in {currency}"
 }

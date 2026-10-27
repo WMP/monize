@@ -281,7 +281,7 @@
   "linkedTransactionHelp": "Giao dịch này thuộc về một mục kế toán chung được chấp nhận. Mở Tài chính của tôi để xem lại số tiền hoặc hủy liên kết trước khi chỉnh sửa. Các tài liệu được thêm vào đây vẫn ở chế độ riêng tư.",
   "previewFile": "Xem trước tập tin",
   "addSavedPerson": "Thêm ai đó vào nhóm của bạn",
-  "ORIGINAL_REFUND": "Tỷ giá của khoản chi gốc",
+  "ORIGINAL_REFUND": "Tỷ giá của khoản chi ban đầu",
   "deleteContact": "Xóa liên hệ riêng tư",
   "deleteContactHelp": "Xóa liên hệ này và các liên kết riêng tư của bạn? Những người tham gia nhóm, chi phí và số dư sẽ giữ nguyên.",
   "GROUP_ARCHIVED": "Đã lưu trữ nhóm",
@@ -348,5 +348,8 @@
   "selectPeople": "Chọn ít nhất một người cho phần chia này.",
   "splitComplete": "Sẵn sàng áp dụng",
   "splitTools": "Các tùy chọn chia khác",
-  "repaymentExplanation": "Các gợi ý dựa trên số dư ròng của từng người. Bạn có thể hoàn tiền cho người không trực tiếp trả khoản chi cụ thể của bạn."
+  "repaymentExplanation": "Các gợi ý dựa trên số dư ròng của từng người. Bạn có thể hoàn tiền cho người không trực tiếp trả khoản chi cụ thể của bạn.",
+  "currencyConversion": "Quy đổi tiền tệ",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "Số dư và tổng tính bằng {currency}"
 }

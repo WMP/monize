@@ -348,5 +348,8 @@
   "selectPeople": "이 분할에 포함할 사람을 한 명 이상 선택하세요.",
   "splitComplete": "적용할 준비가 되었어요",
   "splitTools": "추가 분할 옵션",
-  "repaymentExplanation": "제안은 각 사람의 순잔액을 기준으로 합니다. 해당 지출을 직접 대신 내지 않은 사람에게 상환할 수도 있습니다."
+  "repaymentExplanation": "제안은 각 사람의 순잔액을 기준으로 합니다. 해당 지출을 직접 대신 내지 않은 사람에게 상환할 수도 있습니다.",
+  "currencyConversion": "통화 환산",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "잔액 및 합계 통화: {currency}"
 }
