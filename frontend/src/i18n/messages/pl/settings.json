@@ -387,7 +387,8 @@
         "EMAIL_RECEIPTS": "Potwierdzenia e-maili",
         "BONDS": "Obligacje",
         "AI_REVIEW": "Propozycje przeglądu AI",
-        "WARRANTIES": "Przypomnienia o gwarancjach"
+        "WARRANTIES": "Przypomnienia o gwarancjach",
+        "SHARED_EXPENSES": "Rozliczenia"
       },
       "channelNotApplicable": "Nie dotyczy tego typu powiadomienia",
       "emailToggleLabel": "E-mail (raport) dla: {category}",

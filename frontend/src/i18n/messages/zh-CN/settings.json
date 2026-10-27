@@ -387,7 +387,8 @@
         "EMAIL_RECEIPTS": "电子邮件收据",
         "BONDS": "债券",
         "AI_REVIEW": "AI 审核提案",
-        "WARRANTIES": "保修提醒"
+        "WARRANTIES": "保修提醒",
+        "SHARED_EXPENSES": "共同支出"
       },
       "channelNotApplicable": "不适用于此通知类型",
       "emailToggleLabel": "{category} 的报告邮件",

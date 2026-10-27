@@ -387,7 +387,8 @@
         "EMAIL_RECEIPTS": "E-mailkwitanties",
         "BONDS": "Obligaties",
         "AI_REVIEW": "AI-beoordelingsvoorstellen",
-        "WARRANTIES": "Garantieherinneringen"
+        "WARRANTIES": "Garantieherinneringen",
+        "SHARED_EXPENSES": "Gedeelde uitgaven"
       },
       "channelNotApplicable": "Niet van toepassing op dit type melding",
       "emailToggleLabel": "Rapport-e-mail voor {category}",

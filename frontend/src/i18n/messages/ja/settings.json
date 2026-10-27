@@ -387,7 +387,8 @@
         "EMAIL_RECEIPTS": "メール領収書",
         "BONDS": "債券",
         "AI_REVIEW": "AIレビュー提案",
-        "WARRANTIES": "保証のリマインダー"
+        "WARRANTIES": "保証のリマインダー",
+        "SHARED_EXPENSES": "共同支出"
       },
       "channelNotApplicable": "この通知タイプには適用されません",
       "emailToggleLabel": "{category} のレポートメール",

@@ -387,7 +387,8 @@
         "EMAIL_RECEIPTS": "Ricevute email",
         "BONDS": "Obbligazioni",
         "AI_REVIEW": "Proposte di revisione IA",
-        "WARRANTIES": "Promemoria delle garanzie"
+        "WARRANTIES": "Promemoria delle garanzie",
+        "SHARED_EXPENSES": "Spese condivise"
       },
       "channelNotApplicable": "Non applicabile a questo tipo di notifica",
       "emailToggleLabel": "Email (report) per {category}",

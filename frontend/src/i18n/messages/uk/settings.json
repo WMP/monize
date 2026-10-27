@@ -387,7 +387,8 @@
         "EMAIL_RECEIPTS": "Квитанції електронної пошти",
         "BONDS": "Облігації",
         "AI_REVIEW": "Пропозиції перевірки ШІ",
-        "WARRANTIES": "Нагадування про гарантії"
+        "WARRANTIES": "Нагадування про гарантії",
+        "SHARED_EXPENSES": "Спільні витрати"
       },
       "channelNotApplicable": "Не застосовно для цього типу сповіщень",
       "emailToggleLabel": "Ел. пошта (звіт) для «{category}»",
