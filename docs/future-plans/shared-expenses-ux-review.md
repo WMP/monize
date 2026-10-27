@@ -104,3 +104,46 @@ study from the UX contract, comfort with the private-ledger vocabulary, and
 whether group navigation remains easy with long histories. Existing pending
 maintainer scope/security approval and the smaller review-series agreement are
 separate from this refinement.
+
+## Maintainer feedback iteration
+
+The follow-up prioritizes the maintainer’s Transactions-to-Shared-Expenses request.
+A new payment offers **Save & Share** in the existing submit dropdown. The existing
+transaction save completes first; the host then closes its modal through
+`afterModalHistoryPop` and opens the saved row’s sharing flow. The choice is local
+to that form and does not change the stored Create/Create & New preference.
+Selecting a group, reviewing the split and accepting the personal-finance preview
+remain explicit actions. Matching an older group entry is a collapsed secondary
+path, loaded only when requested.
+
+This iteration also adopts the navigation position, profile-name default, red
+remove button, toggles, Add Expense dropdown and action wording requested by the
+maintainer. Cancellation explains the retained history and its effect on balances.
+The group’s managed account remains an OTHER account with SHARED_SETTLEMENT purpose;
+there is no new AccountType. The copy explains that it tracks debts rather than
+spendable cash.
+
+Connecting a group does not select every entry for personal finances. The shared
+review resolver retains NOT_BOOKED/MISSING_RATE information but sets needsReview
+only for a previously accepted posting with a changed effect or unavailable
+conversion. All consumers use that resolver; optional group-only entries no longer
+raise a global review banner. Changed accepted entries and revoked access retain
+their existing warnings.
+
+The same author reviewed three areas: Monize controls and the normal workflow;
+financial/privacy boundaries; and failure/recovery behavior. This is not three
+independent reviews or a human usability study. Unit regressions cover the
+profile/currency defaults, optional review, unsaved-document cancellation,
+single-save handoff, failed saves and stale group/search results. Inspection found
+one adjacent payment-editor defect: converting one source into multiple payments
+dropped its selected category portions. The conversion now retains sourceSplits;
+a UI test checks the original portions in the next server-preview request.
+
+No balance formula, ownership policy, schema, dependency or guard threshold changes
+in this iteration. Existing transactions still use the shared finance plan for
+preview and commit, group/account/row locks, revision and fingerprint checks,
+command receipts and post-commit balance-cache invalidation.
+
+Verification results and new captures are recorded in the task ledger. The requester capped further iteration: finish this change and
+fix publication-blocking failures only. Long-history usability, the planned human
+study and maintainer scope/review-series approval remain open.

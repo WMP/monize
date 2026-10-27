@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -151,10 +152,10 @@ export function SharedDocumentCopy({
               {files.data.find((f) => f.id === source)
                 ?.originalAttachmentId && (
                 <label className="flex items-center gap-3 text-sm">
-                  <input
-                    type="checkbox"
+                  <ToggleSwitch
+                    label={t("includeOriginal")}
                     checked={original}
-                    onChange={(e) => setOriginal(e.target.checked)}
+                    onChange={setOriginal}
                   />
                   {t("includeOriginal")}
                 </label>

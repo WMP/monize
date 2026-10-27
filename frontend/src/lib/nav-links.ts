@@ -56,13 +56,13 @@ export const NAV_LINKS: NavLinkDef[] = [
 
 export const TOOLS_LINKS: NavLinkDef[] = [
   { href: '/payees', labelKey: 'payees' },
-  { href: '/shared-expenses', labelKey: 'sharedExpenses', ownerOnly: true },
   { href: '/categories', labelKey: 'categories' },
   { href: '/securities', labelKey: 'securities' },
   { href: '/currencies', labelKey: 'currencies' },
   { href: '/institutions', labelKey: 'institutions' },
   { href: '/tags', labelKey: 'tags' },
   { href: '/warranties', labelKey: 'warranties' },
+  { href: '/shared-expenses', labelKey: 'sharedExpenses', ownerOnly: true },
   // Owner-only: every /payroll-deductions route refuses a delegate session.
   { href: '/taxes', labelKey: 'taxes', ownerOnly: true },
   { href: '/rules', labelKey: 'rules' },

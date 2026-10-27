@@ -7,10 +7,10 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowPathIcon,
   ChevronLeftIcon,
-  PlusIcon,
   UsersIcon,
 } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
+import { SharedAddEntryButton } from "@/components/shared-expenses/SharedAddEntryButton";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -285,14 +285,10 @@ function GroupContent({ groupId }: { groupId: string }) {
               actions={
                 <div className="flex flex-wrap items-stretch gap-2">
                   {writable && (
-                    <Button
-                      className="flex-1 sm:flex-none"
+                    <SharedAddEntryButton
                       disabled={!fresh}
-                      onClick={() => setForm({ kind: "EXPENSE" })}
-                    >
-                      <PlusIcon className="mr-2 h-5 w-5" />
-                      {t("addExpense")}
-                    </Button>
+                      onAdd={(kind) => setForm({ kind })}
+                    />
                   )}
                   <Button
                     variant="outline"
@@ -523,15 +519,6 @@ function GroupContent({ groupId }: { groupId: string }) {
                     </Button>
                   </div>
                 </div>
-                {writable && (
-                  <Button
-                    variant="ghost"
-                    disabled={!fresh}
-                    onClick={() => setForm({ kind: "INCOME" })}
-                  >
-                    {t("addIncome")}
-                  </Button>
-                )}
               </>
             )}
             {tab === "balances" && (

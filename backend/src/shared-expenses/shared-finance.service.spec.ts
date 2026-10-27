@@ -177,8 +177,8 @@ describe("Private shared-finance lifecycle", () => {
     );
     expect(writeSharedFinance).not.toHaveBeenCalled();
   });
-  it("reports unbooked own costs, while an unconnected group has no private pending count", async () => {
-    expect((await service.overview("owner", "group")).pendingCount).toBe(1);
+  it("keeps unbooked own costs optional, including in an already connected group", async () => {
+    expect((await service.overview("owner", "group")).pendingCount).toBe(0);
     jest.mocked(sharedIntegration).mockResolvedValue(null);
     expect(await service.overview("owner", "group")).toEqual({
       integration: null,

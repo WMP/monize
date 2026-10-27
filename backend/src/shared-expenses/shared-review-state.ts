@@ -31,5 +31,11 @@ export function sharedReviewState(
             (effect.originalCash !== "0.0000" || effect.personal !== "0.0000")
           ? "NOT_BOOKED"
           : null;
-  return { effect, reviewReason, needsReview: reviewReason !== null };
+  // Connecting a group does not opt its owner into every entry. Review protects
+  // accepted private postings; an unbooked entry remains an optional addition.
+  return {
+    effect,
+    reviewReason,
+    needsReview: posting !== null && reviewReason !== null,
+  };
 }

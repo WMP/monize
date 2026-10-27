@@ -71,10 +71,10 @@ describe("Explicit publication of a private document", () => {
   }
   it("publishes a separate converted copy without the original unless explicitly chosen", async () => {
     const onSaved = await choose();
-    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(screen.getByRole("switch")).not.toBeChecked();
     await act(async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: "Create shared copy" }),
+        screen.getByRole("button", { name: "Create Shared Copy" }),
       );
     });
     await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
@@ -89,21 +89,21 @@ describe("Explicit publication of a private document", () => {
   });
   it("resets original consent when the document changes and reuses the operation on a network retry", async () => {
     const onSaved = await choose();
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("switch"));
     fireEvent.change(screen.getByLabelText("Document to copy"), {
       target: { value: "another" },
     });
     fireEvent.change(screen.getByLabelText("Document to copy"), {
       target: { value: "converted" },
     });
-    expect(screen.getByRole("checkbox")).not.toBeChecked();
-    fireEvent.click(screen.getByRole("checkbox"));
+    expect(screen.getByRole("switch")).not.toBeChecked();
+    fireEvent.click(screen.getByRole("switch"));
     vi.mocked(sharedDocumentsApi.publish).mockRejectedValueOnce(
       new Error("Network failed"),
     );
     await act(async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: "Create shared copy" }),
+        screen.getByRole("button", { name: "Create Shared Copy" }),
       );
     });
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -111,7 +111,7 @@ describe("Explicit publication of a private document", () => {
     );
     await act(async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: "Create shared copy" }),
+        screen.getByRole("button", { name: "Create Shared Copy" }),
       );
     });
     await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
@@ -130,7 +130,7 @@ describe("Explicit publication of a private document", () => {
       );
     });
     expect(
-      screen.getByRole("button", { name: "Create shared copy" }),
+      screen.getByRole("button", { name: "Create Shared Copy" }),
     ).toBeDisabled();
     await act(async () => {
       fireEvent.click(
@@ -142,7 +142,7 @@ describe("Explicit publication of a private document", () => {
         warrantyId: "warranty",
       }),
     );
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(sharedDocumentsApi.publish).not.toHaveBeenCalled();
   });
 });

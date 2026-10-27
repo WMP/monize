@@ -125,7 +125,10 @@ export function SharedEntryDetail({
                   {t("refund")}
                 </Button>
               )}
-              <Button variant="ghost" onClick={() => setReverse(true)}>
+              <Button
+                variant="ghost"
+                onClick={() => leave(() => setReverse(true))}
+              >
                 {t("reverse")}
               </Button>
             </div>

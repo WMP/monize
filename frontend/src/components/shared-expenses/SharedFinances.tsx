@@ -61,8 +61,9 @@ export function SharedFinances({
     }
   };
   const data = finances.dataKey === group.id ? finances.data : null;
+  const fresh = !finances.isLoading && !finances.error && !!data;
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy={finances.isLoading}>
       <Badge variant="blue">{t("privateOnly")}</Badge>
       <SharedNotice>{t("financialPrivacy")}</SharedNotice>
       <SharedError
@@ -76,14 +77,20 @@ export function SharedFinances({
             {t("financeHelp")}
           </p>
           <div className="mt-5 max-w-md space-y-3">
-            <Input
-              label={t("settlementAccount")}
-              value={accountName}
-              maxLength={120}
-              onChange={(e) => setAccountName(e.target.value)}
-            />
+            <details>
+              <summary className="min-h-10 cursor-pointer text-sm font-medium">
+                {t("advanced")}
+              </summary>
+              <Input
+                label={t("settlementAccount")}
+                value={accountName}
+                disabled={busy || !fresh}
+                maxLength={120}
+                onChange={(e) => setAccountName(e.target.value)}
+              />
+            </details>
             <Button
-              disabled={!accountName.trim()}
+              disabled={!fresh || !accountName.trim()}
               isLoading={busy}
               onClick={enable}
             >
@@ -98,12 +105,14 @@ export function SharedFinances({
         data?.integration && (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p>
-                {t("needsReview")}{" "}
-                <Badge variant={data.pendingCount ? "amber" : "gray"}>
-                  {formatNumber(data.pendingCount, 0)}
-                </Badge>
-              </p>
+              {data.pendingCount > 0 && (
+                <p>
+                  {t("needsReview")}{" "}
+                  <Badge variant={data.pendingCount ? "amber" : "gray"}>
+                    {formatNumber(data.pendingCount, 0)}
+                  </Badge>
+                </p>
+              )}
               <Link
                 className="text-blue-600 dark:text-blue-400 hover:underline"
                 href={`/accounts/${data.integration.accountId}`}
@@ -145,10 +154,15 @@ export function SharedFinances({
                           : setSelected(row)
                       }
                       disabled={
-                        row.state === "DRAFT" && !row.posting && !onOpenEntry
+                        !fresh ||
+                        (row.state === "DRAFT" && !row.posting && !onOpenEntry)
                       }
                     >
-                      {t("review")}
+                      {t(
+                        row.posting || row.state === "DRAFT"
+                          ? "review"
+                          : "book",
+                      )}
                     </Button>
                   </div>
                 </Card>

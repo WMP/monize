@@ -115,7 +115,7 @@ export function SharedCombinedBooking({
             disabled={!finances.data || !!finances.error}
             onClick={enable}
           >
-            {t("enableFinance")}
+            {t("next")}
           </Button>
         </>
       }

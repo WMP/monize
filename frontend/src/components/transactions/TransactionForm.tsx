@@ -1,6 +1,7 @@
 'use client';
 
 import { SharedLinkedTransactionNotice } from "@/components/shared-expenses/SharedLinkedTransactionNotice";
+import { isSharedPaymentAccount } from "@/lib/shared-bank-eligibility";
 
 import { useState, useEffect, useMemo, useRef, useCallback, MutableRefObject, type BaseSyntheticEvent } from 'react';
 import { useTranslations } from 'next-intl';
@@ -183,6 +184,8 @@ interface TransactionFormProps {
    * transaction shows no Warranties line.
    */
   onAddWarrantyAfterCreate?: (created: Transaction) => void;
+  /** Continue with the saved bank row; the host closes its modal before navigating. */
+  onShareAfterCreate?: (created: Transaction) => void;
   /**
    * Opens one linked warranty's page from the Warranties line, through the
    * same close-then-navigate as `onAddWarranty`. A plain link cannot do it:
@@ -204,8 +207,11 @@ type AfterCreate = 'addWarranty';
 // Transaction mode type
 type TransactionMode = 'normal' | 'split' | 'transfer';
 
-function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, defaultDate, onSuccess, onCancel, onDirtyChange, submitRef, onCreateAnother, initialStagedFiles, onAddWarranty, onAddWarrantyAfterCreate, onOpenWarranty }: TransactionFormFieldsProps) {
+function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, defaultDate, onSuccess, onCancel, onDirtyChange, submitRef, onCreateAnother, initialStagedFiles, onAddWarranty, onAddWarrantyAfterCreate, onShareAfterCreate, onOpenWarranty }: TransactionFormFieldsProps) {
   const t = useTranslations('transactions');
+  const sharedT = useTranslations('sharedExpenses');
+  const userId = useAuthStore((s) => s.user?.id);
+  const [shareAfterCreate, setShareAfterCreate] = useState(false);
   // An acting delegate never sees the Warranties line: a warranty is the
   // owner's to add, and the same rule makes the Warranties page read-only.
   const actingAsDelegate = useAuthStore((s) => s.actingAsUserId) !== null;
@@ -413,6 +419,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
 
   const watchedAccountId = useWatch({ control, name: 'accountId' });
   const watchedAmount = useWatch({ control, name: 'amount' });
+  const watchedStatus = useWatch({ control, name: 'status' });
   const watchedCurrencyCode = useWatch({ control, name: 'currencyCode' });
   const watchedPayeeName = useWatch({ control, name: 'payeeName' });
   // Read live so the links under the field track what is being typed. The
@@ -1244,6 +1251,12 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   };
 
   const modeLabel = t(mode === 'transfer' ? 'form.modeLabel.transfer' : 'form.modeLabel.transaction');
+  const canCreateShared = !transaction && !!onShareAfterCreate && !actingAsDelegate &&
+    !!userId && selectedAccount?.userId === userId && !selectedIsJoint &&
+    isSharedPaymentAccount(selectedAccount) && mode !== 'transfer' &&
+    watchedStatus !== TransactionStatus.VOID && watchedStatus !== TransactionStatus.RECONCILED &&
+    watchedAmount !== undefined && watchedAmount !== 0 &&
+    (mode !== 'split' || splits.every((split) => split.splitType === 'category'));
   // The two behaviours the create button can carry. Order is fixed: 'close'
   // first, because it is what the button did before this choice existed.
   const submitOptions = [
@@ -1252,11 +1265,12 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
       label: t('form.submitCreate', { mode: modeLabel }),
       description: t('form.submitCreateDescription'),
     },
-    {
+    ...(canCreateAnother ? [{
       id: 'new',
       label: t('form.submitCreateAndNew', { mode: modeLabel }),
       description: t('form.submitCreateAndNewDescription'),
-    },
+    }] : []),
+    ...(canCreateShared ? [{ id: 'shared', label: sharedT('saveAndShare'), description: sharedT('saveAndShareHelp') }] : []),
   ];
 
   /**
@@ -1268,6 +1282,10 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   const finishAfterCreate = (accountId: string, created: Transaction, then?: AfterCreate) => {
     if (then === 'addWarranty' && onAddWarrantyAfterCreate) {
       onAddWarrantyAfterCreate(created);
+      return;
+    }
+    if (canCreateShared && shareAfterCreate) {
+      onShareAfterCreate?.(created);
       return;
     }
     if (canCreateAnother && submitMode === 'new') {
@@ -1907,9 +1925,12 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
         onCancel={onCancel}
         submitLabel={t(transaction ? 'form.submitUpdate' : 'form.submitCreate', { mode: modeLabel })}
         isSubmitting={isLoading}
-        submitOptions={canCreateAnother ? submitOptions : undefined}
-        selectedSubmitOptionId={submitMode}
-        onSubmitOptionChange={(id) => setSubmitMode(id === 'new' ? 'new' : 'close')}
+        submitOptions={canCreateAnother || canCreateShared ? submitOptions : undefined}
+        selectedSubmitOptionId={canCreateShared && shareAfterCreate ? 'shared' : submitMode}
+        onSubmitOptionChange={(id) => {
+          setShareAfterCreate(id === 'shared');
+          if (id !== 'shared') setSubmitMode(id === 'new' ? 'new' : 'close');
+        }}
         submitOptionsLabel={t('form.submitOptions')}
       />
 

@@ -210,6 +210,40 @@ describe("Shared entry and personal booking commit under enforced RLS", () => {
     );
     expect(await balances()).toEqual(before);
   });
+  it("keeps later group-only expenses optional after the owner has accepted another entry", async () => {
+    const review = h.module.get(SharedReviewService);
+    const preview = await asOwner(() => combined.preview(user, groupId, dto));
+    await asOwner(() =>
+      combined.save(user, groupId, {
+        ...dto,
+        previewFingerprint: preview.fingerprint,
+      }),
+    );
+    const before = await balances();
+    const optional = await asOwner(() =>
+      entries.save(user, groupId, {
+        ...dto.entry,
+        ...command(0),
+        title: "Kept only in the group",
+      }),
+    );
+    expect(await asOwner(() => finance.overview(user, groupId))).toMatchObject({
+      pendingCount: 0,
+      entries: expect.arrayContaining([
+        expect.objectContaining({
+          entryId: optional.id,
+          posting: null,
+          reviewReason: "NOT_BOOKED",
+          needsReview: false,
+        }),
+      ]),
+    });
+    expect(await asOwner(() => review.summary(user))).toMatchObject({
+      pendingCount: 0,
+      unavailableGroupCount: 0,
+    });
+    expect(await balances()).toEqual(before);
+  });
   it("discloses pending personal changes without moving booked balances, and isolates the review to its owner", async () => {
     const review = h.module.get(SharedReviewService);
     const preview = await asOwner(() => combined.preview(user, groupId, dto));

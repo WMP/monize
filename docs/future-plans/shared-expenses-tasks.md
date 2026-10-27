@@ -224,3 +224,29 @@ between runs. Private logs are in ignored `tmp/shared-expenses-spec/`.
 The planned human usability study remains outstanding; automated browser checks
 do not replace it. Upstream CI and maintainer approval are reported separately
 from these local results.
+
+## Maintainer feedback verification (2026-10-27, one bounded iteration)
+
+- Backend: lint, both type checks and build passed. Changed tests selected 584 files; 583 passed and the instruction-size guard failed. The instruction text was shortened without changing its ceiling; all 17 cases in that guard then passed.
+- Frontend: lint, type check and locale checks passed. Changed tests ran 902 files /16,919 cases; 16,917 passed. The two failures were store cleanup order in a new test and an inline hover class. Code fixes use cleanup before store reset and the existing hover constant; all 372 cases across the four affected suites then passed.
+- PostgreSQL with enforced RLS: 42 cases passed initially; the new optional-entry test used a group revision for a new entry. Corrected its input to revision 0 and verified that case separately. All 43 selected cases have passing evidence; existing tests were not removed or quarantined.
+- Chromium, one worker, zero automatic retries: 8 existing journeys passed. Corrected the new test’s selectors to the actual Transactions form and verified Save & Share, including reload, original bank ID, USD 880 remaining cash, USD 40 personal cost and USD 80 owed back. Repeated that one journey to capture its visible financial proposal and assert the reloaded row.
+- The combined frontend build compiled but hit the local 4 GiB process-group limit during typechecking; the host still had 2251 MiB available. Sequential supported compile, type-check and generate stages passed, peaking at 1728/1433/247 MiB. The normal combined command is not claimed as passing.
+- Env/doc-manifest checks passed. No Docker was used. The owned database and app services were stopped after the browser run. No dependency, guard threshold or schema change was made in this iteration.
+
+Current captures from the running production frontend build, with synthetic data:
+
+- [Save & Share](shared-expenses-screenshots/save-and-share.png)
+- [Prefilled expense](shared-expenses-screenshots/shared-dinner-preview.png)
+- [Personal-finance proposal](shared-expenses-screenshots/personal-dinner-preview.png)
+- [Reloaded group](shared-expenses-screenshots/shared-dinner-saved.png)
+- [Phone layout](shared-expenses-screenshots/expense-preview-mobile.png)
+- [USD/CAD conversion](shared-expenses-screenshots/usd-cad-preview.png)
+
+The existing Transactions dialog has a visible heading but no accessible dialog
+name, and its payee input is named by its placeholder. The new browser test follows
+the existing form’s selectors and also asserts its heading; changing that shared
+modal is a separate accessibility follow-up. No human usability study or
+independent three-reviewer audit is claimed. Maintainer scope approval and the
+review-series decision remain open. This iteration retains Ken’s merge of c63acab637;
+subsequent main commits are not claimed as integrated.

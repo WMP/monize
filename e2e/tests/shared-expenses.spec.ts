@@ -28,16 +28,17 @@ test.describe("Shared expenses", () => {
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto(`/shared-expenses/${group.id}`);
     await page
-      .getByRole("button", { name: "Add expense", exact: true })
+      .getByRole("button", { name: "Add Expense", exact: true })
       .click();
+    await page.getByRole("button", { name: "Expense", exact: true }).click();
     const editor = page.getByRole("dialog", {
-      name: "Add expense",
+      name: "Add Expense",
       exact: true,
     });
     await editor.getByLabel("What was it for?").fill("Friday dinner");
     await editor.getByLabel("Amount", { exact: true }).fill("300");
     const save = editor.getByRole("button", {
-      name: "Save expense",
+      name: "Save Expense",
       exact: true,
     });
     await expect(save).toBeEnabled();
@@ -45,7 +46,7 @@ test.describe("Shared expenses", () => {
       "100.00",
     );
     await expect(
-      editor.getByRole("checkbox", { name: /Also record this in my finances/ }),
+      editor.getByRole("switch", { name: /Also record this in my finances/ }),
     ).not.toBeChecked();
     expect(
       (await api.get<SharedGroupFixture>(`/shared-expenses/groups/${group.id}`))
@@ -55,7 +56,7 @@ test.describe("Shared expenses", () => {
       .getByText("Your cost", { exact: false })
       .scrollIntoViewIfNeeded();
     await expect(
-      editor.getByRole("heading", { name: "Add expense", exact: true }),
+      editor.getByRole("heading", { name: "Add Expense", exact: true }),
     ).toBeInViewport();
     await expect(
       editor.getByText("Friday dinner", { exact: true }),
@@ -106,17 +107,18 @@ test.describe("Shared expenses", () => {
     const group = await createSharedGroup(api);
     await page.goto(`/shared-expenses/${group.id}`);
     await page
-      .getByRole("button", { name: "Add expense", exact: true })
+      .getByRole("button", { name: "Add Expense", exact: true })
       .first()
       .click();
+    await page.getByRole("button", { name: "Expense", exact: true }).click();
     const editor = page.getByRole("dialog", {
-      name: "Add expense",
+      name: "Add Expense",
       exact: true,
     });
     await editor.getByLabel("What was it for?").fill("Dinner after the hike");
     await editor.getByLabel("Amount", { exact: true }).fill("300");
     await editor
-      .getByRole("button", { name: "Change split", exact: true })
+      .getByRole("button", { name: "Change Split", exact: true })
       .click();
     const split = page.getByRole("dialog", {
       name: "How to split",
@@ -129,19 +131,19 @@ test.describe("Shared expenses", () => {
     await split.getByLabel("Share for Anna").fill("110");
     await split.getByLabel("Share for Bartek").fill("110");
     await expect(
-      split.getByRole("button", { name: "Apply split" }),
+      split.getByRole("button", { name: "Apply Split" }),
     ).toBeEnabled();
     await page.screenshot({
       path: info.outputPath("unequal-split-desktop.png"),
       fullPage: false,
       animations: "disabled",
     });
-    await split.getByRole("button", { name: "Apply split" }).click();
+    await split.getByRole("button", { name: "Apply Split" }).click();
     await expect(
-      editor.getByRole("button", { name: "Save expense", exact: true }),
+      editor.getByRole("button", { name: "Save Expense", exact: true }),
     ).toBeEnabled();
     await editor
-      .getByRole("button", { name: "Save expense", exact: true })
+      .getByRole("button", { name: "Save Expense", exact: true })
       .click();
     const saved = page.getByRole("dialog", { name: "Saved", exact: true });
     await saved
@@ -169,16 +171,16 @@ test.describe("Shared expenses", () => {
     });
     await page.getByRole("button", { name: "Balances", exact: true }).click();
     await page
-      .getByRole("button", { name: "Record repayment", exact: true })
+      .getByRole("button", { name: "Record Repayment", exact: true })
       .first()
       .click();
     const repayment = page.getByRole("dialog", {
-      name: "Record repayment",
+      name: "Record Repayment",
       exact: true,
     });
     await repayment.getByLabel("Amount", { exact: true }).fill("50");
     await repayment
-      .getByRole("button", { name: "Record repayment", exact: true })
+      .getByRole("button", { name: "Record Repayment", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Saved", exact: true })
@@ -226,22 +228,22 @@ test.describe("Shared expenses", () => {
       buffer: syntheticDocumentPng(),
     });
     await page
-      .getByRole("button", { name: "Upload files", exact: true })
+      .getByRole("button", { name: "Upload Files", exact: true })
       .click();
     await expect(
       page.getByRole("button", {
-        name: "Create expense from this file",
+        name: "Create Expense From This File",
         exact: true,
       }),
     ).toBeVisible();
     await page
       .getByRole("button", {
-        name: "Create expense from this file",
+        name: "Create Expense From This File",
         exact: true,
       })
       .click();
     const editor = page.getByRole("dialog", {
-      name: "Add expense",
+      name: "Add Expense",
       exact: true,
     });
     await expect(editor.getByLabel("What was it for?")).toHaveValue(
@@ -250,22 +252,22 @@ test.describe("Shared expenses", () => {
     await editor.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(
       page.getByRole("button", {
-        name: "Create expense from this file",
+        name: "Create Expense From This File",
         exact: true,
       }),
     ).toBeVisible();
     await page
       .getByRole("button", {
-        name: "Create expense from this file",
+        name: "Create Expense From This File",
         exact: true,
       })
       .click();
     await editor.getByLabel("Amount", { exact: true }).fill("240");
     await expect(
-      editor.getByRole("button", { name: "Save expense", exact: true }),
+      editor.getByRole("button", { name: "Save Expense", exact: true }),
     ).toBeEnabled();
     await editor
-      .getByRole("button", { name: "Save expense", exact: true })
+      .getByRole("button", { name: "Save Expense", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Saved", exact: true })
@@ -275,7 +277,7 @@ test.describe("Shared expenses", () => {
     await page.reload();
     await page.getByRole("button", { name: "Files", exact: true }).click();
     await expect(
-      page.getByRole("button", { name: "Open related entry", exact: true }),
+      page.getByRole("button", { name: "Open Related Entry", exact: true }),
     ).toBeVisible();
     const documents = await api.get<{
       items: { filename: string; sharedEntryId: string | null }[];
@@ -291,7 +293,7 @@ test.describe("Shared expenses", () => {
       animations: "disabled",
     });
     await page
-      .getByRole("button", { name: "Open related entry", exact: true })
+      .getByRole("button", { name: "Open Related Entry", exact: true })
       .click();
     await expect(
       page
@@ -321,14 +323,16 @@ test.describe("Shared expenses", () => {
     });
     await page.goto(`/shared-expenses/${group.id}`);
     await page
-      .getByRole("button", { name: "My finances", exact: true })
+      .getByRole("button", { name: "My Finances", exact: true })
       .click();
     await page
-      .getByRole("button", { name: "Connect my finances", exact: true })
+      .getByRole("button", { name: "Set Up My Finances", exact: true })
       .click();
-    await page.getByRole("button", { name: "Review", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Add to My Finances", exact: true })
+      .click();
     const booking = page.getByRole("dialog", {
-      name: "Connect to my ledger",
+      name: "Add to My Finances",
       exact: true,
     });
     await booking
@@ -340,10 +344,10 @@ test.describe("Shared expenses", () => {
       .click();
     await page.getByText("Travel meals", { exact: true }).click();
     await booking
-      .getByRole("button", { name: "Preview my ledger", exact: true })
+      .getByRole("button", { name: "Preview Changes", exact: true })
       .click();
     await expect(
-      booking.getByRole("button", { name: "Accept booking", exact: true }),
+      booking.getByRole("button", { name: "Save to My Finances", exact: true }),
     ).toBeVisible();
     await booking
       .getByRole("heading", { name: "Current proposal", exact: true })
@@ -351,12 +355,12 @@ test.describe("Shared expenses", () => {
       .scrollIntoViewIfNeeded();
     await expect(
       booking.getByRole("heading", {
-        name: "Connect to my ledger",
+        name: "Add to My Finances",
         exact: true,
       }),
     ).toBeInViewport();
     await expect(
-      booking.getByRole("button", { name: "Accept booking", exact: true }),
+      booking.getByRole("button", { name: "Save to My Finances", exact: true }),
     ).toBeInViewport();
     await page.screenshot({
       path: info.outputPath("bank-preview-desktop.png"),
@@ -364,7 +368,7 @@ test.describe("Shared expenses", () => {
       animations: "disabled",
     });
     await booking
-      .getByRole("button", { name: "Accept booking", exact: true })
+      .getByRole("button", { name: "Save to My Finances", exact: true })
       .click();
     await expect(booking).toHaveCount(0);
     await page.reload();
@@ -401,10 +405,10 @@ test.describe("Shared expenses", () => {
     await page.goto(`/shared-expenses/from-transaction/${imported.id}`);
     await page.getByLabel("Group", { exact: true }).selectOption(group.id);
     await page
-      .getByRole("button", { name: "Create a shared expense", exact: true })
+      .getByRole("button", { name: "Create A Shared Expense", exact: true })
       .click();
     const editor = page.getByRole("dialog", {
-      name: "Add expense",
+      name: "Add Expense",
       exact: true,
     });
     await expect(editor.getByLabel("What was it for?")).toHaveValue(
@@ -412,24 +416,29 @@ test.describe("Shared expenses", () => {
     );
     await editor.getByLabel("Amount", { exact: true }).fill("300");
     await editor
-      .getByRole("button", { name: "Review my finances", exact: true })
+      .getByRole("button", { name: "Review My Finances", exact: true })
       .click();
     await page
-      .getByRole("dialog", { name: "Connect my finances", exact: true })
-      .getByRole("button", { name: "Connect my finances", exact: true })
+      .getByRole("dialog", { name: "Set Up My Finances", exact: true })
+      .getByRole("button", { name: "Next", exact: true })
       .click();
     const booking = page.getByRole("dialog", {
-      name: "Connect to my ledger",
+      name: "Add to My Finances",
       exact: true,
     });
+    await booking
+      .locator("summary")
+      .filter({ hasText: "More options" })
+      .first()
+      .click();
     await booking
       .getByLabel("Shared part of this bank transaction", { exact: true })
       .fill("300");
     await booking
-      .getByRole("button", { name: "Preview my ledger", exact: true })
+      .getByRole("button", { name: "Preview Changes", exact: true })
       .click();
     await expect(
-      booking.getByRole("button", { name: "Accept booking", exact: true }),
+      booking.getByRole("button", { name: "Save to My Finances", exact: true }),
     ).toBeVisible();
     await page.setViewportSize({ width: 360, height: 800 });
     await booking
@@ -443,12 +452,12 @@ test.describe("Shared expenses", () => {
     ).toBe(true);
     await expect(
       booking.getByRole("heading", {
-        name: "Connect to my ledger",
+        name: "Add to My Finances",
         exact: true,
       }),
     ).toBeInViewport();
     await expect(
-      booking.getByRole("button", { name: "Accept booking", exact: true }),
+      booking.getByRole("button", { name: "Save to My Finances", exact: true }),
     ).toBeInViewport();
     await page.screenshot({
       path: info.outputPath("combined-bank-mobile.png"),
@@ -456,7 +465,7 @@ test.describe("Shared expenses", () => {
       animations: "disabled",
     });
     await booking
-      .getByRole("button", { name: "Accept booking", exact: true })
+      .getByRole("button", { name: "Save to My Finances", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Saved", exact: true })

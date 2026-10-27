@@ -233,24 +233,25 @@ export function SharedBankPaymentEditor({
             </div>
           ))}
         </fieldset>
-      ) : (
-        <SharedMoneyInput
-          label={t("sharedBankAmount")}
-          value={
-            input.sharedBankAmount ??
-            (mode === "existingBank" ? amount : (input.bankAmount ?? ""))
-          }
-          places={4}
-          currency={currency}
-          onChange={(sharedBankAmount) =>
-            onChange({ sharedBankAmount: sharedBankAmount || undefined })
-          }
-        />
-      )}
+      ) : null}
       <details className="space-y-3">
         <summary className="min-h-10 cursor-pointer text-sm font-medium">
           {t("advanced")}
         </summary>
+        {!sourceSplits && (
+          <SharedMoneyInput
+            label={t("sharedBankAmount")}
+            value={
+              input.sharedBankAmount ??
+              (mode === "existingBank" ? amount : (input.bankAmount ?? ""))
+            }
+            places={4}
+            currency={currency}
+            onChange={(sharedBankAmount) =>
+              onChange({ sharedBankAmount: sharedBankAmount || undefined })
+            }
+          />
+        )}
         {!sourceSplits && (
           <Combobox
             aria-label={t("privateCategory")}

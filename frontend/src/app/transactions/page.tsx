@@ -756,6 +756,11 @@ function TransactionsContent() {
     navigateAfterFormCloses(`/warranties?new=1&transactionId=${created.id}`);
   };
 
+  const handleShareAfterCreate = (created: Transaction) => {
+    handleClose();
+    navigateAfterFormCloses(`/shared-expenses/from-transaction/${created.id}`);
+  };
+
   const handleOpenWarrantyFromForm = (warrantyId: string) => {
     navigateFromForm(`/warranties/${warrantyId}`);
   };
@@ -1517,6 +1522,7 @@ function TransactionsContent() {
             submitRef={formSubmitRef}
             onAddWarranty={actingAsDelegate ? undefined : handleAddWarrantyFromForm}
             onAddWarrantyAfterCreate={actingAsDelegate ? undefined : handleAddWarrantyAfterCreate}
+            onShareAfterCreate={actingAsDelegate ? undefined : handleShareAfterCreate}
             onOpenWarranty={handleOpenWarrantyFromForm}
           />
         </Modal>
