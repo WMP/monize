@@ -76,6 +76,12 @@ export function useInvestmentData() {
   // Set once the first load has settled and the automatic price refresh has
   // been started for it. A ref: nothing renders from it.
   const initialLoadCompleteRef = useRef(false);
+  // Whether the first portfolio summary has answered (or failed). The summary
+  // values the portfolio over its whole history, and so do the chart and the
+  // performance card that load beside it; a price refresh that lands while
+  // they are still running reloads all of them, so the server values the
+  // same history a second time while the first is still in flight (#1888).
+  const [initialSummarySettled, setInitialSummarySettled] = useState(false);
 
   // Cash transaction form modal
   const {
@@ -232,6 +238,7 @@ export function useInvestmentData() {
         if (summarySeqRef.current !== seq) return;
         setPortfolioSummary(null);
       }
+      setInitialSummarySettled(true);
     };
     return fetchSummary();
   }, []);
@@ -419,11 +426,11 @@ export function useInvestmentData() {
   ]);
 
   useEffect(() => {
-    if (!isLoading && !initialLoadCompleteRef.current) {
+    if (!isLoading && initialSummarySettled && !initialLoadCompleteRef.current) {
       initialLoadCompleteRef.current = true;
       triggerAutoRefresh();
     }
-  }, [isLoading, triggerAutoRefresh]);
+  }, [isLoading, initialSummarySettled, triggerAutoRefresh]);
 
   // Track which edit ID we have already handled
   const editHandledRef = useRef<string | null>(null);
