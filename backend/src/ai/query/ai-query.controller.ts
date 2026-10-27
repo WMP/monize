@@ -13,7 +13,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { Response } from "express";
 import {
   AiQueryService,
-  DELEGATE_EXCLUDED_AI_TOOLS,
+  DELEGATE_ALLOWED_AI_TOOLS,
   QueryRunOptions,
 } from "./ai-query.service";
 import { AiQueryDto } from "./dto/ai-query.dto";
@@ -41,13 +41,13 @@ export class AiQueryController {
 
   constructor(private readonly queryService: AiQueryService) {}
 
-  /** An acting delegate (`id` = owner, `realUserId` = delegate) loses the writing and owner-only tools. */
+  /** An acting delegate (`id` = owner, `realUserId` = delegate) may use only the allow-listed read tools. */
   private runOptions(user: {
     id: string;
     realUserId?: string;
   }): QueryRunOptions | undefined {
     return user.realUserId && user.realUserId !== user.id
-      ? { excludeTools: DELEGATE_EXCLUDED_AI_TOOLS }
+      ? { allowTools: DELEGATE_ALLOWED_AI_TOOLS }
       : undefined;
   }
 
