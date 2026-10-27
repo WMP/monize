@@ -1,11 +1,68 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { PayrollDeductionRule } from '@/types/payroll-deduction';
+
+/** One row of the table: a category's room, shared by every bill that caps it. */
+export interface YearToDateRow {
+  key: string;
+  categoryName: string;
+  billNames: string[];
+  periodStart: string;
+  periodEnd: string;
+  paidToDate: number;
+  foreignCurrencyRows: number;
+  yearlyMaximum: number;
+  remaining: number;
+  currencyCode: string;
+}
+
+/**
+ * One row per category and currency. `paidToDate` is category-wide on the
+ * server, so two paycheques capping the same category carry the same figure;
+ * showing it twice would read as twice the money. Where their maxima differ,
+ * the lower one binds, as it does in the forecast's pooled room.
+ */
+export function groupYearToDateRows(rules: PayrollDeductionRule[]): YearToDateRow[] {
+  const rows = new Map<string, YearToDateRow>();
+  for (const rule of rules) {
+    const key = `${rule.categoryId}|${rule.currencyCode}`;
+    const row = rows.get(key);
+    if (!row) {
+      rows.set(key, {
+        key,
+        categoryName: rule.categoryName,
+        billNames: [rule.scheduledTransactionName],
+        periodStart: rule.periodStart,
+        periodEnd: rule.periodEnd,
+        paidToDate: rule.paidToDate,
+        foreignCurrencyRows: rule.foreignCurrencyRows,
+        yearlyMaximum: rule.yearlyMaximum,
+        remaining: rule.remaining,
+        currencyCode: rule.currencyCode,
+      });
+      continue;
+    }
+    if (!row.billNames.includes(rule.scheduledTransactionName)) {
+      row.billNames.push(rule.scheduledTransactionName);
+    }
+    row.yearlyMaximum = Math.min(row.yearlyMaximum, rule.yearlyMaximum);
+    row.remaining = Math.min(row.remaining, rule.remaining);
+  }
+  return Array.from(rows.values());
+}
+
+function formatNameList(locale: string, names: string[]): string {
+  try {
+    return new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(names);
+  } catch {
+    return new Intl.ListFormat(undefined, { style: 'long', type: 'conjunction' }).format(names);
+  }
+}
 
 interface PayrollDeductionYearToDateProps {
   rules: PayrollDeductionRule[];
@@ -19,8 +76,10 @@ interface PayrollDeductionYearToDateProps {
  */
 export function PayrollDeductionYearToDate({ rules }: PayrollDeductionYearToDateProps) {
   const t = useTranslations('taxes.payroll');
+  const locale = useLocale();
   const { formatCurrency } = useNumberFormat();
   const { formatDate } = useDateFormat();
+  const rows = groupYearToDateRows(rules);
 
   return (
     <section aria-label={t('yearToDate.title')}>
@@ -41,9 +100,9 @@ export function PayrollDeductionYearToDate({ rules }: PayrollDeductionYearToDate
             </tr>
           </thead>
           <tbody className={TABLE_BODY_CLASS}>
-            {rules.map((rule) => (
-              <tr key={rule.id}>
-                <Td>{rule.scheduledTransactionName}</Td>
+            {rows.map((rule) => (
+              <tr key={rule.key}>
+                <Td>{formatNameList(locale, rule.billNames)}</Td>
                 <Td>{rule.categoryName}</Td>
                 <Td>
                   {t('list.periodRange', {

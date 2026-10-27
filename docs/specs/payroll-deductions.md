@@ -32,8 +32,11 @@ start again at the next year's figure.
   under the maximum, down to zero. The parent amount follows.
 - The **Cash Flow Forecast** (Bills page chart and the dashboard widget)
   projects the same reduction occurrence by occurrence, and the reset.
-- The page offers a **year-to-date** table, collapsed by default: per rule, the
-  period, the amount paid so far, the maximum and the room left.
+- The page offers a **year-to-date** table, collapsed by default: one row per
+  category and currency (`groupYearToDateRows`), naming every bill that caps
+  it, with the period, the amount paid so far, the maximum and the room left.
+  Paid is category-wide, so two paycheques on one category are one row; where
+  their maxima differ the lower one binds, as in the forecast's pooled room.
 - Two months before a rule resets, a **notification** asks the user to confirm
   the next period's figures. Nothing changes if they do not: the rule keeps
   its values and resets on its date.
