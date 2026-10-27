@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback, useMemo, forwardRef, InputHTM
 import { useTranslations } from 'next-intl';
 import { CalculatorIcon } from '@heroicons/react/24/outline';
 import { cn, inputBaseClasses, inputErrorClasses } from '@/lib/utils';
-import { hasCalculatorOperators, evaluateExpression, roundToCents } from '@/lib/format';
+import { hasCalculatorOperators, evaluateExpression, roundToCents,
+  roundToDecimals, } from '@/lib/format';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import {
   filterNumberTyping,
@@ -25,6 +26,8 @@ const CALCULATOR_OPERATORS = [
 ] as const;
 
 interface CurrencyInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'type'> {
+  /** Currency minor-unit precision; existing forms default to two decimals. */
+  decimalPlaces?: number;
   label?: string;
   error?: string;
   prefix?: string;
@@ -52,6 +55,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
   (
     {
       label,
+      decimalPlaces = 2,
       error,
       prefix,
       value,
@@ -66,7 +70,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       disabled,
       ...props
     },
-    ref
+    ref,
   ) => {
     const t = useTranslations('common');
     const nf = useNumberFormat();
@@ -97,8 +101,9 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     const formatDisplay = useCallback(
       (v: number | undefined | null): string =>
         // Latin digits: an editable field shows exactly the text it parses back.
-        formatAmountLocalized(v, 2, numberSeparators, numberLocale, { latnDigits: true }),
-      [numberSeparators, numberLocale],
+        formatAmountLocalized(v,
+          decimalPlaces, numberSeparators, numberLocale, { latnDigits: true },),
+      [numberSeparators, numberLocale, decimalPlaces],
     );
 
     // Filter a raw string while typing, and parse it, in the user's convention.
@@ -111,16 +116,18 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
         }),
       [allowNegative, allowCalculator, numberSeparators],
     );
-    // Round to cents on parse, restoring parseAmount's contract: a money field
-    // stores what it displays (2dp). The value handed to the parent must not
-    // carry sub-cent precision the 2dp display hides. The calculator/evaluate
+    // Round to the selected minor unit on parse, restoring parseAmount's contract: a money field
+    // stores what it displays at the selected precision. The value handed to the
+    // parent must not carry hidden fractional units. The calculator/evaluate
     // path is deliberately left unrounded, matching the pre-refactor behaviour.
     const parse = useCallback(
       (raw: string): number | undefined => {
         const n = parseLocaleNumber(raw, numberSeparators);
-        return n === undefined ? undefined : roundToCents(n);
+        return n === undefined ? undefined : decimalPlaces === 2
+            ? roundToCents(n)
+            : roundToDecimals(n, decimalPlaces);
       },
-      [numberSeparators],
+      [numberSeparators, decimalPlaces],
     );
     const evaluate = useCallback(
       (raw: string): number | undefined =>
@@ -193,7 +200,8 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       // The field shows two decimals, and a stored four-decimal value (-3.3333)
       // re-parses as its display (-3.33): the same field untouched, not an
       // edit. Reporting it re-amounted the row on every cosmetic save.
-      if (next !== undefined && value !== undefined && roundToCents(value) === next) return;
+      if (next !== undefined && value !== undefined &&
+        roundToDecimals(value, decimalPlaces) === next) return;
       onChange(next);
     };
 
@@ -499,7 +507,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
         </Modal>
       </div>
     );
-  }
+  },
 );
 
 CurrencyInput.displayName = 'CurrencyInput';

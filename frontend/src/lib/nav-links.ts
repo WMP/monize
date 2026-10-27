@@ -56,6 +56,7 @@ export const NAV_LINKS: NavLinkDef[] = [
 
 export const TOOLS_LINKS: NavLinkDef[] = [
   { href: '/payees', labelKey: 'payees' },
+  { href: '/shared-expenses', labelKey: 'sharedExpenses', ownerOnly: true },
   { href: '/categories', labelKey: 'categories' },
   { href: '/securities', labelKey: 'securities' },
   { href: '/currencies', labelKey: 'currencies' },
@@ -104,6 +105,7 @@ export const NAV_ICONS: Record<string, NavIcon> = {
   '/tags': HashtagIcon,
   '/rules': BoltIcon,
   '/warranties': ShieldCheckIcon,
+  "/shared-expenses": UsersIcon,
   '/email-receipts': EnvelopeIcon,
   '/taxes': ReceiptPercentIcon,
   '/securities': BanknotesIcon,

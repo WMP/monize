@@ -1,3 +1,4 @@
+vi.mock('@/components/shared-expenses/SharedReviewBanner', () => ({ SharedReviewBanner: () => <div data-testid="shared-review-banner" /> }));
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/test/render';
 import { SwipeShell } from './SwipeShell';
@@ -55,11 +56,13 @@ describe('SwipeShell', () => {
     mockPathname = '/dashboard';
     const { unmount } = render(<SwipeShell><p>Content</p></SwipeShell>);
     expect(screen.getByTestId('weak-jwt-secret-banner')).toBeInTheDocument();
+    expect(screen.getByTestId('shared-review-banner')).toBeInTheDocument();
     unmount();
 
     mockPathname = '/login';
     render(<SwipeShell><p>Content</p></SwipeShell>);
     expect(screen.queryByTestId('weak-jwt-secret-banner')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('shared-review-banner')).not.toBeInTheDocument();
   });
 
   it('renders AppHeader and children on app pages', () => {

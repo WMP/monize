@@ -391,7 +391,8 @@
         "EMAIL_RECEIPTS": "Email receipts",
         "BONDS": "Bonds",
         "AI_REVIEW": "AI review proposals",
-        "WARRANTIES": "Warranty reminders"
+        "WARRANTIES": "Warranty reminders",
+        "SHARED_EXPENSES": "Shared expenses"
       },
       "channelNotApplicable": "Not applicable for this notification type",
       "emailToggleLabel": "Report email for {category}",
