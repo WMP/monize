@@ -487,7 +487,7 @@
           },
           "payrollBill": {
             "title": "Trước tiên, thiết lập khoản lương",
-            "body": "Nếu chưa làm, hãy chọn **+ Lịch mới** và tạo khoản lương của bạn như một khoản tiền gửi. Chia nó thành một dòng cho lương gộp và một dòng âm cho mỗi khoản khấu trừ, mỗi dòng có danh mục riêng. Chỉ khoản tiền gửi đang hoạt động có số tiền vào lớn hơn số tiền trừ mới có thể có quy tắc, và chỉ các dòng khấu trừ của nó mới có thể bị giới hạn."
+            "body": "Nếu chưa làm, hãy chọn **+ Lịch mới** và tạo khoản lương của bạn như một khoản tiền gửi. Chia nó thành một dòng cho lương gộp và một dòng âm cho mỗi khoản khấu trừ, mỗi dòng có danh mục riêng. Nếu một khoản khấu trừ hiện không bị trừ vì đã đạt mức tối đa của năm nay, bạn vẫn hãy thêm một dòng chia cho nó, dưới dạng khoản chi có giá trị bằng 0, để quy tắc có thể giới hạn nó và nó bắt đầu lại sau ngày đặt lại. Chỉ khoản tiền gửi đang hoạt động có số tiền vào lớn hơn số tiền trừ mới có thể có quy tắc, và chỉ các dòng khấu trừ của nó mới có thể bị giới hạn."
           },
           "taxesLink": {
             "title": "Khấu trừ lương nằm trong Thuế",

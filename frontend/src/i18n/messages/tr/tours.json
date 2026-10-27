@@ -487,7 +487,7 @@
           },
           "payrollBill": {
             "title": "Önce maaşınızı ayarlayın",
-            "body": "Henüz yapmadıysanız **+ Yeni Zamanlama**’yı seçin ve maaşınızı bir yatırma olarak oluşturun. Brüt maaşınız için bir satıra ve her kesinti için kendi kategorisi olan birer negatif satıra bölün. Yalnızca kestiğinden fazlasını yatıran etkin bir yatırma kural taşıyabilir ve yalnızca kesinti satırları sınırlanabilir."
+            "body": "Henüz yapmadıysanız **+ Yeni Zamanlama**’yı seçin ve maaşınızı bir yatırma olarak oluşturun. Brüt maaşınız için bir satıra ve her kesinti için kendi kategorisi olan birer negatif satıra bölün. Bu yılın üst sınırına zaten ulaşıldığı için bir kesinti şu anda yapılmıyorsa, yine de onun için sıfır değerli bir gider olarak bir bölme satırı ekleyin; böylece bir kural onu sınırlayabilir ve sıfırlamadan sonra yeniden başlar. Yalnızca kestiğinden fazlasını yatıran etkin bir yatırma kural taşıyabilir ve yalnızca kesinti satırları sınırlanabilir."
           },
           "taxesLink": {
             "title": "Bordro kesintileri Vergiler altında",

@@ -487,7 +487,7 @@
           },
           "payrollBill": {
             "title": "Primeiro, configure seu salário",
-            "body": "Se ainda não fez isso, escolha **+ Nova agenda** e crie seu salário como um depósito. Divida-o em uma linha para o salário bruto e uma linha negativa para cada dedução, cada uma com sua própria categoria. Só um depósito ativo que credita mais do que desconta pode ter regras, e só as suas linhas de dedução podem ser limitadas."
+            "body": "Se ainda não fez isso, escolha **+ Nova agenda** e crie seu salário como um depósito. Divida-o em uma linha para o salário bruto e uma linha negativa para cada dedução, cada uma com sua própria categoria. Se uma dedução não estiver sendo descontada agora porque o máximo deste ano já foi atingido, adicione mesmo assim uma linha de divisão para ela, como uma despesa de valor zero, para que uma regra possa limitá-la e ela recomece após o reinício. Só um depósito ativo que credita mais do que desconta pode ter regras, e só as suas linhas de dedução podem ser limitadas."
           },
           "taxesLink": {
             "title": "As deduções salariais ficam em Impostos",

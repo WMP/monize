@@ -487,7 +487,7 @@
           },
           "payrollBill": {
             "title": "Pertama, atur gaji Anda",
-            "body": "Jika belum, pilih **+ Jadwal Baru** dan buat gaji Anda sebagai setoran. Pecah menjadi satu baris untuk gaji kotor dan satu baris negatif untuk setiap potongan, masing-masing dengan kategorinya sendiri. Hanya setoran aktif yang memasukkan lebih banyak daripada yang dipotong yang dapat memiliki aturan, dan hanya baris potongannya yang dapat dibatasi."
+            "body": "Jika belum, pilih **+ Jadwal Baru** dan buat gaji Anda sebagai setoran. Pecah menjadi satu baris untuk gaji kotor dan satu baris negatif untuk setiap potongan, masing-masing dengan kategorinya sendiri. Jika suatu potongan sedang tidak dipotong karena batas maksimum tahun ini sudah tercapai, tetap tambahkan baris pecahan untuknya sebagai pengeluaran bernilai nol, agar aturan dapat membatasinya dan potongan itu mulai lagi setelah reset. Hanya setoran aktif yang memasukkan lebih banyak daripada yang dipotong yang dapat memiliki aturan, dan hanya baris potongannya yang dapat dibatasi."
           },
           "taxesLink": {
             "title": "Potongan gaji ada di bawah Pajak",

@@ -487,7 +487,7 @@
           },
           "payrollBill": {
             "title": "Stel eerst je loon in",
-            "body": "Heb je dat nog niet gedaan, kies dan **+ Nieuw schema** en maak je loon aan als storting. Splits het in een regel voor je brutoloon en een negatieve regel per inhouding, elk met een eigen categorie. Alleen een actieve storting die meer binnenbrengt dan ze inhoudt kan regels krijgen, en alleen haar inhoudingsregels kunnen worden begrensd."
+            "body": "Heb je dat nog niet gedaan, kies dan **+ Nieuw schema** en maak je loon aan als storting. Splits het in een regel voor je brutoloon en een negatieve regel per inhouding, elk met een eigen categorie. Wordt een inhouding nu niet ingehouden omdat het maximum van dit jaar al is bereikt, voeg er dan toch een splitsingsregel voor toe, als uitgave met waarde nul, zodat een regel haar kan begrenzen en ze na de reset opnieuw begint. Alleen een actieve storting die meer binnenbrengt dan ze inhoudt kan regels krijgen, en alleen haar inhoudingsregels kunnen worden begrensd."
           },
           "taxesLink": {
             "title": "Looninhoudingen staan onder Belastingen",

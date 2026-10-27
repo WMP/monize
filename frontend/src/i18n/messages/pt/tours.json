@@ -487,7 +487,7 @@
           },
           "payrollBill": {
             "title": "Primeiro, configure o seu vencimento",
-            "body": "Se ainda não o fez, escolha **+ Nova agenda** e crie o seu vencimento como um depósito. Divida-o numa linha para o salário bruto e numa linha negativa por cada dedução, cada uma com a sua categoria. Só um depósito ativo que credita mais do que desconta pode ter regras, e só as suas linhas de dedução podem ser limitadas."
+            "body": "Se ainda não o fez, escolha **+ Nova agenda** e crie o seu vencimento como um depósito. Divida-o numa linha para o salário bruto e numa linha negativa por cada dedução, cada uma com a sua categoria. Se uma dedução não estiver a ser descontada agora porque o máximo deste ano já foi atingido, adicione mesmo assim uma linha de divisão para ela, como uma despesa de valor zero, para que uma regra a possa limitar e ela recomece após o reinício. Só um depósito ativo que credita mais do que desconta pode ter regras, e só as suas linhas de dedução podem ser limitadas."
           },
           "taxesLink": {
             "title": "As deduções salariais estão em Impostos",

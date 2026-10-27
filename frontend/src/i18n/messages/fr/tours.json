@@ -487,7 +487,7 @@
           },
           "payrollBill": {
             "title": "D’abord, configurez votre paie",
-            "body": "Si ce n’est pas déjà fait, choisissez **+ Nouveau calendrier** et créez votre paie comme un dépôt. Ventilez-la en une ligne pour votre salaire brut et une ligne négative par retenue, chacune avec sa propre catégorie. Seul un dépôt actif qui verse plus qu’il ne prélève peut porter des règles, et seules ses lignes de retenue peuvent être plafonnées."
+            "body": "Si ce n’est pas déjà fait, choisissez **+ Nouveau calendrier** et créez votre paie comme un dépôt. Ventilez-la en une ligne pour votre salaire brut et une ligne négative par retenue, chacune avec sa propre catégorie. Si une retenue n’est pas prélevée en ce moment parce que le maximum de cette année est déjà atteint, ajoutez quand même une ligne de ventilation pour elle, comme une dépense de valeur zéro, pour qu’une règle puisse la plafonner et qu’elle reprenne après la réinitialisation. Seul un dépôt actif qui verse plus qu’il ne prélève peut porter des règles, et seules ses lignes de retenue peuvent être plafonnées."
           },
           "taxesLink": {
             "title": "Les retenues salariales sont sous Impôts",

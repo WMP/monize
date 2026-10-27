@@ -487,7 +487,7 @@
           },
           "payrollBill": {
             "title": "Per prima cosa, imposta il tuo stipendio",
-            "body": "Se non l’hai già fatto, scegli **+ Nuova pianificazione** e crea il tuo stipendio come deposito. Dividilo in una riga per lo stipendio lordo e una riga negativa per ogni trattenuta, ciascuna con la propria categoria. Solo un deposito attivo che versa più di quanto trattiene può avere regole, e solo le sue righe di trattenuta possono essere limitate."
+            "body": "Se non l’hai già fatto, scegli **+ Nuova pianificazione** e crea il tuo stipendio come deposito. Dividilo in una riga per lo stipendio lordo e una riga negativa per ogni trattenuta, ciascuna con la propria categoria. Se una trattenuta non viene applicata ora perché il massimo di quest’anno è già stato raggiunto, aggiungi comunque una riga di suddivisione per essa, come spesa di valore zero, così una regola può limitarla e riparte dopo l’azzeramento. Solo un deposito attivo che versa più di quanto trattiene può avere regole, e solo le sue righe di trattenuta possono essere limitate."
           },
           "taxesLink": {
             "title": "Le trattenute sono in Tasse",

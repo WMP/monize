@@ -487,7 +487,7 @@
           },
           "payrollBill": {
             "title": "First, set up your paycheque",
-            "body": "If you have not already, choose **+ New Schedule** and create your paycheque as a deposit. Split it into a line for your gross pay and one negative line for each deduction, each with its own category. Only an active deposit that pays in more than it takes out can carry rules, and only its deduction lines can be capped."
+            "body": "If you have not already, choose **+ New Schedule** and create your paycheque as a deposit. Split it into a line for your gross pay and one negative line for each deduction, each with its own category. If a deduction is not being taken right now because this year's maximum is already reached, still add a split line for it, as a zero-value expense, so a rule can cap it and it starts again after the reset. Only an active deposit that pays in more than it takes out can carry rules, and only its deduction lines can be capped."
           },
           "taxesLink": {
             "title": "Payroll Deductions are under Taxes",

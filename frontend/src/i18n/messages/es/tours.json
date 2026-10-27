@@ -487,7 +487,7 @@
           },
           "payrollBill": {
             "title": "Primero, configura tu nómina",
-            "body": "Si aún no lo has hecho, elige **+ Nueva planificación** y crea tu nómina como un depósito. Divídela en una línea para tu salario bruto y una línea negativa por cada deducción, cada una con su propia categoría. Solo un depósito activo que ingresa más de lo que descuenta puede tener reglas, y solo sus líneas de deducción se pueden limitar."
+            "body": "Si aún no lo has hecho, elige **+ Nueva planificación** y crea tu nómina como un depósito. Divídela en una línea para tu salario bruto y una línea negativa por cada deducción, cada una con su propia categoría. Si una deducción no se está cobrando ahora porque ya se alcanzó el máximo de este año, añade igualmente una línea de división para ella, como un gasto con valor cero, para que una regla pueda limitarla y vuelva a empezar tras el reinicio. Solo un depósito activo que ingresa más de lo que descuenta puede tener reglas, y solo sus líneas de deducción se pueden limitar."
           },
           "taxesLink": {
             "title": "Las deducciones de nómina están en Impuestos",

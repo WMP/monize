@@ -142,6 +142,9 @@ describe('payroll deductions tour copy', () => {
     const steps = `${tour.i18nPrefix}.steps`;
     expect(translate(`${steps}.welcome.body`)).toMatch(/payroll scheduled bill/);
     expect(translate(`${steps}.payrollBill.body`)).toContain('**+ New Schedule**');
+    // A deduction already at this year's maximum still needs its line, or no
+    // rule can cap it and it never starts again after the reset.
+    expect(translate(`${steps}.payrollBill.body`)).toMatch(/zero-value expense/);
     for (const s of tour.steps) {
       expect(translate(`${steps}.${s.id}.body`)).not.toContain('--');
     }

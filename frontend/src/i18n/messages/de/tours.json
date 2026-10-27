@@ -487,7 +487,7 @@
           },
           "payrollBill": {
             "title": "Zuerst Ihr Gehalt einrichten",
-            "body": "Falls noch nicht geschehen, wählen Sie **+ Neuer Zeitplan** und legen Sie Ihr Gehalt als Einzahlung an. Teilen Sie sie in eine Zeile für Ihr Bruttogehalt und je eine negative Zeile pro Abzug auf, jede mit eigener Kategorie. Regeln sind nur für eine aktive Einzahlung möglich, die mehr einbringt als sie abzieht, und nur ihre Abzugszeilen lassen sich begrenzen."
+            "body": "Falls noch nicht geschehen, wählen Sie **+ Neuer Zeitplan** und legen Sie Ihr Gehalt als Einzahlung an. Teilen Sie sie in eine Zeile für Ihr Bruttogehalt und je eine negative Zeile pro Abzug auf, jede mit eigener Kategorie. Wird ein Abzug gerade nicht einbehalten, weil der Höchstbetrag dieses Jahres schon erreicht ist, fügen Sie trotzdem eine Aufteilungszeile dafür hinzu, als Ausgabe mit dem Betrag null, damit eine Regel ihn begrenzen kann und er nach der Rücksetzung wieder beginnt. Regeln sind nur für eine aktive Einzahlung möglich, die mehr einbringt als sie abzieht, und nur ihre Abzugszeilen lassen sich begrenzen."
           },
           "taxesLink": {
             "title": "Lohnabzüge finden Sie unter Steuern",
