@@ -15,13 +15,13 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useReportData } from '@/hooks/useReportData';
 import { getErrorMessage } from '@/lib/errors';
+import { toSafeExternalUrl } from '@/lib/external-url';
 import { investmentsApi } from '@/lib/investments';
 import {
   ASSUMPTION_MAX_PERCENT,
   ASSUMPTION_MIN_PERCENT,
   buildAssumptions,
   fractionToPercent,
-  isHttpUrl,
   offerBenchmarks,
   offerFirstPeriodRate,
   offerLengthMonths,
@@ -384,7 +384,7 @@ export function BondOfferTab({ countryCode, programCode, refreshVersion = 0 }: B
                   )}
                 </Td>
                 <Td>
-                  {isHttpUrl(series.termsSource.url) ? (
+                  {toSafeExternalUrl(series.termsSource.url) ? (
                     <a
                       href={series.termsSource.url}
                       target="_blank"

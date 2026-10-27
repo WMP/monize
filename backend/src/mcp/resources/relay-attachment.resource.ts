@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/server";
 import { RelayAttachmentStore } from "../../ai/relay/relay-attachment.store";
-import { extractPdfText } from "../../ai/relay/pdf-text.util";
+import { extractPdfText } from "../../common/pdf-text";
 import { resolveUserContext, hasScope } from "../mcp-context";
 
 /**
@@ -95,7 +95,7 @@ export class McpRelayAttachmentResource {
         // or model can still read it.
         if (attachment.kind === "pdf") {
           try {
-            const extracted = await extractPdfText(attachment.data);
+            const extracted = (await extractPdfText(attachment.data)).trim();
             if (extracted.length > 0) {
               return {
                 contents: [

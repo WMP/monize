@@ -7,7 +7,7 @@ import { Badge, type BadgeVariant } from '@/components/ui/Badge';
 import { TABLE_BODY_CLASS, TABLE_CLASS, Td, Th } from '@/components/ui/Table';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
-import { isHttpUrl } from '@/lib/bond-offer';
+import { toSafeExternalUrl } from '@/lib/external-url';
 import type { HeldSeries } from '@/lib/bond-series';
 import type { BondRateSource, BondValuationTotals } from '@/types/bond';
 import { SecurityBondLotsTable } from './SecurityBondLotsTable';
@@ -119,7 +119,7 @@ export function SecurityBondSeriesTable({
     return (
       <p className="text-xs text-gray-500 dark:text-gray-400">
         {/* Only an http(s) address is made a link. */}
-        {isHttpUrl(source.url) ? (
+        {toSafeExternalUrl(source.url) ? (
           <a
             href={source.url}
             target="_blank"

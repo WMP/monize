@@ -1,14 +1,11 @@
 /**
- * The issue letter's text. `pdfjs-dist` is published as ES modules only, so it is
- * loaded with a dynamic `import()`, which the compiler keeps native under
- * `module: nodenext`. This is the one module that touches it. Jest cannot load an
+ * A PDF's text layer (bond issue letters, relay attachments). `pdfjs-dist` is
+ * published as ES modules only, so it is loaded with a dynamic `import()`, which
+ * the compiler keeps native under `module: nodenext`. This is the one module that touches it. Jest cannot load an
  * ES module from `node_modules` in this project, so the unit tests of everything
  * else mock `extractPdfText`, and `pdf-text.spec.ts` reads a real saved PDF in a
  * child Node process with the same `PDF_OPEN_OPTIONS`.
  */
-
-/** A letter is a few dozen pages at most; refuse a document that claims more. */
-const MAX_PAGES = 60;
 
 /**
  * pdf.js options (the document bytes are added by the caller): no system fonts,
@@ -39,7 +36,15 @@ export function pagesToText(
   return text;
 }
 
-export async function extractPdfText(bytes: Uint8Array): Promise<string> {
+/**
+ * Throws when the bytes are not a PDF, or when `maxPages` is given and the
+ * document claims more. No `maxPages` means no cap (the relay's upload limit
+ * bounds its size). Text is untrimmed; empty for an image-only PDF.
+ */
+export async function extractPdfText(
+  bytes: Uint8Array,
+  maxPages?: number,
+): Promise<string> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   // A copy: pdf.js transfers the buffer to its worker and detaches it.
   const task = pdfjs.getDocument({
@@ -48,7 +53,7 @@ export async function extractPdfText(bytes: Uint8Array): Promise<string> {
   });
   try {
     const document = await task.promise;
-    if (document.numPages > MAX_PAGES) {
+    if (maxPages !== undefined && document.numPages > maxPages) {
       throw new Error(`PDF has ${document.numPages} pages`);
     }
     const pages: PdfTextItem[][] = [];
