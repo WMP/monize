@@ -16,8 +16,11 @@ another booking. A changed share, payment, date, currency or reversal does.
 
 An unaccepted change does not alter account balances, budgets or reports. The
 global financial-page banner and `/shared-expenses/review` disclose that boundary
-with a pending count and a link to the affected group's private review. Missing
-rates on an affected entry count as work to repair. Future-only unbooked drafts
+with a pending count and a link to the affected group's private review. Only
+changes to accepted postings require financial review. An unbooked entry remains
+an optional addition, including when its group rate is missing; it does not
+contribute to the pending count. A successful zero-pending, zero-unavailable
+check displays no banner, even with connected groups. Future-only unbooked drafts
 do not count as a current booking. Revoked groups have a separate unavailable
 count because their latest financial state cannot be checked. A request failure
 has an error and retry action, never an invented zero count.
