@@ -456,7 +456,8 @@ export interface ParsedQifMultiAccountResponse {
   }>;
   accounts: Array<{
     accountName: string;
-    accountType: string;
+    /** `null` when the file names no type; the user chooses one before import. */
+    accountType: string | null;
     transactionCount: number;
     dateRange: { start: string; end: string };
   }>;
@@ -471,6 +472,8 @@ export interface ImportQifMultiAccountRequest {
   currencyCode: string;
   dateFormat?: DateFormat;
   securityMappings?: SecurityMapping[];
+  /** The user's type for each account the file leaves untyped. */
+  accountTypes?: Array<{ accountName: string; accountType: string }>;
 }
 
 export const importApi = {

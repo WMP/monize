@@ -1603,6 +1603,40 @@ describe('useImportWizard - multi-account import', () => {
     });
     expect(result.current.importResult?.errors).toBe(2);
   });
+
+  it('detects a Quicken for Mac export from upper-case headers and sends the chosen account types', async () => {
+    mockParseQifMulti.mockResolvedValue({
+      isMultiAccount: true, categoryDefs: [], tagDefs: [],
+      accounts: [
+        { accountName: 'Checking', accountType: 'CHEQUING', transactionCount: 1, dateRange: { start: '', end: '' } },
+        { accountName: 'Old Wallet', accountType: null, transactionCount: 0, dateRange: { start: '', end: '' } },
+      ],
+      totalTransactionCount: 1, securities: [], detectedDateFormat: 'MM/DD/YYYY', sampleDates: [],
+    });
+    mockImportQifMulti.mockResolvedValue(importResult({ imported: 1 }));
+
+    const { result } = renderHook(() => useImportWizard());
+    await waitFor(() => expect(mockGetCurrencies).toHaveBeenCalled());
+
+    const content = '!ACCOUNT\r\nNChecking\r\n^\r\n!ACCOUNT\r\nNOld Wallet\r\n^\r\n!TYPE:Bank\r\n';
+    await act(async () => {
+      await result.current.handleFileSelect(fileEvent([makeFile('export.qmtf', content)]));
+    });
+    expect(mockParseQifMulti).toHaveBeenCalledWith(content);
+    expect(result.current.step).toBe('multiAccountReview');
+
+    act(() => {
+      result.current.handleMultiAccountAccountTypeChange('Old Wallet', 'CASH');
+    });
+    await act(async () => {
+      await result.current.handleMultiAccountImport();
+    });
+    expect(mockImportQifMulti).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountTypes: [{ accountName: 'Old Wallet', accountType: 'CASH' }],
+      }),
+    );
+  });
 });
 
 describe('useImportWizard - import more / reset', () => {
