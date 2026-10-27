@@ -47,25 +47,61 @@ import {
 export interface QueryRunOptions {
   /** Tool names withdrawn from this run: not offered, and refused if called anyway. */
   excludeTools?: readonly string[];
+  /**
+   * The only tool names this run may use: others are not offered, and refused
+   * if called anyway. Absent means no limit; an empty list means no tools.
+   */
+  allowTools?: readonly string[];
 }
 
 /**
- * Tools withdrawn from an acting delegate's run. The query routes are
- * `@AllowDelegate` and read-only for a delegate, but these tools act directly
- * (no signed confirm card) or return data behind an `@OwnerOnly` controller:
- * `email_receipt_parsers` (save_draft writes; stored order emails),
- * `ai_review_requests` (claim returns owner-only email content; reject and
- * submit write), `fetch_bond_series` (writes the catalog) and
- * `list_transaction_rules` and `manage_transaction_rules` (the rules
- * controller is owner-only, and preparing an edit, delete or run reads the
- * owner's rules into the reply).
+ * The only tools an acting delegate's run may use. The query routes are
+ * `@AllowDelegate` and read-only for a delegate, and the delegate holds READ on
+ * every account and section (`DelegateRequiresFullScope`), so a tool is listed
+ * here only when it reads what that delegate can already read through REST.
+ * A tool is never listed when it writes, shows a confirm card, reads data
+ * behind an `@OwnerOnly` or non-`@AllowDelegate` route, or is not yet reviewed:
+ * a new tool is withheld from delegates until it is added here on purpose.
  */
-export const DELEGATE_EXCLUDED_AI_TOOLS: readonly string[] = [
+export const DELEGATE_ALLOWED_AI_TOOLS: readonly string[] = [
+  "list_transactions",
+  "list_accounts",
+  "list_categories",
+  "compare_periods",
+  "get_portfolio_summary",
+  "list_investment_transactions",
+  "list_capital_gains",
+  "list_upcoming_bills",
+  "get_budget_status",
+  "calculate",
+  "render_chart",
+  "list_payees",
+  "generate_report",
+  "list_warranties",
+];
+
+/**
+ * Every other tool, each denied to a delegate. Read by the classification test
+ * only (`delegate-ai-tools.guard.spec.ts`); the run decides from the allow-list.
+ * - `manage_*`: prepare a confirm card for a write.
+ * - `email_receipt_parsers`, `ai_review_requests`: write, and read owner-only
+ *   email content.
+ * - `fetch_bond_series`: writes the bond catalog.
+ * - `list_transaction_rules`: the rules controller is owner-only.
+ * - `lookup_securities`: `GET /securities/lookup` is not `@AllowDelegate`, and
+ *   the call uses the owner's quote provider.
+ */
+export const DELEGATE_DENIED_AI_TOOLS: readonly string[] = [
+  "manage_transactions",
+  "manage_payees",
+  "manage_securities",
+  "manage_investment_transactions",
+  "manage_transaction_rules",
+  "list_transaction_rules",
   "email_receipt_parsers",
   "ai_review_requests",
   "fetch_bond_series",
-  "list_transaction_rules",
-  "manage_transaction_rules",
+  "lookup_securities",
 ];
 
 /**
@@ -242,11 +278,13 @@ export class AiQueryService {
   ): AsyncGenerator<StreamEvent> {
     yield { type: "thinking", message: "Analyzing your question..." };
 
+    const allowed = options?.allowTools ? new Set(options.allowTools) : null;
     const excluded = new Set(options?.excludeTools ?? []);
-    const offeredTools: AiToolDefinition[] =
-      excluded.size > 0
-        ? FINANCIAL_TOOLS.filter((t) => !excluded.has(t.name))
-        : FINANCIAL_TOOLS;
+    const isOffered = (name: string): boolean =>
+      excluded.has(name) ? false : !allowed || allowed.has(name);
+    const offeredTools: AiToolDefinition[] = FINANCIAL_TOOLS.filter((t) =>
+      isOffered(t.name),
+    );
 
     const startTime = Date.now();
     this.logger.log(`Query start user=${userId} queryLen=${query.length}`);
@@ -639,11 +677,11 @@ export class AiQueryService {
           input: toolCall.input,
         };
 
-        // A tool withdrawn from this run is refused even when the model names
-        // it anyway (it was never offered, so the call is hallucinated or
+        // A tool outside this run's allow-list is refused even when the model
+        // names it anyway (it was never offered, so the call is hallucinated or
         // injected).
         const result: Awaited<ReturnType<ToolExecutorService["execute"]>> =
-          excluded.has(toolCall.name)
+          !isOffered(toolCall.name)
             ? {
                 data: { error: "This tool is not available in this run." },
                 summary: `Tool not available: ${toolCall.name}`,

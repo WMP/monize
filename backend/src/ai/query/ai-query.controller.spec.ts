@@ -6,7 +6,11 @@ import {
   DELEGATE_SECTION_KEY,
 } from "../../delegation/decorators/delegate-access.decorator";
 import { AiQueryController } from "./ai-query.controller";
-import { AiQueryService, QueryResult } from "./ai-query.service";
+import {
+  AiQueryService,
+  DELEGATE_ALLOWED_AI_TOOLS,
+  QueryResult,
+} from "./ai-query.service";
 
 describe("AiQueryController", () => {
   let controller: AiQueryController;
@@ -94,7 +98,7 @@ describe("AiQueryController", () => {
       );
     });
 
-    it("withdraws the writing and owner-only tools from an acting delegate", async () => {
+    it("limits an acting delegate to the allow-listed tools", async () => {
       const delegateRequest = {
         user: { id: "owner-1", realUserId: "delegate-1" },
       };
@@ -102,14 +106,7 @@ describe("AiQueryController", () => {
       await controller.query(delegateRequest, { query: "Parse my receipts" });
 
       const options = mockQueryService.executeQuery.mock.calls[0][4];
-      expect(options.excludeTools).toEqual(
-        expect.arrayContaining([
-          "email_receipt_parsers",
-          "ai_review_requests",
-          "fetch_bond_series",
-          "manage_transaction_rules",
-        ]),
-      );
+      expect(options.allowTools).toBe(DELEGATE_ALLOWED_AI_TOOLS);
     });
 
     it("withdraws no tool from the owner, even with a realUserId equal to the id", async () => {
@@ -123,7 +120,7 @@ describe("AiQueryController", () => {
   });
 
   describe("streamQuery()", () => {
-    it("withdraws the same tools from an acting delegate's stream", async () => {
+    it("limits an acting delegate's stream to the same tools", async () => {
       mockQueryService.executeQueryStream.mockReturnValue(
         (async function* () {
           yield { type: "content", text: "x" };
@@ -144,14 +141,7 @@ describe("AiQueryController", () => {
       );
 
       const options = mockQueryService.executeQueryStream.mock.calls[0][4];
-      expect(options.excludeTools).toEqual(
-        expect.arrayContaining([
-          "email_receipt_parsers",
-          "ai_review_requests",
-          "fetch_bond_series",
-          "manage_transaction_rules",
-        ]),
-      );
+      expect(options.allowTools).toBe(DELEGATE_ALLOWED_AI_TOOLS);
     });
 
     it("sets SSE headers and streams events", async () => {
