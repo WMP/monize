@@ -33,6 +33,7 @@ describe('nav-links', () => {
     expect(AI_LINKS).toContainEqual({ href: '/ai-reviews', labelKey: 'aiReviews', ownerOnly: true });
     expect(NAV_ICONS['/ai-reviews']).toBeTruthy();
     expect([...NAV_LINKS, ...TOOLS_LINKS, ...AI_LINKS].filter((l) => l.ownerOnly).map((l) => l.href)).toEqual([
+      '/shared-expenses',
       '/taxes',
       '/email-receipts',
       '/ai-reviews',

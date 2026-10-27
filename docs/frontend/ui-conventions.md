@@ -174,6 +174,10 @@ server will refuse is worse than an absent one.
 
 Clicking an attachment previews it; Download is a footer action of the preview.
 A warranty's documents are `AttachmentsSection` with a warranty parent (`{ warrantyId }`, wrapped by `WarrantyDocumentsSection`), never a second uploader; a new warranty's are its staged mode with `stagedFor="warranty"`, which `WarrantyForm` uploads once the warranty exists.
+When a staged uploader sits beside an existing shared-document list, its
+`pendingHint` describes the upload step even with no pending files; an empty
+selection does not mean the group has no saved attachments. The shared-expense
+file journey checks that distinction after saving and reloading a document.
 Four rules the viewer holds, each with a test:
 
 - **Bytes come through `attachmentsApi.fetchBytes`**, never a bare `<img src>`
@@ -532,3 +536,24 @@ The parser closes the outer element at the inner tag, so the click target ends w
 ## Bank Sync provider default
 
 The Bank Sync settings page defaults to SimpleFIN when at least one active connection has an account linked to an open Monize account and every such connection uses SimpleFIN. Pending, expired, revoked, failed, unlinked and closed-account-only connections do not decide the default. Automatic sync selects the cadence and is not an enablement test. Empty, loading and failed reads retain Enable Banking; a manual provider selection wins over subsequent reads for the current visit. Regression coverage is in `frontend/src/app/settings/bank-sync/page.test.tsx`.
+
+## Shared-expense forms and stacked dialogs
+
+A repeated money field uses a `useId()` identity, not its translated label:
+`components/shared-expenses/SharedPrimitives.tsx` supplies one to `CurrencyInput`.
+Several payments can have the same caption while their labels still target their
+own fields. `components/shared-expenses/SharedBooking.test.tsx` exercises the
+separate payment parts.
+
+`Modal` owns its history entry through effect replay. Its unmount cleanup waits
+for a microtask and checks the mounted lifetime token before calling
+`history.back()`, so React Strict Mode does not consume the page behind a new
+modal. Nested review leaves the parent modal open until the review finishes.
+`components/ui/Modal.test.tsx` covers the replay; the shared-expense Playwright
+journeys cover cancelling a document-created entry and moving into bank review.
+
+A portalled `Combobox` follows its anchor with `placePopover` before paint and on
+scroll/resize. A delayed scroll event from focusing a low field must not close
+its options before selection. Its resize handler checks that an event target is
+a `Node` before asking whether the list contains it; a window resize targets the
+window. `components/ui/Combobox.test.tsx` covers both events and option selection.

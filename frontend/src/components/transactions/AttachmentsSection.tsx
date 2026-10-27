@@ -56,6 +56,7 @@ type AttachmentsSectionProps =
        * transaction's attachments.
        */
       stagedFor?: SavedParentKind;
+      pendingHint?: string;
     };
 
 type SavedParentKind = 'transaction' | 'warranty';
@@ -661,7 +662,9 @@ function StagedAttachments({
   files,
   onChange,
   stagedFor,
+  pendingHint,
 }: {
+  pendingHint?: string;
   files: StagedAttachment[];
   onChange: (files: StagedAttachment[]) => void;
   stagedFor: SavedParentKind;
@@ -760,7 +763,7 @@ function StagedAttachments({
 
       {files.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          {isWarranty ? tw('documents.empty') : t('empty')}
+          {pendingHint ?? (isWarranty ? tw('documents.empty') : t('empty'))}
         </p>
       ) : (
         <>
@@ -819,7 +822,7 @@ function StagedAttachments({
             })}
           </ul>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {isWarranty ? tw('documents.pendingHint') : t('pendingHint')}
+            {pendingHint ?? (isWarranty ? tw('documents.pendingHint') : t('pendingHint'))}
           </p>
         </>
       )}
@@ -874,6 +877,7 @@ export function AttachmentsSection(props: AttachmentsSectionProps) {
       files={props.stagedFiles}
       onChange={props.onStagedFilesChange}
       stagedFor={props.stagedFor ?? 'transaction'}
+      pendingHint={props.pendingHint}
     />
   );
 }

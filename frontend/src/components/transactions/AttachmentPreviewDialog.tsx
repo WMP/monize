@@ -22,7 +22,9 @@ import { PdfPages } from './PdfPages';
  * was scanned from when the user kept it.
  */
 export type PreviewTarget =
-  | { kind: 'saved'; attachment: Attachment }
+  | { kind: 'saved'; attachment: Pick< Attachment,
+        "id" | "filename" | "contentType" | "originalAttachmentId"
+      >; }
   | { kind: 'file'; file: File; original?: File };
 
 type Variant = 'enhanced' | 'original';

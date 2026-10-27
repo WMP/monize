@@ -5,6 +5,8 @@ import { subMonths, format } from 'date-fns';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { useTranslations } from 'next-intl';
+import { ButtonLink } from '@/components/ui/Button';
+import { UsersIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/store/authStore';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { GettingStarted } from '@/components/dashboard/GettingStarted';
@@ -45,6 +47,7 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const t = useTranslations('dashboard');
+  const ts = useTranslations('sharedExpenses');
   const user = useAuthStore((s) => s.user);
   const actingAsUserId = useAuthStore((s) => s.actingAsUserId);
   const isDelegateView = !!actingAsUserId;
@@ -270,6 +273,10 @@ function DashboardContent() {
             compactMobileActions
             actions={
               !isDelegateView ? (
+                <>
+                <ButtonLink href="/shared-expenses" variant="outline" size="sm" aria-label={ts('title')} title={ts('title')}>
+                  <UsersIcon className="h-4 w-4 sm:mr-2" aria-hidden="true" /><span className="hidden sm:inline">{ts('title')}</span>
+                </ButtonLink>
                 <button
                   {...tourAnchor(TOUR_ANCHORS.dashboardCustomize)}
                   onClick={() => setShowCustomize(true)}
@@ -282,6 +289,7 @@ function DashboardContent() {
                   </svg>
                   <span className="hidden sm:inline">{t('customize.button')}</span>
                 </button>
+                </>
               ) : undefined
             }
           />
