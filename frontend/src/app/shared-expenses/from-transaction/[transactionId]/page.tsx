@@ -68,7 +68,7 @@ function BankContent() {
         : null;
   return (
     <PageLayout>
-      <div className="space-y-5">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 space-y-5">
         <PageHeader
           title={t("splitWithPeople")}
           subtitle={t("bankStartHelp")}
@@ -137,7 +137,7 @@ function BankContent() {
             }}
           />
         )}
-      </div>
+      </main>
     </PageLayout>
   );
 }
