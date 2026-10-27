@@ -83,6 +83,8 @@ npm run i18n:check         # Verify the pseudo-locale is up to date (CI gate)
 
 **A form round-trips the row it opened.** Each field loads from the leg it represents (a transfer's Transfer Amount from its FROM leg) and at its stored four decimals, an unedited save sends back what was loaded, and an edit offers no mode that cannot save the row itself (no Transfer on an existing income, expense or split); `docs/frontend/forms-and-formatting.md`, "Form Patterns".
 
+**Currency precision applies to the calculator too.** Pass the currency's `decimalPlaces` through `CurrencyInput`; shared expenses use `SharedMoneyInput` and disclose server conversion snapshots through `SharedEntryConversion` (`docs/frontend/forms-and-formatting.md`).
+
 **Components:** interactive components are `'use client'`; server components are the default for pages and layouts. No `setState` in `useEffect` (`react-hooks/set-state-in-effect`); reset child state from a prop with the "info from previous render" pattern. Nothing interactive goes inside a `<button>` or an `<a>`. Focus rings are `focus-visible:`; transitions carry `motion-reduce:transition-none`.
 
 **Tests** import `render` and `renderHook` from `@/test/render`, never from `@testing-library/react`; wrap a render or interaction that fetches in `await act(async () => ...)`; spread `numberFormatMockDefaults()` into any `useNumberFormat` mock; mock a module you only partly want with `importOriginal`. An act() warning or a missing message fails the test.

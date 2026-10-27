@@ -244,6 +244,7 @@ export function SharedEntryEditor({
               <SharedAmount
                 amount={input.amount}
                 currency={input.currencyCode}
+                relativeTo={group.currencyCode}
               />
             </span>
           ) : undefined

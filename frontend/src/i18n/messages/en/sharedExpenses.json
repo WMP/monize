@@ -281,7 +281,7 @@
   "linkedTransactionHelp": "This transaction belongs to an accepted shared booking. Open My finances to review its amounts or unlink it before editing. Documents added here stay private.",
   "previewFile": "Preview file",
   "addSavedPerson": "Add someone from your people",
-  "ORIGINAL_REFUND": "Original expense rate",
+  "ORIGINAL_REFUND": "Original expense’s rate",
   "deleteContact": "Remove private contact",
   "deleteContactHelp": "Remove this contact and your private links? Group participants, expenses and balances will stay as they are.",
   "GROUP_ARCHIVED": "Archived the group",
@@ -348,5 +348,8 @@
   "selectPeople": "Choose at least one person for this split.",
   "splitComplete": "Ready to apply",
   "splitTools": "More split options",
-  "repaymentExplanation": "Suggestions use everyone’s net balance. You may repay someone who did not pay for your particular expense."
+  "repaymentExplanation": "Suggestions use everyone’s net balance. You may repay someone who did not pay for your particular expense.",
+  "currencyConversion": "Currency conversion",
+  "fxRateValue": "{one} {from} = {rate} {to}",
+  "groupCurrencySummary": "Balances and totals in {currency}"
 }

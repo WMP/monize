@@ -140,7 +140,13 @@ export function SharedBankPaymentEditor({
         input.bankTransactionId ? (
           <Card padding="sm">
             <p className="break-words">{label || t("existingBank")}</p>
-            {amount && <SharedAmount amount={amount} currency={currency} />}
+            {amount && (
+              <SharedAmount
+                amount={amount}
+                currency={currency}
+                relativeTo={groupCurrency}
+              />
+            )}
             <Button
               variant="ghost"
               onClick={() => {
@@ -221,6 +227,7 @@ export function SharedBankPaymentEditor({
                 <SharedAmount
                   amount={String(Math.abs(Number(split.amount)))}
                   currency={currency}
+                  relativeTo={groupCurrency}
                 />
               </p>
             </div>

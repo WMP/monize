@@ -116,10 +116,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
         }),
       [allowNegative, allowCalculator, numberSeparators],
     );
-    // Round to the selected minor unit on parse, restoring parseAmount's contract: a money field
-    // stores what it displays at the selected precision. The value handed to the
-    // parent must not carry hidden fractional units. The calculator/evaluate
-    // path is deliberately left unrounded, matching the pre-refactor behaviour.
+    // Typed amounts and calculator results use the same selected minor unit.
     const parse = useCallback(
       (raw: string): number | undefined => {
         const n = parseLocaleNumber(raw, numberSeparators);
@@ -131,8 +128,8 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     );
     const evaluate = useCallback(
       (raw: string): number | undefined =>
-        evaluateExpression(normalizeExpression(raw, numberSeparators)),
-      [numberSeparators],
+        evaluateExpression(normalizeExpression(raw, numberSeparators), decimalPlaces),
+      [numberSeparators, decimalPlaces],
     );
 
     // Local display state - allows free typing
@@ -286,7 +283,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
       setIsFocused(true);
       // Strip the grouping separator for easier editing, and clear if zero.
-      const zero = formatNumberForEdit(0, 2, numberSeparators);
+      const zero = formatNumberForEdit(0, decimalPlaces, numberSeparators);
       setDisplayValue(prev => {
         const stripped = stripGroupSeparator(prev, numberSeparators);
         return stripped === zero || stripped === '0' ? '' : stripped;
@@ -309,10 +306,10 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     // --- Calculator modal logic ---
 
     const openCalculator = useCallback(() => {
-      const initial = value !== undefined && value !== 0 ? formatNumberForEdit(value, 2, numberSeparators) : '';
+      const initial = value !== undefined && value !== 0 ? formatNumberForEdit(value, decimalPlaces, numberSeparators) : '';
       setCalcExpression(initial);
       setCalcOpen(true);
-    }, [value, numberSeparators]);
+    }, [value, numberSeparators, decimalPlaces]);
 
     const handleCalcExpressionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       setCalcExpression(filterTyping(e.target.value));
@@ -382,7 +379,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
             id={inputId}
             type="text"
             inputMode="decimal"
-            placeholder={formatNumberForEdit(0, 2, numberSeparators)}
+            placeholder={formatNumberForEdit(0, decimalPlaces, numberSeparators)}
             value={displayValue}
             onChange={handleChange}
             onBlur={handleBlur}

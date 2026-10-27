@@ -58,6 +58,39 @@ an old response cannot enable saving a different draft because the request key
 contains group, entry and the serialized input, and the loading hook retires
 superseded requests. Private finance inclusion still requires explicit opt-in.
 
+## Currency and existing-payment follow-up
+
+The [maintainer's walkthrough feedback](https://github.com/kenlasko/monize/discussions/1889#discussioncomment-19221359)
+adds a concrete acceptance journey: a trip with USD and CAD expenses, starting
+from a payment already recorded in Monize.
+
+Money fields already use `CurrencyInput` through `SharedMoneyInput`. The audit
+found that its selected precision did not reach calculator evaluation, calculator
+opening or zero-on-focus handling. Those paths now use the same precision as
+typing; behavioral regressions cover zero, two, three and four decimals.
+
+USD and CAD share a narrow dollar symbol. Original receipts now carry their ISO
+code when their currency differs from the group's, and the summary names the
+balance currency. Preview and saved detail show the server's converted amount,
+accepted rate, source and observation date. No new rate lookup or client-side
+recalculation is introduced. Missing conversions remain unknown and known zero
+remains zero.
+
+The browser journey starts with a tagged USD 900 bank payment, shares it into
+a CAD group at 1.35, adds CAD 135 fuel, and records a CAD 100 repayment. Reload
+assertions check CAD 1,350 total, CAD 450 personal cost and CAD 665 still owed to
+the cabin payer, while preserving the original transaction ID, tag and USD 1,100
+bank balance. Filtering by a trip tag uses the existing register; each chosen
+row still receives an explicit sharing review. Batch import by tag is a separate
+Phase 2 proposal, consistent with the request for a small first version.
+
+Asserting the destination screen exposed a navigation defect in the bank-entry
+flow: closing the saved dialog pushed the group route before the modal's queued
+history pop, which then returned the user to the bank-entry page. The flow now
+closes its dialogs and uses `afterModalHistoryPop`, as the existing UI convention
+requires. Both bank-start browser journeys assert the group heading before
+reloading and checking the saved result.
+
 ## Verification and limits
 
 Focused tests cover delayed and out-of-order responses, preview retry, unchanged
