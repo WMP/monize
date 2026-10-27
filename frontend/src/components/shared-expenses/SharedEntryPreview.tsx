@@ -7,6 +7,7 @@ import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import type { SharedEntry, SharedGroupDetail } from "@/types/shared-expense";
 import { SharedAmount, SharedNotice } from "./SharedPrimitives";
 import { SharedEntryContext } from "./SharedEntryContext";
+import { SharedEntryConversion } from "./SharedEntryConversion";
 
 export function SharedEntryPreview({
   entry,
@@ -42,6 +43,7 @@ export function SharedEntryPreview({
             <SharedAmount
               amount={allocation.originalAmount}
               currency={entry.currencyCode}
+              relativeTo={group.currencyCode}
             />
             {entry.currencyCode !== group.currencyCode && (
               <span className="block text-xs text-gray-500 dark:text-gray-400">
@@ -73,6 +75,7 @@ export function SharedEntryPreview({
             : t("FUTURE_DATE")}
         </SharedNotice>
       )}
+      <SharedEntryConversion entry={entry} group={group} />
       {entry.type === "REPAYMENT" && (
         <p>
           {
@@ -90,6 +93,7 @@ export function SharedEntryPreview({
           <SharedAmount
             amount={entry.originalAmount}
             currency={entry.currencyCode}
+            relativeTo={group.currencyCode}
           />
         </p>
       )}

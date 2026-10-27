@@ -22,6 +22,14 @@ const position = (patch: Partial<SharedPosition> = {}): SharedPosition => ({
 });
 
 describe("Readable shared positions", () => {
+  it("names the currency shared by the group's totals and balances", () => {
+    render(
+      <SharedGroupSummary
+        group={sharedGroupFixture({ currencyCode: "CAD" })}
+      />,
+    );
+    expect(screen.getByText("Balances and totals in CAD")).toBeInTheDocument();
+  });
   it.each([
     ["200.0000", "Owed to you"],
     ["-200.0000", "You owe"],

@@ -463,6 +463,10 @@ test.describe("Shared expenses", () => {
       .getByRole("button", { name: "Close", exact: true })
       .last()
       .click();
+    await page.waitForURL(`**/shared-expenses/${group.id}`);
+    await expect(
+      page.getByRole("heading", { name: "City break", exact: true }),
+    ).toBeVisible();
     await page.reload();
     const after = await api.get<SharedGroupFixture>(
       `/shared-expenses/groups/${group.id}`,

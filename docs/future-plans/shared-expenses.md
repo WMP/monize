@@ -1,7 +1,8 @@
 # Shared expenses implementation
 
 Status: authorized locally by the requesting user on 2026-10-25; implementation
-branch `feat/shared-expenses`, rebased onto `b70868dda`. On 2026-10-27 the user
+branch `feat/shared-expenses`. The maintainer-feedback candidate uses upstream
+`c63acab637` for verification. The user
 requested an upstream Draft PR and Discussion for scope review before maintainer
 approval. The draft remains unapproved and is not ready to merge.
 
@@ -72,6 +73,35 @@ historical imports, cross-group netting or payment initiation.
 - Mobile entry, cancel/back, rounding, duplicate import matching, partial repayment,
   refund after settlement, archive/reopen, export and restore survive reloads.
 
+### Maintainer feedback: currency inputs and existing bank entries
+
+The [maintainer's walkthrough feedback](https://github.com/kenlasko/monize/discussions/1889#discussioncomment-19221359)
+asks for the standard money input, mixed USD/CAD trips, and a workflow starting
+from entries already in Monize. These are checks of the existing accepted scope:
+
+- Keep money entry on `CurrencyInput` through `SharedMoneyInput`, with
+  `NumericInput` for rates, percentages and weights. Apply the selected currency
+  precision to calculator entry as well as ordinary typing.
+- Show the settlement currency on the group summary and distinguish original
+  USD receipts from CAD totals. Preview and saved detail disclose the server's
+  accepted conversion, source and observation date.
+- In a CAD trip, an existing USD 900 bank debit at the agreed rate 1.35 is
+  CAD 1,215. A CAD 135 fuel bill makes CAD 1,350 total and CAD 450 per person.
+  The cabin payer is owed CAD 765, or CAD 665 after a CAD 100 repayment.
+  Matching the original bank row keeps its ID, tags and USD debit; an account
+  with USD 2,000 before that payment stays at USD 1,100 after matching.
+- Start this journey in the register filtered by an existing trip tag, then
+  use **Split with people** and explicitly review the chosen row. Batch import
+  by tag remains a separate Phase 2 proposal, as the maintainer suggested;
+  candidate selection, duplicate exclusion, previews and consent would need
+  their own agreed specification. The first-version preference is quick entry,
+  splitting and repayments, with optional personal-finance integration.
+
+Verify component precision and conversion states, then run the persisted browser
+journey in `e2e/tests/shared-expenses-currencies.spec.ts`. Unknown conversions,
+known zero, the reader's number locale and original-refund rate provenance are
+separate component cases. No new backend conversion formula or schema is needed.
+
 ## Verification and review artifacts
 
 During development run focused backend/frontend tests and stage new files before
@@ -89,5 +119,6 @@ automated browser checks do not establish the five-person formative study.
 
 PR preparation follows the repository template and names SE-001 through SE-012
 and existing affected invariants. Do not tick the upstream approval/label or human
-review boxes without evidence. The user requested a branch ready for a later PR,
-not publication now.
+review boxes without evidence. The requester authorized the upstream draft and
+review updates; maintainer scope approval and human review remain separate
+requirements.

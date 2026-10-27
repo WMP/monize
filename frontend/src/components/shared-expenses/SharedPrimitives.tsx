@@ -14,6 +14,7 @@ import { useNumberFormat } from "@/hooks/useNumberFormat";
 import { useReportData } from "@/hooks/useReportData";
 import { exchangeRatesApi } from "@/lib/exchange-rates";
 import { getErrorMessage } from "@/lib/errors";
+import { withCurrencyCode } from "@/lib/format";
 
 export function SharedError({
   error,
@@ -42,19 +43,25 @@ export function SharedError({
 export function SharedAmount({
   amount,
   currency,
+  relativeTo,
   className = "",
 }: {
   amount: string | null;
   currency: string;
+  relativeTo?: string;
   className?: string;
 }) {
   const t = useTranslations("sharedExpenses");
-  const { formatCurrency } = useNumberFormat();
+  const { formatCurrency, defaultCurrency } = useNumberFormat();
   return (
     <span className={`tabular-nums whitespace-nowrap ${className}`}>
       {amount === null
         ? t("unknown")
-        : formatCurrency(Number(amount), currency)}
+        : withCurrencyCode(
+            formatCurrency(Number(amount), currency),
+            currency,
+            relativeTo && relativeTo !== currency ? relativeTo : defaultCurrency,
+          )}
     </span>
   );
 }

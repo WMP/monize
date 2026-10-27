@@ -364,16 +364,19 @@ export function SharedBooking({
                       label={t("bankFlow")}
                       amount={payment.breakdown.bankTotal}
                       currency={payment.bankCurrency}
+                      relativeTo={group.currencyCode}
                     />
                     <BookingFigure
                       label={t("privatePart")}
                       amount={payment.breakdown.privateRemainder}
                       currency={payment.bankCurrency}
+                      relativeTo={group.currencyCode}
                     />
                     <BookingFigure
                       label={t("fxDifference")}
                       amount={payment.breakdown.fxDifference}
                       currency={payment.bankCurrency}
+                      relativeTo={group.currencyCode}
                     />
                   </div>
                 ))}
@@ -418,16 +421,22 @@ function BookingFigure({
   label,
   amount,
   currency,
+  relativeTo,
 }: {
   label: string;
   amount: string;
   currency: string;
+  relativeTo?: string;
 }) {
   return (
     <div className="flex flex-wrap justify-between gap-2">
       <dt>{label}</dt>
       <dd className="font-medium">
-        <SharedAmount amount={amount} currency={currency} />
+        <SharedAmount
+          amount={amount}
+          currency={currency}
+          relativeTo={relativeTo}
+        />
       </dd>
     </div>
   );

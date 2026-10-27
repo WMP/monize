@@ -106,6 +106,7 @@ export function SharedEntryDetail({
             <SharedAmount
               amount={entry.originalAmount}
               currency={entry.currencyCode}
+              relativeTo={group.currencyCode}
             />
           </p>
           {entry.note && (

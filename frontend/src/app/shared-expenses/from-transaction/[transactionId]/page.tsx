@@ -16,6 +16,7 @@ import { useReportData } from "@/hooks/useReportData";
 import { transactionsApi } from "@/lib/transactions";
 import { sharedExpensesApi } from "@/lib/shared-expenses";
 import { canShareBankTransaction } from "@/lib/shared-bank-eligibility";
+import { afterModalHistoryPop } from "@/lib/after-modal-history-pop";
 import type {
   SharedEntry,
   SharedFinanceOverview,
@@ -97,6 +98,7 @@ function BankContent() {
                 <SharedAmount
                   amount={String(bank.amount)}
                   currency={bank.currencyCode}
+                  relativeTo={selected?.currencyCode}
                 />
                 <p className="mt-2 text-sm">{t("bankPrivacyHelp")}</p>
               </Card>
@@ -169,7 +171,11 @@ function BankGroup({
     categoryId: bank.categoryId ?? undefined,
     payeeId: bank.payeeId ?? undefined,
   };
-  const done = () => router.push(`/shared-expenses/${group.id}`);
+  const done = () => {
+    setCreate(false);
+    setSelected(null);
+    afterModalHistoryPop(() => router.push(`/shared-expenses/${group.id}`));
+  };
   const choose = (entry: SharedEntry) =>
     setSelected({
       entryId: entry.id,
@@ -218,6 +224,7 @@ function BankGroup({
               <SharedAmount
                 amount={entry.originalAmount}
                 currency={entry.currencyCode}
+                relativeTo={group.currencyCode}
               />
               <Button
                 variant="outline"

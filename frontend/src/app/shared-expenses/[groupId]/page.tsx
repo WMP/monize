@@ -476,6 +476,7 @@ function GroupContent({ groupId }: { groupId: string }) {
                                 className="font-semibold"
                                 amount={entry.originalAmount}
                                 currency={entry.currencyCode}
+                                relativeTo={group.currencyCode}
                               />
                               <p className="mt-1">
                                 <Badge

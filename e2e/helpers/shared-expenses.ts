@@ -17,12 +17,13 @@ export interface SharedGroupFixture {
 export async function createSharedGroup(
   api: ApiClient,
   name = "Mountain weekend",
+  currencyCode = "USD",
 ): Promise<SharedGroupFixture> {
   const result = await api.post<{ id: string }>("/shared-expenses/groups", {
     operationId: randomUUID(),
     name,
     myName: "Robert",
-    currencyCode: "USD",
+    currencyCode,
     participants: [{ name: "Anna" }, { name: "Bartek" }],
   });
   return api.get<SharedGroupFixture>(`/shared-expenses/groups/${result.id}`);
