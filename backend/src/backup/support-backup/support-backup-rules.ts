@@ -6,6 +6,7 @@ import {
   mask,
   scale,
   scaleQty,
+  type TableRules,
 } from "./support-backup-rule-kinds";
 import { ACCRUAL_RULES } from "./support-backup-rules.accruals";
 import { PLANNING_RULES } from "./support-backup-rules.planning";
@@ -23,8 +24,6 @@ import { WARRANTY_RULES } from "./support-backup-rules.warranties";
 // can be split without either half importing the other; re-exported here so
 // existing import sites are unchanged.
 export type { ColumnRule, TableRules } from "./support-backup-rule-kinds";
-
-import type { TableRules } from "./support-backup-rule-kinds";
 
 /**
  * Tables never written to a support backup regardless of section selection.
