@@ -4,6 +4,7 @@ import { investmentsApi } from './investments';
 import { scheduledTransactionsApi } from './scheduled-transactions';
 import { clearAllCache, invalidateCache, setCache, getCached } from './apiCache';
 import { API_MAX_PAGE_LIMIT } from './api-page-limits';
+import { PORTFOLIO_VALUATION_TIMEOUT_MS } from './constants';
 
 vi.mock('./api', () => ({
   default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -21,7 +22,10 @@ describe('investmentsApi', () => {
   it('getPortfolioSummary fetches /portfolio/summary', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: { totalValue: 1000 } });
     await investmentsApi.getPortfolioSummary();
-    expect(apiClient.get).toHaveBeenCalledWith('/portfolio/summary', { params: undefined });
+    expect(apiClient.get).toHaveBeenCalledWith('/portfolio/summary', {
+      params: undefined,
+      timeout: PORTFOLIO_VALUATION_TIMEOUT_MS,
+    });
   });
 
   it('getPortfolioSummary passes accountIds', async () => {
@@ -29,6 +33,7 @@ describe('investmentsApi', () => {
     await investmentsApi.getPortfolioSummary(['a1', 'a2']);
     expect(apiClient.get).toHaveBeenCalledWith('/portfolio/summary', {
       params: { accountIds: 'a1,a2' },
+      timeout: PORTFOLIO_VALUATION_TIMEOUT_MS,
     });
   });
 
@@ -734,7 +739,10 @@ describe('investmentsApi', () => {
   it('getPortfolioSummary with empty accountIds passes undefined params', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: { totalValue: 0 } });
     await investmentsApi.getPortfolioSummary([]);
-    expect(apiClient.get).toHaveBeenCalledWith('/portfolio/summary', { params: undefined });
+    expect(apiClient.get).toHaveBeenCalledWith('/portfolio/summary', {
+      params: undefined,
+      timeout: PORTFOLIO_VALUATION_TIMEOUT_MS,
+    });
   });
 
   it('getAssetAllocation with empty accountIds passes undefined params', async () => {

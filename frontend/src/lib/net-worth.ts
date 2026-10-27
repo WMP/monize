@@ -1,4 +1,5 @@
 import apiClient from './api';
+import { PORTFOLIO_VALUATION_TIMEOUT_MS } from './constants';
 import {
   MonthlyNetWorth,
   MonthlyInvestmentValue,
@@ -50,7 +51,7 @@ export const netWorthApi = {
   }): Promise<DailyInvestmentValue[]> => {
     const response = await apiClient.get<DailyInvestmentValue[]>(
       '/net-worth/investments-daily',
-      { params },
+      { params, timeout: PORTFOLIO_VALUATION_TIMEOUT_MS },
     );
     return response.data;
   },
@@ -81,7 +82,7 @@ export const netWorthApi = {
   }): Promise<PortfolioPeriodResult> => {
     const response = await apiClient.get<PortfolioPeriodResult>(
       '/net-worth/investments-period-result',
-      { params },
+      { params, timeout: PORTFOLIO_VALUATION_TIMEOUT_MS },
     );
     return response.data;
   },
@@ -101,7 +102,7 @@ export const netWorthApi = {
   }): Promise<PortfolioPeriodResults> => {
     const response = await apiClient.get<PortfolioPeriodResults>(
       '/net-worth/investments-period-results',
-      { params },
+      { params, timeout: PORTFOLIO_VALUATION_TIMEOUT_MS },
     );
     return response.data;
   },
@@ -115,7 +116,7 @@ export const netWorthApi = {
   }): Promise<InvestmentBreakdown> => {
     const response = await apiClient.get<InvestmentBreakdown>(
       '/net-worth/investments-breakdown',
-      { params },
+      { params, timeout: PORTFOLIO_VALUATION_TIMEOUT_MS },
     );
     return response.data;
   },
