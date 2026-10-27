@@ -222,11 +222,23 @@ implied.
 | INV-SEARCH-005 | The assistant's totals and rows read the search string alike | enforced |
 | INV-WTY-001 | A warranty never writes a ledger row, a balance or a holding | partial |
 | INV-WTY-002 | Every warranty status a surface prints is the server's, from one function | partial |
-| INV-WTY-003 | An attachment has exactly one parent, a transaction or a warranty; a transaction's attachments are its own rows plus the documents of warranties linked to it, through one fragment | enforced |
+| INV-WTY-003 | An attachment has exactly one transaction, warranty, shared-group or shared-entry parent; a transaction's attachments include linked warranty documents through one fragment | enforced |
 | INV-WTY-004 | Each warranty reminder threshold notifies once per (warranty, expiry date, threshold), across replicas | enforced |
 | INV-WTY-005 | A warranty or claim write naming a row the caller does not own is refused before the write | enforced |
 | INV-WTY-006 | A warranty import's preview and commit are one computation | enforced |
 | INV-WTY-007 | A delegate never learns a transaction outside their readable accounts through a warranty | enforced |
+| SE-001 | Accepted contributions and shares conserve both currency totals | enforced |
+| SE-002 | Joining preserves the existing participant's history | enforced |
+| SE-003 | Group membership grants no private finance access | enforced |
+| SE-004 | A matched bank fact has one lasting effect | enforced |
+| SE-005 | Consumption and repayment have different ledger meanings | enforced |
+| SE-006 | Peer edits await the ledger owner's review | enforced |
+| SE-007 | Unknown inputs withhold settlement instructions | enforced |
+| SE-008 | Refused financial commands leave no partial writes | enforced |
+| SE-009 | Application edits retain their financial explanation | enforced |
+| SE-010 | A user's restore creates an independent group snapshot | enforced |
+| SE-011 | Shared documents require explicit publication and current access | enforced |
+| SE-012 | Editing preserves accepted pennies until redistribution | enforced |
 
 ## Imports
 
@@ -8625,22 +8637,23 @@ and the widget.
 
 ```text
 Statement           Every transaction_attachments row belongs to exactly one
-                    parent, a transaction or a warranty; a transaction's
+                    transaction, warranty, shared-group or shared-entry parent; a transaction's
                     attachments are its own rows plus the documents of every
                     warranty linked to it, archived or not, reached through
                     warranties.transaction_id by one fragment.
-Source of truth     transaction_attachments.transaction_id and warranty_id
-Enforcement         chk_attachment_one_parent,
-                    ((transaction_id IS NOT NULL)::int +
-                     (warranty_id IS NOT NULL)::int) = 1, added by
-                    20261022001322_attachment_parent.sql and declared in
+Source of truth     transaction_attachments.transaction_id, warranty_id,
+                    shared_group_id and shared_entry_id
+Enforcement         chk_attachment_one_parent requires num_nonnulls of the four
+                    parent columns to equal 1, extended by
+                    20261025192210_shared_expense_documents.sql and declared in
                     database/schema.sql (in SQL only; the entity does not
                     carry it). AttachmentsService.create and findAllFor take
                     an AttachmentParent union (attachment-parent.ts), never
                     two ids, and the controller has one route per parent; both
                     halves of a scan pair carry the parent, and the cap of ten
                     is counted per parent under lockTransactionRow or
-                    lockWarrantyRow. The reach is written once,
+                    lockWarrantyRow (shared parents use lockSharedGroup).
+                    The private transaction/warranty reach is written once,
                     attachmentReachableFromTransactionSql and
                     reachedTransactionIdSql in attachment-parent.ts, used by
                     the transaction's attachment list (each row carrying

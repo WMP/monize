@@ -1,8 +1,9 @@
 # Shared expenses implementation
 
 Status: authorized locally by the requesting user on 2026-10-25; implementation
-branch `feat/shared-expenses`, based on current `origin/main`. Upstream publication
-is a later step requiring the contribution workflow; no Discussion is fabricated.
+branch `feat/shared-expenses`, rebased onto `b70868dda`. On 2026-10-27 the user
+requested an upstream Draft PR and Discussion for scope review before maintainer
+approval. The draft remains unapproved and is not ready to merge.
 
 The accepted product contracts are [financial behavior](../specs/shared-expenses.md)
 and [interaction/document behavior](../specs/shared-expenses-ux.md). The
