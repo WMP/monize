@@ -53,6 +53,8 @@ Tailwind v4 trap: the bare `shadow` utility is a legacy alias with the stock val
 
 `Modal` takes `title` (and optional `description`, `footer`, `padding`), draws the standard header and wires `aria-labelledby` -- before it, none of the 74 hand-rolled headings reached the dialog, so every dialog announced itself as an unnamed region. `padding` defaults to `none` and leaves children unwrapped, because several call sites make the panel their own scroll or flex parent. A genuinely bespoke header (ConfirmDialog's icon) stays on the baseline deliberately.
 
+What the header looks like is `screens-and-dialogs.md`: the reference is the New Transaction dialog (large bold title, no X, no full-width divider), and the `title` header is to be brought to that look. Until it is, a new dialog adds no border or close button of its own around it.
+
 ## An empty list renders `EmptyState`
 
 `components/ui/EmptyState.tsx` (glyph, title, optional description and action). `ui-conventions.test.ts` bans the `text-center py-12` container fingerprint outside the component, with no grandfathered baseline.
