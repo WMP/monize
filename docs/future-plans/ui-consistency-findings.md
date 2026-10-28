@@ -1,6 +1,6 @@
 # UI consistency findings (follow-up to kenlasko/monize#1912)
 
-Status: final draft for maintainer review. Scope: `frontend/src` on `main` at 5c550520 (WMP/monize; upstream `main` differs only in backend and loan files), compared with `docs/frontend/screens-and-dialogs.md` from PR #1912. Method: a source read (grep plus reading the matched code); spot checks of each section by hand; no screen was run in a browser. Counts are approximate.
+Status: final draft for maintainer review. Scope: `frontend/src` on `main` at 5c550520 (WMP/monize; upstream `main` differs only in backend files and one frontend test), compared with `docs/frontend/screens-and-dialogs.md` from PR #1912. Method: a source read (grep plus reading the matched code); spot checks of each section by hand; no screen was run in a browser. Counts are approximate.
 
 This file collects:
 
