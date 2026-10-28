@@ -467,7 +467,38 @@ export interface MappedInvestments {
   readonly transfersPaired: number;
   /** Security-carrying rows that could not be imported. */
   readonly skipped: number;
+  /**
+   * The pair and date of each trade left in its account's currency because
+   * neither the file nor `MnyMarketRates` had a rate for it.
+   */
+  readonly rateGaps: readonly MnyRateGap[];
   readonly warnings: readonly MnyWarning[];
+}
+
+/**
+ * A pair and date a cross-currency trade needs a rate for: `from` is the
+ * security's currency, `to` the account's.
+ */
+export interface MnyRateGap {
+  readonly from: string;
+  readonly to: string;
+  readonly date: string;
+}
+
+/** A market rate for one `MnyRateGap`, multiplying `from` into `to`. */
+export interface MnyMarketRate extends MnyRateGap {
+  readonly rate: number;
+}
+
+/**
+ * Rates looked up outside the file for the trades it could not convert
+ * (`MnyMarketRateService`): Monize's stored history, filled from the
+ * configured rate provider.
+ */
+export interface MnyMarketRates {
+  readonly rates: readonly MnyMarketRate[];
+  /** `from->to` pairs whose lookup the rate provider did not answer. */
+  readonly unanswered: ReadonlySet<string>;
 }
 
 // ---------------------------------------------------------------------------

@@ -11,7 +11,8 @@ import {
   importAlreadyRunningException,
 } from "./mny-import-job.service";
 import { MnyImportService } from "./mny-import.service";
-import { MnyParsedFile, MnyParserService } from "./mny-parser.service";
+import { MnyParsedFile } from "./mny-parser.service";
+import { MnyMarketRateService } from "./mny-market-rates.service";
 import { MnyStagingService } from "./mny-staging.service";
 import { DEFAULT_MNY_IMPORT_OPTIONS } from "./model/mny-import-options";
 import {
@@ -226,6 +227,7 @@ function parsedFile(overrides: Partial<MnyParsedFile> = {}): MnyParsedFile {
       referencedPayees: new Set(),
       referencedCategories: new Set(),
       transfersPaired: 0,
+      rateGaps: [],
       skipped: 0,
       warnings: [],
     },
@@ -393,7 +395,7 @@ describe("MnyImportService", () => {
     service = new MnyImportService(
       {} as DataSource,
       staging as unknown as MnyStagingService,
-      parser as unknown as MnyParserService,
+      parser as unknown as MnyMarketRateService,
       jobs as unknown as MnyImportJobService,
       postProcessing as unknown as ImportPostProcessingService,
       usersService as unknown as UsersService,

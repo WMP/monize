@@ -76,6 +76,7 @@ describe("Money 97-99 action codes", () => {
   it.each([
     [MONEY99_ACTION.BUY, InvestmentAction.BUY],
     [MONEY99_ACTION.SELL, InvestmentAction.SELL],
+    [MONEY99_ACTION.INTEREST, InvestmentAction.INTEREST],
     [MONEY99_ACTION.DIVIDEND, InvestmentAction.DIVIDEND],
     [MONEY99_ACTION.REINVEST, InvestmentAction.REINVEST],
     [MONEY99_ACTION.CAPITAL_GAIN, InvestmentAction.CAPITAL_GAIN],
@@ -90,9 +91,11 @@ describe("Money 97-99 action codes", () => {
     expect(mapInvestmentAction(1, "jet3")).toBe(InvestmentAction.SELL);
     expect(mapInvestmentAction(4, "msisam")).toBe(InvestmentAction.INTEREST);
     expect(mapInvestmentAction(4, "jet3")).toBe(InvestmentAction.DIVIDEND);
+    expect(mapInvestmentAction(2, "msisam")).toBe(InvestmentAction.SELL);
+    expect(mapInvestmentAction(2, "jet3")).toBe(InvestmentAction.INTEREST);
   });
 
-  it.each([2, 3, 9, 12, 13, 17, 18, 19, 20, 22])(
+  it.each([3, 9, 12, 13, 17, 18, 19, 20, 22])(
     "leaves act %i unmapped",
     (act) => {
       expect(mapInvestmentAction(act, "jet3")).toBeNull();
@@ -105,6 +108,7 @@ describe("Money 97-99 action codes", () => {
   });
 
   it.each([
+    [MONEY99_ACTION.INTEREST, false],
     [MONEY99_ACTION.DIVIDEND, false],
     [MONEY99_ACTION.CAPITAL_GAIN, false],
     [MONEY99_ACTION.OTHER_INCOME, false],

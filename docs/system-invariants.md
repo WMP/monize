@@ -1640,8 +1640,10 @@ by another path. The Money import stored a foreign-quoted trade's price and tota
 in the account's currency at rate 1 until the 2026-10 audit (A26-M24): `mapInvestments`
 now converts them into the security's currency with the file's own rate for that
 date (`resolveFxRate` over the file's `CRNC_EXCHG` rows) and carries the rate as
-`exchange_rate`. Where the file has no rate near the date the row is still stored
-in the account's currency at rate 1, with a `crossCurrencyTradeUnconverted`
+`exchange_rate`. Where the file has no rate near the date, the market rate for
+that date is used (`MnyMarketRateService`: stored history, then the rate provider)
+with a `crossCurrencyTradeMarketRate` warning; with neither, the row is still
+stored in the account's currency at rate 1, with a `crossCurrencyTradeUnconverted`
 warning. The guard that would keep such a row out of `security_prices` (average
 only rows whose rate is not 1 or whose account currency is the security's) belongs
 in `security-price.service.ts` and is left to the securities stream.

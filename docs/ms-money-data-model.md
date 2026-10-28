@@ -739,10 +739,13 @@ Money 97, 98 and 99 write a plain, unencrypted Jet 3 database under the Access
 engine name, with the same table names and mostly the same columns, but **not the
 same codes**. `TRN.grftt` uses another bit layout (its void bit is Money Plus's
 loan-account bit, and its loan-template bit is Money Plus's VOID), `TRN.act` is
-numbered differently (1 is SELL, 4 is a dividend), there is no `BILL` table (a
+numbered differently (1 is SELL, 2 interest, 4 a dividend), there is no `BILL` table (a
 series is a `TRN` recurrence template whose `htrnSrc` names its pending
 instance), and
-`TRN.hpay` / `hcls1` / `hcls2` carry the old names. The measured tables are in
+`TRN.hpay` / `hcls1` / `hcls2` carry the old names. Recording a split rewrites
+`TRN_INV.qty`, `TRN_INV.dPrice` and `LOT.qty` of every earlier trade in that
+security, a CD purchase carries no `qty` or `dPrice`, and `CRNC_EXCHG` holds a
+single rate per pair. The measured tables are in
 `docs/future-plans/mny-money99-import.md`; the code is
 `backend/src/import/mny/model/mny-money99.ts`.
 

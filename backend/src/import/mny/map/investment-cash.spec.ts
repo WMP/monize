@@ -64,6 +64,7 @@ function investments(
     referencedPayees: new Set(),
     referencedCategories: new Set(),
     transfersPaired: 0,
+    rateGaps: [],
     skipped: 0,
     warnings: [],
   };

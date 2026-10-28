@@ -27,7 +27,8 @@ import {
   MnyImportJobService,
   importAlreadyRunningException,
 } from "./mny-import-job.service";
-import { MnyParsedFile, MnyParserService } from "./mny-parser.service";
+import { MnyParsedFile } from "./mny-parser.service";
+import { MnyMarketRateService } from "./mny-market-rates.service";
 import { MnyStagingService } from "./mny-staging.service";
 import {
   MnyAccountVerification,
@@ -117,7 +118,7 @@ export class MnyImportService {
   constructor(
     private dataSource: DataSource,
     private staging: MnyStagingService,
-    private parser: MnyParserService,
+    private parser: MnyMarketRateService,
     private jobs: MnyImportJobService,
     private postProcessing: ImportPostProcessingService,
     @Inject(forwardRef(() => UsersService))
@@ -269,7 +270,7 @@ export class MnyImportService {
     const loadedAt = Date.now();
     sampleRss();
 
-    const parsed = this.parser.parse({
+    const parsed = await this.parser.parse({
       buffer: bytes,
       options,
       // Staged bytes are stored decrypted, so the password is spent on the

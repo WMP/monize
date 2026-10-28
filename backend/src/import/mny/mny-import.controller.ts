@@ -29,7 +29,7 @@ import { ImportJob } from "./entities/import-job.entity";
 import { MnyImportError } from "./mny-errors";
 import { MnyImportJobService } from "./mny-import-job.service";
 import { MnyImportService } from "./mny-import.service";
-import { MnyParserService } from "./mny-parser.service";
+import { MnyMarketRateService } from "./mny-market-rates.service";
 import { MnyStagingService } from "./mny-staging.service";
 import { MnyPreview, buildPreview } from "./mny-preview";
 import {
@@ -86,7 +86,7 @@ function toJobDto(job: ImportJob): MnyImportJobDto {
 export class MnyImportController {
   constructor(
     private readonly staging: MnyStagingService,
-    private readonly parser: MnyParserService,
+    private readonly parser: MnyMarketRateService,
     private readonly jobs: MnyImportJobService,
     private readonly importService: MnyImportService,
   ) {}
@@ -144,7 +144,7 @@ export class MnyImportController {
     // Parse first, stage second: an unreadable file, or one whose password is
     // wrong, must not leave bytes behind. The buffer is decrypted in place, so
     // what gets staged is already plaintext and the password is spent here.
-    const parsed = this.parseOrTranslate(bytes, dto.password);
+    const parsed = await this.parseOrTranslate(bytes, dto.password);
     const staged = await this.staging.stage(req.user.id, {
       filename: file.originalname,
       data: bytes,
@@ -238,9 +238,9 @@ export class MnyImportController {
    * The password is never part of a message here, and the underlying error's
    * message never contains it either -- see `mny-errors.ts`.
    */
-  private parseOrTranslate(buffer: Buffer, password?: string) {
+  private async parseOrTranslate(buffer: Buffer, password?: string) {
     try {
-      return this.parser.parse({
+      return await this.parser.parse({
         buffer,
         password,
         // Only used when the file names no base currency of its own; the import
