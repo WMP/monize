@@ -1,52 +1,59 @@
-# Shared expenses: implementation plan for the UI review
+# Shared expenses: focused first delivery
 
-Status: Approved for implementation on 28 October 2026.
-Specification: `docs/specs/shared-expenses-ui-polish.md`.
-Task list: `docs/future-plans/shared-expenses-ui-polish-tasks.md`.
+Status: Approved by the requester on 28 October 2026.
+Specification: `docs/specs/shared-expenses-ui-polish.md`, section 0.
+Tasks: `docs/future-plans/shared-expenses-ui-polish-tasks.md`.
 
-The plan addresses Ken's 28 October PR review. The source is linked in the
-specification, which maps all 11 comments and specifies the proposed FX policy.
-The requester approved the complete specification, including the private FX policy.
+## Boundary
 
-## Baseline and constraints
+Group entry, sharing, balances, repayments and shared documents stay available.
+New private accounts/postings and Transactions handoffs are deferred. Existing
+private records remain readable and explicitly unlinkable without recalculation.
+A server guard blocks new private-finance commands before their service runs;
+there is no environment or user toggle around it. This is a compatibility boundary,
+not a claim that the existing integration source or schema has been removed.
 
-- Published revision: `dede6ceb934f3fdca8f5b23746bad83823318c38`, including
-  Ken's merge of main. Local revision during analysis: `f08198611`.
-- Relevant shared-expense/form files are unchanged between those revisions.
-- Synchronize the feature branch by fast-forward after rechecking its state;
-  preserve external commits. Do not rebase or force-push for this synchronization.
-- No Docker, dependency changes, schema migrations, guard exceptions or release
-  infrastructure changes are included. A newly discovered need is reported.
-- The PR remains a draft until the maintainer agrees it is ready. User approval
-  of this specification is not a claim of upstream merge approval.
+The earlier spec was committed at `69734062d`; Ken's merge at `dede6ceb9` is retained.
+No force push, migration, dependency, guard baseline or release change is included.
 
-## Edit map and observations
+## Edit map and sequence
 
-| Concern | Existing entry points | Observe after change |
-| --- | --- | --- |
-| Single-form save and documents | `frontend/src/components/shared-expenses/SharedEntryEditor.tsx`, `frontend/src/components/shared-expenses/SharedDocuments.tsx`, `frontend/src/components/transactions/AttachmentsSection.tsx` | Successful Save closes; a failed upload retries on the saved entry in place. |
-| Tables and filter presentation | `frontend/src/app/shared-expenses/page.tsx`, `frontend/src/app/shared-expenses/[groupId]/page.tsx`, `frontend/src/components/transactions/TransactionFilterPanel.tsx`, `frontend/src/components/ui/Table.tsx` | Consistent filter/table styling; original data and responsive actions preserved. |
-| Money controls | `frontend/src/components/shared-expenses/SharedPrimitives.tsx`, `frontend/src/components/transactions/CurrencyPickerButton.tsx`, `frontend/src/components/shared-expenses/SharedSplitEditor.tsx` | Standard square selector and money input; precision and bound currencies retained. |
-| New versus matched payment | `frontend/src/components/shared-expenses/SharedBooking.tsx`, `frontend/src/components/shared-expenses/SharedBankPaymentEditor.tsx`, `frontend/src/components/shared-expenses/SharedCombinedBooking.tsx`, `frontend/src/components/transactions/TransactionForm.tsx` | Standard creation form; matched facts read-only; no premature private write. |
-| Historical candidates | `frontend/src/components/shared-expenses/SharedTransactionPicker.tsx`, `backend/src/shared-expenses/shared-finance.controller.ts`, `backend/src/shared-expenses/shared-finance.service.ts`, `backend/src/transactions/transaction-search-query.util.ts` | Eligibility before paging, All Dates, stable order, explicit failed/empty states. |
-| Category/FX semantics | `backend/src/shared-expenses/shared-bank-payment-plan.ts`, `backend/src/shared-expenses/shared-finance-plan.ts`, `backend/src/shared-expenses/shared-finance-write.ts`, `backend/src/shared-expenses/shared-finance-preview.ts`, `backend/src/shared-expenses/dto/shared-finance.dto.ts` | Numerical spec cases hold in saved rows, private reports and group balances. |
-| Contracts and consumers | `docs/specs/shared-expenses.md`, `docs/specs/shared-expenses-ux.md`, `docs/specs/shared-expenses-consumers.md`, `docs/frontend/ui-conventions.md`, `docs/frontend/forms-and-formatting.md` | Rules name the reused abstractions, changed figures have one server answer, old behavior is explicitly superseded after approval. |
+1. Add the refusal guard to private-finance create/preview/book and combined
+   entry/finance controllers. Test actual HTTP routing, refusal before service
+   invocation, and retained read/unlink routes. Keep deferred calculation tests.
+2. Remove the new-booking affordances from shared entry, finance and Transactions
+   surfaces; handle old handoff URLs explicitly. Show existing private data only
+   where it exists, and retain access to unlink. No new category or FX policy.
+3. Put staged attachments in `SharedEntryEditor`, reuse `AttachmentsSection` and
+   the shared upload API, and close after success. Retain command/file IDs for
+   retries and keep a saved-entry state after partial upload failure.
+4. Compose `SharedMoneyInput` with the existing square `CurrencyPickerButton`;
+   editable currency belongs to the whole entry, dependent amounts are bound.
+5. Use `Table` primitives and wrapped phone rows for overview and entries. Reuse
+   Transactions filter-panel presentation, preserve server paging/request keys,
+   and keep empty, failed and stale results distinguishable.
+6. Add focused regressions and update the relevant convention documentation.
+   Run gates once, localize final copy, capture the running UI, publish verified
+   commits and a new PR progress comment with the actual evidence.
 
-Keep components and helpers focused. Any extracted filter/form presentation
-must serve both callers and preserve ordinary Transactions behavior. Do not turn
-this into a general form-builder or redesign unrelated pages.
+## Observations required
 
-## Delivery order
+- The six-person trip supports a payer with zero benefit, selected beneficiaries,
+  exact 20 plus equal 40/40, explicit zero, and end-trip repayments after reload.
+- Save closes with no attachments or successful uploads; failed files retry on
+  the same saved expense without duplicate financial entries or uploads.
+- Direct private-finance create calls are refused without calling write services.
+  Existing reads and explicit unlink keep their prior ownership checks.
+- Filters and paging retain their selections; keyboard/touch rows work, money
+  stays readable at 320/390px, and the viewport does not widen.
+- Group commands leave private accounts/transactions unchanged. Group FX remains
+  the existing server-authoritative result; private FX redesign is deferred.
 
-1. Approve and commit the spec before product changes; pin the synchronized head.
-2. Add focused regressions for save/attachments, table/filter conventions and
-   currency controls; implement that UI slice.
-3. Reuse normal transaction creation with the shared submission adapter; separate
-   matched-source allocation and make historical matching searchable.
-4. Implement the approved category/FX policy with real database evidence,
-   compatibility and report checks; preserve group arithmetic.
-5. Run the required gate once on the assembled change, fix actual failures,
-   finish locale parity, capture working screens and publish the verified commits.
+## Verification and resources
 
-These are parts of one review iteration, not a commitment to repeated full
-audits. Further scope comes from concrete feedback or a demonstrated defect.
+Focused UI and HTTP tests during development, then required frontend/backend
+lint, types, changed tests, locale checks and builds. Use the native PostgreSQL
+and production-browser harness for the persisted group scenario and refusal
+checks. Docs and env checks run from the root. No Docker; one heavy process at a
+time, 3500 MiB memory limit and 1536 MiB available host reserve. Do not repeat a
+broad suite without a material change or unresolved failure.
