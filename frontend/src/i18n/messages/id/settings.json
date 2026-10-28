@@ -246,9 +246,9 @@
     "reportingBasisLabel": "Basis pelaporan bawaan",
     "reportingAccrual": "Akrual",
     "reportingCash": "Kas",
-    "reportingBasisHelp": "Gunakan akrual secara bawaan untuk laporan, termasuk tren kategori dan penerima. Tampilan khusus kas tetap menggunakan tanggal pembayaran.",
+    "reportingBasisHelp": "Pilih pengaturan bawaan untuk laporan serta tren kategori dan penerima. Tampilan khusus kas tetap menggunakan tanggal pembayaran.",
     "accrualEnabledLabel": "Aktifkan akuntansi akrual",
-    "accrualEnabledTooltip": "Mengaktifkan tab Akrual pada transaksi, saldo akrual di Akun / Lainnya, dan sakelar Tunai/Akrual pada laporan. Nonaktif secara default agar tidak menambah kerumitan sebelum Anda mengaktifkannya."
+    "accrualEnabledTooltip": "Mengaktifkan jadwal akrual, saldo, dan kontrol laporan. Saat nonaktif, laporan menggunakan basis kas. Jadwal tersimpan dipertahankan dan diperbarui ketika transaksinya berubah."
   },
   "notifications": {
     "heading": "Notifikasi",

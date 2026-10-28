@@ -246,9 +246,9 @@
     "reportingBasisLabel": "Base comptable par défaut",
     "reportingAccrual": "Engagement",
     "reportingCash": "Trésorerie",
-    "reportingBasisHelp": "Utiliser l’engagement par défaut pour les rapports, y compris les tendances par catégorie et bénéficiaire. Les vues de trésorerie conservent les dates de paiement.",
+    "reportingBasisHelp": "Choisissez la valeur par défaut pour les rapports et les tendances par catégorie et bénéficiaire. Les vues de trésorerie conservent les dates de paiement.",
     "accrualEnabledLabel": "Activer la comptabilité de régularisation",
-    "accrualEnabledTooltip": "Active l'onglet Régularisation dans les transactions, les soldes de régularisation sous Comptes / Autres, et le commutateur Trésorerie / Régularisation dans les rapports. Désactivé par défaut pour ne rien surcharger avant que vous ne l'activiez."
+    "accrualEnabledTooltip": "Active les échéanciers de régularisation, les soldes et les commandes des rapports. Si désactivé, les rapports utilisent la trésorerie. Les échéanciers enregistrés sont conservés et mis à jour lorsque leurs transactions changent."
   },
   "notifications": {
     "heading": "Notifications",

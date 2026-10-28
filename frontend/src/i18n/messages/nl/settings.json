@@ -246,9 +246,9 @@
     "reportingBasisLabel": "Standaard rapportagebasis",
     "reportingAccrual": "Toerekening",
     "reportingCash": "Kasbasis",
-    "reportingBasisHelp": "Gebruik standaard toerekening voor rapporten, inclusief trends per categorie en begunstigde. Kasgerichte weergaven behouden de betaaldatums.",
+    "reportingBasisHelp": "Kies de standaard voor rapporten en trends per categorie en begunstigde. Kasweergaven behouden de betaaldatums.",
     "accrualEnabledLabel": "Overlopende posten inschakelen",
-    "accrualEnabledTooltip": "Schakelt het tabblad Overlopende posten bij transacties, de saldi onder Rekeningen / Overige en de schakelaar Contant/Overlopend in rapporten in. Standaard uit, zodat er geen extra rommel ontstaat totdat u het inschakelt."
+    "accrualEnabledTooltip": "Schakelt toerekeningsschema’s, saldi en rapportopties in. Wanneer uitgeschakeld, gebruiken rapporten de kasbasis. Opgeslagen schema’s blijven bewaard en worden bijgewerkt wanneer hun transacties veranderen."
   },
   "notifications": {
     "heading": "Meldingen",

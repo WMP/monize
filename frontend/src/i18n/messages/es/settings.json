@@ -246,9 +246,9 @@
     "reportingBasisLabel": "Base contable predeterminada",
     "reportingAccrual": "Devengo",
     "reportingCash": "Caja",
-    "reportingBasisHelp": "Usa devengo por defecto en los informes, incluidas las tendencias por categoría y beneficiario. Las vistas de caja conservan las fechas de pago.",
+    "reportingBasisHelp": "Elige el valor predeterminado para informes y tendencias por categoría y beneficiario. Las vistas de caja conservan las fechas de pago.",
     "accrualEnabledLabel": "Activar la contabilidad de devengo",
-    "accrualEnabledTooltip": "Activa la pestaña de devengo en las transacciones, los saldos de devengo en Cuentas / Otras y el interruptor Efectivo / Devengo en los informes. Desactivado de forma predeterminada para no añadir elementos innecesarios hasta que lo active."
+    "accrualEnabledTooltip": "Activa los planes de devengo, los saldos y los controles de informes. Al desactivarlo, los informes usan caja. Los planes guardados se conservan y se actualizan cuando cambian sus transacciones."
   },
   "notifications": {
     "heading": "Notificaciones",

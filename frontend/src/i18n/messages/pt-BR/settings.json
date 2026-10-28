@@ -246,9 +246,9 @@
     "reportingBasisLabel": "Base de relatório padrão",
     "reportingAccrual": "Competência",
     "reportingCash": "Caixa",
-    "reportingBasisHelp": "Use competência por padrão nos relatórios, incluindo tendências por categoria e favorecido. As telas de caixa mantêm as datas dos pagamentos.",
+    "reportingBasisHelp": "Escolha o padrão para relatórios e tendências por categoria e beneficiário. As visualizações de caixa mantêm as datas de pagamento.",
     "accrualEnabledLabel": "Ativar contabilidade por competência",
-    "accrualEnabledTooltip": "Ativa a aba Competência nas transações, os saldos de competência em Contas / Outras e o alternador Caixa/Competência nos relatórios. Desativado por padrão para não adicionar nada até que você o ative."
+    "accrualEnabledTooltip": "Ativa os cronogramas de competência, saldos e controles dos relatórios. Quando desativado, os relatórios usam caixa. Os cronogramas salvos são mantidos e atualizados quando suas transações mudam."
   },
   "notifications": {
     "heading": "Notificações",

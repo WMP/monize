@@ -246,9 +246,9 @@
     "reportingBasisLabel": "기본 보고 기준",
     "reportingAccrual": "발생주의",
     "reportingCash": "현금주의",
-    "reportingBasisHelp": "카테고리 및 수취인별 추세를 포함한 보고서에 기본으로 발생주의를 사용합니다. 현금 전용 화면은 결제일을 유지합니다.",
+    "reportingBasisHelp": "보고서와 카테고리 및 거래처 추이에 사용할 기본 방식을 선택합니다. 현금주의 전용 화면은 지급일을 유지합니다.",
     "accrualEnabledLabel": "발생주의 회계 사용",
-    "accrualEnabledTooltip": "거래의 발생주의 탭, 계정/기타의 발생주의 잔액, 보고서의 현금/발생주의 전환 스위치를 활성화합니다. 사용자가 켜기 전까지는 기본적으로 꺼져 있어 화면을 복잡하게 만들지 않습니다."
+    "accrualEnabledTooltip": "발생주의 배분 일정, 잔액 및 보고서 제어를 활성화합니다. 끄면 보고서에 현금주의가 적용됩니다. 저장된 일정은 유지되며 원본 거래가 변경되면 업데이트됩니다."
   },
   "notifications": {
     "heading": "알림",

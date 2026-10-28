@@ -246,9 +246,9 @@
     "reportingBasisLabel": "Varsayılan raporlama esası",
     "reportingAccrual": "Tahakkuk",
     "reportingCash": "Nakit",
-    "reportingBasisHelp": "Kategori ve alıcı eğilimleri dahil raporlarda varsayılan olarak tahakkuk kullanın. Nakit görünümleri ödeme tarihlerini korur.",
+    "reportingBasisHelp": "Raporlar, kategori ve alıcı eğilimleri için varsayılanı seçin. Yalnızca nakit esaslı görünümler ödeme tarihlerini korur.",
     "accrualEnabledLabel": "Tahakkuk esaslı muhasebeyi etkinleştir",
-    "accrualEnabledTooltip": "İşlemlerde Tahakkuk sekmesini, Hesaplar / Diğer altındaki tahakkuk bakiyelerini ve raporlardaki Nakit/Tahakkuk anahtarını etkinleştirir. Siz açana kadar fazladan karmaşıklık eklememek için varsayılan olarak kapalıdır."
+    "accrualEnabledTooltip": "Tahakkuk planlarını, bakiyeleri ve rapor kontrollerini etkinleştirir. Kapalıyken raporlar nakit esasını kullanır. Kaydedilen planlar korunur ve işlemleri değiştiğinde güncellenir."
   },
   "notifications": {
     "heading": "Bildirimler",

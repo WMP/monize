@@ -246,9 +246,9 @@
     "reportingBasisLabel": "Cơ sở báo cáo mặc định",
     "reportingAccrual": "Dồn tích",
     "reportingCash": "Tiền mặt",
-    "reportingBasisHelp": "Mặc định dùng cơ sở dồn tích cho báo cáo, bao gồm xu hướng danh mục và người nhận. Chế độ tiền mặt giữ nguyên ngày thanh toán.",
+    "reportingBasisHelp": "Chọn cơ sở mặc định cho báo cáo và xu hướng theo danh mục, người nhận. Các chế độ xem tiền mặt giữ nguyên ngày thanh toán.",
     "accrualEnabledLabel": "Bật kế toán dồn tích",
-    "accrualEnabledTooltip": "Bật tab Dồn tích trong giao dịch, số dư dồn tích trong Tài khoản / Khác, và nút chuyển Tiền mặt/Dồn tích trong báo cáo. Mặc định tắt để không thêm gì cho đến khi bạn bật."
+    "accrualEnabledTooltip": "Bật lịch phân bổ dồn tích, số dư và các tùy chọn báo cáo. Khi tắt, báo cáo dùng cơ sở tiền mặt. Lịch đã lưu được giữ lại và cập nhật khi giao dịch gốc thay đổi."
   },
   "notifications": {
     "heading": "Thông báo",

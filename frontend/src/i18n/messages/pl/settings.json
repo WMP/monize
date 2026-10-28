@@ -246,9 +246,9 @@
     "reportingBasisLabel": "Domyślna podstawa raportowania",
     "reportingAccrual": "Memoriałowa",
     "reportingCash": "Kasowa",
-    "reportingBasisHelp": "Domyślnie używaj zasady memoriałowej w raportach, w tym trendach kategorii i odbiorców. Widoki kasowe zachowują daty płatności.",
+    "reportingBasisHelp": "Wybierz domyślną podstawę raportów oraz trendów kategorii i odbiorców. Widoki kasowe zachowują daty płatności.",
     "accrualEnabledLabel": "Włącz rozliczenia międzyokresowe",
-    "accrualEnabledTooltip": "Włącza kartę Rozliczenia w transakcjach, salda rozliczeń w Kontach / Inne oraz przełącznik Kasowo/Memoriałowo w raportach. Domyślnie wyłączone, aby nie dodawać niczego, dopóki nie włączysz tej opcji."
+    "accrualEnabledTooltip": "Włącza harmonogramy memoriałowe, salda i opcje raportów. Po wyłączeniu raporty używają metody kasowej. Zapisane harmonogramy są zachowywane i aktualizowane po zmianie ich transakcji."
   },
   "notifications": {
     "heading": "Powiadomienia",

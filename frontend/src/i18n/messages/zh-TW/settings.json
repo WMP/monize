@@ -246,9 +246,9 @@
     "reportingBasisLabel": "預設報表基礎",
     "reportingAccrual": "權責發生制",
     "reportingCash": "收付實現制",
-    "reportingBasisHelp": "報表預設使用權責發生制，包括類別與收款方趨勢。現金專用檢視保留付款日期。",
+    "reportingBasisHelp": "選擇報表、類別和收款人趨勢的預設會計基礎。僅現金制檢視保留付款日期。",
     "accrualEnabledLabel": "啟用權責發生制會計",
-    "accrualEnabledTooltip": "啟用交易中的權責發生制分頁、帳戶/其他下的權責發生制餘額，以及報表中的現金制/權責制切換。預設為關閉，直到您自行開啟為止。"
+    "accrualEnabledTooltip": "啟用應計分攤計畫、餘額和報表控制項。關閉後，報表使用現金制。已儲存的計畫會保留，並在原始交易變更時更新。"
   },
   "notifications": {
     "heading": "通知",

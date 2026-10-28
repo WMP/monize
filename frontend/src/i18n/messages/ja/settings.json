@@ -246,9 +246,9 @@
     "reportingBasisLabel": "既定のレポート基準",
     "reportingAccrual": "発生主義",
     "reportingCash": "現金主義",
-    "reportingBasisHelp": "カテゴリ別・支払先別の推移を含むレポートでは、既定で発生主義を使用します。現金主義専用の画面では支払日を維持します。",
+    "reportingBasisHelp": "レポート、カテゴリと支払先の推移に使う既定の方式を選びます。現金主義専用の表示では支払日を使います。",
     "accrualEnabledLabel": "発生主義会計を有効にする",
-    "accrualEnabledTooltip": "取引の発生主義タブ、アカウント/その他の発生主義残高、レポートの現金/発生主義切り替えを有効にします。有効にするまでは表示されないよう、既定では無効です。"
+    "accrualEnabledTooltip": "発生主義の配分予定、残高、レポート操作を有効にします。無効の場合、レポートは現金主義になります。保存済みの配分予定は保持され、元の取引が変更されると更新されます。"
   },
   "notifications": {
     "heading": "通知",

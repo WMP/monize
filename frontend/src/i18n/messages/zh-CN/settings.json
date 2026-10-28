@@ -246,9 +246,9 @@
     "reportingBasisLabel": "默认报告基础",
     "reportingAccrual": "权责发生制",
     "reportingCash": "收付实现制",
-    "reportingBasisHelp": "报告默认使用权责发生制，包括类别和收款方趋势。现金专用视图保留付款日期。",
+    "reportingBasisHelp": "选择报表、类别和收款人趋势的默认核算方式。仅现金制视图保留付款日期。",
     "accrualEnabledLabel": "启用权责发生制会计",
-    "accrualEnabledTooltip": "启用交易中的权责发生制标签、账户/其他下的权责发生制余额，以及报告中的现金制/权责制切换。默认关闭，直到您自己开启后才会显示。"
+    "accrualEnabledTooltip": "启用权责发生制分摊计划、余额和报表控件。关闭后，报表使用现金制。已保存的计划会保留，并在原始交易更改时更新。"
   },
   "notifications": {
     "heading": "通知",

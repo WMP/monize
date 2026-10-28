@@ -246,9 +246,9 @@
     "reportingBasisLabel": "[XX-Default reporting basis-XX]",
     "reportingAccrual": "[XX-Accrual-XX]",
     "reportingCash": "[XX-Cash-XX]",
-    "reportingBasisHelp": "[XX-Use accrual by default for reports, including category and payee trends. Cash-specific views keep their payment dates.-XX]",
+    "reportingBasisHelp": "[XX-Choose the default for reports, category and payee trends. Cash-only views keep payment dates.-XX]",
     "accrualEnabledLabel": "[XX-Enable accrual accounting-XX]",
-    "accrualEnabledTooltip": "[XX-Turns on the Accrual tab in transactions, the Accounts / Other accrual balances, and the Cash / Accrual switch in reports. Off by default so it never adds clutter unless you turn it on.-XX]"
+    "accrualEnabledTooltip": "[XX-Enables accrual schedules, balances and report controls. When off, reports use Cash. Saved schedules are kept and updated when their transactions change.-XX]"
   },
   "notifications": {
     "heading": "[XX-Notifications-XX]",

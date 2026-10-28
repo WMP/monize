@@ -246,9 +246,9 @@
     "reportingBasisLabel": "Standard-Erfassungsbasis",
     "reportingAccrual": "Periodenabgrenzung",
     "reportingCash": "Zahlungsbasis",
-    "reportingBasisHelp": "Berichte einschließlich Kategorie- und Zahlungsempfängertrends verwenden standardmäßig die Periodenabgrenzung. Zahlungsbezogene Ansichten behalten ihre Zahlungsdaten.",
+    "reportingBasisHelp": "Wähle die Voreinstellung für Berichte sowie Kategorie- und Zahlungsempfängertrends. Reine Zahlungsansichten behalten die Zahlungsdaten.",
     "accrualEnabledLabel": "Periodenabgrenzung aktivieren",
-    "accrualEnabledTooltip": "Aktiviert den Reiter „Abgrenzung“ bei Transaktionen, die Abgrenzungssalden unter Konten / Sonstige und den Umschalter „Zahlungsbasis / Periodenabgrenzung“ in Berichten. Standardmäßig deaktiviert, damit nichts unnötig überladen wirkt, bis Sie es aktivieren."
+    "accrualEnabledTooltip": "Aktiviert Abgrenzungspläne, Salden und Berichtsoptionen. Wenn deaktiviert, verwenden Berichte die Zahlungsbasis. Gespeicherte Pläne bleiben erhalten und werden bei Änderungen ihrer Transaktionen aktualisiert."
   },
   "notifications": {
     "heading": "Benachrichtigungen",
