@@ -837,7 +837,19 @@
       },
       "doneButton": "Selesai",
       "unlinkedBondSecuritiesList": "Sekuritas terdampak: {symbols}.",
-      "unlinkedBondSecuritiesMore": "dan {count} lagi"
+      "unlinkedBondSecuritiesMore": "dan {count} lagi",
+      "counts": {
+        "sharedGroups": "Grup pengeluaran bersama",
+        "sharedParticipants": "Peserta grup",
+        "sharedEntries": "Entri grup",
+        "sharedAllocations": "Pembagian pengeluaran",
+        "sharedActivity": "Aktivitas grup",
+        "sharedPeople": "Kontak pengeluaran bersama",
+        "sharedPersonLinks": "Kontak tertaut",
+        "sharedIntegrations": "Koneksi ke keuangan pribadi",
+        "sharedPostings": "Pencatatan pribadi pengeluaran bersama",
+        "sharedLedgerLinks": "Transaksi pribadi tertaut"
+      }
     },
     "storedBackups": {
       "heading": "Cadangan Otomatis",

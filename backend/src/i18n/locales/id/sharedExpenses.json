@@ -40,5 +40,6 @@
   "groupNotEmpty": "Hanya grup kosong yang dapat dihapus. Arsipkan grup untuk mempertahankan catatan, dokumen, dan pembukuan pribadi.",
   "financePaymentSum": "Alokasikan seluruh kontribusi Anda ke pembayaran bank yang dipilih dalam mata uang pengeluaran. Setiap pembayaran harus positif dan setiap mutasi bank hanya dapat digunakan sekali.",
   "ownershipConsent": "Anggota yang dipilih harus menyetujui permintaan kepemilikan ini terlebih dahulu. Muat ulang grup untuk memeriksa tanggapannya.",
-  "financeSplit": "Pilih bagian positif dari pembagian kategori transaksi ini. Jumlahnya harus sama dengan bagian bank bersama; pembagian transfer dan investasi tidak dapat dibagikan."
+  "financeSplit": "Pilih bagian positif dari pembagian kategori transaksi ini. Jumlahnya harus sama dengan bagian bank bersama; pembagian transfer dan investasi tidak dapat dibagikan.",
+  "financeDeferred": "Koneksi baru ke keuangan pribadi belum tersedia dalam versi ini. Tetap catat pengeluaran dalam grup; catatan pribadi yang sudah ada masih dapat dilihat atau dilepas tautannya."
 }

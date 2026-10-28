@@ -357,5 +357,10 @@
   "groupOnlyHelp": "Facoltativo: lascia disattivato per mantenere la voce solo nel gruppo.",
   "noBankPaymentHelp": "Non hai pagato né ricevuto denaro per questa voce. Verranno registrati solo la tua quota e l’importo dovuto.",
   "saveAndShare": "Salva e condividi",
-  "saveAndShareHelp": "Salva questa transazione, poi scegli un gruppo per dividerla tra più persone."
+  "saveAndShareHelp": "Salva questa transazione, poi scegli un gruppo per dividerla tra più persone.",
+  "financeDeferred": "I nuovi collegamenti alle finanze personali non sono disponibili in questa versione. Continua a registrare le spese nel gruppo; le registrazioni personali esistenti possono ancora essere consultate o scollegate.",
+  "savedFilesPending": "La spesa è stata salvata. Alcuni documenti qui sotto sono ancora in attesa. Riprova ad allegarli oppure chiudi la finestra mantenendo la spesa salvata.",
+  "entryUploadHint": "Questi file saranno condivisi con il gruppo quando salvi la spesa.",
+  "removeFilter": "Rimuovi il filtro {filter}",
+  "filterValue": "{filter}: {value}"
 }

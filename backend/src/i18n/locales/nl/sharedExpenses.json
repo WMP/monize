@@ -40,5 +40,6 @@
   "groupNotEmpty": "Alleen een lege groep kan worden verwijderd. Archiveer de groep om de boekingen, documenten en privéboekingen te behouden.",
   "financePaymentSum": "Verdeel je volledige bijdrage over de geselecteerde bankbetalingen in de valuta van de uitgave. Elke betaling moet positief zijn en elke bankmutatie kan eenmaal worden gebruikt.",
   "ownershipConsent": "Het geselecteerde lid moet dit eigendomsverzoek eerst accepteren. Vernieuw de groep om de reactie te controleren.",
-  "financeSplit": "Kies positieve delen uit de categorieverdelingen van deze transactie. Het totaal moet gelijk zijn aan het gedeelde bankbedrag; overboekings- en beleggingsregels kunnen niet worden gedeeld."
+  "financeSplit": "Kies positieve delen uit de categorieverdelingen van deze transactie. Het totaal moet gelijk zijn aan het gedeelde bankbedrag; overboekings- en beleggingsregels kunnen niet worden gedeeld.",
+  "financeDeferred": "Nieuwe koppelingen met persoonlijke financiën zijn in deze versie niet beschikbaar. Blijf uitgaven in de groep vastleggen; bestaande persoonlijke boekingen kunnen nog worden bekeken of ontkoppeld."
 }

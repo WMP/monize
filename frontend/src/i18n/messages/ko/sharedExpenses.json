@@ -357,5 +357,10 @@
   "groupOnlyHelp": "선택 사항: 끈 상태로 두면 항목을 그룹에만 보관합니다.",
   "noBankPaymentHelp": "이 항목에서 돈을 지불하거나 받지 않았습니다. 본인 부담액과 받을 돈 또는 갚을 돈만 기록됩니다.",
   "saveAndShare": "저장 후 나누기",
-  "saveAndShareHelp": "이 거래를 저장한 뒤 그룹을 선택하여 사람들과 나눕니다."
+  "saveAndShareHelp": "이 거래를 저장한 뒤 그룹을 선택하여 사람들과 나눕니다.",
+  "financeDeferred": "이 버전에서는 개인 재무와 새로 연결할 수 없습니다. 그룹에 계속 지출을 기록할 수 있으며, 기존 개인 기록은 조회하거나 연결을 해제할 수 있습니다.",
+  "savedFilesPending": "지출이 저장되었습니다. 아래 일부 문서는 아직 첨부되지 않았습니다. 다시 시도해 첨부를 완료하거나 저장된 지출을 유지한 채 창을 닫으세요.",
+  "entryUploadHint": "지출을 저장하면 이 파일이 그룹에 공유됩니다.",
+  "removeFilter": "{filter} 필터 제거",
+  "filterValue": "{filter}: {value}"
 }

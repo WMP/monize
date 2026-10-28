@@ -837,7 +837,19 @@
       },
       "doneButton": "Gotowe",
       "unlinkedBondSecuritiesList": "Dotyczy papierów wartościowych: {symbols}.",
-      "unlinkedBondSecuritiesMore": "i jeszcze {count}"
+      "unlinkedBondSecuritiesMore": "i jeszcze {count}",
+      "counts": {
+        "sharedGroups": "Wspólne grupy",
+        "sharedParticipants": "Uczestnicy grup",
+        "sharedEntries": "Wpisy grup",
+        "sharedAllocations": "Podziały wydatków",
+        "sharedActivity": "Aktywność grup",
+        "sharedPeople": "Kontakty wspólnych wydatków",
+        "sharedPersonLinks": "Powiązane kontakty",
+        "sharedIntegrations": "Powiązania z finansami osobistymi",
+        "sharedPostings": "Prywatne księgowania wspólnych wydatków",
+        "sharedLedgerLinks": "Powiązane transakcje osobiste"
+      }
     },
     "storedBackups": {
       "heading": "Kopie automatyczne",

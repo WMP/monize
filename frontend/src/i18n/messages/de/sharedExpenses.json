@@ -357,5 +357,10 @@
   "groupOnlyHelp": "Optional: Deaktiviert lassen, um den Eintrag nur in der Gruppe zu behalten.",
   "noBankPaymentHelp": "Du hast für diesen Eintrag nichts bezahlt oder erhalten. Nur dein Anteil und die Forderung oder Verbindlichkeit werden erfasst.",
   "saveAndShare": "Speichern und aufteilen",
-  "saveAndShareHelp": "Speichere diese Buchung und wähle dann eine Gruppe, um sie mit anderen aufzuteilen."
+  "saveAndShareHelp": "Speichere diese Buchung und wähle dann eine Gruppe, um sie mit anderen aufzuteilen.",
+  "financeDeferred": "Neue Verknüpfungen mit persönlichen Finanzen sind in dieser Version nicht verfügbar. Erfasse Ausgaben weiter in der Gruppe; bestehende persönliche Buchungen können weiterhin angezeigt oder getrennt werden.",
+  "savedFilesPending": "Die Ausgabe ist gespeichert. Einige Dokumente stehen unten noch aus. Versuche es erneut, um sie anzuhängen, oder schließe das Fenster und behalte die gespeicherte Ausgabe.",
+  "entryUploadHint": "Diese Dateien werden beim Speichern der Ausgabe mit der Gruppe geteilt.",
+  "removeFilter": "Filter {filter} entfernen",
+  "filterValue": "{filter}: {value}"
 }

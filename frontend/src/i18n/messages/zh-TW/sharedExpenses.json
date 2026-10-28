@@ -357,5 +357,10 @@
   "groupOnlyHelp": "選填：保持關閉可將紀錄僅保留在群組中。",
   "noBankPaymentHelp": "你沒有為此紀錄付款或收款。系統只會記錄你的分攤金額及應收或應付金額。",
   "saveAndShare": "儲存並分攤",
-  "saveAndShareHelp": "儲存此交易，然後選擇群組並與其他人分攤。"
+  "saveAndShareHelp": "儲存此交易，然後選擇群組並與其他人分攤。",
+  "financeDeferred": "此版本暫不支援新增個人財務關聯。你仍可在群組中記錄支出；既有的個人記錄仍可檢視或解除關聯。",
+  "savedFilesPending": "支出已儲存。下方部分文件仍未附加。請重試以完成附加，或關閉視窗並保留已儲存的支出。",
+  "entryUploadHint": "儲存支出時，這些檔案將分享給群組。",
+  "removeFilter": "移除{filter}篩選條件",
+  "filterValue": "{filter}：{value}"
 }

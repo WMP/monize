@@ -837,7 +837,19 @@
       },
       "doneButton": "Gereed",
       "unlinkedBondSecuritiesList": "Betrokken effecten: {symbols}.",
-      "unlinkedBondSecuritiesMore": "en nog {count}"
+      "unlinkedBondSecuritiesMore": "en nog {count}",
+      "counts": {
+        "sharedGroups": "Groepen voor gedeelde uitgaven",
+        "sharedParticipants": "Groepsdeelnemers",
+        "sharedEntries": "Groepsboekingen",
+        "sharedAllocations": "Verdelingen van uitgaven",
+        "sharedActivity": "Groepsactiviteit",
+        "sharedPeople": "Contacten voor gedeelde uitgaven",
+        "sharedPersonLinks": "Gekoppelde contacten",
+        "sharedIntegrations": "Koppelingen met persoonlijke financiën",
+        "sharedPostings": "Persoonlijke boekingen van gedeelde uitgaven",
+        "sharedLedgerLinks": "Gekoppelde persoonlijke transacties"
+      }
     },
     "storedBackups": {
       "heading": "Automatische back-ups",

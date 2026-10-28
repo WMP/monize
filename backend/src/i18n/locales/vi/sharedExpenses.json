@@ -40,5 +40,6 @@
   "groupNotEmpty": "Chỉ có thể xóa nhóm trống. Thay vào đó, hãy giữ các mục, tài liệu và mục kế toán cá nhân của nó bằng cách lưu trữ nó.",
   "financePaymentSum": "Phân bổ toàn bộ khoản đóng góp của bạn cho các khoản thanh toán ngân hàng đã chọn bằng loại tiền chi phí. Mỗi khoản thanh toán phải dương và mỗi chuyển động ngân hàng có thể được sử dụng một lần.",
   "ownershipConsent": "Thành viên được chọn phải chấp nhận yêu cầu sở hữu này trước tiên. Làm mới nhóm để kiểm tra phản hồi của họ.",
-  "financeSplit": "Chọn số tiền lớn hơn 0 từ các dòng danh mục của giao dịch. Tổng phải bằng phần dùng cho chi phí chung trong giao dịch ngân hàng. Không thể dùng dòng chuyển khoản hoặc đầu tư."
+  "financeSplit": "Chọn số tiền lớn hơn 0 từ các dòng danh mục của giao dịch. Tổng phải bằng phần dùng cho chi phí chung trong giao dịch ngân hàng. Không thể dùng dòng chuyển khoản hoặc đầu tư.",
+  "financeDeferred": "Phiên bản này chưa hỗ trợ tạo kết nối mới với tài chính cá nhân. Bạn vẫn có thể ghi chi tiêu trong nhóm; các bản ghi cá nhân hiện có vẫn có thể được xem hoặc hủy liên kết."
 }

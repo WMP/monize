@@ -40,5 +40,6 @@
   "groupNotEmpty": "Yalnızca boş bir grup silinebilir. Bunun yerine girişlerini, belgelerini ve kişisel muhasebe girişlerini arşivleyerek saklayın.",
   "financePaymentSum": "Katkı payınızın tamamını gider para birimi cinsinden seçilen banka ödemelerine dağıtın. Her ödeme pozitif olmalı ve her banka hareketi bir kez kullanılabilir.",
   "ownershipConsent": "Seçilen üyenin önce bu sahiplik isteğini kabul etmesi gerekir. Yanıtlarını kontrol etmek için grubu yenileyin.",
-  "financeSplit": "Bu işlemin kategori satırlarından pozitif tutarlar seçin. Toplamları banka hareketinin paylaşılan kısmına eşit olmalıdır; transfer ve yatırım satırları kullanılamaz."
+  "financeSplit": "Bu işlemin kategori satırlarından pozitif tutarlar seçin. Toplamları banka hareketinin paylaşılan kısmına eşit olmalıdır; transfer ve yatırım satırları kullanılamaz.",
+  "financeDeferred": "Bu sürümde kişisel finanslarla yeni bağlantılar kullanılamıyor. Grup içinde gider kaydetmeye devam edebilirsiniz; mevcut kişisel kayıtlar görüntülenebilir veya bağlantıları kaldırılabilir."
 }

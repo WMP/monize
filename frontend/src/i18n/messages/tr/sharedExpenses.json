@@ -357,5 +357,10 @@
   "groupOnlyHelp": "İsteğe bağlı: kaydı yalnızca grupta tutmak için kapalı bırakın.",
   "noBankPaymentHelp": "Bu kayıt için para ödemediniz veya almadınız. Yalnızca payınız ve borç tutarı kaydedilecek.",
   "saveAndShare": "Kaydet ve paylaş",
-  "saveAndShareHelp": "Bu işlemi kaydedin, ardından bir grup seçerek kişiler arasında paylaştırın."
+  "saveAndShareHelp": "Bu işlemi kaydedin, ardından bir grup seçerek kişiler arasında paylaştırın.",
+  "financeDeferred": "Bu sürümde kişisel finanslarla yeni bağlantılar kullanılamıyor. Grup içinde gider kaydetmeye devam edebilirsiniz; mevcut kişisel kayıtlar görüntülenebilir veya bağlantıları kaldırılabilir.",
+  "savedFilesPending": "Gider kaydedildi. Aşağıdaki bazı belgeler hâlâ bekliyor. Eklemek için yeniden deneyin veya kaydedilen gideri koruyarak pencereyi kapatın.",
+  "entryUploadHint": "Bu dosyalar gideri kaydettiğinizde grupla paylaşılacak.",
+  "removeFilter": "{filter} filtresini kaldır",
+  "filterValue": "{filter}: {value}"
 }

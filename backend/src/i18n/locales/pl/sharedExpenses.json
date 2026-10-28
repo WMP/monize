@@ -40,5 +40,6 @@
   "groupNotEmpty": "Można usunąć tylko pustą grupę. Aby zachować jej wpisy, dokumenty i prywatne księgowania, zarchiwizuj ją.",
   "financePaymentSum": "Rozdziel całą swoją wpłatę między wybrane płatności bankowe w walucie wydatku. Każda część musi być dodatnia, a każdej transakcji można użyć raz.",
   "ownershipConsent": "Wybrany uczestnik musi najpierw zaakceptować prośbę o przejęcie własności. Odśwież grupę, aby sprawdzić odpowiedź.",
-  "financeSplit": "Wybierz dodatnie kwoty z pozycji podziału na kategorie. Ich suma musi odpowiadać wspólnej kwocie płatności; pozycji przelewów i inwestycji nie można dzielić."
+  "financeSplit": "Wybierz dodatnie kwoty z pozycji podziału na kategorie. Ich suma musi odpowiadać wspólnej kwocie płatności; pozycji przelewów i inwestycji nie można dzielić.",
+  "financeDeferred": "Nowe powiązania z finansami osobistymi są niedostępne w tej wersji. Nadal możesz zapisywać wydatki w grupie; istniejące zapisy osobiste można przeglądać lub odłączyć."
 }

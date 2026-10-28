@@ -357,5 +357,10 @@
   "groupOnlyHelp": "Opcional: deja esto desactivado para mantener el apunte solo en el grupo.",
   "noBankPaymentHelp": "No pagaste ni recibiste dinero por este apunte. Solo se registrarán tu parte y la cantidad adeudada.",
   "saveAndShare": "Guardar y compartir",
-  "saveAndShareHelp": "Guarda esta transacción y luego elige un grupo para dividirla entre varias personas."
+  "saveAndShareHelp": "Guarda esta transacción y luego elige un grupo para dividirla entre varias personas.",
+  "financeDeferred": "Las nuevas conexiones con las finanzas personales no están disponibles en esta versión. Sigue registrando gastos en el grupo; los registros personales existentes se pueden consultar o desvincular.",
+  "savedFilesPending": "El gasto está guardado. Algunos documentos siguen pendientes abajo. Reintenta adjuntarlos o cierra la ventana y conserva el gasto guardado.",
+  "entryUploadHint": "Estos archivos se compartirán con el grupo al guardar el gasto.",
+  "removeFilter": "Quitar el filtro {filter}",
+  "filterValue": "{filter}: {value}"
 }

@@ -357,5 +357,10 @@
   "groupOnlyHelp": "Opsional: biarkan nonaktif agar entri hanya disimpan di grup.",
   "noBankPaymentHelp": "Anda tidak membayar atau menerima uang untuk entri ini. Hanya bagian Anda dan jumlah utang atau piutang yang dicatat.",
   "saveAndShare": "Simpan dan bagikan",
-  "saveAndShareHelp": "Simpan transaksi ini, lalu pilih grup untuk membaginya dengan orang lain."
+  "saveAndShareHelp": "Simpan transaksi ini, lalu pilih grup untuk membaginya dengan orang lain.",
+  "financeDeferred": "Koneksi baru ke keuangan pribadi belum tersedia dalam versi ini. Tetap catat pengeluaran dalam grup; catatan pribadi yang sudah ada masih dapat dilihat atau dilepas tautannya.",
+  "savedFilesPending": "Pengeluaran telah disimpan. Beberapa dokumen di bawah masih tertunda. Coba lampirkan lagi, atau tutup jendela dan pertahankan pengeluaran yang tersimpan.",
+  "entryUploadHint": "Berkas ini akan dibagikan ke grup saat Anda menyimpan pengeluaran.",
+  "removeFilter": "Hapus filter {filter}",
+  "filterValue": "{filter}: {value}"
 }

@@ -357,5 +357,10 @@
   "groupOnlyHelp": "Opcional: deixe desativado para manter o lançamento apenas no grupo.",
   "noBankPaymentHelp": "Você não pagou nem recebeu dinheiro por este lançamento. Apenas sua parte e o valor devido serão registrados.",
   "saveAndShare": "Salvar e compartilhar",
-  "saveAndShareHelp": "Salve esta transação e depois escolha um grupo para dividi-la entre pessoas."
+  "saveAndShareHelp": "Salve esta transação e depois escolha um grupo para dividi-la entre pessoas.",
+  "financeDeferred": "Novas conexões com as finanças pessoais não estão disponíveis nesta versão. Continue registrando despesas no grupo; os registros pessoais existentes podem ser consultados ou desvinculados.",
+  "savedFilesPending": "A despesa foi salva. Alguns documentos abaixo ainda estão pendentes. Tente anexá-los novamente ou feche a janela, mantendo a despesa salva.",
+  "entryUploadHint": "Estes arquivos serão compartilhados com o grupo ao salvar a despesa.",
+  "removeFilter": "Remover o filtro {filter}",
+  "filterValue": "{filter}: {value}"
 }

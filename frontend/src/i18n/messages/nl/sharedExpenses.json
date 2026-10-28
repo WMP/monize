@@ -357,5 +357,10 @@
   "groupOnlyHelp": "Optioneel: laat dit uitgeschakeld om de boeking alleen in de groep te bewaren.",
   "noBankPaymentHelp": "Je hebt voor deze boeking geen geld betaald of ontvangen. Alleen je aandeel en het verschuldigde bedrag worden vastgelegd.",
   "saveAndShare": "Opslaan en delen",
-  "saveAndShareHelp": "Sla deze transactie op en kies daarna een groep om deze met anderen te delen."
+  "saveAndShareHelp": "Sla deze transactie op en kies daarna een groep om deze met anderen te delen.",
+  "financeDeferred": "Nieuwe koppelingen met persoonlijke financiën zijn in deze versie niet beschikbaar. Blijf uitgaven in de groep vastleggen; bestaande persoonlijke boekingen kunnen nog worden bekeken of ontkoppeld.",
+  "savedFilesPending": "De uitgave is opgeslagen. Sommige documenten hieronder zijn nog niet toegevoegd. Probeer ze opnieuw toe te voegen of sluit het venster en behoud de opgeslagen uitgave.",
+  "entryUploadHint": "Deze bestanden worden met de groep gedeeld wanneer je de uitgave opslaat.",
+  "removeFilter": "Filter {filter} verwijderen",
+  "filterValue": "{filter}: {value}"
 }
