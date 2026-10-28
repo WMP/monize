@@ -129,8 +129,16 @@ not the cause -- see `helm/README.md` for the sizing table.
 as the security's currency and `exchange_rate` as security -> cash account. For a security quoted in
 another currency than its account, `mapInvestments` converts at import with the file's own rate
 (`resolveExchangeRates` rows through `resolveFxRate`, rate 1 only for equal codes). The cash leg stays
-in the account's currency. With no rate near the trade date the figures stay in the account's currency
-at rate 1 and a `crossCurrencyTradeUnconverted` warning says so. In the same way a synthesized sleeve
+in the account's currency. Where the file has no rate near the trade date, `MnyMarketRateService`
+looks one up -- Monize's stored history through `resolveStoredRate`, then one provider window per pair
+through `fillRateWindow`, persisted -- and the file is parsed again with it; each trade converted that
+way carries a `crossCurrencyTradeMarketRate` warning. The parser itself never touches the database: it
+reports what it could not convert as `investments.rateGaps`. Both the preview and the job parse through
+that service, and the job finds stored what the preview fetched. With no rate from either, the figures
+stay in the account's currency at rate 1 and a `crossCurrencyTradeUnconverted` warning says so, naming
+`provider_unanswered` when the provider did not answer rather than had nothing. Money 97-99 keep one
+rate per pair, so on those files this is most cross-currency trades. `mny:inspect` reads the file
+alone, so it still reports them unconverted. In the same way a synthesized sleeve
 row takes the far row's own amount across currencies, and `transferAmountMismatch` compares each
 synthesized row with Money's far row, which the expected-balance check (a sum of the mapped rows)
 cannot do.

@@ -1420,6 +1420,88 @@ describe("mapInvestments", () => {
       ]);
     });
 
+    it("reports the pair and date it could not convert", () => {
+      expect(mapInvestments(buyInput()).rateGaps).toEqual([
+        { from: "USD", to: "CAD", date: "2026-03-02" },
+      ]);
+    });
+
+    describe("with a market rate looked up for the gap", () => {
+      const marketRates = {
+        rates: [{ from: "USD", to: "CAD", date: "2026-03-02", rate: 1.25 }],
+        unanswered: new Set<string>(),
+      };
+
+      it("converts at the market rate and says so", () => {
+        const result = mapInvestments(buyInput({ marketRates }));
+
+        expect(result.transactions[0]).toMatchObject({
+          totalAmount: 1000,
+          price: 100,
+          exchangeRate: 1.25,
+          cashAmount: -1250,
+          securityCurrencyCode: "USD",
+        });
+        expect(result.rateGaps).toEqual([]);
+        expect(result.warnings).toEqual([
+          {
+            code: "crossCurrencyTradeMarketRate",
+            subject: "SEC1",
+            detail: "USD->CAD on 2026-03-02: 1.25",
+            row: expect.objectContaining({ handle: 1 }),
+          },
+        ]);
+      });
+
+      it("keeps the file's own rate where it has one", () => {
+        const result = mapInvestments(
+          buyInput({
+            marketRates,
+            exchangeRates: [
+              {
+                fromCurrency: "USD",
+                toCurrency: "CAD",
+                rate: 1.3,
+                rateDate: "2026-03-01",
+              },
+            ],
+          }),
+        );
+
+        expect(result.transactions[0].exchangeRate).toBe(1.3);
+        expect(result.warnings).toEqual([]);
+      });
+
+      it("uses no market rate struck for another date", () => {
+        const result = mapInvestments(
+          buyInput({
+            marketRates: {
+              rates: [
+                { from: "USD", to: "CAD", date: "2026-03-01", rate: 1.25 },
+              ],
+              unanswered: new Set<string>(),
+            },
+          }),
+        );
+
+        expect(result.transactions[0].exchangeRate).toBe(1);
+        expect(result.rateGaps).toHaveLength(1);
+      });
+
+      it("says when the rate provider did not answer", () => {
+        const result = mapInvestments(
+          buyInput({
+            marketRates: { rates: [], unanswered: new Set(["USD->CAD"]) },
+          }),
+        );
+
+        expect(result.warnings[0]).toMatchObject({
+          code: "crossCurrencyTradeUnconverted",
+          detail: "USD->CAD on 2026-03-02: no_observation; provider_unanswered",
+        });
+      });
+    });
+
     it("converts the accrued-interest companion at the same rate", () => {
       const result = mapInvestments(
         buyInput({

@@ -35,6 +35,7 @@ import { ImportStagedFile } from "@/import/mny/entities/import-staged-file.entit
 import { MnyImportJobService } from "@/import/mny/mny-import-job.service";
 import { MnyImportService } from "@/import/mny/mny-import.service";
 import { MnyParserService } from "@/import/mny/mny-parser.service";
+import { MnyMarketRateService } from "@/import/mny/mny-market-rates.service";
 import { MnyStagingService } from "@/import/mny/mny-staging.service";
 import {
   MNY_FIXTURES,
@@ -178,6 +179,7 @@ describe("mny writers (integration)", () => {
       providers: [
         MnyStagingService,
         MnyParserService,
+        MnyMarketRateService,
         MnyImportJobService,
         MnyImportService,
         // Real: its balance recalculation is the cross-check the verification
@@ -207,7 +209,13 @@ describe("mny writers (integration)", () => {
         },
         {
           provide: ExchangeRateService,
-          useValue: { backfillHistoricalRates: async () => undefined },
+          // No stored history and nothing from the provider: a trade the file
+          // cannot convert stays unconverted, as it did before the lookup.
+          useValue: {
+            backfillHistoricalRates: async () => undefined,
+            resolveStoredRate: async () => ({ rate: null }),
+            fillRateWindow: async () => ({ stored: 0, answered: true }),
+          },
         },
         { provide: UsersService, useValue: { deleteData: jest.fn() } },
         // No rules: the rules pass is covered against the real applier in

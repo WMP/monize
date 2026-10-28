@@ -20,6 +20,8 @@ import {
   MappedInvestmentTransaction,
   MappedInvestments,
   MappedSecurities,
+  MnyMarketRates,
+  MnyRateGap,
 } from "../model/mny-import-model";
 import {
   billTemplateHandles,
@@ -113,6 +115,11 @@ export interface MapInvestmentsInput {
    * convert a trade of a security quoted in another currency than its account.
    */
   readonly exchangeRates: readonly ExchangeRateRow[];
+  /**
+   * Rates for the trades `exchangeRates` cannot convert, looked up outside the
+   * file. Absent on a first read, which reports what it needs as `rateGaps`.
+   */
+  readonly marketRates?: MnyMarketRates;
 }
 
 interface Context {
@@ -125,7 +132,14 @@ interface Context {
   readonly brokerageKeys: ReadonlySet<string>;
   /** The file's rate observations, for converting a foreign-quoted trade. */
   readonly fxLookup: FxObservationLookup;
+  /** `rateKey` -> a market rate for exactly that pair and date. */
+  readonly marketRateByKey: ReadonlyMap<string, number>;
+  readonly rateGaps: MnyRateGap[];
   readonly warnings: MnyWarning[];
+}
+
+function rateKey(from: string, to: string, date: string): string {
+  return `${from}->${to}|${date}`;
 }
 
 /**
@@ -277,9 +291,11 @@ interface ConvertedFigures extends Omit<TradeFigures, "action" | "quantity"> {
  * row's price and total as the security's and its `exchange_rate` as security ->
  * cash account (INV-FX-002). For a security quoted in another currency than its
  * account the file's rate converts the total, and the price is derived from the
- * converted total (INV-TRADE-001). With no usable rate the figures stay in the
- * account's currency at rate 1 and a warning says so: 1 there means "no rate
- * found", which is the one reading the rule forbids staying silent about.
+ * converted total (INV-TRADE-001). The file's own rate always wins; where it has
+ * none, a market rate for the trade's date (`MnyMarketRates`) does, and a
+ * warning names every trade converted that way. With neither, the figures stay
+ * in the account's currency at rate 1 and a warning says so: 1 there means "no
+ * rate found", which is the one reading the rule forbids staying silent about.
  */
 function convertToSecurityCurrency(
   row: MnyTransaction,
@@ -320,17 +336,46 @@ function convertToSecurityCurrency(
     date,
     context.fxLookup,
   );
-  if (resolution.status !== "resolved" || resolution.rate === null) {
+  const subject = security?.symbol ?? `hsec=${row.security}`;
+  const pair = `${securityCurrency}->${accountCurrency}`;
+  const marketRate =
+    resolution.status === "resolved"
+      ? undefined
+      : context.marketRateByKey.get(
+          rateKey(securityCurrency, accountCurrency, date),
+        );
+  if (marketRate !== undefined) {
+    context.warnings.push({
+      code: "crossCurrencyTradeMarketRate",
+      subject,
+      detail: `${pair} on ${date}: ${marketRate}`,
+      row: warningRow(row, context.input),
+    });
+  }
+  const fileRate = resolution.status === "resolved" ? resolution.rate : null;
+  const foundRate = fileRate ?? marketRate ?? null;
+  if (foundRate === null) {
+    context.rateGaps.push({
+      from: securityCurrency,
+      to: accountCurrency,
+      date,
+    });
+    // A provider that did not answer is not the same as a rate that does not
+    // exist: the first is worth trying again later.
+    const unanswered =
+      context.input.marketRates?.unanswered.has(pair) === true
+        ? "; provider_unanswered"
+        : "";
     context.warnings.push({
       code: "crossCurrencyTradeUnconverted",
-      subject: security?.symbol ?? `hsec=${row.security}`,
-      detail: `${securityCurrency}->${accountCurrency} on ${date}: ${resolution.reason}`,
+      subject,
+      detail: `${pair} on ${date}: ${resolution.reason}${unanswered}`,
       row: warningRow(row, context.input),
     });
     return unconverted;
   }
 
-  const rate = roundFxRate(resolution.rate);
+  const rate = roundFxRate(foundRate);
   const totalAmount = roundMoney(figures.totalAmount / rate);
   const commission = roundMoney(figures.commission / rate);
   const derived =
@@ -722,6 +767,13 @@ function buildContext(input: MapInvestmentsInput): Context {
     cashKeyByAccountKey: cashKeyByAccountKey(input.accounts),
     brokerageKeys,
     fxLookup: fxLookupOf(input.exchangeRates),
+    marketRateByKey: new Map(
+      (input.marketRates?.rates ?? []).map((market) => [
+        rateKey(market.from, market.to, market.date),
+        market.rate,
+      ]),
+    ),
+    rateGaps: [],
     warnings: [],
   };
 }
@@ -856,6 +908,7 @@ export function mapInvestments(input: MapInvestmentsInput): MappedInvestments {
     ),
     transfersPaired: paired.paired,
     skipped,
+    rateGaps: context.rateGaps,
     warnings,
   };
 }

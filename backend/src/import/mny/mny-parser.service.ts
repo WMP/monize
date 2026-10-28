@@ -45,6 +45,7 @@ import {
   MappedTags,
   MappedTransactions,
   MnyHoldingCheck,
+  MnyMarketRates,
 } from "./model/mny-import-model";
 import {
   MnyImportOptions,
@@ -93,6 +94,12 @@ export interface MnyParseInput {
   readonly options?: Partial<MnyImportOptions>;
   /** Used as the base currency only when the file names none. */
   readonly userDefaultCurrency: string;
+  /**
+   * Rates for the cross-currency trades the file cannot convert, looked up by
+   * `MnyMarketRateService` from a first parse's `investments.rateGaps`. The
+   * parser itself never fetches one.
+   */
+  readonly marketRates?: MnyMarketRates;
   /**
    * Balance cut-off, `YYYY-MM-DD`. Future-dated transactions are excluded from
    * expected balances because Monize's own balance recalculation excludes them;
@@ -421,6 +428,7 @@ export class MnyParserService {
         tables.reference.exchangeRates,
         currencyByHandle,
       ),
+      marketRates: input.marketRates,
     });
     const transactions = mapTransactions({
       transactions: tables.transactions,

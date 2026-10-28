@@ -30,8 +30,10 @@ categorized transactions in its cash account, because Monize has no investment
 action for either, and employee stock option grants, vesting and expiry are not
 imported. A CD, which Money 99 buys by amount, arrives as units worth 1 each.
 Money 99 keeps only the latest exchange rate for each currency, so a trade of a
-security quoted in another currency, made before that rate's date, imports in
-the account's currency and is listed for you to correct.
+security quoted in another currency, made before that rate's date, is converted
+at the market exchange rate for its date instead, and listed so you can check
+it. A trade no rate can be found for imports in the account's currency and is
+listed for you to correct.
 
 `.mbf` backup archives are also unsupported. Restore the backup in Money first
 and import the resulting `.mny`.
