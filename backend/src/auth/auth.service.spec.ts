@@ -940,8 +940,9 @@ describe("AuthService", () => {
     });
 
     it("refuses password login for an SSO account that kept a local password hash", async () => {
-      // An SSO link keeps passwordHash, but the OIDC login strips the TOTP
-      // secret, so the local password must never sign in with no second factor.
+      // A link clears passwordHash, but one made before that (or a hash set
+      // since) must never sign in with no second factor: the OIDC login strips
+      // the TOTP secret.
       const hashedPassword = await bcrypt.hash("ValidPass123!", 10);
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,
@@ -1446,6 +1447,8 @@ describe("AuthService", () => {
       expect(result.user).toBe(existing);
       expect(existing.oidcSubject).toBe("oidc-sub-123");
       expect(existing.authProvider).toBe("oidc");
+      // The local password ends with the link (#1858).
+      expect(existing.passwordHash).toBeNull();
       expect(sendSpy).not.toHaveBeenCalled();
     });
 
@@ -1480,6 +1483,8 @@ describe("AuthService", () => {
       expect(result.user).toBe(existing);
       expect(existing.oidcSubject).toBe("oidc-sub-123");
       expect(existing.authProvider).toBe("oidc");
+      // The local password ends with the link (#1858).
+      expect(existing.passwordHash).toBeNull();
       expect(sendSpy).not.toHaveBeenCalled();
     });
   });
@@ -2083,6 +2088,30 @@ describe("AuthService", () => {
       expect(result.isNewUser).toBe(true);
     });
 
+    it("clears a local password an SSO account still holds on its next OIDC login", async () => {
+      const existing: any = {
+        id: "oidc-existing",
+        email: "oidc@example.com",
+        oidcSubject: "oidc-sub-123",
+        authProvider: "oidc",
+        passwordHash: "linked-before-1858",
+        resetToken: "pending-reset",
+      };
+      usersRepository.findOne.mockResolvedValueOnce(existing);
+      usersRepository.save.mockImplementation((u) => u);
+
+      await service.findOrCreateOidcUser({
+        sub: "oidc-sub-123",
+        email: "oidc@example.com",
+        email_verified: true,
+      });
+
+      expect(existing.passwordHash).toBeNull();
+      expect(existing.resetToken).toBeNull();
+      expect(existing.oidcSubject).toBe("oidc-sub-123");
+      expect(usersRepository.save).toHaveBeenCalledWith(existing);
+    });
+
     it("does not flag a returning OIDC user as new", async () => {
       const existing = {
         id: "oidc-existing",
@@ -2282,6 +2311,8 @@ describe("AuthService", () => {
         id: "oidc-existing",
         oidcSubject: "oidc-sub-same",
         authProvider: "oidc",
+        // An SSO account holds no local password; one would be cleared (#1858).
+        passwordHash: null,
         firstName: "Test",
         lastName: "User",
         email: "test@example.com",
@@ -3454,6 +3485,11 @@ describe("AuthService", () => {
       expect(result.oidcLinkPending).toBe(false);
       expect(result.oidcLinkToken).toBeNull();
       expect(result.pendingOidcSubject).toBeNull();
+      // No local password survives the link: the OIDC login drops the TOTP
+      // secret, so it would be a single factor on every password path (#1858).
+      expect(result.passwordHash).toBeNull();
+      expect(result.resetToken).toBeNull();
+      expect(result.mustChangePassword).toBe(false);
     });
 
     it("confirmOidcLink ends every credential the local password stood behind", async () => {

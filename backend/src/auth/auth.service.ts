@@ -52,6 +52,21 @@ import { emailTranslator } from "../i18n/email-translator";
 import { resolveUserEmailLocale } from "../i18n/resolve-user-email-locale";
 import { isTwoFactorActive } from "./two-factor-state";
 
+/**
+ * Make `user` an SSO account. The local password goes with the link: the OIDC
+ * login drops the TOTP secret, so a hash kept beside it would be a
+ * single-factor credential every password-confirmed path still accepted
+ * (kenlasko/monize#1858). Re-authentication is the OIDC step-up from here on.
+ */
+function adoptOidcIdentity(user: User, subject: string | null): void {
+  user.oidcSubject = subject;
+  user.authProvider = "oidc";
+  user.passwordHash = null;
+  user.mustChangePassword = false;
+  user.resetToken = null;
+  user.resetTokenExpiry = null;
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -440,8 +455,9 @@ export class AuthService {
       );
     }
 
-    // An SSO account signs in through its provider; the hash a link keeps is
-    // not a login credential (the OIDC login drops the TOTP secret).
+    // An SSO account signs in through its provider. A link clears the hash
+    // (`adoptOidcIdentity`); one still present is not a login credential
+    // either (the OIDC login drops the TOTP secret).
     if (user.authProvider === "oidc") {
       this.logger.warn(
         `Login failed: password sign-in refused for SSO user ${user.id}`,
@@ -694,8 +710,7 @@ export class AuthService {
           } else {
             // OIDC-only account, or OIDC_REQUIRE_VERIFIED_EMAIL=false bypasses
             // the confirmation step -- merge the OIDC identity in directly.
-            existingUser.oidcSubject = sub;
-            existingUser.authProvider = "oidc";
+            adoptOidcIdentity(existingUser, sub);
             await this.scoped(User, (repo) => repo.save(existingUser));
             user = existingUser;
           }
@@ -766,8 +781,7 @@ export class AuthService {
               } else {
                 // OIDC-only account, or OIDC_REQUIRE_VERIFIED_EMAIL=false --
                 // merge directly
-                existingUser.oidcSubject = sub;
-                existingUser.authProvider = "oidc";
+                adoptOidcIdentity(existingUser, sub);
                 await this.scoped(User, (repo) => repo.save(existingUser));
                 user = existingUser;
               }
@@ -784,8 +798,8 @@ export class AuthService {
       let needsUpdate = false;
 
       // Ensure authProvider reflects OIDC usage
-      if (user.authProvider !== "oidc") {
-        user.authProvider = "oidc";
+      if (user.authProvider !== "oidc" || user.passwordHash) {
+        adoptOidcIdentity(user, user.oidcSubject);
         needsUpdate = true;
       }
 
@@ -961,11 +975,10 @@ export class AuthService {
     }
 
     // Complete the link. The account now signs in through the identity
-    // provider, so every credential issued on the strength of the local
-    // password ends with it: PATs and trusted devices in the same transaction,
+    // provider, so the local password and every credential issued on its
+    // strength end with it: PATs and trusted devices in the same transaction,
     // sessions and OAuth grants after it (`credential-revocation.ts`).
-    user.oidcSubject = user.pendingOidcSubject;
-    user.authProvider = "oidc";
+    adoptOidcIdentity(user, user.pendingOidcSubject);
     user.oidcLinkPending = false;
     user.oidcLinkToken = null;
     user.oidcLinkExpiresAt = null;
