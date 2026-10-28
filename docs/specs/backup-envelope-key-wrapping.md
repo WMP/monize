@@ -33,10 +33,13 @@ server stores three things on `users`, and nothing that decrypts to a password:
 
 **An SSO link keeps the key.** Linking a local account to SSO clears its
 `password_hash` (kenlasko/monize#1858) and, with it, `backup_key_password_ref`
-(`adoptOidcIdentity`, `backend/src/auth/auth.service.ts`): the wrap becomes the
-account's dedicated backup key, still opened by the old login password, until
-the person sets a backup password. A ref left pointing at the cleared hash
-would read as stale, and the cron would drop the key and write plaintext.
+(`adoptOidcIdentity`, `backend/src/auth/auth.service.ts`): a wrap made for the
+current hash becomes the account's dedicated backup key, still opened by the
+login password the person last used, until they set a backup password. A ref
+left pointing at the cleared hash would read as stale, and the cron would drop
+the key and write plaintext. A wrap made for an older hash (a reset that did
+not re-wrap) is dropped instead: only a password the person may have forgotten
+opens it.
 
 The scrypt parameters are the envelope's existing ones (`deriveKey` in
 `backup-envelope.ts`, N=32768, r=8, p=1), so opening a file costs what it

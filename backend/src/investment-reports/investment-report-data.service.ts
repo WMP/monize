@@ -24,6 +24,7 @@ import { Account } from "../accounts/entities/account.entity";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { InvestmentCellValue } from "./dto/execute-investment-report.dto";
 import { roundToDecimals, sumMoney } from "../common/round.util";
+import { daysBetween } from "../common/time-series/price-boundary.util";
 import { FxAggregate } from "../common/fx-aggregate";
 import { todayYMD } from "../common/date-utils";
 
@@ -106,8 +107,6 @@ interface GroupRecord {
   txs: InvestmentTransaction[];
   state: ReplayState;
 }
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 function isoAddDays(iso: string, days: number): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -909,9 +908,8 @@ export class InvestmentReportDataService {
   ): { inflows: number; outflows: number; weightedNet: number } | null {
     const inflows: number[] = [];
     const outflows: number[] = [];
-    // `after < upto` for every window the report asks for, so windowMs > 0.
-    const uptoMs = Date.parse(upto);
-    const windowMs = uptoMs - Date.parse(after);
+    // `after < upto` for every window the report asks for, so windowDays > 0.
+    const windowDays = daysBetween(after, upto);
     const weighted: number[] = [];
     for (const tx of group.txs) {
       if (tx.transactionDate <= after || tx.transactionDate > upto) continue;
@@ -936,8 +934,7 @@ export class InvestmentReportDataService {
       }
       if (amount === null) return null;
       (kind === "capitalIn" ? inflows : outflows).push(amount);
-      const weight =
-        (uptoMs - Date.parse(tx.transactionDate) + DAY_MS) / windowMs;
+      const weight = (daysBetween(tx.transactionDate, upto) + 1) / windowDays;
       weighted.push((kind === "capitalIn" ? amount : -amount) * weight);
     }
     return {

@@ -19,6 +19,7 @@ import { AuthEmailService } from "./auth-email.service";
 import { DelegationService } from "../delegation/delegation.service";
 import { I18nService, I18nContext } from "nestjs-i18n";
 import { BackupEncryptionService } from "../backup/backup-encryption.service";
+import { loginPasswordRef } from "../backup/backup-key-wrap";
 import { User } from "../users/entities/user.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { TrustedDevice } from "../users/entities/trusted-device.entity";
@@ -1447,8 +1448,14 @@ describe("AuthService", () => {
       expect(result.user).toBe(existing);
       expect(existing.oidcSubject).toBe("oidc-sub-123");
       expect(existing.authProvider).toBe("oidc");
-      // The local password ends with the link (#1858).
+      // The local password ends with the link (#1858), and so does every
+      // credential issued on it, as on the confirmed link (INV-AUTH-005).
       expect(existing.passwordHash).toBeNull();
+      expect(patRepository.update).toHaveBeenCalledWith(
+        { userId: "u1", isRevoked: false },
+        { isRevoked: true },
+      );
+      expect(oauthProviderService.revokeAllForUser).toHaveBeenCalledWith("u1");
       expect(sendSpy).not.toHaveBeenCalled();
     });
 
@@ -3503,7 +3510,7 @@ describe("AuthService", () => {
         backupEncryptionEnabled: true,
         backupKeyEnc: "enc",
         backupKeyWrap: "wrap",
-        backupKeyPasswordRef: "ref-of-old-hash",
+        backupKeyPasswordRef: loginPasswordRef(mockUser.passwordHash),
       };
       usersRepository.findOne.mockResolvedValue(pendingUser);
       usersRepository.save.mockImplementation((u) => u);
@@ -3514,6 +3521,30 @@ describe("AuthService", () => {
       expect(result.backupKeyEnc).toBe("enc");
       expect(result.backupKeyWrap).toBe("wrap");
       expect(result.backupEncryptionEnabled).toBe(true);
+    });
+
+    it("confirmOidcLink drops a backup key wrapped under an older password", async () => {
+      // A reset replaced the hash without re-wrapping: only the forgotten
+      // password opens this wrap, so it must not become the live key.
+      const pendingUser = {
+        ...mockUser,
+        oidcLinkPending: true,
+        oidcLinkExpiresAt: new Date(Date.now() + 3600000),
+        pendingOidcSubject: "oidc-sub-confirmed",
+        backupEncryptionEnabled: true,
+        backupKeyEnc: "enc",
+        backupKeyWrap: "wrap",
+        backupKeyPasswordRef: loginPasswordRef("$2a$10$an-older-hash"),
+      };
+      usersRepository.findOne.mockResolvedValue(pendingUser);
+      usersRepository.save.mockImplementation((u) => u);
+
+      const result = await service.confirmOidcLink("some-token");
+
+      expect(result.backupKeyPasswordRef).toBeNull();
+      expect(result.backupKeyEnc).toBeNull();
+      expect(result.backupKeyWrap).toBeNull();
+      expect(result.backupEncryptionEnabled).toBe(false);
     });
 
     it("confirmOidcLink ends every credential the local password stood behind", async () => {
