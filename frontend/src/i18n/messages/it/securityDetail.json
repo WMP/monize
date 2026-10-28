@@ -127,6 +127,7 @@
     "realizedPl": "U/P realizzato",
     "realizedMixed": "Realizzato in {currencies}, quindi non sommato",
     "realizedUnknownReason": "Questo utile non può essere calcolato: la posizione contiene azioni aggiunte senza costo, quindi il costo delle azioni vendute è sconosciuto. Apri la transazione che le ha aggiunte e inserisci il loro prezzo.",
+    "realizedKnownPart": "Parte nota: {amount}",
     "totalReturn": "Rendimento totale",
     "totalReturnValue": "{amount} ({percent})",
     "totalReturnTitle": "L'utile non realizzato, più quanto hai realizzato sulle vendite e ricevuto come proventi, meno le commissioni, rapportato al capitale impiegato. Un rendimento semplice su quel capitale: non è annualizzato e non pondera le tranche per il tempo in cui le hai tenute.",
@@ -154,6 +155,7 @@
     "description": "Non detieni più questo titolo. Il suo storico resta disponibile qui sotto.",
     "realizedPl": "U/P realizzato",
     "realizedUnknownReason": "Questo utile non può essere calcolato: la posizione conteneva azioni aggiunte senza costo, quindi il costo delle azioni vendute è sconosciuto. Apri la transazione che le ha aggiunte e inserisci il loro prezzo.",
+    "realizedKnownPart": "Parte nota: {amount}",
     "heldFrom": "Detenuto da",
     "heldRange": "dal {start} al {end}"
   },

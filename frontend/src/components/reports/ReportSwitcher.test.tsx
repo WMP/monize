@@ -89,10 +89,17 @@ describe('ReportSwitcher', () => {
   });
 
   it('does not offer the report already on screen', async () => {
+    // Starred, so it would otherwise sit in Favourites as well as under Tax.
+    setFavouriteReportIds(['tax-summary']);
     await openSwitcher();
     expect(screen.queryByRole('menuitem', { name: /^Tax Summary/ })).toBeNull();
-    // ...and the section it belonged to is gone with it, being its only report.
-    expect(screen.queryByRole('group', { name: 'Tax' })).toBeNull();
+    // ...and a section it was the only report of is gone with it.
+    expect(screen.queryByRole('group', { name: 'Favourites' })).toBeNull();
+    // A section with another report keeps that one.
+    const tax = screen.getByRole('group', { name: 'Tax' });
+    expect(
+      within(tax).getByRole('menuitem', { name: /Payroll Deductions/ }),
+    ).toBeInTheDocument();
   });
 
   it("lists the user's custom and investment reports under their sections", async () => {

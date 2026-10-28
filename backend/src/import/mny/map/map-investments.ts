@@ -22,15 +22,18 @@ import {
   MappedSecurities,
 } from "../model/mny-import-model";
 import {
-  MNY_UNCONFIRMED_ACTIONS,
   billTemplateHandles,
   decodeReference,
-  hasInvestmentDetail,
   isRecurrenceTemplate,
   isUnpostedRow,
-  mapInvestmentAction,
   mapTransactionStatus,
 } from "../model/mny-model";
+import {
+  hasInvestmentDetail,
+  isUnconfirmedInvestmentAction,
+  mapInvestmentAction,
+} from "../model/mny-actions";
+import { MONEY99_STOCK_OPTION_ACTIONS } from "../model/mny-money99";
 import { MnyBill, MnyTransaction } from "../model/mny-rows";
 import { MnyWarning, MnyWarningRow } from "../model/mny-warnings";
 import { MnyInvestmentData } from "../tables/read-investments";
@@ -362,7 +365,10 @@ function mapOne(
   const handle = row.handle as number;
   const detail = context.detailByHandle.get(handle);
 
-  if (!detail && hasInvestmentDetail(row.action)) {
+  if (
+    !detail &&
+    hasInvestmentDetail(row.action, context.input.transactions.format)
+  ) {
     // The cash figure on the TRN row is still real, so the row imports without
     // a share movement rather than being dropped or having one invented.
     context.warnings.push({
@@ -734,7 +740,21 @@ export function mapInvestments(input: MapInvestmentsInput): MappedInvestments {
       continue;
     }
 
-    const action = mapInvestmentAction(row.action);
+    const format = input.transactions.format;
+    if (format === "jet3" && MONEY99_STOCK_OPTION_ACTIONS.has(row.action)) {
+      // An option grant, vesting or expiry moves no cash and no shares, and
+      // Monize has no model for an unexercised option.
+      skipped += 1;
+      warnings.push({
+        code: "stockOptionNotImported",
+        subject: `htrn=${row.handle}`,
+        detail: `act=${row.action}`,
+        row: warningRow(row, input),
+      });
+      continue;
+    }
+
+    const action = mapInvestmentAction(row.action, format);
     if (action === null) {
       skipped += 1;
       warnings.push({
@@ -746,7 +766,7 @@ export function mapInvestments(input: MapInvestmentsInput): MappedInvestments {
       continue;
     }
 
-    if (MNY_UNCONFIRMED_ACTIONS.has(row.action)) {
+    if (isUnconfirmedInvestmentAction(row.action, format)) {
       warnings.push({
         code: "unconfirmedInvestmentAction",
         subject: `htrn=${row.handle}`,

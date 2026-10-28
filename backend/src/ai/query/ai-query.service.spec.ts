@@ -201,7 +201,7 @@ describe("AiQueryService", () => {
     return calls[calls.length - 1];
   }
 
-  describe("tools withdrawn from a run (excludeTools)", () => {
+  describe("tools allowed in a run (allowTools)", () => {
     const offered = (): string[] =>
       (
         (mockProvider.completeWithTools as jest.Mock).mock
@@ -210,19 +210,25 @@ describe("AiQueryService", () => {
         }>
       ).map((t) => t.name);
 
-    it("offers every tool by default, and none of the excluded ones when told to", async () => {
+    it("offers every tool by default, and only the allowed ones when told to", async () => {
       await service.executeQuery(userId, "hello");
       expect(offered()).toContain("fetch_bond_series");
 
       (mockProvider.completeWithTools as jest.Mock).mockClear();
       await service.executeQuery(userId, "hello", undefined, undefined, {
-        excludeTools: ["fetch_bond_series"],
+        allowTools: ["list_transactions"],
       });
-      expect(offered()).not.toContain("fetch_bond_series");
-      expect(offered()).toContain("list_transactions");
+      expect(offered()).toEqual(["list_transactions"]);
     });
 
-    it("refuses a call to an excluded tool the model makes anyway, without executing it", async () => {
+    it("offers no tool for an empty allow-list", async () => {
+      await service.executeQuery(userId, "hello", undefined, undefined, {
+        allowTools: [],
+      });
+      expect(offered()).toEqual([]);
+    });
+
+    it("refuses a call to a tool outside the allow-list the model makes anyway, without executing it", async () => {
       (mockProvider.completeWithTools as jest.Mock)
         .mockResolvedValueOnce({
           content: "",
@@ -252,7 +258,7 @@ describe("AiQueryService", () => {
         "hello",
         undefined,
         undefined,
-        { excludeTools: ["fetch_bond_series"] },
+        { allowTools: ["list_transactions"] },
       );
 
       expect(mockToolExecutor.execute).not.toHaveBeenCalled();

@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "Geen rekeningblokken gevonden in QIF-bestand. Dit bestand is mogelijk geen export met meerdere rekeningen.",
+    "accountTypeRequired": "Kies een rekeningtype voor deze rekeningen voordat u importeert: {{ accounts }}",
     "importFailed": "Import mislukt na {{ imported }} transacties: {{ message }}",
     "investmentFileNeedsBrokerageAccount": "Dit bestand bevat beleggingstransacties, maar de geselecteerde rekening is geen beleggingsbrokerage-rekening. Selecteer een brokerage-rekening voor deze import.",
     "regularFileNeedsCashAccount": "Dit bestand bevat gewone banktransacties, maar de geselecteerde rekening is een beleggingsbrokerage-rekening. Selecteer een contantenrekening (inclusief beleggingscontantenrekeningen) voor deze import.",
@@ -486,7 +487,7 @@
     "mnyNoFile": "Er is geen Money-bestand geüpload",
     "mnyFileTruncated": "Dit Money-bestand lijkt onvolledig. De upload is mogelijk onderbroken -- probeer het opnieuw.",
     "mnyNotAMoneyFile": "Dit bestand is geen Microsoft Money-bestand (.mny)",
-    "mnyUnsupportedVersion": "Dit bestand is gemaakt met Money 97 of 98, dat Monize niet kan lezen. Open en bewaar het één keer in de gratis Money Plus Sunset-editie en importeer daarna het resultaat.",
+    "mnyUnsupportedVersion": "Dit bestand is gemaakt met een versie van Microsoft Money die Monize niet kan lezen. Open en bewaar het één keer in de gratis Money Plus Sunset-editie en importeer daarna het resultaat.",
     "mnyPasswordRequired": "Dit Money-bestand is met een wachtwoord beveiligd. Voer het wachtwoord in om door te gaan.",
     "mnyPasswordIncorrect": "Met dit wachtwoord kan het Money-bestand niet worden geopend. Controleer het en probeer het opnieuw.",
     "mnyUnreadableDatabase": "Dit Money-bestand is ontsleuteld, maar de inhoud kon niet worden gelezen. Het is mogelijk beschadigd.",

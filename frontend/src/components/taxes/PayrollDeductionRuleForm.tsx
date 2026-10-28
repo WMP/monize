@@ -161,22 +161,19 @@ export function PayrollDeductionRuleForm({
 }: PayrollDeductionRuleFormProps) {
   const t = useTranslations('taxes.payroll');
   const today = useFinancialToday();
-  // Creating: a bill that already has rules is not offered again; its rules
-  // are edited, or added to, from the list. Editing: the rule's own bill stays
-  // offered even when it no longer qualifies (deactivated, no longer a net
-  // income), so the rule can still be changed.
-  const ruledBillIds = useMemo(
-    () => new Set(existingRules.filter((r) => r.id !== rule?.id).map((r) => r.scheduledTransactionId)),
-    [existingRules, rule?.id],
-  );
+  // A bill that already has rules is still offered when creating: one rule per
+  // bill and category, so the category rows below skip the ones already ruled.
+  // Editing: the rule's own bill stays offered even when it no longer
+  // qualifies (deactivated, no longer a net income), so the rule can still be
+  // changed.
   const bills = useMemo(() => {
-    const offered = payrollBillOptions(scheduledTransactions).filter((b) => rule || !ruledBillIds.has(b.id));
+    const offered = payrollBillOptions(scheduledTransactions);
     if (rule && !offered.some((b) => b.id === rule.scheduledTransactionId)) {
       const own = scheduledTransactions.find((b) => b.id === rule.scheduledTransactionId);
       if (own) return [own, ...offered];
     }
     return offered;
-  }, [scheduledTransactions, rule, ruledBillIds]);
+  }, [scheduledTransactions, rule]);
   const billsById = useMemo(() => new Map(bills.map((b) => [b.id, b])), [bills]);
   const hasLine = useCallback(
     (billId: string, categoryId: string) => billLineAmount(billsById.get(billId), categoryId) !== null,

@@ -15,6 +15,19 @@ export const PAGE_SIZE = 50;
  */
 export const SECURITY_PRICE_HISTORY_LIMIT = 9999;
 
+/**
+ * Client timeout for the reads that value a portfolio day by day over its whole
+ * history: the portfolio summary (its since-inception return), the daily value
+ * series, the period result and the period results batch, the breakdown.
+ *
+ * Their cost grows with the length of the history, not the size of the page: a
+ * portfolio with decades of multi-currency transactions is thousands of valued
+ * days, and the Investments page asks for several of these at once. The
+ * client's 10 s default cut them off while the server was still answering
+ * (issue #1888), so they get the same generous bound as the other long reads.
+ */
+export const PORTFOLIO_VALUATION_TIMEOUT_MS = 120_000;
+
 type DateFormatOption = { value: string; label: string };
 
 /**

@@ -27,9 +27,9 @@ function daysInMonth(year: number, monthIndex: number): number {
  * Add `months`, clamping the day to the target month's length: Jan 31 + 1 month
  * is Feb 28 (or Feb 29), not Mar 3 as `setMonth` alone would give.
  */
-function addMonthsClamped(date: Date, months: number): Date {
+function addMonthsClamped(date: Date, months: number, anchorDay?: number): Date {
   const target = new Date(date.getTime());
-  const day = target.getDate();
+  const day = anchorDay ?? target.getDate();
   target.setDate(1);
   target.setMonth(target.getMonth() + months);
   target.setDate(Math.min(day, daysInMonth(target.getFullYear(), target.getMonth())));
@@ -46,8 +46,12 @@ function addDays(date: Date, days: number): Date {
  * The next occurrence after `date` for `frequency`, as a new `Date` (the input
  * is never mutated). `ONCE` returns an equal date -- callers treat that as
  * "no further occurrences" and must stop, rather than looping forever.
+ *
+ * `anchorDay` is the day-of-month of the schedule's `startDate`: month-based
+ * steps clamp to the month length but return to it afterwards (Jan 31, Feb 28,
+ * Mar 31), as `calculateNextDueDate` does. Absent, the previous date's day is kept.
  */
-export function advanceByFrequency(date: Date, frequency: FrequencyType): Date {
+export function advanceByFrequency(date: Date, frequency: FrequencyType, anchorDay?: number): Date {
   switch (frequency) {
     case 'DAILY':
       return addDays(date, 1);
@@ -68,22 +72,34 @@ export function advanceByFrequency(date: Date, frequency: FrequencyType): Date {
       return next;
     }
     case 'MONTHLY':
-      return addMonthsClamped(date, 1);
+      return addMonthsClamped(date, 1, anchorDay);
     case 'EVERY2MONTHS':
-      return addMonthsClamped(date, 2);
+      return addMonthsClamped(date, 2, anchorDay);
     case 'QUARTERLY':
-      return addMonthsClamped(date, 3);
+      return addMonthsClamped(date, 3, anchorDay);
     case 'EVERY4MONTHS':
-      return addMonthsClamped(date, 4);
+      return addMonthsClamped(date, 4, anchorDay);
     case 'SEMIANNUAL':
-      return addMonthsClamped(date, 6);
+      return addMonthsClamped(date, 6, anchorDay);
     case 'YEARLY':
-      return addMonthsClamped(date, 12);
+      return addMonthsClamped(date, 12, anchorDay);
     case 'EVERY2YEARS':
-      return addMonthsClamped(date, 24);
+      return addMonthsClamped(date, 24, anchorDay);
     case 'ONCE':
       return new Date(date.getTime());
   }
+}
+
+/**
+ * The anchor day for stepping from `current`, mirroring the backend's `anchorDayOf`:
+ * the `startDate`'s day when `current` sits on it (or on it clamped by a short
+ * month), else `current`'s own day because the user moved it.
+ */
+export function anchorDayOf(startDate: string | null | undefined, current: Date): number | undefined {
+  if (!startDate) return undefined;
+  const s = Number(startDate.slice(8, 10));
+  const d = current.getDate();
+  return d === Math.min(s, daysInMonth(current.getFullYear(), current.getMonth())) ? s : d;
 }
 
 /** True when a frequency produces at most one occurrence. */

@@ -840,6 +840,58 @@ describe("InvestmentReportDataService", () => {
     });
   });
 
+  it("reports realized gains as unknown once a sale draws on shares added with no cost (#1859)", async () => {
+    securitiesRepository.find.mockResolvedValue([
+      {
+        id: "sec1",
+        symbol: "AAA",
+        name: "Alpha",
+        securityType: "STOCK",
+        currencyCode: "USD",
+      },
+    ]);
+    holdingsRepository.find.mockResolvedValue([
+      holding({ quantity: 100, averageCost: 0 }),
+    ]);
+    txRepository.find.mockResolvedValue([
+      makeTx({
+        action: InvestmentAction.ADD_SHARES,
+        transactionDate: "2024-01-05",
+        quantity: 100,
+        price: null,
+        totalAmount: 0,
+      }),
+      makeTx({
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-10",
+        quantity: 100,
+        price: 50,
+        totalAmount: 5000,
+      }),
+      makeTx({
+        action: InvestmentAction.SELL,
+        transactionDate: "2024-06-05",
+        quantity: 100,
+        price: 60,
+        totalAmount: 6000,
+      }),
+    ]);
+    manager.query.mockResolvedValue([
+      priceRow({ price_date: "2024-06-10", close_price: "60" }),
+    ]);
+
+    const { rows } = await service.computeHoldings(
+      "u1",
+      ["acc1"],
+      "2024-06-10",
+      "USD",
+    );
+
+    // The average over 200 shares is 25, which read as a gain of 3,500.
+    expect(rows[0].values.realizedGains).toBeNull();
+    expect(rows[0].values.sales).toBe(6000);
+  });
+
   it("treats a return of capital as capital paid back, not income (#1800)", async () => {
     securitiesRepository.find.mockResolvedValue([
       {

@@ -33,8 +33,8 @@ describe('nav-links', () => {
     expect(AI_LINKS).toContainEqual({ href: '/ai-reviews', labelKey: 'aiReviews', ownerOnly: true });
     expect(NAV_ICONS['/ai-reviews']).toBeTruthy();
     expect([...NAV_LINKS, ...TOOLS_LINKS, ...AI_LINKS].filter((l) => l.ownerOnly).map((l) => l.href)).toEqual([
-      '/email-receipts',
       '/taxes',
+      '/email-receipts',
       '/ai-reviews',
     ]);
   });
@@ -44,18 +44,18 @@ describe('nav-links', () => {
     expect(NAV_ICONS['/email-receipts']).toBeTruthy();
   });
 
-  it('puts Warranties in the Tools menu between Rules and Email receipts, with its icon', () => {
+  it('puts Warranties in the Tools menu directly under Tags, with its icon', () => {
     const hrefs = TOOLS_LINKS.map((l) => l.href);
     expect(TOOLS_LINKS).toContainEqual({ href: '/warranties', labelKey: 'warranties' });
-    expect(hrefs.indexOf('/warranties')).toBe(hrefs.indexOf('/rules') + 1);
-    expect(hrefs.indexOf('/email-receipts')).toBe(hrefs.indexOf('/warranties') + 1);
+    expect(hrefs.indexOf('/warranties')).toBe(hrefs.indexOf('/tags') + 1);
     expect(NAV_ICONS['/warranties']).toBe(ShieldCheckIcon);
   });
 
-  it('puts Taxes in the Tools menu after Email receipts, owner-only, with an icon', () => {
+  it('puts Taxes in the Tools menu directly under Warranties and Rules under Taxes, owner-only, with an icon', () => {
     const hrefs = TOOLS_LINKS.map((l) => l.href);
     expect(TOOLS_LINKS).toContainEqual({ href: '/taxes', labelKey: 'taxes', ownerOnly: true });
-    expect(hrefs.indexOf('/taxes')).toBe(hrefs.indexOf('/email-receipts') + 1);
+    expect(hrefs.indexOf('/taxes')).toBe(hrefs.indexOf('/warranties') + 1);
+    expect(hrefs.indexOf('/rules')).toBe(hrefs.indexOf('/taxes') + 1);
     expect(NAV_ICONS['/taxes']).toBe(ReceiptPercentIcon);
   });
 

@@ -20,7 +20,7 @@ import {
   SLUGS,
   seriesRoutes,
 } from "@/bonds/adapters/pl/series/fixture-helpers";
-import { extractPdfText } from "@/bonds/adapters/pl/series/pdf-text";
+import { extractPdfText } from "@/common/pdf-text";
 import { AuthAttemptCounterService } from "@/auth/auth-attempt-counter.service";
 import { CurrenciesService } from "@/currencies/currencies.service";
 import { FxProviderChain } from "@/currencies/providers/fx-provider-chain";
@@ -50,7 +50,7 @@ import { withUserContext } from "@/common/db/with-context";
 
 // The issuer's letter is read as text: the fake PDF is the magic plus the saved
 // letter text, so the real adapter parses the real fixture without pdfjs.
-jest.mock("@/bonds/adapters/pl/series/pdf-text", () => ({
+jest.mock("@/common/pdf-text", () => ({
   extractPdfText: jest.fn(),
 }));
 

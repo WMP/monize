@@ -337,7 +337,10 @@
     "securitiesNotice": "इस फ़ाइल में {count} प्रतिभूत{plural} हैं जिन्हें आयात से पहले मैप करने की आवश्यकता है।",
     "nextMapSecurities": "अगला: प्रतिभूतियां मैप करें",
     "importAll": "सभी आयात करें",
-    "transactionCount": "{count} लेनदेन{plural}"
+    "transactionCount": "{count} लेनदेन{plural}",
+    "chooseAccountType": "प्रकार चुनें",
+    "accountTypeFor": "{name} के लिए खाता प्रकार",
+    "accountTypesNeeded": "फ़ाइल यह नहीं बताती कि {count, plural, one {# खाता} other {# खाते}} किस प्रकार के हैं। आयात करने से पहले प्रत्येक के लिए एक प्रकार चुनें।"
   },
   "navigation": {
     "back": "वापस",
@@ -354,6 +357,7 @@
     "heading": "अपनी Microsoft Money फ़ाइल की समीक्षा करें",
     "fileSummary": "{filename} -- {era}, आधार मुद्रा {currency}। नीचे दिए शेष फ़ाइल से ही गणना किए गए हैं, इसलिए आयात करने से पहले आप उन्हें Money से मिला सकते हैं।",
     "era": {
+      "money99": "Money 97-99 प्रारूप",
       "money2001": "Money 2001 प्रारूप",
       "money2002": "Money 2002 प्रारूप",
       "moneyPlus": "Money Plus / Sunset प्रारूप",
@@ -526,6 +530,7 @@
     "duplicateSecuritySymbol": "{count, plural, one {# प्रतिभूति} other {# प्रतिभूतियाँ}} किसी अन्य के साथ प्रतीक साझा करती थीं; अलग बनी रहें इसलिए बाद वाली का नाम बदल दिया गया।",
     "generatedSecuritySymbol": "{count, plural, one {# प्रतिभूति} other {# प्रतिभूतियों}} का Money में कोई प्रतीक नहीं है, इसलिए एक अस्थायी प्रतीक बनाया गया और मूल्य अद्यतन बंद रखे गए।",
     "unknownInvestmentAction": "{count, plural, one {# निवेश लेन-देन} other {# निवेश लेन-देन}} में ऐसी क्रिया थी जिसे Monize नहीं पहचानता, और उन्हें छोड़ दिया गया।",
+    "stockOptionNotImported": "{count, plural, one {# कर्मचारी स्टॉक विकल्प घटना} other {# कर्मचारी स्टॉक विकल्प घटनाएँ}} (अनुदान, निहित होना और समाप्ति) में न नकद आया-गया न शेयर, इसलिए उन्हें आयात नहीं किया गया।",
     "unconfirmedInvestmentAction": "{count, plural, one {# निवेश लेन-देन} other {# निवेश लेन-देन}} में Money की ऐसी क्रिया थी जिसका अर्थ अनुमानित है, प्रलेखित नहीं; उन्हें Money से मिलाकर देखें।",
     "missingInvestmentDetail": "{count, plural, one {# निवेश लेन-देन} other {# निवेश लेन-देन}} में फ़ाइल में शेयर विवरण नहीं था और उन्हें केवल नकद राशि के रूप में आयात किया गया।",
     "investmentAccountMismatch": "{count, plural, one {# निवेश लेन-देन} other {# निवेश लेन-देन}} ऐसे खाते में था जो निवेश खाता नहीं है, और उन्हें छोड़ दिया गया।",
@@ -560,7 +565,7 @@
     "mnyStagedFileMissing": "अपलोड की गई Money फ़ाइल अब उपलब्ध नहीं है। कृपया इसे फिर से अपलोड करें।",
     "mnyFileTruncated": "यह Money फ़ाइल अपूर्ण लगती है। अपलोड बाधित हो सकता है।",
     "mnyNotAMoneyFile": "यह फ़ाइल Microsoft Money (.mny) फ़ाइल नहीं है।",
-    "mnyUnsupportedVersion": "यह फ़ाइल Money 97 या 98 से बनी है। इसे निःशुल्क Money Plus Sunset संस्करण में एक बार खोलकर सहेजें, फिर परिणाम आयात करें।",
+    "mnyUnsupportedVersion": "यह फ़ाइल Microsoft Money के ऐसे संस्करण से बनी है जिसे Monize पढ़ नहीं सकता। इसे निःशुल्क Money Plus Sunset संस्करण में एक बार खोलकर सहेजें, फिर परिणाम आयात करें।",
     "mnyPasswordRequired": "यह Money फ़ाइल पासवर्ड से सुरक्षित है।",
     "mnyPasswordIncorrect": "यह पासवर्ड Money फ़ाइल को नहीं खोलता।",
     "mnyUnreadableDatabase": "यह Money फ़ाइल डिक्रिप्ट हो गई, लेकिन इसकी सामग्री पढ़ी नहीं जा सकी। यह क्षतिग्रस्त हो सकती है।"

@@ -55,7 +55,7 @@ function buildLookThroughAllocation(
     color: slice.isOther ? chartColors.axis : CHART_SERIES[index % CHART_SERIES.length],
   }));
 
-  return { allocation, totalValue: result.totalPortfolioValue };
+  return { allocation, totalValue: result.totalPortfolioValue ?? result.knownSubtotal ?? 0 };
 }
 
 /** Country look-through -> pie slices. */

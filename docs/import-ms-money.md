@@ -22,10 +22,13 @@ confirmation word and re-enter your password, and it cannot be undone.
 **Work from a copy.** Monize never writes to the file, but a spare copy of three
 decades of finances costs nothing.
 
-**Money 97 and 98 files are not supported.** Those predate the format Monize
-reads. Open the file once in the free Money Plus Sunset edition and save it; that
-converts it, and the result imports normally. Monize detects these files and
-says so rather than failing obscurely.
+**Money 97, 98 and 99 files import directly**, with no conversion step,
+recurring bills included. A scheduled payment Money recorded with no account to
+pay from (Money 99 can leave a scheduled loan payment that way) cannot become a
+bill and is listed as skipped. An investment account's "Other income" and "Other expenses" arrive as ordinary
+categorized transactions in its cash account, because Monize has no investment
+action for either, and employee stock option grants, vesting and expiry are not
+imported.
 
 `.mbf` backup archives are also unsupported. Restore the backup in Money first
 and import the resulting `.mny`.
@@ -174,7 +177,7 @@ data as it was and the uploaded file is kept for one more attempt.
 
 | What you see | What it means |
 |---|---|
-| "That file was written by Money 97 or 98" | Convert it through Money Plus Sunset first (see above) |
+| "That file was written by a version of Microsoft Money that Monize cannot read" | Open it in the free Money Plus Sunset edition, save it, and import the result |
 | "That file is not a Microsoft Money file" | Wrong file, or the upload was corrupted |
 | "That Money file looks incomplete" | The upload was cut short -- try again |
 | "Its contents could not be read" | The file decrypted but its internals are damaged. Open it in Money and save a fresh copy |

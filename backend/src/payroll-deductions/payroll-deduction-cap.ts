@@ -69,10 +69,37 @@ export function memoisedPaidLookup(
 }
 
 /**
- * The category's rows between the two dates: unsplit transactions carrying
- * the category and split lines carrying it, VOID excluded, every account. The
- * same rows `queryCategorySpending` counts for a budget; the sum is taken only
- * over rows in the bill's currency (decision 6).
+ * The category's rows between two dates, the one definition of what "paid"
+ * sums: unsplit transactions carrying the category and split lines carrying
+ * it, VOID excluded, every account. The same rows `queryCategorySpending`
+ * counts for a budget. Parameters: `$1` user, `$2` category, `$3` first day,
+ * `$4` last day. Columns: `transaction_id`, `transaction_date`, `created_at`,
+ * `payee_name`, `amount` (signed), `currency_code`. The year-to-date figure
+ * and the payroll deductions report both read through it, so the report's
+ * columns add up to the figure the cap spends (INV-PAYROLL-003).
+ */
+export const CATEGORY_DEDUCTION_ROWS_SQL = `SELECT t.id AS transaction_id, t.transaction_date, t.created_at,
+              t.payee_name, t.amount, t.currency_code
+         FROM transactions t
+        WHERE t.user_id = $1
+          AND t.category_id = $2
+          AND t.is_split = false
+          AND t.status <> 'VOID'
+          AND t.transaction_date BETWEEN $3::date AND $4::date
+       UNION ALL
+       SELECT t.id, t.transaction_date, t.created_at,
+              t.payee_name, s.amount, t.currency_code
+         FROM transaction_splits s
+         JOIN transactions t ON t.id = s.transaction_id
+        WHERE t.user_id = $1
+          AND s.category_id = $2
+          AND t.status <> 'VOID'
+          AND t.transaction_date BETWEEN $3::date AND $4::date`;
+
+/**
+ * What the category's rows (`CATEGORY_DEDUCTION_ROWS_SQL`) between the two
+ * dates add up to; the sum is taken only over rows in the bill's currency
+ * (decision 6).
  */
 export async function queryCategoryPeriodPaid(
   m: EntityManager,
@@ -85,23 +112,7 @@ export async function queryCategoryPeriodPaid(
     await m.query(
       `SELECT COALESCE(SUM(x.amount) FILTER (WHERE x.currency_code = $5), 0) AS total,
               COUNT(*) FILTER (WHERE x.currency_code <> $5) AS foreign_rows
-         FROM (
-           SELECT t.amount, t.currency_code
-             FROM transactions t
-            WHERE t.user_id = $1
-              AND t.category_id = $2
-              AND t.is_split = false
-              AND t.status <> 'VOID'
-              AND t.transaction_date BETWEEN $3::date AND $4::date
-           UNION ALL
-           SELECT s.amount, t.currency_code
-             FROM transaction_splits s
-             JOIN transactions t ON t.id = s.transaction_id
-            WHERE t.user_id = $1
-              AND s.category_id = $2
-              AND t.status <> 'VOID'
-              AND t.transaction_date BETWEEN $3::date AND $4::date
-         ) x`,
+         FROM (${CATEGORY_DEDUCTION_ROWS_SQL}) x`,
       [userId, categoryId, period.periodStart, period.periodEnd, currencyCode],
     ),
   );

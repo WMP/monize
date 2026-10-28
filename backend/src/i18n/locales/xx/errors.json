@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "[XX-No account blocks found in QIF file. This file may not be a multi-account export.-XX]",
+    "accountTypeRequired": "[XX-Choose an account type for these accounts before importing: {{ accounts }}-XX]",
     "importFailed": "[XX-Import failed after {{ imported }} transactions: {{ message }}-XX]",
     "investmentFileNeedsBrokerageAccount": "[XX-This file contains investment transactions but the selected account is not an investment brokerage account. Please select a brokerage account for this import.-XX]",
     "regularFileNeedsCashAccount": "[XX-This file contains regular banking transactions but the selected account is an investment brokerage account. Please select a cash account (including investment cash accounts) for this import.-XX]",
@@ -486,7 +487,7 @@
     "mnyNoFile": "[XX-No Money file was uploaded-XX]",
     "mnyFileTruncated": "[XX-That Money file looks incomplete. The upload may have been interrupted -- try again.-XX]",
     "mnyNotAMoneyFile": "[XX-That file is not a Microsoft Money (.mny) file-XX]",
-    "mnyUnsupportedVersion": "[XX-That file was written by Money 97 or 98, which Monize cannot read. Open and save it once in the free Money Plus Sunset edition, then import the result.-XX]",
+    "mnyUnsupportedVersion": "[XX-That file was written by a version of Microsoft Money that Monize cannot read. Open and save it once in the free Money Plus Sunset edition, then import the result.-XX]",
     "mnyPasswordRequired": "[XX-That Money file is password protected. Enter its password to continue.-XX]",
     "mnyPasswordIncorrect": "[XX-That password does not open the Money file. Check it and try again.-XX]",
     "mnyUnreadableDatabase": "[XX-That Money file was decrypted but its contents could not be read. It may be damaged.-XX]",

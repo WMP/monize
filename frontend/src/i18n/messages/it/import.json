@@ -337,7 +337,10 @@
     "securitiesNotice": "Questo file contiene {count} titol{plural} che devono essere mappati prima dell'importazione.",
     "nextMapSecurities": "Avanti: Mappa titoli",
     "importAll": "Importa tutto",
-    "transactionCount": "{count} transazion{plural}"
+    "transactionCount": "{count} transazion{plural}",
+    "chooseAccountType": "Scegli un tipo",
+    "accountTypeFor": "Tipo di conto per {name}",
+    "accountTypesNeeded": "Il file non indica il tipo {count, plural, one {di # conto} other {di # conti}}. Scegli un tipo per ciascuno prima di importare."
   },
   "navigation": {
     "back": "Indietro",
@@ -354,6 +357,7 @@
     "heading": "Controlla il tuo file Microsoft Money",
     "fileSummary": "{filename} -- {era}, valuta di base {currency}. I saldi qui sotto sono calcolati dal file stesso, così puoi confrontarli con Money prima di importare.",
     "era": {
+      "money99": "formato Money 97-99",
       "money2001": "formato Money 2001",
       "money2002": "formato Money 2002",
       "moneyPlus": "formato Money Plus / Sunset",
@@ -526,6 +530,7 @@
     "duplicateSecuritySymbol": "{count, plural, one {# titolo condivide} other {# titoli condividono}} il simbolo con un altro; quelli successivi sono stati rinominati per restare distinti.",
     "generatedSecuritySymbol": "{count, plural, one {# titolo non ha} other {# titoli non hanno}} un simbolo in Money, quindi è stato generato un segnaposto e gli aggiornamenti dei prezzi restano disattivati.",
     "unknownInvestmentAction": "{count, plural, one {# transazione di investimento usava} other {# transazioni di investimento usavano}} un'operazione che Monize non riconosce e sono state ignorate.",
+    "stockOptionNotImported": "{count, plural, one {# evento di stock option per dipendenti} other {# eventi di stock option per dipendenti}} (assegnazioni, maturazione e scadenza) non hanno movimentato liquidità né azioni e non sono stati importati.",
     "unconfirmedInvestmentAction": "{count, plural, one {# transazione di investimento usava} other {# transazioni di investimento usavano}} un'operazione di Money il cui significato è dedotto e non documentato; verificale con Money.",
     "missingInvestmentDetail": "{count, plural, one {# transazione di investimento non aveva} other {# transazioni di investimento non avevano}} il dettaglio delle azioni nel file e sono state importate solo per l'importo in contanti.",
     "investmentAccountMismatch": "{count, plural, one {# transazione di investimento si trovava} other {# transazioni di investimento si trovavano}} in un conto che non è di investimento e sono state ignorate.",
@@ -560,7 +565,7 @@
     "mnyStagedFileMissing": "Il file Money caricato non è più disponibile. Caricalo di nuovo.",
     "mnyFileTruncated": "Questo file Money sembra incompleto. Il caricamento potrebbe essere stato interrotto.",
     "mnyNotAMoneyFile": "Questo file non è un file Microsoft Money (.mny).",
-    "mnyUnsupportedVersion": "Questo file è stato creato con Money 97 o 98. Aprilo e salvalo una volta nella versione gratuita Money Plus Sunset, poi importa il risultato.",
+    "mnyUnsupportedVersion": "Questo file è stato creato con una versione di Microsoft Money che Monize non è in grado di leggere. Aprilo e salvalo una volta nella versione gratuita Money Plus Sunset, poi importa il risultato.",
     "mnyPasswordRequired": "Questo file Money è protetto da password.",
     "mnyPasswordIncorrect": "Questa password non apre il file Money.",
     "mnyUnreadableDatabase": "Questo file Money è stato decifrato ma non è stato possibile leggerne il contenuto. Potrebbe essere danneggiato."

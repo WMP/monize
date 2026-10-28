@@ -20,9 +20,9 @@ import {
   seriesRoutes,
 } from "./fixture-helpers";
 import { fetchSeries } from "./fetch-series";
-import { extractPdfText } from "./pdf-text";
+import { extractPdfText } from "../../../../common/pdf-text";
 
-jest.mock("./pdf-text", () => ({ extractPdfText: jest.fn() }));
+jest.mock("../../../../common/pdf-text", () => ({ extractPdfText: jest.fn() }));
 
 const NOW = new Date("2026-10-11T08:00:00.000Z");
 const now = () => NOW;

@@ -374,6 +374,8 @@ describe("ToolExecutorService", () => {
         endDate: "2024-12-31",
         totals: {
           realizedGain: 120,
+          realizedGainComplete: true,
+          realizedGainKnownSubtotal: null,
           unrealizedGain: 80,
           totalCapitalGain: 200,
         },
@@ -388,6 +390,8 @@ describe("ToolExecutorService", () => {
             startValue: 1000,
             endValue: 1200,
             realizedGain: 0,
+            realizedGainComplete: true,
+            realizedGainKnownSubtotal: null,
             unrealizedGain: 200,
             totalCapitalGain: 200,
           },
@@ -1435,6 +1439,33 @@ describe("ToolExecutorService", () => {
       expect(result.summary).toContain("realized 120.00");
       expect(result.summary).toContain("unrealized 80.00");
       expect(result.summary).toContain("grouped by month");
+    });
+
+    it("list_capital_gains says the realized gain is unknown and gives the known part", async () => {
+      (
+        investmentTransactions.getLlmCapitalGains as jest.Mock
+      ).mockResolvedValueOnce({
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        totals: {
+          realizedGain: null,
+          realizedGainComplete: false,
+          realizedGainKnownSubtotal: 15,
+          unrealizedGain: null,
+          totalCapitalGain: null,
+        },
+        groupedBy: "month",
+        entries: [],
+        entryCount: 0,
+        truncatedEntryList: false,
+      });
+
+      const result = await service.execute(userId, "list_capital_gains", {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+      });
+
+      expect(result.summary).toContain("realized unknown (known part 15.00");
     });
 
     it("list_capital_gains resolves account names and defaults groupBy to 'month'", async () => {

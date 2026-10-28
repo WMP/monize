@@ -274,6 +274,13 @@ const ALLOWED = new Map<string, string>([
       "computations of the same summary, never a stale one past the announcement",
   ],
   [
+    "net-worth/daily-investments-in-flight.ts#entries",
+    "in-flight promises only, dropped when they settle, keyed by user, window, " +
+      "scope, currency and the acting identity; the summary memo's announced " +
+      "invalidation drops them on every replica, so N replicas cost N " +
+      "concurrent valuations of the same series, never a finished one served",
+  ],
+  [
     "backup/support-backup/support-backup.service.ts#rawCache",
     "preview and generate landing on different replicas degrade to two " +
       "exports; documented on the endpoint",

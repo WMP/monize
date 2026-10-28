@@ -3126,6 +3126,31 @@ describe("NetWorthService", () => {
       expect(result).toEqual([]);
     });
 
+    // The Investments page asks for the same since-inception valuation from
+    // several requests at once; they share one walk while it runs (#1888).
+    it("runs one valuation for identical concurrent reads", async () => {
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+      reportQuery.mockResolvedValue([]);
+
+      const [first, second] = await Promise.all([
+        service.getDailyInvestments("user-1", "2025-03-01", "2025-03-04"),
+        service.getDailyInvestments(
+          "user-1",
+          "2025-03-01",
+          "2025-03-04",
+          [],
+          "USD",
+        ),
+      ]);
+
+      expect(first).toEqual([]);
+      expect(second).toBe(first);
+      const accountQueries = reportQuery.mock.calls.filter(([sql]) =>
+        String(sql).includes("FROM accounts a"),
+      );
+      expect(accountQueries).toHaveLength(1);
+    });
+
     it("returns daily values for brokerage accounts with security prices", async () => {
       prefRepository.findOne.mockResolvedValue({
         defaultCurrency: "USD",

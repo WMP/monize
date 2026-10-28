@@ -31,6 +31,15 @@ describe("readMnyTables", () => {
    * list must be a deliberate act rather than a silent data loss.
    */
   const EXPECTED_MISSING_FIELDS: Record<MnyFixtureName, string[]> = {
+    // Money 99 predates all of these. Its classification columns are not here:
+    // they resolve through the old names, `hcls1` / `hcls2`.
+    money99: [
+      "CRNC.hidden",
+      "CRNC_EXCHG.historical",
+      "ACCT.watch",
+      "TRN.billSeries",
+      "TRN_INV.interest",
+    ],
     // Money 2001 predates both the hidden-currency flag and bill series.
     money2001: ["CRNC.hidden", "TRN.billSeries"],
     money2001Pwd: ["CRNC.hidden", "TRN.billSeries"],

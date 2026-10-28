@@ -337,7 +337,10 @@
     "securitiesNotice": "このファイルにはインポート前にマッピングが必要な {count} 件の有価証券{plural}が含まれています。",
     "nextMapSecurities": "次へ: 有価証券のマッピング",
     "importAll": "すべてインポート",
-    "transactionCount": "{count} 件の取引{plural}"
+    "transactionCount": "{count} 件の取引{plural}",
+    "chooseAccountType": "種類を選択",
+    "accountTypeFor": "{name} の口座の種類",
+    "accountTypesNeeded": "ファイルに {count, plural, other {# 件の口座}}の種類が記載されていません。インポートする前にそれぞれの種類を選択してください。"
   },
   "navigation": {
     "back": "戻る",
@@ -354,6 +357,7 @@
     "heading": "Microsoft Money ファイルの内容を確認",
     "fileSummary": "{filename} -- {era}、基準通貨 {currency}。以下の残高はファイル自体から計算しているため、インポート前に Money と照合できます。",
     "era": {
+      "money99": "Money 97-99 形式",
       "money2001": "Money 2001 形式",
       "money2002": "Money 2002 形式",
       "moneyPlus": "Money Plus / Sunset 形式",
@@ -526,6 +530,7 @@
     "duplicateSecuritySymbol": "{count, plural, other {# 件の証券}} が他の証券とシンボルを共有していました。別々のまま保つため、後のものは名前を変更しました。",
     "generatedSecuritySymbol": "{count, plural, other {# 件の証券}} には Money 上でシンボルがないため、仮のシンボルを生成し、価格更新はオフのままにしました。",
     "unknownInvestmentAction": "{count, plural, other {# 件の投資取引}} に Monize が認識できないアクションが使われていたため、スキップしました。",
+    "stockOptionNotImported": "{count, plural, other {# 件の従業員ストックオプションのイベント}}（付与、権利確定、失効）は現金も株式も動かさないため、インポートしませんでした。",
     "unconfirmedInvestmentAction": "{count, plural, other {# 件の投資取引}} に、意味が文書化されておらず推定にとどまる Money のアクションが使われています。Money と照合して確認してください。",
     "missingInvestmentDetail": "{count, plural, other {# 件の投資取引}} にはファイル内に株数の明細がなかったため、現金額のみで取り込みました。",
     "investmentAccountMismatch": "{count, plural, other {# 件の投資取引}} が投資口座ではない口座にあったため、スキップしました。",
@@ -560,7 +565,7 @@
     "mnyStagedFileMissing": "アップロードした Money ファイルは既に利用できません。もう一度アップロードしてください。",
     "mnyFileTruncated": "この Money ファイルは不完全なようです。アップロードが中断された可能性があります。",
     "mnyNotAMoneyFile": "このファイルは Microsoft Money (.mny) ファイルではありません。",
-    "mnyUnsupportedVersion": "このファイルは Money 97 または 98 で作成されています。無償の Money Plus Sunset エディションで一度開いて保存し、その結果をインポートしてください。",
+    "mnyUnsupportedVersion": "このファイルは Monize で読み取れないバージョンの Microsoft Money で作成されています。無償の Money Plus Sunset エディションで一度開いて保存し、その結果をインポートしてください。",
     "mnyPasswordRequired": "この Money ファイルはパスワードで保護されています。",
     "mnyPasswordIncorrect": "そのパスワードでは Money ファイルを開けません。",
     "mnyUnreadableDatabase": "この Money ファイルは復号できましたが、内容を読み取れませんでした。破損している可能性があります。"

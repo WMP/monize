@@ -219,15 +219,6 @@ describe("currency conversion has no silent identity fallback", () => {
         "(NOT NULL DEFAULT 1), not a lookup that failed. Owned by another " +
         "remediation stream.",
     },
-    {
-      file: "securities/portfolio-calculation.service.ts",
-      count: 2,
-      reason:
-        "`Number(tx.exchangeRate) || 1` reads an investment transaction's " +
-        "stored exchange_rate when folding cost basis (the column defaults to " +
-        "1); it is not a lookup that failed. Not part of this stream's " +
-        "files: listed for the reviewer to confirm or schedule.",
-    },
   ];
 
   const rateDefaultHits = (): Map<string, number[]> => {

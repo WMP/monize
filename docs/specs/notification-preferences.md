@@ -1072,7 +1072,8 @@ endpoint is still a URL the server POSTs an encrypted body to, validated with th
 same `IsPushEndpoint` (https floor + SSRF resolve), so no new CWE-918 surface.
 Private distributors are disabled by default. An operator can enable exact
 HTTPS DNS origins through `UNIFIEDPUSH_PRIVATE_ENDPOINTS`, a JSON mapping from
-origin to a pinned RFC1918 IPv4 or IPv6 ULA address. Example:
+origin to a pinned RFC1918, 100.64.0.0/10 (CGNAT, Tailscale), 198.18.0.0/15 IPv4 or
+IPv6 ULA address. Example:
 `{"https://ntfy.home.lan:8443":"192.168.20.5"}`. Pass it to the backend environment
 and restart every replica; both Compose variants forward the variable.
 

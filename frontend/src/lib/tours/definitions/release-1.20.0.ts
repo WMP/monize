@@ -137,6 +137,105 @@ export const RELEASE_1_20_WARRANTIES_TOUR: TourDefinition = {
   ],
 };
 
+/**
+ * Payroll deductions: a yearly maximum on a paycheque's deduction lines, under
+ * Tools, Taxes.
+ *
+ * **The requirement comes first.** A rule hangs off a payroll scheduled bill
+ * (a deposit split into its gross line and one negative line per deduction),
+ * and the form has nothing to offer without one. So the welcome names it and
+ * the first anchored step is the Bills page's New Schedule button, where the
+ * bill is created, before the tour goes looking for the tool.
+ *
+ * The order then follows the way in (Tools, the Taxes card), the page (New
+ * Rule and the rules card), the two collapsed tables, and the two places a
+ * rule acts or speaks afterwards: the Cash Flow Forecast and the reset
+ * reminder.
+ *
+ * **Every anchor renders in every state of its page.** The rules card holds
+ * the spinner, the empty state or the list. The year-to-date and previous
+ * periods buttons appear only once a rule exists, so that step is an
+ * anchorless coach mark rather than an anchor a new user would never mount.
+ *
+ * **Gated on `ownerView`.** The Taxes entry is owner-only and every
+ * payroll-deductions route refuses a delegate session.
+ *
+ * The Tools step is `skipOnMobile` and carries `openToolsMenu`, as the
+ * warranties tour's does.
+ */
+export const RELEASE_1_20_PAYROLL_DEDUCTIONS_TOUR: TourDefinition = {
+  id: 'release-1.20.0/payroll-deductions',
+  area: 'transactions',
+  version: RELEASE_1_20_MINOR,
+  i18nPrefix: 'release.v1_20_0.payrollDeductions',
+  requiresData: 'ownerView',
+  steps: [
+    {
+      // Route-agnostic welcome: names the feature and its requirement wherever
+      // the tour was launched.
+      id: 'welcome',
+      anchorId: null,
+    },
+    {
+      // The requirement: the paycheque as a scheduled bill with deduction lines.
+      id: 'payrollBill',
+      route: '/bills',
+      anchorId: TOUR_ANCHORS.billsNewButton,
+      placement: 'bottom',
+    },
+    {
+      // The Taxes entry inside the open Tools menu.
+      id: 'taxesLink',
+      route: '/dashboard',
+      anchorId: TOUR_ANCHORS.navTaxes,
+      openToolsMenu: true,
+      unobtrusive: true,
+      placement: 'right',
+      skipOnMobile: true,
+    },
+    {
+      id: 'taxesCard',
+      route: '/taxes',
+      anchorId: TOUR_ANCHORS.taxesPayrollDeductions,
+      placement: 'bottom',
+    },
+    {
+      id: 'newRule',
+      route: '/taxes/payroll-deductions',
+      anchorId: TOUR_ANCHORS.payrollNewRuleButton,
+      placement: 'bottom',
+    },
+    {
+      id: 'rulesList',
+      route: '/taxes/payroll-deductions',
+      anchorId: TOUR_ANCHORS.payrollRulesList,
+      placement: 'bottom',
+      unobtrusive: true,
+    },
+    {
+      // The two tables render only once a rule exists; describe, not anchor.
+      id: 'periodTables',
+      route: '/taxes/payroll-deductions',
+      anchorId: null,
+      unobtrusive: true,
+    },
+    {
+      id: 'forecast',
+      route: '/bills',
+      anchorId: TOUR_ANCHORS.billsCashFlowForecast,
+      placement: 'auto',
+      unobtrusive: true,
+    },
+    {
+      id: 'reminders',
+      route: '/dashboard',
+      anchorId: TOUR_ANCHORS.notificationBell,
+      placement: 'bottom',
+    },
+  ],
+};
+
 export const RELEASE_1_20_TOURS: readonly TourDefinition[] = [
   RELEASE_1_20_WARRANTIES_TOUR,
+  RELEASE_1_20_PAYROLL_DEDUCTIONS_TOUR,
 ];

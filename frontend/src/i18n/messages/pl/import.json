@@ -337,7 +337,10 @@
     "securitiesNotice": "Ten plik zawiera {count} {count, plural, one {papier wartościowy} few {papiery wartościowe} many {papierów wartościowych} other {papieru wartościowego}}, które trzeba zmapować przed importem.",
     "nextMapSecurities": "Dalej: przypisz papiery wartościowe",
     "importAll": "Importuj wszystko",
-    "transactionCount": "{count, plural, one {# transakcja} few {# transakcje} many {# transakcji} other {# transakcji}}"
+    "transactionCount": "{count, plural, one {# transakcja} few {# transakcje} many {# transakcji} other {# transakcji}}",
+    "chooseAccountType": "Wybierz typ",
+    "accountTypeFor": "Typ konta dla {name}",
+    "accountTypesNeeded": "Plik nie określa typu {count, plural, one {# konta} few {# kont} many {# kont} other {# kont}}. Przed importem wybierz typ dla każdego z nich."
   },
   "navigation": {
     "back": "Wstecz",
@@ -354,6 +357,7 @@
     "heading": "Sprawdź swój plik Microsoft Money",
     "fileSummary": "{filename} -- {era}, waluta bazowa {currency}. Poniższe salda są obliczone z samego pliku, więc możesz porównać je z Money przed importem.",
     "era": {
+      "money99": "format Money 97-99",
       "money2001": "format Money 2001",
       "money2002": "format Money 2002",
       "moneyPlus": "format Money Plus / Sunset",
@@ -526,6 +530,7 @@
     "duplicateSecuritySymbol": "{count, plural, one {# papier wartościowy dzieli} few {# papiery wartościowe dzielą} many {# papierów wartościowych dzieli} other {# papierów wartościowych dzieli}} symbol z innym; późniejsze zmieniono nazwy, aby pozostały osobne.",
     "generatedSecuritySymbol": "{count, plural, one {# papier wartościowy nie ma} few {# papiery wartościowe nie mają} many {# papierów wartościowych nie ma} other {# papierów wartościowych nie ma}} symbolu w Money, więc utworzono symbol zastępczy i pozostawiono wyłączone aktualizacje cen.",
     "unknownInvestmentAction": "{count, plural, one {# transakcja inwestycyjna użyła} few {# transakcje inwestycyjne użyły} many {# transakcji inwestycyjnych użyło} other {# transakcji inwestycyjnych użyło}} akcji nieznanej w Monize i zostały pominięte.",
+    "stockOptionNotImported": "{count, plural, one {# zdarzenie dotyczące pracowniczych opcji na akcje} few {# zdarzenia dotyczące pracowniczych opcji na akcje} many {# zdarzeń dotyczących pracowniczych opcji na akcje} other {# zdarzenia dotyczącego pracowniczych opcji na akcje}} (przyznanie, nabycie uprawnień i wygaśnięcie) nie przesunęło gotówki ani akcji i nie zostało zaimportowane.",
     "unconfirmedInvestmentAction": "{count, plural, one {# transakcja inwestycyjna użyła} few {# transakcje inwestycyjne użyły} many {# transakcji inwestycyjnych użyło} other {# transakcji inwestycyjnych użyło}} akcji Money, której znaczenie jest wywnioskowane, a nie udokumentowane; sprawdź je w Money.",
     "missingInvestmentDetail": "{count, plural, one {# transakcja inwestycyjna nie miała} few {# transakcje inwestycyjne nie miały} many {# transakcji inwestycyjnych nie miało} other {# transakcji inwestycyjnych nie miało}} w pliku szczegółów udziałów i zaimportowano je tylko z kwotą gotówkową.",
     "investmentAccountMismatch": "{count, plural, one {# transakcja inwestycyjna była} few {# transakcje inwestycyjne były} many {# transakcji inwestycyjnych było} other {# transakcji inwestycyjnych było}} na koncie, które nie jest kontem inwestycyjnym, i zostały pominięte.",
@@ -560,7 +565,7 @@
     "mnyStagedFileMissing": "Przesłany plik Money nie jest już dostępny. Prześlij go ponownie.",
     "mnyFileTruncated": "Ten plik Money wygląda na niekompletny. Przesyłanie mogło zostać przerwane.",
     "mnyNotAMoneyFile": "Ten plik nie jest plikiem Microsoft Money (.mny).",
-    "mnyUnsupportedVersion": "Ten plik został utworzony w programie Money 97 lub 98. Otwórz go i zapisz raz w darmowej edycji Money Plus Sunset, a następnie zaimportuj wynik.",
+    "mnyUnsupportedVersion": "Ten plik został utworzony w wersji programu Microsoft Money, której Monize nie potrafi odczytać. Otwórz go i zapisz raz w darmowej edycji Money Plus Sunset, a następnie zaimportuj wynik.",
     "mnyPasswordRequired": "Ten plik Money jest chroniony hasłem.",
     "mnyPasswordIncorrect": "To hasło nie otwiera pliku Money.",
     "mnyUnreadableDatabase": "Ten plik Money został odszyfrowany, ale nie udało się odczytać jego zawartości. Może być uszkodzony."

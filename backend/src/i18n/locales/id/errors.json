@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "Tidak ada blok akun yang ditemukan dalam file QIF. File ini mungkin bukan ekspor multi-akun.",
+    "accountTypeRequired": "Pilih jenis akun untuk akun-akun ini sebelum mengimpor: {{ accounts }}",
     "importFailed": "Impor gagal setelah {{ imported }} transaksi: {{ message }}",
     "investmentFileNeedsBrokerageAccount": "File ini berisi transaksi investasi tetapi akun yang dipilih bukan akun pialang investasi. Pilih akun pialang untuk impor ini.",
     "regularFileNeedsCashAccount": "File ini berisi transaksi perbankan reguler tetapi akun yang dipilih adalah akun pialang investasi. Pilih akun tunai (termasuk akun tunai investasi) untuk impor ini.",
@@ -486,7 +487,7 @@
     "mnyNoFile": "Tidak ada berkas Money yang diunggah",
     "mnyFileTruncated": "Berkas Money ini tampak tidak lengkap. Unggahan mungkin terputus -- coba lagi.",
     "mnyNotAMoneyFile": "Berkas itu bukan berkas Microsoft Money (.mny)",
-    "mnyUnsupportedVersion": "Berkas itu dibuat oleh Money 97 atau 98, yang tidak dapat dibaca Monize. Buka dan simpan sekali di edisi gratis Money Plus Sunset, lalu impor hasilnya.",
+    "mnyUnsupportedVersion": "Berkas itu dibuat oleh versi Microsoft Money yang tidak dapat dibaca Monize. Buka dan simpan sekali di edisi gratis Money Plus Sunset, lalu impor hasilnya.",
     "mnyPasswordRequired": "Berkas Money itu dilindungi kata sandi. Masukkan kata sandinya untuk melanjutkan.",
     "mnyPasswordIncorrect": "Kata sandi itu tidak membuka berkas Money. Periksa dan coba lagi.",
     "mnyUnreadableDatabase": "Berkas Money itu berhasil didekripsi, tetapi isinya tidak dapat dibaca. Mungkin rusak.",

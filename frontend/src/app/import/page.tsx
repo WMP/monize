@@ -256,6 +256,9 @@ function ImportContent() {
             onImport={wizard.handleMultiAccountImport}
             setStep={wizard.setStep}
             hasSecuritiesToMap={wizard.securityMappings.length > 0}
+            accountTypeChoices={wizard.multiAccountTypeChoices}
+            onAccountTypeChoiceChange={wizard.handleMultiAccountAccountTypeChange}
+            accountTypeOptions={wizard.accountTypeOptions}
           />
         ) : null;
 

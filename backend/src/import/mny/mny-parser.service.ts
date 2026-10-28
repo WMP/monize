@@ -71,7 +71,8 @@ import { roundMoney } from "../../common/round.util";
  */
 
 /** Which Money era a file was written by, inferred from its table/column set. */
-export type MnyEra = "money2001" | "money2002" | "moneyPlus" | "unknown";
+export type MnyEra =
+  "money99" | "money2001" | "money2002" | "moneyPlus" | "unknown";
 
 export interface MnyParseInput {
   /** Still-encrypted file bytes, unless `alreadyDecrypted`. Ownership passes to the parser. */
@@ -178,8 +179,9 @@ export function todayIsoDate(now: Date = new Date()): string {
 /**
  * Which Money release wrote this file, from what the reader could resolve.
  *
- * Money Plus renamed `TRN.hpay` to `lHpay`, and `BILL` did not exist before
- * Money 2002. Those two facts separate the three vintages the fixtures cover.
+ * Money 97-99 write a Jet 3 file, Money Plus renamed `TRN.hpay` to `lHpay`,
+ * and `BILL` did not exist before Money 2002. Those three facts separate the
+ * four vintages the fixtures cover.
  */
 export function detectEra(tables: MnyTables, db: MnyDatabase): MnyEra {
   const transactionTable = tables.availability.find(
@@ -187,6 +189,9 @@ export function detectEra(tables: MnyTables, db: MnyDatabase): MnyEra {
   );
   if (!transactionTable?.present) {
     return "unknown";
+  }
+  if (db.format === "jet3") {
+    return "money99";
   }
   if (transactionTable.resolvedColumns.payee === "lHpay") {
     return "moneyPlus";

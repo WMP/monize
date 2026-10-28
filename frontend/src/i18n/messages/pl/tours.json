@@ -477,6 +477,47 @@
             "body": "Monize przypomina 30 dni i 7 dni przed wygaśnięciem gwarancji oraz w dniu jej wygaśnięcia. Przypomnienia trafiają tutaj, a każde z nich możesz odłożyć na później albo otworzyć z niego gwarancję. Sposób ich dostarczania wybierzesz w **Ustawienia**, w sekcji **Powiadomienia**, jako **Przypomnienia o gwarancjach**."
           }
         }
+      },
+      "payrollDeductions": {
+        "title": "Potrącenia z wynagrodzenia",
+        "steps": {
+          "welcome": {
+            "title": "Zatrzymaj potrącenia na rocznym limicie",
+            "body": "Niektóre potrącenia z wynagrodzenia, np. na emeryturę lub ubezpieczenie od bezrobocia, ustają po osiągnięciu rocznego limitu i zaczynają się od nowa w kolejnym roku. Reguła potrącenia podaje Monize ten limit, aby wypłata przestała pobierać potrącenie, gdy zostanie osiągnięty. **Zanim zaczniesz, potrzebujesz zaplanowanego rachunku wynagrodzenia:** swojej wypłaty ustawionej jako zaplanowana wpłata, z potrąceniami jako osobnymi pozycjami."
+          },
+          "payrollBill": {
+            "title": "Najpierw ustaw swoją wypłatę",
+            "body": "Jeśli jeszcze tego nie zrobiłeś, wybierz **+ Nowy harmonogram** i utwórz wypłatę jako wpłatę. Podziel ją na pozycję z wynagrodzeniem brutto i po jednej ujemnej pozycji na każde potrącenie, każdą z własną kategorią. Jeśli potrącenie nie jest teraz pobierane, bo tegoroczny limit został już osiągnięty, i tak dodaj dla niego pozycję podziału jako wydatek o wartości zero, aby reguła mogła je ograniczyć i aby zaczęło się od nowa po resecie. Reguły może mieć tylko aktywna wpłata, która wpłaca więcej, niż potrąca, i tylko jej pozycje potrąceń można ograniczyć."
+          },
+          "taxesLink": {
+            "title": "Potrącenia z wynagrodzenia są w Podatkach",
+            "body": "Otwórz **Narzędzia** i wybierz **Podatki**, aby znaleźć narzędzia podatkowe."
+          },
+          "taxesCard": {
+            "title": "Otwórz Potrącenia z wynagrodzenia",
+            "body": "Wybierz tę kartę, aby otworzyć reguły potrąceń z wynagrodzenia."
+          },
+          "newRule": {
+            "title": "Utwórz reguły dla wypłaty",
+            "body": "**+ Nowa reguła** otwiera formularz. Wybierz zaplanowany rachunek wynagrodzenia, a potem roczny limit dla każdej kategorii potrącenia, którą chcesz ograniczyć. Dodaj datę resetu, zwykle 1 stycznia. Jeśli rachunek nie ma pozycji potrąceń, formularz poprosi, aby najpierw dodać je do rachunku."
+          },
+          "rulesList": {
+            "title": "Twoje reguły",
+            "body": "Każda reguła pokazuje rachunek, kategorię, roczny limit, datę resetu i kwotę potrącaną z każdej wypłaty. Edytuj regułę, aby zmienić limit, albo usuń ją, aby wypłata znów pobierała pełną pozycję. Usunięcie reguły nigdy nie zmienia zaksięgowanej transakcji."
+          },
+          "periodTables": {
+            "title": "Co już zostało pobrane",
+            "body": "Gdy masz regułę, **Pokaż narastająco w roku** pokazuje, ile każda kategoria pobrała w tym okresie i ile zostało do limitu. **Pokaż poprzednie okresy** pokazuje, ile pobrała w poprzednich latach."
+          },
+          "forecast": {
+            "title": "Stosowane przy księgowaniu wypłaty",
+            "body": "Gdy wypłata zostaje zaksięgowana, każda ograniczona pozycja jest zmniejszana do kwoty pozostałej do limitu, aż do zera, i zaczyna się od nowa po dacie resetu. Prognoza przepływów pieniężnych tutaj i na pulpicie pokazuje to samo z wyprzedzeniem, więc widzisz, jak rośnie wypłata netto po osiągnięciu limitu."
+          },
+          "reminders": {
+            "title": "Przypomnienie przed każdym resetem",
+            "body": "Dwa miesiące przed resetem reguły Monize prosi tutaj o potwierdzenie limitu na kolejny rok. Jeśli nic nie zrobisz, reguła zachowa limit i zresetuje się w swoim terminie. Sposób dostarczania przypomnień wybierzesz w **Ustawienia**, w sekcji **Powiadomienia**, jako **Rachunki i zaplanowane**."
+          }
+        }
       }
     }
   },

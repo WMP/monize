@@ -13,7 +13,7 @@ import {
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { parseLocalDate } from '@/lib/utils';
-import { advanceByFrequency, isOneTime } from '@/lib/frequency';
+import { advanceByFrequency, anchorDayOf, isOneTime } from '@/lib/frequency';
 import { Modal } from '@/components/ui/Modal';
 import { LOAN_OCCURRENCES_MAX_COUNT, scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { isLoanBillCandidate } from '@/lib/loan-occurrence';
@@ -45,7 +45,12 @@ type LoanAmountsState =
   | { kind: 'failed' }
   | { kind: 'priced'; projection: LoanOccurrencesProjection };
 
-function calculateNextDates(startDate: string, frequency: FrequencyType, count: number): string[] {
+function calculateNextDates(
+  startDate: string,
+  frequency: FrequencyType,
+  count: number,
+  startAnchor?: string | null,
+): string[] {
   const dates: string[] = [];
   let currentDate = parseLocalDate(startDate);
 
@@ -58,7 +63,7 @@ function calculateNextDates(startDate: string, frequency: FrequencyType, count: 
 
     // One-time schedules have no next occurrence.
     if (isOneTime(frequency)) return dates;
-    currentDate = advanceByFrequency(currentDate, frequency);
+    currentDate = advanceByFrequency(currentDate, frequency, anchorDayOf(startAnchor, currentDate));
   }
 
   return dates;
@@ -101,9 +106,10 @@ export function OccurrenceDatePicker({
     return calculateNextDates(
       scheduledTransaction.nextDueDate,
       scheduledTransaction.frequency,
-      count
+      count,
+      scheduledTransaction.startDate,
     );
-  }, [scheduledTransaction.nextDueDate, scheduledTransaction.frequency, scheduledTransaction.occurrencesRemaining]);
+  }, [scheduledTransaction.nextDueDate, scheduledTransaction.startDate, scheduledTransaction.frequency, scheduledTransaction.occurrencesRemaining]);
 
   // Build the final list of dates to display:
   // - For each calculated date, if it has an override, show the override date instead

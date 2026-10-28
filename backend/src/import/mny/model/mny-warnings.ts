@@ -56,6 +56,11 @@ export const MNY_WARNING_CODES = [
   "generatedSecuritySymbol",
   /** `TRN.act` held a code outside the known set; the investment row is skipped. */
   "unknownInvestmentAction",
+  /**
+   * A Money 97-99 employee stock option grant, vesting or expiry. It moves no
+   * cash and no shares, and Monize has no model for an unexercised option.
+   */
+  "stockOptionNotImported",
   /** The row was mapped through an action whose meaning is inferred, not observed. */
   "unconfirmedInvestmentAction",
   /** A security-carrying `TRN` row with no `TRN_INV` detail and no way to infer one. */

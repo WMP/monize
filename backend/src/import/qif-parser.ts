@@ -156,6 +156,33 @@ function splitQifLines(content: string): string[] {
   return content.split(/\r\n|\r|\n/);
 }
 
+/**
+ * Section headers are matched whatever their case: Quicken for Mac writes
+ * `!TYPE:Bank` and `!TYPE:Cat` where Windows Quicken and Money write
+ * `!Type:Bank`. A case-sensitive check reads every such section as noise.
+ */
+const TYPE_HEADER = /^!Type:/i;
+const ACCOUNT_HEADER = /^!Account/i;
+const AUTOSWITCH_DIRECTIVE = /^!(?:Option|Clear):AutoSwitch/i;
+
+const QIF_ACCOUNT_TYPES: Readonly<Record<string, string>> = {
+  bank: "CHEQUING",
+  cash: "CASH",
+  ccard: "CREDIT_CARD",
+  invst: "INVESTMENT",
+  "oth a": "ASSET",
+  "oth l": "LINE_OF_CREDIT",
+};
+
+/**
+ * The Monize account type a QIF account type names, or `null` when the value
+ * is blank or not one QIF defines. `null` is "unknown", never "chequing": the
+ * importer asks the user rather than assume a classification.
+ */
+export function resolveQifAccountType(value: string): string | null {
+  return QIF_ACCOUNT_TYPES[value.trim().toLowerCase()] ?? null;
+}
+
 export function parseQif(
   content: string,
   dateFormat?: DateFormat,
@@ -187,7 +214,7 @@ export function parseQif(
     const value = line.slice(1).trim();
 
     // Account type headers
-    if (line.startsWith("!Type:")) {
+    if (TYPE_HEADER.test(line)) {
       const type = line.slice(6).trim();
       switch (type.toLowerCase()) {
         case "bank":
@@ -240,7 +267,7 @@ export function parseQif(
     }
 
     // Account section: extract account name and type
-    if (line.startsWith("!Account")) {
+    if (ACCOUNT_HEADER.test(line)) {
       inAccountSection = true;
       skippingSection = false;
       continue;
@@ -252,18 +279,7 @@ export function parseQif(
         accountName = value;
       } else if (code === "T") {
         // Use account type from !Account only as fallback
-        const accountSectionType = value.toLowerCase();
-        const typeMap: Record<string, string> = {
-          bank: "CHEQUING",
-          cash: "CASH",
-          ccard: "CREDIT_CARD",
-          invst: "INVESTMENT",
-          "oth a": "ASSET",
-          "oth l": "LINE_OF_CREDIT",
-        };
-        if (typeMap[accountSectionType]) {
-          accountType = typeMap[accountSectionType];
-        }
+        accountType = resolveQifAccountType(value) ?? accountType;
       } else if (code === "^") {
         inAccountSection = false;
       }
@@ -806,11 +822,16 @@ export interface QifTagDef {
 
 /**
  * A block of transactions belonging to one account, parsed from
- * an !Account + !Type:xxx pair in a multi-account QIF file.
+ * an !Account + !Type:xxx pair in a multi-account QIF file, or an account
+ * the file's !Account catalog defines without any transactions.
+ *
+ * `accountType` is `null` when neither the section header, the account's own
+ * definition nor the catalog names a type QIF defines; the importer refuses to
+ * create such an account until the user has chosen its type.
  */
 export interface QifAccountBlock {
   accountName: string;
-  accountType: string;
+  accountType: string | null;
   description: string;
   creditLimit: number | null;
   transactions: QifTransaction[];
@@ -819,6 +840,17 @@ export interface QifAccountBlock {
   securities: string[];
   openingBalance: number | null;
   openingBalanceDate: string | null;
+}
+
+/**
+ * One account definition from an !Account section. A Quicken export lists
+ * every account in one AutoSwitch catalog before the transaction sections.
+ */
+interface QifAccountDef {
+  name: string;
+  type: string | null;
+  description: string;
+  creditLimit: number | null;
 }
 
 /**
@@ -839,7 +871,7 @@ export interface QifFullParseResult {
  * or a !Type:Cat section (Quicken full export indicator).
  */
 export function isMultiAccountQif(content: string): boolean {
-  const accountMatches = content.match(/^!Account$/gm);
+  const accountMatches = content.match(/^!Account[ \t]*$/gim);
   if (accountMatches && accountMatches.length > 1) return true;
   if (/^!Type:Cat\s*$/im.test(content)) return true;
   return false;
@@ -891,9 +923,33 @@ export function parseQifFull(
   let inAccountSection = false;
   let skippingSection = false;
   let pendingAccountName = "";
-  let pendingAccountType = "";
+  let pendingAccountType: string | null = null;
   let pendingAccountDesc = "";
   let pendingAccountLimit: number | null = null;
+  // Set at a `^` inside an !Account section: the next field starts the next
+  // definition of a catalog, while a !Type: header still reads this one.
+  let pendingAccountClosed = false;
+  // Every account an !Account section defines, by name, merged across repeats.
+  const accountCatalog = new Map<string, QifAccountDef>();
+
+  function recordAccountDef(): void {
+    if (!pendingAccountName) return;
+    const known = accountCatalog.get(pendingAccountName);
+    accountCatalog.set(pendingAccountName, {
+      name: pendingAccountName,
+      type: pendingAccountType ?? known?.type ?? null,
+      description: pendingAccountDesc || known?.description || "",
+      creditLimit: pendingAccountLimit ?? known?.creditLimit ?? null,
+    });
+  }
+
+  function resetPendingAccount(): void {
+    pendingAccountName = "";
+    pendingAccountType = null;
+    pendingAccountDesc = "";
+    pendingAccountLimit = null;
+    pendingAccountClosed = false;
+  }
 
   function finalizeBlock(): void {
     if (!currentBlock) return;
@@ -954,17 +1010,14 @@ export function parseQifFull(
     const value = line.slice(1).trim();
 
     // Ignore AutoSwitch directives
-    if (
-      line.startsWith("!Option:AutoSwitch") ||
-      line.startsWith("!Clear:AutoSwitch")
-    ) {
+    if (AUTOSWITCH_DIRECTIVE.test(line)) {
       continue;
     }
 
     // --- Section headers (must be checked before inCatSection/inAccountSection) ---
 
     // Any !Type: or !Account header exits the current cat/account section
-    if (line.startsWith("!Type:") || line.startsWith("!Account")) {
+    if (TYPE_HEADER.test(line) || ACCOUNT_HEADER.test(line)) {
       // Flush pending category def if we were in a cat section
       if (inCatSection && currentCatDef && currentCatDef.name) {
         categoryDefs.push({
@@ -1061,46 +1114,41 @@ export function parseQifFull(
     }
 
     // --- !Account section ---
-    if (line.startsWith("!Account")) {
+    if (ACCOUNT_HEADER.test(line)) {
       // Finalize previous block if we were in one
       finalizeBlock();
       currentBlock = null;
 
       inAccountSection = true;
-      pendingAccountName = "";
-      pendingAccountType = "";
-      pendingAccountDesc = "";
-      pendingAccountLimit = null;
+      resetPendingAccount();
       continue;
     }
 
+    // An !Account section holds one definition, or a whole catalog of them
+    // separated by `^`; it lasts until the next header.
     if (inAccountSection) {
+      if (code === "^") {
+        // Don't create a block yet; wait for !Type:xxx to confirm it's
+        // transactional. The catalog keeps the definition either way.
+        recordAccountDef();
+        pendingAccountClosed = true;
+        continue;
+      }
+      if (pendingAccountClosed) resetPendingAccount();
       if (code === "N") {
         pendingAccountName = truncate(value, FIELD_LIMITS.CATEGORY);
       } else if (code === "T") {
-        const typeMap: Record<string, string> = {
-          bank: "CHEQUING",
-          cash: "CASH",
-          ccard: "CREDIT_CARD",
-          invst: "INVESTMENT",
-          "oth a": "ASSET",
-          "oth l": "LINE_OF_CREDIT",
-        };
-        pendingAccountType =
-          typeMap[value.toLowerCase()] || value.toUpperCase();
+        pendingAccountType = resolveQifAccountType(value);
       } else if (code === "D") {
         pendingAccountDesc = truncate(value, FIELD_LIMITS.MEMO);
       } else if (code === "L") {
         pendingAccountLimit = parseQifAmount(value);
-      } else if (code === "^") {
-        inAccountSection = false;
-        // Don't create block yet; wait for !Type:xxx to confirm it's transactional
       }
       continue;
     }
 
     // --- !Type: headers ---
-    if (line.startsWith("!Type:")) {
+    if (TYPE_HEADER.test(line)) {
       const type = line.slice(6).trim().toLowerCase();
       const nonTransactionSections = [
         "cat",
@@ -1126,16 +1174,15 @@ export function parseQifFull(
         continue;
       }
 
-      // Transaction-bearing type: create a new account block
-      const typeMap: Record<string, string> = {
-        bank: "CHEQUING",
-        cash: "CASH",
-        ccard: "CREDIT_CARD",
-        invst: "INVESTMENT",
-        "oth a": "ASSET",
-        "oth l": "LINE_OF_CREDIT",
-      };
-      const resolvedType = typeMap[type] || pendingAccountType || "CHEQUING";
+      // Transaction-bearing type: create a new account block. The section
+      // header decides the type, then the account's own definition, then
+      // the catalog's; none of them naming one leaves it unknown.
+      const catalogDef = accountCatalog.get(pendingAccountName);
+      const resolvedType =
+        resolveQifAccountType(type) ??
+        pendingAccountType ??
+        catalogDef?.type ??
+        null;
 
       // Finalize previous block if still open
       finalizeBlock();
@@ -1143,8 +1190,8 @@ export function parseQifFull(
       currentBlock = {
         accountName: pendingAccountName,
         accountType: resolvedType,
-        description: pendingAccountDesc,
-        creditLimit: pendingAccountLimit,
+        description: pendingAccountDesc || catalogDef?.description || "",
+        creditLimit: pendingAccountLimit ?? catalogDef?.creditLimit ?? null,
         transactions: [],
         categories: [],
         transferAccounts: [],
@@ -1358,6 +1405,25 @@ export function parseQifFull(
   // Finalize last block
   finalizeBlock();
 
+  // An account the catalog defines but no transaction section names would
+  // otherwise vanish from the import; it is kept as an empty block.
+  const blockNames = new Set(accountBlocks.map((b) => b.accountName));
+  for (const def of accountCatalog.values()) {
+    if (blockNames.has(def.name)) continue;
+    accountBlocks.push({
+      accountName: def.name,
+      accountType: def.type,
+      description: def.description,
+      creditLimit: def.creditLimit,
+      transactions: [],
+      categories: [],
+      transferAccounts: [],
+      securities: [],
+      openingBalance: null,
+      openingBalanceDate: null,
+    });
+  }
+
   // Detect date format from all raw dates collected
   const detectedDateFormat = dateFormat || detectDateFormat(rawDates);
 
@@ -1387,7 +1453,7 @@ export function validateQifContent(content: string): {
   }
 
   // Check for QIF header
-  if (!content.includes("!Type:") && !content.includes("!Account")) {
+  if (!/!(?:Type:|Account)/i.test(content)) {
     // Some QIF files don't have headers, check for transaction markers
     if (!content.includes("^")) {
       return {

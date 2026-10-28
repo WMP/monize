@@ -52,8 +52,9 @@ vi.mock('@/hooks/useLocalStorage', () => ({
   },
 }));
 
+const mockTriggerAutoRefresh = vi.fn();
 vi.mock('@/hooks/usePriceRefresh', () => ({
-  usePriceRefresh: () => ({ triggerAutoRefresh: vi.fn() }),
+  usePriceRefresh: () => ({ triggerAutoRefresh: mockTriggerAutoRefresh }),
   setRefreshInProgress: vi.fn(),
 }));
 
@@ -936,5 +937,117 @@ describe('useInvestmentData – out-of-order responses', () => {
     await act(async () => { first.resolve(page('older')); });
 
     expect(result.current.cashTransactions.map(tx => tx.id)).toEqual(['newer']);
+  });
+});
+
+/**
+ * The summary, the value chart and the performance card each value the
+ * portfolio over its whole history. A price refresh that lands while they are
+ * running reloads every one of them, so the automatic refresh waits for the
+ * first summary rather than starting beside it (#1888).
+ */
+describe('useInvestmentData – automatic price refresh', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearchParamsGet = () => null;
+    defaultSetup();
+  });
+
+  it('waits for the first portfolio summary before refreshing prices', async () => {
+    let releaseSummary!: (value: unknown) => void;
+    mockGetPortfolioSummary.mockReturnValue(
+      new Promise((resolve) => { releaseSummary = resolve; }),
+    );
+
+    renderHook(() => useInvestmentData());
+    // The transactions have loaded; the summary has not answered.
+    await act(async () => { await new Promise(res => setTimeout(res, 0)); });
+    expect(mockTriggerAutoRefresh).not.toHaveBeenCalled();
+
+    await act(async () => { releaseSummary(mockSummary); });
+    expect(mockTriggerAutoRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes prices once the first summary has failed, too', async () => {
+    mockGetPortfolioSummary.mockRejectedValue(new Error('timeout'));
+
+    renderHook(() => useInvestmentData());
+    await act(async () => { await new Promise(res => setTimeout(res, 0)); });
+
+    expect(mockTriggerAutoRefresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The summary, the allocation and the holdings are drawn from the portfolio
+ * summary, which takes seconds to value; the brokerage register answers in a
+ * fraction of that. Opening the page drew those sections as "no data" once the
+ * register answered, then drew them again when the summary did, then put them
+ * back to skeletons when the automatic price refresh reloaded the page.
+ */
+describe('useInvestmentData – section loading flags', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearchParamsGet = () => null;
+    defaultSetup();
+  });
+
+  it('keeps the summary sections loading until the summary answers, not the register', async () => {
+    let releaseSummary!: (value: unknown) => void;
+    mockGetPortfolioSummary.mockReturnValue(
+      new Promise((resolve) => { releaseSummary = resolve; }),
+    );
+
+    const { result } = renderHook(() => useInvestmentData());
+    await act(async () => { await new Promise(res => setTimeout(res, 0)); });
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isSummaryLoading).toBe(true);
+    expect(result.current.portfolioSummary).toBeNull();
+
+    await act(async () => { releaseSummary(mockSummary); });
+
+    expect(result.current.isSummaryLoading).toBe(false);
+    expect(result.current.portfolioSummary).toEqual(mockSummary);
+  });
+
+  it('keeps every section drawn while the first background reload is in flight', async () => {
+    const { result } = renderHook(() => useInvestmentData());
+    await act(async () => { await new Promise(res => setTimeout(res, 0)); });
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isSummaryLoading).toBe(false);
+
+    // The path a price refresh that updated a quote takes. Held open, because
+    // the skeletons showed for exactly the length of this request.
+    let releaseSummary!: (value: unknown) => void;
+    mockGetPortfolioSummary.mockReturnValue(
+      new Promise((resolve) => { releaseSummary = resolve; }),
+    );
+    let reload!: Promise<void>;
+    act(() => { reload = result.current.loadAllPortfolioData([], 1, {}); });
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isSummaryLoading).toBe(false);
+    expect(result.current.portfolioSummary).toEqual(mockSummary);
+
+    const repriced = { ...mockSummary, totalValue: 5100 };
+    await act(async () => { releaseSummary(repriced); await reload; });
+    expect(result.current.portfolioSummary).toEqual(repriced);
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it('ends the summary skeleton when a reload supersedes the first summary request', async () => {
+    mockGetPortfolioSummary.mockReturnValueOnce(new Promise(() => {}));
+
+    const { result } = renderHook(() => useInvestmentData());
+    await act(async () => { await new Promise(res => setTimeout(res, 0)); });
+    expect(result.current.isSummaryLoading).toBe(true);
+
+    // A write made before the first summary answered: its reload is now the
+    // request the summary sections wait on.
+    await act(async () => { await result.current.loadAllPortfolioData([], 1, {}); });
+
+    expect(result.current.isSummaryLoading).toBe(false);
+    expect(result.current.portfolioSummary).toEqual(mockSummary);
   });
 });

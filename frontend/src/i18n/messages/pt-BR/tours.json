@@ -477,6 +477,47 @@
             "body": "O Monize avisa você 30 dias e 7 dias antes de uma garantia expirar, e no próprio dia. Os lembretes chegam aqui, e você pode adiar um deles ou abrir a garantia a partir dele. Escolha como eles chegam até você em **Configurações**, em **Notificações**, como **Lembretes de garantia**."
           }
         }
+      },
+      "payrollDeductions": {
+        "title": "Deduções salariais",
+        "steps": {
+          "welcome": {
+            "title": "Pare as deduções no máximo anual",
+            "body": "Algumas deduções do salário, como previdência ou seguro-desemprego, param quando o máximo do ano é atingido e recomeçam no ano seguinte. Uma regra de dedução salarial informa esse máximo ao Monize, para que o salário pare de descontar a dedução quando ele for atingido. **Antes de começar, você precisa de uma fatura de salário agendada:** seu salário configurado como um depósito agendado, com as deduções em linhas separadas."
+          },
+          "payrollBill": {
+            "title": "Primeiro, configure seu salário",
+            "body": "Se ainda não fez isso, escolha **+ Nova agenda** e crie seu salário como um depósito. Divida-o em uma linha para o salário bruto e uma linha negativa para cada dedução, cada uma com sua própria categoria. Se uma dedução não estiver sendo descontada agora porque o máximo deste ano já foi atingido, adicione mesmo assim uma linha de divisão para ela, como uma despesa de valor zero, para que uma regra possa limitá-la e ela recomece após o reinício. Só um depósito ativo que credita mais do que desconta pode ter regras, e só as suas linhas de dedução podem ser limitadas."
+          },
+          "taxesLink": {
+            "title": "As deduções salariais ficam em Impostos",
+            "body": "Abra **Ferramentas** e escolha **Impostos** para encontrar as ferramentas fiscais."
+          },
+          "taxesCard": {
+            "title": "Abra Deduções salariais",
+            "body": "Escolha este cartão para abrir as regras de dedução salarial."
+          },
+          "newRule": {
+            "title": "Crie as regras de um salário",
+            "body": "**+ Nova regra** abre o formulário. Escolha sua fatura de salário agendada e depois um máximo anual para cada categoria de dedução que quiser limitar. Informe a data de reinício, normalmente 1º de janeiro. Se a fatura não tiver linhas de dedução, o formulário pede que você as adicione à fatura primeiro."
+          },
+          "rulesList": {
+            "title": "Suas regras",
+            "body": "Cada regra mostra a fatura, a categoria, o máximo anual, a data de reinício e quanto cada salário desconta. Edite uma regra para mudar o máximo, ou exclua-a para que o salário volte a descontar a linha inteira. Excluir uma regra nunca altera uma transação lançada."
+          },
+          "periodTables": {
+            "title": "O que já foi descontado",
+            "body": "Depois que você tiver uma regra, **Mostrar acumulado do ano** mostra quanto cada categoria descontou neste período e a margem que resta até o máximo. **Mostrar períodos anteriores** mostra quanto ela descontou nos anos anteriores."
+          },
+          "forecast": {
+            "title": "Aplicado quando o salário é lançado",
+            "body": "Quando o salário é lançado, cada linha limitada é reduzida à margem que resta até o máximo, até zero, e recomeça após a data de reinício. A previsão de fluxo de caixa, aqui e no painel, mostra o mesmo com antecedência, para você ver seu salário líquido subir quando um máximo é atingido."
+          },
+          "reminders": {
+            "title": "Um lembrete antes de cada reinício",
+            "body": "Dois meses antes de uma regra reiniciar, o Monize pede aqui que você confirme o máximo do ano seguinte. Se você não fizer nada, a regra mantém o máximo e reinicia na data dela. Escolha como os lembretes chegam até você em **Configurações**, em **Notificações**, como **Contas e agendados**."
+          }
+        }
       }
     }
   },

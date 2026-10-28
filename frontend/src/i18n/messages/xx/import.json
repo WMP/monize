@@ -337,7 +337,10 @@
     "securitiesNotice": "[XX-This file contains {count} securit{plural} that need to be mapped before import.-XX]",
     "nextMapSecurities": "[XX-Next: Map Securities-XX]",
     "importAll": "[XX-Import All-XX]",
-    "transactionCount": "[XX-{count} transaction{plural}-XX]"
+    "transactionCount": "[XX-{count} transaction{plural}-XX]",
+    "chooseAccountType": "[XX-Choose a type-XX]",
+    "accountTypeFor": "[XX-Account type for {name}-XX]",
+    "accountTypesNeeded": "[XX-The file does not say what type {count, plural, one {# account is} other {# accounts are}}. Choose a type for each before importing.-XX]"
   },
   "navigation": {
     "back": "[XX-Back-XX]",
@@ -354,6 +357,7 @@
     "heading": "[XX-Review your Microsoft Money file-XX]",
     "fileSummary": "[XX-{filename} -- {era}, base currency {currency}. Balances below are computed from the file itself, so you can check them against Money before importing.-XX]",
     "era": {
+      "money99": "[XX-Money 97-99 format-XX]",
       "money2001": "[XX-Money 2001 format-XX]",
       "money2002": "[XX-Money 2002 format-XX]",
       "moneyPlus": "[XX-Money Plus / Sunset format-XX]",
@@ -526,6 +530,7 @@
     "duplicateSecuritySymbol": "[XX-{count, plural, one {# security shares} other {# securities share}} a symbol with another; the later ones were renamed so they stay separate.-XX]",
     "generatedSecuritySymbol": "[XX-{count, plural, one {# security has} other {# securities have}} no symbol in Money, so a placeholder was generated and price updates left off.-XX]",
     "unknownInvestmentAction": "[XX-{count, plural, one {# investment transaction} other {# investment transactions}} used an action Monize does not recognize and were skipped.-XX]",
+    "stockOptionNotImported": "[XX-{count, plural, one {# employee stock option event} other {# employee stock option events}} (grants, vesting and expiry) moved no cash or shares and were not imported.-XX]",
     "unconfirmedInvestmentAction": "[XX-{count, plural, one {# investment transaction} other {# investment transactions}} used a Money action whose meaning is inferred rather than documented; check them against Money.-XX]",
     "missingInvestmentDetail": "[XX-{count, plural, one {# investment transaction} other {# investment transactions}} had no share detail in the file and were imported for their cash amount only.-XX]",
     "investmentAccountMismatch": "[XX-{count, plural, one {# investment transaction} other {# investment transactions}} sat in an account that is not an investment account and were skipped.-XX]",
@@ -560,7 +565,7 @@
     "mnyStagedFileMissing": "[XX-The uploaded Money file is no longer available. Please upload it again.-XX]",
     "mnyFileTruncated": "[XX-That Money file looks incomplete. The upload may have been interrupted.-XX]",
     "mnyNotAMoneyFile": "[XX-That file is not a Microsoft Money (.mny) file.-XX]",
-    "mnyUnsupportedVersion": "[XX-That file was written by Money 97 or 98. Open and save it once in the free Money Plus Sunset edition, then import the result.-XX]",
+    "mnyUnsupportedVersion": "[XX-That file was written by a version of Microsoft Money that Monize cannot read. Open and save it once in the free Money Plus Sunset edition, then import the result.-XX]",
     "mnyPasswordRequired": "[XX-That Money file is password protected.-XX]",
     "mnyPasswordIncorrect": "[XX-That password does not open the Money file.-XX]",
     "mnyUnreadableDatabase": "[XX-That Money file was decrypted but its contents could not be read. It may be damaged.-XX]"

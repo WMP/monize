@@ -6,7 +6,7 @@ Paths beginning with `src/` or `scripts/`, and layer configuration filenames, ar
 
 ## API Layer (`src/lib/`)
 
-**Central client** (`api.ts`): Axios instance with `baseURL: /api/v1`, `withCredentials: true`, 10s timeout.
+**Central client** (`api.ts`): Axios instance with `baseURL: /api/v1`, `withCredentials: true`, 10s timeout. A read whose cost grows with the length of a portfolio's history (the summary, the daily value series, the period result and results, the breakdown) passes `PORTFOLIO_VALUATION_TIMEOUT_MS` (`lib/constants.ts`) instead; a decades-long history outlives the default.
 
 **Interceptors (non-obvious behavior):**
 

@@ -61,7 +61,7 @@ export class MnyUnsupportedVersionError extends MnyImportError {
   constructor(versionByte: number) {
     super(
       "mnyUnsupportedVersion",
-      `Unsupported Money file version 0x${versionByte.toString(16)}; Money 97/98 (Jet 3) files must first be converted with Money Plus Sunset`,
+      `Unsupported Money file version 0x${versionByte.toString(16)}; only Jet 4 MSISAM files and Money 97-99 Jet 3 files are read`,
     );
   }
 }

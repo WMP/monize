@@ -11,6 +11,7 @@ import {
   FxRateCache,
 } from "./portfolio-calculation.service";
 import { roundMoney, sumMoney } from "../common/round.util";
+import { FxAggregate } from "../common/fx-aggregate";
 import {
   ASSET_CLASS_LABELS,
   AssetClassKey,
@@ -28,9 +29,58 @@ export interface SectorWeightingItem {
   percentage: number;
 }
 
-export interface SectorWeightingResult {
+/**
+ * What the weightings' total could and could not be worked out from. Same
+ * field names as `PortfolioSummary`, so a consumer reads one vocabulary.
+ */
+export interface WeightingCompleteness {
+  /**
+   * The value of the holdings that were priced and converted: the base every
+   * percentage is a share of. Safe beside the gaps, never under a "total" caption.
+   */
+  knownSubtotal: number;
+  /** True when every held position was priced AND converted. */
+  valuationComplete: boolean;
+  pricesComplete: boolean;
+  fxComplete: boolean;
+  unpricedSecurityIds: string[];
+  unpricedSymbols: string[];
+  /** "SEC->REPORTING" pairs with no rate. */
+  missingRatePairs: string[];
+}
+
+const COMPLETE_EMPTY: WeightingCompleteness = {
+  knownSubtotal: 0,
+  valuationComplete: true,
+  pricesComplete: true,
+  fxComplete: true,
+  unpricedSecurityIds: [],
+  unpricedSymbols: [],
+  missingRatePairs: [],
+};
+
+function completenessOf(
+  agg: FxAggregate,
+  unpriced: Map<string, string>,
+): WeightingCompleteness {
+  const missingRatePairs = agg.missingPairs;
+  const pricesComplete = unpriced.size === 0;
+  const fxComplete = missingRatePairs.length === 0;
+  return {
+    knownSubtotal: roundMoney(agg.knownSubtotal),
+    valuationComplete: pricesComplete && fxComplete,
+    pricesComplete,
+    fxComplete,
+    unpricedSecurityIds: [...unpriced.keys()].sort(),
+    unpricedSymbols: [...unpriced.values()].sort(),
+    missingRatePairs,
+  };
+}
+
+export interface SectorWeightingResult extends WeightingCompleteness {
   items: SectorWeightingItem[];
-  totalPortfolioValue: number;
+  /** null while any holding is unpriced or unconvertible; see `knownSubtotal`. */
+  totalPortfolioValue: number | null;
   totalDirectValue: number;
   totalEtfValue: number;
   unclassifiedValue: number;
@@ -44,9 +94,9 @@ export interface CountryWeightingItem {
   percentage: number;
 }
 
-export interface CountryWeightingResult {
+export interface CountryWeightingResult extends WeightingCompleteness {
   items: CountryWeightingItem[];
-  totalPortfolioValue: number;
+  totalPortfolioValue: number | null;
   totalDirectValue: number;
   totalEtfValue: number;
   /**
@@ -74,9 +124,9 @@ export interface AssetClassWeightingItem {
   percentage: number;
 }
 
-export interface AssetClassWeightingResult {
+export interface AssetClassWeightingResult extends WeightingCompleteness {
   items: AssetClassWeightingItem[];
-  totalPortfolioValue: number;
+  totalPortfolioValue: number | null;
   totalDirectValue: number;
   totalEtfValue: number;
   /**
@@ -98,9 +148,9 @@ interface LookThroughItem<K extends string> {
   percentage: number;
 }
 
-interface LookThroughResult<K extends string> {
+interface LookThroughResult<K extends string> extends WeightingCompleteness {
   items: LookThroughItem<K>[];
-  totalPortfolioValue: number;
+  totalPortfolioValue: number | null;
   totalDirectValue: number;
   totalEtfValue: number;
   unclassifiedValue: number;
@@ -121,8 +171,9 @@ export interface LlmAllocationBreakdown {
 }
 
 /** Both portfolio look-through breakdowns in one LLM-friendly payload. */
-export interface LlmLookThrough {
-  totalPortfolioValue: number;
+export interface LlmLookThrough extends WeightingCompleteness {
+  /** null while `valuationComplete` is false; percentages are over `knownSubtotal`. */
+  totalPortfolioValue: number | null;
   byCountry: LlmAllocationBreakdown;
   byAssetClass: LlmAllocationBreakdown;
 }
@@ -378,6 +429,7 @@ export class SectorWeightingService {
         totalDirectValue: 0,
         totalEtfValue: 0,
         unclassifiedValue: 0,
+        ...COMPLETE_EMPTY,
       };
     }
 
@@ -400,6 +452,8 @@ export class SectorWeightingService {
 
     // 5. Build sector maps
     const rateCache: FxRateCache = new Map();
+    const agg = new FxAggregate();
+    const unpriced = new Map<string, string>();
     // Totals are shown in the reader's reporting currency, not whichever
     // account sorts first.
     const defaultCurrency = await resolveUserDefaultCurrency(
@@ -417,9 +471,13 @@ export class SectorWeightingService {
       const own = holding.security.bondProgramId
         ? bondValues.get(`${holding.accountId}:${holding.securityId}`)
         : undefined;
-      // Unpriced is skipped, as for a security with no price; a linked one
-      // never falls back to the blend.
-      if (holding.security.bondProgramId ? !own : price == null) continue;
+      // Unpriced is unknown, not zero: it is left out of the weights and the
+      // total is withheld; a linked one never falls back to the blend.
+      if (holding.security.bondProgramId ? !own : price == null) {
+        agg.addUnknown();
+        unpriced.set(holding.securityId, holding.security.symbol);
+        continue;
+      }
       const nativeValue = own ? own.marketValue : quantity * (price as number);
 
       // `null` means no rate exists for the pair. A sector weighting is a share
@@ -432,6 +490,7 @@ export class SectorWeightingService {
         defaultCurrency,
         rateCache,
       );
+      agg.add(converted, holding.security.currencyCode, defaultCurrency);
       if (converted === null) continue;
       const marketValue = converted;
 
@@ -492,10 +551,14 @@ export class SectorWeightingService {
 
     return {
       items,
-      totalPortfolioValue: roundMoney(totalPortfolioValue),
+      // Withheld while a holding was left out; weights are over the known part.
+      totalPortfolioValue: agg.isComplete
+        ? roundMoney(totalPortfolioValue)
+        : null,
       totalDirectValue: roundMoney(totalDirectValue),
       totalEtfValue: roundMoney(totalEtfValue),
       unclassifiedValue: roundMoney(unclassifiedValue),
+      ...completenessOf(agg, unpriced),
     };
   }
 
@@ -657,6 +720,7 @@ export class SectorWeightingService {
         totalDirectValue: 0,
         totalEtfValue: 0,
         unclassifiedValue: 0,
+        ...COMPLETE_EMPTY,
       };
     }
 
@@ -670,6 +734,8 @@ export class SectorWeightingService {
     );
 
     const rateCache: FxRateCache = new Map();
+    const agg = new FxAggregate();
+    const unpriced = new Map<string, string>();
     // Totals are shown in the reader's reporting currency, not whichever
     // account sorts first.
     const defaultCurrency = await resolveUserDefaultCurrency(
@@ -703,9 +769,13 @@ export class SectorWeightingService {
       const own = holding.security.bondProgramId
         ? bondValues.get(`${holding.accountId}:${holding.securityId}`)
         : undefined;
-      // Unpriced is skipped, as for a security with no price; a linked one
-      // never falls back to the blend.
-      if (holding.security.bondProgramId ? !own : price == null) continue;
+      // Unpriced is unknown, not zero: it is left out of the weights and the
+      // total is withheld; a linked one never falls back to the blend.
+      if (holding.security.bondProgramId ? !own : price == null) {
+        agg.addUnknown();
+        unpriced.set(holding.securityId, holding.security.symbol);
+        continue;
+      }
       const nativeValue = own ? own.marketValue : quantity * (price as number);
 
       // See the note above: an unconvertible holding is skipped, not counted
@@ -716,6 +786,7 @@ export class SectorWeightingService {
         defaultCurrency,
         rateCache,
       );
+      agg.add(converted, holding.security.currencyCode, defaultCurrency);
       if (converted === null) continue;
       const marketValue = converted;
 
@@ -782,10 +853,14 @@ export class SectorWeightingService {
 
     return {
       items,
-      totalPortfolioValue: roundMoney(totalPortfolioValue),
+      // Withheld while a holding was left out; weights are over the known part.
+      totalPortfolioValue: agg.isComplete
+        ? roundMoney(totalPortfolioValue)
+        : null,
       totalDirectValue: roundMoney(totalDirectValue),
       totalEtfValue: roundMoney(totalEtfValue),
       unclassifiedValue: roundMoney(unclassifiedValue),
+      ...completenessOf(agg, unpriced),
     };
   }
 
@@ -807,8 +882,26 @@ export class SectorWeightingService {
       this.getAssetClassWeightings(userId, accountIds),
     ]);
 
+    // Both rollups value the same holdings, so one carries the completeness.
+    const {
+      totalPortfolioValue,
+      knownSubtotal,
+      valuationComplete,
+      pricesComplete,
+      fxComplete,
+      unpricedSecurityIds,
+      unpricedSymbols,
+      missingRatePairs,
+    } = countries;
     return {
-      totalPortfolioValue: countries.totalPortfolioValue,
+      totalPortfolioValue,
+      knownSubtotal,
+      valuationComplete,
+      pricesComplete,
+      fxComplete,
+      unpricedSecurityIds,
+      unpricedSymbols,
+      missingRatePairs,
       byCountry: toLlmBreakdown(
         countries.items.map((i) => ({
           name: i.country,
@@ -816,7 +909,7 @@ export class SectorWeightingService {
           percentage: i.percentage,
         })),
         countries.unclassifiedValue,
-        countries.totalPortfolioValue,
+        countries.knownSubtotal,
       ),
       byAssetClass: toLlmBreakdown(
         assetClasses.items.map((i) => ({
@@ -825,7 +918,7 @@ export class SectorWeightingService {
           percentage: i.percentage,
         })),
         assetClasses.unclassifiedValue,
-        assetClasses.totalPortfolioValue,
+        assetClasses.knownSubtotal,
       ),
     };
   }

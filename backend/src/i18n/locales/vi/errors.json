@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "Không tìm thấy khối tài khoản trong tệp QIF. Tệp này có thể không phải là xuất khẩu nhiều tài khoản.",
+    "accountTypeRequired": "Chọn loại tài khoản cho các tài khoản này trước khi nhập: {{ accounts }}",
     "importFailed": "Nhập khẩu thất bại sau {{ imported }} giao tác: {{ message }}",
     "investmentFileNeedsBrokerageAccount": "Tệp này chứa giao tác đầu tư nhưng tài khoản đã chọn không phải là tài khoản môi giới đầu tư. Vui lòng chọn tài khoản môi giới cho lần nhập khẩu này.",
     "regularFileNeedsCashAccount": "Tệp này chứa giao tác ngân hàng thông thường nhưng tài khoản đã chọn là tài khoản môi giới đầu tư. Vui lòng chọn tài khoản tiền mặt (bao gồm tài khoản tiền mặt đầu tư) cho lần nhập khẩu này.",
@@ -486,7 +487,7 @@
     "mnyNoFile": "Chưa tải lên tệp Money nào",
     "mnyFileTruncated": "Tệp Money này có vẻ chưa hoàn chỉnh. Quá trình tải lên có thể đã bị ngắt -- hãy thử lại.",
     "mnyNotAMoneyFile": "Tệp đó không phải là tệp Microsoft Money (.mny)",
-    "mnyUnsupportedVersion": "Tệp đó được tạo bởi Money 97 hoặc 98, mà Monize không thể đọc. Hãy mở và lưu tệp một lần trong bản Money Plus Sunset miễn phí, rồi nhập kết quả.",
+    "mnyUnsupportedVersion": "Tệp đó được tạo bởi một phiên bản Microsoft Money mà Monize không thể đọc. Hãy mở và lưu tệp một lần trong bản Money Plus Sunset miễn phí, rồi nhập kết quả.",
     "mnyPasswordRequired": "Tệp Money đó được bảo vệ bằng mật khẩu. Hãy nhập mật khẩu để tiếp tục.",
     "mnyPasswordIncorrect": "Mật khẩu đó không mở được tệp Money. Hãy kiểm tra lại và thử lần nữa.",
     "mnyUnreadableDatabase": "Tệp Money đó đã được giải mã nhưng không thể đọc nội dung. Tệp có thể đã bị hỏng.",

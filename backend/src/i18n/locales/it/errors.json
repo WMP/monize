@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "Nessun blocco account trovato nel file QIF. Questo file potrebbe non essere un'esportazione multi-account.",
+    "accountTypeRequired": "Scegli un tipo di conto per questi conti prima di importare: {{ accounts }}",
     "importFailed": "Importazione non riuscita dopo {{ imported }} transazioni: {{ message }}",
     "investmentFileNeedsBrokerageAccount": "Questo file contiene transazioni di investimento ma il conto selezionato non è un conto di intermediazione di investimento. Seleziona un conto di intermediazione per questa importazione.",
     "regularFileNeedsCashAccount": "Questo file contiene transazioni bancarie ordinarie ma il conto selezionato è un conto di intermediazione di investimento. Seleziona un conto contanti (inclusi i conti contanti di investimento) per questa importazione.",
@@ -486,7 +487,7 @@
     "mnyNoFile": "Nessun file Money è stato caricato",
     "mnyFileTruncated": "Questo file Money sembra incompleto. Il caricamento potrebbe essere stato interrotto: riprova.",
     "mnyNotAMoneyFile": "Questo file non è un file Microsoft Money (.mny)",
-    "mnyUnsupportedVersion": "Questo file è stato creato con Money 97 o 98, che Monize non è in grado di leggere. Aprilo e salvalo una volta nella versione gratuita Money Plus Sunset, poi importa il risultato.",
+    "mnyUnsupportedVersion": "Questo file è stato creato con una versione di Microsoft Money che Monize non è in grado di leggere. Aprilo e salvalo una volta nella versione gratuita Money Plus Sunset, poi importa il risultato.",
     "mnyPasswordRequired": "Questo file Money è protetto da password. Inseriscila per continuare.",
     "mnyPasswordIncorrect": "Questa password non apre il file Money. Controllala e riprova.",
     "mnyUnreadableDatabase": "Questo file Money è stato decifrato ma non è stato possibile leggerne il contenuto. Potrebbe essere danneggiato.",

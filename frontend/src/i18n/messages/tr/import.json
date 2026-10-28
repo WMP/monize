@@ -337,7 +337,10 @@
     "securitiesNotice": "Bu dosya, içe aktarılmadan önce eşleştirilmesi gereken {count} menkul kıymet içeriyor.",
     "nextMapSecurities": "Sonraki: Menkul Kıymetleri Eşleştir",
     "importAll": "Tümünü İçe Aktar",
-    "transactionCount": "{count} işlem"
+    "transactionCount": "{count} işlem",
+    "chooseAccountType": "Bir tür seçin",
+    "accountTypeFor": "{name} için hesap türü",
+    "accountTypesNeeded": "Dosya {count, plural, other {# hesabın}} türünü belirtmiyor. İçe aktarmadan önce her biri için bir tür seçin."
   },
   "navigation": {
     "back": "Geri",
@@ -354,6 +357,7 @@
     "heading": "Microsoft Money dosyanızı gözden geçirin",
     "fileSummary": "{filename} -- {era}, temel para birimi {currency}. Aşağıdaki bakiyeler dosyanın kendisinden hesaplanır; böylece içe aktarmadan önce Money ile karşılaştırabilirsiniz.",
     "era": {
+      "money99": "Money 97-99 biçimi",
       "money2001": "Money 2001 biçimi",
       "money2002": "Money 2002 biçimi",
       "moneyPlus": "Money Plus / Sunset biçimi",
@@ -526,6 +530,7 @@
     "duplicateSecuritySymbol": "{count, plural, other {# menkul kıymet}} sembolünü bir başkasıyla paylaşıyordu; ayrı kalsınlar diye sonrakiler yeniden adlandırıldı.",
     "generatedSecuritySymbol": "{count, plural, other {# menkul kıymetin}} Money'de sembolü yok; bu yüzden bir yer tutucu üretildi ve fiyat güncellemeleri kapalı bırakıldı.",
     "unknownInvestmentAction": "{count, plural, other {# yatırım işlemi}} Monize'nin tanımadığı bir eylem kullandı ve atlandı.",
+    "stockOptionNotImported": "{count, plural, other {# çalışan hisse senedi opsiyonu olayı}} (tahsis, hak kazanma ve sona erme) nakit ya da hisse hareket ettirmediği için içe aktarılmadı.",
     "unconfirmedInvestmentAction": "{count, plural, other {# yatırım işlemi}} anlamı belgelenmiş değil çıkarsanmış bir Money eylemi kullandı; bunları Money ile karşılaştırın.",
     "missingInvestmentDetail": "{count, plural, other {# yatırım işleminin}} dosyada hisse ayrıntısı yoktu ve yalnızca nakit tutarıyla içe aktarıldı.",
     "investmentAccountMismatch": "{count, plural, other {# yatırım işlemi}} yatırım hesabı olmayan bir hesaptaydı ve atlandı.",
@@ -560,7 +565,7 @@
     "mnyStagedFileMissing": "Yüklenen Money dosyası artık kullanılamıyor. Lütfen yeniden yükleyin.",
     "mnyFileTruncated": "Bu Money dosyası eksik görünüyor. Yükleme kesilmiş olabilir.",
     "mnyNotAMoneyFile": "Bu dosya bir Microsoft Money (.mny) dosyası değil.",
-    "mnyUnsupportedVersion": "Bu dosya Money 97 veya 98 ile oluşturulmuş. Ücretsiz Money Plus Sunset sürümünde bir kez açıp kaydedin, ardından sonucu içe aktarın.",
+    "mnyUnsupportedVersion": "Bu dosya Monize'ın okuyamadığı bir Microsoft Money sürümüyle oluşturulmuş. Ücretsiz Money Plus Sunset sürümünde bir kez açıp kaydedin, ardından sonucu içe aktarın.",
     "mnyPasswordRequired": "Bu Money dosyası parola korumalı.",
     "mnyPasswordIncorrect": "Bu parola Money dosyasını açmıyor.",
     "mnyUnreadableDatabase": "Bu Money dosyasının şifresi çözüldü ancak içeriği okunamadı. Dosya bozuk olabilir."

@@ -1,5 +1,10 @@
 import { addDaysYMD } from "./date-utils";
-import { FrequencyType, calculateNextDueDate, ensureYMD } from "./recurrence";
+import {
+  FrequencyType,
+  anchorDayOf,
+  calculateNextDueDate,
+  ensureYMD,
+} from "./recurrence";
 
 /**
  * Hard bound on how many recurrence steps one schedule is walked in a single
@@ -63,6 +68,8 @@ export interface OccurrenceOverrideInput {
 export interface OccurrenceScheduleInput {
   frequency: FrequencyType;
   nextDueDate: string | Date;
+  /** Anchors the day-of-month of month-based steps; absent steps from the previous slot's day. */
+  startDate?: string | Date | null;
   endDate?: string | Date | null;
   occurrencesRemaining?: number | null;
 }
@@ -198,7 +205,11 @@ export function expandOccurrenceSlots<O extends OccurrenceOverrideInput>(
     }
     remaining -= 1;
     if (schedule.frequency === "ONCE") break;
-    const next = calculateNextDueDate(slot, schedule.frequency);
+    const next = calculateNextDueDate(
+      slot,
+      schedule.frequency,
+      anchorDayOf(schedule.startDate, slot),
+    );
     // A stepper that fails to advance would loop until the guard; stopping here
     // keeps a malformed frequency from silently emitting the same date 2000 times.
     if (next <= slot) break;

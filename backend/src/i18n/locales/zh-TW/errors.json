@@ -474,6 +474,7 @@
   },
   "import": {
     "noAccountBlocks": "在 QIF 檔案中找不到科目區塊。此檔案可能不是多科目匯出。",
+    "accountTypeRequired": "匯入前請為以下科目選擇科目類型：{{ accounts }}",
     "importFailed": "匯入在 {{ imported }} 筆交易後失敗：{{ message }}",
     "investmentFileNeedsBrokerageAccount": "此檔案包含投資交易，但選定的科目不是投資經紀科目。請為此匯入選擇經紀科目。",
     "regularFileNeedsCashAccount": "此檔案包含一般銀行交易，但選定的科目是投資經紀科目。請選擇現金科目（包括投資現金科目）進行匯入。",
@@ -486,7 +487,7 @@
     "mnyNoFile": "未上傳 Money 檔案",
     "mnyFileTruncated": "這個 Money 檔案似乎不完整。上傳可能被中斷，請重試。",
     "mnyNotAMoneyFile": "這個檔案不是 Microsoft Money (.mny) 檔案",
-    "mnyUnsupportedVersion": "這個檔案由 Money 97 或 98 建立，Monize 無法讀取。請先以免費的 Money Plus Sunset 版本開啟並儲存一次，然後匯入結果。",
+    "mnyUnsupportedVersion": "這個檔案由 Monize 無法讀取的 Microsoft Money 版本建立。請先以免費的 Money Plus Sunset 版本開啟並儲存一次，然後匯入結果。",
     "mnyPasswordRequired": "這個 Money 檔案受密碼保護。請輸入密碼以繼續。",
     "mnyPasswordIncorrect": "這個密碼無法開啟 Money 檔案。請檢查後重試。",
     "mnyUnreadableDatabase": "這個 Money 檔案已解密，但無法讀取其內容。檔案可能已損壞。",

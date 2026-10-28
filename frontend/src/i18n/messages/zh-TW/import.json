@@ -337,7 +337,10 @@
     "securitiesNotice": "此檔案包含 {count} 種證券{plural}，需在匯入前進行對應。",
     "nextMapSecurities": "下一步：對應證券",
     "importAll": "全部匯入",
-    "transactionCount": "{count} 筆交易{plural}"
+    "transactionCount": "{count} 筆交易{plural}",
+    "chooseAccountType": "選擇類型",
+    "accountTypeFor": "{name} 的科目類型",
+    "accountTypesNeeded": "檔案未說明 {count, plural, other {# 個科目}}的類型。匯入前請為每個科目選擇類型。"
   },
   "navigation": {
     "back": "上一步",
@@ -354,6 +357,7 @@
     "heading": "檢查您的 Microsoft Money 檔案",
     "fileSummary": "{filename} -- {era}，基準貨幣 {currency}。下面的餘額是依檔案本身計算的，因此您可以在匯入前與 Money 核對。",
     "era": {
+      "money99": "Money 97-99 格式",
       "money2001": "Money 2001 格式",
       "money2002": "Money 2002 格式",
       "moneyPlus": "Money Plus / Sunset 格式",
@@ -526,6 +530,7 @@
     "duplicateSecuritySymbol": "{count, plural, other {# 檔證券}}與另一檔共用代號；為維持區分，較晚者已重新命名。",
     "generatedSecuritySymbol": "{count, plural, other {# 檔證券}}在 Money 中沒有代號，因此產生了預留代號，並維持價格更新為關閉。",
     "unknownInvestmentAction": "{count, plural, other {# 筆投資交易}}使用了 Monize 無法辨識的動作，已略過。",
+    "stockOptionNotImported": "{count, plural, other {# 個員工股票選擇權事件}}（授予、既得與到期）既不涉及現金也不涉及股份，未匯入。",
     "unconfirmedInvestmentAction": "{count, plural, other {# 筆投資交易}}使用了語意靠推斷而非有文件佐證的 Money 動作，請與 Money 核對。",
     "missingInvestmentDetail": "{count, plural, other {# 筆投資交易}}在檔案中沒有股數明細，僅依其現金金額匯入。",
     "investmentAccountMismatch": "{count, plural, other {# 筆投資交易}}位於非投資帳戶中，已略過。",
@@ -560,7 +565,7 @@
     "mnyStagedFileMissing": "上傳的 Money 檔案已無法使用，請重新上傳。",
     "mnyFileTruncated": "這個 Money 檔案似乎不完整，上傳可能被中斷。",
     "mnyNotAMoneyFile": "這個檔案不是 Microsoft Money (.mny) 檔案。",
-    "mnyUnsupportedVersion": "這個檔案由 Money 97 或 98 建立。請先以免費的 Money Plus Sunset 版本開啟並儲存一次，然後匯入結果。",
+    "mnyUnsupportedVersion": "這個檔案由 Monize 無法讀取的 Microsoft Money 版本建立。請先以免費的 Money Plus Sunset 版本開啟並儲存一次，然後匯入結果。",
     "mnyPasswordRequired": "這個 Money 檔案受密碼保護。",
     "mnyPasswordIncorrect": "這個密碼無法開啟 Money 檔案。",
     "mnyUnreadableDatabase": "這個 Money 檔案已解密，但無法讀取其內容，檔案可能已損壞。"

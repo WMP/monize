@@ -22,6 +22,7 @@ const reportComponents: Record<string, React.LazyExoticComponent<React.Component
   'account-balances': lazy(() => import('@/components/reports/AccountBalancesReport').then(m => ({ default: m.AccountBalancesReport }))),
   'cash-flow': lazy(() => import('@/components/reports/CashFlowReport').then(m => ({ default: m.CashFlowReport }))),
   'tax-summary': lazy(() => import('@/components/reports/TaxSummaryReport').then(m => ({ default: m.TaxSummaryReport }))),
+  'payroll-deductions': lazy(() => import('@/components/reports/PayrollDeductionsReport').then(m => ({ default: m.PayrollDeductionsReport }))),
   'year-over-year': lazy(() => import('@/components/reports/YearOverYearReport').then(m => ({ default: m.YearOverYearReport }))),
   // Debt & Loans
   'debt-payoff-timeline': lazy(() => import('@/components/reports/DebtPayoffTimelineReport').then(m => ({ default: m.DebtPayoffTimelineReport }))),
