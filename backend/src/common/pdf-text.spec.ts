@@ -2,10 +2,14 @@ import { execFileSync } from "child_process";
 import { join } from "path";
 import { PDF_OPEN_OPTIONS, pagesToText, PdfTextItem } from "./pdf-text";
 
-const LETTER = join(__dirname, "fixtures", "edo0934-letter.pdf");
+const LETTER = join(
+  __dirname,
+  "../bonds/adapters/pl/series/fixtures",
+  "edo0934-letter.pdf",
+);
 const PDFJS = join(
   __dirname,
-  "../../../../../node_modules/pdfjs-dist/legacy/build/pdf.mjs",
+  "../../node_modules/pdfjs-dist/legacy/build/pdf.mjs",
 );
 
 /** What `extractPdfText` does, in a Node process that can load the ES module. */

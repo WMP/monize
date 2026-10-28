@@ -63,8 +63,9 @@ trust-builder both PR testers said they needed.
   entity), embedded attachments. (Classifications were a non-goal for v1 and are now imported as
   `key:value` tags; see 8.1.)
 - Writing `.mny` files, or reading `.mbf` backup archives.
-- Money 97/98 files (Jet 3 era). Detect and reject with a clear message suggesting an upgrade
-  through the free Money Plus Sunset edition (which opens and converts old files).
+- ~~Money 97/98 files (Jet 3 era).~~ Superseded: Money 97-99 files are read directly. Their
+  code spaces differ from Money 2001+; the evidence and the task list are
+  `docs/future-plans/mny-money99-import.md`.
 
 ## 3. Assessment of PR #192
 
@@ -503,7 +504,8 @@ real mappers and, in the integration spec, the real INSERT path.
 
 1. **Upload** (existing step): accept gains `.mny`; the file is read as `ArrayBuffer`. If parse
    returns `mnyPasswordRequired`, an inline password prompt appears and the upload retries with
-   the password field. Money 97/98 (Jet 3) files get the explicit unsupported-version message.
+   the password field. Money 97-99 (Jet 3) files open without one; an MSISAM file of an
+   unknown version gets the explicit unsupported-version message.
 2. **Review** (new `mnyReview` step, modelled on `MultiAccountReviewStep`):
    - File summary: detected Money era, base currency, table availability notes ("No
      scheduled-bills table — Money 2001 format").

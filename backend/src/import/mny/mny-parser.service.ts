@@ -33,6 +33,7 @@ import {
 import { billReferences, mapBills, selectedBills } from "./map/map-bills";
 import { mapLoans } from "./map/map-loans";
 import { crossCheckHoldings } from "./map/check-holdings";
+import { MONEY99_ABSENT_FIELDS } from "./model/mny-money99";
 import {
   MappedAccounts,
   MappedBills,
@@ -44,6 +45,7 @@ import {
   MappedTags,
   MappedTransactions,
   MnyHoldingCheck,
+  MnyMarketRates,
 } from "./model/mny-import-model";
 import {
   MnyImportOptions,
@@ -71,7 +73,8 @@ import { roundMoney } from "../../common/round.util";
  */
 
 /** Which Money era a file was written by, inferred from its table/column set. */
-export type MnyEra = "money2001" | "money2002" | "moneyPlus" | "unknown";
+export type MnyEra =
+  "money99" | "money2001" | "money2002" | "moneyPlus" | "unknown";
 
 export interface MnyParseInput {
   /** Still-encrypted file bytes, unless `alreadyDecrypted`. Ownership passes to the parser. */
@@ -91,6 +94,12 @@ export interface MnyParseInput {
   readonly options?: Partial<MnyImportOptions>;
   /** Used as the base currency only when the file names none. */
   readonly userDefaultCurrency: string;
+  /**
+   * Rates for the cross-currency trades the file cannot convert, looked up by
+   * `MnyMarketRateService` from a first parse's `investments.rateGaps`. The
+   * parser itself never fetches one.
+   */
+  readonly marketRates?: MnyMarketRates;
   /**
    * Balance cut-off, `YYYY-MM-DD`. Future-dated transactions are excluded from
    * expected balances because Monize's own balance recalculation excludes them;
@@ -178,8 +187,9 @@ export function todayIsoDate(now: Date = new Date()): string {
 /**
  * Which Money release wrote this file, from what the reader could resolve.
  *
- * Money Plus renamed `TRN.hpay` to `lHpay`, and `BILL` did not exist before
- * Money 2002. Those two facts separate the three vintages the fixtures cover.
+ * Money 97-99 write a Jet 3 file, Money Plus renamed `TRN.hpay` to `lHpay`,
+ * and `BILL` did not exist before Money 2002. Those three facts separate the
+ * four vintages the fixtures cover.
  */
 export function detectEra(tables: MnyTables, db: MnyDatabase): MnyEra {
   const transactionTable = tables.availability.find(
@@ -187,6 +197,9 @@ export function detectEra(tables: MnyTables, db: MnyDatabase): MnyEra {
   );
   if (!transactionTable?.present) {
     return "unknown";
+  }
+  if (db.format === "jet3") {
+    return "money99";
   }
   if (transactionTable.resolvedColumns.payee === "lHpay") {
     return "moneyPlus";
@@ -415,6 +428,7 @@ export class MnyParserService {
         tables.reference.exchangeRates,
         currencyByHandle,
       ),
+      marketRates: input.marketRates,
     });
     const transactions = mapTransactions({
       transactions: tables.transactions,
@@ -558,10 +572,17 @@ export class MnyParserService {
           code: "missingTable" as const,
           subject: table,
         })),
-        ...defaultedFields.map((field) => ({
-          code: "missingField" as const,
-          subject: field,
-        })),
+        // A column Money 99 never had is not news to its user; the field list
+        // above still names it for `mny:inspect`.
+        ...defaultedFields
+          .filter(
+            (field) =>
+              db.format !== "jet3" || !MONEY99_ABSENT_FIELDS.has(field),
+          )
+          .map((field) => ({
+            code: "missingField" as const,
+            subject: field,
+          })),
         ...accounts.warnings,
         ...transactions.warnings,
         ...securities.warnings,

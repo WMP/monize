@@ -1,7 +1,7 @@
 import { ScheduledTransaction } from '@/types/scheduled-transaction';
 import { Account } from '@/types/account';
 import { parseLocalDate } from '@/lib/utils';
-import { advanceByFrequency } from '@/lib/frequency';
+import { advanceByFrequency, anchorDayOf } from '@/lib/frequency';
 import { occurrenceSettlementAccountId } from '@/lib/scheduled-effective-amount';
 import { roundMoney, roundToCents } from '@/lib/format';
 
@@ -550,7 +550,7 @@ function generateOccurrences(
     }
 
     // Calculate next date based on frequency
-    currentDate = advanceByFrequency(currentDate, transaction.frequency);
+    currentDate = advanceByFrequency(currentDate, transaction.frequency, anchorDayOf(transaction.startDate, currentDate));
   }
 
   return occurrences;

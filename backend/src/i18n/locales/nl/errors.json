@@ -487,7 +487,7 @@
     "mnyNoFile": "Er is geen Money-bestand geüpload",
     "mnyFileTruncated": "Dit Money-bestand lijkt onvolledig. De upload is mogelijk onderbroken -- probeer het opnieuw.",
     "mnyNotAMoneyFile": "Dit bestand is geen Microsoft Money-bestand (.mny)",
-    "mnyUnsupportedVersion": "Dit bestand is gemaakt met Money 97 of 98, dat Monize niet kan lezen. Open en bewaar het één keer in de gratis Money Plus Sunset-editie en importeer daarna het resultaat.",
+    "mnyUnsupportedVersion": "Dit bestand is gemaakt met een versie van Microsoft Money die Monize niet kan lezen. Open en bewaar het één keer in de gratis Money Plus Sunset-editie en importeer daarna het resultaat.",
     "mnyPasswordRequired": "Dit Money-bestand is met een wachtwoord beveiligd. Voer het wachtwoord in om door te gaan.",
     "mnyPasswordIncorrect": "Met dit wachtwoord kan het Money-bestand niet worden geopend. Controleer het en probeer het opnieuw.",
     "mnyUnreadableDatabase": "Dit Money-bestand is ontsleuteld, maar de inhoud kon niet worden gelezen. Het is mogelijk beschadigd.",

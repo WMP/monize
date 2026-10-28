@@ -7,11 +7,8 @@ import {
   MappedBills,
   MappedSecurities,
 } from "../model/mny-import-model";
-import {
-  MnyFrequencyMapping,
-  mapFrequency,
-  mapInvestmentAction,
-} from "../model/mny-model";
+import { MnyFrequencyMapping, mapFrequency } from "../model/mny-model";
+import { mapInvestmentAction } from "../model/mny-actions";
 import {
   FrequencyType,
   calculateNextDueDate,
@@ -367,7 +364,10 @@ function mapInvestmentTemplate(
   if (!context.input.securities.byHandle.has(securityHandle)) {
     return null;
   }
-  const action = mapInvestmentAction(template.action);
+  const action = mapInvestmentAction(
+    template.action,
+    context.input.transactions.format,
+  );
   if (action === null) {
     return null;
   }

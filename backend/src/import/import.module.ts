@@ -9,6 +9,7 @@ import { MnyImportJobService } from "./mny/mny-import-job.service";
 import { MnyImportService } from "./mny/mny-import.service";
 import { ImportPostProcessingService } from "./import-post-processing.service";
 import { MnyParserService } from "./mny/mny-parser.service";
+import { MnyMarketRateService } from "./mny/mny-market-rates.service";
 import { MnyStagingService } from "./mny/mny-staging.service";
 import { NetWorthModule } from "../net-worth/net-worth.module";
 import { SecuritiesModule } from "../securities/securities.module";
@@ -35,6 +36,7 @@ import { TagsModule } from "../tags/tags.module";
     ImportRegularProcessorService,
     MnyStagingService,
     MnyParserService,
+    MnyMarketRateService,
     MnyImportJobService,
     MnyImportService,
   ],
@@ -42,6 +44,7 @@ import { TagsModule } from "../tags/tags.module";
     ImportService,
     MnyStagingService,
     MnyParserService,
+    MnyMarketRateService,
     MnyImportJobService,
     MnyImportService,
   ],

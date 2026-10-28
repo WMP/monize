@@ -487,7 +487,7 @@
     "mnyNoFile": "업로드된 Money 파일이 없습니다",
     "mnyFileTruncated": "이 Money 파일은 불완전해 보입니다. 업로드가 중단되었을 수 있습니다. 다시 시도하세요.",
     "mnyNotAMoneyFile": "이 파일은 Microsoft Money(.mny) 파일이 아닙니다",
-    "mnyUnsupportedVersion": "이 파일은 Monize가 읽을 수 없는 Money 97 또는 98로 작성되었습니다. 무료 Money Plus Sunset 버전에서 한 번 열어 저장한 뒤 그 결과를 가져오세요.",
+    "mnyUnsupportedVersion": "이 파일은 Monize가 읽을 수 없는 Microsoft Money 버전으로 작성되었습니다. 무료 Money Plus Sunset 버전에서 한 번 열어 저장한 뒤 그 결과를 가져오세요.",
     "mnyPasswordRequired": "이 Money 파일은 암호로 보호되어 있습니다. 계속하려면 암호를 입력하세요.",
     "mnyPasswordIncorrect": "이 암호로는 Money 파일을 열 수 없습니다. 확인 후 다시 시도하세요.",
     "mnyUnreadableDatabase": "이 Money 파일은 복호화되었지만 내용을 읽을 수 없습니다. 손상되었을 수 있습니다.",

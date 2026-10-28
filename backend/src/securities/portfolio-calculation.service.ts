@@ -35,18 +35,18 @@ import {
   resolveFxRate,
 } from "../common/time-series/fx-rate-resolver";
 import {
-  acquisitionCost,
-  applyActionToQuantity,
   baseInvestmentAction,
   CASH_INCOME_ACTIONS,
-  HOLDING_QUANTITY_EPSILON,
-  isQuantityOnlyAction,
   INVESTMENT_REPLAY_ORDER,
   orderTransferOutBeforeIn,
-  applyReturnOfCapital,
-  returnOfCapitalAmount,
 } from "./investment-replay.util";
 import { stripBrokerageSuffix } from "../accounts/account-name.util";
+import {
+  ReplayedBasisGap,
+  ReplayResult,
+  replayPositionBasis,
+  SettlementCurrencies,
+} from "./position-basis-replay";
 
 // "As of now" portfolio valuations fetch a live spot rate per foreign
 // currency. Cap concurrent quote-provider fetches so a portfolio spanning
@@ -62,12 +62,7 @@ const LIVE_FX_FETCH_CONCURRENCY = 6;
  * holiday gaps, or a failed FX fetch) at the rate that actually prevailed on
  * that bar's own date rather than a single near-current rate.
  */
-/** Why a replayed lot's cost basis cannot be trusted against the live holding. */
-export type ReplayedBasisGap =
-  | "quantity_only_action"
-  | "unpriced_acquisition"
-  | "mixed_basis_currency"
-  | "transferred_basis_unknown";
+export type { ReplayedBasisGap };
 
 /** A position rebuilt from its transactions: what is held, and what it cost. */
 export interface ReplayedLot {
@@ -159,6 +154,8 @@ export interface RealizedGainEntry {
   costBasis: number | null;
   /** `null` with `costBasis`; the proceeds stay known. */
   realizedGain: number | null;
+  /** Why `costBasis` and `realizedGain` are null; null when they are figures. */
+  basisGap: ReplayedBasisGap | null;
 }
 
 /**
@@ -206,6 +203,10 @@ export interface CapitalGainEntry {
   buys: number;
   sells: number;
   realizedGain: number | null;
+  /** False when a disposal this period drew on a basis of unknown cost. Read as `=== false`. */
+  realizedGainComplete: boolean;
+  /** The gains that are known, when `realizedGainComplete` is false; otherwise null. */
+  realizedGainKnownSubtotal: number | null;
   unrealizedGain: number | null;
   totalCapitalGain: number | null;
 }
@@ -227,18 +228,6 @@ function addDaysIso(iso: string, days: number): string {
  * position": below it the difference cannot move a per-share figure meaningfully.
  */
 const COST_BASIS_QUANTITY_TOLERANCE = 0.0001;
-
-/**
- * Where a trade's money landed, in the two roles an account can play. Both maps
- * are keyed by account id and agree for every account that is not a brokerage
- * with a linked cash account.
- */
-interface SettlementCurrencies {
-  /** The account's own currency -- what an explicitly named funding account settles in. */
-  own: Map<string, string>;
-  /** Where a brokerage's cash sits: its linked cash account's currency, or its own. */
-  brokerage: Map<string, string>;
-}
 
 interface PeriodBucket {
   key: string; // YYYY-MM for months, YYYY-MM-DD for days
@@ -297,168 +286,6 @@ function enumerateDays(startDate: string, endDate: string): PeriodBucket[] {
     current = addDaysIso(current, 1);
   }
   return buckets;
-}
-
-/**
- * Apply a single investment transaction to a running
- * { quantity, costBasis, basisKnown } state in account-currency terms. Used to
- * seed cost basis from history that predates the requested capital-gains
- * window. `basisKnown` goes false when a lot joins whose cost the row cannot
- * state -- the basis is then a subtotal, and every figure derived from it is
- * unknown rather than confidently wrong. It resets to true when the position
- * closes: an empty position holds a known zero basis.
- */
-function applyTxToState(
-  tx: InvestmentTransaction,
-  state: { quantity: number; costBasis: number; basisKnown: boolean },
-  carriedIn?: number,
-): void {
-  const quantity = Number(tx.quantity) || 0;
-
-  switch (baseInvestmentAction(tx.action)) {
-    case InvestmentAction.BUY:
-    case InvestmentAction.REINVEST: {
-      // Includes the commission, which is part of what the acquisition cost --
-      // the linked cash debit already carries it. `null` means the row cannot
-      // say what it cost, and shares whose cost is unknown must not join the
-      // basis as free -- nor leave the basis pretending to be complete.
-      const cost = acquisitionCost(tx);
-      if (cost !== null) state.costBasis += cost;
-      else state.basisKnown = false;
-      state.quantity = applyActionToQuantity(
-        state.quantity,
-        tx.action,
-        quantity,
-      );
-      break;
-    }
-    case InvestmentAction.TRANSFER_IN: {
-      // Not a purchase (A26-M21): the lot takes the account-currency basis its
-      // paired TRANSFER_OUT released (`carriedIn`, from
-      // `carriedBasisByTransferIn`). The leg's own row cannot supply it -- its
-      // price is a per-share figure in the security's currency and its rate is
-      // 1. Residual: with no carried amount (the OUT leg outside the rows, the
-      // source short of units, or the two accounts in different currencies)
-      // it falls back to `acquisitionCost(tx)`, which is only right when the
-      // leg's price and rate say what the shares cost.
-      const cost = carriedIn ?? acquisitionCost(tx);
-      if (cost !== null) state.costBasis += cost;
-      else state.basisKnown = false;
-      state.quantity = applyActionToQuantity(
-        state.quantity,
-        tx.action,
-        quantity,
-      );
-      break;
-    }
-    case InvestmentAction.SELL:
-    case InvestmentAction.TRANSFER_OUT: {
-      const sellQty = Math.min(quantity, state.quantity);
-      const avgCostPerShare =
-        state.quantity > 0 ? state.costBasis / state.quantity : 0;
-      state.costBasis -= sellQty * avgCostPerShare;
-      state.quantity -= sellQty;
-      break;
-    }
-    case InvestmentAction.RETURN_OF_CAPITAL: {
-      // Pays back cost, never below zero; a row whose rate cannot convert it
-      // leaves the basis unknown rather than unreduced.
-      const amount = returnOfCapitalAmount(tx);
-      if (amount === null) state.basisKnown = false;
-      else
-        state.costBasis = applyReturnOfCapital(
-          state.costBasis,
-          amount,
-        ).costBasis;
-      break;
-    }
-    default:
-      state.quantity = applyActionToQuantity(
-        state.quantity,
-        tx.action,
-        quantity,
-      );
-      break;
-  }
-
-  if (Math.abs(state.quantity) < 0.0001) {
-    state.quantity = 0;
-    state.costBasis = 0;
-    // A closed position holds a known zero basis; the unknown lot is gone.
-    state.basisKnown = true;
-  }
-}
-
-/**
- * The account-currency basis each TRANSFER_IN lot takes from its paired
- * TRANSFER_OUT (A26-M21), keyed by the IN leg's id.
- *
- * One chronological pass over every row the caller fetched, whatever account it
- * is in, so a destination's lot can be priced before or after its source group
- * is folded. It folds with `applyTxToState`, the fold the capital-gains seed
- * uses, and reads the rows OUT-before-IN (`orderTransferOutBeforeIn`). The OUT
- * leg is matched to the IN leg through `linkedTransactionId`, and counts only
- * when it relieved ALL its units (the source held at least the quantity) from
- * a basis with no unpriced lot in it, and the two legs' accounts share a
- * currency (`account` must be loaded): the
- * released amount is in the source account's currency, and a rate-1 leg cannot
- * convert it. An IN leg with no entry here is the caller's to price from its
- * own row -- the residual `applyTxToState` names.
- */
-function carriedBasisByTransferIn(
-  transactions: readonly InvestmentTransaction[],
-): Map<string, number> {
-  const states = new Map<
-    string,
-    { quantity: number; costBasis: number; basisKnown: boolean }
-  >();
-  const releasedByOut = new Map<
-    string,
-    { amount: number; currencyCode: string | null }
-  >();
-  const carriedIn = new Map<string, number>();
-
-  for (const tx of orderTransferOutBeforeIn(transactions)) {
-    if (!tx.securityId) continue;
-    const key = `${tx.accountId}:${tx.securityId}`;
-    let state = states.get(key);
-    if (!state) {
-      state = { quantity: 0, costBasis: 0, basisKnown: true };
-      states.set(key, state);
-    }
-
-    const action = baseInvestmentAction(tx.action);
-    let carried: number | undefined;
-    if (action === InvestmentAction.TRANSFER_IN && tx.linkedTransactionId) {
-      const source = releasedByOut.get(tx.linkedTransactionId);
-      const currencyCode = tx.account?.currencyCode ?? null;
-      if (
-        source !== undefined &&
-        source.currencyCode !== null &&
-        source.currencyCode === currencyCode
-      ) {
-        carried = source.amount;
-        carriedIn.set(tx.id, carried);
-      }
-    } else if (action === InvestmentAction.TRANSFER_OUT) {
-      const quantity = Number(tx.quantity) || 0;
-      // A source whose basis holds an unpriced lot releases a subtotal, not
-      // what the shares cost: nothing is carried, and the IN leg falls back.
-      if (
-        state.basisKnown &&
-        state.quantity > 0 &&
-        quantity > 0 &&
-        state.quantity >= quantity - HOLDING_QUANTITY_EPSILON
-      ) {
-        releasedByOut.set(tx.id, {
-          amount: quantity * (state.costBasis / state.quantity),
-          currencyCode: tx.account?.currencyCode ?? null,
-        });
-      }
-    }
-    applyTxToState(tx, state, carried);
-  }
-  return carriedIn;
 }
 
 /**
@@ -983,242 +810,21 @@ export class PortfolioCalculationService {
     // the whole batch up front rather than per row: the funding accounts are
     // an arbitrary set and looking each one up inside the loop would be a
     // query per transaction.
-    const basisCurrencyByAccount = await this.settlementCurrencies(
+    const settlement = await this.settlementCurrencies(
       userId,
       holdingsAccountIds,
       transactions,
     );
 
-    // The OUT leg of a transfer has to be seen before its IN leg, because it is
-    // what tells the IN leg what the shares cost; the shared helper says why.
-    const ordered = orderTransferOutBeforeIn(transactions);
+    // The shared replay (`replayPositionBasis`); the lots read the basis as it
+    // is, in the currency it settled in, and a transfer whose source leg is not
+    // among these rows is unknown.
+    const { positions } = replayPositionBasis(transactions, {
+      settlement,
+      orphanTransferIn: "unknown",
+    });
 
-    /**
-     * What each `TRANSFER_OUT` released, for its paired `TRANSFER_IN` to take.
-     *
-     * Keyed by the OUT leg's id, which the IN leg names in
-     * `linkedTransactionId` -- durable pairing the schema already carries, set
-     * by `transferSecurity` on both rows.
-     */
-    const carriedByTransferOut = new Map<
-      string,
-      { amount: number; currencyCode: string | null; known: boolean }
-    >();
-
-    const state = new Map<
-      string,
-      {
-        quantity: number;
-        costBasis: number;
-        currencyCode: string | null;
-        basisGap: ReplayedBasisGap | null;
-      }
-    >();
-
-    for (const tx of ordered) {
-      if (!tx.securityId) continue;
-
-      const key = `${tx.accountId}:${tx.securityId}`;
-      let entry = state.get(key);
-      if (!entry) {
-        entry = {
-          quantity: 0,
-          costBasis: 0,
-          currencyCode: null,
-          basisGap: null,
-        };
-        state.set(key, entry);
-      }
-
-      const quantity = Number(tx.quantity) || 0;
-
-      switch (baseInvestmentAction(tx.action)) {
-        // A transfer is neither a sale nor a purchase: the same shares change
-        // custody and keep whatever they cost. Treated as an acquisition
-        // priced at the carried average with `exchangeRate` 1 -- which is what
-        // `transferSecurity` writes on the row -- the replay rebuilt the basis
-        // out of a per-share figure in the *security's* currency and then
-        // labelled it with the destination's. Ten shares bought for PLN 3,000
-        // (USD 100 each at 3.00) arrived in a PLN account as a basis of 1,000,
-        // turning PLN 1,400 of real gain into 3,400 and PLN 266 of tax into
-        // 646, with the quantity reconciling perfectly throughout.
-        //
-        // So the destination takes the basis the source gave up, which the
-        // `TRANSFER_OUT` leg has already worked out at the running average --
-        // proportional for a partial transfer, and carrying the share of the
-        // acquisition commission that is in that average.
-        case InvestmentAction.TRANSFER_IN: {
-          const carried = tx.linkedTransactionId
-            ? carriedByTransferOut.get(tx.linkedTransactionId)
-            : undefined;
-          entry.quantity += quantity;
-          if (carried === undefined || !carried.known) {
-            // The paired leg is out of this replay's scope -- a transfer in
-            // from an account the caller did not ask about -- or the source
-            // could not price the shares either. Either way this position's
-            // cost is not known here, and the destination's own row cannot
-            // supply it: its price is a carried average, not a market price,
-            // and its rate is 1 regardless of what the money actually did.
-            entry.basisGap ??= "transferred_basis_unknown";
-            break;
-          }
-          if (entry.currencyCode === null) {
-            entry.currencyCode = carried.currencyCode;
-          } else if (entry.currencyCode !== carried.currencyCode) {
-            entry.basisGap ??= "mixed_basis_currency";
-            break;
-          }
-          entry.costBasis += carried.amount;
-          break;
-        }
-        case InvestmentAction.BUY:
-        case InvestmentAction.REINVEST: {
-          // What the acquisition cost, which includes what it cost to
-          // acquire. Leaving the commission out understates the basis and so
-          // overstates every gain and every tax computed from it -- 20 of
-          // commission on a 1,000 purchase is 20 of phantom gain and 3.80 of
-          // phantom tax at 19%. The commission is recorded in the same
-          // currency as the trade, so it is converted with it.
-          //
-          // `null` back means the row cannot say what it cost: `price` is
-          // nullable, and `Number(null) || 0` folded that into a free purchase
-          // -- the units joined the position, nothing joined the basis, and
-          // the quantity reconciliation downstream then *passed* because the
-          // units did add up. An incomplete import came out as a confident
-          // gain and a confident tax bill. A stored `0` is *no price* too,
-          // not a free acquisition: before the acquisition guard shipped,
-          // `create()` stored `price ?? 0` and the form accepted a blank
-          // field, so real databases hold zero-price BUY and REINVEST rows
-          // that mean "unknown" -- and no legitimate zero can be stored from
-          // here on, because `assertAcquisitionPriced` refuses it.
-          const cost = acquisitionCost(tx);
-          if (cost === null) {
-            entry.quantity += quantity;
-            entry.basisGap ??= "unpriced_acquisition";
-            break;
-          }
-
-          // The currency the converted amount is in, which is the settlement
-          // account's and not this holding account's. Acquisitions settled in
-          // two different currencies cannot be added together at all, and
-          // there is no rate to reconcile them with that would not be
-          // answering today's question about a historical cost.
-          // The funding account settles in its own currency; a row with no
-          // funding account settles wherever the brokerage's cash sits. Same
-          // split as `resolveExchangeRate`, which produced the rate being
-          // applied here.
-          const settledIn = tx.fundingAccountId
-            ? basisCurrencyByAccount.own.get(tx.fundingAccountId)
-            : basisCurrencyByAccount.brokerage.get(tx.accountId);
-          if (settledIn === undefined) {
-            entry.quantity += quantity;
-            entry.basisGap ??= "mixed_basis_currency";
-            break;
-          }
-          if (entry.currencyCode === null) entry.currencyCode = settledIn;
-          else if (entry.currencyCode !== settledIn) {
-            entry.basisGap ??= "mixed_basis_currency";
-          }
-
-          entry.costBasis += cost;
-          entry.quantity += quantity;
-          break;
-        }
-        case InvestmentAction.SELL:
-        case InvestmentAction.TRANSFER_OUT: {
-          let released = 0;
-          let releasedAll = false;
-          if (entry.quantity > 0) {
-            const avgCostPerShare = entry.costBasis / entry.quantity;
-            const sellQty = Math.min(quantity, entry.quantity);
-            released = sellQty * avgCostPerShare;
-            releasedAll = sellQty >= quantity;
-            entry.costBasis -= released;
-            entry.quantity -= sellQty;
-          }
-          if (tx.action === InvestmentAction.TRANSFER_OUT) {
-            // What the destination inherits. Recorded even when it is not
-            // knowable, so the paired leg can tell "the source gave up an
-            // unpriced position" from "the source is not in this replay at
-            // all" -- both unknown, but only the first is a fact this replay
-            // established.
-            //
-            // `releasedAll` guards the case where the source's history does
-            // not cover the units being moved: drawing down what there is and
-            // calling the remainder free would hand the destination a basis
-            // for a smaller position than it received, which is the same
-            // partial-history error the quantity reconciliation exists to
-            // catch, laundered through a transfer.
-            carriedByTransferOut.set(tx.id, {
-              amount: released,
-              currencyCode: entry.currencyCode,
-              known:
-                entry.basisGap === null &&
-                entry.currencyCode !== null &&
-                releasedAll,
-            });
-          }
-          break;
-        }
-        case InvestmentAction.ADD_SHARES:
-          entry.quantity += quantity;
-          if (quantity !== 0) entry.basisGap = "quantity_only_action";
-          break;
-        case InvestmentAction.REMOVE_SHARES:
-          entry.quantity -= quantity;
-          if (quantity !== 0) entry.basisGap = "quantity_only_action";
-          break;
-        case InvestmentAction.SPLIT:
-          entry.quantity = applyActionToQuantity(
-            entry.quantity,
-            tx.action,
-            quantity,
-          );
-          break;
-        case InvestmentAction.RETURN_OF_CAPITAL: {
-          // Pays back cost, never below zero. The converted amount is in the
-          // currency it settled in, so it can come off the basis only when
-          // that is the basis's currency -- the same test an acquisition
-          // passes to join it.
-          const amount = returnOfCapitalAmount(tx);
-          const settledIn = tx.fundingAccountId
-            ? basisCurrencyByAccount.own.get(tx.fundingAccountId)
-            : basisCurrencyByAccount.brokerage.get(tx.accountId);
-          if (
-            amount === null ||
-            settledIn === undefined ||
-            (entry.currencyCode !== null && entry.currencyCode !== settledIn)
-          ) {
-            entry.basisGap ??= "mixed_basis_currency";
-            break;
-          }
-          entry.costBasis = applyReturnOfCapital(
-            entry.costBasis,
-            amount,
-          ).costBasis;
-          break;
-        }
-        // DIVIDEND / INTEREST / CAPITAL_GAIN: cash only, no impact on cost basis
-      }
-
-      // Snap near-zero quantities to exactly zero so precision drift doesn't
-      // leave a stale residual cost basis on fully-closed positions. A position
-      // that closed also clears the gap: whatever the history could not price
-      // has been disposed of, and units bought after this point are priced by
-      // the rows that buy them.
-      if (Math.abs(entry.quantity) < 0.0001) {
-        entry.quantity = 0;
-        entry.costBasis = 0;
-        entry.basisGap = null;
-        // The currency goes with the basis it described. A position rebought
-        // after closing may well settle somewhere else, and holding the old
-        // currency would call that a mixture when it is simply the next
-        // position.
-        entry.currencyCode = null;
-      }
-    }
-
-    for (const [key, entry] of state) {
+    for (const [key, entry] of positions) {
       result.set(key, {
         quantity: entry.quantity,
         costBasis: roundMoney(entry.costBasis),
@@ -1256,7 +862,7 @@ export class PortfolioCalculationService {
   private async settlementCurrencies(
     userId: string,
     holdingsAccountIds: string[],
-    transactions: InvestmentTransaction[],
+    transactions: readonly InvestmentTransaction[],
   ): Promise<SettlementCurrencies> {
     const wanted = new Set<string>(holdingsAccountIds);
     for (const tx of transactions) {
@@ -1368,18 +974,16 @@ export class PortfolioCalculationService {
    * Replay the user's investment transaction history to compute the realized
    * gain or loss of each SELL transaction using the average-cost method.
    *
-   * For every prior BUY/REINVEST/TRANSFER_IN, the running cost basis for that
-   * (account, security) grows by `quantity * price * exchangeRate`. A SELL
-   * then draws down cost basis proportionally at the running average cost per
-   * share, and the realized gain is `proceeds - costBasis` — all in the
-   * holding account's currency.
-   *
-   * This is **not** the same bookkeeping as
-   * `calculateCostBasisLotsInAccountCurrency`, which the comment here used to
-   * claim: that replay adds the acquisition commission to the basis and
-   * reports whether the basis is knowable at all. Reconciling the two is a
-   * change to what every realized-gain figure in the application reports, so
-   * it is its own change and not a footnote to this one.
+   * It reads the shared `replayPositionBasis`, the same fold as
+   * `calculateCostBasisLotsInAccountCurrency` and the capital-gains-by-period
+   * report, so the three cannot disagree about one position: the acquisition
+   * commission is in the basis, a lot of unknown cost (ADD_SHARES with no
+   * price, an unpriced acquisition) makes every sale drawn on it unknown, and
+   * the figures are in the holding account's currency. A row settled in
+   * another currency is converted by its own amounts where they reach the
+   * account's currency and by the market rate on its own date otherwise; with
+   * no rate the gain is `null` and `basisGap` is `mixed_basis_currency`
+   * (`docs/specs/realized-gain-basis-and-currency.md`).
    *
    * The entire history is replayed regardless of the requested date range so
    * SELLs early in the range still see cost basis built up by prior BUYs; only
@@ -1413,181 +1017,118 @@ export class PortfolioCalculationService {
         order: INVESTMENT_REPLAY_ORDER,
       }),
     );
-    const transactions = orderTransferOutBeforeIn(fetched);
-    const carriedIn = carriedBasisByTransferIn(transactions);
+    const { steps } = await this.replayWithRates(userId, fetched);
     const requestedAccounts =
       accountIds && accountIds.length > 0 ? new Set(accountIds) : null;
-
-    // `basisKnown` goes false when shares join without a stated cost and back
-    // to true when the position closes, as in `applyTxToState`.
-    const state = new Map<
-      string,
-      { quantity: number; costBasis: number; basisKnown: boolean }
-    >();
     const results: RealizedGainEntry[] = [];
 
-    for (const tx of transactions) {
-      if (!tx.securityId) continue;
-
-      const key = `${tx.accountId}:${tx.securityId}`;
-      let entry = state.get(key);
-      if (!entry) {
-        entry = { quantity: 0, costBasis: 0, basisKnown: true };
-        state.set(key, entry);
+    for (const tx of orderTransferOutBeforeIn(fetched)) {
+      const disposal = steps.get(tx)?.disposal;
+      if (!disposal || !tx.securityId) continue;
+      if (
+        (startDate && tx.transactionDate < startDate) ||
+        (requestedAccounts && !requestedAccounts.has(tx.accountId))
+      ) {
+        continue;
       }
 
-      const quantity = Number(tx.quantity) || 0;
-      const price = Number(tx.price) || 0;
-      const exchangeRate = Number(tx.exchangeRate) || 1;
-
-      switch (baseInvestmentAction(tx.action)) {
-        case InvestmentAction.BUY:
-        case InvestmentAction.REINVEST: {
-          // Acquisition commission belongs in the basis a later disposal is
-          // measured against; omitting it reported the commission as gain and
-          // taxed it. Shared with every other replay so the realized-gain
-          // report and the holdings page cannot disagree about the same buy.
-          const cost = acquisitionCost(tx);
-          if (cost !== null) entry.costBasis += cost;
-          else entry.basisKnown = false;
-          entry.quantity = applyActionToQuantity(
-            entry.quantity,
-            tx.action,
-            quantity,
-          );
-          break;
-        }
-        case InvestmentAction.TRANSFER_IN: {
-          // Not a purchase (A26-M21): the lot takes the account-currency basis
-          // its paired TRANSFER_OUT released. Residual: with no carried amount
-          // (the OUT leg missing, the source short of units, or the two
-          // accounts in different currencies) it falls back to the leg's own
-          // `acquisitionCost`, right only when the row's price and rate say
-          // what the shares cost.
-          const cost = carriedIn.get(tx.id) ?? acquisitionCost(tx);
-          if (cost !== null) entry.costBasis += cost;
-          else entry.basisKnown = false;
-          entry.quantity = applyActionToQuantity(
-            entry.quantity,
-            tx.action,
-            quantity,
-          );
-          break;
-        }
-        case InvestmentAction.SELL:
-        case InvestmentAction.TRANSFER_OUT: {
-          const sellQty = Math.min(quantity, entry.quantity);
-          const avgCostPerShare =
-            entry.quantity > 0 ? entry.costBasis / entry.quantity : 0;
-          const costBasisSold = sellQty * avgCostPerShare;
-          entry.costBasis -= costBasisSold;
-          entry.quantity -= sellQty;
-
-          // Base-normalized so a REDEEM's proceeds are realized like the sale
-          // it is; a TRANSFER_OUT still realizes nothing.
-          if (baseInvestmentAction(tx.action) === InvestmentAction.SELL) {
-            // totalAmount is already stored in the security's currency and is
-            // net of commission; multiply by exchangeRate to put both sides of
-            // the gain calculation in the holding account's currency.
-            const proceeds = Number(tx.totalAmount) * exchangeRate;
-            const realizedGain = proceeds - costBasisSold;
-            // A basis holding shares of unknown cost cannot price what left.
-            const known = entry.basisKnown;
-
-            if (
-              (!startDate || tx.transactionDate >= startDate) &&
-              (!requestedAccounts || requestedAccounts.has(tx.accountId))
-            ) {
-              results.push({
-                transactionId: tx.id,
-                transactionDate: tx.transactionDate,
-                accountId: tx.accountId,
-                accountName: tx.account?.name ?? null,
-                accountCurrencyCode: tx.account?.currencyCode ?? null,
-                securityId: tx.securityId,
-                symbol: tx.security?.symbol ?? null,
-                securityName: tx.security?.name ?? null,
-                securityCurrencyCode: tx.security?.currencyCode ?? null,
-                action: tx.action,
-                quantity: Math.abs(quantity),
-                price,
-                commission: Number(tx.commission) || 0,
-                proceeds: roundMoney(proceeds),
-                costBasis: known ? roundMoney(costBasisSold) : null,
-                realizedGain: known ? roundMoney(realizedGain) : null,
-              });
-            }
-          }
-          break;
-        }
-        case InvestmentAction.RETURN_OF_CAPITAL: {
-          // Comes off the basis; only what the basis could not absorb is a
-          // gain, realized on the distribution's date with no shares sold.
-          // The row's own rate puts it in the holding account's currency. It
-          // is the raw stored rate, not `exchangeRate` above: that one has
-          // already turned a stored 0 into 1, and a rate that cannot convert
-          // is unknown, never par. An unknown amount leaves the basis as it
-          // was, as an unpriced acquisition leaves it in this replay.
-          const amount = returnOfCapitalAmount({
-            totalAmount: tx.totalAmount,
-            exchangeRate: tx.exchangeRate,
-          });
-          if (amount === null) {
-            entry.basisKnown = false;
-            break;
-          }
-          const effect = applyReturnOfCapital(entry.costBasis, amount);
-          entry.costBasis = effect.costBasis;
-          if (
-            effect.realizedGain > 0 &&
-            (!startDate || tx.transactionDate >= startDate)
-          ) {
-            results.push({
-              transactionId: tx.id,
-              transactionDate: tx.transactionDate,
-              accountId: tx.accountId,
-              accountName: tx.account?.name ?? null,
-              accountCurrencyCode: tx.account?.currencyCode ?? null,
-              securityId: tx.securityId,
-              symbol: tx.security?.symbol ?? null,
-              securityName: tx.security?.name ?? null,
-              securityCurrencyCode: tx.security?.currencyCode ?? null,
-              action: tx.action,
-              quantity: 0,
-              price: 0,
-              commission: Number(tx.commission) || 0,
-              proceeds: roundMoney(amount),
-              costBasis: entry.basisKnown
-                ? roundMoney(effect.basisReturned)
-                : null,
-              realizedGain: entry.basisKnown
-                ? roundMoney(effect.realizedGain)
-                : null,
-            });
-          }
-          break;
-        }
-        default:
-          // ADD_SHARES / REMOVE_SHARES move units with no cost in the ledger.
-          if (isQuantityOnlyAction(tx.action) && quantity !== 0) {
-            entry.basisKnown = false;
-          }
-          entry.quantity = applyActionToQuantity(
-            entry.quantity,
-            tx.action,
-            quantity,
-          );
-          break;
+      const isReturnOfCapital =
+        baseInvestmentAction(tx.action) === InvestmentAction.RETURN_OF_CAPITAL;
+      // A return of capital is a realized gain only for what the basis could
+      // not absorb, on the distribution's date with no shares sold. One whose
+      // amount cannot be stated (no usable rate) is skipped, as before.
+      if (
+        isReturnOfCapital &&
+        (disposal.proceeds === null ||
+          disposal.proceeds - disposal.basisRelieved <= 0)
+      ) {
+        continue;
       }
 
-      if (Math.abs(entry.quantity) < 0.0001) {
-        entry.quantity = 0;
-        entry.costBasis = 0;
-        entry.basisKnown = true;
-      }
+      const known = disposal.gap === null && disposal.proceeds !== null;
+      results.push({
+        transactionId: tx.id,
+        transactionDate: tx.transactionDate,
+        accountId: tx.accountId,
+        accountName: tx.account?.name ?? null,
+        accountCurrencyCode: tx.account?.currencyCode ?? null,
+        securityId: tx.securityId,
+        symbol: tx.security?.symbol ?? null,
+        securityName: tx.security?.name ?? null,
+        securityCurrencyCode: tx.security?.currencyCode ?? null,
+        action: tx.action,
+        quantity: isReturnOfCapital ? 0 : Math.abs(Number(tx.quantity) || 0),
+        price: isReturnOfCapital ? 0 : Number(tx.price) || 0,
+        commission: Number(tx.commission) || 0,
+        // Unconverted proceeds stay as the row settled them; the gain is null.
+        proceeds: roundMoney(disposal.proceeds ?? disposal.settledProceeds),
+        costBasis: known ? roundMoney(disposal.basisRelieved) : null,
+        realizedGain:
+          known && disposal.realizedGain !== null
+            ? roundMoney(disposal.realizedGain)
+            : null,
+        basisGap: disposal.gap,
+      });
     }
 
     return results;
+  }
+
+  /**
+   * Replay `transactions` with the holding account's currency as the report
+   * currency. The replay is synchronous, so it runs once to learn which market
+   * rates it wants (a row settled in a third currency), the rates are resolved
+   * as of each row's own date (INV-FX-001), and it runs again with them. A pair
+   * with no rate stays null and the replay reports the figure unknown.
+   */
+  private async replayWithRates(
+    userId: string,
+    transactions: readonly InvestmentTransaction[],
+  ): Promise<ReplayResult> {
+    const accountIds = [...new Set(transactions.map((tx) => tx.accountId))];
+    // The account relation says when a trade can settle elsewhere: a funding
+    // account, or a brokerage with a linked cash account. Without either every
+    // row settles in its own account's currency and there is nothing to read.
+    const settlement = transactions.some(
+      (tx) => tx.fundingAccountId || tx.account?.linkedAccountId,
+    )
+      ? await this.settlementCurrencies(userId, accountIds, transactions)
+      : {
+          own: new Map<string, string>(),
+          brokerage: new Map<string, string>(),
+        };
+
+    const resolved = new Map<string, number | null>();
+    const wanted = new Map<
+      string,
+      { from: string; to: string; onDate: string }
+    >();
+    const run = () =>
+      replayPositionBasis(transactions, {
+        settlement,
+        orphanTransferIn: "own_row",
+        rateFor: (from, to, onDate) => {
+          const key = `${from}->${to}@${onDate}`;
+          const known = resolved.get(key);
+          if (known !== undefined) return known;
+          wanted.set(key, { from, to, onDate });
+          return null;
+        },
+      });
+
+    const first = run();
+    if (wanted.size === 0) return first;
+    for (const [key, { from, to, onDate }] of wanted) {
+      const answer = await this.exchangeRateService.resolveStoredRate(
+        from,
+        to,
+        onDate,
+        { mode: "historical" },
+      );
+      resolved.set(key, answer.rate);
+    }
+    wanted.clear();
+    return run();
   }
 
   /**
@@ -1677,10 +1218,10 @@ export class PortfolioCalculationService {
       }),
     );
 
-    // Groups fold one (account, security) at a time, so a source group may be
-    // processed after its destination: the carried amounts come from one
-    // chronological pass over all rows, which each group's TRANSFER_IN reads.
-    const carriedIn = carriedBasisByTransferIn(fetched);
+    // One replay over every account's rows: a transferred-in lot is priced
+    // from its source whichever group is read first, and the groups below read
+    // each row's outcome from it instead of folding a basis of their own.
+    const { steps } = await this.replayWithRates(userId, fetched);
     const requestedAccounts =
       accountIds && accountIds.length > 0 ? new Set(accountIds) : null;
     const transactions = fetched.filter(
@@ -1796,20 +1337,20 @@ export class PortfolioCalculationService {
 
     for (const group of groups.values()) {
       const txs = group.txs;
-      const state = { quantity: 0, costBasis: 0, basisKnown: true };
+      let quantity = 0;
       let txIdx = 0;
 
-      // Replay any transactions strictly before the first period to seed state.
+      // Rows strictly before the first period only seed the position.
       while (
         txIdx < txs.length &&
         txs[txIdx].transactionDate < periods[0].periodStart
       ) {
-        applyTxToState(txs[txIdx], state, carriedIn.get(txs[txIdx].id));
+        quantity = steps.get(txs[txIdx])?.quantity ?? quantity;
         txIdx++;
       }
 
       for (const { key: periodKey, periodEnd, priceLookupStart } of periods) {
-        const startQuantity = state.quantity;
+        const startQuantity = quantity;
         // The start value uses the FX accepted for the day BEFORE the period's
         // start (priceLookupStart), where the position was carried into the
         // period; the end value uses the FX accepted for periodEnd. A held
@@ -1827,35 +1368,26 @@ export class PortfolioCalculationService {
         let buys = 0;
         let sells = 0;
         let realizedGain = 0;
-        // The period's `buys` (and so its total gain) is complete only when
-        // every acquisition this period could state its cost; its realized
-        // gain only when no disposal drew on a basis with an unknown lot in
-        // it. `?? 0` here replayed an unpriced BUY as free and reported the
-        // full proceeds of the eventual sale as confident gain -- while
-        // getCostBasis marks the identical row `unpriced_acquisition`.
-        let buysComplete = true;
+        // What a period's disposals realized on a known basis; with an unknown
+        // one among them it is the known part of a figure that is not known.
+        let knownRealized = 0;
+        // The period's `buys` and `sells` (and so its total gain) are complete
+        // only when every flow could state its amount in the account's currency
+        // and no share arrived or left with no cost or proceeds; its realized
+        // gain only when no disposal drew on an unknown basis.
+        let flowsComplete = true;
         let realizedKnown = true;
+        const addAcquired = (cost: number | null | undefined) => {
+          if (cost === null || cost === undefined) flowsComplete = false;
+          else buys += cost;
+        };
 
         while (txIdx < txs.length && txs[txIdx].transactionDate <= periodEnd) {
           const tx = txs[txIdx];
-          const quantity = Number(tx.quantity) || 0;
-          const exchangeRate = Number(tx.exchangeRate) || 1;
-
-          // `null` is a lot whose cost the row cannot state.
-          const addAcquisition = (cost: number | null) => {
-            if (cost === null) {
-              buysComplete = false;
-              state.basisKnown = false;
-            } else {
-              buys += cost;
-              state.costBasis += cost;
-            }
-            state.quantity = applyActionToQuantity(
-              state.quantity,
-              tx.action,
-              quantity,
-            );
-          };
+          const step = steps.get(tx);
+          txIdx++;
+          if (!step) continue;
+          quantity = step.quantity;
 
           switch (baseInvestmentAction(tx.action)) {
             case InvestmentAction.BUY:
@@ -1863,74 +1395,42 @@ export class PortfolioCalculationService {
               // Commission included: it is money the period spent acquiring,
               // so leaving it out of `buys` also inflated the period's
               // capital gain by the same amount it understated the basis.
-              addAcquisition(acquisitionCost(tx));
+              addAcquired(step.acquired);
               break;
+            // The basis the paired OUT leg released, as the replay priced it
+            // (A26-M21); never a purchase.
             case InvestmentAction.TRANSFER_IN:
-              // Not a purchase (A26-M21): the lot takes the basis its paired
-              // OUT released; the residual with no carried amount is
-              // `applyTxToState`'s.
-              addAcquisition(carriedIn.get(tx.id) ?? acquisitionCost(tx));
+              addAcquired(step.acquired);
               break;
             case InvestmentAction.SELL:
-            case InvestmentAction.TRANSFER_OUT: {
-              const sellQty = Math.min(quantity, state.quantity);
-              const avgCostPerShare =
-                state.quantity > 0 ? state.costBasis / state.quantity : 0;
-              const costBasisSold = sellQty * avgCostPerShare;
-              state.costBasis -= costBasisSold;
-              state.quantity -= sellQty;
-              if (baseInvestmentAction(tx.action) === InvestmentAction.SELL) {
-                const proceeds = Number(tx.totalAmount) * exchangeRate;
-                sells += proceeds;
-                realizedGain += proceeds - costBasisSold;
-                // A basis carrying an unknown lot cannot price what was sold.
-                if (!state.basisKnown) realizedKnown = false;
-              }
-              break;
-            }
             case InvestmentAction.RETURN_OF_CAPITAL: {
-              // Capital coming back out: the price falls by what was paid,
-              // so it nets against the value change as a sale's proceeds do,
-              // and only what exceeds the basis is realized. The raw stored
-              // rate, as `applyTxToState` reads it before the window: a 0 is
-              // unknown, and `exchangeRate` above would have made it 1.
-              const amount = returnOfCapitalAmount({
-                totalAmount: tx.totalAmount,
-                exchangeRate: tx.exchangeRate,
-              });
-              if (amount === null) {
-                // Neither the cash nor the basis it returned is known, so
-                // the period's capital movement is not either.
-                buysComplete = false;
+              // A return of capital is capital coming back out, so it nets
+              // against the value change as a sale's proceeds do, and only
+              // what exceeds the basis is realized.
+              const disposal = step.disposal;
+              if (!disposal) break;
+              if (disposal.proceeds === null) flowsComplete = false;
+              else sells += disposal.proceeds;
+              if (disposal.realizedGain === null) {
                 realizedKnown = false;
-                state.basisKnown = false;
-                break;
+              } else {
+                realizedGain += disposal.realizedGain;
+                knownRealized += disposal.realizedGain;
               }
-              const effect = applyReturnOfCapital(state.costBasis, amount);
-              state.costBasis = effect.costBasis;
-              sells += amount;
-              realizedGain += effect.realizedGain;
-              if (!state.basisKnown) realizedKnown = false;
               break;
             }
+            case InvestmentAction.ADD_SHARES:
+            case InvestmentAction.REMOVE_SHARES:
+              // Shares that arrived or left with no cost or proceeds: the value
+              // change is not a gain.
+              if ((Number(tx.quantity) || 0) !== 0) flowsComplete = false;
+              break;
             default:
-              state.quantity = applyActionToQuantity(
-                state.quantity,
-                tx.action,
-                quantity,
-              );
               break;
           }
-
-          if (Math.abs(state.quantity) < 0.0001) {
-            state.quantity = 0;
-            state.costBasis = 0;
-            state.basisKnown = true;
-          }
-          txIdx++;
         }
 
-        const endQuantity = state.quantity;
+        const endQuantity = quantity;
         const endValue = await boundaryValue(
           endQuantity,
           this.lookupPrice(group.securityId, periodEnd, allPrices),
@@ -1942,7 +1442,7 @@ export class PortfolioCalculationService {
         // Unknown boundary values -- or an incomplete `buys` -- make the
         // capital gain unknown rather than equal to the known cash movements.
         const totalCapitalGain =
-          startValue === null || endValue === null || !buysComplete
+          startValue === null || endValue === null || !flowsComplete
             ? null
             : endValue - startValue + sells - buys;
         const periodRealizedGain = realizedKnown ? realizedGain : null;
@@ -1955,7 +1455,7 @@ export class PortfolioCalculationService {
           buys !== 0 ||
           sells !== 0 ||
           realizedGain !== 0 ||
-          !buysComplete ||
+          !flowsComplete ||
           !realizedKnown ||
           startQuantity !== 0 ||
           endQuantity !== 0;
@@ -1982,6 +1482,10 @@ export class PortfolioCalculationService {
           buys: round(buys),
           sells: round(sells),
           realizedGain: roundOrNull(periodRealizedGain),
+          realizedGainComplete: realizedKnown,
+          realizedGainKnownSubtotal: realizedKnown
+            ? null
+            : round(knownRealized),
           unrealizedGain: roundOrNull(unrealizedGain),
           totalCapitalGain: roundOrNull(totalCapitalGain),
         });

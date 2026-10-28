@@ -1942,7 +1942,11 @@
     "noticeExcluded": "Certains montants sont partiels : {count, plural, one {# montant n'a pas pu être calculé et est} other {# montants n'ont pas pu être calculés et sont}} exclus.",
     "pdfNote": "Total partiel : aucun taux de change pour {currencies}",
     "pdfNoteExcluded": "Total partiel : {count, plural, one {# montant exclu} other {# montants exclus}}",
-    "pdfSuffix": "(partiel)"
+    "pdfSuffix": "(partiel)",
+    "knownValue": "Valeur connue",
+    "weightingIntro": "Les pourcentages ne couvrent que les positions qui ont pu être valorisées.",
+    "weightingNoPrice": "Aucun cours pour {symbols} : actualisez ou ajoutez un cours sur la page du titre.",
+    "weightingNoRate": "Aucun taux de change pour {pairs} : ajoutez-en un sur la page Devises."
   },
   "sankey": {
     "help": "L’argent reçu passe par le centre vers ce à quoi il a été dépensé, ce qui a été épargné ou placé et ce qui a remboursé des dettes. Par défaut, le rapport couvre vos comptes chèques, d’épargne, d’espèces, de carte de crédit et de marge de crédit ouverts, et un virement entre deux d’entre eux n’est pas affiché. Retirez un compte d’épargne du filtre de comptes pour voir ce que vous y avez transféré. Un paiement de carte de crédit n’est jamais un remboursement de dette : les achats qu’il règle sont déjà comptés comme dépenses.",

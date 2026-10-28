@@ -5,6 +5,8 @@ const privateNetworks = new BlockList();
 privateNetworks.addSubnet("10.0.0.0", 8, "ipv4");
 privateNetworks.addSubnet("172.16.0.0", 12, "ipv4");
 privateNetworks.addSubnet("192.168.0.0", 16, "ipv4");
+privateNetworks.addSubnet("100.64.0.0", 10, "ipv4"); // CGNAT, Tailscale
+privateNetworks.addSubnet("198.18.0.0", 15, "ipv4"); // benchmarking
 const privateIpv6Networks = new BlockList();
 privateIpv6Networks.addSubnet("fc00::", 7, "ipv6");
 export interface PrivatePushEndpoint {
@@ -21,7 +23,7 @@ export function privatePushEndpoints(
   if (!raw?.trim()) return result;
   const invalid = () =>
     new Error(
-      "Invalid UNIFIEDPUSH_PRIVATE_ENDPOINTS: expected HTTPS DNS origins mapped to RFC1918 or IPv6 ULA addresses",
+      "Invalid UNIFIEDPUSH_PRIVATE_ENDPOINTS: expected HTTPS DNS origins mapped to RFC1918, CGNAT (100.64.0.0/10), 198.18.0.0/15 or IPv6 ULA addresses",
     );
   try {
     if (raw.length > 16384) throw invalid();

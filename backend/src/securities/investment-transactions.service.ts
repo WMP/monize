@@ -138,6 +138,10 @@ export interface LlmCapitalGainsEntry {
   startValue: number | null;
   endValue: number | null;
   realizedGain: number | null;
+  /** False when `realizedGain` is null for want of a basis. Read as `=== false`. */
+  realizedGainComplete: boolean;
+  /** The gains that are known, when `realizedGainComplete` is false; otherwise null. */
+  realizedGainKnownSubtotal: number | null;
   unrealizedGain: number | null;
   totalCapitalGain: number | null;
 }
@@ -148,6 +152,9 @@ export interface LlmCapitalGainsResult {
   totals: {
     /** `null` when any row's realized gain rests on an unknown basis. */
     realizedGain: number | null;
+    realizedGainComplete: boolean;
+    /** The gains that are known, when `realizedGainComplete` is false; otherwise null. */
+    realizedGainKnownSubtotal: number | null;
     /**
      * `null` when any row in the window had an unconvertible boundary value.
      * A total that silently omitted those rows would read as complete.
@@ -3677,6 +3684,8 @@ export class InvestmentTransactionsService {
       startValueScaled: number;
       endValueScaled: number;
       realizedScaled: number;
+      /** The realized gains that are known, whether or not the rest are. */
+      realizedKnownScaled: number;
       unrealizedScaled: number;
       totalScaled: number;
       /** Set when any folded row had an unconvertible boundary value. */
@@ -3686,6 +3695,7 @@ export class InvestmentTransactionsService {
     }
     const buckets = new Map<string, Bucket>();
     let totalsRealizedScaled = 0;
+    let totalsRealizedKnownScaled = 0;
     let totalsUnrealizedScaled = 0;
     let totalsCapitalScaled = 0;
 
@@ -3701,6 +3711,9 @@ export class InvestmentTransactionsService {
       } else {
         totalsRealizedScaled += Math.round(e.realizedGain * 10000);
       }
+      totalsRealizedKnownScaled += Math.round(
+        (e.realizedGain ?? e.realizedGainKnownSubtotal ?? 0) * 10000,
+      );
       if (e.unrealizedGain === null || e.totalCapitalGain === null) {
         totalsIncomplete = true;
       } else {
@@ -3747,6 +3760,7 @@ export class InvestmentTransactionsService {
           startValueScaled: 0,
           endValueScaled: 0,
           realizedScaled: 0,
+          realizedKnownScaled: 0,
           unrealizedScaled: 0,
           totalScaled: 0,
           incomplete: false,
@@ -3767,6 +3781,9 @@ export class InvestmentTransactionsService {
       } else {
         b.realizedScaled += Math.round(e.realizedGain * 10000);
       }
+      b.realizedKnownScaled += Math.round(
+        (e.realizedGain ?? e.realizedGainKnownSubtotal ?? 0) * 10000,
+      );
       if (
         e.startValue === null ||
         e.endValue === null ||
@@ -3797,6 +3814,10 @@ export class InvestmentTransactionsService {
         realizedGain: b.realizedIncomplete
           ? null
           : roundMoney(b.realizedScaled / 10000),
+        realizedGainComplete: !b.realizedIncomplete,
+        realizedGainKnownSubtotal: b.realizedIncomplete
+          ? roundMoney(b.realizedKnownScaled / 10000)
+          : null,
         unrealizedGain: b.incomplete
           ? null
           : roundMoney(b.unrealizedScaled / 10000),
@@ -3821,6 +3842,10 @@ export class InvestmentTransactionsService {
         realizedGain: totalsRealizedIncomplete
           ? null
           : roundMoney(totalsRealizedScaled / 10000),
+        realizedGainComplete: !totalsRealizedIncomplete,
+        realizedGainKnownSubtotal: totalsRealizedIncomplete
+          ? roundMoney(totalsRealizedKnownScaled / 10000)
+          : null,
         unrealizedGain: totalsIncomplete
           ? null
           : roundMoney(totalsUnrealizedScaled / 10000),

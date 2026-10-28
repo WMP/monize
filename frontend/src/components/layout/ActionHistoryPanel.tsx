@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { useClickOutside } from '@/hooks/useClickOutside';
@@ -8,7 +8,14 @@ import { actionHistoryApi, type ActionHistoryItem } from '@/lib/action-history';
 import { renderActionDescription } from '@/lib/action-history-format';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { clearAllCache } from '@/lib/apiCache';
-import { notifyUndoRedo, subscribeUndoRedo } from '@/lib/undoRedoSignal';
+import {
+  notifyUndoRedo,
+  subscribeUndoRedo,
+  subscribeUndoRefusal,
+  getUndoRefusal,
+  isUndoRefusal,
+  markUndoRefused,
+} from '@/lib/undoRedoSignal';
 import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('ActionHistoryPanel');
@@ -51,6 +58,7 @@ export function ActionHistoryPanel() {
   const pendingRef = useRef(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const undoRefusal = useSyncExternalStore(subscribeUndoRefusal, getUndoRefusal, () => null);
   const canUndo = history.some((h) => !h.isUndone);
   const canRedo = history.some((h) => h.isUndone);
 
@@ -118,7 +126,9 @@ export function ActionHistoryPanel() {
       if (status === 404) {
         toast.success(t('actionHistory.nothingToUndo'));
       } else if (status === 409) {
-        toast.error(message || t('actionHistory.cannotUndoDefault'));
+        const text = message || t('actionHistory.cannotUndoDefault');
+        if (isUndoRefusal(status, error?.response?.data?.errorCode)) markUndoRefused(text);
+        toast.error(text);
       } else {
         logger.error('Undo failed', error);
         toast.error(t('actionHistory.undoFailed'));
@@ -222,7 +232,9 @@ export function ActionHistoryPanel() {
           <div className="flex gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
             <button
               onClick={handleUndo}
-              disabled={!canUndo && history.length > 0}
+              disabled={(!canUndo && history.length > 0) || !!undoRefusal}
+              title={undoRefusal ?? undefined}
+              aria-describedby={undoRefusal ? 'undo-refusal-reason' : undefined}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
               data-testid="undo-button"
             >
@@ -271,6 +283,12 @@ export function ActionHistoryPanel() {
               </span>
             </button>
           </div>
+
+          {undoRefusal && (
+            <p id="undo-refusal-reason" className="sr-only">
+              {undoRefusal}
+            </p>
+          )}
 
           {/* History list */}
           <div className="overflow-y-auto flex-1">

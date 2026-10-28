@@ -1942,7 +1942,11 @@
     "noticeExcluded": "Niektóre wartości są częściowe: {count, plural, one {# kwoty nie udało się obliczyć i została pominięta} few {# kwot nie udało się obliczyć i zostały pominięte} many {# kwot nie udało się obliczyć i zostały pominięte} other {# kwoty nie udało się obliczyć i zostały pominięte}}.",
     "pdfNote": "Suma częściowa: brak kursu wymiany dla {currencies}",
     "pdfNoteExcluded": "Suma częściowa: pominięto {count, plural, one {# kwotę} few {# kwoty} many {# kwot} other {# kwoty}}",
-    "pdfSuffix": "(częściowa)"
+    "pdfSuffix": "(częściowa)",
+    "knownValue": "Znana wartość",
+    "weightingIntro": "Procenty obejmują tylko pozycje, które udało się wycenić.",
+    "weightingNoPrice": "Brak ceny dla {symbols}: odśwież lub dodaj cenę na stronie papieru wartościowego.",
+    "weightingNoRate": "Brak kursu wymiany dla {pairs}: dodaj go na stronie Waluty."
   },
   "sankey": {
     "help": "Pieniądze, które wpłynęły, płyną przez środek do tego, na co je wydano, co zaoszczędzono lub zainwestowano i co spłaciło długi. Domyślnie raport obejmuje Twoje otwarte konta osobiste, oszczędnościowe, gotówkowe, karty kredytowe i linie kredytowe, a przelew między dwoma z nich nie jest pokazywany. Usuń konto oszczędnościowe z filtra kont, aby zobaczyć, co na nie przelałeś. Spłata karty kredytowej nigdy nie jest spłatą długu: zakupy, które rozlicza, są już liczone jako wydatki.",

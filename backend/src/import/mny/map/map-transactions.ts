@@ -103,6 +103,8 @@ interface Context {
   readonly externalFunders: ReadonlyMap<number, number>;
   /** Split leg handle -> the trade that leg embeds. */
   readonly investmentSplitLegs: ReadonlyMap<number, number>;
+  /** Sleeve row handle -> the skipped investment row it is the cash side of. */
+  readonly unwrittenTradeCashRows: ReadonlyMap<number, number>;
   readonly warnings: MnyWarning[];
 }
 
@@ -143,13 +145,21 @@ interface Indexes {
   readonly externalFunders: ReadonlyMap<number, number>;
   /** Split leg handle -> the trade that leg embeds. */
   readonly investmentSplitLegs: ReadonlyMap<number, number>;
+  /**
+   * Sleeve row handle -> the investment row it pairs with, for a pairing whose
+   * trade this import does not write. See `classifyTradeCashSides`.
+   */
+  readonly unwrittenTradeCashRows: ReadonlyMap<number, number>;
   readonly warnings: MnyWarning[];
 }
 
 /** Everything the posting predicate reads before the trade-cash classification. */
 type PostingIndexes = Omit<
   Indexes,
-  "tradeCashLegs" | "externalFunders" | "investmentSplitLegs"
+  | "tradeCashLegs"
+  | "externalFunders"
+  | "investmentSplitLegs"
+  | "unwrittenTradeCashRows"
 >;
 
 function buildIndexes(input: MapTransactionsInput): Indexes {
@@ -293,6 +303,15 @@ function isImportablePosting(
  * that moves no cash, leaves Money's row alone: dropping it would lose the money
  * it records, and embedding a trade that does not exist would wire a split to
  * nothing.
+ *
+ * Such a row in the skipped trade's **own** sleeve is named here too
+ * (`unwrittenTradeCashRows`). It keeps its money and imports as an ordinary
+ * row, taking the investment row's category when it has none -- the same
+ * treatment Money 99's other income and expenses get. Wiring it to a
+ * synthesized counterpart instead puts that counterpart in the row's own
+ * account, the pair nets to zero, and the cash Money shows in the sleeve is
+ * gone: an interest payment whose `act` was unknown left a Money 99 cash
+ * account short by exactly its amount.
  */
 function classifyTradeCashSides(
   rows: readonly MnyTransaction[],
@@ -302,10 +321,12 @@ function classifyTradeCashSides(
   tradeCashLegs: ReadonlySet<number>;
   externalFunders: ReadonlyMap<number, number>;
   investmentSplitLegs: ReadonlyMap<number, number>;
+  unwrittenTradeCashRows: ReadonlyMap<number, number>;
 } {
   const tradeCashLegs = new Set<number>();
   const externalFunders = new Map<number, number>();
   const investmentSplitLegs = new Map<number, number>();
+  const unwrittenTradeCashRows = new Map<number, number>();
 
   for (const row of rows) {
     const handle = row.handle;
@@ -317,7 +338,13 @@ function classifyTradeCashSides(
       continue;
     }
     const trade = input.tradesByHandle.get(partner);
-    if (trade === undefined || trade.cashAmount === 0) {
+    if (trade === undefined) {
+      if (isUnwrittenTradeCashRow(row, partner, indexes, input)) {
+        unwrittenTradeCashRows.set(handle, partner);
+      }
+      continue;
+    }
+    if (trade.cashAmount === 0) {
       continue;
     }
 
@@ -356,7 +383,41 @@ function classifyTradeCashSides(
     }
   }
 
-  return { tradeCashLegs, externalFunders, investmentSplitLegs };
+  return {
+    tradeCashLegs,
+    externalFunders,
+    investmentSplitLegs,
+    unwrittenTradeCashRows,
+  };
+}
+
+/**
+ * True for a top-level posting in the cash sleeve of the brokerage holding
+ * `partner`, an investment row whose trade the investment mapper skipped.
+ */
+function isUnwrittenTradeCashRow(
+  row: MnyTransaction,
+  partner: number,
+  indexes: PostingIndexes,
+  input: MapTransactionsInput,
+): boolean {
+  const far = indexes.byHandle.get(partner);
+  if (
+    far === undefined ||
+    far.security === null ||
+    far.account === null ||
+    indexes.parentOfChild.has(row.handle as number) ||
+    indexes.childrenByParent.has(row.handle as number) ||
+    !isPostingRow(row, indexes, input)
+  ) {
+    return false;
+  }
+  const brokerageKey = input.accountKeyByHandle.get(far.account);
+  const sleeveKey =
+    brokerageKey === undefined
+      ? undefined
+      : input.cashKeyByAccountKey.get(brokerageKey);
+  return sleeveKey !== undefined && sleeveKey === accountKeyOf(row, input);
 }
 
 /**
@@ -410,7 +471,8 @@ function buildCashCounterparts(
     // same wiring `counterpartId` uses in the other direction.
     if (
       indexes.externalFunders.has(handle) ||
-      indexes.investmentSplitLegs.has(handle)
+      indexes.investmentSplitLegs.has(handle) ||
+      indexes.unwrittenTradeCashRows.has(handle)
     ) {
       continue;
     }
@@ -709,8 +771,13 @@ function mapOne(
   // A split parent is never itself a transfer: its transfer legs are splits.
   // Neither is a row funding a trade in another account -- Money pairs it with
   // the trade, but in Monize that row *is* the trade's cash leg (issue #1212).
+  // Nor is a sleeve row whose trade was skipped: there is no trade to pair it
+  // with, so it stands alone and keeps the money Money shows.
+  const skippedTrade = context.unwrittenTradeCashRows.get(handle);
   const partner =
-    splits.length > 0 || context.externalFunders.has(handle)
+    splits.length > 0 ||
+    context.externalFunders.has(handle) ||
+    skippedTrade !== undefined
       ? null
       : (context.transfers.partnerByHandle.get(handle) ?? null);
   const linkedTransactionId =
@@ -750,7 +817,13 @@ function mapOne(
     status,
     payeeHandle: row.payee,
     // A split parent carries no category of its own: the legs do.
-    categoryHandle: splits.length > 0 ? null : row.category,
+    categoryHandle:
+      splits.length > 0
+        ? null
+        : (row.category ??
+          (skippedTrade === undefined
+            ? null
+            : (context.byHandle.get(skippedTrade)?.category ?? null))),
     description: row.memo,
     referenceNumber: decodeReference(row.reference),
     isTransfer: linkedTransactionId !== null,
@@ -957,6 +1030,7 @@ export function mapTransactions(
     cashCounterparts,
     externalFunders: indexes.externalFunders,
     investmentSplitLegs: indexes.investmentSplitLegs,
+    unwrittenTradeCashRows: indexes.unwrittenTradeCashRows,
     warnings,
   };
 

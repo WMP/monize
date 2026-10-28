@@ -4166,6 +4166,43 @@ describe("InvestmentTransactionsService", () => {
       ...overrides,
     });
 
+    it("names the known part when a month's realized gain rests on an unknown basis", async () => {
+      const raw = [
+        makeEntry({ month: "2024-06", realizedGain: 40 }),
+        {
+          ...makeEntry({ month: "2024-07" }),
+          realizedGain: null,
+          realizedGainComplete: false,
+          realizedGainKnownSubtotal: 15,
+        },
+      ];
+      (
+        portfolioCalculationService.calculateCapitalGainsByMonth as jest.Mock
+      ).mockResolvedValue(raw);
+
+      const result = await service.getLlmCapitalGains(userId, {
+        startDate: "2024-06-01",
+        endDate: "2024-07-31",
+      });
+
+      expect(result.totals).toMatchObject({
+        realizedGain: null,
+        realizedGainComplete: false,
+        realizedGainKnownSubtotal: 55,
+      });
+      const [june, july] = result.entries;
+      expect(june).toMatchObject({
+        realizedGain: 40,
+        realizedGainComplete: true,
+        realizedGainKnownSubtotal: null,
+      });
+      expect(july).toMatchObject({
+        realizedGain: null,
+        realizedGainComplete: false,
+        realizedGainKnownSubtotal: 15,
+      });
+    });
+
     it("aggregates the raw per-(account,security,month) rows into monthly buckets by default", async () => {
       const raw = [
         makeEntry({

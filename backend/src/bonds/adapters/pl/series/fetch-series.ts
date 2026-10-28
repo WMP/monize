@@ -1,3 +1,4 @@
+import { extractPdfText } from "../../../../common/pdf-text";
 import {
   BondFetch,
   CatalogEntry,
@@ -6,7 +7,6 @@ import {
 } from "../../../bond-adapter";
 import { parseLetter, ParsedLetter } from "./letter-parser";
 import { ParsedPage, parseSeriesPage } from "./page-parser";
-import { extractPdfText } from "./pdf-text";
 import { ParsedSeriesCode, parseSeriesCode } from "./series-code";
 import { assertTemplateCovers, buildSeriesEntry } from "./series-entry";
 import {
@@ -21,6 +21,9 @@ import { SeriesValues } from "./series-values";
 import { SeriesTemplate, SERIES_TEMPLATES } from "./templates";
 
 const PDF_MAGIC = "%PDF-";
+
+/** A letter is a few dozen pages at most; refuse a document that claims more. */
+const MAX_LETTER_PAGES = 60;
 
 function disagree(
   field: string,
@@ -89,7 +92,7 @@ async function readLetter(bytes: Uint8Array): Promise<ParsedLetter> {
   }
   let text: string;
   try {
-    text = await extractPdfText(bytes);
+    text = await extractPdfText(bytes, MAX_LETTER_PAGES);
   } catch (error) {
     throw new SeriesFetchError(
       "SOURCE_FORMAT_CHANGED",

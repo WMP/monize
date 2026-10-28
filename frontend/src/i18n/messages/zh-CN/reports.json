@@ -1942,7 +1942,11 @@
     "noticeExcluded": "部分数字不完整：{count, plural, other {# 笔金额}}无法计算，已被排除。",
     "pdfNote": "不完整的总额：{currencies} 没有汇率",
     "pdfNoteExcluded": "不完整的总额：已排除 {count, plural, other {# 笔金额}}",
-    "pdfSuffix": "（不完整）"
+    "pdfSuffix": "（不完整）",
+    "knownValue": "已知价值",
+    "weightingIntro": "百分比仅涵盖能够估值的持仓。",
+    "weightingNoPrice": "{symbols} 没有价格：请在证券页面刷新或添加价格。",
+    "weightingNoRate": "{pairs} 没有汇率：请在“货币”页面添加。"
   },
   "sankey": {
     "help": "流入的资金经过中间，流向其被花费的去处、被储蓄或投资的部分以及用于偿还债务的部分。默认情况下，报告涵盖您未关闭的支票、储蓄、现金、信用卡和信用额度账户，这些账户之间的转账不会显示。将某个储蓄账户从账户筛选中移除，即可看到您转入其中的金额。信用卡还款从不算作债务还款：它结清的消费已计为支出。",

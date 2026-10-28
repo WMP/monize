@@ -113,11 +113,11 @@ const COUNTRY_WEIGHTINGS = {
   unclassifiedValue: 1000,
 };
 
-async function renderReport() {
+async function renderReport(country: object = COUNTRY_WEIGHTINGS) {
   mockGetPortfolioSummary.mockResolvedValue({ holdings: HOLDINGS });
   mockGetInvestmentAccounts.mockResolvedValue([]);
   mockGetSecurities.mockResolvedValue(SECURITIES);
-  mockGetCountryWeightings.mockResolvedValue(COUNTRY_WEIGHTINGS);
+  mockGetCountryWeightings.mockResolvedValue(country);
   let container!: HTMLElement;
   await act(async () => {
     ({ container } = render(<GeographicAllocationReport />));
@@ -207,5 +207,25 @@ describe('GeographicAllocationReport partial totals', () => {
     const cell = footerTotalCell(container);
     expect(cell.textContent).toContain('$10000.00');
     expect(cell.querySelector('[data-testid="partial-total"]')).toBeNull();
+  });
+
+  it('relabels the country footer from the server flag and names what is missing', async () => {
+    const container = await renderReport({
+      ...COUNTRY_WEIGHTINGS,
+      totalPortfolioValue: null,
+      knownSubtotal: 10000,
+      valuationComplete: false,
+      unpricedSymbols: ['NOP'],
+      missingRatePairs: ['JPY->CAD'],
+    });
+    await switchView('By Country');
+    await waitFor(() => expect(screen.getByText('Other')).toBeInTheDocument());
+
+    const cell = footerTotalCell(container);
+    expect(cell.textContent).toContain('$10000.00');
+    expect(screen.getByText('Known Value')).toBeInTheDocument();
+    const note = screen.getByTestId('weighting-partial-note');
+    expect(note.textContent).toContain('NOP');
+    expect(note.textContent).toContain('JPY->CAD');
   });
 });

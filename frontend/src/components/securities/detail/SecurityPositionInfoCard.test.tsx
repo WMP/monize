@@ -219,6 +219,45 @@ describe('SecurityPositionInfoCard', () => {
       ).toBeInTheDocument();
     });
 
+    it('shows the known part of the gain beside the unknown marker, never in its place', () => {
+      render(
+        <SecurityPositionInfoCard
+          detail={detail({
+            activity: activity({
+              realizedGain: null,
+              realizedGainComplete: false,
+              realizedGainKnownSubtotal: 120.5,
+              realizedGainCurrency: 'PLN',
+              realizedGainCurrencies: ['PLN'],
+              realizedSaleCount: 2,
+            }),
+          })}
+        />,
+      );
+      expect(screen.getByText(/Known part:.*120\.50/)).toBeInTheDocument();
+      // The subtotal appears once, as the known part; the figure's own place
+      // holds the unknown marker.
+      expect(screen.getAllByText(/120\.50/)).toHaveLength(1);
+    });
+
+    it('shows no known part when the gains are unknown and none is known in one currency', () => {
+      render(
+        <SecurityPositionInfoCard
+          detail={detail({
+            activity: activity({
+              realizedGain: null,
+              realizedGainComplete: false,
+              realizedGainKnownSubtotal: null,
+              realizedGainCurrency: null,
+              realizedGainCurrencies: ['EUR', 'PLN'],
+              realizedSaleCount: 2,
+            }),
+          })}
+        />,
+      );
+      expect(screen.queryByText(/Known part/)).not.toBeInTheDocument();
+    });
+
     it('leaves the row out entirely when nothing was ever sold', () => {
       render(<SecurityPositionInfoCard detail={detail()} />);
       expect(screen.queryByText(/Realized P\/L/)).not.toBeInTheDocument();

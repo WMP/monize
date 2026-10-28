@@ -487,7 +487,7 @@
     "mnyNoFile": "No se ha subido ningún archivo de Money",
     "mnyFileTruncated": "Este archivo de Money parece incompleto. Puede que la subida se haya interrumpido: vuelva a intentarlo.",
     "mnyNotAMoneyFile": "Ese archivo no es un archivo de Microsoft Money (.mny)",
-    "mnyUnsupportedVersion": "Ese archivo se creó con Money 97 o 98, que Monize no puede leer. Ábralo y guárdelo una vez en la edición gratuita Money Plus Sunset y después importe el resultado.",
+    "mnyUnsupportedVersion": "Ese archivo se creó con una versión de Microsoft Money que Monize no puede leer. Ábralo y guárdelo una vez en la edición gratuita Money Plus Sunset y después importe el resultado.",
     "mnyPasswordRequired": "Ese archivo de Money está protegido con contraseña. Introdúzcala para continuar.",
     "mnyPasswordIncorrect": "Esa contraseña no abre el archivo de Money. Compruébela y vuelva a intentarlo.",
     "mnyUnreadableDatabase": "Ese archivo de Money se descifró, pero no se pudo leer su contenido. Puede estar dañado.",

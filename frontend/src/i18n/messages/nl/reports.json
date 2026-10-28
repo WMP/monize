@@ -1942,7 +1942,11 @@
     "noticeExcluded": "Sommige cijfers zijn gedeeltelijk: {count, plural, one {# bedrag kon niet worden berekend en is} other {# bedragen konden niet worden berekend en zijn}} weggelaten.",
     "pdfNote": "Gedeeltelijk totaal: geen wisselkoers voor {currencies}",
     "pdfNoteExcluded": "Gedeeltelijk totaal: {count, plural, one {# bedrag} other {# bedragen}} weggelaten",
-    "pdfSuffix": "(gedeeltelijk)"
+    "pdfSuffix": "(gedeeltelijk)",
+    "knownValue": "Bekende waarde",
+    "weightingIntro": "De percentages betreffen alleen de posities die gewaardeerd konden worden.",
+    "weightingNoPrice": "Geen koers voor {symbols}: ververs of voeg een koers toe op de pagina van het effect.",
+    "weightingNoRate": "Geen wisselkoers voor {pairs}: voeg er een toe op de pagina Valuta's."
   },
   "sankey": {
     "help": "Binnengekomen geld stroomt door het midden naar waaraan het is uitgegeven, wat is gespaard of belegd en wat schulden heeft afgelost. Standaard omvat het rapport uw open betaal-, spaar-, contant-, creditcard- en kredietlijnrekeningen, en een overboeking tussen twee daarvan wordt niet getoond. Laat een spaarrekening weg uit het rekeningfilter om te zien wat u ernaar hebt overgemaakt. Een creditcardbetaling is nooit een aflossing: de aankopen die ze vereffent, zijn al als uitgaven geteld.",

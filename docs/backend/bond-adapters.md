@@ -43,7 +43,8 @@ The templates are not a member: they are adapter data, `backend/src/bonds/adapte
 | `templates/*.template.json`, `series/templates.ts` | The eight product templates (`SERIES_TEMPLATES`), each with `validFrom`, the per-series fields it takes (`addend`, `hasFee`) and `fillTemplate`. |
 | `series/series-code.ts` | The series-code grammar (`parseSeriesCode`, `seriesCodeFor`, `PRODUCT_TENOR_MONTHS`, the page slugs). |
 | `series/series-source.ts` | The issuer's host, the page and letter URLs, and `getFromIssuer`: one GET on the issuer's host, refusing another host, a redirect elsewhere, a status other than 200 and an oversized body. |
-| `series/page-parser.ts`, `letter-parser.ts`, `pdf-text.ts` | Read the series page and the issue letter (PDF text through `pdfjs-dist`). |
+| `series/page-parser.ts`, `series/letter-parser.ts` | Read the series page and the issue letter. |
+| `src/common/pdf-text.ts` | `extractPdfText(bytes, maxPages?)`: the one PDF text reader (`pdfjs-dist`), shared with the relay attachment resource; the letter reader passes a page cap. |
 | `series/series-values.ts`, `series-entry.ts` | `SeriesValues` and its bounds (`assertSeriesValues`), the template's `validFrom` check (`assertTemplateCovers`) and `buildSeriesEntry` (template plus values, through `parseBondTerms`): one path for a fetch and a manual entry. |
 | `series/fetch-series.ts` | `fetchSeries`: page and letter, cross-checked field by field, then `buildSeriesEntry`. |
 | `series/manual-series.ts`, `current-offer.ts`, `backfill-codes.ts` | `manualSeries`, `fetchCurrentSeries` (the issuer's home page), `backfillCodes` and `SERIES_VALID_FROM`. |
