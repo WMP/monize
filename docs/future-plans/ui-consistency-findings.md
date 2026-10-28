@@ -7,7 +7,41 @@ Status: work in progress. This file collects:
 
 Each item names the evidence (`file:line`, relative to `frontend/src/`). Each item needs human review before it becomes a rule or a fix.
 
+## The reference screens contradict the document
+
+Before anyone fixes a screen "against" `screens-and-dialogs.md`, a maintainer must decide, rule by rule, whether the document or the reference code is correct. As written, several rules fail the screens the document names as the model (all verified in the source):
+
+- **Segmented filter.** The document says `SEGMENTED_GROUP_CLASS` + `segmentClass`. No reference screen uses it: `app/currencies/page.tsx:315-337` and `app/securities/page.tsx:420-442` hand-roll `bg-blue-600` buttons (with counts); `components/accounts/AccountList.tsx:788-819` and `components/transactions/TransactionFilterPanel.tsx:511-545` hand-roll them without counts. Only newer screens use the constant (`AiReviewInbox`, `EmailReceiptsManager`, `InvestmentViewToggle`).
+- **Table cells.** The document names `CurrencyList` and `SecurityList` as models "with `Th`/`Td`". Both use raw `<th onClick>` + `SortIcon` (`components/currencies/CurrencyList.tsx:610-616`, `components/securities/SecurityList.tsx:601-643`). The `<th onClick>` is also not reachable by keyboard.
+- **Toolbar wraps.** Currencies and Securities use `flex flex-col sm:flex-row` without `flex-wrap` (`app/currencies/page.tsx:307`, `app/securities/page.tsx:412`).
+- **Refresh.** Currencies "Refresh Rates" has no icon and no age (`app/currencies/page.tsx:281-287`). Securities puts Refresh in the toolbar row (`app/securities/page.tsx:446-452`), Investments in `PageHeader` (`app/investments/page.tsx:253`).
+- **Transactions.** No `SummaryCard` row (a chart, `app/transactions/page.tsx:1304`); filters fold into a Show/Hide panel (`TransactionFilterPanel.tsx:249-290`), which the "filters are always visible" rule forbids; the search field has a label and comes last (`TransactionFilterPanel.tsx:764-771`).
+- **Investments.** Three primary "New" buttons on one screen: `NewTransactionButton` in `PageHeader` (`app/investments/page.tsx:258`) and two hand-rolled `bg-blue-600` buttons (`components/investments/InvestmentTransactionList.tsx:608-614`, `app/investments/page.tsx:438`). Brokerage / Cash is a segmented control that switches registers, i.e. navigation (`InvestmentViewToggle.tsx:36-44`, key `brokerageTab`), which the document reserves for `Tabs`. Filters are behind toggles (`InvestmentTransactionList.tsx:618-646`).
+- **Accounts.** No toolbar above the list; search comes last inside the list card (`AccountList.tsx:834-840`); no `Pagination`.
+- **Export.** Currencies, Securities and Accounts have none. `ListTopToolbar` has no export control of its own (`components/ui/ListTopToolbar.tsx:40`); Transactions passes a button through `actions` (`TransactionList.tsx:750-754`). The rule "Export is the export control of `ListTopToolbar`" names a control that does not exist.
+- **Security detail order** is header, `SummaryCard`s, a chart grid, then `Tabs` (`app/securities/[id]/page.tsx:444, 464, 509`), not "`SummaryCard` row, then `Tabs`".
+- **`PageHeader` help** is shown only on hover at `md` and up (`components/layout/PageHeader.tsx`, `md:group-hover`), against the rule that help is not hidden below a breakpoint.
+
+Suggestion: either fix the reference screens first (they are what agents copy), or narrow the document to what those screens do today and list the gaps as known debt.
+
 ## Candidate rules
+
+### List and detail pages
+
+- **R12. Page container: `<main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">` at full width** (`app/currencies/page.tsx:274`, `securities:392`, `transactions:1291`, `investments:232`); settings pages `max-w-4xl mx-auto`.
+- **R13. Every list page passes `helpUrl` to `PageHeader`** (Currencies, Securities, Transactions, Investments, Accounts).
+- **R14. The list sits in `${CARD_CLASS} overflow-hidden`, with `<LoadingSpinner text>` inside it while loading** (`currencies:368-370`, `securities:471-473`, `transactions:1709-1712`).
+- **R15. `EmptyState` renders inside the list component** (`CurrencyList.tsx:549`, `AccountList.tsx:773`).
+- **R16. Sort: a sortable header with `SortIcon` and `aria-sort`, persisted with `useLocalStorage('monize-<list>-sort-field' / '-sort-dir')`, and a sort, filter or search change resets to page 1** (`currencies:53-54, 242-260`). Status filters start at `'active'` (`currencies:51`, `securities:65`).
+- **R17. Density: `useDensityPreference(view)` with `DensityToggleBar` above a table, or `DensityToggle` in `ListTopToolbar` for a register** (`CurrencyList.tsx:487, 566`).
+- **R18. Phone layout: `wrapped = isMobile && density === 'normal'` renders one card cell per row with a slim sort header** (`CurrencyList.tsx:523, 571-600`, also Security, Account, Payee, Institution, Warranty lists); a register uses `useRegisterPhoneCard`.
+- **R19. Number, rate and action columns are right-aligned; row actions are `RowActions`.**
+- **R20. A list reloads after undo/redo and AI actions with `useOnUndoRedo(load)` + `useOnAiAction(load)`** (`currencies:115-117`, `securities:160-162`).
+- **R21. Create/edit of a record is `useFormModal` + `Modal` + `UnsavedChangesDialog`** (`currencies:49, 341-353`); a deep link to a row uses `useHighlightParam` (`securities:373-381`).
+- **R22. A column chooser (`useHiddenColumns` + `ColumnChooserMenu`) belongs to registers only** (TransactionList, InvestmentTransactionList, GroupedHoldingsList). State this, so lists do not gain one ad hoc.
+- **R23. No interactive element inside `<a>`**: a back or cancel link is a `Link` styled with `buttonClassName(...)`, never `<Link><Button>`.
+- **Open question O1. Count line under a list**: two patterns compete, a centred "N items" for one page (`currencies:403-407`, `securities:507-511`) and `ListBottomPager` `totalLabel` (`transactions:1761-1769`, warranties, investments). Pick one.
+- **Open question O2. Summary grid gap** varies (`gap-6`, `gap-4 sm:gap-6`, `gap-3 sm:gap-6`, `gap-4`). Detail pages share `SummaryCardGrid` + `summaryGridClass` (`components/accounts/shared/SummaryCardGrid.tsx:72, 82`); make it the list-page summary row too.
 
 ### Reports, settings, states, destructive actions
 
@@ -25,6 +59,23 @@ Each item names the evidence (`file:line`, relative to `frontend/src/`). Each it
 
 
 ## Deviations
+
+### List and detail pages
+
+- **D15. Hand-rolled segmented filters**: `app/payees/page.tsx:407, 430`, `app/categories/page.tsx:231`, `app/institutions/page.tsx:281-314` (no counts), `app/reports/page.tsx:346-368` (pills, no counts), `components/dashboard/TopMovers.tsx:164`, `app/budgets/page.tsx:154`. `AiReviewInbox.tsx:174-197` uses the constant but has no counts.
+- **D16. Hand-rolled tab bar** for List/Calendar on Bills (`app/bills/page.tsx:772-791`), which should be `ViewModeToggle`; the Bills type filter is chips hidden below `sm` (`:796-808`) and the filter panel collapses (`components/scheduled-transactions/BillsFilterPanel.tsx:78, 175`).
+- **D17. `Tabs` used as a list filter, with counts**: `components/settings/bank-sync/BankSyncPreviewList.tsx:108-111, 221`.
+- **D18. Records shown as a card grid, not a table**: `app/budgets/page.tsx:134-170` (a `div role="link" onClick`, not `useLongPress`).
+- **D19. Hand-rolled empty states instead of `EmptyState`**: `app/categories/page.tsx:275-310`, `app/tags/page.tsx:235-260`, `app/budgets/page.tsx:121`.
+- **D20. Primary action not in `PageHeader`**: Warranties puts "New" as a toolbar text button (`app/warranties/page.tsx:410-418`) and its filters are `Badge` buttons without counts, before the search (`:493-507`); Rules uses a `<Link>` styled as a button (`components/rules/RulesManager.tsx:48`); Dashboard "Customize" is a hand-rolled button (`app/dashboard/page.tsx:273-281`); Insights "Refresh" is a filled primary (`components/insights/InsightsList.tsx:237`).
+- **D21. Raw `<select>` filters and pill counts instead of `SummaryCard`** on Insights (`InsightsList.tsx:215-220, 245, 257`); free-form `<dl>` summary on `components/admin/PushChannelsPanel.tsx:134` and `components/warranties/WarrantyDetailCard.tsx:214`.
+- **D22. Search after the filters, with a label**: Email Receipts (`components/email-receipts/ReceiptSearchBar.tsx:36`, `EmailReceiptsManager.tsx:995`).
+- **D23. Page container outliers**: `app/reminders/page.tsx:35` (`<div>`, not `<main>`, `max-w-5xl`), `app/insights/page.tsx:19` (`max-w-4xl`), `app/reports/custom/new/page.tsx:42` (`max-w-3xl`), `app/reports/investment/new/page.tsx:41`. Breaks R12.
+- **D24. Missing `helpUrl`**: tags, institutions, warranties, rules, ai-reviews, email-receipts, insights, taxes, reminders, admin. Breaks R13.
+- **D25. Detail pages without the chevron back pattern**: `app/budgets/[id]/page.tsx:261-269` ("Back to Budgets" is an outline button at the end of the actions, after Delete; no switcher, no `SummaryCard`s); `app/budgets/[id]/edit/page.tsx:141-148`; `app/taxes/payroll-deductions/page.tsx:147-153` (`ArrowLeftIcon`); `app/warranties/[id]/page.tsx` has no `EntitySwitcher`.
+- **D26. `<Link><Button>` (a button inside a link)**: `app/reports/custom/new/page.tsx:47-48`, `custom/[id]/edit/page.tsx:111-112`, `investment/new/page.tsx:46-47`, `investment/[id]/edit/page.tsx:111`, `monte-carlo/compare/page.tsx:32-33`. Breaks R23 and is an accessibility defect.
+- **D27. Tables without sort, density or phone layout**: `components/admin/UserManagementTable.tsx:80-101` (raw `<th>`, inside a `bg-gray-900` card at `app/admin/users/page.tsx:311`), `AiReviewInbox`, `EmailReceiptsManager`, `RulesList`; `CategoryList` and `TagList` lack `aria-sort` and the phone layout. Break R16-R18.
+- **D28. `/rules` does not reload after undo/redo** (no `useOnUndoRedo`). Breaks R20.
 
 ### Reports, settings, states, destructive actions
 
