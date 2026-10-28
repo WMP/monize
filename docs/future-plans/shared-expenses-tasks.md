@@ -268,7 +268,8 @@ names its recipients and requires Apply before changing the parent draft.
 - The changed-test gate ran 902 files / 16,933 cases: 16,932 passed and the
   public-script guard failed because vendor preparation produces OpenCV and
   pdf.js assets outside its reviewed list. The guard is identical on upstream
-  main. Its failure remains open; no test or allowance was changed to hide it.
+  main. The requesting user separately approved the two-file guard correction
+  below after reviewing the failure and the proposed patch.
 - Both documentation guard files passed all 26 cases and the documentation
   manifest check passed. The frontend compile, type-check and generate stages
   passed sequentially; peak build memory was 3038 MiB and minimum host available
@@ -276,6 +277,13 @@ names its recipients and requires Apply before changing the parent draft.
 - Backend financial behavior and browser journeys were not rerun for this
   frontend draft-allocation correction; their earlier evidence is dated above.
 
-Publication of this follow-up awaits a separate decision on the public-script
-guard. A proposed correction verifies the two generated scripts against their
-installed dependency bytes while retaining rejection of other scripts.
+The approved public-script guard correction checks the two generated scripts'
+SHA-256 digests against their installed dependency files. It retains rejection
+of other executable/markup assets and the existing service-worker comment check.
+The ZAP explanation reflects that reviewed scope; the rule's IGNORE level does
+not change. Regression cases also reject an extra script and an altered copy of
+either dependency. After approval, the application harness passed all six guard
+cases and both test-hygiene cases. The changed guard's strict lint, frontend
+type check, all 26 documentation guard cases and documentation manifest check
+also passed. The full changed-test gate and application build were not repeated
+for this test/comment-only correction; their initial results remain above.
