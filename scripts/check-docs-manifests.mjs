@@ -70,6 +70,7 @@ const DOCS = [
   'docs/frontend/pwa-push-share.md',
   'docs/frontend/testing.md',
   'docs/frontend/theming.md',
+  'docs/frontend/screens-and-dialogs.md',
 ];
 
 /**
