@@ -40,5 +40,6 @@
   "groupNotEmpty": "Only an empty group can be deleted. Keep its entries, documents and personal bookings by archiving it instead.",
   "financePaymentSum": "Allocate your entire contribution across the selected bank payments in the expense currency. Each payment must be positive and each bank movement can be used once.",
   "ownershipConsent": "The selected member must accept this ownership request first. Refresh the group to check their response.",
-  "financeSplit": "Choose positive portions from this transaction's category splits. Their total must match the shared bank amount; transfer and investment splits cannot be shared."
+  "financeSplit": "Choose positive portions from this transaction's category splits. Their total must match the shared bank amount; transfer and investment splits cannot be shared.",
+  "financeDeferred": "New personal-finance connections are unavailable in this version. Keep recording expenses in the group; existing personal records can still be viewed or unlinked."
 }

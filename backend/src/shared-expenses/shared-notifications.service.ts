@@ -29,19 +29,25 @@ export class SharedNotificationsService {
         ]),
       );
       for (const item of pending) {
+        const navigation = item.revoked
+          ? {
+              type: NotificationType.SHARED_EXPENSE_UPDATED,
+              target: "/shared-expenses",
+            }
+          : {
+              type: NotificationType.SHARED_EXPENSE_UPDATED,
+              target: `/shared-expenses/${item.group_id}`,
+            };
         // The existing recipient-context seam owns all cross-user notification
         // writes. This runs after the journal transaction, never inside it.
         await this.alerts.raiseUserAlert(
           item.recipient_id,
           {
-            type: NotificationType.SHARED_EXPENSE_UPDATED,
+            ...navigation,
             severity: NotificationSeverity.INFO,
             title: "Shared expenses",
             message: "A shared group has an update. Open Monize to review it.",
             data: { groupId: item.group_id, accessChanged: item.revoked },
-            target: item.revoked
-              ? "/shared-expenses"
-              : `/shared-expenses/${item.group_id}`,
             dedupeKey: `shared:${item.activity_id}`,
           },
           {
