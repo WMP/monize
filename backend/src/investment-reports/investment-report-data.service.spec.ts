@@ -203,6 +203,120 @@ describe("InvestmentReportDataService", () => {
     expect(v.totalReturn1Week).toBeCloseTo(1.6949, 3);
   });
 
+  describe("daily change needs adjacent, current closes", () => {
+    const changeFor = async (closes: Record<string, string>) => {
+      securitiesRepository.find.mockResolvedValue([
+        {
+          id: "sec1",
+          symbol: "AAA",
+          name: "Alpha",
+          securityType: "STOCK",
+          currencyCode: "USD",
+        },
+      ]);
+      holdingsRepository.find.mockResolvedValue([holding({ quantity: 10 })]);
+      txRepository.find.mockResolvedValue([
+        makeTx({
+          transactionDate: "2024-01-10",
+          quantity: 10,
+          price: 100,
+          totalAmount: 1000,
+        }),
+      ]);
+      manager.query.mockResolvedValue(
+        Object.entries(closes).map(([price_date, close_price]) =>
+          priceRow({ price_date, close_price }),
+        ),
+      );
+      const { rows } = await service.computeHoldings(
+        "u1",
+        ["acc1"],
+        "2024-06-10",
+        "USD",
+      );
+      return rows[0].values;
+    };
+
+    it("is null when the two closes are weeks apart", async () => {
+      const v = await changeFor({ "2024-05-01": "100", "2024-06-10": "120" });
+      expect(v.change).toBeNull();
+      expect(v.changePercent).toBeNull();
+      expect(v.todaysTotalChange).toBeNull();
+    });
+
+    it("is null when the newer close is stale against the as-of date", async () => {
+      const v = await changeFor({ "2024-05-30": "100", "2024-05-31": "120" });
+      expect(v.change).toBeNull();
+      expect(v.todaysTotalChange).toBeNull();
+    });
+
+    it("keeps the figures for adjacent, current closes", async () => {
+      const v = await changeFor({ "2024-06-07": "119", "2024-06-10": "120" });
+      expect(v.change).toBe(1);
+      expect(v.changePercent).toBe(0.8403);
+      expect(v.todaysTotalChange).toBe(10);
+    });
+  });
+
+  describe("period starts at month ends", () => {
+    const returnFor = async (
+      asOf: string,
+      closes: Record<string, string>,
+      key: "totalReturn3Month" | "totalReturn1Year",
+    ) => {
+      securitiesRepository.find.mockResolvedValue([
+        {
+          id: "sec1",
+          symbol: "AAA",
+          name: "Alpha",
+          securityType: "STOCK",
+          currencyCode: "USD",
+        },
+      ]);
+      holdingsRepository.find.mockResolvedValue([holding({ quantity: 10 })]);
+      txRepository.find.mockResolvedValue([
+        makeTx({
+          transactionDate: "2020-01-10",
+          quantity: 10,
+          price: 100,
+          totalAmount: 1000,
+        }),
+      ]);
+      manager.query.mockResolvedValue(
+        Object.entries(closes).map(([price_date, close_price]) =>
+          priceRow({ price_date, close_price }),
+        ),
+      );
+      const { rows } = await service.computeHoldings(
+        "u1",
+        ["acc1"],
+        asOf,
+        "USD",
+      );
+      return rows[0].values[key];
+    };
+
+    it("clamps 3 months before May 31 to Feb 28, not Mar 3", async () => {
+      expect(
+        await returnFor(
+          "2026-05-31",
+          { "2026-02-28": "100", "2026-03-03": "200", "2026-05-31": "220" },
+          "totalReturn3Month",
+        ),
+      ).toBe(120);
+    });
+
+    it("clamps 1 year before Feb 29 to Feb 28, not Mar 1", async () => {
+      expect(
+        await returnFor(
+          "2024-02-29",
+          { "2023-02-28": "100", "2023-03-01": "200", "2024-02-29": "110" },
+          "totalReturn1Year",
+        ),
+      ).toBe(10);
+    });
+  });
+
   it("drops fully-sold positions (not in the holdings table)", async () => {
     securitiesRepository.find.mockResolvedValue([
       {

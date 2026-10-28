@@ -26,6 +26,7 @@ import { InvestmentCellValue } from "./dto/execute-investment-report.dto";
 import { roundToDecimals, sumMoney } from "../common/round.util";
 import { FxAggregate } from "../common/fx-aggregate";
 import { todayYMD } from "../common/date-utils";
+import { resolveDailyPriceChange } from "../securities/daily-change.util";
 
 /**
  * The rows of a holdings computation and how complete their conversion was.
@@ -116,8 +117,13 @@ function isoAddDays(iso: string, days: number): string {
 
 function isoAddMonths(iso: string, months: number): string {
   const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  dt.setUTCMonth(dt.getUTCMonth() + months);
+  // Clamp to the target month's last day: setUTCMonth alone overflows
+  // (May 31 - 3 months would be Mar 3).
+  const dt = new Date(Date.UTC(y, m - 1 + months, 1));
+  const lastDay = new Date(
+    Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  dt.setUTCDate(Math.min(d, lastDay));
   return dt.toISOString().slice(0, 10);
 }
 
@@ -342,6 +348,17 @@ export class InvestmentReportDataService {
       const prevRow = asOfIdx >= 1 ? prices[asOfIdx - 1] : null;
 
       const lastPrice = asOfRow ? asOfRow.close : null;
+      // A daily move only between adjacent, current sessions; otherwise null.
+      const daily =
+        asOfRow && prevRow
+          ? resolveDailyPriceChange(
+              [
+                { price: asOfRow.close, date: asOfRow.date },
+                { price: prevRow.close, date: prevRow.date },
+              ],
+              asOfDate,
+            )
+          : null;
       const previousClose = prevRow ? prevRow.close : null;
 
       let quantity = roundToDecimals(group.state.quantity, 8);
@@ -393,13 +410,10 @@ export class InvestmentReportDataService {
         gain !== null && costBasis > 0
           ? roundToDecimals((gain / costBasis) * 100, 4)
           : null;
-      const change =
-        lastPrice !== null && previousClose !== null
-          ? roundToDecimals(lastPrice - previousClose, 6)
-          : null;
+      const change = daily ? roundToDecimals(daily.dailyChange, 6) : null;
       const changePercent =
-        change !== null && previousClose
-          ? roundToDecimals((change / previousClose) * 100, 4)
+        change !== null && daily
+          ? roundToDecimals((change / daily.previousPrice) * 100, 4)
           : null;
       const todaysTotalChange =
         change !== null ? roundToDecimals(change * quantity, 4) : null;
