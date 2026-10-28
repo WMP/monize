@@ -13,10 +13,11 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { SharedEntryFinanceService } from "./shared-entry-finance.service";
 import { SaveSharedEntryFinanceDto } from "./dto/shared-entry-finance.dto";
 import { SharedNotificationsInterceptor } from "./shared-notifications.interceptor";
+import { SharedFinanceDeferredGuard } from "./shared-finance-deferred.guard";
 
 @ApiTags("Shared expenses")
 @ApiBearerAuth()
-@UseGuards(AuthGuard("jwt"))
+@UseGuards(AuthGuard("jwt"), SharedFinanceDeferredGuard)
 @UseInterceptors(SharedNotificationsInterceptor)
 @Controller("shared-expenses/groups/:groupId/entry-finances")
 export class SharedEntryFinanceController {

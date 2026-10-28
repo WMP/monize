@@ -16,6 +16,7 @@ import {
   EnableSharedFinanceDto,
 } from "./dto/shared-finance.dto";
 import { SharedCommandDto } from "./dto/shared-command.dto";
+import { SharedFinanceDeferredGuard } from "./shared-finance-deferred.guard";
 
 type SharedRequest = { user: { id: string } };
 
@@ -35,6 +36,7 @@ export class SharedFinanceController {
   }
 
   @Post("enable")
+  @UseGuards(SharedFinanceDeferredGuard)
   enable(
     @Request() req: SharedRequest,
     @Param("groupId", ParseUUIDPipe) groupId: string,
@@ -44,6 +46,7 @@ export class SharedFinanceController {
   }
 
   @Post("entries/:entryId/preview")
+  @UseGuards(SharedFinanceDeferredGuard)
   preview(
     @Request() req: SharedRequest,
     @Param("groupId", ParseUUIDPipe) groupId: string,
@@ -54,6 +57,7 @@ export class SharedFinanceController {
   }
 
   @Post("entries/:entryId/book")
+  @UseGuards(SharedFinanceDeferredGuard)
   book(
     @Request() req: SharedRequest,
     @Param("groupId", ParseUUIDPipe) groupId: string,
