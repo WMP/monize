@@ -157,6 +157,19 @@ describe('a target cannot be met by a truncated schedule', () => {
     expect(savings.amount).toBeNull();
     expect(savings.interestSaved).toBeNull();
   });
+
+  it('never reports a saving when maxPayments truncates an amortizing loan', () => {
+    // maxPayments caps every candidate schedule, so its interest is a subtotal
+    // of the loan's, never a lifetime figure to measure a saving against.
+    const capped = baseInput({ maxPayments: 12 });
+    expect(baseline.numPayments).toBeGreaterThan(12);
+    expect(generateLoanSchedule(capped).paidOff).toBe(false);
+
+    const savings = solveRecurringForInterestSavings(capped, 1);
+    expect(savings.status).toBe('baseline-incomplete');
+    expect(savings.amount).toBeNull();
+    expect(savings.interestSaved).toBeNull();
+  });
 });
 
 describe('a fractional step still yields a multiple of the step', () => {
