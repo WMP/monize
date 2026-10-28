@@ -357,5 +357,10 @@
   "groupOnlyHelp": "Opcional: deixe desativado para manter o registo apenas no grupo.",
   "noBankPaymentHelp": "Não pagou nem recebeu dinheiro por este registo. Apenas a sua parte e o montante em dívida serão registados.",
   "saveAndShare": "Guardar e partilhar",
-  "saveAndShareHelp": "Guarde esta transação e depois escolha um grupo para a dividir entre pessoas."
+  "saveAndShareHelp": "Guarde esta transação e depois escolha um grupo para a dividir entre pessoas.",
+  "financeDeferred": "As novas ligações às finanças pessoais não estão disponíveis nesta versão. Continue a registar despesas no grupo; os registos pessoais existentes podem ser consultados ou desligados.",
+  "savedFilesPending": "A despesa foi guardada. Alguns documentos abaixo ainda estão pendentes. Tente anexá-los novamente ou feche a janela, mantendo a despesa guardada.",
+  "entryUploadHint": "Estes ficheiros serão partilhados com o grupo ao guardar a despesa.",
+  "removeFilter": "Remover o filtro {filter}",
+  "filterValue": "{filter}: {value}"
 }

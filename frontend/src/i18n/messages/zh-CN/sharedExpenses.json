@@ -357,5 +357,10 @@
   "groupOnlyHelp": "可选：保持关闭可将记录仅保留在群组中。",
   "noBankPaymentHelp": "你没有为此记录付款或收款。系统只会记录你的份额和应收或应付金额。",
   "saveAndShare": "保存并分摊",
-  "saveAndShareHelp": "保存此交易，然后选择群组并与其他人分摊。"
+  "saveAndShareHelp": "保存此交易，然后选择群组并与其他人分摊。",
+  "financeDeferred": "此版本暂不支持新建个人财务关联。你仍可在群组中记录支出；已有的个人记录仍可查看或解除关联。",
+  "savedFilesPending": "支出已保存。下方部分文件仍未附加。请重试以完成附加，或关闭窗口并保留已保存的支出。",
+  "entryUploadHint": "保存支出时，这些文件将分享给群组。",
+  "removeFilter": "移除{filter}筛选条件",
+  "filterValue": "{filter}：{value}"
 }

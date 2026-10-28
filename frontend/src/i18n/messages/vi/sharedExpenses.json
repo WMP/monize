@@ -357,5 +357,10 @@
   "groupOnlyHelp": "Không bắt buộc: để tắt để chỉ giữ mục trong nhóm.",
   "noBankPaymentHelp": "Bạn không trả hoặc nhận tiền cho mục này. Chỉ phần của bạn và số tiền nợ được ghi nhận.",
   "saveAndShare": "Lưu và chia sẻ",
-  "saveAndShareHelp": "Lưu giao dịch này, rồi chọn nhóm để chia cho mọi người."
+  "saveAndShareHelp": "Lưu giao dịch này, rồi chọn nhóm để chia cho mọi người.",
+  "financeDeferred": "Phiên bản này chưa hỗ trợ tạo kết nối mới với tài chính cá nhân. Bạn vẫn có thể ghi chi tiêu trong nhóm; các bản ghi cá nhân hiện có vẫn có thể được xem hoặc hủy liên kết.",
+  "savedFilesPending": "Đã lưu khoản chi. Một số tài liệu bên dưới vẫn đang chờ đính kèm. Hãy thử lại để đính kèm hoặc đóng cửa sổ và giữ khoản chi đã lưu.",
+  "entryUploadHint": "Các tệp này sẽ được chia sẻ với nhóm khi bạn lưu khoản chi.",
+  "removeFilter": "Xóa bộ lọc {filter}",
+  "filterValue": "{filter}: {value}"
 }

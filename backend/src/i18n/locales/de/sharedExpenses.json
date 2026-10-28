@@ -40,5 +40,6 @@
   "groupNotEmpty": "Nur leere Gruppen können gelöscht werden. Archiviere die Gruppe, um Einträge, Dokumente und private Buchungen zu erhalten.",
   "financePaymentSum": "Teile deinen gesamten Beitrag in der Ausgabenwährung auf die ausgewählten Bankzahlungen auf. Jede Zahlung muss positiv sein; jede Kontobewegung darf einmal verwendet werden.",
   "ownershipConsent": "Das ausgewählte Mitglied muss der Eigentumsübernahme zuerst zustimmen. Aktualisiere die Gruppe, um die Antwort zu prüfen.",
-  "financeSplit": "Wähle positive Teilbeträge aus den Kategorieaufteilungen. Ihre Summe muss dem gemeinsamen Bankbetrag entsprechen; Überweisungs- und Investmentaufteilungen sind ausgeschlossen."
+  "financeSplit": "Wähle positive Teilbeträge aus den Kategorieaufteilungen. Ihre Summe muss dem gemeinsamen Bankbetrag entsprechen; Überweisungs- und Investmentaufteilungen sind ausgeschlossen.",
+  "financeDeferred": "Neue Verknüpfungen mit persönlichen Finanzen sind in dieser Version nicht verfügbar. Erfasse Ausgaben weiter in der Gruppe; bestehende persönliche Buchungen können weiterhin angezeigt oder getrennt werden."
 }

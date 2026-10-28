@@ -40,5 +40,6 @@
   "groupNotEmpty": "Solo se puede eliminar un grupo vacío. Archívalo para conservar sus registros, documentos y apuntes personales.",
   "financePaymentSum": "Reparte toda tu aportación entre los pagos bancarios elegidos en la moneda del gasto. Cada pago debe ser positivo y cada movimiento solo puede usarse una vez.",
   "ownershipConsent": "El miembro elegido debe aceptar primero la solicitud de propiedad. Actualiza el grupo para ver su respuesta.",
-  "financeSplit": "Elige importes positivos de las líneas por categoría. Su suma debe coincidir con el importe bancario compartido; se excluyen las líneas de transferencia e inversión."
+  "financeSplit": "Elige importes positivos de las líneas por categoría. Su suma debe coincidir con el importe bancario compartido; se excluyen las líneas de transferencia e inversión.",
+  "financeDeferred": "Las nuevas conexiones con las finanzas personales no están disponibles en esta versión. Sigue registrando gastos en el grupo; los registros personales existentes se pueden consultar o desvincular."
 }

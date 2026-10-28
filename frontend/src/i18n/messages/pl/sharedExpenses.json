@@ -357,5 +357,10 @@
   "groupOnlyHelp": "Opcjonalnie: pozostaw wyłączone, aby zapisać wpis tylko w grupie.",
   "noBankPaymentHelp": "Nie płacisz ani nie otrzymujesz pieniędzy za ten wpis. Zapisany zostanie tylko Twój udział oraz należność lub zobowiązanie.",
   "saveAndShare": "Zapisz i podziel",
-  "saveAndShareHelp": "Zapisz tę transakcję, a następnie wybierz grupę i podziel ją między osoby."
+  "saveAndShareHelp": "Zapisz tę transakcję, a następnie wybierz grupę i podziel ją między osoby.",
+  "financeDeferred": "Nowe powiązania z finansami osobistymi są niedostępne w tej wersji. Nadal możesz zapisywać wydatki w grupie; istniejące zapisy osobiste można przeglądać lub odłączyć.",
+  "savedFilesPending": "Wydatek został zapisany. Niektóre dokumenty poniżej wciąż oczekują na dołączenie. Spróbuj ponownie je przesłać lub zamknij okno, zachowując zapisany wydatek.",
+  "entryUploadHint": "Te pliki zostaną udostępnione grupie po zapisaniu wydatku.",
+  "removeFilter": "Usuń filtr {filter}",
+  "filterValue": "{filter}: {value}"
 }

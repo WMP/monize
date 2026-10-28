@@ -357,5 +357,10 @@
   "groupOnlyHelp": "Facultatif : laissez cette option désactivée pour conserver l’écriture uniquement dans le groupe.",
   "noBankPaymentHelp": "Vous n’avez ni payé ni reçu d’argent pour cette écriture. Seules votre part et la somme due seront enregistrées.",
   "saveAndShare": "Enregistrer et partager",
-  "saveAndShareHelp": "Enregistrez cette transaction, puis choisissez un groupe pour la répartir entre plusieurs personnes."
+  "saveAndShareHelp": "Enregistrez cette transaction, puis choisissez un groupe pour la répartir entre plusieurs personnes.",
+  "financeDeferred": "Les nouvelles connexions aux finances personnelles ne sont pas disponibles dans cette version. Continuez à saisir les dépenses dans le groupe ; les écritures personnelles existantes restent consultables et peuvent être dissociées.",
+  "savedFilesPending": "La dépense est enregistrée. Certains documents ci-dessous sont encore en attente. Réessayez de les joindre ou fermez la fenêtre en conservant la dépense enregistrée.",
+  "entryUploadHint": "Ces fichiers seront partagés avec le groupe lors de l’enregistrement de la dépense.",
+  "removeFilter": "Supprimer le filtre {filter}",
+  "filterValue": "{filter}: {value}"
 }

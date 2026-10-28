@@ -40,5 +40,6 @@
   "groupNotEmpty": "Seul un groupe vide peut être supprimé. Archivez-le pour conserver ses écritures, documents et écritures personnelles.",
   "financePaymentSum": "Répartissez toute votre contribution entre les paiements bancaires sélectionnés dans la devise de la dépense. Chaque paiement doit être positif et chaque mouvement bancaire ne peut être utilisé qu’une fois.",
   "ownershipConsent": "Le membre sélectionné doit d’abord accepter ce transfert de propriété. Actualisez le groupe pour vérifier sa réponse.",
-  "financeSplit": "Choisissez des montants positifs parmi les lignes par catégorie. Leur somme doit égaler le montant bancaire partagé ; les lignes de virement et d’investissement sont exclues."
+  "financeSplit": "Choisissez des montants positifs parmi les lignes par catégorie. Leur somme doit égaler le montant bancaire partagé ; les lignes de virement et d’investissement sont exclues.",
+  "financeDeferred": "Les nouvelles connexions aux finances personnelles ne sont pas disponibles dans cette version. Continuez à saisir les dépenses dans le groupe ; les écritures personnelles existantes restent consultables et peuvent être dissociées."
 }

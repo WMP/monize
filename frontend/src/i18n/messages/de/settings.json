@@ -835,7 +835,19 @@
       },
       "doneButton": "Fertig",
       "unlinkedBondSecuritiesList": "Betroffene Wertpapiere: {symbols}.",
-      "unlinkedBondSecuritiesMore": "und {count} weitere"
+      "unlinkedBondSecuritiesMore": "und {count} weitere",
+      "counts": {
+        "sharedGroups": "Ausgabengruppen",
+        "sharedParticipants": "Gruppenteilnehmer",
+        "sharedEntries": "Gruppeneinträge",
+        "sharedAllocations": "Ausgabenaufteilungen",
+        "sharedActivity": "Gruppenaktivität",
+        "sharedPeople": "Kontakte gemeinsamer Ausgaben",
+        "sharedPersonLinks": "Verknüpfte Kontakte",
+        "sharedIntegrations": "Verbindungen zu persönlichen Finanzen",
+        "sharedPostings": "Persönliche Buchungen gemeinsamer Ausgaben",
+        "sharedLedgerLinks": "Verknüpfte persönliche Transaktionen"
+      }
     },
     "storedBackups": {
       "heading": "Automatische Sicherungen",
