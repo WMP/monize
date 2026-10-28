@@ -27,3 +27,11 @@ Accrual writers use the lock scopes in `backend/src/common/db/locks.ts`, source 
 ## Contribution boundary
 
 Supply the approving discussion link and maintainer assignment before publishing. The upstream contribution process may require a smaller review series; this local branch preserves the full feature for that decision. Include AI assistance disclosure and verify each PR checklist statement instead of pre-checking it.
+
+## October 28 review remediation
+
+Preserve the opt-in feature while restoring upstream behavior for Cash users. Replace per-row identity lookup functions with set-based schedule mappings and a full source-transaction index, retaining SECURITY INVOKER and all owner/delegate policies. Test PG16 under the unprivileged enforced role with transfer legs, split-transfer children and investments as well as allocations. Exercise summary, payee/category trends and monthly totals, not just register paging. Keep all fixture data synthetic.
+
+Restore native Cash query/response contracts, SQL aggregation, bounded historical FX reads and partial-result disclosures. Skip optional UI reads/previews and expensive write snapshots for users without schedules; retained schedules still follow source edits when the feature is disabled. Any presence fast path must respect concurrent schedule creation and the existing source/advisory lock order. Repair date-rule history and editor persistence, split-preview selection, reconciliation fingerprints and bulk mutation/history boundaries.
+
+Each batch adds failing-before regressions, then focused validation. Run broad gates after the related batches; retain actual SQL plans and timing evidence outside the source tree. Track every maintainer finding separately, including items still awaiting reproduction, in the adjacent task list. No production deployment is included.

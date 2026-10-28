@@ -29,3 +29,19 @@ Corrected dated-rate test fixtures, FK comparison by reference target, budget ba
 - [x] Reproduce the maintainer's notification-column error against PostgreSQL with enforced RLS.
 - [x] Restore ordinary scoped notification reads and restrict recognition projection to transaction roots.
 - [x] Verify due reminders and repeated-read deduplication in cash/accrual mode, plus adjacent reporting coverage: 28 integration tests and 774 changed backend test files/guards pass.
+
+## October 28 maintainer review
+
+- [ ] Reproduce transfer/investment RLS performance on a synthetic PG16 ledger through real services.
+- [ ] Replace scalar identity lookups with set-based mappings and add the full schedule source index.
+- [ ] Restore the initial migration Cash default without overwriting saved choices.
+- [ ] Restore native Cash reads, SQL aggregation, bounded FX history and partial-result contracts.
+- [ ] Repair recurring-charge grouping, monthly distinct counts and closed-budget snapshots.
+- [ ] Remove optional frontend accrual calls/cache clears when disabled and restore independent panel errors.
+- [ ] Reduce import/taxonomy/rule/source-write locks and snapshots without opening schedule-creation races.
+- [ ] Preserve recognition date rules in combined saves and history/undo.
+- [ ] Repair stale split previews, reconcile fingerprints, bulk-update races and oversized history.
+- [ ] Review preview locks, delegate limits, SQL rewriting and unused UI code.
+- [ ] Diagnose current backend-unit and security-scan CI failures.
+- [ ] Run merged-source gates, record exact changed files and sync server development records.
+- [ ] Push validated commits and summarize addressed findings on PR #1883.
