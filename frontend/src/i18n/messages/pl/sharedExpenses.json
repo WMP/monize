@@ -97,6 +97,8 @@
   "splitHelp": "Wybierz uczestników. Osoba może zapłacić, nawet jeśli nie ma udziału w koszcie.",
   "apply": "Zastosuj podział",
   "remainder": "Przypisz resztę osobie: {name}",
+  "splitRemainderEqually": "Podziel Resztę Po Równo Między {names}",
+  "splitRemainderHelp": "Pozostaw puste kwoty przy osobach, które mają podzielić resztę. Wpisane kwoty, w tym zero, pozostaną bez zmian.",
   "extras": "Dodatki, a reszta po równo",
   "extrasHelp": "Najpierw wpisz dodatki każdej osoby. Pozostałą kwotę podzielimy między zaznaczone osoby.",
   "splitInvalid": "Sprawdź wartości: kwoty muszą dawać pełną sumę, procenty 100, a wagi muszą być dodatnie.",

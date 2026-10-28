@@ -97,6 +97,8 @@
   "splitHelp": "Pilih siapa yang ikut serta. Seseorang dapat membayar tanpa memiliki bagian biaya.",
   "apply": "Terapkan pembagian",
   "remainder": "Berikan sisa kepada {name}",
+  "splitRemainderEqually": "Bagi Sisa Sama Rata antara {names}",
+  "splitRemainderHelp": "Kosongkan jumlah untuk orang yang akan berbagi sisanya. Jumlah yang sudah diisi, termasuk nol, tetap sama.",
   "extras": "Biaya tambahan, lalu bagi rata sisanya",
   "extrasHelp": "Masukkan biaya tambahan setiap orang terlebih dahulu. Sisa jumlah dibagi antara orang yang dipilih.",
   "splitInvalid": "Periksa jumlahnya: jumlah bagian harus sama dengan total, persentase harus berjumlah 100, dan bobot harus positif.",

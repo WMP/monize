@@ -97,6 +97,8 @@
   "splitHelp": "Escolha quem participou. Uma pessoa pode pagar sem ter uma parte da despesa.",
   "apply": "Aplicar divisão",
   "remainder": "Atribuir o restante a {name}",
+  "splitRemainderEqually": "Dividir o Restante Igualmente entre {names}",
+  "splitRemainderHelp": "Deixe os valores em branco para as pessoas que vão dividir o restante. Os valores preenchidos, incluindo zero, permanecem iguais.",
   "extras": "Extras e depois o restante por igual",
   "extrasHelp": "Indique primeiro os extras de cada pessoa. O restante é dividido pelas pessoas selecionadas.",
   "splitInvalid": "Verifique os valores: as partes exatas devem somar o total, as porcentagens 100 e os pesos devem ser positivos.",

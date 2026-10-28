@@ -97,6 +97,8 @@
   "splitHelp": "Wähle die Beteiligten aus. Eine Person kann bezahlen, ohne einen eigenen Anteil zu haben.",
   "apply": "Aufteilung anwenden",
   "remainder": "Rest {name} zuweisen",
+  "splitRemainderEqually": "Rest Gleichmäßig Auf {names} Verteilen",
+  "splitRemainderHelp": "Lass die Beträge für die Personen leer, die den Rest teilen sollen. Eingegebene Beträge, auch null, bleiben unverändert.",
   "extras": "Extras, dann den Rest gleichmäßig aufteilen",
   "extrasHelp": "Trage zuerst die Extras jeder Person ein. Der Rest wird unter den ausgewählten Personen aufgeteilt.",
   "splitInvalid": "Prüfe die Werte: Genaue Anteile müssen den Gesamtbetrag ergeben, Prozentsätze 100 und Gewichte müssen positiv sein.",
