@@ -101,6 +101,30 @@ export function extrasThenEqual(
     ),
   }));
 }
+
+/** Fill only blank final shares; an entered zero is a fixed amount too. */
+export function splitRemainderEqually(
+  amount: string,
+  rows: readonly Share[],
+  places: number,
+): Share[] {
+  const recipients = rows.filter(
+    (row) => row.value === undefined || row.value === "",
+  );
+  if (!recipients.length) throw new Error("invalid split");
+  const rest =
+    units(amount, places) -
+    rows.reduce((sum, row) => sum + units(row.value || "0", places), BigInt(0));
+  if (rest < BigInt(0)) throw new Error("invalid split");
+  const allocated = new Map(
+    extrasThenEqual(decimal(rest, places), recipients, places).map((row) => [
+      row.participantId,
+      row,
+    ]),
+  );
+  return rows.map((row) => allocated.get(row.participantId) ?? row);
+}
+
 export function initialSharedEntry(
   group: SharedGroupDetail,
   today: string,

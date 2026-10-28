@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -15,7 +15,9 @@ import {
   assignRemainder,
   extrasThenEqual,
   splitDraftStatus,
+  splitRemainderEqually,
 } from "@/lib/shared-split-draft";
+import { formatNameList } from "@/lib/helpers/format-name-list";
 import { useNumberFormat } from "@/hooks/useNumberFormat";
 import {
   SharedError,
@@ -44,6 +46,7 @@ export function SharedSplitEditor({
   onClose: () => void;
 }) {
   const t = useTranslations("sharedExpenses");
+  const locale = useLocale();
   const { formatCurrency, formatPercent } = useNumberFormat();
   const [mode, setMode] = useState(input.splitMode);
   const [selected, setSelected] = useState(
@@ -82,11 +85,12 @@ export function SharedSplitEditor({
           );
   const hasRemainder =
     status.remaining !== null && Number(status.remaining) > 0;
-  const helper = (personId?: string) => {
+  const unfilledPeople = participants.filter((p) =>
+    shares.some((share) => share.participantId === p.id && share.value === ""),
+  );
+  const helper = (resolve: () => SharedEntryInput["shares"]) => {
     try {
-      const rows = personId
-        ? assignRemainder(input.amount, shares, personId, places)
-        : extrasThenEqual(input.amount, shares, places);
+      const rows = resolve();
       setDrafts({
         ...drafts,
         EXACT: Object.fromEntries(rows.map((r) => [r.participantId, r.value!])),
@@ -149,6 +153,9 @@ export function SharedSplitEditor({
                   : t("splitComplete")}
         </p>
         {mode === "WEIGHT" && <SharedNotice>{t("weightsHelp")}</SharedNotice>}
+        {mode === "EXACT" && (
+          <SharedNotice>{t("splitRemainderHelp")}</SharedNotice>
+        )}
         <SharedTabs
           label={t("splitMode")}
           value={mode}
@@ -215,7 +222,11 @@ export function SharedSplitEditor({
                         variant="ghost"
                         size="sm"
                         className="mt-1 text-left"
-                        onClick={() => helper(p.id)}
+                        onClick={() =>
+                          helper(() =>
+                            assignRemainder(input.amount, shares, p.id, places),
+                          )
+                        }
                       >
                         {t("remainder", { name: p.name })}
                       </Button>
@@ -225,6 +236,22 @@ export function SharedSplitEditor({
               </div>
             ))}
         </div>
+        {mode === "EXACT" && hasRemainder && unfilledPeople.length > 1 && (
+          <Button
+            variant="outline"
+            className="text-left break-words"
+            onClick={() =>
+              helper(() => splitRemainderEqually(input.amount, shares, places))
+            }
+          >
+            {t("splitRemainderEqually", {
+              names: formatNameList(
+                locale,
+                unfilledPeople.map((p) => p.name),
+              ),
+            })}
+          </Button>
+        )}
         {mode === "EXACT" && hasRemainder && selected.length > 0 && (
           <details
             open={toolsOpen}
@@ -241,7 +268,12 @@ export function SharedSplitEditor({
             </summary>
             <div className="space-y-3 pt-2">
               <SharedNotice>{t("extrasHelp")}</SharedNotice>
-              <Button variant="outline" onClick={() => helper()}>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  helper(() => extrasThenEqual(input.amount, shares, places))
+                }
+              >
                 {t("extras")}
               </Button>
             </div>

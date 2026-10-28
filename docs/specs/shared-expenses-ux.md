@@ -116,6 +116,11 @@ amounts, not a hidden formula that silently reallocates the bill.
 - **Fill the remainder:** keep the explicit PLN 80 assigned to me and divide
   the remaining PLN 220 between the two explicitly selected recipients: 110 each.
   The action names the recipients. It does not overwrite other filled amounts.
+  Selected people with blank amounts are the remainder recipients; an entered
+  zero stays zero, and an unselected person is excluded without leaving the
+  group. `splitRemainderEqually` in `frontend/src/lib/shared-split-draft.ts`
+  reuses the existing fixed-unit allocation and fills only those blank rows.
+  This is an explicit action before Apply, not a recalculation on every edit.
 - **Extras plus equal remainder:** on a PLN 300 bill, assign me an extra PLN 60
   and split the remaining PLN 240 across all three: 140 / 80 / 80. This differs
   from fixing my final share at PLN 60, which would yield 60 / 120 / 120.

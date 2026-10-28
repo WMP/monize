@@ -4,9 +4,12 @@ import { SharedSplitEditor } from "./SharedSplitEditor";
 import { initialSharedEntry } from "@/lib/shared-split-draft";
 import { sharedGroupFixture } from "./__fixtures__/shared-fixtures";
 
-function setup() {
-  const group = sharedGroupFixture();
-  const input = { ...initialSharedEntry(group, "2026-10-25"), amount: "100" };
+function setup(group = sharedGroupFixture()) {
+  const input = {
+    ...initialSharedEntry(group, "2026-10-25"),
+    amount: "100",
+    contributions: [{ participantId: "me", value: "100" }],
+  };
   const onApply = vi.fn(),
     onClose = vi.fn();
   render(
@@ -21,6 +24,91 @@ function setup() {
   return { onApply, onClose, input };
 }
 describe("SharedSplitEditor", () => {
+  it("keeps a fixed coffee amount and zero while sharing the rest only among selected people", () => {
+    const group = sharedGroupFixture({
+      participantCount: 6,
+      participants: [
+        ...sharedGroupFixture().participants,
+        ...["Bartek", "Celina", "Daniel", "Ewa"].map((name) => ({
+          id: name.toLowerCase(),
+          name,
+          isActive: true,
+          connected: false,
+          role: null,
+        })),
+      ],
+    });
+    const { onApply, input } = setup(group);
+    fireEvent.click(screen.getByRole("button", { name: "Exact amounts" }));
+    fireEvent.change(screen.getByLabelText("Share for Me"), {
+      target: { value: "20" },
+    });
+    fireEvent.change(screen.getByLabelText("Share for Anna"), {
+      target: { value: "0" },
+    });
+    fireEvent.click(screen.getByRole("switch", { name: "Ewa" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Split Remainder Equally Between Bartek, Celina, and Daniel",
+      }),
+    );
+    expect(screen.getByLabelText("Share for Me")).toHaveValue("20.00");
+    expect(screen.getByLabelText("Share for Anna")).toHaveValue("0.00");
+    expect(screen.getByLabelText("Share for Bartek")).toHaveValue("26.67");
+    expect(screen.getByLabelText("Share for Celina")).toHaveValue("26.67");
+    expect(screen.getByLabelText("Share for Daniel")).toHaveValue("26.66");
+    expect(screen.queryByLabelText("Share for Ewa")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Ready to apply");
+    expect(screen.getByRole("status")).toHaveFocus();
+    expect(onApply).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Apply Split" }));
+    expect(onApply).toHaveBeenCalledWith({
+      splitMode: "EXACT",
+      shares: [
+        { participantId: "me", value: "20" },
+        { participantId: "anna", value: "0" },
+        { participantId: "bartek", value: "26.67" },
+        { participantId: "celina", value: "26.67" },
+        { participantId: "daniel", value: "26.66" },
+      ],
+    });
+    expect(group.participants).toHaveLength(6);
+    expect(group.participants.every((p) => p.isActive)).toBe(true);
+    expect(input.shares).toHaveLength(6);
+    expect(input.contributions).toEqual([
+      { participantId: "me", value: "100" },
+    ]);
+  });
+  it("lets a payer cover someone else's expense without taking a share or leaving the group", () => {
+    const { onApply, input } = setup();
+    fireEvent.click(screen.getByRole("switch", { name: "Me" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply Split" }));
+    expect(onApply).toHaveBeenCalledWith({
+      splitMode: "EQUAL",
+      shares: [{ participantId: "anna" }],
+    });
+    expect(input.contributions).toEqual([
+      { participantId: "me", value: "100" },
+    ]);
+    expect(input.shares).toHaveLength(2);
+  });
+  it("cancels a remainder preview without changing the applied shares", () => {
+    const { onApply, onClose, input } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "Exact amounts" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Split Remainder Equally Between Me and Anna",
+      }),
+    );
+    expect(screen.getByLabelText("Share for Me")).toHaveValue("50.00");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onApply).not.toHaveBeenCalled();
+    expect(input.shares).toEqual([
+      { participantId: "me" },
+      { participantId: "anna" },
+    ]);
+  });
   it("cancels local edits without replacing the parent's split", () => {
     const { input, onApply, onClose } = setup();
     fireEvent.click(screen.getByRole("switch", { name: "Anna" }));
