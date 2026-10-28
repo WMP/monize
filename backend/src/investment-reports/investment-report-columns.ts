@@ -286,7 +286,7 @@ export const INVESTMENT_REPORT_COLUMNS: readonly InvestmentColumnDef[] = [
     label: "Total Return - 1 Week",
     type: "percent",
     description:
-      "One-week percentage return: current market value plus income, minus beginning market value, divided by beginning market value.",
+      "One-week percentage return (Modified Dietz): current market value plus income and sales, minus beginning market value and purchases, divided by beginning market value plus purchases and minus sales, each weighted by the days it was invested.",
   },
   {
     key: "totalReturn4Weeks",

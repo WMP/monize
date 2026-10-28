@@ -53,7 +53,7 @@ export type BackupKeyResolution =
   | { status: "unrecoverable" };
 
 /** Every column this feature owns, as a write that turns encryption off. */
-const CLEARED_BACKUP_KEY: Partial<User> = {
+export const CLEARED_BACKUP_KEY: Partial<User> = {
   backupEncryptionEnabled: false,
   backupPasswordEnc: null,
   backupKeyEnc: null,
