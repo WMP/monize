@@ -107,6 +107,8 @@ interface GroupRecord {
   state: ReplayState;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 function isoAddDays(iso: string, days: number): string {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
@@ -892,8 +894,9 @@ export class InvestmentReportDataService {
    * cash distribution `incomeBetween` already counts.
    *
    * `weightedNet` is the Modified Dietz weighting of those flows: each is
-   * weighted by the share of the window left after its date (a flow on `upto`
-   * weighs 0), inflows positive and outflows negative
+   * weighted by the share of the window's days it was invested, counting its
+   * own day (start-of-day convention: a flow on the window's first day weighs
+   * 1, one on `upto` weighs 1/days), inflows positive and outflows negative
    * (`docs/specs/investment-report-period-returns.md`).
    *
    * `null` when a flow cannot be valued: a missing price is unknown, not free.
@@ -906,8 +909,10 @@ export class InvestmentReportDataService {
   ): { inflows: number; outflows: number; weightedNet: number } | null {
     const inflows: number[] = [];
     const outflows: number[] = [];
-    const windowMs = Date.parse(upto) - Date.parse(after);
-    let weightedNet = 0;
+    // `after < upto` for every window the report asks for, so windowMs > 0.
+    const uptoMs = Date.parse(upto);
+    const windowMs = uptoMs - Date.parse(after);
+    const weighted: number[] = [];
     for (const tx of group.txs) {
       if (tx.transactionDate <= after || tx.transactionDate > upto) continue;
       const base = baseInvestmentAction(tx.action);
@@ -932,13 +937,13 @@ export class InvestmentReportDataService {
       if (amount === null) return null;
       (kind === "capitalIn" ? inflows : outflows).push(amount);
       const weight =
-        (Date.parse(upto) - Date.parse(tx.transactionDate)) / windowMs;
-      weightedNet += (kind === "capitalIn" ? amount : -amount) * weight;
+        (uptoMs - Date.parse(tx.transactionDate) + DAY_MS) / windowMs;
+      weighted.push((kind === "capitalIn" ? amount : -amount) * weight);
     }
     return {
       inflows: sumMoney(inflows),
       outflows: sumMoney(outflows),
-      weightedNet: roundToDecimals(weightedNet, 4),
+      weightedNet: sumMoney(weighted),
     };
   }
 
@@ -982,9 +987,7 @@ export class InvestmentReportDataService {
       // A flow that cannot be valued leaves the return unknown, not wrong.
       if (flows === null) continue;
       const denominator = beginValue + flows.weightedNet;
-      if (!(Date.parse(asOfDate) > Date.parse(start)) || denominator <= 0) {
-        continue;
-      }
+      if (denominator <= 0) continue;
       result[key] = roundToDecimals(
         ((marketValue + income + flows.outflows - beginValue - flows.inflows) /
           denominator) *

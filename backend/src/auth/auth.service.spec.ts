@@ -3492,6 +3492,30 @@ describe("AuthService", () => {
       expect(result.mustChangePassword).toBe(false);
     });
 
+    it("confirmOidcLink keeps a login-password backup key as the SSO account's backup key", async () => {
+      // A ref to the hash the link clears would read as stale, and the next
+      // backup run would drop the key and write plaintext from then on.
+      const pendingUser = {
+        ...mockUser,
+        oidcLinkPending: true,
+        oidcLinkExpiresAt: new Date(Date.now() + 3600000),
+        pendingOidcSubject: "oidc-sub-confirmed",
+        backupEncryptionEnabled: true,
+        backupKeyEnc: "enc",
+        backupKeyWrap: "wrap",
+        backupKeyPasswordRef: "ref-of-old-hash",
+      };
+      usersRepository.findOne.mockResolvedValue(pendingUser);
+      usersRepository.save.mockImplementation((u) => u);
+
+      const result = await service.confirmOidcLink("some-token");
+
+      expect(result.backupKeyPasswordRef).toBeNull();
+      expect(result.backupKeyEnc).toBe("enc");
+      expect(result.backupKeyWrap).toBe("wrap");
+      expect(result.backupEncryptionEnabled).toBe(true);
+    });
+
     it("confirmOidcLink ends every credential the local password stood behind", async () => {
       // The account now signs in through the identity provider; a PAT, a
       // trusted device, a session or an MCP client's OAuth grant issued on the

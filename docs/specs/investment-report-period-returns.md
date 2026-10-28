@@ -19,7 +19,7 @@ period, and a sale does the reverse.
 Example, with a window of 7 days: 10 shares held at 100, 90 bought at 100 on day
 2, price 110 at the end. The market gave +10 on 100 shares for part of the
 window. The start-of-window formula divided 1,000 by 10,000 and printed 10%,
-although 9,000 of the money was invested for only 5 of the 7 days. A reader who
+although 9,000 of the money was invested for only 6 of the 7 days. A reader who
 compares the column with the price move sees a figure that fits neither the
 position they had at the start nor the one they had at the end.
 
@@ -30,12 +30,17 @@ The window is (start, asOf]. Dates are ISO `YYYY-MM-DD`. Modified Dietz:
 ```
 numerator   = MV + income + outflows - begin - inflows
 denominator = begin + sum(w_i * inflow_i) - sum(w_i * outflow_i)
-w_i         = days(asOf - flowDate_i) / days(asOf - start)
+w_i         = (days(asOf - flowDate_i) + 1) / days(asOf - start)
 return      = numerator / denominator * 100
 ```
 
-- `days` is calendar days, `Date.parse` of the ISO strings over 86,400,000. A
-  flow on `asOf` weighs 0.
+- `days` is calendar days, `Date.parse` of the ISO strings over 86,400,000.
+- Start-of-day convention: a flow counts as invested on its own day, because
+  `MV` and the closes are end-of-day values. A flow on the window's first day
+  weighs 1; a flow on `asOf` weighs `1 / days`. An end-of-day convention gives a
+  flow on `asOf` weight 0, and a same-day trade away from the close then puts
+  its whole gain over the starting value alone (100% for a 10% move in the
+  table below).
 - `MV` is market value as of `asOf`, in the security's currency.
 - `begin` is the quantity held at `start` times the close on or before `start`.
 - `inflows`: BUY cost in the security currency; transfer-in and share
@@ -71,8 +76,12 @@ The column is `null` (not 0, not a partial figure) when:
 5. a flow in the window cannot be valued (a BUY with no cost, a SELL with no
    proceeds, a transfer on a day with no close);
 6. the weighted denominator is `<= 0` (a sale larger than the money still at
-   work);
-7. `days(asOf - start) <= 0`.
+   work).
+
+Every window the report asks for has `start < asOf`, so `days(asOf - start)`
+is never 0. A small positive denominator (a large sale early in the window)
+can still give a large percentage: Modified Dietz has no lower bound on the
+capital it divides by, and the figure is the method's answer, not an error.
 
 ## 5. Truth table
 
@@ -81,12 +90,12 @@ Window 2024-06-03 .. 2024-06-10 (7 days). `held10`: 10 shares at 100 at start.
 | Case | MV | Flows | Denominator | Return |
 | --- | --- | --- | --- | --- |
 | No flows, close 110 | 1,100 | none | 1,000 | 10% |
-| BUY 90 at 100 on 06-05, close 110 | 11,000 | in 9,000, w 5/7 | 7,428.5714 | 13.4615% (old formula: 10%) |
-| BUY 90 at 100 on 06-05, close 100 | 10,000 | in 9,000 | 7,428.5714 | 0% |
-| Transfer in 5 at 100 on 06-05, close 110 | 1,650 | in 500, w 5/7 | 1,357.1429 | 11.0526% |
-| SELL 9 for 900 on 06-04, close 110 | 110 | out 900, w 6/7 | 228.5714 | 4.375% |
-| SELL 9 for 1,200 on 06-04, close 110 | 110 | out 1,200, w 6/7 | -28.5714 | null |
-| BUY 90 at 100 on 06-10, close 110 | 11,000 | in 9,000, w 0 | 1,000 | 100% |
+| BUY 90 at 100 on 06-05, close 110 | 11,000 | in 9,000, w 6/7 | 8,714.2857 | 11.4754% (old formula: 10%) |
+| BUY 90 at 100 on 06-05, close 100 | 10,000 | in 9,000 | 8,714.2857 | 0% |
+| Transfer in 5 at 100 on 06-05, close 110 | 1,650 | in 500, w 6/7 | 1,428.5714 | 10.5% |
+| SELL 9 for 900 on 06-04, close 110 | 110 | out 900, w 7/7 | 100 | 10% |
+| SELL 9 for 1,200 on 06-04, close 110 | 110 | out 1,200, w 7/7 | -200 | null |
+| BUY 90 at 100 on 06-10, close 110 | 11,000 | in 9,000, w 1/7 | 2,285.7143 | 43.75% |
 | BUY with no cost on 06-05 | any | unvaluable | n/a | null |
 
 ## 6. Test matrix

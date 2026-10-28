@@ -57,11 +57,17 @@ import { isTwoFactorActive } from "./two-factor-state";
  * login drops the TOTP secret, so a hash kept beside it would be a
  * single-factor credential every password-confirmed path still accepted
  * (kenlasko/monize#1858). Re-authentication is the OIDC step-up from here on.
+ *
+ * A backup key wrapped under that password stays: with its password ref
+ * cleared it is an SSO account's dedicated backup key, opened by the password
+ * it was made with, rather than a stale wrap `resolveBackupKey` would drop,
+ * leaving every later backup unencrypted.
  */
 function adoptOidcIdentity(user: User, subject: string | null): void {
   user.oidcSubject = subject;
   user.authProvider = "oidc";
   user.passwordHash = null;
+  user.backupKeyPasswordRef = null;
   user.mustChangePassword = false;
   user.resetToken = null;
   user.resetTokenExpiry = null;
