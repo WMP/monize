@@ -145,6 +145,17 @@ describe('userSettingsApi.updatePreferences cache scope (INV-CACHE-001)', () => 
     expectDropped();
   });
 
+  it.each([true, false])('an accrual feature change (%s) drops every cached figure', async (enabled) => {
+    await userSettingsApi.updatePreferences({ accrualEnabled: enabled });
+    expectDropped();
+  });
+
+  it('a rejected accrual feature change keeps the valid cached figures', async () => {
+    vi.mocked(apiClient.patch).mockRejectedValueOnce(new Error('save failed'));
+    await expect(userSettingsApi.updatePreferences({ accrualEnabled: false })).rejects.toThrow('save failed');
+    expect(getCached('budgets:dashboard')).toEqual({ id: 'b' });
+  });
+
   it('an unrelated preference leaves the caches', async () => {
     await userSettingsApi.updatePreferences({ theme: 'dark' });
     expect(getCached('investments:summary:all')).toEqual({ totalPortfolioValue: 1 });
