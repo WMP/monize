@@ -47,6 +47,7 @@ The collision is the defect: Money 99's loan-template bit is Plus's VOID bit, an
 |---|---|---|---|
 | 0 | Buy | `BUY` | `LOT.htrnBuy`, 3 rows |
 | 1 | Sell | `SELL` | `LOT.htrnSell`, 2 rows |
+| 2 | Interest | `INTEREST` | third file: a bond and a CD, each paired with its cash row, booked to Investments:Interest, no `TRN_INV` row |
 | 4 | Dividend | `DIVIDEND` | memo + `TRN_XFER` cash pairing |
 | 5 | Reinvest dividend | `REINVEST` | `LOT.htrnBuy`; confirmed by the file's author |
 | 12 | Other income | see decision D2 | memo + cash pairing |
@@ -56,7 +57,7 @@ The collision is the defect: Money 99's loan-template bit is Plus's VOID bit, an
 | 16 | Remove shares | `REMOVE_SHARES` | `LOT.htrnSell` |
 | 19, 20, 22 | Employee stock option grant / vest / expiry | none (decision D3) | zero-amount rows on the option security, in the options account |
 
-Codes 1, 4 and 5 mean different things in Money Plus (buy, interest, an unconfirmed reinvest variant), so one table cannot serve both. Not observed: interest, short sale, cover short, return of capital, and codes 2, 3, 6-11, 17, 18, 21. Money 99's action list shows short sale and cover after "Quitar acciones", which suggests 17 and 18; that is a guess and stays unmapped. Unmapped codes keep today's behaviour: `unknownInvestmentAction`, row skipped.
+Codes 1, 2, 4 and 5 mean different things in Money Plus (buy, sell, interest, an unconfirmed reinvest variant), so one table cannot serve both. Not observed: short sale, cover short, return of capital, and codes 3, 6-11, 17, 18, 21. Money 99's action list shows short sale and cover after "Quitar acciones", which suggests 17 and 18; that is a guess and stays unmapped. Unmapped codes keep today's behaviour: `unknownInvestmentAction`, row skipped.
 
 ### Scheduled bills
 
@@ -90,6 +91,17 @@ The test file's EUR->USD rate is 112 (the author's typo), so cross-currency trad
 - **D2 Other income / other expenses (`act` 12, 13).** Money's cash-companion row imports as an ordinary categorized transaction in the cash account, taking the investment row's category, and no investment transaction is created. Monize has no misc-income action; the QIF importer maps both to `INTEREST`, which records an expense as income. A row with no cash partner stays an `unknownInvestmentAction`.
 - **D3 Employee stock options (`act` 19, 20, 22).** Skipped, each with a `stockOptionNotImported` warning rather than `unknownInvestmentAction`. They move no cash and no shares.
 - **D4 Legacy euro currencies (DEM, ESP, FRF and the rest).** Out of scope until a file shows how Money 99 stores them. The converter relabels them as EUR, saying Money 99 quoted them numerically in euros; neither test file has one.
+
+## The first real file (2026-10-27)
+
+The second test file's author imported their own Money 99 file and rebuilt each thing it raised in a third copy, `sample-money99-investments.mny` (a superset of the second; its expected balances are the sums of Money's register rows per account until Money 99's account list for it arrives).
+
+- **`act` 2 is interest** (table above); 19 rows in the real file were skipped as unknown.
+- **A CD is bought by amount.** Its `TRN_INV` row carries neither `qty` nor `dPrice` and it opens no `LOT`; in the real file the CD rows had no `TRN_INV` row at all. Money Plus stores the same purchase as units of 1 (`sample-cd-redemption.mny`), so a Money 99 purchase with no units imports as its principal (total less commission) at price 1.
+- **Recording a split rewrites the trades before it.** Between the second and third files the only AMZN change is a second 1:2 split, and every AMZN `TRN_INV.qty` and `LOT.qty` doubled while every `TRN_INV.dPrice` and quote halved. The quantities read are already split-adjusted, so `securitySplitNotApplied` is not raised for a Money 99 file.
+- **Five columns are absent from every Money 99 file** (`CRNC.fHidden`, `CRNC_EXCHG.fHist`, `ACCT.fWatch`, `TRN.hbillHead`, `TRN_INV.amtInt`) and their defaults are what Money 99 means, so they raise no `missingField` warning.
+- **A skipped trade's cash row was lost.** The cash row in the trade's own sleeve was wired to a synthesized counterpart in that same sleeve, netting it to zero; the third file's cash account came out 11.00 short (its two interest rows). Such a row now imports on its own, with the investment row's category.
+- **Not changed:** `CRNC_EXCHG` holds one rate per pair, dated when it was last edited, so a trade of a foreign-quoted security before that date has no rate on or before it (`resolveFxRate`) and stays in the account's currency with `crossCurrencyTradeUnconverted` (101 rows in the real file). Converting them needs a rate from outside the file. A loan payment with two or more non-principal category legs still leaves the interest category unset (`loanInterestCategoryUnclear`); the third file's split payment names one, so the real file's shape is not yet known. The real file's `act` 12 and 14 rows were reported as `unconfirmedInvestmentAction`, which no Money 99 code raises on `main`.
 
 ## Out of scope
 
