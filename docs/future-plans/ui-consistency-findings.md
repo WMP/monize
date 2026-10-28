@@ -126,7 +126,7 @@ Suggestion: either fix the reference screens first (they are what agents copy), 
 - **D17. Detail pages without the chevron back pattern**: `app/budgets/[id]/page.tsx:261-269` ("Back to Budgets" is an outline button at the end of the actions, after Delete; no switcher, no `SummaryCard`s); `app/budgets/[id]/edit/page.tsx:141-148`; `app/taxes/payroll-deductions/page.tsx:147-153` (`ArrowLeftIcon`); `app/warranties/[id]/page.tsx` has no `EntitySwitcher`.
 - **D18. `<Link><Button>` (a button inside a link)**: `app/reports/custom/new/page.tsx:47-48`, `custom/[id]/edit/page.tsx:111-112`, `investment/new/page.tsx:46-47`, `investment/[id]/edit/page.tsx:111`, `monte-carlo/compare/page.tsx:32-33`. Breaks R12 and is an accessibility defect.
 - **D19. Tables without sort, density or phone layout**: `components/admin/UserManagementTable.tsx:80-101` (raw `<th>`, inside a `bg-gray-900` card at `app/admin/users/page.tsx:311`), `AiReviewInbox`, `EmailReceiptsManager`, `RulesList`; `CategoryList` and `TagList` lack `aria-sort` and the phone layout. Break R5-R7.
-- **D20. `/rules` does not reload after undo/redo** (no `useOnUndoRedo`). Breaks R9.
+- **D20. Withdrawn.** An earlier draft said `/rules` does not reload after undo/redo; it does (`components/rules/RulesManager.tsx:96`, `useOnUndoRedo(load)`).
 
 ### Labels, switches and search
 
