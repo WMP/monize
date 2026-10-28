@@ -396,13 +396,35 @@ describe("TwoFactorService", () => {
 
       await service.verify2FA(tempToken, code);
 
-      // Should have saved the user with re-encrypted secret
-      expect(usersRepository.save).toHaveBeenCalled();
-      const savedUser = usersRepository.save.mock.calls[0][0];
+      // Writes only its own columns (CONC-008), never the stale entity.
+      expect(usersRepository.save).not.toHaveBeenCalled();
+      const [criteria, patch] = usersRepository.update.mock.calls.find(
+        ([, p]: [unknown, Record<string, unknown>]) => "twoFactorSecret" in p,
+      );
+      expect(criteria).toEqual({ id: "user-1" });
+      expect(Object.keys(patch).sort()).toEqual([
+        "lastLogin",
+        "twoFactorSecret",
+      ]);
       // The secret should now be decryptable with the purpose-derived key
-      const result = service.decryptTotpSecret(savedUser.twoFactorSecret);
+      const result = service.decryptTotpSecret(patch.twoFactorSecret);
       expect(result.secret).toBe("TOTP_SECRET");
       expect(result.needsReEncrypt).toBe(false);
+    });
+
+    it("should write only lastLogin, not the whole user, on success", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...userWith2FA,
+        twoFactorSecret: encrypt("TOTP_SECRET", TEST_TOTP_KEY),
+      });
+
+      await service.verify2FA(tempToken, code);
+
+      expect(usersRepository.save).not.toHaveBeenCalled();
+      expect(usersRepository.update).toHaveBeenCalledWith(
+        { id: "user-1" },
+        { lastLogin: expect.any(Date) },
+      );
     });
 
     it("should block after too many per-token attempts", async () => {
