@@ -40,6 +40,13 @@ describe("readMnyTables", () => {
       "TRN.billSeries",
       "TRN_INV.interest",
     ],
+    money99Investments: [
+      "CRNC.hidden",
+      "CRNC_EXCHG.historical",
+      "ACCT.watch",
+      "TRN.billSeries",
+      "TRN_INV.interest",
+    ],
     // Money 2001 predates both the hidden-currency flag and bill series.
     money2001: ["CRNC.hidden", "TRN.billSeries"],
     money2001Pwd: ["CRNC.hidden", "TRN.billSeries"],

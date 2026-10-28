@@ -14,6 +14,14 @@ import {
   MnyImportController,
 } from "./mny-import.controller";
 import { MnyParserService } from "./mny-parser.service";
+import { MnyMarketRateService } from "./mny-market-rates.service";
+import { ExchangeRateService } from "../../currencies/exchange-rate.service";
+
+/** No stored rate history and nothing from the provider. */
+const noMarketRates = {
+  resolveStoredRate: async () => ({ rate: null }),
+  fillRateWindow: async () => ({ stored: 0, answered: true }),
+};
 import { MnyStagingService } from "./mny-staging.service";
 import { MnyUploadErrorInterceptor } from "./mny-upload-error.interceptor";
 import { DEFAULT_MNY_IMPORT_OPTIONS } from "./model/mny-import-options";
@@ -51,7 +59,10 @@ describe("MnyImportController", () => {
 
     controller = new MnyImportController(
       staging as unknown as MnyStagingService,
-      new MnyParserService(),
+      new MnyMarketRateService(
+        new MnyParserService(),
+        noMarketRates as unknown as ExchangeRateService,
+      ),
       jobs as unknown as MnyImportJobService,
       importService as unknown as MnyImportService,
     );

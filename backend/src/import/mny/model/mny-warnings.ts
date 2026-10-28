@@ -99,6 +99,12 @@ export const MNY_WARNING_CODES = [
    * stored in the account's currency with rate 1, not converted.
    */
   "crossCurrencyTradeUnconverted",
+  /**
+   * A trade of a security quoted in another currency than its account, which
+   * the file had no rate for, converted at the market rate for its date from
+   * Monize's rate history and provider instead.
+   */
+  "crossCurrencyTradeMarketRate",
 ] as const;
 
 export type MnyWarningCode = (typeof MNY_WARNING_CODES)[number];
