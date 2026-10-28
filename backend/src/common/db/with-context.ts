@@ -17,14 +17,25 @@ import { UUID_REGEX } from "../query-param-utils";
  * `app.real_user_id` for this user. Validates the id is a UUID -- a garbage
  * value would make every policied statement raise 22P02 at enforcement, so we
  * fail here, at the wrap site, instead.
+ *
+ * `timezone` is the user's IANA zone when the caller knows it (a cron's
+ * timezone bucket), so `todayYMD()` and friends do not fall back to the
+ * server's date.
  */
-export function withUserContext<T>(userId: string, fn: () => T): T {
+export function withUserContext<T>(
+  userId: string,
+  fn: () => T,
+  timezone?: string,
+): T {
   if (!UUID_REGEX.test(userId)) {
     throw new Error(
       `withUserContext requires a valid UUID userId (got "${userId}")`,
     );
   }
-  return requestContextStorage.run({ userId }, fn);
+  return requestContextStorage.run(
+    { userId, ...(timezone !== undefined ? { timezone } : {}) },
+    fn,
+  );
 }
 
 /**

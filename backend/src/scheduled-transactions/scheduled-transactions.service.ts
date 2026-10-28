@@ -630,17 +630,21 @@ export class ScheduledTransactionsService {
 
         for (const scheduled of dueTransactions) {
           try {
-            await withUserContext(scheduled.userId, () =>
-              // Auto-post: refuse under the lock if the user turned the schedule
-              // inactive or off auto-post after cron selected it (issue #1154
-              // re-review). The ConflictException is treated as "claimed
-              // elsewhere" and skipped below. `expectedDueDate` pins the post
-              // to the occurrence selected here, so a replica that loses the
-              // race skips rather than posting the next one (issue #1452).
-              this.post(scheduled.userId, scheduled.id, undefined, {
-                requireActiveAutoPost: true,
-                expectedDueDate: ensureYMD(scheduled.nextDueDate),
-              }),
+            await withUserContext(
+              scheduled.userId,
+              () =>
+                // Auto-post: refuse under the lock if the user turned the schedule
+                // inactive or off auto-post after cron selected it (issue #1154
+                // re-review). The ConflictException is treated as "claimed
+                // elsewhere" and skipped below. `expectedDueDate` pins the post
+                // to the occurrence selected here, so a replica that loses the
+                // race skips rather than posting the next one (issue #1452).
+                this.post(scheduled.userId, scheduled.id, undefined, {
+                  requireActiveAutoPost: true,
+                  expectedDueDate: ensureYMD(scheduled.nextDueDate),
+                }),
+              // The bucket's zone, so "today" is the user's, not the server's.
+              tz,
             );
             totalSuccess++;
           } catch (error) {
