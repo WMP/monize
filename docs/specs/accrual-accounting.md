@@ -10,7 +10,7 @@ An optional schedule allocates one existing income or expense, or an eligible sa
 - Allocation uses integer minor units, retaining source precision under the engine's currency rules; a division remainder belongs to the final period. The recognized amounts sum to the source amount.
 - Source edits, schedule writes and removals validate the reviewed fingerprint and revision under source locks inside the same `withScopedDb` transaction as their writes. A stale preview refuses before commit. Undo/redo retains linked schedule state.
 - Expense timing positions net in one Prepaid Expenses bucket; income positions net in one Unearned Revenue bucket. Past recognition and payment offset within that bucket. Read-only system-account detail remains separate by native currency under Accounts / Other.
-- Cash / Accrual controls use one user-level default, with an ephemeral view override. This local implementation defaults to Accrual; the upstream default remains subject to maintainer agreement.
+- Cash / Accrual controls use one user-level default, with an ephemeral view override. Cash is the fallback default. Disabling accrual forces cash execution while retaining schedules and the saved basis preference for later re-enabling.
 - Register recognition rows open their parent editor on Accrual. The clicked month is highlighted until a draft change. Source fields and the schedule are reviewed and saved together.
 - Ownership, delegated-read restrictions, VOID exclusion, investment linkage, category netting and missing-FX disclosure apply to recognition as they do to cash reporting.
 

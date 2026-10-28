@@ -6,8 +6,11 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import type { EntityManager } from "typeorm";
-import { reportingFactCtes } from "./reporting-facts-sql";
-import { resolveReportingBasis, type ReportingBasis } from "./reporting-basis";
+import {
+  resolveReportingBasis,
+  resolveReportingExecution,
+  type ReportingBasis,
+} from "./reporting-basis";
 import {
   reportingCurrency,
   reportingRates,
@@ -32,7 +35,7 @@ export interface ReportingDetailsInput {
   limit?: number;
 }
 /** Read-only component export, bounded before conversion. Identity/classification
- * comes from the source; period amount/date comes from the same fact CTE as totals.
+ * comes from the source; period amount/date comes from persisted allocation facts.
  */
 export async function readReportingDetails(
   m: EntityManager,
@@ -57,9 +60,15 @@ export async function readReportingDetails(
         input.categoryIds,
       )
     : undefined;
-  const ctes = reportingFactCtes("$1", basis)
-    .map((cte) => `${cte.name} AS (${cte.query})`)
-    .join(",");
+  const execution = await resolveReportingExecution(m, userId, basis);
+  const components =
+    execution === "accrual"
+      ? "public.accrual_reporting_components"
+      : `(SELECT t.id AS source_id,sp.id AS split_id,t.transaction_date AS effective_date,
+        COALESCE(sp.amount,t.amount) AS amount,t.currency_code,t.original_currency_code,t.exchange_rate,
+        t.transaction_date AS cash_date,COALESCE(sp.amount,t.amount) AS source_amount,NULL::uuid AS schedule_id
+        FROM public.transactions t LEFT JOIN public.transaction_splits sp ON sp.transaction_id=t.id AND t.is_split
+        WHERE t.user_id=$1)`;
   // Includes VOID: investment linkage classifies identity, not its financial effect.
   const ordinary = investmentExclusionSql({
     accountAlias: "account",
@@ -69,7 +78,7 @@ export async function readReportingDetails(
     .split("FROM investment_transactions") // includes VOID: linkage identity, not financial effects.
     .join("FROM public.investment_transactions");
   const rows: any[] = await m.query(
-    `WITH ${ctes}, classified AS (
+    `WITH classified AS (
     SELECT c.source_id AS "sourceTransactionId",c.split_id AS "sourceSplitId",c.schedule_id AS "scheduleId",
       TO_CHAR(c.cash_date,'YYYY-MM-DD') AS "cashDate",TO_CHAR(c.effective_date,'YYYY-MM-DD') AS "effectiveDate",
       c.source_amount::text AS "sourceAmount",c.amount::text AS "nativeAmount",c.currency_code AS "currencyCode",
@@ -80,7 +89,7 @@ export async function readReportingDetails(
       CASE WHEN NOT (${ordinary}) THEN 'investment'
         WHEN t.is_transfer OR sp.transfer_account_id IS NOT NULL THEN 'transfer' ELSE 'ordinary' END AS kind,
       EXISTS(SELECT 1 FROM accounts ax WHERE ax.user_id=t.user_id AND ax.asset_category_id=COALESCE(sp.category_id,t.category_id)) AS "assetCategory"
-    FROM recognition_components c JOIN public.transactions t ON t.id=c.source_id
+    FROM ${components} c JOIN public.transactions t ON t.id=c.source_id
     LEFT JOIN public.transaction_splits sp ON sp.id=c.split_id AND sp.transaction_id=t.id
     JOIN accounts account ON account.id=t.account_id
     WHERE t.user_id=$1 AND ${LEDGER_MOVEMENT_PREDICATE}

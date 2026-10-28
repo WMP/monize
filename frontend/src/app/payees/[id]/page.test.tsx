@@ -191,7 +191,7 @@ async function renderPage() {
 
 describe('PayeeDetailPage', () => {
   beforeEach(() => {
-    usePreferencesStore.setState({preferences:{accrualEnabled:true} as never});
+    usePreferencesStore.setState({preferences:{accrualEnabled:true,reportingBasis:"accrual"} as never});
     vi.clearAllMocks();
     chartProps.length = 0;
     searchParams.current = new URLSearchParams();
@@ -218,7 +218,7 @@ describe('PayeeDetailPage', () => {
     await act(async()=>fireEvent.click(screen.getByRole('button', { name: /^Accrual(?: \(user default\))?$/ })));
     expect(mockGetMonthlyTotals).toHaveBeenLastCalledWith({basis:'accrual', payeeIds:['payee-1']});
     expect(usePreferencesStore.getState().preferences?.reportingBasis).toBe('cash');
-    act(()=>usePreferencesStore.setState({preferences:null}));
+    await act(async()=>usePreferencesStore.setState({preferences:null}));
   });
   it('shows a retryable error rather than empty history when a required trend fails', async () => {
     mockGetMonthlyTotals.mockRejectedValueOnce(new Error('trend unavailable'));

@@ -514,7 +514,7 @@ describe("CustomReportViewer", () => {
 it('sends each selected basis and discards a late prior-basis execution', async () => {
   const { ReportingBasisScope, ReportingBasisControl } = await import('./ReportingBasis');
   const { usePreferencesStore } = await import('@/store/preferencesStore');
-  usePreferencesStore.setState({preferences:{accrualEnabled:true} as never});
+  usePreferencesStore.setState({preferences:{accrualEnabled:true,reportingBasis:"accrual"} as never});
   mockGetById.mockResolvedValue({id:'basis-report',name:'Basis report',viewType:'TABLE',timeframeType:'LAST_3_MONTHS',groupBy:'NONE',config:{metric:'TOTAL_AMOUNT',direction:'BOTH',includeTransfers:false},filters:{}});
   let resolveOld!:(value:unknown)=>void;
   const result={viewType:'TABLE',groupBy:'NONE',data:[],summary:{total:222,count:0},timeframe:{label:'Period',startDate:'2026-01-01',endDate:'2026-01-31'}};

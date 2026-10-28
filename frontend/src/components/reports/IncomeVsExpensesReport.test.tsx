@@ -179,7 +179,7 @@ describe("IncomeVsExpensesReport", () => {
     mockRange.end = "2025-01-01";
     mockGetAllAccounts.mockResolvedValue([]);
     window.localStorage.clear();
-    usePreferencesStore.setState({ preferences: { accrualEnabled: true } as never });
+    usePreferencesStore.setState({ preferences: { accrualEnabled: true, reportingBasis: "accrual" } as never });
   });
 
   it('sends the selected basis to the actual report request', async () => {

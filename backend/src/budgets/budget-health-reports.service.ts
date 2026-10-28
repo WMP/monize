@@ -6,7 +6,7 @@ import {
 import { Budget } from "./entities/budget.entity";
 import {
   ReportingRead,
-  currentReportingRead,
+  reportingExecutionBasis,
 } from "../accruals/reporting-basis";
 import { Injectable, Logger } from "@nestjs/common";
 import { DataSource } from "typeorm";
@@ -165,7 +165,7 @@ export class BudgetHealthReportsService {
       );
 
       const actuals =
-        currentReportingRead(userId)?.basis === "accrual"
+        reportingExecutionBasis(userId) === "accrual"
           ? await this.periodSpending(
               userId,
               cats.map((pc) => ({
@@ -537,13 +537,13 @@ export class BudgetHealthReportsService {
     const previousBudgeted = Number(previous.totalBudgeted) || 1;
 
     const latestPercent =
-      ((currentReportingRead(userId)?.basis === "accrual"
+      ((reportingExecutionBasis(userId) === "accrual"
         ? await this.periodExpenseTotal(userId, budget, latest)
         : Number(latest.actualExpenses)) /
         latestBudgeted) *
       100;
     const previousPercent =
-      ((currentReportingRead(userId)?.basis === "accrual"
+      ((reportingExecutionBasis(userId) === "accrual"
         ? await this.periodExpenseTotal(userId, budget, previous)
         : Number(previous.actualExpenses)) /
         previousBudgeted) *

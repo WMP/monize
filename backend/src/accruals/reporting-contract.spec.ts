@@ -85,9 +85,11 @@ describe("Reporting HTTP, agent-schema and safe export contracts", () => {
           provide: DataSource,
           useValue: {
             manager: {
+              query: async () => [{ present: false }],
               getRepository: () => ({
                 findOne: async () => ({
                   reportingBasis: "accrual",
+                  accrualEnabled: true,
                   defaultCurrency: "EUR",
                 }),
               }),

@@ -127,7 +127,7 @@ export default function TransactionsPage() {
 }
 
 function TransactionsContent() {
-  const basis = useReportingBasis() ?? 'accrual';
+  const basis = useReportingBasis() ?? 'cash';
   const resetPageOnMount = useReportingViewChanged();
   const t = useTranslations('transactions');
   const tc = useTranslations('common');

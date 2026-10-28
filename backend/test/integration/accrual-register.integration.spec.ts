@@ -181,7 +181,8 @@ describe("recognition register through actual authorized query (PostgreSQL)", ()
     const removed = await list();
     expect(removed.data).toHaveLength(1);
     expect(Number(removed.data[0].amount)).toBe(-2400);
-    expect(removed.data[0].reportingProvenance?.isRecognition).toBe(false);
+    expect(removed.data[0].id).toBe(tx.id);
+    expect(removed.data[0].reportingProvenance).toBeUndefined();
   });
   it("lists forward income and retrospective expenses on recognition dates", async () => {
     const { tx } = await f.source({ categoryId: f.income });
@@ -230,6 +231,10 @@ describe("recognition register through actual authorized query (PostgreSQL)", ()
     const { tx } = await f.source();
     await f.accrue(tx.id);
     const member = (await createTestUserDirect(f.h.owner)).id;
+    await f.h.owner.query(
+      "INSERT INTO user_preferences(user_id,accrual_enabled,reporting_basis) VALUES($1,true,'accrual') ON CONFLICT(user_id) DO UPDATE SET accrual_enabled=true,reporting_basis='accrual'",
+      [member],
+    );
     const [delegation] = await f.h.owner.query(
       "INSERT INTO account_delegates(owner_user_id,delegate_user_id,status) VALUES($1,$2,'active') RETURNING id",
       [f.user, member],

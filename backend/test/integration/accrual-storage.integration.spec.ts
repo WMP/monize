@@ -271,7 +271,7 @@ describe("accrual persistence with PostgreSQL/RLS", () => {
     ).toEqual([{ amount: "-33.3400" }]);
   });
 
-  it("defaults reporting to accrual and rejects unknown bases", async () => {
+  it("defaults reporting to cash and rejects unknown bases", async () => {
     await h.owner.query(
       "INSERT INTO user_preferences(user_id) VALUES ($1) ON CONFLICT DO NOTHING",
       [alice],
@@ -281,9 +281,9 @@ describe("accrual persistence with PostgreSQL/RLS", () => {
         "SELECT reporting_basis FROM user_preferences WHERE user_id=$1",
         [alice],
       ),
-    ).toEqual([{ reporting_basis: "accrual" }]);
+    ).toEqual([{ reporting_basis: "cash" }]);
     await h.owner.query(
-      "UPDATE user_preferences SET reporting_basis='cash' WHERE user_id=$1",
+      "UPDATE user_preferences SET reporting_basis='accrual' WHERE user_id=$1",
       [alice],
     );
     await expect(

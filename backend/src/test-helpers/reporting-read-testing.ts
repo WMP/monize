@@ -11,6 +11,7 @@ export function reportingBasisMockModule() {
       _user: string,
       fn: () => Promise<unknown>,
     ) => fn(),
+    reportingExecutionBasis: () => "cash",
     currentReportingRead: () => ({ basis: "cash", currency: "USD" }),
   };
 }

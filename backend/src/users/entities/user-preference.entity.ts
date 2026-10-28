@@ -37,11 +37,11 @@ export class UserPreference {
     name: "reporting_basis",
     type: "varchar",
     length: 10,
-    default: "accrual",
+    default: "cash",
   })
   reportingBasis: "cash" | "accrual";
 
-  // Master visibility switch for the whole accrual feature (tab, Accounts/
+  // Master reporting switch for the whole accrual feature (tab, Accounts/
   // Other balances, Cash/Accrual report switch). Off by default: a user who
   // has never heard of accrual accounting sees none of it until they opt in.
   @Column({ name: "accrual_enabled", default: false })

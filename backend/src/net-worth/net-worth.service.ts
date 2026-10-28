@@ -1,6 +1,6 @@
 import {
   ReportingRead,
-  currentReportingRead,
+  reportingExecutionBasis,
   reportingResultCurrency,
 } from "../accruals/reporting-basis";
 import { accrualNetWorthSnapshots } from "../accruals/reporting-net-worth";
@@ -950,7 +950,7 @@ export class NetWorthService {
       [userId, start, end, jointIds],
     );
 
-    const accrual = currentReportingRead(userId)?.basis === "accrual";
+    const accrual = reportingExecutionBasis(userId) === "accrual";
     if (accrual)
       snapshots = await withScopedDb(this.dataSource, (manager) =>
         accrualNetWorthSnapshots(
@@ -1182,7 +1182,7 @@ export class NetWorthService {
     await this.ensurePopulated(userId);
 
     const jointIds = jointScope?.accounts.map((a) => a.accountId) ?? [];
-    const accrual = currentReportingRead(userId)?.basis === "accrual";
+    const accrual = reportingExecutionBasis(userId) === "accrual";
     const latestRows: { month: string | Date }[] = await this.scopedQuery(
       accrual
         ? `SELECT TO_CHAR(date_trunc('month',CURRENT_DATE),'YYYY-MM-DD') AS month FROM accounts

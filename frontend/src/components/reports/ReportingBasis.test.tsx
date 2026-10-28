@@ -29,7 +29,7 @@ beforeEach(() => {
     actingAsUserId: null,
   });
   usePreferencesStore.setState({
-    preferences: { accrualEnabled: true } as UserPreferences,
+    preferences: { accrualEnabled: true, reportingBasis: "accrual" } as UserPreferences,
   });
 });
 it("defaults to accrual and permits a per-view cash override without persisting it", () => {
@@ -41,15 +41,16 @@ it("defaults to accrual and permits a per-view cash override without persisting 
   expect(screen.getByRole("status")).toHaveTextContent("cash");
   expect(usePreferencesStore.getState().preferences).toEqual({
     accrualEnabled: true,
+    reportingBasis: "accrual",
   });
 });
-it('hides the control when the accrual feature is off, without changing the computed basis', () => {
+it('uses cash and hides the control when accrual accounting is disabled', () => {
   usePreferencesStore.setState({
     preferences: { accrualEnabled: false, reportingBasis: 'accrual' } as UserPreferences,
   });
   render(<View />);
   expect(screen.queryByRole('group')).not.toBeInTheDocument();
-  expect(screen.getByRole('status')).toHaveTextContent('accrual');
+  expect(screen.getByRole('status')).toHaveTextContent('cash');
 });
 it("follows the user default until overridden and resets explicitly", () => {
   render(<View />);
@@ -189,4 +190,16 @@ it("allows an explicit cash parent arrival while marking the saved accrual defau
   expect(
     screen.getByRole("button", { name: "Accrual (user default)" }),
   ).toHaveAttribute("aria-pressed", "false");
+});
+
+it("defaults to cash when no reporting preference has been saved", () => {
+  usePreferencesStore.setState({preferences: {accrualEnabled: true} as UserPreferences});
+  render(<View />);
+  expect(screen.getByRole("status")).toHaveTextContent("cash");
+});
+
+it("honors feature-off even when a caller supplies a fixed accrual view", () => {
+  usePreferencesStore.setState({preferences:{accrualEnabled:false,reportingBasis:"accrual"} as UserPreferences});
+  render(<ReportingBasisScope surface="fixed" fixedBasis="accrual"><Value /></ReportingBasisScope>);
+  expect(screen.getByRole("status")).toHaveTextContent("cash");
 });

@@ -89,14 +89,14 @@ describe('PreferencesSection', () => {
     expect(screen.queryByLabelText('Default reporting basis')).not.toBeInTheDocument();
   });
 
-  it('defaults reporting to accrual and saves the single user-level cash preference', async () => {
-    vi.mocked(userSettingsApi.updatePreferences).mockResolvedValue({ ...mockPreferences, accrualEnabled: true, reportingBasis: 'cash' });
+  it('defaults reporting to cash and saves the single user-level accrual preference', async () => {
+    vi.mocked(userSettingsApi.updatePreferences).mockResolvedValue({ ...mockPreferences, accrualEnabled: true, reportingBasis: 'accrual' });
     await act(async () => { render(<PreferencesSection preferences={{ ...mockPreferences, accrualEnabled: true }} onPreferencesUpdated={mockOnPreferencesUpdated} />); });
     const control = screen.getByLabelText('Default reporting basis');
-    expect(control).toHaveValue('accrual');
-    await act(async () => { fireEvent.change(control, { target: { value: 'cash' } }); });
-    expect(userSettingsApi.updatePreferences).toHaveBeenLastCalledWith({ reportingBasis: 'cash' });
-    expect(mockOnPreferencesUpdated).toHaveBeenLastCalledWith(expect.objectContaining({ reportingBasis: 'cash' }));
+    expect(control).toHaveValue('cash');
+    await act(async () => { fireEvent.change(control, { target: { value: 'accrual' } }); });
+    expect(userSettingsApi.updatePreferences).toHaveBeenLastCalledWith({ reportingBasis: 'accrual' });
+    expect(mockOnPreferencesUpdated).toHaveBeenLastCalledWith(expect.objectContaining({ reportingBasis: 'accrual' }));
   });
 
   it('renders the preferences heading and all selects', async () => {

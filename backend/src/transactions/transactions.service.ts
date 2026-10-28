@@ -1,3 +1,9 @@
+import { executeReportingRead } from "../accruals/reporting-execution";
+import {
+  reportingIdentityQuery,
+  reportingIdentityPage,
+} from "../accruals/reporting-identity-query";
+import { resolveReportingExecution } from "../accruals/reporting-basis";
 import {
   applyReportingBasis,
   reportingEntities,
@@ -1300,6 +1306,9 @@ export class TransactionsService {
     externalId?: string,
     basis: ReportingBasis = "cash",
   ): Promise<PaginatedTransactions> {
+    basis = await withScopedDb(this.dataSource, (manager) =>
+      resolveReportingExecution(manager, userId, basis, jointAccountIds),
+    );
     if (basis === "accrual" && targetTransactionId) {
       throw new BadRequestException(
         "Open the original payment in cash view to locate a source transaction",
@@ -1495,29 +1504,41 @@ export class TransactionsService {
 
       const skip = (safePage - 1) * safeLimit;
 
-      let data: Transaction[];
-      let total: number;
       if (basis === "accrual") {
-        // Same authorized register query, filters and deterministic order, projected
-        // through recognition facts. Do not create ledger transactions.
         queryBuilder.setParameter("analyticsScopeJointIds", jointAccountIds);
-        const countQuery = queryBuilder.clone();
-        await applyReportingBasis(m, userId, countQuery, "accrual");
-        total = await countQuery.getCount();
-        data = await reportingEntities(
-          m,
-          userId,
-          queryBuilder.skip(skip).take(safeLimit),
-          {
-            basis: "accrual",
-            preserveReportIds: true,
-          },
-        );
-      } else {
-        [data, total] = await queryBuilder
-          .skip(skip)
-          .take(safeLimit)
-          .getManyAndCount();
+        await applyReportingBasis(m, userId, queryBuilder, "accrual");
+      }
+      const { total, identities } = await executeReportingRead(
+        m,
+        basis,
+        async () => ({
+          total: await reportingIdentityQuery(queryBuilder, false).getCount(),
+          identities: await reportingIdentityPage(
+            queryBuilder,
+            skip,
+            safeLimit,
+          ),
+        }),
+      );
+      const pageIds = identities.map((row) => row.id);
+      let data: Transaction[] = [];
+      if (pageIds.length) {
+        const pageQuery = queryBuilder
+          .clone()
+          .andWhere("transaction.id IN (:...__registerPageIds)", {
+            __registerPageIds: pageIds,
+          });
+        data =
+          basis === "accrual"
+            ? await reportingEntities(m, userId, pageQuery, {
+                basis: "accrual",
+                preserveReportIds: true,
+              })
+            : await pageQuery.getMany();
+        const rows = new Map(data.map((row) => [row.id, row]));
+        data = pageIds
+          .map((id) => rows.get(id))
+          .filter((row): row is Transaction => row !== undefined);
       }
 
       let startingBalance: number | undefined;

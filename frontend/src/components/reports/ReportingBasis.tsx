@@ -79,8 +79,11 @@ export function ReportingBasisScope({
   const preference = usePreferencesStore(
     (state) => state.preferences?.reportingBasis,
   );
+  const featureEnabled = usePreferencesStore(
+    (state) => state.preferences?.accrualEnabled === true,
+  );
   const defaultBasis: ReportingBasis =
-    preference === "cash" ? "cash" : "accrual";
+    preference === "accrual" ? "accrual" : "cash";
   const identity = JSON.stringify([realUser, owner, surface, initialBasis]);
   const [override, setOverride] = useState<{
     identity: string;
@@ -90,8 +93,9 @@ export function ReportingBasisScope({
     override?.identity === identity
       ? override.selection
       : (initialBasis ?? "default");
-  const basis =
-    fixedBasis ?? (selection === "default" ? defaultBasis : selection);
+  const basis = !featureEnabled
+    ? "cash"
+    : fixedBasis ?? (selection === "default" ? defaultBasis : selection);
   const [detail, setDetail] = useState<{
     identity: string;
     basis: ReportingBasis;
@@ -166,7 +170,7 @@ export function ReportingBasisControl({
   const accrualFeatureEnabled = usePreferencesStore(
     (state) => state.preferences?.accrualEnabled ?? false,
   );
-  const defaultBasis = preference === "cash" ? "cash" : "accrual";
+  const defaultBasis = preference === "accrual" ? "accrual" : "cash";
   if (!context || !accrualFeatureEnabled) return null;
   return (
     <div className="mb-4 space-y-2">

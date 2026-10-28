@@ -54,7 +54,7 @@ vi.mock('@/store/authStore', () => ({
 vi.mock('@/store/preferencesStore', () => ({
   usePreferencesStore: (selector?: any) => {
     const state = {
-      preferences: { twoFactorEnabled: true, theme: 'system', defaultCurrency: 'USD', numberFormat: 'en-US', accrualEnabled: true },
+      preferences: { twoFactorEnabled: true, theme: 'system', defaultCurrency: 'USD', numberFormat: 'en-US', accrualEnabled: true, reportingBasis: "accrual" },
       isLoaded: true,
       _hasHydrated: true,
     };

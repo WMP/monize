@@ -50,6 +50,10 @@ export async function createAccrualTaxonomyFixture(
       "INSERT INTO currencies(code,name,symbol,decimal_places) VALUES('USD','US Dollar','$',2) ON CONFLICT DO NOTHING",
     );
     user = (await createTestUserDirect(h.owner)).id;
+    await h.owner.query(
+      "INSERT INTO user_preferences(user_id,reporting_basis,accrual_enabled) VALUES($1,'accrual',true)",
+      [user],
+    );
     account = (
       await createTestAccount(h.owner, user, {
         name: "Taxonomy",

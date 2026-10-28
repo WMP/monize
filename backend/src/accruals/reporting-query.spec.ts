@@ -1,210 +1,147 @@
 import type { EntityManager, ObjectLiteral, SelectQueryBuilder } from "typeorm";
-import {
-  reportingQuery,
-  applyReportingBasis,
-  reportingRawMany,
-  reportingRawOne,
-  reportingEntities,
-} from "./reporting-query";
+import { reportingQuery, reportingEntities } from "./reporting-query";
+import { reportingSql } from "./reporting-relations";
+import { projectRecognitionRow } from "./reporting-entity-reader";
 
-function setup() {
-  const query = jest.fn().mockResolvedValue([{ value: 1 }]);
-  const manager = {
-    query,
-    getRepository: () => ({
-      findOne: async () => ({ reportingBasis: "accrual" }),
-    }),
-  } as unknown as EntityManager;
-  const builder = {
-    alias: "t",
-    expressionMap: {
-      mainAlias: {
-        name: "t",
-        hasMetadata: true,
-        metadata: { tableName: "transactions" },
-      },
-      joinAttributes: [
-        {
-          alias: {
-            hasMetadata: true,
-            metadata: { tableName: "transactions" },
-            name: "linked",
-          },
-        },
-        {
-          alias: {
-            hasMetadata: true,
-            metadata: { tableName: "transaction_splits" },
-            name: "s",
-          },
-        },
-        {
-          alias: {
-            hasMetadata: true,
-            metadata: { tableName: "investment_transactions" },
-            name: "i",
-          },
-        },
-        { alias: { hasMetadata: false, name: "unmapped" } },
-      ],
-    },
-    getParameters: jest
-      .fn()
-      .mockReturnValue({ analyticsScopeJointIds: ["joint"] }),
-    setParameter: jest.fn().mockReturnThis(),
-    addCommonTableExpression: jest.fn().mockReturnThis(),
-    addSelect: jest.fn().mockReturnThis(),
-    escape: (name: string) => `"${name}"`,
-    getMany: jest.fn().mockResolvedValue([{ id: "cash" }]),
-    getRawMany: jest.fn().mockResolvedValue([{ id: "raw" }]),
-    getRawOne: jest.fn().mockResolvedValue({ id: "one" }),
-    getRawAndEntities: jest.fn(),
-  };
+function manager(enabled = true, scheduled = true) {
   return {
-    manager,
-    query,
-    builder,
-    qb: builder as unknown as SelectQueryBuilder<ObjectLiteral>,
-  };
+    getRepository: () => ({
+      findOne: async () => ({
+        accrualEnabled: enabled,
+        reportingBasis: "accrual",
+      }),
+    }),
+    query: jest.fn(async (sql: string) =>
+      sql.startsWith("SELECT EXISTS")
+        ? [{ present: scheduled }]
+        : [{ value: 1 }],
+    ),
+  } as unknown as EntityManager;
 }
-
-describe("reporting query projection boundaries", () => {
+describe("explicit recognition reader boundaries", () => {
   it.each(["notifications", "accounts"])(
-    "does not project transaction columns onto a %s root",
+    "leaves %s entities on their ordinary read path",
     async (tableName) => {
-      const { manager, builder, qb } = setup();
-      builder.expressionMap.mainAlias.metadata.tableName = tableName;
-      builder.getMany.mockResolvedValue([{ id: "ordinary-entity" }]);
+      const getMany = jest.fn().mockResolvedValue([{ id: "source" }]);
+      const qb = {
+        expressionMap: {
+          mainAlias: { hasMetadata: true, metadata: { tableName } },
+        },
+        getMany,
+      } as unknown as SelectQueryBuilder<ObjectLiteral>;
+      const m = manager();
       expect(
-        await reportingEntities(manager, "owner", qb, { basis: "accrual" }),
-      ).toEqual([{ id: "ordinary-entity" }]);
-      expect(builder.addCommonTableExpression).not.toHaveBeenCalled();
-      expect(builder.addSelect).not.toHaveBeenCalled();
-      expect(builder.getRawAndEntities).not.toHaveBeenCalled();
+        await reportingEntities(m, "owner", qb, { basis: "accrual" }),
+      ).toEqual([{ id: "source" }]);
+      expect(m.query).not.toHaveBeenCalled();
     },
   );
-
-  it("passes cash SQL and entities through without recognition projections", async () => {
-    const { manager, query, builder, qb } = setup();
-    await reportingQuery(manager, "owner", "SELECT $1", [7], "cash");
-    expect(query).toHaveBeenCalledWith("SELECT $1", [7]);
-    expect(
-      await reportingEntities(manager, "owner", qb, { basis: "cash" }),
-    ).toEqual([{ id: "cash" }]);
-    expect(builder.addCommonTableExpression).not.toHaveBeenCalled();
-    expect(await applyReportingBasis(manager, "owner", qb, "cash")).toBe(qb);
-  });
-
-  it.each([
-    "SELECT $1",
-    "WITH existing AS (SELECT $1) SELECT * FROM existing",
-    "WITH RECURSIVE existing AS (SELECT $1) SELECT * FROM existing",
-  ])("appends owner binding while preserving existing SQL: %s", async (sql) => {
-    const { manager, query } = setup();
-    await reportingQuery(manager, "owner", sql, [7], "accrual");
-    const [statement, params] = query.mock.calls[0];
-    expect(params).toEqual([7, "owner"]);
-    expect(statement).toContain("$2");
-    expect(statement.match(/WITH RECURSIVE/g)?.length ?? 0).toBe(
-      sql.startsWith("WITH") ? 1 : 0,
-    );
-    expect(statement).toContain("SELECT $1");
-  });
-
-  it("keeps joint account scope and supports raw reads under the selected basis", async () => {
-    const { manager, builder, qb } = setup();
-    expect(await reportingRawMany(manager, "owner", qb, "accrual")).toEqual([
-      { id: "raw" },
-    ]);
-    expect(await reportingRawOne(manager, "owner", qb)).toEqual({ id: "one" });
-    expect(builder.setParameter).toHaveBeenCalledWith("__recognitionJointIds", [
-      "joint",
-    ]);
-    expect(builder.setParameter).toHaveBeenCalledWith(
-      "__recognitionOwner",
-      "owner",
-    );
-    builder.getParameters.mockReturnValue({ analyticsScopeJointIds: [] });
-    await applyReportingBasis(manager, "owner", qb, "accrual");
-  });
-
   it.each([false, true])(
-    "maps recognition rows back to source entries, preserving report IDs only when requested (%s)",
-    async (preserveReportIds) => {
-      const { manager, builder, qb } = setup();
+    "uses native cash relations without schedules or when disabled (%s)",
+    async (enabled) => {
+      const m = manager(enabled, false);
+      await reportingQuery(
+        m,
+        "owner",
+        "SELECT t.id FROM transactions t WHERE t.amount=$1",
+        [7],
+        "accrual",
+      );
+      const [sql, params] = (m.query as jest.Mock).mock.calls.slice(-1)[0];
+      expect(sql).toContain("FROM public.transactions __owned");
+      expect(sql).not.toContain("accrual_reporting_transactions");
+      expect(sql).toContain("__owned.user_id=$2");
+      expect(params).toEqual([7, "owner"]);
+    },
+  );
+  it("does not add an unused binding to unrelated SQL", async () => {
+    const m = manager();
+    await reportingQuery(m, "owner", "SELECT $1", [7], "cash");
+    expect(m.query).toHaveBeenLastCalledWith("SELECT $1", [7]);
+  });
+  it("preserves SQL literals, comments, aliases and existing CTEs", () => {
+    const sql =
+      "WITH existing AS (SELECT 'FROM transactions' AS note) SELECT t.id FROM public.transactions AS t JOIN transaction_splits s ON s.transaction_id=t.id -- JOIN transactions\n WHERE t.amount=$1";
+    const rendered = reportingSql(sql, "accrual", "$2");
+    expect(rendered).toContain("'FROM transactions'");
+    expect(rendered).toContain("-- JOIN transactions\n");
+    expect(rendered).toContain("public.accrual_reporting_transactions __owned");
+    expect(rendered).toContain(") AS t JOIN (SELECT");
+    expect(rendered).toContain("WHERE t.amount=$1");
+    expect(rendered).not.toContain("jsonb_populate_record");
+    expect(rendered.match(/WITH/g)).toHaveLength(1);
+  });
+  it("keeps unaliased relation references valid", () => {
+    expect(
+      reportingSql(
+        "SELECT transactions.id FROM transactions WHERE amount<0",
+        "accrual",
+        "$1",
+      ),
+    ).toContain(') "transactions" WHERE');
+  });
+  it.each([false, true])(
+    "projects source-linked recognition copies without mutating cash entities (%s)",
+    (preserve) => {
       const source = {
-        id: "report",
-        transactionDate: new Date("2026-11-30T00:00:00Z"),
-        amount: "100",
-        splits: [{ id: "split-report", amount: "100" }],
-        investmentTransaction: { id: "investment" },
-        linkedTransaction: {
-          id: "linked-report",
-          amount: "-100",
-          transactionDate: "2026-11-30",
+        id: "source",
+        amount: "1200",
+        transactionDate: "2026-10-15",
+        splits: [{ id: "split", amount: "1200" }],
+        linkedTransaction: { id: "cash-linked" },
+        investmentTransaction: {
+          transactionId: "source",
+          transactionSplitId: "split",
         },
-        parentTransaction: null,
       };
-      builder.getRawAndEntities.mockResolvedValue({
-        entities: [source],
-        raw: [
-          {
-            t_id: "report",
-            linked_id: "linked-report",
-            s_id: "split-report",
-            i_id: "investment",
-            __reportTx0_sourceId: "payment",
-            __reportTx0_isRecognition: true,
-            __reportTx0_cashDate: "2026-10-15",
-            __reportTx0_sourceAmount: "1200",
-            __reportTx0_linkedId: "linked-payment",
-            __reportTx0_parentId: null,
-            __reportTx1_sourceId: "linked-payment",
-            __reportTx1_cashDate: "2026-10-15",
-            __reportTx1_sourceAmount: "-1200",
-            __reportTx1_linkedId: "payment",
-            __reportTx1_parentId: null,
-            __reportSplit0_sourceId: "split-payment",
-            __reportSplit0_cashDate: "2026-10-15",
-            __reportSplit0_sourceAmount: "1200",
-            __reportSplit0_linkedId: null,
-            __reportSplit0_scheduleId: "schedule",
-            __reportInvestment0_transaction: "payment",
-            __reportInvestment0_split: "split-payment",
-          },
-          {},
-        ],
-      });
-      const [result] = await reportingEntities(manager, "owner", qb, {
-        basis: "accrual",
-        preserveReportIds,
-      });
-      expect(result.id).toBe(preserveReportIds ? "report" : "payment");
-      expect(result.reportingProvenance).toMatchObject({
-        reportId: "report",
-        sourceTransactionId: "payment",
+      const fact = {
+        id: "recognition",
+        sourceId: "source",
+        amount: "100",
+        sourceAmount: "1200",
         cashDate: "2026-10-15",
         effectiveDate: "2026-11-30",
+        isRecognition: true,
+      };
+      const split = {
+        id: "recognition-split",
+        sourceId: "split",
+        amount: "100",
         sourceAmount: "1200",
-        nativeAmount: "100",
+        cashDate: "2026-10-15",
+        scheduleId: "schedule",
+      };
+      const result = projectRecognitionRow(source, fact, [split], preserve);
+      expect(result.id).toBe(preserve ? "recognition" : "source");
+      expect(result.transactionDate).toBe("2026-11-30");
+      expect(result.amount).toBe("100");
+      expect(result.reportingProvenance).toMatchObject({
+        sourceTransactionId: "source",
         readOnly: true,
+        sourceAmount: "1200",
       });
       expect(result.splits[0].reportingProvenance).toMatchObject({
-        sourceSplitId: "split-payment",
-        sourceTransactionId: "payment",
+        sourceSplitId: "split",
         scheduleId: "schedule",
-        effectiveDate: "2026-11-30",
       });
-      expect(result.linkedTransaction.id).toBe(
-        preserveReportIds ? "linked-report" : "linked-payment",
+      expect(result.linkedTransaction.id).toBe("cash-linked");
+      expect(result.investmentTransaction).toEqual(
+        source.investmentTransaction,
       );
-      expect(result.investmentTransaction).toMatchObject({
-        transactionId: "payment",
-        transactionSplitId: "split-payment",
-      });
-      expect(result.parentTransaction).toBeNull();
-      expect(source.id).toBe("report");
-      expect(source.splits[0].id).toBe("split-report");
+      expect(source.amount).toBe("1200");
+      expect(source.splits[0].amount).toBe("1200");
+      expect(result).not.toBe(source);
+      expect(result.splits[0]).not.toBe(source.splits[0]);
     },
   );
+});
+
+it("scopes indirect recognition relations by their owner without recursively joining the ledger", () => {
+  const sql = reportingSql(
+    "SELECT s.amount FROM transaction_splits s JOIN transaction_split_tags tags ON tags.transaction_split_id=s.id",
+    "accrual",
+    "$1",
+  );
+  expect(sql.match(/__owned.reporting_user_id=\$1/g)).toHaveLength(2);
+  expect(sql).not.toContain("__owner");
 });

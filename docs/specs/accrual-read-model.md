@@ -28,3 +28,11 @@ Missing FX keeps existing refusal/nullable-total contracts appropriate to each r
 - Real PostgreSQL ledger: 35,738 transactions, 10,281 splits, one 641-row account and predominantly absent link/parent relationships. Record count/page latency, EXPLAIN (ANALYZE, BUFFERS), and query work for zero/one/many schedules. Initial generous 5-second local/CI ceiling catches the 48-second failure; compare to native cash and tighten only with measured evidence. A no-schedule optimization alone does not satisfy acceptance.
 
 No production deployment is part of this task. Additive migrations and schema remain paired; preserve applied migrations and do not reset explicit preferences blindly.
+
+## Interactive query execution
+
+Recognition SQL executes in the caller's existing scoped transaction with a temporary JIT opt-out. PostgreSQL's cost estimates for nested invoker/RLS relations can trigger seconds of compilation for a query that executes in tens of milliseconds. The reader saves the current setting, disables JIT with transaction-local `set_config`, and restores it after success. SQL failures propagate unchanged; the caller's rollback restores local settings. Cash execution never reads or changes JIT configuration. No server or pool default changes.
+
+This supplements explicit relations, native cash fast paths and page-bounded hydration; it does not replace those optimizations. The regression ledger covers 35,738 initial transactions, 10,281 splits, zero/one/many schedules, category reporting and exports. The benchmark asserts that successful calls preserve the caller's JIT setting.
+
+PostgreSQL documents the compilation tradeoff in [When to JIT?](https://www.postgresql.org/docs/16/jit-decision.html).

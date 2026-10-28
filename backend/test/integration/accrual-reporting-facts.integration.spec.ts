@@ -292,10 +292,90 @@ describe("Reporting recognition facts (enforced PostgreSQL)", () => {
       "0.0000",
     ]);
   });
+  it("maintains retained schedules through source edits while disabled and restores recognition on re-enable", async () => {
+    const { tx } = await f.source();
+    await f.accrue(tx.id);
+    const read = () =>
+      f.as(() =>
+        withScopedDb(f.h.app, (m) =>
+          reportingQuery(
+            m,
+            f.user,
+            "SELECT transaction_date,amount::text FROM transactions WHERE user_id=$1 AND source_transaction_id=$2 ORDER BY transaction_date",
+            [f.user, tx.id],
+            "accrual",
+          ),
+        ),
+      );
+    await f.h.owner.query(
+      "UPDATE user_preferences SET accrual_enabled=false WHERE user_id=$1",
+      [f.user],
+    );
+    const patch = { amount: -2400.0001 };
+    const preview = await f.as(() =>
+      f.accruals.previewSourceEdit(f.user, tx.id, patch),
+    );
+    await f.as(() =>
+      f.transactions.update(f.user, tx.id, {
+        ...patch,
+        accrualImpactFingerprint: preview.fingerprint!,
+      }),
+    );
+    const retained = await f.states(tx.id);
+    expect(retained).toHaveLength(1);
+    expect(retained[0].allocations).toHaveLength(12);
+    const cash = await f.as(() =>
+      withScopedDb(f.h.app, (m) =>
+        reportingQuery(
+          m,
+          f.user,
+          "SELECT amount::text FROM transactions WHERE user_id=$1 AND id=$2",
+          [f.user, tx.id],
+          "accrual",
+        ),
+      ),
+    );
+    expect(cash).toEqual([{ amount: "-2400.0001" }]);
+    await f.h.owner.query(
+      "UPDATE user_preferences SET accrual_enabled=true WHERE user_id=$1",
+      [f.user],
+    );
+    const rows = await read();
+    expect(rows).toHaveLength(12);
+    expect(rows[0].amount).toBe("-200.0000");
+    expect(rows[11].amount).toBe("-200.0001");
+  });
+  it("keeps explicit read mappings in parity with source columns", () => {
+    for (const name of [
+      "transactions",
+      "transaction_splits",
+      "investment_transactions",
+    ]) {
+      const source = f.h.app.entityMetadatas.find(
+        (metadata) => metadata.tableName === name,
+      )!;
+      const report = f.h.app.entityMetadatas.find(
+        (metadata) => metadata.tableName === `accrual_reporting_${name}`,
+      )!;
+      for (const column of source.columns) {
+        const projected = report.columns.find(
+          (item) => item.databaseName === column.databaseName,
+        );
+        expect(projected).toBeDefined();
+        expect(projected!.propertyName).toBe(column.propertyName);
+        expect(projected!.type).toBe(column.type);
+        expect(projected!.isNullable).toBe(column.isNullable);
+      }
+    }
+  });
   it("reads authorized joint accruals, keeps writes owner-only and revokes visibility immediately", async () => {
     const { tx } = await f.source();
     await f.accrue(tx.id);
     const grantee = (await createTestUserDirect(f.h.owner)).id;
+    await f.h.owner.query(
+      "INSERT INTO user_preferences(user_id,accrual_enabled,reporting_basis) VALUES($1,true,'accrual') ON CONFLICT(user_id) DO UPDATE SET accrual_enabled=true,reporting_basis='accrual'",
+      [grantee],
+    );
     const delegation = randomUUID();
     await f.h.owner.query(
       "INSERT INTO account_delegates(id,owner_user_id,delegate_user_id,status) VALUES($1,$2,$3,'active')",
