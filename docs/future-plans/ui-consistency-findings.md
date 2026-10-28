@@ -22,6 +22,9 @@ Before anyone fixes a screen "against" `screens-and-dialogs.md`, a maintainer mu
 - **Security detail order** is header, `SummaryCard`s, a chart grid, then `Tabs` (`app/securities/[id]/page.tsx:444, 464, 509`), not "`SummaryCard` row, then `Tabs`".
 - **`PageHeader` help** is shown only on hover at `md` and up (`components/layout/PageHeader.tsx`, `md:group-hover`), against the rule that help is not hidden below a breakpoint.
 
+- **The reference dialog has no accessible name.** New Transaction draws its own `h2 text-2xl font-bold mb-4` as the first child and does not pass `title` to `Modal` (`app/transactions/page.tsx:1504-1506`), so it has no `aria-labelledby`. The dialogs that do pass `title` get the name but also the drifted header: `h2 text-lg font-semibold` in a `border-b` strip with an `XMarkIcon` close button (`components/ui/Modal.tsx:404-428`); `footer` adds a `border-t` strip (`:448`). Today a dialog can look right or be named, not both. The real fix is in `Modal`: draw the `title` as the New Transaction heading (no strip, no X) and keep `aria-labelledby`. Then all 30 titled dialogs and New Transaction converge.
+- **`ConfirmDialog` and `UnsavedChangesDialog` break the dialog rules for all 61 confirmations**: `h3 text-lg font-medium` title (`components/ui/ConfirmDialog.tsx:108`, `UnsavedChangesDialog.tsx:35`) and raw `<button>`s with hand-written colour classes instead of `<Button variant="primary|danger">` (`ConfirmDialog.tsx:116-121`, `UnsavedChangesDialog.tsx:50-55`). Decide whether a confirmation is an exempt dialog kind (smaller title, question paragraph) and write that down.
+
 Suggestion: either fix the reference screens first (they are what agents copy), or narrow the document to what those screens do today and list the gaps as known debt.
 
 ## Candidate rules
@@ -43,6 +46,16 @@ Suggestion: either fix the reference screens first (they are what agents copy), 
 - **Open question O1. Count line under a list**: two patterns compete, a centred "N items" for one page (`currencies:403-407`, `securities:507-511`) and `ListBottomPager` `totalLabel` (`transactions:1761-1769`, warranties, investments). Pick one.
 - **Open question O2. Summary grid gap** varies (`gap-6`, `gap-4 sm:gap-6`, `gap-3 sm:gap-6`, `gap-4`). Detail pages share `SummaryCardGrid` + `summaryGridClass` (`components/accounts/shared/SummaryCardGrid.tsx:72, 82`); make it the list-page summary row too.
 
+### Dialogs (from the New Transaction dialog)
+
+- **R24. Button row: `FormActions`, right-aligned, Cancel (`outline`, disabled while submitting) first and the primary last, `pt-4` spacing, not sticky** (`components/ui/FormActions.tsx:91-100`, `TransactionForm.tsx:1894-1903`). `SplitSubmitButton` options are "Create" then "Create & New".
+- **R25. A form dialog uses `useFormModal` (`pushHistory` + `onBeforeClose`) and renders `UnsavedChangesDialog` beside the `Modal`; the form takes `onDirtyChange` and `submitRef`** (`app/transactions/page.tsx:1504-1533`, `TransactionForm.tsx:410, 1507`).
+- **R26. Panel `p-6` (through `className`, keeping `padding="none"`), title `h2 ... mb-4`, form body `space-y-4`.** Hosts of `TransactionForm` share `maxWidth="6xl" className="p-6 !max-w-[69rem]"` (reconcile:696, bills:728, ForeignCurrencyFeesReport:412).
+- **R27. Fields: one column on a phone, two or three from `md:` (`grid grid-cols-1 md:grid-cols-2 gap-4`); the whole panel scrolls (`max-h-[90vh]`).**
+- **R28. A warning before a save is `ConfirmDialog variant="warning"`** (`TransactionForm.tsx:1928-1937`).
+- **R29. A destructive action inside a form section is red text in the section header row** ("Cancel split", `TransactionForm.tsx:1777-1786`), not a danger or primary button.
+- **R30. `variant="primary"` is never the selected state of a toggle pair**: use the segmented control.
+
 ### Reports, settings, states, destructive actions
 
 - **R1. A report keeps its toolbar mounted while it reloads.** Loading, error and empty states render inside the chart card, below the toolbar, as in `components/reports/SpendingByCategoryReport.tsx:380-394` (its comment: focus in `DateInput` survives a reload). Nine reports do this; 38 return early with a skeleton card.
@@ -59,6 +72,15 @@ Suggestion: either fix the reference screens first (they are what agents copy), 
 
 
 ## Deviations
+
+### Dialogs
+
+- **D29. Dialogs that pass `title` to `Modal` and so show the small title, X and full-width line** (30): `ui/CurrencyInput.tsx:444`, `transactions/AttachmentPreviewDialog.tsx:197`, `transactions/DocumentScanDialog.tsx:336`, `warranties/WarrantyImportDialog.tsx:130`, `warranties/WarrantyClaimList.tsx:220`, `notifications/RemindMeButton.tsx:154`, `settings/SecuritySection.tsx:412`, `settings/bank-sync/BankSyncConnectDialog.tsx:121`, `BankSyncCredentialsModal.tsx:152`, `BankSyncLinkDialog.tsx:97`, `BankSyncPreviewModal.tsx:164`, `settings/payee-lookup/GooglePlacesConfigModal.tsx:121`, `rules/RunRuleDialog.tsx:179`, `accounts/loan-detail/MortgageTypeHistoryDetector.tsx:83`, `PaymentMatchingCreateModal.tsx:80`, `email-receipts/EmailReceiptDetailDialog.tsx:475`, `RecognizeWithAiDialog.tsx:303`, `BulkConfirmDialog.tsx:55`, `ParserEditorDialog.tsx:110`, `ParserJsonDialog.tsx:37`, `WizardSampleDialogs.tsx:85`, `calendar/DailyMovementDialog.tsx:67`, `CalendarDayPanel.tsx:303`, `payees/ContactLookupDialog.tsx:99`, `app/taxes/payroll-deductions/page.tsx:164`, `app/warranties/page.tsx:563`, `app/warranties/[id]/page.tsx:312`, `:334`, `app/share/page.tsx:349`, `app/payees/page.tsx:455`. Two of them (`app/share/page.tsx:349`, `app/warranties/[id]/page.tsx:334`) wrap `TransactionForm` itself, so New Transaction looks different depending on where it opens.
+- **D30. Hand-made titles in other sizes** (expected `text-2xl font-bold`): `text-xl font-bold` in `transactions/BulkUpdateModal.tsx:190`, `institutions/InstitutionAccountsManager.tsx:167`, `accounts/AccountForm.tsx:1455`, `categories/ImportDefaultCategoriesDialog.tsx:114`, `payees/MergePayeeDialog.tsx:86` and 5 more; `text-xl font-semibold` in `investments/InvestmentRegisterPanel.tsx:427, 458`, `app/investments/page.tsx:510, 532`; `text-lg font-semibold` in about 25 dialogs, mostly settings, import and account-detail (`auth/StepUpAuthModal.tsx:165`, `whats-new/WhatsNewModal.tsx:115`, `settings/BackupRestoreSection.tsx:591`, `accounts/AccountExportModal.tsx:115`, ...); `text-lg font-medium` in `admin/CreateUserModal.tsx:132`, `categories/DeleteCategoryDialog.tsx:101`, `scheduled-transactions/PostTransactionDialog.tsx:965`, `dashboard/CustomizeDashboardModal.tsx:165`, `app/bills/page.tsx:926` and more.
+- **D31. Hand-rolled X close buttons**: `whats-new/WhatsNewModal.tsx:124-131`, `scheduled-transactions/PostTransactionDialog.tsx:968-975`, `OccurrenceDatePicker.tsx:210`, `OverrideEditorDialog.tsx:656` (plus `Modal` itself for the 30 titled dialogs).
+- **D32. Hand-rolled full-width header/footer lines**: `admin/CreateUserModal.tsx:131, 250`, `auth/StepUpAuthModal.tsx:164, 233, 272`, `whats-new/WhatsNewModal.tsx:113, 255`, `securities/SecurityLookupPicker.tsx:66, 142`, `settings/SharedAccessSection.tsx:379, 496`, `payees/CategoryAutoAssignDialog.tsx:162, 392`, `payees/AutoMergePayeesDialog.tsx:292`, `payees/DeactivateUnusedPayeesDialog.tsx:128, 306`, `app/settings/emergency-access/page.tsx:926, 945`. A `border-t` above the buttons inside the padding: `accounts/asset-detail/UpdateValueDialog.tsx:101`, `credit-card-detail/PaymentSetupDialog.tsx:263`, `institutions/InstitutionAccountsManager.tsx:253`.
+- **D33. Explanation paragraph under the title** instead of `InfoTooltip`: the 12 `Modal description` uses (e.g. `rules/RunRuleDialog.tsx:179`, `settings/bank-sync/BankSyncConnectDialog.tsx:121`) and about 25 hand-made `<p>`s (`admin/CreateUserModal.tsx:135`, `transactions/BulkUpdateModal.tsx:193`, `categories/ImportDefaultCategoriesDialog.tsx:117`, `settings/BackupRestoreSection.tsx:596, 645, 701`, `import/MnyPasswordDialog.tsx:50`, ...). Some are warnings a user must read once (backup restore, wipe); the rule should say whether a one-time warning is exempt.
+- **D34. Several primary-styled buttons at once**: `transactions/AttachmentPreviewDialog.tsx:220, 229, 242, 251` use `variant="primary"` as the selected state of two toggle pairs, plus a primary "Close" at `:208` (up to three primaries); same in `DocumentScanDialog.tsx:377, 386` with `:320`. Breaks R30. A primary "Close" also contradicts "the primary saves or confirms".
 
 ### List and detail pages
 
