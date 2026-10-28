@@ -6766,6 +6766,20 @@ describe("TransactionsService", () => {
         expect(splitsRepository.delete).not.toHaveBeenCalled();
       });
 
+      it("refuses a changed amount with splits: null, before any write", async () => {
+        transactionsRepository.findOne.mockResolvedValue({ ...splitTx });
+
+        await expect(
+          service.update("user-1", "tx-1", {
+            amount: -150,
+            splits: null,
+          } as any),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(transactionsRepository.update).not.toHaveBeenCalled();
+        expect(splitsRepository.delete).not.toHaveBeenCalled();
+      });
+
       it("allows an amount equal to the stored one (forms resend it)", async () => {
         transactionsRepository.findOne.mockResolvedValue({ ...splitTx });
         splitsRepository.find.mockResolvedValue([]);

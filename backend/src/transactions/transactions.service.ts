@@ -2802,7 +2802,7 @@ export class TransactionsService {
       // forms resend an unchanged amount.
       if (
         locked.isSplit &&
-        splits === undefined &&
+        splits == null &&
         updateData.amount !== undefined &&
         roundMoney(Number(updateData.amount)) !==
           roundMoney(Number(locked.amount))
