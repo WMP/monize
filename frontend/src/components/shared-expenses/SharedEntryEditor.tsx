@@ -13,11 +13,11 @@ import { NumericInput } from "@/components/ui/NumericInput";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Card } from "@/components/ui/Card";
 import { useFinancialToday } from "@/hooks/useFinancialToday";
-import {
-  sharedDocumentsApi,
-  type SharedDocument,
-} from "@/lib/shared-documents";
-import { sharedExpensesApi } from "@/lib/shared-expenses";
+import { type SharedDocument } from "@/lib/shared-documents";
+import { exchangeRatesApi } from "@/lib/exchange-rates";
+import { useReportData } from "@/hooks/useReportData";
+import { AttachmentsSection } from "@/components/transactions/AttachmentsSection";
+import { useSharedEntrySave } from "./useSharedEntrySave";
 import {
   initialSharedEntry,
   usableSharedTemplate,
@@ -26,19 +26,15 @@ import type {
   SharedEntry,
   SharedEntryInput,
   SharedEntryType,
-  SharedFinanceInput,
   SharedGroupDetail,
   SharedSuggestion,
 } from "@/types/shared-expense";
 import {
-  SharedAmount,
-  SharedCurrencySelect,
   SharedError,
   SharedMoneyInput,
   SharedNotice,
 } from "./SharedPrimitives";
 import { SharedNavigationGuard } from "./SharedNavigationGuard";
-import { SharedCombinedBooking } from "./SharedCombinedBooking";
 import { SharedSplitEditor } from "./SharedSplitEditor";
 import { useSharedEntryPreview } from "./useSharedEntryPreview";
 import { SharedEntryPreview } from "./SharedEntryPreview";
@@ -55,7 +51,6 @@ export function SharedEntryEditor({
   refundSource,
   sourceDocument,
   initialValues,
-  initialFinance,
   onClose,
   onSaved,
 }: {
@@ -68,7 +63,6 @@ export function SharedEntryEditor({
   onClose: () => void;
   onSaved: (entry: SharedEntry) => void;
   initialValues?: Partial<SharedEntryInput>;
-  initialFinance?: Partial<SharedFinanceInput>;
 }) {
   const t = useTranslations("sharedExpenses");
   const common = useTranslations("common");
@@ -120,22 +114,28 @@ export function SharedEntryEditor({
       ? group.decimalPlaces
       : undefined,
   );
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const [includeOwn, setIncludeOwn] = useState(!!initialFinance);
-  const [booking, setBooking] = useState(false);
   const [split, setSplit] = useState(false);
+  const [currencyChanged, setCurrencyChanged] = useState(false);
   const [discard, setDiscard] = useState(false);
-  const [pendingFiles, setPendingFiles] = useState(false);
-  const [documentError, setDocumentError] = useState<unknown>(null);
-  const [documentLinked, setDocumentLinked] = useState(false);
-  const [saved, setSaved] = useState<SharedEntry | null>(null);
+  const saving = useSharedEntrySave({
+    groupId: group.id,
+    entryId: entry?.id,
+    sourceDocument,
+    onSaved,
+    onClose,
+  });
+  const { saved, busy, error } = saving;
+  const pendingFiles = saving.files.length > 0;
+  const currencies = useReportData(() => exchangeRatesApi.getCurrencies(), []);
+  const resolvedPlaces =
+    places ??
+    currencies.data?.find((c) => c.code === input.currencyCode)?.decimalPlaces;
   const [multiple, setMultiple] = useState(input.contributions.length > 1);
   const inputKey = JSON.stringify(input);
   const preview = useSharedEntryPreview(
     group.id,
     input,
-    places,
+    resolvedPlaces,
     entry?.id,
     !!saved,
   );
@@ -153,60 +153,13 @@ export function SharedEntryEditor({
   ];
   const change = (patch: Partial<SharedEntryInput>) => {
     setInput({ ...input, ...patch });
-    setError(null);
   };
   const close = () => {
     if (busy) return;
     if ((dirty && !saved) || pendingFiles) setDiscard(true);
     else onClose();
   };
-  const linkSourceDocument = async (targetId: string) => {
-    if (!sourceDocument) return;
-    setDocumentError(null);
-    try {
-      await sharedDocumentsApi.update(
-        group.id,
-        sourceDocument,
-        sourceDocument.filename,
-        sourceDocument.documentKind,
-        targetId,
-      );
-      setDocumentLinked(true);
-    } catch (cause) {
-      setDocumentError(cause);
-    }
-  };
-  const acceptResult = async (result: SharedEntry) => {
-    setSaved(result);
-    setBooking(false);
-    await linkSourceDocument(result.id);
-    onSaved(result);
-  };
-  const save = async () => {
-    if (!shownPreview) return;
-    if (
-      includeOwn &&
-      shownPreview.state === "POSTED" &&
-      shownPreview.ownEffect
-    ) {
-      setBooking(true);
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await sharedExpensesApi.saveEntry(
-        group.id,
-        { ...input, previewFingerprint: shownPreview.previewFingerprint },
-        entry?.id,
-      );
-      await acceptResult(result);
-    } catch (cause) {
-      setError(cause);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const save = () => saving.save(input, shownPreview);
   const label =
     input.type === "REPAYMENT"
       ? t("addRepayment")
@@ -218,7 +171,7 @@ export function SharedEntryEditor({
   return (
     <>
       <SharedNavigationGuard
-        when={dirty && !saved}
+        when={busy || (dirty && !saved) || pendingFiles}
         message={common("unsavedChanges.message")}
       />
       <Modal
@@ -235,411 +188,346 @@ export function SharedEntryEditor({
         fullScreenOnPhone
         title={saved ? t("saved") : label}
         description={
-          saved ? (
-            t("sharedWithGroup")
-          ) : input.type === "REPAYMENT" ? (
-            t("repaymentHelp")
-          ) : input.title.trim() && Number(input.amount) > 0 ? (
-            <span className="flex flex-wrap justify-between gap-x-3">
-              <span className="break-words">{input.title}</span>
-              <SharedAmount
-                amount={input.amount}
-                currency={input.currencyCode}
-                relativeTo={group.currencyCode}
-              />
-            </span>
-          ) : undefined
+          input.type === "REPAYMENT" ? t("repaymentHelp") : undefined
         }
         onClose={close}
         padding="md"
         maxWidth="2xl"
         footer={
-          saved ? (
-            <Button onClick={close}>{t("close")}</Button>
-          ) : (
-            <>
-              <Button variant="outline" disabled={busy} onClick={close}>
-                {t("cancel")}
-              </Button>
-              <Button isLoading={busy} disabled={!shownPreview} onClick={save}>
-                {includeOwn &&
-                shownPreview?.state === "POSTED" &&
-                shownPreview.ownEffect
-                  ? t("reviewOwnFinances")
-                  : input.type === "REPAYMENT"
-                    ? t("confirmRepayment")
-                    : input.type === "EXPENSE" && !entry
-                      ? t("confirmSave")
-                      : t("save")}
-              </Button>
-            </>
-          )
+          <>
+            <Button variant="outline" disabled={busy} onClick={close}>
+              {saved ? t("close") : t("cancel")}
+            </Button>
+            <Button
+              isLoading={busy}
+              disabled={!saved && !shownPreview}
+              onClick={save}
+            >
+              {saved
+                ? t("retry")
+                : input.type === "REPAYMENT"
+                  ? t("confirmRepayment")
+                  : input.type === "EXPENSE" && !entry
+                    ? t("confirmSave")
+                    : t("save")}
+            </Button>
+          </>
         }
       >
         <div className="space-y-4">
           <SharedError error={error} />
-          {saved ? (
-            <>
-              <SharedNotice>
-                {saved.state === "DRAFT"
-                  ? t("draftSaved")
-                  : t("financialPrivacy")}
-              </SharedNotice>
-              {!!documentError && (
-                <>
-                  <SharedNotice>{t("fileLinkFailed")}</SharedNotice>
-                  <SharedError error={documentError} />
-                  <Button
-                    disabled={busy}
-                    onClick={async () => {
-                      if (busy) return;
-                      setBusy(true);
-                      try {
-                        await linkSourceDocument(saved.id);
-                      } finally {
-                        setBusy(false);
+          {saved && <SharedNotice>{t("savedFilesPending")}</SharedNotice>}
+          {currencyChanged && !preview.validation && (
+            <SharedNotice>{t("amountChanged")}</SharedNotice>
+          )}
+          <fieldset disabled={busy || !!saved} className="space-y-4">
+            <Input
+              label={t("entryTitle")}
+              value={input.title}
+              maxLength={120}
+              autoFocus
+              onChange={(e) => change({ title: e.target.value })}
+            />
+            <SharedMoneyInput
+              label={t("amount")}
+              value={input.amount}
+              currency={input.currencyCode}
+              baseCurrency={group.currencyCode}
+              places={resolvedPlaces ?? 4}
+              disabled={resolvedPlaces === undefined}
+              onChange={(amount) =>
+                change({
+                  amount,
+                  ...(!multiple && input.contributions.length === 1
+                    ? {
+                        contributions: [
+                          { ...input.contributions[0], value: amount },
+                        ],
                       }
-                    }}
-                  >
-                    {t("retry")}
-                  </Button>
-                </>
-              )}
-              <SharedDocuments
-                key={`${saved.id}:${documentLinked}`}
-                group={group}
-                entryId={saved.id}
-                onPendingChange={setPendingFiles}
-              />
-            </>
-          ) : (
-            <>
-              <Input
-                label={t("entryTitle")}
-                value={input.title}
-                maxLength={120}
-                autoFocus
-                onChange={(e) => change({ title: e.target.value })}
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <SharedMoneyInput
-                  label={t("amount")}
-                  value={input.amount}
-                  currency={input.currencyCode}
-                  places={places ?? 4}
-                  disabled={places === undefined}
-                  onChange={(amount) =>
-                    change({
-                      amount,
-                      ...(!multiple && input.contributions.length === 1
-                        ? {
-                            contributions: [
-                              { ...input.contributions[0], value: amount },
-                            ],
-                          }
-                        : {}),
-                    })
-                  }
-                />
-                <SharedCurrencySelect
-                  onResolved={setPlaces}
-                  value={input.currencyCode}
-                  disabled={input.type === "REFUND"}
-                  onChange={(currencyCode, decimals) => {
-                    setPlaces(decimals);
-                    change({
-                      currencyCode,
-                      fxRate: undefined,
-                      amount: "",
-                      contributions: input.contributions.map((part) => ({
-                        ...part,
-                        value: "",
-                      })),
-                      ...(input.splitMode === "EXACT"
-                        ? {
-                            shares: input.shares.map((part) => ({
-                              ...part,
-                              value: "",
-                            })),
-                          }
-                        : {}),
-                    });
-                  }}
-                />
-              </div>
-              {input.type === "REPAYMENT" ? (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Select
-                      label={t("from")}
-                      value={input.fromParticipantId}
-                      options={options}
-                      onChange={(e) =>
-                        change({ fromParticipantId: e.target.value })
-                      }
-                    />
-                    <Select
-                      label={t("to")}
-                      value={input.toParticipantId}
-                      options={options}
-                      onChange={(e) =>
-                        change({ toParticipantId: e.target.value })
-                      }
-                    />
-                  </div>
-                  <label className="flex gap-3 items-start text-sm">
-                    <ToggleSwitch
-                      label={t("overpayment")}
-                      checked={input.acknowledgeOverpayment ?? false}
-                      onChange={(checked) =>
-                        change({ acknowledgeOverpayment: checked })
-                      }
-                    />
-                    {t("overpayment")}
-                  </label>
-                </>
-              ) : (
-                <>
-                  <div className="space-y-1">
-                    {!multiple ? (
-                      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
-                        <Select
-                          label={t(
-                            input.type === "EXPENSE" ? "paidBy" : "receivedBy",
-                          )}
-                          value={input.contributions[0]?.participantId ?? ""}
-                          options={options}
-                          onChange={(e) =>
-                            change({
-                              contributions: e.target.value
-                                ? [
-                                    {
-                                      participantId: e.target.value,
-                                      value: input.amount,
-                                    },
-                                  ]
-                                : [],
-                            })
-                          }
-                        />
-                        <DateInput
-                          label={t("date")}
-                          value={input.date}
-                          onDateChange={(date) => change({ date })}
-                        />
-                      </div>
-                    ) : (
-                      <fieldset className="space-y-3">
-                        <legend className="text-sm font-medium">
-                          {t(
-                            input.type === "EXPENSE" ? "paidBy" : "receivedBy",
-                          )}
-                        </legend>
-                        {participants.map((person) => (
-                          <SharedMoneyInput
-                            key={person.id}
-                            label={t("contribution", { name: person.name })}
-                            value={
-                              input.contributions.find(
-                                (c) => c.participantId === person.id,
-                              )?.value ?? ""
+                    : {}),
+                })
+              }
+              onCurrencyChange={
+                input.type === "REFUND"
+                  ? undefined
+                  : (currencyCode) => {
+                      if (currencyCode === input.currencyCode) return;
+                      setCurrencyChanged(true);
+                      setPlaces(
+                        currencyCode === group.currencyCode
+                          ? group.decimalPlaces
+                          : undefined,
+                      );
+                      currencies.reload();
+                      change({
+                        currencyCode,
+                        fxRate: undefined,
+                        amount: "",
+                        contributions: input.contributions.map((part) => ({
+                          ...part,
+                          value: "",
+                        })),
+                        ...(input.splitMode === "EXACT"
+                          ? {
+                              shares: input.shares.map((part) => ({
+                                ...part,
+                                value: "",
+                              })),
                             }
-                            currency={input.currencyCode}
-                            places={places ?? 4}
-                            disabled={places === undefined}
-                            onChange={(value) =>
-                              change({
-                                contributions: [
-                                  ...input.contributions.filter(
-                                    (c) => c.participantId !== person.id,
-                                  ),
-                                  ...(value && Number(value) > 0
-                                    ? [{ participantId: person.id, value }]
-                                    : []),
-                                ],
-                              })
-                            }
-                          />
-                        ))}
-                      </fieldset>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setMultiple(!multiple);
-                        if (multiple)
+                          : {}),
+                      });
+                    }
+              }
+            />
+            <SharedError error={currencies.error} retry={currencies.reload} />
+            {input.type === "REPAYMENT" ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Select
+                    label={t("from")}
+                    value={input.fromParticipantId}
+                    options={options}
+                    onChange={(e) =>
+                      change({ fromParticipantId: e.target.value })
+                    }
+                  />
+                  <Select
+                    label={t("to")}
+                    value={input.toParticipantId}
+                    options={options}
+                    onChange={(e) =>
+                      change({ toParticipantId: e.target.value })
+                    }
+                  />
+                </div>
+                <label className="flex gap-3 items-start text-sm">
+                  <ToggleSwitch
+                    label={t("overpayment")}
+                    checked={input.acknowledgeOverpayment ?? false}
+                    onChange={(checked) =>
+                      change({ acknowledgeOverpayment: checked })
+                    }
+                  />
+                  {t("overpayment")}
+                </label>
+              </>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  {!multiple ? (
+                    <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
+                      <Select
+                        label={t(
+                          input.type === "EXPENSE" ? "paidBy" : "receivedBy",
+                        )}
+                        value={input.contributions[0]?.participantId ?? ""}
+                        options={options}
+                        onChange={(e) =>
                           change({
-                            contributions: [
-                              {
-                                participantId:
-                                  input.contributions[0]?.participantId ??
-                                  group.myParticipantId ??
-                                  "",
-                                value: input.amount,
-                              },
-                            ],
-                          });
-                      }}
-                    >
-                      {t(
-                        multiple
-                          ? "singleContributor"
-                          : input.type === "EXPENSE"
-                            ? "multiplePayers"
-                            : "multipleReceivers",
-                      )}
-                    </Button>
-                  </div>
-                  <Card padding="sm">
-                    <div className="flex flex-wrap justify-between items-center gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium">{t("splitBetween")}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {input.splitMode === "EQUAL"
-                            ? t("equalSummary", { count: input.shares.length })
-                            : t(input.splitMode)}
-                        </p>
-                        <p className="text-sm break-words mt-1">
-                          {participants
-                            .filter((p) =>
-                              input.shares.some(
-                                (s) => s.participantId === p.id,
-                              ),
-                            )
-                            .map((p) => p.name)
-                            .join(", ")}
-                        </p>
-                      </div>
-                      <Button variant="outline" onClick={() => setSplit(true)}>
-                        {t("split")}
-                      </Button>
-                    </div>
-                  </Card>
-                  {input.type === "REFUND" && (
-                    <SharedNotice>{t("refundHelp")}</SharedNotice>
-                  )}
-                </>
-              )}
-              {!entry && input.type === "EXPENSE" && group.splitTemplate && (
-                <SharedNotice>
-                  {t(
-                    usableSharedTemplate(group)
-                      ? "templateApplied"
-                      : "templateUnavailable",
-                  )}
-                </SharedNotice>
-              )}
-              {(input.type === "REPAYMENT" || multiple) && (
-                <DateInput
-                  label={t("date")}
-                  value={input.date}
-                  onDateChange={(date) => change({ date })}
-                />
-              )}
-              <details
-                className="space-y-3"
-                open={!!shownPreview?.draftReason || undefined}
-              >
-                <summary className="cursor-pointer min-h-10 text-sm font-medium">
-                  {t("advanced")}
-                </summary>
-                <Input
-                  label={t("note")}
-                  value={input.note ?? ""}
-                  maxLength={750}
-                  onChange={(e) => change({ note: e.target.value })}
-                />
-                <Input
-                  label={t("categoryLabel")}
-                  value={input.categoryLabel ?? ""}
-                  maxLength={60}
-                  onChange={(e) => change({ categoryLabel: e.target.value })}
-                />
-                {input.currencyCode !== group.currencyCode &&
-                  input.type !== "REFUND" && (
-                    <>
-                      <NumericInput
-                        label={t("fxRate")}
-                        decimalPlaces={10}
-                        value={input.fxRate ? Number(input.fxRate) : undefined}
-                        onChange={(rate) =>
-                          change({
-                            fxRate:
-                              rate === undefined ? undefined : String(rate),
+                            contributions: e.target.value
+                              ? [
+                                  {
+                                    participantId: e.target.value,
+                                    value: input.amount,
+                                  },
+                                ]
+                              : [],
                           })
                         }
                       />
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {t("fxHelp", {
-                          from: input.currencyCode,
-                          to: group.currencyCode,
-                        })}
-                      </p>
-                    </>
+                      <DateInput
+                        label={t("date")}
+                        value={input.date}
+                        onDateChange={(date) => change({ date })}
+                      />
+                    </div>
+                  ) : (
+                    <fieldset className="space-y-3">
+                      <legend className="text-sm font-medium">
+                        {t(input.type === "EXPENSE" ? "paidBy" : "receivedBy")}
+                      </legend>
+                      {participants.map((person) => (
+                        <SharedMoneyInput
+                          key={person.id}
+                          label={t("contribution", { name: person.name })}
+                          value={
+                            input.contributions.find(
+                              (c) => c.participantId === person.id,
+                            )?.value ?? ""
+                          }
+                          currency={input.currencyCode}
+                          places={resolvedPlaces ?? 4}
+                          disabled={resolvedPlaces === undefined}
+                          onChange={(value) =>
+                            change({
+                              contributions: [
+                                ...input.contributions.filter(
+                                  (c) => c.participantId !== person.id,
+                                ),
+                                ...(value && Number(value) > 0
+                                  ? [{ participantId: person.id, value }]
+                                  : []),
+                              ],
+                            })
+                          }
+                        />
+                      ))}
+                    </fieldset>
                   )}
-              </details>
-              {shownPreview && (
-                <SharedEntryPreview
-                  entry={shownPreview}
-                  group={group}
-                  compact
-                />
-              )}
-              {preview.pending && (
-                <p
-                  role="status"
-                  className="text-sm text-gray-500 dark:text-gray-400"
-                >
-                  {t("checkingSplit")}
-                </p>
-              )}
-              {preview.validation && (
-                <SharedNotice>{t(preview.validation)}</SharedNotice>
-              )}
-              <SharedError error={preview.error} retry={preview.retry} />
-              {group.myParticipantId && (
-                <label className="flex items-start gap-3 text-sm">
-                  <ToggleSwitch
-                    label={t("includeOwnFinances")}
-                    checked={includeOwn}
-                    onChange={setIncludeOwn}
-                  />
-                  <span>
-                    {t("includeOwnFinances")}
-                    {includeOwn && (
-                      <span className="block mt-1 text-gray-500 dark:text-gray-400">
-                        {t("combinedBookingHelp")}
-                      </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setMultiple(!multiple);
+                      if (multiple)
+                        change({
+                          contributions: [
+                            {
+                              participantId:
+                                input.contributions[0]?.participantId ??
+                                group.myParticipantId ??
+                                "",
+                              value: input.amount,
+                            },
+                          ],
+                        });
+                    }}
+                  >
+                    {t(
+                      multiple
+                        ? "singleContributor"
+                        : input.type === "EXPENSE"
+                          ? "multiplePayers"
+                          : "multipleReceivers",
                     )}
-                    {!includeOwn && (
-                      <span className="block mt-1 text-gray-500 dark:text-gray-400">
-                        {t("groupOnlyHelp")}
-                      </span>
-                    )}
-                  </span>
-                </label>
-              )}
-            </>
+                  </Button>
+                </div>
+                <Card padding="sm">
+                  <div className="flex flex-wrap justify-between items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">{t("splitBetween")}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {input.splitMode === "EQUAL"
+                          ? t("equalSummary", { count: input.shares.length })
+                          : t(input.splitMode)}
+                      </p>
+                      <p className="text-sm break-words mt-1">
+                        {participants
+                          .filter((p) =>
+                            input.shares.some((s) => s.participantId === p.id),
+                          )
+                          .map((p) => p.name)
+                          .join(", ")}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      disabled={resolvedPlaces === undefined}
+                      onClick={() => setSplit(true)}
+                    >
+                      {t("split")}
+                    </Button>
+                  </div>
+                </Card>
+                {input.type === "REFUND" && (
+                  <SharedNotice>{t("refundHelp")}</SharedNotice>
+                )}
+              </>
+            )}
+            {!entry && input.type === "EXPENSE" && group.splitTemplate && (
+              <SharedNotice>
+                {t(
+                  usableSharedTemplate(group)
+                    ? "templateApplied"
+                    : "templateUnavailable",
+                )}
+              </SharedNotice>
+            )}
+            {(input.type === "REPAYMENT" || multiple) && (
+              <DateInput
+                label={t("date")}
+                value={input.date}
+                onDateChange={(date) => change({ date })}
+              />
+            )}
+            <details
+              className="space-y-3"
+              open={!!shownPreview?.draftReason || undefined}
+            >
+              <summary className="cursor-pointer min-h-10 text-sm font-medium">
+                {t("advanced")}
+              </summary>
+              <Input
+                label={t("note")}
+                value={input.note ?? ""}
+                maxLength={750}
+                onChange={(e) => change({ note: e.target.value })}
+              />
+              <Input
+                label={t("categoryLabel")}
+                value={input.categoryLabel ?? ""}
+                maxLength={60}
+                onChange={(e) => change({ categoryLabel: e.target.value })}
+              />
+              {input.currencyCode !== group.currencyCode &&
+                input.type !== "REFUND" && (
+                  <>
+                    <NumericInput
+                      label={t("fxRate")}
+                      decimalPlaces={10}
+                      value={input.fxRate ? Number(input.fxRate) : undefined}
+                      onChange={(rate) =>
+                        change({
+                          fxRate: rate === undefined ? undefined : String(rate),
+                        })
+                      }
+                    />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {t("fxHelp", {
+                        from: input.currencyCode,
+                        to: group.currencyCode,
+                      })}
+                    </p>
+                  </>
+                )}
+            </details>
+            {shownPreview && (
+              <SharedEntryPreview entry={shownPreview} group={group} compact />
+            )}
+            {preview.pending && (
+              <p
+                role="status"
+                className="text-sm text-gray-500 dark:text-gray-400"
+              >
+                {t("checkingSplit")}
+              </p>
+            )}
+            {preview.validation && (
+              <SharedNotice>{t(preview.validation)}</SharedNotice>
+            )}
+            <SharedError error={preview.error} retry={preview.retry} />
+          </fieldset>
+          <fieldset disabled={busy}>
+            <AttachmentsSection
+              stagedFiles={saving.files}
+              onStagedFilesChange={saving.queue}
+              pendingHint={t("entryUploadHint")}
+            />
+          </fieldset>
+          {entry && (
+            <SharedDocuments
+              group={group}
+              entryId={entry.id}
+              allowUpload={false}
+            />
           )}
         </div>
       </Modal>
-      {booking && shownPreview && (
-        <SharedCombinedBooking
-          group={group}
-          entry={shownPreview}
-          entryInput={input}
-          entryId={entry?.id}
-          initialInput={initialFinance}
-          onClose={() => setBooking(false)}
-          onSaved={acceptResult}
-        />
-      )}
       {split && (
         <SharedSplitEditor
           input={input}
           participants={participants}
-          places={places ?? 4}
+          places={resolvedPlaces ?? 4}
           onClose={() => setSplit(false)}
           onApply={(value) => {
             change(value);

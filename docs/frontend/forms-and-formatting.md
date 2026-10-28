@@ -30,7 +30,7 @@ Paths beginning with `src/` or `scripts/`, and layer configuration filenames, ar
 the calculator dialog. `evaluateExpression` accepts that precision and defaults
 to two decimals for existing callers. Shared expense money fields go through
 `components/shared-expenses/SharedPrimitives.tsx` (`SharedMoneyInput`), including
-exact shares, multiple payers and private bank portions; percentages, weights
+exact shares, multiple payers and legacy private bank portions; percentages, weights
 and ten-decimal rates remain `NumericInput`. The selected precision is retained
 when opening a bank amount in the calculator. `SharedMoneyInput.test.tsx` exercises
 the real currency control through blur, Enter and calculator Apply at zero, two,
@@ -280,3 +280,8 @@ The date case is also the worked example of the `DateInput` `setValue` trap abov
 ## A number is localized too, and by its own preference
 
 `user_preferences.numberFormat` decides separators, grouping and currency placement, and it is independent of `language` -- an explicit `numberFormat` wins, `"browser"` falls back to the UI language. Every figure addressed to a person goes through that resolution: `useNumberFormat()` on the client (`docs/frontend/forms-and-formatting.md` has the four banned fingerprints and the guard), `backend/src/common/number-locale.util.ts` on the server, where `"browser"` cannot be resolved and lands on `DEFAULT_LOCALE`. `backend/src/common/format-currency.util.ts`'s `en-US` helpers stay for output read by a MACHINE -- an LLM prompt, and the English `description`/`message` fallback stored on a row whose UI composes its own copy from the structured `data` -- and `number-locale.guard.spec.ts` holds that classification, caller by caller, with the reason each is exempt. A pre-formatted money string in a notification's params is neither: send `amountValue` + `amountCurrency` beside the English `amount` so the reader's client formats it.
+
+Restore summaries use `translationKey` entries in `lib/restore-labels.ts` for new
+count labels. `components/settings/BackupRestoreSection.tsx` translates these in
+the settings namespace; the restore-label contract checks every backend count
+key, and the component regression checks a shared-group label and its count.

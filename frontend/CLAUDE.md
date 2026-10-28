@@ -85,7 +85,7 @@ npm run i18n:check         # Verify the pseudo-locale is up to date (CI gate)
 
 **Currency precision applies to the calculator too.** Pass the currency's `decimalPlaces` through `CurrencyInput`; shared expenses use `SharedMoneyInput` and disclose server conversion snapshots through `SharedEntryConversion` (`docs/frontend/forms-and-formatting.md`).
 
-**Shared expenses follow existing controls and optional-finance language**; exact-share remainder actions preserve entered amounts, including zero (`docs/specs/shared-expenses-ux.md`).
+**Shared expenses stay group-only and reuse the standard controls**; staged files save with the entry (`docs/specs/shared-expenses-ui-polish.md`).
 
 **Components:** interactive components are `'use client'`; server components are the default for pages and layouts. No `setState` in `useEffect` (`react-hooks/set-state-in-effect`); reset child state from a prop with the "info from previous render" pattern. Nothing interactive goes inside a `<button>` or an `<a>`. Focus rings are `focus-visible:`; transitions carry `motion-reduce:transition-none`.
 

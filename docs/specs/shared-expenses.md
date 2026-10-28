@@ -1,5 +1,11 @@
 # Shared expenses and settlements
 
+Current delivery boundary: `docs/specs/shared-expenses-ui-polish.md` section 0
+supersedes the private-finance creation and Transactions handoff behavior below.
+New booking is deferred; existing private records remain readable/unlinkable.
+The accounting definitions below are retained for those accepted records.
+
+
 Status: **implementation authorized by the requesting user on 2026-10-25**.
 This records local authorization, not upstream maintainer approval. On 2026-10-27
 the requester asked to publish a Draft PR and Discussion to seek that approval

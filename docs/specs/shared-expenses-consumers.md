@@ -1,5 +1,11 @@
 # Shared expense consumer audit
 
+Current delivery boundary: `docs/specs/shared-expenses-ui-polish.md` section 0
+supersedes the private-finance creation and Transactions handoff behavior below.
+New booking is deferred; existing private records remain readable/unlinkable.
+The accounting definitions below are retained for those accepted records.
+
+
 This accompanies the [approved specification](shared-expenses.md) and
 [invariants SE-001 through SE-012](../system-invariants.md#shared-expenses).
 It describes the implementation's data sources, not a claim that every test

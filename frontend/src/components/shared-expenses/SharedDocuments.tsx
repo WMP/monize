@@ -44,10 +44,12 @@ export function SharedDocuments({
   onOpenEntry,
   onCreateEntry,
   onPendingChange,
+  allowUpload = true,
 }: {
   group: SharedGroupDetail;
   entryId?: string;
   onPendingChange?: (pending: boolean) => void;
+  allowUpload?: boolean;
   onOpenEntry?: (id: string) => void;
   onCreateEntry?: (document: SharedDocument) => void;
 }) {
@@ -165,7 +167,7 @@ export function SharedDocuments({
       {files.length > 0 && Boolean(error) && (
         <SharedNotice>{t("fileFailed")}</SharedNotice>
       )}
-      {canWrite && (
+      {canWrite && allowUpload && (
         <Card padding="sm">
           <fieldset disabled={busy} className="space-y-3">
             <AttachmentsSection

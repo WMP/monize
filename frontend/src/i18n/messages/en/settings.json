@@ -835,7 +835,19 @@
       },
       "doneButton": "Done",
       "unlinkedBondSecuritiesList": "Affected securities: {symbols}.",
-      "unlinkedBondSecuritiesMore": "and {count} more"
+      "unlinkedBondSecuritiesMore": "and {count} more",
+      "counts": {
+        "sharedGroups": "Shared groups",
+        "sharedParticipants": "Group participants",
+        "sharedEntries": "Group entries",
+        "sharedAllocations": "Expense allocations",
+        "sharedActivity": "Group activity",
+        "sharedPeople": "Shared-expense contacts",
+        "sharedPersonLinks": "Linked contacts",
+        "sharedIntegrations": "Personal finance connections",
+        "sharedPostings": "Personal shared-expense bookings",
+        "sharedLedgerLinks": "Linked personal transactions"
+      }
     },
     "storedBackups": {
       "heading": "Automatic Backups",

@@ -357,5 +357,10 @@
   "groupOnlyHelp": "Optional: leave this off to keep the entry only in the group.",
   "noBankPaymentHelp": "You did not pay or receive money for this entry. Only your share and the amount owed will be recorded.",
   "saveAndShare": "Save & Share",
-  "saveAndShareHelp": "Save this transaction, then choose a group and split it with people."
+  "saveAndShareHelp": "Save this transaction, then choose a group and split it with people.",
+  "financeDeferred": "New personal-finance connections are unavailable in this version. Keep recording expenses in the group; existing personal records can still be viewed or unlinked.",
+  "savedFilesPending": "The expense is saved. Some documents are still pending below. Retry to finish attaching them, or close and keep the saved expense.",
+  "entryUploadHint": "These files will be shared with the group when you save the expense.",
+  "removeFilter": "Remove {filter} filter",
+  "filterValue": "{filter}: {value}"
 }

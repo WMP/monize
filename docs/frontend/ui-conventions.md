@@ -592,10 +592,26 @@ for a microtask and checks the mounted lifetime token before calling
 `history.back()`, so React Strict Mode does not consume the page behind a new
 modal. Nested review leaves the parent modal open until the review finishes.
 `components/ui/Modal.test.tsx` covers the replay; the shared-expense Playwright
-journeys cover cancelling a document-created entry and moving into bank review.
+journeys cover cancelling a document-created entry and retrying staged uploads.
 
 A portalled `Combobox` follows its anchor with `placePopover` before paint and on
 scroll/resize. A delayed scroll event from focusing a low field must not close
 its options before selection. Its resize handler checks that an event target is
 a `Node` before asking whether the list contains it; a window resize targets the
 window. `components/ui/Combobox.test.tsx` covers both events and option selection.
+
+Shared entry attachments stay in the expense form through `useSharedEntrySave`.
+Save closes after the entry and selected uploads succeed. A partial failure keeps
+the saved entry and failed file operation IDs, so Retry does not write a second
+expense. `components/shared-expenses/useSharedEntrySave.test.tsx` covers lost
+responses and partial uploads.
+The group-only delivery offers no personal booking controls; compatibility reads
+and unlink remain in `SharedPrivateFinances`.
+
+Shared overview and entry rows use `SharedGroupTable` and `SharedEntryTable`,
+with `Th`/`Td`, `CellLabel` with `CAPTION_CLASS`, CSS-wrapped phone rows and
+`useLongPress` plus `activateOnKey` and `INTERACTIVE_ROW_FOCUS_CLASS` from
+`components/ui/interactive-row.ts`. `FilterPanelHeader` is shared with Transactions; filter state and
+request keys stay in each page. `components/shared-expenses/SharedTables.test.tsx` holds stale-row refusal
+and collapsed-filter state. Money uses the square `CurrencyPickerButton` beside
+`CurrencyInput` through `SharedMoneyInput`; dependent portions have a bound currency.

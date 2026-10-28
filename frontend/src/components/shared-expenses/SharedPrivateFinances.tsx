@@ -14,8 +14,10 @@ import { SharedAmount, SharedError, SharedNotice } from "./SharedPrimitives";
 
 export function SharedPrivateFinances({
   initialGroupId,
+  revision,
 }: {
   initialGroupId?: string;
+  revision?: number;
 }) {
   const t = useTranslations("sharedExpenses");
   const groups = useReportData(sharedExpensesApi.privateGroups, []);
@@ -23,23 +25,29 @@ export function SharedPrivateFinances({
   const id = selected || groups.data?.[0]?.groupId || "";
   const finances = useReportData(
     () => (id ? sharedExpensesApi.finances(id) : Promise.resolve(null)),
-    [id],
+    [id, revision],
     { requestKey: id },
   );
   const [removing, setRemoving] = useState<{
+    groupId: string;
     entry: SharedFinanceOverview["entries"][number];
     command: ReturnType<typeof sharedCommand>;
   } | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const data = finances.dataKey === id ? finances.data : null;
+  const fresh =
+    finances.dataKey === id &&
+    !finances.isLoading &&
+    !finances.error &&
+    !groups.error;
   const unlink = async () => {
     if (!removing || busy) return;
     setBusy(true);
     setError(null);
     try {
       await sharedExpensesApi.unlink(
-        id,
+        removing.groupId,
         removing.entry.entryId,
         removing.command,
       );
@@ -64,6 +72,7 @@ export function SharedPrivateFinances({
       <Select
         label={t("settlementAccount")}
         value={id}
+        disabled={busy}
         onChange={(e) => setSelected(e.target.value)}
         options={(groups.data ?? []).map((group) => ({
           value: group.groupId,
@@ -106,8 +115,10 @@ export function SharedPrivateFinances({
               />
               <Button
                 variant="outline"
+                disabled={!fresh || busy}
                 onClick={() =>
                   setRemoving({
+                    groupId: id,
                     entry,
                     command: sharedCommand(entry.posting!.acceptedRevision),
                   })

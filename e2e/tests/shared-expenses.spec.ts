@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { rawApiRequest } from "../helpers/api";
 import { test, expect } from "../fixtures";
 import {
   createAccount,
@@ -47,7 +49,7 @@ test.describe("Shared expenses", () => {
     );
     await expect(
       editor.getByRole("switch", { name: /Also record this in my finances/ }),
-    ).not.toBeChecked();
+    ).toHaveCount(0);
     expect(
       (await api.get<SharedGroupFixture>(`/shared-expenses/groups/${group.id}`))
         .entries,
@@ -60,7 +62,7 @@ test.describe("Shared expenses", () => {
     ).toBeInViewport();
     await expect(
       editor.getByText("Friday dinner", { exact: true }),
-    ).toBeInViewport();
+    ).toHaveCount(0);
     await expect(save).toBeInViewport();
     expect(
       await page.evaluate(
@@ -79,11 +81,7 @@ test.describe("Shared expenses", () => {
       animations: "disabled",
     });
     await save.click();
-    await page
-      .getByRole("dialog", { name: "Saved", exact: true })
-      .getByRole("button", { name: "Close", exact: true })
-      .last()
-      .click();
+    await expect(editor).toHaveCount(0);
     await page.reload();
     await expect(
       page.getByRole("main").getByText("Friday dinner", { exact: true }),
@@ -145,11 +143,7 @@ test.describe("Shared expenses", () => {
     await editor
       .getByRole("button", { name: "Save Expense", exact: true })
       .click();
-    const saved = page.getByRole("dialog", { name: "Saved", exact: true });
-    await saved
-      .getByRole("button", { name: "Close", exact: true })
-      .last()
-      .click();
+    await expect(editor).toHaveCount(0);
     await page.reload();
     await expect(
       page
@@ -182,11 +176,7 @@ test.describe("Shared expenses", () => {
     await repayment
       .getByRole("button", { name: "Record Repayment", exact: true })
       .click();
-    await page
-      .getByRole("dialog", { name: "Saved", exact: true })
-      .getByRole("button", { name: "Close", exact: true })
-      .last()
-      .click();
+    await expect(repayment).toHaveCount(0);
     await page.reload();
     const after = await api.get<SharedGroupFixture>(
       `/shared-expenses/groups/${group.id}`,
@@ -250,6 +240,9 @@ test.describe("Shared expenses", () => {
       "Apartment booking",
     );
     await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+    // Modal cleanup pops its history entry asynchronously; let that traversal
+    // finish before opening another modal or starting a reload.
+    await page.waitForFunction(() => !window.history.state?.modal);
     await expect(
       page.getByRole("button", {
         name: "Create Expense From This File",
@@ -269,11 +262,8 @@ test.describe("Shared expenses", () => {
     await editor
       .getByRole("button", { name: "Save Expense", exact: true })
       .click();
-    await page
-      .getByRole("dialog", { name: "Saved", exact: true })
-      .getByRole("button", { name: "Close", exact: true })
-      .last()
-      .click();
+    await expect(editor).toHaveCount(0);
+    await page.waitForFunction(() => !window.history.state?.modal);
     await page.reload();
     await page.getByRole("button", { name: "Files", exact: true }).click();
     await expect(
@@ -295,20 +285,24 @@ test.describe("Shared expenses", () => {
     await page
       .getByRole("button", { name: "Open Related Entry", exact: true })
       .click();
+    const detail = page.getByRole("dialog", {
+      name: "Apartment booking",
+      exact: true,
+    });
     await expect(
-      page
-        .getByRole("dialog")
-        .getByText("Apartment booking", { exact: true })
-        .first(),
+      detail.getByRole("heading", { name: "Apartment booking", exact: true }),
+    ).toBeVisible();
+    await expect(
+      detail.getByText("Apartment booking.png", { exact: true }),
     ).toBeVisible();
   });
 
-  test("matches one imported bank debit and previews the personal cost without adding another debit", async ({
+  test("refuses new private booking without changing an existing imported debit", async ({
     authedPage: page,
     api,
-  }, info) => {
+  }) => {
     const group = await createSharedGroup(api);
-    await createSharedExpense(api, group);
+    const entry = await createSharedExpense(api, group);
     const bank = await createAccount(api, {
       name: "Travel card",
       currencyCode: "USD",
@@ -318,184 +312,109 @@ test.describe("Shared expenses", () => {
     const imported = await createTransaction(api, {
       accountId: bank.id,
       amount: -300,
-      payeeName: "Mountain market",
       categoryId: category.id,
+      payeeName: "Mountain market",
     });
+    const accounts = await api.get("/accounts");
+    const original = await api.get(`/transactions/${imported.id}`);
     await page.goto(`/shared-expenses/${group.id}`);
-    await page
-      .getByRole("button", { name: "My Finances", exact: true })
-      .click();
-    await page
-      .getByRole("button", { name: "Set Up My Finances", exact: true })
-      .click();
-    await page
-      .getByRole("button", { name: "Add to My Finances", exact: true })
-      .click();
-    const booking = page.getByRole("dialog", {
-      name: "Add to My Finances",
-      exact: true,
-    });
-    await booking
-      .getByLabel("Payment account", { exact: true })
-      .selectOption(bank.id);
-    await booking.getByRole("button", { name: /Mountain market/ }).click();
-    await booking
-      .getByRole("textbox", { name: "My category", exact: true })
-      .click();
-    await page.getByText("Travel meals", { exact: true }).click();
-    await booking
-      .getByRole("button", { name: "Preview Changes", exact: true })
-      .click();
     await expect(
-      booking.getByRole("button", { name: "Save to My Finances", exact: true }),
-    ).toBeVisible();
-    await booking
-      .getByRole("heading", { name: "Current proposal", exact: true })
-      .locator("..")
-      .scrollIntoViewIfNeeded();
-    await expect(
-      booking.getByRole("heading", {
-        name: "Add to My Finances",
-        exact: true,
-      }),
-    ).toBeInViewport();
-    await expect(
-      booking.getByRole("button", { name: "Save to My Finances", exact: true }),
-    ).toBeInViewport();
-    await page.screenshot({
-      path: info.outputPath("bank-preview-desktop.png"),
-      fullPage: false,
-      animations: "disabled",
-    });
-    await booking
-      .getByRole("button", { name: "Save to My Finances", exact: true })
-      .click();
-    await expect(booking).toHaveCount(0);
+      page.getByRole("button", { name: "My Finances", exact: true }),
+    ).toHaveCount(0);
+    for (const suffix of [
+      "enable",
+      `entries/${entry.id}/preview`,
+      `entries/${entry.id}/book`,
+    ]) {
+      const response = await rawApiRequest(
+        page.request,
+        "POST",
+        `/shared-expenses/groups/${group.id}/finances/${suffix}`,
+        { operationId: randomUUID(), expectedRevision: 0 },
+      );
+      expect(response.status()).toBe(409);
+    }
     await page.reload();
-    const unchangedBank = await api.get<{ currentBalance: number | string }>(
-      `/accounts/${bank.id}`,
-    );
-    expect(Number(unchangedBank.currentBalance)).toBe(700);
-    const row = await api.get<{
-      id: string;
-      sharedExpensePostingId: string | null;
-      amount: number | string;
-    }>(`/transactions/${imported.id}`);
-    expect(row.id).toBe(imported.id);
-    expect(Number(row.amount)).toBe(-300);
-    expect(row.sharedExpensePostingId).toBeTruthy();
+    expect(await api.get("/accounts")).toEqual(accounts);
+    expect(await api.get(`/transactions/${imported.id}`)).toEqual(original);
+    expect(
+      Number(
+        (await api.get<{ currentBalance: string }>(`/accounts/${bank.id}`))
+          .currentBalance,
+      ),
+    ).toBe(700);
   });
-  test("starts from a mixed bank receipt and saves the shared entry and personal booking together", async ({
+
+  test("keeps a saved expense and retries only its failed staged receipt", async ({
     authedPage: page,
     api,
   }, info) => {
-    const group = await createSharedGroup(api, "City break");
-    const bank = await createAccount(api, {
-      name: "Main card",
-      currencyCode: "USD",
-      openingBalance: 1000,
-    });
-    const category = await createCategory(api, { name: "Shared meals" });
-    const imported = await createTransaction(api, {
-      accountId: bank.id,
-      amount: -350,
-      payeeName: "City restaurant",
-      categoryId: category.id,
-    });
-    await page.goto(`/shared-expenses/from-transaction/${imported.id}`);
-    await page.getByLabel("Group", { exact: true }).selectOption(group.id);
+    const group = await createSharedGroup(api, "Coffee on the trail");
+    await page.goto(`/shared-expenses/${group.id}`);
     await page
-      .getByRole("button", { name: "Create A Shared Expense", exact: true })
+      .getByRole("button", { name: "Add Expense", exact: true })
       .click();
+    await page.getByRole("button", { name: "Expense", exact: true }).click();
     const editor = page.getByRole("dialog", {
       name: "Add Expense",
       exact: true,
     });
-    await expect(editor.getByLabel("What was it for?")).toHaveValue(
-      "City restaurant",
-    );
-    await editor.getByLabel("Amount", { exact: true }).fill("300");
     await editor
-      .getByRole("button", { name: "Review My Finances", exact: true })
-      .click();
-    await page
-      .getByRole("dialog", { name: "Set Up My Finances", exact: true })
-      .getByRole("button", { name: "Next", exact: true })
-      .click();
-    const booking = page.getByRole("dialog", {
-      name: "Add to My Finances",
-      exact: true,
+      .getByLabel("What was it for?")
+      .fill("Coffee at the mountain hut");
+    await editor.getByLabel("Amount", { exact: true }).fill("60");
+    await editor.getByLabel("Add attachment").setInputFiles({
+      name: "Coffee receipt.png",
+      mimeType: "image/png",
+      buffer: syntheticDocumentPng(),
     });
-    await booking
-      .locator("summary")
-      .filter({ hasText: "More options" })
-      .first()
+    let attempts = 0;
+    await page.route(
+      "**/shared-expenses/groups/*/entries/*/attachments",
+      async (route) => {
+        if (route.request().method() === "POST" && attempts++ === 0) {
+          await route.fulfill({
+            status: 503,
+            contentType: "application/json",
+            body: JSON.stringify({ message: "Upload interrupted" }),
+          });
+        } else await route.continue();
+      },
+    );
+    await editor
+      .getByRole("button", { name: "Save Expense", exact: true })
       .click();
-    await booking
-      .getByLabel("Shared part of this bank transaction", { exact: true })
-      .fill("300");
-    await booking
-      .getByRole("button", { name: "Preview Changes", exact: true })
-      .click();
-    await expect(
-      booking.getByRole("button", { name: "Save to My Finances", exact: true }),
-    ).toBeVisible();
-    await page.setViewportSize({ width: 360, height: 800 });
-    await booking
-      .getByRole("heading", { name: "Current proposal", exact: true })
-      .locator("..")
-      .scrollIntoViewIfNeeded();
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth,
-      ),
-    ).toBe(true);
-    await expect(
-      booking.getByRole("heading", {
-        name: "Add to My Finances",
-        exact: true,
-      }),
-    ).toBeInViewport();
-    await expect(
-      booking.getByRole("button", { name: "Save to My Finances", exact: true }),
-    ).toBeInViewport();
-    await page.screenshot({
-      path: info.outputPath("combined-bank-mobile.png"),
-      fullPage: false,
-      animations: "disabled",
-    });
-    await booking
-      .getByRole("button", { name: "Save to My Finances", exact: true })
-      .click();
-    await page
-      .getByRole("dialog", { name: "Saved", exact: true })
-      .getByRole("button", { name: "Close", exact: true })
-      .last()
-      .click();
-    await page.waitForURL(`**/shared-expenses/${group.id}`);
-    await expect(
-      page.getByRole("heading", { name: "City break", exact: true }),
-    ).toBeVisible();
-    await page.reload();
-    const after = await api.get<SharedGroupFixture>(
+    const pending = page.getByRole("dialog", { name: "Saved", exact: true });
+    await expect(pending.getByRole("alert")).toContainText(
+      "Upload interrupted",
+    );
+    await expect(pending.getByLabel("What was it for?")).toHaveValue(
+      "Coffee at the mountain hut",
+    );
+    const saved = await api.get<SharedGroupFixture>(
       `/shared-expenses/groups/${group.id}`,
     );
-    expect(after.balances.totalExpenses).toBe("300.0000");
-    const overview = await api.get<{
-      entries: {
-        posting: {
-          snapshot: { effect: { personal: string; position: string } };
-        } | null;
-      }[];
-    }>(`/shared-expenses/groups/${group.id}/finances`);
-    expect(overview.entries).toHaveLength(1);
-    expect(overview.entries[0].posting?.snapshot.effect).toMatchObject({
-      personal: "-100.0000",
-      position: "200.0000",
-    });
-    const unchanged = await api.get<{ currentBalance: number | string }>(
-      `/accounts/${bank.id}`,
+    expect(saved.entries).toHaveLength(1);
+    await pending
+      .getByRole("button", { name: "Try Again", exact: true })
+      .click();
+    await expect(pending).toHaveCount(0);
+    await page.reload();
+    expect(
+      (await api.get<SharedGroupFixture>(`/shared-expenses/groups/${group.id}`))
+        .entries,
+    ).toHaveLength(1);
+    const files = await api.get<{ filename: string }[]>(
+      `/shared-expenses/groups/${group.id}/entries/${saved.entries[0].id}/attachments`,
     );
-    expect(Number(unchanged.currentBalance)).toBe(650);
+    expect(files.map((file) => file.filename)).toEqual(["Coffee receipt.png"]);
+    await expect(
+      page.getByRole("row").filter({ hasText: "Coffee at the mountain hut" }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: info.outputPath("expense-with-receipt.png"),
+      fullPage: true,
+      animations: "disabled",
+    });
   });
 });
