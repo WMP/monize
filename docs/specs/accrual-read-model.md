@@ -36,3 +36,7 @@ Recognition SQL executes in the caller's existing scoped transaction with a temp
 This supplements explicit relations, native cash fast paths and page-bounded hydration; it does not replace those optimizations. The regression ledger covers 35,738 initial transactions, 10,281 splits, zero/one/many schedules, category reporting and exports. The benchmark asserts that successful calls preserve the caller's JIT setting.
 
 PostgreSQL documents the compilation tradeoff in [When to JIT?](https://www.postgresql.org/docs/16/jit-decision.html).
+
+## Validation checkpoint
+
+The regression fixture covers disabled, zero/one/many schedules, accrued splits, explicit Cash, real category reporting and source-linked exports under enforced PostgreSQL RLS. In the merged-source full integration run, whole-case timings were 108 ms disabled, 83 ms enabled with no schedules, 1,034 ms for the first schedule (including its setup), 414 ms for accrued splits, 342 ms with 102 schedules, and 367 ms for category reporting plus export. These are synthetic-ledger timings on the validation host, not a promise for every deployment. Successful reads also assert that the caller’s JIT setting is preserved.
