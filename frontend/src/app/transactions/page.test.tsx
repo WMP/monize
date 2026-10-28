@@ -1905,15 +1905,15 @@ describe('TransactionsPage', () => {
         expect(mockGetAll.mock.calls.length).toBe(loadsBefore);
       });
 
-      it('closes the saved transaction before continuing to its shared-expense flow', async () => {
+      it('keeps the ordinary form open without offering the deferred shared-expense handoff', async () => {
         mockRealFormModal.value = true;
         await act(async () => render(<TransactionsPage />));
         await act(async () => fireEvent.click(screen.getByText('+ New Transaction')));
         fireEvent.click(screen.getByTestId('form-make-dirty'));
-        fireEvent.click(screen.getByTestId('form-share-after-create'));
+        expect(screen.queryByTestId('form-share-after-create')).not.toBeInTheDocument();
         expect(screen.queryByTestId('unsaved-dialog')).not.toBeInTheDocument();
-        expect(screen.queryByTestId('dynamic-transaction-form')).not.toBeInTheDocument();
-        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/shared-expenses/from-transaction/tx-new'));
+        expect(screen.getByTestId('dynamic-transaction-form')).toBeInTheDocument();
+        expect(mockPush).not.toHaveBeenCalledWith('/shared-expenses/from-transaction/tx-new');
       });
       it('closes a clean form and navigates', async () => {
         await openEditWindow();

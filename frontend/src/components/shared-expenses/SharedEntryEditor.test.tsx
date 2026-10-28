@@ -50,7 +50,7 @@ describe("SharedEntryEditor", () => {
       );
     });
     expect(
-      screen.getByRole("option", { name: /PLN.*Polish/ }),
+      screen.getAllByRole("button", { name: "Change entry currency" })[0],
     ).toBeInTheDocument();
     await act(async () => {
       fireEvent.change(screen.getByLabelText("What was it for?"), {
@@ -79,7 +79,7 @@ describe("SharedEntryEditor", () => {
     vi.mocked(sharedExpensesApi.saveEntry).mockResolvedValue(
       sharedEntryFixture(),
     );
-    const { onSaved } = await setup();
+    const { onSaved, onClose } = await setup();
     await advancePreview();
     expect(sharedExpensesApi.preview).toHaveBeenCalledOnce();
     await act(async () => {
@@ -95,6 +95,7 @@ describe("SharedEntryEditor", () => {
       fireEvent.click(screen.getByRole("button", { name: "Save Expense" }));
     });
     expect(onSaved).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
     const sent = vi.mocked(sharedExpensesApi.saveEntry).mock.calls[0][1];
     expect(sent).toMatchObject({
       amount: "120",
@@ -140,6 +141,34 @@ describe("SharedEntryEditor", () => {
       vi.mocked(sharedExpensesApi.saveEntry).mock.calls[0],
     );
     expect(sharedExpensesApi.preview).toHaveBeenCalledOnce();
+  });
+  it("warns before leaving while an unchanged entry is still saving", async () => {
+    let finish!: (entry: SharedEntry) => void;
+    vi.mocked(sharedExpensesApi.saveEntry).mockReturnValue(
+      new Promise((resolve) => { finish = resolve; }),
+    );
+    const onClose = vi.fn();
+    await act(async () => {
+      render(
+        <SharedEntryEditor
+          group={sharedGroupFixture()}
+          entry={sharedEntryFixture()}
+          onSaved={vi.fn()}
+          onClose={onClose}
+        />,
+      );
+    });
+    await advancePreview();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    });
+    expect(sharedExpensesApi.saveEntry).toHaveBeenCalledOnce();
+    const leaving = new Event("beforeunload", { cancelable: true });
+    fireEvent(window, leaving);
+    expect(leaving.defaultPrevented).toBe(true);
+    expect(onClose).not.toHaveBeenCalled();
+    await act(async () => finish(sharedEntryFixture()));
+    expect(onClose).toHaveBeenCalledOnce();
   });
   it("does not replace a newer preview when an older request finishes last", async () => {
     let resolveOld!: (value: SharedEntry) => void;
@@ -220,6 +249,11 @@ describe("SharedEntryEditor", () => {
       );
     });
     expect(screen.getByLabelText("Amount")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Change Split" })).toBeDisabled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "More than one person paid" }));
+    });
+    expect(screen.getByLabelText("Amount paid by Me")).toBeDisabled();
     await act(async () =>
       resolve([
         { code: "KWD", name: "Kuwaiti dinar", decimalPlaces: 3, symbol: "KWD" },
@@ -227,6 +261,8 @@ describe("SharedEntryEditor", () => {
     );
     expect(screen.getByLabelText("Amount")).toBeEnabled();
     expect(screen.getByLabelText("Amount")).toHaveValue("1.001");
+    expect(screen.getByLabelText("Amount paid by Me")).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Change Split" })).toBeEnabled();
   });
   it("previews a routine expense automatically but writes only after Save", async () => {
     await setup();
@@ -238,8 +274,8 @@ describe("SharedEntryEditor", () => {
       screen.queryByRole("button", { name: "Review Split" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("switch", { name: /Also record this in my finances/ }),
-    ).not.toBeChecked();
+      screen.queryByRole("switch", { name: /Also record this in my finances/ }),
+    ).not.toBeInTheDocument();
   });
   it("explains an exact split made invalid by changing the total", async () => {
     await act(async () => {
@@ -262,7 +298,7 @@ describe("SharedEntryEditor", () => {
       );
     });
     expect(
-      screen.getByRole("option", { name: /PLN.*Polish/ }),
+      screen.getAllByRole("button", { name: "Change entry currency" })[0],
     ).toBeInTheDocument();
     expect(
       screen.getByText("The amount changed. Review the split before saving."),

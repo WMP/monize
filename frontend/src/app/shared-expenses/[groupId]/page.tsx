@@ -16,8 +16,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
-import { Card, HOVER_ROW_ON_CARD } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { EntitySwitcher } from "@/components/ui/EntitySwitcher";
 import { Input } from "@/components/ui/Input";
@@ -35,7 +34,6 @@ import type {
   SharedSuggestion,
 } from "@/types/shared-expense";
 import {
-  SharedAmount,
   SharedError,
   SharedNotice,
   SharedTabs,
@@ -82,7 +80,9 @@ const SharedActivity = dynamic(() =>
   ),
 );
 import { SharedGroupSummary } from "@/components/shared-expenses/SharedGroupSummary";
-import { SharedEntryContext } from "@/components/shared-expenses/SharedEntryContext";
+import { SharedEntryTable } from "@/components/shared-expenses/SharedEntryTable";
+import { SharedFilters } from "@/components/shared-expenses/SharedFilters";
+import { ListBottomPager } from "@/components/ui/ListBottomPager";
 import type { SharedDocument } from "@/lib/shared-documents";
 
 const TABS = [
@@ -347,20 +347,87 @@ function GroupContent({ groupId }: { groupId: string }) {
                 else setTab(value);
               }}
               label={t("title")}
-              options={TABS.map((value) => ({ value, label: t(value) }))}
+              options={TABS.filter((value) => value !== "myFinances").map(
+                (value) => ({ value, label: t(value) }),
+              )}
             />
             {tab === "expenses" && (
               <>
-                <div className="flex flex-wrap items-end gap-3">
+                <SharedFilters
+                  onClear={() => {
+                    setSearchDraft("");
+                    setSearch("");
+                    setType("");
+                    setFilters({
+                      participantId: "",
+                      startDate: "",
+                      endDate: "",
+                    });
+                    setOffset(0);
+                  }}
+                  chips={[
+                    ...(search
+                      ? [
+                          {
+                            key: "search",
+                            label: search,
+                            removeLabel: t("removeFilter", {
+                              filter: t("search"),
+                            }),
+                            remove: () => {
+                              setSearch("");
+                              setSearchDraft("");
+                              setOffset(0);
+                            },
+                          },
+                        ]
+                      : []),
+                    ...(type
+                      ? [
+                          {
+                            key: "type",
+                            label: t(type),
+                            removeLabel: t("removeFilter", {
+                              filter: t("entryType"),
+                            }),
+                            remove: () => {
+                              setType("");
+                              setOffset(0);
+                            },
+                          },
+                        ]
+                      : []),
+                    ...(["participantId", "startDate", "endDate"] as const)
+                      .filter((key) => filters[key])
+                      .map((key) => ({
+                        key,
+                        label:
+                          key === "participantId"
+                            ? (group.participants.find(
+                                (p) => p.id === filters[key],
+                              )?.name ?? t("participants"))
+                            : t("filterValue", { filter: t(key), value: formatDate(filters[key]) }),
+                        removeLabel: t("removeFilter", {
+                          filter: t(
+                            key === "participantId" ? "participants" : key,
+                          ),
+                        }),
+                        remove: () => {
+                          setFilters({ ...filters, [key]: "" });
+                          setOffset(0);
+                        },
+                      })),
+                  ]}
+                >
                   <form
-                    className="flex flex-wrap gap-2 items-end w-full sm:w-auto"
+                    className="flex flex-wrap items-end gap-3 mb-4"
                     onSubmit={(e) => {
                       e.preventDefault();
                       setSearch(searchDraft);
                       setOffset(0);
                     }}
                   >
-                    <div className="w-full sm:w-64">
+                    <div className="min-w-0 flex-1">
                       <Input
                         label={t("searchEntries")}
                         value={searchDraft}
@@ -372,7 +439,7 @@ function GroupContent({ groupId }: { groupId: string }) {
                       {t("search")}
                     </Button>
                   </form>
-                  <div className="w-full sm:w-44">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <Select
                       label={t("entryType")}
                       value={type}
@@ -387,21 +454,6 @@ function GroupContent({ groupId }: { groupId: string }) {
                         setOffset(0);
                       }}
                     />
-                  </div>
-                  <Button
-                    variant="ghost"
-                    className="sm:ml-auto"
-                    isLoading={exporting}
-                    onClick={download}
-                  >
-                    {t("export")}
-                  </Button>
-                </div>
-                <details className="text-sm">
-                  <summary className="cursor-pointer min-h-10">
-                    {t("filterEntries")}
-                  </summary>
-                  <div className="grid gap-3 sm:grid-cols-3 mt-2">
                     <Select
                       label={t("participants")}
                       value={filters.participantId}
@@ -437,7 +489,17 @@ function GroupContent({ groupId }: { groupId: string }) {
                       }}
                     />
                   </div>
-                </details>
+                </SharedFilters>
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    isLoading={exporting}
+                    disabled={!fresh}
+                    onClick={download}
+                  >
+                    {t("export")}
+                  </Button>
+                </div>
                 {fresh && group.entries.length === 0 && (
                   <Card>
                     <EmptyState
@@ -447,78 +509,30 @@ function GroupContent({ groupId }: { groupId: string }) {
                     />
                   </Card>
                 )}
-                <Card className="overflow-hidden">
-                  <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {group.entries.map((entry) => (
-                      <li key={entry.id}>
-                        <button
-                          type="button"
-                          disabled={!fresh}
-                          onClick={() => setDetail(entry)}
-                          className={`w-full p-4 text-left focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${HOVER_ROW_ON_CARD}`}
-                        >
-                          <div className="flex flex-wrap justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium break-words">
-                                {entry.title}
-                              </p>
-                              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                {formatDate(entry.date)}
-                              </p>
-                              <SharedEntryContext entry={entry} group={group} />
-                            </div>
-                            <div className="text-right">
-                              <SharedAmount
-                                className="font-semibold"
-                                amount={entry.originalAmount}
-                                currency={entry.currencyCode}
-                                relativeTo={group.currencyCode}
-                              />
-                              <p className="mt-1">
-                                <Badge
-                                  variant={
-                                    entry.state === "DRAFT" ? "amber" : "gray"
-                                  }
-                                >
-                                  {t(
-                                    entry.state === "POSTED"
-                                      ? entry.type
-                                      : entry.state,
-                                  )}
-                                </Badge>
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-                <div className="flex flex-wrap items-center gap-3">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {t("pageCount", {
+                {group.entries.length > 0 && (
+                  <SharedEntryTable
+                    group={group}
+                    fresh={fresh}
+                    onOpen={setDetail}
+                  />
+                )}
+                <fieldset disabled={!fresh} aria-busy={!fresh}>
+                  <ListBottomPager
+                    currentPage={Math.floor(offset / 100) + 1}
+                    totalPages={Math.max(1, Math.ceil(group.entryCount / 100))}
+                    totalItems={group.entryCount}
+                    pageSize={100}
+                    onPageChange={(page) => {
+                      if (fresh) setOffset((page - 1) * 100);
+                    }}
+                    itemName={t("expenses")}
+                    totalLabel={t("pageCount", {
                       from: group.entries.length ? offset + 1 : 0,
                       to: Math.min(offset + 100, group.entryCount),
                       count: group.entryCount,
                     })}
-                  </p>
-                  <div className="flex flex-wrap gap-2 sm:ml-auto">
-                    <Button
-                      variant="outline"
-                      disabled={!fresh || offset === 0}
-                      onClick={() => setOffset(Math.max(0, offset - 100))}
-                    >
-                      {t("previousPage")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={!fresh || group.nextOffset === null}
-                      onClick={() => setOffset(group.nextOffset!)}
-                    >
-                      {t("loadMore")}
-                    </Button>
-                  </div>
-                </div>
+                  />
+                </fieldset>
               </>
             )}
             {tab === "balances" && (

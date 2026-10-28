@@ -10,14 +10,14 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { Card, HOVER_ROW_ON_CARD } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useReportData } from "@/hooks/useReportData";
-import { useNumberFormat } from "@/hooks/useNumberFormat";
-import { SharedPositionValue } from "@/components/shared-expenses/SharedPositionValue";
+import { SharedGroupTable } from "@/components/shared-expenses/SharedGroupTable";
+import { SharedFilters } from "@/components/shared-expenses/SharedFilters";
+import { ListBottomPager } from "@/components/ui/ListBottomPager";
 import { sharedExpensesApi } from "@/lib/shared-expenses";
 import {
   SharedAmount,
@@ -53,10 +53,11 @@ export default function SharedExpensesPage() {
 function GroupsContent() {
   const t = useTranslations("sharedExpenses");
   const router = useRouter();
-  const { formatNumber } = useNumberFormat();
   const groups = useReportData(sharedExpensesApi.overview, []);
+  const privateGroups = useReportData(sharedExpensesApi.privateGroups, []);
   const [form, setForm] = useState(false);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const [tab, setTab] = useState<"groups" | "people" | "retainedFinance">(
     "groups",
   );
@@ -66,6 +67,8 @@ function GroupsContent() {
       !!g.archivedAt === (filter === "archived") &&
       g.name.toLowerCase().includes(query.toLowerCase()),
   );
+  const totalPages = Math.max(1, Math.ceil((visible?.length ?? 0) / 25));
+  const currentPage = Math.min(page, totalPages);
   return (
     <PageLayout>
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 space-y-5">
@@ -83,13 +86,20 @@ function GroupsContent() {
           label={t("title")}
           value={tab}
           onChange={setTab}
-          options={(["groups", "people", "retainedFinance"] as const).map(
-            (value) => ({
-              value,
-              label: t(value),
-            }),
-          )}
+          options={(
+            [
+              "groups",
+              "people",
+              ...(privateGroups.data?.length
+                ? ["retainedFinance" as const]
+                : []),
+            ] as const
+          ).map((value) => ({
+            value,
+            label: t(value),
+          }))}
         />
+        <SharedError error={privateGroups.error} retry={privateGroups.reload} />
         {tab === "retainedFinance" ? (
           <SharedPrivateFinances />
         ) : tab === "people" ? (
@@ -154,35 +164,82 @@ function GroupsContent() {
                 ))}
               </section>
             )}
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="w-full sm:w-80">
-                <Input
-                  label={t("search")}
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+            <SharedFilters
+              onClear={() => {
+                setQuery("");
+                setFilter("active");
+                setPage(1);
+              }}
+              chips={[
+                ...(query
+                  ? [
+                      {
+                        key: "search",
+                        label: query,
+                        removeLabel: t("removeFilter", { filter: t("search") }),
+                        remove: () => {
+                          setQuery("");
+                          setPage(1);
+                        },
+                      },
+                    ]
+                  : []),
+                ...(filter === "archived"
+                  ? [
+                      {
+                        key: "archive",
+                        label: t("archived"),
+                        removeLabel: t("removeFilter", {
+                          filter: t("archived"),
+                        }),
+                        remove: () => {
+                          setFilter("active");
+                          setPage(1);
+                        },
+                      },
+                    ]
+                  : []),
+              ]}
+            >
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="w-full sm:w-80">
+                  <Input
+                    label={t("search")}
+                    value={query}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+                <SharedTabs
+                  label={t("groups")}
+                  value={filter}
+                  onChange={(value) => {
+                    setFilter(value);
+                    setPage(1);
+                  }}
+                  options={(["active", "archived"] as const).map((value) => ({
+                    value,
+                    label: t(value),
+                  }))}
                 />
+                <Button
+                  variant="ghost"
+                  className="sm:ml-auto"
+                  onClick={groups.reload}
+                >
+                  {t("refresh")}
+                </Button>
               </div>
-              <SharedTabs
-                label={t("groups")}
-                value={filter}
-                onChange={setFilter}
-                options={(["active", "archived"] as const).map((value) => ({
-                  value,
-                  label: t(value),
-                }))}
-              />
-              <Button
-                variant="ghost"
-                className="sm:ml-auto"
-                onClick={groups.reload}
-              >
-                {t("refresh")}
-              </Button>
-            </div>
+            </SharedFilters>
             <SharedError error={groups.error} retry={groups.reload} />
             {groups.isLoading && !groups.data ? (
               <LoadingSpinner />
-            ) : groups.data && !visible?.length ? (
+            ) : groups.data &&
+              !groups.error &&
+              !groups.isLoading &&
+              !visible?.length ? (
               <Card>
                 <EmptyState
                   icon={<UsersIcon />}
@@ -195,41 +252,28 @@ function GroupsContent() {
                   }
                 />
               </Card>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {visible?.map((group) => (
-                  <Card
-                    key={group.id}
-                    as={Link}
-                    href={`/shared-expenses/${group.id}`}
-                    padding="md"
-                    className={`${HOVER_ROW_ON_CARD} block focus-visible:ring-2 focus-visible:ring-blue-500`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <h2 className="text-lg font-semibold break-words min-w-0">
-                        {group.name}
-                      </h2>
-                      <Badge>{group.currencyCode}</Badge>
-                    </div>
-                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                      {t("participants")} ·{" "}
-                      {formatNumber(group.participantCount, 0)}
-                    </p>
-                    <div className="mt-6 border-t border-gray-100 dark:border-gray-700 pt-4">
-                      <SharedPositionValue
-                        personal
-                        prominent
-                        amount={group.myPosition?.balance ?? null}
-                        currency={group.currencyCode}
-                      />
-                      {!group.settlementReady && (
-                        <p className="text-sm mt-2">{t("missingRate")}</p>
-                      )}
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
+            ) : groups.data ? (
+              <>
+                <SharedGroupTable
+                  groups={(visible ?? []).slice((currentPage - 1) * 25, currentPage * 25)}
+                  fresh={!groups.isLoading && !groups.error}
+                  onOpen={(id) => router.push(`/shared-expenses/${id}`)}
+                />
+                <ListBottomPager
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={visible?.length ?? 0}
+                  pageSize={25}
+                  onPageChange={setPage}
+                  itemName={t("groups")}
+                  totalLabel={t("pageCount", {
+                    from: visible?.length ? (currentPage - 1) * 25 + 1 : 0,
+                    to: Math.min(currentPage * 25, visible?.length ?? 0),
+                    count: visible?.length ?? 0,
+                  })}
+                />
+              </>
+            ) : null}
           </>
         )}
         {form && (

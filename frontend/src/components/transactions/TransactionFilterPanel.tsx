@@ -1,5 +1,6 @@
 'use client';
 
+import { FilterPanelHeader } from '@/components/ui/FilterPanelHeader';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { MultiSelect, MultiSelectOption } from '@/components/ui/MultiSelect';
@@ -249,51 +250,13 @@ export function TransactionFilterPanel({
 
       {/* Filters - Collapsible Panel */}
       <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg mb-6">
-        {/* Filter Header - Always Visible, Clickable to toggle */}
-        <div
-          className="px-4 py-3 sm:px-6 cursor-pointer select-none"
-          onClick={() => setFiltersExpanded(!filtersExpanded)}
-        >
-          <div className="flex items-center justify-between gap-4">
-            {/* Left side: Filter icon, title, and count */}
-            <div className="flex items-center gap-2 min-w-0">
-              <svg className="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('filter.panel.title')}</span>
-              {activeFilterCount > 0 && (
-                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                  {activeFilterCount}
-                </span>
-              )}
-            </div>
-
-            {/* Right side: Clear and Toggle buttons */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {activeFilterCount > 0 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClearFilters();
-                  }}
-                  className="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                >
-                  {t('filter.panel.clear')}
-                </button>
-              )}
-              <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400">
-                {filtersExpanded ? t('filter.panel.hide') : t('filter.panel.show')}
-                <svg
-                  className={`w-4 h-4 transition-transform duration-200 ${filtersExpanded ? 'rotate-180' : ''}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </span>
-            </div>
-          </div>
+        <div className="px-4 py-3 sm:px-6">
+          <FilterPanelHeader
+            expanded={filtersExpanded}
+            count={activeFilterCount}
+            onToggle={() => setFiltersExpanded(!filtersExpanded)}
+            onClear={onClearFilters}
+          />
 
           {/* Active Filter Chips - Show when collapsed and filters are active */}
           {!filtersExpanded && activeFilterCount > 0 && (

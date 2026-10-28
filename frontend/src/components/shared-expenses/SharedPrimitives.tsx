@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
+import { CurrencyPickerButton } from "@/components/transactions/CurrencyPickerButton";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import {
   SEGMENTED_GROUP_CLASS,
@@ -60,7 +61,9 @@ export function SharedAmount({
         : withCurrencyCode(
             formatCurrency(Number(amount), currency),
             currency,
-            relativeTo && relativeTo !== currency ? relativeTo : defaultCurrency,
+            relativeTo && relativeTo !== currency
+              ? relativeTo
+              : defaultCurrency,
           )}
     </span>
   );
@@ -72,6 +75,8 @@ export function SharedMoneyInput({
   onChange,
   currency,
   places = 2,
+  baseCurrency = currency,
+  onCurrencyChange,
   disabled = false,
 }: {
   label: string;
@@ -79,6 +84,8 @@ export function SharedMoneyInput({
   onChange: (value: string) => void;
   currency: string;
   places?: number;
+  baseCurrency?: string;
+  onCurrencyChange?: (code: string) => void;
   disabled?: boolean;
 }) {
   const inputId = useId();
@@ -86,16 +93,26 @@ export function SharedMoneyInput({
   const change = (next: number | undefined) =>
     onChange(next === undefined ? "" : String(next));
   return (
-    <CurrencyInput
-      id={inputId}
-      label={label}
-      value={number}
-      onChange={change}
-      prefix={currency}
-      decimalPlaces={places}
-      allowNegative={false}
-      disabled={disabled}
-    />
+    <div className="flex items-stretch space-x-2">
+      <CurrencyPickerButton
+        value={currency === baseCurrency ? "" : currency}
+        accountCurrencyCode={baseCurrency}
+        baseCurrencyLabel={baseCurrency}
+        onChange={(code) => onCurrencyChange?.(code || baseCurrency)}
+        disabled={!onCurrencyChange}
+      />
+      <div className="min-w-0 flex-1">
+        <CurrencyInput
+          id={inputId}
+          label={label}
+          value={number}
+          onChange={change}
+          decimalPlaces={places}
+          allowNegative={false}
+          disabled={disabled}
+        />
+      </div>
+    </div>
   );
 }
 

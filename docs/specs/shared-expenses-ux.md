@@ -1,5 +1,11 @@
 # Shared expenses: interaction and document contract
 
+Current delivery boundary: `docs/specs/shared-expenses-ui-polish.md` section 0
+supersedes the private-finance creation and Transactions handoff behavior below.
+New booking is deferred; existing private records remain readable/unlinkable.
+The accounting definitions below are retained for those accepted records.
+
+
 Status: **implementation authorized by the requesting user**. Date: 2026-10-25.
 Upstream maintainer approval has not been claimed.
 Part of the [product specification](shared-expenses.md); the

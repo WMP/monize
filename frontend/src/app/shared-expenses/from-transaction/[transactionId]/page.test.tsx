@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { act, fireEvent, render, screen } from "@/test/render";
+import { act, render, screen } from "@/test/render";
 import { useAuthStore } from "@/store/authStore";
 import { transactionsApi } from "@/lib/transactions";
 import { sharedExpensesApi } from "@/lib/shared-expenses";
@@ -72,78 +72,28 @@ describe("Continue from a saved payment", () => {
       pendingCount: 0,
     });
   });
-  it("offers creating first and loads matching only when requested", async () => {
+  it("explains the deferred handoff without reading or changing the source payment", async () => {
     await act(async () => render(<ShareBankPage />));
-    await act(async () =>
-      fireEvent.change(screen.getByLabelText("Group"), {
-        target: { value: "group" },
-      }),
-    );
     expect(
-      screen.getByRole("button", { name: "Create A Shared Expense" }),
-    ).toBeEnabled();
+      screen.getByText(/New personal-finance connections are unavailable/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Groups" }),
+    ).toHaveAttribute("href", "/shared-expenses");
+    expect(transactionsApi.getById).not.toHaveBeenCalled();
+    expect(sharedExpensesApi.groups).not.toHaveBeenCalled();
     expect(sharedExpensesApi.finances).not.toHaveBeenCalled();
-    const details = screen
-      .getByText("Already in the group?")
-      .closest("details")!;
-    await act(async () => {
-      details.open = true;
-      fireEvent(details, new Event("toggle"));
-    });
-    expect(sharedExpensesApi.finances).toHaveBeenCalledWith("group");
-    expect(
-      screen.getByRole("button", { name: "Use This Expense" }),
-    ).toBeEnabled();
-    let reject!: (error: Error) => void;
-    vi.mocked(sharedExpensesApi.group).mockImplementationOnce(
-      () =>
-        new Promise((_resolve, fail) => {
-          reject = fail;
-        }),
-    );
-    await act(async () =>
-      fireEvent.change(screen.getByLabelText("Search"), {
-        target: { value: "New search" },
-      }),
-    );
-    expect(
-      screen.getByRole("button", { name: "Use This Expense" }),
-    ).toBeDisabled();
-    await act(async () => reject(new Error("Search failed")));
-    expect(screen.getByRole("alert")).toHaveTextContent("Search failed");
-    expect(
-      screen.getByRole("button", { name: "Use This Expense" }),
-    ).toBeDisabled();
   });
-  it("removes the old group's action while another group loads or fails", async () => {
+  it("offers no creation or matching action in a delegated context", async () => {
+    useAuthStore.setState({ actingAsUserId: "other-owner" });
     await act(async () => render(<ShareBankPage />));
-    await act(async () =>
-      fireEvent.change(screen.getByLabelText("Group"), {
-        target: { value: "group" },
-      }),
-    );
-    expect(
-      screen.getByRole("button", { name: "Create A Shared Expense" }),
-    ).toBeEnabled();
-    let reject!: (error: Error) => void;
-    vi.mocked(sharedExpensesApi.group).mockImplementationOnce(
-      () =>
-        new Promise((_resolve, fail) => {
-          reject = fail;
-        }),
-    );
-    await act(async () =>
-      fireEvent.change(screen.getByLabelText("Group"), {
-        target: { value: "other" },
-      }),
-    );
     expect(
       screen.queryByRole("button", { name: "Create A Shared Expense" }),
     ).not.toBeInTheDocument();
-    await act(async () => reject(new Error("Access revoked")));
-    expect(screen.getByRole("alert")).toHaveTextContent("Access revoked");
     expect(
-      screen.queryByRole("button", { name: "Create A Shared Expense" }),
+      screen.queryByRole("button", { name: "Use This Expense" }),
     ).not.toBeInTheDocument();
+    expect(transactionsApi.getById).not.toHaveBeenCalled();
+    expect(sharedExpensesApi.group).not.toHaveBeenCalled();
   });
 });

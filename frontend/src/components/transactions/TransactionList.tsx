@@ -3,9 +3,6 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/authStore';
-import { canShareBankTransaction } from '@/lib/shared-bank-eligibility';
 import { Transaction, TransactionStatus } from '@/types/transaction';
 import {
   nextCycleStatus,
@@ -329,10 +326,6 @@ export function TransactionList({
   });
 
   // Action sheet state for mobile long-press
-  const router = useRouter();
-  const userId = useAuthStore((state) => state.user?.id);
-  const actingAsUserId = useAuthStore((state) => state.actingAsUserId);
-  const shareExpense = (transaction: Transaction) => router.push(`/shared-expenses/from-transaction/${transaction.id}`);
 
   const [actionSheet, setActionSheet] = useState<{ isOpen: boolean; transaction: Transaction | null }>({
     isOpen: false,
@@ -1025,7 +1018,6 @@ export function TransactionList({
                     }
                     onDuplicate={onDuplicate}
                     onScheduleRecurring={onScheduleRecurring}
-                    onShareExpense={canShareBankTransaction(transaction, userId, actingAsUserId) ? shareExpense : undefined}
                     onDeleteClick={handleDeleteClick}
                     hideDelete={
                       !!jointPermissionsByAccount?.get(transaction.accountId) &&
@@ -1061,7 +1053,6 @@ export function TransactionList({
         onEdit={onEdit}
         onDuplicate={onDuplicate}
         onScheduleRecurring={onScheduleRecurring}
-        onShareExpense={actionSheet.transaction && canShareBankTransaction(actionSheet.transaction, userId, actingAsUserId) ? shareExpense : undefined}
         onDeleteClick={handleDeleteClick}
         onDateFilterClick={onDateFilterClick}
         onAccountFilterClick={onAccountFilterClick}

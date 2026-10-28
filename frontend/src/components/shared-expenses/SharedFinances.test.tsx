@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@/test/render";
+import { act, render, screen } from "@/test/render";
 import { sharedExpensesApi } from "@/lib/shared-expenses";
 import type { SharedFinanceOverview } from "@/types/shared-expense";
 import { SharedFinances } from "./SharedFinances";
@@ -7,7 +7,12 @@ import { sharedGroupFixture } from "./__fixtures__/shared-fixtures";
 
 vi.mock("@/lib/shared-expenses", async (original) => ({
   ...(await original<typeof import("@/lib/shared-expenses")>()),
-  sharedExpensesApi: { finances: vi.fn(), enableFinance: vi.fn() },
+  sharedExpensesApi: {
+    finances: vi.fn(),
+    enableFinance: vi.fn(),
+    privateGroups: vi.fn(),
+    unlink: vi.fn(),
+  },
 }));
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 const overview: SharedFinanceOverview = {
@@ -44,15 +49,25 @@ describe("Optional personal finances", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(sharedExpensesApi.finances).mockResolvedValue(overview);
+    vi.mocked(sharedExpensesApi.privateGroups).mockResolvedValue([
+      {
+        groupId: "group",
+        accountId: "account",
+        name: "Weekend",
+        currencyCode: "PLN",
+      },
+    ]);
   });
-  it("offers adding a group-only entry without labelling it a required review", async () => {
+  it("keeps group-only entries out of the compatibility booking view", async () => {
     await act(async () =>
       render(<SharedFinances group={sharedGroupFixture()} />),
     );
-    expect(screen.getByText("Group only")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Add to My Finances" }),
-    ).toBeEnabled();
+      screen.getByText(/New personal-finance connections are unavailable/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add to My Finances" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("Needs your review")).not.toBeInTheDocument();
   });
   it("keeps previous rows non-actionable during a reload and after its failure", async () => {
@@ -74,15 +89,15 @@ describe("Optional personal finances", () => {
       ),
     );
     expect(
-      screen.getByRole("button", { name: "Add to My Finances" }),
-    ).toBeDisabled();
+      screen.queryByRole("button", { name: "Add to My Finances" }),
+    ).not.toBeInTheDocument();
     await act(async () => reject(new Error("Refresh failed")));
     expect(screen.getByRole("alert")).toHaveTextContent("Refresh failed");
     expect(
-      screen.getByRole("button", { name: "Add to My Finances" }),
-    ).toBeDisabled();
+      screen.queryByRole("button", { name: "Add to My Finances" }),
+    ).not.toBeInTheDocument();
   });
-  it("uses the group name for setup, with a name override behind More options", async () => {
+  it("does not offer account setup even when integration is absent", async () => {
     vi.mocked(sharedExpensesApi.finances).mockResolvedValue({
       integration: null,
       entries: [],
@@ -91,17 +106,12 @@ describe("Optional personal finances", () => {
     await act(async () =>
       render(<SharedFinances group={sharedGroupFixture()} />),
     );
-    const accountName = screen.getByLabelText("Account name (optional)");
-    expect(accountName).toHaveValue("Weekend");
-    expect(accountName.closest("details")).not.toHaveAttribute("open");
-    await act(async () =>
-      fireEvent.click(
-        screen.getByRole("button", { name: "Set Up My Finances" }),
-      ),
-    );
-    expect(sharedExpensesApi.enableFinance).toHaveBeenCalledWith(
-      "group",
-      expect.objectContaining({ accountName: "Weekend" }),
-    );
+    expect(
+      screen.queryByRole("button", { name: "Set Up My Finances" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/New personal-finance connections are unavailable/),
+    ).toBeInTheDocument();
+    expect(sharedExpensesApi.enableFinance).not.toHaveBeenCalled();
   });
 });
