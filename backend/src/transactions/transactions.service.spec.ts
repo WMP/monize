@@ -6748,6 +6748,63 @@ describe("TransactionsService", () => {
       );
     });
 
+    describe("an amount edit on a split parent", () => {
+      const splitTx = { ...mockTx, isSplit: true };
+
+      it("refuses a changed amount without splits, before any write", async () => {
+        transactionsRepository.findOne.mockResolvedValue({ ...splitTx });
+        const beforeWrite = jest.fn();
+
+        await expect(
+          service.update("user-1", "tx-1", { amount: -150 } as any, {
+            beforeWrite,
+          }),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(beforeWrite).not.toHaveBeenCalled();
+        expect(transactionsRepository.update).not.toHaveBeenCalled();
+        expect(splitsRepository.delete).not.toHaveBeenCalled();
+      });
+
+      it("refuses a changed amount with splits: null, before any write", async () => {
+        transactionsRepository.findOne.mockResolvedValue({ ...splitTx });
+
+        await expect(
+          service.update("user-1", "tx-1", {
+            amount: -150,
+            splits: null,
+          } as any),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(transactionsRepository.update).not.toHaveBeenCalled();
+        expect(splitsRepository.delete).not.toHaveBeenCalled();
+      });
+
+      it("allows an amount equal to the stored one (forms resend it)", async () => {
+        transactionsRepository.findOne.mockResolvedValue({ ...splitTx });
+        splitsRepository.find.mockResolvedValue([]);
+
+        await expect(
+          service.update("user-1", "tx-1", { amount: -100 } as any),
+        ).resolves.toBeDefined();
+      });
+
+      it("allows a changed amount accompanied by splits", async () => {
+        transactionsRepository.findOne.mockResolvedValue({ ...splitTx });
+        splitsRepository.find.mockResolvedValue([]);
+
+        await expect(
+          service.update("user-1", "tx-1", {
+            amount: -150,
+            splits: [
+              { amount: -100, categoryId: "cat-1" },
+              { amount: -50, categoryId: "cat-2" },
+            ],
+          } as any),
+        ).resolves.toBeDefined();
+      });
+    });
+
     /**
      * A split replacement that names no new amount takes the parent amount from
      * the pre-transaction snapshot. Another request can change that amount while

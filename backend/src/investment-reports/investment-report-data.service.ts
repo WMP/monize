@@ -26,6 +26,8 @@ import { InvestmentCellValue } from "./dto/execute-investment-report.dto";
 import { roundToDecimals, sumMoney } from "../common/round.util";
 import { FxAggregate } from "../common/fx-aggregate";
 import { todayYMD } from "../common/date-utils";
+import { addMonthsClamped } from "../common/recurrence";
+import { resolveDailyPriceChange } from "../securities/daily-change.util";
 
 /**
  * The rows of a holdings computation and how complete their conversion was.
@@ -112,17 +114,6 @@ function isoAddDays(iso: string, days: number): string {
   const dt = new Date(Date.UTC(y, m - 1, d));
   dt.setUTCDate(dt.getUTCDate() + days);
   return dt.toISOString().slice(0, 10);
-}
-
-function isoAddMonths(iso: string, months: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  dt.setUTCMonth(dt.getUTCMonth() + months);
-  return dt.toISOString().slice(0, 10);
-}
-
-function isoAddYears(iso: string, years: number): string {
-  return isoAddMonths(iso, years * 12);
 }
 
 const SECURITY_TYPE_LABELS: Record<string, string> = {
@@ -318,9 +309,9 @@ export class InvestmentReportDataService {
     const periodStarts: Record<string, string> = {
       totalReturn1Week: isoAddDays(asOfDate, -7),
       totalReturn4Weeks: isoAddDays(asOfDate, -28),
-      totalReturn3Month: isoAddMonths(asOfDate, -3),
-      totalReturn1Year: isoAddYears(asOfDate, -1),
-      totalReturn3Year: isoAddYears(asOfDate, -3),
+      totalReturn3Month: addMonthsClamped(asOfDate, -3),
+      totalReturn1Year: addMonthsClamped(asOfDate, -12),
+      totalReturn3Year: addMonthsClamped(asOfDate, -36),
       totalReturnYtd: `${year - 1}-12-31`,
     };
 
@@ -342,6 +333,17 @@ export class InvestmentReportDataService {
       const prevRow = asOfIdx >= 1 ? prices[asOfIdx - 1] : null;
 
       const lastPrice = asOfRow ? asOfRow.close : null;
+      // A daily move only between adjacent, current sessions; otherwise null.
+      const daily =
+        asOfRow && prevRow
+          ? resolveDailyPriceChange(
+              [
+                { price: asOfRow.close, date: asOfRow.date },
+                { price: prevRow.close, date: prevRow.date },
+              ],
+              asOfDate,
+            )
+          : null;
       const previousClose = prevRow ? prevRow.close : null;
 
       let quantity = roundToDecimals(group.state.quantity, 8);
@@ -393,14 +395,10 @@ export class InvestmentReportDataService {
         gain !== null && costBasis > 0
           ? roundToDecimals((gain / costBasis) * 100, 4)
           : null;
-      const change =
-        lastPrice !== null && previousClose !== null
-          ? roundToDecimals(lastPrice - previousClose, 6)
-          : null;
-      const changePercent =
-        change !== null && previousClose
-          ? roundToDecimals((change / previousClose) * 100, 4)
-          : null;
+      const change = daily ? roundToDecimals(daily.dailyChange, 6) : null;
+      const changePercent = daily
+        ? roundToDecimals(daily.dailyChangePercent, 4)
+        : null;
       const todaysTotalChange =
         change !== null ? roundToDecimals(change * quantity, 4) : null;
 

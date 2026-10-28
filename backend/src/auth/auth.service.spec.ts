@@ -2017,12 +2017,13 @@ describe("AuthService", () => {
         twoFactorSecret: encryptedSecret,
       });
       (otplib.verifySync as jest.Mock).mockReturnValue({ valid: true });
-      usersRepository.save.mockImplementation((u) => u);
 
       await service.verify2FA("valid-temp-token", "123456");
 
-      const savedUser = usersRepository.save.mock.calls[0][0];
-      expect(savedUser.lastLogin).toBeInstanceOf(Date);
+      expect(usersRepository.update).toHaveBeenCalledWith(
+        { id: mockUser.id },
+        { lastLogin: expect.any(Date) },
+      );
       expect((service as any).logger.log).toHaveBeenCalledWith(
         expect.stringContaining("2FA verification successful"),
       );

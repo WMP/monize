@@ -375,9 +375,20 @@ export class TwoFactorService {
       user.twoFactorSecret = reEncryptedSecret;
     }
 
-    // Update last login
+    // Update last login. Own columns only (CONC-008): `save(user)` would write
+    // back a stale backupCodes a concurrent login just consumed.
     user.lastLogin = new Date();
-    await this.scoped(User, (repo) => repo.save(user));
+    await this.scoped(User, (repo) =>
+      repo.update(
+        { id: user.id },
+        {
+          lastLogin: user.lastLogin,
+          ...(reEncryptedSecret !== null
+            ? { twoFactorSecret: reEncryptedSecret }
+            : {}),
+        },
+      ),
+    );
     this.logger.log(`2FA verification successful for user ${user.id}`);
 
     const rememberMe = payload.rememberMe === true;

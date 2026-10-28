@@ -29,7 +29,10 @@ import { ScheduledTransactionLoanService } from "./scheduled-transaction-loan.se
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { SystemAlertService } from "../system-alerts/system-alert.service";
-import { getRequestContext } from "../common/request-context";
+import {
+  getRequestContext,
+  getRequestTimezone,
+} from "../common/request-context";
 import { addDaysYMD, todayInTimezone } from "../common/date-utils";
 import {
   createScopedDbMocks,
@@ -5975,7 +5978,29 @@ describe("ScheduledTransactionsService", () => {
       await service.processAutoPostTransactions();
 
       expect(ctxAtFind).toEqual({ system: true });
-      expect(ctxAtPost).toEqual({ userId: st1.userId });
+      expect(ctxAtPost).toEqual({ userId: st1.userId, timezone: "UTC" });
+      postSpy.mockRestore();
+    });
+
+    // todayYMD() / isTransactionInFuture() read the ambient timezone; without it
+    // a UTC+10 user's bill posted at 00:05 local is future-dated by server date.
+    it("runs each post with the user's timezone bucket in context", async () => {
+      const st1 = makeScheduled({ id: "st-1", autoPost: true });
+      mockDataSource.query.mockResolvedValueOnce([
+        { user_id: st1.userId, timezone: "Australia/Brisbane" },
+      ]);
+      scheduledRepo.find.mockResolvedValue([st1]);
+      overridesRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder([]));
+
+      let tzAtPost: string | undefined;
+      const postSpy = jest.spyOn(service, "post").mockImplementation(() => {
+        tzAtPost = getRequestTimezone();
+        return Promise.resolve(undefined as any);
+      });
+
+      await service.processAutoPostTransactions();
+
+      expect(tzAtPost).toBe("Australia/Brisbane");
       postSpy.mockRestore();
     });
 
