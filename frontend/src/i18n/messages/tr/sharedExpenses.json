@@ -97,6 +97,8 @@
   "splitHelp": "Kimin katıldığını seçin. Bir kişi pay sahibi olmadan ödeme yapabilir.",
   "apply": "Bölmeyi uygula",
   "remainder": "Geri kalanı {name}'ye ver",
+  "splitRemainderEqually": "Kalanı {names} Arasında Eşit Böl",
+  "splitRemainderHelp": "Kalan tutarı paylaşacak kişilerin tutarlarını boş bırakın. Sıfır dahil girilen tutarlar değişmez.",
   "extras": "Ekstralar, geri kalanını eşit olarak bölüştürün",
   "extrasHelp": "Önce her kişinin ekstralarını girin. Kalan miktar seçilen kişiler arasında paylaştırılır.",
   "splitInvalid": "Tutarları kontrol edin: Tam payların toplamı toplama eşit olmalı, yüzdeler 100 olmalı ve ağırlıklar pozitif olmalıdır.",

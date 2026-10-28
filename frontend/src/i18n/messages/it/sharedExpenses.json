@@ -97,6 +97,8 @@
   "splitHelp": "Scegli chi ha partecipato. Una persona può pagare senza avere una quota.",
   "apply": "Applica divisione",
   "remainder": "Assegna il resto a {name}",
+  "splitRemainderEqually": "Dividi il Resto in Parti Uguali tra {names}",
+  "splitRemainderHelp": "Lascia vuoti gli importi delle persone che si divideranno il resto. Gli importi inseriti, compreso lo zero, rimangono invariati.",
   "extras": "Extra, poi il resto in parti uguali",
   "extrasHelp": "Inserisci prima gli extra di ogni persona. Il resto viene diviso tra le persone selezionate.",
   "splitInvalid": "Verifica gli importi: le quote esatte devono sommare al totale, le percentuali a 100 e i pesi devono essere positivi.",

@@ -97,6 +97,8 @@
   "splitHelp": "Choisissez les participants. Une personne peut payer sans avoir de part.",
   "apply": "Appliquer la répartition",
   "remainder": "Attribuer le reste à {name}",
+  "splitRemainderEqually": "Répartir le Reste à Parts Égales entre {names}",
+  "splitRemainderHelp": "Laissez le montant vide pour les personnes qui se partageront le reste. Les montants saisis, y compris zéro, restent inchangés.",
   "extras": "Suppléments, puis partage égal du reste",
   "extrasHelp": "Saisissez d’abord les suppléments de chacun. Le reste est partagé entre les personnes sélectionnées.",
   "splitInvalid": "Vérifiez les montants : les parts précises doivent égaler le total, les pourcentages 100 et les poids doivent être positifs.",

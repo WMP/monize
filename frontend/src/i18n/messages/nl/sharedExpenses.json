@@ -97,6 +97,8 @@
   "splitHelp": "Kies wie heeft meegedaan. Iemand kan betalen zonder zelf een aandeel te hebben.",
   "apply": "Verdeling toepassen",
   "remainder": "Restbedrag toewijzen aan {name}",
+  "splitRemainderEqually": "Rest Gelijk Verdelen over {names}",
+  "splitRemainderHelp": "Laat het bedrag leeg voor de personen die de rest delen. Ingevoerde bedragen, ook nul, blijven ongewijzigd.",
   "extras": "Extra's, daarna de rest gelijk verdelen",
   "extrasHelp": "Voer eerst de extra's per persoon in. Het resterende bedrag wordt verdeeld over de geselecteerde personen.",
   "splitInvalid": "Controleer de bedragen: exacte aandelen moeten samen het totaal vormen, percentages moeten optellen tot 100 en gewichten moeten positief zijn.",

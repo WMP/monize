@@ -97,6 +97,8 @@
   "splitHelp": "选择参加者。一个人无需分享即可支付。",
   "apply": "应用分割",
   "remainder": "将余数交给{name}",
+  "splitRemainderEqually": "将剩余金额平均分给{names}",
+  "splitRemainderHelp": "将参与分摊剩余金额的人的金额留空。已输入的金额（包括零）保持不变。",
   "extras": "额外的，然后平分剩下的",
   "extrasHelp": "先输入每个人的额外信息。剩余的金额将分配给选定的人。",
   "splitInvalid": "检查金额：确切的份额必须加起来等于总数，百分比必须为 100，权重必须为正数。",

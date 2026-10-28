@@ -97,6 +97,8 @@
   "splitHelp": "Chọn người tham gia. Một người có thể trả tiền mà không cần có cổ phần.",
   "apply": "Áp dụng chia tách",
   "remainder": "Giao phần còn lại cho {name}",
+  "splitRemainderEqually": "Chia Đều Phần Còn Lại Cho {names}",
+  "splitRemainderHelp": "Để trống số tiền của những người sẽ chia phần còn lại. Số tiền đã nhập, kể cả số không, sẽ được giữ nguyên.",
   "extras": "Phần thêm thì chia đều",
   "extrasHelp": "Nhập thông tin bổ sung của từng người trước. Số tiền còn lại được chia cho những người được chọn.",
   "splitInvalid": "Kiểm tra số tiền: tổng số cổ phiếu chính xác phải bằng tổng, tỷ lệ phần trăm là 100 và trọng số phải dương.",

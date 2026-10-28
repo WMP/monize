@@ -97,6 +97,8 @@
   "splitHelp": "Elige quién participó. Una persona puede pagar sin tener una parte del gasto.",
   "apply": "Aplicar reparto",
   "remainder": "Asignar el resto a {name}",
+  "splitRemainderEqually": "Repartir el Resto por Igual entre {names}",
+  "splitRemainderHelp": "Deja el importe en blanco para quienes compartirán el resto. Los importes introducidos, incluido el cero, no cambian.",
   "extras": "Extras y luego el resto por igual",
   "extrasHelp": "Introduce primero los extras de cada persona. El resto se divide entre las personas seleccionadas.",
   "splitInvalid": "Revisa los importes: las partes exactas deben sumar el total, los porcentajes 100 y los pesos deben ser positivos.",
