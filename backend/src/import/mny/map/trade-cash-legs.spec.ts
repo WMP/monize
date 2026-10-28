@@ -472,6 +472,41 @@ describe("a trade the investment mapper did not write", () => {
       banking.transactions.find((row) => row.accountKey === "acct-6"),
     ).toMatchObject({ amount: PURCHASE, isTransfer: true });
   });
+
+  it("keeps the cash of a skipped trade paid into its own sleeve", () => {
+    // Money 99's interest on a bond, read before its `act` was known: the
+    // investment row and its cash row in the companion account. A synthesized
+    // counterpart for the cash row would land in that same sleeve and net it to
+    // zero, so the sleeve came out short by the interest.
+    const INTEREST = 10;
+    const { banking, sleeveRows, balances } = mapAll(
+      transactionData({
+        transactions: [
+          mnyTransaction({ handle: 20, account: SLEEVE, amount: INTEREST }),
+          mnyTransaction({
+            handle: 21,
+            account: BROKERAGE,
+            amount: -INTEREST,
+            security: SECURITY,
+            category: 134,
+            action: 99,
+          }),
+        ],
+        transfers: [mnyTransfer({ from: 20, to: 21 })],
+      }),
+      investmentData(),
+    );
+
+    expect(sleeveRows).toHaveLength(1);
+    expect(sleeveRows[0]).toMatchObject({
+      amount: INTEREST,
+      isTransfer: false,
+      linkedTransactionId: null,
+      categoryHandle: 134,
+    });
+    expect(balances.get("acct-6")).toBe(SLEEVE_OPENING + INTEREST);
+    expect(banking.warnings).toEqual([]);
+  });
 });
 
 describe("cash moved into the sleeve without a trade", () => {
