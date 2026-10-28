@@ -270,6 +270,28 @@ describe("YahooFinanceService", () => {
       expect(result!.regularMarketVolume).toBe(10000000);
     });
 
+    it("keeps a null GBX field undefined instead of turning it into 0", async () => {
+      mockFetchResponse({
+        chart: {
+          result: [
+            {
+              meta: {
+                symbol: "VOD.L",
+                currency: "GBp",
+                regularMarketPrice: null,
+                regularMarketDayHigh: 7300,
+              },
+            },
+          ],
+        },
+      });
+
+      const result = await service.fetchQuote("VOD.L");
+
+      expect(result!.regularMarketPrice).toBeUndefined();
+      expect(result!.regularMarketDayHigh).toBe(73);
+    });
+
     it("should not convert prices when currency is GBP (pounds)", async () => {
       mockFetchResponse({
         chart: {
