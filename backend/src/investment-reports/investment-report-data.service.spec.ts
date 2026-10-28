@@ -775,7 +775,7 @@ describe("InvestmentReportDataService", () => {
 
     it("values a transfer in at the price on its date", async () => {
       // 5 shares enter at 100 (500), 10 and 5 are worth 110 each at the end:
-      // (1650 - 1000 - 500) / (1000 + 500) = 10%.
+      // Modified Dietz: 150 / (1000 + 500 * 5/7) = 150 / 1357.1429 = 11.0526%.
       expect(
         await returnWeek(
           [
@@ -795,7 +795,91 @@ describe("InvestmentReportDataService", () => {
           },
           15,
         ),
-      ).toBeCloseTo(10, 4);
+      ).toBeCloseTo(11.0526, 4);
+    });
+
+    it("weights a mid-window purchase by the days it was held", async () => {
+      // 10 held at 100, 90 bought on 06-05 at 100, 100 worth 110 on 06-10:
+      // 1000 / (1000 + 9000 * 5/7) = 1000 / 7428.5714 = 13.4615%. The old
+      // start-of-window denominator (10000) read 10%.
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.BUY,
+              transactionDate: "2024-06-05",
+              quantity: 90,
+              price: 100,
+              totalAmount: 9000,
+            },
+          ],
+          { "2024-06-01": "100", "2024-06-10": "110" },
+          100,
+        ),
+      ).toBeCloseTo(13.4615, 3);
+    });
+
+    it("weights a sale out of the denominator", async () => {
+      // 10 held at 100, 9 sold on 06-04 for 900, 1 worth 110 on 06-10:
+      // (110 + 900 - 1000) / (1000 - 900 * 6/7) = 10 / 228.5714 = 4.375%.
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.SELL,
+              transactionDate: "2024-06-04",
+              quantity: 9,
+              price: 100,
+              totalAmount: 900,
+            },
+          ],
+          { "2024-06-01": "100", "2024-06-10": "110" },
+          1,
+        ),
+      ).toBeCloseTo(4.375, 4);
+    });
+
+    it("reports no return when the weighted denominator is not positive", async () => {
+      // 9 sold on 06-04 for 1,200: 1000 - 1200 * 6/7 = -28.57.
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.SELL,
+              transactionDate: "2024-06-04",
+              quantity: 9,
+              price: 133.33,
+              totalAmount: 1200,
+            },
+          ],
+          { "2024-06-01": "100", "2024-06-10": "110" },
+          1,
+        ),
+      ).toBeNull();
+    });
+
+    it("gives a flow on the as-of date no weight", async () => {
+      // 90 bought on 06-10 at 100: 1000 / 1000 = 100%, the purchase is
+      // taken out of the numerator and adds nothing to the denominator.
+      expect(
+        await returnWeek(
+          [
+            held10,
+            {
+              action: InvestmentAction.BUY,
+              transactionDate: "2024-06-10",
+              quantity: 90,
+              price: 100,
+              totalAmount: 9000,
+            },
+          ],
+          { "2024-06-01": "100", "2024-06-10": "110" },
+          100,
+        ),
+      ).toBeCloseTo(100, 4);
     });
 
     it("equals the plain return when a dividend is reinvested", async () => {

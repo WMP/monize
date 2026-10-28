@@ -891,6 +891,11 @@ export class InvestmentReportDataService {
    * deposit would hide that income (`incomeBetween`). A return of capital is a
    * cash distribution `incomeBetween` already counts.
    *
+   * `weightedNet` is the Modified Dietz weighting of those flows: each is
+   * weighted by the share of the window left after its date (a flow on `upto`
+   * weighs 0), inflows positive and outflows negative
+   * (`docs/specs/investment-report-period-returns.md`).
+   *
    * `null` when a flow cannot be valued: a missing price is unknown, not free.
    */
   private flowsBetween(
@@ -898,9 +903,11 @@ export class InvestmentReportDataService {
     prices: PriceRow[],
     after: string,
     upto: string,
-  ): { inflows: number; outflows: number } | null {
+  ): { inflows: number; outflows: number; weightedNet: number } | null {
     const inflows: number[] = [];
     const outflows: number[] = [];
+    const windowMs = Date.parse(upto) - Date.parse(after);
+    let weightedNet = 0;
     for (const tx of group.txs) {
       if (tx.transactionDate <= after || tx.transactionDate > upto) continue;
       const base = baseInvestmentAction(tx.action);
@@ -924,14 +931,23 @@ export class InvestmentReportDataService {
       }
       if (amount === null) return null;
       (kind === "capitalIn" ? inflows : outflows).push(amount);
+      const weight =
+        (Date.parse(upto) - Date.parse(tx.transactionDate)) / windowMs;
+      weightedNet += (kind === "capitalIn" ? amount : -amount) * weight;
     }
-    return { inflows: sumMoney(inflows), outflows: sumMoney(outflows) };
+    return {
+      inflows: sumMoney(inflows),
+      outflows: sumMoney(outflows),
+      weightedNet: roundToDecimals(weightedNet, 4),
+    };
   }
 
   /**
-   * Compute the MS Money-style total return columns:
+   * Compute the per-security total return columns by the Modified Dietz
+   * method (`docs/specs/investment-report-period-returns.md`):
    *   (current value + income + sales - beginning value - purchases)
-   *   / (beginning value + purchases), flows taken inside the window.
+   *   / (beginning value + day-weighted purchases - day-weighted sales),
+   * flows taken inside the window. Income stays out of the denominator.
    * "All dates" measures against cost basis (return since inception); the
    * annualized column annualizes that figure over the holding period.
    */
@@ -965,9 +981,13 @@ export class InvestmentReportDataService {
       const flows = this.flowsBetween(group, prices, start, asOfDate);
       // A flow that cannot be valued leaves the return unknown, not wrong.
       if (flows === null) continue;
+      const denominator = beginValue + flows.weightedNet;
+      if (!(Date.parse(asOfDate) > Date.parse(start)) || denominator <= 0) {
+        continue;
+      }
       result[key] = roundToDecimals(
         ((marketValue + income + flows.outflows - beginValue - flows.inflows) /
-          (beginValue + flows.inflows)) *
+          denominator) *
           100,
         4,
       );
