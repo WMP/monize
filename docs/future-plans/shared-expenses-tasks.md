@@ -250,3 +250,32 @@ modal is a separate accessibility follow-up. No human usability study or
 independent three-reviewer audit is claimed. Maintainer scope approval and the
 review-series decision remain open. This iteration retains Ken’s merge of c63acab637;
 subsequent main commits are not claimed as integrated.
+
+## Fixed shares and selected beneficiaries (2026-10-28)
+
+The same trip roster can have different beneficiaries on each expense. A payer
+can have no share without leaving the group. The missing exact-share convenience
+action now keeps entered amounts, including zero, and fills only selected blank
+amounts equally. For a bill of 100, a fixed 20 leaves 40 each for two others;
+this remains distinct from the existing extras-plus-equal action. The action
+names its recipients and requires Apply before changing the parent draft.
+
+- The new six-person UI regression failed on the original missing action.
+  The two focused files then passed all 28 cases, including zero, exclusion,
+  cancellation, payer-only participation and precision from zero to four decimals.
+- Frontend lint, type checks and locale checks passed. All 18 non-English
+  catalogs have the two new messages and the pseudo-locale was regenerated.
+- The changed-test gate ran 902 files / 16,933 cases: 16,932 passed and the
+  public-script guard failed because vendor preparation produces OpenCV and
+  pdf.js assets outside its reviewed list. The guard is identical on upstream
+  main. Its failure remains open; no test or allowance was changed to hide it.
+- Both documentation guard files passed all 26 cases and the documentation
+  manifest check passed. The frontend compile, type-check and generate stages
+  passed sequentially; peak build memory was 3038 MiB and minimum host available
+  memory during that build was 3606 MiB. No Docker or app services were started.
+- Backend financial behavior and browser journeys were not rerun for this
+  frontend draft-allocation correction; their earlier evidence is dated above.
+
+Publication of this follow-up awaits a separate decision on the public-script
+guard. A proposed correction verifies the two generated scripts against their
+installed dependency bytes while retaining rejection of other scripts.

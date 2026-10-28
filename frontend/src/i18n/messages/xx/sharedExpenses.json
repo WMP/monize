@@ -97,6 +97,8 @@
   "splitHelp": "[XX-Choose who took part. A person can pay without having a share.-XX]",
   "apply": "[XX-Apply Split-XX]",
   "remainder": "[XX-Give remainder to {name}-XX]",
+  "splitRemainderEqually": "[XX-Split Remainder Equally Between {names}-XX]",
+  "splitRemainderHelp": "[XX-Leave amounts blank for the people who will split the remainder. Entered amounts, including zero, stay unchanged.-XX]",
   "extras": "[XX-Extras, then split the rest equally-XX]",
   "extrasHelp": "[XX-Enter each person’s extras first. The remaining amount is divided among selected people.-XX]",
   "splitInvalid": "[XX-Check the amounts: exact shares must add up to the total, percentages to 100, and weights must be positive.-XX]",
