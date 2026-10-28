@@ -1,14 +1,72 @@
 # Shared expenses: maintainer UI feedback specification
 
-Status: Approved by the requesting user on 28 October 2026, including section 5.
-Implementation and upstream maintainer acceptance remain separate steps.
+Status: The requester approved the narrower first delivery on 28 October 2026.
+Section 0 is the current implementation contract. Sections 1 through 6 record
+the earlier proposal; private-finance work remains deferred. Upstream acceptance
+is separate from this authorization.
 
-Source: [Ken's 11-point review, 28 October 2026](https://github.com/kenlasko/monize/pull/1890#issuecomment-6477862506).
+Source: [Ken's PR review, edited 28 October 2026 at 19:06:46 UTC](https://github.com/kenlasko/monize/pull/1890#issuecomment-6477862506).
 Reviewed PR revision: `dede6ceb934f3fdca8f5b23746bad83823318c38`.
 Ken merged main into that revision; retain this history. The relevant feature
 files match the previously tested `f08198611` implementation. This document is
-the approved implementation contract, not a claim that its changes or tests
-have been completed.
+the earlier approved proposal with the scope correction below, not a claim that
+its changes or tests have been completed.
+
+## 0. Reassessment after the edited review
+
+Ken added a first point after the original review was read: do not create new
+accounts for this feature until its basic functionality has settled. He suggests
+that other connections to core Monize functionality should probably wait too.
+His subsequent Discussion reply directs further feedback to the PR. The account
+restriction is explicit; the exact boundary for other connections is not yet
+settled. Do not treat the remaining transaction-related review points as approval
+to expand that integration now.
+
+The current implementation creates a managed settlement account when personal
+integration is enabled. Both the combined expense/finance flow and matching from
+Transactions rely on that integration. Keeping those flows while hiding only
+the account-creation screen would not satisfy the new restriction.
+
+Approved first delivery:
+
+- Keep the trip group, independent payers and beneficiaries, equal/percentage/
+  exact/weighted splits, explicit zeros, fixed amounts plus equal remainder,
+  running balances and recorded repayments. Repayment records in the group do
+  not execute a bank transfer.
+- Polish the group-only workflow: one expense form with attachments, Save
+  completion, standard filters/tables, currency controls and mobile behavior.
+  Keep group multi-currency calculations; those do not require private accounts.
+- Defer new settlement accounts and personal posting, source-transaction
+  matching/reclassification, the normal-form submission adapter, and the private
+  FX policy in section 5. Preserve the existing work in Git for a later, separately
+  agreed integration change. Avoid replacing the account with another accounting
+  mechanism just to keep the same scope.
+- Decide with the maintainer whether a simple transaction-to-group prefill is
+  wanted in the first delivery. It must be evaluated separately from the current
+  posting-dependent handoff; this proposal does not assume it is approved.
+- Before reducing the existing draft, map the integration's UI, API, account,
+  report and backup references together. Removing an entry button alone does
+  not demonstrate that account creation or financial writes are unavailable.
+  Do not delete existing test-instance financial records during that separation.
+
+| Review item | Status for the proposed first delivery |
+| --- | --- |
+| UI-00: newly added account/integration boundary | Scope decision precedes implementation of personal integration. |
+| UI-01 through UI-05 | Retain for the group-only workflow. |
+| UI-06 through UI-11 | Keep as feedback for any integration that is later agreed; defer implementation while that boundary is unresolved. |
+| Section 5: private FX policy | On hold; its previous requester approval is not evidence that Ken wants it in this delivery. |
+
+Implementation boundary: the first delivery removes personal-finance creation
+controls and transaction handoffs. A shared server guard refuses enable, booking
+and combined entry/finance routes before their services run. Existing private
+postings remain readable and may be explicitly unlinked; their financial math,
+restore data and tests are retained. There is no runtime flag to re-enable new
+booking. No schema migration or deletion of stored data is part of this change.
+
+Acceptance of the narrower delivery needs the six-person trip scenario and a
+check that group commands leave private account/transaction data unchanged,
+including direct API access. The paired plan names the edit map and acceptance matrix. Sections 1 through 6 retain the previous proposal
+for reference and must not override this section.
 
 ## 1. Goal and boundary
 

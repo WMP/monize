@@ -3,6 +3,15 @@
 Plan: `docs/future-plans/shared-expenses-ui-polish.md`.
 Specification: `docs/specs/shared-expenses-ui-polish.md`.
 
+## Current scope
+
+- [x] Recheck edited PR comments as well as new Discussion/issue replies.
+- [x] Identify the newly added restriction on accounts and possible deferral of
+  core integrations; record the narrower proposal in specification section 0.
+- [x] Retain the original approval and subsequent scope correction as history.
+- [x] Requester approves the narrower boundary; revise the plan and acceptance
+  matrix. New private posting, matching and private FX redesign are deferred.
+
 ## Approval and preparation
 
 - [x] Read the current Discussion, issue, PR comments, reviews and inline comments.
@@ -10,26 +19,23 @@ Specification: `docs/specs/shared-expenses-ui-polish.md`.
 - [x] Identify the existing Transactions controls and the FX/category conflict.
 - [x] Prepare a proposal covering UI-01 through UI-11 and numerical examples.
 - [x] Requester approves the spec, including section 5's proposed FX policy.
-- [ ] Recheck branch state, fast-forward while preserving Ken's merge, and commit
-  the approved spec before its implementation.
+- [x] Recheck branch state, fast-forward while preserving Ken's merge, and commit
+  the earlier approved spec before its implementation (`69734062d`).
 - [ ] Read in full the relevant layer/contract documents before code changes;
   analysis excerpts do not satisfy that implementation precondition.
 
-## Implementation after approval
+## Implementation
 
-- [ ] UI-01/UI-04: staged attachments in the expense form, successful close,
-  in-place upload recovery, no redundant item/amount description.
-- [ ] UI-02/UI-05: group and expense tables with existing filter presentation,
-  server paging, accessible rows and phone layouts.
-- [ ] UI-03: standard money/currency composition across entry, split and booking.
-- [ ] UI-06/UI-07/UI-08/UI-11: transaction wording, standard creation form,
-  category placement, matched-source preservation and relevant allocation controls.
-- [ ] UI-10: historical matching, server eligibility before paging and source
-  freshness/ownership checks.
-- [ ] UI-09: approved FX/category policy, same server preview/commit resolver,
-  stored-source compatibility and consumer/report consistency.
-- [ ] Document each corrected convention at its existing instruction/doc location
-  with a regression; no guard-baseline growth.
+- [ ] Block new private-finance commands at the server, with HTTP regressions;
+  retain existing reads/unlink and their ownership checks.
+- [ ] Remove creation/handoff controls and handle old URLs; retain access to
+  already-created private records.
+- [ ] UI-01/UI-04: staged attachments, successful close, in-place retry and no
+  redundant item/amount subheading.
+- [ ] UI-02/UI-05: group and expense tables, standard filter presentation,
+  accessible rows, server paging and phone layouts.
+- [ ] UI-03: standard currency square and input; retain precision and group FX.
+- [ ] Document corrected conventions with regressions, without baseline growth.
 
 ## Verification and publication
 
@@ -41,17 +47,17 @@ Specification: `docs/specs/shared-expenses-ui-polish.md`.
   `npm run test:changed`, `npm run build`, `npm run test:integration`.
 - [ ] Root checks: `node scripts/check-env-docs.mjs` and
   `node scripts/check-docs-manifests.mjs`; stage new files before tree-walking guards.
-- [ ] Browser acceptance: expense save plus documents/retry, new personal payment,
-  old matched source, partial/split match, FX cases, phone table/filter/currency
-  controls; assert persisted results after reload.
+- [ ] Browser acceptance: expense save/documents/retry, six-person allocations,
+  repayments, group FX, phone tables/filters/currency controls and refused new
+  private integration; assert persisted results after reload.
 - [ ] Grep E2E selectors for renamed labels; update the driven controls' tests.
 - [ ] Develop English-first, regenerate pseudo-locale, then finish every supported
   locale after functional copy stabilizes, as the final implementation commit.
 - [ ] Capture the running implementation with synthetic data; label images/video
   by the actual tested revision and distinguish older evidence.
 - [ ] Normal push to the existing feature branch; read back the PR head.
-- [ ] Add NEW Discussion and issue comments with changes, evidence and remaining
-  review items; do not replace earlier replies with progress updates.
+- [ ] Add a NEW PR progress comment following Ken's requested review location;
+  keep issue evidence current with a new comment and do not rewrite old replies.
 
 ## Resource budget
 
