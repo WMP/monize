@@ -33,6 +33,7 @@ import {
 import { billReferences, mapBills, selectedBills } from "./map/map-bills";
 import { mapLoans } from "./map/map-loans";
 import { crossCheckHoldings } from "./map/check-holdings";
+import { MONEY99_ABSENT_FIELDS } from "./model/mny-money99";
 import {
   MappedAccounts,
   MappedBills,
@@ -563,10 +564,17 @@ export class MnyParserService {
           code: "missingTable" as const,
           subject: table,
         })),
-        ...defaultedFields.map((field) => ({
-          code: "missingField" as const,
-          subject: field,
-        })),
+        // A column Money 99 never had is not news to its user; the field list
+        // above still names it for `mny:inspect`.
+        ...defaultedFields
+          .filter(
+            (field) =>
+              db.format !== "jet3" || !MONEY99_ABSENT_FIELDS.has(field),
+          )
+          .map((field) => ({
+            code: "missingField" as const,
+            subject: field,
+          })),
         ...accounts.warnings,
         ...transactions.warnings,
         ...securities.warnings,

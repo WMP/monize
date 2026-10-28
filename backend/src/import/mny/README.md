@@ -270,11 +270,18 @@ together, per account.
   It has no `BILL` table either: `tables/money99-bills.ts` turns each `TRN`
   template that names a pending instance (`htrnSrc`) into the `BILL` row
   `mapBills` expects, which is also what keeps a scheduled transfer to one bill.
+  Recording a split in Money 99 rewrites the trades before it (quantities and
+  prices), so its `SEC_SPLIT` rows are not even reported; and a CD is bought by
+  amount, with no units, so it imports as units of 1 the way Money Plus stores it.
 - **`TRN` holds the payee in `lHpay` on Money Plus and `hpay` before it.** Reading one name only
   drops every payee on the other vintage. Column aliases belong in the reader spec, never in a
   mapper.
 - **`SEC_SPLIT` has no security column.** Resolve it through `MnyInvestmentData.splitSecurities`,
   which is built from `SP.hss` -> `SP.hsec`.
+- **A trade the investment mapper skips still has its cash.** Its cash row in
+  the trade's own sleeve imports on its own (`unwrittenTradeCashRows`); a
+  synthesized counterpart for it would land in the same sleeve and net it to
+  zero, which no balance check can see because both rows are the mapper's.
 - **Never apply a `SEC_SPLIT` ratio to a position.** Money does not adjust its own share counts
   for those rows, so an importer that does disagrees with the file it read: seven positions
   across two files (the maintainer's VTI, VWO, XIC and XIU, `sample.mny`'s MSFT, LEH and ADM)

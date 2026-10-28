@@ -28,7 +28,10 @@ pay from (Money 99 can leave a scheduled loan payment that way) cannot become a
 bill and is listed as skipped. An investment account's "Other income" and "Other expenses" arrive as ordinary
 categorized transactions in its cash account, because Monize has no investment
 action for either, and employee stock option grants, vesting and expiry are not
-imported.
+imported. A CD, which Money 99 buys by amount, arrives as units worth 1 each.
+Money 99 keeps only the latest exchange rate for each currency, so a trade of a
+security quoted in another currency, made before that rate's date, imports in
+the account's currency and is listed for you to correct.
 
 `.mbf` backup archives are also unsupported. Restore the backup in Money first
 and import the resulting `.mny`.

@@ -78,6 +78,12 @@ export const MONEY99_ACTION = {
   BUY: 0,
   /** Closes a lot (`LOT.htrnSell`). Money Plus's 1 is BUY. */
   SELL: 1,
+  /**
+   * Interest paid to the cash account: on a bond and on a CD, each paired with
+   * its cash row through `TRN_XFER`, booked to Investments:Interest, no
+   * `TRN_INV` row. Money Plus's 2 is SELL.
+   */
+  INTEREST: 2,
   /** Cash dividend paid to the cash account; no `TRN_INV` row. */
   DIVIDEND: 4,
   /** Reinvested dividend: opens a lot, no cash pairing. */
@@ -104,6 +110,7 @@ export const MONEY99_ACTION_BY_CODE: ReadonlyMap<number, InvestmentAction> =
   new Map([
     [MONEY99_ACTION.BUY, InvestmentAction.BUY],
     [MONEY99_ACTION.SELL, InvestmentAction.SELL],
+    [MONEY99_ACTION.INTEREST, InvestmentAction.INTEREST],
     [MONEY99_ACTION.DIVIDEND, InvestmentAction.DIVIDEND],
     [MONEY99_ACTION.REINVEST, InvestmentAction.REINVEST],
     [MONEY99_ACTION.CAPITAL_GAIN, InvestmentAction.CAPITAL_GAIN],
@@ -113,6 +120,7 @@ export const MONEY99_ACTION_BY_CODE: ReadonlyMap<number, InvestmentAction> =
 
 /** Codes whose amount is on `TRN.amt` alone, with no `TRN_INV` row. */
 export const MONEY99_CASH_ONLY_ACTIONS: ReadonlySet<number> = new Set([
+  MONEY99_ACTION.INTEREST,
   MONEY99_ACTION.DIVIDEND,
   MONEY99_ACTION.OTHER_INCOME,
   MONEY99_ACTION.OTHER_EXPENSE,
@@ -127,6 +135,23 @@ export const MONEY99_CASH_ONLY_ACTIONS: ReadonlySet<number> = new Set([
 export const MONEY99_CASH_PAIR_ACTIONS: ReadonlySet<number> = new Set([
   MONEY99_ACTION.OTHER_INCOME,
   MONEY99_ACTION.OTHER_EXPENSE,
+]);
+
+/**
+ * Columns the readers ask for that Money 97-99 never wrote, as
+ * `<table>.<field>` (`missingFields`). Absent from every Money 99 file seen,
+ * and the reader's default is what Money 99 means by leaving them out:
+ * nothing is hidden, watched or a historical rate, a bill series is read
+ * from `TRN` templates (`money99-bills.ts`), and accrued interest is not
+ * recorded. Reporting them would tell the user about something they cannot
+ * change.
+ */
+export const MONEY99_ABSENT_FIELDS: ReadonlySet<string> = new Set([
+  "CRNC.hidden",
+  "CRNC_EXCHG.historical",
+  "ACCT.watch",
+  "TRN.billSeries",
+  "TRN_INV.interest",
 ]);
 
 /** Employee stock option events. They move no cash and no shares. */

@@ -1,6 +1,7 @@
 import { AccountType } from "../../accounts/entities/account.entity";
 import { FrequencyType } from "../../scheduled-transactions/dto/create-scheduled-transaction.dto";
 import { TransactionStatus } from "../../transactions/entities/transaction.entity";
+import { InvestmentAction } from "../../securities/entities/investment-transaction.entity";
 import { MNY_FIXTURES, readMnyFixture } from "./__fixtures__/mny-fixtures";
 import {
   mnyAccount,
@@ -409,6 +410,79 @@ describe("MnyParserService", () => {
       ).toHaveLength(9);
       expect(codes).not.toContain("unknownInvestmentAction");
       expect(codes).not.toContain("unconfirmedInvestmentAction");
+    });
+  });
+
+  describe("sample-money99-investments.mny", () => {
+    // The same author's later copy of sample-money99.mny, rebuilt to reproduce
+    // what their real file raised. Expected balances are the sums of Money's own
+    // register rows per account (the loan's carries the file's EUR->USD typo).
+    const parse = () => {
+      const buffer = readMnyFixture("money99Investments");
+      const options = { userDefaultCurrency: "CAD", asOf: "2099-12-31" };
+      service.parse({ buffer, ...options });
+      return service.parse({ buffer, alreadyDecrypted: true, ...options });
+    };
+    const keyOf = (parsed: ReturnType<typeof parse>, accountName: string) =>
+      parsed.accounts.accounts.find((account) => account.name === accountName)
+        ?.key;
+    const codes = (parsed: ReturnType<typeof parse>) =>
+      parsed.warnings.map((warning) => warning.code);
+
+    it("keeps every cash row Money shows, interest included", () => {
+      const parsed = parse();
+      const balance = (name: string) =>
+        parsed.expectedBalances.get(keyOf(parsed, name) as string);
+
+      expect(balance("Chase Bank")).toBe(2014.03);
+      expect(balance("Chase Investmen - Cash")).toBe(22468);
+      expect(balance("Chase Credit card")).toBe(-185);
+      expect(balance("Chase Savings")).toBe(11010);
+      expect(balance("Loan")).toBe(5026);
+    });
+
+    it("imports act 2 as interest on the bond and the CD", () => {
+      const interest = parse().investments.transactions.filter(
+        (trade) => trade.action === InvestmentAction.INTEREST,
+      );
+
+      expect(interest.map((trade) => [trade.handle, trade.cashAmount])).toEqual(
+        [
+          [107, 10],
+          [111, 1],
+        ],
+      );
+    });
+
+    it("holds the CD by amount and the split shares as Money recorded them", () => {
+      const parsed = parse();
+
+      expect(
+        parsed.holdingChecks.map((check) => [
+          check.symbol,
+          check.lotQuantity,
+          check.replayQuantity,
+        ]),
+      ).toEqual(
+        expect.arrayContaining([
+          ["AMzn", 22, 22],
+          [expect.stringMatching(/^CT/), 99, 99],
+          [expect.stringMatching(/^GB/), 10, 10],
+        ]),
+      );
+      expect(codes(parsed)).not.toContain("holdingsMismatch");
+      expect(codes(parsed)).not.toContain("securitySplitNotApplied");
+      expect(codes(parsed)).not.toContain("missingInvestmentDetail");
+      expect(codes(parsed)).not.toContain("unknownInvestmentAction");
+    });
+
+    it("names no column Money 99 never had", () => {
+      const parsed = parse();
+
+      expect(parsed.missingFields).toEqual(
+        expect.arrayContaining(["ACCT.watch", "TRN_INV.interest"]),
+      );
+      expect(codes(parsed)).not.toContain("missingField");
     });
   });
 

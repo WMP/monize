@@ -722,6 +722,100 @@ describe("mapInvestments", () => {
         expect(result.warnings).toEqual([]);
       });
 
+      it("reads act 2 as interest paid to the cash account, where Money Plus reads it as a sale", () => {
+        const result = money99({
+          action: MONEY99_ACTION.INTEREST,
+          amount: -10,
+        });
+
+        expect(result.transactions[0]).toMatchObject({
+          action: InvestmentAction.INTEREST,
+          quantity: null,
+          totalAmount: 10,
+          cashAmount: 10,
+        });
+        expect(result.warnings).toEqual([]);
+      });
+
+      describe("a purchase recorded by amount (a CD)", () => {
+        const buyByAmount = (
+          investmentDetails: ReturnType<typeof mnyInvestmentDetail>[],
+        ) =>
+          mapInvestments(
+            input({
+              transactions: transactionData({
+                format: "jet3",
+                transactions: [
+                  invRow({
+                    handle: 1,
+                    action: MONEY99_ACTION.BUY,
+                    amount: 100,
+                  }),
+                ],
+              }),
+              investments: investmentData({ investmentDetails }),
+            }),
+          );
+
+        it("holds its principal as units of 1 when TRN_INV records no units", () => {
+          const result = buyByAmount([
+            mnyInvestmentDetail({ transaction: 1, commission: 1 }),
+          ]);
+
+          expect(result.transactions[0]).toMatchObject({
+            action: InvestmentAction.BUY,
+            quantity: 99,
+            price: 1,
+            commission: 1,
+            totalAmount: 100,
+            cashAmount: -100,
+          });
+          expect(result.warnings).toEqual([]);
+        });
+
+        it("does the same with no TRN_INV row, and reports nothing missing", () => {
+          const result = buyByAmount([]);
+
+          expect(result.transactions[0]).toMatchObject({
+            quantity: 100,
+            price: 1,
+            totalAmount: 100,
+          });
+          expect(result.warnings).toEqual([]);
+        });
+
+        it("keeps the recorded units of a share purchase", () => {
+          const result = buyByAmount([
+            mnyInvestmentDetail({ transaction: 1, quantity: 4, price: 25 }),
+          ]);
+
+          expect(result.transactions[0]).toMatchObject({
+            quantity: 4,
+            price: 25,
+          });
+        });
+
+        it("leaves a Money Plus purchase with no units cash only", () => {
+          const result = mapInvestments(
+            input({
+              transactions: transactionData({
+                transactions: [
+                  invRow({ handle: 1, action: MNY_ACTION.BUY, amount: 100 }),
+                ],
+              }),
+              investments: investmentData({
+                investmentDetails: [mnyInvestmentDetail({ transaction: 1 })],
+              }),
+            }),
+          );
+
+          expect(result.transactions[0]).toMatchObject({
+            quantity: null,
+            price: null,
+          });
+        });
+      });
+
       it("maps act 14 as a measured capital gain, with no unconfirmed warning", () => {
         const result = money99({
           action: MONEY99_ACTION.CAPITAL_GAIN,
@@ -1134,6 +1228,22 @@ describe("mapInvestments", () => {
                 sharesAfter: 100,
               }),
             ],
+            prices: [mnySecurityPrice({ security: 1, split: 5 })],
+          }),
+        }),
+      );
+
+      expect(result.warnings).toEqual([]);
+    });
+
+    // Money 99 rewrites every trade before a split when the split is recorded,
+    // so the quantities read are already split-adjusted.
+    it("says nothing about a Money 97-99 split, which the trades already include", () => {
+      const result = mapInvestments(
+        input({
+          transactions: transactionData({ format: "jet3" }),
+          investments: investmentData({
+            securitySplits: [mnySecuritySplit({ handle: 5, sharesAfter: 2 })],
             prices: [mnySecurityPrice({ security: 1, split: 5 })],
           }),
         }),
