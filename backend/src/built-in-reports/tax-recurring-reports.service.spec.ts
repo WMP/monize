@@ -292,11 +292,13 @@ describe("TaxRecurringReportsService", () => {
 
       const result = await service.getTaxSummary(mockUserId, 2025);
 
-      // One category nets across its rows: 1000 in, 50 out is 950 of income.
+      // Uncategorized has no direction: income and spending stay apart.
       expect(result.incomeBySource).toEqual([
-        { name: "Uncategorized", total: 950 },
+        { name: "Uncategorized", total: 1000 },
       ]);
-      expect(result.allExpenses).toEqual([]);
+      expect(result.allExpenses).toEqual([
+        { name: "Uncategorized", total: 50 },
+      ]);
     });
 
     it("nets a refund against its category instead of reporting it as income (INV-REPORT-004)", async () => {

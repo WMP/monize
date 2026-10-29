@@ -49,6 +49,8 @@ import {
 } from "../built-in-reports/report-currency.service";
 import { transferPayeeLabel } from "../transactions/transfer-payee-label.util";
 import { BudgetsService } from "../budgets/budgets.service";
+import { BudgetType } from "../budgets/entities/budget.entity";
+import { LOAN_PERIODS_PER_YEAR } from "../accounts/payment-frequency.util";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import {
   subDays,
@@ -1324,6 +1326,16 @@ export class ReportsService {
             DAYS_PER_MONTH,
         ),
       );
+      // Budget amounts are per budget period: a month, a year, or a pay period
+      // (cadence from the budget's `payFrequency`, monthly when unset).
+      const periodsInWindow =
+        budget.budgetType === BudgetType.ANNUAL
+          ? months / 12
+          : budget.budgetType === BudgetType.PAY_PERIOD
+            ? (LOAN_PERIODS_PER_YEAR[budget.config?.payFrequency ?? "MONTHLY"] *
+                months) /
+              12
+            : months;
       // In the reporting currency, through the report's own converter; a budget
       // currency with no rate leaves its categories unenriched and records the gap.
       const budgetMap = new Map<string, number>();
@@ -1331,7 +1343,7 @@ export class ReportsService {
       for (const bc of budget.categories || []) {
         if (bc.categoryId && !bc.isIncome) {
           const converted = conv.convert(
-            (Number(bc.amount) || 0) * months,
+            (Number(bc.amount) || 0) * periodsInWindow,
             budget.currencyCode,
           );
           if (converted === null) unconvertible.add(bc.categoryId);

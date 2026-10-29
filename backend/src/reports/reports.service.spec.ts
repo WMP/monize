@@ -3438,6 +3438,54 @@ describe("ReportsService", () => {
         expect(groceries!.actual).toBe(80);
       });
 
+      it.each([
+        ["ANNUAL", undefined, "2025-01-01", "2025-12-31", 6000],
+        ["ANNUAL", undefined, "2025-03-01", "2025-03-31", 500],
+        ["MONTHLY", undefined, "2025-01-01", "2025-12-31", 72000],
+        ["PAY_PERIOD", "BIWEEKLY", "2025-01-01", "2025-12-31", 156000],
+      ])(
+        "converts a %s (%s) budget amount of 6000 over %s..%s to %s",
+        async (budgetType, payFrequency, start, end, expected) => {
+          setupExecuteMocks(
+            {
+              groupBy: GroupByType.CATEGORY,
+              timeframeType: TimeframeType.CUSTOM,
+              config: {
+                ...defaultConfig,
+                metric: MetricType.BUDGET_VARIANCE,
+                customStartDate: start,
+                customEndDate: end,
+              },
+            },
+            [
+              createMockTransaction({
+                id: "tx-1",
+                categoryId: "cat-1",
+                amount: -80,
+              }),
+            ],
+          );
+          categoriesRepository.find.mockResolvedValue([mockCategory]);
+          budgetsService.findAll.mockResolvedValue([
+            { id: "budget-1", isActive: true },
+          ]);
+          budgetsService.findOne.mockResolvedValue({
+            id: "budget-1",
+            currencyCode: "USD",
+            budgetType,
+            config: payFrequency ? { payFrequency } : {},
+            categories: [
+              { categoryId: "cat-1", amount: 6000, isIncome: false },
+            ],
+          });
+
+          const result = await service.execute("user-1", "report-1");
+
+          const groceries = result.data.find((d) => d.label === "Groceries");
+          expect(groceries!.budgeted).toBe(expected);
+        },
+      );
+
       it("falls back to first budget when no active budget exists", async () => {
         const transactions = [
           createMockTransaction({

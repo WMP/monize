@@ -198,7 +198,14 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
     : null;
   const truncatedOnly =
     !!result?.truncated && result.summary.total === null && !!summaryTotal && isComplete(summaryTotal);
-  const partialTotal = summaryTotal && !isComplete(summaryTotal) ? summaryTotal : null;
+  // A truncated total is partial too: the Total row (table and PDF) carries the marker.
+  const partialTotal = !summaryTotal
+    ? null
+    : !isComplete(summaryTotal)
+      ? summaryTotal
+      : truncatedOnly
+        ? { ...summaryTotal, excludedCount: 1 }
+        : null;
 
   if (isLoading) {
     return (

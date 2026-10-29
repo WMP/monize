@@ -207,7 +207,13 @@ export class TaxRecurringReportsService {
     // and its currency is named. A tax figure is withheld rather than shown
     // short.
     const gaps = new ConversionGaps();
-    const netByCategory = new Map<string, number>();
+    // Netted per actual category (NULL kept apart by sign: it has no
+    // direction), so an income child and an expense child under one parent do
+    // not cancel; the display name only groups the classified results.
+    const netByCategory = new Map<
+      string,
+      { name: string; leafName: string; net: number }
+    >();
 
     rawResults.forEach((row) => {
       const amount = this.currencyService.tryConvertAmount(
@@ -230,23 +236,29 @@ export class TaxRecurringReportsService {
 
       // Signed, so a refund lowers its category rather than reading as income
       // (INV-REPORT-004).
-      netByCategory.set(
-        catName,
-        roundMoney((netByCategory.get(catName) || 0) + amount),
-      );
+      const key =
+        row.category_id ?? (amount < 0 ? "null:spend" : "null:income");
+      netByCategory.set(key, {
+        name: catName,
+        leafName: category?.name ?? catName,
+        net: roundMoney((netByCategory.get(key)?.net ?? 0) + amount),
+      });
     });
 
     // A category is classified once, by its net: spending when its debits
     // exceed its credits (`isNetSpending`), income when its credits do.
-    netByCategory.forEach((rawNet, catName) => {
+    const addTo = (map: Map<string, number>, name: string, value: number) =>
+      map.set(name, roundMoney((map.get(name) ?? 0) + value));
+    netByCategory.forEach(({ name: catName, leafName, net: rawNet }) => {
       const net = roundMoney(rawNet);
       if (isNetSpending(-net)) {
         totalExpenses.addConverted(-net);
-        allExpensesByCategory.set(catName, -net);
-        if (matchesKeywords(catName)) deductibleExpenses.set(catName, -net);
+        addTo(allExpensesByCategory, catName, -net);
+        if (matchesKeywords(catName) || matchesKeywords(leafName))
+          addTo(deductibleExpenses, catName, -net);
       } else if (net > 0) {
         totalIncome.addConverted(net);
-        incomeBySource.set(catName, net);
+        addTo(incomeBySource, catName, net);
       }
     });
 

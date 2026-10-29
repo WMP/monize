@@ -454,6 +454,31 @@ describe('ReportChart', () => {
     expect(tableData.totalRow[1]).toBe('$0.30 (partial)');
   });
 
+  it('exports csv with the metric-aware Total row, marked when partial', async () => {
+    const { exportToCsv } = await import('@/lib/csv-export');
+    (exportToCsv as any).mockClear();
+    render(
+      <ReportChart
+        viewType={ReportViewType.TABLE}
+        data={[
+          { label: 'A', value: 10, count: 1, id: 'a' },
+          { label: 'B', value: 30, count: 3, id: 'b' },
+        ]}
+        groupBy={GroupByType.CATEGORY}
+        tableColumns={[TableColumn.LABEL, TableColumn.VALUE, TableColumn.PERCENTAGE, TableColumn.COUNT]}
+        metric={MetricType.AVERAGE}
+        totalRowValue={17.5}
+        partialTotal={{ value: 17.5, missingCurrencies: [], excludedCount: 1 }}
+      />
+    );
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /export/i })); });
+    await act(async () => { fireEvent.click(screen.getByText(/CSV/i)); });
+
+    const rows = (exportToCsv as any).mock.calls[0][2];
+    expect(rows).toHaveLength(3);
+    expect(rows[2]).toEqual(['Total', '17.5 (partial)', 100, 4]);
+  });
+
   it('prints the count metric as a number and the server headline in the total row', async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
     (exportToPdf as any).mockClear();

@@ -6,17 +6,27 @@ import { recalculateMortgageAfterRateChange } from "./mortgage-amortization.util
 describe("datedAnnuityInstallment remaining term", () => {
   const DEBT = 200000;
   let posted = true;
+  /** When set, the postings table holds exactly these original due dates. */
+  let postingDates: string[] | null = null;
   const manager = {
-    query: jest.fn(async (sql: string) =>
-      sql.includes("scheduled_transaction_postings")
-        ? posted
+    query: jest.fn(async (sql: string, params: unknown[] = []) => {
+      if (!sql.includes("scheduled_transaction_postings")) {
+        return [{ balance: String(-DEBT) }];
+      }
+      if (postingDates) {
+        const [, through, after] = params as [string, string, string | null];
+        return postingDates.some(
+          (date) => date <= through && (after === null || date > after),
+        )
           ? [{ "?column?": 1 }]
-          : []
-        : [{ balance: String(-DEBT) }],
-    ),
+          : [];
+      }
+      return posted ? [{ "?column?": 1 }] : [];
+    }),
   } as unknown as EntityManager;
   beforeEach(() => {
     posted = true;
+    postingDates = null;
   });
 
   const account = (overrides: Partial<Account>): Account =>
@@ -45,6 +55,22 @@ describe("datedAnnuityInstallment remaining term", () => {
     );
     expect(payment).toBe(expected(297));
     expect(payment).not.toBe(expected(298));
+  });
+
+  it("finds a posting whose date was clamped or moved within the period", async () => {
+    // Calendar of month-ends from 2024-01-31; the occurrence for the payment
+    // due 2024-04-30 was posted under 2024-04-29. An exact-date match missed
+    // it and counted the payment as still to come.
+    postingDates = ["2024-03-29", "2024-04-29"];
+    const monthEnd = account({ paymentStartDate: "2024-01-31" as unknown as Date });
+    expect(
+      await datedAnnuityInstallment(manager, monthEnd, 5, "2024-04-30"),
+    ).toBe(expected(296));
+    // Only the previous period's posting: this one is not in the debt yet.
+    postingDates = ["2024-03-29"];
+    expect(
+      await datedAnnuityInstallment(manager, monthEnd, 5, "2024-04-30"),
+    ).toBe(expected(297));
   });
 
   it("counts the payment due on the date as remaining when it is not posted yet", async () => {

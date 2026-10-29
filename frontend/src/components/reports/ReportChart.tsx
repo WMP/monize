@@ -131,7 +131,20 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
     const rows = chartData.map((item) =>
       columns.map((col) => columnMap[col]?.getValue(item) ?? '')
     );
-    exportToCsv(exportFilename || 'report', headers, rows);
+    // The same Total row as the PDF: the metric-aware headline (raw number, marked
+    // when it is a subtotal), 100% and the summed count.
+    const totalCount = chartData.reduce((sum, item) => sum + (item.count || 0), 0);
+    const totalRow = columns.map((col) => {
+      if (col === TableColumn.LABEL || (col === TableColumn.DATE && !columns.includes(TableColumn.LABEL))) return 'Total';
+      if (col === TableColumn.VALUE) {
+        const value = totalRowValue ?? total;
+        return partialTotal ? cellFor(String(value), partialTotal) : value;
+      }
+      if (col === TableColumn.PERCENTAGE) return 100;
+      if (col === TableColumn.COUNT) return totalCount || '';
+      return '';
+    });
+    exportToCsv(exportFilename || 'report', headers, [...rows, totalRow]);
   };
 
   const handleExportPdf = async () => {

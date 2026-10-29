@@ -46,7 +46,9 @@ vi.mock("@/components/ui/Select", () => ({
 }));
 
 vi.mock("@/components/reports/ReportChart", () => ({
-  ReportChart: () => <div data-testid="report-chart" />,
+  ReportChart: ({ partialTotal }: { partialTotal?: { excludedCount: number } | null }) => (
+    <div data-testid="report-chart" data-partial={partialTotal ? String(partialTotal.excludedCount) : ""} />
+  ),
 }));
 
 vi.mock("@/components/ui/IconPicker", () => ({
@@ -541,6 +543,8 @@ describe("CustomReportViewer", () => {
       expect(screen.getByTestId("truncated-total")).toHaveTextContent("$200.00");
       // No invented exclusion: nothing was left out for want of a rate.
       expect(screen.queryByTestId("partial-total")).not.toBeInTheDocument();
+      // The chart's Total row (table and PDF) is still marked partial.
+      expect(screen.getByTestId("report-chart")).toHaveAttribute("data-partial", "1");
     });
   });
 });
