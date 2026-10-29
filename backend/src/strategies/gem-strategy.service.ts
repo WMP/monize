@@ -595,6 +595,7 @@ export class GemStrategyService {
 
     const heldForSimulation = position?.holdings ?? [];
     let performance = await this.performanceService.build({
+      userId,
       range,
       securityByRole,
       // Today's holdings, for the "what my current mix would have done" line.
@@ -641,6 +642,7 @@ export class GemStrategyService {
       );
       if (fetched.length > 0) {
         performance = await this.performanceService.build({
+          userId,
           range,
           securityByRole,
           holdings: heldForSimulation,

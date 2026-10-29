@@ -273,8 +273,14 @@ describe("runBacktest", () => {
       input({ commissionAmount: 100, notional: 10_000 }),
     );
 
-    // One trade at 1% of the notional: the run starts from 0.99.
-    expect(result?.cagrPercent).toBeCloseTo(19.79, 0);
+    // The run grows 1.21x gross, so today's 10,000 was 8,264 at the start and
+    // one order costs 100 / 8,264 = 0.0121 of the starting 1.
+    const fee = 0.01 * 1.21;
+    const years = 366 / 365.25;
+    expect(result?.cagrPercent).toBeCloseTo(
+      (Math.pow((1 - fee) * 1.21, 1 / years) - 1) * 100,
+      2,
+    );
     expect(result?.commissionApplied).toBe(true);
   });
 
@@ -323,15 +329,17 @@ describe("runBacktest", () => {
       }),
     );
 
-    const fee = 0.01; // 100 against a 10,000 notional
+    // 100 against a 10,000 notional today; the run is 1.08x net of tax, so
+    // the starting capital was 10,000 / 1.08 and an order is 0.0108 of it.
+    const fee = 0.01 * 1.08;
     // The whole sum committed to the position, fee included -- what the
     // purchase cost, not what ended up invested. This is the one line the
     // test exists for.
     const basis = 1;
     const grossAtSwitch = (basis - fee) * 1.1;
     const tax = (grossAtSwitch - basis) * 0.2;
-    // Each leg's fee is a share of the equity at that leg.
-    const finalEquity = (grossAtSwitch - tax) * (1 - fee) * (1 - fee);
+    // Each leg's fee is the same sum of equity units.
+    const finalEquity = grossAtSwitch - tax - fee - fee;
     const years = 366 / 365.25;
 
     expect(result?.cagrPercent).toBeCloseTo(
@@ -342,19 +350,18 @@ describe("runBacktest", () => {
     // And not this: a basis of 0.99 taxes the fee as though it were profit.
     const understated = grossAtSwitch - (grossAtSwitch - (basis - fee)) * 0.2;
     expect(result?.cagrPercent).not.toBeCloseTo(
-      (Math.pow(understated * (1 - fee) * (1 - fee), 1 / years) - 1) * 100,
+      (Math.pow(understated - fee - fee, 1 / years) - 1) * 100,
       2,
     );
   });
 
   /**
-   * Invariant: the commission is a share of the value traded, so a trade on a
-   * grown portfolio costs more in equity units than the opening one.
-   * Minimal mutation: subtract the bare fraction instead of `equity * fraction`.
-   * Test that fails under it: this one -- the switch fee stays 0.01 after the
-   * run has doubled.
+   * Invariant: the commission is an absolute sum per order, so a run that has
+   * doubled does not make an order cost twice as many equity units.
+   * Minimal mutation: charge `equity * fraction` instead of a fixed cost.
+   * Test that fails under it: this one -- the switch fee grows to 0.04.
    */
-  it("charges the commission on the running equity, not on the opening one", () => {
+  it("keeps the per-order cost constant while the equity doubles", () => {
     const result = runBacktest(
       input({
         periods: [
@@ -380,8 +387,9 @@ describe("runBacktest", () => {
       }),
     );
 
-    const fee = 0.01;
-    const finalEquity = (1 - fee) * 2 * (1 - fee) * (1 - fee);
+    // Gross 2x, so the starting capital was 5,000 and an order is 0.02.
+    const fee = 0.01 * 2;
+    const finalEquity = (1 - fee) * 2 - fee - fee;
     const years = 366 / 365.25;
     expect(result?.cagrPercent).toBeCloseTo(
       (Math.pow(finalEquity, 1 / years) - 1) * 100,
@@ -403,11 +411,11 @@ describe("runBacktest", () => {
       oneAccount?.cagrPercent as number,
     );
     expect(threeAccounts?.commissionApplied).toBe(true);
-    // 0.97 against 0.99 at the start, compounded over the same return.
+    // One order is 0.0121 of the starting 1 (gross 1.21x): 3 against 1 order.
     const ratio =
       (1 + (threeAccounts?.cagrPercent as number) / 100) /
       (1 + (oneAccount?.cagrPercent as number) / 100);
-    expect(ratio).toBeCloseTo(0.97 / 0.99, 3);
+    expect(ratio).toBeCloseTo((1 - 3 * 0.0121) / (1 - 0.0121), 3);
   });
 
   it("restarts the run after a period it could not price", () => {

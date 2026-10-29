@@ -340,6 +340,7 @@ export class ReportsService {
         endDate,
         categoryMap,
         converter,
+        report.filters,
       );
     }
 
@@ -1305,6 +1306,7 @@ export class ReportsService {
     endDate: string,
     categoryMap: Map<string, Category>,
     conv: RowConverter,
+    filters: CustomReport["filters"],
   ): Promise<AggregatedDataPoint[]> {
     try {
       const budgets = await this.budgetsService.findAll(userId);
@@ -1350,10 +1352,20 @@ export class ReportsService {
       });
 
       // A budgeted category with no spending is a full under-spend, not absent.
+      // Only where nothing but the category filter narrowed the rows: under an
+      // account, payee, search or advanced-group filter a zero means "filtered
+      // out", not "unspent", and would enter the headline as an invented gap.
+      const narrowed =
+        (filters?.accountIds?.length ?? 0) > 0 ||
+        (filters?.payeeIds?.length ?? 0) > 0 ||
+        !!filters?.searchText ||
+        (filters?.filterGroups?.length ?? 0) > 0;
+      const inScope = new Set(filters?.categoryIds ?? []);
       const seen = new Set(data.map((point) => point.id));
-      for (const [categoryId, budgeted] of budgetMap) {
+      for (const [categoryId, budgeted] of narrowed ? [] : budgetMap) {
         const category = categoryMap.get(categoryId);
         if (seen.has(categoryId) || !category) continue;
+        if (inScope.size > 0 && !inScope.has(categoryId)) continue;
         enriched.push({
           id: categoryId,
           label: this.formatCategoryLabel(

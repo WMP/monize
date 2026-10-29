@@ -45,7 +45,6 @@ describe("MonteCarloService", () => {
   let securitiesRepository: Record<string, jest.Mock>;
   let securityPriceService: { backfillSecurityRange: jest.Mock };
   let preferenceRepository: Record<string, jest.Mock>;
-  let exchangeRateService: { getRateForDate: jest.Mock };
   let portfolioService: {
     getPortfolioSummary: jest.Mock;
     getLatestPrices: jest.Mock;
@@ -188,9 +187,6 @@ describe("MonteCarloService", () => {
     preferenceRepository = {
       findOne: jest.fn().mockResolvedValue({ defaultCurrency: "USD" }),
     };
-    exchangeRateService = {
-      getRateForDate: jest.fn().mockResolvedValue(1),
-    };
     ({ manager, dataSource } = createScopedDbMocks([
       [MonteCarloScenario, scenariosRepository],
       [MonteCarloCashFlow, cashFlowsRepository],
@@ -207,7 +203,6 @@ describe("MonteCarloService", () => {
       portfolioService as never,
       securityPriceService as never,
       dataSource as never,
-      exchangeRateService as never,
     );
   });
 
@@ -510,14 +505,24 @@ describe("MonteCarloService", () => {
         },
       ]);
       // +20% for the USD security, -20% for the JPY security, two years each.
-      manager.query.mockResolvedValue([
+      const closes = [
         yearEnd("sec-usd", "2023", "100"),
         yearEnd("sec-usd", "2024", "120"),
         yearEnd("sec-usd", "2025", "144"),
         yearEnd("sec-jpy", "2023", "100"),
         yearEnd("sec-jpy", "2024", "80"),
         yearEnd("sec-jpy", "2025", "64"),
-      ]);
+      ];
+      // A flat rate keeps the JPY return native, so the weighting is the point.
+      const flatRates = ["2023", "2024", "2025"].map((y) => ({
+        from_currency: "JPY",
+        to_currency: "USD",
+        rate: 1,
+        rate_date: `${y}-12-31`,
+      }));
+      manager.query.mockImplementation(async (sql: string) =>
+        sql.includes("exchange_rates") ? flatRates : closes,
+      );
       portfolioService.getLatestPrices = jest.fn().mockResolvedValue(
         new Map([
           ["sec-usd", 100],
@@ -700,34 +705,55 @@ describe("MonteCarloService", () => {
       expect(stats.volatility).toBeCloseTo(0.0707, 4);
     });
 
+    // Year-end closes and the exchange_rates read share manager.query; route
+    // by statement so each gets its own rows.
+    const routeQueries = (closes: unknown[], rates: unknown[]) =>
+      manager.query.mockImplementation(async (sql: string) =>
+        sql.includes("exchange_rates") ? rates : closes,
+      );
+    const rateRow = (date: string, rate: number) => ({
+      from_currency: "JPY",
+      to_currency: "USD",
+      rate,
+      rate_date: date,
+    });
+    const jpyCloses = () => [
+      yearEnd("sec-jpy", "2022", "100"),
+      yearEnd("sec-jpy", "2023", "100"),
+      yearEnd("sec-jpy", "2024", "100"),
+    ];
+
     it("converts each year-end close at the rate of its own date", async () => {
       holdingsRepository.find.mockResolvedValueOnce([
         holding("sec-jpy", "JPY"),
       ]);
       prices([["sec-jpy", 100]]);
       // Flat in yen; the yen gains 10% a year against the dollar.
-      manager.query.mockResolvedValue([
-        yearEnd("sec-jpy", "2022", "100"),
-        yearEnd("sec-jpy", "2023", "100"),
-        yearEnd("sec-jpy", "2024", "100"),
+      routeQueries(jpyCloses(), [
+        rateRow("2022-12-31", 0.01),
+        rateRow("2023-12-31", 0.011),
+        rateRow("2024-12-31", 0.0121),
       ]);
-      const rates: Record<string, number> = {
-        "2022-12-31": 0.01,
-        "2023-12-31": 0.011,
-        "2024-12-31": 0.0121,
-      };
-      exchangeRateService.getRateForDate.mockImplementation(
-        async (_f: string, _t: string, date: string) => rates[date] ?? null,
-      );
       const stats = await service.getHistoricalStats(userId, ["acct-1"]);
       expect(stats.returnsComplete).toBe(true);
       expect(stats.meanReturn).toBeCloseTo(0.1, 4);
-      expect(exchangeRateService.getRateForDate).toHaveBeenCalledWith(
-        "JPY",
-        "USD",
-        "2023-12-31",
-        { fetchMissing: false },
+    });
+
+    it("loads each pair's rates once, not once per year-end close", async () => {
+      holdingsRepository.find.mockResolvedValueOnce([
+        holding("sec-jpy", "JPY"),
+      ]);
+      prices([["sec-jpy", 100]]);
+      routeQueries(jpyCloses(), [
+        rateRow("2022-12-31", 0.01),
+        rateRow("2023-12-31", 0.011),
+        rateRow("2024-12-31", 0.0121),
+      ]);
+      await service.getHistoricalStats(userId, ["acct-1"]);
+      const rateLoads = manager.query.mock.calls.filter(([sql]) =>
+        String(sql).includes("exchange_rates"),
       );
+      expect(rateLoads).toHaveLength(1);
     });
 
     it("refuses, naming the pair, when a year-end rate is missing", async () => {
@@ -735,15 +761,10 @@ describe("MonteCarloService", () => {
         holding("sec-jpy", "JPY"),
       ]);
       prices([["sec-jpy", 100]]);
-      manager.query.mockResolvedValue([
-        yearEnd("sec-jpy", "2022", "100"),
-        yearEnd("sec-jpy", "2023", "100"),
-        yearEnd("sec-jpy", "2024", "100"),
+      routeQueries(jpyCloses(), [
+        rateRow("2022-12-31", 0.01),
+        rateRow("2024-12-31", 0.01),
       ]);
-      exchangeRateService.getRateForDate.mockImplementation(
-        async (_f: string, _t: string, date: string) =>
-          date === "2023-12-31" ? null : 0.01,
-      );
       const stats = await service.getHistoricalStats(userId, ["acct-1"]);
       expect(stats.returnsComplete).toBe(false);
       expect(stats.meanReturn).toBeNull();

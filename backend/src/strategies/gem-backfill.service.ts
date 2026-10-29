@@ -152,6 +152,8 @@ export class GemBackfillService {
       wanted,
       seriesFrom.toISOString().slice(0, 10),
       "day",
+      undefined,
+      userId,
     );
     const short = wanted.filter(
       (id) => !coversBoundaries(series.get(id), boundaries),

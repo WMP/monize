@@ -230,7 +230,10 @@ export class TaxRecurringReportsService {
 
       // Signed, so a refund lowers its category rather than reading as income
       // (INV-REPORT-004).
-      netByCategory.set(catName, (netByCategory.get(catName) || 0) + amount);
+      netByCategory.set(
+        catName,
+        roundMoney((netByCategory.get(catName) || 0) + amount),
+      );
     });
 
     // A category is classified once, by its net: spending when its debits

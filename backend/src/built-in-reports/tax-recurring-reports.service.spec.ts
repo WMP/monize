@@ -320,6 +320,26 @@ describe("TaxRecurringReportsService", () => {
       expect(result.totals.income).toBe(0);
     });
 
+    it("nets many 0.1 and 0.2 rows against 0.3 rows to exactly zero", async () => {
+      const rows: Array<Record<string, string>> = [];
+      for (let i = 0; i < 500; i++) {
+        rows.push(
+          { category_id: "cat-medical", currency_code: "USD", amount: "0.10" },
+          { category_id: "cat-medical", currency_code: "USD", amount: "0.20" },
+          { category_id: "cat-medical", currency_code: "USD", amount: "-0.30" },
+        );
+      }
+      scopedManager.query.mockResolvedValue(rows);
+      categoriesRepository.find.mockResolvedValue([mockMedicalCategory]);
+
+      const result = await service.getTaxSummary(mockUserId, 2025);
+
+      expect(result.allExpenses).toEqual([]);
+      expect(result.incomeBySource).toEqual([]);
+      expect(result.totals.expenses).toBe(0);
+      expect(result.totals.income).toBe(0);
+    });
+
     it("converts foreign currency amounts", async () => {
       currencyService.tryConvertAmount.mockImplementation(
         (amount: number, fromCurrency: string) => {

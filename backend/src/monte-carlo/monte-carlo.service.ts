@@ -23,10 +23,14 @@ import { SecurityPriceService } from "../securities/security-price.service";
 import { Holding } from "../securities/entities/holding.entity";
 import { Security } from "../securities/entities/security.entity";
 import { Account } from "../accounts/entities/account.entity";
+import { todayYMD } from "../common/date-utils";
 import { roundMoney } from "../common/round.util";
 import { resolveUserDefaultCurrency } from "../common/default-currency.util";
-import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { loadPriceSeries } from "../common/time-series/price-series.util";
+import {
+  buildRateIndex,
+  convertAtDate,
+} from "../common/time-series/rate-index.util";
 import {
   BOUNDARY_LAG_DAYS,
   daysBetween,
@@ -110,7 +114,6 @@ export class MonteCarloService {
     private portfolioService: PortfolioService,
     private securityPriceService: SecurityPriceService,
     private dataSource: DataSource,
-    private exchangeRateService: ExchangeRateService,
   ) {}
 
   async create(
@@ -584,23 +587,49 @@ export class MonteCarloService {
     );
     const yearlyReturns = new Map<string, Map<number, number>>();
     const missingFxPairs = new Set<string>();
-    const rateCache = new Map<string, number | null>();
+    // Every pair's rates load once, then each close resolves in memory.
+    const foreignCurrencies = new Set<string>();
+    let earliestClose: string | null = null;
+    for (const secId of weightedSecIds) {
+      const currency = currencyBySecurity.get(secId);
+      if (!currency || currency === defaultCurrency) continue;
+      for (const c of closesBySecurity.get(secId) ?? []) {
+        foreignCurrencies.add(currency);
+        if (earliestClose === null || c.date < earliestClose) {
+          earliestClose = c.date;
+        }
+      }
+    }
+    const rateIndex = await withScopedDb(this.dataSource, (m) =>
+      buildRateIndex(
+        (sql, params) => m.query(sql, params),
+        foreignCurrencies,
+        defaultCurrency,
+        earliestClose ?? todayYMD(),
+        todayYMD(),
+      ),
+    );
     for (const secId of weightedSecIds) {
       const currency = currencyBySecurity.get(secId);
       if (!currency) continue;
       const closes: YearEndClose[] = [];
       for (const c of closesBySecurity.get(secId) ?? []) {
-        const rate = await this.rateOn(
-          currency,
-          defaultCurrency,
-          c.date,
-          rateCache,
-        );
-        if (rate === null) {
+        const price =
+          currency === defaultCurrency
+            ? c.price
+            : convertAtDate(
+                c.price,
+                currency,
+                defaultCurrency,
+                c.date,
+                rateIndex,
+                this.logger,
+              );
+        if (price === null) {
           missingFxPairs.add(`${currency}->${defaultCurrency}`);
           break;
         }
-        closes.push({ ...c, price: c.price * rate });
+        closes.push({ ...c, price });
       }
       yearlyReturns.set(secId, toYearlyReturns(closes));
     }
@@ -913,27 +942,6 @@ export class MonteCarloService {
       result.set(secId, closes);
     }
     return result;
-  }
-
-  /** Rate from `from` to `to` on `date`; `null` when none is stored. */
-  private async rateOn(
-    from: string,
-    to: string,
-    date: string,
-    cache: Map<string, number | null>,
-  ): Promise<number | null> {
-    if (from === to) return 1;
-    const key = `${from}|${date}`;
-    if (!cache.has(key)) {
-      // fetchMissing: false -- a stats read must not wait on a provider.
-      cache.set(
-        key,
-        await this.exchangeRateService.getRateForDate(from, to, date, {
-          fetchMissing: false,
-        }),
-      );
-    }
-    return cache.get(key)!;
   }
 
   /**

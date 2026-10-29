@@ -140,6 +140,8 @@ describe("GemBackfillService", () => {
       ["spy"],
       "2023-02-14",
       "day",
+      undefined,
+      userId,
     );
   });
 

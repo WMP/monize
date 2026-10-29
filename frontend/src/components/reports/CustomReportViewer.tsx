@@ -26,6 +26,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PartialTotal } from '@/components/ui/PartialTotal';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { PartialDataNotice } from '@/components/reports/PartialDataNotice';
 import { isComplete, reportTotal, type ConvertedTotal } from '@/lib/currency-total';
 
@@ -187,10 +188,16 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
           result.summary.total ?? result.summary.knownTotal ?? 0,
           withheld ? result : null,
         );
-        // A withheld total is partial even if the response named no currency.
-        return withheld && isComplete(total) ? { ...total, excludedCount: 1 } : total;
+        // A withheld total is partial even if the response named no currency,
+        // except when only the row limit withheld it: that is not an exclusion
+        // for want of a rate, and the truncation marker below names it.
+        return withheld && isComplete(total) && !result.truncated
+          ? { ...total, excludedCount: 1 }
+          : total;
       })()
     : null;
+  const truncatedOnly =
+    !!result?.truncated && result.summary.total === null && !!summaryTotal && isComplete(summaryTotal);
   const partialTotal = summaryTotal && !isComplete(summaryTotal) ? summaryTotal : null;
 
   if (isLoading) {
@@ -297,12 +304,22 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {/* A null total is withheld, not zero: show the part that converted
                     and mark it. The count metric's total is never null. */}
-                <PartialTotal
-                  total={summaryTotal ?? reportTotal(0, null)}
-                  displayCurrency={result.currency ?? defaultCurrency}
-                >
-                  {formatValue(summaryTotal?.value ?? 0)}
-                </PartialTotal>
+                {truncatedOnly ? (
+                  <span className="inline-flex items-baseline gap-1" data-testid="truncated-total">
+                    <span>{formatValue(summaryTotal?.value ?? 0)}</span>
+                    <span className="text-amber-600 dark:text-amber-400" aria-hidden="true">
+                      *
+                    </span>
+                    <InfoTooltip placement="top" text={t('customReportViewer.truncatedNotice')} usePortal />
+                  </span>
+                ) : (
+                  <PartialTotal
+                    total={summaryTotal ?? reportTotal(0, null)}
+                    displayCurrency={result.currency ?? defaultCurrency}
+                  >
+                    {formatValue(summaryTotal?.value ?? 0)}
+                  </PartialTotal>
+                )}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 {t('customReportViewer.transactionCount', { count: result.summary.count })}

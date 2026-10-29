@@ -3682,6 +3682,53 @@ describe("ReportsService", () => {
         expect(result.summary.count).toBe(1);
       });
 
+      describe("zero-actual rows under report filters", () => {
+        const run = async (filters: Record<string, unknown>) => {
+          setupExecuteMocks(
+            {
+              groupBy: GroupByType.CATEGORY,
+              timeframeType: TimeframeType.LAST_MONTH,
+              config: { ...defaultConfig, metric: MetricType.BUDGET_VARIANCE },
+              filters,
+            },
+            [
+              createMockTransaction({
+                id: "tx-1",
+                categoryId: "cat-1",
+                amount: -80,
+              }),
+            ],
+          );
+          categoriesRepository.find.mockResolvedValue([
+            mockCategory,
+            { ...mockCategory, id: "cat-2", name: "Dining" },
+            { ...mockCategory, id: "cat-3", name: "Fuel" },
+          ]);
+          budgetOf([
+            { categoryId: "cat-1", amount: 100, isIncome: false },
+            { categoryId: "cat-2", amount: 60, isIncome: false },
+            { categoryId: "cat-3", amount: 40, isIncome: false },
+          ]);
+          return service.execute("user-1", "report-1");
+        };
+        const labels = (r: { data: { label: string }[] }) =>
+          r.data.map((d) => d.label).sort();
+
+        it("adds zero rows only for budgeted categories inside the category filter", async () => {
+          const result = await run({ categoryIds: ["cat-1", "cat-2"] });
+          expect(labels(result)).toEqual(["Dining", "Groceries"]);
+        });
+
+        it.each([
+          ["account", { accountIds: ["acc-1"] }],
+          ["payee", { payeeIds: ["payee-1"] }],
+          ["search", { searchText: "market" }],
+        ])("adds no zero rows under an %s filter", async (_n, filters) => {
+          const result = await run(filters);
+          expect(labels(result)).toEqual(["Groceries"]);
+        });
+      });
+
       it("converts a foreign-currency budget into the reporting currency", async () => {
         rateMap.set("EUR->USD", 2);
         setupExecuteMocks(

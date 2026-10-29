@@ -526,7 +526,7 @@ describe("CustomReportViewer", () => {
       expect(screen.queryByText("$42.00")).not.toBeInTheDocument();
     });
 
-    it("shows the truncation notice and marks the withheld total partial", async () => {
+    it("marks a total withheld by truncation as truncated, not as an excluded transaction", async () => {
       mockGetById.mockResolvedValue(savedReport);
       mockExecute.mockResolvedValue({
         ...executed,
@@ -538,7 +538,9 @@ describe("CustomReportViewer", () => {
       render(<CustomReportViewer reportId="rpt-1" />);
 
       expect(await screen.findByTestId("truncated-notice")).toBeInTheDocument();
-      expect(screen.getByTestId("partial-total")).toHaveTextContent("$200.00");
+      expect(screen.getByTestId("truncated-total")).toHaveTextContent("$200.00");
+      // No invented exclusion: nothing was left out for want of a rate.
+      expect(screen.queryByTestId("partial-total")).not.toBeInTheDocument();
     });
   });
 });
