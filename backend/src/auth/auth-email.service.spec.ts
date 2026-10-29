@@ -200,6 +200,28 @@ describe("AuthEmailService", () => {
       });
     });
 
+    it("redeems a token on an SSO account only while OIDC_ALLOW_PASSWORD_LOGIN is on", async () => {
+      mockExecute.mockResolvedValue({ affected: 0, raw: [] });
+      passwordBreachService.isBreached.mockResolvedValue(false);
+
+      await expect(
+        service.resetPassword("t", "NewSecurePassword123!"),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockAndWhere).toHaveBeenLastCalledWith(
+        expect.stringContaining("authProvider <> 'oidc'"),
+        expect.objectContaining({ oidcAllowed: false }),
+      );
+
+      configValues.OIDC_ALLOW_PASSWORD_LOGIN = "true";
+      await expect(
+        service.resetPassword("t", "NewSecurePassword123!"),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockAndWhere).toHaveBeenLastCalledWith(
+        expect.stringContaining("authProvider <> 'oidc'"),
+        expect.objectContaining({ oidcAllowed: true }),
+      );
+    });
+
     it("should hash password, update user, and revoke refresh tokens on success", async () => {
       const userId = "user-1";
       mockExecute.mockResolvedValue({
@@ -229,9 +251,10 @@ describe("AuthEmailService", () => {
       expect(mockWhere).toHaveBeenCalledWith("resetToken = :hashedToken", {
         hashedToken: hashToken("valid-token"),
       });
-      expect(mockAndWhere).toHaveBeenCalledWith("resetTokenExpiry > :now", {
-        now: expect.any(Date),
-      });
+      expect(mockAndWhere).toHaveBeenCalledWith(
+        expect.stringContaining("resetTokenExpiry > :now"),
+        { now: expect.any(Date), oidcAllowed: false },
+      );
       expect(mockReturning).toHaveBeenCalledWith("id");
 
       // Verify password was hashed with bcrypt

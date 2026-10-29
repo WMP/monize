@@ -31,7 +31,10 @@ import { Response, Request as ExpressRequest } from "express";
 import { AuthService } from "./auth.service";
 import { TokenService } from "./token.service";
 import { OidcService } from "./oidc/oidc.service";
-import { oidcPasswordLoginAllowed } from "./oidc/oidc-password-login";
+import {
+  localAuthEnabled,
+  oidcPasswordLoginAllowed,
+} from "./oidc/oidc-password-login";
 import {
   isFreshAuthentication,
   isOidcReauthPurpose,
@@ -98,11 +101,7 @@ export class AuthController {
     private readonly dataSource: DataSource,
   ) {
     // Default to true if not explicitly set to 'false'
-    const localAuthSetting = this.configService.get<string>(
-      "LOCAL_AUTH_ENABLED",
-      "true",
-    );
-    this.localAuthEnabled = localAuthSetting.toLowerCase() !== "false";
+    this.localAuthEnabled = localAuthEnabled(this.configService);
     const registrationSetting = this.configService.get<string>(
       "REGISTRATION_ENABLED",
       "true",

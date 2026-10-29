@@ -2394,6 +2394,60 @@ describe("AuthService", () => {
       expect(result.user.authProvider).toBe("oidc");
     });
 
+    describe("an existing SSO account found by email", () => {
+      const ssoByEmail = (): any => ({
+        ...mockUser,
+        id: "sso-user",
+        authProvider: "oidc",
+        oidcSubject: null,
+        passwordHash: "kept-hash",
+        mustChangePassword: true,
+        resetToken: "reset-before-link",
+        resetTokenExpiry: new Date(),
+      });
+      const login = () =>
+        service.findOrCreateOidcUser({
+          sub: "oidc-sub-merge",
+          email: "test@example.com",
+          email_verified: true,
+        });
+
+      beforeEach(() => {
+        usersRepository.save.mockImplementation((u) => u);
+      });
+
+      it("merges directly, revokes nothing and clears reset state and the forced change with the flag off", async () => {
+        stageOneTokenFamily();
+        const existing = ssoByEmail();
+        usersRepository.findOne
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(existing);
+
+        const result = await login();
+
+        expect(result.linkPending).toBeFalsy();
+        expect(existing.oidcSubject).toBe("oidc-sub-merge");
+        expect(existing.passwordHash).toBe("kept-hash");
+        expect(existing.resetToken).toBeNull();
+        expect(existing.resetTokenExpiry).toBeNull();
+        expect(existing.mustChangePassword).toBe(false);
+        expect(refreshTokensRepository.update).not.toHaveBeenCalled();
+      });
+
+      it("asks for link confirmation with the flag on and a password kept", async () => {
+        (service as any).oidcPasswordLogin = true;
+        const existing = ssoByEmail();
+        usersRepository.findOne
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(existing);
+
+        const result = await login();
+
+        expect(result.linkPending).toBe(true);
+        expect(existing.oidcSubject).toBeNull();
+      });
+    });
+
     it("does NOT link to existing user when email is unverified", async () => {
       usersRepository.findOne.mockResolvedValue(null); // no existing by oidcSubject
       const txManager = setupOidcTransactionMock(1);

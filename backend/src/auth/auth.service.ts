@@ -51,16 +51,28 @@ import { I18nService } from "nestjs-i18n";
 import { emailTranslator } from "../i18n/email-translator";
 import { resolveUserEmailLocale } from "../i18n/resolve-user-email-locale";
 import { isTwoFactorActive } from "./two-factor-state";
-import { oidcPasswordLoginAllowed } from "./oidc/oidc-password-login";
+import {
+  localPasswordUsable,
+  oidcPasswordLoginAllowed,
+} from "./oidc/oidc-password-login";
 
 /**
- * Make `user` an SSO account. The local password, its reset state and any
- * backup key wrapped under it stay: whether the password may sign in is
- * OIDC_ALLOW_PASSWORD_LOGIN's decision (`loginWithinContext`), not the link's.
+ * Make `user` an SSO account. The local password and any backup key wrapped
+ * under it stay: whether the password may sign in is OIDC_ALLOW_PASSWORD_LOGIN's
+ * decision (`loginWithinContext`), not the link's. A reset link minted before
+ * the link always ends (INV-AUTH-005). With password sign-in off the account
+ * can never finish a forced password change, so that flag is cleared too.
  */
-function adoptOidcIdentity(user: User, subject: string | null): void {
+function adoptOidcIdentity(
+  user: User,
+  subject: string | null,
+  passwordLoginAllowed: boolean,
+): void {
   user.oidcSubject = subject;
   user.authProvider = "oidc";
+  user.resetToken = null;
+  user.resetTokenExpiry = null;
+  if (!passwordLoginAllowed) user.mustChangePassword = false;
 }
 
 @Injectable()
@@ -103,13 +115,14 @@ export class AuthService {
    * as on the confirmed link (`confirmOidcLinkWithinContext`; INV-AUTH-005).
    */
   private async mergeOidcIdentity(user: User, subject: string): Promise<void> {
-    const hadPassword = !!user.passwordHash;
-    adoptOidcIdentity(user, subject);
+    // Only a merge that turns a password account into SSO revokes credentials.
+    const revoke = !!user.passwordHash && user.authProvider !== "oidc";
+    adoptOidcIdentity(user, subject, this.oidcPasswordLogin);
     await withScopedDb(this.dataSource, async (manager) => {
       await manager.getRepository(User).save(user);
-      if (hadPassword) await revokeStandingCredentials(manager, user.id);
+      if (revoke) await revokeStandingCredentials(manager, user.id);
     });
-    if (hadPassword) {
+    if (revoke) {
       await this.tokenService.revokeAllUserRefreshTokens(user.id);
       await revokeOAuthGrantsAfterCommit(this.moduleRef, user.id, this.logger);
     }
@@ -720,8 +733,7 @@ export class AuthService {
 
         if (existingUser) {
           if (
-            existingUser.passwordHash &&
-            existingUser.authProvider !== "oidc" &&
+            localPasswordUsable(existingUser, this.oidcPasswordLogin) &&
             requireVerifiedEmail
           ) {
             // SECURITY: Local account requires user confirmation before merging.
@@ -791,8 +803,7 @@ export class AuthService {
             );
             if (existingUser) {
               if (
-                existingUser.passwordHash &&
-                existingUser.authProvider !== "oidc" &&
+                localPasswordUsable(existingUser, this.oidcPasswordLogin) &&
                 requireVerifiedEmail
               ) {
                 // SECURITY: Local account requires confirmation
@@ -825,7 +836,7 @@ export class AuthService {
 
       // Ensure authProvider reflects OIDC usage
       if (user.authProvider !== "oidc") {
-        adoptOidcIdentity(user, user.oidcSubject);
+        adoptOidcIdentity(user, user.oidcSubject, this.oidcPasswordLogin);
         needsUpdate = true;
       }
 
@@ -1005,7 +1016,7 @@ export class AuthService {
     // provider, so every credential issued on the local password ends with the
     // change of method: PATs and trusted devices in the same transaction,
     // sessions and OAuth grants after it (`credential-revocation.ts`).
-    adoptOidcIdentity(user, user.pendingOidcSubject);
+    adoptOidcIdentity(user, user.pendingOidcSubject, this.oidcPasswordLogin);
     user.oidcLinkPending = false;
     user.oidcLinkToken = null;
     user.oidcLinkExpiresAt = null;

@@ -9,11 +9,16 @@ import type { User } from "../../users/entities/user.entity";
  * Local auth must be on too, or no password sign-in exists at all.
  */
 export function oidcPasswordLoginAllowed(config: ConfigService): boolean {
-  const localAuthEnabled =
-    config.get<string>("LOCAL_AUTH_ENABLED", "true").toLowerCase() !== "false";
   return (
-    localAuthEnabled &&
+    localAuthEnabled(config) &&
     config.get<string>("OIDC_ALLOW_PASSWORD_LOGIN") === "true"
+  );
+}
+
+/** LOCAL_AUTH_ENABLED is on unless it is explicitly "false". */
+export function localAuthEnabled(config: ConfigService): boolean {
+  return (
+    config.get<string>("LOCAL_AUTH_ENABLED", "true").toLowerCase() !== "false"
   );
 }
 

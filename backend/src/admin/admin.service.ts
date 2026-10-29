@@ -7,7 +7,10 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { oidcPasswordLoginAllowed } from "../auth/oidc/oidc-password-login";
+import {
+  localAuthEnabled,
+  oidcPasswordLoginAllowed,
+} from "../auth/oidc/oidc-password-login";
 import { DataSource, EntityManager, FindOptionsWhere } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { withSystemContext } from "../common/db/with-context";
@@ -594,6 +597,18 @@ export class AdminService {
 
     if (
       targetUser.authProvider === "oidc" &&
+      !localAuthEnabled(this.configService)
+    ) {
+      throw new BadRequestException(
+        tr(
+          "errors.admin.localAuthDisabled",
+          "Password sign-in is turned off on this server",
+        ),
+      );
+    }
+
+    if (
+      targetUser.authProvider === "oidc" &&
       !oidcPasswordLoginAllowed(this.configService)
     ) {
       throw new BadRequestException(
@@ -686,11 +701,7 @@ export class AdminService {
       );
     }
 
-    if (
-      this.configService
-        .get<string>("LOCAL_AUTH_ENABLED", "true")
-        .toLowerCase() === "false"
-    ) {
+    if (!localAuthEnabled(this.configService)) {
       throw new BadRequestException(
         tr(
           "errors.admin.localAuthDisabled",

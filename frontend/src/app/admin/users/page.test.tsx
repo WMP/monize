@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@/test/render';
 import AdminUsersPage from './page';
+import { authApi } from '@/lib/auth';
 
 // Mock next/image
 vi.mock('next/image', () => ({
@@ -176,8 +177,9 @@ vi.mock('@/components/admin/ResetPasswordModal', () => ({
 }));
 
 vi.mock('@/components/admin/UserManagementTable', () => ({
-  UserManagementTable: ({ users, storage, currentUserId, onChangeRole, onToggleStatus, onResetPassword, onUnlinkSso, onResetTwoFactor, onDeleteUser }: any) => (
+  UserManagementTable: ({ users, storage, currentUserId, oidcPasswordLogin, onChangeRole, onToggleStatus, onResetPassword, onUnlinkSso, onResetTwoFactor, onDeleteUser }: any) => (
     <div data-testid="user-table">
+      <span data-testid="oidc-password-login">{String(oidcPasswordLogin)}</span>
       <span data-testid="storage-status">{storage.status}</span>
       {storage.status === 'ready' && (
         <span data-testid="storage-users">
@@ -225,6 +227,26 @@ describe('AdminUsersPage', () => {
         attachments: { files: 2, bytes: 200 },
       })),
     );
+  });
+
+  describe('SSO password login', () => {
+    it('passes false to the table by default', async () => {
+      render(<AdminUsersPage />);
+      await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
+      expect(screen.getByTestId('oidc-password-login')).toHaveTextContent('false');
+    });
+
+    it('passes the server flag to the table when it is true', async () => {
+      const methods = {
+        local: true, oidc: true, registration: false, smtp: false, force2fa: false, demo: false,
+      };
+      vi.mocked(authApi.getAuthMethods).mockResolvedValue({ ...methods, oidcPasswordLogin: true } as any);
+      render(<AdminUsersPage />);
+      await waitFor(() =>
+        expect(screen.getByTestId('oidc-password-login')).toHaveTextContent('true'),
+      );
+      vi.mocked(authApi.getAuthMethods).mockResolvedValue(methods as any);
+    });
   });
 
   describe('Storage usage', () => {

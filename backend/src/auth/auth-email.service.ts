@@ -154,6 +154,9 @@ export class AuthEmailService {
     // standing credentials go in the same transaction, so an invalid token
     // revokes nothing and a committed reset cannot leave a PAT or a trusted
     // device behind it (`credential-revocation.ts`).
+    // A token minted before SSO sign-in was restricted is refused like an
+    // invalid one: the policy `generateResetToken` applies at issue time.
+    const oidcAllowed = oidcPasswordLoginAllowed(this.configService);
     const userId = await withScopedDb(this.dataSource, async (manager) => {
       const result = await manager
         .getRepository(User)
@@ -170,7 +173,10 @@ export class AuthEmailService {
           lockedUntil: null,
         })
         .where("resetToken = :hashedToken", { hashedToken })
-        .andWhere("resetTokenExpiry > :now", { now: new Date() })
+        .andWhere(
+          "resetTokenExpiry > :now AND (authProvider <> 'oidc' OR :oidcAllowed = true)",
+          { now: new Date(), oidcAllowed },
+        )
         .returning("id")
         .execute();
 

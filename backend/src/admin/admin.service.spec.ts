@@ -960,6 +960,21 @@ describe("AdminService", () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it("refuses an SSO account when local auth is off", async () => {
+      configService.get.mockImplementation((key: string, def?: string) =>
+        key === "LOCAL_AUTH_ENABLED" ? "false" : def,
+      );
+      usersRepository.findOne.mockResolvedValue({
+        ...mockTargetUser,
+        authProvider: "oidc",
+      });
+
+      await expect(
+        service.resetUserPassword("admin-1", "user-2"),
+      ).rejects.toThrow("Password sign-in is turned off on this server");
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
     it("refuses an SSO account while password sign-in is off for SSO accounts", async () => {
       usersRepository.findOne.mockResolvedValue({
         ...mockTargetUser,
