@@ -21,7 +21,6 @@
     "passwordConfirmNote": "Password confirmation is required when changing your email address.",
     "pendingEmailNotice": "A confirmation link was sent to {email}. Your email address changes once you follow it.",
     "saveButton": "Save Profile",
-    "savingButton": "Saving...",
     "toasts": {
       "success": "Profile updated successfully",
       "confirmationSent": "Check {email} for a link to confirm your new email address",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Confirm New Password",
     "confirmPasswordPlaceholder": "Confirm new password",
     "changePasswordButton": "Change Password",
-    "changingPasswordButton": "Changing...",
     "toasts": {
       "passwordChanged": "Password changed successfully",
       "passwordChangeFailed": "Failed to change password"
@@ -646,11 +644,7 @@
       "reason": "A token can reach your account without signing in, so confirm it is you before creating one."
     },
     "relative": {
-      "never": "Never",
-      "today": "Today",
-      "yesterday": "Yesterday",
-      "daysAgo": "{count} days ago",
-      "monthsAgo": "{count} months ago"
+      "never": "Never"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "Failed"
     },
     "saveButton": "Save Policy",
-    "savingButton": "Saving...",
     "runNowButton": "Back Up Every Account Now",
     "runningButton": "Backing Up...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "Restore Complete",
-      "description": "Your data has been restored successfully. Here is a summary of what was restored:",
       "totalRecords": "Total records",
       "skippedAttachments": "{count, plural, one {# attachment was not restored} other {# attachments were not restored}}: the backup did not carry usable bytes for them — they were missing or failed their checksum when it was exported, or the file predates self-contained backups. Export a fresh backup once attachment storage is healthy to capture them.",
       "unusableAiProviderKeys": "{count, plural, one {# AI provider was restored without a usable API key} other {# AI providers were restored without usable API keys}}: the backup was written before provider keys were included in it, so the stored key belongs to the server that made the file, or this server has no encryption key configured to store one. Open Settings → AI Providers and enter the API key again.",
@@ -865,12 +857,11 @@
         "retryButton": "Try Again",
         "demoNote": "Off-site destinations cannot be changed in the demo.",
         "saveButton": "Save Destinations",
-        "savingButton": "Saving...",
         "saved": "Off-site destinations saved",
         "saveFailed": "Failed to save your off-site backup destinations",
         "s3": {
           "heading": "S3 storage",
-          "modeLabel": "Where copies are sent",
+          "modeLabel": "Copy Destination",
           "modeOff": "Off",
           "modeDeployment": "This server's bucket",
           "modeOwn": "My own bucket",

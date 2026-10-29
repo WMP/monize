@@ -21,7 +21,6 @@
     "passwordConfirmNote": "E-posta adresinizi değiştirirken şifre onayı gereklidir.",
     "pendingEmailNotice": "{email} adresine bir onay bağlantısı gönderildi. Bağlantıyı açtığınızda e-posta adresiniz değişecek.",
     "saveButton": "Profili Kaydet",
-    "savingButton": "Kaydediliyor...",
     "toasts": {
       "success": "Profil başarıyla güncellendi",
       "confirmationSent": "Yeni e-posta adresinizi onaylamak için bağlantıyı {email} adresinde kontrol edin",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Yeni Şifreyi Onayla",
     "confirmPasswordPlaceholder": "Yeni şifreyi onaylayın",
     "changePasswordButton": "Şifreyi Değiştir",
-    "changingPasswordButton": "Değiştiriliyor...",
     "toasts": {
       "passwordChanged": "Şifre başarıyla değiştirildi",
       "passwordChangeFailed": "Şifre değiştirilemedi"
@@ -646,11 +644,7 @@
       "reason": "Bir belirteç oturum açmadan hesabınıza erişebilir; bu nedenle oluşturmadan önce siz olduğunuzu onaylayın."
     },
     "relative": {
-      "never": "Hiçbir zaman",
-      "today": "Bugün",
-      "yesterday": "Dün",
-      "daysAgo": "{count} gün önce",
-      "monthsAgo": "{count} ay önce"
+      "never": "Hiçbir zaman"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "Başarısız"
     },
     "saveButton": "İlkeyi Kaydet",
-    "savingButton": "Kaydediliyor...",
     "runNowButton": "Tüm Hesapları Şimdi Yedekle",
     "runningButton": "Yedekleniyor...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "Geri Yükleme Tamamlandı",
-      "description": "Verileriniz başarıyla geri yüklendi. Geri yüklenenler hakkında özet:",
       "totalRecords": "Toplam kayıt",
       "skippedAttachments": "{count, plural, other {# ek geri yüklenmedi}}: yedek bunlar için kullanılabilir bayt içermiyordu — dışa aktarma sırasında eksiktiler veya sağlama toplamından geçemediler, ya da dosya kendi kendine yeten yedeklerden öncesine ait. Ek depolaması düzeldiğinde yeni bir yedek alın.",
       "unusableAiProviderKeys": "{count, plural, other {# AI sağlayıcısı kullanılabilir API anahtarı olmadan geri yüklendi}}: bu yedek, sağlayıcı anahtarları yedeğe eklenmeden önce oluşturulmuştu; bu yüzden kayıtlı anahtar dosyayı üreten sunucuya ait ya da bu sunucuda anahtarı saklayacak bir şifreleme anahtarı tanımlı değil. Ayarlar → AI Sağlayıcıları bölümünü açıp API anahtarını yeniden girin.",
@@ -865,7 +857,6 @@
         "retryButton": "Yeniden Dene",
         "demoNote": "Demo modunda site dışı hedefler değiştirilemez.",
         "saveButton": "Hedefleri Kaydet",
-        "savingButton": "Kaydediliyor...",
         "saved": "Site dışı hedefler kaydedildi",
         "saveFailed": "Site dışı yedekleme hedefleriniz kaydedilemedi",
         "s3": {

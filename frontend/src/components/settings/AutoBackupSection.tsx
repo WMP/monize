@@ -667,9 +667,10 @@ export function AutoBackupSection() {
       <div className="flex gap-2">
         <Button
           onClick={handleSave}
-          disabled={isSaving || !isDirty || saveBlockedByCapability || isDemoMode}
+          isLoading={isSaving}
+          disabled={!isDirty || saveBlockedByCapability || isDemoMode}
         >
-          {isSaving ? t('savingButton') : t('saveButton')}
+          {t('saveButton')}
         </Button>
         {/* Not gated on a stored folder: an object store has none, which hid
             this button entirely on every `s3` deployment. Whether the store can

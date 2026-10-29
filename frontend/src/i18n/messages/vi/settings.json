@@ -21,7 +21,6 @@
     "passwordConfirmNote": "Cần xác nhận mật khẩu khi thay đổi địa chỉ email.",
     "pendingEmailNotice": "Liên kết xác nhận đã được gửi đến {email}. Địa chỉ email của bạn sẽ thay đổi sau khi bạn mở liên kết đó.",
     "saveButton": "Lưu hồ sơ",
-    "savingButton": "Đang lưu...",
     "toasts": {
       "success": "Hồ sơ đã được cập nhật thành công",
       "confirmationSent": "Kiểm tra {email} để nhận liên kết xác nhận địa chỉ email mới của bạn",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Xác nhận mật khẩu mới",
     "confirmPasswordPlaceholder": "Xác nhận mật khẩu mới",
     "changePasswordButton": "Thay đổi mật khẩu",
-    "changingPasswordButton": "Đang thay đổi...",
     "toasts": {
       "passwordChanged": "Mật khẩu đã được thay đổi thành công",
       "passwordChangeFailed": "Không thể thay đổi mật khẩu"
@@ -646,11 +644,7 @@
       "reason": "Mã thông báo có thể truy cập tài khoản của bạn mà không cần đăng nhập, vì vậy hãy xác nhận danh tính trước khi tạo."
     },
     "relative": {
-      "never": "Không bao giờ",
-      "today": "Hôm nay",
-      "yesterday": "Hôm qua",
-      "daysAgo": "{count} ngày trước",
-      "monthsAgo": "{count} tháng trước"
+      "never": "Không bao giờ"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "Thất bại"
     },
     "saveButton": "Lưu chính sách",
-    "savingButton": "Đang lưu...",
     "runNowButton": "Sao lưu mọi tài khoản ngay",
     "runningButton": "Đang sao lưu...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "Khôi phục hoàn tất",
-      "description": "Dữ liệu của bạn đã được khôi phục thành công. Dưới đây là tóm tắt những gì đã được khôi phục:",
       "totalRecords": "Tổng số bản ghi",
       "skippedAttachments": "{count, plural, other {# tệp đính kèm không được phục hồi}}: bản sao lưu không mang theo byte dùng được cho chúng — khi xuất, chúng bị thiếu hoặc không qua được kiểm tra tổng, hoặc tệp có trước các bản sao lưu tự chứa. Hãy xuất bản sao lưu mới khi bộ lưu trữ tệp đính kèm đã ổn.",
       "unusableAiProviderKeys": "{count, plural, other {# nhà cung cấp AI đã được khôi phục mà không có khóa API dùng được}}: bản sao lưu này được tạo trước khi khóa của nhà cung cấp đi kèm trong đó, nên khóa đã lưu thuộc về máy chủ tạo ra tệp, hoặc máy chủ này chưa cấu hình khóa mã hóa để lưu khóa đó. Hãy mở Cài đặt → Nhà cung cấp AI và nhập lại khóa API.",
@@ -865,7 +857,6 @@
         "retryButton": "Thử lại",
         "demoNote": "Không thể thay đổi các đích ngoài máy chủ trong bản demo.",
         "saveButton": "Lưu các đích",
-        "savingButton": "Đang lưu...",
         "saved": "Đã lưu các đích ngoài máy chủ",
         "saveFailed": "Không lưu được các đích sao lưu ngoài máy chủ của bạn",
         "s3": {

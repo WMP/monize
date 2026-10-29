@@ -21,7 +21,6 @@
     "passwordConfirmNote": "Konfirmasi kata sandi diperlukan saat mengubah alamat surel Anda.",
     "pendingEmailNotice": "Tautan konfirmasi telah dikirim ke {email}. Alamat surel Anda akan berubah setelah Anda membukanya.",
     "saveButton": "Simpan Profil",
-    "savingButton": "Menyimpan...",
     "toasts": {
       "success": "Profil berhasil diperbarui",
       "confirmationSent": "Periksa {email} untuk tautan konfirmasi alamat surel baru Anda",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Konfirmasi Kata Sandi Baru",
     "confirmPasswordPlaceholder": "Konfirmasi kata sandi baru",
     "changePasswordButton": "Ganti Kata Sandi",
-    "changingPasswordButton": "Mengganti...",
     "toasts": {
       "passwordChanged": "Kata sandi berhasil diubah",
       "passwordChangeFailed": "Gagal mengubah kata sandi"
@@ -646,11 +644,7 @@
       "reason": "Token dapat mengakses akun Anda tanpa masuk, jadi konfirmasikan bahwa ini memang Anda sebelum membuatnya."
     },
     "relative": {
-      "never": "Tidak pernah",
-      "today": "Hari ini",
-      "yesterday": "Kemarin",
-      "daysAgo": "{count} hari yang lalu",
-      "monthsAgo": "{count} bulan yang lalu"
+      "never": "Tidak pernah"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "Gagal"
     },
     "saveButton": "Simpan Kebijakan",
-    "savingButton": "Menyimpan...",
     "runNowButton": "Cadangkan Semua Akun Sekarang",
     "runningButton": "Mencadangkan...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "Pemulihan Selesai",
-      "description": "Data Anda telah berhasil dipulihkan. Berikut ringkasan apa yang dipulihkan:",
       "totalRecords": "Total rekaman",
       "skippedAttachments": "{count, plural, other {# lampiran tidak dipulihkan}}: backup tidak memuat byte yang dapat digunakan untuk lampiran tersebut — saat diekspor lampiran hilang atau gagal checksum, atau berkas dibuat sebelum backup mandiri. Ekspor backup baru setelah penyimpanan lampiran sehat.",
       "unusableAiProviderKeys": "{count, plural, other {# penyedia AI dipulihkan tanpa kunci API yang dapat digunakan}}: cadangan ini dibuat sebelum kunci penyedia ikut disertakan, jadi kunci yang tersimpan milik server yang membuat berkasnya, atau server ini tidak punya kunci enkripsi untuk menyimpannya. Buka Pengaturan → Penyedia AI lalu masukkan kembali kunci API.",
@@ -865,7 +857,6 @@
         "retryButton": "Coba Lagi",
         "demoNote": "Tujuan luar lokasi tidak dapat diubah dalam mode demo.",
         "saveButton": "Simpan Tujuan",
-        "savingButton": "Menyimpan...",
         "saved": "Tujuan luar lokasi disimpan",
         "saveFailed": "Gagal menyimpan tujuan cadangan luar lokasi Anda",
         "s3": {

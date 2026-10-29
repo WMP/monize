@@ -21,7 +21,6 @@
     "passwordConfirmNote": "Die Passwortbestätigung ist beim Ändern Ihrer E-Mail-Adresse erforderlich.",
     "pendingEmailNotice": "Ein Bestätigungslink wurde an {email} gesendet. Ihre E-Mail-Adresse ändert sich, sobald Sie ihm folgen.",
     "saveButton": "Profil speichern",
-    "savingButton": "Wird gespeichert...",
     "toasts": {
       "success": "Profil erfolgreich aktualisiert",
       "confirmationSent": "Prüfen Sie {email} auf einen Link zur Bestätigung Ihrer neuen E-Mail-Adresse",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Neues Passwort bestätigen",
     "confirmPasswordPlaceholder": "Neues Passwort bestätigen",
     "changePasswordButton": "Passwort ändern",
-    "changingPasswordButton": "Wird geändert...",
     "toasts": {
       "passwordChanged": "Passwort erfolgreich geändert",
       "passwordChangeFailed": "Passwort konnte nicht geändert werden"
@@ -646,11 +644,7 @@
       "reason": "Ein Token kann ohne Anmeldung auf Ihr Konto zugreifen. Bestätigen Sie daher Ihre Identität, bevor Sie eines erstellen."
     },
     "relative": {
-      "never": "Nie",
-      "today": "Heute",
-      "yesterday": "Gestern",
-      "daysAgo": "Vor {count} Tagen",
-      "monthsAgo": "Vor {count} Monaten"
+      "never": "Nie"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "Fehlgeschlagen"
     },
     "saveButton": "Richtlinie speichern",
-    "savingButton": "Wird gespeichert...",
     "runNowButton": "Jetzt alle Konten sichern",
     "runningButton": "Sicherung läuft...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "Wiederherstellung abgeschlossen",
-      "description": "Ihre Daten wurden erfolgreich wiederhergestellt. Hier eine Zusammenfassung der wiederhergestellten Daten:",
       "totalRecords": "Datensätze gesamt",
       "skippedAttachments": "{count, plural, one {# Anhang wurde nicht wiederhergestellt} other {# Anhänge wurden nicht wiederhergestellt}}: Das Backup enthielt keine verwendbaren Bytes dafür — sie fehlten beim Export oder scheiterten an ihrer Prüfsumme, oder die Datei stammt aus der Zeit vor eigenständigen Backups. Erstelle ein neues Backup, sobald der Anhangsspeicher in Ordnung ist.",
       "unusableAiProviderKeys": "{count, plural, one {# KI-Anbieter wurde ohne nutzbaren API-Schlüssel wiederhergestellt} other {# KI-Anbieter wurden ohne nutzbare API-Schlüssel wiederhergestellt}}: Die Sicherung entstand, bevor Anbieterschlüssel mitgeführt wurden — der gespeicherte Schlüssel gehört also zu dem Server, der die Datei erstellt hat, oder auf diesem Server ist kein Verschlüsselungsschlüssel eingerichtet, unter dem einer abgelegt werden könnte. Öffnen Sie Einstellungen → KI-Anbieter und geben Sie den API-Schlüssel erneut ein.",
@@ -865,7 +857,6 @@
         "retryButton": "Erneut versuchen",
         "demoNote": "Externe Ziele können in der Demo nicht geändert werden.",
         "saveButton": "Ziele speichern",
-        "savingButton": "Wird gespeichert...",
         "saved": "Externe Ziele gespeichert",
         "saveFailed": "Ihre externen Backup-Ziele konnten nicht gespeichert werden",
         "s3": {

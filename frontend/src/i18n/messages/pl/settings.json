@@ -21,7 +21,6 @@
     "passwordConfirmNote": "Potwierdzenie hasłem jest wymagane przy zmianie adresu e-mail.",
     "pendingEmailNotice": "Link potwierdzający został wysłany na adres {email}. Twój adres e-mail zmieni się po kliknięciu tego linku.",
     "saveButton": "Zapisz profil",
-    "savingButton": "Zapisywanie...",
     "toasts": {
       "success": "Zaktualizowano profil",
       "confirmationSent": "Sprawdź skrzynkę {email}, aby znaleźć link potwierdzający nowy adres e-mail",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Potwierdź nowe hasło",
     "confirmPasswordPlaceholder": "Potwierdź nowe hasło",
     "changePasswordButton": "Zmień hasło",
-    "changingPasswordButton": "Zmienianie...",
     "toasts": {
       "passwordChanged": "Zmieniono hasło",
       "passwordChangeFailed": "Nie udało się zmienić hasła"
@@ -646,11 +644,7 @@
       "reason": "Token daje dostęp do Twojego konta bez logowania, dlatego potwierdź swoją tożsamość przed jego utworzeniem."
     },
     "relative": {
-      "never": "Nigdy",
-      "today": "Dzisiaj",
-      "yesterday": "Wczoraj",
-      "daysAgo": "{count} dni temu",
-      "monthsAgo": "{count} miesięcy temu"
+      "never": "Nigdy"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "Niepowodzenie"
     },
     "saveButton": "Zapisz politykę",
-    "savingButton": "Zapisywanie...",
     "runNowButton": "Utwórz teraz kopie wszystkich kont",
     "runningButton": "Tworzenie kopii...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "Przywracanie zakończone",
-      "description": "Twoje dane zostały pomyślnie przywrócone. Oto podsumowanie tego, co przywrócono:",
       "totalRecords": "Łączna liczba rekordów",
       "skippedAttachments": "{count, plural, one {# załącznik nie został przywrócony} few {# załączniki nie zostały przywrócone} many {# załączników nie zostało przywróconych} other {# załącznika nie zostało przywróconych}}: kopia nie zawierała dla nich użytecznych bajtów — w chwili eksportu brakowało ich albo nie przeszły kontroli sumy, albo plik pochodzi z czasów przed samowystarczalnymi kopiami. Wyeksportuj nową kopię, gdy magazyn załączników będzie sprawny.",
       "unusableAiProviderKeys": "{count, plural, one {# dostawca AI został przywrócony bez działającego klucza API} few {# dostawców AI zostało przywróconych bez działających kluczy API} many {# dostawców AI zostało przywróconych bez działających kluczy API} other {# dostawcy AI zostało przywróconych bez działających kluczy API}}: kopia zapasowa powstała, zanim klucze dostawców zaczęły w niej podróżować, więc zapisany klucz należy do serwera, który utworzył plik, albo ten serwer nie ma skonfigurowanego klucza szyfrującego, pod którym mógłby go zapisać. Otwórz Ustawienia → Dostawcy AI i wprowadź klucz API ponownie.",
@@ -865,7 +857,6 @@
         "retryButton": "Spróbuj ponownie",
         "demoNote": "W wersji demonstracyjnej nie można zmieniać miejsc docelowych poza serwerem.",
         "saveButton": "Zapisz miejsca docelowe",
-        "savingButton": "Zapisywanie...",
         "saved": "Zapisano miejsca docelowe poza serwerem",
         "saveFailed": "Nie udało się zapisać miejsc docelowych kopii poza serwerem",
         "s3": {

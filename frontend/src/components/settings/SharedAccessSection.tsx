@@ -10,6 +10,7 @@ import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { Button } from '@/components/ui/Button';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -310,7 +311,9 @@ export function SharedAccessSection() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500">{t('loading')}</p>
+        <div className="text-sm">
+          <LoadingSpinner size="sm" fullContainer={false} text={t('loading')} />
+        </div>
       ) : delegates.length === 0 ? (
         <p className="text-sm text-gray-500">{t('noDelegates')}</p>
       ) : (

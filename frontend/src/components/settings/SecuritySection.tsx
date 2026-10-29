@@ -282,8 +282,8 @@ export function SecuritySection({ user, preferences, force2fa, onPreferencesUpda
           />
         </div>
         <div className="mt-4 flex justify-end">
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? t('changingPasswordButton') : t('changePasswordButton')}
+          <Button type="submit" isLoading={isSubmitting}>
+            {t('changePasswordButton')}
           </Button>
         </div>
       </form>

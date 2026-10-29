@@ -21,7 +21,6 @@
     "passwordConfirmNote": "更改电子邮件地址时需要密码确认。",
     "pendingEmailNotice": "确认链接已发送至 {email}。点击该链接后，您的电子邮件地址即会更改。",
     "saveButton": "保存个人资料",
-    "savingButton": "保存中...",
     "toasts": {
       "success": "个人资料已成功更新",
       "confirmationSent": "请查看 {email} 中用于确认新电子邮件地址的链接",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "确认新密码",
     "confirmPasswordPlaceholder": "确认新密码",
     "changePasswordButton": "更改密码",
-    "changingPasswordButton": "更改中...",
     "toasts": {
       "passwordChanged": "密码已成功更改",
       "passwordChangeFailed": "更改密码失败"
@@ -646,11 +644,7 @@
       "reason": "令牌无需登录即可访问您的账户，因此在创建令牌前请先确认您的身份。"
     },
     "relative": {
-      "never": "从未",
-      "today": "今天",
-      "yesterday": "昨天",
-      "daysAgo": "{count} 天前",
-      "monthsAgo": "{count} 个月前"
+      "never": "从未"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "失败"
     },
     "saveButton": "保存策略",
-    "savingButton": "保存中...",
     "runNowButton": "立即备份所有账户",
     "runningButton": "正在备份...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "恢复完成",
-      "description": "您的数据已成功恢复。以下是恢复内容摘要：",
       "totalRecords": "总记录数",
       "skippedAttachments": "{count, plural, other {# 个附件未被恢复}}：备份中没有可用的字节——导出时它们缺失或未通过校验和，或该文件早于自包含备份。请在附件存储恢复正常后重新导出备份。",
       "unusableAiProviderKeys": "{count, plural, other {# 个 AI 提供商在恢复后没有可用的 API 密钥}}：该备份创建于提供商密钥随备份一同保存之前，因此存储的密钥属于生成该文件的服务器，或者本服务器没有配置用于保存密钥的加密密钥。请打开“设置 → AI 提供商”并重新输入 API 密钥。",
@@ -865,7 +857,6 @@
         "retryButton": "重试",
         "demoNote": "演示模式下无法更改异地目标。",
         "saveButton": "保存目标",
-        "savingButton": "保存中...",
         "saved": "异地目标已保存",
         "saveFailed": "无法保存你的异地备份目标",
         "s3": {

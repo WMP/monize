@@ -5,6 +5,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
   CAPTION_CLASS,
   CellLabel,
@@ -256,9 +257,9 @@ export function StoredBackupsSubsection({
 
         <div className="mt-4">
           {isLoading && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t('loading')}
-            </p>
+            <div className="text-sm">
+              <LoadingSpinner size="sm" fullContainer={false} text={t('loading')} />
+            </div>
           )}
 
           {!isLoading && loadError && (

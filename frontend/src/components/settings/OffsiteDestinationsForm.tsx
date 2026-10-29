@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/Input';
 import {
@@ -204,9 +205,9 @@ export function OffsiteDestinationsForm() {
   return (
     <div className="mt-3">
       {isLoading && (
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {t('loading')}
-        </p>
+        <div className="text-sm">
+          <LoadingSpinner size="sm" fullContainer={false} text={t('loading')} />
+        </div>
       )}
 
       {!isLoading && loadError && (
@@ -444,9 +445,10 @@ export function OffsiteDestinationsForm() {
           <div className="mt-4">
             <Button
               onClick={handleSave}
-              disabled={isSaving || !isDirty || isDemoMode}
+              isLoading={isSaving}
+              disabled={!isDirty || isDemoMode}
             >
-              {isSaving ? t('savingButton') : t('saveButton')}
+              {t('saveButton')}
             </Button>
           </div>
         </>

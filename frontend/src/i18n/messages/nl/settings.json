@@ -21,7 +21,6 @@
     "passwordConfirmNote": "Wachtwoordbevestiging is vereist bij het wijzigen van jouw e-mailadres.",
     "pendingEmailNotice": "Er is een bevestigingslink naar {email} gestuurd. Je e-mailadres wordt gewijzigd zodra je die link volgt.",
     "saveButton": "Profiel opslaan",
-    "savingButton": "Opslaan...",
     "toasts": {
       "success": "Profiel succesvol bijgewerkt",
       "confirmationSent": "Kijk in {email} voor een link om je nieuwe e-mailadres te bevestigen",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Bevestig nieuw wachtwoord",
     "confirmPasswordPlaceholder": "Bevestig nieuw wachtwoord",
     "changePasswordButton": "Wachtwoord wijzigen",
-    "changingPasswordButton": "Wijzigen...",
     "toasts": {
       "passwordChanged": "Wachtwoord succesvol gewijzigd",
       "passwordChangeFailed": "Wijzigen van wachtwoord mislukt"
@@ -646,11 +644,7 @@
       "reason": "Met een token is je account bereikbaar zonder in te loggen, dus bevestig dat jij het bent voordat je er een aanmaakt."
     },
     "relative": {
-      "never": "Nooit",
-      "today": "Vandaag",
-      "yesterday": "Gisteren",
-      "daysAgo": "{count} dagen geleden",
-      "monthsAgo": "{count} maanden geleden"
+      "never": "Nooit"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "Mislukt"
     },
     "saveButton": "Beleid opslaan",
-    "savingButton": "Opslaan...",
     "runNowButton": "Nu elk account back-uppen",
     "runningButton": "Back-up bezig...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "Herstel voltooid",
-      "description": "Jouw gegevens zijn succesvol hersteld. Hier is een overzicht van wat is hersteld:",
       "totalRecords": "Totaal records",
       "skippedAttachments": "{count, plural, one {# bijlage is niet teruggezet} other {# bijlagen zijn niet teruggezet}}: de back-up bevatte er geen bruikbare bytes voor — ze ontbraken of kwamen niet door hun checksum bij het exporteren, of het bestand is van vóór zelfstandige back-ups. Maak een nieuwe back-up zodra de bijlageopslag in orde is.",
       "unusableAiProviderKeys": "{count, plural, one {# AI-provider is teruggezet zonder bruikbare API-sleutel} other {# AI-providers zijn teruggezet zonder bruikbare API-sleutels}}: de back-up is gemaakt voordat providersleutels erin werden meegenomen, dus de opgeslagen sleutel hoort bij de server die het bestand maakte, of deze server heeft geen versleutelingssleutel ingesteld om er een op te slaan. Open Instellingen → AI-providers en voer de API-sleutel opnieuw in.",
@@ -865,7 +857,6 @@
         "retryButton": "Opnieuw proberen",
         "demoNote": "Externe bestemmingen kunnen niet worden gewijzigd in de demo.",
         "saveButton": "Bestemmingen opslaan",
-        "savingButton": "Opslaan...",
         "saved": "Externe bestemmingen opgeslagen",
         "saveFailed": "Uw externe back-upbestemmingen konden niet worden opgeslagen",
         "s3": {

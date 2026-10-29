@@ -21,7 +21,6 @@
     "passwordConfirmNote": "A confirmação da palavra-passe é necessária ao alterar o seu endereço de e-mail.",
     "pendingEmailNotice": "Foi enviado um link de confirmação para {email}. O seu endereço de e-mail será alterado quando o abrir.",
     "saveButton": "Guardar Perfil",
-    "savingButton": "A guardar...",
     "toasts": {
       "success": "Perfil atualizado com sucesso",
       "confirmationSent": "Consulte {email} para encontrar um link que confirma o seu novo endereço de e-mail",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Confirmar nova palavra-passe",
     "confirmPasswordPlaceholder": "Confirme a nova palavra-passe",
     "changePasswordButton": "Alterar Palavra-passe",
-    "changingPasswordButton": "A alterar...",
     "toasts": {
       "passwordChanged": "Palavra-passe alterada com sucesso",
       "passwordChangeFailed": "Falha ao alterar a palavra-passe"
@@ -646,11 +644,7 @@
       "reason": "Um token pode aceder à sua conta sem iniciar sessão, por isso confirme que é você antes de criar um."
     },
     "relative": {
-      "never": "Nunca",
-      "today": "Hoje",
-      "yesterday": "Ontem",
-      "daysAgo": "Há {count} dias",
-      "monthsAgo": "Há {count} meses"
+      "never": "Nunca"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "Falhou"
     },
     "saveButton": "Guardar política",
-    "savingButton": "A guardar...",
     "runNowButton": "Copiar todas as contas agora",
     "runningButton": "A copiar...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "Restauro Concluído",
-      "description": "Os seus dados foram restaurados com sucesso. Aqui está um resumo do que foi restaurado:",
       "totalRecords": "Total de registos",
       "skippedAttachments": "{count, plural, one {# anexo não foi restaurado} other {# anexos não foram restaurados}}: o backup não continha bytes utilizáveis para eles — faltavam ou falharam a soma de verificação na exportação, ou o ficheiro é anterior aos backups autossuficientes. Exporte um backup novo quando o armazenamento de anexos estiver saudável.",
       "unusableAiProviderKeys": "{count, plural, one {# fornecedor de IA foi restaurado sem uma chave de API utilizável} other {# fornecedores de IA foram restaurados sem chaves de API utilizáveis}}: a cópia de segurança foi criada antes de as chaves dos fornecedores seguirem nela, por isso a chave guardada pertence ao servidor que gerou o ficheiro, ou este servidor não tem qualquer chave de cifra configurada para a guardar. Abra Definições → Fornecedores de IA e introduza novamente a chave de API.",
@@ -865,7 +857,6 @@
         "retryButton": "Tentar novamente",
         "demoNote": "Os destinos externos não podem ser alterados na demonstração.",
         "saveButton": "Guardar destinos",
-        "savingButton": "A guardar...",
         "saved": "Destinos externos guardados",
         "saveFailed": "Não foi possível guardar os seus destinos externos de cópia de segurança",
         "s3": {

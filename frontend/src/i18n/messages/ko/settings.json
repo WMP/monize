@@ -21,7 +21,6 @@
     "passwordConfirmNote": "이메일 주소를 변경할 때는 비밀번호 확인이 필요합니다.",
     "pendingEmailNotice": "{email}(으)로 확인 링크를 보냈습니다. 링크를 열면 이메일 주소가 변경됩니다.",
     "saveButton": "프로필 저장",
-    "savingButton": "저장 중...",
     "toasts": {
       "success": "프로필이 성공적으로 업데이트되었습니다",
       "confirmationSent": "{email}에서 새 이메일 주소를 확인하는 링크를 확인하세요",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "새 비밀번호 확인",
     "confirmPasswordPlaceholder": "새 비밀번호를 확인하세요",
     "changePasswordButton": "비밀번호 변경",
-    "changingPasswordButton": "변경 중...",
     "toasts": {
       "passwordChanged": "비밀번호가 성공적으로 변경되었습니다",
       "passwordChangeFailed": "비밀번호 변경에 실패했습니다"
@@ -646,11 +644,7 @@
       "reason": "토큰은 로그인하지 않고도 계정에 접근할 수 있으므로, 토큰을 만들기 전에 본인임을 확인하세요."
     },
     "relative": {
-      "never": "없음",
-      "today": "오늘",
-      "yesterday": "어제",
-      "daysAgo": "{count}일 전",
-      "monthsAgo": "{count}개월 전"
+      "never": "없음"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "실패"
     },
     "saveButton": "정책 저장",
-    "savingButton": "저장 중...",
     "runNowButton": "지금 모든 계정 백업",
     "runningButton": "백업 중...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "복원 완료",
-      "description": "데이터가 성공적으로 복원되었습니다. 복원된 내용의 요약입니다:",
       "totalRecords": "전체 레코드",
       "skippedAttachments": "{count, plural, other {첨부 파일 #개가 복원되지 않았습니다}}: 백업에 사용 가능한 바이트가 없었습니다. 내보낼 때 누락되었거나 체크섬에 실패했거나, 파일이 자체 포함 백업 이전에 만들어진 것입니다. 첨부 파일 저장소가 정상화된 뒤 새 백업을 내보내세요.",
       "unusableAiProviderKeys": "{count, plural, other {AI 제공자 #개가 사용할 수 있는 API 키 없이 복원되었습니다}}: 이 백업은 제공자 키가 함께 담기기 전에 만들어졌으므로 저장된 키는 파일을 만든 서버의 것이거나, 이 서버에 키를 저장할 암호화 키가 설정되어 있지 않습니다. 설정 → AI 제공자를 열고 API 키를 다시 입력하세요.",
@@ -865,7 +857,6 @@
         "retryButton": "다시 시도",
         "demoNote": "데모에서는 오프사이트 대상을 변경할 수 없습니다.",
         "saveButton": "대상 저장",
-        "savingButton": "저장 중...",
         "saved": "오프사이트 대상이 저장되었습니다",
         "saveFailed": "오프사이트 백업 대상을 저장하지 못했습니다",
         "s3": {

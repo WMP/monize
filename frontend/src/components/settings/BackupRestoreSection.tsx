@@ -6,8 +6,10 @@ import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { isAxiosError } from 'axios';
 import { Button } from '@/components/ui/Button';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
   backupApi,
   BackupEncryptionStatus,
@@ -63,6 +65,7 @@ const UNRECOVERED_SERIES_REASONS: ReadonlySet<string> = new Set([
 
 export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
   const t = useTranslations('settings.backupRestore');
+  const tc = useTranslations('common');
   const { formatNumber } = useNumberFormat();
   const isOidc = user.authProvider === 'oidc';
   const timezonePref = usePreferencesStore((s) => s.preferences?.timezone);
@@ -415,9 +418,9 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
       )}
 
       {encryptionLoading && (
-        <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
-          {t('encryption.loading')}
-        </p>
+        <div className="mb-6 text-sm">
+          <LoadingSpinner size="sm" fullContainer={false} text={t('encryption.loading')} />
+        </div>
       )}
 
       {/* Export Section */}
@@ -545,7 +548,7 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
                     {isRestoring ? t('restore.restoringButton') : t('restore.oidcRestoreButton')}
                   </Button>
                   <Button variant="outline" onClick={closeRestoreForm}>
-                    Cancel
+                    {tc('cancel')}
                   </Button>
                 </div>
               ) : (
@@ -571,7 +574,7 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
                       {isRestoring ? t('restore.restoringButton') : t('restore.confirmRestoreButton')}
                     </Button>
                     <Button variant="outline" onClick={closeRestoreForm}>
-                      Cancel
+                      {tc('cancel')}
                     </Button>
                   </div>
                 </>
@@ -588,7 +591,7 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
         maxWidth="sm"
       >
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             {usesLoginPassword
               ? t('encryption.setupModal.titleLocal')
               : t('encryption.setupModal.titleOidc')}
@@ -617,7 +620,7 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
               onClick={closeEncryptionSetup}
               disabled={setupSaving}
             >
-              Cancel
+              {tc('cancel')}
             </Button>
             <Button
               onClick={handleSetBackupPassword}
@@ -639,12 +642,12 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
         maxWidth="sm"
       >
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-            {t('export.exportPasswordModal.title')}
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            {t('export.exportPasswordModal.description')}
-          </p>
+          <div className="mb-4 flex items-center gap-2">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {t('export.exportPasswordModal.title')}
+            </h2>
+            <InfoTooltip text={t('export.exportPasswordModal.description')} usePortal />
+          </div>
           <Input
             type="password"
             // Encrypts the file being produced; a manager filling this with the
@@ -668,7 +671,7 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
               }}
               disabled={isExporting}
             >
-              Cancel
+              {tc('cancel')}
             </Button>
             <Button
               onClick={() => runExport(exportPassword)}
@@ -693,14 +696,10 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {t('restoreResult.title')}
               </h2>
             </div>
-
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              {t('restoreResult.description')}
-            </p>
 
             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 max-h-64 overflow-y-auto">
               <dl className="space-y-1">

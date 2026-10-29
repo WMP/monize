@@ -21,7 +21,6 @@
     "passwordConfirmNote": "La confirmation du mot de passe est requise lors du changement de votre adresse e-mail.",
     "pendingEmailNotice": "Un lien de confirmation a été envoyé à {email}. Votre adresse e-mail sera modifiée une fois que vous l'aurez suivi.",
     "saveButton": "Enregistrer le profil",
-    "savingButton": "Enregistrement...",
     "toasts": {
       "success": "Profil mis à jour avec succès",
       "confirmationSent": "Consultez {email} pour trouver le lien de confirmation de votre nouvelle adresse e-mail",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Confirmer le nouveau mot de passe",
     "confirmPasswordPlaceholder": "Confirmez le nouveau mot de passe",
     "changePasswordButton": "Changer le mot de passe",
-    "changingPasswordButton": "Modification...",
     "toasts": {
       "passwordChanged": "Mot de passe modifié avec succès",
       "passwordChangeFailed": "Échec de la modification du mot de passe"
@@ -646,11 +644,7 @@
       "reason": "Un jeton peut accéder à votre compte sans connexion ; confirmez donc votre identité avant d'en créer un."
     },
     "relative": {
-      "never": "Jamais",
-      "today": "Aujourd'hui",
-      "yesterday": "Hier",
-      "daysAgo": "Il y a {count} jour(s)",
-      "monthsAgo": "Il y a {count} mois"
+      "never": "Jamais"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "Échec"
     },
     "saveButton": "Enregistrer la politique",
-    "savingButton": "Enregistrement...",
     "runNowButton": "Sauvegarder tous les comptes",
     "runningButton": "Sauvegarde en cours...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "Restauration terminée",
-      "description": "Vos données ont été restaurées avec succès. Voici un résumé de ce qui a été restauré :",
       "totalRecords": "Total des enregistrements",
       "skippedAttachments": "{count, plural, one {# pièce jointe n'a pas été restaurée} other {# pièces jointes n'ont pas été restaurées}} : la sauvegarde ne contenait pas d'octets utilisables pour elles — ils manquaient ou ont échoué au contrôle de somme lors de l'export, ou le fichier est antérieur aux sauvegardes autonomes. Exportez une nouvelle sauvegarde lorsque le stockage des pièces jointes est sain.",
       "unusableAiProviderKeys": "{count, plural, one {# fournisseur d'IA a été restauré sans clé d'API utilisable} other {# fournisseurs d'IA ont été restaurés sans clé d'API utilisable}} : la sauvegarde a été créée avant que les clés de fournisseur y soient incluses, donc la clé enregistrée appartient au serveur qui a produit le fichier, ou ce serveur n'a aucune clé de chiffrement configurée pour en stocker une. Ouvrez Paramètres → Fournisseurs d'IA et saisissez à nouveau la clé d'API.",
@@ -865,7 +857,6 @@
         "retryButton": "Réessayer",
         "demoNote": "Les destinations hors site ne peuvent pas être modifiées dans la démo.",
         "saveButton": "Enregistrer les destinations",
-        "savingButton": "Enregistrement...",
         "saved": "Destinations hors site enregistrées",
         "saveFailed": "Impossible d'enregistrer vos destinations de sauvegarde hors site",
         "s3": {

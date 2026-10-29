@@ -21,7 +21,6 @@
     "passwordConfirmNote": "La conferma della password è necessaria quando si cambia l'indirizzo email.",
     "pendingEmailNotice": "È stato inviato un link di conferma a {email}. Il tuo indirizzo email cambierà quando lo aprirai.",
     "saveButton": "Salva profilo",
-    "savingButton": "Salvataggio...",
     "toasts": {
       "success": "Profilo aggiornato con successo",
       "confirmationSent": "Controlla {email} per trovare il link di conferma del nuovo indirizzo email",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Conferma nuova password",
     "confirmPasswordPlaceholder": "Conferma la nuova password",
     "changePasswordButton": "Cambia password",
-    "changingPasswordButton": "Modifica in corso...",
     "toasts": {
       "passwordChanged": "Password cambiata con successo",
       "passwordChangeFailed": "Impossibile cambiare la password"
@@ -646,11 +644,7 @@
       "reason": "Un token può accedere al tuo account senza effettuare l'accesso, quindi conferma la tua identità prima di crearne uno."
     },
     "relative": {
-      "never": "Mai",
-      "today": "Oggi",
-      "yesterday": "Ieri",
-      "daysAgo": "{count} giorni fa",
-      "monthsAgo": "{count} mesi fa"
+      "never": "Mai"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "Fallito"
     },
     "saveButton": "Salva politica",
-    "savingButton": "Salvataggio...",
     "runNowButton": "Esegui il backup di ogni account",
     "runningButton": "Backup in corso...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "Ripristino completato",
-      "description": "I tuoi dati sono stati ripristinati con successo. Ecco un riepilogo di quanto è stato ripristinato:",
       "totalRecords": "Record totali",
       "skippedAttachments": "{count, plural, one {# allegato non è stato ripristinato} other {# allegati non sono stati ripristinati}}: il backup non conteneva byte utilizzabili per essi — erano assenti o non hanno superato il checksum al momento dell'esportazione, oppure il file precede i backup autonomi. Esporta un nuovo backup quando l'archivio degli allegati è integro.",
       "unusableAiProviderKeys": "{count, plural, one {# provider AI è stato ripristinato senza una chiave API utilizzabile} other {# provider AI sono stati ripristinati senza chiavi API utilizzabili}}: il backup è stato creato prima che le chiavi dei provider viaggiassero al suo interno, quindi la chiave memorizzata appartiene al server che ha prodotto il file, oppure questo server non ha una chiave di cifratura configurata per conservarla. Apri Impostazioni → Provider AI e inserisci di nuovo la chiave API.",
@@ -865,7 +857,6 @@
         "retryButton": "Riprova",
         "demoNote": "Le destinazioni fuori sede non possono essere modificate nella demo.",
         "saveButton": "Salva destinazioni",
-        "savingButton": "Salvataggio...",
         "saved": "Destinazioni fuori sede salvate",
         "saveFailed": "Impossibile salvare le tue destinazioni di backup fuori sede",
         "s3": {

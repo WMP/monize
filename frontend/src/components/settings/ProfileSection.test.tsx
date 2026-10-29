@@ -122,7 +122,7 @@ describe('ProfileSection', () => {
     expect(screen.getByLabelText('Last Name')).toHaveValue('');
   });
 
-  it('shows Saving... text while profile is being updated', async () => {
+  it('shows the save button loading while profile is being updated', async () => {
     let resolvePromise: (value: unknown) => void;
     const pendingPromise = new Promise((resolve) => {
       resolvePromise = resolve;
@@ -134,15 +134,18 @@ describe('ProfileSection', () => {
     fireEvent.change(screen.getByLabelText('First Name'), { target: { value: 'Jane' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Save Profile' }));
 
+    // <Button isLoading>: the label stays, the button spins and is disabled.
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Saving...' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Saving...' })).toBeDisabled();
+      const saving = screen.getByRole('button', { name: 'Save Profile' });
+      expect(saving).toBeDisabled();
+      expect(saving.querySelector('svg.animate-spin')).not.toBeNull();
     });
+    expect(screen.queryByText('Saving...')).not.toBeInTheDocument();
 
     resolvePromise!({ ...mockUser, firstName: 'Jane' });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Save Profile' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save Profile' })).not.toBeDisabled();
     });
   });
 

@@ -21,7 +21,6 @@
     "passwordConfirmNote": "更改電子郵件地址時需要密碼確認。",
     "pendingEmailNotice": "確認連結已傳送至 {email}。點擊該連結後，您的電子郵件地址即會變更。",
     "saveButton": "儲存個人資料",
-    "savingButton": "儲存中...",
     "toasts": {
       "success": "個人資料更新成功",
       "confirmationSent": "請查看 {email} 中用於確認新電子郵件地址的連結",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "確認新密碼",
     "confirmPasswordPlaceholder": "確認新密碼",
     "changePasswordButton": "更改密碼",
-    "changingPasswordButton": "更改中...",
     "toasts": {
       "passwordChanged": "密碼更改成功",
       "passwordChangeFailed": "更改密碼失敗"
@@ -646,11 +644,7 @@
       "reason": "權杖無需登入即可存取您的帳號，因此在建立權杖前請先確認您的身份。"
     },
     "relative": {
-      "never": "從未",
-      "today": "今天",
-      "yesterday": "昨天",
-      "daysAgo": "{count} 天前",
-      "monthsAgo": "{count} 個月前"
+      "never": "從未"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "失敗"
     },
     "saveButton": "儲存原則",
-    "savingButton": "儲存中...",
     "runNowButton": "立即備份所有帳戶",
     "runningButton": "備份中...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "還原完成",
-      "description": "您的資料已成功還原。以下是已還原內容的摘要：",
       "totalRecords": "總記錄數",
       "skippedAttachments": "{count, plural, other {# 個附件未被還原}}：備份中沒有可用的位元組——匯出時它們缺失或未通過總和檢查，或該檔案早於自包含備份。請在附件儲存恢復正常後重新匯出備份。",
       "unusableAiProviderKeys": "{count, plural, other {# 個 AI 提供者在還原後沒有可用的 API 金鑰}}：此備份建立於提供者金鑰隨備份一同保存之前，因此儲存的金鑰屬於產生該檔案的伺服器，或者本伺服器沒有設定用來保存金鑰的加密金鑰。請開啟「設定 → AI 提供者」並重新輸入 API 金鑰。",
@@ -865,7 +857,6 @@
         "retryButton": "重試",
         "demoNote": "示範模式中無法變更異地目的地。",
         "saveButton": "儲存目的地",
-        "savingButton": "儲存中...",
         "saved": "異地目的地已儲存",
         "saveFailed": "無法儲存你的異地備份目的地",
         "s3": {

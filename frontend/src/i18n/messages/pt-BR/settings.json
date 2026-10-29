@@ -21,7 +21,6 @@
     "passwordConfirmNote": "A confirmação da senha é necessária ao alterar seu endereço de e-mail.",
     "pendingEmailNotice": "Um link de confirmação foi enviado para {email}. Seu endereço de e-mail será alterado quando você abri-lo.",
     "saveButton": "Salvar Perfil",
-    "savingButton": "Salvando...",
     "toasts": {
       "success": "Perfil atualizado com sucesso",
       "confirmationSent": "Verifique {email} para encontrar um link de confirmação do seu novo endereço de e-mail",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Confirmar nova senha",
     "confirmPasswordPlaceholder": "Confirme a nova senha",
     "changePasswordButton": "Alterar Senha",
-    "changingPasswordButton": "Alterando...",
     "toasts": {
       "passwordChanged": "Senha alterada com sucesso",
       "passwordChangeFailed": "Falha ao alterar a senha"
@@ -646,11 +644,7 @@
       "reason": "Um token pode acessar sua conta sem fazer login, por isso confirme que é você antes de criar um."
     },
     "relative": {
-      "never": "Nunca",
-      "today": "Hoje",
-      "yesterday": "Ontem",
-      "daysAgo": "Há {count} dias",
-      "monthsAgo": "Há {count} meses"
+      "never": "Nunca"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "Falhou"
     },
     "saveButton": "Salvar política",
-    "savingButton": "Salvando...",
     "runNowButton": "Fazer backup de todas as contas agora",
     "runningButton": "Fazendo backup...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "Restauração Concluída",
-      "description": "Seus dados foram restaurados com sucesso. Aqui está um resumo do que foi restaurado:",
       "totalRecords": "Total de registros",
       "skippedAttachments": "{count, plural, one {# anexo não foi restaurado} other {# anexos não foram restaurados}}: o backup não continha bytes utilizáveis para eles — estavam ausentes ou falharam na soma de verificação na exportação, ou o arquivo é anterior aos backups autossuficientes. Exporte um backup novo quando o armazenamento de anexos estiver saudável.",
       "unusableAiProviderKeys": "{count, plural, one {# provedor de IA foi restaurado sem uma chave de API utilizável} other {# provedores de IA foram restaurados sem chaves de API utilizáveis}}: o backup foi criado antes de as chaves dos provedores viajarem nele, então a chave armazenada pertence ao servidor que gerou o arquivo, ou este servidor não tem nenhuma chave de criptografia configurada para guardá-la. Abra Configurações → Provedores de IA e digite a chave de API novamente.",
@@ -865,7 +857,6 @@
         "retryButton": "Tentar novamente",
         "demoNote": "Os destinos externos não podem ser alterados na demonstração.",
         "saveButton": "Salvar destinos",
-        "savingButton": "Salvando...",
         "saved": "Destinos externos salvos",
         "saveFailed": "Não foi possível salvar seus destinos externos de backup",
         "s3": {

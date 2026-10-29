@@ -21,7 +21,6 @@
     "passwordConfirmNote": "Se requiere confirmación de contraseña al cambiar tu dirección de correo electrónico.",
     "pendingEmailNotice": "Se envió un enlace de confirmación a {email}. Tu dirección de correo electrónico cambiará cuando lo sigas.",
     "saveButton": "Guardar perfil",
-    "savingButton": "Guardando...",
     "toasts": {
       "success": "Perfil actualizado correctamente",
       "confirmationSent": "Revisa {email} para encontrar un enlace que confirme tu nueva dirección de correo electrónico",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "Confirmar nueva contraseña",
     "confirmPasswordPlaceholder": "Confirma la nueva contraseña",
     "changePasswordButton": "Cambiar contraseña",
-    "changingPasswordButton": "Cambiando...",
     "toasts": {
       "passwordChanged": "Contraseña cambiada correctamente",
       "passwordChangeFailed": "Error al cambiar la contraseña"
@@ -646,11 +644,7 @@
       "reason": "Un token puede acceder a tu cuenta sin iniciar sesión, así que confirma que eres tú antes de crear uno."
     },
     "relative": {
-      "never": "Nunca",
-      "today": "Hoy",
-      "yesterday": "Ayer",
-      "daysAgo": "Hace {count} días",
-      "monthsAgo": "Hace {count} meses"
+      "never": "Nunca"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "Fallido"
     },
     "saveButton": "Guardar política",
-    "savingButton": "Guardando...",
     "runNowButton": "Copiar todas las cuentas ahora",
     "runningButton": "Copiando...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "Restauración completa",
-      "description": "Tus datos han sido restaurados correctamente. Aquí tienes un resumen de lo que se restauró:",
       "totalRecords": "Total de registros",
       "skippedAttachments": "{count, plural, one {# archivo adjunto no se restauró} other {# archivos adjuntos no se restauraron}}: la copia no contenía bytes utilizables para ellos — faltaban o no pasaron su suma de comprobación al exportarla, o el fichero es anterior a las copias autocontenidas. Exporte una copia nueva cuando el almacenamiento de adjuntos esté correcto.",
       "unusableAiProviderKeys": "{count, plural, one {Se restauró # proveedor de IA sin una clave de API utilizable} other {Se restauraron # proveedores de IA sin claves de API utilizables}}: la copia de seguridad se creó antes de que las claves de proveedor viajaran en ella, así que la clave guardada pertenece al servidor que generó el archivo, o este servidor no tiene configurada ninguna clave de cifrado con la que almacenarla. Abre Ajustes → Proveedores de IA e introduce de nuevo la clave de API.",
@@ -865,7 +857,6 @@
         "retryButton": "Reintentar",
         "demoNote": "Los destinos externos no se pueden cambiar en la demostración.",
         "saveButton": "Guardar destinos",
-        "savingButton": "Guardando...",
         "saved": "Destinos externos guardados",
         "saveFailed": "No se pudieron guardar tus destinos externos de copia de seguridad",
         "s3": {

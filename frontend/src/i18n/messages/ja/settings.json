@@ -21,7 +21,6 @@
     "passwordConfirmNote": "メールアドレスを変更する場合はパスワードの確認が必要です。",
     "pendingEmailNotice": "確認リンクを {email} に送信しました。リンクを開くとメールアドレスが変更されます。",
     "saveButton": "プロフィールを保存",
-    "savingButton": "保存中...",
     "toasts": {
       "success": "プロフィールを更新しました",
       "confirmationSent": "新しいメールアドレスを確認するためのリンクを {email} でご確認ください",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "新しいパスワードを確認",
     "confirmPasswordPlaceholder": "新しいパスワードを確認してください",
     "changePasswordButton": "パスワードを変更",
-    "changingPasswordButton": "変更中...",
     "toasts": {
       "passwordChanged": "パスワードを変更しました",
       "passwordChangeFailed": "パスワードの変更に失敗しました"
@@ -646,11 +644,7 @@
       "reason": "トークンを使うとサインインせずにアカウントにアクセスできるため、作成する前に本人確認を行ってください。"
     },
     "relative": {
-      "never": "なし",
-      "today": "今日",
-      "yesterday": "昨日",
-      "daysAgo": "{count}日前",
-      "monthsAgo": "{count}ヶ月前"
+      "never": "なし"
     }
   },
   "autoBackup": {
@@ -694,7 +688,6 @@
       "failed": "失敗"
     },
     "saveButton": "ポリシーを保存",
-    "savingButton": "保存中...",
     "runNowButton": "今すぐ全アカウントをバックアップ",
     "runningButton": "バックアップ中...",
     "toasts": {
@@ -815,7 +808,6 @@
     },
     "restoreResult": {
       "title": "復元完了",
-      "description": "データが正常に復元されました。復元された内容のサマリー:",
       "totalRecords": "総レコード数",
       "skippedAttachments": "{count, plural, other {# 件の添付ファイルが復元されませんでした}}: バックアップに使用可能なバイト列が含まれていませんでした。エクスポート時に欠落していたかチェックサムに失敗したか、あるいはファイルが自己完結型バックアップより前のものです。添付ファイルのストレージが正常になってから新しいバックアップを取得してください。",
       "unusableAiProviderKeys": "{count, plural, other {# 件の AI プロバイダーが使用可能な API キーなしで復元されました}}: このバックアップはプロバイダーのキーが含まれるようになる前に作成されたため、保存されているキーはファイルを作成したサーバーのものです。あるいは、このサーバーにはキーを保存するための暗号化キーが設定されていません。設定 → AIプロバイダー を開き、API キーを入力し直してください。",
@@ -865,7 +857,6 @@
         "retryButton": "再試行",
         "demoNote": "デモではオフサイトの送信先を変更できません。",
         "saveButton": "送信先を保存",
-        "savingButton": "保存中...",
         "saved": "オフサイトの送信先を保存しました",
         "saveFailed": "オフサイトのバックアップ送信先を保存できませんでした",
         "s3": {
