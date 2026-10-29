@@ -20,7 +20,9 @@ import type { RowAction } from '@/components/ui/row-actions/rowAction';
 import { DensityToggleBar } from '@/components/ui/DensityToggle';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { CellLabel } from '@/components/ui/Table';
+import { CellLabel, SortableTh, Th } from '@/components/ui/Table';
+import { Badge } from '@/components/ui/Badge';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
 export type CurrencySortField = 'code' | 'name' | 'symbol' | 'decimals' | 'rate';
 export type SortDirection = 'asc' | 'desc';
@@ -66,9 +68,9 @@ function DefaultCurrencyBadge({ isDefault }: { isDefault: boolean }) {
   const t = useTranslations('currencies');
   if (!isDefault) return null;
   return (
-    <span className="ml-2 inline-flex text-xs leading-5 font-semibold rounded-full px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+    <Badge variant="blue" className="ml-2">
       {t('list.defaultBadge')}
-    </span>
+    </Badge>
   );
 }
 
@@ -90,26 +92,18 @@ function CurrencyStatusPill({
 }) {
   const t = useTranslations('currencies');
   return (
-    <span
-      className={`inline-flex text-xs leading-5 font-semibold rounded-full ${
-        density === 'dense' ? 'px-1.5 py-0.5' : 'px-2 py-1'
-      } ${
-        currency.isActive
-          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-          : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-      }${className ? ` ${className}` : ''}`}
-    >
+    <Badge variant={currency.isActive ? 'green' : 'gray'} className={className}>
       {density === 'dense'
         ? currency.isActive ? t('list.statusBadge.activeShort') : t('list.statusBadge.inactiveShort')
         : currency.isActive ? t('list.statusBadge.active') : t('list.statusBadge.inactive')}
-    </span>
+    </Badge>
   );
 }
 
 /**
  * What the Usage column shows: the account and security counts it is used by,
- * under the tooltip that spells them out, or the "-" placeholder when nothing
- * references the currency. Both layouts render it from here so neither can
+ * spelled out in words rather than abbreviated under a hover-only `title`, or
+ * the "-" placeholder when nothing references the currency. Both layouts render it from here so neither can
  * disagree about what "unused" looks like.
  */
 function CurrencyUsageText({
@@ -122,7 +116,7 @@ function CurrencyUsageText({
     return <span className="text-gray-400 dark:text-gray-500">-</span>;
   }
   return (
-    <span title={t('list.usageTooltip', { accounts: usage?.accounts || 0, securities: usage?.securities || 0 })}>
+    <span>
       {usage?.accounts ? t('list.usageAccounts', { count: usage.accounts }) : ''}
       {usage?.accounts && usage?.securities ? ', ' : ''}
       {usage?.securities ? t('list.usageSecurities', { count: usage.securities }) : ''}
@@ -131,7 +125,9 @@ function CurrencyUsageText({
 }
 
 /**
- * The exchange rate against the user's default currency, in both layouts.
+ * The exchange rate against the user's default currency, in both layouts. What
+ * the figure means (one unit's worth in the default currency) is the column
+ * header's `InfoTooltip`, not a hover-only `title` on every value.
  *
  * Three states, and which one a currency is in is a decision rather than a
  * label: the base currency has no rate to state ("-"), a resolved rate is
@@ -140,13 +136,9 @@ function CurrencyUsageText({
  * 1 and never a blank that reads as zero.
  */
 function CurrencyRateValue({
-  currency,
-  defaultCurrency,
   exchangeRate,
   isDefault,
 }: {
-  currency: CurrencyInfo;
-  defaultCurrency: string;
   exchangeRate: number | null;
   isDefault: boolean;
 }) {
@@ -156,11 +148,7 @@ function CurrencyRateValue({
   if (!exchangeRate) {
     return <span className="text-gray-400 dark:text-gray-500">N/A</span>;
   }
-  return (
-    <span title={`1 ${currency.code} = ${exchangeRate.toFixed(FX_RATE_DISPLAY_DECIMALS)} ${defaultCurrency}`}>
-      {exchangeRate.toFixed(FX_RATE_DISPLAY_DECIMALS)}
-    </span>
-  );
+  return <span>{exchangeRate.toFixed(FX_RATE_DISPLAY_DECIMALS)}</span>;
 }
 
 interface CurrencyActionLabels {
@@ -382,8 +370,6 @@ const CurrencyRow = memo(function CurrencyRow({
                 <CellLabel>{t('list.columns.rate', { currency: defaultCurrency })}</CellLabel>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
                   <CurrencyRateValue
-                    currency={currency}
-                    defaultCurrency={defaultCurrency}
                     exchangeRate={exchangeRate}
                     isDefault={isDefault}
                   />
@@ -406,7 +392,7 @@ const CurrencyRow = memo(function CurrencyRow({
                 </div>
                 <div className="min-w-0">
                   <CellLabel>{t('list.columns.usage')}</CellLabel>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                  <div className="text-sm text-gray-600 dark:text-gray-400 break-words">
                     <CurrencyUsageText usage={usage} />
                   </div>
                 </div>
@@ -451,8 +437,6 @@ const CurrencyRow = memo(function CurrencyRow({
       {/* Exchange Rate */}
       <td className={`${cellPadding} whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 text-right`}>
         <CurrencyRateValue
-          currency={currency}
-          defaultCurrency={defaultCurrency}
           exchangeRate={exchangeRate}
           isDefault={isDefault}
         />
@@ -505,6 +489,7 @@ export function CurrencyList({
       }
     }
   }, [onSort, localSortField]);
+  const sortProps = { sortField, sortDirection, onSort: handleSort };
 
   // Long-press opens a per-row action sheet on mobile (and via right-click).
   const [contextCurrency, setContextCurrency] = useState<CurrencyInfo | null>(null);
@@ -608,47 +593,45 @@ export function CurrencyList({
             </tr>
             ) : (
             <tr>
-              <th
-                className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
-                onClick={() => handleSort('code')}
-              >
-                {sortFieldLabels.code}<SortIcon field="code" sortField={sortField} sortDirection={sortDirection} />
-              </th>
-              <th
-                className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden sm:table-cell`}
-                onClick={() => handleSort('name')}
-              >
-                {sortFieldLabels.name}<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
-              </th>
-              <th
-                className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
-                onClick={() => handleSort('symbol')}
-              >
-                {sortFieldLabels.symbol}<SortIcon field="symbol" sortField={sortField} sortDirection={sortDirection} />
-              </th>
+              <SortableTh {...sortProps} field="code" className={headerPadding}>
+                {sortFieldLabels.code}
+              </SortableTh>
+              <SortableTh {...sortProps} field="name" className={`${headerPadding} hidden sm:table-cell`}>
+                {sortFieldLabels.name}
+              </SortableTh>
+              <SortableTh {...sortProps} field="symbol" align="center" className={headerPadding}>
+                {sortFieldLabels.symbol}
+              </SortableTh>
               {density === 'normal' && (
-                <th
-                  className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden lg:table-cell`}
-                  onClick={() => handleSort('decimals')}
+                <SortableTh
+                  {...sortProps}
+                  field="decimals"
+                  align="center"
+                  className={`${headerPadding} hidden lg:table-cell`}
                 >
-                  {sortFieldLabels.decimals}<SortIcon field="decimals" sortField={sortField} sortDirection={sortDirection} />
-                </th>
+                  {sortFieldLabels.decimals}
+                </SortableTh>
               )}
-              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
-                {t('list.columns.usage')}
-              </th>
-              <th
-                className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
-                onClick={() => handleSort('rate')}
+              <Th className={`${headerPadding} hidden sm:table-cell`}>{t('list.columns.usage')}</Th>
+              <SortableTh
+                {...sortProps}
+                field="rate"
+                align="right"
+                className={`${headerPadding} whitespace-nowrap`}
+                adornment={
+                  <InfoTooltip
+                    text={t('list.rateHelp', { currency: defaultCurrency })}
+                    align="right"
+                    usePortal
+                  />
+                }
               >
-                {sortFieldLabels.rate}<SortIcon field="rate" sortField={sortField} sortDirection={sortDirection} />
-              </th>
-              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
-                {t('list.columns.status')}
-              </th>
-              <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
+                {sortFieldLabels.rate}
+              </SortableTh>
+              <Th className={`${headerPadding} hidden sm:table-cell`}>{t('list.columns.status')}</Th>
+              <Th align="right" className={`${headerPadding} hidden sm:table-cell`}>
                 {t('list.columns.actions')}
-              </th>
+              </Th>
             </tr>
             )}
           </thead>
