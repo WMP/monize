@@ -61,6 +61,14 @@ describe('PageHeader', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows the help tooltip on hover and focus at every width, not only from md up', () => {
+    render(<PageHeader title="My Page" helpUrl="https://example.com/help" />);
+    const tooltip = screen.getByRole('tooltip', { name: /Open the Monize wiki/i });
+    expect(tooltip.className).toContain('group-hover/help:block');
+    expect(tooltip.className).toContain('group-focus-within/help:block');
+    expect(tooltip.className).not.toMatch(/\b(sm|md|lg):group-hover/);
+  });
+
   it('renders help link alongside action buttons when both are provided', () => {
     render(
       <PageHeader
