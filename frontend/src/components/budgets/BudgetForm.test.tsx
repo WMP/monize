@@ -95,7 +95,16 @@ describe('BudgetForm', () => {
       />,
     );
 
-    expect(screen.getByText('Saving...')).toBeInTheDocument();
+    // `<Button isLoading>` keeps the fixed label and shows progress with its
+    // spinner; the label no longer swaps to "Saving...".
+    const save = screen.getByRole('button', { name: /Save Changes/ });
+    expect(save).toBeDisabled();
+    expect(save.querySelector('svg.animate-spin')).not.toBeNull();
+    expect(screen.queryByText('Saving...')).toBeNull();
+    // Cancel is outline and first, the primary last, as `FormActions` lays out.
+    const buttons = screen.getAllByRole('button');
+    expect(buttons[buttons.length - 2]).toHaveTextContent('Cancel');
+    expect(buttons[buttons.length - 1]).toBe(save);
   });
 
   it('renders budget type selector', () => {

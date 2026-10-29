@@ -247,12 +247,18 @@ describe('BudgetEditPage', () => {
     });
   });
 
-  it('renders back to dashboard button', async () => {
+  it('returns to the budget through a chevron link above the title', async () => {
     render(<BudgetEditPage />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Back to Dashboard')).toBeInTheDocument();
-    });
+    // The way back names the budget and sits on the line above the title,
+    // not among the header actions.
+    const back = await screen.findByRole('link', { name: 'Back to February 2026' });
+    expect(back).toHaveAttribute('href', '/budgets/budget-1');
+    expect(back.querySelector('svg')).not.toBeNull();
+    const header = screen.getByTestId('page-header');
+    expect(header.contains(back)).toBe(false);
+    expect(back.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText('Back to Dashboard')).toBeNull();
   });
 
   it('redirects to budgets list on error', async () => {

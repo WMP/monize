@@ -83,7 +83,6 @@
     "baseIncomePlaceholder": "Expected monthly income",
     "active": "Active",
     "saveChanges": "Save Changes",
-    "saving": "Saving...",
     "typeOptions": {
       "MONTHLY": "Monthly",
       "ANNUAL": "Annual",
@@ -109,7 +108,8 @@
     "title": "Spending Heatmap - {monthLabel}",
     "ariaLabel": "Spending heatmap",
     "less": "Less",
-    "more": "More"
+    "more": "More",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +134,8 @@
     "rolloverBadge": "+{amount} rollover",
     "underBudgetLabel": "{amount} under budget",
     "overBudgetLabel": "{amount} over budget",
-    "carriedForward": "{amount} carried forward"
+    "carriedForward": "{amount} carried forward",
+    "dateRange": "{start} to {end}"
   },
   "periodSelector": {
     "label": "Period:",
@@ -471,11 +472,18 @@
         "description": "Create your first budget by analyzing your spending history. The wizard will suggest realistic amounts based on your transactions.",
         "cta": "Create Your First Budget"
       },
+      "loading": "Loading budgets...",
+      "columns": {
+        "name": "Name",
+        "strategy": "Strategy",
+        "type": "Type",
+        "categories": "Categories",
+        "started": "Started",
+        "status": "Status"
+      },
       "card": {
         "active": "Active",
-        "inactive": "Inactive",
-        "categories": "{count} categories",
-        "started": "Started {date}"
+        "inactive": "Inactive"
       }
     },
     "create": {
@@ -484,6 +492,9 @@
     },
     "detail": {
       "backToBudgets": "Back to Budgets",
+      "switchBudget": "Switch to another budget",
+      "switchPlaceholder": "Filter budgets...",
+      "switchNoMatches": "No budgets match",
       "notFound": "Budget not found",
       "delete": {
         "title": "Delete Budget",
@@ -501,7 +512,7 @@
     "edit": {
       "subtitlePrefix": "Edit: ",
       "subtitle": "Update budget settings and category allocations",
-      "backToDashboard": "Back to Dashboard",
+      "backToBudget": "Back to {name}",
       "budgetSettings": "Budget Settings",
       "categoryAllocations": "Category Allocations",
       "income": "Income",

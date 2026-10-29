@@ -2583,7 +2583,6 @@ describe("a status pill is Badge, not a hand-rolled rounded-full", () => {
     /rounded-full[^"'`]*(?:text-xs|text-\[10px\])[^"'`]*font-medium|(?:text-xs|text-\[10px\])[^"'`]*font-medium[^"'`]*rounded-full|rounded-full[^"'`]*font-medium[^"'`]*(?:text-xs|text-\[10px\])/;
 
   const BASELINE: ReadonlyArray<string> = [
-    "/src/app/budgets/page.tsx",
     "/src/components/budgets/BudgetCategoryTrend.tsx",
     "/src/components/budgets/BudgetPeriodDetail.tsx",
     "/src/components/budgets/BudgetWizard.tsx",
