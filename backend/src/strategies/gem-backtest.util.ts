@@ -307,7 +307,10 @@ export function runBacktest(input: GemBacktestInput): GemBacktestResult | null {
   const truncated =
     lastGap >= 0 || hasEarlierSignals || run[0].previousRole !== null;
 
-  // An absolute commission only becomes a drag against a known capital.
+  // An absolute commission only becomes a drag against a known capital. The
+  // result is a share of the value traded, charged on the running equity at
+  // each leg: charging it as a fixed slice of the starting 1 priced a trade on
+  // a grown portfolio as if it were still the opening one.
   const commissionFraction =
     !truncated && commissionAmount !== null && notional !== null && notional > 0
       ? commissionAmount / notional
@@ -351,7 +354,7 @@ export function runBacktest(input: GemBacktestInput): GemBacktestResult | null {
       // Selling costs one order per account; opening the first position sells
       // nothing.
       if (commissionFraction !== null && !opening) {
-        equity -= commissionFraction * ordersPerLeg;
+        equity -= equity * commissionFraction * ordersPerLeg;
       }
       // The new leg's basis is the whole sum committed to it -- including the
       // commission about to be paid to acquire it, exactly as
@@ -364,7 +367,7 @@ export function runBacktest(input: GemBacktestInput): GemBacktestResult | null {
       // nobody owes -- compounding at every switch and with every account.
       legEntryEquity = equity;
       if (commissionFraction !== null) {
-        equity -= commissionFraction * ordersPerLeg;
+        equity -= equity * commissionFraction * ordersPerLeg;
       }
       previousSecurityId = securityId;
     }

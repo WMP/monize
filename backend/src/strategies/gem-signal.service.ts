@@ -138,8 +138,10 @@ function windowStartFor(evaluatedOn: string, lookbackMonths: number): string {
  *   3 -- the roles are priced at one session: a role whose exit close trails
  *        the other roles' by more than `BOUNDARY_HOLIDAY_DAYS` is unpriced
  *        (a feed gap at the boundary, A26-M27).
+ *   4 -- closes are converted into the reporting currency at each close's own
+ *        date before momentum is compared across instruments.
  */
-export const GEM_SIGNAL_ALGORITHM_VERSION = 3;
+export const GEM_SIGNAL_ALGORITHM_VERSION = 4;
 
 /**
  * A hash of everything about a strategy that decides what its signals say.
@@ -222,6 +224,7 @@ export class GemSignalService {
     oldestEvaluatedOn: string,
     lookbackMonths: number,
     manager: EntityManager,
+    userId: string,
   ): Promise<PricesByRole> {
     const securityByRole = this.securityByRole(assets);
     const securityIds = [...securityByRole.values()];
@@ -238,6 +241,7 @@ export class GemSignalService {
       from,
       "day",
       manager,
+      userId,
     );
 
     const prices: PricesByRole = {};
@@ -509,6 +513,7 @@ export class GemSignalService {
         missing[0].evaluatedOn,
         strategy.lookbackMonths,
         manager,
+        userId,
       );
       const evaluable = new Set(missing.map((period) => period.evaluatedOn));
       const eligibleRoles = [...this.securityByRole(assets).keys()];

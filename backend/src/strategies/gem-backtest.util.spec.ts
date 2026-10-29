@@ -330,7 +330,8 @@ describe("runBacktest", () => {
     const basis = 1;
     const grossAtSwitch = (basis - fee) * 1.1;
     const tax = (grossAtSwitch - basis) * 0.2;
-    const finalEquity = grossAtSwitch - tax - fee - fee;
+    // Each leg's fee is a share of the equity at that leg.
+    const finalEquity = (grossAtSwitch - tax) * (1 - fee) * (1 - fee);
     const years = 366 / 365.25;
 
     expect(result?.cagrPercent).toBeCloseTo(
@@ -341,7 +342,49 @@ describe("runBacktest", () => {
     // And not this: a basis of 0.99 taxes the fee as though it were profit.
     const understated = grossAtSwitch - (grossAtSwitch - (basis - fee)) * 0.2;
     expect(result?.cagrPercent).not.toBeCloseTo(
-      (Math.pow(understated - fee - fee, 1 / years) - 1) * 100,
+      (Math.pow(understated * (1 - fee) * (1 - fee), 1 / years) - 1) * 100,
+      2,
+    );
+  });
+
+  /**
+   * Invariant: the commission is a share of the value traded, so a trade on a
+   * grown portfolio costs more in equity units than the opening one.
+   * Minimal mutation: subtract the bare fraction instead of `equity * fraction`.
+   * Test that fails under it: this one -- the switch fee stays 0.01 after the
+   * run has doubled.
+   */
+  it("charges the commission on the running equity, not on the opening one", () => {
+    const result = runBacktest(
+      input({
+        periods: [
+          {
+            effectiveFrom: "2024-01-01",
+            targetRole: "US_EQUITY",
+            targetSecurityId: "sec-spy",
+            previousRole: null,
+          },
+          {
+            effectiveFrom: "2024-07-01",
+            targetRole: "EM_EQUITY",
+            targetSecurityId: "sec-emim",
+            previousRole: "US_EQUITY",
+          },
+        ],
+        seriesBySecurity: new Map([
+          ["sec-spy", series({ "2024-01-01": 100, "2024-07-01": 200 })],
+          ["sec-emim", series({ "2024-07-01": 10, "2025-01-01": 10 })],
+        ]),
+        commissionAmount: 100,
+        notional: 10_000,
+      }),
+    );
+
+    const fee = 0.01;
+    const finalEquity = (1 - fee) * 2 * (1 - fee) * (1 - fee);
+    const years = 366 / 365.25;
+    expect(result?.cagrPercent).toBeCloseTo(
+      (Math.pow(finalEquity, 1 / years) - 1) * 100,
       2,
     );
   });
