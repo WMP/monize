@@ -1474,6 +1474,8 @@
     "totalReturn": "总回报率",
     "annualizedReturn": "年化回报率",
     "needs1YearNote": "需要 1 年以上数据",
+    "annualizedNeedsSingleBuyNote": "仅在只有一次买入且之后没有其他活动时显示",
+    "missingPrice": "{symbol} 没有价格",
     "priceHistory": "价格历史 - {symbol}",
     "buyTransaction": "买入交易",
     "sellTransaction": "卖出交易",

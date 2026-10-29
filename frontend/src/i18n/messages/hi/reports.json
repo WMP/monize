@@ -1474,6 +1474,8 @@
     "totalReturn": "कुल रिटर्न",
     "annualizedReturn": "वार्षिकीकृत रिटर्न",
     "needs1YearNote": "1+ वर्ष का डेटा आवश्यक",
+    "annualizedNeedsSingleBuyNote": "केवल एक ही खरीद और बाद में कोई गतिविधि न होने पर दिखाया जाता है",
+    "missingPrice": "{symbol} के लिए कोई मूल्य नहीं",
     "priceHistory": "मूल्य इतिहास - {symbol}",
     "buyTransaction": "खरीद लेनदेन",
     "sellTransaction": "बिक्री लेनदेन",

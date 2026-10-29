@@ -1474,6 +1474,8 @@
     "totalReturn": "Total Imbal Hasil",
     "annualizedReturn": "Imbal Hasil Disetahunkan",
     "needs1YearNote": "Membutuhkan data 1+ tahun",
+    "annualizedNeedsSingleBuyNote": "Hanya ditampilkan untuk satu pembelian tanpa aktivitas setelahnya",
+    "missingPrice": "Tidak ada harga untuk {symbol}",
     "priceHistory": "Riwayat Harga - {symbol}",
     "buyTransaction": "Transaksi beli",
     "sellTransaction": "Transaksi jual",

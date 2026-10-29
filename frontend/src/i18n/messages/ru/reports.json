@@ -1474,6 +1474,8 @@
     "totalReturn": "Общая доходность",
     "annualizedReturn": "Годовая доходность",
     "needs1YearNote": "Требуется 1+ год данных",
+    "annualizedNeedsSingleBuyNote": "Показывается только для одной покупки без последующих операций",
+    "missingPrice": "Нет цены для {symbol}",
     "priceHistory": "История цен — {symbol}",
     "buyTransaction": "Проводка покупки",
     "sellTransaction": "Проводка продажи",

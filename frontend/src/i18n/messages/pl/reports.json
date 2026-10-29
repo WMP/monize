@@ -1474,6 +1474,8 @@
     "totalReturn": "Całkowity zwrot",
     "annualizedReturn": "Zwrot roczny",
     "needs1YearNote": "Wymaga co najmniej 1 roku danych",
+    "annualizedNeedsSingleBuyNote": "Wartość jest widoczna tylko dla jednego zakupu bez późniejszych operacji",
+    "missingPrice": "Brak ceny dla {symbol}",
     "priceHistory": "Historia cen - {symbol}",
     "buyTransaction": "Transakcja kupna",
     "sellTransaction": "Transakcja sprzedaży",

@@ -1474,6 +1474,8 @@
     "totalReturn": "Toplam Getiri",
     "annualizedReturn": "Yıllıklaştırılmış Getiri",
     "needs1YearNote": "1+ yıl veri gerektirir",
+    "annualizedNeedsSingleBuyNote": "Yalnızca sonrasında işlem olmayan tek bir alımda gösterilir",
+    "missingPrice": "{symbol} için fiyat yok",
     "priceHistory": "Fiyat Geçmişi - {symbol}",
     "buyTransaction": "Alım işlemi",
     "sellTransaction": "Satım işlemi",

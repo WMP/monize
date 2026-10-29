@@ -1474,6 +1474,8 @@
     "totalReturn": "Totaalrendement",
     "annualizedReturn": "Geannualiseerd rendement",
     "needs1YearNote": "Minimaal 1 jaar data nodig",
+    "annualizedNeedsSingleBuyNote": "Alleen getoond bij één aankoop zonder latere activiteit",
+    "missingPrice": "Geen koers voor {symbol}",
     "priceHistory": "Koersgeschiedenis - {symbol}",
     "buyTransaction": "Aankoop",
     "sellTransaction": "Verkoop",

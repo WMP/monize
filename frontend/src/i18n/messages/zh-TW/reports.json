@@ -1474,6 +1474,8 @@
     "totalReturn": "總報酬率",
     "annualizedReturn": "年化報酬率",
     "needs1YearNote": "需要 1 年以上的資料",
+    "annualizedNeedsSingleBuyNote": "僅在只有一次買入且之後沒有其他活動時顯示",
+    "missingPrice": "{symbol} 沒有價格",
     "priceHistory": "價格歷史 - {symbol}",
     "buyTransaction": "買入交易",
     "sellTransaction": "賣出交易",

@@ -1474,6 +1474,8 @@
     "totalReturn": "총 수익률",
     "annualizedReturn": "연간화된 수익률",
     "needs1YearNote": "1년 이상의 데이터가 필요합니다",
+    "annualizedNeedsSingleBuyNote": "한 번의 매수 후 추가 활동이 없을 때만 표시됩니다",
+    "missingPrice": "{symbol}의 가격이 없습니다",
     "priceHistory": "가격 이력 - {symbol}",
     "buyTransaction": "매수 거래",
     "sellTransaction": "매도 거래",

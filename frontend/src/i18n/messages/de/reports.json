@@ -1474,6 +1474,8 @@
     "totalReturn": "Gesamtrendite",
     "annualizedReturn": "Annualisierte Rendite",
     "needs1YearNote": "Benötigt mindestens 1 Jahr Daten",
+    "annualizedNeedsSingleBuyNote": "Nur bei einem einzigen Kauf ohne spätere Aktivität angezeigt",
+    "missingPrice": "Kein Kurs für {symbol}",
     "priceHistory": "Kursverlauf – {symbol}",
     "buyTransaction": "Kaufbuchung",
     "sellTransaction": "Verkaufsbuchung",

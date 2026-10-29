@@ -1474,6 +1474,8 @@
     "totalReturn": "[XX-Total Return-XX]",
     "annualizedReturn": "[XX-Annualized Return-XX]",
     "needs1YearNote": "[XX-Needs 1+ year of data-XX]",
+    "annualizedNeedsSingleBuyNote": "[XX-Shown only for a single buy with no later activity-XX]",
+    "missingPrice": "[XX-No price for {symbol}-XX]",
     "priceHistory": "[XX-Price History - {symbol}-XX]",
     "buyTransaction": "[XX-Buy transaction-XX]",
     "sellTransaction": "[XX-Sell transaction-XX]",

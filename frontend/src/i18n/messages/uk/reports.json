@@ -1474,6 +1474,8 @@
     "totalReturn": "Загальна прибутковість",
     "annualizedReturn": "Річна прибутковість",
     "needs1YearNote": "Потрібно понад 1 рік даних",
+    "annualizedNeedsSingleBuyNote": "Показується лише для однієї купівлі без подальших операцій",
+    "missingPrice": "Немає ціни для {symbol}",
     "priceHistory": "Історія цін — {symbol}",
     "buyTransaction": "Операція купівлі",
     "sellTransaction": "Операція продажу",

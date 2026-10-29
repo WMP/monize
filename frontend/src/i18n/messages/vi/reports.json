@@ -1474,6 +1474,8 @@
     "totalReturn": "Tổng lợi nhuận",
     "annualizedReturn": "Lợi nhuận hàng năm",
     "needs1YearNote": "Cần hơn 1 năm dữ liệu",
+    "annualizedNeedsSingleBuyNote": "Chỉ hiển thị cho một lần mua duy nhất không có hoạt động sau đó",
+    "missingPrice": "Không có giá cho {symbol}",
     "priceHistory": "Lịch sử giá - {symbol}",
     "buyTransaction": "Giao tác mua",
     "sellTransaction": "Giao tác bán",

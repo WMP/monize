@@ -1474,6 +1474,8 @@
     "totalReturn": "Rendement total",
     "annualizedReturn": "Rendement annualisé",
     "needs1YearNote": "Nécessite 1+ an de données",
+    "annualizedNeedsSingleBuyNote": "Affiché uniquement pour un achat unique sans activité ultérieure",
+    "missingPrice": "Aucun cours pour {symbol}",
     "priceHistory": "Historique des cours - {symbol}",
     "buyTransaction": "Transaction d'achat",
     "sellTransaction": "Transaction de vente",

@@ -1474,6 +1474,8 @@
     "totalReturn": "総リターン",
     "annualizedReturn": "年率リターン",
     "needs1YearNote": "1年以上のデータが必要",
+    "annualizedNeedsSingleBuyNote": "購入が1回のみで、その後の取引がない場合にのみ表示されます",
+    "missingPrice": "{symbol} の価格がありません",
     "priceHistory": "価格履歴 - {symbol}",
     "buyTransaction": "購入取引",
     "sellTransaction": "売却取引",
