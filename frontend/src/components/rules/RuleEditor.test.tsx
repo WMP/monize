@@ -200,7 +200,7 @@ describe('RuleEditor: a new rule', () => {
     click('+ Add group');
     const group = card('Group');
     fireEvent.click(within(group).getByRole('button', { name: 'Any of these' }));
-    fireEvent.click(within(group).getByRole('switch', { name: /Negate this group/ }));
+    fireEvent.click(within(group).getByRole('switch', { name: 'Negate Group' }));
     fireEvent.click(within(group).getByRole('button', { name: '+ Add condition' }));
     fireEvent.change(within(group).getByLabelText('Operator'), { target: { value: 'isEmpty' } });
     addTagAction(0, 'Work');
@@ -373,6 +373,18 @@ describe('RuleEditor: a new rule', () => {
 
     await act(async () => finish(makeRule({ id: 'done' })));
     expect(useRouter().replace).toHaveBeenCalledWith('/rules/done');
+  });
+
+  it('ends with the form button row: Cancel back to the list first, Save last', async () => {
+    await renderEditor();
+    const cancel = screen.getByRole('button', { name: 'Cancel' });
+    const row = cancel.parentElement as HTMLElement;
+    expect(within(row).getAllByRole('button').map((b) => b.textContent)).toEqual(['Cancel', 'Save rule']);
+    expect(saveButton()).toHaveAttribute('type', 'submit');
+
+    fireEvent.click(cancel);
+    expect(useRouter().push).toHaveBeenCalledWith('/rules');
+    expect(mocks.rules.create).not.toHaveBeenCalled();
   });
 });
 

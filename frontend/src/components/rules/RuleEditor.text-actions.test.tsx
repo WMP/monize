@@ -104,9 +104,9 @@ describe('RuleEditor: the text actions', () => {
     click('+ Add action');
     fireEvent.change(within(card('Action', 1)).getByLabelText('Action type'), { target: { value: 'set_description' } });
     const description = card('Action', 1);
-    expect(within(description).getByLabelText('How to write it')).toHaveValue('replace');
+    expect(within(description).getByLabelText('Description Mode')).toHaveValue('replace');
     expect(within(description).getByRole('switch', { name: 'Only if empty' })).toHaveAttribute('aria-checked', 'false');
-    fireEvent.change(within(description).getByLabelText('How to write it'), { target: { value: 'append' } });
+    fireEvent.change(within(description).getByLabelText('Description Mode'), { target: { value: 'append' } });
     fireEvent.change(within(description).getByLabelText('Description text'), { target: { value: ' / ' } });
     fireEvent.click(within(description).getByRole('button', { name: 'Insert {ref}' }));
 
@@ -214,7 +214,7 @@ describe('RuleEditor: a stored rule with the text actions and the newer fields',
     expect(within(payee).getByRole('switch', { name: 'Create the payee if it does not exist' })).toHaveAttribute('aria-checked', 'true');
     expect(within(payee).getByRole('switch', { name: 'Only if empty' })).toHaveAttribute('aria-checked', 'false');
     const description = card('Action', 1);
-    expect(within(description).getByLabelText('How to write it')).toHaveValue('prepend');
+    expect(within(description).getByLabelText('Description Mode')).toHaveValue('prepend');
     expect(within(description).getByLabelText('Description text')).toHaveValue('{description} | {ref}');
     expect(within(description).getByRole('switch', { name: 'Only if empty' })).toHaveAttribute('aria-checked', 'true');
     expect(within(card('Condition', 1)).getByLabelText('Field')).toHaveValue('referenceNumber');

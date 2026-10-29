@@ -114,8 +114,8 @@
       "matchAll": "All of these",
       "matchAny": "Any of these",
       "matchLabel": "Match",
-      "not": "Not",
-      "notLabel": "Negate this group: it matches when its conditions do not",
+      "not": "Negate Group",
+      "notHelp": "A negated group matches when its conditions do not.",
       "title": "Group",
       "addCondition": "+ Add condition",
       "addGroup": "+ Add group",
@@ -201,7 +201,7 @@
       "tags": "Tags",
       "category": "Category",
       "payee": "Payee",
-      "instruction": "What should be checked",
+      "instruction": "Review Instructions",
       "instructionPlaceholder": "For example, split this purchase by the receipt",
       "instructionHelp": "The rule only asks for a review. A person approves any change before it is made.",
       "onlyIfEmpty": "Only if empty",
@@ -220,7 +220,7 @@
       "createIfMissing": "Create the payee if it does not exist",
       "createIfMissingHelp": "When on, and no payee matches the name (by name, alias or a close match), a new payee is created with it. A payee created by a rule is kept if you undo the run.",
       "onlyIfEmptyDescriptionHelp": "When on, the rule writes the description only if the transaction has none. Turn it off to write it every time.",
-      "mode": "How to write it",
+      "mode": "Description Mode",
       "modes": {
         "replace": "Replace the description",
         "append": "Add after the description",
@@ -262,12 +262,12 @@
         "windowHelp": "How far from the due date the bank may take the payment. A debit up to this many days before or after an installment's due date pays that installment; one outside the window is left alone.",
         "daysBefore": "Days before the due date",
         "daysAfter": "Days after the due date",
-        "excess": "When the debit is more than the installment",
+        "excess": "Debit Above the Installment",
         "excessPolicies": {
           "extra_principal": "Pay the difference as extra principal",
           "refuse": "Leave the transaction alone"
         },
-        "shortfall": "When the debit is less than the installment",
+        "shortfall": "Debit Below the Installment",
         "shortfallPolicies": {
           "refuse": "Leave the transaction alone",
           "interest_first": "Pay the interest first, the rest as principal"
