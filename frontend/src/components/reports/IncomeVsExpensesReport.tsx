@@ -53,6 +53,7 @@ import {
   type ChartDataItem,
   type IncomeVsExpensesSortField,
 } from "@/components/reports/IncomeVsExpensesTable";
+import { EmptyState } from '@/components/ui/EmptyState';
 
 const ACCOUNTS_STORAGE_KEY = 'monize-reports-income-vs-expenses-accounts';
 const INCLUDE_TRANSFERS_STORAGE_KEY = 'monize-reports-income-vs-expenses-stack-tagged';
@@ -490,9 +491,7 @@ export function IncomeVsExpensesReport() {
         ) : error ? (
           <ReportError onRetry={reload} />
         ) : chartData.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('incomeVsExpenses.noData')}
-          </p>
+          <EmptyState title={t('incomeVsExpenses.noData')} />
         ) : viewType === 'table' ? (
           <IncomeVsExpensesTable
             rows={sortedTableData}

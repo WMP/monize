@@ -3,6 +3,7 @@
 import { CashFlowType } from '@/lib/monte-carlo';
 import { chartColors } from '@/lib/chart-colors';
 import { useTranslations } from 'next-intl';
+import { gainLossColor } from '@/lib/format';
 
 export interface CashFlowEvent {
   role: 'start' | 'end';
@@ -104,13 +105,7 @@ export function FanChartTooltip({
                     ? e.name
                     : `${e.role === 'start' ? t('monteCarloResults.starts') : t('monteCarloResults.ends')}: ${e.name}`}
                 </div>
-                <div
-                  className={
-                    e.income
-                      ? 'text-emerald-700 dark:text-emerald-400'
-                      : 'text-red-700 dark:text-red-400'
-                  }
-                >
+                <div className={gainLossColor(e.income ? 1 : -1)}>
                   {e.income ? '+' : ''}
                   {fmt(e.amount)}
                   {e.flowType === 'RECURRING' ? ` ${t('monteCarlo.cashFlowPerYear')}` : ''}

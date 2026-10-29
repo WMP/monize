@@ -63,9 +63,6 @@ export interface SortColumn extends TableSortColumn<InvestmentTxSortField> {
  */
 export type SortColumnsByField = TableSortColumnsByField<InvestmentTxSortField, SortColumn>;
 
-// Today's header cell, unchanged.
-export const HEADER_CLASS = 'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase';
-
 // The same sort controls in the phone strip: a wrapped row of compact chips.
 // Column alignment means nothing there -- the column header row is hidden and
 // each data row is a grid -- so every control is left-aligned and self-naming.

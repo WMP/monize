@@ -34,6 +34,7 @@ import { PartialTotal } from '@/components/ui/PartialTotal';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { createLogger } from '@/lib/logger';
 import { aggregateHoldingsBySecurity, AggregatedHolding } from '@/lib/aggregate-holdings';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
 const logger = createLogger('SecurityTypeAllocationReport');
 
@@ -525,7 +526,7 @@ export function SecurityTypeAllocationReport() {
       </div>
 
       {/* Pie Chart */}
-      <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
+      <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           {t('securityTypeAllocation.assetTypeAllocation')}
         </h3>
@@ -672,15 +673,7 @@ export function SecurityTypeAllocationReport() {
                           style={{ backgroundColor: item.color }}
                         />
                         <span className="line-clamp-3 break-words sm:line-clamp-none sm:break-normal" title={item.label}>{item.label}</span>
-                        <svg
-                          aria-hidden="true"
-                          className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${expandedType === item.type ? 'rotate-180' : ''}`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
+                        <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${expandedType === item.type ? 'rotate-180' : ''}`} aria-hidden="true" />
                       </div>
                     </td>
                     {/* The total is the headline: the right of line 1, beside the

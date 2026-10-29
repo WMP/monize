@@ -4,6 +4,7 @@
     "subtitle": "Genera información sobre tu salud financiera",
     "searchPlaceholder": "Buscar informes por nombre o descripción...",
     "allReports": "Todos los informes",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "Eliminar de favoritos",
     "addFavourite": "Agregar a favoritos",
     "tableReport": "Informe",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "Informe no encontrado",
-    "notFoundDesc": "El informe solicitado no existe."
+    "notFoundDesc": "El informe solicitado no existe.",
+    "viewLabel": "Vista"
   },
   "error": {
     "defaultMessage": "Error al cargar los datos del informe. Por favor, inténtalo de nuevo.",
@@ -514,8 +516,6 @@
     "viewMonthly": "Mensual",
     "viewDaily": "Diario",
     "viewBySecurity": "Por valor",
-    "displayChart": "Gráfico",
-    "displayTable": "Tabla",
     "showLabel": "Mostrar:",
     "seriesDividends": "Dividendos",
     "seriesInterest": "Intereses",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "A algunos días de este período les falta un precio, un tipo de cambio o un saldo de efectivo, por lo que no se muestran las cifras que dependen de todos los días.",
     "measuredFromClose": "Desde el cierre de la sesión del {date}",
     "notAvailable": "N/A",
-    "intradayUnavailable": "Precios intradía detallados no disponibles",
     "intradayUnavailableTitle": "Vista intradía no disponible para esta combinación de cuentas",
     "intradayUnavailableDesc": "Una o más posiciones usan un proveedor de cotizaciones (MSN Money) que no expone datos intradía{skipped}. Cambia a un rango más largo para ver instantáneas diarias.",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "Base de costo",
     "realizedGainLoss": "Ganancia/pérdida realizada",
     "securitiesSold": "Valores vendidos",
-    "viewChart": "Gráfico",
-    "viewTable": "Tabla",
     "noTransactions": "No se encontraron transacciones de venta para este período.",
     "noGainsLosses": "No hay ganancias ni pérdidas para mostrar.",
     "bySecurityTitle": "Ganancias realizadas por valor",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "Total de 6 meses",
     "monthlyEstimate": "Estimado mensual",
     "identifiedPayees": "beneficiarios identificados",
-    "minOccurrencesLabel": "Ocurrencias mínimas:",
+    "minOccurrencesLabel": "Ocurrencias mínimas",
     "inLast6Months": "(en los últimos 6 meses)",
     "noRecurring": "No se encontraron gastos recurrentes con {count}+ ocurrencias en los últimos 6 meses.",
     "failedToLoad": "Error al cargar los datos de gastos recurrentes.",
@@ -1699,8 +1696,6 @@
     "activeBills": "Facturas activas",
     "overdue": "Vencidas",
     "thisMonth": "Este mes",
-    "autoPostsTitle": "Se registra automáticamente al vencer",
-    "manualPostTitle": "Requiere registro manual",
     "autoLabel": "Auto",
     "manualLabel": "Manual",
     "overdueLabel": "Vencida",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "Quitar {title} de la comparación",
     "removeTitle": "Quitar de la comparación",
     "runFailed": "La ejecución falló",
+    "never": "Nunca",
     "errors": {
       "loadScenarioFailed": "No se pudo cargar el escenario.",
       "simulationFailed": "La simulación falló."
@@ -1847,7 +1843,6 @@
     "backToReports": "Volver a informes",
     "deleteButton": "Eliminar informe",
     "deleteConfirmMessage": "¿Estás seguro de que quieres eliminar \"{name}\"? Esta acción no se puede deshacer.",
-    "deleting": "Eliminando...",
     "toasts": {
       "loadFailed": "Error al cargar el informe",
       "updated": "Informe actualizado",

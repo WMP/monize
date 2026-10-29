@@ -37,6 +37,8 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { createLogger } from '@/lib/logger';
 import { chartColors, CHART_SERIES } from '@/lib/chart-colors';
 import { useTranslations } from 'next-intl';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 const logger = createLogger('DividendYieldGrowthReport');
 
@@ -595,33 +597,32 @@ export function DividendYieldGrowthReport() {
             value={selectedAccountIds}
             onChange={setSelectedAccountIds}
           />
-          {/* `items-stretch`, not `items-center`: squeezed onto a phone these
-              three labels wrap onto a different number of lines each, and a
-              one-word button (Frequency) stood shorter than the two beside it.
-              They wrap onto their own lines here, all the height of the
-              tallest on the line. */}
-          <div className="flex flex-wrap gap-2 items-stretch">
+          <div
+            className={`${SEGMENTED_GROUP_CLASS} flex-wrap`}
+            role="group"
+            aria-label={t('reportPage.viewLabel')}
+          >
             <button
+              type="button"
               onClick={() => setViewType('yield')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'yield' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'yield'}
+              className={segmentClass(viewType === 'yield')}
             >
               {t('dividendYieldGrowth.viewPerSecurity')}
             </button>
             <button
+              type="button"
               onClick={() => setViewType('growth')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'growth' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'growth'}
+              className={segmentClass(viewType === 'growth')}
             >
               {t('dividendYieldGrowth.viewYearOverYear')}
             </button>
             <button
+              type="button"
               onClick={() => setViewType('frequency')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewType === 'frequency' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+              aria-pressed={viewType === 'frequency'}
+              className={segmentClass(viewType === 'frequency')}
             >
               {t('dividendYieldGrowth.viewFrequency')}
             </button>
@@ -636,9 +637,7 @@ export function DividendYieldGrowthReport() {
 
       {transactions.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            {t('dividendYieldGrowth.empty')}
-          </p>
+          <EmptyState title={t('dividendYieldGrowth.empty')} />
         </div>
       ) : viewType === 'yield' ? (
         /* Per-Security Yield Table */
@@ -823,7 +822,7 @@ export function DividendYieldGrowthReport() {
               </div>
             </>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('dividendYieldGrowth.noAnnualData')}</p>
+            <EmptyState title={t('dividendYieldGrowth.noAnnualData')} />
           )}
         </div>
       ) : (
@@ -905,7 +904,7 @@ export function DividendYieldGrowthReport() {
               </div>
             </>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('dividendYieldGrowth.noFrequencyData')}</p>
+            <EmptyState title={t('dividendYieldGrowth.noFrequencyData')} />
           )}
         </div>
       )}

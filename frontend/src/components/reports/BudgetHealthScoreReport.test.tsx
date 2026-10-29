@@ -137,7 +137,7 @@ describe('BudgetHealthScoreReport', () => {
       expect(screen.getByText(/Failed to load report data/i)).toBeInTheDocument();
     });
     expect(screen.queryByText('Score Breakdown')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Try again/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
   });
 
   it('exports to PDF with category impact rows', async () => {

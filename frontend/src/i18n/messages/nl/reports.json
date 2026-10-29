@@ -4,6 +4,7 @@
     "subtitle": "Genereer inzichten over jouw financiële gezondheid",
     "searchPlaceholder": "Zoek rapporten op naam of omschrijving...",
     "allReports": "Alle rapporten",
+    "categoryWithCount": "{label} ({count})",
     "removeFavourite": "Verwijderen uit favorieten",
     "addFavourite": "Toevoegen aan favorieten",
     "tableReport": "Rapport",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "Rapport niet gevonden",
-    "notFoundDesc": "Het gevraagde rapport bestaat niet."
+    "notFoundDesc": "Het gevraagde rapport bestaat niet.",
+    "viewLabel": "Weergave"
   },
   "error": {
     "defaultMessage": "Rapportgegevens konden niet worden geladen. Probeer het opnieuw.",
@@ -514,8 +516,6 @@
     "viewMonthly": "Maandelijks",
     "viewDaily": "Dagelijks",
     "viewBySecurity": "Per waardepapier",
-    "displayChart": "Grafiek",
-    "displayTable": "Tabel",
     "showLabel": "Tonen:",
     "seriesDividends": "Dividenden",
     "seriesInterest": "Rente",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "Voor sommige dagen in deze periode ontbreekt een koers, een wisselkoers of een liquide saldo, waardoor de cijfers die van elke dag afhangen niet worden weergegeven.",
     "measuredFromClose": "Sinds de slotkoers van {date}",
     "notAvailable": "N/B",
-    "intradayUnavailable": "Gedetailleerde intraday-koersen niet beschikbaar",
     "intradayUnavailableTitle": "Intraday-weergave niet beschikbaar voor deze rekeningcombinatie",
     "intradayUnavailableDesc": "Een of meer posities gebruiken een koersaanbieder (MSN Money) die geen intraday-gegevens beschikbaar stelt{skipped}. Schakel over naar een langere periode om dagelijkse momentopnamen te zien.",
     "intradayUnavailableSkipped": ": {symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "Kostprijs",
     "realizedGainLoss": "Gerealiseerde winst/verlies",
     "securitiesSold": "Verkochte waardepapieren",
-    "viewChart": "Grafiek",
-    "viewTable": "Tabel",
     "noTransactions": "Geen verkooptransacties gevonden voor deze periode.",
     "noGainsLosses": "Geen winsten of verliezen om weer te geven.",
     "bySecurityTitle": "Gerealiseerde winsten per waardepapier",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "Totaal 6 maanden",
     "monthlyEstimate": "Maandelijkse schatting",
     "identifiedPayees": "geïdentificeerde begunstigden",
-    "minOccurrencesLabel": "Minimaal aantal keer:",
+    "minOccurrencesLabel": "Minimaal aantal keer",
     "inLast6Months": "(in de afgelopen 6 maanden)",
     "noRecurring": "Geen terugkerende uitgaven gevonden met {count}+ keer in de afgelopen 6 maanden.",
     "failedToLoad": "Gegevens terugkerende uitgaven konden niet worden geladen.",
@@ -1699,8 +1696,6 @@
     "activeBills": "Actieve rekeningen",
     "overdue": "Achterstallig",
     "thisMonth": "Deze maand",
-    "autoPostsTitle": "Automatisch geboekt bij vervaldatum",
-    "manualPostTitle": "Vereist handmatige boeking",
     "autoLabel": "Auto",
     "manualLabel": "Handmatig",
     "overdueLabel": "Achterstallig",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "{title} verwijderen uit vergelijking",
     "removeTitle": "Verwijderen uit vergelijking",
     "runFailed": "Uitvoering mislukt",
+    "never": "Nooit",
     "errors": {
       "loadScenarioFailed": "Scenario kon niet worden geladen.",
       "simulationFailed": "Simulatie mislukt."
@@ -1847,7 +1843,6 @@
     "backToReports": "Terug naar rapporten",
     "deleteButton": "Rapport verwijderen",
     "deleteConfirmMessage": "Weet je zeker dat je \"{name}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
-    "deleting": "Verwijderen...",
     "toasts": {
       "loadFailed": "Rapport kon niet worden geladen",
       "updated": "Rapport bijgewerkt",

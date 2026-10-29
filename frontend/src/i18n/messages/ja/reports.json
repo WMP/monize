@@ -4,6 +4,7 @@
     "subtitle": "財務健全性に関するインサイトを生成する",
     "searchPlaceholder": "名前または説明でレポートを検索...",
     "allReports": "すべてのレポート",
+    "categoryWithCount": "{label}（{count}）",
     "removeFavourite": "お気に入りから削除",
     "addFavourite": "お気に入りに追加",
     "tableReport": "レポート",
@@ -137,7 +138,8 @@
   },
   "reportPage": {
     "notFound": "レポートが見つかりません",
-    "notFoundDesc": "リクエストされたレポートは存在しません。"
+    "notFoundDesc": "リクエストされたレポートは存在しません。",
+    "viewLabel": "表示"
   },
   "error": {
     "defaultMessage": "レポートデータの読み込みに失敗しました。再試行してください。",
@@ -514,8 +516,6 @@
     "viewMonthly": "月次",
     "viewDaily": "日次",
     "viewBySecurity": "有価証券別",
-    "displayChart": "グラフ",
-    "displayTable": "表",
     "showLabel": "表示：",
     "seriesDividends": "配当",
     "seriesInterest": "利息",
@@ -1251,7 +1251,6 @@
     "incompleteTooltip": "この期間の一部の日に価格、為替レート、または現金残高が欠けているため、すべての日に依存する数値は表示されません。",
     "measuredFromClose": "{date} の取引終了時点から",
     "notAvailable": "N/A",
-    "intradayUnavailable": "詳細な日中価格データが利用できません",
     "intradayUnavailableTitle": "この口座の組み合わせでは日中ビューが利用できません",
     "intradayUnavailableDesc": "1つ以上の保有銘柄は日中データを公開していない価格プロバイダー（MSN Money）を使用しています{skipped}。日次スナップショットを確認するには、より長い期間に切り替えてください。",
     "intradayUnavailableSkipped": "：{symbols}",
@@ -1302,8 +1301,6 @@
     "costBasis": "取得原価",
     "realizedGainLoss": "実現損益",
     "securitiesSold": "売却した有価証券",
-    "viewChart": "グラフ",
-    "viewTable": "表",
     "noTransactions": "この期間の売却取引が見つかりません。",
     "noGainsLosses": "表示する損益がありません。",
     "bySecurityTitle": "有価証券別実現損益",
@@ -1339,7 +1336,7 @@
     "sixMonthTotal": "6ヶ月合計",
     "monthlyEstimate": "月次見積もり",
     "identifiedPayees": "特定した支払先",
-    "minOccurrencesLabel": "最小発生回数：",
+    "minOccurrencesLabel": "最小発生回数",
     "inLast6Months": "（過去6ヶ月間）",
     "noRecurring": "過去6ヶ月間に {count}+ 回発生した定期費用が見つかりません。",
     "failedToLoad": "定期費用データの読み込みに失敗しました。",
@@ -1699,8 +1696,6 @@
     "activeBills": "有効な請求書",
     "overdue": "期限超過",
     "thisMonth": "今月",
-    "autoPostsTitle": "期日になると自動記録",
-    "manualPostTitle": "手動記録が必要",
     "autoLabel": "自動",
     "manualLabel": "手動",
     "overdueLabel": "期限超過",
@@ -1834,6 +1829,7 @@
     "removeAriaLabel": "{title}を比較から削除",
     "removeTitle": "比較から削除",
     "runFailed": "実行に失敗しました",
+    "never": "未実行",
     "errors": {
       "loadScenarioFailed": "シナリオの読み込みに失敗しました。",
       "simulationFailed": "シミュレーションが失敗しました。"
@@ -1847,7 +1843,6 @@
     "backToReports": "レポートに戻る",
     "deleteButton": "レポートを削除",
     "deleteConfirmMessage": "「{name}」を削除してもよいですか？この操作は元に戻せません。",
-    "deleting": "削除中...",
     "toasts": {
       "loadFailed": "レポートの読み込みに失敗しました",
       "updated": "レポートが更新されました",

@@ -352,7 +352,7 @@ describe("RecurringExpensesReport", () => {
     });
     render(<RecurringExpensesReport />);
     await waitFor(() => {
-      expect(screen.getByText("Minimum occurrences:")).toBeInTheDocument();
+      expect(screen.getByText("Minimum Occurrences")).toBeInTheDocument();
     });
     expect(screen.getByText("(in last 6 months)")).toBeInTheDocument();
   });
@@ -529,7 +529,7 @@ describe("RecurringExpensesReport", () => {
       summary: { uniquePayees: 0, totalRecurring: 0, monthlyEstimate: 0 },
     });
     render(<RecurringExpensesReport />);
-    await waitFor(() => expect(screen.getByText("Minimum occurrences:")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Minimum Occurrences")).toBeInTheDocument());
     const select = screen.getByRole("combobox");
     fireEvent.change(select, { target: { value: "5" } });
     await waitFor(() => expect(mockGetRecurringExpenses).toHaveBeenCalledWith(5));

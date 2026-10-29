@@ -25,6 +25,7 @@ import { resolvePdfColor } from "@/components/reports/resolve-pdf-color";
 import { ReportToolbarActions } from '@/components/reports/ReportToolbarActions';
 import { ChartViewToggle } from "@/components/ui/ChartViewToggle";
 import { SortableHeader } from "@/components/ui/SortableHeader";
+import { TH_CLASS, Th } from "@/components/ui/Table";
 import { exportToCsv } from "@/lib/csv-export";
 import { useReportData } from "@/hooks/useReportData";
 import { ReportError } from "@/components/reports/ReportError";
@@ -415,7 +416,7 @@ export function YearOverYearReport() {
                     sortField={sortField}
                     sortDirection={sortDirection}
                     onSort={handleSort}
-                    className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    className={TH_CLASS}
                   >
                     {t('yearOverYear.colMonth')}
                   </SortableHeader>
@@ -427,7 +428,7 @@ export function YearOverYearReport() {
                       sortDirection={sortDirection}
                       onSort={handleSort}
                       align="right"
-                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                      className={TH_CLASS}
                     >
                       <span style={{ color: chartSeriesColor(index) }}>{year}</span>
                     </SortableHeader>
@@ -513,16 +514,11 @@ export function YearOverYearReport() {
             <table className="min-w-full">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {t('yearOverYear.colMetric')}
-                  </th>
+                  <Th>{t('yearOverYear.colMetric')}</Th>
                   {years.slice(1).map((year, index) => (
-                    <th
-                      key={year}
-                      className="py-2 px-4 text-right text-sm font-medium text-gray-500 dark:text-gray-400"
-                    >
+                    <Th key={year} align="right">
                       {t('yearOverYear.yearsCompare', { prevYear: years[index], year })}
-                    </th>
+                    </Th>
                   ))}
                 </tr>
               </thead>
