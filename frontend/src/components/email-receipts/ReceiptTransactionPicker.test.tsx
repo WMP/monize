@@ -202,6 +202,33 @@ describe('ReceiptTransactionPicker', () => {
     expect(screen.getByText(/Coffee Shop/)).toBeInTheDocument();
   });
 
+  it('never asks again for a search that rested before the box was emptied', async () => {
+    await renderPicker();
+    await typeSearch('coffee');
+    expect(api.getAll).toHaveBeenLastCalledWith({ startDate: '2026-08-29', endDate: '2026-09-15', limit: 50, search: 'coffee' });
+    // Emptied: the whole range at once.
+    await act(async () => {
+      fireEvent.change(searchBox(), { target: { value: '' } });
+    });
+    await act(async () => {});
+    expect(api.getAll).toHaveBeenLastCalledWith({ startDate: '2026-08-29', endDate: '2026-09-15', limit: 50 });
+    const callsAfterClear = api.getAll.mock.calls.length;
+    // The next word, typed before the cleared box has rested: the old
+    // 'coffee' is still the debounced value, and must not be asked for.
+    await act(async () => {
+      fireEvent.change(searchBox(), { target: { value: 'tea' } });
+    });
+    await act(async () => {});
+    expect(api.getAll.mock.calls.slice(callsAfterClear)).toEqual([]);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, RECEIPT_PICK_SEARCH_DEBOUNCE_MS + 50));
+    });
+    await act(async () => {});
+    expect(api.getAll.mock.calls.slice(callsAfterClear)).toEqual([
+      [{ startDate: '2026-08-29', endDate: '2026-09-15', limit: 50, search: 'tea' }],
+    ]);
+  });
+
   it('says which kind of empty it is', async () => {
     api.getAll.mockResolvedValueOnce(page([]));
     await renderPicker();

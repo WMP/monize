@@ -96,9 +96,19 @@ export function ReceiptTransactionPicker({
 
   const [draft, setDraft] = useState(initialSearch);
   // The list follows the box as the person types, once the text has rested: each search is a server round trip.
-  const restedSearch = useDebouncedValue(draft.trim(), RECEIPT_PICK_SEARCH_DEBOUNCE_MS);
-  // Emptying the box shows the whole range at once, not after the delay.
-  const search = draft.trim() === '' ? '' : restedSearch;
+  const typed = draft.trim();
+  const restedSearch = useDebouncedValue(typed, RECEIPT_PICK_SEARCH_DEBOUNCE_MS);
+  // The search the list is asked for. Emptying the box applies at once, not
+  // after the delay; any other text applies only once the rested value IS the
+  // box's text, so a value that rested before the box was emptied is never
+  // asked for again while the next word is being typed. Adjusted during
+  // render (no setState in an effect).
+  const [search, setSearch] = useState(typed);
+  if (typed === '' && search !== '') {
+    setSearch('');
+  } else if (typed !== '' && restedSearch === typed && search !== typed) {
+    setSearch(typed);
+  }
   const [answer, setAnswer] = useState<Answer | null>(null);
   // Bumped by the retry button; each value is one request.
   const [attempt, setAttempt] = useState(0);
