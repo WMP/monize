@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "Đã cập nhật chuyển khoản chứng khoán",
       "ranTransactionRule": "Đã chạy quy tắc “{name}” trên {count, plural, other {# giao dịch}}"
     },
-    "timeAgo": {
-      "justNow": "vừa xong",
-      "minutes": "{count} phút trước",
-      "hours": "{count} giờ trước",
-      "days": "{count} ngày trước"
-    },
     "undonePrefix": "Đã hoàn tác: {description}",
     "redonePrefix": "Đã làm lại: {description}"
   },

@@ -12,7 +12,7 @@
   "payroll": {
     "title": "Payroll Deductions",
     "subtitle": "Yearly maximums on the deduction lines of your payroll bill",
-    "backToTaxes": "Taxes",
+    "backToTaxes": "Back to Taxes",
     "newButton": "+ New Rule",
     "loading": "Loading payroll deductions...",
     "emptyState": {

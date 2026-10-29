@@ -35,7 +35,7 @@
     "createFailed": "Die Erinnerung konnte nicht eingestellt werden",
     "dialogTitle": "Erinnere mich",
     "dialogDescription": "Erhalte diese Benachrichtigung später erneut, bis du reagierst.",
-    "modeLabel": "Wie oft",
+    "modeLabel": "Häufigkeit",
     "modeRepeat": "Wiederholen, bis ich stoppe",
     "modeOnce": "Nur noch einmal",
     "intervalLabelRepeat": "Erinnere mich alle",

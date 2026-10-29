@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "Zaktualizowano transfer papierów wartościowych",
       "ranTransactionRule": "Uruchomiono regułę „{name}” dla {count, plural, one {# transakcji} few {# transakcji} many {# transakcji} other {# transakcji}}"
     },
-    "timeAgo": {
-      "justNow": "przed chwilą",
-      "minutes": "{count} min temu",
-      "hours": "{count} godz. temu",
-      "days": "{count} dni temu"
-    },
     "undonePrefix": "Cofnięto: {description}",
     "redonePrefix": "Ponowiono: {description}"
   },

@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "유가증권 이체가 업데이트되었습니다",
       "ranTransactionRule": "“{name}” 규칙을 {count, plural, other {# 건}}의 거래에 실행했습니다"
     },
-    "timeAgo": {
-      "justNow": "방금 전",
-      "minutes": "{count}분 전",
-      "hours": "{count}시간 전",
-      "days": "{count}일 전"
-    },
     "undonePrefix": "취소됨: {description}",
     "redonePrefix": "다시 실행됨: {description}"
   },

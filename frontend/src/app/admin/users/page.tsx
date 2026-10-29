@@ -9,6 +9,7 @@ import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
+import { CARD_CLASS } from '@/components/ui/Card';
 import {
   AdminStorageState,
   UserManagementTable,
@@ -303,12 +304,13 @@ export default function AdminUsersPage() {
           <PageHeader
             title={t('usersPage.title')}
             subtitle={t('usersPage.userCount', { count: users.length })}
+            helpUrl="https://github.com/kenlasko/monize/wiki/Settings-and-Security#user-management"
             actions={
               <Button onClick={() => setCreateModalOpen(true)}>{t('usersPage.newUser')}</Button>
             }
           />
 
-          <div className="bg-white dark:bg-gray-900 shadow rounded-lg overflow-hidden">
+          <div className={`${CARD_CLASS} overflow-hidden`}>
           {isLoading ? (
             <LoadingSpinner text={t('usersPage.loadingUsers')} />
           ) : (

@@ -3,6 +3,11 @@ import { render, screen, fireEvent } from '@/test/render';
 import { AdminStorageState, UserManagementTable } from './UserManagementTable';
 import { AdminUserStorage } from '@/lib/admin';
 
+const mobileState = vi.hoisted(() => ({ isMobile: false }));
+vi.mock('@/hooks/useIsMobile', () => ({
+  useIsMobile: () => mobileState.isMobile,
+}));
+
 vi.mock('@/hooks/useDateFormat', () => ({
   useDateFormat: () => ({ dateFormat: 'browser', datePattern: 'YYYY-MM-DD', formatDate: (d: Date) => d.toISOString().slice(0, 10) }),
 }));
@@ -61,6 +66,8 @@ describe('UserManagementTable', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
+    mobileState.isMobile = false;
   });
 
   it('renders table with user data', () => {
@@ -75,7 +82,8 @@ describe('UserManagementTable', () => {
     render(<UserManagementTable {...defaultProps} />);
     // "User" also appears in role dropdown options, so check within thead
     const headerRow = screen.getAllByRole('columnheader');
-    const headerTexts = headerRow.map(h => h.textContent);
+    // Drop the sort glyphs the sortable headers carry.
+    const headerTexts = headerRow.map(h => h.textContent?.replace(/[\u2191\u2193\u2195]/g, ''));
     expect(headerTexts).toContain('User');
     expect(headerTexts).toContain('Role');
     expect(headerTexts).toContain('Provider');
@@ -110,8 +118,8 @@ describe('UserManagementTable', () => {
   it('shows Delete button for non-self users and calls onDeleteUser', () => {
     render(<UserManagementTable {...defaultProps} />);
     const deleteButtons = screen.getAllByText('Delete');
-    expect(deleteButtons).toHaveLength(2); // u2 and u3
-    fireEvent.click(deleteButtons[0]);
+    expect(deleteButtons).toHaveLength(2); // u3 and u2, in name order
+    fireEvent.click(deleteButtons[1]);
     expect(onDeleteUser).toHaveBeenCalledWith(expect.objectContaining({ id: 'u2' }));
   });
 
@@ -130,7 +138,7 @@ describe('UserManagementTable', () => {
     // users; the server refuses one with none, and the page reports it.
     const resetTwoFactorButtons = screen.getAllByText('Reset 2FA');
     expect(resetTwoFactorButtons).toHaveLength(2);
-    fireEvent.click(resetTwoFactorButtons[1]);
+    fireEvent.click(resetTwoFactorButtons[0]);
     expect(onResetTwoFactor).toHaveBeenCalledWith(expect.objectContaining({ id: 'u3' }));
   });
 
@@ -152,7 +160,7 @@ describe('UserManagementTable', () => {
   it('calls onChangeRole when role select is changed', () => {
     render(<UserManagementTable {...defaultProps} />);
     const selects = screen.getAllByRole('combobox');
-    fireEvent.change(selects[0], { target: { value: 'admin' } });
+    fireEvent.change(selects[1], { target: { value: 'admin' } });
     expect(onChangeRole).toHaveBeenCalledWith(expect.objectContaining({ id: 'u2' }), 'admin');
   });
 
@@ -334,10 +342,56 @@ describe('UserManagementTable', () => {
     });
   });
 
-  it('sorts users by creation date ascending', () => {
+  it('sorts users by name by default and says so on the header', () => {
     render(<UserManagementTable {...defaultProps} />);
     const rows = screen.getAllByRole('row');
-    // First data row should be Admin User (earliest createdAt)
     expect(rows[1]).toHaveTextContent('Admin User');
+    expect(rows[2]).toHaveTextContent('Jane Smith');
+    expect(rows[3]).toHaveTextContent('John Doe');
+    expect(screen.getByRole('columnheader', { name: /^User/ })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    );
+  });
+
+  it('sorts by a column from its header button, and reverses on a second press', () => {
+    render(<UserManagementTable {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Last Login/ }));
+
+    let rows = screen.getAllByRole('row');
+    // Never signed in sorts as the oldest login.
+    expect(rows[1]).toHaveTextContent('John Doe');
+    expect(rows[3]).toHaveTextContent('Admin User');
+    expect(screen.getByRole('columnheader', { name: /^Last Login/ })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /^Last Login/ }));
+    rows = screen.getAllByRole('row');
+    expect(rows[1]).toHaveTextContent('Admin User');
+    expect(screen.getByRole('columnheader', { name: /^Last Login/ })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
+  });
+
+  it('shows each user as one card on a phone, with every column and a sort header', () => {
+    mobileState.isMobile = true;
+    render(<UserManagementTable {...defaultProps} />);
+
+    // One header cell holding every sortable field, and one cell per user.
+    expect(screen.getAllByRole('columnheader')).toHaveLength(1);
+    expect(screen.getByRole('columnheader')).toHaveAttribute('aria-sort', 'ascending');
+    const rows = screen.getAllByRole('row');
+    expect(rows).toHaveLength(4);
+    for (const row of rows.slice(1)) {
+      expect(row.querySelectorAll('td')).toHaveLength(1);
+    }
+    // The card keeps the figures and the actions the table would have shown.
+    expect(screen.getAllByText('Backups').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('3.0 MB')).toHaveLength(3);
+    expect(screen.getAllByText('Reset 2FA')).toHaveLength(2);
+    expect(screen.getAllByRole('combobox', { name: 'Role' })).toHaveLength(2);
   });
 });

@@ -12,7 +12,7 @@
   "payroll": {
     "title": "Deduções salariais",
     "subtitle": "Máximos anuais nas linhas de dedução da sua fatura de salário",
-    "backToTaxes": "Impostos",
+    "backToTaxes": "Voltar para Impostos",
     "newButton": "+ Nova regra",
     "loading": "Carregando deduções salariais...",
     "emptyState": {

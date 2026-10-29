@@ -23,8 +23,8 @@
     "empty": "Keine überfälligen oder bevorstehenden Rechnungen, Einzahlungen oder Überweisungen innerhalb der Erinnerungsfenster.",
     "postTransaction": "Diese Buchung ausführen",
     "manual": "Manuell",
-    "manualTitle": "Erfordert manuelle Buchung",
     "negativeBalanceWarning": "Diese Buchung bringt den Kontosaldo unter null",
+    "negativeBalanceLegend": "Bringt sein Konto unter null",
     "moreItems": "+{count} weitere",
     "overdue": "Überfällig",
     "today": "Heute",
@@ -110,9 +110,9 @@
     "refreshPrices": "Kurse aktualisieren",
     "viewPortfolio": "Portfolio anzeigen",
     "filter": {
-      "all": "Alle",
-      "gainers": "Gewinner",
-      "losers": "Verlierer",
+      "all": "Alle ({count})",
+      "gainers": "Gewinner ({count})",
+      "losers": "Verlierer ({count})",
       "label": "Richtung"
     },
     "metric": {

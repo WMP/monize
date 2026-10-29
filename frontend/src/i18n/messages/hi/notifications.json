@@ -35,7 +35,7 @@
     "createFailed": "अनुस्मारक सेट नहीं किया जा सका",
     "dialogTitle": "मुझे याद दिलाएं",
     "dialogDescription": "जब तक आप कार्रवाई नहीं करते, यह सूचना बाद में फिर से पाएं।",
-    "modeLabel": "कितनी बार",
+    "modeLabel": "आवृत्ति",
     "modeRepeat": "जब तक मैं रोकूं, दोहराएं",
     "modeOnce": "बस एक बार और",
     "intervalLabelRepeat": "हर बार याद दिलाएं",

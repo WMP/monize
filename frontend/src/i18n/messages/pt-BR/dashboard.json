@@ -23,8 +23,8 @@
     "empty": "Sem faturas, depósitos ou transferências em atraso ou próximos dentro dos seus períodos de lembrete.",
     "postTransaction": "Lançar esta transação",
     "manual": "Manual",
-    "manualTitle": "Requer lançamento manual",
     "negativeBalanceWarning": "Esta transação irá colocar o saldo da conta abaixo de zero",
+    "negativeBalanceLegend": "Deixa a conta abaixo de zero",
     "moreItems": "+{count} mais",
     "overdue": "Em atraso",
     "today": "Hoje",
@@ -110,9 +110,9 @@
     "refreshPrices": "Atualizar cotações",
     "viewPortfolio": "Ver portfólio",
     "filter": {
-      "all": "Todos",
-      "gainers": "Subidas",
-      "losers": "Descidas",
+      "all": "Todos ({count})",
+      "gainers": "Subidas ({count})",
+      "losers": "Descidas ({count})",
       "label": "Direção"
     },
     "metric": {

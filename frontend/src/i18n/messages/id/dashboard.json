@@ -23,8 +23,8 @@
     "empty": "Tidak ada tagihan, setoran, atau transfer yang lewat jatuh tempo atau mendatang dalam jendela pengingat mereka.",
     "postTransaction": "Posting transaksi ini",
     "manual": "Manual",
-    "manualTitle": "Membutuhkan posting manual",
     "negativeBalanceWarning": "Transaksi ini akan menyebabkan saldo akun menjadi di bawah nol",
+    "negativeBalanceLegend": "Membuat saldo akunnya di bawah nol",
     "moreItems": "+{count} lagi",
     "overdue": "Lewat jatuh tempo",
     "today": "Hari ini",
@@ -110,9 +110,9 @@
     "refreshPrices": "Perbarui harga",
     "viewPortfolio": "Lihat portofolio",
     "filter": {
-      "all": "Semua",
-      "gainers": "Naik",
-      "losers": "Turun",
+      "all": "Semua ({count})",
+      "gainers": "Naik ({count})",
+      "losers": "Turun ({count})",
       "label": "Arah"
     },
     "metric": {

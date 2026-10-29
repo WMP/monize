@@ -13,7 +13,7 @@ import {
   startOfMonth,
   subMonths,
 } from 'date-fns';
-import { CalendarDaysIcon, ListBulletIcon } from '@heroicons/react/24/outline';
+import { CalendarDaysIcon, ExclamationTriangleIcon, ListBulletIcon } from '@heroicons/react/24/outline';
 import { ScheduledTransaction } from '@/types/scheduled-transaction';
 import { Account } from '@/types/account';
 import { parseLocalDate } from '@/lib/utils';
@@ -401,7 +401,7 @@ export function UpcomingBills({ scheduledTransactions, accounts, isLoading, maxI
                     </span>
                     <span className="hidden sm:inline">{getTypeBadge(type)}</span>
                     {!item.autoPost && (
-                      <span className="hidden sm:inline px-1.5 py-0.5 bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 text-xs rounded" title={t('upcomingBills.manualTitle')}>
+                      <span className="hidden sm:inline px-1.5 py-0.5 bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 text-xs rounded">
                         {t('upcomingBills.manual')}
                       </span>
                     )}
@@ -415,14 +415,14 @@ export function UpcomingBills({ scheduledTransactions, accounts, isLoading, maxI
               </div>
               <div className="flex items-center gap-1 ml-2">
                 {negativeBalanceItems.has(item.id) && (
-                  <span
-                    className="flex-shrink-0 text-amber-500 dark:text-amber-400"
-                    title={t('upcomingBills.negativeBalanceWarning')}
-                  >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.168 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                    </svg>
-                  </span>
+                  // Named for a screen reader; the legend under the list says
+                  // what the mark means, where a phone can read it too.
+                  <ExclamationTriangleIcon
+                    role="img"
+                    aria-label={t('upcomingBills.negativeBalanceWarning')}
+                    aria-hidden={false}
+                    className="w-4 h-4 flex-shrink-0 text-amber-500 dark:text-amber-400"
+                  />
                 )}
                 <div className={`font-semibold ${amountDisplay.className} whitespace-nowrap`}>
                   {amountDisplay.text ?? <UnknownAmount />}
@@ -432,6 +432,15 @@ export function UpcomingBills({ scheduledTransactions, accounts, isLoading, maxI
           );
         })}
       </div>
+      {visibleItems.some((item) => negativeBalanceItems.has(item.id)) && (
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+          <ExclamationTriangleIcon
+            aria-hidden="true"
+            className="w-4 h-4 flex-shrink-0 text-amber-500 dark:text-amber-400"
+          />
+          {t('upcomingBills.negativeBalanceLegend')}
+        </p>
+      )}
       {hiddenCount > 0 && (
         <button
           onClick={() => router.push('/bills')}

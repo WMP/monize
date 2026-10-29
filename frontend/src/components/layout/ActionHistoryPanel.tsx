@@ -7,6 +7,7 @@ import { useClickOutside } from '@/hooks/useClickOutside';
 import { actionHistoryApi, type ActionHistoryItem } from '@/lib/action-history';
 import { renderActionDescription } from '@/lib/action-history-format';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useRelativeTime } from '@/hooks/useRelativeTime';
 import { clearAllCache } from '@/lib/apiCache';
 import {
   notifyUndoRedo,
@@ -33,25 +34,10 @@ function getEntityLabel(t: ReturnType<typeof useTranslations<'layout'>>, entityT
   return entityType;
 }
 
-function timeAgo(
-  t: ReturnType<typeof useTranslations<'layout'>>,
-  dateStr: string,
-): string {
-  const seconds = Math.floor(
-    (Date.now() - new Date(dateStr).getTime()) / 1000,
-  );
-  if (seconds < 60) return t('actionHistory.timeAgo.justNow');
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return t('actionHistory.timeAgo.minutes', { count: minutes });
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t('actionHistory.timeAgo.hours', { count: hours });
-  const days = Math.floor(hours / 24);
-  return t('actionHistory.timeAgo.days', { count: days });
-}
-
 export function ActionHistoryPanel() {
   const t = useTranslations('layout');
   const { formatCurrency } = useNumberFormat();
+  const formatRelativeTime = useRelativeTime();
   const [isOpen, setIsOpen] = useState(false);
   const [history, setHistory] = useState<ActionHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -326,7 +312,7 @@ export function ActionHistoryPanel() {
                             {getEntityLabel(t, item.entityType)}
                           </span>
                           <span className="text-xs text-gray-400 dark:text-gray-500">
-                            {timeAgo(t, item.createdAt)}
+                            {formatRelativeTime(item.createdAt)}
                           </span>
                         </div>
                       </div>

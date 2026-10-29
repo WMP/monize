@@ -590,7 +590,6 @@ export function GemSettingsForm({
                     }
                     decimalPlaces={2}
                     min={0}
-                    placeholder={t("gem.settingsForm.optional")}
                     error={errors.taxRatePercent?.message}
                   />
                   <CurrencyInput
@@ -603,7 +602,6 @@ export function GemSettingsForm({
                       })
                     }
                     allowNegative={false}
-                    placeholder={t("gem.settingsForm.optional")}
                     error={errors.commissionAmount?.message}
                   />
                 </div>
@@ -700,11 +698,11 @@ export function GemSettingsForm({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="mt-2"
+                  className="mt-2 gap-1"
                   onClick={handleFillMissingRoles}
                   disabled={isFillingRoles}
                 >
-                  <SparklesIcon className="mr-1 h-4 w-4" aria-hidden="true" />
+                  <SparklesIcon className="h-4 w-4" aria-hidden="true" />
                   {isFillingRoles
                     ? t("gem.settingsForm.fillMissingBusy")
                     : t("gem.settingsForm.fillMissing", {
@@ -794,21 +792,21 @@ export function GemSettingsForm({
         onClose={() => setCreatingFor(null)}
         maxWidth="lg"
         className="p-6"
-      >
-        <h2 className="mb-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {creatingFor
+        title={
+          creatingFor
             ? t("gem.settingsForm.addInstrumentFor", {
                 role: roleLabel(creatingFor.role),
               })
-            : ""}
-        </h2>
-        {/* Prefilled from a suggestion, the exchange and currency are still the
-            investor's to correct: the same fund lists on several venues. */}
-        <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-          {creatingFor?.suggestion
+            : ""
+        }
+        // Prefilled from a suggestion, the exchange and currency are still the
+        // investor's to correct: the same fund lists on several venues.
+        description={
+          creatingFor?.suggestion
             ? t("gem.settingsForm.addInstrumentPrefilled")
-            : t("gem.settingsForm.currencyHint")}
-        </p>
+            : t("gem.settingsForm.currencyHint")
+        }
+      >
         <SecurityForm
           key={creatingFor?.suggestion?.symbol ?? "blank"}
           defaults={creatingFor?.suggestion}

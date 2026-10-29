@@ -132,12 +132,10 @@ export function WidgetCard({
           isOpen={showConfig}
           onClose={() => setShowConfig(false)}
           maxWidth="md"
-          className="p-4 sm:p-6"
+          className="p-6"
           pushHistory
+          title={configTitle ?? title}
         >
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-            {configTitle ?? title}
-          </h3>
           <div className="space-y-4">
             {configControls}
             {identityEnabled && (

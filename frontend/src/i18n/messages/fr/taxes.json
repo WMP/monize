@@ -12,7 +12,7 @@
   "payroll": {
     "title": "Retenues salariales",
     "subtitle": "Maximums annuels sur les lignes de retenue de votre facture de paie",
-    "backToTaxes": "Impôts",
+    "backToTaxes": "Retour aux impôts",
     "newButton": "+ Nouvelle règle",
     "loading": "Chargement des retenues salariales...",
     "emptyState": {

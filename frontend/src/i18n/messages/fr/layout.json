@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "Transfert de titres mis à jour",
       "ranTransactionRule": "Règle « {name} » exécutée sur {count, plural, one {# transaction} other {# transactions}}"
     },
-    "timeAgo": {
-      "justNow": "à l'instant",
-      "minutes": "il y a {count} min",
-      "hours": "il y a {count} h",
-      "days": "il y a {count} j"
-    },
     "undonePrefix": "Annulé : {description}",
     "redonePrefix": "Rétabli : {description}"
   },
