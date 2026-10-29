@@ -204,7 +204,9 @@ export function CategoryInfoWidget({
   // as the intuitive "total spend / months elapsed".
   const monthlyAverage = useMemo(() => {
     if (monthlyTotals.length === 0) return null;
-    const sum = sumMoney(monthlyTotals.map((m) => Math.abs(m.total)));
+    // A month without a rate has no total, so the average is withheld.
+    if (monthlyTotals.some((m) => m.total === null)) return null;
+    const sum = sumMoney(monthlyTotals.map((m) => Math.abs(m.total as number)));
     const elapsedMonths = countElapsedPeriods(monthlyTotals, 'month');
     return elapsedMonths > 0 ? sum / elapsedMonths : null;
   }, [monthlyTotals]);

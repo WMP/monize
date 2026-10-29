@@ -97,6 +97,7 @@ function MonthlyTotalTooltip({
           }`}
         >
           {formatCurrency(data.total)}
+          {data.partial && ' *'}
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {t('charts.monthlyTotals.tooltip', { count: data.count })}
@@ -204,7 +205,8 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
     const totalCount = chartData.reduce((sum, d) => sum + d.count, 0);
     const periodsElapsed = chartData.length;
     const periodAvg = periodsElapsed > 0 ? total / periodsElapsed : 0;
-    return { total, totalCount, periodAvg };
+    const partial = chartData.some((d) => d.partial);
+    return { total, totalCount, periodAvg, partial };
   }, [chartData]);
 
   // The three figures under the chart, repeated into the exported PNG. Without
@@ -215,9 +217,12 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
     ? [
         {
           label: t(`charts.monthlyTotals.${AVG_LABEL_KEY[granularity]}`),
-          value: formatCurrency(summary.periodAvg),
+          value: formatCurrency(summary.periodAvg) + (summary.partial ? ' *' : ''),
         },
-        { label: t('charts.monthlyTotals.total'), value: formatCurrency(summary.total) },
+        {
+          label: t('charts.monthlyTotals.total'),
+          value: formatCurrency(summary.total) + (summary.partial ? ' *' : ''),
+        },
         {
           label: t('charts.monthlyTotals.transactions'),
           value: formatNumber(summary.totalCount, 0),
@@ -400,6 +405,7 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
               }`}
             >
               {formatCurrency(summary.periodAvg)}
+              {summary.partial && ' *'}
             </div>
           </div>
           <div>
@@ -410,6 +416,7 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
               }`}
             >
               {formatCurrency(summary.total)}
+              {summary.partial && ' *'}
             </div>
           </div>
           <div>
@@ -418,6 +425,11 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
               {formatNumber(summary.totalCount, 0)}
             </div>
           </div>
+          {summary.partial && (
+            <p className="col-span-3 text-xs text-gray-500 dark:text-gray-400">
+              * {t('charts.monthlyTotals.partialNote')}
+            </p>
+          )}
         </div>
       )}
     </div>

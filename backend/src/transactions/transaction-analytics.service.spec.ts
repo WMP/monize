@@ -1353,6 +1353,13 @@ describe("TransactionAnalyticsService", () => {
   });
 
   describe("getMonthlyTotals", () => {
+    // The default reporting currency of these specs is USD (no preference row).
+    const usdDay = (month: string, txDate: string) => ({
+      month,
+      currencyCode: "USD",
+      txDate,
+    });
+
     it("returns empty array when no transactions exist", async () => {
       mockQueryBuilder.getRawMany.mockResolvedValue([]);
 
@@ -1363,9 +1370,9 @@ describe("TransactionAnalyticsService", () => {
 
     it("returns monthly totals sorted by month", async () => {
       mockQueryBuilder.getRawMany.mockResolvedValue([
-        { month: "2025-01", total: "-500.50", count: "10" },
-        { month: "2025-02", total: "-300.25", count: "8" },
-        { month: "2025-03", total: "200.00", count: "5" },
+        { ...usdDay("2025-01", "2025-01-10"), total: "-500.50", count: "10" },
+        { ...usdDay("2025-02", "2025-02-10"), total: "-300.25", count: "8" },
+        { ...usdDay("2025-03", "2025-03-10"), total: "200.00", count: "5" },
       ]);
 
       const result = await service.getMonthlyTotals(userId);
@@ -1379,7 +1386,7 @@ describe("TransactionAnalyticsService", () => {
 
     it("rounds totals to storage precision (four decimal places)", async () => {
       mockQueryBuilder.getRawMany.mockResolvedValue([
-        { month: "2025-01", total: "-123.456", count: "3" },
+        { ...usdDay("2025-01", "2025-01-10"), total: "-123.456", count: "3" },
       ]);
 
       const result = await service.getMonthlyTotals(userId);
@@ -1389,12 +1396,59 @@ describe("TransactionAnalyticsService", () => {
 
     it("handles null values in raw query results", async () => {
       mockQueryBuilder.getRawMany.mockResolvedValue([
-        { month: "2025-01", total: null, count: null },
+        { ...usdDay("2025-01", "2025-01-10"), total: null, count: null },
       ]);
 
       const result = await service.getMonthlyTotals(userId);
 
       expect(result[0]).toEqual({ month: "2025-01", total: 0, count: 0 });
+    });
+
+    it("converts each currency at its own date instead of adding them", async () => {
+      managerMock.query.mockResolvedValue([
+        storedRate("EUR", "USD", 2, "2025-01-01"),
+      ]);
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        { ...usdDay("2025-01", "2025-01-10"), total: "-10", count: "1" },
+        {
+          month: "2025-01",
+          currencyCode: "EUR",
+          txDate: "2025-01-12",
+          total: "-5",
+          count: "1",
+        },
+      ]);
+
+      const result = await service.getMonthlyTotals(userId);
+
+      expect(result).toEqual([{ month: "2025-01", total: -20, count: 2 }]);
+    });
+
+    it("withholds the total of a month with an unconvertible currency", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        { ...usdDay("2025-01", "2025-01-10"), total: "-10", count: "1" },
+        {
+          month: "2025-01",
+          currencyCode: "EUR",
+          txDate: "2025-01-12",
+          total: "-5",
+          count: "1",
+        },
+      ]);
+
+      const result = await service.getMonthlyTotals(userId);
+
+      expect(result).toEqual([
+        { month: "2025-01", total: null, knownSubtotal: -10, count: 2 },
+      ]);
+    });
+
+    it("leaves voided rows out of the monthly totals", async () => {
+      await service.getMonthlyTotals(userId);
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        "(transaction.status IS NULL OR transaction.status != 'VOID')",
+      );
     });
 
     it("always filters by userId", async () => {
@@ -2316,7 +2370,7 @@ describe("TransactionAnalyticsService", () => {
       await service.getLlmListTransactions(userId, {
         startDate: "2026-01-01",
         endDate: "2026-01-31",
-        groupBy: "category",
+        groupBy: "payee",
         direction: "expenses",
       });
 
@@ -2471,7 +2525,7 @@ describe("TransactionAnalyticsService", () => {
       await service.getLlmQueryTransactions(userId, {
         startDate: "2026-01-01",
         endDate: "2026-01-31",
-        groupBy: "category",
+        groupBy: "payee",
         direction: "expenses",
       });
 
@@ -2479,6 +2533,47 @@ describe("TransactionAnalyticsService", () => {
         .map((c) => c[0])
         .join(" | ");
       expect(calls).toMatch(/< 0/);
+    });
+
+    it("nets a refund into its category instead of adding it", async () => {
+      // Groceries: -100 spent, +30 refunded -> the signed sum, negated, is 70.
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            categoryId: "cat-food",
+            currencyCode: "USD",
+            txDate: "2026-01-10",
+            total: "70",
+            count: "2",
+          },
+          {
+            categoryId: "cat-travel",
+            currencyCode: "USD",
+            txDate: "2026-01-10",
+            total: "-20",
+            count: "1",
+          },
+        ]);
+
+      const result = await service.getLlmQueryTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: "category",
+        direction: "expenses",
+      });
+
+      const selects = (mockQueryBuilder.select.mock.calls as any[][])
+        .concat(mockQueryBuilder.addSelect.mock.calls as any[][])
+        .map((c) => c[0])
+        .join(" | ");
+      expect(selects).toContain("SUM(-COALESCE(ts.amount, t.amount))");
+      expect(selects).not.toContain("SUM(ABS(");
+      // A category whose credits exceed its debits is not a spending row.
+      expect(
+        (result.breakdown as any[]).map((r) => [r.categoryId, r.total]),
+      ).toEqual([["cat-food", 70]]);
     });
 
     it("applies income direction filter", async () => {
@@ -3375,7 +3470,7 @@ describe("TransactionAnalyticsService", () => {
       const expr = feeSelect[0] as string;
       // The fee is folded into amount for both ordinary and split entries.
       expect(expr).toContain(
-        "ROUND(transaction.originalAmount * transaction.exchangeRate, 2) - transaction.amount",
+        "ROUND(transaction.originalAmount * transaction.exchangeRate, 4) - transaction.amount",
       );
       // No dependency on any fee-split join.
       expect(expr).not.toContain("fxFeeSplit");

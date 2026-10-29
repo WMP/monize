@@ -192,7 +192,10 @@ export interface RecurringChargeInfo {
 
 export interface MonthlyTotal {
   month: string;
-  total: number;
+  /** Null while a part of the month has no exchange rate; see knownSubtotal. */
+  total: number | null;
+  /** The part of a withheld total that did convert. */
+  knownSubtotal?: number;
   count: number;
 }
 
