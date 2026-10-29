@@ -101,7 +101,10 @@ export function HoldingsList({ holdings, isLoading }: HoldingsListProps) {
                   <div className="font-medium text-gray-900 dark:text-gray-100">
                     {holding.symbol}
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[150px]">
+                  <div
+                    className="text-sm text-gray-500 dark:text-gray-400 whitespace-normal break-words sm:truncate sm:max-w-[150px]"
+                    title={holding.name}
+                  >
                     {holding.name}
                   </div>
                 </td>

@@ -377,7 +377,7 @@ describe('AccountList', () => {
     // Click the "Active" status filter button
     const statusButtons = screen.getAllByRole('button');
     const activeFilterButton = statusButtons.find(
-      (btn) => btn.textContent === 'Active' && btn.closest('.inline-flex.rounded-md')
+      (btn) => !!btn.textContent?.startsWith('Active (') && !!btn.closest('[role="group"]')
     );
     expect(activeFilterButton).toBeTruthy();
     fireEvent.click(activeFilterButton!);
@@ -399,7 +399,7 @@ describe('AccountList', () => {
 
     // Click the "Closed" status filter button in the segmented control
     const closedFilterButton = screen.getAllByRole('button').find(
-      (btn) => btn.textContent === 'Closed' && btn.closest('.inline-flex.rounded-md')
+      (btn) => !!btn.textContent?.startsWith('Closed (') && !!btn.closest('[role="group"]')
     );
     expect(closedFilterButton).toBeTruthy();
     fireEvent.click(closedFilterButton!);
@@ -673,7 +673,7 @@ describe('AccountList', () => {
 
     // Filter by closed status when all accounts are active
     const closedFilterButton = screen.getAllByRole('button').find(
-      (btn) => btn.textContent === 'Closed' && btn.closest('.inline-flex.rounded-md')
+      (btn) => !!btn.textContent?.startsWith('Closed (') && !!btn.closest('[role="group"]')
     );
     expect(closedFilterButton).toBeTruthy();
     fireEvent.click(closedFilterButton!);
@@ -1246,6 +1246,27 @@ describe('AccountList', () => {
     expect(mockOnRefresh).not.toHaveBeenCalled();
   });
 
+  it('puts the search first and counts every status segment', () => {
+    const accounts = [
+      createAccount({ id: 'a1', name: 'Open One' }),
+      createAccount({ id: 'a2', name: 'Open Two' }),
+      createAccount({ id: 'a3', name: 'Shut', isClosed: true }),
+    ];
+
+    render(
+      <AccountList accounts={accounts} onEdit={mockOnEdit} defaultCurrency="CAD" convertToDefault={exchangeMocks.convertToDefault} onRefresh={mockOnRefresh} />
+    );
+
+    const group = screen.getByRole('group', { name: 'Status' });
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual([
+      'All (3)',
+      'Active (2)',
+      'Closed (1)',
+    ]);
+    const search = screen.getByRole('textbox', { name: 'Search accounts by name' });
+    expect(search.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('shows the "All" segmented button as selected by default', () => {
     const accounts = [createAccount()];
 
@@ -1255,10 +1276,10 @@ describe('AccountList', () => {
 
     // The "All" button in the segmented control should have active styling
     const allButton = screen.getAllByRole('button').find(
-      (btn) => btn.textContent === 'All' && btn.closest('.inline-flex.rounded-md')
+      (btn) => !!btn.textContent?.startsWith('All (') && !!btn.closest('[role="group"]')
     );
     expect(allButton).toBeTruthy();
-    expect(allButton!.className).toContain('bg-blue-600');
+    expect(allButton).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('shows an interactive favourite star for favourite accounts', () => {
@@ -1529,7 +1550,7 @@ describe('AccountList', () => {
 
     // Filter by closed status when all accounts are active to produce empty results
     const closedFilterButton = screen.getAllByRole('button').find(
-      (btn) => btn.textContent === 'Closed' && btn.closest('.inline-flex.rounded-md')
+      (btn) => !!btn.textContent?.startsWith('Closed (') && !!btn.closest('[role="group"]')
     );
     expect(closedFilterButton).toBeTruthy();
     fireEvent.click(closedFilterButton!);
@@ -2917,18 +2938,18 @@ describe('AccountList', () => {
 
       // Click Active filter to change filterStatus away from ''
       const activeBtn = screen.getAllByRole('button').find(
-        (btn) => btn.textContent === 'Active' && btn.closest('.inline-flex.rounded-md')
+        (btn) => !!btn.textContent?.startsWith('Active (') && !!btn.closest('[role="group"]')
       )!;
       fireEvent.click(activeBtn);
 
-      // Now "All" button should not have bg-blue-600 (it's no longer selected)
+      // Now "All" is no longer the pressed segment
       const allBtn = screen.getAllByRole('button').find(
-        (btn) => btn.textContent === 'All' && btn.closest('.inline-flex.rounded-md')
+        (btn) => !!btn.textContent?.startsWith('All (') && !!btn.closest('[role="group"]')
       )!;
-      expect(allBtn.className).not.toContain('bg-blue-600');
+      expect(allBtn).toHaveAttribute('aria-pressed', 'false');
 
-      // Active button now has bg-blue-600
-      expect(activeBtn.className).toContain('bg-blue-600');
+      // Active is now the pressed segment
+      expect(activeBtn).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('dense mode with deletable active brokerage account hides reconcile button', () => {

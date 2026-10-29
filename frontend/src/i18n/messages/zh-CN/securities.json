@@ -11,6 +11,7 @@
     "subtitle": "管理您的股票、ETF、共同基金及其他证券",
     "newSecurity": "+ 新建证券",
     "searchPlaceholder": "按代码或名称搜索...",
+    "statusFilterLabel": "状态",
     "statusAll": "全部（{count}）",
     "statusActive": "活跃（{count}）",
     "statusInactive": "非活跃（{count}）",
@@ -65,10 +66,7 @@
       "inactive": "非活跃",
       "inactiveShort": "停"
     },
-    "providerTitle": {
-      "override": "单证券提供商覆盖",
-      "inherited": "继承自您的默认行情提供商偏好"
-    },
+    "providerInherited": "{provider}（默认）",
     "columnTitles": {
       "shares": "所有账户中当前持有的股数",
       "value": "所有账户中持有的股数按最新价格计算，以证券自身的货币计价",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "日期",
     "closePriceLabel": "收盘价",
-    "openPriceLabel": "开盘价",
-    "highPriceLabel": "最高价",
-    "lowPriceLabel": "最低价",
-    "volumeLabel": "成交量",
-    "optionalPlaceholder": "可选",
+    "openPriceLabel": "开盘价（可选）",
+    "highPriceLabel": "最高价（可选）",
+    "lowPriceLabel": "最低价（可选）",
+    "volumeLabel": "成交量（可选）",
     "submitCreate": "添加价格",
     "submitUpdate": "更新价格"
   },

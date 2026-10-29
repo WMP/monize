@@ -2,20 +2,14 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { format, parse } from 'date-fns';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import type { MonthlyTotal } from '@/types/transaction';
 
 interface CashFlowMiniReportProps {
   monthly: MonthlyTotal[];
   currencyCode: string;
   isLoading: boolean;
-}
-
-/** Format a `YYYY-MM` month key into a short label like "Jan 26". */
-function monthLabel(month: string): string {
-  const parsed = parse(month, 'yyyy-MM', new Date());
-  return Number.isNaN(parsed.getTime()) ? month : format(parsed, 'MMM yy');
 }
 
 /**
@@ -26,6 +20,10 @@ function monthLabel(month: string): string {
 export function CashFlowMiniReport({ monthly, currencyCode, isLoading }: CashFlowMiniReportProps) {
   const t = useTranslations('accountDetail-banking');
   const { formatCurrency } = useNumberFormat();
+  const formatChartDate = useChartDateFormat();
+  // A `YYYY-MM` key as a short month in the reader's language ("Jan 26").
+  const monthLabel = (month: string): string =>
+    /^\d{4}-\d{2}$/.test(month) ? formatChartDate(`${month}-01`, 'MMM yy') : month;
 
   const { rows, max } = useMemo(() => {
     const ranked = [...monthly].sort((a, b) => a.month.localeCompare(b.month));

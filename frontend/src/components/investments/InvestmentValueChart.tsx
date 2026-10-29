@@ -53,6 +53,7 @@ import { UnknownAmount } from '@/components/ui/UnknownAmount';
 import { IncompleteDataDetails } from '@/components/reports/IncompleteDataDetails';
 import { preferredCurrency } from '@/lib/default-currency';
 import { investedValue } from '@/lib/invested-value';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import {
   foldIncompleteData,
   hasIncompleteData,
@@ -720,20 +721,26 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix,
             </span>
           )}
           {intradayFallbackNotice && (
+            // The explanation is translated and reachable by tap and keyboard
+            // in an InfoTooltip, not an English hover-only title.
             <span
-              role="img"
-              aria-label={t('investmentValueChart.intradayFallbackWarningAriaLabel')}
-              title={`Detailed intraday pricing isn't available because ${intradayFallbackNotice.skipped.length > 0 ? intradayFallbackNotice.skipped.join(', ') : 'one or more holdings'} use MSN Money, which doesn't expose intraday quotes. Showing daily snapshots instead.`}
-              className="inline-flex text-amber-500 dark:text-amber-400 cursor-help"
+              className="inline-flex items-center text-amber-500 dark:text-amber-400"
               data-testid="intraday-fallback-warning"
             >
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                <path
-                  fillRule="evenodd"
-                  d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.515 2.625H3.72c-1.345 0-2.188-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              <ExclamationTriangleIcon
+                className="h-4 w-4"
+                aria-label={t('investmentValueChart.intradayFallbackWarningAriaLabel')}
+                role="img"
+              />
+              <InfoTooltip
+                usePortal
+                text={t('investmentValueChart.intradayFallbackWarning', {
+                  holdings:
+                    intradayFallbackNotice.skipped.length > 0
+                      ? intradayFallbackNotice.skipped.join(', ')
+                      : t('investmentValueChart.intradayFallbackSomeHoldings'),
+                })}
+              />
             </span>
           )}
         </h3>

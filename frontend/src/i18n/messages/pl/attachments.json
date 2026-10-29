@@ -77,6 +77,8 @@
     "unsupported": "Tego typu pliku nie można podejrzeć. Nadal możesz go pobrać.",
     "fit": "Dopasuj do ekranu",
     "actualSize": "Rzeczywisty rozmiar",
+    "versionLabel": "Wersja",
+    "zoomLabel": "Powiększenie",
     "pageCount": "{count, plural, one {# strona} few {# strony} many {# stron} other {# strony}}",
     "page": "Strona {page} z {total}",
     "open": "Podgląd {name}"

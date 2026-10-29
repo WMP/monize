@@ -175,7 +175,6 @@
       "viewPayeeTitle": "Ver detalhes de {name}",
       "investmentLabel": "Investimento",
       "linkedInvestmentTitle": "Ver em Investimentos",
-      "linkedInvestmentBadgeTitle": "Esta transação está associada a uma transação de investimento",
       "filterByDate": "Filtrar por data \"{date}\"",
       "filterByAccount": "Filtrar por \"{name}\"",
       "filterByPayee": "Filtrar por \"{name}\"",
@@ -223,10 +222,10 @@
       "show": "Mostrar filtros"
     },
     "accounts": {
-      "label": "Mostrar contas:",
-      "all": "Todas",
-      "active": "Ativas",
-      "closed": "Fechadas"
+      "label": "Mostrar contas",
+      "allCount": "Todas ({count})",
+      "activeCount": "Ativas ({count})",
+      "closedCount": "Fechadas ({count})"
     },
     "fields": {
       "accounts": "Contas",
@@ -320,7 +319,7 @@
     },
     "modal": {
       "title": "Atualização em Massa de Transações",
-      "subtitle": "Atualizar {count, plural, one {# transação selecionada} other {# transações selecionadas}}. Ative os campos que pretende alterar.",
+      "help": "Ative os campos que pretende alterar.",
       "submitLabel": "Atualizar {count, plural, one {# Transação} other {# Transações}}",
       "payee": "Beneficiário",
       "category": "Categoria",
@@ -368,8 +367,7 @@
       "fromAccount": "Conta de Origem",
       "toAccount": "Conta de Destino",
       "transferAmount": "Montante da Transferência",
-      "transferAmountWithCurrency": "Montante da Transferência ({currency})",
-      "amountReceived": "Montante Recebido ({currency})",
+      "amountReceivedLabel": "Montante Recebido",
       "payeeOptional": "Beneficiário (Opcional)",
       "categoryOptional": "Categoria (opcional)"
     },
@@ -538,7 +536,7 @@
     "quantityPlaceholder": "Quantidade",
     "pricePlaceholder": "Preço",
     "commissionPlaceholder": "Comissão",
-    "amountPlaceholder": "Montante ({currency})",
+    "amountOnlyPlaceholder": "Montante",
     "ratePlaceholder": "{to} por 1 {from}",
     "ariaRate": "Taxa de câmbio ({to} por 1 {from})",
     "rateHint": "A quantidade, o preço e a comissão estão em {from}; esta taxa converte o impacto de caixa para {to}.",

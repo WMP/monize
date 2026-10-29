@@ -11,6 +11,7 @@
     "subtitle": "Gestisci azioni, ETF, fondi comuni e altri titoli",
     "newSecurity": "+ Nuovo titolo",
     "searchPlaceholder": "Cerca per simbolo o nome...",
+    "statusFilterLabel": "Stato",
     "statusAll": "Tutti ({count})",
     "statusActive": "Attivi ({count})",
     "statusInactive": "Inattivi ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Inattivo",
       "inactiveShort": "Ina"
     },
-    "providerTitle": {
-      "override": "Fornitore specifico per titolo",
-      "inherited": "Ereditato dal fornitore di quotazioni predefinito"
-    },
+    "providerInherited": "{provider} (predefinito)",
     "columnTitles": {
       "shares": "Azioni correnti detenute in tutti i conti",
       "value": "Quote detenute su tutti i conti al prezzo più recente, nella valuta del titolo",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Data",
     "closePriceLabel": "Prezzo di chiusura",
-    "openPriceLabel": "Prezzo di apertura",
-    "highPriceLabel": "Prezzo massimo",
-    "lowPriceLabel": "Prezzo minimo",
-    "volumeLabel": "Volume",
-    "optionalPlaceholder": "Opzionale",
+    "openPriceLabel": "Prezzo di apertura (facoltativo)",
+    "highPriceLabel": "Prezzo massimo (facoltativo)",
+    "lowPriceLabel": "Prezzo minimo (facoltativo)",
+    "volumeLabel": "Volume (facoltativo)",
     "submitCreate": "Aggiungi prezzo",
     "submitUpdate": "Aggiorna prezzo"
   },

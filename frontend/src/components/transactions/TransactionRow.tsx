@@ -29,6 +29,8 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useLocalizedAmount } from '@/hooks/useLocalizedAmount';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
 import { WarrantyBadge, rowHasWarranties } from '@/components/transactions/WarrantyBadge';
+import { CalendarIcon, ChevronDownIcon, DocumentDuplicateIcon, PaperClipIcon } from '@heroicons/react/24/outline';
+import { Badge } from '@/components/ui/Badge';
 
 /**
  * The default for `hidden`: nothing hidden. A module constant so a caller
@@ -71,11 +73,10 @@ function AttachmentBadge({ count }: { count: number }) {
     <span
       data-testid="attachment-badge"
       className="inline-flex items-center gap-1 text-gray-600 dark:text-gray-300"
-      title={t('list.attachmentsCount', { count })}
+      role="img"
+      aria-label={t('list.attachmentsCount', { count })}
     >
-      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-      </svg>
+      <PaperClipIcon className="w-3.5 h-3.5" aria-hidden="true" />
       {count}
     </span>
   );
@@ -118,9 +119,7 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
         title={t('row.copyOptions.duplicateTitle')}
       >
         {density === 'dense' ? (
-          <svg className="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
+          <DocumentDuplicateIcon className="w-3.5 h-3.5 inline" aria-hidden="true" />
         ) : t('row.copyOptions.copy')}
       </button>
     );
@@ -135,15 +134,11 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
         title={t('row.copyOptions.title')}
       >
         {density === 'dense' ? (
-          <svg className="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
+          <DocumentDuplicateIcon className="w-3.5 h-3.5 inline" aria-hidden="true" />
         ) : (
           <span className="inline-flex items-center gap-0.5">
             {t('row.copyOptions.copy')}
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+            <ChevronDownIcon className="w-3 h-3" aria-hidden="true" />
           </span>
         )}
       </button>
@@ -154,9 +149,7 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
               onClick={(e) => { e.stopPropagation(); setIsOpen(false); onDuplicate(); }}
               className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
             >
-              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
+              <DocumentDuplicateIcon className="w-4 h-4 text-gray-400" aria-hidden="true" />
               {t('row.copyOptions.duplicate')}
             </button>
           )}
@@ -165,9 +158,7 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
               onClick={(e) => { e.stopPropagation(); setIsOpen(false); onScheduleRecurring(); }}
               className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 whitespace-nowrap"
             >
-              <svg className="w-4 h-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+              <CalendarIcon className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
               {t('row.copyOptions.scheduleRecurring')}
             </button>
           )}
@@ -411,12 +402,15 @@ export const TransactionRow = memo(function TransactionRow({
               className={`text-right whitespace-nowrap text-sm font-medium ${isVoid ? 'line-through' : ''}`}
             >
               {displayAmount !== undefined ? (
-                <span
-                  title={t('list.row.filteredAmountTitle', { amount: formatAmountLocal(Math.abs(transaction.amount), getDecimalPlacesForCurrency(transaction.currencyCode)) })}
-                  className="inline-flex items-center gap-1 justify-end"
-                >
+                <span className="inline-flex flex-col items-end">
+                  <span className="inline-flex items-center gap-1 justify-end">
                   {formatAmount(displayAmount, transaction.currencyCode)}
                   <span className="text-purple-500 dark:text-purple-400 text-xs font-normal">*</span>
+                  </span>
+                  {/* What the asterisk means is written out, not left to a hover-only title. */}
+                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                  {t('list.row.filteredAmountTitle', { amount: formatAmountLocal(Math.abs(transaction.amount), getDecimalPlacesForCurrency(transaction.currencyCode)) })}
+                  </span>
                 </span>
               ) : (
                 formatAmount(transaction.amount, transaction.currencyCode)
@@ -459,9 +453,7 @@ export const TransactionRow = memo(function TransactionRow({
                 // No `title` here, unlike the tier cell: a hover tooltip is
                 // unreachable on a phone, and the pill's own label already
                 // says what it says.
-                <span className="inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 px-2 py-1">
-                  {t('list.row.investmentLabel')}
-                </span>
+                <Badge variant="green">{t('list.row.investmentLabel')}</Badge>
               ) : transaction.isTransfer ? (
                 <>
                   {transaction.category && (
@@ -697,12 +689,7 @@ export const TransactionRow = memo(function TransactionRow({
       </td>
       <td className={`${cellPadding} ${density !== 'normal' ? 'whitespace-nowrap' : ''} ${registerColumnClass('category')}`}>
         {transaction.linkedInvestmentTransactionId ? (
-          <span
-            className={`inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 ${density === 'dense' ? 'px-1.5 py-0.5' : 'px-2 py-1'}`}
-            title={t('list.row.linkedInvestmentBadgeTitle')}
-          >
-            {t('list.row.investmentLabel')}
-          </span>
+          <Badge variant="green">{t('list.row.investmentLabel')}</Badge>
         ) : transaction.isTransfer ? (
           // A transfer shows where the money moved (the linked-account arrow
           // chip). When it also carries a spending category (e.g. a monthly
@@ -776,7 +763,7 @@ export const TransactionRow = memo(function TransactionRow({
                           : `${split.transferAccount.name} \u2192`}: {formatAmountLocal(Math.abs(Number(split.amount)), getDecimalPlacesForCurrency(transaction.currencyCode))}
                       </span>
                     ) : split.investmentTransaction ? (
-                      <span className="text-emerald-600 dark:text-emerald-400">
+                      <span className="text-green-600 dark:text-green-400">
                         {describeInvestmentSplit(split, t('list.row.uncategorized'))}: {formatAmountLocal(Math.abs(Number(split.amount)), getDecimalPlacesForCurrency(transaction.currencyCode))}
                       </span>
                     ) : (
@@ -929,12 +916,15 @@ export const TransactionRow = memo(function TransactionRow({
       )}
       <td className={`${cellPadding} whitespace-nowrap text-sm font-medium text-right ${isVoid ? 'line-through' : ''}`}>
         {displayAmount !== undefined ? (
-          <span
-            title={t('list.row.filteredAmountTitle', { amount: formatAmountLocal(Math.abs(transaction.amount), getDecimalPlacesForCurrency(transaction.currencyCode)) })}
-            className="inline-flex items-center gap-1 justify-end"
-          >
+          <span className="inline-flex flex-col items-end">
+            <span className="inline-flex items-center gap-1 justify-end">
             {formatAmount(displayAmount, transaction.currencyCode)}
             <span className="text-purple-500 dark:text-purple-400 text-xs font-normal">*</span>
+            </span>
+            {/* What the asterisk means is written out, not left to a hover-only title. */}
+            <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+            {t('list.row.filteredAmountTitle', { amount: formatAmountLocal(Math.abs(transaction.amount), getDecimalPlacesForCurrency(transaction.currencyCode)) })}
+            </span>
           </span>
         ) : (
           formatAmount(transaction.amount, transaction.currencyCode)
@@ -996,7 +986,7 @@ export const TransactionRow = memo(function TransactionRow({
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(transaction); }}
             className={transaction.linkedInvestmentTransactionId
-              ? "text-emerald-600 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300"
+              ? "text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
               : "text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
             }
             title={transaction.linkedInvestmentTransactionId ? t('list.row.linkedInvestmentTitle') : undefined}

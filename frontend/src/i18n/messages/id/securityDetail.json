@@ -34,7 +34,6 @@
     "units": "Unit",
     "avgCostPerUnit": "Biaya rata-rata / unit",
     "heldInAccounts": "Dipegang di rekening",
-    "openAccount": "Tampilkan {name} di halaman Investasi",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "Belum dinilai",
     "approx": "~ {amount}"

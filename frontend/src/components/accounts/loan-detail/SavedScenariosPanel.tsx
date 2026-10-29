@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { CAPTION_CLASS, CellLabel } from '@/components/ui/Table';
+import { CAPTION_CLASS, CellLabel, Th } from '@/components/ui/Table';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { OverpaymentPlan, ScenarioComparison, effectiveOverpaymentMode } from '@/lib/loan-schedule';
 import { loanScenariosApi, planToScenarioData, scenarioToPlan } from '@/lib/loan-scenarios';
@@ -128,7 +128,6 @@ export function SavedScenariosPanel({
     interestSavedLabel,
   } = createScenarioLabels({ t, formatCurrency, formatChartDate, currencyCode });
 
-  const headerCell = 'px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400';
   // A wrapped money cell: no padding on phones (the card's grid spaces the
   // cells), the table cell's own padding and right alignment from `sm` up.
   const moneyCell = 'p-0 text-right text-sm whitespace-nowrap sm:table-cell sm:px-3 sm:py-2';
@@ -173,20 +172,20 @@ export function SavedScenariosPanel({
           <table className="block min-w-full text-sm sm:table">
             <thead className="block sm:table-header-group">
               <tr className="hidden border-b border-gray-200 dark:border-gray-700 text-left sm:table-row">
-                <th className={headerCell}>{t('loanDetail.scenarios.nameLabel')}</th>
-                <th className={`${headerCell} text-right`}>
+                <Th className="px-3 py-2">{t('loanDetail.scenarios.nameLabel')}</Th>
+                <Th align="right" className="px-3 py-2">
                   {t('loanDetail.scenarios.colOverpayment')}
-                </th>
-                <th className={`${headerCell} text-right`}>
+                </Th>
+                <Th align="right" className="px-3 py-2">
                   {t('loanDetail.comparison.newPayoff')}
-                </th>
-                <th className={`${headerCell} text-right`}>
+                </Th>
+                <Th align="right" className="px-3 py-2">
                   {t('loanDetail.comparison.timeSaved')}
-                </th>
-                <th className={`${headerCell} text-right`}>
+                </Th>
+                <Th align="right" className="px-3 py-2">
                   {t('loanDetail.comparison.interestSaved')}
-                </th>
-                <th className={headerCell} />
+                </Th>
+                <Th className="px-3 py-2" />
               </tr>
             </thead>
             <tbody className="block divide-y divide-gray-200 dark:divide-gray-700 sm:table-row-group">
@@ -294,13 +293,18 @@ export function SavedScenariosPanel({
         </p>
       )}
 
-      <Modal isOpen={nameModal !== null} onClose={() => setNameModal(null)} maxWidth="sm">
-        <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            {nameModal?.mode === 'rename'
-              ? t('loanDetail.scenarios.renameTitle')
-              : t('loanDetail.scenarios.saveTitle')}
-          </h3>
+      <Modal
+        isOpen={nameModal !== null}
+        onClose={() => setNameModal(null)}
+        maxWidth="sm"
+        className="p-6"
+        title={
+          nameModal?.mode === 'rename'
+            ? t('loanDetail.scenarios.renameTitle')
+            : t('loanDetail.scenarios.saveTitle')
+        }
+      >
+        <div>
           <Input
             label={t('loanDetail.scenarios.nameLabel')}
             value={nameInput}

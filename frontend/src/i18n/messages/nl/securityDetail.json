@@ -34,7 +34,6 @@
     "units": "Stukken",
     "avgCostPerUnit": "Gem. kostprijs / stuk",
     "heldInAccounts": "Aangehouden in rekeningen",
-    "openAccount": "{name} op de pagina Beleggingen laten zien",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "Geen koers",
     "approx": "~ {amount}"

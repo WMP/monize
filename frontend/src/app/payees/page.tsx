@@ -50,6 +50,7 @@ function PayeesContent() {
   const t = useTranslations('payees');
   // The dialog's title is the section's own name, so the two cannot drift.
   const tLookup = useTranslations('settings.payeeLookup');
+  const tCommon = useTranslations('common');
   const [payees, setPayees] = useState<Payee[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -457,7 +458,13 @@ function PayeesContent() {
           onClose={() => setShowLookupSettings(false)}
           title={tLookup('title')}
           maxWidth="3xl"
+          padding="md"
           pushHistory
+          footer={
+            <Button type="button" variant="outline" onClick={() => setShowLookupSettings(false)}>
+              {tCommon('close')}
+            </Button>
+          }
         >
           <PayeeLookupSection className="" />
         </Modal>

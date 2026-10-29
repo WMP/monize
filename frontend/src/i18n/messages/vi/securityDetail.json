@@ -34,7 +34,6 @@
     "units": "Đơn vị",
     "avgCostPerUnit": "Giá vốn TB / đơn vị",
     "heldInAccounts": "Nắm giữ trong các tài khoản",
-    "openAccount": "Xem {name} trên trang Đầu tư",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "Chưa có giá",
     "approx": "~ {amount}"

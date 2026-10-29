@@ -77,6 +77,8 @@
     "unsupported": "无法预览此类文件。您仍然可以下载它。",
     "fit": "适应屏幕",
     "actualSize": "实际大小",
+    "versionLabel": "版本",
+    "zoomLabel": "缩放",
     "pageCount": "{count, plural, other {# 页}}",
     "page": "第 {page} 页，共 {total} 页",
     "open": "预览 {name}"

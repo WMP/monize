@@ -128,6 +128,7 @@
     "search": "Zoeken...",
     "selectAll": "Alles selecteren",
     "clear": "Wissen",
+    "clearSearch": "Zoekopdracht wissen",
     "noOptions": "Geen opties gevonden",
     "selectedCount": "{count} geselecteerd"
   },

@@ -11,6 +11,7 @@
     "subtitle": "Управляйте акциями, ETF, паевыми фондами и другими ценными бумагами",
     "newSecurity": "+ Новая ценная бумага",
     "searchPlaceholder": "Поиск по символу или имени...",
+    "statusFilterLabel": "Статус",
     "statusAll": "Все ({count})",
     "statusActive": "Активные ({count})",
     "statusInactive": "Неактивные ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Неактивная",
       "inactiveShort": "Неак"
     },
-    "providerTitle": {
-      "override": "Переопределение провайдера для данной ценной бумаги",
-      "inherited": "Унаследовано из настроек провайдера котировок по умолчанию"
-    },
+    "providerInherited": "{provider} (по умолчанию)",
     "columnTitles": {
       "shares": "Текущее количество акций во всех счетах",
       "value": "Бумаги на всех счетах по последней цене, в валюте самой ценной бумаги",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Дата",
     "closePriceLabel": "Цена закрытия",
-    "openPriceLabel": "Цена открытия",
-    "highPriceLabel": "Максимальная цена",
-    "lowPriceLabel": "Минимальная цена",
-    "volumeLabel": "Объём",
-    "optionalPlaceholder": "Необязательно",
+    "openPriceLabel": "Цена открытия (необязательно)",
+    "highPriceLabel": "Максимальная цена (необязательно)",
+    "lowPriceLabel": "Минимальная цена (необязательно)",
+    "volumeLabel": "Объём (необязательно)",
     "submitCreate": "Добавить цену",
     "submitUpdate": "Обновить цену"
   },

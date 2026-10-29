@@ -11,6 +11,7 @@
     "subtitle": "주식, ETF, 뮤추얼 펀드 및 기타 유가증권을 관리하세요",
     "newSecurity": "+ 새 유가증권",
     "searchPlaceholder": "종목 코드 또는 이름으로 검색...",
+    "statusFilterLabel": "상태",
     "statusAll": "전체 ({count})",
     "statusActive": "활성 ({count})",
     "statusInactive": "비활성 ({count})",
@@ -65,10 +66,7 @@
       "inactive": "비활성",
       "inactiveShort": "비활"
     },
-    "providerTitle": {
-      "override": "유가증권별 제공자 재정의",
-      "inherited": "기본 시세 제공자 설정에서 상속됨"
-    },
+    "providerInherited": "{provider} (기본값)",
     "columnTitles": {
       "shares": "모든 계정에 걸쳐 현재 보유 중인 주식수",
       "value": "모든 계좌에서 보유한 주식 수에 최근 가격을 곱한 금액(증권 자체 통화 기준)",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "날짜",
     "closePriceLabel": "종가",
-    "openPriceLabel": "시가",
-    "highPriceLabel": "고가",
-    "lowPriceLabel": "저가",
-    "volumeLabel": "거래량",
-    "optionalPlaceholder": "선택사항",
+    "openPriceLabel": "시가 (선택)",
+    "highPriceLabel": "고가 (선택)",
+    "lowPriceLabel": "저가 (선택)",
+    "volumeLabel": "거래량 (선택)",
     "submitCreate": "가격 추가",
     "submitUpdate": "가격 업데이트"
   },

@@ -77,6 +77,8 @@
     "unsupported": "Questo tipo di file non può essere visualizzato in anteprima. Puoi comunque scaricarlo.",
     "fit": "Adatta allo schermo",
     "actualSize": "Dimensione reale",
+    "versionLabel": "Versione",
+    "zoomLabel": "Zoom",
     "pageCount": "{count, plural, one {# pagina} other {# pagine}}",
     "page": "Pagina {page} di {total}",
     "open": "Anteprima di {name}"

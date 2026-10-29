@@ -34,7 +34,6 @@
     "units": "Participaciones",
     "avgCostPerUnit": "Coste medio / participación",
     "heldInAccounts": "En cuentas",
-    "openAccount": "Mostrar {name} en la página Inversiones",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "Sin valorar",
     "approx": "~ {amount}"

@@ -80,9 +80,21 @@ export function SampleDialog({ receipt, domain, onClose, onChosen }: SampleDialo
   const { formatDate } = useDateFormat();
   const { formatCurrency } = useNumberFormat();
   const tp = useTranslations('emailReceipts.picker');
+  const tc = useTranslations('common');
 
   return (
-    <Modal isOpen onClose={onClose} maxWidth="6xl" padding="md" title={t('dialogTitle', { subject: receipt.subject })}>
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="6xl"
+      padding="md"
+      title={t('dialogTitle', { subject: receipt.subject })}
+      footer={
+        <Button type="button" variant="outline" onClick={onClose}>
+          {tc('cancel')}
+        </Button>
+      }
+    >
       <div className="space-y-6">
         <div className="min-w-0">
           <ReceiptTransactionPicker

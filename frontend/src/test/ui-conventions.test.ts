@@ -2166,14 +2166,12 @@ describe("a keyboard focus ring is focus-visible, never focus", () => {
     "/src/components/transactions/TransactionList.tsx",
     "/src/components/transactions/TransactionRow.tsx",
     "/src/components/ui/ColorPicker.tsx",
-    "/src/components/ui/ConfirmDialog.tsx",
     "/src/components/ui/DragHandle.tsx",
     "/src/components/ui/IconPicker.tsx",
     "/src/components/ui/MultiSelect.tsx",
     "/src/components/ui/Pagination.tsx",
     "/src/components/ui/Select.tsx",
     "/src/components/ui/ThemeToggle.tsx",
-    "/src/components/ui/UnsavedChangesDialog.tsx",
   ];
 
   function filesWithFocusRing(): string[] {
@@ -2248,13 +2246,11 @@ describe("row hover comes from the shared pair, not a hand-picked grey", () => {
     "/src/app/bills/page.tsx",
     "/src/app/budgets/[id]/edit/page.tsx",
     "/src/app/categories/page.tsx",
-    "/src/app/currencies/page.tsx",
     "/src/app/error.tsx",
     "/src/app/institutions/page.tsx",
     "/src/app/not-found.tsx",
     "/src/app/payees/page.tsx",
     "/src/app/reports/page.tsx",
-    "/src/app/securities/page.tsx",
     "/src/app/settings/page.tsx",
     "/src/components/accounts/AccountForm.tsx",
     "/src/components/accounts/AccountList.tsx",
@@ -2369,7 +2365,6 @@ describe("row hover comes from the shared pair, not a hand-picked grey", () => {
     "/src/components/transactions/SplitTransactionFields.tsx",
     "/src/components/transactions/StatusCellButton.tsx",
     "/src/components/transactions/TransactionActionSheet.tsx",
-    "/src/components/transactions/TransactionFilterPanel.tsx",
     "/src/components/transactions/TransactionForm.tsx",
     "/src/components/transactions/TransactionRow.tsx",
     "/src/components/ui/ActionMenu.tsx",
@@ -2449,27 +2444,16 @@ describe("a dialog is titled through Modal, not by a hand-rolled heading", () =>
     "/src/app/budgets/[id]/edit/page.tsx",
     "/src/app/categories/[id]/page.tsx",
     "/src/app/categories/page.tsx",
-    "/src/app/currencies/page.tsx",
     "/src/app/institutions/page.tsx",
-    "/src/app/investments/page.tsx",
     "/src/app/payees/[id]/page.tsx",
     "/src/app/payees/page.tsx",
     "/src/app/reconcile/page.tsx",
     "/src/app/reports/custom/[id]/edit/page.tsx",
     "/src/app/reports/investment/[id]/edit/page.tsx",
     "/src/app/securities/[id]/page.tsx",
-    "/src/app/securities/page.tsx",
     "/src/app/settings/emergency-access/page.tsx",
     "/src/app/tags/page.tsx",
-    "/src/app/transactions/page.tsx",
-    "/src/components/accounts/AccountExportModal.tsx",
-    "/src/components/accounts/AccountForm.tsx",
     "/src/components/accounts/AccountFormModal.tsx",
-    "/src/components/accounts/LoanPaymentSetupDialog.tsx",
-    "/src/components/accounts/asset-detail/UpdateValueDialog.tsx",
-    "/src/components/accounts/credit-card-detail/PaymentSetupDialog.tsx",
-    "/src/components/accounts/loan-detail/LoanRateControls.tsx",
-    "/src/components/accounts/loan-detail/SavedScenariosPanel.tsx",
     "/src/components/accounts/shared/ForeignCurrencyFeesSection.tsx",
     "/src/components/accounts/shared/RecurringChargesPanel.tsx",
     "/src/components/admin/CreateUserModal.tsx",
@@ -2483,7 +2467,6 @@ describe("a dialog is titled through Modal, not by a hand-rolled heading", () =>
     "/src/components/import/MnyPasswordDialog.tsx",
     "/src/components/import/MnyWipeConfirmDialog.tsx",
     "/src/components/institutions/InstitutionAccountsManager.tsx",
-    "/src/components/investments/InvestmentRegisterPanel.tsx",
     "/src/components/investments/InvestmentTransactionForm.tsx",
     "/src/components/layout/MobileNavDrawer.tsx",
     "/src/components/payees/AutoMergePayeesDialog.tsx",
@@ -2499,9 +2482,7 @@ describe("a dialog is titled through Modal, not by a hand-rolled heading", () =>
     "/src/components/scheduled-transactions/PostTransactionDialog.tsx",
     "/src/components/scheduled-transactions/ScheduledTransactionForm.tsx",
     "/src/components/securities/SecurityForm.tsx",
-    "/src/components/securities/SecurityLookupPicker.tsx",
     "/src/components/securities/SecurityTransactionHistory.tsx",
-    "/src/components/securities/detail/SecurityDocumentsTab.tsx",
     "/src/components/settings/ApiAccessSection.tsx",
     "/src/components/settings/BackupRestoreSection.tsx",
     "/src/components/settings/SecuritySection.tsx",
@@ -2510,7 +2491,6 @@ describe("a dialog is titled through Modal, not by a hand-rolled heading", () =>
     "/src/components/settings/ai/ProviderConfigForm.tsx",
     "/src/components/strategies/GemScenarioSwitcher.tsx",
     "/src/components/strategies/GemSettingsForm.tsx",
-    "/src/components/transactions/BulkUpdateModal.tsx",
     "/src/components/transactions/CurrencyPickerButton.tsx",
     "/src/components/transactions/TransactionActionSheet.tsx",
     "/src/components/transactions/TransactionForm.tsx",
@@ -2607,7 +2587,6 @@ describe("a status pill is Badge, not a hand-rolled rounded-full", () => {
     "/src/components/reports/SpendingAnomaliesReport.tsx",
     "/src/components/scheduled-transactions/BillsFilterPanel.tsx",
     "/src/components/scheduled-transactions/ScheduledTransactionList.tsx",
-    "/src/components/securities/SecurityList.tsx",
     "/src/components/securities/detail/SecurityDetailHeader.tsx",
     "/src/components/securities/detail/SecurityPositionInfoCard.tsx",
     "/src/components/securities/detail/SecurityPositionState.tsx",
@@ -3484,10 +3463,11 @@ describe("an investment amount is formatted with its own currency", () => {
 
 describe("a relative time is read through useRelativeTime", () => {
   /**
-   * `formatRelativeTime` in `lib/format.ts` hardcodes English ("5m ago",
+   * `formatRelativeTime` in `lib/format.ts` hardcoded English ("5m ago",
    * "Yesterday") and a browser-locale date, so a Polish reader got English
-   * beside a translated page. `useRelativeTime()` goes through
-   * `Intl.RelativeTimeFormat` in the reader's language.
+   * beside a translated page. It had no caller left and was removed;
+   * `useRelativeTime()` goes through `Intl.RelativeTimeFormat` in the reader's
+   * language.
    */
   const RAW_RELATIVE_TIME_IMPORT =
     /import\s*\{[^}]*\bformatRelativeTime\b[^}]*\}\s*from\s*["']@\/lib\/format["']/;
@@ -3512,6 +3492,9 @@ describe("a relative time is read through useRelativeTime", () => {
     expect(
       RAW_RELATIVE_TIME_IMPORT.test("import { useRelativeTime } from '@/hooks/useRelativeTime';"),
     ).toBe(false);
-    expect(sources["/src/lib/format.ts"]).toContain("export function formatRelativeTime");
+  });
+
+  it("has no English-only relative-time helper in lib/format.ts to import", () => {
+    expect(sources["/src/lib/format.ts"]).not.toContain("formatRelativeTime");
   });
 });

@@ -4,8 +4,27 @@ import { BulkUpdateModal } from './BulkUpdateModal';
 
 // Mock Modal to render children when isOpen
 vi.mock('@/components/ui/Modal', () => ({
-  Modal: ({ isOpen, children }: { isOpen: boolean; onClose: () => void; children: React.ReactNode; maxWidth?: string; className?: string }) =>
-    isOpen ? <div data-testid="modal">{children}</div> : null,
+  Modal: ({
+    isOpen,
+    children,
+    title,
+    description,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    children: React.ReactNode;
+    maxWidth?: string;
+    className?: string;
+    title?: React.ReactNode;
+    description?: string;
+  }) =>
+    isOpen ? (
+      <div data-testid="modal">
+        {title && <h2>{title}</h2>}
+        {description && <span data-testid="modal-description">{description}</span>}
+        {children}
+      </div>
+    ) : null,
 }));
 
 // Mock FormActions to render submit/cancel buttons
@@ -101,12 +120,14 @@ describe('BulkUpdateModal', () => {
     mockGetTagUsage.mockResolvedValue({});
   });
 
-  it('renders title and selection count', async () => {
+  it('renders the title, with the selection count on the submit button', async () => {
     render(<BulkUpdateModal {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText('Bulk Update Transactions')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Bulk Update Transactions' })).toBeInTheDocument();
     });
-    expect(screen.getByText(/Update 5 selected transactions/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Update 5 Transactions/ })).toBeInTheDocument();
+    // The how-to is the Modal description (an InfoTooltip), not a paragraph.
+    expect(screen.getByTestId('modal-description')).toHaveTextContent('Toggle the fields you want to change.');
   });
 
   it('loads categories, payees, and tags when opened, but not tag usage', async () => {

@@ -383,7 +383,6 @@ function InvestmentsContent() {
                   isLoading={data.isLoading}
                   onDelete={handleDeleteTransaction}
                   onEdit={data.handleEditTransaction}
-                  onNewTransaction={data.handleNewTransaction}
                   onStatusChanged={data.handleFormCreateAndNew}
                   filters={data.transactionFilters}
                   onFiltersChange={data.handleFiltersChange}
@@ -435,13 +434,10 @@ function InvestmentsContent() {
                   />
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <button onClick={data.openCashCreate} className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 sm:min-w-[14rem]">
-                    <span className="sm:hidden">{t('page.newCashTransactionShort')}</span>
-                    <span className="hidden sm:inline">{t('page.newCashTransaction')}</span>
-                  </button>
                   <CashFilterToggleButton
                     activeCount={data.activeCashFilterCount}
                     onClick={() => data.setShowCashFilters(!data.showCashFilters)}
+                    expanded={data.showCashFilters}
                   />
                 </div>
               </div>
@@ -505,11 +501,7 @@ function InvestmentsContent() {
         onClose={closeInvestmentTransactionModal}
         maxWidth={investmentFormNeedsConversion ? '3xl' : 'xl'}
         className="p-6"
-        {...data.modalProps}
-      >
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          {data.editingTransaction ? t('page.editTransaction') : t('page.newInvestmentTransaction')}
-        </h2>
+        {...data.modalProps} title={data.editingTransaction ? t('page.editTransaction') : t('page.newInvestmentTransaction')}>
         <InvestmentTransactionForm
           key={`${data.editingTransaction?.id ?? 'new'}-${createOnDate ?? ''}`}
           accounts={data.accounts}
@@ -528,10 +520,7 @@ function InvestmentsContent() {
       <UnsavedChangesDialog {...data.unsavedChangesDialog} />
 
       {/* Cash Transaction Form Modal */}
-      <Modal isOpen={data.showCashForm} onClose={data.closeCash} maxWidth="6xl" className="p-6" {...data.cashModalProps}>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          {data.editingCashTransaction ? t('page.editTransaction') : t('page.newTransaction')}
-        </h2>
+      <Modal isOpen={data.showCashForm} onClose={data.closeCash} maxWidth="6xl" className="p-6 !max-w-[69rem]" {...data.cashModalProps} title={data.editingCashTransaction ? t('page.editTransaction') : t('page.newTransaction')}>
         <TransactionForm
           key={`${data.editingCashTransaction?.id || 'new-cash'}-${createOnDate ?? ''}`}
           transaction={data.editingCashTransaction}

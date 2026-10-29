@@ -77,6 +77,8 @@
     "unsupported": "Jenis berkas ini tidak dapat dipratinjau. Anda tetap dapat mengunduhnya.",
     "fit": "Sesuaikan dengan layar",
     "actualSize": "Ukuran sebenarnya",
+    "versionLabel": "Versi",
+    "zoomLabel": "Zoom",
     "pageCount": "{count, plural, other {# halaman}}",
     "page": "Halaman {page} dari {total}",
     "open": "Pratinjau {name}"

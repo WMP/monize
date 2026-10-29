@@ -1463,7 +1463,7 @@ function InvestmentTransactionFormFields({
             error={errors.quantity?.message}
           />
           <NumericInput
-            label={t('transactionForm.pricePerShare', { currency: transactionCurrency })}
+            label={t('transactionForm.pricePerShare')}
             prefix={currencySymbol}
             value={watchedPrice || undefined}
             onChange={(value) => {
@@ -1476,7 +1476,7 @@ function InvestmentTransactionFormFields({
           />
           {needsConversion && (
             <CurrencyInput
-              label={t('transactionForm.commissionFees', { currency: transactionCurrency })}
+              label={t('transactionForm.commissionFees')}
               prefix={currencySymbol}
               value={watchedCommission || undefined}
               onChange={(value) => setValue('commission', value, { shouldValidate: true })}
@@ -1539,7 +1539,7 @@ function InvestmentTransactionFormFields({
             </span>
           </div>
           <NumericInput
-            label={t('transactionForm.newPriceAfterSplit', { currency: transactionCurrency })}
+            label={t('transactionForm.newPriceAfterSplit')}
             prefix={currencySymbol}
             value={watchedPrice || undefined}
             onChange={(value) => setValue('price', value, { shouldValidate: true })}
@@ -1590,7 +1590,7 @@ function InvestmentTransactionFormFields({
       {/* Amount - for dividend/interest/capital gain/return of capital */}
       {isAmountOnly && (
         <CurrencyInput
-          label={t('transactionForm.amount', { currency: transactionCurrency })}
+          label={t('transactionForm.amount')}
           prefix={currencySymbol}
           value={watchedPrice || undefined}
           onChange={(value) => setValue('price', value, { shouldValidate: true })}
@@ -1621,7 +1621,7 @@ function InvestmentTransactionFormFields({
             {/* Read-only: the server carries the basis the source held on the
                 transfer date and ignores a figure sent from here (A26-M22). */}
             <NumericInput
-              label={t('transactionForm.costPerShare', { currency: transactionCurrency })}
+              label={t('transactionForm.costPerShare')}
               prefix={currencySymbol}
               value={watchedPrice || undefined}
               onChange={(value) => setValue('price', value, { shouldValidate: true })}
@@ -1656,7 +1656,7 @@ function InvestmentTransactionFormFields({
       {/* Commission - rendered inline with qty/price when conversion is shown */}
       {needsQuantityPrice && !needsConversion && (
         <CurrencyInput
-          label={t('transactionForm.commissionFees', { currency: transactionCurrency })}
+          label={t('transactionForm.commissionFees')}
           prefix={currencySymbol}
           value={watchedCommission || undefined}
           onChange={(value) => setValue('commission', value, { shouldValidate: true })}
@@ -1670,7 +1670,7 @@ function InvestmentTransactionFormFields({
       {supportsAccruedInterest(watchedAction) && (
         <div>
           <CurrencyInput
-            label={t('transactionForm.accruedInterest', { currency: transactionCurrency })}
+            label={t('transactionForm.accruedInterest')}
             prefix={currencySymbol}
             value={watchedAccruedInterest || undefined}
             onChange={(value) => {
@@ -1762,7 +1762,7 @@ function InvestmentTransactionFormFields({
               error={errors.exchangeRate?.message}
             />
             <NumericInput
-              label={t('transactionForm.convertedTotal', { currency: cashCurrency })}
+              label={t('transactionForm.convertedTotal')}
               prefix={cashCurrencySymbol}
               value={convertedAmount ?? undefined}
               onChange={handleConvertedAmountChange}
@@ -1796,7 +1796,7 @@ function InvestmentTransactionFormFields({
             // each follow the other, exactly as the exchange rate and the
             // converted amount above do.
             <NumericInput
-              label={t('transactionForm.totalAmount', { currency: transactionCurrency })}
+              label={t('transactionForm.totalAmount')}
               prefix={currencySymbol}
               value={totalAmount || undefined}
               onChange={handleTotalAmountChange}
@@ -1806,7 +1806,7 @@ function InvestmentTransactionFormFields({
           ) : (
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {t('transactionForm.totalAmount', { currency: transactionCurrency })}
+                {t('transactionForm.totalAmount')}
               </span>
               <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {formatCurrency(totalAmount, transactionCurrency)}
