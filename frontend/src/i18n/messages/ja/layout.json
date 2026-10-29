@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "有価証券の振替を更新しました",
       "ranTransactionRule": "ルール「{name}」を {count, plural, other {# 件}}の取引に対して実行しました"
     },
-    "timeAgo": {
-      "justNow": "たった今",
-      "minutes": "{count}分前",
-      "hours": "{count}時間前",
-      "days": "{count}日前"
-    },
     "undonePrefix": "元に戻しました: {description}",
     "redonePrefix": "やり直しました: {description}"
   },

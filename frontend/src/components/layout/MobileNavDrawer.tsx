@@ -5,6 +5,7 @@ import { isNavSectionActive } from '@/lib/nav-section';
 import { ADMIN_LINKS, NAV_ICONS } from '@/lib/nav-links';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/Modal';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface NavLink {
   href: string;
@@ -117,9 +118,7 @@ export function MobileNavDrawer({
             aria-label={t('closeMenu')}
             className="p-2 -mr-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <XMarkIcon className="w-6 h-6" aria-hidden="true" />
           </button>
         </div>
 

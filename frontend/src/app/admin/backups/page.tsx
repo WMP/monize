@@ -54,7 +54,11 @@ function AdminBackupsContent() {
   return (
     <PageLayout>
       <main className="max-w-4xl mx-auto px-4 pt-6 pb-8 sm:px-6 lg:px-12">
-        <PageHeader title={t('title')} subtitle={t('subtitle')} />
+        <PageHeader
+          title={t('title')}
+          subtitle={t('subtitle')}
+          helpUrl="https://github.com/kenlasko/monize/wiki/Backup-and-Restore#automatic-backups"
+        />
 
         {isDemoMode && (
           <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-6 mb-6">

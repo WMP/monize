@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "已更新證券移轉",
       "ranTransactionRule": "已在 {count, plural, other {# 筆交易}}上執行規則「{name}」"
     },
-    "timeAgo": {
-      "justNow": "剛剛",
-      "minutes": "{count} 分鐘前",
-      "hours": "{count} 小時前",
-      "days": "{count} 天前"
-    },
     "undonePrefix": "已復原：{description}",
     "redonePrefix": "已重做：{description}"
   },

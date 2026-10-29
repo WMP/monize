@@ -2,9 +2,11 @@
 
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
+import { KeyValueList } from '@/components/ui/KeyValueList';
 import { TABLE_BODY_CLASS } from '@/components/ui/Table';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import type { AdminPushConfig } from '@/lib/admin-notifications';
+import { useDateFormat } from '@/hooks/useDateFormat';
 
 /**
  * One row per delivery channel this deployment could offer, with the state the
@@ -118,6 +120,7 @@ export function VapidIdentityPanel({
   onRotate,
 }: VapidIdentityPanelProps) {
   const t = useTranslations('admin.notificationsPage');
+  const { formatDateTime } = useDateFormat();
 
   if (!config.configured) {
     return (
@@ -131,37 +134,29 @@ export function VapidIdentityPanel({
 
   return (
     <div className="px-4 py-4 sm:px-6">
-      <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div>
-          <dt className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            {t('identity.fingerprintLabel')}
-          </dt>
-          <dd className="mt-1 font-mono text-sm text-gray-900 dark:text-gray-100">
-            {config.publicKeyFingerprint}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            {t('identity.generatedLabel')}
-          </dt>
-          <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">
-            {config.generatedAt
-              ? new Date(config.generatedAt).toLocaleString()
-              : '-'}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            {t('identity.devicesLabel')}
-          </dt>
-          <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">
-            {t('identity.deviceCounts', {
+      <KeyValueList
+        variant="pairs"
+        rows={[
+          {
+            key: 'fingerprint',
+            label: t('identity.fingerprintLabel'),
+            value: <span className="font-mono break-all">{config.publicKeyFingerprint}</span>,
+          },
+          {
+            key: 'generated',
+            label: t('identity.generatedLabel'),
+            value: config.generatedAt ? formatDateTime(config.generatedAt) : '-',
+          },
+          {
+            key: 'devices',
+            label: t('identity.devicesLabel'),
+            value: t('identity.deviceCounts', {
               live: config.liveSubscriptionCount,
               disabled: config.disabledSubscriptionCount,
-            })}
-          </dd>
-        </div>
-      </dl>
+            }),
+          },
+        ]}
+      />
 
       {config.keyUnreadable && (
         <p className="mt-4 text-sm text-amber-700 dark:text-amber-400">

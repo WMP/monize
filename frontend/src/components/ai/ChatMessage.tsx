@@ -12,6 +12,7 @@ import { MessageAttachmentChips } from './AttachmentChips';
 import { JsonHighlight } from '@/components/ui/JsonHighlight';
 import { useAiChatStore } from '@/store/aiChatStore';
 import type { PendingAction, ChatAttachmentMeta } from '@/types/ai';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface ToolInfo {
   name: string;
@@ -95,21 +96,11 @@ function ToolDetails({ tool }: { tool: ToolInfo }) {
       >
         <span className="flex items-center gap-1.5 min-w-0">
           {isError ? (
-            <svg
+            <XMarkIcon
               className="w-3 h-3 flex-shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
               aria-label={t('toolDetails.toolFailedAriaLabel')}
               role="img"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            />
           ) : (
             <svg
               className="w-3 h-3 flex-shrink-0"
