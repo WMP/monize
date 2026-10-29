@@ -16,12 +16,13 @@
     "chartUnavailable": "Chart temporarily unavailable"
   },
   "viewTabs": {
-    "list": "List",
-    "calendar": "Calendar",
+    "filterLabel": "Schedule type",
     "filterAll": "All ({count})",
     "filterBills": "Bills ({count})",
     "filterDeposits": "Deposits ({count})",
-    "todayButton": "Today"
+    "todayButton": "Today",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month"
   },
   "form": {
     "titleNew": "New Scheduled Transaction",

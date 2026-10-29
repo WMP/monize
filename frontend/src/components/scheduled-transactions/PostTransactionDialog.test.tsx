@@ -230,15 +230,15 @@ describe('PostTransactionDialog', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('calls onClose when X button is clicked', () => {
-    const onClose = vi.fn();
-    render(<PostTransactionDialog {...defaultProps} onClose={onClose} />);
-    const closeButtons = screen.getAllByRole('button');
-    const xButton = closeButtons.find(b => b.querySelector('svg path[d*="M6 18L18 6"]'));
-    if (xButton) {
-      fireEvent.click(xButton);
-      expect(onClose).toHaveBeenCalled();
-    }
+  it('is named by its title through Modal and draws no corner X', () => {
+    render(<PostTransactionDialog {...defaultProps} />);
+    expect(screen.getByRole('dialog', { name: 'Post Transaction' })).toBeInTheDocument();
+    // Cancel in the button row is what closes it: no unnamed icon-only button
+    // sits beside the title.
+    const iconOnly = screen
+      .getAllByRole('button')
+      .filter((b) => b.querySelector('svg') && !b.textContent?.trim() && !b.getAttribute('aria-label'));
+    expect(iconOnly).toHaveLength(0);
   });
 
   // --- Description field ---
@@ -332,6 +332,10 @@ describe('PostTransactionDialog', () => {
   it('shows transfer indicator block for transfer transactions', () => {
     render(<PostTransactionDialog {...defaultProps} scheduledTransaction={transferTransaction} />);
     expect(screen.getByText(/Transfer:/)).toBeInTheDocument();
+    // The icon is spaced from its text by the row's gap, not a margin on it.
+    const row = screen.getByText(/Transfer:/).parentElement!;
+    expect(row.className).toContain('gap-2');
+    expect(row.querySelector('svg')?.getAttribute('class') ?? '').not.toMatch(/\bmr-/);
     // "Savings" appears in both the description and the transfer indicator
     const savingsElements = screen.getAllByText(/Savings/);
     expect(savingsElements.length).toBeGreaterThanOrEqual(1);
@@ -1314,10 +1318,10 @@ describe('PostTransactionDialog', () => {
         />,
       );
       await settlePriceLookup();
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
       fireEvent.change(qtyInput, { target: { value: '8' } });
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
-      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
       // Total 1000 stays; price becomes 1000 / 8 = 125
       expect(totalInput.value).toBe('1,000');
       expect(Number(priceInput.value)).toBeCloseTo(125, 6);
@@ -1334,7 +1338,7 @@ describe('PostTransactionDialog', () => {
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
       fireEvent.change(totalInput, { target: { value: '' } });
       fireEvent.blur(totalInput);
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
       fireEvent.change(qtyInput, { target: { value: '5' } });
       // No total to keep -- 5 * 100 = 500
       expect(totalInput.value).toBe('500');
@@ -1352,7 +1356,7 @@ describe('PostTransactionDialog', () => {
       fireEvent.change(totalInput, { target: { value: '250' } });
       // Trigger blur to commit the value
       fireEvent.blur(totalInput);
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
       // 250 / 100 = 2.5
       expect(Number(qtyInput.value)).toBeCloseTo(2.5, 6);
     });
@@ -1367,12 +1371,12 @@ describe('PostTransactionDialog', () => {
         );
       });
       // Initial: qty=10, price=100, total=1000 (seeded)
-      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
       await act(async () => {
         fireEvent.change(priceInput, { target: { value: '200' } });
       });
       // Quantity 10 stays; total becomes 10 * 200 = 2000
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
       expect(Number(qtyInput.value)).toBeCloseTo(10, 6);
       expect(totalInput.value).toBe('2,000');
@@ -1387,11 +1391,11 @@ describe('PostTransactionDialog', () => {
           />,
         );
       });
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
       await act(async () => {
         fireEvent.change(qtyInput, { target: { value: '' } });
       });
-      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
       await act(async () => {
         fireEvent.change(priceInput, { target: { value: '200' } });
       });
@@ -1408,8 +1412,8 @@ describe('PostTransactionDialog', () => {
           />,
         );
       });
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
-      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
       await act(async () => {
         fireEvent.change(qtyInput, { target: { value: '9.5' } });
@@ -1431,14 +1435,14 @@ describe('PostTransactionDialog', () => {
           scheduledTransaction={investmentTransaction}
         />,
       );
-      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
       await waitFor(() => {
         expect(Number(priceInput.value)).toBeCloseTo(123.45, 6);
       });
       // Scheduled total (10 * 100 = 1000) is preserved -- the new price
       // recomputes the quantity (1000 / 123.45 ~= 8.10044553), not the total.
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
       await waitFor(() => {
         expect(Number(qtyInput.value)).toBeCloseTo(1000 / 123.45, 4);
       });
@@ -1495,8 +1499,8 @@ describe('PostTransactionDialog', () => {
       await waitFor(() => {
         expect(mockGetSecurityPrices).toHaveBeenCalledWith('sec1', { limit: 1 });
       });
-      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
       // Stored override wins: price stays 250 and quantity stays 4, not
       // 123.45 with the quantity rescaled to hold a 1,000 total.
       expect(Number(priceInput.value)).toBe(250);
@@ -1514,7 +1518,7 @@ describe('PostTransactionDialog', () => {
           scheduledTransaction={investmentTransaction}
         />,
       );
-      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
       await waitFor(() => {
         expect(Number(priceInput.value)).toBeCloseTo(123.45, 6);
       });
@@ -1554,7 +1558,7 @@ describe('PostTransactionDialog', () => {
       await waitFor(() => {
         expect(mockGetSecurityPrices).toHaveBeenCalledWith('sec1', { limit: 1 });
       });
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
       // The saved 4 shares stand, not rescaled by the market refresh.
       expect(Number(qtyInput.value)).toBe(4);
     });
@@ -1575,7 +1579,7 @@ describe('PostTransactionDialog', () => {
           scheduledTransaction={investmentTransaction}
         />,
       );
-      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
       // Type a price while the fetch is still pending.
       await act(async () => {
         fireEvent.change(priceInput, { target: { value: '99' } });
@@ -1681,8 +1685,8 @@ describe('PostTransactionDialog', () => {
         />,
       );
       await settlePriceLookup();
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
-      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
       expect(Number(qtyInput.value)).toBe(4);
       expect(Number(priceInput.value)).toBe(250);
@@ -1714,7 +1718,7 @@ describe('PostTransactionDialog', () => {
       );
       const row = (await screen.findByText('CA RRSP - Cash')).closest('div')!;
       await waitFor(() => {
-        const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+        const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
         expect(Number(priceInput.value)).toBeCloseTo(26.15, 6);
       });
       await waitFor(() => {
@@ -1785,8 +1789,8 @@ describe('PostTransactionDialog', () => {
         />,
       );
       await settlePriceLookup();
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
-      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
       expect(Number(qtyInput.value)).toBe(10); // base
       expect(Number(priceInput.value)).toBe(100); // base
     });
@@ -1803,12 +1807,12 @@ describe('PostTransactionDialog', () => {
       expect(screen.getByText('$4000.00')).toBeInTheDocument();
 
       // Editing quantity keeps the total (price follows), so the cash impact holds.
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
       fireEvent.change(qtyInput, { target: { value: '5' } });
       expect(screen.getByText('$4000.00')).toBeInTheDocument();
 
       // Editing price keeps quantity 5 → 5 * 100 = -500 → 4500.
-      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per Share') as HTMLInputElement;
       fireEvent.change(priceInput, { target: { value: '100' } });
       expect(screen.getByText('$4500.00')).toBeInTheDocument();
       expect(screen.queryByText('$4000.00')).not.toBeInTheDocument();
@@ -1944,9 +1948,9 @@ describe('PostTransactionDialog', () => {
           scheduledTransaction={addSharesTx}
         />,
       );
-      expect(screen.getByLabelText('Quantity (shares)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Quantity (Shares)')).toBeInTheDocument();
       // No price/total inputs for quantity-only actions
-      expect(screen.queryByLabelText('Price per share')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Price per Share')).not.toBeInTheDocument();
       expect(screen.queryByLabelText('Total Price')).not.toBeInTheDocument();
     });
 
@@ -1963,7 +1967,7 @@ describe('PostTransactionDialog', () => {
           scheduledTransaction={addSharesTx}
         />,
       );
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
       fireEvent.change(qtyInput, { target: { value: '8' } });
       expect(Number(qtyInput.value)).toBe(8);
 
@@ -1989,7 +1993,7 @@ describe('PostTransactionDialog', () => {
           scheduledTransaction={addSharesTx}
         />,
       );
-      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (Shares)') as HTMLInputElement;
       fireEvent.change(qtyInput, { target: { value: '' } });
       expect(qtyInput.value).toBe('');
     });
@@ -2026,7 +2030,7 @@ describe('PostTransactionDialog', () => {
       );
       await waitFor(() => {
         expect(
-          Number((screen.getByLabelText('Price per share') as HTMLInputElement).value),
+          Number((screen.getByLabelText('Price per Share') as HTMLInputElement).value),
         ).toBe(100);
       });
       expect(
@@ -2044,7 +2048,7 @@ describe('PostTransactionDialog', () => {
       );
       await act(async () => {});
       await waitFor(() => {
-        expect(screen.getByLabelText('Price per share')).toBeInTheDocument();
+        expect(screen.getByLabelText('Price per Share')).toBeInTheDocument();
       });
     });
 
@@ -2064,7 +2068,7 @@ describe('PostTransactionDialog', () => {
       );
       await act(async () => {});
       await waitFor(() => {
-        expect(screen.getByLabelText('Price per share')).toBeInTheDocument();
+        expect(screen.getByLabelText('Price per Share')).toBeInTheDocument();
       });
       expect(
         screen.queryByText(/No price history yet for this security/),

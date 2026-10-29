@@ -2465,7 +2465,6 @@ describe("a dialog is titled through Modal, not by a hand-rolled heading", () =>
   const MODAL = "/src/components/ui/Modal.tsx";
 
   const BASELINE: ReadonlyArray<string> = [
-    "/src/app/bills/page.tsx",
     "/src/app/budgets/[id]/edit/page.tsx",
     "/src/app/categories/[id]/page.tsx",
     "/src/app/categories/page.tsx",
@@ -2499,9 +2498,6 @@ describe("a dialog is titled through Modal, not by a hand-rolled heading", () =>
     "/src/components/payees/ReactivatePayeeDialog.tsx",
     "/src/components/payees/detail/PayeeTransactionsTab.tsx",
     "/src/components/reports/ForeignCurrencyFeesReport.tsx",
-    "/src/components/scheduled-transactions/OccurrenceDatePicker.tsx",
-    "/src/components/scheduled-transactions/OverrideEditorDialog.tsx",
-    "/src/components/scheduled-transactions/PostTransactionDialog.tsx",
     "/src/components/scheduled-transactions/ScheduledTransactionForm.tsx",
     "/src/components/securities/SecurityForm.tsx",
     "/src/components/securities/SecurityTransactionHistory.tsx",
