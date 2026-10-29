@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "Bulk Update Transactions",
-      "subtitle": "Update {count, plural, one {# selected transaction} other {# selected transactions}}. Toggle the fields you want to change.",
+      "help": "Toggle the fields you want to change.",
       "submitLabel": "Update {count, plural, one {# Transaction} other {# Transactions}}",
       "payee": "Payee",
       "category": "Category",
@@ -368,10 +368,9 @@
       "fromAccount": "From Account",
       "toAccount": "To Account",
       "transferAmount": "Transfer Amount",
-      "transferAmountWithCurrency": "Transfer Amount ({currency})",
-      "amountReceived": "Amount Received ({currency})",
-      "payeeOptional": "Payee (Optional)",
-      "categoryOptional": "Category (Optional)"
+      "amountReceivedLabel": "Amount Received",
+      "payeeOptional": "Payee (optional)",
+      "categoryOptional": "Category (optional)"
     },
     "placeholders": {
       "selectAccount": "Select account...",
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "Quantity",
     "pricePlaceholder": "Price",
     "commissionPlaceholder": "Commission",
-    "amountPlaceholder": "Amount ({currency})",
+    "amountOnlyPlaceholder": "Amount",
     "ratePlaceholder": "{to} per 1 {from}",
     "ariaRate": "Exchange rate ({to} per 1 {from})",
     "rateHint": "Quantity, price and commission are in {from}; this rate converts the cash impact into {to}.",

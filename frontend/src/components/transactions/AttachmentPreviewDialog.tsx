@@ -14,6 +14,7 @@ import { attachmentDownloadUrl } from '@/lib/attachments';
 import { downloadBlob } from '@/lib/download';
 import type { Attachment } from '@/types/attachment';
 import { PdfPages } from './PdfPages';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 
 /**
  * What the preview is showing: a saved attachment (its original, when it
@@ -201,62 +202,60 @@ export function AttachmentPreviewDialog({
       maxWidth="6xl"
       pushHistory
       fullScreenOnPhone
-      className="flex flex-col sm:h-[90vh]"
+      fixedHeight
       footer={
         <>
           {download}
-          <Button type="button" variant="primary" onClick={onClose}>
+          {/* Close is not the action the dialog exists for, so it is not a
+              primary button. */}
+          <Button type="button" variant="outline" onClick={onClose}>
             {tCommon('close')}
           </Button>
         </>
       }
     >
       {(hasOriginal(target) || showZoom) && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 px-4 py-2 sm:px-6 dark:border-gray-700">
+        <div className="flex flex-wrap items-center gap-2 px-4 pb-2 sm:px-6">
           {hasOriginal(target) && (
-            <>
-              {/* Two buttons rather than a tablist, as the scan dialog does:
-                  a preview switch inside a dialog is not page navigation. */}
-              <Button
+            // A segmented control rather than a tablist, as the scan dialog
+            // does: a preview switch inside a dialog is not page navigation.
+            <div role="group" aria-label={t('preview.versionLabel')} className={SEGMENTED_GROUP_CLASS}>
+              <button
                 type="button"
-                size="sm"
-                variant={variant === 'enhanced' ? 'primary' : 'outline'}
                 onClick={() => setVariant('enhanced')}
                 aria-pressed={variant === 'enhanced'}
+                className={segmentClass(variant === 'enhanced')}
               >
                 {t('scan.viewEnhanced')}
-              </Button>
-              <Button
+              </button>
+              <button
                 type="button"
-                size="sm"
-                variant={variant === 'original' ? 'primary' : 'outline'}
                 onClick={() => setVariant('original')}
                 aria-pressed={variant === 'original'}
+                className={segmentClass(variant === 'original')}
               >
                 {t('scan.viewOriginal')}
-              </Button>
-            </>
+              </button>
+            </div>
           )}
           {showZoom && (
-            <div className="ml-auto flex items-center gap-2">
-              <Button
+            <div role="group" aria-label={t('preview.zoomLabel')} className={`ml-auto ${SEGMENTED_GROUP_CLASS}`}>
+              <button
                 type="button"
-                size="sm"
-                variant={fit === 'fit' ? 'primary' : 'outline'}
                 onClick={() => setFit('fit')}
                 aria-pressed={fit === 'fit'}
+                className={segmentClass(fit === 'fit')}
               >
                 {t('preview.fit')}
-              </Button>
-              <Button
+              </button>
+              <button
                 type="button"
-                size="sm"
-                variant={fit === 'actual' ? 'primary' : 'outline'}
                 onClick={() => setFit('actual')}
                 aria-pressed={fit === 'actual'}
+                className={segmentClass(fit === 'actual')}
               >
                 {t('preview.actualSize')}
-              </Button>
+              </button>
             </div>
           )}
         </div>

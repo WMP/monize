@@ -396,14 +396,14 @@ export function CategoryInfoWidget({
                       onClick={() => onSubcategoryClick!(row.id)}
                       className="w-full flex items-baseline justify-between gap-3 text-left rounded hover:bg-gray-50 dark:hover:bg-gray-700/40 px-1 -mx-1"
                     >
-                      <span className="text-blue-600 dark:text-blue-400 truncate">{label}</span>
+                      <span className="text-blue-600 dark:text-blue-400 min-w-0 break-words sm:truncate" title={label}>{label}</span>
                       <span className="text-gray-900 dark:text-gray-100 whitespace-nowrap">
                         {amount}
                       </span>
                     </button>
                   ) : (
                     <div className="flex items-baseline justify-between gap-3 px-1 -mx-1">
-                      <span className="text-gray-700 dark:text-gray-300 truncate">{label}</span>
+                      <span className="text-gray-700 dark:text-gray-300 min-w-0 break-words sm:truncate" title={label}>{label}</span>
                       <span className="text-gray-900 dark:text-gray-100 whitespace-nowrap">
                         {amount}
                       </span>
@@ -441,12 +441,12 @@ export function CategoryInfoWidget({
                       onClick={() => onPayeeClick(row.id!)}
                       className="w-full flex items-baseline justify-between gap-3 text-left rounded hover:bg-gray-50 dark:hover:bg-gray-700/40 px-1 -mx-1"
                     >
-                      <span className="text-blue-600 dark:text-blue-400 truncate">{label}</span>
+                      <span className="text-blue-600 dark:text-blue-400 min-w-0 break-words sm:truncate" title={label}>{label}</span>
                       <span className="text-gray-900 dark:text-gray-100">{amount}</span>
                     </button>
                   ) : (
                     <div className="flex items-baseline justify-between gap-3 px-1 -mx-1">
-                      <span className="text-gray-700 dark:text-gray-300 truncate">{label}</span>
+                      <span className="text-gray-700 dark:text-gray-300 min-w-0 break-words sm:truncate" title={label}>{label}</span>
                       <span className="text-gray-900 dark:text-gray-100">{amount}</span>
                     </div>
                   )}

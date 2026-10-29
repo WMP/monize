@@ -186,13 +186,15 @@ export function BulkUpdateModal({
   const showSplitNote = enableCategory;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg" className="p-6" allowOverflow>
-      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-        {t('bulk.modal.title')}
-      </h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        {t('bulk.modal.subtitle', { count: selectionCount })}
-      </p>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="lg"
+      className="p-6"
+      allowOverflow
+      title={t('bulk.modal.title')}
+      description={t('bulk.modal.help')}
+    >
 
       <form onSubmit={handleSubmit(submit)}>
         <div className="space-y-4">
