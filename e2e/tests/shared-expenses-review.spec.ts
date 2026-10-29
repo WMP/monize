@@ -106,25 +106,20 @@ test.describe("Group-only financial boundary", () => {
         exact: true,
       });
       await editor
-        .getByLabel("What was it for?")
+        .getByLabel("Description")
         .fill("Coffee and lunch at the hut");
       await editor.getByLabel("Amount", { exact: true }).fill("100");
       await editor
-        .getByLabel("Paid by", { exact: true })
+        .getByLabel("Paid By", { exact: true })
         .selectOption(group.participants.find((p) => p.name === "Fran")!.id);
       await editor
         .getByRole("button", { name: "Change Split", exact: true })
         .click();
       const split = page.getByRole("dialog", {
-        name: "How to split",
+        name: "Split Between",
         exact: true,
       });
-      await split
-        .getByRole("button", { name: "Exact amounts", exact: true })
-        .click();
       for (const [name, amount] of [
-        ["Robert", "40"],
-        ["Anna", "40"],
         ["Bartek", "20"],
         ["Dana", "0"],
         ["Eli", "0"],
@@ -132,12 +127,12 @@ test.describe("Group-only financial boundary", () => {
       ]) {
         await split.getByLabel(`Share for ${name}`).fill(amount);
       }
+      await expect(split.getByLabel("Share for Robert")).toHaveValue("40.00");
+      await expect(split.getByLabel("Share for Anna")).toHaveValue("40.00");
       await split
         .getByRole("button", { name: "Apply Split", exact: true })
         .click();
-      await editor
-        .getByRole("button", { name: "Save Expense", exact: true })
-        .click();
+      await editor.getByRole("button", { name: "Save", exact: true }).click();
       await expect(editor).toHaveCount(0);
       await page.reload();
       const saved = await api.get<SharedGroupDetail>(
@@ -168,7 +163,7 @@ test.describe("Group-only financial boundary", () => {
       expect(payer?.balance).toBe("100.0000");
       expect(await api.get("/accounts")).toEqual(beforeAccounts);
       await page.getByLabel("Search descriptions and notes").fill("Coffee");
-      await page.getByRole("button", { name: "Search", exact: true }).click();
+      await page.getByLabel("Search descriptions and notes").press("Tab");
       await expect(
         page.getByRole("row").filter({ hasText: "Coffee and lunch" }),
       ).toBeVisible();

@@ -891,29 +891,54 @@ export function AccountForm({
     }
   };
 
-  if (account?.managedPurpose === 'SHARED_SETTLEMENT') {
-    return <form onSubmit={handleSubmit(handleValidatedSubmit)} className="space-y-4">
-      <p className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-3 text-sm">{ts('managedHelp')}</p>
-      <Input
-        label={t('form.accountName')}
-        error={errors.name?.message}
-        {...register('name')}
-      />
-      <Input label={t('form.description')} {...register('description')} />
-      <Controller
-            name="excludeFromNetWorth"
-            control={control}
-            render={({ field }) => (
+  if (account?.managedPurpose === "SHARED_SETTLEMENT") {
+    return (
+      <form
+        onSubmit={handleSubmit(handleValidatedSubmit)}
+        className="space-y-4"
+      >
+        <p className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-3 text-sm">
+          {ts("managedHelp")}
+        </p>
+        <Input
+          label={t("form.accountName")}
+          error={errors.name?.message}
+          {...register("name")}
+        />
+        <Input label={t("form.description")} {...register("description")} />
+        <Controller
+          name="excludeFromNetWorth"
+          control={control}
+          render={({ field }) => (
+            <label className="flex items-center gap-3">
               <ToggleSwitch
                 checked={!!field.value}
                 onChange={field.onChange}
-                label={t('form.excludeFromNetWorth')}
+                label={t("form.excludeFromNetWorth")}
               />
-            )}
-          />
-      {account.sharedExpenseGroupId && <ButtonLink href={`/shared-expenses/private-finances/${account.sharedExpenseGroupId}`}>{ts('myFinances')}</ButtonLink>}
-      <FormActions onCancel={onCancel} submitLabel={t('form.updateAccount')} isSubmitting={isSubmitting} />
-    </form>;
+              <span className="text-sm font-medium">
+                {t("form.excludeFromNetWorth")}
+              </span>
+            </label>
+          )}
+        />
+        {account.sharedExpenseGroupId && (
+          <div>
+            <ButtonLink
+              variant="outline"
+              href={`/shared-expenses/private-finances/${account.sharedExpenseGroupId}`}
+            >
+              {ts("myFinances")}
+            </ButtonLink>
+          </div>
+        )}
+        <FormActions
+          onCancel={onCancel}
+          submitLabel={ts("saveChanges")}
+          isSubmitting={isSubmitting}
+        />
+      </form>
+    );
   }
 
   return (

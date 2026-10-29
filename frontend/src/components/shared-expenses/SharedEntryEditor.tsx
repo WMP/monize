@@ -3,6 +3,8 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
+import { FormActions } from "@/components/ui/FormActions";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -184,38 +186,25 @@ export function SharedEntryEditor({
           }
         }}
         isOpen
-        fixedHeight
         fullScreenOnPhone
         title={saved ? t("saved") : label}
-        description={
-          input.type === "REPAYMENT" ? t("repaymentHelp") : undefined
-        }
         onClose={close}
-        padding="md"
+        padding="none"
+        className="p-6"
         maxWidth="2xl"
-        footer={
-          <>
-            <Button variant="outline" disabled={busy} onClick={close}>
-              {saved ? t("close") : t("cancel")}
-            </Button>
-            <Button
-              isLoading={busy}
-              disabled={!saved && !shownPreview}
-              onClick={save}
-            >
-              {saved
-                ? t("retry")
-                : input.type === "REPAYMENT"
-                  ? t("confirmRepayment")
-                  : input.type === "EXPENSE" && !entry
-                    ? t("confirmSave")
-                    : t("save")}
-            </Button>
-          </>
-        }
       >
-        <div className="space-y-4">
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            if (event.target !== event.currentTarget) return;
+            event.preventDefault();
+            if (!busy && (saved || shownPreview)) void save();
+          }}
+        >
           <SharedError error={error} />
+          {input.type === "REPAYMENT" && (
+            <InfoTooltip text={t("repaymentHelp")} usePortal />
+          )}
           {saved && <SharedNotice>{t("savedFilesPending")}</SharedNotice>}
           {currencyChanged && !preview.validation && (
             <SharedNotice>{t("amountChanged")}</SharedNotice>
@@ -375,6 +364,7 @@ export function SharedEntryEditor({
                     </fieldset>
                   )}
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => {
@@ -421,6 +411,7 @@ export function SharedEntryEditor({
                       </p>
                     </div>
                     <Button
+                      type="button"
                       variant="outline"
                       disabled={resolvedPlaces === undefined}
                       onClick={() => setSplit(true)}
@@ -521,10 +512,20 @@ export function SharedEntryEditor({
               allowUpload={false}
             />
           )}
-        </div>
+          <FormActions
+            onCancel={close}
+            isSubmitting={busy}
+            submitDisabled={!saved && !shownPreview}
+            submitLabel={
+              saved ? t("retry") : entry ? t("saveChanges") : t("save")
+            }
+          />
+        </form>
       </Modal>
       {split && (
         <SharedSplitEditor
+          groupId={group.id}
+          entryId={entry?.id}
           input={input}
           participants={participants}
           places={resolvedPlaces ?? 4}

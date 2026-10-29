@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
+import { FormActions } from "@/components/ui/FormActions";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -73,25 +74,10 @@ export function SharedDocumentCopy({
       <Modal
         isOpen
         title={t("copyPrivate")}
-        padding="md"
+        padding="none"
+        className="p-6"
         maxWidth="lg"
         onClose={busy ? undefined : onClose}
-        footer={
-          <>
-            <Button variant="outline" disabled={busy} onClick={onClose}>
-              {t("cancel")}
-            </Button>
-            <Button
-              disabled={
-                !source || files.dataKey !== `${parentKind}:${parentKey}`
-              }
-              isLoading={busy}
-              onClick={copy}
-            >
-              {t("copy")}
-            </Button>
-          </>
-        }
       >
         <div className="space-y-4">
           <SharedNotice>{t("copyHelp")}</SharedNotice>
@@ -127,41 +113,67 @@ export function SharedDocumentCopy({
               }}
             />
           )}
-          {files.dataKey === `${parentKind}:${parentKey}` && files.data && (
-            <>
-              <Select
-                label={t("copyDocument")}
-                value={source}
-                options={[
-                  { value: "", label: t("choose") },
-                  ...files.data.map((file) => ({
-                    value: file.id,
-                    label: file.filename,
-                  })),
-                ]}
-                onChange={(e) => {
-                  setSource(e.target.value);
-                  setOriginal(false);
-                }}
-              />
-              {source && (
-                <Button variant="outline" onClick={() => setPreview(true)}>
-                  {t("previewFile")}
-                </Button>
-              )}
-              {files.data.find((f) => f.id === source)
-                ?.originalAttachmentId && (
-                <label className="flex items-center gap-3 text-sm">
-                  <ToggleSwitch
-                    label={t("includeOriginal")}
-                    checked={original}
-                    onChange={setOriginal}
-                  />
-                  {t("includeOriginal")}
-                </label>
-              )}
-            </>
-          )}
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (
+                !busy &&
+                source &&
+                files.dataKey === `${parentKind}:${parentKey}`
+              )
+                void copy();
+            }}
+          >
+            {files.dataKey === `${parentKind}:${parentKey}` && files.data && (
+              <>
+                <Select
+                  label={t("copyDocument")}
+                  value={source}
+                  options={[
+                    { value: "", label: t("choose") },
+                    ...files.data.map((file) => ({
+                      value: file.id,
+                      label: file.filename,
+                    })),
+                  ]}
+                  onChange={(e) => {
+                    setSource(e.target.value);
+                    setOriginal(false);
+                  }}
+                />
+                {source && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setPreview(true)}
+                  >
+                    {t("previewFile")}
+                  </Button>
+                )}
+                {files.data.find((f) => f.id === source)
+                  ?.originalAttachmentId && (
+                  <label className="flex items-center gap-3 text-sm">
+                    <ToggleSwitch
+                      label={t("includeOriginal")}
+                      checked={original}
+                      onChange={setOriginal}
+                    />
+                    {t("includeOriginal")}
+                  </label>
+                )}
+              </>
+            )}
+            <FormActions
+              onCancel={onClose}
+              submitLabel={t("copy")}
+              isSubmitting={busy}
+              submitDisabled={
+                !source || files.dataKey !== `${parentKind}:${parentKey}`
+              }
+            />
+          </form>
         </div>
       </Modal>
       {preview && files.data?.find((f) => f.id === source) && (

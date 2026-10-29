@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { FormActions } from "@/components/ui/FormActions";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
@@ -73,7 +74,7 @@ export function SharedPeople({
       )}
       <div className="grid gap-4 md:grid-cols-2">
         {visible?.map((person) => (
-          <Card key={person.id} padding="md">
+          <Card key={person.id} padding="none" className="p-6">
             <div className="flex justify-between gap-2">
               <h2 className="font-semibold break-words">{person.name}</h2>
               <div className="flex flex-wrap gap-1">
@@ -150,25 +151,18 @@ export function SharedPeople({
         <Modal
           isOpen
           title={t("savePerson")}
-          padding="md"
+          padding="none"
+          className="p-6"
           maxWidth="md"
           onClose={busy ? undefined : () => setEdit(null)}
-          footer={
-            <>
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() => setEdit(null)}
-              >
-                {t("cancel")}
-              </Button>
-              <Button isLoading={busy} disabled={!name.trim()} onClick={save}>
-                {t("save")}
-              </Button>
-            </>
-          }
         >
-          <div className="space-y-4">
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!busy && name.trim()) void save();
+            }}
+          >
             <SharedError error={error || payees.error} />
             <Input
               label={t("contactName")}
@@ -189,7 +183,13 @@ export function SharedPeople({
               usePortal
             />
             <SharedNotice>{t("privateOnly")}</SharedNotice>
-          </div>
+            <FormActions
+              onCancel={() => setEdit(null)}
+              submitLabel={t("save")}
+              isSubmitting={busy}
+              submitDisabled={!name.trim()}
+            />
+          </form>
         </Modal>
       )}
     </div>

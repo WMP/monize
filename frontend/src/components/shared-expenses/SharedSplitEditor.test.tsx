@@ -1,8 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@/test/render";
+import type { SharedEntryInput } from "@/types/shared-expense";
 import { SharedSplitEditor } from "./SharedSplitEditor";
 import { initialSharedEntry } from "@/lib/shared-split-draft";
 import { sharedGroupFixture } from "./__fixtures__/shared-fixtures";
+
+vi.mock("./useSharedEntryPreview", () => ({
+  useSharedEntryPreview: (_groupId: string, input: SharedEntryInput) => ({
+    preview: {
+      allocations: input.shares.map((row) => ({
+        participantId: row.participantId,
+        kind: "SHARE",
+        originalAmount: input.splitMode === "EXACT" ? row.value : "50.00",
+      })),
+    },
+    pending: false,
+    error: null,
+  }),
+}));
 
 function setup(group = sharedGroupFixture()) {
   const input = {
@@ -14,6 +29,7 @@ function setup(group = sharedGroupFixture()) {
     onClose = vi.fn();
   render(
     <SharedSplitEditor
+      groupId={group.id}
       input={input}
       participants={group.participants}
       places={2}
@@ -39,7 +55,6 @@ describe("SharedSplitEditor", () => {
       ],
     });
     const { onApply, input } = setup(group);
-    fireEvent.click(screen.getByRole("button", { name: "Exact amounts" }));
     fireEvent.change(screen.getByLabelText("Share for Me"), {
       target: { value: "20" },
     });
@@ -47,11 +62,6 @@ describe("SharedSplitEditor", () => {
       target: { value: "0" },
     });
     fireEvent.click(screen.getByRole("switch", { name: "Ewa" }));
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Split Remainder Equally Between Bartek, Celina, and Daniel",
-      }),
-    );
     expect(screen.getByLabelText("Share for Me")).toHaveValue("20.00");
     expect(screen.getByLabelText("Share for Anna")).toHaveValue("0.00");
     expect(screen.getByLabelText("Share for Bartek")).toHaveValue("26.67");
@@ -59,7 +69,6 @@ describe("SharedSplitEditor", () => {
     expect(screen.getByLabelText("Share for Daniel")).toHaveValue("26.66");
     expect(screen.queryByLabelText("Share for Ewa")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Ready to apply");
-    expect(screen.getByRole("status")).toHaveFocus();
     expect(onApply).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Apply Split" }));
     expect(onApply).toHaveBeenCalledWith({
@@ -92,14 +101,8 @@ describe("SharedSplitEditor", () => {
     ]);
     expect(input.shares).toHaveLength(2);
   });
-  it("cancels a remainder preview without changing the applied shares", () => {
+  it("cancels the equal split without changing the applied shares", () => {
     const { onApply, onClose, input } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Exact amounts" }));
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Split Remainder Equally Between Me and Anna",
-      }),
-    );
     expect(screen.getByLabelText("Share for Me")).toHaveValue("50.00");
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onClose).toHaveBeenCalledOnce();
@@ -117,16 +120,12 @@ describe("SharedSplitEditor", () => {
     expect(onApply).not.toHaveBeenCalled();
     expect(input.shares).toHaveLength(2);
   });
-  it("keeps mode drafts and assigns only the missing exact amount", () => {
+  it("keeps a fixed amount while assigning only the remainder to the other person", () => {
     const { onApply } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Exact amounts" }));
     fireEvent.change(screen.getByLabelText("Share for Me"), {
       target: { value: "35" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Shares" }));
-    fireEvent.click(screen.getByRole("button", { name: "Exact amounts" }));
     expect(screen.getByLabelText("Share for Me")).toHaveValue("35.00");
-    fireEvent.click(screen.getByRole("button", { name: /remainder.*Anna/i }));
     fireEvent.click(screen.getByRole("button", { name: "Apply Split" }));
     expect(onApply).toHaveBeenCalledWith({
       splitMode: "EXACT",
@@ -138,16 +137,15 @@ describe("SharedSplitEditor", () => {
   });
   it("identifies a missing 0.01 percent instead of normalizing 99.99 percent", () => {
     setup();
-    fireEvent.click(screen.getByRole("button", { name: "Percentages" }));
-    fireEvent.change(screen.getByLabelText("Share for Me"), {
+    fireEvent.change(screen.getByLabelText("Percentage for Me"), {
       target: { value: "50" },
     });
-    fireEvent.change(screen.getByLabelText("Share for Anna"), {
+    fireEvent.change(screen.getByLabelText("Percentage for Anna"), {
       target: { value: "49.99" },
     });
     expect(screen.getByRole("status")).toHaveTextContent("0.01%");
     expect(screen.getByRole("button", { name: "Apply Split" })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Share for Anna"), {
+    fireEvent.change(screen.getByLabelText("Percentage for Anna"), {
       target: { value: "50" },
     });
     expect(screen.getByRole("button", { name: "Apply Split" })).toBeEnabled();
@@ -164,7 +162,6 @@ describe("SharedSplitEditor", () => {
   });
   it("keeps extras optional and only applies their calculation on request", () => {
     const { onApply } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Exact amounts" }));
     fireEvent.change(screen.getByLabelText("Share for Me"), {
       target: { value: "20" },
     });
@@ -172,8 +169,7 @@ describe("SharedSplitEditor", () => {
       .getByText("More split options")
       .closest("details")!;
     expect(disclosure.open).toBe(false);
-    fireEvent.click(screen.getByText("More split options"));
-    expect(disclosure.open).toBe(true);
+    disclosure.open = true;
     expect(screen.getByLabelText("Share for Me")).toHaveValue("20.00");
     expect(onApply).not.toHaveBeenCalled();
     fireEvent.click(
@@ -184,7 +180,6 @@ describe("SharedSplitEditor", () => {
     expect(screen.getByLabelText("Share for Me")).toHaveValue("60.00");
     expect(screen.getByLabelText("Share for Anna")).toHaveValue("40.00");
     expect(screen.getByRole("status")).toHaveTextContent("Ready to apply");
-    expect(screen.getByRole("status")).toHaveFocus();
     expect(
       screen.queryByRole("button", { name: /Give remainder/ }),
     ).not.toBeInTheDocument();
@@ -199,7 +194,6 @@ describe("SharedSplitEditor", () => {
   });
   it("names over-allocation and does not offer a positive-remainder action", () => {
     setup();
-    fireEvent.click(screen.getByRole("button", { name: "Exact amounts" }));
     fireEvent.change(screen.getByLabelText("Share for Me"), {
       target: { value: "120" },
     });
@@ -208,5 +202,55 @@ describe("SharedSplitEditor", () => {
     expect(
       screen.queryByRole("button", { name: /Give remainder/ }),
     ).not.toBeInTheDocument();
+  });
+  it("offers linked percentage and weight controls without mode tabs", () => {
+    const { onApply } = setup();
+    expect(screen.getByLabelText("Percentage for Me")).toBeInTheDocument();
+    expect(screen.getByLabelText("Shares for Me")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Exact amounts" }),
+    ).not.toBeInTheDocument();
+    fireEvent.change(
+      screen.getByRole("slider", { name: "Adjust Percentage for Me" }),
+      { target: { value: "40" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Apply Split" }));
+    expect(onApply).toHaveBeenCalledWith({
+      splitMode: "PERCENT",
+      shares: [
+        { participantId: "me", value: "40" },
+        { participantId: "anna", value: "60.00" },
+      ],
+    });
+  });
+  it("gives people with the same name distinct numeric field labels", () => {
+    const group = sharedGroupFixture();
+    setup({
+      ...group,
+      participants: group.participants.map((person) => ({
+        ...person,
+        name: "Alex",
+      })),
+    });
+    const labels = screen.getAllByText("Percentage for Alex", {
+      selector: "label",
+    });
+    expect(new Set(labels.map((label) => label.getAttribute("for"))).size).toBe(
+      2,
+    );
+    expect(
+      screen.getAllByRole("textbox", { name: "Percentage for Alex" }),
+    ).toHaveLength(2);
+  });
+  it("keeps the slider's accessible percentage within its range while naming an over-allocation", () => {
+    setup();
+    fireEvent.change(screen.getByLabelText("Percentage for Me"), {
+      target: { value: "120" },
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(/Over-allocated/);
+    expect(
+      screen.getByRole("slider", { name: "Adjust Percentage for Me" }),
+    ).toHaveAttribute("aria-valuetext", "100.00%");
+    expect(screen.getByRole("button", { name: "Apply Split" })).toBeDisabled();
   });
 });

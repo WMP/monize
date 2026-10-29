@@ -3,7 +3,10 @@
 import { useEffect, useId } from "react";
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { Select } from "@/components/ui/Select";
 import { CurrencyPickerButton } from "@/components/transactions/CurrencyPickerButton";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
@@ -27,16 +30,19 @@ export function SharedError({
   const t = useTranslations("sharedExpenses");
   if (!error) return null;
   return (
-    <div
-      role="alert"
-      className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200"
-    >
-      <p>{getErrorMessage(error, t("loadFailed"))}</p>
-      {retry && (
-        <Button size="sm" variant="outline" className="mt-2" onClick={retry}>
-          {t("retry")}
-        </Button>
-      )}
+    <div role="alert">
+      <EmptyState
+        className="py-4"
+        icon={<ExclamationTriangleIcon />}
+        title={getErrorMessage(error, t("loadFailed"))}
+        action={
+          retry ? (
+            <Button size="sm" variant="outline" type="button" onClick={retry}>
+              {t("retry")}
+            </Button>
+          ) : undefined
+        }
+      />
     </div>
   );
 }
@@ -78,6 +84,8 @@ export function SharedMoneyInput({
   baseCurrency = currency,
   onCurrencyChange,
   disabled = false,
+  onFocus,
+  onBlur,
 }: {
   label: string;
   value: string;
@@ -87,6 +95,8 @@ export function SharedMoneyInput({
   baseCurrency?: string;
   onCurrencyChange?: (code: string) => void;
   disabled?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }) {
   const inputId = useId();
   const number = value === "" ? undefined : Number(value);
@@ -110,6 +120,8 @@ export function SharedMoneyInput({
           decimalPlaces={places}
           allowNegative={false}
           disabled={disabled}
+          onFocus={onFocus}
+          onBlur={onBlur}
         />
       </div>
     </div>
@@ -117,17 +129,22 @@ export function SharedMoneyInput({
 }
 
 export function SharedCurrencySelect({
+  label,
+  help,
   value,
   onChange,
   onResolved,
   disabled,
 }: {
+  label?: string;
+  help?: string;
   value: string;
   onChange: (code: string, places: number) => void;
   onResolved?: (places: number) => void;
   disabled?: boolean;
 }) {
   const t = useTranslations("sharedExpenses");
+  const id = useId();
   const data = useReportData(() => exchangeRatesApi.getCurrencies(), []);
   const resolvedPlaces = data.data?.find(
     (currency) => currency.code === value,
@@ -137,8 +154,17 @@ export function SharedCurrencySelect({
   }, [resolvedPlaces, onResolved]);
   return (
     <div>
+      <div className="flex items-center gap-2 mb-1">
+        <label
+          htmlFor={id}
+          className="text-sm font-medium text-gray-700 dark:text-gray-300"
+        >
+          {label ?? t("currency")}
+        </label>
+        {help && <InfoTooltip text={help} usePortal />}
+      </div>
       <Select
-        label={t("currency")}
+        id={id}
         value={value}
         disabled={disabled}
         options={[

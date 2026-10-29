@@ -88,7 +88,7 @@ describe("Personal booking review", () => {
       />,
     );
     await screen.findByRole("option", { name: "My bank · PLN" });
-    fireEvent.click(screen.getAllByText("More options").at(-1)!);
+    fireEvent.click(screen.getAllByText("More Options").at(-1)!);
     fireEvent.click(
       screen.getByRole("button", { name: "Add Another Payment" }),
     );
@@ -165,7 +165,7 @@ describe("Personal booking review", () => {
     );
     const portion = await screen.findByLabelText("Shared part of Food");
     expect(portion).toHaveValue("200.0000");
-    fireEvent.click(screen.getAllByText("More options").at(-1)!);
+    fireEvent.click(screen.getAllByText("More Options").at(-1)!);
     fireEvent.click(
       screen.getByRole("button", { name: "Add Another Payment" }),
     );

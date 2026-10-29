@@ -35,6 +35,7 @@ export function splitDraftStatus(
     if (mode === "WEIGHT")
       return {
         valid:
+          rows.every((row) => row.value !== "") &&
           rows.reduce(
             (sum, row) => sum + units(row.value || "0", 4),
             BigInt(0),

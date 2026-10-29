@@ -82,8 +82,8 @@ export function SharedBalances({
           </ul>
         )}
         {writable && group.balances.settlementReady && (
-          <Button variant="ghost" className="mt-3" onClick={() => onRepay()}>
-            {t("addRepayment")}
+          <Button variant="outline" className="mt-3" onClick={() => onRepay()}>
+            {t("otherRepayment")}
           </Button>
         )}
       </Card>

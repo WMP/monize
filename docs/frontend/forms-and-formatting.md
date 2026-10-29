@@ -284,3 +284,17 @@ Restore summaries use `translationKey` entries in `lib/restore-labels.ts` for ne
 count labels. `components/settings/BackupRestoreSection.tsx` translates these in
 the settings namespace; the restore-label contract checks every backend count
 key, and the component regression checks a shared-group label and its count.
+
+### Shared split editor
+
+`SharedSplitEditor` presents amount, percentage and relative shares together.
+`shared-split-editor.ts` keeps explicit values pinned and delegates blank amounts
+to `splitRemainderEqually`; it never replaces an unchanged equal split with locally
+rounded amounts. Money readouts come from `useSharedEntryPreview`, bound to the
+current operation/entry identity, while the parent expense previews its real
+payers again before saving. Templates edit proportions without fictitious money.
+An unedited money field waits for its pending automatic preview before accepting
+input; a focused edit stays editable when cleared, so the preview cannot replace
+text between selecting the old value and typing its replacement.
+The numerical cases and missing-data policy are in
+`docs/specs/shared-expenses-ui-consistency.md`.

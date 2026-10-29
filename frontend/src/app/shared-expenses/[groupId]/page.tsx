@@ -36,7 +36,6 @@ import type {
 import {
   SharedError,
   SharedNotice,
-  SharedTabs,
 } from "@/components/shared-expenses/SharedPrimitives";
 const SharedEntryEditor = dynamic(
   () =>
@@ -82,6 +81,12 @@ const SharedActivity = dynamic(() =>
 import { SharedGroupSummary } from "@/components/shared-expenses/SharedGroupSummary";
 import { SharedEntryTable } from "@/components/shared-expenses/SharedEntryTable";
 import { SharedFilters } from "@/components/shared-expenses/SharedFilters";
+import { Tabs, TabPanel } from "@/components/ui/Tabs";
+import {
+  ListTopToolbar,
+  LIST_TOOLBAR_BUTTON_CLASS,
+} from "@/components/ui/ListTopToolbar";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { ListBottomPager } from "@/components/ui/ListBottomPager";
 import type { SharedDocument } from "@/lib/shared-documents";
 
@@ -116,7 +121,7 @@ function GroupContent({ groupId }: { groupId: string }) {
     searchParams.get("view") === "myFinances" ? "myFinances" : "expenses",
   );
   const [searchDraft, setSearchDraft] = useState("");
-  const [search, setSearch] = useState("");
+  const search = useDebouncedValue(searchDraft, 400);
   const [type, setType] = useState("");
   const [offset, setOffset] = useState(0);
   const [filters, setFilters] = useState({
@@ -139,7 +144,11 @@ function GroupContent({ groupId }: { groupId: string }) {
   );
   const groups = useReportData(sharedExpensesApi.groups, []);
   const group = data.data?.id === groupId ? data.data : null;
-  const fresh = data.dataKey === key && !data.error && !data.isLoading;
+  const fresh =
+    search === searchDraft &&
+    data.dataKey === key &&
+    !data.error &&
+    !data.isLoading;
   const [detail, setDetail] = useState<SharedEntry | null>(null);
   const [entryLoading, setEntryLoading] = useState(false);
   const [entryError, setEntryError] = useState<unknown>(null);
@@ -253,7 +262,7 @@ function GroupContent({ groupId }: { groupId: string }) {
   const writable = group && !group.archivedAt && group.role !== "VIEWER";
   return (
     <PageLayout>
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 space-y-5">
+      <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8 space-y-5">
         <Link
           href="/shared-expenses"
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -284,20 +293,19 @@ function GroupContent({ groupId }: { groupId: string }) {
               }
               actions={
                 <div className="flex flex-wrap items-stretch gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={changed}
+                    aria-label={t("refresh")}
+                  >
+                    <ArrowPathIcon aria-hidden="true" className="h-5 w-5" />
+                  </Button>
                   {writable && (
                     <SharedAddEntryButton
                       disabled={!fresh}
                       onAdd={(kind) => setForm({ kind })}
                     />
                   )}
-                  <Button
-                    variant="outline"
-                    onClick={changed}
-                    aria-label={t("refresh")}
-                    title={t("refresh")}
-                  >
-                    <ArrowPathIcon aria-hidden="true" className="h-5 w-5" />
-                  </Button>
                 </div>
               }
             />
@@ -340,210 +348,214 @@ function GroupContent({ groupId }: { groupId: string }) {
                 </ul>
               </div>
             )}
-            <SharedTabs
+            <Tabs
+              idPrefix="shared-group"
               value={tab}
               onChange={(value) => {
                 if (pendingFiles && value !== tab) setNextTab(value);
                 else setTab(value);
               }}
-              label={t("title")}
-              options={TABS.filter((value) => value !== "myFinances").map(
-                (value) => ({ value, label: t(value) }),
+              ariaLabel={t("title")}
+              tabs={TABS.filter((value) => value !== "myFinances").map(
+                (value) => ({ key: value, label: t(value) }),
               )}
             />
-            {tab === "expenses" && (
-              <>
-                <SharedFilters
-                  onClear={() => {
-                    setSearchDraft("");
-                    setSearch("");
-                    setType("");
-                    setFilters({
-                      participantId: "",
-                      startDate: "",
-                      endDate: "",
-                    });
-                    setOffset(0);
-                  }}
-                  chips={[
-                    ...(search
-                      ? [
-                          {
-                            key: "search",
-                            label: search,
-                            removeLabel: t("removeFilter", {
-                              filter: t("search"),
-                            }),
-                            remove: () => {
-                              setSearch("");
-                              setSearchDraft("");
-                              setOffset(0);
-                            },
+            <TabPanel
+              idPrefix="shared-group"
+              tabKey="expenses"
+              isActive={tab === "expenses"}
+              className="space-y-4"
+            >
+              <SharedFilters
+                onClear={() => {
+                  setSearchDraft("");
+                  setType("");
+                  setFilters({
+                    participantId: "",
+                    startDate: "",
+                    endDate: "",
+                  });
+                  setOffset(0);
+                }}
+                chips={[
+                  ...(search
+                    ? [
+                        {
+                          key: "search",
+                          label: search,
+                          removeLabel: t("removeFilter", {
+                            filter: t("search"),
+                          }),
+                          remove: () => {
+                            setSearchDraft("");
+                            setOffset(0);
                           },
-                        ]
-                      : []),
-                    ...(type
-                      ? [
-                          {
-                            key: "type",
-                            label: t(type),
-                            removeLabel: t("removeFilter", {
-                              filter: t("entryType"),
-                            }),
-                            remove: () => {
-                              setType("");
-                              setOffset(0);
-                            },
-                          },
-                        ]
-                      : []),
-                    ...(["participantId", "startDate", "endDate"] as const)
-                      .filter((key) => filters[key])
-                      .map((key) => ({
-                        key,
-                        label:
-                          key === "participantId"
-                            ? (group.participants.find(
-                                (p) => p.id === filters[key],
-                              )?.name ?? t("participants"))
-                            : t("filterValue", { filter: t(key), value: formatDate(filters[key]) }),
-                        removeLabel: t("removeFilter", {
-                          filter: t(
-                            key === "participantId" ? "participants" : key,
-                          ),
-                        }),
-                        remove: () => {
-                          setFilters({ ...filters, [key]: "" });
-                          setOffset(0);
                         },
-                      })),
-                  ]}
-                >
-                  <form
-                    className="flex flex-wrap items-end gap-3 mb-4"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      setSearch(searchDraft);
+                      ]
+                    : []),
+                  ...(type
+                    ? [
+                        {
+                          key: "type",
+                          label: t(type),
+                          removeLabel: t("removeFilter", {
+                            filter: t("entryType"),
+                          }),
+                          remove: () => {
+                            setType("");
+                            setOffset(0);
+                          },
+                        },
+                      ]
+                    : []),
+                  ...(["participantId", "startDate", "endDate"] as const)
+                    .filter((key) => filters[key])
+                    .map((key) => ({
+                      key,
+                      label:
+                        key === "participantId"
+                          ? (group.participants.find(
+                              (p) => p.id === filters[key],
+                            )?.name ?? t("participants"))
+                          : t("filterValue", {
+                              filter: t(key),
+                              value: formatDate(filters[key]),
+                            }),
+                      removeLabel: t("removeFilter", {
+                        filter: t(
+                          key === "participantId" ? "participants" : key,
+                        ),
+                      }),
+                      remove: () => {
+                        setFilters({ ...filters, [key]: "" });
+                        setOffset(0);
+                      },
+                    })),
+                ]}
+              >
+                <div className="mb-4">
+                  <Input
+                    aria-label={t("searchEntries")}
+                    placeholder={t("searchEntries")}
+                    value={searchDraft}
+                    maxLength={200}
+                    onChange={(event) => {
+                      setSearchDraft(event.target.value);
                       setOffset(0);
                     }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <Input
-                        label={t("searchEntries")}
-                        value={searchDraft}
-                        maxLength={200}
-                        onChange={(e) => setSearchDraft(e.target.value)}
-                      />
-                    </div>
-                    <Button type="submit" variant="outline">
-                      {t("search")}
-                    </Button>
-                  </form>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <Select
-                      label={t("entryType")}
-                      value={type}
-                      options={[
-                        { value: "", label: t("all") },
-                        ...(
-                          ["EXPENSE", "REFUND", "INCOME", "REPAYMENT"] as const
-                        ).map((value) => ({ value, label: t(value) })),
-                      ]}
-                      onChange={(e) => {
-                        setType(e.target.value);
-                        setOffset(0);
-                      }}
-                    />
-                    <Select
-                      label={t("participants")}
-                      value={filters.participantId}
-                      options={[
-                        { value: "", label: t("all") },
-                        ...group.participants.map((p) => ({
-                          value: p.id,
-                          label: p.name,
-                        })),
-                      ]}
-                      onChange={(e) => {
-                        setFilters({
-                          ...filters,
-                          participantId: e.target.value,
-                        });
-                        setOffset(0);
-                      }}
-                    />
-                    <DateInput
-                      label={t("startDate")}
-                      value={filters.startDate}
-                      onDateChange={(startDate) => {
-                        setFilters({ ...filters, startDate });
-                        setOffset(0);
-                      }}
-                    />
-                    <DateInput
-                      label={t("endDate")}
-                      value={filters.endDate}
-                      onDateChange={(endDate) => {
-                        setFilters({ ...filters, endDate });
-                        setOffset(0);
-                      }}
-                    />
-                  </div>
-                </SharedFilters>
-                <div className="flex justify-end">
-                  <Button
-                    variant="outline"
-                    isLoading={exporting}
-                    disabled={!fresh}
-                    onClick={download}
-                  >
-                    {t("export")}
-                  </Button>
+                  />
                 </div>
-                {fresh && group.entries.length === 0 && (
-                  <Card>
-                    <EmptyState
-                      icon={<UsersIcon />}
-                      title={t("emptyEntries")}
-                      description={t("emptyEntriesHelp")}
-                    />
-                  </Card>
-                )}
-                {group.entries.length > 0 && (
-                  <SharedEntryTable
-                    group={group}
-                    fresh={fresh}
-                    onOpen={setDetail}
-                  />
-                )}
-                <fieldset disabled={!fresh} aria-busy={!fresh}>
-                  <ListBottomPager
-                    currentPage={Math.floor(offset / 100) + 1}
-                    totalPages={Math.max(1, Math.ceil(group.entryCount / 100))}
-                    totalItems={group.entryCount}
-                    pageSize={100}
-                    onPageChange={(page) => {
-                      if (fresh) setOffset((page - 1) * 100);
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <Select
+                    label={t("entryType")}
+                    value={type}
+                    options={[
+                      { value: "", label: t("all") },
+                      ...(
+                        ["EXPENSE", "REFUND", "INCOME", "REPAYMENT"] as const
+                      ).map((value) => ({ value, label: t(value) })),
+                    ]}
+                    onChange={(e) => {
+                      setType(e.target.value);
+                      setOffset(0);
                     }}
-                    itemName={t("expenses")}
-                    totalLabel={t("pageCount", {
-                      from: group.entries.length ? offset + 1 : 0,
-                      to: Math.min(offset + 100, group.entryCount),
-                      count: group.entryCount,
-                    })}
                   />
-                </fieldset>
-              </>
-            )}
-            {tab === "balances" && (
+                  <Select
+                    label={t("participants")}
+                    value={filters.participantId}
+                    options={[
+                      { value: "", label: t("all") },
+                      ...group.participants.map((p) => ({
+                        value: p.id,
+                        label: p.name,
+                      })),
+                    ]}
+                    onChange={(e) => {
+                      setFilters({
+                        ...filters,
+                        participantId: e.target.value,
+                      });
+                      setOffset(0);
+                    }}
+                  />
+                  <DateInput
+                    label={t("startDate")}
+                    value={filters.startDate}
+                    onDateChange={(startDate) => {
+                      setFilters({ ...filters, startDate });
+                      setOffset(0);
+                    }}
+                  />
+                  <DateInput
+                    label={t("endDate")}
+                    value={filters.endDate}
+                    onDateChange={(endDate) => {
+                      setFilters({ ...filters, endDate });
+                      setOffset(0);
+                    }}
+                  />
+                </div>
+              </SharedFilters>
+              <ListTopToolbar
+                actions={
+                  <button
+                    type="button"
+                    className={LIST_TOOLBAR_BUTTON_CLASS}
+                    disabled={!fresh || exporting}
+                    onClick={download}
+                    aria-busy={exporting}
+                  >
+                    {exporting ? t("loading") : t("export")}
+                  </button>
+                }
+              />
+              {fresh && group.entries.length === 0 && (
+                <Card>
+                  <EmptyState
+                    icon={<UsersIcon />}
+                    title={t("emptyEntries")}
+                    description={t("emptyEntriesHelp")}
+                  />
+                </Card>
+              )}
+              {group.entries.length > 0 && (
+                <SharedEntryTable
+                  group={group}
+                  fresh={fresh}
+                  onOpen={setDetail}
+                />
+              )}
+              <fieldset disabled={!fresh} aria-busy={!fresh}>
+                <ListBottomPager
+                  currentPage={Math.floor(offset / 100) + 1}
+                  totalPages={Math.max(1, Math.ceil(group.entryCount / 100))}
+                  totalItems={group.entryCount}
+                  pageSize={100}
+                  onPageChange={(page) => {
+                    if (fresh) setOffset((page - 1) * 100);
+                  }}
+                  itemName={t("expenses")}
+                  totalLabel={t("entryCount", { count: group.entryCount })}
+                />
+              </fieldset>
+            </TabPanel>
+            <TabPanel
+              idPrefix="shared-group"
+              tabKey="balances"
+              isActive={tab === "balances"}
+            >
               <SharedBalances
                 group={group}
                 onRepay={(suggestion) =>
                   setForm({ kind: "REPAYMENT", suggestion })
                 }
               />
-            )}
-            {tab === "files" && (
+            </TabPanel>
+            <TabPanel
+              idPrefix="shared-group"
+              tabKey="files"
+              isActive={tab === "files"}
+            >
               <SharedDocuments
                 key={group.id}
                 onPendingChange={setPendingFiles}
@@ -553,24 +565,36 @@ function GroupContent({ groupId }: { groupId: string }) {
                   setForm({ kind: "EXPENSE", sourceDocument })
                 }
               />
-            )}
-            {tab === "myFinances" && (
+            </TabPanel>
+            <TabPanel
+              idPrefix="shared-group"
+              tabKey="myFinances"
+              isActive={tab === "myFinances"}
+            >
               <SharedFinances
                 key={group.id}
                 group={group}
                 onOpenEntry={openUnresolved}
               />
-            )}
-            {tab === "settings" && (
+            </TabPanel>
+            <TabPanel
+              idPrefix="shared-group"
+              tabKey="settings"
+              isActive={tab === "settings"}
+            >
               <SharedSettings
                 key={group.id}
                 group={group}
                 onChanged={changed}
               />
-            )}
-            {tab === "activity" && (
+            </TabPanel>
+            <TabPanel
+              idPrefix="shared-group"
+              tabKey="activity"
+              isActive={tab === "activity"}
+            >
               <SharedActivity key={group.revision} group={group} />
-            )}
+            </TabPanel>
             {detail && (
               <SharedEntryDetail
                 key={detail.id}

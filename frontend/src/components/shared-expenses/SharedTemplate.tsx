@@ -67,6 +67,7 @@ export function SharedTemplate({
       </div>
       {editing && (
         <SharedSplitEditor
+          groupId={group.id}
           template
           saveError={error}
           isSaving={busy}

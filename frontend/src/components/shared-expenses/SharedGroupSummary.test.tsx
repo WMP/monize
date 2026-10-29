@@ -31,8 +31,8 @@ describe("Readable shared positions", () => {
     expect(screen.getByText("Balances and totals in CAD")).toBeInTheDocument();
   });
   it.each([
-    ["200.0000", "Owed to you"],
-    ["-200.0000", "You owe"],
+    ["200.0000", "Owed to You"],
+    ["-200.0000", "You Owe"],
     ["0.0000", "Settled up"],
   ])(
     "names the direction of %s separately from personal and group costs",
@@ -47,13 +47,13 @@ describe("Readable shared positions", () => {
         />,
       );
       expect(screen.getByText(label)).toBeInTheDocument();
-      expect(screen.getByText("Your cost").parentElement).toHaveTextContent(
-        /100\.00/,
-      );
       expect(
-        screen.getByText("Group expenses").parentElement,
+        screen.getByText("Your Cost").closest("article"),
+      ).toHaveTextContent(/100\.00/);
+      expect(
+        screen.getByText("Group Expenses").closest("article"),
       ).toHaveTextContent(/300\.00/);
-      expect(screen.getByText("You paid", { exact: false })).toHaveTextContent(
+      expect(screen.getByText("You Paid", { exact: false })).toHaveTextContent(
         /300\.00/,
       );
       expect(screen.queryByText(/-200/)).not.toBeInTheDocument();
@@ -89,11 +89,11 @@ describe("Readable shared positions", () => {
         })}
       />,
     );
-    expect(screen.getByText("Paid by · Me")).toBeInTheDocument();
-    expect(screen.getByText("Your cost", { exact: false })).toHaveTextContent(
+    expect(screen.getByText("Paid By · Me")).toBeInTheDocument();
+    expect(screen.getByText("Your Cost", { exact: false })).toHaveTextContent(
       /150\.00/,
     );
-    expect(screen.getByText("Your cost", { exact: false })).toHaveTextContent(
+    expect(screen.getByText("Your Cost", { exact: false })).toHaveTextContent(
       /zł/,
     );
   });
@@ -110,7 +110,7 @@ describe("Readable shared positions", () => {
     );
     expect(screen.getByText("Anna → Me")).toBeInTheDocument();
     expect(
-      screen.queryByText("Your cost", { exact: false }),
+      screen.queryByText("Your Cost", { exact: false }),
     ).not.toBeInTheDocument();
   });
   it("does not show a future or missing-rate draft as a known personal cost", () => {
@@ -121,7 +121,7 @@ describe("Readable shared positions", () => {
       />,
     );
     expect(
-      screen.queryByText("Your cost", { exact: false }),
+      screen.queryByText("Your Cost", { exact: false }),
     ).not.toBeInTheDocument();
   });
 });
