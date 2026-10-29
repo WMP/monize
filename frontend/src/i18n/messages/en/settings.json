@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "Hide the year in register dates",
       "chartCollapsedLabel": "Start with the chart on the Transactions page collapsed",
       "widgetsCollapsedLabel": "Start with the account, payee and category info collapsed",
-      "accountOpenTargetLabel": "When I open an account",
+      "accountOpenTargetLabel": "Default Account View",
       "accountOpenTargetOptions": {
         "register": "Show its transactions",
         "dashboard": "Show its dashboard"
@@ -302,6 +302,10 @@
       "sendTestButton": "Send test notification",
       "sendingTestButton": "Sending...",
       "removeButton": "Remove",
+      "removeDialog": {
+        "title": "Remove Device",
+        "message": "Remove {device}? It stops receiving push notifications until push is turned on there again."
+      },
       "thisDevice": "This device",
       "held": "Signed out on this device. Push resumes when you sign in here again.",
       "unifiedpushBadge": "UnifiedPush",

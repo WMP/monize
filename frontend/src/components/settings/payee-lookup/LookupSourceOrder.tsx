@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
+import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { DropIndicatorLine, useDragReorder } from '@/hooks/useDragReorder';
 import type {
   PayeeLookupPreferredSource,
@@ -159,20 +160,7 @@ export function LookupSourceOrder({
                 title={t('moveUp')}
                 className="rounded p-1 text-gray-400 transition-colors hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-30 motion-reduce:transition-none dark:hover:text-gray-300"
               >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 15l7-7 7 7"
-                  />
-                </svg>
+                <ChevronUpIcon className="h-4 w-4" aria-hidden="true" />
               </button>
               <button
                 type="button"
@@ -182,20 +170,7 @@ export function LookupSourceOrder({
                 title={t('moveDown')}
                 className="rounded p-1 text-gray-400 transition-colors hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-30 motion-reduce:transition-none dark:hover:text-gray-300"
               >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
+                <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           </li>

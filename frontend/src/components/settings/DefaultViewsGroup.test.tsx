@@ -31,7 +31,7 @@ describe('DefaultViewsGroup', () => {
     expect(
       screen.getByRole('switch', { name: 'Start with the account, payee and category info collapsed' }),
     ).toHaveAttribute('aria-checked', 'false');
-    expect(screen.getByLabelText('When I open an account')).toHaveValue('register');
+    expect(screen.getByLabelText('Default Account View')).toHaveValue('register');
   });
 
   it("shows the account's stored defaults, ignoring anything malformed", () => {
@@ -46,7 +46,7 @@ describe('DefaultViewsGroup', () => {
     expect(
       screen.getByRole('switch', { name: 'Start with the chart on the Transactions page collapsed' }),
     ).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByLabelText('When I open an account')).toHaveValue('register');
+    expect(screen.getByLabelText('Default Account View')).toHaveValue('register');
   });
 
   it('sends only the key that changed, for the server to merge', () => {
@@ -71,7 +71,7 @@ describe('DefaultViewsGroup', () => {
       expect.any(Function),
     );
 
-    fireEvent.change(screen.getByLabelText('When I open an account'), {
+    fireEvent.change(screen.getByLabelText('Default Account View'), {
       target: { value: 'dashboard' },
     });
     expect(commit).toHaveBeenLastCalledWith(
