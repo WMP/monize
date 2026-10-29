@@ -41,6 +41,8 @@ A warranty's status pill is `WarrantyStatusBadge` (`components/warranties/Warran
 
 `components/ui/Table.tsx` is constants (`TABLE_CLASS`, `TH_CLASS`, `TD_CLASS`) plus thin `Th`/`Td` cells, not a `<Table>` wrapper -- these tables are hand-laid with colspans and sticky cells. `SortableHeader` deliberately stays off `TH_CLASS` (about twenty-five report tables draw a lighter header, and folding it in would restyle every report).
 
+**A list's header cell is `Th` / `TH_CLASS`**, never a hand-copied `text-xs font-medium text-gray-500 uppercase tracking-wider` string or a local `HEADER_CLASS`. A sortable one is a `<th aria-sort>` in `TH_CLASS` holding a `<button>` with `SortIcon`: a `<th onClick>` is not reachable from the keyboard. `SortableHeader` reaches the same result the other way, a focusable `<th>` (`tabIndex={0}`, Enter and Space through `onKeyDown`) carrying `aria-sort`, and stays the report header. The reference lists still hand-copy the string; that is listed debt in `screens-and-dialogs.md`, not a pattern.
+
 ## The card shadow is `--shadow-card`; the bare `shadow` reads no token
 
 Tailwind v4 trap: the bare `shadow` utility is a legacy alias with the stock value compiled in, so redefining `--shadow-sm` in `@theme` touches `shadow-sm` (worn by form fields) and leaves cards flat. `ui-conventions.test.ts` fails on a `--shadow-sm` redefinition. Card elevation goes through `--shadow-card`, worn by `CARD_CLASS`.
@@ -53,7 +55,7 @@ Tailwind v4 trap: the bare `shadow` utility is a legacy alias with the stock val
 
 `Modal` takes `title` (and optional `description`, `footer`, `padding`), draws the standard header and wires `aria-labelledby` -- before it, none of the 74 hand-rolled headings reached the dialog, so every dialog announced itself as an unnamed region. `padding` defaults to `none` and leaves children unwrapped, because several call sites make the panel their own scroll or flex parent. A genuinely bespoke header (ConfirmDialog's icon) stays on the baseline deliberately.
 
-What the header looks like is `screens-and-dialogs.md`: the reference is the New Transaction dialog (large bold title, no X, no full-width divider), and the `title` header is to be brought to that look. Until it is, a new dialog adds no border or close button of its own around it.
+What the header looks like is `screens-and-dialogs.md`: the reference is the New Transaction dialog (large bold title, no X, no full-width divider), and the `title` header is to be brought to that look. Until it is, a new dialog adds no border or close button of its own around it. A confirmation (`ConfirmDialog`, `UnsavedChangesDialog`) is the one exempt kind -- icon, smaller title, the question as a paragraph -- and its buttons are still `Button` variants (`screens-and-dialogs.md`, "A confirmation is its own kind of dialog").
 
 ## An empty list renders `EmptyState`
 
@@ -306,6 +308,8 @@ Whether a picker *offers* to create is a property of the surface, not the field:
 
 `balanceColor` (`lib/format.ts`) is the one rule: negative is red, everything else neutral. Do not add `|| isLiability` (or any `accountType` test) -- a credit card at a credit balance is not in the red, and the sign already carries the meaning. `gainLossColor` is the sibling for a *change* in value (green when up), not for a balance.
 
+**A colour that means something comes from one place.** An amount is coloured by `balanceColor` or `gainLossColor`, which use green and red; never emerald, rose or another hue for the same meaning. A status pill is `Badge`. A warning is amber, not yellow.
+
 ## A header panel is `fixed` inside a transformed ancestor -- give it a height, never a bottom anchor
 
 The sliding `AppHeader` always carries a `transform` (`useHideOnScroll`), which makes the header -- not the viewport -- the containing block for every `position: fixed` descendant. A panel mounted in the header (the notifications dropdown, `ActionHistoryPanel`) that anchors with `bottom-0`/`inset-0` is therefore capped at the header's own ~56px box: the full-screen notifications panel only *looked* full while rows overflowed it, and collapsed when empty. Size such a panel with an explicit height (`h-dvh` for the mobile full-screen treatment) and edge offsets that grow past the containing block; `NotificationList.test.tsx` pins the class shape.
@@ -530,6 +534,28 @@ stored `body_text` that is really HTML is drawn the same way (`looksLikeHtml`). 
 ## Nothing interactive goes inside a `<button>` or an `<a>`
 
 The parser closes the outer element at the inner tag, so the click target ends where the nested control begins and the server's HTML stops matching React's -- a hydration mismatch. Fix it at the call site by making the two **siblings**: a wrapper carrying the border and hover, with the navigation button and the nested control side by side. Do not demote the inner control to a focusable `<span>` -- its implicit role is generic, screen readers drop its `aria-label`, and the result is a tab stop announcing nothing. `ui-conventions.test.ts` scans for this; changing a shared component's trigger element is a change to every call site, and the guard tells you which.
+
+A link that looks like a button -- a back or cancel link -- is a `Link` styled with `buttonClassName(...)` (`components/ui/Button.tsx`), never `<Link><Button>`.
+
+## An icon is a heroicon from the outline set
+
+Icons come from `@heroicons/react/24/outline`. The `24/solid` set is only for a filled state, such as the favourite star in `SecurityDetailHeader.tsx`. Never an inline `<svg>` that copies a heroicon path.
+
+Size: `h-4 w-4` in a button or a row (`h-3.5 w-3.5` in a dense row, as `RowActions` does), `h-5 w-5` in a header. The icon sits to the left of its text, and the gap is the container's (`inline-flex items-center gap-1`), not `mr-*` on the icon.
+
+## Figures are tabular app-wide
+
+`body { font-variant-numeric: tabular-nums }` in `app/globals.css` already makes every digit fixed-width, so do not add `tabular-nums` to a cell. Amount, rate and quantity columns are `text-right`. The class survives on existing elements, and two tests pin it (`ColumnChooserMenu.test.tsx` on the hidden-column count, `TransactionsCalendarView.test.tsx` on a calendar chip's amount); a change that removes a redundant class updates the assertion that pins it rather than leaving a test that checks for a no-op.
+
+## `title` is not an information channel
+
+A `title` attribute shows only on a mouse hover, so a phone, a keyboard and most screen readers never get it. An icon-only button has an `aria-label`. Information a user needs (a full amount, what a rate means, a warning) is visible or in an `InfoTooltip`. The one use left for `title` is repeating text the screen already shows in full elsewhere or has cut short (below).
+
+**A truncated name carries its full text.** Put `title` with the full name on the element that is cut, and on a phone wrap (`break-words`) or clamp (`line-clamp-2`) rather than cutting to one line with `truncate`, as `SecurityList.tsx` does.
+
+## A date a person reads goes through `useDateFormat()`
+
+Format a date with `useDateFormat()` (`useChartDateFormat` on a chart axis) and a relative time ("3 hours ago") with `useRelativeTime()`. Never `toLocaleDateString`, `toLocaleString`, `Intl.DateTimeFormat` or a date-fns `format` with a fixed English pattern: each ignores the user's date format preference (`forms-and-formatting.md`).
 
 ## Bank Sync provider default
 
