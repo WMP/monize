@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { shiftDate } from '@/lib/calendar-month';
 import { createLogger } from '@/lib/logger';
@@ -21,6 +22,8 @@ export const RECEIPT_PICK_DAYS_BEFORE = 3;
 export const RECEIPT_PICK_DAYS_AFTER = 14;
 /** One bounded page; a longer list is narrowed with the search box, not paged. */
 export const RECEIPT_PICK_PAGE_SIZE = 50;
+/** How long the typed search rests before it becomes a request. */
+export const RECEIPT_PICK_SEARCH_DEBOUNCE_MS = 300;
 
 /** What one request asked for, and what it answered: `rows === null` is a request that failed. */
 interface Answer {
@@ -59,7 +62,7 @@ interface ReceiptTransactionPickerProps {
  * searches (3 days before the purchase day to 14 after) and the From and To dates
  * are the person's to change, because the bank may have posted the charge well
  * outside it; the server accepts any of the user's linkable transactions whatever
- * its date. Optional text search narrows the page.
+ * its date. Optional text search narrows the page as the person types (debounced).
  *
  * The list belongs to the request that produced it (`Answer.key`): a slow answer
  * for an earlier range or search is never drawn under a newer one, and while the
@@ -92,7 +95,10 @@ export function ReceiptTransactionPicker({
   const rangeReversed = from !== '' && to !== '' && from > to;
 
   const [draft, setDraft] = useState(initialSearch);
-  const [search, setSearch] = useState(initialSearch.trim());
+  // The list follows the box as the person types, once the text has rested: each search is a server round trip.
+  const restedSearch = useDebouncedValue(draft.trim(), RECEIPT_PICK_SEARCH_DEBOUNCE_MS);
+  // Emptying the box shows the whole range at once, not after the delay.
+  const search = draft.trim() === '' ? '' : restedSearch;
   const [answer, setAnswer] = useState<Answer | null>(null);
   // Bumped by the retry button; each value is one request.
   const [attempt, setAttempt] = useState(0);
@@ -150,28 +156,16 @@ export function ReceiptTransactionPicker({
         />
       </div>
 
-      <form
-        className="flex flex-col gap-2 sm:flex-row sm:items-end"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setSearch(draft.trim());
-        }}
-      >
-        <div className="min-w-0 flex-1">
-          <Input
-            id="receipt-picker-search"
-            label={t('searchLabel')}
-            value={draft}
-            maxLength={200}
-            autoComplete="off"
-            placeholder={t('searchPlaceholder')}
-            onChange={(e) => setDraft(e.target.value)}
-          />
-        </div>
-        <Button type="submit" variant="outline">
-          {t('searchButton')}
-        </Button>
-      </form>
+      <Input
+        id="receipt-picker-search"
+        type="search"
+        aria-label={t('searchPlaceholder')}
+        value={draft}
+        maxLength={200}
+        autoComplete="off"
+        placeholder={t('searchPlaceholder')}
+        onChange={(e) => setDraft(e.target.value)}
+      />
 
       {rangeReversed ? (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">

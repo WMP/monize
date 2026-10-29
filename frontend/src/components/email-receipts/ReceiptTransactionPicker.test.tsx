@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, within } from '@/test/render';
-import { ReceiptTransactionPicker } from './ReceiptTransactionPicker';
+import { RECEIPT_PICK_SEARCH_DEBOUNCE_MS, ReceiptTransactionPicker } from './ReceiptTransactionPicker';
 
 const api = vi.hoisted(() => ({ getAll: vi.fn() }));
 vi.mock('@/lib/transactions', async (importOriginal) => ({
@@ -31,6 +31,19 @@ const page = (rows: unknown[], hasMore = false) => ({
   pagination: { page: 1, limit: 50, total: rows.length, totalPages: 1, hasMore },
 });
 
+const SEARCH = 'Search by payee, description or amount...';
+const searchBox = () => screen.getByRole('searchbox', { name: SEARCH });
+
+/** Type into the search box and let the text rest past the delay: the list follows the box, there is no Search button. */
+async function typeSearch(text: string) {
+  await act(async () => {
+    fireEvent.change(searchBox(), { target: { value: text } });
+  });
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, RECEIPT_PICK_SEARCH_DEBOUNCE_MS + 50));
+  });
+}
+
 async function renderPicker(linkingId: string | null = null, effectiveDate = '2026-09-01T23:30:00.000Z') {
   await act(async () => {
     render(<ReceiptTransactionPicker effectiveDate={effectiveDate} linkingId={linkingId} onLink={onLink} />);
@@ -56,7 +69,7 @@ describe('ReceiptTransactionPicker', () => {
     await act(async () => {});
     expect(api.getAll).toHaveBeenCalledTimes(1);
     expect(api.getAll).toHaveBeenCalledWith({ startDate: '2026-08-29', endDate: '2026-09-15', limit: 50, search: 'allegro.pl' });
-    const box = screen.getByLabelText('Search');
+    const box = searchBox();
     expect(box).toHaveValue('allegro.pl');
     await act(async () => {
       fireEvent.change(box, { target: { value: 'shop' } });
@@ -99,10 +112,7 @@ describe('ReceiptTransactionPicker', () => {
 
     it('asks again for the new range when To is edited, keeping the search', async () => {
       await renderPicker();
-      await act(async () => {
-        fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'allegro' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-      });
+      await typeSearch('allegro');
       await act(async () => {});
       api.getAll.mockClear();
       await typeDate('To', '12/31/2026');
@@ -171,17 +181,22 @@ describe('ReceiptTransactionPicker', () => {
     expect(screen.queryByText(/Voided/)).not.toBeInTheDocument();
   });
 
-  it('asks for the typed search and only when it is submitted', async () => {
+  it('asks for the typed search once it has rested, with no label above the box and no Search button', async () => {
     await renderPicker();
+    expect(searchBox()).toHaveAttribute('placeholder', SEARCH);
+    expect(document.querySelector('label[for="receipt-picker-search"]')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Search' })).not.toBeInTheDocument();
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('Search'), { target: { value: '  coffee ' } });
+      fireEvent.change(searchBox(), { target: { value: '  coffee ' } });
     });
+    // Not yet: the text has not rested.
     expect(api.getAll).toHaveBeenCalledTimes(1);
     api.getAll.mockResolvedValueOnce(page([tx({ id: 'tx-3', payeeName: 'Coffee Shop' })]));
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+      await new Promise((r) => setTimeout(r, RECEIPT_PICK_SEARCH_DEBOUNCE_MS + 50));
     });
     await act(async () => {});
+    expect(api.getAll).toHaveBeenCalledTimes(2);
     expect(api.getAll).toHaveBeenLastCalledWith({ startDate: '2026-08-29', endDate: '2026-09-15', limit: 50, search: 'coffee' });
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
     expect(screen.getByText(/Coffee Shop/)).toBeInTheDocument();
@@ -192,10 +207,7 @@ describe('ReceiptTransactionPicker', () => {
     await renderPicker();
     expect(screen.getByText(/You have no transactions in this period that can be linked\./)).toBeInTheDocument();
     api.getAll.mockResolvedValueOnce(page([]));
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'zzz' } });
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-    });
+    await typeSearch('zzz');
     await act(async () => {});
     expect(screen.getByText(/No transaction in this period matches the search\./)).toBeInTheDocument();
   });
@@ -204,10 +216,7 @@ describe('ReceiptTransactionPicker', () => {
     await renderPicker();
     let resolve!: (value: unknown) => void;
     api.getAll.mockReturnValueOnce(new Promise((r) => (resolve = r)));
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'x' } });
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-    });
+    await typeSearch('x');
     expect(screen.getByText('Loading transactions')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Link' })).not.toBeInTheDocument();
     await act(async () => {
@@ -223,10 +232,7 @@ describe('ReceiptTransactionPicker', () => {
       render(<ReceiptTransactionPicker effectiveDate="2026-09-01T10:00:00.000Z" linkingId={null} onLink={onLink} />);
     });
     api.getAll.mockResolvedValueOnce(page([tx({ id: 'b', payeeName: 'Second' })]));
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'b' } });
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-    });
+    await typeSearch('b');
     await act(async () => {});
     await act(async () => {
       resolveFirst(page([tx({ id: 'a', payeeName: 'First' })]));

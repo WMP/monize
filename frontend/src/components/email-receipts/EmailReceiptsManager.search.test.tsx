@@ -70,7 +70,7 @@ async function click(element: HTMLElement) {
 /** Type into the search box and let the text rest past the delay. */
 async function typeSearch(text: string) {
   await act(async () => {
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search' }), { target: { value: text } });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search by subject, sender or content...' }), { target: { value: text } });
   });
   await act(async () => {
     await new Promise((r) => setTimeout(r, RECEIPT_SEARCH_DEBOUNCE_MS + 50));
@@ -103,10 +103,17 @@ describe('EmailReceiptsManager: search', () => {
     expect(screen.getByRole('search', { name: 'Search emails' })).toBeInTheDocument();
   });
 
+  it('puts the search first in the toolbar, before the state filter', async () => {
+    await renderManager();
+    const search = screen.getByRole('search', { name: 'Search emails' });
+    const states = screen.getByRole('group', { name: 'Filter by state' });
+    expect(search.compareDocumentPosition(states) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('sends the text to the list, the counts, the matching total and the domains once it has rested', async () => {
     await renderManager();
     await act(async () => {
-      fireEvent.change(screen.getByRole('searchbox', { name: 'Search' }), { target: { value: 'invoice' } });
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Search by subject, sender or content...' }), { target: { value: 'invoice' } });
     });
     // Not yet: the text has not rested.
     expect(lastList()).toEqual([undefined, undefined, undefined, 0]);
@@ -139,7 +146,7 @@ describe('EmailReceiptsManager: search', () => {
       0,
       { search: 'hello', searchIn: 'sender', dateFrom: '2026-09-01', dateTo: '2026-09-30' },
     ]);
-    expect(screen.getByRole('searchbox', { name: 'Search' })).toHaveValue('hello');
+    expect(screen.getByRole('searchbox', { name: 'Search by subject, sender or content...' })).toHaveValue('hello');
     expect(nav.router.replace).not.toHaveBeenCalled();
   });
 
@@ -209,7 +216,7 @@ describe('EmailReceiptsManager: search', () => {
     expect(screen.getByText('No email matches the search')).toBeInTheDocument();
     expect(screen.queryByText('No emails')).not.toBeInTheDocument();
     await click(within(screen.getByText('No email matches the search').closest('div')!.parentElement!).getByRole('button', { name: 'Clear search' }));
-    expect(screen.getByRole('searchbox', { name: 'Search' })).toHaveValue('');
+    expect(screen.getByRole('searchbox', { name: 'Search by subject, sender or content...' })).toHaveValue('');
     expect(screen.getByText('Order 1')).toBeInTheDocument();
     expect(lastList()).toEqual([undefined, undefined, undefined, 0]);
   });
