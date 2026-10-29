@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "Xác minh lại danh tính của bạn để xem hoặc chỉnh sửa tin nhắn truy cập khẩn cấp."
     },
+    "validation": {
+      "wholeDays": "Chỉ số ngày nguyên",
+      "minDays": "{min, plural, other {Phải ít nhất # ngày}}",
+      "maxDays": "{max, plural, other {Phải không quá # ngày}}",
+      "reminderBeforeGrant": "Số ngày nhắc nhở phải nhỏ hơn số ngày cấp quyền",
+      "messageMax": "Tin nhắn tối đa {max} ký tự",
+      "firstNameRequired": "Tên là bắt buộc",
+      "firstNameMax": "Tên tối đa {max} ký tự",
+      "emailInvalid": "Nhập địa chỉ email hợp lệ",
+      "emailMax": "Email tối đa {max} ký tự"
+    },
     "toasts": {
       "loadFailed": "Không thể tải truy cập khẩn cấp",
       "reauthFailed": "Không thể xác nhận xác thực lại"

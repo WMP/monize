@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "Verifikasi ulang identitas Anda untuk melihat atau mengedit pesan akses darurat Anda."
     },
+    "validation": {
+      "wholeDays": "Hanya hari penuh",
+      "minDays": "{min, plural, other {Minimal # hari}}",
+      "maxDays": "{max, plural, other {Maksimal # hari}}",
+      "reminderBeforeGrant": "Hari pengingat harus kurang dari hari pemberian akses",
+      "messageMax": "Pesan maksimal {max} karakter",
+      "firstNameRequired": "Nama depan wajib diisi",
+      "firstNameMax": "Nama depan maksimal {max} karakter",
+      "emailInvalid": "Masukkan alamat email yang valid",
+      "emailMax": "Email maksimal {max} karakter"
+    },
     "toasts": {
       "loadFailed": "Gagal memuat akses darurat",
       "reauthFailed": "Gagal mengonfirmasi autentikasi ulang"

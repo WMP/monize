@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "Verifieer jouw identiteit opnieuw om jouw noodtoegang-bericht te bekijken of te bewerken."
     },
+    "validation": {
+      "wholeDays": "Alleen hele dagen",
+      "minDays": "{min, plural, one {Moet minstens # dag zijn} other {Moet minstens # dagen zijn}}",
+      "maxDays": "{max, plural, one {Mag hoogstens # dag zijn} other {Mag hoogstens # dagen zijn}}",
+      "reminderBeforeGrant": "Het aantal herinneringsdagen moet kleiner zijn dan het aantal toegangsdagen",
+      "messageMax": "Het bericht mag hoogstens {max} tekens bevatten",
+      "firstNameRequired": "Voornaam is verplicht",
+      "firstNameMax": "De voornaam mag hoogstens {max} tekens bevatten",
+      "emailInvalid": "Voer een geldig e-mailadres in",
+      "emailMax": "Het e-mailadres mag hoogstens {max} tekens bevatten"
+    },
     "toasts": {
       "loadFailed": "Laden van noodtoegang mislukt",
       "reauthFailed": "Bevestigen van herauthenticatie mislukt"

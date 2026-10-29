@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "Vérifiez à nouveau votre identité pour consulter ou modifier votre message d'accès d'urgence."
     },
+    "validation": {
+      "wholeDays": "Jours entiers uniquement",
+      "minDays": "{min, plural, one {Doit être d’au moins # jour} other {Doit être d’au moins # jours}}",
+      "maxDays": "{max, plural, one {Doit être de # jour au plus} other {Doit être de # jours au plus}}",
+      "reminderBeforeGrant": "Le délai de rappel doit être inférieur au délai d’accès",
+      "messageMax": "Le message doit contenir {max} caractères au maximum",
+      "firstNameRequired": "Le prénom est obligatoire",
+      "firstNameMax": "Le prénom doit contenir {max} caractères au maximum",
+      "emailInvalid": "Saisissez une adresse e-mail valide",
+      "emailMax": "L’adresse e-mail doit contenir {max} caractères au maximum"
+    },
     "toasts": {
       "loadFailed": "Échec du chargement de l'accès d'urgence",
       "reauthFailed": "Échec de la confirmation de la ré-authentification"

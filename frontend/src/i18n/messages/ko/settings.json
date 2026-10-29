@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "긴급 접근 메시지를 보거나 편집하려면 신원을 재확인하세요."
     },
+    "validation": {
+      "wholeDays": "정수 일수만 입력하세요",
+      "minDays": "{min, plural, other {최소 #일이어야 합니다}}",
+      "maxDays": "{max, plural, other {#일 이하여야 합니다}}",
+      "reminderBeforeGrant": "알림 일수는 부여 일수보다 작아야 합니다",
+      "messageMax": "메시지는 {max}자 이하여야 합니다",
+      "firstNameRequired": "이름은 필수입니다",
+      "firstNameMax": "이름은 {max}자 이하여야 합니다",
+      "emailInvalid": "올바른 이메일 주소를 입력하세요",
+      "emailMax": "이메일은 {max}자 이하여야 합니다"
+    },
     "toasts": {
       "loadFailed": "긴급 접근 로드에 실패했습니다",
       "reauthFailed": "재인증 확인에 실패했습니다"

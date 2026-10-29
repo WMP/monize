@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "Zweryfikuj ponownie swoją tożsamość, aby wyświetlić lub edytować wiadomość dostępu awaryjnego."
     },
+    "validation": {
+      "wholeDays": "Tylko pełne dni",
+      "minDays": "{min, plural, one {Musi wynosić co najmniej # dzień} few {Musi wynosić co najmniej # dni} many {Musi wynosić co najmniej # dni} other {Musi wynosić co najmniej # dnia}}",
+      "maxDays": "{max, plural, one {Może wynosić najwyżej # dzień} few {Może wynosić najwyżej # dni} many {Może wynosić najwyżej # dni} other {Może wynosić najwyżej # dnia}}",
+      "reminderBeforeGrant": "Liczba dni przypomnienia musi być mniejsza niż liczba dni do przyznania dostępu",
+      "messageMax": "Wiadomość może mieć najwyżej {max} znaków",
+      "firstNameRequired": "Imię jest wymagane",
+      "firstNameMax": "Imię może mieć najwyżej {max} znaków",
+      "emailInvalid": "Wpisz prawidłowy adres e-mail",
+      "emailMax": "Adres e-mail może mieć najwyżej {max} znaków"
+    },
     "toasts": {
       "loadFailed": "Nie udało się wczytać dostępu awaryjnego",
       "reauthFailed": "Nie udało się potwierdzić ponownego uwierzytelnienia"

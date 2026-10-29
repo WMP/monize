@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "[XX-Re-verify your identity to view or edit your emergency-access message.-XX]"
     },
+    "validation": {
+      "wholeDays": "[XX-Whole days only-XX]",
+      "minDays": "[XX-{min, plural, one {Must be at least # day} other {Must be at least # days}}-XX]",
+      "maxDays": "[XX-{max, plural, one {Must be # day or fewer} other {Must be # days or fewer}}-XX]",
+      "reminderBeforeGrant": "[XX-Reminder days must be less than grant days-XX]",
+      "messageMax": "[XX-Message must be {max} characters or less-XX]",
+      "firstNameRequired": "[XX-First name is required-XX]",
+      "firstNameMax": "[XX-First name must be {max} characters or less-XX]",
+      "emailInvalid": "[XX-Enter a valid email address-XX]",
+      "emailMax": "[XX-Email must be {max} characters or less-XX]"
+    },
     "toasts": {
       "loadFailed": "[XX-Failed to load emergency access-XX]",
       "reauthFailed": "[XX-Failed to confirm re-authentication-XX]"

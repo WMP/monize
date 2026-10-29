@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "請重新驗證身份以查看或編輯您的緊急存取留言。"
     },
+    "validation": {
+      "wholeDays": "只能輸入整天數",
+      "minDays": "{min, plural, other {至少 # 天}}",
+      "maxDays": "{max, plural, other {不超過 # 天}}",
+      "reminderBeforeGrant": "提醒天數必須少於授權天數",
+      "messageMax": "訊息不得超過 {max} 個字元",
+      "firstNameRequired": "名字為必填",
+      "firstNameMax": "名字不得超過 {max} 個字元",
+      "emailInvalid": "請輸入有效的電子郵件地址",
+      "emailMax": "電子郵件不得超過 {max} 個字元"
+    },
     "toasts": {
       "loadFailed": "載入緊急存取失敗",
       "reauthFailed": "確認重新驗證失敗"

@@ -49,48 +49,54 @@ import type {
 const logger = createLogger('EmergencyAccess');
 const STEP_UP_PURPOSE = 'emergency-access';
 
-const settingsSchema = z
-  .object({
-    enabled: z.boolean(),
-    grantAfterDays: z
-      .number()
-      .int('Whole days only')
-      .min(2, 'Must be at least 2 days')
-      .max(365, 'Must be 365 days or fewer'),
-    reminderAfterDays: z
-      .number()
-      .int('Whole days only')
-      .min(1, 'Must be at least 1 day')
-      .max(364, 'Must be 364 days or fewer'),
-  })
-  .refine((data) => data.reminderAfterDays < data.grantAfterDays, {
-    message: 'Reminder days must be less than grant days',
-    path: ['reminderAfterDays'],
+/** Validation messages come from `settings.emergencyAccess.validation`. */
+type ValidationT = (key: string, values?: Record<string, number>) => string;
+
+const buildSettingsSchema = (t: ValidationT) =>
+  z
+    .object({
+      enabled: z.boolean(),
+      grantAfterDays: z
+        .number()
+        .int(t('wholeDays'))
+        .min(2, t('minDays', { min: 2 }))
+        .max(365, t('maxDays', { max: 365 })),
+      reminderAfterDays: z
+        .number()
+        .int(t('wholeDays'))
+        .min(1, t('minDays', { min: 1 }))
+        .max(364, t('maxDays', { max: 364 })),
+    })
+    .refine((data) => data.reminderAfterDays < data.grantAfterDays, {
+      message: t('reminderBeforeGrant'),
+      path: ['reminderAfterDays'],
+    });
+
+type SettingsFormData = z.infer<ReturnType<typeof buildSettingsSchema>>;
+
+const buildMessageSchema = (t: ValidationT) =>
+  z.object({
+    message: z
+      .string()
+      .max(4000, t('messageMax', { max: 4000 }))
+      .optional(),
   });
 
-type SettingsFormData = z.infer<typeof settingsSchema>;
+type MessageFormData = z.infer<ReturnType<typeof buildMessageSchema>>;
 
-const messageSchema = z.object({
-  message: z
-    .string()
-    .max(4000, 'Message must be 4000 characters or less')
-    .optional(),
-});
+const buildContactSchema = (t: ValidationT) =>
+  z.object({
+    firstName: z
+      .string()
+      .min(1, t('firstNameRequired'))
+      .max(100, t('firstNameMax', { max: 100 })),
+    email: z
+      .string()
+      .email(t('emailInvalid'))
+      .max(255, t('emailMax', { max: 255 })),
+  });
 
-type MessageFormData = z.infer<typeof messageSchema>;
-
-const contactSchema = z.object({
-  firstName: z
-    .string()
-    .min(1, 'First name is required')
-    .max(100, 'First name must be 100 characters or less'),
-  email: z
-    .string()
-    .email('Enter a valid email address')
-    .max(255, 'Email must be 255 characters or less'),
-});
-
-type ContactFormData = z.infer<typeof contactSchema>;
+type ContactFormData = z.infer<ReturnType<typeof buildContactSchema>>;
 
 function formatTimestamp(
   iso: string | null,
@@ -179,6 +185,7 @@ function EmergencyAccessSection() {
   const tMsg = useTranslations('settings.emergencyAccess.message');
   const tContacts = useTranslations('settings.emergencyAccess.contacts');
   const tStatus = useTranslations('settings.emergencyAccess.status');
+  const tValidation = useTranslations('settings.emergencyAccess.validation');
   const relativeTime = useRelativeTime();
   const preferences = usePreferencesStore((s) => s.preferences);
   const userTimezone = resolveTimezone(preferences?.timezone);
@@ -221,7 +228,7 @@ function EmergencyAccessSection() {
   const [resetting, setResetting] = useState(false);
 
   const settingsForm = useForm<SettingsFormData>({
-    resolver: zodResolver(settingsSchema),
+    resolver: zodResolver(buildSettingsSchema(tValidation)),
     defaultValues: {
       enabled: false,
       grantAfterDays: 14,
@@ -230,12 +237,12 @@ function EmergencyAccessSection() {
   });
 
   const messageForm = useForm<MessageFormData>({
-    resolver: zodResolver(messageSchema),
+    resolver: zodResolver(buildMessageSchema(tValidation)),
     defaultValues: { message: '' },
   });
 
   const contactForm = useForm<ContactFormData>({
-    resolver: zodResolver(contactSchema),
+    resolver: zodResolver(buildContactSchema(tValidation)),
     defaultValues: { firstName: '', email: '' },
   });
   // Read above the early returns below: a hook cannot follow them.

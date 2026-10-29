@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "Verifica la tua identità per visualizzare o modificare il messaggio di accesso di emergenza."
     },
+    "validation": {
+      "wholeDays": "Solo giorni interi",
+      "minDays": "{min, plural, one {Deve essere almeno # giorno} other {Deve essere almeno # giorni}}",
+      "maxDays": "{max, plural, one {Deve essere al massimo # giorno} other {Deve essere al massimo # giorni}}",
+      "reminderBeforeGrant": "I giorni del promemoria devono essere inferiori ai giorni di concessione",
+      "messageMax": "Il messaggio deve contenere al massimo {max} caratteri",
+      "firstNameRequired": "Il nome è obbligatorio",
+      "firstNameMax": "Il nome deve contenere al massimo {max} caratteri",
+      "emailInvalid": "Inserisci un indirizzo email valido",
+      "emailMax": "L’email deve contenere al massimo {max} caratteri"
+    },
     "toasts": {
       "loadFailed": "Impossibile caricare l'accesso di emergenza",
       "reauthFailed": "Impossibile confermare la nuova autenticazione"

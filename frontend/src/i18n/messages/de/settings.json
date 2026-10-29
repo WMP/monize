@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "Verifizieren Sie Ihre Identität erneut, um Ihre Notfallzugang-Nachricht anzuzeigen oder zu bearbeiten."
     },
+    "validation": {
+      "wholeDays": "Nur ganze Tage",
+      "minDays": "{min, plural, one {Muss mindestens # Tag sein} other {Muss mindestens # Tage sein}}",
+      "maxDays": "{max, plural, one {Darf höchstens # Tag sein} other {Darf höchstens # Tage sein}}",
+      "reminderBeforeGrant": "Die Erinnerungstage müssen kleiner als die Gewährungstage sein",
+      "messageMax": "Die Nachricht darf höchstens {max} Zeichen lang sein",
+      "firstNameRequired": "Vorname ist erforderlich",
+      "firstNameMax": "Der Vorname darf höchstens {max} Zeichen lang sein",
+      "emailInvalid": "Geben Sie eine gültige E-Mail-Adresse ein",
+      "emailMax": "Die E-Mail-Adresse darf höchstens {max} Zeichen lang sein"
+    },
     "toasts": {
       "loadFailed": "Notfallzugang konnte nicht geladen werden",
       "reauthFailed": "Erneute Authentifizierung konnte nicht bestätigt werden"

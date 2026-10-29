@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "Acil durum erişim mesajınızı görüntülemek veya düzenlemek için kimliğinizi yeniden doğrulayın."
     },
+    "validation": {
+      "wholeDays": "Yalnızca tam gün",
+      "minDays": "{min, plural, other {En az # gün olmalıdır}}",
+      "maxDays": "{max, plural, other {En fazla # gün olmalıdır}}",
+      "reminderBeforeGrant": "Hatırlatma günleri erişim verme günlerinden az olmalıdır",
+      "messageMax": "Mesaj en fazla {max} karakter olmalıdır",
+      "firstNameRequired": "Ad zorunludur",
+      "firstNameMax": "Ad en fazla {max} karakter olmalıdır",
+      "emailInvalid": "Geçerli bir e-posta adresi girin",
+      "emailMax": "E-posta en fazla {max} karakter olmalıdır"
+    },
     "toasts": {
       "loadFailed": "Acil durum erişimi yüklenemedi",
       "reauthFailed": "Yeniden kimlik doğrulama onaylanamadı"

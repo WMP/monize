@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "Verifique novamente sua identidade para ver ou editar sua mensagem de acesso de emergência."
     },
+    "validation": {
+      "wholeDays": "Apenas dias inteiros",
+      "minDays": "{min, plural, one {Deve ser de pelo menos # dia} other {Deve ser de pelo menos # dias}}",
+      "maxDays": "{max, plural, one {Deve ser de # dia ou menos} other {Deve ser de # dias ou menos}}",
+      "reminderBeforeGrant": "Os dias do lembrete devem ser menores que os dias de concessão",
+      "messageMax": "A mensagem deve ter {max} caracteres ou menos",
+      "firstNameRequired": "O nome é obrigatório",
+      "firstNameMax": "O nome deve ter {max} caracteres ou menos",
+      "emailInvalid": "Digite um endereço de e-mail válido",
+      "emailMax": "O e-mail deve ter {max} caracteres ou menos"
+    },
     "toasts": {
       "loadFailed": "Falha ao carregar o acesso de emergência",
       "reauthFailed": "Falha ao confirmar a reautenticação"

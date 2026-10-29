@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "緊急アクセスメッセージを閲覧または編集するには身元を再確認してください。"
     },
+    "validation": {
+      "wholeDays": "日数は整数で入力してください",
+      "minDays": "{min, plural, other {# 日以上にしてください}}",
+      "maxDays": "{max, plural, other {# 日以下にしてください}}",
+      "reminderBeforeGrant": "リマインダーの日数は付与までの日数より少なくしてください",
+      "messageMax": "メッセージは {max} 文字以内にしてください",
+      "firstNameRequired": "名は必須です",
+      "firstNameMax": "名は {max} 文字以内にしてください",
+      "emailInvalid": "有効なメールアドレスを入力してください",
+      "emailMax": "メールアドレスは {max} 文字以内にしてください"
+    },
     "toasts": {
       "loadFailed": "緊急アクセスの読み込みに失敗しました",
       "reauthFailed": "再認証の確認に失敗しました"

@@ -1246,6 +1246,17 @@
     "stepUp": {
       "reason": "重新验证您的身份以查看或编辑您的紧急访问留言。"
     },
+    "validation": {
+      "wholeDays": "只能输入整天数",
+      "minDays": "{min, plural, other {至少 # 天}}",
+      "maxDays": "{max, plural, other {不超过 # 天}}",
+      "reminderBeforeGrant": "提醒天数必须少于授权天数",
+      "messageMax": "消息不得超过 {max} 个字符",
+      "firstNameRequired": "名字为必填项",
+      "firstNameMax": "名字不得超过 {max} 个字符",
+      "emailInvalid": "请输入有效的电子邮件地址",
+      "emailMax": "电子邮件不得超过 {max} 个字符"
+    },
     "toasts": {
       "loadFailed": "加载紧急访问失败",
       "reauthFailed": "确认重新验证失败"
