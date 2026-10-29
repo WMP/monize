@@ -1856,6 +1856,7 @@ describe("TransactionsService", () => {
         ["a VOID transition", { status: TransactionStatus.VOID }],
         ["an amount change", { amount: -400 }],
         ["an account change", { accountId: "account-2" }],
+        ["a date change", { transactionDate: "2001-02-03" }],
       ])("refuses %s before writing", async (_label, dto) => {
         asCashLeg();
 

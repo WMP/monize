@@ -4975,8 +4975,12 @@ describe("AccountsService", () => {
         .mockResolvedValueOnce([{ user_id: "u1", timezone: "America/Toronto" }])
         // accountRows
         .mockResolvedValueOnce([{ account_id: "a1" }])
-        // ...locked FOR UPDATE before the ledger is read, so the absolute write
-        // cannot overwrite a delta that commits in between (audit P4-005)
+        // read-only ledger figure vs the stored balance: a1 differs
+        .mockResolvedValueOnce([
+          { account_id: "a1", balance: "150", current_balance: "100" },
+        ])
+        // ...locked FOR UPDATE before the ledger is re-read, so the absolute
+        // write cannot overwrite a delta that commits in between (audit P4-005)
         .mockResolvedValueOnce([{ id: "a1" }])
         // balances
         .mockResolvedValueOnce([{ account_id: "a1", balance: "150" }])
@@ -5003,8 +5007,30 @@ describe("AccountsService", () => {
       expect(
         statements.findIndex((sql) => sql.includes("FOR UPDATE")),
       ).toBeLessThan(
-        statements.findIndex((sql) => sql.includes("COALESCE(SUM(t.amount)")),
+        statements.length -
+          1 -
+          [...statements]
+            .reverse()
+            .findIndex((sql) => sql.includes("COALESCE(SUM(t.amount)")),
       );
+    });
+
+    it("locks and writes nothing when every stored balance already matches the ledger", async () => {
+      const ds = mockQueryRunner.manager as unknown as { query: jest.Mock };
+      ds.query = mockDataSource.query = jest
+        .fn()
+        .mockResolvedValueOnce([{ user_id: "u1", timezone: "America/Toronto" }])
+        .mockResolvedValueOnce([{ account_id: "a1" }, { account_id: "a2" }])
+        .mockResolvedValueOnce([
+          { account_id: "a1", balance: "150.0000", current_balance: "150.00" },
+          { account_id: "a2", balance: "10", current_balance: "10" },
+        ]);
+      await service.applyDueTransactionBalances();
+      const statements = ds.query.mock.calls.map((c) => String(c[0]));
+      expect(statements.some((sql) => sql.includes("FOR UPDATE"))).toBe(false);
+      expect(
+        statements.some((sql) => sql.includes("UPDATE accounts SET")),
+      ).toBe(false);
     });
 
     it("logs error when query throws", async () => {

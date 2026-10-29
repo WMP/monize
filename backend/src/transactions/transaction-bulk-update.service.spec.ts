@@ -2340,6 +2340,32 @@ describe("TransactionBulkUpdateService", () => {
       expect(mockDataSource.transaction).toHaveBeenCalled();
     });
 
+    it("refuses the whole delete when a selected row is an investment cash leg, before any write", async () => {
+      const tx1 = makeTransaction({ id: "tx-1" });
+      const resolveQb = createMockQueryBuilder({
+        getMany: jest.fn().mockResolvedValue([{ id: "tx-1" }]),
+      });
+      const detailsQb = createMockQueryBuilder({
+        getMany: jest.fn().mockResolvedValue([tx1]),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+      });
+      transactionsRepository.createQueryBuilder
+        .mockReturnValueOnce(resolveQb)
+        .mockReturnValueOnce(detailsQb);
+      mockManagerQuery.mockImplementation(async (sql: string) =>
+        String(sql).includes("investment_transactions")
+          ? [{ transaction_id: "tx-1" }]
+          : [],
+      );
+
+      await expect(
+        service.bulkDelete(userId, { mode: "ids", transactionIds: ["tx-1"] }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      expect(mockManagerCreateQueryBuilder).not.toHaveBeenCalled();
+    });
+
     it("adjusts balances for non-VOID, non-future transactions", async () => {
       const tx1 = makeTransaction({
         id: "tx-1",

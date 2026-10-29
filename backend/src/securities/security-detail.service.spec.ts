@@ -43,6 +43,7 @@ function historyTransaction(overrides: Record<string, unknown> = {}) {
     commission: 5,
     totalAmount: 6005,
     description: null,
+    linkedTransactionId: null,
     status: TransactionStatus.CLEARED,
     runningQuantityAccount: 60,
     runningQuantityAll: 60,
@@ -519,7 +520,7 @@ describe("SecurityDetailService", () => {
       expect(activity.totalInvested).toBe(400);
     });
 
-    it("nets a transfer out against its transfer in", async () => {
+    it("adds nothing for a paired transfer, priced or not", async () => {
       given({
         transactions: [
           historyTransaction({
@@ -531,17 +532,19 @@ describe("SecurityDetailService", () => {
           }),
           historyTransaction({
             id: "tx-out",
+            linkedTransactionId: "tx-in",
             action: InvestmentAction.TRANSFER_OUT,
             quantity: 10,
-            price: 101,
+            price: null,
             totalAmount: 0,
             commission: 0,
           }),
           historyTransaction({
             id: "tx-in",
+            linkedTransactionId: "tx-out",
             action: InvestmentAction.TRANSFER_IN,
             quantity: 10,
-            price: 101,
+            price: null,
             totalAmount: 0,
             commission: 0,
           }),
@@ -550,6 +553,23 @@ describe("SecurityDetailService", () => {
 
       const { activity } = await getDetail();
       expect(activity.totalInvested).toBe(1010);
+    });
+
+    it("reports invested capital as unknown for an unpaired transfer in with no cost", async () => {
+      given({
+        transactions: [
+          historyTransaction({
+            action: InvestmentAction.TRANSFER_IN,
+            quantity: 10,
+            price: null,
+            totalAmount: 0,
+            commission: 0,
+          }),
+        ],
+      });
+
+      const { activity } = await getDetail();
+      expect(activity.totalInvested).toBeNull();
     });
 
     it("reports invested capital as unknown when an acquisition has no price", async () => {

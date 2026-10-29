@@ -19,7 +19,7 @@ export interface MonthlyCategorySpent {
 }
 
 /**
- * Net spent per category per calendar month over the 13 months ending with
+ * Net spent per category per calendar month over the 12 complete months before
  * `today`'s, through `queryCategorySpending` so the figure is the budget page's
  * own: signed net within the category, converted into the budget's currency,
  * the budget's excluded accounts left out, and a row with no rate reported
@@ -36,7 +36,9 @@ export async function queryMonthlyCategorySpent(
   const incompleteCategoryIds = new Set<string>();
   const pairs = new Set<string>();
 
-  for (let back = 12; back >= 0; back--) {
+  // The 12 complete months before this one: each calendar month once, and
+  // the partial current month never doubles the same month a year ago.
+  for (let back = 12; back >= 1; back--) {
     const d = new Date(today.getFullYear(), today.getMonth() - back, 1);
     const year = d.getFullYear();
     const month = d.getMonth() + 1;

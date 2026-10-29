@@ -40,6 +40,7 @@ import { withScopedDb } from "../common/db/scoped-db";
 import { lockTransactionRows } from "../common/db/locks";
 import { deletionBalanceEffect } from "../common/deletion-balance.util";
 import { roundMoney } from "../common/round.util";
+import { investmentCashLegLockedError } from "./void-status-transition.util";
 import {
   assertReconciledIdsMutable,
   assertReconciledRowsMutable,
@@ -693,6 +694,15 @@ export class TransactionBulkUpdateService {
       for (const tx of locked.values()) {
         affectedAccountIds.add(tx.accountId);
       }
+
+      // An investment cash leg belongs to its trade (the single delete refuses
+      // it too): refuse the whole batch, in one query over every row it would
+      // remove, before anything is written.
+      const ownedLegs: { transaction_id: string }[] = await m.query(
+        `SELECT transaction_id FROM investment_transactions WHERE transaction_id = ANY($1)`,
+        [[...locked.keys()]],
+      );
+      if (ownedLegs.length > 0) throw investmentCashLegLockedError();
 
       // Strict reconciled lock over the locked delete set, primary rows and
       // linked legs alike, before the first reversal.

@@ -884,14 +884,10 @@ describe("BudgetReportsService", () => {
   });
 
   describe("getSeasonalPatterns", () => {
-    // The sweep runs 13 months, oldest first; the oldest and newest share a
-    // calendar month, so the oldest call answers empty.
     const byMonth =
       (perMonth: Record<number, Record<string, number>>) =>
       async (...args: unknown[]) =>
-        mockedSpending.mock.calls.length === 1
-          ? spending({})
-          : spending(perMonth[Number((args[4] as string).slice(5, 7))] ?? {});
+        spending(perMonth[Number((args[4] as string).slice(5, 7))] ?? {});
 
     it("should return seasonal spending patterns", async () => {
       mockedSpending.mockImplementation(

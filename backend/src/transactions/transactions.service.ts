@@ -2832,8 +2832,12 @@ export class TransactionsService {
       const changesAccount =
         updateData.accountId !== undefined &&
         updateData.accountId !== locked.accountId;
+      const changesDate =
+        updateData.transactionDate !== undefined &&
+        String(updateData.transactionDate).slice(0, 10) !==
+          String(locked.transactionDate).slice(0, 10);
       if (
-        (crossesVoid || changesAmount || changesAccount) &&
+        (crossesVoid || changesAmount || changesAccount || changesDate) &&
         (await isInvestmentCashLeg(m, id))
       ) {
         throw investmentCashLegLockedError();

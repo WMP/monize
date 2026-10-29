@@ -584,19 +584,32 @@ describe("BudgetActivityReportsService", () => {
   });
 
   describe("getSeasonalPatterns", () => {
-    // The sweep runs 13 months, oldest first; the oldest and the newest share a
-    // calendar month, so the oldest call answers empty and the rest answer by
-    // calendar month.
+    // The sweep runs the 12 complete months before this one, so each calendar
+    // month is answered once.
     const byMonth =
       (
         perMonth: Record<number, Record<string, number>>,
         extra: { incomplete?: string[] } = {},
       ) =>
       async (...args: unknown[]) => {
-        const isOldest = mockedSpending.mock.calls.length === 1;
         const month = Number((args[4] as string).slice(5, 7));
-        return isOldest ? spending({}) : spending(perMonth[month] ?? {}, extra);
+        return spending(perMonth[month] ?? {}, extra);
       };
+
+    it("sweeps 12 complete months, each calendar month once", async () => {
+      mockedSpending.mockImplementation(byMonth({}));
+
+      await service.getSeasonalPatterns("user-1", "budget-1");
+
+      const months = mockedSpending.mock.calls.map((c) =>
+        (c[4] as string).slice(0, 7),
+      );
+      expect(months).toHaveLength(12);
+      expect(new Set(months.map((x) => x.slice(5, 7))).size).toBe(12);
+      const now = new Date();
+      const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      expect(months).not.toContain(current);
+    });
 
     it("should return empty array when no expense categories exist", async () => {
       budgetsService.findOne.mockResolvedValueOnce({

@@ -2479,21 +2479,39 @@ export class AccountsService {
 
           if (accountRows.length === 0) return 0;
 
-          const accountIds = accountRows.map((r) => r.account_id);
-          await lockAccountsForBalanceWrite(m, accountIds);
-
-          const balances: { account_id: string; balance: string }[] =
-            await m.query(
-              `SELECT a.id as account_id,
+          const balancesSql = `SELECT a.id as account_id,
+                    a.current_balance,
                     COALESCE(a.opening_balance, 0) + COALESCE(SUM(t.amount), 0) as balance
                FROM accounts a
                LEFT JOIN transactions t ON t.account_id = a.id
                  AND ${LEDGER_MOVEMENT_PREDICATE}
                  AND t.transaction_date <= $2
                WHERE a.id = ANY($1)
-               GROUP BY a.id, a.opening_balance`,
-              [accountIds, today],
-            );
+               GROUP BY a.id, a.opening_balance, a.current_balance`;
+          const differs = (r: { balance: string; current_balance: string }) =>
+            roundMoney(Number(r.balance)) !==
+            roundMoney(Number(r.current_balance));
+
+          // Read-only first: the catch-up window reaches every account with a
+          // ledger row in the last days, and almost all are already right.
+          // Only an account whose stored balance differs is locked and written.
+          const candidateIds = accountRows.map((r) => r.account_id);
+          const candidateBalances: {
+            account_id: string;
+            balance: string;
+            current_balance: string;
+          }[] = await m.query(balancesSql, [candidateIds, today]);
+          const accountIds = candidateBalances
+            .filter(differs)
+            .map((r) => r.account_id);
+          if (accountIds.length === 0) return 0;
+
+          await lockAccountsForBalanceWrite(m, accountIds);
+
+          // Re-read under the lock: the first read saw no lock, so a delta that
+          // committed since is in this figure, not in the one above.
+          const balances: { account_id: string; balance: string }[] =
+            await m.query(balancesSql, [accountIds, today]);
 
           if (balances.length > 0) {
             // Apply all recomputed balances in a single statement instead of

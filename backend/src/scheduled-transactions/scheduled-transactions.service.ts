@@ -2134,14 +2134,15 @@ export class ScheduledTransactionsService {
       );
     }
 
-    let accountCurrencyCode = scheduled.currencyCode;
-    if (updateDto.accountId && updateDto.accountId !== scheduled.accountId) {
-      const nextAccount = await this.accountsService.findOne(
+    // Always the account's own currency, never the schedule's stored one: a
+    // legacy schedule whose stored currency is stale is re-derived instead of
+    // refused.
+    const accountCurrencyCode = (
+      await this.accountsService.findOne(
         userId,
-        updateDto.accountId,
-      );
-      accountCurrencyCode = nextAccount.currencyCode;
-    }
+        updateDto.accountId || scheduled.accountId,
+      )
+    ).currencyCode;
 
     if (updateDto.isTransfer && updateDto.transferAccountId) {
       await this.accountsService.findOne(userId, updateDto.transferAccountId);

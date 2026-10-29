@@ -351,10 +351,11 @@ export class SecurityDetailService {
 
   /**
    * What was put in: the executed cost of every acquisition, commission
-   * included (`acquisitionCost`, stored total first). A transfer moves shares
-   * between accounts and is no new capital, so an OUT leg takes off what its IN
-   * leg adds. A row that cannot state its cost makes the total unknown, never
-   * zero.
+   * included (`acquisitionCost`, stored total first). A transfer between two
+   * of the user's own accounts moves no money in or out of the security, so a
+   * paired leg adds nothing. A TRANSFER_IN with no other leg is shares arriving
+   * from outside, which counts at its stated cost. A row that cannot state its
+   * cost makes the total unknown, never zero.
    */
   private totalInvested(
     effects: readonly SecurityHistoryTransaction[],
@@ -362,13 +363,10 @@ export class SecurityDetailService {
     const parts: number[] = [];
     for (const tx of effects) {
       const action = baseInvestmentAction(tx.action) as InvestmentAction;
-      const sign =
-        action === InvestmentAction.TRANSFER_OUT
-          ? -1
-          : ACQUIRING_ACTIONS.has(action)
-            ? 1
-            : 0;
-      if (sign === 0) continue;
+      if (!ACQUIRING_ACTIONS.has(action)) continue;
+      if (action === InvestmentAction.TRANSFER_IN && tx.linkedTransactionId) {
+        continue;
+      }
       const cost = acquisitionCost({
         quantity: Math.abs(Number(tx.quantity) || 0),
         price: tx.price,
@@ -376,7 +374,7 @@ export class SecurityDetailService {
         totalAmount: tx.totalAmount,
       });
       if (cost === null) return null;
-      parts.push(sign * cost);
+      parts.push(cost);
     }
     return sumMoney(parts);
   }

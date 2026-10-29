@@ -277,6 +277,8 @@ export interface SecurityHistoryTransaction {
   commission: number;
   totalAmount: number;
   description: string | null;
+  /** The other leg of a security transfer; null when this row has none. */
+  linkedTransactionId: string | null;
   /** A VOID row is listed but moved no shares; the running balances skip it. */
   status: TransactionStatus;
   /** Running share balance within this transaction's own account. */
@@ -3510,6 +3512,7 @@ export class InvestmentTransactionsService {
         commission: Number(tx.commission) || 0,
         totalAmount: Number(tx.totalAmount) || 0,
         description: tx.description,
+        linkedTransactionId: tx.linkedTransactionId ?? null,
         status: tx.status,
         runningQuantityAccount: newBalance,
         runningQuantityAll: runningAll,
