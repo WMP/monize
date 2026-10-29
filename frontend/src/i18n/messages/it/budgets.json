@@ -34,7 +34,8 @@
       "WANT": "Desiderio",
       "SAVING": "Risparmio"
     },
-    "saving": "Salvataggio..."
+    "saving": "Salvataggio...",
+    "remove": "Rimuovi dal budget"
   },
   "categoryList": {
     "title": "Budget per categoria",
@@ -521,12 +522,19 @@
       "percentUsed": "{percent}% utilizzato",
       "rolloverType": "Riporto: {type}",
       "editCategoryTitle": "Modifica {name}",
+      "remove": {
+        "title": "Rimuovi categoria",
+        "message": "Rimuovere \"{name}\" da questo budget? La sua allocazione di {amount} non sarà più a budget e la sua cronologia nei periodi di budget passati verrà eliminata. Le tue transazioni non sono interessate. Questa azione non può essere annullata.",
+        "confirm": "Rimuovi"
+      },
       "toasts": {
         "updated": "Budget aggiornato",
         "updateFailed": "Impossibile aggiornare il budget",
         "categoryUpdated": "Categoria aggiornata",
         "categoryFailed": "Impossibile aggiornare la categoria",
-        "loadFailed": "Impossibile caricare il budget"
+        "loadFailed": "Impossibile caricare il budget",
+        "categoryRemoved": "Categoria rimossa dal budget",
+        "categoryRemoveFailed": "Impossibile rimuovere la categoria"
       }
     }
   },

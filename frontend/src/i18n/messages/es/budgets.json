@@ -34,7 +34,8 @@
       "WANT": "Deseo",
       "SAVING": "Ahorro"
     },
-    "saving": "Guardando..."
+    "saving": "Guardando...",
+    "remove": "Quitar del presupuesto"
   },
   "categoryList": {
     "title": "Presupuestos por categoría",
@@ -521,12 +522,19 @@
       "percentUsed": "{percent}% usado",
       "rolloverType": "Traspaso: {type}",
       "editCategoryTitle": "Editar {name}",
+      "remove": {
+        "title": "Quitar categoría",
+        "message": "¿Quitar \"{name}\" de este presupuesto? Su asignación de {amount} dejará de presupuestarse y se eliminará su historial en los periodos anteriores del presupuesto. Tus transacciones no se ven afectadas. Esta acción no se puede deshacer.",
+        "confirm": "Quitar"
+      },
       "toasts": {
         "updated": "Presupuesto actualizado",
         "updateFailed": "Error al actualizar el presupuesto",
         "categoryUpdated": "Categoría actualizada",
         "categoryFailed": "Error al actualizar la categoría",
-        "loadFailed": "Error al cargar el presupuesto"
+        "loadFailed": "Error al cargar el presupuesto",
+        "categoryRemoved": "Categoría quitada del presupuesto",
+        "categoryRemoveFailed": "No se pudo quitar la categoría"
       }
     }
   },

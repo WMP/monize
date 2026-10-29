@@ -34,7 +34,8 @@
       "WANT": "Wunsch",
       "SAVING": "Ersparnis"
     },
-    "saving": "Wird gespeichert..."
+    "saving": "Wird gespeichert...",
+    "remove": "Aus Budget entfernen"
   },
   "categoryList": {
     "title": "Kategorie-Budgets",
@@ -521,12 +522,19 @@
       "percentUsed": "{percent}% verwendet",
       "rolloverType": "Übertrag: {type}",
       "editCategoryTitle": "{name} bearbeiten",
+      "remove": {
+        "title": "Kategorie entfernen",
+        "message": "\"{name}\" aus diesem Budget entfernen? Die Zuweisung von {amount} wird nicht mehr budgetiert und der Verlauf in vergangenen Budgetperioden wird gelöscht. Ihre Buchungen sind nicht betroffen. Diese Aktion kann nicht rückgängig gemacht werden.",
+        "confirm": "Entfernen"
+      },
       "toasts": {
         "updated": "Budget aktualisiert",
         "updateFailed": "Budget konnte nicht aktualisiert werden",
         "categoryUpdated": "Kategorie aktualisiert",
         "categoryFailed": "Kategorie konnte nicht aktualisiert werden",
-        "loadFailed": "Budget konnte nicht geladen werden"
+        "loadFailed": "Budget konnte nicht geladen werden",
+        "categoryRemoved": "Kategorie aus dem Budget entfernt",
+        "categoryRemoveFailed": "Kategorie konnte nicht entfernt werden"
       }
     }
   },
