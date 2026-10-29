@@ -92,6 +92,7 @@ vi.mock('@/hooks/useNumberFormat', async () => {
 // Mock budgets API
 const mockGetById = vi.fn();
 const mockGetSummary = vi.fn();
+const mockRemoveCategory = vi.fn();
 
 vi.mock('@/lib/budgets', () => ({
   budgetsApi: {
@@ -99,6 +100,7 @@ vi.mock('@/lib/budgets', () => ({
     getSummary: (...args: any[]) => mockGetSummary(...args),
     update: vi.fn(),
     updateCategory: vi.fn(),
+    removeCategory: (...args: any[]) => mockRemoveCategory(...args),
   },
 }));
 
@@ -112,7 +114,20 @@ vi.mock('@/components/budgets/BudgetForm', () => ({
 }));
 
 vi.mock('@/components/budgets/BudgetCategoryForm', () => ({
-  BudgetCategoryForm: () => <div data-testid="category-form" />,
+  BudgetCategoryForm: ({ onRemove }: any) => (
+    <div data-testid="category-form">
+      <button data-testid="category-remove" onClick={onRemove}>Remove from budget</button>
+    </div>
+  ),
+}));
+
+const mockToastSuccess = vi.fn();
+const mockToastError = vi.fn();
+vi.mock('react-hot-toast', () => ({
+  default: {
+    success: (...args: any[]) => mockToastSuccess(...args),
+    error: (...args: any[]) => mockToastError(...args),
+  },
 }));
 
 vi.mock('@/components/budgets/BudgetProgressBar', () => ({
@@ -139,6 +154,18 @@ vi.mock('@/components/ui/LoadingSpinner', () => ({
 vi.mock('@/components/ui/Modal', () => ({
   Modal: ({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) =>
     isOpen ? <div data-testid="modal">{children}</div> : null,
+}));
+
+vi.mock('@/components/ui/ConfirmDialog', () => ({
+  ConfirmDialog: ({ isOpen, title, message, confirmLabel, onConfirm, onCancel }: any) =>
+    isOpen ? (
+      <div data-testid="confirm-dialog">
+        <h3>{title}</h3>
+        <p>{message}</p>
+        <button onClick={onConfirm}>{confirmLabel}</button>
+        <button onClick={onCancel}>Keep</button>
+      </div>
+    ) : null,
 }));
 
 const mockBudget = {
@@ -202,6 +229,7 @@ describe('BudgetEditPage', () => {
     vi.clearAllMocks();
     mockGetById.mockResolvedValue(mockBudget);
     mockGetSummary.mockResolvedValue(mockSummary);
+    mockRemoveCategory.mockResolvedValue(undefined);
   });
 
   it('shows loading spinner initially', async () => {
@@ -357,5 +385,64 @@ describe('BudgetEditPage', () => {
     // Also check rollover text and flex group badge
     expect(screen.getByText('Rollover: rollover')).toBeInTheDocument();
     expect(screen.getByText('flex-group-1')).toBeInTheDocument();
+  });
+
+  describe('removing a category', () => {
+    async function openRemoveConfirm() {
+      render(<BudgetEditPage />);
+      await waitFor(() => expect(screen.getByText('Groceries')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Groceries'));
+      fireEvent.click(await screen.findByTestId('category-remove'));
+      return screen.findByTestId('confirm-dialog');
+    }
+
+    it('asks for confirmation, naming the line and its allocation, before removing', async () => {
+      const dialog = await openRemoveConfirm();
+
+      expect(dialog).toHaveTextContent('Remove Category');
+      expect(dialog).toHaveTextContent('Remove "Groceries" from this budget? Its $600.00 allocation');
+      // The edit modal closes so the confirmation is the only dialog open.
+      expect(screen.queryByTestId('category-form')).not.toBeInTheDocument();
+      expect(mockRemoveCategory).not.toHaveBeenCalled();
+    });
+
+    it('removes the budget line and reloads the budget on confirm', async () => {
+      await openRemoveConfirm();
+      mockGetById.mockClear();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+      await waitFor(() => {
+        expect(mockRemoveCategory).toHaveBeenCalledWith('budget-1', 'bc-1');
+      });
+      await waitFor(() => expect(mockGetById).toHaveBeenCalledWith('budget-1'));
+      // The reload settles back to the page, not the spinner.
+      await screen.findByTestId('budget-form');
+      expect(mockToastSuccess).toHaveBeenCalledWith('Category removed from budget');
+      expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument();
+    });
+
+    it('does not remove anything when the confirmation is cancelled', async () => {
+      await openRemoveConfirm();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Keep' }));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument();
+      });
+      expect(mockRemoveCategory).not.toHaveBeenCalled();
+    });
+
+    it('reports a failed removal', async () => {
+      mockRemoveCategory.mockRejectedValue(new Error('boom'));
+      await openRemoveConfirm();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+      await waitFor(() => {
+        expect(mockToastError).toHaveBeenCalledWith('Failed to remove category');
+      });
+      expect(mockToastSuccess).not.toHaveBeenCalled();
+    });
   });
 });

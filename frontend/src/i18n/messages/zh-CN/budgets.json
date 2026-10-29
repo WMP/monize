@@ -34,7 +34,8 @@
       "WANT": "欲望",
       "SAVING": "储蓄"
     },
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "remove": "从预算中移除"
   },
   "categoryList": {
     "title": "分类预算",
@@ -521,12 +522,19 @@
       "percentUsed": "已用 {percent}%",
       "rolloverType": "滚存：{type}",
       "editCategoryTitle": "编辑 {name}",
+      "remove": {
+        "title": "移除类别",
+        "message": "要从此预算中移除“{name}”吗？其 {amount} 的分配将不再计入预算，并且其在以往预算周期中的历史记录将被删除。您的交易不受影响。此操作无法撤销。",
+        "confirm": "移除"
+      },
       "toasts": {
         "updated": "预算已更新",
         "updateFailed": "更新预算失败",
         "categoryUpdated": "分类已更新",
         "categoryFailed": "更新分类失败",
-        "loadFailed": "加载预算失败"
+        "loadFailed": "加载预算失败",
+        "categoryRemoved": "已从预算中移除类别",
+        "categoryRemoveFailed": "移除类别失败"
       }
     }
   },

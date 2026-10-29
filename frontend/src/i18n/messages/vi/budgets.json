@@ -34,7 +34,8 @@
       "WANT": "Nhu cầu muốn có",
       "SAVING": "Tiết kiệm"
     },
-    "saving": "Đang lưu..."
+    "saving": "Đang lưu...",
+    "remove": "Xóa khỏi ngân sách"
   },
   "categoryList": {
     "title": "Ngân sách danh mục",
@@ -521,12 +522,19 @@
       "percentUsed": "{percent}% đã dùng",
       "rolloverType": "Chuyển tiếp: {type}",
       "editCategoryTitle": "Chỉnh sửa {name}",
+      "remove": {
+        "title": "Xóa danh mục",
+        "message": "Xóa \"{name}\" khỏi ngân sách này? Khoản phân bổ {amount} của danh mục sẽ không còn được tính vào ngân sách và lịch sử của danh mục trong các kỳ ngân sách trước sẽ bị xóa. Các giao dịch của bạn không bị ảnh hưởng. Không thể hoàn tác thao tác này.",
+        "confirm": "Xóa"
+      },
       "toasts": {
         "updated": "Đã cập nhật ngân sách",
         "updateFailed": "Cập nhật ngân sách thất bại",
         "categoryUpdated": "Đã cập nhật danh mục",
         "categoryFailed": "Cập nhật danh mục thất bại",
-        "loadFailed": "Tải ngân sách thất bại"
+        "loadFailed": "Tải ngân sách thất bại",
+        "categoryRemoved": "Đã xóa danh mục khỏi ngân sách",
+        "categoryRemoveFailed": "Không thể xóa danh mục"
       }
     }
   },

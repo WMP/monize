@@ -34,7 +34,8 @@
       "WANT": "Envie",
       "SAVING": "Épargne"
     },
-    "saving": "Enregistrement..."
+    "saving": "Enregistrement...",
+    "remove": "Retirer du budget"
   },
   "categoryList": {
     "title": "Budgets par catégorie",
@@ -521,12 +522,19 @@
       "percentUsed": "{percent}% utilisé",
       "rolloverType": "Report : {type}",
       "editCategoryTitle": "Modifier {name}",
+      "remove": {
+        "title": "Retirer la catégorie",
+        "message": "Retirer « {name} » de ce budget ? Son allocation de {amount} ne sera plus budgétée et son historique dans les périodes budgétaires passées sera supprimé. Vos transactions ne sont pas affectées. Cette action est irréversible.",
+        "confirm": "Retirer"
+      },
       "toasts": {
         "updated": "Budget mis à jour",
         "updateFailed": "Échec de la mise à jour du budget",
         "categoryUpdated": "Catégorie mise à jour",
         "categoryFailed": "Échec de la mise à jour de la catégorie",
-        "loadFailed": "Échec du chargement du budget"
+        "loadFailed": "Échec du chargement du budget",
+        "categoryRemoved": "Catégorie retirée du budget",
+        "categoryRemoveFailed": "Impossible de retirer la catégorie"
       }
     }
   },
