@@ -37,7 +37,8 @@ function request(over: Partial<AiReviewRequest> = {}): AiReviewRequest {
     proposal: null,
     createdAt: new Date("2026-09-29T08:00:00Z"),
     updatedAt: new Date("2026-09-29T09:00:00Z"),
-    expiresAt: new Date("2026-10-29T08:00:00Z"),
+    // Positive cases must stay pending regardless of the day this suite runs.
+    expiresAt: new Date(Date.now() + 86_400_000),
     ...over,
   });
 }
