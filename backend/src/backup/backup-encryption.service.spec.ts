@@ -330,6 +330,31 @@ describe("BackupEncryptionService", () => {
       await expectNoRecoverablePassword(stored, "hunter2hunter2");
     });
 
+    it("re-wraps an SSO account's key after it changes the password it kept", async () => {
+      const { user } = await keyedUser("old-p4ssw0rd", "old-hash", {
+        authProvider: "oidc",
+        passwordHash: "new-hash",
+      });
+      usersRepo.findOne.mockResolvedValue(user);
+
+      await service.rewrapBackupKey(userId, "new-password", "new-hash");
+
+      const [criteria, stored] = onlyUpdate();
+      expect(criteria).toEqual({ id: userId, passwordHash: "new-hash" });
+      expect(stored.backupKeyPasswordRef).toBe(loginPasswordRef("new-hash"));
+    });
+
+    it("leaves an SSO account's dedicated-password wrap alone", async () => {
+      const { user } = await keyedUser("dedicated-p4ss", null, {
+        authProvider: "oidc",
+      });
+      usersRepo.findOne.mockResolvedValue(user);
+
+      await service.rewrapBackupKey(userId, "login-password", hash);
+
+      expect(usersRepo.update).not.toHaveBeenCalled();
+    });
+
     it("re-wraps under a fresh key after a password change", async () => {
       const { user, key } = await keyedUser("old-p4ssw0rd", "old-hash", {
         passwordHash: "new-hash",

@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { ConfigService } from "@nestjs/config";
 import { DataSource, FindOperator, QueryFailedError } from "typeorm";
 import { BadRequestException, ConflictException } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
@@ -35,6 +36,8 @@ describe("AuthEmailService", () => {
   let passwordBreachService: { isBreached: jest.Mock };
   let tokenService: { revokeAllUserRefreshTokens: jest.Mock };
 
+  let configValues: Record<string, string>;
+
   const mockUser = {
     id: "user-1",
     email: "test@example.com",
@@ -46,6 +49,7 @@ describe("AuthEmailService", () => {
   };
 
   beforeEach(async () => {
+    configValues = {};
     usersRepository = {
       findOne: jest.fn(),
       save: jest.fn(),
@@ -89,6 +93,14 @@ describe("AuthEmailService", () => {
           useValue: tokenService,
         },
         authAttemptCounterProvider(attemptCounters),
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string, fallback?: string) =>
+              key in configValues ? configValues[key] : fallback,
+            ),
+          },
+        },
         { provide: OAUTH_GRANT_REVOKER, useValue: oauthProviderService },
       ],
     }).compile();
@@ -144,6 +156,26 @@ describe("AuthEmailService", () => {
 
       expect(result).toBeNull();
       expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("generateResetToken for an SSO account with a password", () => {
+    const ssoUser = { ...mockUser, authProvider: "oidc" };
+
+    it("returns null while OIDC_ALLOW_PASSWORD_LOGIN is off", async () => {
+      usersRepository.findOne.mockResolvedValue({ ...ssoUser });
+
+      expect(await service.generateResetToken("test@example.com")).toBeNull();
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("issues a token while OIDC_ALLOW_PASSWORD_LOGIN is on", async () => {
+      configValues.OIDC_ALLOW_PASSWORD_LOGIN = "true";
+      usersRepository.findOne.mockResolvedValue({ ...ssoUser });
+
+      expect(
+        await service.generateResetToken("test@example.com"),
+      ).not.toBeNull();
     });
   });
 

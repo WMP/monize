@@ -117,7 +117,7 @@
       "resetMessage": "Verrà generata una nuova password temporanea per {name}. Dovrà cambiarla al prossimo accesso.",
       "resetConfirm": "Reimposta password",
       "unlinkSsoTitle": "Scollegare SSO?",
-      "unlinkSsoMessage": "Questa azione converte l'account di {name} in un account locale. L'accesso SSO non funziona più per questo account. Il sistema genera una password temporanea e {name} dovrà cambiarla al prossimo accesso.",
+      "unlinkSsoMessage": "Questa azione converte l'account di {name} in un account locale. Un successivo accesso SSO con lo stesso indirizzo e-mail può collegarlo di nuovo. Il sistema genera una password temporanea e {name} dovrà cambiarla al prossimo accesso.",
       "unlinkSsoConfirm": "Scollega SSO",
       "unlinkSsoResultTitle": "SSO scollegato",
       "unlinkSsoResultDesc": "L'account di {name} ora è un account locale. Condividi questa password temporanea con l'utente per consentirgli di accedere.",

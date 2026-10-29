@@ -117,7 +117,7 @@
       "resetMessage": "Bu işlem {name} için yeni bir geçici şifre oluşturacaktır. Bir sonraki girişlerinde şifrelerini değiştirmeleri gerekecektir.",
       "resetConfirm": "Şifreyi Sıfırla",
       "unlinkSsoTitle": "SSO Bağlantısı Kaldırılsın mı?",
-      "unlinkSsoMessage": "Bu işlem {name} hesabını yerel hesaba dönüştürür. SSO ile oturum açma bu hesap için çalışmaz. Sistem geçici bir şifre oluşturur ve {name} bir sonraki girişte bu şifreyi değiştirmelidir.",
+      "unlinkSsoMessage": "Bu işlem {name} hesabını yerel hesaba dönüştürür. Aynı e-posta adresiyle sonradan yapılan bir SSO girişi hesabı yeniden bağlayabilir. Sistem geçici bir şifre oluşturur ve {name} bir sonraki girişte bu şifreyi değiştirmelidir.",
       "unlinkSsoConfirm": "SSO Bağlantısını Kaldır",
       "unlinkSsoResultTitle": "SSO Bağlantısı Kaldırıldı",
       "unlinkSsoResultDesc": "{name} hesabı artık yerel bir hesaptır. Oturum açabilmesi için bu geçici şifreyi kendisiyle paylaşın.",

@@ -117,7 +117,7 @@
       "resetMessage": "Isto irá gerar uma nova palavra-passe temporária para {name}. Será obrigado a alterá-la no próximo início de sessão.",
       "resetConfirm": "Repor Palavra-passe",
       "unlinkSsoTitle": "Desassociar SSO?",
-      "unlinkSsoMessage": "Isto converte a conta de {name} numa conta local. O início de sessão SSO deixa de funcionar para esta conta. O sistema gera uma palavra-passe temporária e {name} será obrigado a alterá-la no próximo início de sessão.",
+      "unlinkSsoMessage": "Isto converte a conta de {name} numa conta local. Um início de sessão SSO posterior com o mesmo endereço de email pode associá-la novamente. O sistema gera uma palavra-passe temporária e {name} será obrigado a alterá-la no próximo início de sessão.",
       "unlinkSsoConfirm": "Desassociar SSO",
       "unlinkSsoResultTitle": "SSO desassociado",
       "unlinkSsoResultDesc": "A conta de {name} é agora uma conta local. Partilhe esta palavra-passe temporária com o utilizador para que possa iniciar sessão.",

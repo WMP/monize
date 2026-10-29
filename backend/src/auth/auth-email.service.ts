@@ -7,6 +7,7 @@ import {
   ObjectLiteral,
   Repository,
 } from "typeorm";
+import { ConfigService } from "@nestjs/config";
 import { withScopedDb } from "../common/db/scoped-db";
 import * as bcrypt from "bcryptjs";
 import * as crypto from "crypto";
@@ -14,6 +15,10 @@ import * as crypto from "crypto";
 import { User } from "../users/entities/user.entity";
 import { hashToken } from "./crypto.util";
 import { PasswordBreachService } from "./password-breach.service";
+import {
+  localPasswordUsable,
+  oidcPasswordLoginAllowed,
+} from "./oidc/oidc-password-login";
 import { tr } from "../i18n/translate";
 import { TokenService } from "./token.service";
 import { AuthAttemptCounterService } from "./auth-attempt-counter.service";
@@ -55,6 +60,7 @@ export class AuthEmailService {
     private tokenService: TokenService,
     private readonly attemptCounters: AuthAttemptCounterService,
     private readonly moduleRef: ModuleRef,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -108,7 +114,12 @@ export class AuthEmailService {
       }),
     );
 
-    if (!user || !user.passwordHash) return null;
+    if (
+      !user ||
+      !localPasswordUsable(user, oidcPasswordLoginAllowed(this.configService))
+    ) {
+      return null;
+    }
 
     const rawResetToken = crypto.randomBytes(32).toString("hex");
     const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour

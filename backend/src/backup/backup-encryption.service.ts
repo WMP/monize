@@ -278,8 +278,18 @@ export class BackupEncryptionService {
       const user = await this.scoped(User, (repo) =>
         repo.findOne({ where: { id: userId } }),
       );
-      // OIDC accounts have no password of ours to wrap under.
-      if (!user || user.authProvider !== "local") return;
+      // An SSO account keeps its password, so a wrap under it must follow a
+      // password change; otherwise resolveBackupKey drops the key and backups
+      // go out unencrypted.
+      if (!user || !user.passwordHash) return;
+      // A wrap with no ref is under a dedicated backup password: leave it.
+      if (
+        user.authProvider === "oidc" &&
+        user.backupKeyWrap &&
+        !user.backupKeyPasswordRef
+      ) {
+        return;
+      }
       if (this.wrapIsCurrentFor(user, verifiedPasswordHash)) return;
 
       const key = await createWrappedBackupKey(password);

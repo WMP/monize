@@ -117,7 +117,7 @@
       "resetMessage": "{name}의 새 임시 비밀번호가 생성됩니다. 다음 로그인 시 비밀번호를 변경해야 합니다.",
       "resetConfirm": "비밀번호 재설정",
       "unlinkSsoTitle": "SSO 연결을 해제하시겠습니까?",
-      "unlinkSsoMessage": "{name}의 계정이 로컬 계정으로 전환됩니다. 이 계정은 더 이상 SSO로 로그인할 수 없습니다. 시스템이 임시 비밀번호를 생성하며, {name}은(는) 다음 로그인 시 비밀번호를 변경해야 합니다.",
+      "unlinkSsoMessage": "{name}의 계정이 로컬 계정으로 전환됩니다. 이후 같은 이메일 주소로 SSO 로그인하면 다시 연결될 수 있습니다. 시스템이 임시 비밀번호를 생성하며, {name}은(는) 다음 로그인 시 비밀번호를 변경해야 합니다.",
       "unlinkSsoConfirm": "SSO 연결 해제",
       "unlinkSsoResultTitle": "SSO 연결 해제됨",
       "unlinkSsoResultDesc": "{name}의 계정이 이제 로컬 계정입니다. 로그인할 수 있도록 이 임시 비밀번호를 전달하세요.",

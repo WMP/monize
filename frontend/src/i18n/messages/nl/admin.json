@@ -117,7 +117,7 @@
       "resetMessage": "Er wordt een nieuw tijdelijk wachtwoord gegenereerd voor {name}. Ze moeten het bij de volgende inlog wijzigen.",
       "resetConfirm": "Wachtwoord opnieuw instellen",
       "unlinkSsoTitle": "SSO ontkoppelen?",
-      "unlinkSsoMessage": "Hiermee wordt het account van {name} omgezet naar een lokaal account. Inloggen met SSO werkt dan niet meer voor dit account. Het systeem maakt een tijdelijk wachtwoord aan en {name} moet het bij de volgende inlog wijzigen.",
+      "unlinkSsoMessage": "Hiermee wordt het account van {name} omgezet naar een lokaal account. Een latere SSO-aanmelding met hetzelfde e-mailadres kan het opnieuw koppelen. Het systeem maakt een tijdelijk wachtwoord aan en {name} moet het bij de volgende inlog wijzigen.",
       "unlinkSsoConfirm": "SSO ontkoppelen",
       "unlinkSsoResultTitle": "SSO ontkoppeld",
       "unlinkSsoResultDesc": "Het account van {name} is nu een lokaal account. Deel dit tijdelijke wachtwoord met de gebruiker zodat die kan inloggen.",

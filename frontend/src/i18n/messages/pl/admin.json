@@ -117,7 +117,7 @@
       "resetMessage": "Spowoduje to wygenerowanie nowego hasła tymczasowego dla użytkownika {name}. Przy następnym logowaniu będzie wymagana jego zmiana.",
       "resetConfirm": "Zresetuj hasło",
       "unlinkSsoTitle": "Odłączyć SSO?",
-      "unlinkSsoMessage": "Spowoduje to zmianę konta użytkownika {name} na konto lokalne. Logowanie przez SSO przestanie działać dla tego konta. System wygeneruje hasło tymczasowe, a użytkownik {name} musi je zmienić przy następnym logowaniu.",
+      "unlinkSsoMessage": "Spowoduje to zmianę konta użytkownika {name} na konto lokalne. Późniejsze logowanie przez SSO z tym samym adresem e-mail może połączyć je ponownie. System wygeneruje hasło tymczasowe, a użytkownik {name} musi je zmienić przy następnym logowaniu.",
       "unlinkSsoConfirm": "Odłącz SSO",
       "unlinkSsoResultTitle": "SSO odłączone",
       "unlinkSsoResultDesc": "Konto użytkownika {name} jest teraz kontem lokalnym. Przekaż mu to hasło tymczasowe, aby mógł się zalogować.",

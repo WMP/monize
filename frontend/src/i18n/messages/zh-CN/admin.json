@@ -117,7 +117,7 @@
       "resetMessage": "这将为 {name} 生成新的临时密码。他们下次登录时将被要求更改密码。",
       "resetConfirm": "重置密码",
       "unlinkSsoTitle": "解除 SSO 绑定？",
-      "unlinkSsoMessage": "这将把 {name} 的账户转换为本地账户。该账户将无法再使用 SSO 登录。系统会生成临时密码，{name} 下次登录时必须更改密码。",
+      "unlinkSsoMessage": "这将把 {name} 的账户转换为本地账户。之后使用相同电子邮件地址通过 SSO 登录，可再次关联该账户。系统会生成临时密码，{name} 下次登录时必须更改密码。",
       "unlinkSsoConfirm": "解除 SSO 绑定",
       "unlinkSsoResultTitle": "SSO 绑定已解除",
       "unlinkSsoResultDesc": "{name} 的账户现在是本地账户。请将此临时密码告知对方，以便其登录。",

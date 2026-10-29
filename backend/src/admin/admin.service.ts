@@ -46,6 +46,7 @@ import {
   AutoBackupService,
   StoredBackupUsage,
 } from "../backup/auto-backup.service";
+import { CLEARED_BACKUP_KEY } from "../backup/backup-encryption.service";
 
 /**
  * Who the admin screens manage: everybody except the owner-managed delegate
@@ -599,7 +600,9 @@ export class AdminService {
       );
     }
 
-    const temporaryPassword = await this.applyTemporaryPassword(targetUser);
+    const { temporaryPassword, passwordHash } =
+      await this.generateTemporaryPassword();
+    this.applyTemporaryPassword(targetUser, passwordHash);
     // The new password, its PATs and its trusted devices are one commit: a
     // reset whose revocation fails leaves the old password in place rather than
     // a new password with the old credentials still live (INV-AUTH-005).
@@ -615,27 +618,38 @@ export class AdminService {
     return { temporaryPassword };
   }
 
-  /** Give `user` a fresh readable password, forced change, and no reset token or lockout. */
-  private async applyTemporaryPassword(user: User): Promise<string> {
+  /** A fresh readable password and its hash; hashed outside any transaction. */
+  private async generateTemporaryPassword(): Promise<{
+    temporaryPassword: string;
+    passwordHash: string;
+  }> {
     const temporaryPassword = generateReadablePassword();
     const saltRounds = 12;
-    user.passwordHash = await bcrypt.hash(temporaryPassword, saltRounds);
+    return {
+      temporaryPassword,
+      passwordHash: await bcrypt.hash(temporaryPassword, saltRounds),
+    };
+  }
+
+  /** Give `user` the hashed temporary password, forced change, and no reset token or lockout. */
+  private applyTemporaryPassword(user: User, passwordHash: string): void {
+    user.passwordHash = passwordHash;
     user.mustChangePassword = true;
     user.resetToken = null;
     user.resetTokenExpiry = null;
     // An admin reset is a recovery action: the temporary password must work.
     user.failedLoginAttempts = 0;
     user.lockedUntil = null;
-    return temporaryPassword;
   }
 
   /**
    * Convert an SSO account back to a local one with a temporary password, so
    * the person can sign in while the IdP is down or SSO is not wanted for them.
    * TOTP fields stay as they are (`resetUserTwoFactor` is the recovery for a
-   * lost device). A backup key wrapped under the old password goes stale as on
-   * an admin reset, and `resolveBackupKey` drops it and re-makes it at the next
-   * login.
+   * lost device). A backup key an SSO account holds may sit under a dedicated
+   * backup password (no login-password ref), which a local account does not
+   * use, so the key is cleared here; the next password login wraps a new one
+   * under the new password.
    */
   async unlinkUserSso(
     adminId: string,
@@ -659,29 +673,39 @@ export class AdminService {
       );
     }
 
-    const targetUser = await withScopedDb(this.dataSource, (manager) =>
-      manager.getRepository(User).findOne({ where: { id: targetUserId } }),
-    );
-    if (!targetUser) {
-      throw new NotFoundException(
-        tr("errors.admin.userNotFound", "User not found"),
-      );
-    }
-    if (targetUser.authProvider !== "oidc") {
-      throw new BadRequestException(
-        tr("errors.admin.notSsoAccount", "This account is not an SSO account"),
-      );
-    }
-
-    targetUser.authProvider = "local";
-    targetUser.oidcSubject = null;
-    targetUser.pendingOidcSubject = null;
-    targetUser.oidcLinkPending = false;
-    targetUser.oidcLinkToken = null;
-    targetUser.oidcLinkExpiresAt = null;
-    const temporaryPassword = await this.applyTemporaryPassword(targetUser);
+    // Hash before the transaction: bcrypt must not hold the row lock.
+    const { temporaryPassword, passwordHash } =
+      await this.generateTemporaryPassword();
     await withScopedDb(this.dataSource, async (manager) => {
-      await manager.getRepository(User).save(targetUser);
+      const repo = manager.getRepository(User);
+      const targetUser = await repo.findOne({
+        where: { id: targetUserId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!targetUser) {
+        throw new NotFoundException(
+          tr("errors.admin.userNotFound", "User not found"),
+        );
+      }
+      if (targetUser.authProvider !== "oidc") {
+        throw new BadRequestException(
+          tr(
+            "errors.admin.notSsoAccount",
+            "This account is not an SSO account",
+          ),
+        );
+      }
+      targetUser.authProvider = "local";
+      targetUser.oidcSubject = null;
+      targetUser.pendingOidcSubject = null;
+      targetUser.oidcLinkPending = false;
+      targetUser.oidcLinkToken = null;
+      targetUser.oidcLinkExpiresAt = null;
+      this.applyTemporaryPassword(targetUser, passwordHash);
+      if (targetUser.backupKeyWrap) {
+        Object.assign(targetUser, CLEARED_BACKUP_KEY);
+      }
+      await repo.save(targetUser);
       await this.revokeStandingAccess(manager, targetUserId);
     });
     await this.endSessionsAfterCommit(targetUserId);

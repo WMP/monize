@@ -444,6 +444,23 @@ describe("UsersService", () => {
       );
     });
 
+    it("rejects email change for an SSO account while password login is off", async () => {
+      usersRepository.findOne.mockResolvedValueOnce({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: "some-hash",
+      });
+
+      await expect(
+        service.updateProfile("user-1", {
+          email: "new@example.com",
+          currentPassword: "anything",
+        }),
+      ).rejects.toThrow(
+        "Cannot change email for accounts without a local password",
+      );
+    });
+
     describe("email change with SMTP configured", () => {
       let hashedPassword: string;
 

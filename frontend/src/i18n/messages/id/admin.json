@@ -117,7 +117,7 @@
       "resetMessage": "Ini akan membuat kata sandi sementara baru untuk {name}. Mereka akan diminta untuk menggantinya saat login berikutnya.",
       "resetConfirm": "Reset Kata Sandi",
       "unlinkSsoTitle": "Putuskan SSO?",
-      "unlinkSsoMessage": "Ini mengubah akun {name} menjadi akun lokal. Login SSO tidak lagi berfungsi untuk akun tersebut. Sistem membuat kata sandi sementara, dan {name} harus menggantinya saat login berikutnya.",
+      "unlinkSsoMessage": "Ini mengubah akun {name} menjadi akun lokal. Login SSO berikutnya dengan alamat email yang sama dapat menautkannya kembali. Sistem membuat kata sandi sementara, dan {name} harus menggantinya saat login berikutnya.",
       "unlinkSsoConfirm": "Putuskan SSO",
       "unlinkSsoResultTitle": "SSO Diputuskan",
       "unlinkSsoResultDesc": "Akun {name} sekarang adalah akun lokal. Bagikan kata sandi sementara ini kepada mereka agar bisa login.",

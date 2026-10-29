@@ -117,7 +117,7 @@
       "resetMessage": "Điều này sẽ tạo mật khẩu tạm thời mới cho {name}. Họ sẽ phải đổi mật khẩu khi đăng nhập tiếp theo.",
       "resetConfirm": "Đặt lại mật khẩu",
       "unlinkSsoTitle": "Hủy liên kết SSO?",
-      "unlinkSsoMessage": "Thao tác này chuyển tài khoản của {name} thành tài khoản cục bộ. Đăng nhập SSO sẽ không còn hoạt động với tài khoản này. Hệ thống tạo mật khẩu tạm thời, và {name} phải đổi mật khẩu khi đăng nhập tiếp theo.",
+      "unlinkSsoMessage": "Thao tác này chuyển tài khoản của {name} thành tài khoản cục bộ. Lần đăng nhập SSO sau đó với cùng địa chỉ email có thể liên kết lại tài khoản. Hệ thống tạo mật khẩu tạm thời, và {name} phải đổi mật khẩu khi đăng nhập tiếp theo.",
       "unlinkSsoConfirm": "Hủy liên kết SSO",
       "unlinkSsoResultTitle": "Đã hủy liên kết SSO",
       "unlinkSsoResultDesc": "Tài khoản của {name} hiện là tài khoản cục bộ. Hãy chia sẻ mật khẩu tạm thời này với họ để họ đăng nhập.",

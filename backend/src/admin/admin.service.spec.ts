@@ -1004,6 +1004,37 @@ describe("AdminService", () => {
       );
     });
 
+    it("reads the row under a write lock", async () => {
+      usersRepository.findOne.mockResolvedValue(ssoUser());
+
+      await service.unlinkUserSso("admin-1", "user-2");
+
+      expect(usersRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "user-2" },
+        lock: { mode: "pessimistic_write" },
+      });
+    });
+
+    it("clears a backup key held under a dedicated backup password", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...ssoUser(),
+        backupEncryptionEnabled: true,
+        backupKeyEnc: "enc:key",
+        backupKeyWrap: "wrap",
+        backupKeyPasswordRef: null,
+      });
+
+      await service.unlinkUserSso("admin-1", "user-2");
+
+      const saved = usersRepository.save.mock.calls[0][0];
+      expect(saved).toMatchObject({
+        backupEncryptionEnabled: false,
+        backupKeyEnc: null,
+        backupKeyWrap: null,
+        backupKeyPasswordRef: null,
+      });
+    });
+
     it("refuses to unlink the caller's own account", async () => {
       await expect(service.unlinkUserSso("admin-1", "admin-1")).rejects.toThrow(
         ForbiddenException,

@@ -117,7 +117,7 @@
       "resetMessage": "Cela va générer un nouveau mot de passe temporaire pour {name}. Il devra le modifier à la prochaine connexion.",
       "resetConfirm": "Réinitialiser le mot de passe",
       "unlinkSsoTitle": "Dissocier le SSO ?",
-      "unlinkSsoMessage": "Cela convertit le compte de {name} en compte local. La connexion SSO ne fonctionne plus pour ce compte. Le système génère un mot de passe temporaire, et {name} devra le modifier à la prochaine connexion.",
+      "unlinkSsoMessage": "Cela convertit le compte de {name} en compte local. Une connexion SSO ultérieure avec la même adresse e-mail peut le lier à nouveau. Le système génère un mot de passe temporaire, et {name} devra le modifier à la prochaine connexion.",
       "unlinkSsoConfirm": "Dissocier le SSO",
       "unlinkSsoResultTitle": "SSO dissocié",
       "unlinkSsoResultDesc": "Le compte de {name} est maintenant un compte local. Communiquez-lui ce mot de passe temporaire pour qu'il puisse se connecter.",

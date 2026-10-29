@@ -117,7 +117,7 @@
       "resetMessage": "Dadurch wird ein neues temporäres Passwort für {name} generiert. Die Person muss es bei der nächsten Anmeldung ändern.",
       "resetConfirm": "Passwort zurücksetzen",
       "unlinkSsoTitle": "SSO trennen?",
-      "unlinkSsoMessage": "Dadurch wird das Konto von {name} in ein lokales Konto umgewandelt. Die SSO-Anmeldung funktioniert dann nicht mehr. Das System erzeugt ein temporäres Passwort, und {name} muss es bei der nächsten Anmeldung ändern.",
+      "unlinkSsoMessage": "Dadurch wird das Konto von {name} in ein lokales Konto umgewandelt. Eine spätere SSO-Anmeldung mit derselben E-Mail-Adresse kann es wieder verknüpfen. Das System erzeugt ein temporäres Passwort, und {name} muss es bei der nächsten Anmeldung ändern.",
       "unlinkSsoConfirm": "SSO trennen",
       "unlinkSsoResultTitle": "SSO getrennt",
       "unlinkSsoResultDesc": "Das Konto von {name} ist jetzt ein lokales Konto. Geben Sie dieses temporäre Passwort an die Person weiter, damit sie sich anmelden kann.",

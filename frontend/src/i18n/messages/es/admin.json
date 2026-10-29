@@ -117,7 +117,7 @@
       "resetMessage": "Esto generará una nueva contraseña temporal para {name}. Deberá cambiarla en el próximo inicio de sesión.",
       "resetConfirm": "Restablecer contraseña",
       "unlinkSsoTitle": "¿Desvincular SSO?",
-      "unlinkSsoMessage": "Esto convierte la cuenta de {name} en una cuenta local. El inicio de sesión con SSO deja de funcionar para ella. El sistema genera una contraseña temporal y {name} deberá cambiarla en el próximo inicio de sesión.",
+      "unlinkSsoMessage": "Esto convierte la cuenta de {name} en una cuenta local. Un inicio de sesión posterior con SSO con la misma dirección de correo electrónico puede volver a vincularla. El sistema genera una contraseña temporal y {name} deberá cambiarla en el próximo inicio de sesión.",
       "unlinkSsoConfirm": "Desvincular SSO",
       "unlinkSsoResultTitle": "SSO desvinculado",
       "unlinkSsoResultDesc": "La cuenta de {name} ahora es una cuenta local. Comparte esta contraseña temporal con el usuario para que pueda iniciar sesión.",

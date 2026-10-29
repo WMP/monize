@@ -117,7 +117,7 @@
       "resetMessage": "這將為 {name} 產生新的臨時密碼。他們下次登入時必須變更密碼。",
       "resetConfirm": "重設密碼",
       "unlinkSsoTitle": "解除 SSO 綁定？",
-      "unlinkSsoMessage": "這將把 {name} 的帳戶轉換為本機帳戶。該帳戶將無法再使用 SSO 登入。系統會產生臨時密碼，{name} 下次登入時必須變更密碼。",
+      "unlinkSsoMessage": "這將把 {name} 的帳戶轉換為本機帳戶。之後使用相同電子郵件地址透過 SSO 登入，可再次關聯該帳戶。系統會產生臨時密碼，{name} 下次登入時必須變更密碼。",
       "unlinkSsoConfirm": "解除 SSO 綁定",
       "unlinkSsoResultTitle": "SSO 綁定已解除",
       "unlinkSsoResultDesc": "{name} 的帳戶現在是本機帳戶。請將此臨時密碼告知對方，以便其登入。",

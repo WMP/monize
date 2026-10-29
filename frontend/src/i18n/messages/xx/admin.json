@@ -117,7 +117,7 @@
       "resetMessage": "[XX-This will generate a new temporary password for {name}. They will be required to change it on next login.-XX]",
       "resetConfirm": "[XX-Reset Password-XX]",
       "unlinkSsoTitle": "[XX-Unlink SSO?-XX]",
-      "unlinkSsoMessage": "[XX-This converts the account of {name} to a local account. SSO sign-in stops working for it. The system generates a temporary password, and {name} must change it on next login.-XX]",
+      "unlinkSsoMessage": "[XX-This converts the account of {name} to a local account. A later SSO sign-in with the same email address can link it again. The system generates a temporary password, and {name} must change it on next login.-XX]",
       "unlinkSsoConfirm": "[XX-Unlink SSO-XX]",
       "unlinkSsoResultTitle": "[XX-SSO Unlinked-XX]",
       "unlinkSsoResultDesc": "[XX-The account of {name} is now a local account. Share this temporary password with them to sign in.-XX]",
