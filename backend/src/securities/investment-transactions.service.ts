@@ -1237,9 +1237,12 @@ export class InvestmentTransactionsService {
       await this.securitiesService.findOne(userId, createDto.securityId);
     }
 
-    const totalAmount = amounts.totalAmount;
-    const accruedInterest = roundMoney(Number(createDto.accruedInterest ?? 0));
-    this.assertAccruedInterestAllowed(createDto.action, accruedInterest, false);
+    const suppliedInterest = roundMoney(Number(createDto.accruedInterest ?? 0));
+    this.assertAccruedInterestAllowed(
+      createDto.action,
+      suppliedInterest,
+      false,
+    );
 
     // Resolve the rate that will convert totalAmount (security currency)
     // into the cash account's currency when we post the linked cash transaction.
@@ -1280,6 +1283,49 @@ export class InvestmentTransactionsService {
         requested: true,
       });
 
+      // A program-linked redemption that states no accrued interest is split
+      // by the server, as the preview does (INV-BOND-009); a refused split
+      // refuses the write, so interest is never booked as a capital gain.
+      let { price, totalAmount } = amounts;
+      let accruedInterest = suppliedInterest;
+      if (
+        createDto.action === InvestmentAction.REDEEM &&
+        createDto.securityId &&
+        !(suppliedInterest > 0)
+      ) {
+        const redemption = await this.fillBondRedemption(userId, {
+          accountId: createDto.accountId,
+          securityId: createDto.securityId,
+          transactionDate: createDto.transactionDate,
+          quantity: Number(createDto.quantity ?? 0),
+          price:
+            createDto.price !== undefined && createDto.price !== null
+              ? roundToDecimals(
+                  Number(createDto.price),
+                  INVESTMENT_PRICE_DECIMALS,
+                )
+              : null,
+          totalAmount: createDto.totalAmount,
+          commission: Number(createDto.commission ?? 0),
+          accruedInterest: 0,
+          series: {
+            id: bondInstrumentId,
+            code: await seriesCodeOf(manager, bondInstrumentId),
+          },
+          pinSeries: false,
+        });
+        if (redemption) {
+          ({ price, totalAmount } = resolveInvestmentAmounts({
+            action: createDto.action,
+            quantity: createDto.quantity ?? 0,
+            price: redemption.filled.price,
+            commission: Number(createDto.commission ?? 0),
+            totalAmount: redemption.filled.totalAmount,
+          }));
+          accruedInterest = redemption.filled.accruedInterest;
+        }
+      }
+
       const investmentTransaction = manager.create(InvestmentTransaction, {
         userId,
         accountId: createDto.accountId,
@@ -1292,7 +1338,7 @@ export class InvestmentTransactionsService {
         // Null, not zero. The column is nullable so "no price was given" and
         // "it cost nothing" stay two different rows; `?? 0` made every
         // unpriced action indistinguishable from a free one downstream.
-        price: amounts.price,
+        price,
         commission: createDto.commission || 0,
         totalAmount,
         exchangeRate,
@@ -4724,7 +4770,7 @@ export class InvestmentTransactionsService {
       // Keyed on the value, not on the field being present: the form resends
       // the whole row on every save, so an omitted field means "unchanged"
       // rather than "cleared".
-      const accruedInterest = roundMoney(
+      let accruedInterest = roundMoney(
         updateDto.accruedInterest !== undefined
           ? Number(updateDto.accruedInterest)
           : Number(existingCompanion?.totalAmount ?? 0),
@@ -4857,6 +4903,55 @@ export class InvestmentTransactionsService {
           price: transaction.price,
           commission: transaction.commission,
         });
+      }
+
+      // A program-linked redemption left without accrued interest is split by
+      // the server as the create is (INV-BOND-009); a refused split refuses
+      // the edit. Only an edit that changes what the redemption pays, so a
+      // description-only save of an older row stays possible.
+      if (
+        transaction.action === InvestmentAction.REDEEM &&
+        transaction.securityId &&
+        !(accruedInterest > 0) &&
+        (quantityChanged ||
+          priceChanged ||
+          commissionChanged ||
+          totalChanged ||
+          transaction.action !== priorAction ||
+          transaction.securityId !== oldSecurityId ||
+          transaction.transactionDate !== oldTransactionDate)
+      ) {
+        const redemption = await this.fillBondRedemption(userId, {
+          accountId: transaction.accountId,
+          securityId: transaction.securityId,
+          transactionDate: transaction.transactionDate,
+          quantity: Number(transaction.quantity ?? 0),
+          price:
+            transaction.price !== null && transaction.price !== undefined
+              ? Number(transaction.price)
+              : null,
+          totalAmount: totalChanged ? Number(updateDto.totalAmount) : undefined,
+          commission: Number(transaction.commission ?? 0),
+          accruedInterest: 0,
+          series: {
+            id: bondInstrumentId,
+            code: await seriesCodeOf(manager, bondInstrumentId),
+          },
+          excludeTransactionId: transaction.id,
+          pinSeries: false,
+        });
+        if (redemption) {
+          const amounts = resolveInvestmentAmounts({
+            action: transaction.action,
+            quantity: transaction.quantity,
+            price: redemption.filled.price,
+            commission: transaction.commission,
+            totalAmount: redemption.filled.totalAmount,
+          });
+          transaction.price = amounts.price;
+          transaction.totalAmount = amounts.totalAmount;
+          accruedInterest = redemption.filled.accruedInterest;
+        }
       }
 
       if (

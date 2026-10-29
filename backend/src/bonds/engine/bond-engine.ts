@@ -233,7 +233,9 @@ function saleWindowRefusal(input: LotInput): BondValuationRefusal | null {
   const { purchaseDate } = input.lot;
   if (
     window === null ||
-    input.lot.purchaseDateAssumed === true ||
+    // An assumed purchase date (an unpaired transfer in) is held to the window
+    // like a stated one: a date outside it values nothing rather than a lot
+    // bought on the transfer day.
     (compareYMD(purchaseDate, window.from) >= 0 &&
       compareYMD(purchaseDate, window.to) <= 0)
   ) {
@@ -360,7 +362,9 @@ function figuresOn(p: PreparedLot, asOf: string): DayFigures {
       if (inputs) {
         const perBond = maturityValue(terms, inputs.prior, inputs.current);
         const nominal = principalAt(terms, { date: p.maturity });
-        principal = perBond.toFixed(places);
+        // The principal is the nominal; the interest is `accrued`, so the
+        // maturity value is not counted twice beside it.
+        principal = nominal.toFixed(places);
         gross = lot(perBond);
         grossBond = perBond;
         accrued = lot(perBond.sub(nominal));

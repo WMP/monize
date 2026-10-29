@@ -335,6 +335,7 @@ function InvestmentTransactionFormFields({
     handleSubmit,
     control,
     setValue,
+    getValues,
     formState: { errors, isDirty },
   } = useForm<InvestmentTransactionFormData>({
     resolver: zodResolver(buildInvestmentTransactionSchema(t)) as Resolver<InvestmentTransactionFormData>,
@@ -569,11 +570,23 @@ function InvestmentTransactionFormFields({
         shouldDirty: true,
         shouldValidate: true,
       });
+    } else if (!interestEditedByPerson.current) {
+      // The person fixed the price or the total: the total they see stays what
+      // they typed, so the engine's interest comes out of it and the price
+      // follows, instead of the interest being added on top.
+      const commission = Number(getValues('commission') ?? 0);
+      const typedTotal = redemptionTotalWithInterest(
+        roundToDecimals(Number(getValues('quantity')) * Number(getValues('price')) - commission, 4),
+        Number(getValues('accruedInterest') ?? 0),
+      );
+      const gross = typedTotal - Number(split.interest) + commission;
+      if (!(gross > 0)) return;
+      setValue('price', roundToDecimals(gross / quantity, 10), { shouldDirty: true, shouldValidate: true });
     }
     if (!interestEditedByPerson.current) {
       setValue('accruedInterest', Number(split.interest), { shouldDirty: true, shouldValidate: true });
     }
-  }, [redemption, setValue]);
+  }, [redemption, setValue, getValues]);
   const currencySymbol = getCurrencySymbol(transactionCurrency);
   const cashCurrencySymbol = getCurrencySymbol(cashCurrency);
 

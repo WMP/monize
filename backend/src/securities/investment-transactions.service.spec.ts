@@ -10020,6 +10020,77 @@ describe("InvestmentTransactionsService", () => {
           redemptionSplit: { interest: 470.5, outcome: "differs" },
         });
       });
+
+      it("splits a REST create that states no accrued interest instead of booking it as a gain", async () => {
+        await service.create(userId, {
+          accountId,
+          securityId,
+          action: InvestmentAction.REDEEM,
+          transactionDate: "2023-04-01",
+          quantity: 10,
+          price: 147.05,
+        });
+        expect(bondHoldingsService.redemptionSplit).toHaveBeenCalled();
+        expect(created()[0]).toMatchObject({
+          action: InvestmentAction.REDEEM,
+          price: 100,
+          totalAmount: 1000,
+        });
+        // The one cash row is the payout: principal plus the split's interest.
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          cashAccountId,
+          1470.5,
+        );
+      });
+
+      it("splits a REST edit that changes a redemption's price and states no accrued interest", async () => {
+        investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+          createMockQueryBuilder({
+            ...mockBuyTransaction,
+            action: InvestmentAction.REDEEM,
+            quantity: 10,
+            price: 100,
+            totalAmount: 1000,
+            transactionDate: "2023-04-01",
+            bondInstrumentId: null,
+          }),
+        );
+        await service.update(userId, transactionId, { price: 147.05 });
+        expect(bondHoldingsService.redemptionSplit).toHaveBeenCalledWith(
+          userId,
+          securityId,
+          accountId,
+          EDO0423,
+          "2023-04-01",
+          10,
+          transactionId,
+        );
+        expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+          expect.objectContaining({ price: 100, totalAmount: 990.01 }),
+        );
+      });
+
+      it("refuses a REST create whose split is refused, writing nothing", async () => {
+        bondHoldingsService.redemptionSplit.mockResolvedValue({
+          ...AT_MATURITY,
+          interest: null,
+          grossInterest: null,
+          principalReturned: null,
+          payout: null,
+          refusal: "RATE_UNKNOWN",
+        });
+        await expect(
+          service.create(userId, {
+            accountId,
+            securityId,
+            action: InvestmentAction.REDEEM,
+            transactionDate: "2023-04-01",
+            quantity: 10,
+            price: 147.05,
+          }),
+        ).rejects.toMatchObject({ response: { errorCode: "RATE_UNKNOWN" } });
+        expect(created()).toEqual([]);
+      });
     });
 
     /**

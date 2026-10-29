@@ -210,6 +210,20 @@ describe('InvestmentTransactionForm: redemption of a bond splits into principal 
     expect(num(/Price per Share/)).toBeCloseTo(99.5, 6);
   });
 
+  it('keeps the total the person fixed: a new split interest comes out of it and the price follows', async () => {
+    await redeem('4');
+    await waitFor(() => expect(num(/Accrued Interest/)).toBeCloseTo(9.8, 4));
+    await type(/Price per Share/, '101');
+    // Shown total: 2 x 101 + 9.80 once the quantity is 2 and the interest unchanged.
+    api.getBondRedemptionSplit.mockResolvedValue(
+      split({ quantity: 2, interest: '4.90', principalReturned: '200.00', payout: '204.90' }) as any,
+    );
+    await type('Quantity (Shares)', '2');
+    await waitFor(() => expect(num(/Accrued Interest/)).toBeCloseTo(4.9, 4));
+    // (2 x 101 + 9.80 - 4.90) / 2: the total stays 211.80, not 216.70.
+    expect(num(/Price per Share/)).toBeCloseTo(103.45, 6);
+  });
+
   it('refills a field the person has not edited when the quantity changes', async () => {
     await redeem('4');
     await waitFor(() => expect(num(/Accrued Interest/)).toBeCloseTo(9.8, 4));

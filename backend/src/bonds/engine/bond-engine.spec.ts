@@ -389,7 +389,7 @@ describe("valueBondLot: matured lots", () => {
     const v = tos("2029-10-15");
     expect(v).toMatchObject({
       currentPeriod: null,
-      principal: "113.79",
+      principal: "100.00",
       grossValue: "113.79",
       accruedInterest: "13.79",
       earlyRedemptionValue: null,

@@ -28,8 +28,22 @@ describe("valueBondLot: the sale window (R2)", () => {
     },
   );
 
-  it("a lot whose purchase date is a stand-in (an unpaired transfer in) is valued even outside the window", () => {
+  it("a lot whose purchase date is a stand-in (an unpaired transfer in) outside the window is not valued", () => {
     const base = lotInput("edo1036", "2026-11-05", "2026-11-05");
+    const v = valueBondLot({
+      ...base,
+      lot: { ...base.lot, purchaseDateAssumed: true },
+    });
+    expect(v).toMatchObject({
+      status: "REFUSED",
+      refusal: { code: "PURCHASE_OUTSIDE_SALE_WINDOW" },
+      grossValue: null,
+      valuationComplete: false,
+    });
+  });
+
+  it("a lot whose stand-in purchase date is inside the window is valued", () => {
+    const base = lotInput("edo1036", "2026-10-15", "2026-10-15");
     const v = valueBondLot({
       ...base,
       lot: { ...base.lot, purchaseDateAssumed: true },
