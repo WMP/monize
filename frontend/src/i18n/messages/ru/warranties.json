@@ -22,7 +22,14 @@
       "expiring": "Истекающие",
       "active": "Действующие",
       "expired": "Истёкшие",
-      "lifetime": "Пожизненные"
+      "lifetime": "Пожизненные",
+      "counted": {
+        "all": "Все ({count})",
+        "expiring": "Истекающие ({count})",
+        "active": "Действующие ({count})",
+        "expired": "Истёкшие ({count})",
+        "lifetime": "Пожизненные ({count})"
+      }
     },
     "search": {
       "label": "Поиск гарантий",
@@ -163,14 +170,21 @@
     "notFound": "Эта гарантия не найдена.",
     "retry": "Повторить",
     "archivedBadge": "В архиве",
+    "switcher": {
+      "trigger": "Переключить гарантию",
+      "placeholder": "Фильтр гарантий...",
+      "noMatches": "Нет подходящих гарантий"
+    },
+    "summary": {
+      "expires": "Истекает",
+      "purchased": "Куплено",
+      "price": "Цена покупки",
+      "openClaims": "Открытые обращения"
+    },
     "card": {
       "title": "Сведения",
-      "expires": "Истекает",
-      "daysLeft": "Осталось",
       "kind": "Тип гарантии",
       "vendor": "Продавец",
-      "purchaseDate": "Куплено",
-      "price": "Цена покупки",
       "serialNumbers": "Серийные номера",
       "model": "Номер модели",
       "productUrl": "Страница товара",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "Дата обращения",
       "statusLabel": "Статус",
-      "descriptionLabel": "Что случилось",
+      "descriptionLabel": "Описание",
       "resolutionLabel": "Итог",
       "resolvedOnLabel": "Дата закрытия",
       "resolvedOnHint": "Только для решённого или отклонённого обращения",

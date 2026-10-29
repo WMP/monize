@@ -83,7 +83,6 @@
     "baseIncomePlaceholder": "予想月次収入",
     "active": "有効",
     "saveChanges": "変更を保存",
-    "saving": "保存中...",
     "typeOptions": {
       "MONTHLY": "月次",
       "ANNUAL": "年次",
@@ -109,7 +108,8 @@
     "title": "支出ヒートマップ - {monthLabel}",
     "ariaLabel": "支出ヒートマップ",
     "less": "少ない",
-    "more": "多い"
+    "more": "多い",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +134,8 @@
     "rolloverBadge": "+{amount} 繰越",
     "underBudgetLabel": "{amount} 予算以下",
     "overBudgetLabel": "{amount} 予算超過",
-    "carriedForward": "{amount} 繰越"
+    "carriedForward": "{amount} 繰越",
+    "dateRange": "{start} 〜 {end}"
   },
   "periodSelector": {
     "label": "期間：",
@@ -471,11 +472,18 @@
         "description": "支出履歴を分析することで最初の予算を作成します。ウィザードが取引に基づいて現実的な金額を提案します。",
         "cta": "最初の予算を作成する"
       },
+      "loading": "予算を読み込み中...",
+      "columns": {
+        "name": "名前",
+        "strategy": "戦略",
+        "type": "タイプ",
+        "categories": "カテゴリ",
+        "started": "開始日",
+        "status": "ステータス"
+      },
       "card": {
         "active": "有効",
-        "inactive": "無効",
-        "categories": "{count} カテゴリ",
-        "started": "{date} 開始"
+        "inactive": "無効"
       }
     },
     "create": {
@@ -484,6 +492,9 @@
     },
     "detail": {
       "backToBudgets": "予算に戻る",
+      "switchBudget": "別の予算に切り替える",
+      "switchPlaceholder": "予算を絞り込む...",
+      "switchNoMatches": "一致する予算はありません",
       "notFound": "予算が見つかりません",
       "delete": {
         "title": "予算を削除",
@@ -501,7 +512,7 @@
     "edit": {
       "subtitlePrefix": "編集：",
       "subtitle": "予算設定とカテゴリ配分を更新する",
-      "backToDashboard": "ダッシュボードに戻る",
+      "backToBudget": "{name} に戻る",
       "budgetSettings": "予算設定",
       "categoryAllocations": "カテゴリ配分",
       "income": "収入",

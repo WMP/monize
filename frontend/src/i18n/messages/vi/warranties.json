@@ -22,7 +22,14 @@
       "expiring": "Sắp hết hạn",
       "active": "Còn hiệu lực",
       "expired": "Đã hết hạn",
-      "lifetime": "Trọn đời"
+      "lifetime": "Trọn đời",
+      "counted": {
+        "all": "Tất cả ({count})",
+        "expiring": "Sắp hết hạn ({count})",
+        "active": "Còn hiệu lực ({count})",
+        "expired": "Đã hết hạn ({count})",
+        "lifetime": "Trọn đời ({count})"
+      }
     },
     "search": {
       "label": "Tìm bảo hành",
@@ -163,14 +170,21 @@
     "notFound": "Không tìm thấy bảo hành này.",
     "retry": "Thử lại",
     "archivedBadge": "Đã lưu trữ",
+    "switcher": {
+      "trigger": "Chuyển bảo hành",
+      "placeholder": "Lọc bảo hành...",
+      "noMatches": "Không có bảo hành nào khớp"
+    },
+    "summary": {
+      "expires": "Hết hạn",
+      "purchased": "Ngày mua",
+      "price": "Giá mua",
+      "openClaims": "Yêu cầu đang mở"
+    },
     "card": {
       "title": "Chi tiết",
-      "expires": "Hết hạn",
-      "daysLeft": "Thời gian còn lại",
       "kind": "Loại bảo hành",
       "vendor": "Người bán",
-      "purchaseDate": "Ngày mua",
-      "price": "Giá mua",
       "serialNumbers": "Số sê-ri",
       "model": "Số mẫu",
       "productUrl": "Trang sản phẩm",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "Ngày yêu cầu",
       "statusLabel": "Trạng thái",
-      "descriptionLabel": "Sự cố gặp phải",
+      "descriptionLabel": "Mô tả",
       "resolutionLabel": "Kết quả xử lý",
       "resolvedOnLabel": "Ngày đóng",
       "resolvedOnHint": "Chỉ dành cho yêu cầu đã giải quyết hoặc bị từ chối",

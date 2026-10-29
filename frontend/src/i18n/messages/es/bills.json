@@ -16,12 +16,13 @@
     "chartUnavailable": "Gráfico temporalmente no disponible"
   },
   "viewTabs": {
-    "list": "Lista",
-    "calendar": "Calendario",
+    "filterLabel": "Tipo de programación",
     "filterAll": "Todas ({count})",
     "filterBills": "Facturas ({count})",
     "filterDeposits": "Depósitos ({count})",
-    "todayButton": "Hoy"
+    "todayButton": "Hoy",
+    "previousMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente"
   },
   "form": {
     "titleNew": "Nueva transacción planificada",

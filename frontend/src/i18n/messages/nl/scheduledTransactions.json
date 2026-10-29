@@ -6,7 +6,7 @@
       "category": "Categorie",
       "amount": "Bedrag",
       "schedule": "Schema",
-      "auto": "Auto",
+      "auto": "Automatisch boeken",
       "actions": "Acties"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "Datum gewijzigd voor deze gebeurtenis",
     "splitBadge": "Splitsing ({count})",
     "autoPostBadge": "Aan",
-    "autoPostTitle": "Wordt automatisch geboekt op vervaldatum",
     "inactiveSuffix": " — Inactief",
     "actionTitles": {
       "post": "Transactie boeken",
@@ -76,9 +75,7 @@
     "accountsLabel": "Rekeningen",
     "accountsPlaceholder": "Alle rekeningen",
     "categoriesLabel": "Categorieën",
-    "categoriesPlaceholder": "Alle categorieën",
-    "collapseAriaLabel": "Filters inklappen",
-    "expandAriaLabel": "Filters uitklappen"
+    "categoriesPlaceholder": "Alle categorieën"
   },
   "postDialog": {
     "title": "Transactie boeken",

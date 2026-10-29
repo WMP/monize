@@ -22,7 +22,14 @@
       "expiring": "Expirent bientôt",
       "active": "Actives",
       "expired": "Expirées",
-      "lifetime": "À vie"
+      "lifetime": "À vie",
+      "counted": {
+        "all": "Toutes ({count})",
+        "expiring": "Expirent bientôt ({count})",
+        "active": "Actives ({count})",
+        "expired": "Expirées ({count})",
+        "lifetime": "À vie ({count})"
+      }
     },
     "search": {
       "label": "Rechercher des garanties",
@@ -163,14 +170,21 @@
     "notFound": "Cette garantie est introuvable.",
     "retry": "Réessayer",
     "archivedBadge": "Archivée",
+    "switcher": {
+      "trigger": "Changer de garantie",
+      "placeholder": "Filtrer les garanties...",
+      "noMatches": "Aucune garantie ne correspond"
+    },
+    "summary": {
+      "expires": "Expire le",
+      "purchased": "Achetée le",
+      "price": "Prix d'achat",
+      "openClaims": "Réclamations ouvertes"
+    },
     "card": {
       "title": "Détails",
-      "expires": "Expire le",
-      "daysLeft": "Temps restant",
       "kind": "Type de garantie",
       "vendor": "Vendeur",
-      "purchaseDate": "Achetée le",
-      "price": "Prix d'achat",
       "serialNumbers": "Numéros de série",
       "model": "Numéro de modèle",
       "productUrl": "Page du produit",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "Date de la réclamation",
       "statusLabel": "Statut",
-      "descriptionLabel": "Ce qui s'est passé",
+      "descriptionLabel": "Description",
       "resolutionLabel": "Issue",
       "resolvedOnLabel": "Clôturée le",
       "resolvedOnHint": "Uniquement pour une réclamation résolue ou refusée",

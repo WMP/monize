@@ -17,7 +17,8 @@
     "label": "Filteren op soort",
     "all": "Alle",
     "email_receipt": "E-mailbonnen",
-    "transaction_review": "Regels"
+    "transaction_review": "Regels",
+    "option": "{label} ({count})"
   },
   "status": {
     "pending": "In afwachting",

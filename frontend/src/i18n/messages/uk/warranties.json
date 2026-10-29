@@ -22,7 +22,14 @@
       "expiring": "Закінчуються",
       "active": "Чинні",
       "expired": "Закінчені",
-      "lifetime": "Довічні"
+      "lifetime": "Довічні",
+      "counted": {
+        "all": "Усі ({count})",
+        "expiring": "Закінчуються ({count})",
+        "active": "Чинні ({count})",
+        "expired": "Закінчені ({count})",
+        "lifetime": "Довічні ({count})"
+      }
     },
     "search": {
       "label": "Пошук гарантій",
@@ -163,14 +170,21 @@
     "notFound": "Цю гарантію не знайдено.",
     "retry": "Спробувати ще раз",
     "archivedBadge": "В архіві",
+    "switcher": {
+      "trigger": "Перемкнути гарантію",
+      "placeholder": "Фільтр гарантій...",
+      "noMatches": "Немає відповідних гарантій"
+    },
+    "summary": {
+      "expires": "Закінчується",
+      "purchased": "Куплено",
+      "price": "Ціна покупки",
+      "openClaims": "Відкриті звернення"
+    },
     "card": {
       "title": "Відомості",
-      "expires": "Закінчується",
-      "daysLeft": "Залишилося",
       "kind": "Тип гарантії",
       "vendor": "Продавець",
-      "purchaseDate": "Куплено",
-      "price": "Ціна покупки",
       "serialNumbers": "Серійні номери",
       "model": "Номер моделі",
       "productUrl": "Сторінка товару",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "Дата звернення",
       "statusLabel": "Статус",
-      "descriptionLabel": "Що сталося",
+      "descriptionLabel": "Опис",
       "resolutionLabel": "Результат",
       "resolvedOnLabel": "Дата закриття",
       "resolvedOnHint": "Лише для вирішеного або відхиленого звернення",

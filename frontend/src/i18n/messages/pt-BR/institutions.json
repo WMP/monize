@@ -31,9 +31,10 @@
     },
     "accountCount": "{count, plural, =0 {Sem contas} one {# conta} other {# contas}}",
     "statusFilter": {
-      "all": "Todas",
-      "active": "Ativas",
-      "closed": "Encerradas"
+      "label": "Status da conta",
+      "all": "Todas ({count})",
+      "active": "Ativas ({count})",
+      "closed": "Encerradas ({count})"
     },
     "actions": {
       "manageAccounts": "Contas"

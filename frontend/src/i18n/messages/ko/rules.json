@@ -114,8 +114,8 @@
       "matchAll": "다음 모두",
       "matchAny": "다음 중 하나라도",
       "matchLabel": "일치 방식",
-      "not": "NOT",
-      "notLabel": "이 그룹 부정: 그룹의 조건을 만족하지 않을 때 일치합니다",
+      "not": "그룹 부정",
+      "notHelp": "부정된 그룹은 그 조건을 만족하지 않을 때 일치합니다.",
       "title": "그룹",
       "addCondition": "+ 조건 추가",
       "addGroup": "+ 그룹 추가",
@@ -201,7 +201,7 @@
       "tags": "태그",
       "category": "카테고리",
       "payee": "수취인",
-      "instruction": "확인할 내용",
+      "instruction": "검토 지침",
       "instructionPlaceholder": "예: 이 구매를 영수증에 따라 분할",
       "instructionHelp": "규칙은 검토를 요청할 뿐입니다. 모든 변경은 적용되기 전에 사람이 승인합니다.",
       "onlyIfEmpty": "비어 있는 경우에만",
@@ -220,7 +220,7 @@
       "createIfMissing": "수취인이 없으면 만들기",
       "createIfMissingHelp": "켜면, 이름(이름, 별칭 또는 유사 일치)에 맞는 수취인이 없을 때 새 수취인을 만듭니다. 규칙이 만든 수취인은 실행을 취소해도 유지됩니다.",
       "onlyIfEmptyDescriptionHelp": "켜면 거래에 설명이 없을 때만 규칙이 설명을 씁니다. 매번 쓰려면 끄세요.",
-      "mode": "쓰는 방식",
+      "mode": "설명 작성 방식",
       "modes": {
         "replace": "설명 바꾸기",
         "append": "설명 뒤에 추가",
@@ -262,12 +262,12 @@
         "windowHelp": "은행이 결제를 가져갈 수 있는, 기일로부터의 허용 범위입니다. 할부금 기일 전후로 이 일수 이내의 출금은 그 할부금을 지불합니다. 범위를 벗어난 출금은 그대로 둡니다.",
         "daysBefore": "기일 이전 일수",
         "daysAfter": "기일 이후 일수",
-        "excess": "출금이 할부금보다 많은 경우",
+        "excess": "할부금보다 많은 출금",
         "excessPolicies": {
           "extra_principal": "차액을 추가 원금으로 지불",
           "refuse": "거래를 그대로 둠"
         },
-        "shortfall": "출금이 할부금보다 적은 경우",
+        "shortfall": "할부금보다 적은 출금",
         "shortfallPolicies": {
           "refuse": "거래를 그대로 둠",
           "interest_first": "이자를 먼저 지불하고 나머지를 원금으로"

@@ -16,12 +16,13 @@
     "chartUnavailable": "圖表暫時無法使用"
   },
   "viewTabs": {
-    "list": "列表",
-    "calendar": "日曆",
+    "filterLabel": "排程類型",
     "filterAll": "全部 ({count})",
     "filterBills": "帳單 ({count})",
     "filterDeposits": "存款 ({count})",
-    "todayButton": "今天"
+    "todayButton": "今天",
+    "previousMonth": "上個月",
+    "nextMonth": "下個月"
   },
   "form": {
     "titleNew": "新增排程交易",

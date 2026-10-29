@@ -22,7 +22,14 @@
       "expiring": "Süresi doluyor",
       "active": "Geçerli",
       "expired": "Süresi dolmuş",
-      "lifetime": "Ömür boyu"
+      "lifetime": "Ömür boyu",
+      "counted": {
+        "all": "Tümü ({count})",
+        "expiring": "Süresi doluyor ({count})",
+        "active": "Geçerli ({count})",
+        "expired": "Süresi dolmuş ({count})",
+        "lifetime": "Ömür boyu ({count})"
+      }
     },
     "search": {
       "label": "Garantilerde ara",
@@ -163,14 +170,21 @@
     "notFound": "Bu garanti bulunamadı.",
     "retry": "Yeniden dene",
     "archivedBadge": "Arşivlendi",
+    "switcher": {
+      "trigger": "Garantiyi değiştir",
+      "placeholder": "Garantileri filtrele...",
+      "noMatches": "Eşleşen garanti yok"
+    },
+    "summary": {
+      "expires": "Bitiş",
+      "purchased": "Satın alma",
+      "price": "Satın alma fiyatı",
+      "openClaims": "Açık talepler"
+    },
     "card": {
       "title": "Ayrıntılar",
-      "expires": "Bitiş",
-      "daysLeft": "Kalan süre",
       "kind": "Garanti türü",
       "vendor": "Satıcı",
-      "purchaseDate": "Satın alma",
-      "price": "Satın alma fiyatı",
       "serialNumbers": "Seri numaraları",
       "model": "Model numarası",
       "productUrl": "Ürün sayfası",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "Talep tarihi",
       "statusLabel": "Durum",
-      "descriptionLabel": "Sorun neydi",
+      "descriptionLabel": "Açıklama",
       "resolutionLabel": "Sonuç",
       "resolvedOnLabel": "Kapanış tarihi",
       "resolvedOnHint": "Yalnızca çözülmüş veya reddedilmiş bir talep için",

@@ -6,7 +6,7 @@
       "category": "श्रेणी",
       "amount": "राशि",
       "schedule": "शेड्यूल",
-      "auto": "स्वचालित",
+      "auto": "स्वतः पोस्ट",
       "actions": "क्रियाएँ"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "इस आवृत्ति के लिए तारीख बदली गई",
     "splitBadge": "विभाजन ({count})",
     "autoPostBadge": "चालू",
-    "autoPostTitle": "देय होने पर स्वतः पोस्ट होता है",
     "inactiveSuffix": " — निष्क्रिय",
     "actionTitles": {
       "post": "लेन-देन पोस्ट करें",
@@ -76,9 +75,7 @@
     "accountsLabel": "खाते",
     "accountsPlaceholder": "सभी खाते",
     "categoriesLabel": "श्रेणियाँ",
-    "categoriesPlaceholder": "सभी श्रेणियाँ",
-    "collapseAriaLabel": "फ़िल्टर संकुचित करें",
-    "expandAriaLabel": "फ़िल्टर विस्तृत करें"
+    "categoriesPlaceholder": "सभी श्रेणियाँ"
   },
   "postDialog": {
     "title": "लेन-देन पोस्ट करें",

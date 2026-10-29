@@ -83,7 +83,6 @@
     "baseIncomePlaceholder": "Thu nhập hàng tháng dự kiến",
     "active": "Hoạt động",
     "saveChanges": "Lưu thay đổi",
-    "saving": "Đang lưu...",
     "typeOptions": {
       "MONTHLY": "Hàng tháng",
       "ANNUAL": "Hàng năm",
@@ -109,7 +108,8 @@
     "title": "Biểu đồ nhiệt chi tiêu - {monthLabel}",
     "ariaLabel": "Biểu đồ nhiệt chi tiêu",
     "less": "Ít hơn",
-    "more": "Nhiều hơn"
+    "more": "Nhiều hơn",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +134,8 @@
     "rolloverBadge": "+{amount} chuyển tiếp",
     "underBudgetLabel": "{amount} dưới ngân sách",
     "overBudgetLabel": "{amount} vượt ngân sách",
-    "carriedForward": "{amount} chuyển sang kỳ sau"
+    "carriedForward": "{amount} chuyển sang kỳ sau",
+    "dateRange": "{start} đến {end}"
   },
   "periodSelector": {
     "label": "Kỳ:",
@@ -471,11 +472,18 @@
         "description": "Tạo ngân sách đầu tiên bằng cách phân tích lịch sử chi tiêu. Trình thuật sĩ sẽ đề xuất số tiền thực tế dựa trên các giao dịch của bạn.",
         "cta": "Tạo ngân sách đầu tiên"
       },
+      "loading": "Đang tải ngân sách...",
+      "columns": {
+        "name": "Tên",
+        "strategy": "Chiến lược",
+        "type": "Loại",
+        "categories": "Danh mục",
+        "started": "Bắt đầu",
+        "status": "Trạng thái"
+      },
       "card": {
         "active": "Hoạt động",
-        "inactive": "Không hoạt động",
-        "categories": "{count} danh mục",
-        "started": "Bắt đầu {date}"
+        "inactive": "Không hoạt động"
       }
     },
     "create": {
@@ -484,6 +492,9 @@
     },
     "detail": {
       "backToBudgets": "Quay lại ngân sách",
+      "switchBudget": "Chuyển sang ngân sách khác",
+      "switchPlaceholder": "Lọc ngân sách...",
+      "switchNoMatches": "Không có ngân sách nào khớp",
       "notFound": "Không tìm thấy ngân sách",
       "delete": {
         "title": "Xóa ngân sách",
@@ -501,7 +512,7 @@
     "edit": {
       "subtitlePrefix": "Chỉnh sửa: ",
       "subtitle": "Cập nhật cài đặt ngân sách và phân bổ danh mục",
-      "backToDashboard": "Quay lại tổng quan",
+      "backToBudget": "Quay lại {name}",
       "budgetSettings": "Cài đặt ngân sách",
       "categoryAllocations": "Phân bổ danh mục",
       "income": "Thu nhập",

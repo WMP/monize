@@ -83,7 +83,6 @@
     "baseIncomePlaceholder": "Ожидаемый ежемесячный доход",
     "active": "Активный",
     "saveChanges": "Сохранить изменения",
-    "saving": "Сохранение...",
     "typeOptions": {
       "MONTHLY": "Ежемесячный",
       "ANNUAL": "Ежегодный",
@@ -109,7 +108,8 @@
     "title": "Тепловая карта расходов — {monthLabel}",
     "ariaLabel": "Тепловая карта расходов",
     "less": "Меньше",
-    "more": "Больше"
+    "more": "Больше",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +134,8 @@
     "rolloverBadge": "+{amount} перенос",
     "underBudgetLabel": "{amount} в рамках бюджета",
     "overBudgetLabel": "{amount} перерасход",
-    "carriedForward": "{amount} перенесено"
+    "carriedForward": "{amount} перенесено",
+    "dateRange": "с {start} по {end}"
   },
   "periodSelector": {
     "label": "Период:",
@@ -471,11 +472,18 @@
         "description": "Создайте первый бюджет, проанализировав историю расходов. Мастер предложит реалистичные суммы на основе ваших проводок.",
         "cta": "Создать первый бюджет"
       },
+      "loading": "Загрузка бюджетов...",
+      "columns": {
+        "name": "Название",
+        "strategy": "Стратегия",
+        "type": "Тип",
+        "categories": "Категории",
+        "started": "Начало",
+        "status": "Статус"
+      },
       "card": {
         "active": "Активный",
-        "inactive": "Неактивный",
-        "categories": "{count} категорий",
-        "started": "Начат {date}"
+        "inactive": "Неактивный"
       }
     },
     "create": {
@@ -484,6 +492,9 @@
     },
     "detail": {
       "backToBudgets": "Назад к бюджетам",
+      "switchBudget": "Переключиться на другой бюджет",
+      "switchPlaceholder": "Фильтр бюджетов...",
+      "switchNoMatches": "Нет подходящих бюджетов",
       "notFound": "Бюджет не найден",
       "delete": {
         "title": "Удалить бюджет",
@@ -501,7 +512,7 @@
     "edit": {
       "subtitlePrefix": "Изменить: ",
       "subtitle": "Обновите настройки бюджета и распределение по категориям",
-      "backToDashboard": "Назад на главную",
+      "backToBudget": "Назад к «{name}»",
       "budgetSettings": "Настройки бюджета",
       "categoryAllocations": "Распределение по категориям",
       "income": "Доход",

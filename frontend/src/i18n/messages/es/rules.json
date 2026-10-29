@@ -114,8 +114,8 @@
       "matchAll": "Todas estas",
       "matchAny": "Cualquiera de estas",
       "matchLabel": "Coincidencia",
-      "not": "No",
-      "notLabel": "Negar este grupo: coincide cuando sus condiciones no se cumplen",
+      "not": "Negar grupo",
+      "notHelp": "Un grupo negado coincide cuando sus condiciones no se cumplen.",
       "title": "Grupo",
       "addCondition": "+ Añadir condición",
       "addGroup": "+ Añadir grupo",
@@ -201,7 +201,7 @@
       "tags": "Etiquetas",
       "category": "Categoría",
       "payee": "Beneficiario",
-      "instruction": "Qué debe revisarse",
+      "instruction": "Instrucciones de revisión",
       "instructionPlaceholder": "Por ejemplo: dividir esta compra según el recibo",
       "instructionHelp": "La regla solo pide una revisión. Una persona aprueba cualquier cambio antes de que se realice.",
       "onlyIfEmpty": "Solo si está vacío",
@@ -220,7 +220,7 @@
       "createIfMissing": "Crear el beneficiario si no existe",
       "createIfMissingHelp": "Si está activado y ningún beneficiario coincide con el nombre (por nombre, alias o una coincidencia cercana), se crea un beneficiario nuevo. Un beneficiario creado por una regla se conserva si deshaces la ejecución.",
       "onlyIfEmptyDescriptionHelp": "Si está activado, la regla escribe la descripción solo si la transacción no tiene ninguna. Desactívalo para escribirla siempre.",
-      "mode": "Cómo escribirla",
+      "mode": "Modo de descripción",
       "modes": {
         "replace": "Reemplazar la descripción",
         "append": "Añadir después de la descripción",
@@ -262,12 +262,12 @@
         "windowHelp": "Cuánto se puede alejar el banco de la fecha de vencimiento para cobrar el pago. Un débito hasta esta cantidad de días antes o después de la fecha de vencimiento de una cuota paga esa cuota; uno fuera de la ventana se deja sin tocar.",
         "daysBefore": "Días antes de la fecha de vencimiento",
         "daysAfter": "Días después de la fecha de vencimiento",
-        "excess": "Cuando el débito es mayor que la cuota",
+        "excess": "Débito superior a la cuota",
         "excessPolicies": {
           "extra_principal": "Pagar la diferencia como capital extra",
           "refuse": "Dejar la transacción sin tocar"
         },
-        "shortfall": "Cuando el débito es menor que la cuota",
+        "shortfall": "Débito inferior a la cuota",
         "shortfallPolicies": {
           "refuse": "Dejar la transacción sin tocar",
           "interest_first": "Pagar primero el interés, el resto como capital"

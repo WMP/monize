@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "이메일 검색",
-      "text": "검색",
-      "placeholder": "제목, 보낸 사람 또는 내용",
+      "placeholder": "제목, 보낸 사람 또는 내용으로 검색...",
       "in": "검색 대상",
       "fields": {
         "all": "모든 항목",
@@ -806,10 +805,10 @@
       "body": "메일함을 읽으면 주문 확인 메일이 여기에 표시됩니다.",
       "filteredTitle": "이 상태의 이메일이 없습니다",
       "filteredBody": "나머지를 보려면 다른 상태를 선택하세요.",
-      "noMailboxBody": "아직 연결된 메일함이 없습니다. 주문 확인 메일을 읽으려면 메일함을 연결하세요.",
-      "connectButton": "메일함 연결",
       "searchTitle": "검색과 일치하는 이메일이 없습니다",
-      "searchBody": "단어나 날짜를 바꾸거나 검색을 지워 모든 이메일을 보세요."
+      "searchBody": "단어나 날짜를 바꾸거나 검색을 지워 모든 이메일을 보세요.",
+      "noMailboxBody": "아직 연결된 메일함이 없습니다. 주문 확인 메일을 읽으려면 메일함을 연결하세요.",
+      "connectButton": "메일함 연결"
     },
     "actions": {
       "view": "보기",
@@ -1092,9 +1091,7 @@
     "help": "자동으로 일치한 거래가 없습니다. 아래 날짜 범위의 거래입니다. 범위는 처음에 구매 전후의 날짜로 설정됩니다. 이 이메일이 결제한 거래를 선택하거나, 날짜를 바꿔 더 넓게 찾아보세요.",
     "fromLabel": "시작일",
     "toLabel": "종료일",
-    "searchLabel": "검색",
-    "searchPlaceholder": "수취인, 설명 또는 금액",
-    "searchButton": "검색",
+    "searchPlaceholder": "수취인, 설명 또는 금액으로 검색...",
     "loading": "거래를 불러오는 중",
     "error": "거래를 불러오지 못했습니다.",
     "retry": "다시 시도",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "어시스턴트에게 바꿀 내용을 알려 주세요. 이 메일과 거래를 바탕으로 같은 초안을 업데이트합니다.",
       "tradeHelp": "어시스턴트가 이 거래 확인들을 읽고 각각이 보고하는 투자 거래를 제안하는 {domain}용 프로필 초안을 작성합니다. 아직 아무것도 승인되지 않았습니다.",
       "tradeSample": "거래 확인",
-      "feedbackLabel": "바꿀 내용",
+      "feedbackLabel": "요청한 변경 사항",
       "feedbackPlaceholder": "예: 합계는 소계가 아니라 “결제 금액”이라고 적힌 줄입니다.",
       "send": "AI에게 보내기",
       "sendFeedback": "AI에게 메모 보내기",

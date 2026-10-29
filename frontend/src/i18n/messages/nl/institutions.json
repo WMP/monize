@@ -31,9 +31,10 @@
     },
     "accountCount": "{count, plural, =0 {Geen rekeningen} one {# rekening} other {# rekeningen}}",
     "statusFilter": {
-      "all": "Alle",
-      "active": "Actief",
-      "closed": "Gesloten"
+      "label": "Rekeningstatus",
+      "all": "Alle ({count})",
+      "active": "Actief ({count})",
+      "closed": "Gesloten ({count})"
     },
     "actions": {
       "manageAccounts": "Rekeningen"

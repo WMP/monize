@@ -16,12 +16,13 @@
     "chartUnavailable": "[XX-Chart temporarily unavailable-XX]"
   },
   "viewTabs": {
-    "list": "[XX-List-XX]",
-    "calendar": "[XX-Calendar-XX]",
+    "filterLabel": "[XX-Schedule type-XX]",
     "filterAll": "[XX-All ({count})-XX]",
     "filterBills": "[XX-Bills ({count})-XX]",
     "filterDeposits": "[XX-Deposits ({count})-XX]",
-    "todayButton": "[XX-Today-XX]"
+    "todayButton": "[XX-Today-XX]",
+    "previousMonth": "[XX-Previous month-XX]",
+    "nextMonth": "[XX-Next month-XX]"
   },
   "form": {
     "titleNew": "[XX-New Scheduled Transaction-XX]",

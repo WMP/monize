@@ -7,6 +7,7 @@
     "filterAll": "Todas ({count})",
     "filterExpenses": "Despesas ({count})",
     "filterIncome": "Receitas ({count})",
+    "typeFilterLabel": "Tipo",
     "modalTitleNew": "Nova categoria",
     "modalTitleEdit": "Editar categoria",
     "countSingle": "1 categoria",
@@ -71,8 +72,8 @@
     "submitUpdate": "Atualizar categoria"
   },
   "list": {
-    "emptyHeading": "Sem categorias",
-    "emptyDescription": "Comece por criar uma nova categoria.",
+    "emptyHeading": "Nenhuma categoria encontrada",
+    "emptyDescription": "Nenhuma categoria corresponde à pesquisa ou ao filtro atual.",
     "colName": "Nome",
     "colType": "Tipo",
     "colCount": "Contagem",
@@ -85,7 +86,7 @@
     "viewTransactionsTitle": "Ver transações nesta categoria"
   },
   "deleteDialog": {
-    "title": "Eliminar \"{name}\"?",
+    "title": "Eliminar \"{name}\"",
     "checkingUsage": "A verificar utilização...",
     "usedBy": "Esta categoria é utilizada por {count, plural, one {# item} other {# itens}} (transações e/ou faturas e depósitos agendados).",
     "reassignLabel": "Reatribuir a:",

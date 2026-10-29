@@ -83,7 +83,6 @@
     "baseIncomePlaceholder": "Verwacht maandinkomen",
     "active": "Actief",
     "saveChanges": "Wijzigingen opslaan",
-    "saving": "Opslaan...",
     "typeOptions": {
       "MONTHLY": "Maandelijks",
       "ANNUAL": "Jaarlijks",
@@ -109,7 +108,8 @@
     "title": "Uitgavenheatmap - {monthLabel}",
     "ariaLabel": "Uitgavenheatmap",
     "less": "Minder",
-    "more": "Meer"
+    "more": "Meer",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +134,8 @@
     "rolloverBadge": "+{amount} overdracht",
     "underBudgetLabel": "{amount} onder budget",
     "overBudgetLabel": "{amount} boven budget",
-    "carriedForward": "{amount} overgedragen"
+    "carriedForward": "{amount} overgedragen",
+    "dateRange": "{start} tot {end}"
   },
   "periodSelector": {
     "label": "Periode:",
@@ -471,11 +472,18 @@
         "description": "Maak jouw eerste budget aan door jouw uitgavengeschiedenis te analyseren. De wizard stelt realistische bedragen voor op basis van jouw transacties.",
         "cta": "Maak jouw eerste budget aan"
       },
+      "loading": "Budgetten laden...",
+      "columns": {
+        "name": "Naam",
+        "strategy": "Strategie",
+        "type": "Type",
+        "categories": "Categorieën",
+        "started": "Startdatum",
+        "status": "Status"
+      },
       "card": {
         "active": "Actief",
-        "inactive": "Inactief",
-        "categories": "{count} categorieën",
-        "started": "Gestart {date}"
+        "inactive": "Inactief"
       }
     },
     "create": {
@@ -484,6 +492,9 @@
     },
     "detail": {
       "backToBudgets": "Terug naar budgetten",
+      "switchBudget": "Naar een ander budget gaan",
+      "switchPlaceholder": "Budgetten filteren...",
+      "switchNoMatches": "Geen budgetten gevonden",
       "notFound": "Budget niet gevonden",
       "delete": {
         "title": "Budget verwijderen",
@@ -501,7 +512,7 @@
     "edit": {
       "subtitlePrefix": "Bewerken: ",
       "subtitle": "Budgetinstellingen en categorieverdelingen bijwerken",
-      "backToDashboard": "Terug naar dashboard",
+      "backToBudget": "Terug naar {name}",
       "budgetSettings": "Budgetinstellingen",
       "categoryAllocations": "Categorieverdelingen",
       "income": "Inkomsten",

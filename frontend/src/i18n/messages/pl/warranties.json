@@ -22,7 +22,14 @@
       "expiring": "Wygasające",
       "active": "Aktywne",
       "expired": "Wygasłe",
-      "lifetime": "Dożywotnie"
+      "lifetime": "Dożywotnie",
+      "counted": {
+        "all": "Wszystkie ({count})",
+        "expiring": "Wygasające ({count})",
+        "active": "Aktywne ({count})",
+        "expired": "Wygasłe ({count})",
+        "lifetime": "Dożywotnie ({count})"
+      }
     },
     "search": {
       "label": "Szukaj gwarancji",
@@ -163,14 +170,21 @@
     "notFound": "Nie znaleziono tej gwarancji.",
     "retry": "Spróbuj ponownie",
     "archivedBadge": "Zarchiwizowana",
+    "switcher": {
+      "trigger": "Przełącz gwarancję",
+      "placeholder": "Filtruj gwarancje...",
+      "noMatches": "Brak pasujących gwarancji"
+    },
+    "summary": {
+      "expires": "Wygasa",
+      "purchased": "Data zakupu",
+      "price": "Cena zakupu",
+      "openClaims": "Otwarte zgłoszenia"
+    },
     "card": {
       "title": "Szczegóły",
-      "expires": "Wygasa",
-      "daysLeft": "Pozostały czas",
       "kind": "Rodzaj gwarancji",
       "vendor": "Sprzedawca",
-      "purchaseDate": "Data zakupu",
-      "price": "Cena zakupu",
       "serialNumbers": "Numery seryjne",
       "model": "Numer modelu",
       "productUrl": "Strona produktu",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "Data zgłoszenia",
       "statusLabel": "Status",
-      "descriptionLabel": "Co się zepsuło",
+      "descriptionLabel": "Opis",
       "resolutionLabel": "Rozstrzygnięcie",
       "resolvedOnLabel": "Data zamknięcia",
       "resolvedOnHint": "Tylko dla zgłoszenia załatwionego lub odrzuconego",

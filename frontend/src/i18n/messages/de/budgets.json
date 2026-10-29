@@ -83,7 +83,6 @@
     "baseIncomePlaceholder": "Erwartetes monatliches Einkommen",
     "active": "Aktiv",
     "saveChanges": "Änderungen speichern",
-    "saving": "Wird gespeichert...",
     "typeOptions": {
       "MONTHLY": "Monatlich",
       "ANNUAL": "Jährlich",
@@ -109,7 +108,8 @@
     "title": "Ausgaben-Heatmap – {monthLabel}",
     "ariaLabel": "Ausgaben-Heatmap",
     "less": "Weniger",
-    "more": "Mehr"
+    "more": "Mehr",
+    "readout": "{date}: {amount}"
   },
   "periodDetail": {
     "summaryCards": {
@@ -134,7 +134,8 @@
     "rolloverBadge": "+{amount} Übertrag",
     "underBudgetLabel": "{amount} unter Budget",
     "overBudgetLabel": "{amount} über Budget",
-    "carriedForward": "{amount} übertragen"
+    "carriedForward": "{amount} übertragen",
+    "dateRange": "{start} bis {end}"
   },
   "periodSelector": {
     "label": "Periode:",
@@ -471,11 +472,18 @@
         "description": "Erstellen Sie Ihr erstes Budget, indem Sie Ihre Ausgabenhistorie analysieren. Der Assistent schlägt realistische Beträge basierend auf Ihren Buchungen vor.",
         "cta": "Erstes Budget erstellen"
       },
+      "loading": "Budgets werden geladen...",
+      "columns": {
+        "name": "Name",
+        "strategy": "Strategie",
+        "type": "Typ",
+        "categories": "Kategorien",
+        "started": "Startdatum",
+        "status": "Status"
+      },
       "card": {
         "active": "Aktiv",
-        "inactive": "Inaktiv",
-        "categories": "{count} Kategorien",
-        "started": "Gestartet {date}"
+        "inactive": "Inaktiv"
       }
     },
     "create": {
@@ -484,6 +492,9 @@
     },
     "detail": {
       "backToBudgets": "Zurück zu Budgets",
+      "switchBudget": "Zu einem anderen Budget wechseln",
+      "switchPlaceholder": "Budgets filtern...",
+      "switchNoMatches": "Keine passenden Budgets",
       "notFound": "Budget nicht gefunden",
       "delete": {
         "title": "Budget löschen",
@@ -501,7 +512,7 @@
     "edit": {
       "subtitlePrefix": "Bearbeiten: ",
       "subtitle": "Budget-Einstellungen und Kategoriezuweisungen aktualisieren",
-      "backToDashboard": "Zurück zum Dashboard",
+      "backToBudget": "Zurück zu {name}",
       "budgetSettings": "Budget-Einstellungen",
       "categoryAllocations": "Kategoriezuweisungen",
       "income": "Einnahmen",

@@ -31,9 +31,10 @@
     },
     "accountCount": "{count, plural, =0 {Нет счетов} one {# счёт} other {# счетов}}",
     "statusFilter": {
-      "all": "Все",
-      "active": "Активные",
-      "closed": "Закрытые"
+      "label": "Статус счёта",
+      "all": "Все ({count})",
+      "active": "Активные ({count})",
+      "closed": "Закрытые ({count})"
     },
     "actions": {
       "manageAccounts": "Счета"

@@ -6,7 +6,7 @@
       "category": "Kategoria",
       "amount": "Kwota",
       "schedule": "Harmonogram",
-      "auto": "Auto",
+      "auto": "Auto-księgowanie",
       "actions": "Akcje"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "Data zmieniona dla tego wystąpienia",
     "splitBadge": "Podział ({count})",
     "autoPostBadge": "Wł.",
-    "autoPostTitle": "Księguje automatycznie w terminie",
     "inactiveSuffix": " — Nieaktywne",
     "actionTitles": {
       "post": "Zaksięguj transakcję",
@@ -76,9 +75,7 @@
     "accountsLabel": "Konta",
     "accountsPlaceholder": "Wszystkie konta",
     "categoriesLabel": "Kategorie",
-    "categoriesPlaceholder": "Wszystkie kategorie",
-    "collapseAriaLabel": "Zwiń filtry",
-    "expandAriaLabel": "Rozwiń filtry"
+    "categoriesPlaceholder": "Wszystkie kategorie"
   },
   "postDialog": {
     "title": "Zaksięguj transakcję",

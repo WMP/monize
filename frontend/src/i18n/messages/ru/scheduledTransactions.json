@@ -6,7 +6,7 @@
       "category": "Категория",
       "amount": "Сумма",
       "schedule": "Расписание",
-      "auto": "Авто",
+      "auto": "Автопроведение",
       "actions": "Действия"
     },
     "empty": {
@@ -25,7 +25,6 @@
     "modifiedDateTitle": "Дата изменена для этого выполнения",
     "splitBadge": "Разбивка ({count})",
     "autoPostBadge": "Вкл.",
-    "autoPostTitle": "Автоматически проводится при наступлении срока",
     "inactiveSuffix": " — Неактивна",
     "actionTitles": {
       "post": "Провести проводку",
@@ -76,9 +75,7 @@
     "accountsLabel": "Счета",
     "accountsPlaceholder": "Все счета",
     "categoriesLabel": "Категории",
-    "categoriesPlaceholder": "Все категории",
-    "collapseAriaLabel": "Свернуть фильтры",
-    "expandAriaLabel": "Развернуть фильтры"
+    "categoriesPlaceholder": "Все категории"
   },
   "postDialog": {
     "title": "Провести проводку",

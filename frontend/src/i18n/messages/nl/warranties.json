@@ -22,7 +22,14 @@
       "expiring": "Verloopt",
       "active": "Actief",
       "expired": "Verlopen",
-      "lifetime": "Levenslang"
+      "lifetime": "Levenslang",
+      "counted": {
+        "all": "Alle ({count})",
+        "expiring": "Verloopt ({count})",
+        "active": "Actief ({count})",
+        "expired": "Verlopen ({count})",
+        "lifetime": "Levenslang ({count})"
+      }
     },
     "search": {
       "label": "Garanties zoeken",
@@ -163,14 +170,21 @@
     "notFound": "Deze garantie is niet gevonden.",
     "retry": "Opnieuw proberen",
     "archivedBadge": "Gearchiveerd",
+    "switcher": {
+      "trigger": "Andere garantie kiezen",
+      "placeholder": "Garanties filteren...",
+      "noMatches": "Geen garanties gevonden"
+    },
+    "summary": {
+      "expires": "Verloopt",
+      "purchased": "Gekocht",
+      "price": "Aankoopprijs",
+      "openClaims": "Openstaande claims"
+    },
     "card": {
       "title": "Details",
-      "expires": "Verloopt",
-      "daysLeft": "Resterende tijd",
       "kind": "Soort garantie",
       "vendor": "Verkoper",
-      "purchaseDate": "Gekocht",
-      "price": "Aankoopprijs",
       "serialNumbers": "Serienummers",
       "model": "Modelnummer",
       "productUrl": "Productpagina",
@@ -228,7 +242,7 @@
     "form": {
       "claimDateLabel": "Claimdatum",
       "statusLabel": "Status",
-      "descriptionLabel": "Wat ging er mis",
+      "descriptionLabel": "Beschrijving",
       "resolutionLabel": "Afhandeling",
       "resolvedOnLabel": "Gesloten op",
       "resolvedOnHint": "Alleen voor een afgehandelde of afgewezen claim",

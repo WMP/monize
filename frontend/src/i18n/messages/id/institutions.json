@@ -31,9 +31,10 @@
     },
     "accountCount": "{count, plural, =0 {Tidak ada akun} one {# akun} other {# akun}}",
     "statusFilter": {
-      "all": "Semua",
-      "active": "Aktif",
-      "closed": "Ditutup"
+      "label": "Status Akun",
+      "all": "Semua ({count})",
+      "active": "Aktif ({count})",
+      "closed": "Ditutup ({count})"
     },
     "actions": {
       "manageAccounts": "Akun"

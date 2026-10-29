@@ -763,8 +763,7 @@
     },
     "search": {
       "label": "E-Mails durchsuchen",
-      "text": "Suche",
-      "placeholder": "Betreff, Absender oder Inhalt",
+      "placeholder": "Nach Betreff, Absender oder Inhalt suchen...",
       "in": "Suchen in",
       "fields": {
         "all": "Alle Felder",
@@ -806,10 +805,10 @@
       "body": "Bestellbestätigungen erscheinen hier, sobald das Postfach gelesen wurde.",
       "filteredTitle": "Keine E-Mails mit diesem Status",
       "filteredBody": "Wähle einen anderen Status, um die übrigen zu sehen.",
-      "noMailboxBody": "Es ist noch kein Postfach verbunden. Verbinde eines, um Bestellbestätigungen zu lesen.",
-      "connectButton": "Postfach verbinden",
       "searchTitle": "Keine E-Mail entspricht der Suche",
-      "searchBody": "Ändern Sie die Wörter oder die Daten, oder löschen Sie die Suche, um alle E-Mails zu sehen."
+      "searchBody": "Ändern Sie die Wörter oder die Daten, oder löschen Sie die Suche, um alle E-Mails zu sehen.",
+      "noMailboxBody": "Es ist noch kein Postfach verbunden. Verbinde eines, um Bestellbestätigungen zu lesen.",
+      "connectButton": "Postfach verbinden"
     },
     "actions": {
       "view": "Anzeigen",
@@ -1092,9 +1091,7 @@
     "help": "Es wurde keine Buchung automatisch zugeordnet. Hier siehst du deine Buchungen im Zeitraum unten, der zunächst die Tage rund um den Kauf umfasst. Wähle die, die damit bezahlt wurde, oder ändere die Daten, um weiter zu suchen.",
     "fromLabel": "Von",
     "toLabel": "Bis",
-    "searchLabel": "Suchen",
-    "searchPlaceholder": "Zahlungsempfänger, Beschreibung oder Betrag",
-    "searchButton": "Suchen",
+    "searchPlaceholder": "Nach Zahlungsempfänger, Beschreibung oder Betrag suchen...",
     "loading": "Buchungen werden geladen",
     "error": "Die Buchungen konnten nicht geladen werden.",
     "retry": "Erneut versuchen",
@@ -1331,7 +1328,7 @@
       "reviseHelp": "Sag dem Assistenten, was geändert werden soll. Er aktualisiert denselben Entwurf anhand dieser E-Mails und Buchungen.",
       "tradeHelp": "Der Assistent liest diese Handelsbestätigungen und schreibt ein Profilentwurf für {domain}, der die jeweils gemeldete Wertpapiertransaktion vorschlägt. Noch ist nichts freigegeben.",
       "tradeSample": "Handelsbestätigung",
-      "feedbackLabel": "Was soll sich ändern",
+      "feedbackLabel": "Gewünschte Änderungen",
       "feedbackPlaceholder": "Zum Beispiel: Die Summe ist die Zeile mit „Gezahlter Betrag“, nicht die Zwischensumme.",
       "send": "An die KI senden",
       "sendFeedback": "Notiz an die KI senden",
