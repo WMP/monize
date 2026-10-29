@@ -223,6 +223,41 @@ export async function applyAccountBalanceDelta(
   return affectedRowCount(updated);
 }
 
+/**
+ * Recompute every account of `userId` from its opening balance and its ledger
+ * through `today`, under the shared account lock -- the derivation
+ * `AccountsService.recalculateCurrentBalance` uses for one account. The backup
+ * restore calls it: the file's balances are as of the backup day, so a row
+ * dated after it and on or before today is in no stored figure.
+ */
+export async function recalculateUserCurrentBalances(
+  manager: EntityManager,
+  userId: string,
+  today: string,
+): Promise<void> {
+  const accounts: { id: string }[] = await manager.query(
+    `SELECT id FROM accounts WHERE user_id = $1`,
+    [userId],
+  );
+  await lockAccountsForBalanceWrite(
+    manager,
+    accounts.map((a) => a.id),
+    userId,
+  );
+  await manager.query(
+    `UPDATE accounts a
+        SET current_balance = ROUND(CAST(COALESCE(a.opening_balance, 0) + COALESCE((
+              SELECT SUM(t.amount)
+                FROM transactions t
+               WHERE t.account_id = a.id
+                 AND ${LEDGER_MOVEMENT_PREDICATE}
+                 AND t.transaction_date <= $2
+            ), 0) AS numeric), 4)
+      WHERE a.user_id = $1`,
+    [userId, today],
+  );
+}
+
 // shortcut: rows older than this many days are missed after a longer outage,
 // upgrade to a per-timezone last-run marker if outages beyond a week matter.
 const DUE_BALANCE_CATCH_UP_DAYS = 7;

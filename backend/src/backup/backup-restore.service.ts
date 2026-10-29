@@ -12,7 +12,7 @@ import { gunzip } from "zlib";
 import { promisify } from "util";
 import { withScopedDb } from "../common/db/scoped-db";
 import { withPreserveTimestamps } from "../common/db/with-context";
-import { LEDGER_MOVEMENT_PREDICATE } from "../common/ledger-balance.sql";
+import { recalculateUserCurrentBalances } from "../accounts/accounts.service";
 import { todayInTimezoneOrUtc } from "../common/date-utils";
 import { getEffectiveTimezoneOfUser } from "../common/users-by-timezone.util";
 import { UserMaintenanceService } from "../common/jobs/user-maintenance.service";
@@ -387,18 +387,7 @@ export class BackupRestoreService {
                 const today = todayInTimezoneOrUtc(
                   await getEffectiveTimezoneOfUser(manager, userId),
                 );
-                await manager.query(
-                  `UPDATE accounts a
-                      SET current_balance = ROUND(CAST(COALESCE(a.opening_balance, 0) + COALESCE((
-                            SELECT SUM(t.amount)
-                              FROM transactions t
-                             WHERE t.account_id = a.id
-                               AND ${LEDGER_MOVEMENT_PREDICATE}
-                               AND t.transaction_date <= $2
-                          ), 0) AS numeric), 4)
-                    WHERE a.user_id = $1`,
-                  [userId, today],
-                );
+                await recalculateUserCurrentBalances(manager, userId, today);
 
                 // The staged objects now have their metadata rows: drop their
                 // upload intents in the same transaction, so both commit or both

@@ -469,8 +469,9 @@ export class TransactionTransferService {
           input.existingExchangeRate,
         ) &&
         updateDto.exchangeRate !== undefined &&
+        input.existingExchangeRate != null &&
         roundFxRate(Number(updateDto.exchangeRate)) ===
-          roundFxRate(Number(input.existingExchangeRate ?? 1))
+          roundFxRate(Number(input.existingExchangeRate))
           ? undefined
           : updateDto.exchangeRate;
       const fx = await this.resolveTransferFx({
