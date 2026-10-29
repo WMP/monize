@@ -1142,7 +1142,6 @@
       "editMessageButton": "編集",
       "messagePlaceholder": "メモ、指示、重要な書類の場所...",
       "maxCharsNote": "最大4000文字。暗号化して保存されます。",
-      "cancelButton": "キャンセル",
       "saveButton": "メッセージを保存",
       "toasts": {
         "saved": "メッセージを保存しました",
@@ -1187,7 +1186,6 @@
       "grantStatus": "付与状態: ",
       "unknown": "不明",
       "never": "なし",
-      "daysAgo": "{count}日{plural}前",
       "grantedOn": "{timestamp}に付与されました",
       "notYetGranted": "まだ付与されていません",
       "timerNote": "タイマーはアプリを使用するたびに自動的にリセットされます — サインイン、ページの閲覧、取引の記録など、認証されたすべての操作が対象です。"

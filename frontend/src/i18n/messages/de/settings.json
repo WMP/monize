@@ -1142,7 +1142,6 @@
       "editMessageButton": "Bearbeiten",
       "messagePlaceholder": "Notizen, Anweisungen, Standorte wichtiger Dokumente...",
       "maxCharsNote": "Maximal 4000 Zeichen. Verschlüsselt gespeichert.",
-      "cancelButton": "Abbrechen",
       "saveButton": "Nachricht speichern",
       "toasts": {
         "saved": "Nachricht gespeichert",
@@ -1187,7 +1186,6 @@
       "grantStatus": "Gewährungsstatus: ",
       "unknown": "unbekannt",
       "never": "nie",
-      "daysAgo": "Vor {count} Tag{plural}",
       "grantedOn": "gewährt am {timestamp}",
       "notYetGranted": "noch nicht gewährt",
       "timerNote": "Der Timer wird automatisch zurückgesetzt, sobald Sie die App verwenden -- Anmelden, eine Seite aufrufen, eine Buchung erfassen oder eine andere authentifizierte Aktion."

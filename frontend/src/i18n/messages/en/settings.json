@@ -480,7 +480,7 @@
   "supportBackup": {
     "title": "Create support backup",
     "howItWorks": "This produces a de-identified copy of your backup: names are masked (first and last two characters kept), notes/descriptions/account numbers are removed, and every amount is multiplied by a single hidden factor while public values (exchange rates, prices, interest rates) are left intact. The file is always encrypted with the password below and restores like a normal backup. This protects against casual exposure, not against someone who already knows you -- dates, frequencies and structure are preserved so bugs still reproduce.",
-    "sectionsLabel": "What to include",
+    "sectionsLabel": "Sections to Include",
     "sections": {
       "investments": "Investments (securities, holdings, prices)",
       "scheduled": "Scheduled transactions",
@@ -1144,7 +1144,6 @@
       "editMessageButton": "Edit",
       "messagePlaceholder": "Notes, instructions, locations of important documents...",
       "maxCharsNote": "Maximum 4000 characters. Stored encrypted at rest.",
-      "cancelButton": "Cancel",
       "saveButton": "Save message",
       "toasts": {
         "saved": "Message saved",
@@ -1189,7 +1188,7 @@
       "grantStatus": "Grant status: ",
       "unknown": "unknown",
       "never": "never",
-      "daysAgo": "{count} day{plural} ago",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "granted on {timestamp}",
       "notYetGranted": "not yet granted",
       "timerNote": "The timer resets automatically any time you use the app -- signing in, viewing a page, recording a transaction, anything authenticated."

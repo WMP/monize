@@ -1142,7 +1142,6 @@
       "editMessageButton": "Düzenle",
       "messagePlaceholder": "Notlar, talimatlar, önemli belgelerin yerleri...",
       "maxCharsNote": "Maksimum 4000 karakter. Depolamada şifreli olarak saklanır.",
-      "cancelButton": "İptal",
       "saveButton": "Mesajı kaydet",
       "toasts": {
         "saved": "Mesaj kaydedildi",
@@ -1187,7 +1186,6 @@
       "grantStatus": "Verme durumu: ",
       "unknown": "bilinmiyor",
       "never": "hiçbir zaman",
-      "daysAgo": "{count} gün önce",
       "grantedOn": "{timestamp} tarihinde verildi",
       "notYetGranted": "henüz verilmedi",
       "timerNote": "Zamanlayıcı, uygulamayı her kullandığınızda otomatik olarak sıfırlanır — oturum açma, sayfa görüntüleme, işlem kaydetme, herhangi bir kimlik doğrulamalı eylem."

@@ -1142,7 +1142,6 @@
       "editMessageButton": "編輯",
       "messagePlaceholder": "備註、指示、重要文件的位置...",
       "maxCharsNote": "最多 4000 個字元。靜態加密儲存。",
-      "cancelButton": "取消",
       "saveButton": "儲存留言",
       "toasts": {
         "saved": "留言已儲存",
@@ -1187,7 +1186,6 @@
       "grantStatus": "授予狀態：",
       "unknown": "未知",
       "never": "從未",
-      "daysAgo": "{count} 天前",
       "grantedOn": "授予於 {timestamp}",
       "notYetGranted": "尚未授予",
       "timerNote": "計時器會在您每次使用應用程式時自動重置 — 登入、查看頁面、記錄交易，任何已驗證的操作。"

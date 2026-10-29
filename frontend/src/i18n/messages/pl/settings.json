@@ -1142,7 +1142,6 @@
       "editMessageButton": "Edytuj",
       "messagePlaceholder": "Notatki, instrukcje, lokalizacje ważnych dokumentów...",
       "maxCharsNote": "Maksymalnie 4000 znaków. Przechowywane w postaci zaszyfrowanej.",
-      "cancelButton": "Anuluj",
       "saveButton": "Zapisz wiadomość",
       "toasts": {
         "saved": "Zapisano wiadomość",
@@ -1187,7 +1186,6 @@
       "grantStatus": "Status przyznania: ",
       "unknown": "nieznany",
       "never": "nigdy",
-      "daysAgo": "{count} {count, plural, one {dzień} few {dni} many {dni} other {dnia}} temu",
       "grantedOn": "przyznano {timestamp}",
       "notYetGranted": "jeszcze nie przyznano",
       "timerNote": "Licznik resetuje się automatycznie za każdym razem, gdy korzystasz z aplikacji -- logowanie, przeglądanie strony, zapisanie transakcji, dowolna uwierzytelniona czynność."

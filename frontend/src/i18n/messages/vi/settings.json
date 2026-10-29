@@ -1142,7 +1142,6 @@
       "editMessageButton": "Chỉnh sửa",
       "messagePlaceholder": "Ghi chú, hướng dẫn, vị trí các tài liệu quan trọng...",
       "maxCharsNote": "Tối đa 4000 ký tự. Được lưu trữ mã hóa.",
-      "cancelButton": "Hủy",
       "saveButton": "Lưu tin nhắn",
       "toasts": {
         "saved": "Tin nhắn đã được lưu",
@@ -1187,7 +1186,6 @@
       "grantStatus": "Trạng thái cấp: ",
       "unknown": "không xác định",
       "never": "không bao giờ",
-      "daysAgo": "{count} ngày trước",
       "grantedOn": "đã cấp vào {timestamp}",
       "notYetGranted": "chưa được cấp",
       "timerNote": "Bộ đếm thời gian tự động đặt lại bất kỳ lúc nào bạn sử dụng ứng dụng -- đăng nhập, xem trang, ghi nhận giao tác, bất kỳ thứ gì được xác thực."

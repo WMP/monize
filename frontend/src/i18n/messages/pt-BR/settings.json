@@ -1142,7 +1142,6 @@
       "editMessageButton": "Editar",
       "messagePlaceholder": "Notas, instruções, localização de documentos importantes...",
       "maxCharsNote": "Máximo de 4000 caracteres. Armazenado criptografado em repouso.",
-      "cancelButton": "Cancelar",
       "saveButton": "Salvar mensagem",
       "toasts": {
         "saved": "Mensagem salva",
@@ -1187,7 +1186,6 @@
       "grantStatus": "Status de concessão: ",
       "unknown": "desconhecido",
       "never": "nunca",
-      "daysAgo": "há {count} dia{plural}",
       "grantedOn": "concedido em {timestamp}",
       "notYetGranted": "ainda não concedido",
       "timerNote": "O temporizador é reiniciado automaticamente sempre que você usar o aplicativo -- fazer login, ver uma página, registrar uma transação, qualquer ação autenticada."

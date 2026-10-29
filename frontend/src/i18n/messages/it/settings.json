@@ -1142,7 +1142,6 @@
       "editMessageButton": "Modifica",
       "messagePlaceholder": "Note, istruzioni, posizione di documenti importanti...",
       "maxCharsNote": "Massimo 4000 caratteri. Archiviato cifrato a riposo.",
-      "cancelButton": "Annulla",
       "saveButton": "Salva messaggio",
       "toasts": {
         "saved": "Messaggio salvato",
@@ -1187,7 +1186,6 @@
       "grantStatus": "Stato concessione: ",
       "unknown": "sconosciuto",
       "never": "mai",
-      "daysAgo": "{count} giorno{plural} fa",
       "grantedOn": "concesso il {timestamp}",
       "notYetGranted": "non ancora concesso",
       "timerNote": "Il timer si reimposta automaticamente ogni volta che usi l'app -- accedendo, visualizzando una pagina, registrando una transazione, qualsiasi azione autenticata."

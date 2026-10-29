@@ -1142,7 +1142,6 @@
       "editMessageButton": "Modifier",
       "messagePlaceholder": "Notes, instructions, emplacements de documents importants...",
       "maxCharsNote": "Maximum 4000 caractères. Stocké chiffré au repos.",
-      "cancelButton": "Annuler",
       "saveButton": "Enregistrer le message",
       "toasts": {
         "saved": "Message enregistré",
@@ -1187,7 +1186,6 @@
       "grantStatus": "État de l'octroi : ",
       "unknown": "inconnu",
       "never": "jamais",
-      "daysAgo": "il y a {count} jour{plural}",
       "grantedOn": "accordé le {timestamp}",
       "notYetGranted": "pas encore accordé",
       "timerNote": "Le minuteur se réinitialise automatiquement chaque fois que vous utilisez l'application — connexion, consultation d'une page, enregistrement d'une transaction, toute action authentifiée."

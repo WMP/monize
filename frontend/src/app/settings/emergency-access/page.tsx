@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
+import { FormActions } from '@/components/ui/FormActions';
 import { Input } from '@/components/ui/Input';
 import { NumericInput } from '@/components/ui/NumericInput';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
@@ -27,6 +28,7 @@ import {
 } from '@/lib/stepUpToken';
 import apiClient from '@/lib/api';
 import { useDemoMode } from '@/hooks/useDemoMode';
+import { useRelativeTime } from '@/hooks/useRelativeTime';
 import { useAuthStore } from '@/store/authStore';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { authApi } from '@/lib/auth';
@@ -89,12 +91,6 @@ const contactSchema = z.object({
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;
-
-function daysSince(iso: string | null): number | null {
-  if (!iso) return null;
-  const diffMs = Date.now() - new Date(iso).getTime();
-  return Math.max(0, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
-}
 
 function formatTimestamp(
   iso: string | null,
@@ -183,7 +179,7 @@ function EmergencyAccessSection() {
   const tMsg = useTranslations('settings.emergencyAccess.message');
   const tContacts = useTranslations('settings.emergencyAccess.contacts');
   const tStatus = useTranslations('settings.emergencyAccess.status');
-  const tc = useTranslations('common');
+  const relativeTime = useRelativeTime();
   const preferences = usePreferencesStore((s) => s.preferences);
   const userTimezone = resolveTimezone(preferences?.timezone);
   const dateFormat = preferences?.dateFormat || 'browser';
@@ -524,7 +520,6 @@ function EmergencyAccessSection() {
     );
   }
 
-  const inactiveDays = daysSince(view.lastActivityAt);
   const { messageMetadata } = view;
 
   // Arming needs both dependencies; disabling needs neither. A feature already
@@ -671,15 +666,12 @@ function EmergencyAccessSection() {
               />
             </div>
 
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                isLoading={savingSettings}
-                disabled={!canEditSettings}
-              >
-                {t('settings.saveButton')}
-              </Button>
-            </div>
+            <FormActions
+              submitLabel={t('settings.saveButton')}
+              isSubmitting={savingSettings}
+              submitDisabled={!canEditSettings}
+              className="pt-0"
+            />
           </div>
         </form>
 
@@ -778,28 +770,21 @@ function EmergencyAccessSection() {
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {tMsg('maxCharsNote')}
               </p>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <Button
                   type="button"
-                  size="sm"
                   variant="outline"
                   onClick={handleLockNow}
                   disabled={savingMessage}
                 >
                   {tMsg('lockNowButton')}
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setMessageMode('view')}
-                  disabled={savingMessage}
-                >
-                  {tMsg('cancelButton')}
-                </Button>
-                <Button type="submit" size="sm" isLoading={savingMessage}>
-                  {tMsg('saveButton')}
-                </Button>
+                <FormActions
+                  onCancel={() => setMessageMode('view')}
+                  submitLabel={tMsg('saveButton')}
+                  isSubmitting={savingMessage}
+                  className="pt-0"
+                />
               </div>
             </form>
           )}
@@ -868,7 +853,10 @@ function EmergencyAccessSection() {
               <dt className="inline font-medium">{tStatus('lastAccess')}</dt>
               <dd className="inline">
                 {view.lastActivityAt
-                  ? `${formatTimestamp(view.lastActivityAt, userTimezone, dateFormat, timeFormat)} (${tStatus('daysAgo', { count: inactiveDays ?? 0, plural: inactiveDays === 1 ? '' : 's' })})`
+                  ? tStatus('withRelative', {
+                      timestamp: formatTimestamp(view.lastActivityAt, userTimezone, dateFormat, timeFormat),
+                      relative: relativeTime(view.lastActivityAt),
+                    })
                   : tStatus('unknown')}
               </dd>
             </div>
@@ -907,14 +895,12 @@ function EmergencyAccessSection() {
         >
           <form
             onSubmit={contactForm.handleSubmit(onContactSubmit)}
-            className="flex flex-col"
+            className="p-6"
           >
-            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {editingContact ? tContacts('contactModal.editTitle') : tContacts('contactModal.addTitle')}
-              </h2>
-            </div>
-            <div className="px-6 py-4 space-y-4">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+              {editingContact ? tContacts('contactModal.editTitle') : tContacts('contactModal.addTitle')}
+            </h2>
+            <div className="space-y-4">
               <Input
                 label={tContacts('contactModal.firstNameLabel')}
                 error={contactForm.formState.errors.firstName?.message}
@@ -928,19 +914,11 @@ function EmergencyAccessSection() {
                 {...contactForm.register('email')}
               />
             </div>
-            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowContactForm(false)}
-                disabled={submittingContact}
-              >
-                {tc('cancel')}
-              </Button>
-              <Button type="submit" isLoading={submittingContact}>
-                {editingContact ? tContacts('contactModal.saveButton') : tContacts('contactModal.addButton')}
-              </Button>
-            </div>
+            <FormActions
+              onCancel={() => setShowContactForm(false)}
+              submitLabel={editingContact ? tContacts('contactModal.saveButton') : tContacts('contactModal.addButton')}
+              isSubmitting={submittingContact}
+            />
           </form>
         </Modal>
 

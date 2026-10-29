@@ -1142,7 +1142,6 @@
       "editMessageButton": "Bewerken",
       "messagePlaceholder": "Notities, instructies, locaties van belangrijke documenten...",
       "maxCharsNote": "Maximaal 4000 tekens. Versleuteld opgeslagen.",
-      "cancelButton": "Annuleren",
       "saveButton": "Bericht opslaan",
       "toasts": {
         "saved": "Bericht opgeslagen",
@@ -1187,7 +1186,6 @@
       "grantStatus": "Verleningsstatus: ",
       "unknown": "onbekend",
       "never": "nooit",
-      "daysAgo": "{count} dag{plural} geleden",
       "grantedOn": "verleend op {timestamp}",
       "notYetGranted": "nog niet verleend",
       "timerNote": "De timer wordt automatisch gereset elke keer dat je de app gebruikt -- aanmelden, een pagina bekijken, een transactie vastleggen, alles wat geauthenticeerd is."

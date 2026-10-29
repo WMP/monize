@@ -1142,7 +1142,6 @@
       "editMessageButton": "编辑",
       "messagePlaceholder": "备注、说明、重要文件存放位置...",
       "maxCharsNote": "最多 4000 个字符。静态加密存储。",
-      "cancelButton": "取消",
       "saveButton": "保存留言",
       "toasts": {
         "saved": "留言已保存",
@@ -1187,7 +1186,6 @@
       "grantStatus": "授权状态：",
       "unknown": "未知",
       "never": "从未",
-      "daysAgo": "{count} 天前",
       "grantedOn": "授权于 {timestamp}",
       "notYetGranted": "尚未授权",
       "timerNote": "任何时候您使用应用（登录、查看页面、记录交易等经过身份验证的操作），计时器都会自动重置。"

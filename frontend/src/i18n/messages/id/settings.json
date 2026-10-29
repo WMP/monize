@@ -1142,7 +1142,6 @@
       "editMessageButton": "Edit",
       "messagePlaceholder": "Catatan, instruksi, lokasi dokumen penting...",
       "maxCharsNote": "Maksimum 4000 karakter. Disimpan terenkripsi saat istirahat.",
-      "cancelButton": "Batal",
       "saveButton": "Simpan pesan",
       "toasts": {
         "saved": "Pesan disimpan",
@@ -1187,7 +1186,6 @@
       "grantStatus": "Status pemberian: ",
       "unknown": "tidak diketahui",
       "never": "tidak pernah",
-      "daysAgo": "{count} hari yang lalu",
       "grantedOn": "diberikan pada {timestamp}",
       "notYetGranted": "belum diberikan",
       "timerNote": "Timer direset secara otomatis setiap kali Anda menggunakan aplikasi -- masuk, melihat halaman, mencatat transaksi, apa pun yang diautentikasi."
