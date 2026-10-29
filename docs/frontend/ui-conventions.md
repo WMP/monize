@@ -41,7 +41,7 @@ A warranty's status pill is `WarrantyStatusBadge` (`components/warranties/Warran
 
 `components/ui/Table.tsx` is constants (`TABLE_CLASS`, `TH_CLASS`, `TD_CLASS`) plus thin `Th`/`Td` cells, not a `<Table>` wrapper -- these tables are hand-laid with colspans and sticky cells. `SortableHeader` deliberately stays off `TH_CLASS` (about twenty-five report tables draw a lighter header, and folding it in would restyle every report).
 
-**A list's header cell is `Th` / `TH_CLASS`**, never a hand-copied `text-xs font-medium text-gray-500 uppercase tracking-wider` string or a local `HEADER_CLASS`. A sortable one is a `<th aria-sort>` in `TH_CLASS` holding a `<button>` with `SortIcon`: a `<th onClick>` is not reachable from the keyboard. The reference lists still hand-copy the string; that is listed debt in `screens-and-dialogs.md`, not a pattern.
+**A list's header cell is `Th` / `TH_CLASS`**, never a hand-copied `text-xs font-medium text-gray-500 uppercase tracking-wider` string or a local `HEADER_CLASS`. A sortable one is a `<th aria-sort>` in `TH_CLASS` holding a `<button>` with `SortIcon`: a `<th onClick>` is not reachable from the keyboard. `SortableHeader` reaches the same result the other way, a focusable `<th>` (`tabIndex={0}`, Enter and Space through `onKeyDown`) carrying `aria-sort`, and stays the report header. The reference lists still hand-copy the string; that is listed debt in `screens-and-dialogs.md`, not a pattern.
 
 ## The card shadow is `--shadow-card`; the bare `shadow` reads no token
 
@@ -545,7 +545,7 @@ Size: `h-4 w-4` in a button or a row (`h-3.5 w-3.5` in a dense row, as `RowActio
 
 ## Figures are tabular app-wide
 
-`body { font-variant-numeric: tabular-nums }` in `app/globals.css` already makes every digit fixed-width, so do not add `tabular-nums` to a cell. Amount, rate and quantity columns are `text-right`.
+`body { font-variant-numeric: tabular-nums }` in `app/globals.css` already makes every digit fixed-width, so do not add `tabular-nums` to a cell. Amount, rate and quantity columns are `text-right`. The class survives on existing elements, and two tests pin it (`ColumnChooserMenu.test.tsx` on the hidden-column count, `TransactionsCalendarView.test.tsx` on a calendar chip's amount); a change that removes a redundant class updates the assertion that pins it rather than leaving a test that checks for a no-op.
 
 ## `title` is not an information channel
 

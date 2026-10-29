@@ -29,9 +29,9 @@ Rules that describe the majority of today's code bind new and changed code. Wher
 
 **Layout of a form dialog** (the New Transaction dialog in `app/transactions/page.tsx` and `TransactionForm.tsx`):
 
-- **Panel.** `Modal` keeps `padding="none"`; the panel's `p-6` comes through `className`. The title is `mb-4` above the form, and the form body is `space-y-4`. Every host of `TransactionForm` passes the same `maxWidth="6xl" className="p-6 !max-w-[69rem]"`, so the dialog has one size wherever it opens.
+- **Panel.** `Modal` keeps `padding="none"`; the panel's `p-6` comes through `className`. The title is `mb-4` above the form, and the form body is `space-y-4`. A host of `TransactionForm` passes `maxWidth="6xl" className="p-6 !max-w-[69rem]"`, as Transactions, Reconcile, Bills and the foreign-currency fees surfaces do, so the dialog has one size wherever it opens. Not every host does yet (see [Known debt](#known-debt)).
 - **Fields.** One column on a phone, two or three from `md:` (`grid grid-cols-1 md:grid-cols-2 gap-4`). The whole panel scrolls (`max-h-[90vh]`); no inner scroll box.
-- **Button row.** `FormActions`: right-aligned, `pt-4` above it, not sticky. Cancel (`outline`, disabled while submitting) first, the primary last. A secondary save mode ("Save & New") uses `SplitSubmitButton`, as Create Transaction does, with the options "Create" then "Create & New"; do not add a separate button or flow for it.
+- **Button row.** `FormActions`: right-aligned, `pt-4` above it, not sticky. Cancel (`outline`, disabled while submitting) first, the primary last. A secondary save mode uses `SplitSubmitButton`, as New Transaction does, with the plain create first and "... & New" second; do not add a separate button or flow for it.
 - **Open and close.** A form dialog uses `useFormModal` (`pushHistory` + `onBeforeClose`) and renders `UnsavedChangesDialog` beside the `Modal`; the form takes `onDirtyChange` and `submitRef`.
 - **A warning before a save** is `ConfirmDialog variant="warning"`, as `TransactionForm.tsx` does before saving a change to a reconciled transaction.
 - **A destructive action inside a form section** ("Cancel split") is red text in that section's header row, never a danger or primary button.
@@ -62,7 +62,7 @@ Today about a third of the app's field labels are sentence case, in whole featur
 ## Wording
 
 - **Button text is Title Case**, by the same rule as field labels: "Add Shares", "New Transaction", "New Rule", "Try Again".
-- **Save**: "Save" for a new record, "Save Changes" for an edit. Not "Update", not "Save changes".
+- **Save**: a plain save button reads "Save" for a new record and "Save Changes" for an edit. Not "Update", not "Save changes". A form whose primary is a `SplitSubmitButton` names the action and the record instead, as New Transaction does: "Create Transaction", then "Create Transaction & New", and "Update Transaction" on an edit.
 - **Retry** is "Try Again", never "Retry".
 - **A placeholder example** is "e.g. 12.50", not "e.g., 12.50".
 - **An ellipsis is three full stops** ("..."), as the app writes it: "Search by symbol or name...". Not the single character.
@@ -87,7 +87,7 @@ The page is `<main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">` at full width (
 
 - **A table, not cards** (`CurrencyList`, `SecurityList` are the models for everything except their header cells). Cards in a grid are for a dashboard, not for a list of records the user scans, sorts and compares.
 - **Header cells are `Th` / `TH_CLASS`** (`components/ui/Table.tsx`), never a hand-copied class string or a local `HEADER_CLASS`.
-- **A sortable header** is a `<th aria-sort>` in `TH_CLASS` holding a `<button>` with `SortIcon`; a `<th onClick>` cannot be reached from the keyboard. Report tables keep `SortableHeader` (`ui-conventions.md`, "table chrome").
+- **A sortable header** carries `aria-sort` and is reached and activated from the keyboard. In a list it is a `<th aria-sort>` in `TH_CLASS` holding a `<button>` with `SortIcon`. Report tables keep `SortableHeader`, which makes the `<th>` itself focusable (`tabIndex={0}`, Enter and Space through `onKeyDown`) and stays off `TH_CLASS` (`ui-conventions.md`, "table chrome"). A `<th onClick>` with neither is not reachable from the keyboard.
 - **Sort is remembered**: `useLocalStorage('monize-<list>-sort-field')` and `'monize-<list>-sort-dir'`. A sort, filter or search change resets to page 1. A status filter starts at `'active'`.
 - **A clickable row** goes through `useLongPress({ onClick })`; **row actions** are `RowActions`, at the right.
 - **Number, rate, amount, quantity and action columns are right-aligned** (`text-right`).
@@ -122,7 +122,7 @@ The page is `<main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">` at full width (
 Transactions and Investments are registers: long, dated lists of entries with many filter fields. They follow the list page above, with these differences:
 
 - **The summary row may be a chart** instead of `SummaryCard`s (Transactions).
-- **The filter panel may fold away**, because it holds more fields than fit above the list (accounts, categories, payees, dates, amounts). The folded header must still show how many filters are applied and a Clear button, as `TransactionFilterPanel` does. A filter that fits in a segmented control stays visible.
+- **The filter panel may fold away**, because it holds more fields than fit above the list (accounts, categories, payees, dates, amounts). The folded header must still show how many filters are applied and a Clear button, as `TransactionFilterPanel` does, and its fold toggle is a `<button aria-expanded>` that the keyboard reaches, not a clickable `<div>`. A filter that fits in a segmented control stays visible.
 - **The search field** still follows the search rules: no label, first in its row.
 - **One primary "New" button**, the one in `PageHeader` (`NewTransactionButton`). No second blue "New" button in the list or below it.
 - **Density and columns** live in `ListTopToolbar` (`DensityToggle`, `ColumnChooserMenu`).
@@ -203,6 +203,8 @@ Each line is a reference screen or shared component that does not yet follow a r
 | A report keeps its toolbar mounted | Most reports return early with a skeleton card. |
 | Title Case labels and buttons | Whole feature areas use sentence case (auth, import, email receipts, rules, GEM, warranties, Monte Carlo, loan detail), and button labels are split about evenly. |
 | `<Button isLoading>` | Several save buttons swap their label with `isSaving ? ... : ...`. |
+| One size for the `TransactionForm` dialog | The Investments page and `InvestmentRegisterPanel` cash forms pass `maxWidth="6xl" className="p-6"` without the width; the warranty detail page passes the width with `padding="md"` instead of `p-6`; `PayeeTransactionsTab` and `CategoryTransactionsTab` open it at `maxWidth="2xl"`. |
+| Folded filter panel toggle is a button | `TransactionFilterPanel`'s fold toggle is a `<div onClick>` that the keyboard cannot reach. |
 | Wording | Save buttons read "Save", "Save changes", "Save Changes" and "Update"; retry reads "Try again", "Retry" and "Try Again"; placeholders mix "e.g." and "e.g.,"; about half the confirmation titles are questions. |
 
 ## Before you open the PR
