@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "Actualización masiva de transacciones",
-      "subtitle": "Actualizar {count, plural, one {# transacción seleccionada} other {# transacciones seleccionadas}}. Activa los campos que quieres cambiar.",
+      "help": "Activa los campos que quieres cambiar.",
       "submitLabel": "Actualizar {count, plural, one {# transacción} other {# transacciones}}",
       "payee": "Beneficiario",
       "category": "Categoría",
@@ -368,8 +368,7 @@
       "fromAccount": "Cuenta origen",
       "toAccount": "Cuenta destino",
       "transferAmount": "Cantidad de transferencia",
-      "transferAmountWithCurrency": "Cantidad de transferencia ({currency})",
-      "amountReceived": "Cantidad recibida ({currency})",
+      "amountReceivedLabel": "Cantidad recibida",
       "payeeOptional": "Beneficiario (opcional)",
       "categoryOptional": "Categoría (opcional)"
     },
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "Cantidad",
     "pricePlaceholder": "Precio",
     "commissionPlaceholder": "Comisión",
-    "amountPlaceholder": "Cantidad ({currency})",
+    "amountOnlyPlaceholder": "Cantidad",
     "ratePlaceholder": "{to} por 1 {from}",
     "ariaRate": "Tipo de cambio ({to} por 1 {from})",
     "rateHint": "La cantidad, el precio y la comisión están en {from}; este tipo convierte el impacto en efectivo a {to}.",

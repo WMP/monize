@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "Atualização em Massa de Transações",
-      "subtitle": "Atualizar {count, plural, one {# transação selecionada} other {# transações selecionadas}}. Ative os campos que deseja alterar.",
+      "help": "Ative os campos que deseja alterar.",
       "submitLabel": "Atualizar {count, plural, one {# Transação} other {# Transações}}",
       "payee": "Beneficiário",
       "category": "Categoria",
@@ -368,9 +368,8 @@
       "fromAccount": "Conta de Origem",
       "toAccount": "Conta de Destino",
       "transferAmount": "Valor da Transferência",
-      "transferAmountWithCurrency": "Valor da Transferência ({currency})",
-      "amountReceived": "Valor Recebido ({currency})",
-      "payeeOptional": "Beneficiário (Opcional)",
+      "amountReceivedLabel": "Valor Recebido",
+      "payeeOptional": "Beneficiário (opcional)",
       "categoryOptional": "Categoria (opcional)"
     },
     "placeholders": {
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "Quantidade",
     "pricePlaceholder": "Preço",
     "commissionPlaceholder": "Comissão",
-    "amountPlaceholder": "Valor ({currency})",
+    "amountOnlyPlaceholder": "Valor",
     "ratePlaceholder": "{to} por 1 {from}",
     "ariaRate": "Taxa de câmbio ({to} por 1 {from})",
     "rateHint": "Quantidade, preço e corretagem estão em {from}; esta taxa converte o impacto de caixa para {to}.",

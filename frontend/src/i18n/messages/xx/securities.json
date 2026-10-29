@@ -11,6 +11,7 @@
     "subtitle": "[XX-Manage your stocks, ETFs, mutual funds, and other securities-XX]",
     "newSecurity": "[XX-+ New Security-XX]",
     "searchPlaceholder": "[XX-Search by symbol or name...-XX]",
+    "statusFilterLabel": "[XX-Status-XX]",
     "statusAll": "[XX-All ({count})-XX]",
     "statusActive": "[XX-Active ({count})-XX]",
     "statusInactive": "[XX-Inactive ({count})-XX]",
@@ -65,10 +66,7 @@
       "inactive": "[XX-Inactive-XX]",
       "inactiveShort": "[XX-Ina-XX]"
     },
-    "providerTitle": {
-      "override": "[XX-Per-security provider override-XX]",
-      "inherited": "[XX-Inherited from your default Quote Provider preference-XX]"
-    },
+    "providerInherited": "[XX-{provider} (default)-XX]",
     "columnTitles": {
       "shares": "[XX-Current shares held across all accounts-XX]",
       "value": "[XX-Shares held across all accounts at the most recent price, in the security's own currency-XX]",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "[XX-Date-XX]",
     "closePriceLabel": "[XX-Close Price-XX]",
-    "openPriceLabel": "[XX-Open Price-XX]",
-    "highPriceLabel": "[XX-High Price-XX]",
-    "lowPriceLabel": "[XX-Low Price-XX]",
-    "volumeLabel": "[XX-Volume-XX]",
-    "optionalPlaceholder": "[XX-Optional-XX]",
+    "openPriceLabel": "[XX-Open Price (optional)-XX]",
+    "highPriceLabel": "[XX-High Price (optional)-XX]",
+    "lowPriceLabel": "[XX-Low Price (optional)-XX]",
+    "volumeLabel": "[XX-Volume (optional)-XX]",
     "submitCreate": "[XX-Add Price-XX]",
     "submitUpdate": "[XX-Update Price-XX]"
   },

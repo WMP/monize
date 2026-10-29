@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "Buchungen massenweise aktualisieren",
-      "subtitle": "{count, plural, one {# ausgewählte Buchung} other {# ausgewählte Buchungen}} aktualisieren. Aktivieren Sie die Felder, die Sie ändern möchten.",
+      "help": "Aktivieren Sie die Felder, die Sie ändern möchten.",
       "submitLabel": "{count, plural, one {# Buchung} other {# Buchungen}} aktualisieren",
       "payee": "Zahlungsempfänger",
       "category": "Kategorie",
@@ -368,8 +368,7 @@
       "fromAccount": "Von Konto",
       "toAccount": "An Konto",
       "transferAmount": "Überweisungsbetrag",
-      "transferAmountWithCurrency": "Überweisungsbetrag ({currency})",
-      "amountReceived": "Erhaltener Betrag ({currency})",
+      "amountReceivedLabel": "Erhaltener Betrag",
       "payeeOptional": "Zahlungsempfänger (optional)",
       "categoryOptional": "Kategorie (optional)"
     },
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "Menge",
     "pricePlaceholder": "Preis",
     "commissionPlaceholder": "Provision",
-    "amountPlaceholder": "Betrag ({currency})",
+    "amountOnlyPlaceholder": "Betrag",
     "ratePlaceholder": "{to} pro 1 {from}",
     "ariaRate": "Wechselkurs ({to} pro 1 {from})",
     "rateHint": "Stückzahl, Preis und Provision sind in {from}; dieser Kurs rechnet die Zahlungswirkung in {to} um.",

@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "批次更新交易",
-      "subtitle": "更新 {count, plural, one {# 筆選取的交易} other {# 筆選取的交易}}。切換您要更改的欄位。",
+      "help": "切換您要更改的欄位。",
       "submitLabel": "更新 {count, plural, one {# 筆交易} other {# 筆交易}}",
       "payee": "收款人",
       "category": "類別",
@@ -368,8 +368,7 @@
       "fromAccount": "來源科目",
       "toAccount": "目的科目",
       "transferAmount": "轉帳金額",
-      "transferAmountWithCurrency": "轉帳金額（{currency}）",
-      "amountReceived": "收到金額（{currency}）",
+      "amountReceivedLabel": "收到金額",
       "payeeOptional": "收款人（選填）",
       "categoryOptional": "類別（選填）"
     },
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "數量",
     "pricePlaceholder": "價格",
     "commissionPlaceholder": "手續費",
-    "amountPlaceholder": "金額（{currency}）",
+    "amountOnlyPlaceholder": "金額",
     "ratePlaceholder": "每 1 {from} 兌 {to}",
     "ariaRate": "匯率（每 1 {from} 兌 {to}）",
     "rateHint": "數量、價格和佣金均以 {from} 計；此匯率將現金影響換算為 {to}。",

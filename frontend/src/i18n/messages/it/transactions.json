@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "Aggiornamento multiplo transazioni",
-      "subtitle": "Aggiorna {count, plural, one {# transazione selezionata} other {# transazioni selezionate}}. Attiva i campi che vuoi modificare.",
+      "help": "Attiva i campi che vuoi modificare.",
       "submitLabel": "Aggiorna {count, plural, one {# transazione} other {# transazioni}}",
       "payee": "Beneficiario",
       "category": "Categoria",
@@ -368,8 +368,7 @@
       "fromAccount": "Conto di origine",
       "toAccount": "Conto di destinazione",
       "transferAmount": "Importo trasferimento",
-      "transferAmountWithCurrency": "Importo trasferimento ({currency})",
-      "amountReceived": "Importo ricevuto ({currency})",
+      "amountReceivedLabel": "Importo ricevuto",
       "payeeOptional": "Beneficiario (facoltativo)",
       "categoryOptional": "Categoria (facoltativa)"
     },
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "Quantità",
     "pricePlaceholder": "Prezzo",
     "commissionPlaceholder": "Commissione",
-    "amountPlaceholder": "Importo ({currency})",
+    "amountOnlyPlaceholder": "Importo",
     "ratePlaceholder": "{to} per 1 {from}",
     "ariaRate": "Tasso di cambio ({to} per 1 {from})",
     "rateHint": "Quantità, prezzo e commissione sono in {from}; questo tasso converte l'impatto di cassa in {to}.",

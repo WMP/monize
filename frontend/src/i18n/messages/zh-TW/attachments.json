@@ -77,6 +77,8 @@
     "unsupported": "無法預覽此類型的檔案。您仍然可以下載它。",
     "fit": "符合螢幕",
     "actualSize": "實際大小",
+    "versionLabel": "版本",
+    "zoomLabel": "縮放",
     "pageCount": "{count, plural, other {# 頁}}",
     "page": "第 {page} 頁，共 {total} 頁",
     "open": "預覽 {name}"

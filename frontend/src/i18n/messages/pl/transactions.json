@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "Zbiorcza aktualizacja transakcji",
-      "subtitle": "Zaktualizuj {count, plural, one {# zaznaczoną transakcję} few {# zaznaczone transakcje} many {# zaznaczonych transakcji} other {# zaznaczonych transakcji}}. Przełącz pola, które chcesz zmienić.",
+      "help": "Przełącz pola, które chcesz zmienić.",
       "submitLabel": "{count, plural, one {Zaktualizuj # transakcję} few {Zaktualizuj # transakcje} many {Zaktualizuj # transakcji} other {Zaktualizuj # transakcji}}",
       "payee": "Odbiorca",
       "category": "Kategoria",
@@ -368,8 +368,7 @@
       "fromAccount": "Konto źródłowe",
       "toAccount": "Konto docelowe",
       "transferAmount": "Kwota przelewu",
-      "transferAmountWithCurrency": "Kwota przelewu ({currency})",
-      "amountReceived": "Kwota otrzymana ({currency})",
+      "amountReceivedLabel": "Kwota otrzymana",
       "payeeOptional": "Odbiorca (opcjonalnie)",
       "categoryOptional": "Kategoria (opcjonalnie)"
     },
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "Ilość",
     "pricePlaceholder": "Cena",
     "commissionPlaceholder": "Prowizja",
-    "amountPlaceholder": "Kwota ({currency})",
+    "amountOnlyPlaceholder": "Kwota",
     "ratePlaceholder": "{to} za 1 {from}",
     "ariaRate": "Kurs wymiany ({to} za 1 {from})",
     "rateHint": "Ilość, cena i prowizja są w {from}; ten kurs przelicza wpływ gotówkowy na {to}.",

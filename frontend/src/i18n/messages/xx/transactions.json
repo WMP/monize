@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "[XX-Bulk Update Transactions-XX]",
-      "subtitle": "[XX-Update {count, plural, one {# selected transaction} other {# selected transactions}}. Toggle the fields you want to change.-XX]",
+      "help": "[XX-Toggle the fields you want to change.-XX]",
       "submitLabel": "[XX-Update {count, plural, one {# Transaction} other {# Transactions}}-XX]",
       "payee": "[XX-Payee-XX]",
       "category": "[XX-Category-XX]",
@@ -368,10 +368,9 @@
       "fromAccount": "[XX-From Account-XX]",
       "toAccount": "[XX-To Account-XX]",
       "transferAmount": "[XX-Transfer Amount-XX]",
-      "transferAmountWithCurrency": "[XX-Transfer Amount ({currency})-XX]",
-      "amountReceived": "[XX-Amount Received ({currency})-XX]",
-      "payeeOptional": "[XX-Payee (Optional)-XX]",
-      "categoryOptional": "[XX-Category (Optional)-XX]"
+      "amountReceivedLabel": "[XX-Amount Received-XX]",
+      "payeeOptional": "[XX-Payee (optional)-XX]",
+      "categoryOptional": "[XX-Category (optional)-XX]"
     },
     "placeholders": {
       "selectAccount": "[XX-Select account...-XX]",
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "[XX-Quantity-XX]",
     "pricePlaceholder": "[XX-Price-XX]",
     "commissionPlaceholder": "[XX-Commission-XX]",
-    "amountPlaceholder": "[XX-Amount ({currency})-XX]",
+    "amountOnlyPlaceholder": "[XX-Amount-XX]",
     "ratePlaceholder": "[XX-{to} per 1 {from}-XX]",
     "ariaRate": "[XX-Exchange rate ({to} per 1 {from})-XX]",
     "rateHint": "[XX-Quantity, price and commission are in {from}; this rate converts the cash impact into {to}.-XX]",

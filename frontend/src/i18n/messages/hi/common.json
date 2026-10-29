@@ -128,6 +128,7 @@
     "search": "खोजें...",
     "selectAll": "सभी चुनें",
     "clear": "साफ़ करें",
+    "clearSearch": "खोज साफ़ करें",
     "noOptions": "कोई विकल्प नहीं मिला",
     "selectedCount": "{count} चयनित"
   },

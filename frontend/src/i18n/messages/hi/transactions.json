@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "लेन-देन बल्क अपडेट",
-      "subtitle": "{count, plural, one {# चयनित लेन-देन} other {# चयनित लेन-देन}} अपडेट करें। जिन फ़ील्ड को बदलना चाहते हैं उन्हें टॉगल करें।",
+      "help": "जिन फ़ील्ड को बदलना चाहते हैं उन्हें टॉगल करें।",
       "submitLabel": "{count, plural, one {# लेन-देन} other {# लेन-देन}} अपडेट करें",
       "payee": "भुगतानकर्ता",
       "category": "श्रेणी",
@@ -368,8 +368,7 @@
       "fromAccount": "स्रोत खाता",
       "toAccount": "गंतव्य खाता",
       "transferAmount": "ट्रांसफर राशि",
-      "transferAmountWithCurrency": "ट्रांसफर राशि ({currency})",
-      "amountReceived": "प्राप्त राशि ({currency})",
+      "amountReceivedLabel": "प्राप्त राशि",
       "payeeOptional": "भुगतानकर्ता (वैकल्पिक)",
       "categoryOptional": "श्रेणी (वैकल्पिक)"
     },
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "मात्रा",
     "pricePlaceholder": "मूल्य",
     "commissionPlaceholder": "कमीशन",
-    "amountPlaceholder": "राशि ({currency})",
+    "amountOnlyPlaceholder": "राशि",
     "ratePlaceholder": "1 {from} पर {to}",
     "ariaRate": "विनिमय दर (1 {from} पर {to})",
     "rateHint": "मात्रा, कीमत और कमीशन {from} में हैं; यह दर नकदी प्रभाव को {to} में परिवर्तित करती है।",

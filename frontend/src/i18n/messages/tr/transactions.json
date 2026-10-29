@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "İşlemleri Toplu Güncelle",
-      "subtitle": "{count, plural, one {# seçili işlemi} other {# seçili işlemi}} güncelleyin. Değiştirmek istediğiniz alanları açın.",
+      "help": "Değiştirmek istediğiniz alanları açın.",
       "submitLabel": "{count, plural, one {# İşlemi Güncelle} other {# İşlemi Güncelle}}",
       "payee": "Alacaklı",
       "category": "Kategori",
@@ -368,8 +368,7 @@
       "fromAccount": "Gönderen Hesap",
       "toAccount": "Alıcı Hesap",
       "transferAmount": "Transfer Tutarı",
-      "transferAmountWithCurrency": "Transfer Tutarı ({currency})",
-      "amountReceived": "Alınan Tutar ({currency})",
+      "amountReceivedLabel": "Alınan Tutar",
       "payeeOptional": "Alacaklı (İsteğe Bağlı)",
       "categoryOptional": "Kategori (İsteğe bağlı)"
     },
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "Miktar",
     "pricePlaceholder": "Fiyat",
     "commissionPlaceholder": "Komisyon",
-    "amountPlaceholder": "Tutar ({currency})",
+    "amountOnlyPlaceholder": "Tutar",
     "ratePlaceholder": "1 {from} için {to}",
     "ariaRate": "Döviz kuru (1 {from} için {to})",
     "rateHint": "Adet, fiyat ve komisyon {from} cinsindendir; bu kur nakit etkisini {to} para birimine çevirir.",

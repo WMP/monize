@@ -4,6 +4,8 @@
     "subtitle": "Zarządzaj walutami używanymi na kontach i w papierach wartościowych",
     "refreshRates": "Odśwież kursy",
     "refreshing": "Odświeżanie...",
+    "ratesAge": "({time})",
+    "statusFilterLabel": "Status",
     "newCurrency": "+ Nowa waluta",
     "searchPlaceholder": "Szukaj po kodzie lub nazwie...",
     "statusAll": "Wszystkie ({count})",
@@ -70,9 +72,9 @@
       "activate": "Aktywuj",
       "deleteCurrency": "Usuń walutę"
     },
-    "usageTooltip": "{accounts} konto(a), {securities} papier(y) wartościowy(e)",
     "usageAccounts": "{count, plural, one {# konto} few {# konta} many {# kont} other {# konta}}",
-    "usageSecurities": "{count, plural, one {# papier} few {# papiery} many {# papierów} other {# papieru}}",
+    "usageSecurities": "{count, plural, one {# papier wartościowy} few {# papiery wartościowe} many {# papierów wartościowych} other {# papieru wartościowego}}",
+    "rateHelp": "Ile jest warta jedna jednostka każdej waluty w {currency}.",
     "empty": {
       "title": "Brak walut",
       "subtitle": "Zacznij od dodania waluty."

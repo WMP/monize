@@ -11,6 +11,7 @@
     "subtitle": "Beheer je aandelen, ETF's, beleggingsfondsen en andere waardepapieren",
     "newSecurity": "+ Nieuw waardepapier",
     "searchPlaceholder": "Zoek op symbool of naam...",
+    "statusFilterLabel": "Status",
     "statusAll": "Alle ({count})",
     "statusActive": "Actief ({count})",
     "statusInactive": "Inactief ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Inactief",
       "inactiveShort": "Ina"
     },
-    "providerTitle": {
-      "override": "Provider-uitzondering per waardepapier",
-      "inherited": "Overgenomen van jouw standaard koersprovidervoorkeur"
-    },
+    "providerInherited": "{provider} (standaard)",
     "columnTitles": {
       "shares": "Huidig aandelenbestand over alle rekeningen",
       "value": "Aandelen over alle rekeningen tegen de meest recente koers, in de valuta van het effect zelf",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Datum",
     "closePriceLabel": "Slotkoers",
-    "openPriceLabel": "Openingskoers",
-    "highPriceLabel": "Hoogste koers",
-    "lowPriceLabel": "Laagste koers",
-    "volumeLabel": "Volume",
-    "optionalPlaceholder": "Optioneel",
+    "openPriceLabel": "Openingskoers (optioneel)",
+    "highPriceLabel": "Hoogste koers (optioneel)",
+    "lowPriceLabel": "Laagste koers (optioneel)",
+    "volumeLabel": "Volume (optioneel)",
     "submitCreate": "Koers toevoegen",
     "submitUpdate": "Koers bijwerken"
   },

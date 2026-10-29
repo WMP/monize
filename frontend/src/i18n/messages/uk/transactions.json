@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "Масове оновлення транзакцій",
-      "subtitle": "Оновити {count, plural, one {# вибрану транзакцію} other {# вибраних транзакцій}}. Увімкніть поля, які хочете змінити.",
+      "help": "Увімкніть поля, які хочете змінити.",
       "submitLabel": "Оновити {count, plural, one {# транзакцію} other {# транзакцій}}",
       "payee": "Одержувач платежу",
       "category": "Категорія",
@@ -368,8 +368,7 @@
       "fromAccount": "Рахунок-джерело",
       "toAccount": "Рахунок-отримувач",
       "transferAmount": "Сума переказу",
-      "transferAmountWithCurrency": "Сума переказу ({currency})",
-      "amountReceived": "Отримана сума ({currency})",
+      "amountReceivedLabel": "Отримана сума",
       "payeeOptional": "Одержувач платежу (необов'язково)",
       "categoryOptional": "Категорія (необов'язково)"
     },
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "Кількість",
     "pricePlaceholder": "Ціна",
     "commissionPlaceholder": "Комісія",
-    "amountPlaceholder": "Сума ({currency})",
+    "amountOnlyPlaceholder": "Сума",
     "ratePlaceholder": "{to} за 1 {from}",
     "ariaRate": "Курс обміну ({to} за 1 {from})",
     "rateHint": "Кількість, ціна та комісія вказані у {from}; цей курс переводить грошовий результат у {to}.",

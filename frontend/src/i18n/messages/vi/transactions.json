@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "Cập nhật giao tác hàng loạt",
-      "subtitle": "Cập nhật {count, plural, one {# giao tác đã chọn} other {# giao tác đã chọn}}. Bật/tắt các trường bạn muốn thay đổi.",
+      "help": "Bật/tắt các trường bạn muốn thay đổi.",
       "submitLabel": "Cập nhật {count, plural, one {# giao tác} other {# giao tác}}",
       "payee": "Người nhận",
       "category": "Danh mục",
@@ -368,8 +368,7 @@
       "fromAccount": "Từ tài khoản",
       "toAccount": "Đến tài khoản",
       "transferAmount": "Số tiền chuyển",
-      "transferAmountWithCurrency": "Số tiền chuyển ({currency})",
-      "amountReceived": "Số tiền nhận ({currency})",
+      "amountReceivedLabel": "Số tiền nhận",
       "payeeOptional": "Người nhận (tùy chọn)",
       "categoryOptional": "Danh mục (Tùy chọn)"
     },
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "Số lượng",
     "pricePlaceholder": "Giá",
     "commissionPlaceholder": "Hoa hồng",
-    "amountPlaceholder": "Số tiền ({currency})",
+    "amountOnlyPlaceholder": "Số tiền",
     "ratePlaceholder": "{to} cho 1 {from}",
     "ariaRate": "Tỷ giá ({to} cho 1 {from})",
     "rateHint": "Số lượng, giá và hoa hồng tính bằng {from}; tỷ giá này quy đổi tác động tiền mặt sang {to}.",

@@ -34,7 +34,6 @@
     "units": "इकाइयाँ",
     "avgCostPerUnit": "औसत लागत / इकाई",
     "heldInAccounts": "खातों में रखी गई",
-    "openAccount": "{name} को निवेश पृष्ठ पर दिखाएँ",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "मूल्यांकन उपलब्ध नहीं",
     "approx": "~ {amount}"

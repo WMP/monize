@@ -11,6 +11,7 @@
     "subtitle": "株式、ETF、投資信託などの有価証券を管理する",
     "newSecurity": "+ 新しい有価証券",
     "searchPlaceholder": "シンボルまたは名前で検索...",
+    "statusFilterLabel": "ステータス",
     "statusAll": "すべて ({count})",
     "statusActive": "有効 ({count})",
     "statusInactive": "無効 ({count})",
@@ -65,10 +66,7 @@
       "inactive": "無効",
       "inactiveShort": "無効"
     },
-    "providerTitle": {
-      "override": "有価証券ごとのプロバイダー設定",
-      "inherited": "デフォルトの株価プロバイダー設定から継承"
-    },
+    "providerInherited": "{provider}（既定）",
     "columnTitles": {
       "shares": "すべての勘定科目で保有している現在の株数",
       "value": "すべての勘定科目で保有している株数に直近の株価を掛けた金額（銘柄自身の通貨建て）",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "日付",
     "closePriceLabel": "終値",
-    "openPriceLabel": "始値",
-    "highPriceLabel": "高値",
-    "lowPriceLabel": "安値",
-    "volumeLabel": "出来高",
-    "optionalPlaceholder": "任意",
+    "openPriceLabel": "始値（任意）",
+    "highPriceLabel": "高値（任意）",
+    "lowPriceLabel": "安値（任意）",
+    "volumeLabel": "出来高（任意）",
     "submitCreate": "株価を追加",
     "submitUpdate": "株価を更新"
   },

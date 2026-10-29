@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "Массовое обновление проводок",
-      "subtitle": "Обновить {count, plural, one {# выбранную проводку} other {# выбранных проводок}}. Отметьте поля, которые хотите изменить.",
+      "help": "Отметьте поля, которые хотите изменить.",
       "submitLabel": "Обновить {count, plural, one {# проводку} other {# проводок}}",
       "payee": "Получатель",
       "category": "Категория",
@@ -368,8 +368,7 @@
       "fromAccount": "Со счёта",
       "toAccount": "На счёт",
       "transferAmount": "Сумма перевода",
-      "transferAmountWithCurrency": "Сумма перевода ({currency})",
-      "amountReceived": "Полученная сумма ({currency})",
+      "amountReceivedLabel": "Полученная сумма",
       "payeeOptional": "Получатель (необязательно)",
       "categoryOptional": "Категория (необязательно)"
     },
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "Количество",
     "pricePlaceholder": "Цена",
     "commissionPlaceholder": "Комиссия",
-    "amountPlaceholder": "Сумма ({currency})",
+    "amountOnlyPlaceholder": "Сумма",
     "ratePlaceholder": "{to} за 1 {from}",
     "ariaRate": "Курс обмена ({to} за 1 {from})",
     "rateHint": "Количество, цена и комиссия указаны в {from}; этот курс переводит денежный результат в {to}.",

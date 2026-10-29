@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "Perbarui Transaksi Massal",
-      "subtitle": "Perbarui {count, plural, one {# transaksi yang dipilih} other {# transaksi yang dipilih}}. Aktifkan kolom yang ingin Anda ubah.",
+      "help": "Aktifkan kolom yang ingin Anda ubah.",
       "submitLabel": "Perbarui {count, plural, one {# Transaksi} other {# Transaksi}}",
       "payee": "Penerima",
       "category": "Kategori",
@@ -368,8 +368,7 @@
       "fromAccount": "Dari Akun",
       "toAccount": "Ke Akun",
       "transferAmount": "Jumlah Transfer",
-      "transferAmountWithCurrency": "Jumlah Transfer ({currency})",
-      "amountReceived": "Jumlah Diterima ({currency})",
+      "amountReceivedLabel": "Jumlah Diterima",
       "payeeOptional": "Penerima (Opsional)",
       "categoryOptional": "Kategori (Opsional)"
     },
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "Kuantitas",
     "pricePlaceholder": "Harga",
     "commissionPlaceholder": "Komisi",
-    "amountPlaceholder": "Jumlah ({currency})",
+    "amountOnlyPlaceholder": "Jumlah",
     "ratePlaceholder": "{to} per 1 {from}",
     "ariaRate": "Nilai tukar ({to} per 1 {from})",
     "rateHint": "Jumlah, harga, dan komisi dalam {from}; kurs ini mengonversi dampak kas ke {to}.",

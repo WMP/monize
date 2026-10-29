@@ -11,6 +11,7 @@
     "subtitle": "Zarządzaj swoimi akcjami, ETF-ami, funduszami inwestycyjnymi i innymi papierami wartościowymi",
     "newSecurity": "+ Nowy papier wartościowy",
     "searchPlaceholder": "Szukaj po symbolu lub nazwie...",
+    "statusFilterLabel": "Status",
     "statusAll": "Wszystkie ({count})",
     "statusActive": "Aktywne ({count})",
     "statusInactive": "Nieaktywne ({count})",
@@ -65,10 +66,7 @@
       "inactive": "Nieaktywny",
       "inactiveShort": "Nie"
     },
-    "providerTitle": {
-      "override": "Nadpisanie dostawcy dla papieru wartościowego",
-      "inherited": "Odziedziczone z domyślnego dostawcy notowań"
-    },
+    "providerInherited": "{provider} (domyślny)",
     "columnTitles": {
       "shares": "Aktualnie posiadane udziały na wszystkich kontach",
       "value": "Udziały na wszystkich kontach według najnowszej ceny, w walucie samego papieru wartościowego",
@@ -218,11 +216,10 @@
   "priceForm": {
     "dateLabel": "Data",
     "closePriceLabel": "Cena zamknięcia",
-    "openPriceLabel": "Cena otwarcia",
-    "highPriceLabel": "Cena maksymalna",
-    "lowPriceLabel": "Cena minimalna",
-    "volumeLabel": "Wolumen",
-    "optionalPlaceholder": "Opcjonalne",
+    "openPriceLabel": "Cena otwarcia (opcjonalnie)",
+    "highPriceLabel": "Cena maksymalna (opcjonalnie)",
+    "lowPriceLabel": "Cena minimalna (opcjonalnie)",
+    "volumeLabel": "Wolumen (opcjonalnie)",
     "submitCreate": "Dodaj cenę",
     "submitUpdate": "Zaktualizuj cenę"
   },

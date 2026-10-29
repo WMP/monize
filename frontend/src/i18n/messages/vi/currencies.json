@@ -4,6 +4,8 @@
     "subtitle": "Quản lý các tiền tệ được sử dụng trong tài khoản và chứng khoán của bạn",
     "refreshRates": "Làm mới tỷ giá",
     "refreshing": "Đang làm mới...",
+    "ratesAge": "({time})",
+    "statusFilterLabel": "Trạng thái",
     "newCurrency": "+ Tiền tệ mới",
     "searchPlaceholder": "Tìm kiếm theo mã hoặc tên...",
     "statusAll": "Tất cả ({count})",
@@ -70,9 +72,9 @@
       "activate": "Kích hoạt",
       "deleteCurrency": "Xóa tiền tệ"
     },
-    "usageTooltip": "{accounts} tài khoản, {securities} chứng khoán",
-    "usageAccounts": "{count, plural, one {# tài khoản} other {# tài khoản}}",
-    "usageSecurities": "{count, plural, one {# chứng khoán} other {# chứng khoán}}",
+    "usageAccounts": "{count, plural, other {# tài khoản}}",
+    "usageSecurities": "{count, plural, other {# chứng khoán}}",
+    "rateHelp": "Giá trị của một đơn vị mỗi loại tiền tính bằng {currency}.",
     "empty": {
       "title": "Không có tiền tệ",
       "subtitle": "Hãy bắt đầu bằng cách thêm một tiền tệ."

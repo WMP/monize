@@ -128,6 +128,7 @@
     "search": "[XX-Search...-XX]",
     "selectAll": "[XX-Select All-XX]",
     "clear": "[XX-Clear-XX]",
+    "clearSearch": "[XX-Clear Search-XX]",
     "noOptions": "[XX-No options found-XX]",
     "selectedCount": "[XX-{count} selected-XX]"
   },

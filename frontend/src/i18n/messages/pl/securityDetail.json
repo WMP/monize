@@ -34,7 +34,6 @@
     "units": "Jednostki",
     "avgCostPerUnit": "Śr. koszt / jednostkę",
     "heldInAccounts": "Trzymane na kontach",
-    "openAccount": "Pokaż {name} na stronie Inwestycje",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "Brak wyceny",
     "approx": "~ {amount}"

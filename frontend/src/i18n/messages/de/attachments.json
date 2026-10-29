@@ -77,6 +77,8 @@
     "unsupported": "Dieser Dateityp kann nicht als Vorschau angezeigt werden. Sie können ihn trotzdem herunterladen.",
     "fit": "An Bildschirm anpassen",
     "actualSize": "Originalgröße",
+    "versionLabel": "Version",
+    "zoomLabel": "Zoom",
     "pageCount": "{count, plural, one {# Seite} other {# Seiten}}",
     "page": "Seite {page} von {total}",
     "open": "Vorschau von {name}"

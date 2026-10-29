@@ -77,6 +77,8 @@
     "unsupported": "Este tipo de ficheiro não pode ser pré-visualizado. Ainda pode transferi-lo.",
     "fit": "Ajustar ao ecrã",
     "actualSize": "Tamanho real",
+    "versionLabel": "Versão",
+    "zoomLabel": "Zoom",
     "pageCount": "{count, plural, one {# página} other {# páginas}}",
     "page": "Página {page} de {total}",
     "open": "Pré-visualizar {name}"

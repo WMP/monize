@@ -4,6 +4,8 @@
     "subtitle": "Gestisci le valute utilizzate nei tuoi conti e titoli",
     "refreshRates": "Aggiorna tassi",
     "refreshing": "Aggiornamento...",
+    "ratesAge": "({time})",
+    "statusFilterLabel": "Stato",
     "newCurrency": "+ Nuova valuta",
     "searchPlaceholder": "Cerca per codice o nome...",
     "statusAll": "Tutte ({count})",
@@ -70,9 +72,9 @@
       "activate": "Attiva",
       "deleteCurrency": "Elimina valuta"
     },
-    "usageTooltip": "{accounts} conto/i, {securities} titolo/i",
     "usageAccounts": "{count, plural, one {# conto} other {# conti}}",
     "usageSecurities": "{count, plural, one {# titolo} other {# titoli}}",
+    "rateHelp": "Quanto vale un'unità di ogni valuta in {currency}.",
     "empty": {
       "title": "Nessuna valuta",
       "subtitle": "Inizia aggiungendo una valuta."

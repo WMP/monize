@@ -34,7 +34,6 @@
     "units": "Birim",
     "avgCostPerUnit": "Ort. maliyet / birim",
     "heldInAccounts": "Hesaplarda tutulan",
-    "openAccount": "{name} hesabını Yatırımlar sayfasında göster",
     "unitsShare": "{units} ({share})",
     "valueUnknown": "Fiyatlanmadı",
     "approx": "~ {amount}"

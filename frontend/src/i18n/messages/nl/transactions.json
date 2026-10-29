@@ -320,7 +320,7 @@
     },
     "modal": {
       "title": "Transacties bulk bijwerken",
-      "subtitle": "Werk {count, plural, one {# geselecteerde transactie} other {# geselecteerde transacties}} bij. Schakel de velden in die je wilt wijzigen.",
+      "help": "Schakel de velden in die je wilt wijzigen.",
       "submitLabel": "Werk {count, plural, one {# transactie} other {# transacties}} bij",
       "payee": "Begunstigde",
       "category": "Categorie",
@@ -368,8 +368,7 @@
       "fromAccount": "Van rekening",
       "toAccount": "Naar rekening",
       "transferAmount": "Overboekingsbedrag",
-      "transferAmountWithCurrency": "Overboekingsbedrag ({currency})",
-      "amountReceived": "Ontvangen bedrag ({currency})",
+      "amountReceivedLabel": "Ontvangen bedrag",
       "payeeOptional": "Begunstigde (optioneel)",
       "categoryOptional": "Categorie (optioneel)"
     },
@@ -538,7 +537,7 @@
     "quantityPlaceholder": "Aantal",
     "pricePlaceholder": "Koers",
     "commissionPlaceholder": "Commissie",
-    "amountPlaceholder": "Bedrag ({currency})",
+    "amountOnlyPlaceholder": "Bedrag",
     "ratePlaceholder": "{to} per 1 {from}",
     "ariaRate": "Wisselkoers ({to} per 1 {from})",
     "rateHint": "Aantal, prijs en commissie zijn in {from}; deze koers rekent het kaseffect om naar {to}.",
