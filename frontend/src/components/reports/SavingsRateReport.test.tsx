@@ -228,7 +228,7 @@ describe('SavingsRateReport', () => {
     await renderReport();
     await screen.findByText(/Failed to load report data/i);
     expect(screen.queryByText(/No budgets found/i)).not.toBeInTheDocument();
-    await act(async () => { fireEvent.click(screen.getByRole('button', {name:'Try again'})); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', {name: /^Try Again$/i})); });
     await screen.findByText(/No budgets found/i);
     expect(mockGetAll).toHaveBeenCalledTimes(2);
   });
