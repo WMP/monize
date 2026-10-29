@@ -2,6 +2,10 @@ import { DataSource } from "typeorm";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { BudgetActivityReportsService } from "./budget-activity-reports.service";
+import {
+  CategorySpending,
+  queryCategorySpending,
+} from "./budget-spending.util";
 import { BudgetsService } from "./budgets.service";
 import { Budget, BudgetType, BudgetStrategy } from "./entities/budget.entity";
 import {
@@ -21,6 +25,33 @@ import {
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
+
+jest.mock("./budget-spending.util", () => ({
+  ...jest.requireActual("./budget-spending.util"),
+  queryCategorySpending: jest.fn(),
+}));
+
+const mockedSpending = queryCategorySpending as jest.MockedFunction<
+  typeof queryCategorySpending
+>;
+
+/** What `queryCategorySpending` returns for the given net sums (expenses negative). */
+function spending(
+  categories: Record<string, number>,
+  extra: {
+    transfers?: Record<string, number>;
+    incomplete?: string[];
+  } = {},
+): CategorySpending {
+  return {
+    spendingMap: new Map(Object.entries(categories)),
+    transferSpendingMap: new Map(Object.entries(extra.transfers ?? {})),
+    currency: "USD",
+    incompleteCategoryIds: new Set(extra.incomplete ?? []),
+    incompleteTransferAccountIds: new Set(),
+    missingRatePairs: extra.incomplete ? ["JPY->USD"] : [],
+  };
+}
 
 describe("BudgetActivityReportsService", () => {
   let scopedDataSource: DataSourceMock;
@@ -193,6 +224,8 @@ describe("BudgetActivityReportsService", () => {
   });
 
   beforeEach(async () => {
+    mockedSpending.mockReset();
+    mockedSpending.mockResolvedValue(spending({}));
     periodsRepository = {
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn().mockResolvedValue(null),
@@ -285,387 +318,134 @@ describe("BudgetActivityReportsService", () => {
   });
 
   describe("getDailySpending", () => {
-    it("should use open period date range when one exists", async () => {
-      const openPeriod: Partial<BudgetPeriod> = {
-        id: "p-1",
-        budgetId: "budget-1",
-        periodStart: "2026-02-01",
-        periodEnd: "2026-02-28",
-        status: PeriodStatus.OPEN,
-      };
+    const openPeriod: Partial<BudgetPeriod> = {
+      id: "p-1",
+      budgetId: "budget-1",
+      periodStart: "2026-02-01",
+      periodEnd: "2026-02-28",
+      status: PeriodStatus.OPEN,
+    };
 
+    it("sums the budget page's net spending per day over the open period", async () => {
       periodsRepository.findOne.mockResolvedValueOnce(openPeriod);
-
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { date: "2026-02-05", total: "50.00" },
-          { date: "2026-02-10", total: "75.50" },
-        ]),
+      mockedSpending.mockImplementation(async (...args: unknown[]) => {
+        const day = args[4] as string;
+        if (day === "2026-02-05") return spending({ "cat-1": -50 });
+        if (day === "2026-02-10")
+          return spending({ "cat-1": -60.25, "cat-2": -15.25 });
+        return spending({});
       });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-
-      transactionsRepository.createQueryBuilder
-        .mockReturnValueOnce(directQb)
-        .mockReturnValueOnce(splitQb);
-      // The split query builder is also called
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(
-        createMockQueryBuilder(),
-      );
 
       const result = await service.getDailySpending("user-1", "budget-1");
 
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({ date: "2026-02-05", amount: 50 });
-      expect(result[1]).toEqual({ date: "2026-02-10", amount: 75.5 });
+      expect(result).toEqual([
+        { date: "2026-02-05", amount: 50, valuationComplete: true },
+        { date: "2026-02-10", amount: 75.5, valuationComplete: true },
+      ]);
       expect(periodsRepository.findOne).toHaveBeenCalledWith({
         where: { budgetId: "budget-1", status: PeriodStatus.OPEN },
       });
+      // One call per day of the period, each a single-day window over the
+      // budget's expense lines.
+      expect(mockedSpending).toHaveBeenCalledTimes(28);
+      const first = mockedSpending.mock.calls[0];
+      expect(first[4]).toBe("2026-02-01");
+      expect(first[5]).toBe("2026-02-01");
+      expect((first[3] as BudgetCategory[]).map((bc) => bc.id)).toEqual([
+        "bc-1",
+        "bc-2",
+      ]);
     });
 
-    it("should leave the budget's excluded accounts out of the daily queries", async () => {
-      budgetsService.findOne.mockResolvedValueOnce({
-        ...mockBudget,
-        config: { excludedAccountIds: ["acc-x"] },
-      });
-      const directQb = createMockQueryBuilder();
-      const splitQb = createMockQueryBuilder();
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
+    it("counts a refund against its own category, not as spending", async () => {
+      periodsRepository.findOne.mockResolvedValueOnce(openPeriod);
+      // Net of -100 and +30 in one category is -70; a category whose credits
+      // exceed its debits (+40) is not spending.
+      mockedSpending.mockImplementation(async (...args: unknown[]) =>
+        args[4] === "2026-02-03"
+          ? spending({ "cat-1": -70, "cat-2": 40 })
+          : spending({}),
+      );
 
-      await service.getDailySpending("user-1", "budget-1");
+      const result = await service.getDailySpending("user-1", "budget-1");
 
-      for (const qb of [directQb, splitQb]) {
-        expect(qb.andWhere).toHaveBeenCalledWith(
-          "t.account_id NOT IN (:...excludedAccountIds)",
-          { excludedAccountIds: ["acc-x"] },
-        );
-      }
+      expect(result).toEqual([
+        { date: "2026-02-03", amount: 70, valuationComplete: true },
+      ]);
+    });
+
+    it("marks a day incomplete when a row had no rate, keeping what converted", async () => {
+      periodsRepository.findOne.mockResolvedValueOnce(openPeriod);
+      mockedSpending.mockImplementation(async (...args: unknown[]) =>
+        args[4] === "2026-02-03"
+          ? spending({ "cat-1": -20 }, { incomplete: ["cat-2"] })
+          : spending({}),
+      );
+
+      const result = await service.getDailySpending("user-1", "budget-1");
+
+      expect(result).toEqual([
+        { date: "2026-02-03", amount: 20, valuationComplete: false },
+      ]);
     });
 
     it("should fall back to budget periodStart when no open period exists", async () => {
-      periodsRepository.findOne.mockResolvedValueOnce(null);
+      mockedSpending.mockResolvedValue(spending({}));
 
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ date: "2026-02-03", total: "25.00" }]),
-      });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
+      await service.getDailySpending("user-1", "budget-1");
 
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
-
-      const result = await service.getDailySpending("user-1", "budget-1");
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({ date: "2026-02-03", amount: 25 });
-      // Verify the budget's periodStart was used (fallback path)
-      expect(budgetsService.findOne).toHaveBeenCalledWith("user-1", "budget-1");
+      expect(mockedSpending.mock.calls[0][4]).toBe("2026-02-01");
+      expect(mockedSpending.mock.calls[27][4]).toBe("2026-02-28");
     });
 
-    it("should merge direct and split spending on the same date", async () => {
-      const openPeriod: Partial<BudgetPeriod> = {
-        id: "p-1",
-        budgetId: "budget-1",
-        periodStart: "2026-02-01",
-        periodEnd: "2026-02-28",
-        status: PeriodStatus.OPEN,
-      };
-
+    it("includes transfer lines through the transfer spending map", async () => {
       periodsRepository.findOne.mockResolvedValueOnce(openPeriod);
-
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { date: "2026-02-05", total: "30.00" },
-          { date: "2026-02-10", total: "40.00" },
-        ]),
-      });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { date: "2026-02-05", total: "20.00" },
-          { date: "2026-02-12", total: "15.00" },
-        ]),
-      });
-
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
-
-      const result = await service.getDailySpending("user-1", "budget-1");
-
-      expect(result).toHaveLength(3);
-      // Sorted by date
-      expect(result[0]).toEqual({ date: "2026-02-05", amount: 50 });
-      expect(result[1]).toEqual({ date: "2026-02-10", amount: 40 });
-      expect(result[2]).toEqual({ date: "2026-02-12", amount: 15 });
-    });
-
-    it("should include transfer account queries when budget has transfer categories", async () => {
-      const budgetWithTransfers: Budget = {
+      budgetsService.findOne.mockResolvedValueOnce({
         ...mockBudget,
-        categories: [
-          mockBudgetCategory,
-          mockTransferCategory,
-          mockIncomeCategory,
-        ],
-      };
-
-      budgetsService.findOne.mockResolvedValueOnce(budgetWithTransfers);
-
-      const openPeriod: Partial<BudgetPeriod> = {
-        id: "p-1",
-        budgetId: "budget-1",
-        periodStart: "2026-02-01",
-        periodEnd: "2026-02-28",
-        status: PeriodStatus.OPEN,
-      };
-
-      periodsRepository.findOne.mockResolvedValueOnce(openPeriod);
-
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ date: "2026-02-05", total: "100.00" }]),
+        categories: [mockTransferCategory],
       });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-      const transferQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { date: "2026-02-05", total: "200.00" },
-          { date: "2026-02-15", total: "50.00" },
-        ]),
-      });
-      // A transfer recorded as one line of a split parent (audit P5-007):
-      // counted alongside the whole-row transfers.
-      const splitTransferQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ date: "2026-02-15", total: "25.00" }]),
-      });
-
-      // Direct spending query, split query, then the two transfer queries
-      transactionsRepository.createQueryBuilder
-        .mockReturnValueOnce(directQb)
-        .mockReturnValueOnce(transferQb);
-      splitsRepository.createQueryBuilder
-        .mockReturnValueOnce(splitQb)
-        .mockReturnValueOnce(splitTransferQb);
+      mockedSpending.mockImplementation(async (...args: unknown[]) =>
+        args[4] === "2026-02-07"
+          ? spending({}, { transfers: { "acc-savings": 200 } })
+          : spending({}),
+      );
 
       const result = await service.getDailySpending("user-1", "budget-1");
 
-      // 4 queries should have been created
-      expect(transactionsRepository.createQueryBuilder).toHaveBeenCalledTimes(
-        2,
-      );
-      expect(splitsRepository.createQueryBuilder).toHaveBeenCalledTimes(2);
-      expect(result).toHaveLength(2);
-      // Feb 5: 100 direct + 200 transfer = 300
-      expect(result[0]).toEqual({ date: "2026-02-05", amount: 300 });
-      // Feb 15: 50 whole-row transfer + 25 split-line transfer
-      expect(result[1]).toEqual({ date: "2026-02-15", amount: 75 });
+      expect(result).toEqual([
+        { date: "2026-02-07", amount: 200, valuationComplete: true },
+      ]);
     });
 
     it("should return empty array when no expense categories exist", async () => {
-      const incomeOnlyBudget: Budget = {
+      budgetsService.findOne.mockResolvedValueOnce({
         ...mockBudget,
         categories: [mockIncomeCategory],
-      };
-
-      budgetsService.findOne.mockResolvedValueOnce(incomeOnlyBudget);
-      periodsRepository.findOne.mockResolvedValueOnce(null);
-
-      const result = await service.getDailySpending("user-1", "budget-1");
-
-      expect(result).toEqual([]);
-      // No queries should be created since there are no categoryIds or transferAccountIds
-      expect(transactionsRepository.createQueryBuilder).not.toHaveBeenCalled();
-      expect(splitsRepository.createQueryBuilder).not.toHaveBeenCalled();
-    });
-
-    it("should handle only transfer categories with no regular categories", async () => {
-      const transferOnlyBudget: Budget = {
-        ...mockBudget,
-        categories: [mockTransferCategory, mockIncomeCategory],
-      };
-
-      budgetsService.findOne.mockResolvedValueOnce(transferOnlyBudget);
-
-      const openPeriod: Partial<BudgetPeriod> = {
-        id: "p-1",
-        budgetId: "budget-1",
-        periodStart: "2026-02-01",
-        periodEnd: "2026-02-28",
-        status: PeriodStatus.OPEN,
-      };
-
-      periodsRepository.findOne.mockResolvedValueOnce(openPeriod);
-
-      const transferQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ date: "2026-02-20", total: "150.00" }]),
-      });
-      const splitTransferQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(transferQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitTransferQb);
-
-      const result = await service.getDailySpending("user-1", "budget-1");
-
-      // Only the two transfer queries should be created (no direct/split
-      // category queries) -- the split-transfer read still runs, because a
-      // transfer can arrive as one line of a split parent (audit P5-007).
-      expect(transactionsRepository.createQueryBuilder).toHaveBeenCalledTimes(
-        1,
-      );
-      expect(splitsRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({ date: "2026-02-20", amount: 150 });
-    });
-
-    it("should handle empty query results", async () => {
-      periodsRepository.findOne.mockResolvedValueOnce({
-        id: "p-1",
-        budgetId: "budget-1",
-        periodStart: "2026-02-01",
-        periodEnd: "2026-02-28",
-        status: PeriodStatus.OPEN,
       });
 
       const result = await service.getDailySpending("user-1", "budget-1");
 
       expect(result).toEqual([]);
-    });
-
-    it("should handle null total values in query results", async () => {
-      periodsRepository.findOne.mockResolvedValueOnce({
-        id: "p-1",
-        budgetId: "budget-1",
-        periodStart: "2026-02-01",
-        periodEnd: "2026-02-28",
-        status: PeriodStatus.OPEN,
-      });
-
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ date: "2026-02-05", total: null }]),
-      });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
-
-      const result = await service.getDailySpending("user-1", "budget-1");
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({ date: "2026-02-05", amount: 0 });
-    });
-
-    it("should sort results by date ascending", async () => {
-      periodsRepository.findOne.mockResolvedValueOnce({
-        id: "p-1",
-        budgetId: "budget-1",
-        periodStart: "2026-02-01",
-        periodEnd: "2026-02-28",
-        status: PeriodStatus.OPEN,
-      });
-
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { date: "2026-02-20", total: "30.00" },
-          { date: "2026-02-05", total: "10.00" },
-          { date: "2026-02-12", total: "20.00" },
-        ]),
-      });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
-
-      const result = await service.getDailySpending("user-1", "budget-1");
-
-      expect(result[0].date).toBe("2026-02-05");
-      expect(result[1].date).toBe("2026-02-12");
-      expect(result[2].date).toBe("2026-02-20");
-    });
-
-    it("should round amounts to storage precision (4 decimal places)", async () => {
-      periodsRepository.findOne.mockResolvedValueOnce({
-        id: "p-1",
-        budgetId: "budget-1",
-        periodStart: "2026-02-01",
-        periodEnd: "2026-02-28",
-        status: PeriodStatus.OPEN,
-      });
-
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ date: "2026-02-05", total: "33.335" }]),
-      });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
-
-      const result = await service.getDailySpending("user-1", "budget-1");
-
-      expect(result[0].amount).toBe(33.335);
+      expect(mockedSpending).not.toHaveBeenCalled();
     });
 
     it("should handle budget with no categories array", async () => {
-      const budgetNoCats: Budget = {
+      budgetsService.findOne.mockResolvedValueOnce({
         ...mockBudget,
-        categories: undefined as unknown as BudgetCategory[],
-      };
-
-      budgetsService.findOne.mockResolvedValueOnce(budgetNoCats);
-      periodsRepository.findOne.mockResolvedValueOnce(null);
+        categories: undefined,
+      });
 
       const result = await service.getDailySpending("user-1", "budget-1");
 
       expect(result).toEqual([]);
     });
 
-    it("should truncate date strings to 10 characters", async () => {
-      periodsRepository.findOne.mockResolvedValueOnce({
-        id: "p-1",
-        budgetId: "budget-1",
-        periodStart: "2026-02-01",
-        periodEnd: "2026-02-28",
-        status: PeriodStatus.OPEN,
-      });
-
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([
-            { date: "2026-02-05T00:00:00.000Z", total: "10.00" },
-          ]),
-      });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
+    it("should handle empty query results", async () => {
+      mockedSpending.mockResolvedValue(spending({}));
 
       const result = await service.getDailySpending("user-1", "budget-1");
 
-      expect(result[0].date).toBe("2026-02-05");
+      expect(result).toEqual([]);
     });
   });
 
@@ -804,6 +584,20 @@ describe("BudgetActivityReportsService", () => {
   });
 
   describe("getSeasonalPatterns", () => {
+    // The sweep runs 13 months, oldest first; the oldest and the newest share a
+    // calendar month, so the oldest call answers empty and the rest answer by
+    // calendar month.
+    const byMonth =
+      (
+        perMonth: Record<number, Record<string, number>>,
+        extra: { incomplete?: string[] } = {},
+      ) =>
+      async (...args: unknown[]) => {
+        const isOldest = mockedSpending.mock.calls.length === 1;
+        const month = Number((args[4] as string).slice(5, 7));
+        return isOldest ? spending({}) : spending(perMonth[month] ?? {}, extra);
+      };
+
     it("should return empty array when no expense categories exist", async () => {
       budgetsService.findOne.mockResolvedValueOnce({
         ...mockBudget,
@@ -815,158 +609,70 @@ describe("BudgetActivityReportsService", () => {
       expect(result).toEqual([]);
     });
 
-    it("should compute seasonal patterns from transaction data", async () => {
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { categoryId: "cat-1", year: 2025, month: 6, total: "800" },
-          { categoryId: "cat-1", year: 2025, month: 7, total: "200" },
-          { categoryId: "cat-1", year: 2025, month: 12, total: "900" },
-        ]),
-      });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
+    it("should compute seasonal patterns from the budget page's net spending", async () => {
+      mockedSpending.mockImplementation(
+        byMonth({
+          6: { "cat-1": -800 },
+          7: { "cat-1": -200 },
+          12: { "cat-1": -900 },
+        }),
+      );
 
       const result = await service.getSeasonalPatterns("user-1", "budget-1");
 
       expect(result).toHaveLength(1);
-      expect(result[0].categoryId).toBe("cat-1");
-      expect(result[0].categoryName).toBe("Groceries");
-      expect(result[0].monthlyAverages).toHaveLength(12);
-      expect(result[0].typicalMonthlySpend).toBeGreaterThan(0);
+      const cat = result[0];
+      expect(cat.categoryId).toBe("cat-1");
+      expect(cat.categoryName).toBe("Groceries");
+      expect(cat.monthlyAverages).toHaveLength(12);
+      expect(cat.monthlyAverages[5].average).toBe(800);
+      expect(cat.monthlyAverages[11].average).toBe(900);
+      expect(cat.typicalMonthlySpend).toBe(633.3333);
+      expect(cat.valuationComplete).toBe(true);
     });
 
-    it("should merge split spending with direct spending", async () => {
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([
-            { categoryId: "cat-1", year: 2025, month: 3, total: "100" },
-          ]),
-      });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([
-            { categoryId: "cat-1", year: 2025, month: 3, total: "50" },
-          ]),
-      });
-
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
+    it("nets a refund inside the month instead of counting the gross debit", async () => {
+      // 100 spent and 30 refunded arrives as a net -70.
+      mockedSpending.mockImplementation(byMonth({ 3: { "cat-1": -70 } }));
 
       const result = await service.getSeasonalPatterns("user-1", "budget-1");
 
-      // March (month 3) should have 150 (100 + 50)
-      const marchAvg = result[0].monthlyAverages.find((m) => m.month === 3);
-      expect(marchAvg!.average).toBe(150);
+      expect(result[0].monthlyAverages[2].average).toBe(70);
     });
 
-    it("should identify high months above threshold", async () => {
-      // Create data where December is very high relative to others
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([
-          { categoryId: "cat-1", year: 2025, month: 1, total: "100" },
-          { categoryId: "cat-1", year: 2025, month: 2, total: "110" },
-          { categoryId: "cat-1", year: 2025, month: 3, total: "105" },
-          { categoryId: "cat-1", year: 2025, month: 4, total: "95" },
-          { categoryId: "cat-1", year: 2025, month: 5, total: "100" },
-          { categoryId: "cat-1", year: 2025, month: 6, total: "100" },
-          { categoryId: "cat-1", year: 2025, month: 7, total: "100" },
-          { categoryId: "cat-1", year: 2025, month: 8, total: "100" },
-          { categoryId: "cat-1", year: 2025, month: 9, total: "100" },
-          { categoryId: "cat-1", year: 2025, month: 10, total: "100" },
-          { categoryId: "cat-1", year: 2025, month: 11, total: "100" },
-          { categoryId: "cat-1", year: 2025, month: 12, total: "1000" },
-        ]),
-      });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
+    it("flags a category with an unconvertible row as incomplete", async () => {
+      mockedSpending.mockImplementation(
+        byMonth({ 3: { "cat-1": -70 } }, { incomplete: ["cat-1"] }),
+      );
 
       const result = await service.getSeasonalPatterns("user-1", "budget-1");
 
-      expect(result[0].highMonths).toContain(12);
-    });
-
-    it("should handle categories with null categoryId", async () => {
-      const budgetWithNull: Budget = {
-        ...mockBudget,
-        categories: [
-          { ...mockBudgetCategory, categoryId: null, category: null },
-          mockIncomeCategory,
-        ],
-      };
-
-      budgetsService.findOne.mockResolvedValueOnce(budgetWithNull);
-
-      const result = await service.getSeasonalPatterns("user-1", "budget-1");
-
-      expect(result).toEqual([]);
+      expect(result).toHaveLength(1);
+      expect(result[0].valuationComplete).toBe(false);
     });
 
     it("should use parent name when category has a parent", async () => {
-      const parentCategory: Category = {
-        ...mockCategory,
-        id: "cat-parent",
-        name: "Food",
-      };
-
-      const childCategory: Category = {
-        ...mockCategory,
-        id: "cat-1",
-        name: "Groceries",
-        parentId: "cat-parent",
-        parent: parentCategory,
-      };
-
-      const budgetWithChild: Budget = {
+      budgetsService.findOne.mockResolvedValueOnce({
         ...mockBudget,
         categories: [
-          { ...mockBudgetCategory, category: childCategory },
-          mockBudgetCategory2,
-          mockIncomeCategory,
+          {
+            ...mockBudgetCategory,
+            category: {
+              ...mockCategory,
+              parent: { ...mockCategory, id: "cat-p", name: "Food" },
+            },
+          },
         ],
-      };
-
-      budgetsService.findOne.mockResolvedValueOnce(budgetWithChild);
-
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([
-            { categoryId: "cat-1", year: 2025, month: 6, total: "100" },
-          ]),
       });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
+      mockedSpending.mockImplementation(byMonth({ 3: { "cat-1": -70 } }));
 
       const result = await service.getSeasonalPatterns("user-1", "budget-1");
 
-      const catResult = result.find((r) => r.categoryId === "cat-1");
-      expect(catResult!.categoryName).toBe("Food: Groceries");
+      expect(result[0].categoryName).toBe("Food: Groceries");
     });
 
     it("should handle all zero spending", async () => {
-      const directQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-      const splitQb = createMockQueryBuilder({
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-
-      transactionsRepository.createQueryBuilder.mockReturnValueOnce(directQb);
-      splitsRepository.createQueryBuilder.mockReturnValueOnce(splitQb);
+      mockedSpending.mockResolvedValue(spending({}));
 
       const result = await service.getSeasonalPatterns("user-1", "budget-1");
 

@@ -2,6 +2,10 @@ import { DataSource } from "typeorm";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { BudgetHealthReportsService } from "./budget-health-reports.service";
+import {
+  CategorySpending,
+  queryCategorySpending,
+} from "./budget-spending.util";
 import { BudgetsService } from "./budgets.service";
 import { Budget, BudgetType, BudgetStrategy } from "./entities/budget.entity";
 import {
@@ -20,6 +24,30 @@ import {
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
+
+jest.mock("./budget-spending.util", () => ({
+  ...jest.requireActual("./budget-spending.util"),
+  queryCategorySpending: jest.fn(),
+}));
+
+const mockedSpending = queryCategorySpending as jest.MockedFunction<
+  typeof queryCategorySpending
+>;
+
+/** What `queryCategorySpending` returns for the given net sums (expenses negative). */
+function spending(
+  categories: Record<string, number>,
+  incomplete: string[] = [],
+): CategorySpending {
+  return {
+    spendingMap: new Map(Object.entries(categories)),
+    transferSpendingMap: new Map(),
+    currency: "USD",
+    incompleteCategoryIds: new Set(incomplete),
+    incompleteTransferAccountIds: new Set(),
+    missingRatePairs: incomplete.length > 0 ? ["JPY->USD"] : [],
+  };
+}
 
 describe("BudgetHealthReportsService", () => {
   let scopedDataSource: DataSourceMock;
@@ -91,12 +119,15 @@ describe("BudgetHealthReportsService", () => {
     andWhere: jest.fn().mockReturnThis(),
     innerJoin: jest.fn().mockReturnThis(),
     groupBy: jest.fn().mockReturnThis(),
+    addGroupBy: jest.fn().mockReturnThis(),
     getRawMany: jest.fn().mockResolvedValue([]),
     getRawOne: jest.fn().mockResolvedValue({ total: "0" }),
     ...overrides,
   });
 
   beforeEach(async () => {
+    mockedSpending.mockReset();
+    mockedSpending.mockResolvedValue(spending({}));
     periodsRepository = {
       find: jest.fn().mockResolvedValue([]),
     };
@@ -414,24 +445,69 @@ describe("BudgetHealthReportsService", () => {
       expect(result).toHaveLength(3);
     });
 
-    it("leaves the budget's excluded accounts out of the income and expense queries", async () => {
+    it("leaves the budget's excluded accounts out of the no-income-category query", async () => {
       budgetsService.findOne.mockResolvedValueOnce({
         ...mockBudget,
         config: { excludedAccountIds: ["acc-x"] },
       });
-      const qbs = [createMockQueryBuilder(), createMockQueryBuilder()];
-      transactionsRepository.createQueryBuilder
-        .mockReturnValueOnce(qbs[0])
-        .mockReturnValueOnce(qbs[1]);
+      const qb = createMockQueryBuilder();
+      transactionsRepository.createQueryBuilder.mockReturnValueOnce(qb);
 
       await service.getSavingsRate("user-1", "budget-1", 1);
 
-      for (const qb of qbs) {
-        expect(qb.andWhere).toHaveBeenCalledWith(
-          "t.account_id NOT IN (:...excludedAccountIds)",
-          { excludedAccountIds: ["acc-x"] },
-        );
-      }
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        "t.account_id NOT IN (:...excludedAccountIds)",
+        { excludedAccountIds: ["acc-x"] },
+      );
+    });
+
+    it("reads income and expenses through the budget page's net, converted actuals", async () => {
+      budgetsService.findOne.mockResolvedValueOnce({
+        ...mockBudget,
+        categories: [
+          makeBudgetCategory({
+            id: "bc-income",
+            categoryId: "cat-income",
+            isIncome: true,
+          }),
+          makeBudgetCategory({ id: "bc-1", categoryId: "cat-1" }),
+        ],
+      });
+      // 5000 less a 400 correction; 2000 spent less 500 refunded.
+      mockedSpending.mockResolvedValue(
+        spending({ "cat-income": 4600, "cat-1": -1500 }),
+      );
+
+      const result = await service.getSavingsRate("user-1", "budget-1", 1);
+
+      expect(mockedSpending).toHaveBeenCalledTimes(1);
+      expect(result[0]).toMatchObject({
+        income: 4600,
+        expenses: 1500,
+        savings: 3100,
+        valuationComplete: true,
+      });
+    });
+
+    it("flags a month whose category had a row with no rate", async () => {
+      budgetsService.findOne.mockResolvedValueOnce({
+        ...mockBudget,
+        categories: [
+          makeBudgetCategory({
+            id: "bc-income",
+            categoryId: "cat-income",
+            isIncome: true,
+          }),
+          makeBudgetCategory({ id: "bc-1", categoryId: "cat-1" }),
+        ],
+      });
+      mockedSpending.mockResolvedValue(
+        spending({ "cat-income": 5000, "cat-1": -100 }, ["cat-1"]),
+      );
+
+      const result = await service.getSavingsRate("user-1", "budget-1", 1);
+
+      expect(result[0].valuationComplete).toBe(false);
     });
 
     it("computes savings rate as (income - expenses) / income * 100", async () => {
