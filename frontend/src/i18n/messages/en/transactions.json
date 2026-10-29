@@ -368,6 +368,8 @@
       "toAccount": "To Account",
       "transferAmount": "Transfer Amount",
       "amountReceivedLabel": "Amount Received",
+      "transferAmountInCurrency": "Transfer Amount ({currency})",
+      "amountReceivedInCurrency": "Amount Received ({currency})",
       "payeeOptional": "Payee (optional)",
       "categoryOptional": "Category (optional)"
     },

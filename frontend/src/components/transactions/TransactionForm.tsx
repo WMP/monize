@@ -28,6 +28,7 @@ import {
   rememberTransactionCurrency,
 } from '@/lib/lastTransactionCurrency';
 import { TransferTransactionFields } from './TransferTransactionFields';
+import { useTransferFxAutofill } from './useTransferFxAutofill';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { Modal } from '@/components/ui/Modal';
 import { TagForm } from '@/components/tags/TagForm';
@@ -503,6 +504,18 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
       toAccountName: toAccount.name,
     };
   }, [mode, watchedAccountId, transferToAccountId, accounts]);
+
+  // Cross-currency transfer: typing either amount fills the other from the
+  // day's rate, while the other side is empty or still auto-filled.
+  const transferFx = useTransferFxAutofill({
+    fromCurrency: crossCurrencyInfo?.fromCurrency ?? null,
+    toCurrency: crossCurrencyInfo?.toCurrency ?? null,
+    date: watchedDate,
+    amount: watchedAmount,
+    targetAmount: transferTargetAmount,
+    setAmount: (value) => setValue('amount', value, { shouldValidate: true }),
+    setTargetAmount: setTransferTargetAmount,
+  });
 
   // Joint context swaps the picker sources for the owner's lists. While the
   // owner lists are still loading the pickers are empty rather than showing
@@ -1755,6 +1768,8 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
           setTransferToAccountId={setTransferToAccountId}
           transferTargetAmount={transferTargetAmount}
           setTransferTargetAmount={setTransferTargetAmount}
+          onTransferAmountChange={transferFx.handleAmountChange}
+          onTransferTargetAmountChange={transferFx.handleTargetAmountChange}
           transferPayeeId={transferPayeeId}
           transferPayeeName={transferPayeeName}
           setTransferPayeeId={setTransferPayeeId}
