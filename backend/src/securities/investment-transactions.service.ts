@@ -71,6 +71,11 @@ import { SecuritiesService } from "./securities.service";
 import { SecurityPriceService } from "./security-price.service";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
+import {
+  buildRateIndex,
+  convertAtDate,
+} from "../common/time-series/rate-index.util";
+import { resolveUserDefaultCurrency } from "../common/default-currency.util";
 import { CurrenciesService } from "../currencies/currencies.service";
 import { roundToDecimals, roundMoney, sumMoney } from "../common/round.util";
 import { stripHtml } from "../common/sanitization.util";
@@ -120,12 +125,8 @@ export interface LlmCapitalGainsEntry {
   accountName: string | null;
   symbol: string | null;
   securityName: string | null;
-  /**
-   * Currency the monetary fields are denominated in. `null` when the entry
-   * aggregates rows from multiple accounts with different currencies (the LLM
-   * should then treat the sums as mixed and avoid currency-specific claims).
-   */
-  currency: string | null;
+  /** The reader's default currency: every figure is converted into it. */
+  currency: string;
   /**
    * `null` when any row folded into this entry had an unknown boundary value --
    * a security whose currency could not be converted into its account's. An
@@ -155,6 +156,12 @@ export interface LlmCapitalGainsResult {
     realizedGainComplete: boolean;
     /** The gains that are known, when `realizedGainComplete` is false; otherwise null. */
     realizedGainKnownSubtotal: number | null;
+    /** The currency every total is in (the reader's default). */
+    currency: string;
+    /** False when a pair had no rate; the affected figures are null. Read as `=== false`. */
+    fxComplete: boolean;
+    /** `"USD->CAD"` for each pair with no rate; empty when `fxComplete`. */
+    missingRatePairs: string[];
     /**
      * `null` when any row in the window had an unconvertible boundary value.
      * A total that silently omitted those rows would read as complete.
@@ -3631,9 +3638,9 @@ export class InvestmentTransactionsService {
    * narrows by symbol, and aggregates into buckets ('month', 'security', or
    * 'account') so the assistant gets a compact shape with period totals.
    *
-   * All monetary values are in the holding account's currency. When a bucket
-   * spans accounts with differing currencies, its `currency` is set to `null`
-   * so callers can tell the sum is mixed.
+   * Every figure is converted into the user's default currency at the rate for
+   * its month; a pair with no rate makes the figure null and is named in
+   * `totals.missingRatePairs` (never rate 1).
    */
   async getLlmCapitalGains(
     userId: string,
@@ -3680,7 +3687,6 @@ export class InvestmentTransactionsService {
       accountName: string | null;
       symbol: string | null;
       securityName: string | null;
-      currency: string | null | undefined; // undefined = not seen yet
       startValueScaled: number;
       endValueScaled: number;
       realizedScaled: number;
@@ -3705,14 +3711,79 @@ export class InvestmentTransactionsService {
     let totalsIncomplete = false;
     let totalsRealizedIncomplete = false;
 
+    // Every figure is converted into the reader's currency at the rate for the
+    // month it belongs to, so a bucket never adds CAD to USD. A pair with no
+    // rate leaves the figure unknown and is named, never read as rate 1.
+    const defaultCurrency = await resolveUserDefaultCurrency(
+      this.dataSource,
+      userId,
+    );
+    const monthEndOf = (month: string): string => {
+      const [y, m] = month.split("-").map(Number);
+      return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+    };
+    const foreign = new Set<string>();
     for (const e of filtered) {
+      if (e.accountCurrencyCode && e.accountCurrencyCode !== defaultCurrency) {
+        foreign.add(e.accountCurrencyCode);
+      }
+    }
+    const monthsInWindow = filtered.map((e) => e.month).sort();
+    const rateIndex =
+      foreign.size > 0
+        ? await withScopedDb(this.dataSource, (m) =>
+            buildRateIndex(
+              (sql, params) => m.query(sql, params),
+              foreign,
+              defaultCurrency,
+              `${monthsInWindow[0]}-01`,
+              monthEndOf(monthsInWindow[monthsInWindow.length - 1]),
+            ),
+          )
+        : new Map();
+    const missingRatePairs = new Set<string>();
+    const toDefault = (
+      value: number | null,
+      e: CapitalGainEntry,
+    ): number | null => {
+      if (value === null) return null;
+      const from = e.accountCurrencyCode;
+      if (from === defaultCurrency || value === 0) return value;
+      const converted = from
+        ? convertAtDate(
+            value,
+            from,
+            defaultCurrency,
+            monthEndOf(e.month),
+            rateIndex,
+          )
+        : null;
+      if (converted === null) {
+        missingRatePairs.add(`${from ?? "?"}->${defaultCurrency}`);
+      }
+      return converted;
+    };
+
+    for (const raw of filtered) {
+      const e = {
+        ...raw,
+        startValue: toDefault(raw.startValue, raw),
+        endValue: toDefault(raw.endValue, raw),
+        realizedGain: toDefault(raw.realizedGain, raw),
+        realizedGainKnownSubtotal: toDefault(
+          raw.realizedGain ?? raw.realizedGainKnownSubtotal ?? 0,
+          raw,
+        ),
+        unrealizedGain: toDefault(raw.unrealizedGain, raw),
+        totalCapitalGain: toDefault(raw.totalCapitalGain, raw),
+      };
       if (e.realizedGain === null) {
         totalsRealizedIncomplete = true;
       } else {
         totalsRealizedScaled += Math.round(e.realizedGain * 10000);
       }
       totalsRealizedKnownScaled += Math.round(
-        (e.realizedGain ?? e.realizedGainKnownSubtotal ?? 0) * 10000,
+        (e.realizedGainKnownSubtotal ?? 0) * 10000,
       );
       if (e.unrealizedGain === null || e.totalCapitalGain === null) {
         totalsIncomplete = true;
@@ -3756,7 +3827,6 @@ export class InvestmentTransactionsService {
       if (!b) {
         b = {
           ...seed,
-          currency: undefined,
           startValueScaled: 0,
           endValueScaled: 0,
           realizedScaled: 0,
@@ -3769,20 +3839,13 @@ export class InvestmentTransactionsService {
         buckets.set(key, b);
       }
 
-      // Track currency: consistent → keep it; mixed → null.
-      if (b.currency === undefined) {
-        b.currency = e.accountCurrencyCode;
-      } else if (b.currency !== e.accountCurrencyCode) {
-        b.currency = null;
-      }
-
       if (e.realizedGain === null) {
         b.realizedIncomplete = true;
       } else {
         b.realizedScaled += Math.round(e.realizedGain * 10000);
       }
       b.realizedKnownScaled += Math.round(
-        (e.realizedGain ?? e.realizedGainKnownSubtotal ?? 0) * 10000,
+        (e.realizedGainKnownSubtotal ?? 0) * 10000,
       );
       if (
         e.startValue === null ||
@@ -3806,7 +3869,7 @@ export class InvestmentTransactionsService {
         accountName: b.accountName,
         symbol: b.symbol,
         securityName: b.securityName,
-        currency: b.currency ?? null,
+        currency: defaultCurrency,
         startValue: b.incomplete
           ? null
           : roundMoney(b.startValueScaled / 10000),
@@ -3846,6 +3909,9 @@ export class InvestmentTransactionsService {
         realizedGainKnownSubtotal: totalsRealizedIncomplete
           ? roundMoney(totalsRealizedKnownScaled / 10000)
           : null,
+        currency: defaultCurrency,
+        fxComplete: missingRatePairs.size === 0,
+        missingRatePairs: [...missingRatePairs].sort(),
         unrealizedGain: totalsIncomplete
           ? null
           : roundMoney(totalsUnrealizedScaled / 10000),

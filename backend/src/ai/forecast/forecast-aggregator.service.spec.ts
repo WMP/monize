@@ -30,6 +30,7 @@ describe("ForecastAggregatorService", () => {
   let mockAccountsService: Record<string, jest.Mock>;
   let mockTransactionAnalytics: Record<string, jest.Mock>;
   let fx: InvestmentFxMock;
+  let scoped: ReturnType<typeof createScopedDbMocks>;
 
   const userId = "user-1";
 
@@ -87,17 +88,18 @@ describe("ForecastAggregatorService", () => {
     };
 
     fx = createInvestmentFxMock();
+    scoped = createScopedDbMocks([
+      [Transaction, mockTransactionRepo],
+      [ScheduledTransaction, mockScheduledTransactionRepo],
+      [ScheduledTransactionOverride, mockOverridesRepo],
+    ]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ForecastAggregatorService,
         {
           provide: DataSource,
-          useValue: createScopedDbMocks([
-            [Transaction, mockTransactionRepo],
-            [ScheduledTransaction, mockScheduledTransactionRepo],
-            [ScheduledTransactionOverride, mockOverridesRepo],
-          ]).dataSource,
+          useValue: scoped.dataSource,
         },
         {
           provide: AccountsService,
@@ -201,6 +203,96 @@ describe("ForecastAggregatorService", () => {
       expect(result.monthlyHistory[0].totalExpenses).toBe(500);
       expect(result.monthlyHistory[0].netCashFlow).toBe(3500);
       expect(result.monthlyHistory[0].categoryBreakdown).toHaveLength(2);
+    });
+
+    it("converts balances into the reporting currency and nulls the total when a rate is missing", async () => {
+      mockAccountsService.findAll.mockResolvedValue([
+        {
+          name: "A",
+          accountType: "CHEQUING",
+          currentBalance: 1000,
+          currencyCode: "USD",
+        },
+        {
+          name: "B",
+          accountType: "CHEQUING",
+          currentBalance: 100,
+          currencyCode: "EUR",
+        },
+      ]);
+      const today = new Date().toISOString().substring(0, 10);
+      scoped.manager.query.mockResolvedValue([
+        {
+          from_currency: "EUR",
+          to_currency: "USD",
+          rate: "1.1",
+          rate_date: today,
+        },
+      ]);
+
+      const ok = await service.computeAggregates(userId, "USD");
+      expect(ok.accountBalances.totalBalance).toBe(1110);
+      expect(ok.fxComplete).toBe(true);
+
+      scoped.manager.query.mockResolvedValue([]);
+      const gap = await service.computeAggregates(userId, "USD");
+      expect(gap.accountBalances.totalBalance).toBeNull();
+      expect(gap.accountBalances.knownBalanceSubtotal).toBe(1000);
+      expect(gap.accountBalances.missingRatePairs).toEqual(["EUR->USD"]);
+      expect(gap.fxComplete).toBe(false);
+      expect(gap.missingRatePairs).toEqual(["EUR->USD"]);
+    });
+
+    it("nets a refund against its expense category and converts history per currency", async () => {
+      mockTransactionRepo.createQueryBuilder.mockImplementation(() =>
+        mockQueryBuilder([
+          // 500 spent, 100 refunded in the same category: 400 net, not 500
+          // of expenses plus 100 of income.
+          {
+            month: "2025-06",
+            categoryName: "Groceries",
+            isIncome: false,
+            currencyCode: "USD",
+            income: "100",
+            expenses: "500",
+          },
+          {
+            month: "2025-06",
+            categoryName: "Groceries",
+            isIncome: false,
+            currencyCode: "EUR",
+            income: "0",
+            expenses: "100",
+          },
+          {
+            month: "2025-06",
+            categoryName: "Salary",
+            isIncome: true,
+            currencyCode: "USD",
+            income: "4000",
+            expenses: "0",
+          },
+        ]),
+      );
+      scoped.manager.query.mockResolvedValue([
+        {
+          from_currency: "EUR",
+          to_currency: "USD",
+          rate: "2",
+          rate_date: "2025-06-20",
+        },
+      ]);
+
+      const result = await service.computeAggregates(userId, "USD");
+
+      const june = result.monthlyHistory[0];
+      expect(june.totalIncome).toBe(4000);
+      expect(june.totalExpenses).toBe(600); // 400 + 100 EUR * 2
+      expect(june.categoryBreakdown).toContainEqual({
+        categoryName: "Groceries",
+        total: 600,
+        isIncome: false,
+      });
     });
 
     it("fetches active scheduled transactions with categories", async () => {
