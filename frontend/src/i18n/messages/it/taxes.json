@@ -12,7 +12,7 @@
   "payroll": {
     "title": "Trattenute sullo stipendio",
     "subtitle": "Massimi annui sulle righe di trattenuta della tua fattura stipendio",
-    "backToTaxes": "Tasse",
+    "backToTaxes": "Torna alle tasse",
     "newButton": "+ Nuova regola",
     "loading": "Caricamento delle trattenute...",
     "emptyState": {

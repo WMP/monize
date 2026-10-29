@@ -11,6 +11,13 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { formatTime } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { DensityToggleBar } from '@/components/ui/DensityToggle';
+import { SortIcon } from '@/components/ui/SortIcon';
+import { CellLabel, SortableTh, TABLE_BODY_CLASS, TABLE_CLASS, Th } from '@/components/ui/Table';
+import { useDensityPreference } from '@/store/densityStore';
+import { useTableDensity } from '@/hooks/useTableDensity';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 /**
  * What the two storage columns know, which is not the same question as what the
@@ -27,6 +34,27 @@ export type AdminStorageState =
   | { status: 'error' }
   | { status: 'ready'; byUser: Map<string, AdminUserStorage> };
 
+/** The columns the user list sorts by; the storage figures can be unknown, so they do not sort. */
+export type AdminUserSortField = 'name' | 'role' | 'provider' | 'status' | 'lastLogin';
+type SortDirection = 'asc' | 'desc';
+
+/**
+ * Every sortable field in header order. A `Record` keyed by the union so the
+ * phone's slim header, which announces a direction unconditionally, cannot
+ * offer fewer fields than the list can be sorted by.
+ */
+const SORT_FIELD_ORDER: Record<AdminUserSortField, number> = {
+  name: 0,
+  role: 1,
+  provider: 2,
+  status: 3,
+  lastLogin: 4,
+};
+
+const SORT_FIELDS: readonly AdminUserSortField[] = (
+  Object.keys(SORT_FIELD_ORDER) as AdminUserSortField[]
+).sort((a, b) => SORT_FIELD_ORDER[a] - SORT_FIELD_ORDER[b]);
+
 interface UserManagementTableProps {
   users: AdminUser[];
   storage: AdminStorageState;
@@ -38,32 +66,34 @@ interface UserManagementTableProps {
   onDeleteUser: (user: AdminUser) => void;
 }
 
+type UserRowActions = Pick<
+  UserManagementTableProps,
+  'onChangeRole' | 'onToggleStatus' | 'onResetPassword' | 'onResetTwoFactor' | 'onDeleteUser'
+>;
+
 export function UserManagementTable({
   users,
   storage,
   currentUserId,
-  onChangeRole,
-  onToggleStatus,
-  onResetPassword,
-  onResetTwoFactor,
-  onDeleteUser,
+  ...handlers
 }: UserManagementTableProps) {
   const t = useTranslations('admin');
-  const tc = useTranslations('common');
   const { formatDate } = useDateFormat();
   const timeFormat = usePreferencesStore((s) => s.preferences?.timeFormat) || '24h';
+  const [sortField, setSortField] = useLocalStorage<AdminUserSortField>('monize-admin-users-sort-field', 'name');
+  const [sortDirection, setSortDirection] = useLocalStorage<SortDirection>('monize-admin-users-sort-dir', 'asc');
+  const { density } = useDensityPreference('adminUsers');
+  const { cellPadding, headerPadding } = useTableDensity(density);
+  // On a phone at Normal density each user is one wrapped card, as on the
+  // reference lists; Compact and Dense keep the table.
+  const isMobile = useIsMobile();
+  const wrapped = isMobile && density === 'normal';
 
   const formatLastLogin = (iso: string): string => {
     const d = new Date(iso);
     const time24 = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     return `${formatDate(d)} ${formatTime(time24, timeFormat)}`;
   };
-
-  const sortedUsers = useMemo(() => {
-    return [...users].sort((a, b) =>
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
-  }, [users]);
 
   const getUserDisplayName = (user: AdminUser): string => {
     if (user.firstName || user.lastName) {
@@ -72,152 +102,324 @@ export function UserManagementTable({
     return user.email || t('userTable.unknown');
   };
 
+  const sortedUsers = useMemo(() => {
+    const key = (user: AdminUser): string | number => {
+      switch (sortField) {
+        case 'role':
+          return user.role;
+        case 'provider':
+          return user.authProvider;
+        case 'status':
+          return user.isActive ? 0 : 1;
+        case 'lastLogin':
+          // Never signed in sorts as the oldest login.
+          return user.lastLogin ? new Date(user.lastLogin).getTime() : 0;
+        default:
+          return (
+            [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || ''
+          ).toLowerCase();
+      }
+    };
+    const sign = sortDirection === 'asc' ? 1 : -1;
+    return [...users].sort((a, b) => {
+      const ka = key(a);
+      const kb = key(b);
+      const order =
+        typeof ka === 'number' && typeof kb === 'number'
+          ? ka - kb
+          : String(ka).localeCompare(String(kb));
+      // Ties keep the order the accounts were created in.
+      return (
+        order * sign ||
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+    });
+  }, [users, sortField, sortDirection]);
+
+  const handleSort = (field: AdminUserSortField) => {
+    if (field === sortField) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+  const sortProps = { sortField, sortDirection, onSort: handleSort };
+
+  const sortFieldLabels: Record<AdminUserSortField, string> = {
+    name: t('userTable.colUser'),
+    role: t('userTable.colRole'),
+    provider: t('userTable.colProvider'),
+    status: t('userTable.colStatus'),
+    lastLogin: t('userTable.colLastLogin'),
+  };
+
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead className="bg-gray-50 dark:bg-gray-800">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              {t('userTable.colUser')}
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              {t('userTable.colRole')}
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              {t('userTable.colProvider')}
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              {t('userTable.colStatus')}
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              {t('userTable.colLastLogin')}
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              {t('userTable.colBackups')}
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              {t('userTable.colAttachments')}
-            </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky right-0 bg-gray-50 dark:bg-gray-800">
-              {t('userTable.colActions')}
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-          {sortedUsers.map((user) => {
-            const isSelf = user.id === currentUserId;
-            return (
-              <tr key={user.id} className={`group hover:bg-gray-100 dark:hover:bg-gray-800 ${isSelf ? 'bg-blue-50 dark:bg-blue-950' : 'bg-white dark:bg-gray-900'}`}>
-                {/* User info */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {getUserDisplayName(user)}
-                    {isSelf && (
-                      <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">{t('userTable.youSuffix')}</span>
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {user.email || t('userTable.noEmail')}
-                  </div>
-                </td>
-
-                {/* Role */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {isSelf ? (
-                    <RoleBadge role={user.role} adminLabel={t('userTable.roleAdmin')} userLabel={t('userTable.roleUser')} />
-                  ) : (
-                    <select
-                      value={user.role}
-                      onChange={(e) => onChangeRole(user, e.target.value as 'admin' | 'user')}
-                      className="text-sm rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="admin">{t('userTable.roleAdmin')}</option>
-                      <option value="user">{t('userTable.roleUser')}</option>
-                    </select>
-                  )}
-                </td>
-
-                {/* Provider */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <Badge variant={user.authProvider === 'oidc' ? 'purple' : 'gray'}>
-                    {user.authProvider === 'oidc' ? t('userTable.providerSso') : t('userTable.providerLocal')}
-                  </Badge>
-                </td>
-
-                {/* Status */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {isSelf ? (
-                    <StatusBadge isActive={user.isActive} activeLabel={t('userTable.statusActive')} disabledLabel={t('userTable.statusDisabled')} />
-                  ) : (
-                    <button
-                      onClick={() => onToggleStatus(user)}
-                      className="group flex items-center"
-                      title={user.isActive ? t('userTable.clickToDisable') : t('userTable.clickToEnable')}
-                    >
-                      <StatusBadge isActive={user.isActive} activeLabel={t('userTable.statusActive')} disabledLabel={t('userTable.statusDisabled')} clickable />
-                    </button>
-                  )}
-                </td>
-
-                {/* Last Login */}
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {user.lastLogin ? formatLastLogin(user.lastLogin) : t('userTable.never')}
-                </td>
-
-                {/* Automatic backups held for this user */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <BackupUsageCell state={storage} userId={user.id} />
-                </td>
-
-                {/* Attachment bytes this user has uploaded */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <AttachmentUsageCell state={storage} userId={user.id} />
-                </td>
-
-                {/* Actions */}
-                <td className={`px-6 py-4 whitespace-nowrap text-right text-sm space-x-2 sticky right-0 ${isSelf ? 'bg-blue-50 dark:bg-blue-950' : 'bg-white dark:bg-gray-900'} group-hover:bg-gray-100 dark:group-hover:bg-gray-800`}>
-                  {!isSelf && (
-                    <>
-                      {user.hasPassword && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onResetPassword(user)}
-                        >
-                          {t('userTable.resetPassword')}
-                        </Button>
-                      )}
-                      {/* Offered for every other user: the list does not carry
-                          2FA state, and the server refuses (400) a user with
-                          none, which the page reports. */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onResetTwoFactor(user)}
+    <div>
+      <DensityToggleBar view="adminUsers" />
+      <div className="overflow-x-auto">
+        <table className={TABLE_CLASS}>
+          <thead className="bg-gray-50 dark:bg-gray-800">
+            {wrapped ? (
+              <tr>
+                {/* The card names its own values, so the header keeps only the
+                    sort controls, every sortable field as a button. */}
+                <th
+                  className={`${headerPadding} text-left`}
+                  aria-sort={sortDirection === 'asc' ? 'ascending' : 'descending'}
+                >
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    {SORT_FIELDS.map((field) => (
+                      <button
+                        key={field}
+                        type="button"
+                        onClick={() => handleSort(field)}
+                        className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider rounded focus-visible:outline-2 focus-visible:outline-blue-500"
                       >
-                        {t('userTable.resetTwoFactor')}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onDeleteUser(user)}
-                        className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/50"
-                      >
-                        {tc('delete')}
-                      </Button>
-                    </>
-                  )}
-                </td>
+                        {sortFieldLabels[field]}
+                        <SortIcon field={field} sortField={sortField} sortDirection={sortDirection} />
+                      </button>
+                    ))}
+                  </div>
+                </th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            ) : (
+              <tr>
+                <SortableTh {...sortProps} field="name" className={headerPadding}>
+                  {sortFieldLabels.name}
+                </SortableTh>
+                <SortableTh {...sortProps} field="role" className={headerPadding}>
+                  {sortFieldLabels.role}
+                </SortableTh>
+                <SortableTh {...sortProps} field="provider" className={headerPadding}>
+                  {sortFieldLabels.provider}
+                </SortableTh>
+                <SortableTh {...sortProps} field="status" className={headerPadding}>
+                  {sortFieldLabels.status}
+                </SortableTh>
+                <SortableTh {...sortProps} field="lastLogin" className={headerPadding}>
+                  {sortFieldLabels.lastLogin}
+                </SortableTh>
+                <Th className={headerPadding}>{t('userTable.colBackups')}</Th>
+                <Th className={headerPadding}>{t('userTable.colAttachments')}</Th>
+                <Th
+                  align="right"
+                  className={`${headerPadding} sticky right-0 bg-gray-50 dark:bg-gray-800`}
+                >
+                  {t('userTable.colActions')}
+                </Th>
+              </tr>
+            )}
+          </thead>
+          <tbody className={`bg-white dark:bg-gray-900 ${TABLE_BODY_CLASS}`}>
+            {sortedUsers.map((user, index) => {
+              const isSelf = user.id === currentUserId;
+              const rowBg = isSelf
+                ? 'bg-blue-50 dark:bg-blue-950'
+                : density !== 'normal' && index % 2 === 1
+                  ? 'bg-gray-50 dark:bg-table-stripe-dark'
+                  : 'bg-white dark:bg-gray-900';
+              const lastLogin = user.lastLogin ? formatLastLogin(user.lastLogin) : t('userTable.never');
+
+              if (wrapped) {
+                return (
+                  <tr key={user.id} className={rowBg}>
+                    <td className="p-0">
+                      <div className={cellPadding}>
+                        <div className="flex items-start justify-between gap-3">
+                          <UserIdentity user={user} isSelf={isSelf} name={getUserDisplayName(user)} />
+                          <StatusControl user={user} isSelf={isSelf} onToggleStatus={handlers.onToggleStatus} />
+                        </div>
+                        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">
+                          <div>
+                            <CellLabel>{sortFieldLabels.role}</CellLabel>
+                            <RoleControl user={user} isSelf={isSelf} onChangeRole={handlers.onChangeRole} />
+                          </div>
+                          <div>
+                            <CellLabel>{sortFieldLabels.provider}</CellLabel>
+                            <ProviderBadge user={user} />
+                          </div>
+                          <div className="col-span-2">
+                            <CellLabel>{sortFieldLabels.lastLogin}</CellLabel>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{lastLogin}</div>
+                          </div>
+                          <div>
+                            <CellLabel>{t('userTable.colBackups')}</CellLabel>
+                            <BackupUsageCell state={storage} userId={user.id} />
+                          </div>
+                          <div>
+                            <CellLabel>{t('userTable.colAttachments')}</CellLabel>
+                            <AttachmentUsageCell state={storage} userId={user.id} />
+                          </div>
+                        </div>
+                        {!isSelf && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <UserActionButtons user={user} {...handlers} />
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              }
+
+              return (
+                <tr key={user.id} className={`group hover:bg-gray-100 dark:hover:bg-gray-800 ${rowBg}`}>
+                  <td className={`${cellPadding} whitespace-nowrap`}>
+                    <UserIdentity user={user} isSelf={isSelf} name={getUserDisplayName(user)} />
+                  </td>
+                  <td className={`${cellPadding} whitespace-nowrap`}>
+                    <RoleControl user={user} isSelf={isSelf} onChangeRole={handlers.onChangeRole} />
+                  </td>
+                  <td className={`${cellPadding} whitespace-nowrap`}>
+                    <ProviderBadge user={user} />
+                  </td>
+                  <td className={`${cellPadding} whitespace-nowrap`}>
+                    <StatusControl user={user} isSelf={isSelf} onToggleStatus={handlers.onToggleStatus} />
+                  </td>
+                  <td className={`${cellPadding} whitespace-nowrap text-sm text-gray-500 dark:text-gray-400`}>
+                    {lastLogin}
+                  </td>
+                  {/* Automatic backups held for this user */}
+                  <td className={`${cellPadding} whitespace-nowrap`}>
+                    <BackupUsageCell state={storage} userId={user.id} />
+                  </td>
+                  {/* Attachment bytes this user has uploaded */}
+                  <td className={`${cellPadding} whitespace-nowrap`}>
+                    <AttachmentUsageCell state={storage} userId={user.id} />
+                  </td>
+                  <td className={`${cellPadding} whitespace-nowrap text-right text-sm space-x-2 sticky right-0 ${rowBg} group-hover:bg-gray-100 dark:group-hover:bg-gray-800`}>
+                    {!isSelf && <UserActionButtons user={user} {...handlers} />}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       {sortedUsers.length === 0 && (
         <EmptyState title={t('userTable.noUsers')} />
       )}
     </div>
+  );
+}
+
+/** The user's name, the "(you)" marker and the email under it. */
+function UserIdentity({ user, isSelf, name }: { user: AdminUser; isSelf: boolean; name: string }) {
+  const t = useTranslations('admin');
+  return (
+    <div className="min-w-0">
+      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">
+        {name}
+        {isSelf && (
+          <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">{t('userTable.youSuffix')}</span>
+        )}
+      </div>
+      <div className="text-sm text-gray-500 dark:text-gray-400 break-all">
+        {user.email || t('userTable.noEmail')}
+      </div>
+    </div>
+  );
+}
+
+/** The role, as a badge for the admin themself and a select for anyone else. */
+function RoleControl({
+  user,
+  isSelf,
+  onChangeRole,
+}: {
+  user: AdminUser;
+  isSelf: boolean;
+  onChangeRole: UserRowActions['onChangeRole'];
+}) {
+  const t = useTranslations('admin');
+  if (isSelf) {
+    return <RoleBadge role={user.role} adminLabel={t('userTable.roleAdmin')} userLabel={t('userTable.roleUser')} />;
+  }
+  return (
+    <select
+      value={user.role}
+      aria-label={t('userTable.colRole')}
+      onChange={(e) => onChangeRole(user, e.target.value as 'admin' | 'user')}
+      className="text-sm rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-blue-500 focus:border-blue-500"
+    >
+      <option value="admin">{t('userTable.roleAdmin')}</option>
+      <option value="user">{t('userTable.roleUser')}</option>
+    </select>
+  );
+}
+
+function ProviderBadge({ user }: { user: AdminUser }) {
+  const t = useTranslations('admin');
+  return (
+    <Badge variant={user.authProvider === 'oidc' ? 'purple' : 'gray'}>
+      {user.authProvider === 'oidc' ? t('userTable.providerSso') : t('userTable.providerLocal')}
+    </Badge>
+  );
+}
+
+/** The status, as a badge for the admin themself and a toggle for anyone else. */
+function StatusControl({
+  user,
+  isSelf,
+  onToggleStatus,
+}: {
+  user: AdminUser;
+  isSelf: boolean;
+  onToggleStatus: UserRowActions['onToggleStatus'];
+}) {
+  const t = useTranslations('admin');
+  const badge = (clickable?: boolean) => (
+    <StatusBadge
+      isActive={user.isActive}
+      activeLabel={t('userTable.statusActive')}
+      disabledLabel={t('userTable.statusDisabled')}
+      clickable={clickable}
+    />
+  );
+  if (isSelf) return badge();
+  return (
+    <button
+      onClick={() => onToggleStatus(user)}
+      className="group flex items-center"
+      title={user.isActive ? t('userTable.clickToDisable') : t('userTable.clickToEnable')}
+    >
+      {badge(true)}
+    </button>
+  );
+}
+
+/** Reset Password, Reset 2FA and Delete for any user but the admin themself. */
+function UserActionButtons({
+  user,
+  onResetPassword,
+  onResetTwoFactor,
+  onDeleteUser,
+}: { user: AdminUser } & UserRowActions) {
+  const t = useTranslations('admin');
+  const tc = useTranslations('common');
+  return (
+    <>
+      {user.hasPassword && (
+        <Button variant="outline" size="sm" onClick={() => onResetPassword(user)}>
+          {t('userTable.resetPassword')}
+        </Button>
+      )}
+      {/* Offered for every other user: the list does not carry 2FA state, and
+          the server refuses (400) a user with none, which the page reports. */}
+      <Button variant="outline" size="sm" onClick={() => onResetTwoFactor(user)}>
+        {t('userTable.resetTwoFactor')}
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onDeleteUser(user)}
+        className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/50"
+      >
+        {tc('delete')}
+      </Button>
+    </>
   );
 }
 

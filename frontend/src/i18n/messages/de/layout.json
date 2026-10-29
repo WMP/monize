@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "Wertpapierübertragung aktualisiert",
       "ranTransactionRule": "Regel „{name}“ auf {count, plural, one {# Buchung} other {# Buchungen}} angewendet"
     },
-    "timeAgo": {
-      "justNow": "gerade eben",
-      "minutes": "vor {count} Min.",
-      "hours": "vor {count} Std.",
-      "days": "vor {count} T."
-    },
     "undonePrefix": "Rückgängig gemacht: {description}",
     "redonePrefix": "Wiederholt: {description}"
   },

@@ -10,6 +10,7 @@ import { useDateFormat } from '@/hooks/useDateFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { UnknownAmount } from '@/components/ui/UnknownAmount';
 import { CARD_CLASS } from '@/components/ui/Card';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import { gainLossColor } from '@/lib/format';
 
 type MoverFilter = 'all' | 'gainers' | 'losers';
@@ -147,7 +148,7 @@ interface TopMoversProps {
   isRefreshing?: boolean;
 }
 
-/** A segmented button group of mutually exclusive choices. */
+/** The segmented control (`SEGMENTED_GROUP_CLASS` + `segmentClass`) for one choice. */
 function MoverSegmentedControl<T extends string>({
   value,
   options,
@@ -159,25 +160,15 @@ function MoverSegmentedControl<T extends string>({
   groupLabel: string;
   onChange: (value: T) => void;
 }) {
-  const rounding = (index: number) =>
-    index === 0
-      ? 'rounded-l-md border'
-      : index === options.length - 1
-        ? 'rounded-r-md border'
-        : 'border-t border-b';
   return (
-    <div className="inline-flex rounded-md shadow-sm" role="group" aria-label={groupLabel}>
-      {options.map((option, index) => (
+    <div className={SEGMENTED_GROUP_CLASS} role="group" aria-label={groupLabel}>
+      {options.map((option) => (
         <button
           key={option.value}
           type="button"
           aria-pressed={value === option.value}
           onClick={() => onChange(option.value)}
-          className={`px-3 py-1.5 text-sm font-medium ${rounding(index)} ${
-            value === option.value
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-          }`}
+          className={segmentClass(value === option.value)}
         >
           {option.label}
         </button>
@@ -233,11 +224,6 @@ export function TopMovers({ movers, isLoading, hasInvestmentAccounts, onRefresh,
     writeStoredChoice(METRIC_STORAGE_KEY, metric);
   }, [metric]);
 
-  const filterOptions: { value: MoverFilter; label: string }[] = [
-    { value: 'all', label: t('topMovers.filter.all') },
-    { value: 'gainers', label: t('topMovers.filter.gainers') },
-    { value: 'losers', label: t('topMovers.filter.losers') },
-  ];
   const metricOptions: { value: MoverMetric; label: string }[] = [
     { value: 'price', label: t('topMovers.metric.price') },
     { value: 'holdings', label: t('topMovers.metric.holdings') },
@@ -293,6 +279,13 @@ export function TopMovers({ movers, isLoading, hasInvestmentAccounts, onRefresh,
         : convertToDefault(mover.dailyValueChange, mover.currencyCode),
   }));
   const topMovers = rankMovers(rows, filter, metric);
+  // Each segment counts every holding it would rank, not only the five shown.
+  const countFor = (value: MoverFilter) => rankMovers(rows, value, metric, Infinity).length;
+  const filterOptions: { value: MoverFilter; label: string }[] = [
+    { value: 'all', label: t('topMovers.filter.all', { count: countFor('all') }) },
+    { value: 'gainers', label: t('topMovers.filter.gainers', { count: countFor('gainers') }) },
+    { value: 'losers', label: t('topMovers.filter.losers', { count: countFor('losers') }) },
+  ];
   // The session the list is captioned with. A board of movers is one session's
   // -- the server sends only the holdings that priced for the newest session
   // any of them has -- so every row carries the same date, and it is today

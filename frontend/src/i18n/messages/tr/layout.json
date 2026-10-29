@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "Menkul kıymet transferi güncellendi",
       "ranTransactionRule": "“{name}” kuralı {count, plural, other {# işlemde}} çalıştırıldı"
     },
-    "timeAgo": {
-      "justNow": "şimdi",
-      "minutes": "{count} dk önce",
-      "hours": "{count} sa önce",
-      "days": "{count} gün önce"
-    },
     "undonePrefix": "Geri Alındı: {description}",
     "redonePrefix": "Yeniden Yapıldı: {description}"
   },

@@ -8,6 +8,7 @@ import { formatAccountType } from '@/lib/account-utils';
 import { MnyImportOptionsInput, MnyPreview } from '@/lib/import-mny';
 import { MnyBillsPanel } from './MnyBillsPanel';
 import { MnyWarningsPanel } from './MnyWarningsPanel';
+import { Th } from '@/components/ui/Table';
 
 interface MnyReviewStepProps {
   preview: MnyPreview;
@@ -207,28 +208,28 @@ export function MnyReviewStep({
         <div className="bg-card border border-border rounded-lg overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2 text-left font-medium">
+              <tr className="border-b border-border">
+                <Th className="px-3 py-2">
                   {t('mnyReview.table.include')}
-                </th>
-                <th className="px-3 py-2 text-left font-medium">
+                </Th>
+                <Th className="px-3 py-2">
                   {t('mnyReview.table.account')}
-                </th>
-                <th className="px-3 py-2 text-left font-medium">
+                </Th>
+                <Th className="px-3 py-2">
                   {t('mnyReview.table.type')}
-                </th>
-                <th className="px-3 py-2 text-left font-medium">
+                </Th>
+                <Th className="px-3 py-2">
                   {t('mnyReview.table.currency')}
-                </th>
-                <th className="px-3 py-2 text-right font-medium">
+                </Th>
+                <Th align="right" className="px-3 py-2">
                   {t('mnyReview.table.transactions')}
-                </th>
-                <th className="px-3 py-2 text-right font-medium">
+                </Th>
+                <Th align="right" className="px-3 py-2">
                   {t('mnyReview.table.openingBalance')}
-                </th>
-                <th className="px-3 py-2 text-right font-medium">
+                </Th>
+                <Th align="right" className="px-3 py-2">
                   {t('mnyReview.table.finalBalance')}
-                </th>
+                </Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

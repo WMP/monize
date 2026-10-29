@@ -23,8 +23,8 @@
     "empty": "Aucune facture, aucun dépôt ou virement en retard ou à venir dans les fenêtres de rappel.",
     "postTransaction": "Enregistrer cette transaction",
     "manual": "Manuel",
-    "manualTitle": "Nécessite un enregistrement manuel",
     "negativeBalanceWarning": "Cette transaction fera passer le solde du compte en dessous de zéro",
+    "negativeBalanceLegend": "Fait passer son compte sous zéro",
     "moreItems": "+{count} de plus",
     "overdue": "En retard",
     "today": "Aujourd'hui",
@@ -110,9 +110,9 @@
     "refreshPrices": "Actualiser les cours",
     "viewPortfolio": "Voir le portefeuille",
     "filter": {
-      "all": "Tous",
-      "gainers": "Gagnants",
-      "losers": "Perdants",
+      "all": "Tous ({count})",
+      "gainers": "Gagnants ({count})",
+      "losers": "Perdants ({count})",
       "label": "Sens"
     },
     "metric": {

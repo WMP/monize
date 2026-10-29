@@ -12,7 +12,7 @@
   "payroll": {
     "title": "급여 공제",
     "subtitle": "급여 청구의 공제 항목에 대한 연간 상한액",
-    "backToTaxes": "세금",
+    "backToTaxes": "세금으로 돌아가기",
     "newButton": "+ 새 규칙",
     "loading": "급여 공제를 불러오는 중...",
     "emptyState": {

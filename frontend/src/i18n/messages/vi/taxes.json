@@ -12,7 +12,7 @@
   "payroll": {
     "title": "Khấu trừ lương",
     "subtitle": "Mức tối đa hằng năm trên các dòng khấu trừ của hóa đơn lương",
-    "backToTaxes": "Thuế",
+    "backToTaxes": "Quay lại Thuế",
     "newButton": "+ Quy tắc mới",
     "loading": "Đang tải khấu trừ lương...",
     "emptyState": {

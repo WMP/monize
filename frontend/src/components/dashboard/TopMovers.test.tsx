@@ -187,9 +187,10 @@ describe('TopMovers', () => {
     ] as any[];
 
     render(<TopMovers movers={movers} isLoading={false} hasInvestmentAccounts={true} />);
-    expect(screen.getByText('All')).toBeInTheDocument();
-    expect(screen.getByText('Gainers')).toBeInTheDocument();
-    expect(screen.getByText('Losers')).toBeInTheDocument();
+    // Each segment counts the holdings it ranks.
+    expect(screen.getByRole('button', { name: 'All (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gainers (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Losers (0)' })).toBeInTheDocument();
   });
 
   it('filters to only gainers when Gainers is selected', () => {
@@ -199,7 +200,7 @@ describe('TopMovers', () => {
     ] as any[];
 
     render(<TopMovers movers={movers} isLoading={false} hasInvestmentAccounts={true} />);
-    fireEvent.click(screen.getByText('Gainers'));
+    fireEvent.click(screen.getByRole('button', { name: /^Gainers/ }));
     expect(screen.getByText('AAPL')).toBeInTheDocument();
     expect(screen.queryByText('MSFT')).not.toBeInTheDocument();
   });
@@ -211,7 +212,7 @@ describe('TopMovers', () => {
     ] as any[];
 
     render(<TopMovers movers={movers} isLoading={false} hasInvestmentAccounts={true} />);
-    fireEvent.click(screen.getByText('Losers'));
+    fireEvent.click(screen.getByRole('button', { name: /^Losers/ }));
     expect(screen.getByText('MSFT')).toBeInTheDocument();
     expect(screen.queryByText('AAPL')).not.toBeInTheDocument();
   });
@@ -223,7 +224,7 @@ describe('TopMovers', () => {
     ] as any[];
 
     const { unmount } = render(<TopMovers movers={movers} isLoading={false} hasInvestmentAccounts={true} />);
-    fireEvent.click(screen.getByText('Losers'));
+    fireEvent.click(screen.getByRole('button', { name: /^Losers/ }));
     expect(localStorage.getItem('dashboard.topMovers.filter')).toBe('losers');
     unmount();
 
@@ -238,7 +239,7 @@ describe('TopMovers', () => {
     ] as any[];
 
     render(<TopMovers movers={movers} isLoading={false} hasInvestmentAccounts={true} />);
-    fireEvent.click(screen.getByText('Losers'));
+    fireEvent.click(screen.getByRole('button', { name: /^Losers/ }));
     expect(screen.getByText('No losers today.')).toBeInTheDocument();
   });
 

@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuthStore } from '@/store/authStore';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNotificationCopy } from '@/hooks/useNotificationCopy';
@@ -32,14 +33,17 @@ function RemindersContent() {
   const [attempt, setAttempt] = useState(0);
   return (
     <PageLayout>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        <PageHeader title={t('reminder.pageTitle')} />
+      <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
+        <PageHeader
+          title={t('reminder.pageTitle')}
+          helpUrl="https://github.com/kenlasko/monize/wiki/Settings-and-Security#notifications"
+        />
         {actingAsUserId ? (
           <p role="status">{t('reminder.delegateUnavailable')}</p>
         ) : userId ? (
           <ActiveReminders key={`${userId}:${attempt}`} retry={() => setAttempt((n) => n + 1)} />
         ) : null}
-      </div>
+      </main>
     </PageLayout>
   );
 }
@@ -96,7 +100,7 @@ function ActiveReminders({ retry }: { retry: () => void }) {
         </Button>
       </Card>
     );
-  if (rows === null) return <p role="status">{common('loading')}</p>;
+  if (rows === null) return <LoadingSpinner text={common('loading')} />;
   if (rows.length === 0) return <EmptyState icon={<BellAlertIcon />} title={t('reminder.empty')} />;
 
   return (

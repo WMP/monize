@@ -64,7 +64,8 @@ export type DensityView =
   | 'rules'
   | 'warranties'
   | 'aiReviews'
-  | 'emailReceipts';
+  | 'emailReceipts'
+  | 'adminUsers';
 
 export const DENSITY_VIEWS: readonly DensityView[] = [
   'transactions',
@@ -88,6 +89,7 @@ export const DENSITY_VIEWS: readonly DensityView[] = [
   'warranties',
   'aiReviews',
   'emailReceipts',
+  'adminUsers',
 ];
 
 /**

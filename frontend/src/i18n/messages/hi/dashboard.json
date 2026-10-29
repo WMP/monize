@@ -23,8 +23,8 @@
     "empty": "उनकी रिमाइंडर विंडो के भीतर कोई अतिदेय या आगामी बिल, जमा, या स्थानांतरण नहीं।",
     "postTransaction": "यह लेनदेन पोस्ट करें",
     "manual": "मैन्युअल",
-    "manualTitle": "मैन्युअल पोस्टिंग आवश्यक है",
     "negativeBalanceWarning": "इस लेनदेन से खाते का शेष शून्य से नीचे चला जाएगा",
+    "negativeBalanceLegend": "इसके खाते को शून्य से नीचे ले जाता है",
     "moreItems": "+{count} और",
     "overdue": "अतिदेय",
     "today": "आज",
@@ -110,9 +110,9 @@
     "refreshPrices": "मूल्य रीफ्रेश करें",
     "viewPortfolio": "पोर्टफोलियो देखें",
     "filter": {
-      "all": "सभी",
-      "gainers": "लाभार्थी",
-      "losers": "हानिकर्ता",
+      "all": "सभी ({count})",
+      "gainers": "लाभार्थी ({count})",
+      "losers": "हानिकर्ता ({count})",
       "label": "दिशा"
     },
     "metric": {

@@ -159,21 +159,19 @@ export function StepUpAuthModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="md" pushHistory>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      pushHistory
+      title={t('title')}
+      description={reason || undefined}
+      className="p-6"
+    >
       <div className="flex flex-col">
-        <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {t('title')}
-          </h2>
-          {reason && (
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              {reason}
-            </p>
-          )}
-        </div>
 
         {mode === 'unavailable' ? (
-          <div className="px-6 py-6 space-y-4">
+          <div className="space-y-4">
             <p className="text-sm text-gray-700 dark:text-gray-300">
               {t('unavailable')}
             </p>
@@ -184,7 +182,7 @@ export function StepUpAuthModal({
             </div>
           </div>
         ) : mode === 'oidc' ? (
-          <div className="px-6 py-6 space-y-4">
+          <div className="space-y-4">
             <p className="text-sm text-gray-700 dark:text-gray-300">
               {t('oidcPrompt')}
             </p>
@@ -204,7 +202,7 @@ export function StepUpAuthModal({
             )}
             className="flex flex-col"
           >
-            <div className="px-6 py-4 space-y-4">
+            <div className="space-y-4">
               <p className="text-sm text-gray-700 dark:text-gray-300">
                 {t('totpPrompt')}
               </p>
@@ -230,7 +228,7 @@ export function StepUpAuthModal({
                 </p>
               )}
             </div>
-            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end gap-3">
+            <div className="pt-4 flex justify-end gap-3">
               <Button
                 type="button"
                 variant="outline"
@@ -251,7 +249,7 @@ export function StepUpAuthModal({
             )}
             className="flex flex-col"
           >
-            <div className="px-6 py-4 space-y-4">
+            <div className="space-y-4">
               <p className="text-sm text-gray-700 dark:text-gray-300">
                 {t('passwordPrompt')}
               </p>
@@ -269,7 +267,7 @@ export function StepUpAuthModal({
                 </p>
               )}
             </div>
-            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end gap-3">
+            <div className="pt-4 flex justify-end gap-3">
               <Button
                 type="button"
                 variant="outline"

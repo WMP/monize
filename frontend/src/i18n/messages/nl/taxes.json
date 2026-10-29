@@ -12,7 +12,7 @@
   "payroll": {
     "title": "Looninhoudingen",
     "subtitle": "Jaarmaxima op de inhoudingsregels van uw loonrekening",
-    "backToTaxes": "Belastingen",
+    "backToTaxes": "Terug naar Belastingen",
     "newButton": "+ Nieuwe regel",
     "loading": "Looninhoudingen laden...",
     "emptyState": {

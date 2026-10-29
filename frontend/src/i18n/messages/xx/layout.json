@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "[XX-Updated security transfer-XX]",
       "ranTransactionRule": "[XX-Ran rule \"{name}\" on {count, plural, one {# transaction} other {# transactions}}-XX]"
     },
-    "timeAgo": {
-      "justNow": "[XX-just now-XX]",
-      "minutes": "[XX-{count}m ago-XX]",
-      "hours": "[XX-{count}h ago-XX]",
-      "days": "[XX-{count}d ago-XX]"
-    },
     "undonePrefix": "[XX-Undone: {description}-XX]",
     "redonePrefix": "[XX-Redone: {description}-XX]"
   },

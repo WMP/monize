@@ -7,6 +7,7 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { MnyImportResult } from '@/lib/import-mny';
 import { AccountType } from '@/types/account';
 import { MnyWarningsPanel } from './MnyWarningsPanel';
+import { Th } from '@/components/ui/Table';
 
 /** Account types whose verification line is badged, per the comment below. */
 const LOAN_TYPES: ReadonlySet<string> = new Set(['LOAN', 'MORTGAGE']);
@@ -181,22 +182,22 @@ export function MnyVerificationReport({
         <div className="bg-card border border-border rounded-lg overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2 text-left font-medium">
+              <tr className="border-b border-border">
+                <Th className="px-3 py-2">
                   {t('mnyComplete.table.account')}
-                </th>
-                <th className="px-3 py-2 text-right font-medium">
+                </Th>
+                <Th align="right" className="px-3 py-2">
                   {t('mnyComplete.table.transactions')}
-                </th>
-                <th className="px-3 py-2 text-right font-medium">
+                </Th>
+                <Th align="right" className="px-3 py-2">
                   {t('mnyComplete.table.expected')}
-                </th>
-                <th className="px-3 py-2 text-right font-medium">
+                </Th>
+                <Th align="right" className="px-3 py-2">
                   {t('mnyComplete.table.imported')}
-                </th>
-                <th className="px-3 py-2 text-right font-medium">
+                </Th>
+                <Th align="right" className="px-3 py-2">
                   {t('mnyComplete.table.delta')}
-                </th>
+                </Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -263,22 +264,22 @@ export function MnyVerificationReport({
           <div className="bg-card border border-border rounded-lg overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2 text-left font-medium">
+                <tr className="border-b border-border">
+                  <Th className="px-3 py-2">
                     {t('mnyComplete.table.account')}
-                  </th>
-                  <th className="px-3 py-2 text-left font-medium">
+                  </Th>
+                  <Th className="px-3 py-2">
                     {t('mnyComplete.table.security')}
-                  </th>
-                  <th className="px-3 py-2 text-right font-medium">
+                  </Th>
+                  <Th align="right" className="px-3 py-2">
                     {t('mnyComplete.table.lotShares')}
-                  </th>
-                  <th className="px-3 py-2 text-right font-medium">
+                  </Th>
+                  <Th align="right" className="px-3 py-2">
                     {t('mnyComplete.table.importedShares')}
-                  </th>
-                  <th className="px-3 py-2 text-right font-medium">
+                  </Th>
+                  <Th align="right" className="px-3 py-2">
                     {t('mnyComplete.table.delta')}
-                  </th>
+                  </Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

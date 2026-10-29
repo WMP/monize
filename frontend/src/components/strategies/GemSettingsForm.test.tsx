@@ -255,8 +255,8 @@ describe("GemSettingsForm", () => {
     // NumericInput and CurrencyInput are text fields that format on blur, so
     // the values read back as the formatted strings, not as numbers.
     expect(screen.getByLabelText("Momentum window (months)")).toHaveValue("12");
-    expect(screen.getByLabelText("Tax rate (%)")).toHaveValue("19.00");
-    expect(screen.getByLabelText("Commission per trade")).toHaveValue("29.90");
+    expect(screen.getByLabelText("Tax Rate (optional)")).toHaveValue("19.00");
+    expect(screen.getByLabelText("Commission per Trade (optional)")).toHaveValue("29.90");
     expect(screen.getByLabelText("Text to show for that link")).toHaveValue(
       "example.test/gem",
     );
@@ -427,7 +427,7 @@ describe("GemSettingsForm", () => {
 
     await pickInstrument("Safe asset", "No instrument");
     await act(async () => {
-      fireEvent.change(screen.getByLabelText("Commission per trade"), {
+      fireEvent.change(screen.getByLabelText("Commission per Trade (optional)"), {
         target: { value: "" },
       });
       fireEvent.click(screen.getByLabelText("Strategy accounts"));
@@ -592,7 +592,7 @@ describe("GemSettingsForm", () => {
     expect(screen.getByLabelText("Strategy accounts")).toHaveTextContent(
       "No account assigned",
     );
-    expect(screen.getByLabelText("Tax rate (%)")).toHaveValue("");
+    expect(screen.getByLabelText("Tax Rate (optional)")).toHaveValue("");
     expect(roleTrigger("S&P 500")).toHaveTextContent("No instrument");
     expect(
       screen.getByText(/Assign an ETF or fund to each role/),
