@@ -25,6 +25,7 @@ import {
 import { PersonalAccessToken, SelfUserProfile } from '@/types/auth';
 import { getErrorMessage } from '@/lib/errors';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { useRelativeTime } from '@/hooks/useRelativeTime';
 
 const MCP_PATH = '/api/v1/mcp';
 
@@ -71,32 +72,11 @@ function isPendingCreate(value: unknown): value is PendingCreate {
   );
 }
 
-function relativeOrFormatted(
-  dateStr: string | null,
-  formatDate: (date: Date | string) => string,
-  getRelative: (diffDays: number | null) => string,
-): string {
-  if (!dateStr) return getRelative(null);
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 365) return getRelative(diffDays);
-  return formatDate(date);
-}
-
 export function ApiAccessSection() {
   const t = useTranslations('settings.apiAccess');
   const tc = useTranslations('common');
-  const getRelative = (diffDays: number | null): string => {
-    if (diffDays === null) return t('relative.never');
-    if (diffDays === 0) return t('relative.today');
-    if (diffDays === 1) return t('relative.yesterday');
-    if (diffDays < 30) return t('relative.daysAgo', { count: diffDays });
-    return t('relative.monthsAgo', { count: Math.floor(diffDays / 30) });
-  };
   const { formatDate } = useDateFormat();
+  const relativeTime = useRelativeTime();
   const [tokens, setTokens] = useState<PersonalAccessToken[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -407,7 +387,7 @@ export function ApiAccessSection() {
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {t('created')} {formatDate(new Date(token.createdAt))}
                   {' \u00B7 '}
-                  {t('lastUsed')} {relativeOrFormatted(token.lastUsedAt, formatDate, getRelative)}
+                  {t('lastUsed')} {token.lastUsedAt ? relativeTime(token.lastUsedAt) : t('relative.never')}
                   {token.expiresAt && (
                     <>
                       {' \u00B7 '}
@@ -434,9 +414,9 @@ export function ApiAccessSection() {
         <div className="p-6">
           {createdToken ? (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {t('createdModal.title')}
-              </h3>
+              </h2>
               <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                 <p className="text-sm text-amber-700 dark:text-amber-300">
                   {t('createdModal.warningNote')}
@@ -465,9 +445,9 @@ export function ApiAccessSection() {
             </div>
           ) : (
             <form onSubmit={handleSubmit(handleCreate)} className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {t('createModal.title')}
-              </h3>
+              </h2>
               <Input
                 label={t('createModal.tokenNameLabel')}
                 {...register('name')}

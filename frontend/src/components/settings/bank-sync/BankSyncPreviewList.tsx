@@ -6,7 +6,7 @@ import { ImportPreviewCheckbox } from '@/components/import-preview/ImportPreview
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
-import { Tabs, tabId, tabPanelId, type TabItem } from '@/components/ui/Tabs';
+import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import { TABLE_BODY_CLASS, Th } from '@/components/ui/Table';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -24,8 +24,6 @@ import {
 import { checkState } from '@/lib/import-preview';
 import type { BankSyncPreview, BankSyncPreviewRow } from '@/types/bank-sync';
 import { PreviewCard, PreviewRow, type PreviewRowControls } from './BankSyncPreviewRows';
-
-const TAB_ID_PREFIX = 'bank-sync-preview';
 
 /**
  * The rows are the only thing that scrolls. The modal is a fixed-height column
@@ -105,7 +103,7 @@ export function BankSyncPreviewList({
   const isPhone = useIsMobile();
 
   const counts = previewFilterCounts(preview.rows);
-  const tabs: TabItem<PreviewFilter>[] = PREVIEW_FILTERS.map((key) => ({
+  const segments = PREVIEW_FILTERS.map((key) => ({
     key,
     label: t('filter.withCount', { label: t(`filter.${key}`), count: counts[key] }),
   }));
@@ -217,20 +215,30 @@ export function BankSyncPreviewList({
           </p>
         )}
 
-        <Tabs
-          tabs={tabs}
-          value={filter}
-          onChange={onFilterChange}
-          idPrefix={TAB_ID_PREFIX}
-          ariaLabel={t('filterLabel')}
-          wrap
-        />
+        {/* One list filtered by outcome, so the segmented control with counts
+            rather than Tabs (docs/frontend/screens-and-dialogs.md). */}
+        <div
+          role="group"
+          aria-label={t('filterLabel')}
+          className={`${SEGMENTED_GROUP_CLASS} flex-wrap`}
+        >
+          {segments.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={filter === key}
+              className={segmentClass(filter === key)}
+              onClick={() => onFilterChange(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div
-        id={tabPanelId(TAB_ID_PREFIX, filter)}
-        role="tabpanel"
-        aria-labelledby={tabId(TAB_ID_PREFIX, filter)}
+        role="region"
+        aria-label={segments.find(({ key }) => key === filter)?.label}
         className="flex min-h-0 flex-1 flex-col"
       >
         {filter === 'excluded' && shown.length > 0 && (

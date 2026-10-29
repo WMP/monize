@@ -21,7 +21,6 @@
     "passwordConfirmNote": "更改电子邮件地址时需要密码确认。",
     "pendingEmailNotice": "确认链接已发送至 {email}。点击该链接后，您的电子邮件地址即会更改。",
     "saveButton": "保存个人资料",
-    "savingButton": "保存中...",
     "toasts": {
       "success": "个人资料已成功更新",
       "confirmationSent": "请查看 {email} 中用于确认新电子邮件地址的链接",
@@ -46,7 +45,6 @@
     "confirmPasswordLabel": "确认新密码",
     "confirmPasswordPlaceholder": "确认新密码",
     "changePasswordButton": "更改密码",
-    "changingPasswordButton": "更改中...",
     "toasts": {
       "passwordChanged": "密码已成功更改",
       "passwordChangeFailed": "更改密码失败"
@@ -106,6 +104,8 @@
       "noDevices": "无受信任设备。在 2FA 登录时勾选\"不再询问此浏览器\"后，设备将显示在此处。",
       "currentBadge": "当前设备",
       "revokeButton": "撤销",
+      "ipAddress": "IP：{ip}",
+      "dates": "添加于 {added} · 最后使用 {lastUsed} · 到期 {expires}",
       "revokeAllModal": {
         "title": "撤销所有受信任设备",
         "description": "这将移除所有受信任设备。下次从任何设备登录时，您需要输入 2FA 验证码。"
@@ -226,7 +226,7 @@
       "hideRegisterYearLabel": "在登记簿日期中隐藏年份",
       "chartCollapsedLabel": "交易页面的图表默认折叠",
       "widgetsCollapsedLabel": "账户、收款人和类别信息默认折叠",
-      "accountOpenTargetLabel": "打开账户时",
+      "accountOpenTargetLabel": "账户默认视图",
       "accountOpenTargetOptions": {
         "register": "显示其交易",
         "dashboard": "显示其仪表板"
@@ -302,6 +302,10 @@
       "sendTestButton": "发送测试通知",
       "sendingTestButton": "正在发送...",
       "removeButton": "移除",
+      "removeDialog": {
+        "title": "移除设备",
+        "message": "移除 {device}？在该设备上重新开启推送之前，它将不再收到推送通知。"
+      },
       "thisDevice": "此设备",
       "held": "已在此设备上退出登录。在此重新登录后，推送通知将恢复。",
       "unifiedpushBadge": "UnifiedPush",
@@ -480,7 +484,7 @@
   "supportBackup": {
     "title": "创建支持备份",
     "howItWorks": "生成备份的去标识化副本:名称被掩码(保留首尾各两个字符),备注/描述/账号被移除,每笔金额乘以同一个隐藏系数,而公开数值(汇率、价格、利率)保持不变。文件始终使用下方密码加密,并像普通备份一样还原。这只能防范偶然泄露,防不住已经认识您的人——日期、频率和结构会被保留,以便问题仍可重现。",
-    "sectionsLabel": "包含内容",
+    "sectionsLabel": "要包含的部分",
     "sections": {
       "investments": "投资(证券、持仓、价格)",
       "scheduled": "定期交易",
@@ -646,11 +650,7 @@
       "reason": "令牌无需登录即可访问您的账户，因此在创建令牌前请先确认您的身份。"
     },
     "relative": {
-      "never": "从未",
-      "today": "今天",
-      "yesterday": "昨天",
-      "daysAgo": "{count} 天前",
-      "monthsAgo": "{count} 个月前"
+      "never": "从未"
     }
   },
   "autoBackup": {
@@ -694,7 +694,6 @@
       "failed": "失败"
     },
     "saveButton": "保存策略",
-    "savingButton": "保存中...",
     "runNowButton": "立即备份所有账户",
     "runningButton": "正在备份...",
     "toasts": {
@@ -815,7 +814,6 @@
     },
     "restoreResult": {
       "title": "恢复完成",
-      "description": "您的数据已成功恢复。以下是恢复内容摘要：",
       "totalRecords": "总记录数",
       "skippedAttachments": "{count, plural, other {# 个附件未被恢复}}：备份中没有可用的字节——导出时它们缺失或未通过校验和，或该文件早于自包含备份。请在附件存储恢复正常后重新导出备份。",
       "unusableAiProviderKeys": "{count, plural, other {# 个 AI 提供商在恢复后没有可用的 API 密钥}}：该备份创建于提供商密钥随备份一同保存之前，因此存储的密钥属于生成该文件的服务器，或者本服务器没有配置用于保存密钥的加密密钥。请打开“设置 → AI 提供商”并重新输入 API 密钥。",
@@ -865,12 +863,11 @@
         "retryButton": "重试",
         "demoNote": "演示模式下无法更改异地目标。",
         "saveButton": "保存目标",
-        "savingButton": "保存中...",
         "saved": "异地目标已保存",
         "saveFailed": "无法保存你的异地备份目标",
         "s3": {
           "heading": "S3 存储",
-          "modeLabel": "副本发送到何处",
+          "modeLabel": "副本目的地",
           "modeOff": "关闭",
           "modeDeployment": "此服务器的存储桶",
           "modeOwn": "我自己的存储桶",
@@ -983,21 +980,57 @@
       "sections": "功能区域",
       "shared": "共享数据"
     },
+    "ops": {
+      "read": "读取",
+      "create": "创建",
+      "edit": "编辑",
+      "delete": "删除",
+      "joint": "联名"
+    },
     "sections": {
       "description": "授予对整个应用功能区域的只读访问权限。账户范围的数据还需要逐账户访问权限。",
+      "bills": {
+        "label": "账单与存款",
+        "description": "已授权账户的计划交易"
+      },
+      "investments": {
+        "label": "投资",
+        "description": "已授权账户的持仓和投资交易"
+      },
+      "budgets": {
+        "label": "预算",
+        "description": "只读预算数据"
+      },
+      "reports": {
+        "label": "报表",
+        "description": "只读报表"
+      },
+      "ai": {
+        "label": "AI 助手",
+        "description": "使用所有者配置的 AI 提供商"
+      },
       "aiRequiresFullAccess": "AI 助手会读取所有账户和功能区域，因此只有当该委托人能够读取您的所有账户和其他所有功能区域时，它才会为其回答。",
       "warranties": {
         "label": "保修",
         "description": "保修及其文档和保修申请。关联的购买记录仅在其所在账户可供被授权人读取时显示。"
-      }
+      },
+      "toggleLabel": "{section} 部分"
     },
     "accounts": {
       "noAccounts": "无账户可授权。",
       "grantAll": "授权全部",
-      "jointRequiresFullAccount": "联名账户只能与拥有自己 Monize 账户的用户共享"
+      "jointRequiresFullAccount": "联名账户只能与拥有自己 Monize 账户的用户共享",
+      "grantAllLabel": "{op}所有{type}账户",
+      "grantLabel": "对 {account} 的{op}权限"
     },
     "shared": {
-      "description": "收款人、分类和标签的读取权限始终允许。这些控制创建/编辑/删除权限。"
+      "description": "收款人、分类和标签的读取权限始终允许。这些控制创建/编辑/删除权限。",
+      "toggleLabel": "{op}{resource}",
+      "resources": {
+        "payees": "收款人",
+        "categories": "分类",
+        "tags": "标签"
+      }
     },
     "saveButton": "保存",
     "toasts": {
@@ -1151,7 +1184,6 @@
       "editMessageButton": "编辑",
       "messagePlaceholder": "备注、说明、重要文件存放位置...",
       "maxCharsNote": "最多 4000 个字符。静态加密存储。",
-      "cancelButton": "取消",
       "saveButton": "保存留言",
       "toasts": {
         "saved": "留言已保存",
@@ -1196,7 +1228,7 @@
       "grantStatus": "授权状态：",
       "unknown": "未知",
       "never": "从未",
-      "daysAgo": "{count} 天前",
+      "withRelative": "{timestamp}（{relative}）",
       "grantedOn": "授权于 {timestamp}",
       "notYetGranted": "尚未授权",
       "timerNote": "任何时候您使用应用（登录、查看页面、记录交易等经过身份验证的操作），计时器都会自动重置。"
@@ -1213,6 +1245,17 @@
     },
     "stepUp": {
       "reason": "重新验证您的身份以查看或编辑您的紧急访问留言。"
+    },
+    "validation": {
+      "wholeDays": "只能输入整天数",
+      "minDays": "{min, plural, other {至少 # 天}}",
+      "maxDays": "{max, plural, other {不超过 # 天}}",
+      "reminderBeforeGrant": "提醒天数必须少于授权天数",
+      "messageMax": "消息不得超过 {max} 个字符",
+      "firstNameRequired": "名字为必填项",
+      "firstNameMax": "名字不得超过 {max} 个字符",
+      "emailInvalid": "请输入有效的电子邮件地址",
+      "emailMax": "电子邮件不得超过 {max} 个字符"
     },
     "toasts": {
       "loadFailed": "加载紧急访问失败",
@@ -1246,6 +1289,10 @@
       "enableButton": "启用",
       "editButton": "编辑",
       "deleteButton": "删除"
+    },
+    "deleteDialog": {
+      "title": "删除 AI 提供商",
+      "message": "删除 {name}？其保存的 API 密钥也会一并删除。此操作无法撤销。"
     },
     "configForm": {
       "addTitle": "添加 AI 提供商",

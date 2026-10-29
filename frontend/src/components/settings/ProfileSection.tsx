@@ -157,8 +157,8 @@ export function ProfileSection({ user, onUserUpdated }: ProfileSectionProps) {
           </div>
         )}
         <div className="mt-4 flex justify-end">
-          <Button type="submit" disabled={isUpdatingProfile}>
-            {isUpdatingProfile ? t('savingButton') : t('saveButton')}
+          <Button type="submit" isLoading={isUpdatingProfile}>
+            {t('saveButton')}
           </Button>
         </div>
       </form>

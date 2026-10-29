@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { TABLE_BODY_CLASS } from '@/components/ui/Table';
 import {
   currentDeviceFingerprint,
@@ -68,6 +69,7 @@ export function PushDevicesPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<PushDevice | null>(null);
 
   const refreshDevices = useCallback(async () => {
     const [rows, fingerprint] = await Promise.all([
@@ -280,6 +282,7 @@ export function PushDevicesPanel() {
   const deliverableDevices = liveDevices.filter((device) => !device.heldAt);
 
   const handleRemove = async (device: PushDevice) => {
+    setPendingRemove(null);
     setRemovingId(device.id);
     try {
       const isThisBrowser = device.endpointFingerprint === thisDevice;
@@ -510,7 +513,7 @@ export function PushDevicesPanel() {
                 variant="danger"
                 size="sm"
                 disabled={removingId === device.id}
-                onClick={() => handleRemove(device)}
+                onClick={() => setPendingRemove(device)}
                 className="flex-shrink-0"
               >
                 {t('removeButton')}
@@ -579,6 +582,20 @@ export function PushDevicesPanel() {
           </ul>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={pendingRemove !== null}
+        title={t('removeDialog.title')}
+        message={t('removeDialog.message', {
+          device: pendingRemove?.deviceName || t('unnamedDevice'),
+        })}
+        confirmLabel={t('removeButton')}
+        variant="danger"
+        onConfirm={() => {
+          if (pendingRemove) void handleRemove(pendingRemove);
+        }}
+        onCancel={() => setPendingRemove(null)}
+      />
     </PushBlock>
   );
 }
@@ -657,10 +674,10 @@ function PushBlock({
     >
       {collapsedSummary === undefined ? (
         <>
-          <h3 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+          <h3 className="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
             {heading}
           </h3>
-          {children}
+          <div className="mt-2">{children}</div>
         </>
       ) : (
         <details
@@ -681,7 +698,7 @@ function PushBlock({
             {/* `inline` keeps the heading on the disclosure marker's own line;
                 the h3 stays so the block holds its place in the page's heading
                 outline whichever branch rendered it. */}
-            <h3 className="inline text-sm font-medium text-gray-900 dark:text-gray-100">
+            <h3 className="inline text-sm font-semibold text-gray-900 dark:text-gray-100">
               {heading}
             </h3>
             {!open && (

@@ -135,10 +135,10 @@ export function NotificationsSection({
           {notificationEmail && (
             <>
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
                   {t('budgetNotificationsHeading')}
                 </h3>
-                <div className="space-y-3">
+                <div className="mt-2 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-700 dark:text-gray-300">{t('weeklyBudgetDigestTitle')}</p>
