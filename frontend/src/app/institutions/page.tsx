@@ -16,16 +16,12 @@ import {
 } from '@/components/institutions/InstitutionList';
 import { InstitutionAccountsManager } from '@/components/institutions/InstitutionAccountsManager';
 import { institutionsApi } from '@/lib/institutions';
-import { accountsApi } from '@/lib/accounts';
-import { countLogicalAccounts } from '@/lib/account-utils';
 import { Institution } from '@/types/institution';
-import { Account } from '@/types/account';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CARD_CLASS } from '@/components/ui/Card';
-import { SEGMENTED_GROUP_CLASS, segmentClass } from '@/components/ui/segmented-control';
 import { useFormModal } from '@/hooks/useFormModal';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { createLogger } from '@/lib/logger';
@@ -45,13 +41,8 @@ export default function InstitutionsPage() {
 function InstitutionsContent() {
   const t = useTranslations('institutions');
   const [institutions, setInstitutions] = useState<Institution[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  // Whether `accounts` is the answer or a failed read standing in for one:
-  // the status segments count accounts only when the list really loaded.
-  const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'active' | 'closed' | ''>('');
   const [sortField, setSortField] = useState<InstitutionSortField>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,15 +65,8 @@ function InstitutionsContent() {
     // Writes live in `run` so they land after the request, not during the effect.
     const run = async () => {
       try {
-        // Accounts are loaded to derive each institution's active/closed status
-        // (an institution has no status of its own).
-        const [data, accountsData] = await Promise.all([
-          institutionsApi.getAll(),
-          accountsApi.getAll(true).catch(() => null),
-        ]);
+        const data = await institutionsApi.getAll();
         setInstitutions(data);
-        setAccounts(accountsData ?? []);
-        setAccountsLoaded(accountsData !== null);
       } catch (error) {
         toast.error(getErrorMessage(error, t('page.toasts.loadFailed')));
         logger.error(error);
@@ -138,42 +122,8 @@ function InstitutionsContent() {
     }
   };
 
-  // Logical (pair-aware) account counts per institution, split by status, so
-  // the Accounts column can reflect the All/Active/Closed filter without
-  // hiding any institution rows.
-  const accountCountByStatus = useMemo(() => {
-    const groups = new Map<string, Account[]>();
-    for (const account of accounts) {
-      if (!account.institutionId) continue;
-      const arr = groups.get(account.institutionId) ?? [];
-      groups.set(account.institutionId, [...arr, account]);
-    }
-    const map = new Map<string, { active: number; closed: number }>();
-    for (const [id, arr] of groups) {
-      map.set(id, {
-        active: countLogicalAccounts(arr.filter((a) => !a.isClosed)),
-        closed: countLogicalAccounts(arr.filter((a) => a.isClosed)),
-      });
-    }
-    return map;
-  }, [accounts]);
-
-  // Apply the status filter to the displayed account count (rows are kept).
-  const decoratedInstitutions = useMemo(() => {
-    if (!filterStatus) return institutions;
-    return institutions.map((i) => {
-      const counts = accountCountByStatus.get(i.id);
-      const accountCount = counts
-        ? filterStatus === 'active'
-          ? counts.active
-          : counts.closed
-        : 0;
-      return { ...i, accountCount };
-    });
-  }, [institutions, filterStatus, accountCountByStatus]);
-
   const filteredInstitutions = useMemo(() => {
-    let result = decoratedInstitutions;
+    let result = institutions;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -207,7 +157,7 @@ function InstitutionsContent() {
       return sortDirection === 'asc' ? cmp : -cmp;
     });
     return sorted;
-  }, [decoratedInstitutions, searchQuery, sortField, sortDirection]);
+  }, [institutions, searchQuery, sortField, sortDirection]);
 
   const handleSort = (field: InstitutionSortField) => {
     if (sortField === field) {
@@ -224,15 +174,10 @@ function InstitutionsContent() {
     return filteredInstitutions.slice(start, start + PAGE_SIZE);
   }, [filteredInstitutions, currentPage]);
 
-  // A new search or status filter starts again from the first page.
+  // A new search starts again from the first page.
   const handleSearchChange = (query: string) => {
     if (query !== searchQuery) setCurrentPage(1);
     setSearchQuery(query);
-  };
-
-  const handleFilterStatusChange = (status: 'active' | 'closed' | '') => {
-    if (status !== filterStatus) setCurrentPage(1);
-    setFilterStatus(status);
   };
 
   const goToPage = (page: number) => {
@@ -246,23 +191,6 @@ function InstitutionsContent() {
     (sum, i) => sum + (i.accountCount || 0),
     0,
   );
-  // The status segments' counts, all three from the one accounts list that
-  // splits the Accounts column by status, so All is always Active plus Closed.
-  // A failed accounts read leaves them unknown, and the labels carry no count.
-  let statusCounts: { all: number; active: number; closed: number } | null = null;
-  if (accountsLoaded) {
-    let active = 0;
-    let closed = 0;
-    for (const counts of accountCountByStatus.values()) {
-      active += counts.active;
-      closed += counts.closed;
-    }
-    statusCounts = { all: active + closed, active, closed };
-  }
-  const statusSegmentLabel = (status: 'all' | 'active' | 'closed') =>
-    statusCounts === null
-      ? t(`list.statusFilter.${status}`)
-      : t(`list.statusFilter.counted.${status}`, { count: statusCounts[status] });
 
   return (
     <PageLayout>
@@ -302,21 +230,6 @@ function InstitutionsContent() {
             onChange={(e) => handleSearchChange(e.target.value)}
             className="block w-full sm:w-auto sm:flex-1 sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
           />
-          {/* The filter keeps every institution and narrows the Accounts
-              column, so each segment counts the accounts it shows. */}
-          <div role="group" aria-label={t('list.statusFilter.label')} className={SEGMENTED_GROUP_CLASS}>
-            {(['', 'active', 'closed'] as const).map((status) => (
-              <button
-                key={status || 'all'}
-                type="button"
-                onClick={() => handleFilterStatusChange(status)}
-                aria-pressed={filterStatus === status}
-                className={segmentClass(filterStatus === status)}
-              >
-                {statusSegmentLabel(status || 'all')}
-              </button>
-            ))}
-          </div>
         </div>
 
         <Modal isOpen={showForm} onClose={close} {...modalProps} maxWidth="lg" className="p-6">

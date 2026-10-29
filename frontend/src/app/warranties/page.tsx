@@ -499,6 +499,16 @@ function WarrantiesContent() {
         )}
 
         <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
+          <div className="w-full sm:w-auto sm:min-w-[30rem]">
+            <Input
+              type="search"
+              aria-label={t('page.search.label')}
+              placeholder={t('page.search.placeholder')}
+              value={searchInput}
+              maxLength={200}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </div>
           <div role="group" aria-label={t('page.filters.label')} className={SEGMENTED_GROUP_CLASS}>
             {STATUS_FILTERS.map((option) => {
               const count = filterCount(option);
@@ -516,16 +526,6 @@ function WarrantiesContent() {
                 </button>
               );
             })}
-          </div>
-          <div className="w-full sm:w-auto sm:min-w-[30rem]">
-            <Input
-              type="search"
-              aria-label={t('page.search.label')}
-              placeholder={t('page.search.placeholder')}
-              value={searchInput}
-              maxLength={200}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
           </div>
           <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 sm:ml-auto">
             <ToggleSwitch
