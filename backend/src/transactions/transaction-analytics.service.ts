@@ -1001,7 +1001,14 @@ export class TransactionAnalyticsService {
     amountTo?: number,
     tagIds?: string[],
     jointAccountIds?: string[],
-  ): Promise<Array<{ month: string; total: number; count: number }>> {
+  ): Promise<
+    Array<{
+      month: string;
+      total: number | null;
+      knownSubtotal?: number;
+      count: number;
+    }>
+  > {
     return withScopedDb(this.dataSource, async (m) => {
       // Reuse the same filtered query builder as getSummary so the chart's
       // per-month totals and counts reconcile exactly with the category/payee
