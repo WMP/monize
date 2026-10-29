@@ -411,7 +411,7 @@ export function BudgetVsActualReport() {
   };
 
   if (error) {
-    return <ReportError onRetry={reload} />;
+    return <ReportError error={error} onRetry={reload} />;
   }
 
   if (isLoading) {

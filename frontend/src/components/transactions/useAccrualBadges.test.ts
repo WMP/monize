@@ -83,3 +83,11 @@ it("refreshes unchanged source IDs when the page is fetched again", async () => 
   expect(accrualsApi.sources).toHaveBeenCalledTimes(2);
   expect(result.current.counts?.get("same")).toBe(1);
 });
+
+
+it("keeps the same lookup for copied or reordered visible IDs", async () => {
+  vi.mocked(accrualsApi.sources).mockResolvedValue([]);
+  const { rerender } = await act(async () => renderHook(({ids}) => useAccrualBadges(ids, "revision"), {initialProps:{ids:["b", "a"]}}));
+  await act(async () => rerender({ids:["a", "b"]}));
+  expect(accrualsApi.sources).toHaveBeenCalledTimes(1);
+});

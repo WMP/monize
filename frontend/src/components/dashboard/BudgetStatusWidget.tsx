@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { budgetsApi } from "@/lib/budgets";
 import { DashboardBudgetSummary } from "@/types/budget";
 import { useNumberFormat } from "@/hooks/useNumberFormat";
+import { ReportError } from "@/components/reports/ReportError";
 import { CARD_CLASS } from "@/components/ui/Card";
 import { WidgetHeading } from "./widget-meta";
 import {
@@ -28,7 +29,8 @@ export function BudgetStatusWidget({
   const { formatCurrency, formatPercent } = useNumberFormat();
   const [summary, setSummary] = useState<DashboardBudgetSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
     if (parentLoading) return;
@@ -39,15 +41,17 @@ export function BudgetStatusWidget({
           ...(basis ? ([basis] as const) : []),
         );
         setSummary(data);
-      } catch {
-        setHasError(true);
+        setLoadError(null);
+      } catch (error) {
+        setSummary(null);
+        setLoadError(error);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadBudgetSummary();
-  }, [parentLoading, basis]);
+  }, [parentLoading, basis, revision]);
 
   const sectionTitle = t("budgetStatus.title");
 
@@ -66,7 +70,8 @@ export function BudgetStatusWidget({
     );
   }
 
-  if (hasError || !summary) {
+  if (loadError) return <ReportError error={loadError} onRetry={() => setRevision(value => value + 1)} />;
+  if (!summary) {
     return (
       <div className={`${CARD_CLASS} p-3 sm:p-6 lg:min-h-[390px]`}>
         <WidgetHeading id="budget-status" href="/budgets" className="mb-4">

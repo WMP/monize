@@ -169,6 +169,13 @@ export interface ReportSummary {
 }
 
 export interface ReportResult {
+  dataComplete?: false;
+  truncated?: true;
+  rowLimit?: number;
+  fxComplete?: boolean;
+  missingRatePairs?: { from: string; to: string; date: string; reason: string | null }[];
+  repair?: "currency_rate_history";
+  fetchAttempted?: false;
   reportId: string;
   name: string;
   viewType: ReportViewType;

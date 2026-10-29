@@ -5,7 +5,7 @@ This repair follows the accrual review plan and the FX completeness contract. Ca
 ## Boundary and invariants
 
 - Only explicit read boundaries opt into partial budget accumulation. Mutations, period closing and unscoped internal callers retain their strict/native behavior.
-- Monetary query buckets keep converted known components while recording missing pair/date metadata in the read's existing AsyncLocalStorage context. No user-wide cache or persisted approximation.
+- Monetary query buckets keep converted known components while recording missing pair/date metadata in an AsyncLocalStorage accumulator owned by the partial-read boundary. No user-wide cache or persisted approximation.
 - When every component converts, the existing response shape is retained.
 - When any component is unknown, the response is an explicit partial object: `fxComplete:false`, `total:null`, `result:null`, `knownComponents`, `missingRatePairs`, `repair:currency_rate_history`, `fetchAttempted:false`. It contains no calculated health score, remaining balance, variance or recommendation from an incomplete sum.
 - Components carry their own target currency, effective date and known subtotal; unrelated or overlapping query subtotals are never added into a headline. Bound the returned list and disclose truncation separately.
@@ -20,3 +20,5 @@ Add the scoped budget accumulator/boundary in the accrual reporting layer, decla
 ## Evidence required
 
 Real enforced PostgreSQL budget reads with known and missing currencies: no503, no total/score/ratio, exact known subtotal and dated pairs. The complete path remains unchanged; Cash/disabled remain native. Exercise REST interception and assistant/MCP payloads, independent frontend partial/error/empty states, retry after rate repair, response list bounds, request isolation and no poisoning across sibling reads. Preserve source-ledger/balance data. Run relevant type, guard and regression gates; do not weaken thresholds or allowlists.
+
+Concurrent sibling boundaries remain independent even inside one ambient reporting read. Intentional nested calls join their parent accumulator; native reads allocate none.

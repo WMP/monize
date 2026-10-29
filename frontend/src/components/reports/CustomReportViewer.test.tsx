@@ -494,6 +494,17 @@ describe("CustomReportViewer", () => {
       );
     });
 
+    it("labels bounded results as partial even when every selected row converted", async () => {
+      mockGetById.mockResolvedValue(savedReport);
+      mockExecute.mockResolvedValue({ ...executed, truncated: true, dataComplete: false, rowLimit: 50000, fxComplete: true,
+        summary: { total: null, knownTotal: 200, count: 50000, average: null }, missingCurrencies: [], excludedCount: 0 });
+      render(<CustomReportViewer reportId="rpt-1" />);
+      expect(await screen.findByTestId("limited-report-subtotal")).toHaveTextContent("$200.00");
+      expect(screen.getByTestId("limited-report-subtotal")).toHaveTextContent("partial");
+      expect(screen.getByTestId("limited-report-notice")).toHaveTextContent("All figures shown are partial");
+      expect(screen.queryByTestId("partial-data-notice")).not.toBeInTheDocument();
+    });
+
     it("shows no marker or notice when nothing was excluded", async () => {
       mockGetById.mockResolvedValue(savedReport);
       mockExecute.mockResolvedValue({

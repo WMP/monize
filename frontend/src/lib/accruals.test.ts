@@ -79,7 +79,7 @@ it("requests uncached native-currency system balances and bounded read-only move
 });
 
 
-it('retires prior-state derived caches only after a successful editor preview', async () => {
+it('preserves derived caches on both failed and successful editor previews', async () => {
   const input = { patch: { amount: -1200 }, settings: [] };
   setCache('budgets:editor-preview', { spent: 50 });
   vi.mocked(apiClient.post).mockRejectedValueOnce(new Error('stale source'));
@@ -88,5 +88,5 @@ it('retires prior-state derived caches only after a successful editor preview', 
   vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { fingerprint: 'reviewed' } });
   await accrualsApi.editorPreview('source', input);
   expect(apiClient.post).toHaveBeenLastCalledWith('/transactions/source/accrual-editor/preview', input);
-  expect(getCached('budgets:editor-preview')).toBeUndefined();
+  expect(getCached('budgets:editor-preview')).toEqual({spent:50});
 });

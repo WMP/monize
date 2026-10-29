@@ -331,7 +331,7 @@ export function BudgetHealthScoreReport() {
   };
 
   if (error) {
-    return <ReportError onRetry={reload} />;
+    return <ReportError error={error} onRetry={reload} />;
   }
 
   if (isLoading) {

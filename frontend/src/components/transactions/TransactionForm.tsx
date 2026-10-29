@@ -150,7 +150,6 @@ interface TransactionFormProps {
    */
   defaultDate?: string;
   onSuccess?: () => void;
-  onAccrualChanged?: () => void;
   onCancel?: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
   submitRef?: MutableRefObject<(() => void) | null>;
@@ -211,9 +210,9 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
   const isDemoMode = useDemoMode();
   const ownerId = useAuthStore(state => state.user?.id);
   const actingAsUserId = useAuthStore(state => state.actingAsUserId);
-  const editor = useAccrualEditorDraft(transaction && ownerId && transaction.userId === ownerId && !actingAsUserId && !isDemoMode && !transaction.account?.isJoint && !transaction.isTransfer && !transaction.parentTransactionId && !transaction.linkedInvestmentTransactionId ? transaction.id : undefined);
-  const [editorTab,setEditorTab]=useState<'source'|'accrual'|null>(null);
   const accrualEnabled = usePreferencesStore((s) => s.preferences?.accrualEnabled ?? false);
+  const editor = useAccrualEditorDraft(accrualEnabled && transaction && ownerId && transaction.userId === ownerId && !actingAsUserId && !isDemoMode && !transaction.account?.isJoint && !transaction.isTransfer && !transaction.parentTransactionId && !transaction.linkedInvestmentTransactionId ? transaction.id : undefined);
+  const [editorTab,setEditorTab]=useState<'source'|'accrual'|null>(null);
   const accrualTabActive=accrualEnabled&&(editorTab==='accrual'||(editorTab===null&&editor.hasSchedules));
   const accrualReview = useAccrualSourceEditReview(transaction && ownerId && transaction.userId === ownerId && !actingAsUserId ? transaction.id : undefined);
   const t = useTranslations('transactions');
@@ -420,7 +419,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
         },
   });
 
-  useFormDirtyNotify(isDirty || editor.changed, onDirtyChange);
+  useFormDirtyNotify(isDirty || editor.dirty, onDirtyChange);
 
   const watchedAccountId = useWatch({ control, name: 'accountId' });
   const watchedAmount = useWatch({ control, name: 'amount' });
@@ -1459,8 +1458,9 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
         if (showCreatedAt && createdAtValue && createdAtValue !== createdAtOriginal) {
           updatePayload.createdAt = datetimeLocalToIso(createdAtValue, userTimezone);
         }
-        if (editor.ready && (editor.hasSchedules || editor.settings.length || accrualTabActive)) {
-          if (!editor.settings.length && accrualTabActive) {
+        const currentSettings = editor.currentSettings();
+        if (editor.ready && (editor.hasSchedules || currentSettings.length || accrualTabActive)) {
+          if (!currentSettings.length && accrualTabActive) {
             const componentId = isSplitMode ? splits.find(value => value.splitType === 'category' && value.sourceSplitId)?.sourceSplitId : null;
             if (isSplitMode && !componentId) { toast.error(t('accrual.noEligible')); return; }
             editor.update([{sourceTransactionId: transaction.id, sourceSplitId: componentId ?? null, preset:'NTM', family:'expense'}]);
@@ -1471,11 +1471,18 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
           onSuccess?.();
           return;
         }
-        const reviewed = ownerId && transaction.userId === ownerId && !actingAsUserId
-          ? await accrualReview.review(updatePayload)
-          : updatePayload;
-        if (!reviewed) return;
-        await transactionsApi.update(transaction.id, reviewed);
+        try {
+          await transactionsApi.update(transaction.id, updatePayload);
+        } catch (error) {
+          // Disabled users make no speculative accrual reads. A retained schedule
+          // still requires review when the server finds one under the source lock.
+          if (!(error instanceof AxiosError) || error.response?.status !== 409 ||
+              error.response.data?.code !== 'ACCRUAL_REVIEW_REQUIRED' ||
+              !ownerId || transaction.userId !== ownerId || actingAsUserId) throw error;
+          const reviewed = await accrualReview.review(updatePayload);
+          if (!reviewed) return;
+          await transactionsApi.update(transaction.id, reviewed);
+        }
         toast.success(t('form.toasts.transactionUpdated'));
         onSuccess?.();
       } else {
@@ -1490,7 +1497,7 @@ function TransactionFormFields({ transaction, duplicateFrom, defaultAccountId, d
       }
     } catch (error) {
       logger.error('Submit error:', error);
-      toast.error(error instanceof AxiosError && error.response?.status === 409 && ownerId && transaction?.userId === ownerId ? t('accrual.changed') : getErrorMessage(error, t('form.toasts.saveFailed')));
+      toast.error(getErrorMessage(error, t('form.toasts.saveFailed')));
     } finally {
       setIsLoading(false);
     }

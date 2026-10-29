@@ -277,6 +277,13 @@ describe('BudgetDetailPage', () => {
     });
   });
 
+  it.each(['daily', 'trend'] as const)('shows a retryable error when the %s history request fails', async (panel) => {
+    (panel === 'daily' ? mockGetDailySpending : mockGetTrend).mockRejectedValueOnce(new Error('History unavailable'));
+    render(<BudgetDetailPage />);
+    await waitFor(() => expect(screen.getByText('Failed to load budget')).toBeInTheDocument());
+    expect(screen.queryByText('February 2026')).not.toBeInTheDocument();
+  });
+
   it('renders edit and back buttons', async () => {
     render(<BudgetDetailPage />);
 

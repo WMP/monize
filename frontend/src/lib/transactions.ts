@@ -1,3 +1,4 @@
+import { budgetResponse } from './budget-partial';
 import apiClient from './api';
 import type { TransactionSortField } from './transaction-sort';
 import {
@@ -416,7 +417,7 @@ export const transactionsApi = {
       params: apiParams,
       timeout: 60000,
     });
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   // Monthly foreign-transaction fee totals for one account, grouped by the

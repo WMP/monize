@@ -114,8 +114,6 @@ export const accrualsApi = {
       `/transactions/${id}/accrual-editor/preview`,
       input,
     );
-    // The reviewed source is fresh; retire cached derived reads of its prior state.
-    clearAllCache();
     return response.data;
   },
   editorSave: async (

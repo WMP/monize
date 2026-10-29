@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import apiClient from './api';
+import { BudgetFxIncompleteError } from './budget-partial';
 import { budgetsApi } from './budgets';
 import { invalidateCache, invalidateBalanceCaches, getCached, clearAllCache } from './apiCache';
 
@@ -255,4 +256,18 @@ it('isolates category budget status by explicit reporting basis',async()=>{
  await budgetsApi.getCategoryBudgetStatus(['basis-category'],'accrual');
  expect(apiClient.post).toHaveBeenCalledWith('/budgets/category-budget-status',{categoryIds:['basis-category']},{params:{basis:'cash'}});
  expect(apiClient.post).toHaveBeenLastCalledWith('/budgets/category-budget-status',{categoryIds:['basis-category']},{params:{basis:'accrual'}});
+});
+
+const partial = {
+  fxComplete: false as const, total: null, result: null, currency: 'EUR',
+  knownComponents: [{ id: 'known', currency: 'EUR', date: '2026-10-31', knownSubtotal: -80 }],
+  missingRatePairs: [{ from: 'USD', to: 'EUR', date: '2026-10-31', reason: null }],
+  repair: 'currency_rate_history' as const, fetchAttempted: false as const,
+};
+
+it('rejects a partial budget read and permits a repaired retry instead of caching it as a budget', async () => {
+  clearAllCache();
+  vi.mocked(apiClient.get).mockResolvedValueOnce({ data: partial }).mockResolvedValueOnce({ data: { totalSpent: 160 } });
+  await expect(budgetsApi.getDashboardSummary('accrual')).rejects.toBeInstanceOf(BudgetFxIncompleteError);
+  expect(await budgetsApi.getDashboardSummary('accrual')).toEqual({ totalSpent: 160 });
 });

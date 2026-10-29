@@ -1,5 +1,7 @@
+import { usePreferencesStore } from "@/store/preferencesStore";
+import type { UserPreferences } from "@/types/auth";
 import { renderHook } from "@/test/render";
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import {
   BasisContext,
@@ -12,6 +14,7 @@ vi.mock("@/lib/csv-export", async (importOriginal) => ({
   exportToCsv: vi.fn(),
   exportCsvSections: vi.fn(),
 }));
+beforeEach(() => { usePreferencesStore.setState({preferences:{accrualEnabled:true} as UserPreferences}); });
 const wrapper = (basis: ReportingBasis) =>
   function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -64,4 +67,13 @@ it("keeps standalone exporter behavior until a reporting scope supplies a basis"
   const { result } = renderHook(() => useReportExportMetadata());
   result.current.exportCsvWithBasis("report", ["Amount"], [[0]]);
   expect(exportToCsv).toHaveBeenLastCalledWith("report", ["Amount"], [[0]]);
+});
+
+it("preserves the existing export shape while the feature is disabled", () => {
+  usePreferencesStore.setState({preferences:{accrualEnabled:false} as UserPreferences});
+  const {result}=renderHook(()=>useReportExportMetadata(),{wrapper:wrapper("cash")});
+  result.current.exportCsvWithBasis("report",["Amount"],[[5]]);
+  expect(exportToCsv).toHaveBeenLastCalledWith("report",["Amount"],[[5]]);
+  const options={title:"Report",filename:"report"};
+  expect(result.current.withPdfBasis(options)).toEqual(options);
 });

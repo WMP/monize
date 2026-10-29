@@ -233,7 +233,7 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
       if (ids?.length) params.set(key, ids.join(","));
     }
     if (
-      basis &&
+      basis === "accrual" &&
       (report?.filters.searchText ||
         report?.filters.filterGroups?.length ||
         report?.config.includeTransfers ||
@@ -249,11 +249,11 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
     }
 
     if (result.groupBy === GroupByType.CATEGORY) {
-      if (report?.filters.categoryIds?.length)
+      if (basis === "accrual" && report?.filters.categoryIds?.length)
         params.set("unsupported", "true");
       params.set("categoryId", id);
     } else if (result.groupBy === GroupByType.PAYEE) {
-      if (report?.filters.payeeIds?.length) params.set("unsupported", "true");
+      if (basis === "accrual" && report?.filters.payeeIds?.length) params.set("unsupported", "true");
       params.set("payeeId", id);
     }
 
@@ -387,7 +387,7 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {/* A null total is withheld, not zero: show the part that converted
                     and mark it. The count metric's total is never null. */}
-                <PartialTotal
+                {result.truncated ? <span data-testid="limited-report-subtotal">{formatCurrency(result.summary.knownTotal)} <span className="text-sm text-amber-600 dark:text-amber-400">{t("customReportViewer.partialFigure")}</span></span> : <PartialTotal
                   total={reportTotal(
                     result.summary.total ?? result.summary.knownTotal ?? 0,
                     result.summary.total === null ? result : null,
@@ -397,7 +397,7 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
                   {formatCurrency(
                     result.summary.total ?? result.summary.knownTotal ?? 0,
                   )}
-                </PartialTotal>
+                </PartialTotal>}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 {t("customReportViewer.transactionCount", {
@@ -407,6 +407,7 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
             </div>
           </div>
           <div className="mb-4">
+            {result.truncated && <p role="note" data-testid="limited-report-notice" className="text-xs text-amber-600 dark:text-amber-400">{t("customReportViewer.limitedResults", { limit: result.rowLimit ?? 50000 })}</p>}
             <PartialDataNotice
               missingCurrencies={result.missingCurrencies ?? []}
               excludedCount={result.excludedCount ?? 0}
@@ -423,6 +424,15 @@ export function CustomReportViewer({ reportId }: CustomReportViewerProps) {
               onDataPointClick={handleDataPointClick}
               tableColumns={result.tableColumns}
               reportTitle={report.name}
+              reportSubtitle={result.truncated ? t("customReportViewer.limitedResults", { limit: result.rowLimit ?? 50000 }) : result.fxComplete === false ? t("partialData.notice", { count: result.excludedCount ?? 0, displayCurrency: result.currency, currencies: result.missingCurrencies?.join(", ") ?? "" }) : undefined}
+              completeness={result.truncated || result.fxComplete === false ? {
+                dataComplete: result.dataComplete !== false,
+                fxComplete: result.fxComplete !== false,
+                truncated: result.truncated === true,
+                rowLimit: result.rowLimit,
+                missingCurrencies: result.missingCurrencies?.join(", ") ?? "",
+                excludedCount: result.excludedCount ?? 0,
+              } : undefined}
               exportFilename={report.name
                 .replace(/[^a-zA-Z0-9]/g, "-")
                 .toLowerCase()}

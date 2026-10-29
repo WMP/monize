@@ -1,3 +1,4 @@
+import { BudgetFxIncompleteError } from '@/lib/budget-partial';
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@/test/render';
@@ -1008,6 +1009,17 @@ describe('TransactionsPage', () => {
       await waitFor(() => {
         expect(mockGetAll).toHaveBeenCalled();
       }, { timeout: 3000 });
+    });
+
+    it('shows known monthly components instead of an empty chart after a partial read', async () => {
+      mockGetMonthlyTotals.mockRejectedValue(new BudgetFxIncompleteError(partialMonthly));
+      render(<TransactionsPage />);
+      await waitFor(() => expect(screen.getByTestId('filter-panel')).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId('set-search'));
+      await waitFor(() => expect(screen.getByTestId('budget-fx-partial')).toBeInTheDocument(),{timeout:3000});
+      expect(screen.getByTestId('budget-fx-partial')).toHaveTextContent('USD → EUR');
+      expect(screen.queryByTestId('chart-monthly-totals')).not.toBeInTheDocument();
+      mockGetMonthlyTotals.mockResolvedValue([]);
     });
 
     it('fetches monthly totals instead of daily balances when search filter is active', async () => {
@@ -2566,6 +2578,15 @@ describe('TransactionsPage', () => {
       });
     });
 
+    it('preserves the original CSV columns and values when accruals are disabled', async () => {
+      mockPreferences.value={accrualEnabled:false,reportingBasis:'cash',defaultCurrency:'USD'};
+      mockGetAll.mockResolvedValue({data:[mockTransactions[0]],pagination:{page:1,totalPages:1,total:1}});
+      await act(async()=>{render(<TransactionsPage />);});
+      await act(async()=>{fireEvent.click(screen.getByTestId('export-btn'));});
+      await waitFor(()=>expect(mockExportToCsv).toHaveBeenCalledTimes(1));
+      expect(mockExportToCsv.mock.calls[0][1]).toEqual(['Date','Account','Payee','Category','Description','Tags','Amount','Currency','Status']);
+      expect(mockExportToCsv.mock.calls[0][2][0]).toHaveLength(9);
+    });
     it('exports all transactions as CSV when export button is clicked', async () => {
       const exportTransactions = [
         { id: 'tx-1', transactionDate: '2026-02-01', amount: -50, status: 'UNRECONCILED', payee: { id: 'p1', name: 'Store' }, payeeName: 'Store', category: { id: 'c1', name: 'Groceries' }, account: { id: 'acc-1', name: 'Checking' }, description: 'Weekly shop', tags: [{ id: 't1', name: 'Essential' }], currencyCode: 'USD', isTransfer: false },
@@ -3460,3 +3481,10 @@ describe('TransactionsPage register sorting', () => {
     expect(screen.getByTestId('balance-withheld')).toHaveTextContent('none');
   });
 });
+
+const partialMonthly = {
+  fxComplete:false as const,result:null,total:null,currency:'EUR',
+  knownComponents:[{id:'monthly-known',currency:'EUR',date:'2026-06-15',knownSubtotal:-80}],
+  missingRatePairs:[{from:'USD',to:'EUR',date:'2026-06-30',reason:null}],
+  repair:'currency_rate_history' as const,fetchAttempted:false as const,
+};

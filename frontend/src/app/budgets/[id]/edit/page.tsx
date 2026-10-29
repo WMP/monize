@@ -13,6 +13,8 @@ import { BudgetForm } from '@/components/budgets/BudgetForm';
 import { BudgetCategoryForm } from '@/components/budgets/BudgetCategoryForm';
 import { BudgetProgressBar } from '@/components/budgets/BudgetProgressBar';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { BudgetFxIncompleteError, type PartialBudgetData } from '@/lib/budget-partial';
+import { BudgetFxPartialNotice } from '@/components/reports/BudgetFxPartialNotice';
 import { budgetsApi } from '@/lib/budgets';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { getErrorMessage } from '@/lib/errors';
@@ -46,6 +48,7 @@ function BudgetEditContent() {
   const budgetId = params.id as string;
 
   const [budget, setBudget] = useState<Budget | null>(null);
+  const [partial, setPartial] = useState<PartialBudgetData | null>(null);
   const [summary, setSummary] = useState<BudgetSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -66,12 +69,18 @@ function BudgetEditContent() {
     // Writes live in `run` so they land after the request, not during the effect.
     const run = async () => {
       try {
+        let incomplete: PartialBudgetData | null = null;
         const [budgetData, summaryData] = await Promise.all([
           budgetsApi.getById(budgetId),
-          budgetsApi.getSummary(budgetId),
+          budgetsApi.getSummary(budgetId).catch((error: unknown) => {
+            if (!(error instanceof BudgetFxIncompleteError)) throw error;
+            incomplete = error.details;
+            return null;
+          }),
         ]);
         setBudget(budgetData);
         setSummary(summaryData);
+        setPartial(incomplete);
       } catch (err) {
         toast.error(getErrorMessage(err, t('pages.edit.toasts.loadFailed')));
         router.push('/budgets');
@@ -150,6 +159,7 @@ function BudgetEditContent() {
           }
         />
 
+        {partial && <BudgetFxPartialNotice data={partial} onRetry={loadData} />}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Budget Settings */}
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
@@ -205,7 +215,7 @@ function BudgetEditContent() {
                 const breakdownItem = summary?.categoryBreakdown.find(
                   (b) => b.budgetCategoryId === cat.id,
                 );
-                const percentUsed = breakdownItem?.percentUsed ?? 0;
+                const percentUsed = breakdownItem?.percentUsed;
 
                 return (
                   <button
@@ -229,14 +239,14 @@ function BudgetEditContent() {
                         {formatCurrency(cat.amount, budget.currencyCode)}
                       </span>
                     </div>
-                    <BudgetProgressBar percentUsed={percentUsed} />
+                    {percentUsed !== undefined && <BudgetProgressBar percentUsed={percentUsed} />}
                     <div className="flex items-center justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
                       <span>
                         {cat.rolloverType !== 'NONE'
                           ? t('pages.edit.rolloverType', { type: cat.rolloverType.toLowerCase() })
                           : t('pages.edit.resetsEachPeriod')}
                       </span>
-                      <span>{t('pages.edit.percentUsed', { percent: String(Math.round(percentUsed)) })}</span>
+                      {percentUsed !== undefined && <span>{t('pages.edit.percentUsed', { percent: String(Math.round(percentUsed)) })}</span>}
                     </div>
                   </button>
                 );

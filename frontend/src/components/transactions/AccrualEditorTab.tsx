@@ -24,6 +24,13 @@ export interface EditorPreview {
     remove?: boolean;
   })[];
 }
+function settingsKey(settings: readonly EditorSetting[]) {
+  return JSON.stringify(settings.map(setting=>[
+    setting.sourceTransactionId,setting.sourceSplitId ?? null,setting.preset,
+    setting.dateRule ?? "MONTH_END",setting.preset === "CUSTOM" ? setting.startMonth : null,
+    setting.preset === "CUSTOM" ? setting.monthCount : null,setting.family ?? null,setting.remove === true,
+  ]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
+}
 export function useAccrualEditorDraft(sourceId?: string) {
   const t = useTranslations("transactions.accrual");
   const generation = useRef(0);
@@ -66,6 +73,7 @@ export function useAccrualEditorDraft(sourceId?: string) {
             : {}),
           family: schedule.family,
         }));
+        if (!settings.length) return;
         const origin = generation.current;
         const value = await accrualsApi.editorPreview(sourceId, {
           patch: {},
@@ -106,6 +114,7 @@ export function useAccrualEditorDraft(sourceId?: string) {
     null,
   );
   const invalidate = () => {
+    if (!sourceId) return;
     generation.current += 1;
     setReview(null);
     setChanged(true);
@@ -177,11 +186,13 @@ export function useAccrualEditorDraft(sourceId?: string) {
     retry: () => setAttempt((value) => value + 1),
     hasSchedules: !!current?.schedules.length,
     settings,
+    currentSettings: () => settingsRef.current && settingsRef.current.id === sourceId ? settingsRef.current.settings : settings,
     update,
     preview,
     save,
     invalidate,
     changed,
+    dirty: !!sourceId && settingsKey(settings) !== settingsKey((current?.schedules ?? []).map(schedule=>({sourceTransactionId:sourceId,sourceSplitId:schedule.sourceSplitId,preset:schedule.preset,dateRule:schedule.dateRule,startMonth:schedule.startMonth,monthCount:schedule.monthCount,family:schedule.family}))),
     value: review && review.id === sourceId ? review.value : null,
   };
 }

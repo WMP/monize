@@ -218,7 +218,6 @@ export function PayeeTransactionsTab({
         </h2>
         {showForm && editingItem && (
           <TransactionForm
-            onAccrualChanged={handleChanged}
             transaction={editingItem}
             onSuccess={() => {
               close();

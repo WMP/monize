@@ -357,6 +357,26 @@ describe('ReportChart', () => {
     expect(onClick).toHaveBeenCalledWith('cat-1');
   });
 
+  it('carries incomplete-selection metadata into CSV and omits a complete PDF total', async () => {
+    const { exportToCsv } = await import('@/lib/csv-export');
+    const { exportToPdf } = await import('@/lib/pdf-export');
+    vi.mocked(exportToCsv).mockClear();
+    vi.mocked(exportToPdf).mockClear();
+    render(<ReportChart viewType={ReportViewType.TABLE} data={sampleData} groupBy={GroupByType.CATEGORY}
+      reportSubtitle="All figures are partial" completeness={{ dataComplete: false, truncated: true, rowLimit: 50000 }} />);
+    fireEvent.click(screen.getByRole('button', { name: /export/i }));
+    fireEvent.click(screen.getByText(/CSV/i));
+    const [, headers, rows] = vi.mocked(exportToCsv).mock.calls.at(-1)!;
+    expect(headers).toContain('dataComplete');
+    expect(rows[0][headers.indexOf('dataComplete')]).toBe('false');
+    expect(rows[0][headers.indexOf('rowLimit')]).toBe('50000');
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /export/i })); });
+    await act(async () => { fireEvent.click(screen.getByText(/PDF/i)); });
+    const pdf = vi.mocked(exportToPdf).mock.calls.at(-1)![0];
+    expect(pdf.subtitle).toBe('All figures are partial');
+    expect(pdf.tableData?.totalRow).toBeUndefined();
+  });
+
   it('exports csv', async () => {
     const { exportToCsv } = await import('@/lib/csv-export');
     render(

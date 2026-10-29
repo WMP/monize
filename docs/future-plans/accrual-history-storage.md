@@ -10,7 +10,9 @@ Only required accrual relationship/taxonomy/bulk-delete history uses the larger-
 
 Add a direct-owned `accrual_history_chunks` table containing action ID, user ID, before/after side, ordinal and a bounded byte payload. The primary key orders parts within one side. A composite foreign key to the action-history ID/owner pair enforces ownership even without RLS. Parent deletion cascades chunks, including redo-stack clearing, pruning, user removal and restore wiping. Use the uniform direct-owner RLS policy with initplans and an explicit enable statement in the paired schema/migration. No role-specific grants.
 
-The small history JSONB field contains a versioned manifest only when a side exceeds the inline limit. Its manifest records byte length, part count and SHA-256 digest. Small sides retain their existing shape and issue no chunk queries. Parts store UTF-8 bytes, so splitting a multibyte character never changes the restored JSON. Each part has a database size constraint; the inline history limit remains unchanged.
+Required accrual history uses a versioned physical entity kind, with its original kind in a private nullable parent column. Older backends refuse that unknown kind; new history presentation exposes the original kind without loading payloads. Legacy records keep their original behavior.
+
+The small history JSONB field contains a versioned manifest only when the combined sides exceed the inline limit. Its manifest records byte length, part count and SHA-256 digest. Small sides retain their existing shape and issue no chunk queries. Parts store UTF-8 bytes, so splitting a multibyte character never changes the restored JSON. Each part has a database size constraint; the inline history limit remains unchanged.
 
 History is transient and intentionally excluded from backups today. Classify the new child table the same way; restore wiping and pruning delete its parent and rely on the cascade. No payload bytes are added to public history responses or support exports.
 

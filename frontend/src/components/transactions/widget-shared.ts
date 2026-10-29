@@ -1,3 +1,4 @@
+import { roundMoney } from '@/lib/format';
 import { GroupedTotal, TransactionSummary } from '@/types/transaction';
 
 /**
@@ -39,7 +40,7 @@ export function buildDisplayCurrencyStrategy(
   defaultCurrency: string,
   convertToDefault: (amount: number, fromCurrency: string) => number | null,
 ): DisplayCurrencyStrategy {
-  if (summary?.currency && summary.fxComplete === true) {
+  if (summary?.currency && summary.fxComplete !== undefined) {
     return {
       displayCurrency: summary.currency,
       toDisplay: (amount, fromCurrency) => fromCurrency === summary.currency
@@ -79,18 +80,20 @@ export function summarizeInDisplayCurrency(
    */
   excludedTransactionCount: number;
 } {
-  if (summary.currency === strategy.displayCurrency && summary.fxComplete === true) {
-    return {
-      income: summary.totalIncome, expenses: summary.totalExpenses, net: summary.netCashFlow,
-      missingCurrencies: [], includedTransactionCount: summary.transactionCount, excludedTransactionCount: 0,
-    };
+  if (summary.currency === strategy.displayCurrency && summary.fxComplete !== undefined) {
+    const income = summary.totalIncome ?? summary.knownIncomeSubtotal ?? 0;
+    const expenses = summary.totalExpenses ?? summary.knownExpensesSubtotal ?? 0;
+    const excluded = summary.excludedTransactionCount ?? 0;
+    return { income, expenses, net: summary.netCashFlow ?? roundMoney(income - expenses),
+      missingCurrencies: [...new Set((summary.missingRatePairs ?? []).map(pair => pair.from))],
+      includedTransactionCount: Math.max(0, summary.transactionCount - excluded), excludedTransactionCount: excluded };
   }
   const buckets = Object.entries(summary.byCurrency ?? {});
   if (buckets.length <= 1) {
     return {
-      income: summary.totalIncome,
-      expenses: summary.totalExpenses,
-      net: summary.netCashFlow,
+      income: summary.totalIncome ?? summary.knownIncomeSubtotal ?? 0,
+      expenses: summary.totalExpenses ?? summary.knownExpensesSubtotal ?? 0,
+      net: summary.netCashFlow ?? 0,
       missingCurrencies: [],
       includedTransactionCount: summary.transactionCount,
       excludedTransactionCount: 0,

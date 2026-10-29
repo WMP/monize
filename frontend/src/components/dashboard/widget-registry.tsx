@@ -84,6 +84,7 @@ export type WidgetIconType = 'bar' | 'line' | 'pie' | 'table' | 'list';
 
 /** Everything the dashboard page loads, handed to each widget's render. */
 export interface DashboardWidgetContext {
+  failedSources?: readonly ("accounts" | "scheduledTransactions")[];
   accounts: Account[];
   scheduledTransactions: ScheduledTransaction[];
   topMovers: TopMover[];
@@ -105,6 +106,7 @@ export interface DashboardWidgetContext {
 }
 
 export interface DashboardWidgetDefinition {
+  requires?: readonly ("accounts" | "scheduledTransactions")[];
   id: DashboardWidgetId;
   /** Key inside the `dashboard` namespace whose `.title` names the widget. */
   titleSection: string;
@@ -129,6 +131,7 @@ const upcomingBillsMaxItems = (accounts: Account[]) =>
 export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   {
     id: 'favourite-accounts',
+    requires: ['accounts'],
     titleSection: 'favouriteAccounts',
     iconType: 'table',
     defaultEnabled: true,
@@ -146,6 +149,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   },
   {
     id: 'upcoming-bills',
+    requires: ['accounts', 'scheduledTransactions'],
     titleSection: 'upcomingBills',
     iconType: 'table',
     defaultEnabled: true,
@@ -163,6 +167,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   // widgets offer the two together.
   {
     id: 'cash-flow-forecast',
+    requires: ['accounts', 'scheduledTransactions'],
     titleSection: 'cashFlowForecast',
     iconType: 'line',
     defaultEnabled: false,
@@ -176,6 +181,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   },
   {
     id: 'top-movers',
+    requires: ['accounts'],
     titleSection: 'topMovers',
     iconType: 'table',
     defaultEnabled: true,
@@ -209,6 +215,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   // Favourite Securities used to hold. Hidden until the user has investments.
   {
     id: 'portfolio-value',
+    requires: ['accounts'],
     titleSection: 'portfolioValue',
     iconType: 'line',
     defaultEnabled: true,
@@ -231,6 +238,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   },
   {
     id: 'expenses-pie',
+    requires: ['accounts'],
     titleSection: 'expensesPieChart',
     iconType: 'pie',
     defaultEnabled: true,
@@ -240,6 +248,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   },
   {
     id: 'income-expenses',
+    requires: ['accounts'],
     titleSection: 'incomeExpenses',
     iconType: 'bar',
     defaultEnabled: true,
@@ -294,6 +303,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   },
   {
     id: 'credit-utilization-accounts',
+    requires: ['accounts'],
     titleSection: 'creditUtilizationAccounts',
     iconType: 'bar',
     defaultEnabled: false,
@@ -301,6 +311,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   },
   {
     id: 'credit-utilization-total',
+    requires: ['accounts'],
     titleSection: 'creditUtilizationTotal',
     iconType: 'pie',
     defaultEnabled: false,
@@ -308,6 +319,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   },
   {
     id: 'sector-weightings',
+    requires: ['accounts'],
     titleSection: 'sectorWeightings',
     iconType: 'pie',
     defaultEnabled: false,
@@ -316,6 +328,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   },
   {
     id: 'security-type-allocation',
+    requires: ['accounts'],
     titleSection: 'securityTypeAllocation',
     iconType: 'pie',
     defaultEnabled: false,
@@ -324,6 +337,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   },
   {
     id: 'geographic-allocation',
+    requires: ['accounts'],
     titleSection: 'geographicAllocation',
     iconType: 'pie',
     defaultEnabled: false,
@@ -346,6 +360,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   },
   {
     id: 'cash-flow-sankey',
+    requires: ['accounts'],
     titleSection: 'cashFlowSankey',
     iconType: 'bar',
     defaultEnabled: false,

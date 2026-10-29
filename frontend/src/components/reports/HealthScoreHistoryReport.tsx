@@ -172,7 +172,7 @@ export function HealthScoreHistoryReport() {
   };
 
   if (error) {
-    return <ReportError onRetry={reload} />;
+    return <ReportError error={error} onRetry={reload} />;
   }
 
   if (isLoading) {

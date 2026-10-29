@@ -1,3 +1,4 @@
+import { BudgetFxIncompleteError } from '@/lib/budget-partial';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act, fireEvent, waitFor, within } from '@/test/render';
@@ -250,12 +251,40 @@ describe('CategoryDetailPage', () => {
     expect(usePreferencesStore.getState().preferences?.reportingBasis).toBe('cash');
     await act(async()=>usePreferencesStore.setState({preferences:null}));
   });
-  it('shows a retryable error rather than empty history when a required trend fails', async () => {
+  it('keeps a failed monthly read local with retry rather than showing empty history', async () => {
     mockGetMonthlyTotals.mockRejectedValueOnce(new Error('trend unavailable'));
     await renderPage();
-    expect(screen.getByRole('alert')).toHaveTextContent('Failed to load category details');
+    expect(screen.getAllByText(/failed to load report data/i)).toHaveLength(2);
+    expect(screen.getByRole('heading',{name:'Groceries'})).toBeInTheDocument();
     expect(screen.queryByTestId('chart')).not.toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Reporting basis' })).toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getAllByRole('button',{name:/try again/i})[0]));
+    expect(screen.getByTestId('chart')).toBeInTheDocument();
+  });
+  it('shows known monthly amounts and repair guidance while withholding chart and seasonality', async () => {
+    mockGetMonthlyTotals.mockRejectedValueOnce(new BudgetFxIncompleteError(partialMonthly));
+    await renderPage();
+    expect(screen.getAllByTestId('budget-fx-partial')).toHaveLength(2);
+    for (const panel of screen.getAllByTestId('budget-fx-partial')) {
+      expect(panel).toHaveTextContent('USD → EUR');
+      expect(panel).toHaveTextContent('80');
+    }
+    expect(screen.queryByTestId('chart')).not.toBeInTheDocument();
+    expect(screen.queryByText('Seasonality')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:'Groceries'})).toBeInTheDocument();
+  });
+
+  it('discards an old monthly partial response after switching categories', async () => {
+    let rejectOld!: (error: unknown) => void;
+    mockGetMonthlyTotals.mockReturnValueOnce(new Promise((_,reject) => {rejectOld = reject;}));
+    mockGetDetail.mockResolvedValueOnce(detailFixture()).mockResolvedValueOnce(detailFixture({category:categoryFixture({id:'cat-2',name:'Salary',isIncome:true})}));
+    const view = await renderPage();
+    routeParams.current = {id:'cat-2'};
+    await act(async () => view.rerender(<CategoryDetailPage />));
+    expect(screen.getByRole('heading',{name:'Salary'})).toBeInTheDocument();
+    await act(async () => rejectOld(new BudgetFxIncompleteError(partialMonthly)));
+    expect(screen.getByRole('heading',{name:'Salary'})).toBeInTheDocument();
+    expect(screen.queryByTestId('budget-fx-partial')).not.toBeInTheDocument();
+    expect(screen.getByTestId('chart')).toBeInTheDocument();
   });
   it('renders the header, cards and overview panels', async () => {
     await renderPage();
@@ -564,3 +593,10 @@ describe('CategoryDetailPage', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+const partialMonthly = {
+  fxComplete:false as const,result:null,total:null,currency:'EUR',
+  knownComponents:[{id:'monthly-known',currency:'EUR',date:'2026-06-15',knownSubtotal:-80}],
+  missingRatePairs:[{from:'USD',to:'EUR',date:'2026-06-30',reason:null}],
+  repair:'currency_rate_history' as const,fetchAttempted:false as const,
+};

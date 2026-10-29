@@ -1,3 +1,4 @@
+import { BudgetFxIncompleteError } from '@/lib/budget-partial';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act, fireEvent, waitFor, within } from '@/test/render';
@@ -15,10 +16,11 @@ const mockPush = vi.fn();
 const stableRouter = { push: mockPush, replace: vi.fn() };
 /** Mutable so a test can arrive with `?tab=` the way a deep link does. */
 const searchParams = { current: new URLSearchParams() };
+const routeParams = { current: { id: 'payee-1' } };
 vi.mock('next/navigation', () => ({
   useRouter: () => stableRouter,
   usePathname: () => '/payees/payee-1',
-  useParams: () => ({ id: 'payee-1' }),
+  useParams: () => routeParams.current,
   useSearchParams: () => searchParams.current,
 }));
 
@@ -193,6 +195,7 @@ describe('PayeeDetailPage', () => {
   beforeEach(() => {
     usePreferencesStore.setState({preferences:{accrualEnabled:true,reportingBasis:"accrual"} as never});
     vi.clearAllMocks();
+    routeParams.current = { id: 'payee-1' };
     chartProps.length = 0;
     searchParams.current = new URLSearchParams();
     mockGetDetail.mockResolvedValue(detailFixture());
@@ -220,12 +223,42 @@ describe('PayeeDetailPage', () => {
     expect(usePreferencesStore.getState().preferences?.reportingBasis).toBe('cash');
     await act(async()=>usePreferencesStore.setState({preferences:null}));
   });
-  it('shows a retryable error rather than empty history when a required trend fails', async () => {
+  it('keeps a failed monthly read local with retry rather than showing empty history', async () => {
     mockGetMonthlyTotals.mockRejectedValueOnce(new Error('trend unavailable'));
     await renderPage();
-    expect(screen.getByRole('alert')).toHaveTextContent('Failed to load payee details');
+    expect(screen.getAllByText(/failed to load report data/i)).toHaveLength(2);
+    expect(screen.getByRole('heading',{name:'Starbucks'})).toBeInTheDocument();
     expect(screen.queryByTestId('chart')).not.toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Reporting basis' })).toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getAllByRole('button',{name:/try again/i})[0]));
+    expect(screen.getByTestId('chart')).toBeInTheDocument();
+  });
+  it('shows known monthly amounts and repair guidance while withholding chart and seasonality', async () => {
+    mockGetMonthlyTotals.mockRejectedValueOnce(new BudgetFxIncompleteError(partialMonthly));
+    await renderPage();
+    expect(screen.getAllByTestId('budget-fx-partial')).toHaveLength(2);
+    for (const panel of screen.getAllByTestId('budget-fx-partial')) {
+      expect(panel).toHaveTextContent('USD → EUR');
+      expect(panel).toHaveTextContent('80');
+    }
+    expect(screen.queryByTestId('chart')).not.toBeInTheDocument();
+    expect(screen.queryByText('Seasonality')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:'Starbucks'})).toBeInTheDocument();
+  });
+
+  it('discards an old monthly partial response after switching payees', async () => {
+    let rejectOld!: (error: unknown) => void;
+    mockGetMonthlyTotals.mockReturnValueOnce(new Promise((_,reject) => {rejectOld = reject;}));
+    const next = detailFixture();
+    next.payee = {...next.payee,id:'payee-2',name:'Next payee'};
+    mockGetDetail.mockResolvedValueOnce(detailFixture()).mockResolvedValueOnce(next);
+    const view = await act(async () => render(<PayeeDetailPage />));
+    routeParams.current = {id:'payee-2'};
+    await act(async () => view.rerender(<PayeeDetailPage />));
+    expect(screen.getByRole('heading',{name:'Next payee'})).toBeInTheDocument();
+    await act(async () => rejectOld(new BudgetFxIncompleteError(partialMonthly)));
+    expect(screen.getByRole('heading',{name:'Next payee'})).toBeInTheDocument();
+    expect(screen.queryByTestId('budget-fx-partial')).not.toBeInTheDocument();
+    expect(screen.getByTestId('chart')).toBeInTheDocument();
   });
   it('renders the header, cards and overview panels', async () => {
     await renderPage();
@@ -484,3 +517,10 @@ describe('PayeeDetailPage', () => {
     expect(mockReactivatePayee).toHaveBeenCalledWith('payee-1');
   });
 });
+
+const partialMonthly = {
+  fxComplete:false as const,result:null,total:null,currency:'EUR',
+  knownComponents:[{id:'monthly-known',currency:'EUR',date:'2026-06-15',knownSubtotal:-80}],
+  missingRatePairs:[{from:'USD',to:'EUR',date:'2026-06-30',reason:null}],
+  repair:'currency_rate_history' as const,fetchAttempted:false as const,
+};

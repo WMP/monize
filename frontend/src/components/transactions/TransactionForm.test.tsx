@@ -5667,46 +5667,62 @@ describe('TransactionForm initialStagedFiles', () => {
     });
 
     afterEach(() => { cleanup(); useAuthStore.setState({user:null,actingAsUserId:null}); });
-    it('waits for explicit review, saves the reviewed patch, and requests a new review after conflict', async () => {
+    it('does not fetch accrual data or preview an ordinary save while disabled', async () => {
+      usePreferencesStore.setState({preferences:{accrualEnabled:false} as UserPreferences});
+      useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
+      mockUpdate.mockReset().mockResolvedValue({});
+      await act(async()=>{render(<TransactionForm transaction={createExistingTransaction()} onSuccess={mockOnSuccess} />);});
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i}));});
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+      expect(accrualsApi.sourceSchedules).not.toHaveBeenCalled();
+      expect(accrualsApi.sourcePreview).not.toHaveBeenCalled();
+      expect(accrualsApi.editorPreview).not.toHaveBeenCalled();
+      expect(mockOnSuccess).toHaveBeenCalledTimes(1);
+    });
+    it('reviews retained schedules on the server-specific conflict even while disabled', async () => {
+      usePreferencesStore.setState({preferences:{accrualEnabled:false} as UserPreferences});
       useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
       vi.mocked(accrualsApi.sourcePreview).mockResolvedValue({fingerprint:'first-token',impacts:[]});
-      mockUpdate.mockRejectedValueOnce(new AxiosError('changed',undefined,undefined,undefined,{status:409} as never)).mockResolvedValueOnce({});
-      await act(async () => { render(<TransactionForm transaction={createExistingTransaction()} onSuccess={mockOnSuccess} />); });
-      await act(async () => { fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i})); });
+      mockUpdate.mockReset().mockRejectedValueOnce(new AxiosError('review',undefined,undefined,undefined,{status:409,data:{code:'ACCRUAL_REVIEW_REQUIRED'}} as never)).mockResolvedValue({});
+      await act(async()=>{render(<TransactionForm transaction={createExistingTransaction()} onSuccess={mockOnSuccess} />);});
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i}));});
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
       expect(accrualsApi.sourcePreview).toHaveBeenCalledTimes(1);
-      expect(mockUpdate).not.toHaveBeenCalled();
-      await act(async () => { fireEvent.click(screen.getByRole('button',{name:'Save reviewed changes'})); });
-      expect(mockUpdate).toHaveBeenCalledTimes(1);
-      expect(mockUpdate.mock.calls[0][1]).toMatchObject({accrualImpactFingerprint:'first-token'});
       expect(mockOnSuccess).not.toHaveBeenCalled();
-      vi.mocked(accrualsApi.sourcePreview).mockResolvedValue({fingerprint:'fresh-token',impacts:[]});
-      await act(async () => { fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i})); });
-      expect(accrualsApi.sourcePreview).toHaveBeenCalledTimes(2);
-      expect(mockUpdate).toHaveBeenCalledTimes(1);
-      await act(async () => { fireEvent.click(screen.getByRole('button',{name:'Save reviewed changes'})); });
-      expect(mockUpdate.mock.calls[1][1]).toMatchObject({accrualImpactFingerprint:'fresh-token'});
-      await waitFor(() => expect(mockOnSuccess).toHaveBeenCalledTimes(1));
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Save reviewed changes'}));});
+      expect(mockUpdate).toHaveBeenCalledTimes(2);
+      expect(mockUpdate.mock.calls[1][1]).toMatchObject({accrualImpactFingerprint:'first-token'});
+      expect(mockOnSuccess).toHaveBeenCalledTimes(1);
+    });
+    it('preserves ordinary conflict messages without requesting an accrual preview', async () => {
+      useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
+      mockUpdate.mockReset().mockRejectedValueOnce(new AxiosError('locked',undefined,undefined,undefined,{status:409,data:{message:'Reconciled transaction is locked'}} as never));
+      await act(async()=>{render(<TransactionForm transaction={createExistingTransaction()} />);});
+      await act(async()=>{fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i}));});
+      expect(accrualsApi.sourcePreview).not.toHaveBeenCalled();
+      expect(mockOnSuccess).not.toHaveBeenCalled();
     });
     it('retains category split identities in both preview and the saved patch', async () => {
       useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
       vi.mocked(accrualsApi.sourcePreview).mockResolvedValue({fingerprint:'split-token',impacts:[]});
-      mockUpdate.mockReset().mockResolvedValue({});
+      mockUpdate.mockReset().mockRejectedValueOnce(new AxiosError('review',undefined,undefined,undefined,{status:409,data:{code:'ACCRUAL_REVIEW_REQUIRED'}} as never)).mockResolvedValue({});
       const id='123e4567-e89b-12d3-a456-426614174001';
       const tx=createExistingTransaction({isSplit:true,splits:[{id,amount:-50,categoryId:'cat-1',kind:'category'}]});
       await act(async () => { render(<TransactionForm transaction={tx} />); });
       await act(async () => { fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i})); });
       expect(vi.mocked(accrualsApi.sourcePreview).mock.calls[0][1].splits).toEqual([expect.objectContaining({id,amount:-50})]);
       await act(async () => { fireEvent.click(screen.getByRole('button',{name:'Save reviewed changes'})); });
-      expect(mockUpdate.mock.calls[0][1].splits).toEqual([expect.objectContaining({id,amount:-50})]);
+      expect(mockUpdate.mock.calls[1][1].splits).toEqual([expect.objectContaining({id,amount:-50})]);
     });
     it('does not update when review is cancelled', async () => {
+      mockUpdate.mockReset().mockRejectedValueOnce(new AxiosError('review',undefined,undefined,undefined,{status:409,data:{code:'ACCRUAL_REVIEW_REQUIRED'}} as never));
       useAuthStore.setState({user:{id:'user-1'} as User,actingAsUserId:null});
       vi.mocked(accrualsApi.sourcePreview).mockResolvedValue({fingerprint:'token',impacts:[]});
       await act(async () => { render(<TransactionForm transaction={createExistingTransaction()} />); });
       await act(async () => { fireEvent.click(screen.getByRole('button',{name:/Update Transaction/i})); });
       const dialog=screen.getByRole('dialog');
       await act(async () => { fireEvent.click(Array.from(dialog.querySelectorAll('button')).find(button=>button.textContent==='Cancel')!); });
-      expect(mockUpdate).not.toHaveBeenCalled();
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
     });
   });
 });

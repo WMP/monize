@@ -13,7 +13,7 @@ import { useAuthStore } from "@/store/authStore";
 import type { User, UserPreferences } from "@/types/auth";
 function Value() {
   const basis = useReportingBasis();
-  return <output>{basis}</output>;
+  return <output>{basis ?? "server-default"}</output>;
 }
 function View({ surface = "report" }: { surface?: string }) {
   return (
@@ -44,13 +44,13 @@ it("defaults to accrual and permits a per-view cash override without persisting 
     reportingBasis: "accrual",
   });
 });
-it('uses cash and hides the control when accrual accounting is disabled', () => {
+it('omits the request basis and hides the control when accrual accounting is disabled', () => {
   usePreferencesStore.setState({
     preferences: { accrualEnabled: false, reportingBasis: 'accrual' } as UserPreferences,
   });
   render(<View />);
   expect(screen.queryByRole('group')).not.toBeInTheDocument();
-  expect(screen.getByRole('status')).toHaveTextContent('cash');
+  expect(screen.getByRole('status')).toHaveTextContent('server-default');
 });
 it("follows the user default until overridden and resets explicitly", () => {
   render(<View />);
@@ -201,5 +201,17 @@ it("defaults to cash when no reporting preference has been saved", () => {
 it("honors feature-off even when a caller supplies a fixed accrual view", () => {
   usePreferencesStore.setState({preferences:{accrualEnabled:false,reportingBasis:"accrual"} as UserPreferences});
   render(<ReportingBasisScope surface="fixed" fixedBasis="accrual"><Value /></ReportingBasisScope>);
-  expect(screen.getByRole("status")).toHaveTextContent("cash");
+  expect(screen.getByRole("status")).toHaveTextContent("server-default");
+});
+
+
+it("keeps disabled drilldown URLs and cache keys free of a basis override", async () => {
+  const { useRouter } = await import("next/navigation");
+  const push = useRouter().push;
+  vi.mocked(push).mockClear();
+  usePreferencesStore.setState({preferences:{accrualEnabled:false, reportingBasis:"accrual"} as UserPreferences});
+  render(<ReportingBasisScope surface="disabled"><Drilldown /></ReportingBasisScope>);
+  fireEvent.click(screen.getByRole("button", {name:"Expand"}));
+  expect(push).toHaveBeenCalledWith("/transactions?categoryId=11111111-1111-4111-8111-111111111111&startDate=2026-01-01&endDate=2026-01-31");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });

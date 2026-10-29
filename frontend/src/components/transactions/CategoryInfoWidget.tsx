@@ -13,6 +13,8 @@ import { ScheduledTransaction } from '@/types/scheduled-transaction';
 import { GroupedTotal, MonthlyTotal, TransactionSummary } from '@/types/transaction';
 import { CategoryBudgetStatus } from '@/types/budget';
 import { transactionsApi } from '@/lib/transactions';
+import { BudgetFxIncompleteError, type PartialBudgetData } from '@/lib/budget-partial';
+import { BudgetFxPartialNotice } from '@/components/reports/BudgetFxPartialNotice';
 import { budgetsApi } from '@/lib/budgets';
 import { countElapsedPeriods } from '@/lib/chart-buckets';
 import { sumMoney } from '@/lib/format';
@@ -84,6 +86,8 @@ export function CategoryInfoWidget({
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
   const [groupedPayees, setGroupedPayees] = useState<GroupedTotal[]>([]);
   const [groupedCategories, setGroupedCategories] = useState<GroupedTotal[]>([]);
+  const [budgetPartial, setBudgetPartial] = useState<PartialBudgetData | null>(null);
+  const [budgetRetry, setBudgetRetry] = useState(0);
   const [budgetStatus, setBudgetStatus] = useState<CategoryBudgetStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -95,6 +99,7 @@ export function CategoryInfoWidget({
 
     const load = async () => {
       setIsLoading(true);
+      let incomplete: PartialBudgetData | null = null;
       const [summaryResult, payeeRows, categoryRows, budgetMap] = await Promise.all([
         transactionsApi
           .getSummary({ basis: 'cash', ...params, categoryIds: [category.id] })
@@ -116,20 +121,25 @@ export function CategoryInfoWidget({
           }),
         budgetsApi
           .getCategoryBudgetStatus([category.id], params.basis ?? 'cash')
-          .catch(() => ({}) as Record<string, CategoryBudgetStatus>),
+          .catch((error: unknown) => {
+            if (error instanceof BudgetFxIncompleteError) incomplete = error.details;
+            else logger.error(error);
+            return {} as Record<string, CategoryBudgetStatus>;
+          }),
       ]);
       if (cancelled) return;
       setSummary(summaryResult);
       setGroupedPayees(payeeRows);
       setGroupedCategories(categoryRows);
       setBudgetStatus(budgetMap[category.id] ?? null);
+      setBudgetPartial(incomplete);
       setIsLoading(false);
     };
     load();
     return () => {
       cancelled = true;
     };
-  }, [category.id, filterKey, refreshKey]);
+  }, [category.id, filterKey, refreshKey, budgetRetry]);
 
   const parentCategory = useMemo(
     () => (category.parentId ? categories.find((c) => c.id === category.parentId) : undefined),
@@ -309,6 +319,7 @@ export function CategoryInfoWidget({
         </p>
       </div>
 
+      {budgetPartial && !category.isIncome && <BudgetFxPartialNotice data={budgetPartial} onRetry={() => setBudgetRetry(value => value + 1)} />}
       {budgetStatus && !category.isIncome && (
         <div className="mb-4">
           <div className="flex items-baseline justify-between gap-3">

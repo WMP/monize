@@ -417,10 +417,10 @@ export function CategoryPerformanceReport() {
     }));
   };
 
-  if (budgetsError) return <ReportError onRetry={reloadBudgets} />;
+  if (budgetsError) return <ReportError error={budgetsError} onRetry={reloadBudgets} />;
 
   if (error) {
-    return <ReportError onRetry={reload} />;
+    return <ReportError error={error} onRetry={reload} />;
   }
 
   if (isLoading || budgetsLoading) {

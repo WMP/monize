@@ -3804,10 +3804,14 @@ describe('TransactionList warranties', () => {
 });
 
 describe('TransactionList accrual owner actions', () => {
+  beforeEach(() => {
+    usePreferencesStore.setState({ preferences: { accrualEnabled: true } as any });
+  });
   afterEach(() => {
     cleanup();
     useAuthStore.setState({ user: null, actingAsUserId: null });
     useDemoStore.setState({ isDemoMode: false });
+    usePreferencesStore.setState({ preferences: null });
   });
   it('shows the accrued badge without a separate register action', async () => {
     vi.mocked(accrualsApi.sources).mockResolvedValueOnce([{sourceTransactionId:createTransaction().id,scheduleCount:2}]);
@@ -3816,6 +3820,13 @@ describe('TransactionList accrual owner actions', () => {
     expect(screen.queryByRole('button', { name: 'Accrual' })).not.toBeInTheDocument();
     expect(accrualsApi.sources).toHaveBeenCalled();
     expect(screen.getAllByText('Accrued').length).toBeGreaterThan(0);
+  });
+  it('does not fetch accrual sources or show the badge when accrual is disabled', async () => {
+    usePreferencesStore.setState({ preferences: { accrualEnabled: false } as any });
+    useAuthStore.setState({ user: { id: 'user-1' } as User, actingAsUserId: null });
+    await act(async () => { render(<TransactionList transactions={[createTransaction()]} />); });
+    expect(accrualsApi.sources).not.toHaveBeenCalled();
+    expect(screen.queryByText('Accrued')).not.toBeInTheDocument();
   });
   it.each(['delegate', 'foreign', 'demo', 'transfer', 'joint'] as const)('hides accrual for %s contexts', async context => {
     useAuthStore.setState({ user: { id: 'user-1' } as User, actingAsUserId: context === 'delegate' ? 'owner' : null });

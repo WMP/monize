@@ -1,7 +1,9 @@
 'use client';
 
+import { ReportError } from '@/components/reports/ReportError';
+
 import { ReportingBasisScope, ReportingBasisControl, useReportingBasis, useReportingRouter, CashReportingNotice } from '@/components/reports/ReportingBasis';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -121,6 +123,7 @@ interface PayeeAnalytics {
   thisYearSummary: TransactionSummary | null;
   lastYearSummary: TransactionSummary | null;
   monthlyTotals: MonthlyTotal[];
+  monthlyError?: unknown;
   /** Trailing 12 months, the default range for the Top Categories panel. */
   categoryTotals: GroupedTotal[];
   /** The same breakdown over the payee's whole history. */
@@ -196,12 +199,17 @@ function PayeeDetailContent() {
   }
 
   // The mount / payee-switch load: the state already says loading.
+  const shownPayeeRef = useRef(payeeId);
+  useLayoutEffect(() => { shownPayeeRef.current = payeeId; });
+  const requestSeqRef = useRef(0);
   const fetchData = useCallback(() => {
     // Writes live in `run` so they land after the request, not during the effect.
     const run = async () => {
+      const sequence = ++requestSeqRef.current;
+      const isStale = () => sequence !== requestSeqRef.current || shownPayeeRef.current !== payeeId;
       try {
-        // The detail is the page; the analytics feed the cards and panels, so a
-        // failure in any of them costs its panel, never the page.
+        // Summary failures remain unknown. Required history reads reach the
+        // retryable page error rather than appearing as empty charts.
         const detailData = await payeesApi.getDetail(payeeId);
 
         const today = isoDaysAgo(0);
@@ -210,6 +218,7 @@ function PayeeDetailContent() {
         const lastYearStart = `${Number(today.slice(0, 4)) - 1}-01-01`;
         const lastYearSameDate = `${Number(today.slice(0, 4)) - 1}${today.slice(4)}`;
 
+        let monthlyError: unknown = null;
         const [
           lifetimeSummary,
           thisYearSummary,
@@ -219,65 +228,66 @@ function PayeeDetailContent() {
           categoryTotalsAllTime,
           recurringCharges,
         ] = await Promise.all([
-          transactionsApi.getSummary({ basis, payeeIds: [payeeId] }),
+          transactionsApi.getSummary({ basis, payeeIds: [payeeId] }).catch((err) => {
+            logger.error(err);
+            return null;
+          }),
           transactionsApi
             .getSummary({ basis, payeeIds: [payeeId], startDate: thisYearStart, endDate: today })
-            ,
+            .catch(() => null),
           transactionsApi
             .getSummary({ basis,
               payeeIds: [payeeId],
               startDate: lastYearStart,
               endDate: lastYearSameDate,
             })
-            ,
+            .catch(() => null),
           // No date range: the chart covers the payee's whole history, and its
           // own granularity control buckets by quarter or year once that history
           // outgrows monthly bars. A window here would silently hide the years
           // before it, which is the opposite of what a detail page is for.
-          transactionsApi
-            .getMonthlyTotals({ basis, payeeIds: [payeeId] })
-            ,
-          transactionsApi
-            .getGroupedTotals({ basis,
-              groupBy: 'category',
-              payeeIds: [payeeId],
-              startDate: yearAgo,
-              endDate: today,
-              limit: 25,
-            })
-            ,
+          // Its error travels with analytics; monthly and seasonality panels render it.
+          transactionsApi.getMonthlyTotals({ basis, payeeIds: [payeeId] }).catch((error: unknown) => { monthlyError = error; return [] as MonthlyTotal[]; }),
+          transactionsApi.getGroupedTotals({ basis,
+            groupBy: 'category',
+            payeeIds: [payeeId],
+            startDate: yearAgo,
+            endDate: today,
+            limit: 25,
+          }),
           // Both ranges are fetched up front so the Top Categories toggle is
           // instant. They are two cheap grouped queries, and switching range is a
           // comparison -- putting a spinner between the two halves of it would
           // make the comparison harder than the request is expensive.
-          transactionsApi
-            .getGroupedTotals({ basis,
-              groupBy: 'category',
-              payeeIds: [payeeId],
-              limit: 25,
-            })
-            ,
+          transactionsApi.getGroupedTotals({ basis,
+            groupBy: 'category',
+            payeeIds: [payeeId],
+            limit: 25,
+          }),
           transactionsApi
             .getRecurringCharges({ payeeIds: [payeeId], startDate: yearAgo, endDate: today })
             .catch(() => [] as RecurringChargeInfo[]),
         ]);
 
+        if (isStale()) return;
         setDetail(detailData);
         setAnalytics({
           lifetimeSummary,
           thisYearSummary,
           lastYearSummary,
           monthlyTotals,
+          monthlyError,
           categoryTotals,
           categoryTotalsAllTime,
           recurringCharges,
         });
         setRefreshKey((key) => key + 1);
       } catch (err) {
+        if (isStale()) return;
         logger.error(err);
         setError(getErrorMessage(err, t('loadFailed')));
       } finally {
-        setIsLoading(false);
+        if (!isStale()) setIsLoading(false);
       }
     };
     return run();
@@ -651,12 +661,14 @@ function PayeeDetailContent() {
                     division as the security detail page. */}
                 <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
                   <div className="lg:col-span-2">
+                  {analytics?.monthlyError ? <ReportError error={analytics.monthlyError} onRetry={loadData} /> : (
                     <CategoryPayeeBarChart
                       data={analytics?.monthlyTotals ?? []}
                       isLoading={false}
                       onMonthClick={handleMonthClick}
                       filterLabel={payee.name}
                     />
+                  )}
                   </div>
                   <div>
                   <CashReportingNotice />
@@ -745,11 +757,13 @@ function PayeeDetailContent() {
                     currencyStrategy={currencyStrategy}
                     isLoading={false}
                   />
+                  {analytics?.monthlyError ? <ReportError error={analytics.monthlyError} onRetry={loadData} /> : (
                   <PayeeSeasonalityPanel
                     monthly={analytics?.monthlyTotals ?? []}
                     currencyStrategy={currencyStrategy}
                     isLoading={false}
                   />
+                  )}
                 </div>
               </TabPanel>
 

@@ -1,5 +1,7 @@
 'use client';
 
+import { sumMoney } from '@/lib/format';
+
 import { useReportExportMetadata } from '@/hooks/useReportExportMetadata';
 import { useMemo, useRef } from 'react';
 import {
@@ -36,6 +38,7 @@ interface ReportChartProps {
   exportFilename?: string;
   reportTitle?: string;
   reportSubtitle?: string;
+  completeness?: Record<string, string | number | boolean | undefined>;
 }
 
 function getColumnMap(
@@ -86,7 +89,7 @@ function ReportChartTooltip({ active, payload, total, formatCurrency, formatPerc
   return null;
 }
 
-export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableColumns, exportFilename, reportTitle, reportSubtitle }: ReportChartProps) {
+export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableColumns, exportFilename, reportTitle, reportSubtitle, completeness }: ReportChartProps) {
   const { exportCsvWithBasis, withPdfBasis } = useReportExportMetadata();
   const { formatCurrency, formatNumber, formatPercent } = useNumberFormat();
   const { formatDate } = useDateFormat();
@@ -102,7 +105,7 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
     }));
   }, [data]);
 
-  const total = chartData.reduce((sum, item) => sum + item.value, 0);
+  const total = sumMoney(chartData.map(item => item.value));
 
   const labelHeader = groupBy === GroupByType.CATEGORY ? 'Category' :
                       groupBy === GroupByType.PAYEE ? 'Payee' :
@@ -114,7 +117,8 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
     const rows = chartData.map((item) =>
       columns.map((col) => columnMap[col]?.getValue(item) ?? '')
     );
-    exportCsvWithBasis(exportFilename || 'report', headers, rows);
+    const metadata = Object.entries(completeness ?? {});
+    exportCsvWithBasis(exportFilename || 'report', [...headers, ...metadata.map(([key]) => key)], rows.map(row => [...row, ...metadata.map(([,value]) => value === undefined ? '' : String(value))]));
   };
 
   const handleExportPdf = async () => {
@@ -136,7 +140,7 @@ export function ReportChart({ viewType, data, groupBy, onDataPointClick, tableCo
       title: reportTitle || exportFilename || 'Report',
       subtitle: reportSubtitle,
       chartContainer: viewType !== ReportViewType.TABLE ? chartContainerRef.current : null,
-      tableData: { headers, rows, totalRow },
+      tableData: { headers, rows, totalRow: completeness ? undefined : totalRow },
       filename: exportFilename || 'report',
     }));
   };

@@ -311,8 +311,13 @@ export function TransactionList({
   const ownerId = useAuthStore(state => state.user?.id);
   const isDelegate = useAuthStore(state => !!state.actingAsUserId);
   const isDemoMode = useDemoMode();
-  const canAccrue = (transaction: Transaction) => !isDelegate && !isDemoMode && transaction.userId === ownerId && !transaction.account?.isJoint && !jointPermissionsByAccount?.has(transaction.accountId) && !transaction.isTransfer && !transaction.parentTransactionId && !transaction.linkedInvestmentTransactionId;
-  const accrualBadges = useAccrualBadges(transactions.filter(value => !readOnly && !value.reportingProvenance && canAccrue(value)).map(value => value.id), transactions);
+  const accrualEnabled = usePreferencesStore(state => state.preferences?.accrualEnabled ?? false);
+  const canAccrue = (transaction: Transaction) => accrualEnabled && !isDelegate && !isDemoMode && transaction.userId === ownerId && !transaction.account?.isJoint && !jointPermissionsByAccount?.has(transaction.accountId) && !transaction.isTransfer && !transaction.parentTransactionId && !transaction.linkedInvestmentTransactionId;
+  const accrualSources = transactions.filter(value => !readOnly && !value.reportingProvenance && canAccrue(value));
+  // The combined editor updates the source revision even for schedule-only changes.
+  // Array copies, selection and enrichment must not refetch unchanged badges.
+  const accrualRevision = JSON.stringify(accrualSources.map(value => [value.id, value.updatedAt]).sort((a, b) => a[0].localeCompare(b[0])));
+  const accrualBadges = useAccrualBadges(accrualSources.map(value => value.id), accrualRevision);
 
   const { formatDate, formatDateWithoutYear } = useDateFormat();
   const { formatCurrency } = useNumberFormat();
@@ -1002,6 +1007,7 @@ export function TransactionList({
                   )}
                   <TransactionRow
                     transaction={transaction}
+                    financialToday={today}
                     index={index}
                     density={density}
                     cellPadding={cellPadding}

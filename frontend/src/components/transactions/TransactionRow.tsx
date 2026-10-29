@@ -26,7 +26,6 @@ import { getDecimalPlacesForCurrency } from '@/lib/format';
 import { foreignTransactionFee } from '@/lib/fx-fees';
 import { transferDirection } from '@/lib/transfer-label';
 import { usePayeeDisplay } from '@/hooks/usePayeeDisplay';
-import { useFinancialToday } from '@/hooks/useFinancialToday';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useLocalizedAmount } from '@/hooks/useLocalizedAmount';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
@@ -225,6 +224,8 @@ export interface TransactionRowProps {
   /** Joint accounts: hides the delete button when the grant lacks delete. */
   hideDelete?: boolean;
   accrualCount?: number;
+  /** User-calendar boundary read once by the containing register. */
+  financialToday: string;
   onEdit?: (transaction: Transaction) => void;
   onDuplicate?: (transaction: Transaction) => void;
   onScheduleRecurring?: (transaction: Transaction) => void;
@@ -282,6 +283,7 @@ export const TransactionRow = memo(function TransactionRow({
   onCycleStatus,
   hideDelete,
   accrualCount,
+  financialToday,
   onEdit,
   onDuplicate,
   onScheduleRecurring,
@@ -312,7 +314,6 @@ export const TransactionRow = memo(function TransactionRow({
   // A recognition row dated after today is a planned allocation, not yet
   // reached -- distinct from one whose month has already passed, which the
   // existing "Accrued" badge already covered (A26-WMP1).
-  const financialToday = useFinancialToday();
   const isScheduledRecognition = isRecognitionRow && transaction.transactionDate > financialToday;
   const isVoid = transaction.status === TransactionStatus.VOID;
   const hasWarranties = rowHasWarranties(transaction);

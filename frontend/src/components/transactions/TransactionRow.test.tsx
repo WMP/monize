@@ -46,6 +46,7 @@ function renderRow(overrides: Partial<TransactionRowProps> = {}, txOverrides: Pa
   const tx = makeTx(txOverrides);
   const props: TransactionRowProps = {
     transaction: tx,
+    financialToday: '2026-06-15',
     index: 0,
     density: 'normal',
     cellPadding: 'p-2',

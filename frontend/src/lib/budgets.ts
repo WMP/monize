@@ -1,3 +1,4 @@
+import { budgetResponse } from './budget-partial';
 import apiClient from './api';
 import {
   Budget,
@@ -29,7 +30,7 @@ export const budgetsApi = {
   create: async (data: CreateBudgetData): Promise<Budget> => {
     const response = await apiClient.post<Budget>('/budgets', data);
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getAll: async (basis?: 'cash' | 'accrual'): Promise<Budget[]> => {
@@ -37,7 +38,7 @@ export const budgetsApi = {
       basis ? `budgets:all:${basis}` : 'budgets:all',
       async () => {
         const response = await apiClient.get<Budget[]>('/budgets', ...(basis ? [{params:{basis}}] as const : []));
-        return response.data;
+        return budgetResponse(response.data);
       },
       120_000, // 2 min
     );
@@ -45,13 +46,13 @@ export const budgetsApi = {
 
   getById: async (id: string, basis?: 'cash' | 'accrual'): Promise<Budget> => {
     const response = await apiClient.get<Budget>(`/budgets/${id}`, ...(basis ? [{params:{basis}}] as const : []));
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   update: async (id: string, data: UpdateBudgetData): Promise<Budget> => {
     const response = await apiClient.patch<Budget>(`/budgets/${id}`, data);
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   delete: async (id: string): Promise<void> => {
@@ -69,7 +70,7 @@ export const budgetsApi = {
       data,
     );
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   updateCategory: async (
@@ -82,7 +83,7 @@ export const budgetsApi = {
       data,
     );
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   removeCategory: async (
@@ -102,7 +103,7 @@ export const budgetsApi = {
       { categories },
     );
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   // Generator
@@ -113,7 +114,7 @@ export const budgetsApi = {
       '/budgets/generate',
       data,
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   applyGenerated: async (data: ApplyGeneratedBudgetData): Promise<Budget> => {
@@ -122,7 +123,7 @@ export const budgetsApi = {
       data,
     );
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   // Execution
@@ -131,7 +132,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/summary`,
       ...(basis ? [{ params: { basis } }] as const : []),
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getVelocity: async (budgetId: string, basis?: 'cash' | 'accrual'): Promise<BudgetVelocity> => {
@@ -139,7 +140,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/velocity`,
       ...(basis ? [{ params: { basis } }] as const : []),
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   // Periods
@@ -148,7 +149,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/periods`,
       { params: { basis: 'cash' } },
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getPeriodDetail: async (
@@ -159,7 +160,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/periods/${periodId}`,
       { params: { basis: 'cash' } },
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   closePeriod: async (budgetId: string): Promise<BudgetPeriod> => {
@@ -167,7 +168,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/periods/close`,
     );
     invalidateCache('budgets:');
-    return response.data;
+    return budgetResponse(response.data);
   },
 
 
@@ -179,7 +180,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/reports/trend`,
       { params: { months, ...(basis ? { basis } : {}) } },
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getCategoryTrend: async (
@@ -190,7 +191,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/reports/category-trend`,
       { params: { months, categoryIds, ...(basis ? { basis } : {}) } },
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getHealthScore: async (budgetId: string, basis?: 'cash' | 'accrual'): Promise<HealthScoreResult> => {
@@ -198,7 +199,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/reports/health-score`,
       ...(basis ? [{ params: { basis } }] as const : []),
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getSeasonalPatterns: async (
@@ -207,7 +208,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/reports/seasonal`,
       ...(basis ? [{ params: { basis } }] as const : []),
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getFlexGroupStatus: async (
@@ -216,7 +217,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/reports/flex-groups`,
       ...(basis ? [{ params: { basis } }] as const : []),
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getDailySpending: async (
@@ -225,7 +226,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/reports/daily-spending`,
       ...(basis ? [{ params: { basis } }] as const : []),
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getSavingsRate: async (
@@ -235,7 +236,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/reports/savings-rate`,
       { params: { months, ...(basis ? { basis } : {}) } },
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   getHealthScoreHistory: async (
@@ -245,7 +246,7 @@ export const budgetsApi = {
       `/budgets/${budgetId}/reports/health-score-history`,
       { params: { months, ...(basis ? { basis } : {}) } },
     );
-    return response.data;
+    return budgetResponse(response.data);
   },
 
   // Dashboard
@@ -257,7 +258,7 @@ export const budgetsApi = {
           '/budgets/dashboard-summary',
       ...(basis ? [{ params: { basis } }] as const : []),
         );
-        return response.data;
+        return budgetResponse(response.data);
       },
     );
   },
@@ -275,7 +276,7 @@ export const budgetsApi = {
         { categoryIds },
         ...(basis ? [{ params: { basis } }] as const : []),
       );
-      return response.data;
+      return budgetResponse(response.data);
     }, 60_000);
   },
 };

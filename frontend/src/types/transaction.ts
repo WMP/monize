@@ -177,13 +177,17 @@ export interface CurrencySummary {
 export interface TransactionSummary {
   currency?: string;
   fxComplete?: boolean;
-  totalIncome: number;
-  totalExpenses: number;
-  netCashFlow: number;
+  totalIncome: number | null;
+  totalExpenses: number | null;
+  netCashFlow: number | null;
   transactionCount: number;
   firstTransactionDate?: string | null;
   lastTransactionDate?: string | null;
   byCurrency?: Record<string, CurrencySummary>;
+  knownIncomeSubtotal?: number;
+  knownExpensesSubtotal?: number;
+  excludedTransactionCount?: number;
+  missingRatePairs?: { from: string; to: string; date: string; reason: string | null }[];
 }
 
 export interface GroupedTotal {

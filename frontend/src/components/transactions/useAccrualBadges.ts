@@ -6,7 +6,7 @@ import { accrualsApi } from "@/lib/accruals";
 /** Only visible, eligible source IDs; at most 100 IDs per request, no allocations. */
 export function useAccrualBadges(sourceIds: string[], refreshKey: unknown) {
   const [attempt, setAttempt] = useState(0);
-  const key = JSON.stringify([sourceIds, attempt]);
+  const key = JSON.stringify([[...new Set(sourceIds)].sort(), attempt]);
   const [result, setResult] = useState<{
     key: string;
     refreshKey: unknown;

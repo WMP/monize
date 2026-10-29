@@ -104,13 +104,7 @@ export function ReportingBasisScope({
   const showDetails = useCallback(
     (href: string) => {
       if (!href.startsWith("/transactions")) return false;
-      if (
-        basis !== "accrual" &&
-        !new URL(href, "https://internal.invalid").searchParams.has(
-          "unsupported",
-        )
-      )
-        return false;
+      if (basis !== "accrual") return false;
       try {
         const input = reportingDetailsFromUrl(href);
         if (!input) return false;
@@ -149,11 +143,15 @@ export function ReportingBasisScope({
 
 /** Standalone consumers omit basis and use the server's user default. */
 export function useReportingViewChanged() {
-  return useContext(BasisContext)?.viewChanged === true;
+  const changed = useContext(BasisContext)?.viewChanged === true;
+  const enabled = usePreferencesStore(state => state.preferences?.accrualEnabled === true);
+  return enabled && changed;
 }
 
 export function useReportingBasis() {
-  return useContext(BasisContext)?.basis;
+  const basis = useContext(BasisContext)?.basis;
+  const enabled = usePreferencesStore(state => state.preferences?.accrualEnabled === true);
+  return enabled ? basis : undefined;
 }
 
 export function ReportingBasisControl({
@@ -211,8 +209,9 @@ export { CashReportingNotice } from "./CashReportingNotice";
 export function useReportingRouter() {
   const router = useRouter();
   const context = useContext(BasisContext);
-  const showDetails = context?.showDetails;
-  const basis = context?.basis;
+  const enabled = usePreferencesStore(state => state.preferences?.accrualEnabled === true);
+  const showDetails = enabled ? context?.showDetails : undefined;
+  const basis = enabled ? context?.basis : undefined;
   return useMemo(
     () =>
       showDetails

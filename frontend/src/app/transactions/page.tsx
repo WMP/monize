@@ -1,5 +1,7 @@
 'use client';
 
+import { ReportError } from '@/components/reports/ReportError';
+
 import { CashReportingNotice } from '@/components/reports/CashReportingNotice';
 import { ReportingBasisScope, ReportingBasisControl, useReportingBasis, useReportingViewChanged } from '@/components/reports/ReportingBasis';
 import { useSearchParams } from 'next/navigation';
@@ -133,6 +135,7 @@ function TransactionsContent() {
   const tc = useTranslations('common');
   const router = useRouter();
   const { formatDate } = useDateFormat();
+  const accrualEnabled = usePreferencesStore(state => state.preferences?.accrualEnabled ?? false);
   const weekStartsOn = (usePreferencesStore((s) => s.preferences?.weekStartsOn) ?? 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
   const defaultCurrency = preferredCurrency(
     usePreferencesStore((s) => s.preferences?.defaultCurrency),
@@ -162,6 +165,7 @@ function TransactionsContent() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [dailyBalances, setDailyBalances] = useState<Array<{ date: string; balance: number; accountId: string; currencyCode: string }>>([]);
   const [monthlyTotals, setMonthlyTotals] = useState<MonthlyTotal[]>([]);
+  const [monthlyError, setMonthlyError] = useState<unknown>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { showForm, editingItem: editingTransaction, openCreate, openEdit, close, modalProps, setFormDirty, unsavedChangesDialog, formSubmitRef } = useFormModal<Transaction>();
   const { view, setView } = useViewMode('transactions');
@@ -453,6 +457,7 @@ function TransactionsContent() {
         const parsedAmountFrom = filters.filterAmountFrom ? parseFloat(filters.filterAmountFrom) : undefined;
         const parsedAmountTo = filters.filterAmountTo ? parseFloat(filters.filterAmountTo) : undefined;
 
+        let chartError: unknown = null;
         const chartPromise = hasCategoryOrPayeeFilter
           ? transactionsApi.getMonthlyTotals({ basis,
               accountIds: accountIdsForQuery,
@@ -464,7 +469,7 @@ function TransactionsContent() {
               search: filters.filterSearch || undefined,
               amountFrom: parsedAmountFrom,
               amountTo: parsedAmountTo,
-            }).catch(() => [] as MonthlyTotal[])
+            }).catch((error: unknown) => { chartError = error; return [] as MonthlyTotal[]; })
           : accountsApi.getDailyBalances(
               Object.keys(chartParams).length > 0 ? chartParams : undefined,
             ).catch(() => [] as Array<{ date: string; balance: number; accountId: string; currencyCode: string }>);
@@ -528,10 +533,12 @@ function TransactionsContent() {
 
         if (hasCategoryOrPayeeFilter) {
           setMonthlyTotals(chartResult as MonthlyTotal[]);
+          setMonthlyError(chartError);
           setDailyBalances([]);
         } else {
           setDailyBalances(chartResult as Array<{ date: string; balance: number; accountId: string; currencyCode: string }>);
           setMonthlyTotals([]);
+          setMonthlyError(null);
         }
 
         if (targetTransactionId && transactionsResponse.pagination.page !== safePage) {
@@ -1243,7 +1250,7 @@ function TransactionsContent() {
         return;
       }
 
-      const headers = ['Reporting basis', 'Payment date', 'Parent transaction', 'Date', 'Account', 'Payee', 'Category', 'Description', 'Tags', 'Amount', 'Currency', 'Status'];
+      const headers = [...(accrualEnabled ? ['Reporting basis', 'Payment date', 'Parent transaction'] : []), 'Date', 'Account', 'Payee', 'Category', 'Description', 'Tags', 'Amount', 'Currency', 'Status'];
       const rows = allTransactions.map(tx => {
         // `tx.amount` is typed number but arrives as the decimal string the
         // API serialized ("-67.9900"), so coerce it: the Amount column holds a
@@ -1304,7 +1311,7 @@ function TransactionsContent() {
       const timePart = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
       const filename = `Monize_Transactions_${datePart}_${timePart}.csv`;
 
-      exportToCsv(filename, headers, rows.map((row, index) => [basis, allTransactions[index].reportingProvenance?.cashDate ?? allTransactions[index].transactionDate, allTransactions[index].reportingProvenance?.sourceTransactionId ?? allTransactions[index].id, ...row]));
+      exportToCsv(filename, headers, accrualEnabled ? rows.map((row, index) => [basis, allTransactions[index].reportingProvenance?.cashDate ?? allTransactions[index].transactionDate, allTransactions[index].reportingProvenance?.sourceTransactionId ?? allTransactions[index].id, ...row]) : rows);
       toast.success(t('toasts.exported', { count: allTransactions.length }));
     } catch (error) {
       showErrorToast(error, t('toasts.exportFailed'));
@@ -1312,7 +1319,7 @@ function TransactionsContent() {
     } finally {
       setIsExporting(false);
     }
-  }, [basis, accountIdsForQuery, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.filterOriginalCurrencyCodes, filters.filterHasAttachments, filters.filterTagKey, filters.filterTagKeyOp, filters.filterTagKeyValue, t]);
+  }, [basis, accrualEnabled, accountIdsForQuery, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.filterOriginalCurrencyCodes, filters.filterHasAttachments, filters.filterTagKey, filters.filterTagKeyOp, filters.filterTagKeyValue, t]);
 
   return (
     <PageLayout>
@@ -1352,6 +1359,7 @@ function TransactionsContent() {
           const chart = (
             <div key={chartKind} className="animate-chart-in motion-reduce:animate-none">
               {chartKind === 'monthlyTotals' ? (
+                <>{monthlyError ? <ReportError error={monthlyError} onRetry={() => { void loadData(); }} /> : (
                 <CategoryPayeeBarChart
                   data={monthlyTotals}
                   isLoading={isLoading}
@@ -1364,6 +1372,7 @@ function TransactionsContent() {
                     filters.setFilterTimePeriod('custom');
                   }}
                 />
+                )}</>
               ) : chartKind === 'accountBalances' ? (
                 <AccountBalancesBarChart
                   data={accountBalances}
@@ -1548,7 +1557,6 @@ function TransactionsContent() {
               return account?.accountType === 'ASSET' ? (account.assetCategoryId || undefined) : undefined;
             })()}
             onSuccess={handleFormSuccess}
-            onAccrualChanged={loadData}
             onCreateAndNew={handleCreateAndNew}
             onCancel={handleClose}
             onDirtyChange={setFormDirty}

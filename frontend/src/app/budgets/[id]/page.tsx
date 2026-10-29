@@ -20,6 +20,8 @@ import { budgetsApi } from '@/lib/budgets';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { getErrorMessage } from '@/lib/errors';
+import { BudgetFxIncompleteError, type PartialBudgetData } from '@/lib/budget-partial';
+import { BudgetFxPartialNotice } from '@/components/reports/BudgetFxPartialNotice';
 import { STRATEGY_LABELS } from '@/components/budgets/utils/budget-labels';
 import type {
   BudgetSummary,
@@ -86,6 +88,7 @@ function BudgetDetailContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isPeriodLoading, setIsPeriodLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [partial, setPartial] = useState<PartialBudgetData | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // A different budget shows the spinner again; set during render rather than
@@ -112,6 +115,7 @@ function BudgetDetailContent() {
             (basis ? budgetsApi.getTrend(budgetId, undefined, basis) : budgetsApi.getTrend(budgetId)),
           ]);
 
+        setPartial(null);
         setSummary(summaryData);
         setVelocity(velocityData);
         setPeriods(periodsData);
@@ -119,6 +123,8 @@ function BudgetDetailContent() {
         setDailySpending(dailyData);
         setTrendData(trend);
       } catch (err) {
+        if (err instanceof BudgetFxIncompleteError) { setPartial(err.details); setSummary(null); setVelocity(null); setError(null); return; }
+        setPartial(null);
         const message = getErrorMessage(err, t('pages.detail.toasts.loadFailed'));
         setError(message);
         toast.error(message);
@@ -223,6 +229,7 @@ function BudgetDetailContent() {
     );
   }
 
+  if (partial) return <PageLayout><main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8"><ReportingBasisControl /><BudgetFxPartialNotice data={partial} onRetry={loadData} /></main></PageLayout>;
   if (error || !summary || !velocity) {
     return (
       <PageLayout>

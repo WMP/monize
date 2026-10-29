@@ -220,7 +220,6 @@ export function CategoryTransactionsTab({
         </h2>
         {showForm && editingItem && (
           <TransactionForm
-            onAccrualChanged={handleChanged}
             transaction={editingItem}
             onSuccess={() => {
               close();

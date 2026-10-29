@@ -1,5 +1,7 @@
 'use client';
 
+import { ReportError } from '@/components/reports/ReportError';
+
 import { ReportingBasisScope, ReportingBasisControl, useReportingBasis, useReportingRouter, CashReportingNotice } from '@/components/reports/ReportingBasis';
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
@@ -108,6 +110,7 @@ interface CategoryAnalytics {
   thisYearSummary: TransactionSummary | null;
   lastYearSummary: TransactionSummary | null;
   monthlyTotals: MonthlyTotal[];
+  monthlyError?: unknown;
   /** Trailing 12 months, the default range for the Top Payees panel. */
   payeeTotals: GroupedTotal[];
   /** The same breakdown over the category's whole history. */
@@ -191,6 +194,7 @@ function CategoryDetailContent() {
   }
 
   // The mount / category-switch load: the state already says loading.
+  const requestSeqRef = useRef(0);
   const fetchData = useCallback(() => {
     // Writes live in `run` so they land after the request, not during the effect.
     const run = async () => {
@@ -200,11 +204,12 @@ function CategoryDetailContent() {
       // category lands after the new one's and paints its figures under the new
       // URL -- the reader sees another category's spending, and nothing looks
       // wrong until they reload.
-      const isStale = () => shownIdRef.current !== requestedId;
+      const sequence = ++requestSeqRef.current;
+      const isStale = () => shownIdRef.current !== requestedId || sequence !== requestSeqRef.current;
 
       try {
-        // The detail is the page; the analytics feed the cards and panels, so a
-        // failure in any of them costs its panel, never the page.
+        // Summary failures remain unknown. Required history reads reach the
+        // retryable page error rather than appearing as empty charts.
         const detailData = await categoriesApi.getDetail(requestedId);
 
         const today = isoDaysAgo(0);
@@ -213,6 +218,7 @@ function CategoryDetailContent() {
         const lastYearStart = `${Number(today.slice(0, 4)) - 1}-01-01`;
         const lastYearSameDate = `${Number(today.slice(0, 4)) - 1}${today.slice(4)}`;
 
+        let monthlyError: unknown = null;
         const [
           lifetimeSummary,
           thisYearSummary,
@@ -222,27 +228,30 @@ function CategoryDetailContent() {
           payeeTotalsAllTime,
           categoryTotalsAllTime,
         ] = await Promise.all([
-          transactionsApi.getSummary({ basis, categoryIds: [requestedId] }),
+          transactionsApi.getSummary({ basis, categoryIds: [requestedId] }).catch((err) => {
+            logger.error(err);
+            return null;
+          }),
           transactionsApi
             .getSummary({ basis,
               categoryIds: [requestedId],
               startDate: thisYearStart,
               endDate: today,
             })
-            ,
+            .catch(() => null),
           transactionsApi
             .getSummary({ basis,
               categoryIds: [requestedId],
               startDate: lastYearStart,
               endDate: lastYearSameDate,
             })
-            ,
+            .catch(() => null),
           // No date range: the chart covers the category's whole history, and its
           // own granularity control buckets by quarter or year once that history
           // outgrows monthly bars. A window here would silently hide the years
           // before it, which is the opposite of what a detail page is for.
           transactionsApi
-            .getMonthlyTotals({ basis, categoryIds: [requestedId] })
+            .getMonthlyTotals({ basis, categoryIds: [requestedId] }).catch((error: unknown) => { monthlyError = error; return [] as MonthlyTotal[]; })
             ,
           transactionsApi
             .getGroupedTotals({ basis,
@@ -282,6 +291,7 @@ function CategoryDetailContent() {
           thisYearSummary,
           lastYearSummary,
           monthlyTotals,
+          monthlyError,
           payeeTotals,
           payeeTotalsAllTime,
           categoryTotalsAllTime,
@@ -645,12 +655,14 @@ function CategoryDetailContent() {
                     division as the payee and security detail pages. */}
                 <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
                   <div className="lg:col-span-2">
+                  {analytics?.monthlyError ? <ReportError error={analytics.monthlyError} onRetry={loadData} /> : (
                     <CategoryPayeeBarChart
                       data={analytics?.monthlyTotals ?? []}
                       isLoading={false}
                       onMonthClick={handleMonthClick}
                       filterLabel={category.name}
                     />
+                  )}
                   </div>
                   <div>
                   <CashReportingNotice />
@@ -740,12 +752,14 @@ function CategoryDetailContent() {
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-2">
+                  {analytics?.monthlyError ? <ReportError error={analytics.monthlyError} onRetry={loadData} /> : (
                   <SeasonalityPanel
                     monthly={analytics?.monthlyTotals ?? []}
                     currencyStrategy={currencyStrategy}
                     isLoading={false}
                     namespace="categoryDetail"
                   />
+                  )}
                   {tagKeys.length > 0 && (
                     <CategoryTagBreakdownPanel
                       categoryId={categoryId}
