@@ -123,7 +123,10 @@ describe("SecurityDetailService", () => {
   const getDetail = () => service.getDetail(USER_ID, SECURITY_ID);
 
   beforeEach(async () => {
-    securitiesService = { findOne: jest.fn().mockResolvedValue(security) };
+    securitiesService = {
+      findOne: jest.fn().mockResolvedValue(security),
+      getDailyPriceChange: jest.fn().mockResolvedValue(null),
+    };
     portfolioService = { getPortfolioSummary: jest.fn() };
     investmentTransactionsService = {
       getSecurityTransactionHistory: jest.fn(),
@@ -152,6 +155,24 @@ describe("SecurityDetailService", () => {
       USER_ID,
       SECURITY_ID,
     );
+  });
+
+  it("returns the daily change the securities service resolved, and null on refusal", async () => {
+    const change = {
+      currentPrice: 110,
+      previousPrice: 100,
+      dailyChange: 10,
+      dailyChangePercent: 10,
+      priceDate: "2026-02-09",
+    };
+    securitiesService.getDailyPriceChange.mockResolvedValue(change);
+    expect((await getDetail()).dailyChange).toEqual(change);
+    expect(securitiesService.getDailyPriceChange).toHaveBeenCalledWith(
+      SECURITY_ID,
+    );
+
+    securitiesService.getDailyPriceChange.mockResolvedValue(null);
+    expect((await getDetail()).dailyChange).toBeNull();
   });
 
   it("propagates a not-found security instead of returning an empty detail", async () => {

@@ -769,6 +769,14 @@ export interface SecurityDetail {
   activity: SecurityDetailActivity;
   hasTransactions: boolean;
   isPositionClosed: boolean;
+  /** The server's daily move (`resolveDailyPriceChange`); null when it refuses one. */
+  dailyChange?: {
+    currentPrice: number;
+    previousPrice: number;
+    dailyChange: number;
+    dailyChangePercent: number;
+    priceDate: string;
+  } | null;
 }
 
 export interface CreateInvestmentTransactionData {

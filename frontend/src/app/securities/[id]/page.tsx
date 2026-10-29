@@ -26,14 +26,12 @@ import { SecurityBondCard } from '@/components/securities/detail/SecurityBondCar
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { usePriceRefresh } from '@/hooks/usePriceRefresh';
-import { useFinancialToday } from '@/hooks/useFinancialToday';
 import { BondRefreshProgress } from '@/components/securities/BondRefreshProgress';
 import { investmentsApi } from '@/lib/investments';
 import { getErrorMessage } from '@/lib/errors';
 import { SECURITY_PRICE_HISTORY_LIMIT } from '@/lib/constants';
 import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { roundToDecimals } from '@/lib/format';
-import { daysBetweenYmd } from '@/lib/bank-sync-link-defaults';
 import {
   toPriceSeries,
   buildQuantitySteps,
@@ -118,14 +116,6 @@ function tabKeysFor(isBond: boolean): readonly TabKey[] {
 function tabFromQuery(value: string | null): TabKey {
   return TAB_KEYS.includes(value as TabKey) ? (value as TabKey) : 'overview';
 }
-
-/**
- * The backend's `resolveDailyPriceChange` rule (daily-change.util.ts): two closes
- * are a daily move only when adjacent sessions (gap under 7 days) and the newer
- * one is current (under 5 days old).
- */
-const DAILY_GAP_EXCLUSION_DAYS = 7;
-const DAILY_STALE_AFTER_DAYS = 5;
 
 export default function SecurityDetailPage() {
   return (
@@ -296,25 +286,18 @@ function SecurityDetailContent() {
   const priceSeries = useMemo(() => toPriceSeries(prices), [prices]);
   const quantitySteps = useMemo(() => buildQuantitySteps(trades), [trades]);
 
-  // The newest close, plus how far it moved against the one before it. Derived
-  // here rather than fetched: the page already holds the whole series, and the
-  // quote endpoints answer for the portfolio rather than for one security.
-  const todayYmd = useFinancialToday();
+  // The newest close, plus the server's daily move (`detail.dailyChange`, from
+  // `resolveDailyPriceChange`). A refusal is null: the header then shows the
+  // newest session's date and no change figure. A move for another session
+  // than the newest close shown (a stale read) is not shown under it.
+  const serverChange = detail?.dailyChange ?? null;
   const quote = useMemo(() => {
     const latest = priceSeries[priceSeries.length - 1];
     if (!latest) return null;
-    const previous = priceSeries[priceSeries.length - 2];
-    // Two closes are not a daily move unless they are adjacent sessions and the
-    // newer is current; otherwise there is no daily figure to show.
-    const gapDays = previous ? daysBetweenYmd(previous.date, latest.date) : null;
-    const ageDays = daysBetweenYmd(latest.date, todayYmd);
-    const isDailyMove =
-      !!previous &&
-      gapDays !== null &&
-      ageDays !== null &&
-      gapDays < DAILY_GAP_EXCLUSION_DAYS &&
-      ageDays < DAILY_STALE_AFTER_DAYS;
-    const change = isDailyMove ? roundToDecimals(latest.close - previous.close, 6) : null;
+    const move =
+      serverChange && serverChange.priceDate === latest.date
+        ? serverChange
+        : null;
     return {
       price: latest.close,
       priceDate: latest.date,
@@ -322,15 +305,12 @@ function SecurityDetailContent() {
       // predating the column, manual entries and transaction-derived prices
       // have none, and fall back to the date alone.
       quotedAt: latest.quotedAt ?? null,
-      change,
-      changePercent:
-        previous && previous.close !== 0 && change !== null
-          ? roundToDecimals((change / previous.close) * 100, 2)
-          : null,
-      // The move is only shown while current, so it is always today's session.
+      change: move ? roundToDecimals(move.dailyChange, 6) : null,
+      changePercent: move ? roundToDecimals(move.dailyChangePercent, 2) : null,
+      // The server only answers a move while its session is current.
       isCurrent: true,
     };
-  }, [priceSeries, todayYmd]);
+  }, [priceSeries, serverChange]);
 
   const handleToggleFavourite = useCallback(async () => {
     if (!detail) return;

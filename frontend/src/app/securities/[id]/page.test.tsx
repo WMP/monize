@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { financialTodayYmd } from '@/lib/financial-today';
 import { render, screen, act, fireEvent, waitFor, within } from '@/test/render';
 import SecurityDetailPage from './page';
 import type { Security, SecurityDetail } from '@/types/investment';
@@ -184,6 +183,7 @@ function detailFixture(overrides: Partial<SecurityDetail> = {}): SecurityDetail 
     },
     hasTransactions: true,
     isPositionClosed: false,
+    dailyChange: null,
     ...overrides,
   };
 }
@@ -322,41 +322,36 @@ describe('SecurityDetailPage', () => {
     expect(screen.getByText(/150\.00 EUR/)).toBeInTheDocument();
   });
 
-  describe('header daily change follows the backend refusal rule', () => {
-    const ymdAgo = (days: number) =>
-      financialTodayYmd(undefined, new Date(Date.now() - days * 86_400_000));
-    const twoCloses = (newerAgo: number, olderAgo: number) =>
-      [
-        { newerAgo: olderAgo, close: 145, id: 1 },
-        { newerAgo, close: 150, id: 2 },
-      ].map((r) => ({
-        id: r.id,
-        securityId: 'sec-1',
-        priceDate: ymdAgo(r.newerAgo),
-        openPrice: null,
-        highPrice: null,
-        lowPrice: null,
-        closePrice: r.close,
-        adjustedClose: r.close,
-        volume: null,
-        source: 'yahoo_finance',
-        createdAt: '2026-07-27T00:00:00.000Z',
-      }));
+  describe('header daily change renders the server answer', () => {
+    const serverMove = {
+      currentPrice: 150,
+      previousPrice: 145,
+      dailyChange: 5,
+      dailyChangePercent: 3.448,
+      priceDate: '2026-07-28',
+    };
 
-    it('shows the move for adjacent sessions with a current newer close', async () => {
-      mockGetSecurityPrices.mockResolvedValue(twoCloses(0, 1));
+    it('shows the move the server resolved', async () => {
+      mockGetSecurityDetail.mockResolvedValue(
+        detailFixture({ dailyChange: serverMove }),
+      );
       await renderPage();
       expect(screen.getByText(/\+\$?5\.00.*today/)).toBeInTheDocument();
     });
 
-    it('shows no move when the two closes are a week or more apart', async () => {
-      mockGetSecurityPrices.mockResolvedValue(twoCloses(0, 10));
+    it('shows the newest close and no move when the server refuses', async () => {
+      // The two default closes are a day apart, so a client rule would show a
+      // move here; the server said null.
+      mockGetSecurityDetail.mockResolvedValue(detailFixture({ dailyChange: null }));
       await renderPage();
+      expect(screen.getAllByText(/150\.00/).length).toBeGreaterThan(0);
       expect(screen.queryByText(/today|last move/)).not.toBeInTheDocument();
     });
 
-    it('shows no move when the newer close is no longer current', async () => {
-      mockGetSecurityPrices.mockResolvedValue(twoCloses(8, 9));
+    it('does not show a move struck for another session than the newest close', async () => {
+      mockGetSecurityDetail.mockResolvedValue(
+        detailFixture({ dailyChange: { ...serverMove, priceDate: '2026-07-20' } }),
+      );
       await renderPage();
       expect(screen.queryByText(/today|last move/)).not.toBeInTheDocument();
     });

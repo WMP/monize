@@ -9,6 +9,7 @@ import {
 } from "./investment-replay.util";
 import { investmentRowHasEffect } from "./investment-row-effects.util";
 import { SecuritiesService } from "./securities.service";
+import { DailyPriceChange } from "./daily-change.util";
 import { PortfolioService } from "./portfolio.service";
 import {
   InvestmentTransactionsService,
@@ -125,6 +126,8 @@ export interface SecurityDetail {
   hasTransactions: boolean;
   /** True when the security was held and has since been sold down to nothing. */
   isPositionClosed: boolean;
+  /** The security's daily move (`resolveDailyPriceChange`); null when refused. */
+  dailyChange: DailyPriceChange | null;
 }
 
 /**
@@ -259,6 +262,7 @@ export class SecurityDetailService {
       // exact balance: a security never traded gets the no-data state instead.
       isPositionClosed:
         history.transactions.length > 0 && history.currentQuantityAll === 0,
+      dailyChange: await this.securitiesService.getDailyPriceChange(securityId),
     };
   }
 
