@@ -253,6 +253,7 @@ export function SecuritySection({ user, preferences, force2fa, oidcPasswordLogin
           </p>
         </div>
       )}
+      {!ssoOnly && (
       <form onSubmit={handleSubmit(onSubmitPassword)}>
         <div className="space-y-4">
           <Input
@@ -293,6 +294,7 @@ export function SecuritySection({ user, preferences, force2fa, oidcPasswordLogin
           </Button>
         </div>
       </form>
+      )}
 
       {/* Two-Factor Authentication. `id` is the target of the sign-in-by-backup-code
           redirect (`/settings#two-factor`), which useScrollSpy scrolls to. */}

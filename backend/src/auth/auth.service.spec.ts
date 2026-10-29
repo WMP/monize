@@ -1473,6 +1473,32 @@ describe("AuthService", () => {
       ).rejects.toThrow("New account registration is disabled.");
     });
 
+    it("merges directly into an account that is already SSO and kept its password (no confirmation email)", async () => {
+      const existing: any = {
+        id: "u1",
+        email: "user@example.com",
+        passwordHash: "hash",
+        authProvider: "oidc",
+        oidcSubject: "old-sub",
+      };
+      usersRepository.findOne
+        .mockResolvedValueOnce(null) // by oidcSubject
+        .mockResolvedValueOnce(existing); // by email
+      usersRepository.save.mockImplementation(async (u: any) => u);
+      const sendSpy = jest
+        .spyOn(service as any, "sendOidcLinkEmail")
+        .mockResolvedValue(undefined);
+
+      const result = await service.findOrCreateOidcUser(
+        { ...oidcProfile, email_verified: true },
+        false,
+      );
+
+      expect(result.linkPending).toBeFalsy();
+      expect(existing.oidcSubject).toBe("oidc-sub-123");
+      expect(sendSpy).not.toHaveBeenCalled();
+    });
+
     it("with OIDC_REQUIRE_VERIFIED_EMAIL=false merges directly into a matching password account (no confirmation email)", async () => {
       configService.get.mockImplementation((key: string) => {
         if (key === "JWT_SECRET")

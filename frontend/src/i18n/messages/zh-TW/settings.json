@@ -38,7 +38,7 @@
   "security": {
     "heading": "安全性",
     "ssoPasswordFallbackNotice": "您的帳戶使用單一登入（SSO）。SSO 無法使用時，您也可以使用下方密碼登入。請啟用雙重驗證以保護此備用登入方式。",
-    "ssoNotice": "您的帳戶使用單一登入（SSO）進行驗證。以下密碼不用於登入，但可在停用 SSO 時作為備用。",
+    "ssoNotice": "您的帳戶使用單一登入 (SSO)。此伺服器已對 SSO 帳戶關閉密碼登入。",
     "currentPasswordLabel": "目前密碼",
     "currentPasswordPlaceholder": "輸入目前密碼",
     "newPasswordLabel": "新密碼",

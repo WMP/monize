@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { act } from 'react';
 import { render, screen, waitFor } from '@/test/render';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/store/authStore';
@@ -183,6 +184,53 @@ describe('ProtectedRoute', () => {
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/setup-2fa');
+    });
+  });
+
+  describe('FORCE_2FA for an SSO account with a password', () => {
+    const arrange = async (oidcPasswordLogin: boolean) => {
+      const { authApi } = await import('@/lib/auth');
+      vi.mocked(authApi.getAuthMethods).mockResolvedValue({
+        local: true,
+        oidc: true,
+        oidcPasswordLogin,
+        registration: true,
+        smtp: false,
+        force2fa: true,
+        demo: false,
+      });
+      setAuthenticatedState();
+      useAuthStore.setState({
+        user: { ...useAuthStore.getState().user!, authProvider: 'oidc' },
+      });
+      usePreferencesStore.setState({
+        preferences: { twoFactorEnabled: false } as never,
+        isLoaded: true,
+        _hasHydrated: true,
+      });
+      await act(async () => {
+        render(
+          <ProtectedRoute>
+            <div data-testid="protected-content">Dashboard</div>
+          </ProtectedRoute>,
+        );
+      });
+    };
+
+    it('does not redirect while password sign-in is off for SSO accounts', async () => {
+      await arrange(false);
+      const { authApi } = await import('@/lib/auth');
+      await waitFor(() => {
+        expect(authApi.getAuthMethods).toHaveBeenCalled();
+      });
+      expect(mockPush).not.toHaveBeenCalledWith('/setup-2fa');
+    });
+
+    it('redirects when password sign-in is on for SSO accounts', async () => {
+      await arrange(true);
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/setup-2fa');
+      });
     });
   });
 });

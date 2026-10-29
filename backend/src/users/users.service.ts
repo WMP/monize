@@ -130,6 +130,7 @@ export class UsersService {
           ),
         );
       }
+      // `!user.passwordHash` narrows the type for bcrypt; the helper is the policy.
       if (
         !user.passwordHash ||
         !localPasswordUsable(user, oidcPasswordLoginAllowed(this.configService))
@@ -450,7 +451,11 @@ export class UsersService {
       );
     }
 
-    if (!user.passwordHash) {
+    // `!user.passwordHash` narrows the type; the helper is the policy.
+    if (
+      !user.passwordHash ||
+      !localPasswordUsable(user, oidcPasswordLoginAllowed(this.configService))
+    ) {
       throw new BadRequestException(
         tr("errors.users.noPasswordSet", "No password set for this account"),
       );

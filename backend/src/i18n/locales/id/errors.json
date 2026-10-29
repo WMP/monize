@@ -116,6 +116,9 @@
     "noLocalPassword": "Tidak dapat mereset kata sandi untuk akun tanpa kata sandi lokal",
     "cannotUnlinkOwnSso": "Anda tidak dapat memutuskan akun SSO Anda sendiri melalui panel admin",
     "notSsoAccount": "Akun ini bukan akun SSO",
+    "unlinkSsoNeedsEmail": "Akun ini tidak memiliki alamat email, sehingga tidak dapat masuk dengan kata sandi",
+    "localAuthDisabled": "Masuk dengan kata sandi dinonaktifkan di server ini",
+    "ssoPasswordLoginDisabled": "Masuk dengan kata sandi dinonaktifkan untuk akun SSO. Gunakan Putuskan SSO.",
     "cannotResetOwnTwoFactor": "Anda tidak dapat mereset autentikasi dua faktor Anda sendiri melalui panel admin",
     "twoFactorNotEnabled": "Pengguna ini belum menyiapkan autentikasi dua faktor."
   },

@@ -752,8 +752,7 @@ export class AuthController {
     return {
       local: this.localAuthEnabled,
       oidc: this.oidcService.enabled,
-      oidcPasswordLogin:
-        oidcPasswordLoginAllowed(this.configService) && this.localAuthEnabled,
+      oidcPasswordLogin: oidcPasswordLoginAllowed(this.configService),
       registration: this.demoModeService.isDemo
         ? false
         : this.registrationEnabled,

@@ -38,7 +38,7 @@
   "security": {
     "heading": "Segurança",
     "ssoPasswordFallbackNotice": "Sua conta utiliza Single Sign-On (SSO). Você também pode fazer login com a senha abaixo quando o SSO não estiver disponível. Ative a autenticação de dois fatores para proteger este login alternativo.",
-    "ssoNotice": "Sua conta utiliza Single Sign-On (SSO) para autenticação. A senha abaixo não é utilizada para fazer login, mas pode ser mantida como backup caso o SSO seja desativado.",
+    "ssoNotice": "Sua conta usa login único (SSO). O login com senha está desativado para contas SSO neste servidor.",
     "currentPasswordLabel": "Senha atual",
     "currentPasswordPlaceholder": "Digite a senha atual",
     "newPasswordLabel": "Nova senha",

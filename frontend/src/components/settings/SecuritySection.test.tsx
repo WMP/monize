@@ -405,7 +405,8 @@ describe('SecuritySection', () => {
       );
       expect(screen.getByText(/Two-factor authentication is not available for SSO accounts/)).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Enable 2FA' })).not.toBeInTheDocument();
-      expect(screen.getByText(/The password below is not used for login/)).toBeInTheDocument();
+      expect(screen.getByText(/Password sign-in is turned off for SSO accounts on this server/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Change Password' })).not.toBeInTheDocument();
     });
 
     it('shows the 2FA controls and the fallback notice when the flag is on', () => {
@@ -421,6 +422,7 @@ describe('SecuritySection', () => {
       expect(screen.getByRole('button', { name: 'Enable 2FA' })).toBeInTheDocument();
       expect(screen.queryByText(/Two-factor authentication is not available for SSO accounts/)).not.toBeInTheDocument();
       expect(screen.getByText(/when SSO is unavailable/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Change Password' })).toBeInTheDocument();
     });
 
     it('loads trusted devices when the flag is on and 2FA is enabled', async () => {

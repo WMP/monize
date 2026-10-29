@@ -116,6 +116,9 @@
     "noLocalPassword": "無法重設沒有本機密碼的帳戶密碼",
     "cannotUnlinkOwnSso": "您無法透過管理面板解除自己的 SSO 帳戶綁定",
     "notSsoAccount": "此帳戶不是 SSO 帳戶",
+    "unlinkSsoNeedsEmail": "此帳戶沒有電子郵件地址，因此無法使用密碼登入",
+    "localAuthDisabled": "此伺服器已關閉密碼登入",
+    "ssoPasswordLoginDisabled": "SSO 帳戶的密碼登入已關閉。請改用「解除 SSO 綁定」。",
     "cannotResetOwnTwoFactor": "您無法透過管理面板重設自己的雙重驗證",
     "twoFactorNotEnabled": "此使用者尚未設定雙重驗證。"
   },

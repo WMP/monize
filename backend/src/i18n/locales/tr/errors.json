@@ -116,6 +116,9 @@
     "noLocalPassword": "Yerel şifresi olmayan hesapların şifresi sıfırlanamaz",
     "cannotUnlinkOwnSso": "Yönetici panelinden kendi SSO hesabınızın bağlantısını kaldıramazsınız",
     "notSsoAccount": "Bu hesap bir SSO hesabı değildir",
+    "unlinkSsoNeedsEmail": "Bu hesabın e-posta adresi olmadığı için parola ile oturum açamaz",
+    "localAuthDisabled": "Bu sunucuda parola ile oturum açma kapalı",
+    "ssoPasswordLoginDisabled": "SSO hesapları için parola ile oturum açma kapalı. Bunun yerine SSO Bağlantısını Kaldır seçeneğini kullanın.",
     "cannotResetOwnTwoFactor": "Yönetici panelinden kendi iki faktörlü kimlik doğrulamanızı sıfırlayamazsınız",
     "twoFactorNotEnabled": "Bu kullanıcı için iki faktörlü kimlik doğrulama ayarlanmamış."
   },

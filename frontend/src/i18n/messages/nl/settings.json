@@ -38,7 +38,7 @@
   "security": {
     "heading": "Beveiliging",
     "ssoPasswordFallbackNotice": "Jouw account maakt gebruik van Single Sign-On (SSO). Je kunt ook inloggen met het onderstaande wachtwoord als SSO niet beschikbaar is. Schakel tweestapsverificatie in om deze reserve-inlog te beveiligen.",
-    "ssoNotice": "Jouw account maakt gebruik van Single Sign-On (SSO) voor authenticatie. Het onderstaande wachtwoord wordt niet gebruikt voor inloggen, maar kan als reservekopie worden bewaard als SSO wordt uitgeschakeld.",
+    "ssoNotice": "Uw account gebruikt Single Sign-On (SSO). Inloggen met een wachtwoord is op deze server uitgeschakeld voor SSO-accounts.",
     "currentPasswordLabel": "Huidig wachtwoord",
     "currentPasswordPlaceholder": "Voer huidig wachtwoord in",
     "newPasswordLabel": "Nieuw wachtwoord",

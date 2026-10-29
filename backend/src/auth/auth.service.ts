@@ -719,7 +719,11 @@ export class AuthService {
         );
 
         if (existingUser) {
-          if (existingUser.passwordHash && requireVerifiedEmail) {
+          if (
+            existingUser.passwordHash &&
+            existingUser.authProvider !== "oidc" &&
+            requireVerifiedEmail
+          ) {
             // SECURITY: Local account requires user confirmation before merging.
             const linkToken = await this.initiateOidcLink(existingUser, sub);
             this.logger.warn(
@@ -786,7 +790,11 @@ export class AuthService {
               }),
             );
             if (existingUser) {
-              if (existingUser.passwordHash && requireVerifiedEmail) {
+              if (
+                existingUser.passwordHash &&
+                existingUser.authProvider !== "oidc" &&
+                requireVerifiedEmail
+              ) {
                 // SECURITY: Local account requires confirmation
                 const linkToken = await this.initiateOidcLink(
                   existingUser,

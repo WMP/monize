@@ -116,6 +116,9 @@
     "noLocalPassword": "Não é possível redefinir a palavra-passe de contas sem palavra-passe local",
     "cannotUnlinkOwnSso": "Não pode desassociar a sua própria conta SSO através do painel de administração",
     "notSsoAccount": "Esta conta não é uma conta SSO",
+    "unlinkSsoNeedsEmail": "Esta conta não tem endereço de e-mail, por isso não pode iniciar sessão com palavra-passe",
+    "localAuthDisabled": "O início de sessão com palavra-passe está desativado neste servidor",
+    "ssoPasswordLoginDisabled": "O início de sessão com palavra-passe está desativado para contas SSO. Use Desassociar SSO.",
     "cannotResetOwnTwoFactor": "Não pode repor a sua própria autenticação de dois fatores através do painel de administração",
     "twoFactorNotEnabled": "Este utilizador não tem a autenticação de dois fatores configurada."
   },

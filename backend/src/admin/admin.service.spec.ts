@@ -959,6 +959,32 @@ describe("AdminService", () => {
         service.resetUserPassword("admin-1", "user-2"),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it("refuses an SSO account while password sign-in is off for SSO accounts", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockTargetUser,
+        authProvider: "oidc",
+      });
+
+      await expect(
+        service.resetUserPassword("admin-1", "user-2"),
+      ).rejects.toThrow("Password sign-in is turned off for SSO accounts");
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("resets an SSO account's password when the flag allows it", async () => {
+      configService.get.mockImplementation((key: string, def?: string) =>
+        key === "OIDC_ALLOW_PASSWORD_LOGIN" ? "true" : def,
+      );
+      usersRepository.findOne.mockResolvedValue({
+        ...mockTargetUser,
+        authProvider: "oidc",
+      });
+
+      await service.resetUserPassword("admin-1", "user-2");
+
+      expect(usersRepository.save).toHaveBeenCalled();
+    });
   });
 
   describe("unlinkUserSso", () => {
@@ -1033,6 +1059,24 @@ describe("AdminService", () => {
         backupKeyWrap: null,
         backupKeyPasswordRef: null,
       });
+    });
+
+    it("refuses an account with no email address and writes nothing", async () => {
+      usersRepository.findOne.mockResolvedValue({ ...ssoUser(), email: null });
+      await expect(service.unlinkUserSso("admin-1", "user-2")).rejects.toThrow(
+        "no email address",
+      );
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses when local auth is turned off, before any read", async () => {
+      configService.get.mockImplementation((key: string, def?: string) =>
+        key === "LOCAL_AUTH_ENABLED" ? "false" : def,
+      );
+      await expect(service.unlinkUserSso("admin-1", "user-2")).rejects.toThrow(
+        "Password sign-in is turned off on this server",
+      );
+      expect(usersRepository.findOne).not.toHaveBeenCalled();
     });
 
     it("refuses to unlink the caller's own account", async () => {

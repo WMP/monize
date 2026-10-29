@@ -116,6 +116,9 @@
     "noLocalPassword": "ローカルパスワードのないアカウントのパスワードはリセットできません",
     "cannotUnlinkOwnSso": "管理パネルから自分のSSOアカウントを解除することはできません",
     "notSsoAccount": "このアカウントはSSOアカウントではありません",
+    "unlinkSsoNeedsEmail": "このアカウントにはメールアドレスがないため、パスワードでサインインできません",
+    "localAuthDisabled": "このサーバーではパスワードによるサインインが無効です",
+    "ssoPasswordLoginDisabled": "SSOアカウントではパスワードによるサインインが無効です。代わりに「SSOを解除」を使用してください。",
     "cannotResetOwnTwoFactor": "管理パネルから自分の二要素認証をリセットすることはできません",
     "twoFactorNotEnabled": "このユーザーは二要素認証を設定していません。"
   },

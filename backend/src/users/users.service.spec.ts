@@ -1329,6 +1329,22 @@ describe("UsersService", () => {
       ).rejects.toThrow("No password set for this account");
     });
 
+    it("refuses an SSO account that kept its password while SSO password sign-in is off", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: await bcrypt.hash("OldPass123!", 10),
+      });
+
+      await expect(
+        service.changePassword("user-1", {
+          currentPassword: "OldPass123!",
+          newPassword: "NewPass456!",
+        }),
+      ).rejects.toThrow("No password set for this account");
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
     it("throws when user not found", async () => {
       usersRepository.findOne.mockResolvedValue(null);
 

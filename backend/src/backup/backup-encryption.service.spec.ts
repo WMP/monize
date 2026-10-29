@@ -195,6 +195,20 @@ describe("BackupEncryptionService", () => {
       });
     });
 
+    it("reports an SSO account whose key is wrapped under the login password as login-password", async () => {
+      usersRepo.findOne.mockResolvedValue(
+        makeUser({
+          authProvider: "oidc",
+          backupEncryptionEnabled: true,
+          backupKeyPasswordRef: loginPasswordRef(hash),
+        }),
+      );
+      expect(await service.getStatus(userId)).toMatchObject({
+        manageable: true,
+        method: "login-password",
+      });
+    });
+
     it("throws when user not found", async () => {
       usersRepo.findOne.mockResolvedValue(null);
       await expect(service.getStatus(userId)).rejects.toThrow(
@@ -396,6 +410,31 @@ describe("BackupEncryptionService", () => {
       await service.rewrapBackupKey(userId, "hunter2hunter2", hash);
 
       expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("stores nothing for an SSO account that kept its password but has no wrap", async () => {
+      usersRepo.findOne.mockResolvedValue(
+        makeUser({ authProvider: "oidc", passwordHash: hash }),
+      );
+
+      await service.rewrapBackupKey(userId, "hunter2hunter2", hash);
+
+      expect(usersRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("leaves an SSO account's legacy dedicated backupPasswordEnc alone", async () => {
+      usersRepo.findOne.mockResolvedValue(
+        makeUser({
+          authProvider: "oidc",
+          passwordHash: hash,
+          backupEncryptionEnabled: true,
+          backupPasswordEnc: "enc:dedicated",
+        }),
+      );
+
+      await service.rewrapBackupKey(userId, "hunter2hunter2", hash);
+
       expect(usersRepo.update).not.toHaveBeenCalled();
     });
 

@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { oidcPasswordLoginAllowed } from "../auth/oidc/oidc-password-login";
 import { DataSource, EntityManager, FindOptionsWhere } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { withSystemContext } from "../common/db/with-context";
@@ -591,6 +592,18 @@ export class AdminService {
       );
     }
 
+    if (
+      targetUser.authProvider === "oidc" &&
+      !oidcPasswordLoginAllowed(this.configService)
+    ) {
+      throw new BadRequestException(
+        tr(
+          "errors.admin.ssoPasswordLoginDisabled",
+          "Password sign-in is turned off for SSO accounts. Use Unlink SSO instead.",
+        ),
+      );
+    }
+
     if (!targetUser.passwordHash) {
       throw new BadRequestException(
         tr(
@@ -673,6 +686,19 @@ export class AdminService {
       );
     }
 
+    if (
+      this.configService
+        .get<string>("LOCAL_AUTH_ENABLED", "true")
+        .toLowerCase() === "false"
+    ) {
+      throw new BadRequestException(
+        tr(
+          "errors.admin.localAuthDisabled",
+          "Password sign-in is turned off on this server",
+        ),
+      );
+    }
+
     // Hash before the transaction: bcrypt must not hold the row lock.
     const { temporaryPassword, passwordHash } =
       await this.generateTemporaryPassword();
@@ -692,6 +718,14 @@ export class AdminService {
           tr(
             "errors.admin.notSsoAccount",
             "This account is not an SSO account",
+          ),
+        );
+      }
+      if (!targetUser.email) {
+        throw new BadRequestException(
+          tr(
+            "errors.admin.unlinkSsoNeedsEmail",
+            "This account has no email address, so it cannot sign in with a password",
           ),
         );
       }

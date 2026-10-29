@@ -116,6 +116,9 @@
     "noLocalPassword": "Impossible de réinitialiser le mot de passe pour les comptes sans mot de passe local",
     "cannotUnlinkOwnSso": "Vous ne pouvez pas dissocier votre propre compte SSO via le panneau d'administration",
     "notSsoAccount": "Ce compte n'est pas un compte SSO",
+    "unlinkSsoNeedsEmail": "Ce compte n'a pas d'adresse e-mail, il ne peut donc pas se connecter avec un mot de passe",
+    "localAuthDisabled": "La connexion par mot de passe est désactivée sur ce serveur",
+    "ssoPasswordLoginDisabled": "La connexion par mot de passe est désactivée pour les comptes SSO. Utilisez Dissocier le SSO.",
     "cannotResetOwnTwoFactor": "Vous ne pouvez pas réinitialiser votre propre authentification à deux facteurs via le panneau d'administration",
     "twoFactorNotEnabled": "Cet utilisateur n'a pas configuré l'authentification à deux facteurs."
   },

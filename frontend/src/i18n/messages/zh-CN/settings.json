@@ -38,7 +38,7 @@
   "security": {
     "heading": "安全",
     "ssoPasswordFallbackNotice": "您的账户使用单点登录（SSO）。SSO 不可用时，您也可以使用下方密码登录。请启用双重身份验证以保护此备用登录方式。",
-    "ssoNotice": "您的账户使用单点登录（SSO）进行身份验证。下方密码不用于登录，但可作为 SSO 被停用时的备用凭据。",
+    "ssoNotice": "您的账户使用单点登录 (SSO)。此服务器已对 SSO 账户关闭密码登录。",
     "currentPasswordLabel": "当前密码",
     "currentPasswordPlaceholder": "输入当前密码",
     "newPasswordLabel": "新密码",
