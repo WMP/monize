@@ -362,9 +362,14 @@ function figuresOn(p: PreparedLot, asOf: string): DayFigures {
       if (inputs) {
         const perBond = maturityValue(terms, inputs.prior, inputs.current);
         const nominal = principalAt(terms, { date: p.maturity });
-        // The principal is the nominal; the interest is `accrued`, so the
-        // maturity value is not counted twice beside it.
-        principal = nominal.toFixed(places);
+        // The same principal as an open day: the base the last period accrued
+        // on, interest capitalised earlier included. `accrued` stays all the
+        // interest since the nominal, as on an open day (golden-pinned), so
+        // the two overlap by design and `gross` is the figure to total.
+        principal = roundMoney(
+          terms,
+          baseAt(terms, inputs.prior, { date: lastPeriod.start }),
+        ).toFixed(places);
         gross = lot(perBond);
         grossBond = perBond;
         accrued = lot(perBond.sub(nominal));

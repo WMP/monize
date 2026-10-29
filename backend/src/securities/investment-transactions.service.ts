@@ -1313,6 +1313,7 @@ export class InvestmentTransactionsService {
             code: await seriesCodeOf(manager, bondInstrumentId),
           },
           pinSeries: false,
+          skipWhenSeriesUnresolved: true,
         });
         if (redemption) {
           ({ price, totalAmount } = resolveInvestmentAmounts({
@@ -1535,6 +1536,9 @@ export class InvestmentTransactionsService {
       series: { id: string | null; code: string | null };
       excludeTransactionId?: string;
       pinSeries: boolean;
+      // A write that names no series and holds none or several keeps the
+      // stated figures; the preview refuses instead, so the person is told.
+      skipWhenSeriesUnresolved?: boolean;
     },
   ): Promise<{
     series: { id: string | null; code: string | null };
@@ -1564,7 +1568,7 @@ export class InvestmentTransactionsService {
         row.excludeTransactionId,
       );
       if (holdings.length !== 1) {
-        if (bothStated) return null;
+        if (bothStated || row.skipWhenSeriesUnresolved) return null;
         throw new BadRequestException({
           message: tr(
             "errors.bonds.REDEEM_SERIES_REQUIRED",
@@ -4631,6 +4635,7 @@ export class InvestmentTransactionsService {
     const accountId = transaction.accountId;
     const oldSecurityId = transaction.securityId;
     const oldTransactionDate = transaction.transactionDate;
+    const oldBondInstrumentId = transaction.bondInstrumentId;
     const oldAction = transaction.action;
     const isEmbedded = transaction.transactionSplitId != null;
 
@@ -4908,26 +4913,43 @@ export class InvestmentTransactionsService {
       // A program-linked redemption left without accrued interest is split by
       // the server as the create is (INV-BOND-009); a refused split refuses
       // the edit. Only an edit that changes what the redemption pays, so a
-      // description-only save of an older row stays possible.
+      // description-only save of an older row stays possible. Interest the
+      // request did not itself change is the stored companion's, which belongs
+      // to the old quantity, date and series: a change of any of those splits
+      // again instead of keeping it.
+      const interestSupplied =
+        updateDto.accruedInterest !== undefined &&
+        accruedInterest !==
+          roundMoney(Number(existingCompanion?.totalAmount ?? 0));
+      const redemptionShapeChanged =
+        quantityChanged ||
+        transaction.action !== priorAction ||
+        transaction.securityId !== oldSecurityId ||
+        transaction.transactionDate !== oldTransactionDate ||
+        bondInstrumentId !== oldBondInstrumentId;
+      const keptInterestStale =
+        accruedInterest > 0 && !interestSupplied && redemptionShapeChanged;
       if (
         transaction.action === InvestmentAction.REDEEM &&
         transaction.securityId &&
-        !(accruedInterest > 0) &&
-        (quantityChanged ||
-          priceChanged ||
-          commissionChanged ||
-          totalChanged ||
-          transaction.action !== priorAction ||
-          transaction.securityId !== oldSecurityId ||
-          transaction.transactionDate !== oldTransactionDate)
+        (keptInterestStale ||
+          (!(accruedInterest > 0) &&
+            (redemptionShapeChanged ||
+              priceChanged ||
+              commissionChanged ||
+              totalChanged)))
       ) {
         const redemption = await this.fillBondRedemption(userId, {
           accountId: transaction.accountId,
           securityId: transaction.securityId,
           transactionDate: transaction.transactionDate,
           quantity: Number(transaction.quantity ?? 0),
+          // The stored price is the old split's; only a price or total the
+          // request stated is a figure to compare against the new split.
           price:
-            transaction.price !== null && transaction.price !== undefined
+            transaction.price !== null &&
+            transaction.price !== undefined &&
+            !(keptInterestStale && !priceChanged && !totalChanged)
               ? Number(transaction.price)
               : null,
           totalAmount: totalChanged ? Number(updateDto.totalAmount) : undefined,
@@ -4939,6 +4961,7 @@ export class InvestmentTransactionsService {
           },
           excludeTransactionId: transaction.id,
           pinSeries: false,
+          skipWhenSeriesUnresolved: true,
         });
         if (redemption) {
           const amounts = resolveInvestmentAmounts({

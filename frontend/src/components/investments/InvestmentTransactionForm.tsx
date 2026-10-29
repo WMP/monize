@@ -523,6 +523,9 @@ function InvestmentTransactionFormFields({
   // the form suggests both. A person's own edit of either field stands.
   const priceEditedByPerson = useRef(false);
   const interestEditedByPerson = useRef(false);
+  // What the person typed, kept as typed: the redemption refill recomputes from
+  // it and never from a price an earlier refill wrote.
+  const typedPriceBasis = useRef<{ kind: 'price' | 'total'; value: number } | null>(null);
   const redemptionRequest: RedemptionSplitRequest | null =
     (watchedAction as string) === 'REDEEM' &&
     bondSeries?.kind === 'remove' &&
@@ -571,15 +574,16 @@ function InvestmentTransactionFormFields({
         shouldValidate: true,
       });
     } else if (!interestEditedByPerson.current) {
-      // The person fixed the price or the total: the total they see stays what
-      // they typed, so the engine's interest comes out of it and the price
-      // follows, instead of the interest being added on top.
+      // The person fixed the price or the total: the cash they meant stays, so
+      // the engine's interest comes out of it and the price follows, instead of
+      // the interest being added on top. A typed price means qty x price in cash.
+      const basis = typedPriceBasis.current;
+      if (!basis) return;
       const commission = Number(getValues('commission') ?? 0);
-      const typedTotal = redemptionTotalWithInterest(
-        roundToDecimals(Number(getValues('quantity')) * Number(getValues('price')) - commission, 4),
-        Number(getValues('accruedInterest') ?? 0),
-      );
-      const gross = typedTotal - Number(split.interest) + commission;
+      const gross =
+        basis.kind === 'price'
+          ? quantity * basis.value - Number(split.interest)
+          : basis.value - Number(split.interest) + commission;
       if (!(gross > 0)) return;
       setValue('price', roundToDecimals(gross / quantity, 10), { shouldDirty: true, shouldValidate: true });
     }
@@ -755,6 +759,7 @@ function InvestmentTransactionFormFields({
         : proceeds + watchedCommission;
     if (!(gross > 0)) return;
     priceEditedByPerson.current = true;
+    typedPriceBasis.current = { kind: 'total', value };
     setValue('price', roundToDecimals(gross / watchedQuantity, 10), {
       shouldDirty: true,
       shouldValidate: true,
@@ -1481,6 +1486,7 @@ function InvestmentTransactionFormFields({
             value={watchedPrice || undefined}
             onChange={(value) => {
               priceEditedByPerson.current = true;
+              typedPriceBasis.current = value ? { kind: 'price', value } : null;
               setValue('price', value, { shouldValidate: true });
             }}
             decimalPlaces={6}

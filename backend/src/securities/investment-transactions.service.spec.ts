@@ -10091,6 +10091,82 @@ describe("InvestmentTransactionsService", () => {
         ).rejects.toMatchObject({ response: { errorCode: "RATE_UNKNOWN" } });
         expect(created()).toEqual([]);
       });
+
+      it("keeps the stated figures of a REST create that names no series when the account holds several", async () => {
+        bondHoldingsService.seriesHoldings.mockResolvedValue({
+          holdings: [
+            { instrumentId: EDO0423, seriesCode: "EDO0423", quantity: 5 },
+            { instrumentId: OTHER_SERIES, seriesCode: "EDO0523", quantity: 5 },
+          ],
+        });
+        await service.create(userId, {
+          accountId,
+          securityId,
+          action: InvestmentAction.REDEEM,
+          transactionDate: "2023-04-01",
+          quantity: 10,
+          price: 147.05,
+        });
+        expect(bondHoldingsService.redemptionSplit).not.toHaveBeenCalled();
+        expect(created()[0]).toMatchObject({
+          action: InvestmentAction.REDEEM,
+          price: 147.05,
+        });
+      });
+
+      it("splits a REST edit of the quantity again instead of keeping the interest stored for the old quantity", async () => {
+        const companion = {
+          id: "inv-tx-interest",
+          userId,
+          action: InvestmentAction.INTEREST,
+          linkedTransactionId: transactionId,
+          totalAmount: 470.5,
+          price: 470.5,
+        };
+        investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+          createMockQueryBuilder({
+            ...mockBuyTransaction,
+            action: InvestmentAction.REDEEM,
+            quantity: 10,
+            price: 100,
+            totalAmount: 1000,
+            transactionDate: "2023-04-01",
+            bondInstrumentId: EDO0423,
+            linkedTransactionId: companion.id,
+          }),
+        );
+        investmentTransactionsRepository.findOne.mockResolvedValue(companion);
+        bondHoldingsService.redemptionSplit.mockResolvedValue({
+          ...AT_MATURITY,
+          quantity: 5,
+          principal: "500.00",
+          grossInterest: "235.25",
+          interest: "235.25",
+          principalReturned: "500.00",
+          payout: "735.25",
+        });
+        await service.update(userId, transactionId, { quantity: 5 });
+        expect(bondHoldingsService.redemptionSplit).toHaveBeenCalledWith(
+          userId,
+          securityId,
+          accountId,
+          EDO0423,
+          "2023-04-01",
+          5,
+          transactionId,
+        );
+        expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: transactionId,
+            price: 100,
+            totalAmount: 490.01,
+          }),
+        );
+        // Proceeds plus the new interest, not the old 470.50.
+        expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+          expect.objectContaining({ amount: 725.26 }),
+        );
+      });
     });
 
     /**
