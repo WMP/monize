@@ -19,6 +19,7 @@ import {
   Transaction,
   TransactionStatus,
 } from "../transactions/entities/transaction.entity";
+import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { Holding } from "../securities/entities/holding.entity";
 import { Institution } from "../institutions/entities/institution.entity";
@@ -221,6 +222,10 @@ export async function applyAccountBalanceDelta(
   );
   return affectedRowCount(updated);
 }
+
+// shortcut: rows older than this many days are missed after a longer outage,
+// upgrade to a per-timezone last-run marker if outages beyond a week matter.
+const DUE_BALANCE_CATCH_UP_DAYS = 7;
 
 @Injectable()
 export class AccountsService {
@@ -974,6 +979,20 @@ export class AccountsService {
               tr(
                 "errors.accounts.changeCurrencyWithTransactions",
                 "Cannot change the currency of an account that has transactions.",
+              ),
+            );
+          }
+
+          // A non-zero opening balance or a schedule is denominated in the
+          // old currency too; changing it would relabel them as the new one.
+          const scheduleCount = await m.count(ScheduledTransaction, {
+            where: { accountId: id },
+          });
+          if (Number(account.openingBalance) !== 0 || scheduleCount > 0) {
+            throw new BadRequestException(
+              tr(
+                "errors.accounts.changeCurrencyWithBalanceOrSchedules",
+                "Cannot change the currency of an account that has an opening balance or scheduled transactions.",
               ),
             );
           }
@@ -2418,9 +2437,9 @@ export class AccountsService {
                FROM transactions t
                JOIN accounts a ON a.id = t.account_id
                WHERE a.user_id = ANY($1)
-                 AND t.transaction_date = $2
+                 AND t.transaction_date BETWEEN ($2::date - $3::int) AND $2::date
                  AND ${LEDGER_MOVEMENT_PREDICATE}`,
-            [userIds, today],
+            [userIds, today, DUE_BALANCE_CATCH_UP_DAYS],
           );
 
           if (accountRows.length === 0) return 0;

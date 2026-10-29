@@ -802,6 +802,41 @@ describe("AccountsService", () => {
       expect(mockDataSource.transaction).toHaveBeenCalled();
     });
 
+    it("refuses a currency change on an account with an opening balance", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({ ...mockAccount });
+
+      await expect(
+        service.update("user-1", "account-1", { currencyCode: "EUR" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("refuses a currency change on an account with a schedule", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        openingBalance: 0,
+      });
+      mockQueryRunner.manager.count.mockImplementation(
+        async (entity: unknown) => (entity === ScheduledTransaction ? 1 : 0),
+      );
+
+      await expect(
+        service.update("user-1", "account-1", { currencyCode: "EUR" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("allows a currency change on a fresh zero-balance account", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        openingBalance: 0,
+      });
+
+      const result = await service.update("user-1", "account-1", {
+        currencyCode: "EUR",
+      });
+
+      expect(result.currencyCode).toBe("EUR");
+    });
+
     it("assigns an owned institution on update", async () => {
       mockQueryRunner.manager.findOne.mockResolvedValue({ ...mockAccount });
 
@@ -1513,7 +1548,10 @@ describe("AccountsService", () => {
 
     describe("currency lock", () => {
       it("allows currency change when account has no transactions", async () => {
-        mockQueryRunner.manager.findOne.mockResolvedValue({ ...mockAccount });
+        mockQueryRunner.manager.findOne.mockResolvedValue({
+          ...mockAccount,
+          openingBalance: 0,
+        });
         mockQueryRunner.manager.count.mockResolvedValue(0);
 
         await service.update("user-1", "account-1", { currencyCode: "CAD" });
@@ -2931,6 +2969,7 @@ describe("AccountsService", () => {
       mockQueryRunner.manager.findOne
         .mockResolvedValueOnce({
           ...mockAccount,
+          openingBalance: 0,
           accountType: AccountType.INVESTMENT,
           linkedAccountId: "brokerage-1",
           currencyCode: "USD",
@@ -2958,6 +2997,7 @@ describe("AccountsService", () => {
     it("does not sync currency when account is not investment type", async () => {
       mockQueryRunner.manager.findOne.mockResolvedValue({
         ...mockAccount,
+        openingBalance: 0,
         accountType: AccountType.CHEQUING,
         linkedAccountId: null,
       });
@@ -3895,6 +3935,7 @@ describe("AccountsService", () => {
       mockQueryRunner.manager.findOne
         .mockResolvedValueOnce({
           ...mockAccount,
+          openingBalance: 0,
           accountType: AccountType.INVESTMENT,
           linkedAccountId: "linked-1",
           currencyCode: "USD",
@@ -3916,6 +3957,7 @@ describe("AccountsService", () => {
       mockQueryRunner.manager.findOne
         .mockResolvedValueOnce({
           ...mockAccount,
+          openingBalance: 0,
           accountType: AccountType.INVESTMENT,
           linkedAccountId: "linked-1",
           currencyCode: "USD",
@@ -4949,6 +4991,12 @@ describe("AccountsService", () => {
       );
       expect(bulkUpdateCall).toBeDefined();
       expect(bulkUpdateCall?.[1]).toEqual(["a1", 150]);
+      // Catch-up window: a day the backend slept through is still selected.
+      const selectCall = ds.query.mock.calls.find((c) =>
+        String(c[0]).includes("SELECT DISTINCT t.account_id"),
+      );
+      expect(String(selectCall?.[0])).toContain("BETWEEN");
+      expect(selectCall?.[1][2]).toBe(7);
       expect(accountsRepository.update).not.toHaveBeenCalled();
       // And the lock came first.
       const statements = ds.query.mock.calls.map((c) => String(c[0]));
