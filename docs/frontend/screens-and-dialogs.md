@@ -157,7 +157,8 @@ The two look different on purpose: `Tabs` says "you are now somewhere else", the
 
 - One card per section with an `h2 text-lg font-semibold mb-4`; a sub-group inside it is headed `h3 text-sm font-semibold mb-1` (`ProfileSection.tsx`, `BackupRestoreSection.tsx`).
 - The danger zone is the red-bordered card, last on the page (`DangerZoneSection.tsx`).
-- The page is `max-w-4xl mx-auto`, and saves on change (`ui-conventions.md`, "A settings screen has one save contract").
+- The page is `max-w-4xl mx-auto`, and saves on change (`ui-conventions.md`, "A settings screen has one save contract"). The Settings page itself carries the section sidebar, so it is `max-w-6xl` and its content column keeps the `4xl` width; its loading state and `app/settings/loading.tsx` take the same frame.
+- A settings sub-page (AI, bank sync, shared access, emergency access, tours) returns to Settings with `BackToSettingsLink` above its `PageHeader`, never a `&larr; Back` text link.
 
 ## Loading, errors and feedback
 
