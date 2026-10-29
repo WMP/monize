@@ -104,6 +104,8 @@
       "noDevices": "Không có thiết bị đáng tin cậy. Khi bạn chọn \"Đừng hỏi lại trên trình duyệt này\" trong khi đăng nhập 2FA, thiết bị sẽ xuất hiện ở đây.",
       "currentBadge": "Hiện tại",
       "revokeButton": "Thu hồi",
+      "ipAddress": "IP: {ip}",
+      "dates": "Đã thêm {added} · Lần sử dụng cuối {lastUsed} · Hết hạn {expires}",
       "revokeAllModal": {
         "title": "Thu hồi tất cả thiết bị đáng tin cậy",
         "description": "Điều này sẽ xóa tất cả thiết bị đáng tin cậy. Bạn sẽ cần nhập mã 2FA trong lần đăng nhập tiếp theo từ bất kỳ thiết bị nào."
@@ -224,7 +226,7 @@
       "hideRegisterYearLabel": "Ẩn năm trong ngày của sổ giao tác",
       "chartCollapsedLabel": "Bắt đầu với biểu đồ trên trang Giao tác được thu gọn",
       "widgetsCollapsedLabel": "Bắt đầu với thông tin tài khoản, người nhận và danh mục được thu gọn",
-      "accountOpenTargetLabel": "Khi tôi mở một tài khoản",
+      "accountOpenTargetLabel": "Chế độ xem tài khoản mặc định",
       "accountOpenTargetOptions": {
         "register": "Hiển thị giao tác của tài khoản",
         "dashboard": "Hiển thị bảng điều khiển của tài khoản"
@@ -300,6 +302,10 @@
       "sendTestButton": "Gửi thông báo thử nghiệm",
       "sendingTestButton": "Đang gửi...",
       "removeButton": "Xóa",
+      "removeDialog": {
+        "title": "Xóa thiết bị",
+        "message": "Xóa {device}? Thiết bị sẽ không nhận thông báo đẩy cho đến khi bật lại đẩy trên thiết bị đó."
+      },
       "thisDevice": "Thiết bị này",
       "held": "Đã đăng xuất trên thiết bị này. Thông báo đẩy sẽ tiếp tục khi bạn đăng nhập lại tại đây.",
       "unifiedpushBadge": "UnifiedPush",
@@ -478,7 +484,7 @@
   "supportBackup": {
     "title": "Tạo bản sao lưu hỗ trợ",
     "howItWorks": "Tạo một bản sao đã ẩn danh của bản sao lưu: tên bị che (giữ hai ký tự đầu và cuối), ghi chú/mô tả/số tài khoản bị xoá, và mọi số tiền được nhân với một hệ số ẩn duy nhất, trong khi các giá trị công khai (tỷ giá, giá, lãi suất) giữ nguyên. Tệp luôn được mã hoá bằng mật khẩu bên dưới và khôi phục như bản sao lưu bình thường. Điều này bảo vệ trước sự lộ lọt tình cờ, không phải trước người đã biết bạn — ngày tháng, tần suất và cấu trúc được giữ để lỗi vẫn tái hiện được.",
-    "sectionsLabel": "Bao gồm những gì",
+    "sectionsLabel": "Các phần cần bao gồm",
     "sections": {
       "investments": "Đầu tư (chứng khoán, nắm giữ, giá)",
       "scheduled": "Giao dịch định kỳ",
@@ -861,7 +867,7 @@
         "saveFailed": "Không lưu được các đích sao lưu ngoài máy chủ của bạn",
         "s3": {
           "heading": "Kho lưu trữ S3",
-          "modeLabel": "Nơi gửi bản sao",
+          "modeLabel": "Đích của bản sao",
           "modeOff": "Tắt",
           "modeDeployment": "Bucket của máy chủ này",
           "modeOwn": "Bucket của riêng tôi",
@@ -980,15 +986,19 @@
       "warranties": {
         "label": "Bảo hành",
         "description": "Bảo hành, tài liệu và yêu cầu bảo hành kèm theo. Giao dịch mua được liên kết chỉ hiển thị nếu nằm trong tài khoản mà người được ủy quyền có thể đọc."
-      }
+      },
+      "toggleLabel": "Phần {section}"
     },
     "accounts": {
       "noAccounts": "Không có tài khoản nào để cấp.",
       "grantAll": "Cấp tất cả",
-      "jointRequiresFullAccount": "Tài khoản chung chỉ có thể được chia sẻ với người dùng có tài khoản Monize riêng"
+      "jointRequiresFullAccount": "Tài khoản chung chỉ có thể được chia sẻ với người dùng có tài khoản Monize riêng",
+      "grantAllLabel": "{op} tất cả tài khoản {type}",
+      "grantLabel": "Quyền {op} đối với {account}"
     },
     "shared": {
-      "description": "Đọc người nhận, danh mục và thẻ luôn được phép. Đây là các điều khiển tạo/chỉnh sửa/xóa."
+      "description": "Đọc người nhận, danh mục và thẻ luôn được phép. Đây là các điều khiển tạo/chỉnh sửa/xóa.",
+      "toggleLabel": "{op} {resource}"
     },
     "saveButton": "Lưu",
     "toasts": {
@@ -1186,6 +1196,7 @@
       "grantStatus": "Trạng thái cấp: ",
       "unknown": "không xác định",
       "never": "không bao giờ",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "đã cấp vào {timestamp}",
       "notYetGranted": "chưa được cấp",
       "timerNote": "Bộ đếm thời gian tự động đặt lại bất kỳ lúc nào bạn sử dụng ứng dụng -- đăng nhập, xem trang, ghi nhận giao tác, bất kỳ thứ gì được xác thực."
@@ -1235,6 +1246,10 @@
       "enableButton": "Bật",
       "editButton": "Chỉnh sửa",
       "deleteButton": "Xóa"
+    },
+    "deleteDialog": {
+      "title": "Xóa nhà cung cấp AI",
+      "message": "Xóa {name}? Khóa API đã lưu cũng bị xóa theo. Không thể hoàn tác thao tác này."
     },
     "configForm": {
       "addTitle": "Thêm nhà cung cấp AI",

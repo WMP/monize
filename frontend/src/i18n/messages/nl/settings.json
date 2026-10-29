@@ -104,6 +104,8 @@
       "noDevices": "Geen vertrouwde apparaten. Wanneer je \"Niet opnieuw vragen op deze browser\" aanvinkt tijdens 2FA-aanmelding, verschijnt het apparaat hier.",
       "currentBadge": "Huidig",
       "revokeButton": "Intrekken",
+      "ipAddress": "IP: {ip}",
+      "dates": "Toegevoegd {added} · Laatst gebruikt {lastUsed} · Vervalt {expires}",
       "revokeAllModal": {
         "title": "Alle vertrouwde apparaten intrekken",
         "description": "Dit verwijdert alle vertrouwde apparaten. Je moet jouw 2FA-code invoeren bij jouw volgende aanmelding vanaf elk apparaat."
@@ -224,7 +226,7 @@
       "hideRegisterYearLabel": "Jaar verbergen in registerdatums",
       "chartCollapsedLabel": "Beginnen met de grafiek op de pagina Transacties ingeklapt",
       "widgetsCollapsedLabel": "Beginnen met de rekening-, begunstigde- en categorie-info ingeklapt",
-      "accountOpenTargetLabel": "Als ik een rekening open",
+      "accountOpenTargetLabel": "Standaardweergave van rekening",
       "accountOpenTargetOptions": {
         "register": "De transacties tonen",
         "dashboard": "Het dashboard tonen"
@@ -300,6 +302,10 @@
       "sendTestButton": "Testmelding versturen",
       "sendingTestButton": "Versturen...",
       "removeButton": "Verwijderen",
+      "removeDialog": {
+        "title": "Apparaat verwijderen",
+        "message": "{device} verwijderen? Het ontvangt geen pushmeldingen meer totdat push daar weer wordt ingeschakeld."
+      },
       "thisDevice": "Dit apparaat",
       "held": "Afgemeld op dit apparaat. Pushmeldingen worden hervat zodra je hier weer inlogt.",
       "unifiedpushBadge": "UnifiedPush",
@@ -478,7 +484,7 @@
   "supportBackup": {
     "title": "Supportback-up maken",
     "howItWorks": "Dit maakt een gede-identificeerde kopie van je back-up: namen worden gemaskeerd (eerste en laatste twee tekens blijven), notities/omschrijvingen/rekeningnummers worden verwijderd en elk bedrag wordt vermenigvuldigd met één verborgen factor, terwijl publieke waarden (wisselkoersen, koersen, rentetarieven) intact blijven. Het bestand wordt altijd versleuteld met het onderstaande wachtwoord en herstelt als een normale back-up. Dit beschermt tegen terloopse blootstelling, niet tegen iemand die je al kent — datums, frequenties en structuur blijven behouden zodat bugs reproduceerbaar zijn.",
-    "sectionsLabel": "Wat opnemen",
+    "sectionsLabel": "Op te nemen onderdelen",
     "sections": {
       "investments": "Beleggingen (effecten, posities, koersen)",
       "scheduled": "Geplande transacties",
@@ -861,7 +867,7 @@
         "saveFailed": "Uw externe back-upbestemmingen konden niet worden opgeslagen",
         "s3": {
           "heading": "S3-opslag",
-          "modeLabel": "Waar kopieën naartoe gaan",
+          "modeLabel": "Bestemming van kopieën",
           "modeOff": "Uit",
           "modeDeployment": "Bucket van deze server",
           "modeOwn": "Mijn eigen bucket",
@@ -980,15 +986,19 @@
       "warranties": {
         "label": "Garanties",
         "description": "Garanties met hun documenten en claims. Een gekoppelde aankoop is alleen zichtbaar bij een rekening die de gemachtigde mag lezen."
-      }
+      },
+      "toggleLabel": "Onderdeel {section}"
     },
     "accounts": {
       "noAccounts": "Geen rekeningen om te verlenen.",
       "grantAll": "Alles verlenen",
-      "jointRequiresFullAccount": "Gezamenlijke rekeningen kunnen alleen worden gedeeld met gebruikers die een eigen Monize-account hebben"
+      "jointRequiresFullAccount": "Gezamenlijke rekeningen kunnen alleen worden gedeeld met gebruikers die een eigen Monize-account hebben",
+      "grantAllLabel": "{op} alle {type}-rekeningen",
+      "grantLabel": "{op}-toegang tot {account}"
     },
     "shared": {
-      "description": "LEZEN van begunstigden, categorieën en labels is altijd toegestaan. Dit regelt aanmaken/bewerken/verwijderen."
+      "description": "LEZEN van begunstigden, categorieën en labels is altijd toegestaan. Dit regelt aanmaken/bewerken/verwijderen.",
+      "toggleLabel": "{op} {resource}"
     },
     "saveButton": "Opslaan",
     "toasts": {
@@ -1186,6 +1196,7 @@
       "grantStatus": "Verleningsstatus: ",
       "unknown": "onbekend",
       "never": "nooit",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "verleend op {timestamp}",
       "notYetGranted": "nog niet verleend",
       "timerNote": "De timer wordt automatisch gereset elke keer dat je de app gebruikt -- aanmelden, een pagina bekijken, een transactie vastleggen, alles wat geauthenticeerd is."
@@ -1235,6 +1246,10 @@
       "enableButton": "Inschakelen",
       "editButton": "Bewerken",
       "deleteButton": "Verwijderen"
+    },
+    "deleteDialog": {
+      "title": "AI-provider verwijderen",
+      "message": "{name} verwijderen? De opgeslagen API-sleutel wordt mee verwijderd. Dit kan niet ongedaan worden gemaakt."
     },
     "configForm": {
       "addTitle": "AI-provider toevoegen",

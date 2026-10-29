@@ -104,6 +104,8 @@
       "noDevices": "Sem dispositivos de confiança. Quando marcar \"Não perguntar novamente neste browser\" durante o início de sessão com 2FA, o dispositivo aparecerá aqui.",
       "currentBadge": "Atual",
       "revokeButton": "Revogar",
+      "ipAddress": "IP: {ip}",
+      "dates": "Adicionado a {added} · Último uso {lastUsed} · Expira a {expires}",
       "revokeAllModal": {
         "title": "Revogar Todos os Dispositivos de Confiança",
         "description": "Isto removerá todos os dispositivos de confiança. Terá de introduzir o seu código 2FA no próximo início de sessão a partir de qualquer dispositivo."
@@ -224,7 +226,7 @@
       "hideRegisterYearLabel": "Ocultar o ano nas datas do registo",
       "chartCollapsedLabel": "Começar com o gráfico da página Transações recolhido",
       "widgetsCollapsedLabel": "Começar com as informações de conta, beneficiário e categoria recolhidas",
-      "accountOpenTargetLabel": "Quando abro uma conta",
+      "accountOpenTargetLabel": "Vista predefinida da conta",
       "accountOpenTargetOptions": {
         "register": "Mostrar as suas transações",
         "dashboard": "Mostrar o seu painel"
@@ -300,6 +302,10 @@
       "sendTestButton": "Enviar notificação de teste",
       "sendingTestButton": "A enviar...",
       "removeButton": "Remover",
+      "removeDialog": {
+        "title": "Remover dispositivo",
+        "message": "Remover {device}? Deixa de receber notificações push até o push ser novamente ativado nele."
+      },
       "thisDevice": "Este dispositivo",
       "held": "Sessão terminada neste dispositivo. As notificações push são retomadas quando voltar a iniciar sessão aqui.",
       "unifiedpushBadge": "UnifiedPush",
@@ -478,7 +484,7 @@
   "supportBackup": {
     "title": "Criar cópia de suporte",
     "howItWorks": "Produz uma cópia desidentificada da sua cópia de segurança: os nomes são mascarados (mantêm-se os dois primeiros e os dois últimos caracteres), notas/descrições/números de conta são removidos e cada montante é multiplicado por um único fator oculto, enquanto os valores públicos (taxas de câmbio, preços, taxas de juro) ficam intactos. O ficheiro é sempre cifrado com a palavra-passe abaixo e restaura-se como uma cópia normal. Protege contra exposição casual, não contra alguém que já o conhece — datas, frequências e estrutura são preservadas para que os erros continuem reproduzíveis.",
-    "sectionsLabel": "O que incluir",
+    "sectionsLabel": "Secções a incluir",
     "sections": {
       "investments": "Investimentos (títulos, posições, preços)",
       "scheduled": "Transações agendadas",
@@ -861,7 +867,7 @@
         "saveFailed": "Não foi possível guardar os seus destinos externos de cópia de segurança",
         "s3": {
           "heading": "Armazenamento S3",
-          "modeLabel": "Para onde são enviadas as cópias",
+          "modeLabel": "Destino das cópias",
           "modeOff": "Desligado",
           "modeDeployment": "Bucket deste servidor",
           "modeOwn": "O meu próprio bucket",
@@ -980,15 +986,19 @@
       "warranties": {
         "label": "Garantias",
         "description": "Garantias, os respetivos documentos e reclamações. Uma compra associada só é mostrada se estiver numa conta que o delegado possa ler."
-      }
+      },
+      "toggleLabel": "Secção {section}"
     },
     "accounts": {
       "noAccounts": "Sem contas para conceder.",
       "grantAll": "Conceder todas",
-      "jointRequiresFullAccount": "As contas conjuntas só podem ser partilhadas com utilizadores que tenham a sua própria conta Monize"
+      "jointRequiresFullAccount": "As contas conjuntas só podem ser partilhadas com utilizadores que tenham a sua própria conta Monize",
+      "grantAllLabel": "{op} todas as contas {type}",
+      "grantLabel": "Acesso de {op} a {account}"
     },
     "shared": {
-      "description": "A LEITURA de beneficiários, categorias e etiquetas é sempre permitida. Estes controlam criar/editar/eliminar."
+      "description": "A LEITURA de beneficiários, categorias e etiquetas é sempre permitida. Estes controlam criar/editar/eliminar.",
+      "toggleLabel": "{op} {resource}"
     },
     "saveButton": "Guardar",
     "toasts": {
@@ -1186,6 +1196,7 @@
       "grantStatus": "Estado de concessão: ",
       "unknown": "desconhecido",
       "never": "nunca",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "concedido em {timestamp}",
       "notYetGranted": "ainda não concedido",
       "timerNote": "O temporizador reinicia automaticamente sempre que utilizar a aplicação -- iniciar sessão, ver uma página, registar uma transação, qualquer ação autenticada."
@@ -1235,6 +1246,10 @@
       "enableButton": "Ativar",
       "editButton": "Editar",
       "deleteButton": "Eliminar"
+    },
+    "deleteDialog": {
+      "title": "Eliminar fornecedor de IA",
+      "message": "Eliminar {name}? A chave de API guardada é removida com ele. Esta ação não pode ser anulada."
     },
     "configForm": {
       "addTitle": "Adicionar Fornecedor de IA",

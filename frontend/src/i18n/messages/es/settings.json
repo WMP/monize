@@ -104,6 +104,8 @@
       "noDevices": "Sin dispositivos de confianza. Cuando marques \"No volver a preguntar en este navegador\" durante el inicio de sesión con 2FA, el dispositivo aparecerá aquí.",
       "currentBadge": "Actual",
       "revokeButton": "Revocar",
+      "ipAddress": "IP: {ip}",
+      "dates": "Añadido {added} · Último uso {lastUsed} · Vence {expires}",
       "revokeAllModal": {
         "title": "Revocar todos los dispositivos de confianza",
         "description": "Esto eliminará todos los dispositivos de confianza. Necesitarás ingresar tu código 2FA en tu próximo inicio de sesión desde cualquier dispositivo."
@@ -224,7 +226,7 @@
       "hideRegisterYearLabel": "Ocultar el año en las fechas del registro",
       "chartCollapsedLabel": "Empezar con el gráfico de la página Transacciones contraído",
       "widgetsCollapsedLabel": "Empezar con la información de cuenta, beneficiario y categoría contraída",
-      "accountOpenTargetLabel": "Al abrir una cuenta",
+      "accountOpenTargetLabel": "Vista predeterminada de la cuenta",
       "accountOpenTargetOptions": {
         "register": "Mostrar sus transacciones",
         "dashboard": "Mostrar su panel"
@@ -300,6 +302,10 @@
       "sendTestButton": "Enviar notificación de prueba",
       "sendingTestButton": "Enviando...",
       "removeButton": "Quitar",
+      "removeDialog": {
+        "title": "Quitar dispositivo",
+        "message": "¿Quitar {device}? Dejará de recibir notificaciones push hasta que vuelvas a activarlas en él."
+      },
       "thisDevice": "Este dispositivo",
       "held": "Sesión cerrada en este dispositivo. Las notificaciones push se reanudan cuando vuelvas a iniciar sesión aquí.",
       "unifiedpushBadge": "UnifiedPush",
@@ -478,7 +484,7 @@
   "supportBackup": {
     "title": "Crear copia para soporte",
     "howItWorks": "Genera una copia desidentificada de su copia de seguridad: los nombres se enmascaran (se conservan los dos primeros y los dos últimos caracteres), se eliminan notas/descripciones/números de cuenta y cada importe se multiplica por un único factor oculto, mientras los valores públicos (tipos de cambio, precios, tipos de interés) quedan intactos. El archivo siempre se cifra con la contraseña de abajo y se restaura como una copia normal. Protege frente a la exposición casual, no frente a alguien que ya le conoce: las fechas, frecuencias y estructura se conservan para que los errores se reproduzcan.",
-    "sectionsLabel": "Qué incluir",
+    "sectionsLabel": "Secciones a incluir",
     "sections": {
       "investments": "Inversiones (valores, posiciones, precios)",
       "scheduled": "Transacciones programadas",
@@ -861,7 +867,7 @@
         "saveFailed": "No se pudieron guardar tus destinos externos de copia de seguridad",
         "s3": {
           "heading": "Almacenamiento S3",
-          "modeLabel": "Dónde se envían las copias",
+          "modeLabel": "Destino de las copias",
           "modeOff": "Desactivado",
           "modeDeployment": "Bucket de este servidor",
           "modeOwn": "Mi propio bucket",
@@ -980,15 +986,19 @@
       "warranties": {
         "label": "Garantías",
         "description": "Garantías, sus documentos y reclamaciones. Una compra vinculada solo se muestra si está en una cuenta que el delegado puede leer."
-      }
+      },
+      "toggleLabel": "Sección {section}"
     },
     "accounts": {
       "noAccounts": "No hay cuentas para otorgar.",
       "grantAll": "Otorgar todas",
-      "jointRequiresFullAccount": "Las cuentas conjuntas solo se pueden compartir con usuarios que tengan su propia cuenta de Monize"
+      "jointRequiresFullAccount": "Las cuentas conjuntas solo se pueden compartir con usuarios que tengan su propia cuenta de Monize",
+      "grantAllLabel": "{op} todas las cuentas de {type}",
+      "grantLabel": "Acceso de {op} a {account}"
     },
     "shared": {
-      "description": "La LECTURA de beneficiarios, categorías y etiquetas siempre está permitida. Estos controlan crear/editar/eliminar."
+      "description": "La LECTURA de beneficiarios, categorías y etiquetas siempre está permitida. Estos controlan crear/editar/eliminar.",
+      "toggleLabel": "{op} {resource}"
     },
     "saveButton": "Guardar",
     "toasts": {
@@ -1186,6 +1196,7 @@
       "grantStatus": "Estado de otorgamiento: ",
       "unknown": "desconocido",
       "never": "nunca",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "otorgado el {timestamp}",
       "notYetGranted": "aún no otorgado",
       "timerNote": "El temporizador se reinicia automáticamente cada vez que usas la aplicación — iniciar sesión, ver una página, registrar una transacción, cualquier acción autenticada."
@@ -1235,6 +1246,10 @@
       "enableButton": "Habilitar",
       "editButton": "Editar",
       "deleteButton": "Eliminar"
+    },
+    "deleteDialog": {
+      "title": "Eliminar proveedor de IA",
+      "message": "¿Eliminar {name}? Su clave de API guardada se elimina con él. Esta acción no se puede deshacer."
     },
     "configForm": {
       "addTitle": "Agregar proveedor de IA",

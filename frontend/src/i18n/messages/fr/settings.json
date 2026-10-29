@@ -104,6 +104,8 @@
       "noDevices": "Aucun appareil de confiance. Lorsque vous cochez « Ne plus demander sur ce navigateur » lors de la connexion avec la 2FA, l'appareil apparaîtra ici.",
       "currentBadge": "Actuel",
       "revokeButton": "Révoquer",
+      "ipAddress": "IP : {ip}",
+      "dates": "Ajouté le {added} · Dernière utilisation le {lastUsed} · Expire le {expires}",
       "revokeAllModal": {
         "title": "Révoquer tous les appareils de confiance",
         "description": "Cela supprimera tous les appareils de confiance. Vous devrez saisir votre code 2FA lors de votre prochaine connexion depuis n'importe quel appareil."
@@ -224,7 +226,7 @@
       "hideRegisterYearLabel": "Masquer l’année dans les dates du registre",
       "chartCollapsedLabel": "Afficher d’abord le graphique de la page Transactions replié",
       "widgetsCollapsedLabel": "Afficher d’abord les informations de compte, de bénéficiaire et de catégorie repliées",
-      "accountOpenTargetLabel": "Quand j’ouvre un compte",
+      "accountOpenTargetLabel": "Vue par défaut du compte",
       "accountOpenTargetOptions": {
         "register": "Afficher ses transactions",
         "dashboard": "Afficher son tableau de bord"
@@ -300,6 +302,10 @@
       "sendTestButton": "Envoyer une notification de test",
       "sendingTestButton": "Envoi...",
       "removeButton": "Supprimer",
+      "removeDialog": {
+        "title": "Supprimer l’appareil",
+        "message": "Supprimer {device} ? Il ne recevra plus de notifications push tant que le push n’y sera pas réactivé."
+      },
       "thisDevice": "Cet appareil",
       "held": "Déconnecté sur cet appareil. Les notifications push reprennent lorsque vous vous reconnectez ici.",
       "unifiedpushBadge": "UnifiedPush",
@@ -478,7 +484,7 @@
   "supportBackup": {
     "title": "Créer une sauvegarde de support",
     "howItWorks": "Produit une copie dé-identifiée de votre sauvegarde : les noms sont masqués (les deux premiers et deux derniers caractères sont conservés), les notes/descriptions/numéros de compte sont supprimés, et chaque montant est multiplié par un facteur caché unique tandis que les valeurs publiques (taux de change, cours, taux d'intérêt) restent intactes. Le fichier est toujours chiffré avec le mot de passe ci-dessous et se restaure comme une sauvegarde normale. Cela protège d'une exposition fortuite, pas de quelqu'un qui vous connaît déjà — dates, fréquences et structure sont préservées pour que les bugs restent reproductibles.",
-    "sectionsLabel": "Quoi inclure",
+    "sectionsLabel": "Sections à inclure",
     "sections": {
       "investments": "Investissements (titres, positions, cours)",
       "scheduled": "Transactions planifiées",
@@ -861,7 +867,7 @@
         "saveFailed": "Impossible d'enregistrer vos destinations de sauvegarde hors site",
         "s3": {
           "heading": "Stockage S3",
-          "modeLabel": "Où les copies sont envoyées",
+          "modeLabel": "Destination des copies",
           "modeOff": "Désactivé",
           "modeDeployment": "Bucket de ce serveur",
           "modeOwn": "Mon propre bucket",
@@ -980,15 +986,19 @@
       "warranties": {
         "label": "Garanties",
         "description": "Les garanties, leurs documents et leurs réclamations. Un achat lié n'apparaît que pour un compte que le délégué peut consulter."
-      }
+      },
+      "toggleLabel": "Section {section}"
     },
     "accounts": {
       "noAccounts": "Aucun compte à accorder.",
       "grantAll": "Tout accorder",
-      "jointRequiresFullAccount": "Les comptes joints ne peuvent être partagés qu'avec des utilisateurs disposant de leur propre compte Monize"
+      "jointRequiresFullAccount": "Les comptes joints ne peuvent être partagés qu'avec des utilisateurs disposant de leur propre compte Monize",
+      "grantAllLabel": "{op} tous les comptes {type}",
+      "grantLabel": "Accès {op} à {account}"
     },
     "shared": {
-      "description": "La lecture des bénéficiaires, des catégories et des étiquettes est toujours autorisée. Ces options contrôlent la création/modification/suppression."
+      "description": "La lecture des bénéficiaires, des catégories et des étiquettes est toujours autorisée. Ces options contrôlent la création/modification/suppression.",
+      "toggleLabel": "{op} {resource}"
     },
     "saveButton": "Enregistrer",
     "toasts": {
@@ -1186,6 +1196,7 @@
       "grantStatus": "État de l'octroi : ",
       "unknown": "inconnu",
       "never": "jamais",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "accordé le {timestamp}",
       "notYetGranted": "pas encore accordé",
       "timerNote": "Le minuteur se réinitialise automatiquement chaque fois que vous utilisez l'application — connexion, consultation d'une page, enregistrement d'une transaction, toute action authentifiée."
@@ -1235,6 +1246,10 @@
       "enableButton": "Activer",
       "editButton": "Modifier",
       "deleteButton": "Supprimer"
+    },
+    "deleteDialog": {
+      "title": "Supprimer le fournisseur d’IA",
+      "message": "Supprimer {name} ? Sa clé API enregistrée est supprimée avec lui. Cette action est irréversible."
     },
     "configForm": {
       "addTitle": "Ajouter un fournisseur d'IA",

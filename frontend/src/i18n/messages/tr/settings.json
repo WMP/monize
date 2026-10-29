@@ -104,6 +104,8 @@
       "noDevices": "Güvenilen cihaz yok. 2FA girişi sırasında \"Bu tarayıcıda tekrar sorma\" seçeneğini işaretlediğinizde cihaz burada görünecektir.",
       "currentBadge": "Mevcut",
       "revokeButton": "İptal Et",
+      "ipAddress": "IP: {ip}",
+      "dates": "Eklendi {added} · Son kullanım {lastUsed} · Bitiş {expires}",
       "revokeAllModal": {
         "title": "Tüm Güvenilen Cihazları İptal Et",
         "description": "Bu işlem tüm güvenilen cihazları kaldıracaktır. Herhangi bir cihazdan bir sonraki oturum açışınızda 2FA kodunuzu girmeniz gerekecektir."
@@ -224,7 +226,7 @@
       "hideRegisterYearLabel": "Kayıt tarihlerinde yılı gizle",
       "chartCollapsedLabel": "İşlemler sayfasındaki grafik daraltılmış olarak başlasın",
       "widgetsCollapsedLabel": "Hesap, alacaklı ve kategori bilgileri daraltılmış olarak başlasın",
-      "accountOpenTargetLabel": "Bir hesabı açtığımda",
+      "accountOpenTargetLabel": "Varsayılan Hesap Görünümü",
       "accountOpenTargetOptions": {
         "register": "İşlemlerini göster",
         "dashboard": "Panosunu göster"
@@ -300,6 +302,10 @@
       "sendTestButton": "Test bildirimi gönder",
       "sendingTestButton": "Gönderiliyor...",
       "removeButton": "Kaldır",
+      "removeDialog": {
+        "title": "Cihazı Kaldır",
+        "message": "{device} kaldırılsın mı? Orada push yeniden açılana kadar push bildirimi almaz."
+      },
       "thisDevice": "Bu cihaz",
       "held": "Bu cihazda oturum kapatıldı. Burada yeniden oturum açtığınızda anlık bildirimler devam eder.",
       "unifiedpushBadge": "UnifiedPush",
@@ -478,7 +484,7 @@
   "supportBackup": {
     "title": "Destek yedeği oluştur",
     "howItWorks": "Yedeğinizin kimliksizleştirilmiş bir kopyasını üretir: adlar maskelenir (ilk ve son iki karakter kalır), notlar/açıklamalar/hesap numaraları kaldırılır ve her tutar tek bir gizli çarpanla çarpılırken kamuya açık değerler (döviz kurları, fiyatlar, faiz oranları) olduğu gibi kalır. Dosya her zaman aşağıdaki parolayla şifrelenir ve normal bir yedek gibi geri yüklenir. Bu, sıradan ifşaya karşı korur; sizi zaten tanıyan birine karşı değil — hatalar yeniden üretilebilsin diye tarihler, sıklıklar ve yapı korunur.",
-    "sectionsLabel": "Neler dahil edilsin",
+    "sectionsLabel": "Dahil Edilecek Bölümler",
     "sections": {
       "investments": "Yatırımlar (menkul kıymetler, pozisyonlar, fiyatlar)",
       "scheduled": "Planlı işlemler",
@@ -861,7 +867,7 @@
         "saveFailed": "Site dışı yedekleme hedefleriniz kaydedilemedi",
         "s3": {
           "heading": "S3 depolama",
-          "modeLabel": "Kopyaların gönderileceği yer",
+          "modeLabel": "Kopya Hedefi",
           "modeOff": "Kapalı",
           "modeDeployment": "Bu sunucunun bucket'ı",
           "modeOwn": "Kendi bucket'ım",
@@ -980,15 +986,19 @@
       "warranties": {
         "label": "Garantiler",
         "description": "Garantiler, belgeleri ve talepleri. Bağlı bir satın alma yalnızca temsilcinin okuyabildiği bir hesaptaysa görünür."
-      }
+      },
+      "toggleLabel": "{section} bölümü"
     },
     "accounts": {
       "noAccounts": "Verilecek hesap yok.",
       "grantAll": "Tümüne ver",
-      "jointRequiresFullAccount": "Ortak hesaplar yalnızca kendi Monize hesabı olan kullanıcılarla paylaşılabilir"
+      "jointRequiresFullAccount": "Ortak hesaplar yalnızca kendi Monize hesabı olan kullanıcılarla paylaşılabilir",
+      "grantAllLabel": "Tüm {type} hesapları için {op}",
+      "grantLabel": "{account} için {op} erişimi"
     },
     "shared": {
-      "description": "Alacaklılar, kategoriler ve etiketlerin OKUNMASI her zaman izin verilir. Bunlar oluşturma/düzenleme/silmeyi kontrol eder."
+      "description": "Alacaklılar, kategoriler ve etiketlerin OKUNMASI her zaman izin verilir. Bunlar oluşturma/düzenleme/silmeyi kontrol eder.",
+      "toggleLabel": "{op} {resource}"
     },
     "saveButton": "Kaydet",
     "toasts": {
@@ -1186,6 +1196,7 @@
       "grantStatus": "Verme durumu: ",
       "unknown": "bilinmiyor",
       "never": "hiçbir zaman",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "{timestamp} tarihinde verildi",
       "notYetGranted": "henüz verilmedi",
       "timerNote": "Zamanlayıcı, uygulamayı her kullandığınızda otomatik olarak sıfırlanır — oturum açma, sayfa görüntüleme, işlem kaydetme, herhangi bir kimlik doğrulamalı eylem."
@@ -1235,6 +1246,10 @@
       "enableButton": "Etkinleştir",
       "editButton": "Düzenle",
       "deleteButton": "Sil"
+    },
+    "deleteDialog": {
+      "title": "Yapay Zekâ Sağlayıcısını Sil",
+      "message": "{name} silinsin mi? Kayıtlı API anahtarı da onunla birlikte kaldırılır. Bu işlem geri alınamaz."
     },
     "configForm": {
       "addTitle": "AI Sağlayıcısı Ekle",

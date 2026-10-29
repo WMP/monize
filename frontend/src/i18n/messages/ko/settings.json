@@ -104,6 +104,8 @@
       "noDevices": "신뢰할 수 있는 기기가 없습니다. 2FA 로그인 시 \"이 브라우저에서 다시 묻지 않음\"을 선택하면 해당 기기가 여기에 표시됩니다.",
       "currentBadge": "현재",
       "revokeButton": "취소",
+      "ipAddress": "IP: {ip}",
+      "dates": "추가됨 {added} · 마지막 사용 {lastUsed} · 만료 {expires}",
       "revokeAllModal": {
         "title": "신뢰할 수 있는 기기 모두 취소",
         "description": "모든 신뢰할 수 있는 기기가 제거됩니다. 다음 로그인 시 모든 기기에서 2FA 코드를 입력해야 합니다."
@@ -224,7 +226,7 @@
       "hideRegisterYearLabel": "거래 목록 날짜에서 연도 숨기기",
       "chartCollapsedLabel": "거래 페이지의 차트를 접은 상태로 시작",
       "widgetsCollapsedLabel": "계정, 수취인, 카테고리 정보를 접은 상태로 시작",
-      "accountOpenTargetLabel": "계정을 열 때",
+      "accountOpenTargetLabel": "계정 기본 보기",
       "accountOpenTargetOptions": {
         "register": "거래 내역 표시",
         "dashboard": "대시보드 표시"
@@ -300,6 +302,10 @@
       "sendTestButton": "테스트 알림 보내기",
       "sendingTestButton": "보내는 중...",
       "removeButton": "삭제",
+      "removeDialog": {
+        "title": "기기 제거",
+        "message": "{device}을(를) 제거하시겠습니까? 해당 기기에서 푸시를 다시 켜기 전까지 푸시 알림을 받지 않습니다."
+      },
       "thisDevice": "이 기기",
       "held": "이 기기에서 로그아웃되었습니다. 여기에서 다시 로그인하면 푸시 알림이 재개됩니다.",
       "unifiedpushBadge": "UnifiedPush",
@@ -478,7 +484,7 @@
   "supportBackup": {
     "title": "지원용 백업 만들기",
     "howItWorks": "백업의 비식별화 사본을 만듭니다. 이름은 마스킹되고(처음과 마지막 두 글자만 남음), 메모/설명/계좌번호는 제거되며, 모든 금액은 하나의 숨겨진 계수로 곱해집니다. 공개 값(환율, 가격, 이자율)은 그대로 유지됩니다. 파일은 항상 아래 비밀번호로 암호화되며 일반 백업처럼 복원됩니다. 이는 우발적 노출로부터 보호할 뿐, 이미 당신을 아는 사람으로부터 보호하지는 않습니다 — 버그 재현을 위해 날짜, 빈도, 구조는 보존됩니다.",
-    "sectionsLabel": "포함할 항목",
+    "sectionsLabel": "포함할 섹션",
     "sections": {
       "investments": "투자(증권, 보유, 가격)",
       "scheduled": "예약 거래",
@@ -861,7 +867,7 @@
         "saveFailed": "오프사이트 백업 대상을 저장하지 못했습니다",
         "s3": {
           "heading": "S3 저장소",
-          "modeLabel": "사본을 보낼 위치",
+          "modeLabel": "사본 대상",
           "modeOff": "꺼짐",
           "modeDeployment": "이 서버의 버킷",
           "modeOwn": "내 버킷",
@@ -980,15 +986,19 @@
       "warranties": {
         "label": "보증",
         "description": "보증과 해당 문서 및 보증 청구입니다. 연결된 구매는 대리인이 읽을 수 있는 계좌에 있는 경우에만 표시됩니다."
-      }
+      },
+      "toggleLabel": "{section} 섹션"
     },
     "accounts": {
       "noAccounts": "부여할 계정이 없습니다.",
       "grantAll": "모두 부여",
-      "jointRequiresFullAccount": "공동 계좌는 자신의 Monize 계정이 있는 사용자와만 공유할 수 있습니다"
+      "jointRequiresFullAccount": "공동 계좌는 자신의 Monize 계정이 있는 사용자와만 공유할 수 있습니다",
+      "grantAllLabel": "모든 {type} 계정에 {op}",
+      "grantLabel": "{account}에 대한 {op} 권한"
     },
     "shared": {
-      "description": "수취인, 카테고리 및 태그의 읽기는 항상 허용됩니다. 생성/편집/삭제를 제어합니다."
+      "description": "수취인, 카테고리 및 태그의 읽기는 항상 허용됩니다. 생성/편집/삭제를 제어합니다.",
+      "toggleLabel": "{op} {resource}"
     },
     "saveButton": "저장",
     "toasts": {
@@ -1186,6 +1196,7 @@
       "grantStatus": "부여 상태: ",
       "unknown": "알 수 없음",
       "never": "없음",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "{timestamp}에 부여됨",
       "notYetGranted": "아직 부여되지 않음",
       "timerNote": "앱 사용 시 타이머가 자동으로 재설정됩니다 -- 로그인, 페이지 보기, 거래 기록 등 인증된 모든 작업."
@@ -1235,6 +1246,10 @@
       "enableButton": "활성화",
       "editButton": "편집",
       "deleteButton": "삭제"
+    },
+    "deleteDialog": {
+      "title": "AI 공급자 삭제",
+      "message": "{name}을(를) 삭제하시겠습니까? 저장된 API 키도 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다."
     },
     "configForm": {
       "addTitle": "AI 제공자 추가",

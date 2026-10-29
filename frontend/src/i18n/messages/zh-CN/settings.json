@@ -104,6 +104,8 @@
       "noDevices": "无受信任设备。在 2FA 登录时勾选\"不再询问此浏览器\"后，设备将显示在此处。",
       "currentBadge": "当前设备",
       "revokeButton": "撤销",
+      "ipAddress": "IP：{ip}",
+      "dates": "添加于 {added} · 最后使用 {lastUsed} · 到期 {expires}",
       "revokeAllModal": {
         "title": "撤销所有受信任设备",
         "description": "这将移除所有受信任设备。下次从任何设备登录时，您需要输入 2FA 验证码。"
@@ -224,7 +226,7 @@
       "hideRegisterYearLabel": "在登记簿日期中隐藏年份",
       "chartCollapsedLabel": "交易页面的图表默认折叠",
       "widgetsCollapsedLabel": "账户、收款人和类别信息默认折叠",
-      "accountOpenTargetLabel": "打开账户时",
+      "accountOpenTargetLabel": "账户默认视图",
       "accountOpenTargetOptions": {
         "register": "显示其交易",
         "dashboard": "显示其仪表板"
@@ -300,6 +302,10 @@
       "sendTestButton": "发送测试通知",
       "sendingTestButton": "正在发送...",
       "removeButton": "移除",
+      "removeDialog": {
+        "title": "移除设备",
+        "message": "移除 {device}？在该设备上重新开启推送之前，它将不再收到推送通知。"
+      },
       "thisDevice": "此设备",
       "held": "已在此设备上退出登录。在此重新登录后，推送通知将恢复。",
       "unifiedpushBadge": "UnifiedPush",
@@ -478,7 +484,7 @@
   "supportBackup": {
     "title": "创建支持备份",
     "howItWorks": "生成备份的去标识化副本:名称被掩码(保留首尾各两个字符),备注/描述/账号被移除,每笔金额乘以同一个隐藏系数,而公开数值(汇率、价格、利率)保持不变。文件始终使用下方密码加密,并像普通备份一样还原。这只能防范偶然泄露,防不住已经认识您的人——日期、频率和结构会被保留,以便问题仍可重现。",
-    "sectionsLabel": "包含内容",
+    "sectionsLabel": "要包含的部分",
     "sections": {
       "investments": "投资(证券、持仓、价格)",
       "scheduled": "定期交易",
@@ -861,7 +867,7 @@
         "saveFailed": "无法保存你的异地备份目标",
         "s3": {
           "heading": "S3 存储",
-          "modeLabel": "副本发送到何处",
+          "modeLabel": "副本目的地",
           "modeOff": "关闭",
           "modeDeployment": "此服务器的存储桶",
           "modeOwn": "我自己的存储桶",
@@ -980,15 +986,19 @@
       "warranties": {
         "label": "保修",
         "description": "保修及其文档和保修申请。关联的购买记录仅在其所在账户可供被授权人读取时显示。"
-      }
+      },
+      "toggleLabel": "{section} 部分"
     },
     "accounts": {
       "noAccounts": "无账户可授权。",
       "grantAll": "授权全部",
-      "jointRequiresFullAccount": "联名账户只能与拥有自己 Monize 账户的用户共享"
+      "jointRequiresFullAccount": "联名账户只能与拥有自己 Monize 账户的用户共享",
+      "grantAllLabel": "{op}所有{type}账户",
+      "grantLabel": "对 {account} 的{op}权限"
     },
     "shared": {
-      "description": "收款人、分类和标签的读取权限始终允许。这些控制创建/编辑/删除权限。"
+      "description": "收款人、分类和标签的读取权限始终允许。这些控制创建/编辑/删除权限。",
+      "toggleLabel": "{op}{resource}"
     },
     "saveButton": "保存",
     "toasts": {
@@ -1186,6 +1196,7 @@
       "grantStatus": "授权状态：",
       "unknown": "未知",
       "never": "从未",
+      "withRelative": "{timestamp}（{relative}）",
       "grantedOn": "授权于 {timestamp}",
       "notYetGranted": "尚未授权",
       "timerNote": "任何时候您使用应用（登录、查看页面、记录交易等经过身份验证的操作），计时器都会自动重置。"
@@ -1235,6 +1246,10 @@
       "enableButton": "启用",
       "editButton": "编辑",
       "deleteButton": "删除"
+    },
+    "deleteDialog": {
+      "title": "删除 AI 提供商",
+      "message": "删除 {name}？其保存的 API 密钥也会一并删除。此操作无法撤销。"
     },
     "configForm": {
       "addTitle": "添加 AI 提供商",

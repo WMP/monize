@@ -104,6 +104,8 @@
       "noDevices": "Nessun dispositivo attendibile. Quando selezioni \"Non chiedere di nuovo su questo browser\" durante il login con 2FA, il dispositivo apparirà qui.",
       "currentBadge": "Attuale",
       "revokeButton": "Revoca",
+      "ipAddress": "IP: {ip}",
+      "dates": "Aggiunto il {added} · Ultimo utilizzo {lastUsed} · Scade il {expires}",
       "revokeAllModal": {
         "title": "Revoca tutti i dispositivi attendibili",
         "description": "Verranno rimossi tutti i dispositivi attendibili. Dovrai inserire il codice 2FA al prossimo accesso da qualsiasi dispositivo."
@@ -224,7 +226,7 @@
       "hideRegisterYearLabel": "Nascondi l’anno nelle date del registro",
       "chartCollapsedLabel": "Inizia con il grafico della pagina Transazioni compresso",
       "widgetsCollapsedLabel": "Inizia con le info di conto, beneficiario e categoria compresse",
-      "accountOpenTargetLabel": "Quando apro un conto",
+      "accountOpenTargetLabel": "Vista predefinita del conto",
       "accountOpenTargetOptions": {
         "register": "Mostra le sue transazioni",
         "dashboard": "Mostra la sua dashboard"
@@ -300,6 +302,10 @@
       "sendTestButton": "Invia notifica di prova",
       "sendingTestButton": "Invio...",
       "removeButton": "Rimuovi",
+      "removeDialog": {
+        "title": "Rimuovi dispositivo",
+        "message": "Rimuovere {device}? Non riceverà più notifiche push finché il push non verrà riattivato su di esso."
+      },
       "thisDevice": "Questo dispositivo",
       "held": "Disconnesso su questo dispositivo. Le notifiche push riprendono quando accedi di nuovo qui.",
       "unifiedpushBadge": "UnifiedPush",
@@ -478,7 +484,7 @@
   "supportBackup": {
     "title": "Crea backup di supporto",
     "howItWorks": "Produce una copia de-identificata del tuo backup: i nomi sono mascherati (restano i primi e gli ultimi due caratteri), note/descrizioni/numeri di conto vengono rimossi e ogni importo è moltiplicato per un unico fattore nascosto, mentre i valori pubblici (tassi di cambio, prezzi, tassi d'interesse) restano intatti. Il file è sempre cifrato con la password qui sotto e si ripristina come un backup normale. Protegge dall'esposizione casuale, non da chi ti conosce già: date, frequenze e struttura sono preservate perché i bug restino riproducibili.",
-    "sectionsLabel": "Cosa includere",
+    "sectionsLabel": "Sezioni da includere",
     "sections": {
       "investments": "Investimenti (titoli, posizioni, prezzi)",
       "scheduled": "Transazioni pianificate",
@@ -861,7 +867,7 @@
         "saveFailed": "Impossibile salvare le tue destinazioni di backup fuori sede",
         "s3": {
           "heading": "Storage S3",
-          "modeLabel": "Dove vengono inviate le copie",
+          "modeLabel": "Destinazione delle copie",
           "modeOff": "Disattivo",
           "modeDeployment": "Bucket di questo server",
           "modeOwn": "Un mio bucket",
@@ -980,15 +986,19 @@
       "warranties": {
         "label": "Garanzie",
         "description": "Le garanzie, i loro documenti e le richieste di assistenza. Un acquisto collegato è visibile solo se si trova in un conto che il delegato può leggere."
-      }
+      },
+      "toggleLabel": "Sezione {section}"
     },
     "accounts": {
       "noAccounts": "Nessun conto da concedere.",
       "grantAll": "Concedi tutto",
-      "jointRequiresFullAccount": "I conti cointestati possono essere condivisi solo con utenti che hanno un proprio account Monize"
+      "jointRequiresFullAccount": "I conti cointestati possono essere condivisi solo con utenti che hanno un proprio account Monize",
+      "grantAllLabel": "{op} tutti i conti {type}",
+      "grantLabel": "Accesso {op} a {account}"
     },
     "shared": {
-      "description": "La LETTURA di beneficiari, categorie ed etichette è sempre consentita. Questi controlli riguardano creazione/modifica/eliminazione."
+      "description": "La LETTURA di beneficiari, categorie ed etichette è sempre consentita. Questi controlli riguardano creazione/modifica/eliminazione.",
+      "toggleLabel": "{op} {resource}"
     },
     "saveButton": "Salva",
     "toasts": {
@@ -1186,6 +1196,7 @@
       "grantStatus": "Stato concessione: ",
       "unknown": "sconosciuto",
       "never": "mai",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "concesso il {timestamp}",
       "notYetGranted": "non ancora concesso",
       "timerNote": "Il timer si reimposta automaticamente ogni volta che usi l'app -- accedendo, visualizzando una pagina, registrando una transazione, qualsiasi azione autenticata."
@@ -1235,6 +1246,10 @@
       "enableButton": "Attiva",
       "editButton": "Modifica",
       "deleteButton": "Elimina"
+    },
+    "deleteDialog": {
+      "title": "Elimina provider IA",
+      "message": "Eliminare {name}? Anche la chiave API salvata viene rimossa. L’operazione non può essere annullata."
     },
     "configForm": {
       "addTitle": "Aggiungi provider AI",

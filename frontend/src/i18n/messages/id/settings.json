@@ -104,6 +104,8 @@
       "noDevices": "Tidak ada perangkat tepercaya. Saat Anda mencentang \"Jangan tanya lagi di browser ini\" selama login 2FA, perangkat akan muncul di sini.",
       "currentBadge": "Saat ini",
       "revokeButton": "Cabut",
+      "ipAddress": "IP: {ip}",
+      "dates": "Ditambahkan {added} · Terakhir digunakan {lastUsed} · Kedaluwarsa {expires}",
       "revokeAllModal": {
         "title": "Cabut Semua Perangkat Tepercaya",
         "description": "Ini akan menghapus semua perangkat tepercaya. Anda perlu memasukkan kode 2FA Anda pada login berikutnya dari perangkat mana pun."
@@ -224,7 +226,7 @@
       "hideRegisterYearLabel": "Sembunyikan tahun pada tanggal register",
       "chartCollapsedLabel": "Mulai dengan grafik di halaman Transaksi diciutkan",
       "widgetsCollapsedLabel": "Mulai dengan info akun, penerima, dan kategori diciutkan",
-      "accountOpenTargetLabel": "Saat saya membuka akun",
+      "accountOpenTargetLabel": "Tampilan Akun Default",
       "accountOpenTargetOptions": {
         "register": "Tampilkan transaksinya",
         "dashboard": "Tampilkan dasbornya"
@@ -300,6 +302,10 @@
       "sendTestButton": "Kirim notifikasi uji coba",
       "sendingTestButton": "Mengirim...",
       "removeButton": "Hapus",
+      "removeDialog": {
+        "title": "Hapus Perangkat",
+        "message": "Hapus {device}? Perangkat ini tidak lagi menerima notifikasi push sampai push diaktifkan kembali di sana."
+      },
       "thisDevice": "Perangkat ini",
       "held": "Keluar di perangkat ini. Notifikasi push dilanjutkan saat Anda masuk lagi di sini.",
       "unifiedpushBadge": "UnifiedPush",
@@ -478,7 +484,7 @@
   "supportBackup": {
     "title": "Buat cadangan dukungan",
     "howItWorks": "Menghasilkan salinan cadangan yang dide-identifikasi: nama disamarkan (dua karakter pertama dan terakhir dipertahankan), catatan/deskripsi/nomor rekening dihapus, dan setiap jumlah dikalikan satu faktor tersembunyi, sementara nilai publik (kurs, harga, suku bunga) tetap utuh. Berkas selalu dienkripsi dengan kata sandi di bawah dan dipulihkan seperti cadangan biasa. Ini melindungi dari paparan tak sengaja, bukan dari orang yang sudah mengenal Anda — tanggal, frekuensi, dan struktur dipertahankan agar bug tetap dapat direproduksi.",
-    "sectionsLabel": "Apa yang disertakan",
+    "sectionsLabel": "Bagian yang Disertakan",
     "sections": {
       "investments": "Investasi (sekuritas, kepemilikan, harga)",
       "scheduled": "Transaksi terjadwal",
@@ -861,7 +867,7 @@
         "saveFailed": "Gagal menyimpan tujuan cadangan luar lokasi Anda",
         "s3": {
           "heading": "Penyimpanan S3",
-          "modeLabel": "Ke mana salinan dikirim",
+          "modeLabel": "Tujuan Salinan",
           "modeOff": "Nonaktif",
           "modeDeployment": "Bucket server ini",
           "modeOwn": "Bucket saya sendiri",
@@ -980,15 +986,19 @@
       "warranties": {
         "label": "Garansi",
         "description": "Garansi beserta dokumen dan klaimnya. Pembelian yang ditautkan hanya ditampilkan untuk akun yang dapat dibaca oleh delegasi."
-      }
+      },
+      "toggleLabel": "Bagian {section}"
     },
     "accounts": {
       "noAccounts": "Tidak ada akun untuk diberikan.",
       "grantAll": "Berikan semua",
-      "jointRequiresFullAccount": "Akun bersama hanya dapat dibagikan dengan pengguna yang memiliki akun Monize sendiri"
+      "jointRequiresFullAccount": "Akun bersama hanya dapat dibagikan dengan pengguna yang memiliki akun Monize sendiri",
+      "grantAllLabel": "{op} semua akun {type}",
+      "grantLabel": "Akses {op} ke {account}"
     },
     "shared": {
-      "description": "BACA penerima, kategori dan tag selalu diizinkan. Ini mengendalikan buat/edit/hapus."
+      "description": "BACA penerima, kategori dan tag selalu diizinkan. Ini mengendalikan buat/edit/hapus.",
+      "toggleLabel": "{op} {resource}"
     },
     "saveButton": "Simpan",
     "toasts": {
@@ -1186,6 +1196,7 @@
       "grantStatus": "Status pemberian: ",
       "unknown": "tidak diketahui",
       "never": "tidak pernah",
+      "withRelative": "{timestamp} ({relative})",
       "grantedOn": "diberikan pada {timestamp}",
       "notYetGranted": "belum diberikan",
       "timerNote": "Timer direset secara otomatis setiap kali Anda menggunakan aplikasi -- masuk, melihat halaman, mencatat transaksi, apa pun yang diautentikasi."
@@ -1235,6 +1246,10 @@
       "enableButton": "Aktifkan",
       "editButton": "Edit",
       "deleteButton": "Hapus"
+    },
+    "deleteDialog": {
+      "title": "Hapus Penyedia AI",
+      "message": "Hapus {name}? Kunci API yang tersimpan ikut dihapus. Tindakan ini tidak dapat dibatalkan."
     },
     "configForm": {
       "addTitle": "Tambah Penyedia AI",
