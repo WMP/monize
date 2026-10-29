@@ -160,7 +160,8 @@ export interface HistoricalStats {
 export interface HoldingStat {
   symbol: string;
   name: string;
-  currencyCode: string;
+  /** `null` when the security carries no currency (unknown, not a default). */
+  currencyCode: string | null;
   quantity: number;
   /**
    * Current market value, or `null` when the security has no current price.
