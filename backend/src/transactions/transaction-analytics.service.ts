@@ -1004,6 +1004,7 @@ export class TransactionAnalyticsService {
   ): Promise<
     Array<{
       month: string;
+      currency: string;
       total: number | null;
       knownSubtotal?: number;
       count: number;
@@ -1053,10 +1054,13 @@ export class TransactionAnalyticsService {
       const rows = await queryBuilder.getRawMany();
       if (rows.length === 0) return [];
 
-      const reporting = await resolveUserDefaultCurrency(
-        this.dataSource,
-        userId,
-      );
+      // One currency across every row needs no conversion, so the totals stay
+      // exact in that currency; otherwise they convert to the default.
+      const codes = new Set(rows.map((r) => r.currencyCode as string));
+      const reporting =
+        codes.size === 1
+          ? [...codes][0]
+          : await resolveUserDefaultCurrency(this.dataSource, userId);
       const days = rows.map((r) => r.txDate as string).sort();
       const rates = await this.loadRateIndex(
         m,
@@ -1072,6 +1076,7 @@ export class TransactionAnalyticsService {
       return groups
         .map((g) => ({
           month: g.first.month as string,
+          currency: reporting,
           ...totalFields(g.agg),
           count: g.count,
         }))

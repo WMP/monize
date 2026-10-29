@@ -368,7 +368,7 @@ export function CategoryInfoWidget({
               {t('categoryWidget.monthlyAverage')}
             </dt>
             <dd className="text-gray-900 dark:text-gray-100 text-right">
-              {formatCurrency(monthlyAverage, currencyStrategy.displayCurrency)}
+              {formatCurrency(monthlyAverage, monthlyTotals.find((m) => m.currency)?.currency ?? currencyStrategy.displayCurrency)}
             </dd>
           </div>
         )}

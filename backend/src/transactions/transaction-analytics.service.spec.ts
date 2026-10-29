@@ -1378,9 +1378,9 @@ describe("TransactionAnalyticsService", () => {
       const result = await service.getMonthlyTotals(userId);
 
       expect(result).toEqual([
-        { month: "2025-01", total: -500.5, count: 10 },
-        { month: "2025-02", total: -300.25, count: 8 },
-        { month: "2025-03", total: 200, count: 5 },
+        { month: "2025-01", currency: "USD", total: -500.5, count: 10 },
+        { month: "2025-02", currency: "USD", total: -300.25, count: 8 },
+        { month: "2025-03", currency: "USD", total: 200, count: 5 },
       ]);
     });
 
@@ -1401,7 +1401,12 @@ describe("TransactionAnalyticsService", () => {
 
       const result = await service.getMonthlyTotals(userId);
 
-      expect(result[0]).toEqual({ month: "2025-01", total: 0, count: 0 });
+      expect(result[0]).toEqual({
+        month: "2025-01",
+        currency: "USD",
+        total: 0,
+        count: 0,
+      });
     });
 
     it("converts each currency at its own date instead of adding them", async () => {
@@ -1421,7 +1426,9 @@ describe("TransactionAnalyticsService", () => {
 
       const result = await service.getMonthlyTotals(userId);
 
-      expect(result).toEqual([{ month: "2025-01", total: -20, count: 2 }]);
+      expect(result).toEqual([
+        { month: "2025-01", currency: "USD", total: -20, count: 2 },
+      ]);
     });
 
     it("withholds the total of a month with an unconvertible currency", async () => {
@@ -1439,7 +1446,31 @@ describe("TransactionAnalyticsService", () => {
       const result = await service.getMonthlyTotals(userId);
 
       expect(result).toEqual([
-        { month: "2025-01", total: null, knownSubtotal: -10, count: 2 },
+        {
+          month: "2025-01",
+          currency: "USD",
+          total: null,
+          knownSubtotal: -10,
+          count: 2,
+        },
+      ]);
+    });
+
+    it("keeps a single-currency result in that currency, unconverted", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        {
+          month: "2025-01",
+          currencyCode: "EUR",
+          txDate: "2025-01-12",
+          total: "-5",
+          count: "1",
+        },
+      ]);
+
+      const result = await service.getMonthlyTotals(userId);
+
+      expect(result).toEqual([
+        { month: "2025-01", currency: "EUR", total: -5, count: 1 },
       ]);
     });
 

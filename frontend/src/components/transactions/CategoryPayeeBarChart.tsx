@@ -125,7 +125,18 @@ export const CategoryPayeeBarChart = memo(function CategoryPayeeBarChart({
 }: CategoryPayeeBarChartProps) {
   const t = useTranslations('transactions');
   const chartTitle = t('charts.monthlyTotals.title');
-  const { formatCurrency, formatCurrencyAxis, formatNumber } = useNumberFormat();
+  const { formatCurrency: formatDefault, formatCurrencyAxis: axisDefault, formatNumber } =
+    useNumberFormat();
+  // The server names the currency its totals are in; the user default otherwise.
+  const currency = data.find((d) => d.currency)?.currency;
+  const formatCurrency = useCallback(
+    (v: number) => formatDefault(v, currency),
+    [formatDefault, currency],
+  );
+  const formatCurrencyAxis = useCallback(
+    (v: number) => axisDefault(v, currency),
+    [axisDefault, currency],
+  );
   const formatChartDate = useChartDateFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const downloadFilename = filterLabel ? `${chartTitle} - ${filterLabel}` : chartTitle;

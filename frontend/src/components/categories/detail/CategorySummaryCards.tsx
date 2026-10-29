@@ -112,7 +112,7 @@ export function CategorySummaryCards({
     {
       label: t('summary.monthlyAverage'),
       value:
-        monthlyAverage !== null ? formatCurrency(monthlyAverage, displayCurrency) : '—',
+        monthlyAverage !== null ? formatCurrency(monthlyAverage, monthlyTotals.find((m) => m.currency)?.currency ?? displayCurrency) : '—',
       note: monthlyAverageUnknown ? t('summary.partialRatesNote') : convertedNote,
     },
     {
