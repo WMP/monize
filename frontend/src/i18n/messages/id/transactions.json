@@ -368,6 +368,8 @@
       "toAccount": "Ke Akun",
       "transferAmount": "Jumlah Transfer",
       "amountReceivedLabel": "Jumlah Diterima",
+      "transferAmountInCurrency": "Jumlah Transfer ({currency})",
+      "amountReceivedInCurrency": "Jumlah Diterima ({currency})",
       "payeeOptional": "Penerima (Opsional)",
       "categoryOptional": "Kategori (Opsional)"
     },

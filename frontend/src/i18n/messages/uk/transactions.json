@@ -368,6 +368,8 @@
       "toAccount": "Рахунок-отримувач",
       "transferAmount": "Сума переказу",
       "amountReceivedLabel": "Отримана сума",
+      "transferAmountInCurrency": "Сума переказу ({currency})",
+      "amountReceivedInCurrency": "Отримана сума ({currency})",
       "payeeOptional": "Одержувач платежу (необов'язково)",
       "categoryOptional": "Категорія (необов'язково)"
     },

@@ -368,6 +368,8 @@
       "toAccount": "Naar rekening",
       "transferAmount": "Overboekingsbedrag",
       "amountReceivedLabel": "Ontvangen bedrag",
+      "transferAmountInCurrency": "Overboekingsbedrag ({currency})",
+      "amountReceivedInCurrency": "Ontvangen bedrag ({currency})",
       "payeeOptional": "Begunstigde (optioneel)",
       "categoryOptional": "Categorie (optioneel)"
     },

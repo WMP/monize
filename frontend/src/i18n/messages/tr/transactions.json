@@ -368,6 +368,8 @@
       "toAccount": "Alıcı Hesap",
       "transferAmount": "Transfer Tutarı",
       "amountReceivedLabel": "Alınan Tutar",
+      "transferAmountInCurrency": "Transfer Tutarı ({currency})",
+      "amountReceivedInCurrency": "Alınan Tutar ({currency})",
       "payeeOptional": "Alacaklı (İsteğe Bağlı)",
       "categoryOptional": "Kategori (İsteğe bağlı)"
     },

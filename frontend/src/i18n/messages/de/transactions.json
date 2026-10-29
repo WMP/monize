@@ -368,6 +368,8 @@
       "toAccount": "An Konto",
       "transferAmount": "Überweisungsbetrag",
       "amountReceivedLabel": "Erhaltener Betrag",
+      "transferAmountInCurrency": "Überweisungsbetrag ({currency})",
+      "amountReceivedInCurrency": "Erhaltener Betrag ({currency})",
       "payeeOptional": "Zahlungsempfänger (optional)",
       "categoryOptional": "Kategorie (optional)"
     },

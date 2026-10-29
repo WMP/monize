@@ -368,6 +368,8 @@
       "toAccount": "振替先口座",
       "transferAmount": "振替金額",
       "amountReceivedLabel": "受取金額",
+      "transferAmountInCurrency": "振替金額 ({currency})",
+      "amountReceivedInCurrency": "受取金額 ({currency})",
       "payeeOptional": "支払先（任意）",
       "categoryOptional": "カテゴリ（任意）"
     },

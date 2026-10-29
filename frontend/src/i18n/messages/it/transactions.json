@@ -368,6 +368,8 @@
       "toAccount": "Conto di destinazione",
       "transferAmount": "Importo trasferimento",
       "amountReceivedLabel": "Importo ricevuto",
+      "transferAmountInCurrency": "Importo trasferimento ({currency})",
+      "amountReceivedInCurrency": "Importo ricevuto ({currency})",
       "payeeOptional": "Beneficiario (facoltativo)",
       "categoryOptional": "Categoria (facoltativa)"
     },
