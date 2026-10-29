@@ -33,7 +33,7 @@ import {
   BulkUpdateFilterDto,
 } from "./dto/bulk-update.dto";
 import { getAllCategoryIdsWithChildren } from "../common/category-tree.util";
-import { formatDateYMDLocal } from "../common/date-utils";
+import { todayYMD } from "../common/date-utils";
 import { applyTransactionSearch } from "./apply-transaction-search";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -160,6 +160,7 @@ export class TransactionBulkUpdateService {
     // recategorized instead of the parent (invariant I1).
     const {
       eligibleIds,
+      guardedLegIds,
       splitParentIds,
       skipped: classifySkipped,
       skippedReasons: classifySkippedReasons,
@@ -291,10 +292,46 @@ export class TransactionBulkUpdateService {
       // selection, the transfer counterparts folded in with it, and the split
       // parents' propagation targets. A refusal on the single-row route that
       // the bulk route walks around is not a refusal.
+      // The skip rule for split-transfer and investment cash legs was decided
+      // on a read taken before the lock. Decide it again on the locked rows: a
+      // guarded leg that crosses the VOID boundary now would be voided alone.
+      if (isUpdatingStatus && guardedLegIds.length > 0) {
+        const guarded = new Set(guardedLegIds);
+        const isNewVoid = dto.status === TransactionStatus.VOID;
+        const lockedLegs = await lockTransactionRows(
+          m,
+          eligibleIds.filter((id) => guarded.has(id)),
+          userId,
+        );
+        for (const leg of lockedLegs.values()) {
+          if ((leg.status === TransactionStatus.VOID) !== isNewVoid) {
+            throw new ConflictException(
+              tr(
+                "errors.transactions.bulkUpdateConcurrentChange",
+                "These transactions changed while the update was running. Reload and try again.",
+              ),
+            );
+          }
+        }
+      }
+
+      // The mirror legs and owning split parents that the payee/description
+      // and tag syncs write belong to this command too (updateTransfer refuses
+      // a reconciled mirror the same way).
+      const syncsMirrors =
+        isUpdatingTags ||
+        "payeeId" in updateFields ||
+        "payeeName" in updateFields ||
+        "description" in updateFields;
+      const mirrorTargets = syncsMirrors
+        ? await this.classifyTransferLegs(m, userId, eligibleIds)
+        : { plainLinkedIds: [], owningSplitParentIds: [] };
       await assertReconciledIdsMutable(m, userId, [
         ...eligibleIds,
         ...statusIds,
         ...propagationTargetIds,
+        ...mirrorTargets.plainLinkedIds,
+        ...mirrorTargets.owningSplitParentIds,
       ]);
 
       // WP1b: read the pre-write values of exactly the fields this run changes,
@@ -575,6 +612,7 @@ export class TransactionBulkUpdateService {
 
     // Balance adjustments and both delete passes commit atomically.
     let deleted = 0;
+    const touchedSecurityIds = new Set<string>();
     await withScopedDb(this.dataSource, async (m) => {
       const transactionIdsSet = new Set(transactions.map((t) => t.id));
 
@@ -609,7 +647,11 @@ export class TransactionBulkUpdateService {
       const parentSplits =
         lockedParents.size > 0
           ? await m.find(TransactionSplit, {
-              select: { transactionId: true, linkedTransactionId: true },
+              select: {
+                transactionId: true,
+                linkedTransactionId: true,
+                transferAccountId: true,
+              },
               where: { transactionId: In([...lockedParents.keys()]) },
             })
           : [];
@@ -655,6 +697,30 @@ export class TransactionBulkUpdateService {
       // Strict reconciled lock over the locked delete set, primary rows and
       // linked legs alike, before the first reversal.
       await assertReconciledRowsMutable(m, userId, [...locked.values()]);
+
+      // Each split parent's own cleanup, the one the single delete runs: it
+      // reverses embedded investment rows (CASCADE alone leaves their shares in
+      // the holdings) and removes and reverses the transfer legs its splits
+      // created, so those legs leave the batch's own reversal pass below.
+      const removedBySplitCleanup = new Set<string>();
+      for (const parentId of [...lockedParents.keys()].sort()) {
+        for (const acc of await this.splitService.deleteSplitSideEffects(
+          parentId,
+          userId,
+          { touchedSecurityIds },
+        )) {
+          affectedAccountIds.add(acc);
+        }
+      }
+      for (const split of parentSplits) {
+        if (split.linkedTransactionId && split.transferAccountId) {
+          removedBySplitCleanup.add(split.linkedTransactionId);
+        }
+      }
+      for (const id of removedBySplitCleanup) {
+        locked.delete(id);
+        linkedIdsToDelete.delete(id);
+      }
 
       // What each locked row contributed, from the one deletion rule: a VOID
       // row moved nothing, a future-dated row is recomputed after it is gone.
@@ -708,6 +774,10 @@ export class TransactionBulkUpdateService {
     for (const accountId of affectedAccountIds) {
       this.netWorthService.triggerDebouncedRecalc(accountId, userId);
     }
+    await this.splitService.recomputeBondPricesAfterWrite(
+      userId,
+      touchedSecurityIds,
+    );
 
     return { deleted };
   }
@@ -799,6 +869,8 @@ export class TransactionBulkUpdateService {
     newStatus?: TransactionStatus,
   ): Promise<{
     eligibleIds: string[];
+    /** Split-transfer and investment cash legs, whatever their status. */
+    guardedLegIds: string[];
     splitParentIds: string[];
     skipped: number;
     skippedReasons: string[];
@@ -916,6 +988,7 @@ export class TransactionBulkUpdateService {
 
     return {
       eligibleIds: eligible.map((t) => t.id),
+      guardedLegIds: [...splitLegIds, ...investmentLegIds],
       splitParentIds: eligible.filter((t) => t.isSplit).map((t) => t.id),
       skipped: splitLegVoidCount + investmentLegVoidCount,
       skippedReasons,
@@ -1178,7 +1251,11 @@ export class TransactionBulkUpdateService {
     m: EntityManager,
     userId: string,
     eligibleIds: string[],
-  ): Promise<{ plainLinkedIds: string[]; owningSplitIds: string[] }> {
+  ): Promise<{
+    plainLinkedIds: string[];
+    owningSplitIds: string[];
+    owningSplitParentIds: string[];
+  }> {
     const repo = m.getRepository(Transaction);
     const transfers = await repo
       .createQueryBuilder("t")
@@ -1190,12 +1267,16 @@ export class TransactionBulkUpdateService {
       .getMany();
 
     if (transfers.length === 0) {
-      return { plainLinkedIds: [], owningSplitIds: [] };
+      return {
+        plainLinkedIds: [],
+        owningSplitIds: [],
+        owningSplitParentIds: [],
+      };
     }
 
     const owningSplits = await m.find(TransactionSplit, {
       where: { linkedTransactionId: In(transfers.map((t) => t.id)) },
-      select: ["id", "linkedTransactionId"],
+      select: ["id", "linkedTransactionId", "transactionId"],
     });
     const splitLegIds = new Set(owningSplits.map((s) => s.linkedTransactionId));
 
@@ -1224,6 +1305,7 @@ export class TransactionBulkUpdateService {
     return {
       plainLinkedIds,
       owningSplitIds: owningSplits.map((s) => s.id),
+      owningSplitParentIds: owningSplits.map((s) => s.transactionId),
     };
   }
 
@@ -1459,7 +1541,7 @@ export class TransactionBulkUpdateService {
       : "transaction.status = :voidStatus";
 
     // Only include non-future transactions in balance changes
-    const today = formatDateYMDLocal(new Date());
+    const today = todayYMD();
 
     const balanceDeltas = await m
       .getRepository(Transaction)
