@@ -8,8 +8,23 @@ describe("datedAnnuityInstallment remaining term", () => {
   let posted = true;
   /** When set, the postings table holds exactly these original due dates. */
   let postingDates: string[] | null = null;
+  /** Dates of non-VOID payment rows on the loan account in the ledger. */
+  let ledgerPayments: string[] = [];
   const manager = {
     query: jest.fn(async (sql: string, params: unknown[] = []) => {
+      if (sql.includes("FROM transactions t")) {
+        const [, , through, after] = params as [
+          string,
+          string,
+          string,
+          string | null,
+        ];
+        return ledgerPayments.some(
+          (date) => date <= through && (after === null || date > after),
+        )
+          ? [{ "?column?": 1 }]
+          : [];
+      }
       if (!sql.includes("scheduled_transaction_postings")) {
         return [{ balance: String(-DEBT) }];
       }
@@ -27,6 +42,7 @@ describe("datedAnnuityInstallment remaining term", () => {
   beforeEach(() => {
     posted = true;
     postingDates = null;
+    ledgerPayments = [];
   });
 
   const account = (overrides: Partial<Account>): Account =>
@@ -98,5 +114,28 @@ describe("datedAnnuityInstallment remaining term", () => {
     );
     expect(payment).toBe(expected(3));
     expect(payment).not.toBe(expected(12));
+  });
+
+  it("counts a manual payment on a loan with no schedule from the ledger", async () => {
+    // No scheduled transaction: only the ledger can say payment 3 was made.
+    ledgerPayments = ["2024-03-01"];
+    const unscheduled = account({ scheduledTransactionId: null });
+    const payment = await datedAnnuityInstallment(
+      manager,
+      unscheduled,
+      5,
+      "2024-03-01",
+    );
+    expect(payment).toBe(expected(297));
+    expect(payment).not.toBe(expected(298));
+  });
+
+  it("does not count a ledger payment from before the window", async () => {
+    // 02-01 belongs to payment 2; payment 3 (03-01) is still to come.
+    ledgerPayments = ["2024-02-01"];
+    const unscheduled = account({ scheduledTransactionId: null });
+    expect(
+      await datedAnnuityInstallment(manager, unscheduled, 5, "2024-03-01"),
+    ).toBe(expected(298));
   });
 });

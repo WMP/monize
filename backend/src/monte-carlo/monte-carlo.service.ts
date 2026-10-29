@@ -20,6 +20,7 @@ import {
 import { SimulationResult } from "./dto/simulation-result.dto";
 import { PortfolioService } from "../securities/portfolio.service";
 import { SecurityPriceService } from "../securities/security-price.service";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { Holding } from "../securities/entities/holding.entity";
 import { Security } from "../securities/entities/security.entity";
 import { Account } from "../accounts/entities/account.entity";
@@ -120,6 +121,7 @@ export class MonteCarloService {
     private simulationService: MonteCarloSimulationService,
     private portfolioService: PortfolioService,
     private securityPriceService: SecurityPriceService,
+    private exchangeRateService: ExchangeRateService,
     private dataSource: DataSource,
   ) {}
 
@@ -594,7 +596,6 @@ export class MonteCarloService {
       this.dataSource,
       userId,
     );
-    const yearlyReturns = new Map<string, Map<number, number>>();
     const missingFxPairs = new Set<string>();
     // Every pair's rates load once, then each close resolves in memory.
     const foreignCurrencies = new Set<string>();
@@ -609,38 +610,101 @@ export class MonteCarloService {
         }
       }
     }
-    const rateIndex = await withScopedDb(this.dataSource, (m) =>
-      buildRateIndex(
-        (sql, params) => m.query(sql, params),
-        foreignCurrencies,
-        defaultCurrency,
-        earliestClose ?? todayYMD(),
-        todayYMD(),
-      ),
-    );
-    for (const secId of weightedSecIds) {
-      const currency = currencyBySecurity.get(secId);
-      if (!currency) continue;
-      const closes: YearEndClose[] = [];
-      for (const c of closesBySecurity.get(secId) ?? []) {
-        const price =
-          currency === defaultCurrency
-            ? c.price
-            : convertAtDate(
-                c.price,
-                currency,
-                defaultCurrency,
-                c.date,
-                rateIndex,
-                this.logger,
-              );
-        if (price === null) {
-          missingFxPairs.add(`${currency}->${defaultCurrency}`);
-          break;
+    const loadRateIndex = () =>
+      withScopedDb(this.dataSource, (m) =>
+        buildRateIndex(
+          (sql, params) => m.query(sql, params),
+          foreignCurrencies,
+          defaultCurrency,
+          earliestClose ?? todayYMD(),
+          todayYMD(),
+        ),
+      );
+    // A close that cannot convert is a gap for that security alone: it is
+    // dropped, and `toYearlyReturns` skips the two returns that touch it.
+    const convertAll = (
+      rateIndex: Awaited<ReturnType<typeof loadRateIndex>>,
+    ) => {
+      const returns = new Map<string, Map<number, number>>();
+      const gaps: Array<{ secId: string; pair: string; date: string }> = [];
+      for (const secId of weightedSecIds) {
+        const currency = currencyBySecurity.get(secId);
+        if (!currency) continue;
+        const closes: YearEndClose[] = [];
+        for (const c of closesBySecurity.get(secId) ?? []) {
+          const price =
+            currency === defaultCurrency
+              ? c.price
+              : convertAtDate(
+                  c.price,
+                  currency,
+                  defaultCurrency,
+                  c.date,
+                  rateIndex,
+                  this.logger,
+                );
+          if (price === null) {
+            gaps.push({
+              secId,
+              pair: `${currency}->${defaultCurrency}`,
+              date: c.date,
+            });
+            continue;
+          }
+          closes.push({ ...c, price });
         }
-        closes.push({ ...c, price });
+        returns.set(secId, toYearlyReturns(closes));
       }
-      yearlyReturns.set(secId, toYearlyReturns(closes));
+      return { returns, gaps };
+    };
+    let { returns: yearlyReturns, gaps } = convertAll(await loadRateIndex());
+    if (gaps.length > 0) {
+      // Fetch first, as the other read paths do: ask the history backfill for
+      // each missing pair's month, then convert again from what is stored.
+      const datesByPair = new Map<string, Set<string>>();
+      for (const g of gaps) {
+        const dates = datesByPair.get(g.pair) ?? new Set<string>();
+        dates.add(g.date);
+        datesByPair.set(g.pair, dates);
+      }
+      let loaded = 0;
+      for (const [pair, dates] of datesByPair) {
+        const [from, to] = pair.split("->");
+        for (const date of dates) {
+          try {
+            loaded += await this.exchangeRateService.ensureRatesForDate(
+              [{ from, to }],
+              date,
+            );
+          } catch (error) {
+            this.logger.warn(
+              `Historical rate fetch ${pair} for ${date} failed: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+          }
+        }
+      }
+      if (loaded > 0) {
+        ({ returns: yearlyReturns, gaps } = convertAll(await loadRateIndex()));
+      }
+    }
+    // The stats are withheld only when a gap leaves a security with fewer
+    // yearly returns than the statistic needs; a smaller gap is a warning.
+    const gapPairsBySecurity = new Map<string, Set<string>>();
+    for (const g of gaps) {
+      const pairs = gapPairsBySecurity.get(g.secId) ?? new Set<string>();
+      pairs.add(g.pair);
+      gapPairsBySecurity.set(g.secId, pairs);
+    }
+    for (const [secId, pairs] of gapPairsBySecurity) {
+      if ((yearlyReturns.get(secId)?.size ?? 0) < MIN_YEARLY_RETURNS) {
+        for (const pair of pairs) missingFxPairs.add(pair);
+      } else {
+        this.logger.warn(
+          `Historical stats skip year-end closes of ${secId} with no ${[...pairs].join(", ")} rate`,
+        );
+      }
     }
     // A failed or incomplete summary leaves the cash weight unknown; name the
     // pairs it could not convert (a cash balance in a currency with no rate)
@@ -727,7 +791,7 @@ export class MonteCarloService {
       }
     }
 
-    if (portfolioReturns.length < 2) {
+    if (portfolioReturns.length < MIN_YEARLY_RETURNS) {
       return {
         yearsObserved: portfolioReturns.length,
         meanReturn: null,
@@ -1057,6 +1121,9 @@ export class MonteCarloService {
     return value;
   }
 }
+
+/** Fewest yearly returns a mean and a sample deviation can be read from. */
+const MIN_YEARLY_RETURNS = 2;
 
 interface YearEndClose {
   year: number;

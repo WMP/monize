@@ -3442,6 +3442,10 @@ describe("ReportsService", () => {
         ["ANNUAL", undefined, "2025-01-01", "2025-12-31", 6000],
         ["ANNUAL", undefined, "2025-03-01", "2025-03-31", 500],
         ["MONTHLY", undefined, "2025-01-01", "2025-12-31", 72000],
+        // 10 of April's 30 days is a third of a month, not a whole one.
+        ["MONTHLY", undefined, "2025-04-01", "2025-04-10", 2000],
+        // All of January plus 14 of February's 28 days is 1.5 months, not 1.
+        ["MONTHLY", undefined, "2025-01-01", "2025-02-14", 9000],
         ["PAY_PERIOD", "BIWEEKLY", "2025-01-01", "2025-12-31", 156000],
       ])(
         "converts a %s (%s) budget amount of 6000 over %s..%s to %s",

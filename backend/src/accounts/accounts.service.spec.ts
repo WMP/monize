@@ -2640,7 +2640,9 @@ describe("AccountsService", () => {
     it("creates scheduled transaction for mortgage payments", async () => {
       await service.createMortgageAccount("user-1", baseMortgageDto as any);
 
-      expect(scheduledTransactionsService.create).toHaveBeenCalledWith(
+      expect(
+        scheduledTransactionsService.createWithoutHistory,
+      ).toHaveBeenCalledWith(
         "user-1",
         expect.objectContaining({
           accountId: "source-1",
@@ -2667,7 +2669,9 @@ describe("AccountsService", () => {
         mortgagePaymentFrequency: "ACCELERATED_BIWEEKLY",
       } as any);
 
-      expect(scheduledTransactionsService.create).toHaveBeenCalledWith(
+      expect(
+        scheduledTransactionsService.createWithoutHistory,
+      ).toHaveBeenCalledWith(
         "user-1",
         expect.objectContaining({
           frequency: "BIWEEKLY",
@@ -2681,7 +2685,9 @@ describe("AccountsService", () => {
         mortgagePaymentFrequency: "ACCELERATED_WEEKLY",
       } as any);
 
-      expect(scheduledTransactionsService.create).toHaveBeenCalledWith(
+      expect(
+        scheduledTransactionsService.createWithoutHistory,
+      ).toHaveBeenCalledWith(
         "user-1",
         expect.objectContaining({
           frequency: "WEEKLY",

@@ -44,6 +44,7 @@ describe("MonteCarloService", () => {
   let accountsRepository: Record<string, jest.Mock>;
   let securitiesRepository: Record<string, jest.Mock>;
   let securityPriceService: { backfillSecurityRange: jest.Mock };
+  let exchangeRateService: { ensureRatesForDate: jest.Mock };
   let preferenceRepository: Record<string, jest.Mock>;
   let portfolioService: {
     getPortfolioSummary: jest.Mock;
@@ -147,6 +148,9 @@ describe("MonteCarloService", () => {
     securityPriceService = {
       backfillSecurityRange: jest.fn().mockResolvedValue(0),
     };
+    exchangeRateService = {
+      ensureRatesForDate: jest.fn().mockResolvedValue(0),
+    };
     portfolioService = {
       getPortfolioSummary: jest.fn().mockResolvedValue({
         totalPortfolioValue: 250000,
@@ -202,6 +206,7 @@ describe("MonteCarloService", () => {
       new MonteCarloSimulationService(),
       portfolioService as never,
       securityPriceService as never,
+      exchangeRateService as never,
       dataSource as never,
     );
   });
@@ -803,6 +808,86 @@ describe("MonteCarloService", () => {
       ]);
       prices([["sec-jpy", 100]]);
       routeQueries(jpyCloses(), [
+        rateRow("2022-12-31", 0.01),
+        rateRow("2024-12-31", 0.01),
+      ]);
+      const stats = await service.getHistoricalStats(userId, ["acct-1"]);
+      expect(stats.returnsComplete).toBe(false);
+      expect(stats.meanReturn).toBeNull();
+      expect(stats.missingRatePairs).toEqual(["JPY->USD"]);
+    });
+  });
+
+  describe("year-end FX gaps", () => {
+    const rateRow = (date: string, rate: number) => ({
+      from_currency: "JPY",
+      to_currency: "USD",
+      rate,
+      rate_date: date,
+    });
+    const jpyHolding = () =>
+      holdingsRepository.find.mockResolvedValueOnce([
+        {
+          id: "h-jpy",
+          accountId: "acct-1",
+          securityId: "sec-jpy",
+          quantity: 1,
+          security: { symbol: "JPY1", name: "Yen", currencyCode: "JPY" },
+        },
+      ]);
+    const closeRows = (years: number[]) =>
+      years.map((y) => yearEnd("sec-jpy", String(y), "100"));
+    const route = (years: number[], rates: () => unknown[]) =>
+      manager.query.mockImplementation(async (sql: string) =>
+        sql.includes("exchange_rates") ? rates() : closeRows(years),
+      );
+    const priceJpy = () =>
+      portfolioService.getLatestPrices.mockResolvedValue(
+        new Map([["sec-jpy", 100]]),
+      );
+
+    it("fetches the missing pair's history, then converts again", async () => {
+      jpyHolding();
+      priceJpy();
+      let fetched = false;
+      exchangeRateService.ensureRatesForDate.mockImplementation(async () => {
+        fetched = true;
+        return 12;
+      });
+      route([2021, 2022, 2023, 2024], () =>
+        fetched
+          ? [2021, 2022, 2023, 2024].map((y) => rateRow(`${y}-12-31`, 0.01))
+          : [],
+      );
+      const stats = await service.getHistoricalStats(userId, ["acct-1"]);
+      expect(exchangeRateService.ensureRatesForDate).toHaveBeenCalledWith(
+        [{ from: "JPY", to: "USD" }],
+        "2022-12-31",
+      );
+      expect(stats.returnsComplete).toBe(true);
+      expect(stats.yearsObserved).toBe(3);
+    });
+
+    it("drops the one year whose close cannot convert and keeps the stats", async () => {
+      jpyHolding();
+      priceJpy();
+      // 2020-2025 closes; no rate for 2022 and the provider has nothing.
+      const years = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025];
+      route(years, () =>
+        years.filter((y) => y !== 2022).map((y) => rateRow(`${y}-12-31`, 0.01)),
+      );
+      const stats = await service.getHistoricalStats(userId, ["acct-1"]);
+      expect(exchangeRateService.ensureRatesForDate).toHaveBeenCalled();
+      expect(stats.returnsComplete).toBe(true);
+      // 2019, 2020, 2021 and 2024, 2025 remain: 2022 and 2023 touch the gap.
+      expect(stats.yearsObserved).toBe(5);
+      expect(stats.meanReturn).not.toBeNull();
+    });
+
+    it("withholds the stats when the gap leaves too few yearly returns", async () => {
+      jpyHolding();
+      priceJpy();
+      route([2022, 2023, 2024], () => [
         rateRow("2022-12-31", 0.01),
         rateRow("2024-12-31", 0.01),
       ]);

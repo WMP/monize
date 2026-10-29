@@ -18,6 +18,7 @@ import {
   toMortgagePaymentFrequency,
 } from "./payment-frequency.util";
 import { formatDateYMDLocal, todayYMD } from "../common/date-utils";
+import { ledgerMovementPredicate } from "../common/ledger-balance.sql";
 import { tr } from "../i18n/translate";
 
 /** Normalize a DATE column value (string at runtime, Date in tests) to YYYY-MM-DD */
@@ -40,6 +41,11 @@ function monthsBetweenYmd(fromYmd: string, toYmdStr: string): number {
  * A window, not an exact date: the scheduler clamps a 31st to the 30th and an
  * occurrence can be moved within its period, so its `original_due_date` need
  * not equal the calendar date. The previous calendar due date bounds it below.
+ *
+ * Two sources: the schedule's claimed occurrence, and the ledger itself -- a
+ * non-VOID, top-level payment row (a credit to the debt) on the loan account in
+ * the window, the rows `datedLoanDebt` counts. A loan with no schedule, or a
+ * payment entered by hand or imported, is only visible through the ledger.
  */
 async function isInstallmentPosted(
   m: EntityManager,
@@ -47,16 +53,29 @@ async function isInstallmentPosted(
   afterDate: string | null,
   throughDate: string,
 ): Promise<boolean> {
-  if (!account.scheduledTransactionId) return false;
-  const rows: unknown[] = await m.query(
-    `SELECT 1 FROM scheduled_transaction_postings
-      WHERE scheduled_transaction_id = $1
-        AND original_due_date <= $2
-        AND ($3::date IS NULL OR original_due_date > $3)
+  if (account.scheduledTransactionId) {
+    const claimed: unknown[] = await m.query(
+      `SELECT 1 FROM scheduled_transaction_postings
+        WHERE scheduled_transaction_id = $1
+          AND original_due_date <= $2
+          AND ($3::date IS NULL OR original_due_date > $3)
+        LIMIT 1`,
+      [account.scheduledTransactionId, throughDate, afterDate],
+    );
+    if (claimed.length > 0) return true;
+  }
+  const payments: unknown[] = await m.query(
+    `SELECT 1 FROM transactions t
+      WHERE t.account_id = $1
+        AND t.user_id = $2
+        AND ${ledgerMovementPredicate("t")}
+        AND t.amount > 0
+        AND t.transaction_date <= $3
+        AND ($4::date IS NULL OR t.transaction_date > $4)
       LIMIT 1`,
-    [account.scheduledTransactionId, throughDate, afterDate],
+    [account.id, account.userId, throughDate, afterDate],
   );
-  return rows.length > 0;
+  return payments.length > 0;
 }
 
 /**

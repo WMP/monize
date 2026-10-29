@@ -62,12 +62,9 @@ import {
   endOfMonth,
   startOfWeek,
   startOfDay,
-  differenceInCalendarDays,
   format,
   parseISO,
 } from "date-fns";
-
-const DAYS_PER_MONTH = 365.25 / 12;
 
 /** Rows one execution reads; past it the report is truncated, never complete. */
 const REPORT_ROW_LIMIT = 50000;
@@ -83,6 +80,32 @@ interface RowConverter {
   readonly gaps: ConversionGaps;
   /** `null` when `currencyCode` has no rate into the reporting currency. */
   convert(amount: number, currencyCode: string): number | null;
+}
+
+/**
+ * The window as a fraction of calendar months: for each month it touches, the
+ * days inside the window over that month's days (1-10 of a 30-day month is
+ * 1/3). A rounded month count compared ten days of actuals to a full month's
+ * budget and 45 days to one month.
+ */
+export function windowMonthFraction(
+  startDate: string,
+  endDate: string,
+): number {
+  const [startYear, startMonth, startDay] = startDate.split("-").map(Number);
+  const [endYear, endMonth, endDay] = endDate.split("-").map(Number);
+  let fraction = 0;
+  for (
+    let year = startYear, month = startMonth;
+    year < endYear || (year === endYear && month <= endMonth);
+    month === 12 ? ((month = 1), year++) : month++
+  ) {
+    const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const first = year === startYear && month === startMonth ? startDay : 1;
+    const last = year === endYear && month === endMonth ? endDay : daysInMonth;
+    fraction += (last - first + 1) / daysInMonth;
+  }
+  return fraction;
 }
 
 @Injectable()
@@ -1317,15 +1340,8 @@ export class ReportsService {
 
       const budget = await this.budgetsService.findOne(userId, activeBudget.id);
       // A budget amount is one month's; the actuals span the whole window, so
-      // the budget is scaled to the window's months (rounded, at least one).
-      const months = Math.max(
-        1,
-        Math.round(
-          (differenceInCalendarDays(parseISO(endDate), parseISO(startDate)) +
-            1) /
-            DAYS_PER_MONTH,
-        ),
-      );
+      // the budget is scaled by the exact months of the window (see below).
+      const months = windowMonthFraction(startDate, endDate);
       // Budget amounts are per budget period: a month, a year, or a pay period
       // (cadence from the budget's `payFrequency`, monthly when unset).
       const periodsInWindow =
