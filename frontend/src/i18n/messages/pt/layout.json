@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "Transferência de títulos atualizada",
       "ranTransactionRule": "Regra «{name}» executada em {count, plural, one {# transação} other {# transações}}"
     },
-    "timeAgo": {
-      "justNow": "agora mesmo",
-      "minutes": "há {count} min",
-      "hours": "há {count} h",
-      "days": "há {count} d"
-    },
     "undonePrefix": "Desfeito: {description}",
     "redonePrefix": "Refeito: {description}"
   },

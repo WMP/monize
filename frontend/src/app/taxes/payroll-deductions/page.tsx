@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
-import { ArrowLeftIcon, ChevronDownIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronDownIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PageLayout } from '@/components/layout/PageLayout';
@@ -146,9 +146,9 @@ function PayrollDeductionsContent() {
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
         <Link
           href="/taxes"
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 mb-2"
+          className="mb-2 -ml-1 inline-flex items-center gap-1 rounded text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
         >
-          <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />
+          <ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
           {t('backToTaxes')}
         </Link>
         <PageHeader

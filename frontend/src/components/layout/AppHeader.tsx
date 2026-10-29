@@ -35,6 +35,7 @@ import {
 } from '@/lib/nav-links';
 import toast from 'react-hot-toast';
 import { SearchSyntaxHelp } from '@/components/transactions/SearchSyntaxHelp';
+import { ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 // Labels are translation keys in the `navigation` namespace, resolved at
 // render time. The href doubles as the route, the active-state match, and
@@ -305,19 +306,7 @@ export function AppHeader() {
                 aria-label={t('toggleMenu')}
               >
                 {mobileMenuOpen ? (
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                  <XMarkIcon className="w-6 h-6" aria-hidden="true" />
                 ) : (
                   <svg
                     className="w-6 h-6"
@@ -414,19 +403,7 @@ export function AppHeader() {
                         }`}
                       >
                         {t('ai')}
-                        <svg
-                          className={`w-4 h-4 transition-transform ${aiOpen ? 'rotate-180' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
+                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${aiOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                       </button>
 
                       {aiOpen && (
@@ -479,19 +456,7 @@ export function AppHeader() {
                         }`}
                       >
                         {t('tools')}
-                        <svg
-                          className={`w-4 h-4 transition-transform ${toolsExpanded ? 'rotate-180' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
+                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${toolsExpanded ? 'rotate-180' : ''}`} aria-hidden="true" />
                       </button>
 
                       {toolsExpanded && (
@@ -551,19 +516,7 @@ export function AppHeader() {
                       }`}
                     >
                       {t('admin')}
-                      <svg
-                        className={`w-4 h-4 transition-transform ${adminOpen ? 'rotate-180' : ''}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
+                      <ChevronDownIcon className={`w-4 h-4 transition-transform ${adminOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                     </button>
 
                     {adminOpen && (

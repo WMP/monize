@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "Waardepapieroverboeking bijgewerkt",
       "ranTransactionRule": "Regel “{name}” uitgevoerd op {count, plural, one {# transactie} other {# transacties}}"
     },
-    "timeAgo": {
-      "justNow": "zojuist",
-      "minutes": "{count} min geleden",
-      "hours": "{count} u geleden",
-      "days": "{count} d geleden"
-    },
     "undonePrefix": "Ongedaan gemaakt: {description}",
     "redonePrefix": "Opnieuw gedaan: {description}"
   },

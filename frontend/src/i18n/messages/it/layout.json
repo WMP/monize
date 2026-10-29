@@ -132,12 +132,6 @@
       "updatedSecurityTransfer": "Trasferimento di titoli aggiornato",
       "ranTransactionRule": "Eseguita la regola «{name}» su {count, plural, one {# transazione} other {# transazioni}}"
     },
-    "timeAgo": {
-      "justNow": "adesso",
-      "minutes": "{count} min fa",
-      "hours": "{count} h fa",
-      "days": "{count} g fa"
-    },
     "undonePrefix": "Annullato: {description}",
     "redonePrefix": "Ripristinato: {description}"
   },

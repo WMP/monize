@@ -241,7 +241,7 @@ describe('ChatMessage', () => {
           ]}
         />,
       );
-      expect(screen.getByLabelText('Tool failed')).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'Tool failed' })).toBeInTheDocument();
       expect(screen.queryByLabelText('Tool succeeded')).not.toBeInTheDocument();
       // The surrounding container uses the red theme.
       const errored = container.querySelector('.border-red-200');

@@ -35,7 +35,7 @@
     "createFailed": "Nie udało się ustawić przypomnienia",
     "dialogTitle": "Przypomnij mi",
     "dialogDescription": "Otrzymaj to powiadomienie ponownie później, dopóki nie podejmiesz działania.",
-    "modeLabel": "Jak często",
+    "modeLabel": "Częstotliwość",
     "modeRepeat": "Powtarzaj, aż zatrzymam",
     "modeOnce": "Tylko jeszcze raz",
     "intervalLabelRepeat": "Przypominaj co",

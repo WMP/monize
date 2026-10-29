@@ -35,7 +35,7 @@
     "createFailed": "[XX-The reminder could not be set-XX]",
     "dialogTitle": "[XX-Remind me-XX]",
     "dialogDescription": "[XX-Get this notification again later until you act on it.-XX]",
-    "modeLabel": "[XX-How often-XX]",
+    "modeLabel": "[XX-Frequency-XX]",
     "modeRepeat": "[XX-Repeat until I stop it-XX]",
     "modeOnce": "[XX-Just once more-XX]",
     "intervalLabelRepeat": "[XX-Remind me every-XX]",

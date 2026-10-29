@@ -477,43 +477,43 @@ describe('ActionHistoryPanel', () => {
     expect(actionHistoryApi.getHistory).not.toHaveBeenCalled();
   });
 
-  it('timeAgo shows "just now" for very recent items', async () => {
+  it('dates a very recent item as this minute', async () => {
     (actionHistoryApi.getHistory as ReturnType<typeof vi.fn>).mockResolvedValue([
       makeItem({ createdAt: new Date().toISOString() }),
     ]);
     const { getByText } = await openPanel();
     await waitFor(() => {
-      expect(getByText('just now')).toBeInTheDocument();
+      expect(getByText('this minute')).toBeInTheDocument();
     });
   });
 
-  it('timeAgo shows minutes for items created minutes ago', async () => {
+  it('relative time shows minutes for items created minutes ago', async () => {
     (actionHistoryApi.getHistory as ReturnType<typeof vi.fn>).mockResolvedValue([
       makeItem({ createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString() }),
     ]);
     const { getByText } = await openPanel();
     await waitFor(() => {
-      expect(getByText('5m ago')).toBeInTheDocument();
+      expect(getByText('5 minutes ago')).toBeInTheDocument();
     });
   });
 
-  it('timeAgo shows hours for items created hours ago', async () => {
+  it('relative time shows hours for items created hours ago', async () => {
     (actionHistoryApi.getHistory as ReturnType<typeof vi.fn>).mockResolvedValue([
       makeItem({ createdAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString() }),
     ]);
     const { getByText } = await openPanel();
     await waitFor(() => {
-      expect(getByText('3h ago')).toBeInTheDocument();
+      expect(getByText('3 hours ago')).toBeInTheDocument();
     });
   });
 
-  it('timeAgo shows days for items created days ago', async () => {
+  it('relative time shows days for items created days ago', async () => {
     (actionHistoryApi.getHistory as ReturnType<typeof vi.fn>).mockResolvedValue([
       makeItem({ createdAt: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString() }),
     ]);
     const { getByText } = await openPanel();
     await waitFor(() => {
-      expect(getByText('2d ago')).toBeInTheDocument();
+      expect(getByText('2 days ago')).toBeInTheDocument();
     });
   });
 

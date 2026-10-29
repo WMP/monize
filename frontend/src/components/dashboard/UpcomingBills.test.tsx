@@ -644,7 +644,7 @@ describe('UpcomingBills', () => {
 
     // With the unknown item skipped and the projection stopped, no row claims a
     // measured overdraft.
-    expect(screen.queryByTitle(BELOW_ZERO_TITLE)).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: BELOW_ZERO_TITLE })).not.toBeInTheDocument();
   });
 
   // ---- The below-zero warning ----
@@ -680,7 +680,10 @@ describe('UpcomingBills', () => {
 
     render(<UpcomingBills accounts={accounts} scheduledTransactions={transactions} isLoading={false} maxItems={defaultMaxItems} />);
 
-    expect(screen.getByTitle(BELOW_ZERO_TITLE)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: BELOW_ZERO_TITLE })).toBeInTheDocument();
+    // What the mark means is visible text, not a hover-only title a phone cannot read.
+    expect(screen.getByText('Takes its account below zero')).toBeInTheDocument();
+    expect(screen.queryByTitle(BELOW_ZERO_TITLE)).not.toBeInTheDocument();
   });
 
   it('charges a scheduled investment to its settlement account, not the brokerage', () => {
@@ -727,7 +730,7 @@ describe('UpcomingBills', () => {
 
     render(<UpcomingBills accounts={accounts} scheduledTransactions={transactions} isLoading={false} maxItems={defaultMaxItems} />);
 
-    expect(screen.queryByTitle(BELOW_ZERO_TITLE)).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: BELOW_ZERO_TITLE })).not.toBeInTheDocument();
   });
 
   it('still warns when the settlement account cannot cover the purchase', () => {
@@ -772,7 +775,7 @@ describe('UpcomingBills', () => {
 
     render(<UpcomingBills accounts={accounts} scheduledTransactions={transactions} isLoading={false} maxItems={defaultMaxItems} />);
 
-    expect(screen.getByTitle(BELOW_ZERO_TITLE)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: BELOW_ZERO_TITLE })).toBeInTheDocument();
   });
 
   it('derives the settlement account from the linked cash account on an older backend', () => {
@@ -817,7 +820,7 @@ describe('UpcomingBills', () => {
 
     render(<UpcomingBills accounts={accounts} scheduledTransactions={transactions} isLoading={false} maxItems={defaultMaxItems} />);
 
-    expect(screen.queryByTitle(BELOW_ZERO_TITLE)).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: BELOW_ZERO_TITLE })).not.toBeInTheDocument();
   });
 
   it('does not warn on an account a run of bills lands on exactly zero', () => {
@@ -857,7 +860,7 @@ describe('UpcomingBills', () => {
 
     render(<UpcomingBills accounts={accounts} scheduledTransactions={transactions} isLoading={false} maxItems={defaultMaxItems} />);
 
-    expect(screen.queryByTitle(BELOW_ZERO_TITLE)).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: BELOW_ZERO_TITLE })).not.toBeInTheDocument();
   });
 
   it('withholds the warning when the occurrence is priced in another currency', () => {
@@ -894,7 +897,7 @@ describe('UpcomingBills', () => {
 
     render(<UpcomingBills accounts={accounts} scheduledTransactions={transactions} isLoading={false} maxItems={defaultMaxItems} />);
 
-    expect(screen.queryByTitle(BELOW_ZERO_TITLE)).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: BELOW_ZERO_TITLE })).not.toBeInTheDocument();
   });
 
   it('prioritizes manual items over auto-post items on the same day', () => {

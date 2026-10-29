@@ -12,7 +12,7 @@
   "payroll": {
     "title": "薪資扣款",
     "subtitle": "薪資帳單扣款項目的年度上限",
-    "backToTaxes": "稅務",
+    "backToTaxes": "返回稅務",
     "newButton": "+ 新增規則",
     "loading": "正在載入薪資扣款...",
     "emptyState": {

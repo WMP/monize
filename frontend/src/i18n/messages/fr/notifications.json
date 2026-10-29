@@ -35,7 +35,7 @@
     "createFailed": "Le rappel n'a pas pu être défini",
     "dialogTitle": "Me rappeler",
     "dialogDescription": "Recevez à nouveau cette notification plus tard jusqu'à ce que vous agissiez.",
-    "modeLabel": "À quelle fréquence",
+    "modeLabel": "Fréquence",
     "modeRepeat": "Répéter jusqu'à ce que je l'arrête",
     "modeOnce": "Une seule fois de plus",
     "intervalLabelRepeat": "Me rappeler toutes les",

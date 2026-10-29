@@ -23,8 +23,8 @@
     "empty": "リマインダー期間内に期限超過または予定されている請求書、入金、振替はありません。",
     "postTransaction": "この取引を計上する",
     "manual": "手動",
-    "manualTitle": "手動での計上が必要です",
     "negativeBalanceWarning": "この取引により勘定科目の残高がマイナスになります",
+    "negativeBalanceLegend": "口座残高がマイナスになります",
     "moreItems": "+{count} 件",
     "overdue": "期限超過",
     "today": "今日",
@@ -110,9 +110,9 @@
     "refreshPrices": "価格を更新",
     "viewPortfolio": "ポートフォリオを見る",
     "filter": {
-      "all": "すべて",
-      "gainers": "値上がり",
-      "losers": "値下がり",
+      "all": "すべて ({count})",
+      "gainers": "値上がり ({count})",
+      "losers": "値下がり ({count})",
       "label": "方向"
     },
     "metric": {
