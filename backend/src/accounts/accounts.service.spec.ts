@@ -824,6 +824,40 @@ describe("AccountsService", () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it("counts only active schedules when guarding a currency change", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        openingBalance: 0,
+      });
+      // The database holds only an inactive schedule: the filtered count is 0.
+      mockQueryRunner.manager.count.mockImplementation(
+        async (
+          entity: unknown,
+          options?: { where?: { isActive?: boolean } },
+        ) =>
+          entity === ScheduledTransaction && options?.where?.isActive !== true
+            ? 1
+            : 0,
+      );
+
+      const result = await service.update("user-1", "account-1", {
+        currencyCode: "EUR",
+      });
+
+      expect(result.currencyCode).toBe("EUR");
+    });
+
+    it("lets a new opening balance sent with the new currency replace the stored one", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({ ...mockAccount });
+
+      const result = await service.update("user-1", "account-1", {
+        currencyCode: "EUR",
+        openingBalance: 0,
+      });
+
+      expect(result.currencyCode).toBe("EUR");
+    });
+
     it("allows a currency change on a fresh zero-balance account", async () => {
       mockQueryRunner.manager.findOne.mockResolvedValue({
         ...mockAccount,

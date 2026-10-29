@@ -70,6 +70,12 @@ interface ChangedSplitLine {
 }
 
 /** Per-transaction snapshot rows for the Action History bulk_update record. */
+interface TransferLegs {
+  plainLinkedIds: string[];
+  owningSplitIds: string[];
+  owningSplitParentIds: string[];
+}
+
 interface BulkUpdateSnapshot {
   before: Record<string, unknown>[];
   after: Record<string, unknown>[];
@@ -326,7 +332,11 @@ export class TransactionBulkUpdateService {
         "description" in updateFields;
       const mirrorTargets = syncsMirrors
         ? await this.classifyTransferLegs(m, userId, eligibleIds)
-        : { plainLinkedIds: [], owningSplitParentIds: [] };
+        : {
+            plainLinkedIds: [],
+            owningSplitIds: [],
+            owningSplitParentIds: [],
+          };
       await assertReconciledIdsMutable(m, userId, [
         ...eligibleIds,
         ...statusIds,
@@ -433,7 +443,7 @@ export class TransactionBulkUpdateService {
         }
 
         // Step 4b: Sync payee/description to linked transfer transactions
-        await this.syncLinkedTransfers(m, userId, eligibleIds, updateFields);
+        await this.syncLinkedTransfers(m, userId, mirrorTargets, updateFields);
       }
 
       // Step 4c: Update tags (many-to-many relation). Validates the tag set
@@ -449,7 +459,12 @@ export class TransactionBulkUpdateService {
         // Keep transfer counterparts in step, mirroring the single-edit flow
         // (updateTransfer wrapper): plain transfer legs share tags with their
         // mirror leg; split-transfer legs mirror tags onto the owning split.
-        await this.syncTransferTags(m, userId, eligibleIds, dto.tagIds ?? []);
+        await this.syncTransferTags(
+          userId,
+          mirrorTargets,
+          eligibleIds,
+          dto.tagIds ?? [],
+        );
       }
 
       // Step 4d: Recategorize the split parents' category-kind lines, joined
@@ -699,6 +714,7 @@ export class TransactionBulkUpdateService {
       // it too): refuse the whole batch, in one query over every row it would
       // remove, before anything is written.
       const ownedLegs: { transaction_id: string }[] = await m.query(
+        // includes VOID rows: records read -- ownership, not effect.
         `SELECT transaction_id FROM investment_transactions WHERE transaction_id = ANY($1)`,
         [[...locked.keys()]],
       );
@@ -1175,7 +1191,7 @@ export class TransactionBulkUpdateService {
   private async syncLinkedTransfers(
     m: EntityManager,
     userId: string,
-    eligibleIds: string[],
+    legs: TransferLegs,
     updateFields: Partial<Transaction>,
   ): Promise<void> {
     // Build the subset of fields that should sync to the linked side
@@ -1188,11 +1204,7 @@ export class TransactionBulkUpdateService {
 
     if (Object.keys(syncFields).length === 0) return;
 
-    const { plainLinkedIds, owningSplitIds } = await this.classifyTransferLegs(
-      m,
-      userId,
-      eligibleIds,
-    );
+    const { plainLinkedIds, owningSplitIds } = legs;
 
     if (plainLinkedIds.length > 0) {
       await m
@@ -1223,16 +1235,12 @@ export class TransactionBulkUpdateService {
    * onto the owning split's split-level tags (never the split parent).
    */
   private async syncTransferTags(
-    m: EntityManager,
     userId: string,
+    legs: TransferLegs,
     eligibleIds: string[],
     tagIds: string[],
   ): Promise<void> {
-    const { plainLinkedIds, owningSplitIds } = await this.classifyTransferLegs(
-      m,
-      userId,
-      eligibleIds,
-    );
+    const { plainLinkedIds, owningSplitIds } = legs;
 
     // Mirror legs not already covered by the batch itself.
     const eligibleSet = new Set(eligibleIds);
@@ -1261,11 +1269,7 @@ export class TransactionBulkUpdateService {
     m: EntityManager,
     userId: string,
     eligibleIds: string[],
-  ): Promise<{
-    plainLinkedIds: string[];
-    owningSplitIds: string[];
-    owningSplitParentIds: string[];
-  }> {
+  ): Promise<TransferLegs> {
     const repo = m.getRepository(Transaction);
     const transfers = await repo
       .createQueryBuilder("t")

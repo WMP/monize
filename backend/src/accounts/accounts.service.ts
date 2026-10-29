@@ -1018,12 +1018,18 @@ export class AccountsService {
             );
           }
 
-          // A non-zero opening balance or a schedule is denominated in the
-          // old currency too; changing it would relabel them as the new one.
+          // A non-zero opening balance or an active schedule is denominated in
+          // the old currency too; changing it would relabel them as the new
+          // one. A balance sent with the new currency replaces the stored one
+          // and is denominated in the new currency; a finished schedule is
+          // never run again.
           const scheduleCount = await m.count(ScheduledTransaction, {
-            where: { accountId: id },
+            where: { accountId: id, isActive: true },
           });
-          if (Number(account.openingBalance) !== 0 || scheduleCount > 0) {
+          const keepsOldOpeningBalance =
+            updateAccountDto.openingBalance === undefined &&
+            Number(account.openingBalance) !== 0;
+          if (keepsOldOpeningBalance || scheduleCount > 0) {
             throw new BadRequestException(
               tr(
                 "errors.accounts.changeCurrencyWithBalanceOrSchedules",

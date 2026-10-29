@@ -12,7 +12,7 @@ import {
 } from "./budget-reports.service";
 import { formatDateYMD } from "../common/date-utils";
 import {
-  queryCategorySpending,
+  queryCategorySpendingBuckets,
   resolveCategorySpent,
 } from "./budget-spending.util";
 import { queryMonthlyCategorySpent } from "./budget-monthly-spending.util";
@@ -152,27 +152,24 @@ export class BudgetActivityReportsService {
     const categories = (budget.categories || []).filter((bc) => !bc.isIncome);
     if (categories.length === 0) return [];
 
-    // One day at a time through `queryCategorySpending`: net within each
-    // category, converted at the day's rate, the budget's excluded accounts left
-    // out. A day with a row that had no rate carries what converted and says so.
+    // One query over the period, bucketed by day: net within each category,
+    // converted at the row's own date, the budget's excluded accounts left out.
+    // A day with a row that had no rate carries what converted and says so.
     const days = await withScopedDb(this.dataSource, async (m) => {
+      const { buckets } = await queryCategorySpendingBuckets(
+        m.getRepository(Transaction),
+        m.getRepository(TransactionSplit),
+        userId,
+        categories,
+        periodStart,
+        periodEnd,
+        (txDate) => txDate,
+      );
       const out: Array<{ date: string; amount: number; complete: boolean }> =
         [];
       for (const date of enumerateDaysYMD(periodStart, periodEnd)) {
-        const spending = await queryCategorySpending(
-          m.getRepository(Transaction),
-          m.getRepository(TransactionSplit),
-          userId,
-          categories,
-          date,
-          date,
-        );
-        const known =
-          spending.spendingMap.size +
-          spending.transferSpendingMap.size +
-          spending.incompleteCategoryIds.size +
-          spending.incompleteTransferAccountIds.size;
-        if (known === 0) continue;
+        const spending = buckets.get(date);
+        if (!spending) continue;
         const complete =
           spending.incompleteCategoryIds.size === 0 &&
           spending.incompleteTransferAccountIds.size === 0;

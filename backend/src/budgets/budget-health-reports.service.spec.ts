@@ -4,9 +4,10 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { BudgetHealthReportsService } from "./budget-health-reports.service";
 import {
   CategorySpending,
-  queryCategorySpending,
+  queryCategorySpendingBuckets,
 } from "./budget-spending.util";
 import { BudgetsService } from "./budgets.service";
+import { monthBuckets } from "../test-helpers/budget-spending-buckets";
 import { Budget, BudgetType, BudgetStrategy } from "./entities/budget.entity";
 import {
   BudgetCategory,
@@ -27,14 +28,18 @@ jest.mock("../common/db/scoped-db", () =>
 
 jest.mock("./budget-spending.util", () => ({
   ...jest.requireActual("./budget-spending.util"),
-  queryCategorySpending: jest.fn(),
+  queryCategorySpendingBuckets: jest.fn(),
 }));
 
-const mockedSpending = queryCategorySpending as jest.MockedFunction<
-  typeof queryCategorySpending
+const mockedSpending = queryCategorySpendingBuckets as jest.MockedFunction<
+  typeof queryCategorySpendingBuckets
 >;
 
-/** What `queryCategorySpending` returns for the given net sums (expenses negative). */
+/** Every month of the requested range answers with `s`. */
+const mockSpending = (s: CategorySpending) =>
+  mockedSpending.mockImplementation(monthBuckets(() => s));
+
+/** One CategorySpending for the given net sums (expenses negative). */
 function spending(
   categories: Record<string, number>,
   incomplete: string[] = [],
@@ -127,7 +132,7 @@ describe("BudgetHealthReportsService", () => {
 
   beforeEach(async () => {
     mockedSpending.mockReset();
-    mockedSpending.mockResolvedValue(spending({}));
+    mockSpending(spending({}));
     periodsRepository = {
       find: jest.fn().mockResolvedValue([]),
     };
@@ -474,9 +479,7 @@ describe("BudgetHealthReportsService", () => {
         ],
       });
       // 5000 less a 400 correction; 2000 spent less 500 refunded.
-      mockedSpending.mockResolvedValue(
-        spending({ "cat-income": 4600, "cat-1": -1500 }),
-      );
+      mockSpending(spending({ "cat-income": 4600, "cat-1": -1500 }));
 
       const result = await service.getSavingsRate("user-1", "budget-1", 1);
 
@@ -501,9 +504,7 @@ describe("BudgetHealthReportsService", () => {
           makeBudgetCategory({ id: "bc-1", categoryId: "cat-1" }),
         ],
       });
-      mockedSpending.mockResolvedValue(
-        spending({ "cat-income": 5000, "cat-1": -100 }, ["cat-1"]),
-      );
+      mockSpending(spending({ "cat-income": 5000, "cat-1": -100 }, ["cat-1"]));
 
       const result = await service.getSavingsRate("user-1", "budget-1", 1);
 

@@ -30,8 +30,9 @@ import { ScheduledTransaction } from "../scheduled-transactions/entities/schedul
 import { EmailService } from "../notifications/email.service";
 import {
   CategorySpending,
-  queryCategorySpending,
+  queryCategorySpendingBuckets,
 } from "./budget-spending.util";
+import { monthBuckets } from "../test-helpers/budget-spending-buckets";
 import {
   createScopedDbMocks,
   DataSourceMock,
@@ -53,13 +54,12 @@ jest.mock("./budget-spending.util", () => {
   return {
     ...actual,
     queryCategorySpending: jest.fn(actual.queryCategorySpending),
+    queryCategorySpendingBuckets: jest.fn(),
   };
 });
 
-const actualSpending = jest.requireActual("./budget-spending.util")
-  .queryCategorySpending as typeof queryCategorySpending;
-const mockedSpending = queryCategorySpending as jest.MockedFunction<
-  typeof queryCategorySpending
+const mockedBuckets = queryCategorySpendingBuckets as jest.MockedFunction<
+  typeof queryCategorySpendingBuckets
 >;
 
 /** What `queryCategorySpending` returns for the given net sums (expenses negative). */
@@ -77,16 +77,9 @@ function spending(
   };
 }
 
-/**
- * Scripts the 13-month sweep by calendar month (the oldest call answers empty:
- * it shares a calendar month with the newest).
- */
-const scriptMonths =
-  (perMonth: (month: number) => CategorySpending) =>
-  async (...args: Parameters<typeof queryCategorySpending>) =>
-    mockedSpending.mock.calls.length === 1
-      ? spending({})
-      : perMonth(Number(args[4].slice(5, 7)));
+/** Scripts the 12-month sweep by calendar month. */
+const scriptMonths = (perMonth: (month: number) => CategorySpending) =>
+  monthBuckets((key) => perMonth(Number(key.slice(5, 7))));
 
 function makeCategory(overrides: Partial<BudgetCategory> = {}): BudgetCategory {
   return {
@@ -1883,15 +1876,14 @@ describe("BudgetAlertService", () => {
       });
 
     beforeEach(() => {
-      mockedSpending.mockReset();
-      mockedSpending.mockImplementation(actualSpending);
+      mockedBuckets.mockReset();
     });
 
     it("returns SEASONAL_SPIKE alert when next month is historically expensive", async () => {
       const nextMonth = new Date();
       nextMonth.setMonth(nextMonth.getMonth() + 1);
       const nextMonthNum = nextMonth.getMonth() + 1;
-      mockedSpending.mockImplementation(
+      mockedBuckets.mockImplementation(
         scriptMonths((m) =>
           spending({ "cat-1": m === nextMonthNum ? -500 : -200 }),
         ),
@@ -1915,7 +1907,7 @@ describe("BudgetAlertService", () => {
 
     it("profiles the net month, so a refund cancels a spike the gross would show", async () => {
       // 500 spent and 300 refunded in the next month nets to the usual 200.
-      mockedSpending.mockImplementation(
+      mockedBuckets.mockImplementation(
         scriptMonths(() => spending({ "cat-1": -200 })),
       );
 
@@ -1931,7 +1923,7 @@ describe("BudgetAlertService", () => {
       const nextMonth = new Date();
       nextMonth.setMonth(nextMonth.getMonth() + 1);
       const nextMonthNum = nextMonth.getMonth() + 1;
-      mockedSpending.mockImplementation(
+      mockedBuckets.mockImplementation(
         scriptMonths((m) =>
           spending({ "cat-1": m === nextMonthNum ? -500 : -200 }, ["cat-1"]),
         ),
@@ -1946,7 +1938,7 @@ describe("BudgetAlertService", () => {
     });
 
     it("returns no alerts when no categories have seasonal spikes", async () => {
-      mockedSpending.mockImplementation(
+      mockedBuckets.mockImplementation(
         scriptMonths(() => spending({ "cat-1": -200 })),
       );
 
@@ -1980,12 +1972,12 @@ describe("BudgetAlertService", () => {
       );
 
       expect(alerts).toHaveLength(0);
-      expect(mockedSpending).not.toHaveBeenCalled();
+      expect(mockedBuckets).not.toHaveBeenCalled();
     });
 
     it("returns no alerts when insufficient data for analysis", async () => {
       // Only 2 months of data (below minimum of 3)
-      mockedSpending.mockImplementation(
+      mockedBuckets.mockImplementation(
         scriptMonths((m) =>
           m === 1 || m === 2 ? spending({ "cat-1": -200 }) : spending({}),
         ),

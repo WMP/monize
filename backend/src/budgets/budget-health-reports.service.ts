@@ -19,7 +19,7 @@ import { roundMoney, roundToDecimals, sumMoney } from "../common/round.util";
 import {
   budgetExcludedAccountIds,
   excludeBudgetAccounts,
-  queryCategorySpending,
+  queryCategorySpendingBuckets,
   resolveCategorySpent,
 } from "./budget-spending.util";
 
@@ -288,6 +288,32 @@ export class BudgetHealthReportsService {
       }
     }
 
+    // The budget page's own actuals in one query over the window, bucketed by
+    // month: net within the category, converted into the budget's currency, the
+    // budget's excluded accounts left out.
+    const spendingByMonth =
+      spendingLines.length > 0
+        ? (
+            await withScopedDb(this.dataSource, (m) => {
+              const first = new Date(
+                today.getFullYear(),
+                today.getMonth() - (months - 1),
+                1,
+              );
+              return queryCategorySpendingBuckets(
+                m.getRepository(Transaction),
+                m.getRepository(TransactionSplit),
+                userId,
+                spendingLines,
+                formatMonthKey(first.getFullYear(), first.getMonth() + 1) +
+                  "-01",
+                getMonthEndYMD(today.getFullYear(), today.getMonth() + 1),
+                (txDate) => txDate.slice(0, 7),
+              );
+            })
+          ).buckets
+        : null;
+
     const result: SavingsRatePoint[] = [];
 
     for (let i = months - 1; i >= 0; i--) {
@@ -296,21 +322,7 @@ export class BudgetHealthReportsService {
       const month = d.getMonth();
       const monthKey = formatMonthKey(year, month + 1);
 
-      // The budget page's own actuals: net within the category, converted into
-      // the budget's currency, the budget's excluded accounts left out.
-      const spending =
-        spendingLines.length > 0
-          ? await withScopedDb(this.dataSource, (m) =>
-              queryCategorySpending(
-                m.getRepository(Transaction),
-                m.getRepository(TransactionSplit),
-                userId,
-                spendingLines,
-                `${monthKey}-01`,
-                getMonthEndYMD(year, month + 1),
-              ),
-            )
-          : null;
+      const spending = spendingByMonth?.get(monthKey) ?? null;
       const sumSide = (isIncome: boolean): number =>
         spending
           ? sumMoney(

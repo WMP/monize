@@ -246,6 +246,7 @@ export class ForecastAggregatorService {
         .createQueryBuilder("t")
         .leftJoin("t.category", "cat")
         .select("TO_CHAR(t.transactionDate, 'YYYY-MM')", "month")
+        .addSelect("cat.id", "categoryId")
         .addSelect("COALESCE(cat.name, 'Uncategorized')", "categoryName")
         .addSelect("COALESCE(cat.isIncome, false)", "isIncome")
         .addSelect("(cat.id IS NULL)", "uncategorized")
@@ -316,7 +317,10 @@ export class ForecastAggregatorService {
       const uncategorized =
         row.uncategorized === true || row.uncategorized === "true";
 
-      const key = `${row.categoryName}|${isIncome}`;
+      // The query groups by cat.id, so the id is the key (NULL is its own
+      // bucket): two categories sharing a name, or a real one named
+      // "Uncategorized", must not merge.
+      const key: string = row.categoryId ?? "uncategorized";
       const cat = entry.categories.get(key) ?? {
         categoryName: row.categoryName,
         isIncome,

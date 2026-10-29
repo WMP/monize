@@ -453,6 +453,51 @@ describe("TransactionBulkUpdateService", () => {
       expect(syncUpdateQb.execute).toHaveBeenCalled();
     });
 
+    it("classifies the transfer legs once when payee and tags both sync to mirrors", async () => {
+      const tx2 = makeTransaction({
+        id: "tx-2",
+        isTransfer: true,
+        linkedTransactionId: "tx-2-linked",
+      });
+      payeesRepository.findOne.mockResolvedValue({ id: "payee-1", userId });
+      transactionsRepository.createQueryBuilder
+        .mockReturnValueOnce(
+          createMockQueryBuilder({
+            getMany: jest.fn().mockResolvedValue([{ id: "tx-2" }]),
+          }),
+        )
+        .mockReturnValueOnce(
+          createMockQueryBuilder({
+            getMany: jest.fn().mockResolvedValue([tx2]),
+          }),
+        )
+        .mockReturnValue(
+          createMockQueryBuilder({
+            getMany: jest
+              .fn()
+              .mockResolvedValue([
+                { id: "tx-2", linkedTransactionId: "tx-2-linked" },
+              ]),
+          }),
+        );
+      mockManagerCreateQueryBuilder.mockReturnValue(
+        createMockQueryBuilder({
+          execute: jest.fn().mockResolvedValue({ affected: 1 }),
+        }),
+      );
+      mockManagerFind.mockClear();
+
+      await service.bulkUpdate(userId, {
+        mode: "ids",
+        transactionIds: ["tx-2"],
+        payeeId: "payee-1",
+        tagIds: ["tag-a"],
+      });
+
+      // The owning-split lookup is the second query of one classification.
+      expect(mockManagerFind).toHaveBeenCalledTimes(1);
+    });
+
     it("recategorizes split lines instead of skipping split parents when updating category", async () => {
       const tx1 = makeTransaction({ id: "tx-1" });
       const tx2 = makeTransaction({ id: "tx-2", isSplit: true });

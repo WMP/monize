@@ -4,7 +4,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { BudgetActivityReportsService } from "./budget-activity-reports.service";
 import {
   CategorySpending,
-  queryCategorySpending,
+  queryCategorySpendingBuckets,
 } from "./budget-spending.util";
 import { BudgetsService } from "./budgets.service";
 import { Budget, BudgetType, BudgetStrategy } from "./entities/budget.entity";
@@ -28,14 +28,20 @@ jest.mock("../common/db/scoped-db", () =>
 
 jest.mock("./budget-spending.util", () => ({
   ...jest.requireActual("./budget-spending.util"),
-  queryCategorySpending: jest.fn(),
+  queryCategorySpendingBuckets: jest.fn(),
 }));
 
-const mockedSpending = queryCategorySpending as jest.MockedFunction<
-  typeof queryCategorySpending
+const mockedSpending = queryCategorySpendingBuckets as jest.MockedFunction<
+  typeof queryCategorySpendingBuckets
 >;
 
-/** What `queryCategorySpending` returns for the given net sums (expenses negative). */
+/** What `queryCategorySpendingBuckets` returns for the given buckets. */
+const bucketed = (buckets: Record<string, CategorySpending>) => ({
+  currency: "USD",
+  buckets: new Map(Object.entries(buckets)),
+});
+
+/** One CategorySpending for the given net sums (expenses negative). */
 function spending(
   categories: Record<string, number>,
   extra: {
@@ -225,7 +231,7 @@ describe("BudgetActivityReportsService", () => {
 
   beforeEach(async () => {
     mockedSpending.mockReset();
-    mockedSpending.mockResolvedValue(spending({}));
+    mockedSpending.mockResolvedValue(bucketed({}));
     periodsRepository = {
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn().mockResolvedValue(null),
@@ -328,13 +334,12 @@ describe("BudgetActivityReportsService", () => {
 
     it("sums the budget page's net spending per day over the open period", async () => {
       periodsRepository.findOne.mockResolvedValueOnce(openPeriod);
-      mockedSpending.mockImplementation(async (...args: unknown[]) => {
-        const day = args[4] as string;
-        if (day === "2026-02-05") return spending({ "cat-1": -50 });
-        if (day === "2026-02-10")
-          return spending({ "cat-1": -60.25, "cat-2": -15.25 });
-        return spending({});
-      });
+      mockedSpending.mockResolvedValue(
+        bucketed({
+          "2026-02-05": spending({ "cat-1": -50 }),
+          "2026-02-10": spending({ "cat-1": -60.25, "cat-2": -15.25 }),
+        }),
+      );
 
       const result = await service.getDailySpending("user-1", "budget-1");
 
@@ -345,12 +350,15 @@ describe("BudgetActivityReportsService", () => {
       expect(periodsRepository.findOne).toHaveBeenCalledWith({
         where: { budgetId: "budget-1", status: PeriodStatus.OPEN },
       });
-      // One call per day of the period, each a single-day window over the
-      // budget's expense lines.
-      expect(mockedSpending).toHaveBeenCalledTimes(28);
+      // One query over the whole period, bucketed by day, over the budget's
+      // expense lines.
+      expect(mockedSpending).toHaveBeenCalledTimes(1);
       const first = mockedSpending.mock.calls[0];
       expect(first[4]).toBe("2026-02-01");
-      expect(first[5]).toBe("2026-02-01");
+      expect(first[5]).toBe("2026-02-28");
+      expect((first[6] as (d: string) => string)("2026-02-05")).toBe(
+        "2026-02-05",
+      );
       expect((first[3] as BudgetCategory[]).map((bc) => bc.id)).toEqual([
         "bc-1",
         "bc-2",
@@ -361,10 +369,8 @@ describe("BudgetActivityReportsService", () => {
       periodsRepository.findOne.mockResolvedValueOnce(openPeriod);
       // Net of -100 and +30 in one category is -70; a category whose credits
       // exceed its debits (+40) is not spending.
-      mockedSpending.mockImplementation(async (...args: unknown[]) =>
-        args[4] === "2026-02-03"
-          ? spending({ "cat-1": -70, "cat-2": 40 })
-          : spending({}),
+      mockedSpending.mockResolvedValue(
+        bucketed({ "2026-02-03": spending({ "cat-1": -70, "cat-2": 40 }) }),
       );
 
       const result = await service.getDailySpending("user-1", "budget-1");
@@ -376,10 +382,10 @@ describe("BudgetActivityReportsService", () => {
 
     it("marks a day incomplete when a row had no rate, keeping what converted", async () => {
       periodsRepository.findOne.mockResolvedValueOnce(openPeriod);
-      mockedSpending.mockImplementation(async (...args: unknown[]) =>
-        args[4] === "2026-02-03"
-          ? spending({ "cat-1": -20 }, { incomplete: ["cat-2"] })
-          : spending({}),
+      mockedSpending.mockResolvedValue(
+        bucketed({
+          "2026-02-03": spending({ "cat-1": -20 }, { incomplete: ["cat-2"] }),
+        }),
       );
 
       const result = await service.getDailySpending("user-1", "budget-1");
@@ -390,12 +396,12 @@ describe("BudgetActivityReportsService", () => {
     });
 
     it("should fall back to budget periodStart when no open period exists", async () => {
-      mockedSpending.mockResolvedValue(spending({}));
+      mockedSpending.mockResolvedValue(bucketed({}));
 
       await service.getDailySpending("user-1", "budget-1");
 
       expect(mockedSpending.mock.calls[0][4]).toBe("2026-02-01");
-      expect(mockedSpending.mock.calls[27][4]).toBe("2026-02-28");
+      expect(mockedSpending.mock.calls[0][5]).toBe("2026-02-28");
     });
 
     it("includes transfer lines through the transfer spending map", async () => {
@@ -404,10 +410,10 @@ describe("BudgetActivityReportsService", () => {
         ...mockBudget,
         categories: [mockTransferCategory],
       });
-      mockedSpending.mockImplementation(async (...args: unknown[]) =>
-        args[4] === "2026-02-07"
-          ? spending({}, { transfers: { "acc-savings": 200 } })
-          : spending({}),
+      mockedSpending.mockResolvedValue(
+        bucketed({
+          "2026-02-07": spending({}, { transfers: { "acc-savings": 200 } }),
+        }),
       );
 
       const result = await service.getDailySpending("user-1", "budget-1");
@@ -441,7 +447,7 @@ describe("BudgetActivityReportsService", () => {
     });
 
     it("should handle empty query results", async () => {
-      mockedSpending.mockResolvedValue(spending({}));
+      mockedSpending.mockResolvedValue(bucketed({}));
 
       const result = await service.getDailySpending("user-1", "budget-1");
 
@@ -586,29 +592,42 @@ describe("BudgetActivityReportsService", () => {
   describe("getSeasonalPatterns", () => {
     // The sweep runs the 12 complete months before this one, so each calendar
     // month is answered once.
-    const byMonth =
-      (
-        perMonth: Record<number, Record<string, number>>,
-        extra: { incomplete?: string[] } = {},
-      ) =>
-      async (...args: unknown[]) => {
-        const month = Number((args[4] as string).slice(5, 7));
-        return spending(perMonth[month] ?? {}, extra);
-      };
+    const byMonth = (
+      perMonth: Record<number, Record<string, number>>,
+      extra: { incomplete?: string[] } = {},
+    ) => {
+      const now = new Date();
+      const buckets: Record<string, CategorySpending> = {};
+      for (let back = 12; back >= 1; back--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - back, 1);
+        const month = d.getMonth() + 1;
+        const key = `${d.getFullYear()}-${String(month).padStart(2, "0")}`;
+        buckets[key] = spending(perMonth[month] ?? {}, extra);
+      }
+      return bucketed(buckets);
+    };
 
     it("sweeps 12 complete months, each calendar month once", async () => {
-      mockedSpending.mockImplementation(byMonth({}));
+      mockedSpending.mockResolvedValue(byMonth({}));
 
       await service.getSeasonalPatterns("user-1", "budget-1");
 
-      const months = mockedSpending.mock.calls.map((c) =>
-        (c[4] as string).slice(0, 7),
-      );
-      expect(months).toHaveLength(12);
-      expect(new Set(months.map((x) => x.slice(5, 7))).size).toBe(12);
+      // One query over the 12 months, bucketed by month; it ends before the
+      // current month.
+      expect(mockedSpending).toHaveBeenCalledTimes(1);
+      const [start, end] = [
+        mockedSpending.mock.calls[0][4] as string,
+        mockedSpending.mock.calls[0][5] as string,
+      ];
       const now = new Date();
       const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      expect(months).not.toContain(current);
+      expect(start.slice(0, 7) < end.slice(0, 7)).toBe(true);
+      expect(end.slice(0, 7) < current).toBe(true);
+      expect(
+        (mockedSpending.mock.calls[0][6] as (d: string) => string)(
+          "2026-03-14",
+        ),
+      ).toBe("2026-03");
     });
 
     it("should return empty array when no expense categories exist", async () => {
@@ -623,7 +642,7 @@ describe("BudgetActivityReportsService", () => {
     });
 
     it("should compute seasonal patterns from the budget page's net spending", async () => {
-      mockedSpending.mockImplementation(
+      mockedSpending.mockResolvedValue(
         byMonth({
           6: { "cat-1": -800 },
           7: { "cat-1": -200 },
@@ -646,7 +665,7 @@ describe("BudgetActivityReportsService", () => {
 
     it("nets a refund inside the month instead of counting the gross debit", async () => {
       // 100 spent and 30 refunded arrives as a net -70.
-      mockedSpending.mockImplementation(byMonth({ 3: { "cat-1": -70 } }));
+      mockedSpending.mockResolvedValue(byMonth({ 3: { "cat-1": -70 } }));
 
       const result = await service.getSeasonalPatterns("user-1", "budget-1");
 
@@ -654,7 +673,7 @@ describe("BudgetActivityReportsService", () => {
     });
 
     it("flags a category with an unconvertible row as incomplete", async () => {
-      mockedSpending.mockImplementation(
+      mockedSpending.mockResolvedValue(
         byMonth({ 3: { "cat-1": -70 } }, { incomplete: ["cat-1"] }),
       );
 
@@ -677,7 +696,7 @@ describe("BudgetActivityReportsService", () => {
           },
         ],
       });
-      mockedSpending.mockImplementation(byMonth({ 3: { "cat-1": -70 } }));
+      mockedSpending.mockResolvedValue(byMonth({ 3: { "cat-1": -70 } }));
 
       const result = await service.getSeasonalPatterns("user-1", "budget-1");
 
@@ -685,7 +704,7 @@ describe("BudgetActivityReportsService", () => {
     });
 
     it("should handle all zero spending", async () => {
-      mockedSpending.mockResolvedValue(spending({}));
+      mockedSpending.mockResolvedValue(bucketed({}));
 
       const result = await service.getSeasonalPatterns("user-1", "budget-1");
 

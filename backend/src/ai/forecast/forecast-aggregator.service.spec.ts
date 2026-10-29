@@ -163,6 +163,7 @@ describe("ForecastAggregatorService", () => {
       const monthlyData = [
         {
           month: "2025-06",
+          categoryId: "cat-salary",
           categoryName: "Salary",
           isIncome: true,
           income: "4000",
@@ -170,6 +171,7 @@ describe("ForecastAggregatorService", () => {
         },
         {
           month: "2025-06",
+          categoryId: "cat-groceries",
           categoryName: "Groceries",
           isIncome: false,
           income: "0",
@@ -177,6 +179,7 @@ describe("ForecastAggregatorService", () => {
         },
         {
           month: "2025-07",
+          categoryId: "cat-salary",
           categoryName: "Salary",
           isIncome: true,
           income: "4000",
@@ -184,6 +187,7 @@ describe("ForecastAggregatorService", () => {
         },
         {
           month: "2025-07",
+          categoryId: "cat-dining",
           categoryName: "Dining",
           isIncome: false,
           income: "0",
@@ -250,6 +254,7 @@ describe("ForecastAggregatorService", () => {
           // of expenses plus 100 of income.
           {
             month: "2025-06",
+            categoryId: "cat-groceries",
             categoryName: "Groceries",
             isIncome: false,
             currencyCode: "USD",
@@ -258,6 +263,7 @@ describe("ForecastAggregatorService", () => {
           },
           {
             month: "2025-06",
+            categoryId: "cat-groceries",
             categoryName: "Groceries",
             isIncome: false,
             currencyCode: "EUR",
@@ -266,6 +272,7 @@ describe("ForecastAggregatorService", () => {
           },
           {
             month: "2025-06",
+            categoryId: "cat-salary",
             categoryName: "Salary",
             isIncome: true,
             currencyCode: "USD",
@@ -293,6 +300,59 @@ describe("ForecastAggregatorService", () => {
         total: 600,
         isIncome: false,
       });
+    });
+
+    it("keeps two categories that share a name apart, and a real 'Uncategorized' apart from no category", async () => {
+      mockTransactionRepo.createQueryBuilder.mockImplementation(() =>
+        mockQueryBuilder([
+          {
+            month: "2025-06",
+            categoryId: "cat-a",
+            categoryName: "Fees",
+            isIncome: false,
+            uncategorized: false,
+            income: "0",
+            expenses: "100",
+          },
+          {
+            month: "2025-06",
+            categoryId: "cat-b",
+            categoryName: "Fees",
+            isIncome: false,
+            uncategorized: false,
+            income: "40",
+            expenses: "0",
+          },
+          {
+            month: "2025-06",
+            categoryId: "cat-u",
+            categoryName: "Uncategorized",
+            isIncome: false,
+            uncategorized: false,
+            income: "0",
+            expenses: "30",
+          },
+          {
+            month: "2025-06",
+            categoryId: null,
+            categoryName: "Uncategorized",
+            isIncome: false,
+            uncategorized: true,
+            income: "0",
+            expenses: "20",
+          },
+        ]),
+      );
+
+      const result = await service.computeAggregates(userId, "USD");
+
+      const breakdown = result.monthlyHistory[0].categoryBreakdown;
+      // Merged by name, Fees would net 100 against 40 and read 60.
+      expect(breakdown).toEqual([
+        { categoryName: "Fees", total: 100, isIncome: false },
+        { categoryName: "Uncategorized", total: 30, isIncome: false },
+        { categoryName: "Uncategorized", total: 20, isIncome: false },
+      ]);
     });
 
     it("fetches active scheduled transactions with categories", async () => {
