@@ -23,7 +23,6 @@
     "empty": "リマインダー期間内に期限超過または予定されている請求書、入金、振替はありません。",
     "postTransaction": "この取引を計上する",
     "manual": "手動",
-    "manualTitle": "手動での計上が必要です",
     "negativeBalanceWarning": "この取引により勘定科目の残高がマイナスになります",
     "moreItems": "+{count} 件",
     "overdue": "期限超過",

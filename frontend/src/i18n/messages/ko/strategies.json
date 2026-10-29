@@ -337,7 +337,6 @@
       "rulesSourceLabel": "그 링크에 표시할 문구",
       "rulesSourceLabelPlaceholder": "example.com",
       "rulesSourceHint": "둘 다 선택 사항이며 어떤 계산에도 영향을 주지 않습니다. 이 전략이 따르는 규칙이 적힌 곳(기사, 책의 한 쪽, 직접 쓴 메모 등)으로 가는 링크를 보고서 하단에 넣어, 나중에 어떤 버전에 맞춰 설정했는지 확인할 수 있게 합니다.",
-      "optional": "선택 사항",
       "save": "구성 저장",
       "saved": "전략 구성을 저장했습니다.",
       "saveError": "전략 구성을 저장할 수 없습니다.",

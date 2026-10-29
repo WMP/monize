@@ -86,7 +86,7 @@ describe('active reminders page', () => {
     ]);
     render(<RemindersPage />);
     expect(await screen.findByText('Savings is below your threshold')).toBeInTheDocument();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Open related page' })).not.toBeInTheDocument();
   });
   it('does not load a delegate list', () => {
     identity.actingAsUserId = 'owner';

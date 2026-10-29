@@ -23,7 +23,6 @@
     "empty": "Tidak ada tagihan, setoran, atau transfer yang lewat jatuh tempo atau mendatang dalam jendela pengingat mereka.",
     "postTransaction": "Posting transaksi ini",
     "manual": "Manual",
-    "manualTitle": "Membutuhkan posting manual",
     "negativeBalanceWarning": "Transaksi ini akan menyebabkan saldo akun menjadi di bawah nol",
     "moreItems": "+{count} lagi",
     "overdue": "Lewat jatuh tempo",

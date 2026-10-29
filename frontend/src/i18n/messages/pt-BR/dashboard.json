@@ -23,7 +23,6 @@
     "empty": "Sem faturas, depósitos ou transferências em atraso ou próximos dentro dos seus períodos de lembrete.",
     "postTransaction": "Lançar esta transação",
     "manual": "Manual",
-    "manualTitle": "Requer lançamento manual",
     "negativeBalanceWarning": "Esta transação irá colocar o saldo da conta abaixo de zero",
     "moreItems": "+{count} mais",
     "overdue": "Em atraso",

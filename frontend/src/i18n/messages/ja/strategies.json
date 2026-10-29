@@ -337,7 +337,6 @@
       "rulesSourceLabel": "そのリンクに表示する文字列",
       "rulesSourceLabelPlaceholder": "example.com",
       "rulesSourceHint": "どちらも任意で、計算には一切影響しません。この戦略が従うルールが書かれている場所（記事、書籍のページ、自分のメモなど）へのリンクをレポートのフッターに表示し、後からどの版に合わせて設定したかを確認できるようにします。",
-      "optional": "任意",
       "save": "設定を保存",
       "saved": "戦略の設定を保存しました。",
       "saveError": "戦略の設定を保存できませんでした。",

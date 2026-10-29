@@ -23,7 +23,6 @@
     "empty": "Aucune facture, aucun dépôt ou virement en retard ou à venir dans les fenêtres de rappel.",
     "postTransaction": "Enregistrer cette transaction",
     "manual": "Manuel",
-    "manualTitle": "Nécessite un enregistrement manuel",
     "negativeBalanceWarning": "Cette transaction fera passer le solde du compte en dessous de zéro",
     "moreItems": "+{count} de plus",
     "overdue": "En retard",

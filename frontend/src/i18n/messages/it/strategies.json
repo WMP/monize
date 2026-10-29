@@ -337,7 +337,6 @@
       "rulesSourceLabel": "Testo da mostrare per quel link",
       "rulesSourceLabelPlaceholder": "example.com",
       "rulesSourceHint": "Entrambi facoltativi e senza alcun effetto sui calcoli. Mettono nel piè di pagina del report un link al punto in cui sono scritte le regole seguite da questa strategia — un articolo, una pagina di un libro, i tuoi appunti — così potrai verificare in seguito su quale versione l'hai impostata.",
-      "optional": "Facoltativo",
       "save": "Salva configurazione",
       "saved": "Configurazione della strategia salvata.",
       "saveError": "Non è stato possibile salvare la configurazione della strategia.",

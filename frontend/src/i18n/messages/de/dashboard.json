@@ -23,7 +23,6 @@
     "empty": "Keine überfälligen oder bevorstehenden Rechnungen, Einzahlungen oder Überweisungen innerhalb der Erinnerungsfenster.",
     "postTransaction": "Diese Buchung ausführen",
     "manual": "Manuell",
-    "manualTitle": "Erfordert manuelle Buchung",
     "negativeBalanceWarning": "Diese Buchung bringt den Kontosaldo unter null",
     "moreItems": "+{count} weitere",
     "overdue": "Überfällig",

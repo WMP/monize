@@ -337,7 +337,6 @@
       "rulesSourceLabel": "Bu bağlantı için gösterilecek metin",
       "rulesSourceLabelPlaceholder": "example.com",
       "rulesSourceHint": "İkisi de isteğe bağlıdır ve hiçbir hesabı etkilemez. Raporun alt bilgisine, bu stratejinin izlediği kuralların yazılı olduğu yere — bir makale, bir kitap sayfası, kendi notlarınız — bağlantı koyarlar; böylece daha sonra hangi sürüme göre kurduğunuzu görebilirsiniz.",
-      "optional": "İsteğe bağlı",
       "save": "Yapılandırmayı kaydet",
       "saved": "Strateji yapılandırması kaydedildi.",
       "saveError": "Strateji yapılandırması kaydedilemedi.",

@@ -23,7 +23,6 @@
     "empty": "在提醒窗口内没有逾期或即将到来的账单、存款或转账。",
     "postTransaction": "过账此交易",
     "manual": "手动",
-    "manualTitle": "需要手动过账",
     "negativeBalanceWarning": "此交易将导致账户余额低于零",
     "moreItems": "+{count} 条",
     "overdue": "已逾期",

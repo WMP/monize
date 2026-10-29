@@ -23,7 +23,6 @@
     "empty": "연체되거나 예정된 청구서, 입금 또는 이체가 알림 기간 내에 없습니다.",
     "postTransaction": "이 거래 등록",
     "manual": "수동",
-    "manualTitle": "수동 등록 필요",
     "negativeBalanceWarning": "이 거래로 인해 계정 잔액이 0 미만이 됩니다",
     "moreItems": "+{count}개 더",
     "overdue": "연체",

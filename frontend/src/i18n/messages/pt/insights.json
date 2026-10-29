@@ -4,17 +4,12 @@
     "subtitle": "Análise dos seus padrões de gastos e anomalias com recurso à IA"
   },
   "list": {
-    "lastUpdated": "Última atualização: {date} {time}",
     "refreshButton": "Atualizar análise",
-    "generating": "A gerar...",
     "allTypes": "Todos os tipos",
-    "allSeverities": "Todas as gravidades",
     "showDismissed": "Mostrar dispensadas",
     "emptyNoInsights": "Ainda não foram geradas análises. Clique em \"Atualizar análise\" para analisar os seus padrões de gastos.",
     "emptyFiltered": "Nenhuma análise corresponde aos filtros atuais.",
     "generateButton": "Gerar análise",
-    "alertCount": "{count, plural, one {# alerta} other {# alertas}}",
-    "warningCount": "{count, plural, one {# aviso} other {# avisos}}",
     "errorLoadFailed": "Falha ao carregar análises. Tente novamente.",
     "errorGenerateFailed": "Falha ao gerar análises. Certifique-se de que tem um fornecedor de IA configurado.",
     "errorDismissFailed": "Falha ao dispensar a análise. Tente novamente.",

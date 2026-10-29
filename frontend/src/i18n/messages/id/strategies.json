@@ -337,7 +337,6 @@
       "rulesSourceLabel": "Teks yang ditampilkan untuk tautan itu",
       "rulesSourceLabelPlaceholder": "example.com",
       "rulesSourceHint": "Keduanya opsional dan tidak memengaruhi perhitungan apa pun. Keduanya menaruh tautan di footer laporan ke tempat aturan strategi ini ditulis — sebuah artikel, halaman buku, catatan Anda sendiri — agar nanti Anda bisa memeriksa versi mana yang Anda pakai saat menyiapkannya.",
-      "optional": "Opsional",
       "save": "Simpan konfigurasi",
       "saved": "Konfigurasi strategi disimpan.",
       "saveError": "Konfigurasi strategi tidak dapat disimpan.",

@@ -4,17 +4,12 @@
     "subtitle": "KI-gestützte Analyse Ihrer Ausgabenmuster und Anomalien"
   },
   "list": {
-    "lastUpdated": "Zuletzt aktualisiert: {date} {time}",
     "refreshButton": "Insights aktualisieren",
-    "generating": "Wird generiert...",
     "allTypes": "Alle Typen",
-    "allSeverities": "Alle Schweregrade",
     "showDismissed": "Ausgeblendete anzeigen",
     "emptyNoInsights": "Noch keine Insights generiert. Klicken Sie auf \"Insights aktualisieren\", um Ihre Ausgabenmuster zu analysieren.",
     "emptyFiltered": "Keine Insights entsprechen Ihren aktuellen Filtern.",
     "generateButton": "Insights generieren",
-    "alertCount": "{count, plural, one {# Alarm} other {# Alarme}}",
-    "warningCount": "{count, plural, one {# Warnung} other {# Warnungen}}",
     "errorLoadFailed": "Insights konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
     "errorGenerateFailed": "Insights konnten nicht generiert werden. Stellen Sie sicher, dass ein KI-Anbieter konfiguriert ist.",
     "errorDismissFailed": "Der Insight konnte nicht ausgeblendet werden. Bitte versuchen Sie es erneut.",

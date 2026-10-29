@@ -337,7 +337,6 @@
       "rulesSourceLabel": "Văn bản hiển thị cho liên kết đó",
       "rulesSourceLabelPlaceholder": "example.com",
       "rulesSourceHint": "Cả hai đều tùy chọn và không ảnh hưởng tới bất kỳ phép tính nào. Chúng đặt ở chân trang báo cáo một liên kết tới nơi ghi bộ quy tắc mà chiến lược này theo — một bài viết, một trang sách, ghi chú của chính bạn — để sau này bạn kiểm tra được mình đã thiết lập theo phiên bản nào.",
-      "optional": "Không bắt buộc",
       "save": "Lưu cấu hình",
       "saved": "Đã lưu cấu hình chiến lược.",
       "saveError": "Không thể lưu cấu hình chiến lược.",

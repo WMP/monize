@@ -337,7 +337,6 @@
       "rulesSourceLabel": "Tekst do pokazania zamiast linku",
       "rulesSourceLabelPlaceholder": "example.com",
       "rulesSourceHint": "Oba pola są opcjonalne i nie wpływają na żadne obliczenia. Umieszczają w stopce raportu link do miejsca, w którym opisane są reguły tej strategii — artykułu, strony książki, własnych notatek — żebyś mógł później sprawdzić, według której wersji ją ustawiłeś.",
-      "optional": "Opcjonalne",
       "save": "Zapisz konfigurację",
       "saved": "Konfiguracja strategii zapisana.",
       "saveError": "Nie udało się zapisać konfiguracji strategii.",

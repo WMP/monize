@@ -100,6 +100,7 @@ function ToolDetails({ tool }: { tool: ToolInfo }) {
               className="w-3 h-3 flex-shrink-0"
               aria-label={t('toolDetails.toolFailedAriaLabel')}
               role="img"
+              aria-hidden={false}
             />
           ) : (
             <svg

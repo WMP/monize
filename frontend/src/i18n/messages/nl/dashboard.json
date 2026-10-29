@@ -23,7 +23,6 @@
     "empty": "Geen achterstallige of aankomende facturen, stortingen of overboekingen binnen de herinneringsvensters.",
     "postTransaction": "Deze transactie boeken",
     "manual": "Handmatig",
-    "manualTitle": "Vereist handmatige boeking",
     "negativeBalanceWarning": "Deze transactie zorgt ervoor dat het rekeningsaldo onder nul komt",
     "moreItems": "+{count} meer",
     "overdue": "Achterstallig",

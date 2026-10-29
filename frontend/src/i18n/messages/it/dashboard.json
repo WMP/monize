@@ -23,7 +23,6 @@
     "empty": "Nessuna fattura, versamento o trasferimento scaduto o in arrivo nelle finestre di promemoria.",
     "postTransaction": "Registra questa transazione",
     "manual": "Manuale",
-    "manualTitle": "Richiede registrazione manuale",
     "negativeBalanceWarning": "Questa transazione porterà il saldo del conto sotto zero",
     "moreItems": "+{count} altri",
     "overdue": "Scaduta",

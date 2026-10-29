@@ -4,17 +4,12 @@
     "subtitle": "Analyse de vos habitudes de dépenses et anomalies par IA"
   },
   "list": {
-    "lastUpdated": "Dernière mise à jour : {date} {time}",
     "refreshButton": "Actualiser les analyses",
-    "generating": "Génération en cours...",
     "allTypes": "Tous les types",
-    "allSeverities": "Toutes les sévérités",
     "showDismissed": "Afficher les éléments ignorés",
     "emptyNoInsights": "Aucune analyse générée. Cliquez sur « Actualiser les analyses » pour analyser vos habitudes de dépenses.",
     "emptyFiltered": "Aucune analyse ne correspond à vos filtres.",
     "generateButton": "Générer des analyses",
-    "alertCount": "{count, plural, one {# alerte} other {# alertes}}",
-    "warningCount": "{count, plural, one {# avertissement} other {# avertissements}}",
     "errorLoadFailed": "Échec du chargement des analyses. Veuillez réessayer.",
     "errorGenerateFailed": "Échec de la génération des analyses. Assurez-vous qu'un fournisseur IA est configuré.",
     "errorDismissFailed": "Impossible d'ignorer l'analyse. Veuillez réessayer.",

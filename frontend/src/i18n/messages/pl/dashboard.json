@@ -23,7 +23,6 @@
     "empty": "Brak zaległych lub nadchodzących rachunków, wpłat czy przelewów w ich oknach przypomnień.",
     "postTransaction": "Zaksięguj tę transakcję",
     "manual": "Ręczne",
-    "manualTitle": "Wymaga ręcznego zaksięgowania",
     "negativeBalanceWarning": "Ta transakcja spowoduje, że saldo konta spadnie poniżej zera",
     "moreItems": "+{count} więcej",
     "overdue": "Zaległe",

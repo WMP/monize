@@ -337,7 +337,6 @@
       "rulesSourceLabel": "该链接显示的文字",
       "rulesSourceLabelPlaceholder": "example.com",
       "rulesSourceHint": "两项均为选填，且不影响任何计算。它们会在报告页脚放一个链接，指向记录本策略所遵循规则的地方——一篇文章、书中的一页、你自己的笔记——方便日后核对你是按哪个版本设置的。",
-      "optional": "可选",
       "save": "保存配置",
       "saved": "策略配置已保存。",
       "saveError": "无法保存策略配置。",

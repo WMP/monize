@@ -337,7 +337,6 @@
       "rulesSourceLabel": "Texte à afficher pour ce lien",
       "rulesSourceLabelPlaceholder": "example.com",
       "rulesSourceHint": "Les deux sont facultatifs et n'influencent aucun calcul. Ils placent dans le pied de page du rapport un lien vers l'endroit où sont écrites les règles suivies par cette stratégie — un article, une page de livre, vos propres notes — pour que vous puissiez vérifier plus tard sur quelle version vous l'avez réglée.",
-      "optional": "Facultatif",
       "save": "Enregistrer la configuration",
       "saved": "Configuration de la stratégie enregistrée.",
       "saveError": "Impossible d'enregistrer la configuration de la stratégie.",

@@ -23,7 +23,6 @@
     "empty": "在提醒期間內沒有逾期或即將到期的帳單、存款或轉帳。",
     "postTransaction": "過帳此交易",
     "manual": "手動",
-    "manualTitle": "需要手動過帳",
     "negativeBalanceWarning": "此交易將導致科目結餘低於零",
     "moreItems": "+{count} 更多",
     "overdue": "已逾期",

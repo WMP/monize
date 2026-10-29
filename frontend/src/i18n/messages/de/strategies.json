@@ -337,7 +337,6 @@
       "rulesSourceLabel": "Anzuzeigender Text für den Link",
       "rulesSourceLabelPlaceholder": "example.com",
       "rulesSourceHint": "Beides optional und ohne Einfluss auf irgendeine Berechnung. Sie setzen in die Fußzeile des Berichts einen Link auf die Stelle, an der die Regeln dieser Strategie beschrieben sind — ein Artikel, eine Buchseite, Ihre eigenen Notizen — damit Sie später nachsehen können, gegen welche Fassung Sie sie eingerichtet haben.",
-      "optional": "Optional",
       "save": "Konfiguration speichern",
       "saved": "Strategiekonfiguration gespeichert.",
       "saveError": "Die Strategiekonfiguration konnte nicht gespeichert werden.",

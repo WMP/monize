@@ -23,7 +23,6 @@
     "empty": "Không có hóa đơn, tiền gửi hay chuyển khoản nào quá hạn hoặc sắp tới trong khung nhắc nhở.",
     "postTransaction": "Đăng giao dịch này",
     "manual": "Thủ công",
-    "manualTitle": "Yêu cầu đăng thủ công",
     "negativeBalanceWarning": "Giao dịch này sẽ khiến số dư tài khoản xuống dưới không",
     "moreItems": "+{count} thêm",
     "overdue": "Quá hạn",

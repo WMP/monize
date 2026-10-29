@@ -337,7 +337,6 @@
       "rulesSourceLabel": "Texto a mostrar para essa ligação",
       "rulesSourceLabelPlaceholder": "example.com",
       "rulesSourceHint": "Ambos opcionais e sem qualquer efeito nos cálculos. Colocam no rodapé do relatório uma ligação para o sítio onde estão escritas as regras que esta estratégia segue — um artigo, uma página de um livro, as suas próprias notas — para poder verificar mais tarde com que versão a configurou.",
-      "optional": "Opcional",
       "save": "Guardar configuração",
       "saved": "Configuração da estratégia guardada.",
       "saveError": "Não foi possível guardar a configuração da estratégia.",
