@@ -1897,10 +1897,17 @@ export class ScheduledTransactionsService {
     userId: string,
     days: number = 30,
   ): Promise<ScheduledTransaction[]> {
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + days);
+    // The window is over EFFECTIVE occurrence dates (INV-OCCURRENCE-003): a bill
+    // moved from Dec 15 to Nov 20 belongs to a 30-day window on Nov 1, and a
+    // slot moved out of the window does not.
+    const occurrences = await this.occurrences.findOccurrences(userId, {
+      through: addDaysYMD(todayYMD(), days),
+      maxOccurrences: 1,
+    });
+    const ids = occurrences.map((o) => o.scheduledTransactionId);
+    if (ids.length === 0) return [];
 
-    return withScopedDb(this.dataSource, (m) =>
+    const rows = await withScopedDb(this.dataSource, (m) =>
       m
         .getRepository(ScheduledTransaction)
         .createQueryBuilder("st")
@@ -1923,10 +1930,11 @@ export class ScheduledTransactionsService {
         )
         .where("st.userId = :userId", { userId })
         .andWhere("st.isActive = :isActive", { isActive: true })
-        .andWhere("st.nextDueDate <= :futureDate", { futureDate })
-        .orderBy("st.nextDueDate", "ASC")
+        .andWhere("st.id IN (:...ids)", { ids })
         .getMany(),
     );
+    const order = new Map(ids.map((id, i) => [id, i]));
+    return rows.sort((a, b) => order.get(a.id)! - order.get(b.id)!);
   }
 
   /**
@@ -2237,8 +2245,17 @@ export class ScheduledTransactionsService {
       fieldsToUpdate.categoryId = updateData.categoryId || null;
     if (updateData.amount !== undefined)
       fieldsToUpdate.amount = updateData.amount;
-    if (updateData.currencyCode !== undefined)
-      fieldsToUpdate.currencyCode = updateData.currencyCode;
+    // The currency is the (new) account's, never the request's: refuse a
+    // mismatch and re-derive it when the account changes.
+    const derivedCurrencyCode = assertTransactionCurrencyMatchesAccount(
+      updateData.currencyCode,
+      accountCurrencyCode,
+    );
+    if (
+      updateData.currencyCode !== undefined ||
+      derivedCurrencyCode !== scheduled.currencyCode
+    )
+      fieldsToUpdate.currencyCode = derivedCurrencyCode;
 
     // Foreign-currency entry. Only a plain schedule can carry one, so switching
     // an existing foreign-currency schedule to split/transfer/investment clears

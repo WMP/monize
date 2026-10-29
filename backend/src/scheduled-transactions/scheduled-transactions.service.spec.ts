@@ -1288,28 +1288,55 @@ describe("ScheduledTransactionsService", () => {
 
   // ==================== findUpcoming ====================
   describe("findUpcoming", () => {
-    it("should query with default 30 days", async () => {
-      const qb = mockQueryBuilder([]);
+    const occurrenceFor = (id: string) =>
+      ({ scheduledTransactionId: id }) as any;
+
+    it("windows on effective occurrence dates and loads those schedules", async () => {
+      const findOccurrences = jest
+        .spyOn((service as any).occurrences, "findOccurrences")
+        .mockResolvedValue([occurrenceFor("s-b"), occurrenceFor("s-a")]);
+      const qb = mockQueryBuilder([
+        makeScheduled({ id: "s-a" }),
+        makeScheduled({ id: "s-b" }),
+      ]);
       scheduledRepo.createQueryBuilder.mockReturnValue(qb);
 
-      await service.findUpcoming(userId);
+      const result = await service.findUpcoming(userId, 7);
 
-      expect(qb.where).toHaveBeenCalledWith("st.userId = :userId", { userId });
-      expect(qb.andWhere).toHaveBeenCalledWith("st.isActive = :isActive", {
-        isActive: true,
+      expect(findOccurrences).toHaveBeenCalledWith(userId, {
+        through: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        maxOccurrences: 1,
       });
+      expect(qb.andWhere).toHaveBeenCalledWith("st.id IN (:...ids)", {
+        ids: ["s-b", "s-a"],
+      });
+      // Effective-date order, not the order the database returned.
+      expect(result.map((r) => r.id)).toEqual(["s-b", "s-a"]);
     });
 
-    it("should accept custom days parameter", async () => {
-      const qb = mockQueryBuilder([]);
-      scheduledRepo.createQueryBuilder.mockReturnValue(qb);
-
-      await service.findUpcoming(userId, 7);
-
-      expect(qb.andWhere).toHaveBeenCalledWith(
-        "st.nextDueDate <= :futureDate",
-        expect.objectContaining({ futureDate: expect.any(Date) }),
+    it("includes a bill whose slot is outside the window but whose override moved it in", async () => {
+      // nextDueDate Dec 15 moved to Nov 20: the old slot-date filter lost it.
+      scheduledRepo.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder([
+          makeScheduled({ id: "s-moved", nextDueDate: "2099-12-15" as any }),
+        ]),
       );
+      jest
+        .spyOn((service as any).occurrences, "findOccurrences")
+        .mockResolvedValue([occurrenceFor("s-moved")]);
+
+      const result = await service.findUpcoming(userId);
+
+      expect(result.map((r) => r.id)).toEqual(["s-moved"]);
+    });
+
+    it("returns nothing, and runs no schedule query, when no occurrence falls in the window", async () => {
+      jest
+        .spyOn((service as any).occurrences, "findOccurrences")
+        .mockResolvedValue([]);
+
+      expect(await service.findUpcoming(userId)).toEqual([]);
+      expect(scheduledRepo.createQueryBuilder).not.toHaveBeenCalled();
     });
   });
 
@@ -2039,6 +2066,32 @@ describe("ScheduledTransactionsService", () => {
       await service.update(userId, stId, { accountId: "acc-2" });
 
       expect(accountsService.findOne).toHaveBeenCalledWith(userId, "acc-2");
+    });
+
+    it("refuses a currencyCode other than the account's before writing", async () => {
+      stubFindOne(makeScheduled());
+
+      await expect(
+        service.update(userId, stId, { currencyCode: "EUR" }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+    });
+
+    it("re-derives the currency from the new account when accountId changes", async () => {
+      stubFindOne(makeScheduled());
+      accountsService.findOne.mockResolvedValue({
+        id: "acc-2",
+        userId,
+        currencyCode: "PLN",
+      });
+
+      await service.update(userId, stId, { accountId: "acc-2" });
+
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        ScheduledTransaction,
+        stId,
+        expect.objectContaining({ accountId: "acc-2", currencyCode: "PLN" }),
+      );
     });
 
     it("should throw if transfer account same as source on update", async () => {
