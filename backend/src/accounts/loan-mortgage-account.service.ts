@@ -276,7 +276,19 @@ export class LoanMortgageAccountService {
       new Date(paymentStartDate),
     );
 
-    const savedAccount = await withScopedDb(this.dataSource, (m) => {
+    const endDateStr =
+      // The same ceiling the end-date helpers date up to. Two literals
+      // disagreed at the boundary: the util dated exactly 10000 while this
+      // refused it, so one schedule had a payoff date and no scheduled end.
+      amortization.totalPayments > 0 &&
+      amortization.totalPayments <= MAX_DATEABLE_PAYMENTS
+        ? formatDateYMD(amortization.endDate)
+        : undefined;
+
+    // One transaction for the account, its schedule and the link between them:
+    // a schedule the splits check refuses rolls the account back too, so a
+    // retry cannot duplicate it. The schedule service's own withScopedDb joins.
+    const savedAccount = await withScopedDb(this.dataSource, async (m) => {
       const repo = m.getRepository(Account);
       const account = repo.create({
         ...accountData,
@@ -294,59 +306,46 @@ export class LoanMortgageAccountService {
         sourceAccountId,
         interestCategoryId: interestCatId,
       });
-      return repo.save(account);
-    });
+      const saved = await repo.save(account);
 
-    const endDateStr =
-      // The same ceiling the end-date helpers date up to. Two literals
-      // disagreed at the boundary: the util dated exactly 10000 while this
-      // refused it, so one schedule had a payoff date and no scheduled end.
-      amortization.totalPayments > 0 &&
-      amortization.totalPayments <= MAX_DATEABLE_PAYMENTS
-        ? formatDateYMD(amortization.endDate)
-        : undefined;
-
-    const scheduledTransaction = await this.scheduledTransactionsService.create(
-      userId,
-      {
-        accountId: sourceAccountId,
-        name: `Loan Payment - ${savedAccount.name}`,
-        payeeName: institutionName,
-        amount: -paymentAmount,
-        currencyCode: accountData.currencyCode,
-        // Through the loan-to-recurrence table rather than a cast. Every loan
-        // frequency happens to share its spelling with a recurrence frequency
-        // except SEMIMONTHLY, and a cast is exactly how that kind of mismatch
-        // reaches the database unvalidated (`as any` skips class-validator: the
-        // pipe only runs on controller input, and the column has no CHECK).
-        frequency:
-          FrequencyTypeDto[
-            LOAN_FREQUENCY_TO_RECURRENCE[paymentFrequency as PaymentFrequency]
+      const scheduledTransaction =
+        await this.scheduledTransactionsService.create(userId, {
+          accountId: sourceAccountId,
+          name: `Loan Payment - ${saved.name}`,
+          payeeName: institutionName,
+          amount: -paymentAmount,
+          currencyCode: accountData.currencyCode,
+          // Through the loan-to-recurrence table rather than a cast. Every loan
+          // frequency happens to share its spelling with a recurrence frequency
+          // except SEMIMONTHLY, and a cast is exactly how that kind of mismatch
+          // reaches the database unvalidated (`as any` skips class-validator: the
+          // pipe only runs on controller input, and the column has no CHECK).
+          frequency:
+            FrequencyTypeDto[
+              LOAN_FREQUENCY_TO_RECURRENCE[paymentFrequency as PaymentFrequency]
+            ],
+          nextDueDate: paymentStartDate,
+          startDate: paymentStartDate,
+          endDate: endDateStr,
+          isActive: true,
+          autoPost: false,
+          splits: [
+            {
+              transferAccountId: saved.id,
+              amount: -amortization.principalPayment,
+              memo: "Principal",
+            },
+            {
+              categoryId: interestCatId,
+              amount: -amortization.interestPayment,
+              memo: "Interest",
+            },
           ],
-        nextDueDate: paymentStartDate,
-        startDate: paymentStartDate,
-        endDate: endDateStr,
-        isActive: true,
-        autoPost: false,
-        splits: [
-          {
-            transferAccountId: savedAccount.id,
-            amount: -amortization.principalPayment,
-            memo: "Principal",
-          },
-          {
-            categoryId: interestCatId,
-            amount: -amortization.interestPayment,
-            memo: "Interest",
-          },
-        ],
-      },
-    );
+        });
 
-    savedAccount.scheduledTransactionId = scheduledTransaction.id;
-    await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(Account).save(savedAccount),
-    );
+      saved.scheduledTransactionId = scheduledTransaction.id;
+      return repo.save(saved);
+    });
 
     return this.withPaymentMatching(userId, savedAccount, paymentMatching);
   }

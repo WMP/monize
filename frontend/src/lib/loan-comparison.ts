@@ -17,9 +17,8 @@ import { roundToCents } from '@/lib/format';
 
 /**
  * The annual rate (percentage) in effect on a given date: the latest row with
- * `effectiveDate <= date`, else the earliest row's rate (a date before the
- * first recorded change still amortizes at the origination rate), else the
- * fallback. Shared by the schedule table (per-row historical rate) and
+ * `effectiveDate <= date`, else the fallback (the account's rate; a row dated
+ * after the date is never used). Shared by the schedule table (per-row historical rate) and
  * `buildRateTimeline`'s starting rate.
  */
 export function effectiveAnnualRateOn(
@@ -34,7 +33,9 @@ export function effectiveAnnualRateOn(
   if (atOrBefore.length > 0) {
     return atOrBefore[atOrBefore.length - 1].annualRate;
   }
-  return sorted[0]?.annualRate ?? fallbackAnnualRate;
+  // Nothing on or before the date: the account's own rate, as the backend's
+  // `effective-loan-rate.util.ts` does, never a row dated in the future.
+  return fallbackAnnualRate;
 }
 
 /**
@@ -58,11 +59,12 @@ export function buildRateTimeline(
   const atOrBefore = sorted.filter(
     (row) => row.effectiveDate <= scheduleStartIso,
   );
-  const startingAnnualRate = effectiveAnnualRateOn(
-    rows,
-    scheduleStartIso,
-    fallbackAnnualRate,
-  );
+  // A schedule anchored at origination may start before the first row: the
+  // earliest row is then the origination rate (unlike `effectiveAnnualRateOn`).
+  const startingAnnualRate =
+    atOrBefore.length === 0 && sorted.length > 0
+      ? sorted[0].annualRate
+      : effectiveAnnualRateOn(rows, scheduleStartIso, fallbackAnnualRate);
   // Mirror the rate's "before the earliest row, the earliest row applies"
   // fallback for the payment: a schedule starting shortly before the first
   // recorded row (payment_start_date precedes the first installment, which is

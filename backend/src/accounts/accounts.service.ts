@@ -1148,6 +1148,7 @@ export class AccountsService {
             userId,
             id,
             updateAccountDto.sourceAccountId!,
+            updateAccountDto.currencyCode ?? account.currencyCode,
           );
           account.sourceAccountId = updateAccountDto.sourceAccountId!;
         }

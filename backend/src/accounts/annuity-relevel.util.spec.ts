@@ -1,0 +1,50 @@
+import { EntityManager } from "typeorm";
+import { Account } from "./entities/account.entity";
+import { datedAnnuityInstallment } from "./annuity-relevel.util";
+import { recalculateMortgageAfterRateChange } from "./mortgage-amortization.util";
+
+describe("datedAnnuityInstallment remaining term", () => {
+  const DEBT = 200000;
+  const manager = {
+    query: jest.fn().mockResolvedValue([{ balance: String(-DEBT) }]),
+  } as unknown as EntityManager;
+
+  const account = (overrides: Partial<Account>): Account =>
+    ({
+      id: "loan-1",
+      userId: "user-1",
+      mortgageType: "ANNUITY",
+      paymentFrequency: "MONTHLY",
+      paymentStartDate: "2024-01-01",
+      amortizationMonths: 300,
+      ...overrides,
+    }) as unknown as Account;
+
+  const expected = (months: number) =>
+    recalculateMortgageAfterRateChange(DEBT, 5, months, "MONTHLY", "ANNUITY")
+      .paymentAmount;
+
+  it("leaves one period fewer when the payment on the effective date is posted", async () => {
+    // Payments 1..3 fall on 01-01, 02-01, 03-01: all in the debt, 297 remain.
+    const payment = await datedAnnuityInstallment(
+      manager,
+      account({}),
+      5,
+      "2024-03-01",
+    );
+    expect(payment).toBe(expected(297));
+    expect(payment).not.toBe(expected(298));
+  });
+
+  it("does not re-amortize 5 remaining months over a 12-month floor", async () => {
+    // 14-month term, 11 payments through 2024-11-01: 3 remain.
+    const payment = await datedAnnuityInstallment(
+      manager,
+      account({ amortizationMonths: 14 }),
+      5,
+      "2024-11-01",
+    );
+    expect(payment).toBe(expected(3));
+    expect(payment).not.toBe(expected(12));
+  });
+});

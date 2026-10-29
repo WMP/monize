@@ -393,6 +393,56 @@ describe("LoanMortgageAccountService", () => {
       expect(scheduledTransactionsService.create).not.toHaveBeenCalled();
     });
 
+    it("saves the account, creates the schedule and relinks in ONE transaction", async () => {
+      const ds = (service as any).dataSource as { transaction: jest.Mock };
+      const original = ds.transaction.getMockImplementation()!;
+      let txId = 0;
+      let current = 0;
+      ds.transaction.mockImplementation(async (...args: unknown[]) => {
+        const mine = ++txId;
+        current = mine;
+        return (original as any)(...args);
+      });
+      const saveTxIds: number[] = [];
+      accountsRepository.save.mockImplementation(async (a: any) => {
+        saveTxIds.push(current);
+        return { id: "loan-1", ...a };
+      });
+      let scheduleTxId = -1;
+      scheduledTransactionsService.create.mockImplementation(async () => {
+        scheduleTxId = current;
+        return { id: "sched-tx-1" };
+      });
+
+      await service.createLoanAccount(userId, makeValidLoanDto());
+
+      expect(saveTxIds).toHaveLength(2);
+      expect(new Set(saveTxIds)).toEqual(new Set([scheduleTxId]));
+    });
+
+    it("rolls the account back when the schedule create is refused", async () => {
+      const ds = (service as any).dataSource as { transaction: jest.Mock };
+      const results: Promise<unknown>[] = [];
+      const original = ds.transaction.getMockImplementation()!;
+      ds.transaction.mockImplementation((...args: unknown[]) => {
+        const p = (original as any)(...args);
+        results.push(p);
+        return p;
+      });
+      scheduledTransactionsService.create.mockRejectedValue(
+        new BadRequestException("splits"),
+      );
+
+      await expect(
+        service.createLoanAccount(userId, makeValidLoanDto()),
+      ).rejects.toThrow(BadRequestException);
+
+      // The transaction that saved the account is the one that failed.
+      expect(accountsRepository.save).toHaveBeenCalledTimes(1);
+      const settled = await Promise.allSettled(results);
+      expect(settled.some((s) => s.status === "rejected")).toBe(true);
+    });
+
     it("creates the loan when the payment account is in its currency", async () => {
       accountsRepository.findOne.mockResolvedValue({
         id: "acc-chequing",

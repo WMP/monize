@@ -7,6 +7,7 @@ import {
   getPeriodicRate,
   recalculateMortgageAfterRateChange,
 } from "./mortgage-amortization.util";
+import { calendarPaymentNumber } from "./mortgage-installment.util";
 import { mortgageTypeOf } from "./mortgage-type.util";
 import {
   DEFAULT_PERIODS_PER_YEAR,
@@ -61,12 +62,33 @@ export async function datedAnnuityInstallment(
     );
   }
   const mortgageType = mortgageTypeOf(account);
-  const startDate = toYmd(account.paymentStartDate) ?? todayYMD();
-  const monthsElapsed = monthsBetweenYmd(startDate, asOfDate);
-  const remainingAmortizationMonths = Math.max(
-    12,
-    (account.amortizationMonths || 300) - monthsElapsed,
+  const totalMonths = account.amortizationMonths || 300;
+  // The debt is read through `asOfDate`, so every payment due on or before it
+  // is already reflected in it: count those payments (INV-LOAN-005 calendar),
+  // not calendar months, or one period too many is left to amortize. No
+  // 12-month floor: 5 remaining months are not re-amortized over 12.
+  const paymentsReflected = calendarPaymentNumber(
+    { ...account, amortizationMonths: totalMonths },
+    asOfDate,
   );
+  const monthsPerPayment =
+    12 /
+    (periodsPerYearForStoredFrequency(account.paymentFrequency) ??
+      DEFAULT_PERIODS_PER_YEAR);
+  const remainingAmortizationMonths =
+    paymentsReflected === null
+      ? Math.max(
+          1,
+          totalMonths -
+            monthsBetweenYmd(
+              toYmd(account.paymentStartDate) ?? todayYMD(),
+              asOfDate,
+            ),
+        )
+      : Math.max(
+          1,
+          Math.round(totalMonths - paymentsReflected * monthsPerPayment),
+        );
 
   // Converted, not cast. `recalculateMortgageAfterRateChange` derives its
   // periodic rate from a MORTGAGE-domain cadence, and the column can hold the

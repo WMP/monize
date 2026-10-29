@@ -953,7 +953,11 @@ describe("AccountsService", () => {
       it("moves the linked schedule to a changed source account", async () => {
         mockQueryRunner.manager.findOne
           .mockResolvedValueOnce({ ...mortgage })
-          .mockResolvedValueOnce({ id: "chequing-new", isClosed: false })
+          .mockResolvedValueOnce({
+            id: "chequing-new",
+            isClosed: false,
+            currencyCode: "USD",
+          })
           .mockResolvedValueOnce({ id: "sched-1", accountId: "chequing-old" });
         mockQueryRunner.manager.find.mockResolvedValue([]);
 
@@ -979,6 +983,24 @@ describe("AccountsService", () => {
         await expect(
           service.update("user-1", "mortgage-1", {
             sourceAccountId: "someone-elses",
+          }),
+        ).rejects.toThrow(BadRequestException);
+        expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+        expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      });
+
+      it("refuses a source account in another currency than the loan before writing", async () => {
+        mockQueryRunner.manager.findOne
+          .mockResolvedValueOnce({ ...mortgage, currencyCode: "CAD" })
+          .mockResolvedValueOnce({
+            id: "chequing-eur",
+            isClosed: false,
+            currencyCode: "EUR",
+          });
+
+        await expect(
+          service.update("user-1", "mortgage-1", {
+            sourceAccountId: "chequing-eur",
           }),
         ).rejects.toThrow(BadRequestException);
         expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
