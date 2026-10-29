@@ -1595,7 +1595,9 @@ export class TransactionAnalyticsService {
           netByCategory ? `${SPLIT_AMOUNT} <> 0` : `${SPLIT_AMOUNT} < 0`,
         );
       } else if (direction === "income") {
-        qb.andWhere(`${SPLIT_AMOUNT} > 0`);
+        qb.andWhere(
+          netByCategory ? `${SPLIT_AMOUNT} <> 0` : `${SPLIT_AMOUNT} > 0`,
+        );
       }
 
       if (accountIds && accountIds.length > 0) {
@@ -1682,6 +1684,11 @@ export class TransactionAnalyticsService {
             // unknown, not spent-in-nothing.
             groups = groups.filter(
               (g) => isNetSpending(g.agg.knownSubtotal) || !g.agg.isComplete,
+            );
+          } else if (direction === "income") {
+            // Salary +5000 / -200 correction is 4800 income, like the report.
+            groups = groups.filter(
+              (g) => g.agg.knownSubtotal > 0 || !g.agg.isComplete,
             );
           }
           finish(groups);

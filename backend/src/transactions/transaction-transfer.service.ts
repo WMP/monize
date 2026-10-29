@@ -462,18 +462,28 @@ export class TransactionTransferService {
     if (financialStructureChanged) {
       // An echoed untrusted stored rate (1 on a zero-amount cross-currency
       // transfer) is not a rate the user chose: resolve one instead.
-      const suppliedRate =
+      const untrusted =
         input.fromAccount.currencyCode !== input.toAccount.currencyCode &&
         this.isStoredRateUntrusted(
           input.existingFromAmount,
           input.existingExchangeRate,
-        ) &&
+        );
+      const suppliedRate =
+        untrusted &&
         updateDto.exchangeRate !== undefined &&
         input.existingExchangeRate != null &&
         roundFxRate(Number(updateDto.exchangeRate)) ===
           roundFxRate(Number(input.existingExchangeRate))
           ? undefined
           : updateDto.exchangeRate;
+      // The stored toAmount (0) of an untrusted row is an echo too: forwarding
+      // it would make amount 500 against toAmount 0 a refusal.
+      const suppliedToAmount =
+        untrusted &&
+        updateDto.toAmount !== undefined &&
+        roundMoney(updateDto.toAmount) === roundMoney(input.existingToAmount)
+          ? undefined
+          : updateDto.toAmount;
       const fx = await this.resolveTransferFx({
         fromAccount: input.fromAccount,
         toAccount: input.toAccount,
@@ -482,7 +492,7 @@ export class TransactionTransferService {
         suppliedFromCurrencyCode: updateDto.fromCurrencyCode,
         suppliedToCurrencyCode: updateDto.toCurrencyCode,
         suppliedExchangeRate: suppliedRate,
-        suppliedToAmount: updateDto.toAmount,
+        suppliedToAmount,
       });
       return { ...fx, repriced: true };
     }

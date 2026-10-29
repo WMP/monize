@@ -1026,9 +1026,14 @@ export class AccountsService {
           const scheduleCount = await m.count(ScheduledTransaction, {
             where: { accountId: id, isActive: true },
           });
+          // A form resends the stored balance unchanged; only a value
+          // difference is a balance chosen for the new currency.
+          const replacesOpeningBalance =
+            updateAccountDto.openingBalance !== undefined &&
+            roundMoney(Number(updateAccountDto.openingBalance)) !==
+              roundMoney(Number(account.openingBalance));
           const keepsOldOpeningBalance =
-            updateAccountDto.openingBalance === undefined &&
-            Number(account.openingBalance) !== 0;
+            !replacesOpeningBalance && Number(account.openingBalance) !== 0;
           if (keepsOldOpeningBalance || scheduleCount > 0) {
             throw new BadRequestException(
               tr(

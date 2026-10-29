@@ -23,6 +23,7 @@ import { SecurityAccountsTable } from '@/components/securities/detail/SecurityAc
 import { SecurityBondBreakdownCard } from '@/components/securities/detail/SecurityBondBreakdownCard';
 import { SecurityBreakdownCard } from '@/components/securities/detail/SecurityBreakdownCard';
 import { SecurityBondCard } from '@/components/securities/detail/SecurityBondCard';
+import { useFinancialToday } from '@/hooks/useFinancialToday';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { usePriceRefresh } from '@/hooks/usePriceRefresh';
@@ -291,6 +292,7 @@ function SecurityDetailContent() {
   // newest session's date and no change figure. A move for another session
   // than the newest close shown (a stale read) is not shown under it.
   const serverChange = detail?.dailyChange ?? null;
+  const financialToday = useFinancialToday();
   const quote = useMemo(() => {
     const latest = priceSeries[priceSeries.length - 1];
     if (!latest) return null;
@@ -307,10 +309,11 @@ function SecurityDetailContent() {
       quotedAt: latest.quotedAt ?? null,
       change: move ? roundToDecimals(move.dailyChange, 6) : null,
       changePercent: move ? roundToDecimals(move.dailyChangePercent, 2) : null,
-      // The server only answers a move while its session is current.
-      isCurrent: true,
+      // The server accepts the last session's move too (Friday's close read on
+      // Saturday), so only today's own session is labelled "today".
+      isCurrent: move ? move.priceDate === financialToday : false,
     };
-  }, [priceSeries, serverChange]);
+  }, [priceSeries, serverChange, financialToday]);
 
   const handleToggleFavourite = useCallback(async () => {
     if (!detail) return;

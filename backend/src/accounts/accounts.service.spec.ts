@@ -858,6 +858,34 @@ describe("AccountsService", () => {
       expect(result.currencyCode).toBe("EUR");
     });
 
+    it("refuses a currency change when the form resends the unchanged opening balance", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        openingBalance: 1000,
+      });
+
+      await expect(
+        service.update("user-1", "account-1", {
+          currencyCode: "EUR",
+          openingBalance: 1000,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("allows a currency change when the opening balance sent differs from the stored one", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        openingBalance: 1000,
+      });
+
+      const result = await service.update("user-1", "account-1", {
+        currencyCode: "EUR",
+        openingBalance: 800,
+      });
+
+      expect(result.currencyCode).toBe("EUR");
+    });
+
     it("allows a currency change on a fresh zero-balance account", async () => {
       mockQueryRunner.manager.findOne.mockResolvedValue({
         ...mockAccount,

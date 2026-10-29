@@ -2111,6 +2111,37 @@ describe("ScheduledTransactionsService", () => {
       );
     });
 
+    it("treats a resent stale stored currencyCode as an echo and re-derives from the account", async () => {
+      stubFindOne(makeScheduled({ currencyCode: "CAD" }));
+      accountsService.findOne.mockResolvedValue({
+        id: "acc-1",
+        userId,
+        currencyCode: "USD",
+      });
+
+      await service.update(userId, stId, { currencyCode: "CAD" });
+
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        ScheduledTransaction,
+        stId,
+        expect.objectContaining({ currencyCode: "USD" }),
+      );
+    });
+
+    it("still refuses a currencyCode that matches neither the stored value nor the account", async () => {
+      stubFindOne(makeScheduled({ currencyCode: "CAD" }));
+      accountsService.findOne.mockResolvedValue({
+        id: "acc-1",
+        userId,
+        currencyCode: "USD",
+      });
+
+      await expect(
+        service.update(userId, stId, { currencyCode: "EUR" }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+    });
+
     it("should throw if transfer account same as source on update", async () => {
       const scheduled = makeScheduled({ accountId: "acc-1" });
       stubFindOne(scheduled);

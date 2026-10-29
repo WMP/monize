@@ -11,10 +11,7 @@ import {
   FlexGroupStatusResult,
 } from "./budget-reports.service";
 import { formatDateYMD } from "../common/date-utils";
-import {
-  queryCategorySpendingBuckets,
-  resolveCategorySpent,
-} from "./budget-spending.util";
+import { queryCategorySpendingBuckets } from "./budget-spending.util";
 import { queryMonthlyCategorySpent } from "./budget-monthly-spending.util";
 import { enumerateDaysYMD } from "../net-worth/series-dates.util";
 import { roundMoney, roundToDecimals, sumMoney } from "../common/round.util";
@@ -178,11 +175,14 @@ export class BudgetActivityReportsService {
           amount: roundMoney(
             sumMoney(
               categories.map((bc) =>
-                resolveCategorySpent(
-                  bc,
-                  spending.spendingMap,
-                  spending.transferSpendingMap,
-                ),
+                // Signed net, not the clamped `resolveCategorySpent`: a refund
+                // day is negative so the days sum to the period net the budget
+                // page shows.
+                bc.isTransfer && bc.transferAccountId
+                  ? spending.transferSpendingMap.get(bc.transferAccountId) || 0
+                  : -(bc.categoryId
+                      ? spending.spendingMap.get(bc.categoryId) || 0
+                      : 0),
               ),
             ),
           ),

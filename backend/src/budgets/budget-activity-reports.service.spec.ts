@@ -365,10 +365,9 @@ describe("BudgetActivityReportsService", () => {
       ]);
     });
 
-    it("counts a refund against its own category, not as spending", async () => {
+    it("nets a refund inside the day's own category", async () => {
       periodsRepository.findOne.mockResolvedValueOnce(openPeriod);
-      // Net of -100 and +30 in one category is -70; a category whose credits
-      // exceed its debits (+40) is not spending.
+      // Net of -100 and +30 in one category is -70; the +40 category nets -40.
       mockedSpending.mockResolvedValue(
         bucketed({ "2026-02-03": spending({ "cat-1": -70, "cat-2": 40 }) }),
       );
@@ -376,8 +375,23 @@ describe("BudgetActivityReportsService", () => {
       const result = await service.getDailySpending("user-1", "budget-1");
 
       expect(result).toEqual([
-        { date: "2026-02-03", amount: 70, valuationComplete: true },
+        { date: "2026-02-03", amount: 30, valuationComplete: true },
       ]);
+    });
+
+    it("reports a refund day as negative so the days sum to the period net", async () => {
+      periodsRepository.findOne.mockResolvedValueOnce(openPeriod);
+      mockedSpending.mockResolvedValue(
+        bucketed({
+          "2026-02-03": spending({ "cat-1": -100 }),
+          "2026-02-10": spending({ "cat-1": 40 }),
+        }),
+      );
+
+      const result = await service.getDailySpending("user-1", "budget-1");
+
+      expect(result.map((d) => d.amount)).toEqual([100, -40]);
+      expect(result.reduce((s, d) => s + d.amount, 0)).toBe(60);
     });
 
     it("marks a day incomplete when a row had no rate, keeping what converted", async () => {

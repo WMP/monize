@@ -369,18 +369,31 @@ export async function queryCategorySpendingBuckets(
     return { totals, pairs };
   };
 
-  const bucketKeys = new Set(
-    [...categoryRows, ...transferRows].map((r) => bucketOf(r.txDate)),
-  );
+  // One pass per row set, so the work is O(rows), not O(buckets x rows).
+  const groupByBucket = (rows: SpendingRow[]): Map<string, SpendingRow[]> => {
+    const grouped = new Map<string, SpendingRow[]>();
+    for (const row of rows) {
+      const key = bucketOf(row.txDate);
+      const list = grouped.get(key);
+      if (list) list.push(row);
+      else grouped.set(key, [row]);
+    }
+    return grouped;
+  };
+  const categoryByBucket = groupByBucket(categoryRows);
+  const transferByBucket = groupByBucket(transferRows);
+  const bucketKeys = new Set([
+    ...categoryByBucket.keys(),
+    ...transferByBucket.keys(),
+  ]);
   for (const bucket of bucketKeys) {
-    const inBucket = (r: SpendingRow) => bucketOf(r.txDate) === bucket;
     const spending = emptyCategorySpending(currency);
-    const categories = fold(categoryRows.filter(inBucket));
+    const categories = fold(categoryByBucket.get(bucket) ?? []);
     for (const [key, agg] of categories.totals) {
       spending.spendingMap.set(key, agg.knownSubtotal);
       if (!agg.isComplete) spending.incompleteCategoryIds.add(key);
     }
-    const transfers = fold(transferRows.filter(inBucket));
+    const transfers = fold(transferByBucket.get(bucket) ?? []);
     for (const [key, agg] of transfers.totals) {
       spending.transferSpendingMap.set(key, agg.knownSubtotal);
       if (!agg.isComplete) spending.incompleteTransferAccountIds.add(key);

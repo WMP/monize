@@ -743,7 +743,13 @@ export class TransactionBulkUpdateService {
           removedBySplitCleanup.add(split.linkedTransactionId);
         }
       }
+      // A selected leg the cleanup already removed is a selected row deleted:
+      // the primary DELETE below no longer sees it, so count it here.
+      let removedSelectedBySplitCleanup = 0;
       for (const id of removedBySplitCleanup) {
+        if (transactionIdsSet.has(id) && locked.has(id)) {
+          removedSelectedBySplitCleanup++;
+        }
         locked.delete(id);
         linkedIdsToDelete.delete(id);
       }
@@ -789,7 +795,7 @@ export class TransactionBulkUpdateService {
         .execute();
       // What the database removed, not what the pre-read hoped to remove: a row
       // a concurrent request already deleted must not be counted twice.
-      deleted = primaryDeleted.affected ?? 0;
+      deleted = (primaryDeleted.affected ?? 0) + removedSelectedBySplitCleanup;
 
       for (const accountId of [...recalcAccountIds].sort()) {
         await this.accountsService.recalculateCurrentBalance(userId, accountId);

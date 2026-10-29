@@ -2607,6 +2607,45 @@ describe("TransactionAnalyticsService", () => {
       ).toEqual([["cat-food", 70]]);
     });
 
+    it("nets a correction into its income category and drops a net-negative one", async () => {
+      // Salary: +5000 and a -200 correction -> 4800, as the income report shows.
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            categoryId: "cat-food",
+            currencyCode: "USD",
+            txDate: "2026-01-10",
+            total: "4800",
+            count: "2",
+          },
+          {
+            categoryId: "cat-travel",
+            currencyCode: "USD",
+            txDate: "2026-01-10",
+            total: "-20",
+            count: "1",
+          },
+        ]);
+
+      const result = await service.getLlmQueryTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: "category",
+        direction: "income",
+      });
+
+      const wheres = (mockQueryBuilder.andWhere.mock.calls as any[][]).map(
+        (c) => c[0],
+      );
+      expect(wheres).toContain("COALESCE(ts.amount, t.amount) <> 0");
+      expect(wheres).not.toContain("COALESCE(ts.amount, t.amount) > 0");
+      expect(
+        (result.breakdown as any[]).map((r) => [r.categoryId, r.total]),
+      ).toEqual([["cat-food", 4800]]);
+    });
+
     it("applies income direction filter", async () => {
       mockQueryBuilder.getRawMany.mockResolvedValue([]);
 

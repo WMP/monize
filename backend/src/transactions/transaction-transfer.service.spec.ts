@@ -2712,6 +2712,36 @@ describe("TransactionTransferService", () => {
         );
       });
 
+      it("resolves a rate for a full form resend of a zero-amount transfer (echoed rate and toAmount)", async () => {
+        accountsService.findOne.mockImplementation((_u: string, id: string) =>
+          Promise.resolve(id === "to-account" ? eurTo : mockFromAccount),
+        );
+        exchangeRateService.getRateForDate.mockResolvedValue(0.9);
+        const zeroFrom = { ...usdFromTx, amount: -0 } as unknown as Transaction;
+        const zeroTo = {
+          ...eurToTx,
+          amount: 0,
+          exchangeRate: 1,
+        } as unknown as Transaction;
+        mockFindOne
+          .mockResolvedValueOnce(zeroTo)
+          .mockResolvedValueOnce(zeroFrom)
+          .mockResolvedValueOnce(zeroTo)
+          .mockResolvedValueOnce(zeroFrom);
+
+        await service.updateTransfer(
+          "user-1",
+          "to-tx",
+          { amount: 500, exchangeRate: 1, toAmount: 0 },
+          mockFindOne,
+        );
+
+        expect(transactionsRepository.update).toHaveBeenCalledWith(
+          "to-tx",
+          expect.objectContaining({ exchangeRate: 0.9, amount: 450 }),
+        );
+      });
+
       it("refuses moving a leg into a closed account", async () => {
         accountsService.findOne.mockImplementation((_u: string, id: string) =>
           Promise.resolve(

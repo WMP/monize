@@ -4,6 +4,10 @@ import SecurityDetailPage from './page';
 import type { Security, SecurityDetail } from '@/types/investment';
 
 const mockPush = vi.fn();
+const financialToday = { current: '2026-07-28' };
+vi.mock('@/hooks/useFinancialToday', () => ({
+  useFinancialToday: () => financialToday.current,
+}));
 /** Mutable so a test can arrive with `?tab=` the way a deep link does. */
 const searchParams = { current: new URLSearchParams() };
 /**
@@ -337,6 +341,20 @@ describe('SecurityDetailPage', () => {
       );
       await renderPage();
       expect(screen.getByText(/\+\$?5\.00.*today/)).toBeInTheDocument();
+    });
+
+    it('labels a move from an earlier session as the last move, not today', async () => {
+      financialToday.current = '2026-07-29';
+      try {
+        mockGetSecurityDetail.mockResolvedValue(
+          detailFixture({ dailyChange: serverMove }),
+        );
+        await renderPage();
+        expect(screen.getByText(/\+\$?5\.00.*last move/)).toBeInTheDocument();
+        expect(screen.queryByText(/today/)).not.toBeInTheDocument();
+      } finally {
+        financialToday.current = '2026-07-28';
+      }
     });
 
     it('shows the newest close and no move when the server refuses', async () => {

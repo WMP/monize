@@ -2870,6 +2870,85 @@ describe("TransactionBulkUpdateService", () => {
       );
     });
 
+    it("counts a selected split-transfer leg the split cleanup already removed", async () => {
+      // A -100 split to B (-60 line, +60 leg) and C (-40 line, +40 leg); the
+      // user selects B's leg only.
+      makeTransaction({
+        id: "parent",
+        accountId: "acc-a",
+        amount: -100,
+        isSplit: true,
+      });
+      const bLeg = makeTransaction({
+        id: "leg-b",
+        accountId: "acc-b",
+        amount: 60,
+        isTransfer: true,
+        linkedTransactionId: "parent",
+      });
+      makeTransaction({
+        id: "leg-c",
+        accountId: "acc-c",
+        amount: 40,
+        isTransfer: true,
+        linkedTransactionId: "parent",
+      });
+
+      const resolveQb = createMockQueryBuilder({
+        getMany: jest.fn().mockResolvedValue([{ id: "leg-b" }]),
+      });
+      const detailsQb = createMockQueryBuilder({
+        getMany: jest.fn().mockResolvedValue([bLeg]),
+      });
+      transactionsRepository.createQueryBuilder
+        .mockReturnValueOnce(resolveQb)
+        .mockReturnValueOnce(detailsQb);
+
+      mockManagerFind.mockImplementation(
+        async (_entity: unknown, opts: { where: Record<string, unknown> }) =>
+          "transactionId" in opts.where
+            ? [
+                {
+                  transactionId: "parent",
+                  linkedTransactionId: "leg-b",
+                  transferAccountId: "acc-b",
+                },
+                {
+                  transactionId: "parent",
+                  linkedTransactionId: "leg-c",
+                  transferAccountId: "acc-c",
+                },
+              ]
+            : [{ transactionId: "parent" }],
+      );
+      const deletes: unknown[] = [];
+      mockManagerCreateQueryBuilder.mockImplementation(() => {
+        const qb = createMockQueryBuilder({
+          delete: jest.fn().mockReturnThis(),
+          from: jest.fn().mockReturnThis(),
+          // The cleanup removed leg-b already: the primary DELETE of
+          // ["leg-b"] finds nothing.
+          execute: jest.fn().mockImplementation(async () => ({
+            affected:
+              deletes[deletes.length - 1]?.toString() === "leg-b" ? 0 : 1,
+          })),
+        });
+        qb.where = jest.fn().mockImplementation((_sql, params) => {
+          deletes.push([...params.ids].sort());
+          return qb;
+        });
+        return qb;
+      });
+      (lockTransactionRows as jest.Mock).mockClear();
+
+      const result = await service.bulkDelete(userId, {
+        mode: "ids",
+        transactionIds: ["leg-b"],
+      });
+
+      expect(result).toEqual({ deleted: 1 });
+    });
+
     it("does not adjust balance for future-dated transactions", async () => {
       const dateUtils = jest.requireMock("../common/date-utils");
       dateUtils.isTransactionInFuture.mockReturnValueOnce(true);

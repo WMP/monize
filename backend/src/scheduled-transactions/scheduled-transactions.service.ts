@@ -2248,12 +2248,17 @@ export class ScheduledTransactionsService {
       fieldsToUpdate.amount = updateData.amount;
     // The currency is the (new) account's, never the request's: refuse a
     // mismatch and re-derive it when the account changes.
+    // A code equal to the stored one is a form's echo, not a request.
+    const suppliedCurrencyCode =
+      updateData.currencyCode === scheduled.currencyCode
+        ? undefined
+        : updateData.currencyCode;
     const derivedCurrencyCode = assertTransactionCurrencyMatchesAccount(
-      updateData.currencyCode,
+      suppliedCurrencyCode,
       accountCurrencyCode,
     );
     if (
-      updateData.currencyCode !== undefined ||
+      suppliedCurrencyCode !== undefined ||
       derivedCurrencyCode !== scheduled.currencyCode
     )
       fieldsToUpdate.currencyCode = derivedCurrencyCode;
